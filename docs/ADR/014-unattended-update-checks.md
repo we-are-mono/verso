@@ -62,6 +62,12 @@ every surface reads. Checking is all it does — nothing installs unattended.**
    else: no write verb, no upgrade, no apply. The blast radius of the
    unattended path is "the router found out".
 
+   Beyond those two verbs, nothing reaches the shell from the helper without
+   an operator's session if a secret is in it. The shell faces the network
+   before anyone signs in, so a fault in it must find no secret to take. What
+   the helper hands over unattended for config history (ADR-021) is a spool
+   file with every secret value removed.
+
 4. **Jitter lives in the script.** A random sleep (up to an hour) precedes
    the check, so identical shipped crontabs across a fleet spread their load
    on the feeds and the sysupgrade server instead of synchronizing on the

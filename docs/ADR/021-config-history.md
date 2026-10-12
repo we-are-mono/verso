@@ -77,33 +77,41 @@ place of the row's subjects.
 ### Changes made outside Verso
 
 After each confirmed apply the shell keeps the committed contents of every
-config the plugins declare, as the **current state**.
+config the plugins declare, without their secret values, as the **current
+state**.
 
 `verso-rpcd` watches `/etc/config` with inotify for as long as it runs. `uci
 commit` writes a temporary file and renames it over the config
 (`IN_MOVED_TO`); an editor or a script writes it in place (`IN_CLOSE_WRITE`).
 Either way the watch sees it, from the `uci` command line, `vi`, a script,
 LuCI or a restored backup alike. Writes to one config within two seconds of
-each other are one edit. When an edit settles, the helper reads the config,
-which it can do whatever the file's mode, and hands the shell its contents and
-the time of the last write.
+each other are one edit.
 
-The shell compares them with the current state. While an apply's rollback
-window is open, edits to the configs it carries wait until it closes, then
-compare with the state it left: the new one once confirmed, the old one once
-rolled back. A config that matches is Verso's own apply and is dropped; any
-other is recorded as its own entry: by no one, named from its subjects as any
-entry is, at the time it was written.
-History therefore stays continuous whatever wrote to `/etc/config`, with nobody
-signed in.
+When an edit settles, the helper reads the config's committed values with
+`uci show` against an empty delta directory, which it can do whatever the
+file's mode, removes the value of every secret option (below), and appends the
+time of the last write, the config and what is left to a spool file in the
+history directory. No secret leaves the helper, and no session is asked for:
+the shell, which faces the network before anyone signs in, never holds a
+secret without one (ADR-014). The spool outlives a shell that is restarting or
+stopped, so no edit goes unrecorded while the shell is down.
+
+The shell takes each record off the spool and compares it with the current
+state. While an apply's rollback window is open, edits to the configs it
+carries wait until it closes, then compare with the state it left: the new one
+once confirmed, the old one once rolled back. A config that matches is Verso's
+own apply and is dropped; any other is recorded as its own entry: by no one,
+named from its subjects as any entry is, at the time it was written. History
+therefore stays continuous whatever wrote to `/etc/config`, with nobody signed
+in.
 
 procd's `config.change` event is not the source: it reaches procd only from
 rpcd and `reload_config`, so a plain `uci commit` over SSH never raises it.
 
 An edit made while `verso-rpcd` is not running (a config restored before boot,
-an edit during an upgrade) is found when the shell starts: it reads every
-declared config through the helper, compares each with the current state, and
-records a difference at that time.
+an edit during an upgrade) is found when the helper starts: it spools every
+declared config, redacted the same way, and the shell records any that differ
+from the current state at that time.
 
 Who made an outside edit is not known. inotify names no process, and the
 `uci` process that wrote the file has exited before it could be traced to a
@@ -114,14 +122,18 @@ no logo, so a reader may not know what "Verso" is.
 
 ### Secrets are not kept
 
-The shell knows the options OpenWrt's own packages keep a secret in
-(`network.password`, `wireless.key`, `wireless.sae_password`, `ddns.password`
-and the like), and a plugin's manifest names any other its config holds, as
-`config.option` (`"secrets": ["vpn.auth_pass"]`). History records that such an
-option changed, never its value, before or after; a plugin that forgets to
-name one of OpenWrt's still leaks nothing. Undoing an entry that changed a secret stages
-everything else and leaves the secret as it is, and the drawer says so before
-the act.
+The options OpenWrt's own packages keep a secret in (`network.password`,
+`wireless.key`, `wireless.sae_password`, `ddns.password` and the like) are
+listed once, in `/usr/share/verso/secrets.json`, which the shell and the helper
+both read; a plugin's manifest names any other its config holds, as
+`config.option` (`"secrets": ["vpn.auth_pass"]`), and both add those. History
+records that such an option changed, never its value, before or after; a
+plugin that forgets to name one of OpenWrt's still leaks nothing. A test fails
+the build when a core plugin's password field writes an option neither the list
+nor its manifest names.
+
+Undoing an entry that changed a secret stages everything else and leaves the
+secret as it is, and the drawer says so before the act.
 
 ### Undo, Return and Stage again only stage
 
@@ -192,10 +204,9 @@ offered like any other.
 
 - The describe hook gains a subject per sentence, and the plugin manifest a
   list of secret options; `docs/plugins.md` states both.
-- `verso-rpcd` gains a long-running inotify watch on `/etc/config` and hands
-  the shell config contents, secrets included, which the shell drops before
-  anything is stored. Reading the declared configs joins the helper's
-  zero-session grant (ADR-014), since the shell starts with no one signed in.
+- `verso-rpcd` gains a long-running inotify watch on `/etc/config` and writes
+  the spool, so it reads `secrets.json` and every plugin manifest. The helper's
+  zero-session grant does not grow: the spool is a file, not a call.
 - The shell reads the committed contents of every declared config after each
   apply.
 - A history that holds config also holds addresses, hostnames and PPPoE user
