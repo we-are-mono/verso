@@ -920,6 +920,7 @@
   "Nothing has been applied yet. Every apply is kept here, with what it replaced.": "Uveljavljenega še ni ničesar. Vsaka uveljavitev se hrani tukaj, skupaj s tem, kar je zamenjala.",
   "History is not being saved. Changes applied now are kept in memory until the storage answers again.": "Zgodovina se ne shranjuje. Spremembe, uveljavljene zdaj, ostanejo v pomnilniku, dokler se shramba spet ne odzove.",
   "What changed": "Kaj se je spremenilo",
+  "Notes": "Opombe",
   "Since then": "Od takrat",
   "Undo this change": "Razveljavi to spremembo",
   "Undo these %d changes": "Razveljavi teh %d sprememb",

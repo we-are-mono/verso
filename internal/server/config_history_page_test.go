@@ -319,3 +319,25 @@ func TestAnAppliedEventOpensItsChange(t *testing.T) {
 		t.Errorf("an apply history did not keep opens %q", row.Panel)
 	}
 }
+
+// TestARelationIsANoteBesideTheChange: an undo says what it undid in the
+// Notes column, on the row's one line, and the operator's note follows it.
+func TestARelationIsANoteBesideTheChange(t *testing.T) {
+	now := time.Now()
+	first := turnedOff(now.Add(-time.Minute))
+	first.ID = 1
+	undo := turnedOff(now)
+	undo.ID, undo.Relation, undo.Related, undo.Note = 2, "undo", 1, "Ping back on"
+	table := changesTable([]history.Change{undo, first}, now, "", identity)
+	if table.Columns[2].Label != "Notes" || table.Columns[2].Kind != "comment" {
+		t.Fatalf("third column = %+v, want Notes", table.Columns[2])
+	}
+	notes, changed := table.Rows[0].Cells[2], table.Rows[0].Cells[1]
+	want := "undo of " + eventTime(first.Time, now) + " · Ping back on"
+	if notes.Text != want || changed.Detail != "" {
+		t.Errorf("notes %q, changed detail %q; want %q on the notes", notes.Text, changed.Detail, want)
+	}
+	if table.Rows[1].Cells[2].Text != "" {
+		t.Errorf("a change with no relation or note has notes %q", table.Rows[1].Cells[2].Text)
+	}
+}

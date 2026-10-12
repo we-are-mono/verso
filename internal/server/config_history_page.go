@@ -145,6 +145,7 @@ func changesTable(changes []history.Change, now time.Time, viewer string, tr fun
 		Columns: []widget.TableColumn{
 			{Label: "When", Width: widget.MeasureShort},
 			{Label: "Changed", Kind: "phrase"},
+			{Label: "Notes", Kind: "comment", Width: widget.MeasureName},
 			{Label: "By", Kind: "phrase", Width: widget.MeasureName},
 			{Label: "Status", Kind: "status", Width: widget.MeasureWord},
 			{Kind: "actions", Width: widget.MeasureShort},
@@ -176,16 +177,20 @@ func changesTable(changes []history.Change, now time.Time, viewer string, tr fun
 // changeRow is one entry in the listing.
 func changeRow(c history.Change, when map[int64]time.Time, now time.Time, viewer string, tr func(string) string) widget.TableRow {
 	parts, plain := changePhrase(c, tr)
-	changed := widget.TableCell{Text: plain, Parts: parts, Verbatim: true}
+	// Notes is what the entry is to another, then the operator's own note.
+	var notes []string
 	if related, ok := when[c.Related]; ok {
 		switch c.Relation {
 		case "undo":
-			changed.Detail = fmt.Sprintf(tr("undo of %s"), eventTime(related, now))
+			notes = append(notes, fmt.Sprintf(tr("undo of %s"), eventTime(related, now)))
 		case "return":
-			changed.Detail = fmt.Sprintf(tr("back to %s"), eventTime(related, now))
+			notes = append(notes, fmt.Sprintf(tr("back to %s"), eventTime(related, now)))
 		case "again":
-			changed.Detail = fmt.Sprintf(tr("again, from %s"), eventTime(related, now))
+			notes = append(notes, fmt.Sprintf(tr("again, from %s"), eventTime(related, now)))
 		}
+	}
+	if c.Note != "" {
+		notes = append(notes, c.Note)
 	}
 	word, variant := changeStatus(c.Status)
 	return widget.TableRow{
@@ -194,7 +199,8 @@ func changeRow(c history.Change, when map[int64]time.Time, now time.Time, viewer
 		Panel: fmt.Sprintf("%s/%d", changesPath, c.ID),
 		Cells: []widget.TableCell{
 			{Text: clock.Local(c.Time).Format("15:04"), Verbatim: true},
-			changed,
+			{Text: plain, Parts: parts, Verbatim: true},
+			{Text: strings.Join(notes, " · ")},
 			changeBy(c, viewer, tr),
 			{Text: word, Variant: variant},
 			{Actions: []widget.TableRowAct{{Icon: "info", Title: "Details", Opens: true}}},
