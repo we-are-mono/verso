@@ -46,7 +46,7 @@ Every task is test first: write the named test, see it fail, then write the code
 
 - [x] 6.1 Add every new string to the source catalog and `i18n/sl`, with Slovenian dual and paucal forms for counts through `overviewCount`: card titles; Arrange; Done; Hidden; No hidden cards; Reset layout; "Open/Close/Move/Hide <card>"; the move announcement; and the summaries. Verify: the i18n audit stays at zero and the Slovenian Overview survives its longer strings in two columns.
 - [x] 6.2 Write `docs/ADR/022-overview-cards.md` (decisions 1–7 of the design, with the cookie named the interim home of the layout), and point ADR-009's Overview paragraph to it. Verify: ADR-009, ADR-019 and ADR-022 agree on who owns the Overview and where the graph lives.
-- [ ] 6.3 Update `docs/BACKLOG.md`. Add "Overview layout on the router, per user" (the move off the cookie) and "Plugin-contributed Overview cards"; reword any Overview entry the cards make stale. Verify: no BACKLOG entry describes the tile strip.
+- [x] 6.3 Update `docs/BACKLOG.md`. Add "Overview layout on the router, per user" (the move off the cookie) and "Plugin-contributed Overview cards"; reword any Overview entry the cards make stale. Verify: no BACKLOG entry describes the tile strip.
 
 ## 7. Integration
 

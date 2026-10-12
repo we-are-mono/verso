@@ -71,6 +71,14 @@ own and points at the decision that governs it; the rationale lives there, not h
 - **`verso` uci config.** A uci config for durable shell preferences (e.g. a
   reorderable set of dashboard cards).
 
+## Overview cards (ADR-022)
+
+- **Layout on the router, per user.** Keep the card layout next to
+  `history.db` per signed-in user, so it follows the operator to another
+  browser; a store-backed `layoutSource` replaces `cookieLayout`.
+- **Plugin-contributed cards.** A contract for a plugin to add a card to the
+  Overview (WireGuard peers, QoS), as the entity panel's tabs have one.
+
 ## Per-device usage (ADR-018)
 
 - **First Devices visit on the router.** The first history read after the
@@ -79,7 +87,7 @@ own and points at the decision that governs it; the rationale lives there, not h
   carry it in the Mono feed; the helper's watchdog covers stock installs.
 - **SELinux: label `/data/nlbwmon`** before the policy goes enforcing.
 - **Overview usage.** The sentence naming the heavy user and the household's
-  month tile (agreed, not built).
+  month on the Overview, as a card of its own (agreed, not built).
 - **Destinations.** What a device talks to needs a source for names that is
   not logs, and a privacy decision.
 
