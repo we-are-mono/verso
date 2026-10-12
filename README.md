@@ -4,7 +4,9 @@ A modern web interface for your OpenWrt router, in place of LuCI.
 
 > **Verso is experimental.** Back up your router's configuration before you install it.
 
-## What you need
+<img src="docs/images/overview.png" alt="Verso's Overview: the router's internet connection, ports, tunnels, traffic, resources, hardware and firmware, each in a card">
+
+## Requirements
 
 - A router running **OpenWrt 25.12 or newer**, with at least **128 MB of storage**.
 - A way to type commands on it: run `ssh root@192.168.1.1` on your computer.
