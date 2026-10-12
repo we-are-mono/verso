@@ -86,6 +86,11 @@ func (s *Server) handleOverviewEvents(w http.ResponseWriter, r *http.Request) {
 	// second, fold them into the minute-long history the overview graph draws,
 	// and stream the newest down/up so the live graph scrolls in real values.
 	// The uplink's state is the verdict's, so it is read whatever is hidden.
+	// Its address, the Internet card's line, changes only when the uplink
+	// connects anew, so it is read then: on the first tick, and whenever the
+	// device changes or its uptime starts over.
+	var addressDevice string
+	var addressUptime int64
 	sendWan := func() bool {
 		ws, err := s.backend.WANStatus(r.Context(), sid)
 		liveOverview.WANKnown, liveOverview.WANUp = err == nil, err == nil && ws.Up()
@@ -96,6 +101,14 @@ func (s *Server) handleOverviewEvents(w http.ResponseWriter, r *http.Request) {
 		primary, found := ws.Primary()
 		if found {
 			liveOverview.WANDevice, liveOverview.WANUptime = primary.Device, loginDuration(tr, primary.Uptime)
+			if addressDevice == "" || primary.Device != addressDevice || primary.Uptime < addressUptime {
+				liveOverview.WANAddress = ""
+				if conn, err := s.backend.WANConn(r.Context(), sid); err == nil {
+					liveOverview.WANAddress = conn.V4Addr
+				}
+				addressDevice = primary.Device
+			}
+			addressUptime = primary.Uptime
 		}
 		if !layout.Shows("traffic") && !layout.Shows("internet") {
 			return true

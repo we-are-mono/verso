@@ -45,7 +45,7 @@ func TestRenderOverviewCards(t *testing.T) {
 		`data-overview`, `data-overview-tone="success"`, "Your network is", `data-overview-accent class="text-green-deep">online`, "14:52:07", "CEST",
 		"Arrange", "Done", "Reset layout",
 		// Internet
-		"Connected", "for 2 h 14 min · pppoe-wan", "IPv4", "dhcp", "172.30.1.171/24", "IPv6", "dhcpv6", "fd42:7ea:aa00::/56", `x-data="copy"`,
+		"Connected", "IPv4", "dhcp", "172.30.1.171/24", "IPv6", "dhcpv6", "fd42:7ea:aa00::/56", `x-data="copy"`,
 		// Ports and Tunnels
 		"All ports linked", `data-verso-row="interface:eth0"`, "18 Mb/s", `data-verso-row="interface:eth4"`, "wg-home", "wireguard", `href="/plugins/wireguard/"`,
 		// Traffic, Resources, Hardware, Firmware
@@ -189,7 +189,7 @@ func TestOverviewLiveStatusCarriesEveryCard(t *testing.T) {
 }
 
 func TestOverviewCountGrammarAndFallback(t *testing.T) {
-	catalog := map[string]string{"%d interface": "%d vmesnik", "%d interfaces (two)": "%d vmesnika", "%d interfaces (few)": "%d vmesniki", "%d interfaces": "%d vmesnikov"}
+	catalog := map[string]string{"%d tunnel": "%d tunel", "%d tunnels (two)": "%d tunela", "%d tunnels (few)": "%d tuneli", "%d tunnels": "%d tunelov"}
 	tr := func(key string) string {
 		if v, ok := catalog[key]; ok {
 			return v
@@ -199,11 +199,11 @@ func TestOverviewCountGrammarAndFallback(t *testing.T) {
 	for _, tc := range []struct {
 		n      int
 		en, sl string
-	}{{0, "0 interfaces", "0 vmesnikov"}, {1, "1 interface", "1 vmesnik"}, {2, "2 interfaces", "2 vmesnika"}, {3, "3 interfaces", "3 vmesniki"}, {4, "4 interfaces", "4 vmesniki"}, {5, "5 interfaces", "5 vmesnikov"}, {101, "101 interfaces", "101 vmesnik"}, {102, "102 interfaces", "102 vmesnika"}} {
-		if got := interfaceCount(plain, tc.n); got != tc.en {
+	}{{0, "0 tunnels", "0 tunelov"}, {1, "1 tunnel", "1 tunel"}, {2, "2 tunnels", "2 tunela"}, {3, "3 tunnels", "3 tuneli"}, {4, "4 tunnels", "4 tuneli"}, {5, "5 tunnels", "5 tunelov"}, {101, "101 tunnels", "101 tunel"}, {102, "102 tunnels", "102 tunela"}} {
+		if got := tunnelCount(plain, tc.n); got != tc.en {
 			t.Errorf("en(%d)=%q", tc.n, got)
 		}
-		if got := interfaceCount(tr, tc.n); got != tc.sl {
+		if got := tunnelCount(tr, tc.n); got != tc.sl {
 			t.Errorf("sl(%d)=%q", tc.n, got)
 		}
 	}

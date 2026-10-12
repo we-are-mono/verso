@@ -114,7 +114,7 @@ func TestOverviewStreamVerdictCountsHiddenCards(t *testing.T) {
 		t.Fatalf("verdict = %+v, want the hidden Ports card's lost link counted", status)
 	}
 	for _, card := range status.Cards {
-		if card.ID == "ports" && (card.Tone != "warning" || !strings.Contains(card.Summary, "eth1")) {
+		if card.ID == "ports" && (card.Tone != "warning" || card.Status != "1 port without link") {
 			t.Errorf("ports = %+v, want the topology the first paint has", card)
 		}
 	}
@@ -129,15 +129,8 @@ func TestOverviewStreamKeepsTheFirstPaintsTopology(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, card := range status.Cards {
-		switch card.ID {
-		case "ports":
-			if card.Status != "1 port without link" {
-				t.Errorf("ports = %+v", card)
-			}
-		case "firmware":
-			if !strings.Contains(card.Summary, "up ") {
-				t.Errorf("firmware = %+v, want its uptime", card)
-			}
+		if card.ID == "ports" && card.Status != "1 port without link" {
+			t.Errorf("ports = %+v", card)
 		}
 	}
 }

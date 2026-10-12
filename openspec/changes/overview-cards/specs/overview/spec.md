@@ -34,8 +34,17 @@ Every card header SHALL show the card's icon and title. Cards with a verdict (In
 - **WHEN** every Resources reading is in its normal band
 - **THEN** the Resources header shows no status word
 
-### Requirement: A closed card summarises its reading in one line
-A closed card SHALL show only its header, with a one-line summary after the title that carries the reading's caption: Internet how long the uplink has been up and its device; Ports the interface and connected-device counts; Traffic the current download and upload. An open card hides the summary, because its body carries the detail.
+### Requirement: A closed card says one reading after its title
+A closed card SHALL show only its header, with one reading after the title: the one most worth a glance, never its status again, and never a reading that changes which it is from one second to the next. An open card hides the line, because its body carries the detail.
+
+#### Scenario: Every card closed
+- **WHEN** the operator closes every card
+- **THEN** Internet shows the uplink's IPv4 address, Ports how many devices are connected, and Tunnels how many tunnels there are, or the down ones by name
+- **AND** Traffic shows the current download and upload, Resources memory, Hardware the CPU's temperature, and Firmware the firmware the router runs
+
+#### Scenario: Internet is down while closed
+- **WHEN** the Internet card is closed and the uplink is down
+- **THEN** its header shows no line after the title, since "Not connected" says it
 
 #### Scenario: Closing Traffic
 - **WHEN** the operator closes the Traffic card

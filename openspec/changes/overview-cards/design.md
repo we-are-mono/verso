@@ -77,7 +77,7 @@ The rows key themselves `interface:<name>` with `rx-rate`, `tx-rate` and `state`
 |---|---|---|
 | `meters` | Resources | Resources is not hidden. The readings are still taken, because the verdict counts meter bands. |
 | `sensors` | Hardware | Hardware is not hidden. Otherwise `resolveSensors` isn't called. |
-| `wan` | Traffic, and the Internet summary's uptime | Either card is not hidden. |
+| `wan` | Traffic, and the Internet card's address, read again only when the uplink reconnects | Either card is not hidden. |
 | `interfaces` | Ports, Tunnels | Either card is not hidden. The telemetry snapshot is still read, because the verdict counts port and tunnel state. |
 | `overview` | the verdict, and every card's status and summary | Always. |
 | `clock` | the verdict line | Always. |

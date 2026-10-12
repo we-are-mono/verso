@@ -12,7 +12,8 @@ import (
 )
 
 // cardHead is what a card's header says (ADR-022): its status word in a tone,
-// and the one line a closed card shows after its title. A card of readings
+// and the one reading a closed card shows after its title, never the status
+// again. A card of readings
 // carries no status while its readings are in band. The page's first paint and
 // the live stream read the same head, so the browser changes text, not policy.
 type cardHead struct {
@@ -50,33 +51,19 @@ func overviewCardSpecs() []overviewCardSpec {
 	}
 }
 
-// joinSummary is a closed card's line: its parts that have something to say.
-func joinSummary(parts ...string) string {
-	kept := parts[:0]
-	for _, p := range parts {
-		if p != "" {
-			kept = append(kept, p)
-		}
-	}
-	return strings.Join(kept, " · ")
-}
-
 // ── Internet ──
 
-// internetHead is the uplink's actual state, how long it has held and the
-// device it rides.
+// internetHead is the uplink's actual state and, while it is up, the address
+// the internet sees it by.
 func (o *Overview) internetHead(tr func(string) string) cardHead {
 	if !o.WANKnown {
 		return cardHead{Tone: "neutral", Status: tr("Unavailable")}
 	}
 	if !o.WANUp {
-		return cardHead{Tone: "danger", Status: tr("Not connected"), Summary: joinSummary(tr("WAN is down"), o.WANDevice)}
+		return cardHead{Tone: "danger", Status: tr("Not connected")}
 	}
-	uptime := ""
-	if o.WANUptime != "" {
-		uptime = fmt.Sprintf(tr("for %s"), o.WANUptime)
-	}
-	return cardHead{Tone: "success", Status: tr("Connected"), Summary: joinSummary(uptime, o.WANDevice)}
+	address, _, _ := strings.Cut(o.WANAddress, "/")
+	return cardHead{Tone: "success", Status: tr("Connected"), Summary: address}
 }
 
 // overviewFamilyView is one address family in the Internet card: its name and
@@ -121,16 +108,13 @@ func (o *Overview) internetBody(r *Renderer, csrf string) (template.HTML, error)
 // ── Ports ──
 
 // portsHead says whether every port something asked for has its cable, and
-// how much hangs off them. A spare port's missing cable is nobody's concern.
+// how many devices hang off them. A spare port's missing cable is nobody's
+// concern.
 func (o *Overview) portsHead(tr func(string) string) cardHead {
 	if !o.InterfacesKnown {
 		return cardHead{Tone: "neutral", Status: tr("Unavailable")}
 	}
-	caption := interfaceCount(tr, len(o.Interfaces))
-	if o.DevicesKnown {
-		caption += " · " + deviceCount(tr, o.DevicesOnline)
-	}
-	ports, down, unknown, first := 0, 0, 0, ""
+	ports, down, unknown := 0, 0, 0
 	for _, n := range o.Interfaces {
 		if !n.Physical || !n.inUse() {
 			continue
@@ -140,14 +124,14 @@ func (o *Overview) portsHead(tr func(string) string) cardHead {
 		case "up":
 		case "down", "lowerlayerdown":
 			down++
-			if first == "" {
-				first = n.Name
-			}
 		default:
 			unknown++
 		}
 	}
-	h := cardHead{Tone: "neutral", Summary: joinSummary(first, caption)}
+	h := cardHead{Tone: "neutral"}
+	if o.DevicesKnown {
+		h.Summary = deviceCount(tr, o.DevicesOnline)
+	}
 	switch {
 	case down > 0:
 		h.Tone = "warning"
@@ -237,35 +221,40 @@ func (o *Overview) tunnelsHref() string {
 }
 
 // tunnelsHead reads each tunnel's netdev, which says nothing about a remote
-// peer or a handshake: up is the device, not the far end.
+// peer or a handshake: up is the device, not the far end. Its line names the
+// tunnels that are down, else counts them.
 func (o *Overview) tunnelsHead(tr func(string) string) cardHead {
 	if !o.InterfacesKnown {
 		return cardHead{Tone: "neutral", Status: tr("Unavailable")}
 	}
-	var names []string
-	up, down := 0, 0
+	var downNames []string
+	tunnels, up := 0, 0
 	for _, n := range o.Interfaces {
 		if !n.tunnel() {
 			continue
 		}
-		names = append(names, n.Name)
+		tunnels++
 		switch n.State {
 		case "up":
 			up++
 		case "down", "lowerlayerdown":
-			down++
+			downNames = append(downNames, n.Name)
 		}
 	}
-	h := cardHead{Tone: "neutral", Summary: joinSummary(names...)}
+	h := cardHead{Tone: "neutral"}
 	switch {
-	case len(names) == 0:
+	case tunnels == 0:
 		h.Status = tr("None observed")
-	case down > 0:
-		h.Tone, h.Status = "danger", fmt.Sprintf(tr("%d of %d down"), down, len(names))
-	case up == len(names):
+	case len(downNames) > 0:
+		h.Tone, h.Status = "danger", fmt.Sprintf(tr("%d of %d down"), len(downNames), tunnels)
+		h.Summary = strings.Join(downNames, ", ")
+	case up == tunnels:
 		h.Tone, h.Status = "success", tr("All up")
 	default:
 		h.Status = tr("State unknown")
+	}
+	if h.Summary == "" && tunnels > 0 {
+		h.Summary = tunnelCount(tr, tunnels)
 	}
 	return h
 }
@@ -326,18 +315,20 @@ func (o *Overview) trafficControl(r *Renderer) (template.HTML, error) {
 // ── Resources ──
 
 // resourcesHead names the reading furthest out of band; in band it is silent.
-// The gauges' labels arrive localized (they are the meters' own).
+// Its line is always memory, what a router runs out of, so the line never
+// swaps one reading for another as they pass each other. The gauges' labels
+// arrive localized (they are the meters' own).
 func (o *Overview) resourcesHead(tr func(string) string) cardHead {
 	h := cardHead{Tone: "neutral"}
-	parts := make([]string, 0, len(o.SysMetrics))
 	rank := map[string]int{"warning": 1, "danger": 2}
 	for _, m := range o.SysMetrics {
-		parts = append(parts, strings.TrimSpace(m.Label+" "+m.Value+" "+m.Unit))
+		if m.Name == "sys-memory" {
+			h.Summary = strings.TrimSpace(m.Label + " " + m.Value + " " + m.Unit)
+		}
 		if rank[m.Band] > rank[h.Tone] {
 			h.Tone, h.Status = m.Band, fmt.Sprintf(tr("%s is high"), m.Label)
 		}
 	}
-	h.Summary = joinSummary(parts...)
 	return h
 }
 
@@ -355,17 +346,14 @@ func (o *Overview) resourcesBody(r *Renderer, csrf string) (template.HTML, error
 
 // ── Hardware ──
 
-// hardwareHead speaks only when the CPU runs hot; its line is the readings
-// the board has sensors for.
+// hardwareHead speaks only when the CPU runs hot; its line is the CPU's
+// temperature, where the board has a sensor for it.
 func (o *Overview) hardwareHead(tr func(string) string) cardHead {
 	temp, _, _ := strings.Cut(o.Temperature, " · ")
-	read := func(v string) string {
-		if v == "N/A" {
-			return ""
-		}
-		return v
+	if temp == "N/A" {
+		temp = ""
 	}
-	h := cardHead{Tone: "neutral", Summary: joinSummary(read(temp), read(o.Fan), read(o.Power))}
+	h := cardHead{Tone: "neutral", Summary: temp}
 	if o.TempDot == "warning" || o.TempDot == "danger" {
 		h.Tone, h.Status = o.TempDot, tr("CPU temperature is high")
 	}
@@ -380,12 +368,10 @@ func (o *Overview) hardwareBody(r *Renderer, csrf string) (template.HTML, error)
 
 // ── Firmware ──
 
-func (o *Overview) firmwareHead(tr func(string) string) cardHead {
-	uptime := ""
-	if o.Uptime != "" {
-		uptime = fmt.Sprintf(tr("up %s"), o.Uptime)
-	}
-	return cardHead{Tone: "neutral", Summary: joinSummary(o.Firmware, uptime)}
+// firmwareHead's line is the firmware the router runs; its uptime is in the
+// open card.
+func (o *Overview) firmwareHead(func(string) string) cardHead {
+	return cardHead{Tone: "neutral", Summary: o.Firmware}
 }
 
 func (o *Overview) firmwareBody(r *Renderer, csrf string) (template.HTML, error) {

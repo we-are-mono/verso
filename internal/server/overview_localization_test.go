@@ -39,7 +39,7 @@ func TestOverviewSlovenianPageAndStream(t *testing.T) {
 	srv.stats = fakeStats{cpu: 91, root: sysstat.Storage{Used: 95, Free: 5}}
 	srv.telemetry = fakeTelemetry{snapshot: telemetry.Snapshot{TimestampMS: uint64(time.Now().UnixMilli()), Interfaces: []telemetry.Interface{{Name: "eth0", Physical: true, Kind: "port", Operstate: "down"}, {Name: "wg0", Kind: "tunnel", Operstate: "unknown"}}}}
 	body := getLang(t, srv, "/", "sl-SI")
-	for _, want := range []string{"Vaše omrežje zahteva pozornost", "Vrata", "Viri", "Tuneli", "Predpona", "Prehod", "Velja še", "8 min", "Pomnilnik", "Mb/s prejem", "Mb/s oddaja", "pred 60 s", "že 2 h 14 min", "192.0.2.1/24", "2001:db8::/56", "Temperatura CPU", "Hitrost ventilatorja", "Poraba energije"} {
+	for _, want := range []string{"Vaše omrežje zahteva pozornost", "Vrata", "Viri", "Tuneli", "Predpona", "Prehod", "Velja še", "8 min", "Pomnilnik", "Mb/s prejem", "Mb/s oddaja", "pred 60 s", "192.0.2.1/24", "2001:db8::/56", "Temperatura CPU", "Hitrost ventilatorja", "Poraba energije"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("Slovenian overview missing %q", want)
 		}
@@ -95,8 +95,8 @@ func TestOverviewSlovenianPageAndStream(t *testing.T) {
 			if len(status.Cards) != 7 || status.Cards[4].ID != "resources" || status.Cards[4].Status != "CPU: visoka vrednost" {
 				t.Errorf("untranslated resources reading: %+v", status.Cards)
 			}
-			if status.Cards[0].ID != "internet" || !strings.Contains(status.Cards[0].Summary, "že 2 h 14 min") {
-				t.Errorf("untranslated WAN duration: %+v", status.Cards[0])
+			if status.Cards[0].ID != "internet" || status.Cards[0].Summary != "192.0.2.1" {
+				t.Errorf("the stream's Internet line is the uplink's address: %+v", status.Cards[0])
 			}
 			for _, required := range []string{"clock", "meters", "interfaces", "wan"} {
 				if !seen[required] {

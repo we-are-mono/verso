@@ -40,12 +40,14 @@ func TestInternetCardHead(t *testing.T) {
 	if h := head(t, &Overview{}, "internet"); h.Status != "Unavailable" || h.Tone != "neutral" {
 		t.Errorf("unknown = %+v", h)
 	}
-	up := head(t, &Overview{WANKnown: true, WANUp: true, WANDevice: "pppoe-wan", WANUptime: "2 h 14 min"}, "internet")
-	if up.Status != "Connected" || up.Tone != "success" || up.Summary != "for 2 h 14 min · pppoe-wan" {
+	// Up, its line is the address the internet sees; down, the status says
+	// it all.
+	up := head(t, &Overview{WANKnown: true, WANUp: true, WANDevice: "pppoe-wan", WANUptime: "2 h 14 min", WANAddress: "203.0.113.7/32"}, "internet")
+	if up.Status != "Connected" || up.Tone != "success" || up.Summary != "203.0.113.7" {
 		t.Errorf("up = %+v", up)
 	}
-	down := head(t, &Overview{WANKnown: true, WANDevice: "eth0"}, "internet")
-	if down.Status != "Not connected" || down.Tone != "danger" || down.Summary != "WAN is down · eth0" {
+	down := head(t, &Overview{WANKnown: true, WANDevice: "eth0", WANAddress: "203.0.113.7/32"}, "internet")
+	if down.Status != "Not connected" || down.Tone != "danger" || down.Summary != "" {
 		t.Errorf("down = %+v", down)
 	}
 }
@@ -75,16 +77,16 @@ func TestPortsAndTunnelsCardHeads(t *testing.T) {
 		{Name: "wg0", Kind: "tunnel", State: "up"},
 	}}
 	ports := head(t, o, "ports")
-	if ports.Status != "1 port without link" || ports.Tone != "warning" || ports.Summary != "lan1 · 6 interfaces · 9 devices connected" {
-		t.Errorf("ports = %+v, want lan1 named, not the spare lan4", ports)
+	if ports.Status != "1 port without link" || ports.Tone != "warning" || ports.Summary != "9 devices connected" {
+		t.Errorf("ports = %+v, want the spare lan4 not counted, and the devices as its line", ports)
 	}
 	tunnels := head(t, o, "tunnels")
-	if tunnels.Status != "All up" || tunnels.Tone != "success" || tunnels.Summary != "tailscale0 · wg0" {
-		t.Errorf("tunnels = %+v, want tailscale0 and wg0, not the kernel's own", tunnels)
+	if tunnels.Status != "All up" || tunnels.Tone != "success" || tunnels.Summary != "2 tunnels" {
+		t.Errorf("tunnels = %+v, want tailscale0 and wg0 counted, not the kernel's own", tunnels)
 	}
 	o.Interfaces[5].State = "down"
-	if h := head(t, o, "tunnels"); h.Status != "1 of 2 down" || h.Tone != "danger" {
-		t.Errorf("a tunnel down = %+v", h)
+	if h := head(t, o, "tunnels"); h.Status != "1 of 2 down" || h.Tone != "danger" || h.Summary != "wg0" {
+		t.Errorf("a tunnel down = %+v, want it named", h)
 	}
 	o.Interfaces[5].State = "unknown"
 	if h := head(t, o, "tunnels"); h.Status != "State unknown" || h.Tone != "neutral" {
@@ -107,16 +109,19 @@ func TestReadingCardsShowAStatusOnlyOutOfBand(t *testing.T) {
 		DownNow: 84.2, UpNow: 1260, Firmware: "OpenWrt 25.12.4", Uptime: "3 d 4 h",
 		Temperature: "52 °C · normal", TempDot: "success", Fan: "2400 rpm", Power: "7.8 W",
 		SysMetrics: []OverviewMeter{
-			{Label: "Load", Value: "0.42", Band: "success"},
-			{Label: "CPU", Value: "12", Unit: "%", Band: "success"},
-			{Label: "Memory", Value: "16", Unit: "%", Band: "success"},
+			{Name: "sys-load", Label: "Load", Value: "0.42", Band: "success"},
+			{Name: "sys-cpu", Label: "CPU", Value: "12", Unit: "%", Band: "success"},
+			{Name: "sys-memory", Label: "Memory", Value: "16", Unit: "%", Band: "success"},
 		},
 	}
+	// Each closed card says one thing: the reading most worth a glance.
+	// Resources always says memory, so its line never swaps one reading for
+	// another as they pass each other.
 	for id, summary := range map[string]string{
 		"traffic":   "84 Mb/s down · 1.3 Gb/s up",
-		"resources": "Load 0.42 · CPU 12 % · Memory 16 %",
-		"hardware":  "52 °C · 2400 rpm · 7.8 W",
-		"firmware":  "OpenWrt 25.12.4 · up 3 d 4 h",
+		"resources": "Memory 16 %",
+		"hardware":  "52 °C",
+		"firmware":  "OpenWrt 25.12.4",
 	} {
 		if h := head(t, o, id); h.Status != "" || h.Summary != summary {
 			t.Errorf("%s = %+v, want no status and %q", id, h, summary)

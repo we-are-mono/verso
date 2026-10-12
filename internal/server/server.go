@@ -978,7 +978,7 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	// The IPv4/IPv6 panel reads the uplink's live connection facts: the
 	// addresses, gateways and lease times behind the internet tile's verdict.
 	if conn, err := s.backend.WANConn(r.Context(), sid); err == nil {
-		ov.V4Proto, ov.V4 = conn.V4Proto, wanFactsV4(conn)
+		ov.V4Proto, ov.V4, ov.WANAddress = conn.V4Proto, wanFactsV4(conn), conn.V4Addr
 		ov.V6Proto, ov.V6 = conn.V6Proto, wanFactsV6(conn, tr)
 	} else {
 		log.Printf("verso: overview: wan connection unavailable: %v", err)

@@ -1105,6 +1105,7 @@ func TestIndexRendersOverview(t *testing.T) {
 			Device: "pppoe-upstream", Transport: "eth4.3900", Networks: []string{"upstream"}, Uptime: 8040,
 			Routes: []openwrt.WANRoute{{Family: 4, Table: 254, Metric: 10, Main: true}},
 		}}},
+		wanConn:  openwrt.WANConn{V4Proto: "PPPoE", V4Addr: "203.0.113.7/32"},
 		wanCalls: &wanCalls,
 	}
 	s := newServer(t, backend)
@@ -1122,7 +1123,7 @@ func TestIndexRendersOverview(t *testing.T) {
 	for _, want := range []string{
 		"online", "Internet traffic", "Resources", "Ports",
 		"OpenWrt 25.12.4", "Linux 6.12.101", "1 h 01 min", // live System facts
-		"Connected", "for 2 h 14 min", "pppoe-upstream", // live WAN state, device, and uptime
+		"Connected", ">203.0.113.7<", // live WAN state, and the address its line names
 		`data-verso-row="interface:eth4"`, // the Ports card lists the physical port
 	} {
 		if !strings.Contains(body, want) {

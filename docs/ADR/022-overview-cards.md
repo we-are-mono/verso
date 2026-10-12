@@ -45,7 +45,10 @@ writes, so no new cell kind or client code was needed for them to stay live.
 A card's header carries its verdict: the status word and packet at its end,
 open or closed, in the tone's Deep step. A card of readings (Traffic,
 Resources, Hardware, Firmware) speaks only when a reading is out of band. A
-closed card adds the old tile's caption as one line after its title. The tile
+closed card adds one reading after its title, the one most worth a glance and
+never its status again: the uplink's address, the devices connected, the
+tunnels down, the traffic, memory (always memory, so the line never swaps one
+reading for another as they pass), the CPU's temperature, the firmware. The tile
 strip and the verdict's kicker are gone: the page says once that something
 needs attention, and the card with the problem says which.
 

@@ -33,6 +33,9 @@ type Overview struct {
 	WANUp     bool
 	WANDevice string
 	WANUptime string
+	// WANAddress is the uplink's IPv4 address with its prefix
+	// ("203.0.113.7/32"), the address the internet sees.
+	WANAddress string
 
 	// DownSeries and UpSeries are the uplink's live minute in Mbit/s, and
 	// DownNow and UpNow the newest of each.

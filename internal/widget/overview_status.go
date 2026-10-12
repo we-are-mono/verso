@@ -32,8 +32,8 @@ func overviewCount(tr func(string) string, n int, one, two, few, many string) st
 	return fmt.Sprintf(pattern, n)
 }
 
-func interfaceCount(tr func(string) string, n int) string {
-	return overviewCount(tr, n, "%d interface", "%d interfaces (two)", "%d interfaces (few)", "%d interfaces")
+func tunnelCount(tr func(string) string, n int) string {
+	return overviewCount(tr, n, "%d tunnel", "%d tunnels (two)", "%d tunnels (few)", "%d tunnels")
 }
 
 func deviceCount(tr func(string) string, n int) string {

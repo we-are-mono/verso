@@ -87,7 +87,6 @@
   "checked ": "preverjeno ",
   "Unavailable": "Ni na voljo",
   "Not connected": "Ni povezave",
-  "WAN is down": "WAN ne deluje",
   "Connected": "Povezano",
   "for ": "že ",
   "live": "v živo",
@@ -616,11 +615,10 @@
   "Open System": "Odpri sistem",
   "System readings unavailable": "Sistemski podatki niso na voljo",
   "none reported": "ni zaznanih",
-  "for %s": "že %s",
-  "%d interface": "%d vmesnik",
-  "%d interfaces (two)": "%d vmesnika",
-  "%d interfaces (few)": "%d vmesniki",
-  "%d interfaces": "%d vmesnikov",
+  "%d tunnel": "%d tunel",
+  "%d tunnels (two)": "%d tunela",
+  "%d tunnels (few)": "%d tuneli",
+  "%d tunnels": "%d tunelov",
   "%d device connected": "%d povezana naprava",
   "%d devices connected (two)": "%d povezani napravi",
   "%d devices connected (few)": "%d povezane naprave",
@@ -965,6 +963,5 @@
   "No physical ports were found.": "Fizičnih vrat ni.",
   "%s down · %s up": "%s prejem · %s oddaja",
   "%s is high": "%s: visoka vrednost",
-  "CPU temperature is high": "Temperatura CPU je visoka",
-  "up %s": "deluje že %s"
+  "CPU temperature is high": "Temperatura CPU je visoka"
 }
