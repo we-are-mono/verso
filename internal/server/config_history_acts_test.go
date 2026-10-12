@@ -345,3 +345,78 @@ func TestADiscardedStageForgetsWhatItWasToHistory(t *testing.T) {
 		t.Fatal("the discarded stage is still an undo")
 	}
 }
+
+// TestReturnToTheStartingPointWritesWhatDiffers: each option back to what
+// it held, a section made since removed, one removed since made again as it
+// was; a secret stays.
+func TestReturnToTheStartingPointWritesWhatDiffers(t *testing.T) {
+	start := map[string]map[string]map[string]any{"network": {
+		"lan":       {".type": "interface", ".index": 0.0, "mtu": "1500", "ports": []any{"lan1"}},
+		"wan":       {".type": "interface", ".index": 1.0, "password": map[string]any{"secret": "aa"}},
+		"cfg0a1b2c": {".type": "route", ".anonymous": true, ".index": 2.0, "target": "10.0.0.0/8"},
+	}}
+	now := map[string]map[string]map[string]any{"network": {
+		"lan":   {".type": "interface", ".index": 0.0, "mtu": "9000", "ports": []any{"lan1", "lan2"}, "dns": "1.1.1.1"},
+		"wan":   {".type": "interface", ".index": 1.0, "password": map[string]any{"secret": "bb"}},
+		"guest": {".type": "interface", ".index": 2.0},
+	}}
+	plan := startPlan(start, now)
+	want := []plugin.CommitOp{
+		{Config: "network", Section: "lan", Values: map[string]any{"dns": nil, "mtu": "1500", "ports": []string{"lan1"}}},
+		{Config: "network", Type: "route", Values: map[string]any{"target": "10.0.0.0/8"}},
+		{Config: "network", Section: "guest", Delete: true},
+	}
+	if got := stepsOf(plan); !reflect.DeepEqual(got, want) {
+		t.Fatalf("steps\n%#v\nwant\n%#v", got, want)
+	}
+	if !reflect.DeepEqual(plan.Secrets, []string{"network.wan.password"}) {
+		t.Errorf("secrets = %v", plan.Secrets)
+	}
+	wantRows := []planRow{
+		{"network.lan.dns", "1.1.1.1", "—"},
+		{"network.lan.mtu", "9000", "1500"},
+		{"network.lan.ports", "lan1 lan2", "lan1"},
+		{"network.cfg0a1b2c", "—", "route"},
+		{"network.guest", "interface", "—"},
+	}
+	if !reflect.DeepEqual(plan.Rows, wantRows) {
+		t.Errorf("rows\n%v\nwant\n%v", plan.Rows, wantRows)
+	}
+}
+
+// TestTheStartingPointClosesTheListingAndReturnsTheRouterToIt: the last
+// row, whose drawer lists what differs now and stages it back.
+func TestTheStartingPointClosesTheListingAndReturnsTheRouterToIt(t *testing.T) {
+	s, store, writes, window := actsServer(t, map[string][][]string{"firewall": {{"set", "cfg0792bd", "target", "ACCEPT"}}})
+	ctx := t.Context()
+	_ = store.StartConfig(ctx, "firewall", json.RawMessage(`{"cfg0792bd":{".type":"rule","name":"Allow-Ping","target":"ACCEPT"}}`), time.Now().Add(-time.Hour))
+	_ = store.SetConfigState(ctx, "firewall", json.RawMessage(`{"cfg0792bd":{".type":"rule","name":"Allow-Ping","target":"DROP"}}`), time.Now())
+	c := turnedOff(time.Now())
+	c.OldRead = true
+	id := record(t, store, c)
+
+	_, body := getSignedIn(t, s, changesPath)
+	if last, start := strings.Index(body, fmt.Sprintf(`data-verso-row-id="%d"`, id)), strings.Index(body, `data-verso-row-id="start"`); start < 0 || start < last || !strings.Contains(body, ">Starting point<") {
+		t.Fatalf("the starting point should close the listing (%d, %d)", last, start)
+	}
+	drawer := getPanel(t, s, changesPath+"/start").Body.String()
+	for _, want := range []string{">firewall.cfg0792bd.target<", ">DROP<", ">ACCEPT<", "Return to the starting point"} {
+		if !strings.Contains(drawer, want) {
+			t.Errorf("starting point drawer missing %q:\n%s", want, drawer)
+		}
+	}
+	if rec := postPlugin(t, s, changesPath+"/start", url.Values{"act": {"return"}}); rec.Code != http.StatusSeeOther {
+		t.Fatalf("return = %d: %s", rec.Code, rec.Body)
+	}
+	if want := []uciWrite{{"test-sid", "firewall", "cfg0792bd", map[string]any{"target": "ACCEPT"}}}; !reflect.DeepEqual(*writes, want) {
+		t.Fatalf("staged %+v, want %+v", *writes, want)
+	}
+	applyConfirmed(t, s, window)
+	all := entries(t, store)
+	if all[0].Relation != "return" || all[0].Related != 0 || all[1].Status != history.ChangeUndone {
+		t.Fatalf("history = %+v", all)
+	}
+	if _, page := getSignedIn(t, s, changesPath); !strings.Contains(page, "back to the starting point") {
+		t.Error("the return should say where it went")
+	}
+}

@@ -481,7 +481,13 @@ func (s *Server) stagePlan(ctx context.Context, sid string, plan actPlan, tr fun
 				m = shellManifest()
 			}
 		}
-		who := stageAuthor{Plugin: m.ID, Page: step.page}
+		// A write no row made (a return to the starting point) is the
+		// writer's own page.
+		page := step.page
+		if page == "" {
+			page = m.Name
+		}
+		who := stageAuthor{Plugin: m.ID, Page: page}
 		if _, _, staged := s.brokerStage(ctx, m, who, sid, []plugin.CommitOp{step.op}, tr); !staged {
 			return false
 		}
@@ -543,4 +549,95 @@ func (s *Server) changeAct(ctx context.Context, sid, act string, c history.Chang
 	}
 	s.relations.set(sid, rel)
 	return ""
+}
+
+// startPlan is what returns each config from how it reads now to how it
+// stood at the starting point: each option back to what it held, a section
+// made since removed, one removed since made again as it was. A secret, kept
+// only as its fingerprint, stays as it is.
+func startPlan(start, now map[string]map[string]map[string]any) actPlan {
+	var plan actPlan
+	configs := make([]string, 0, len(start))
+	for config := range start {
+		configs = append(configs, config)
+	}
+	slices.Sort(configs)
+	nobody := history.ChangeItem{}
+	for _, config := range configs {
+		then, current := start[config], now[config]
+		if current == nil {
+			continue
+		}
+		for _, name := range sectionsInOrder(then) {
+			key := config + "." + name
+			was := then[name]
+			is, exists := current[name]
+			typ, _ := was[".type"].(string)
+			if nowType, _ := is[".type"].(string); !exists || nowType != typ {
+				if exists {
+					plan.step(nobody, plugin.CommitOp{Config: config, Section: name, Delete: true})
+				}
+				values := map[string]any{}
+				for option, v := range was {
+					switch {
+					case strings.HasPrefix(option, "."):
+					case isFingerprint(v):
+						plan.secret(key + "." + option)
+					default:
+						values[option] = uciValue(v)
+					}
+				}
+				section := name
+				if anonymous, _ := was[".anonymous"].(bool); anonymous {
+					section = ""
+				}
+				plan.step(nobody, plugin.CommitOp{Config: config, Section: section, Type: typ, Values: values})
+				plan.Rows = append(plan.Rows, planRow{key, none, typ})
+				continue
+			}
+			values := map[string]any{}
+			for _, option := range optionNames(was, is) {
+				a, had := was[option]
+				b, has := is[option]
+				if isFingerprint(a) || isFingerprint(b) {
+					if !reflectEqual(a, b) {
+						plan.secret(key + "." + option)
+					}
+					continue
+				}
+				if had == has && reflectEqual(a, b) {
+					continue
+				}
+				thenValue, nowValue := presentValue(a, had), presentValue(b, has)
+				values[option] = thenValue
+				plan.Rows = append(plan.Rows, planRow{key + "." + option, rowValue(nowValue), rowValue(thenValue)})
+			}
+			if len(values) > 0 {
+				plan.step(nobody, plugin.CommitOp{Config: config, Section: name, Values: values})
+			}
+		}
+		for _, name := range sectionsInOrder(current) {
+			if _, kept := then[name]; !kept {
+				typ, _ := current[name][".type"].(string)
+				plan.step(nobody, plugin.CommitOp{Config: config, Section: name, Delete: true})
+				plan.Rows = append(plan.Rows, planRow{config + "." + name, typ, none})
+			}
+		}
+	}
+	return plan
+}
+
+// isFingerprint reports whether a value is a secret's fingerprint, as
+// verso-rpcd spools one.
+func isFingerprint(v any) bool {
+	_, ok := v.(map[string]any)
+	return ok
+}
+
+// presentValue is a value as uci writes it, or nil where there is none.
+func presentValue(v any, present bool) any {
+	if !present {
+		return nil
+	}
+	return uciValue(v)
 }

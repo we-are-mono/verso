@@ -261,3 +261,21 @@ func (s *Store) SetConfigState(ctx context.Context, config string, sections json
 		config, string(sections), at.Unix())
 	return err
 }
+
+// ConfigStates is every config as config history last read it.
+func (s *Store) ConfigStates(ctx context.Context) (map[string]json.RawMessage, error) {
+	rows, err := s.db.QueryContext(ctx, `SELECT config, sections FROM config_state`)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	states := map[string]json.RawMessage{}
+	for rows.Next() {
+		var config, sections string
+		if err := rows.Scan(&config, &sections); err != nil {
+			return nil, err
+		}
+		states[config] = json.RawMessage(sections)
+	}
+	return states, rows.Err()
+}

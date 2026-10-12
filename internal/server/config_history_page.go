@@ -5,6 +5,7 @@ package server
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"html/template"
@@ -57,7 +58,11 @@ func (s *Server) handleChanges(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "history unavailable", http.StatusInternalServerError)
 		return
 	}
-	table := changesTable(changes, time.Now(), clientIP(r), tr)
+	var startAt time.Time
+	if start, err := s.historyStore.StartingPoint(r.Context()); err == nil && len(start.Configs) > 0 {
+		startAt = start.Time
+	}
+	table := changesTable(changes, startAt, time.Now(), clientIP(r), tr)
 	page := &widget.Stack{Children: []widget.Widget{table}}
 	if h := s.historyStore.Health(); !h.OK {
 		page.Children = []widget.Widget{&widget.Callout{Variant: "warning", Compact: true, Verbatim: h.Cause,
@@ -121,13 +126,18 @@ func (s *Server) handleChangePanel(w http.ResponseWriter, r *http.Request) {
 		}
 		since, status = act == "return", http.StatusConflict
 	}
-	row := widget.TableRow{ID: strconv.FormatInt(id, 10), Drawer: changeDrawer(c, all, since, time.Now(), tr)}
+	s.writeChangeDrawer(w, r, strconv.FormatInt(id, 10), changeDrawer(c, all, since, time.Now(), tr), failed, status, lang, t)
+}
+
+// writeChangeDrawer answers with one drawer of config history, open, a
+// refusal of what was asked of it above its contents.
+func (s *Server) writeChangeDrawer(w http.ResponseWriter, r *http.Request, id string, drawer *widget.RowDrawer, failed string, status int, lang string, t func(string) string) {
 	if failed != "" {
-		row.Drawer.Children = append(widget.Widgets{&widget.Callout{Variant: "danger", Compact: true, Body: failed}}, row.Drawer.Children...)
+		drawer.Children = append(widget.Widgets{&widget.Callout{Variant: "danger", Compact: true, Body: failed}}, drawer.Children...)
 	}
-	row.Drawer.Open = true
+	drawer.Open = true
 	var body bytes.Buffer
-	if _, err := s.widgets.RenderOpenPanelWithToken(&body, &widget.Table{Columns: []widget.TableColumn{{}}, Rows: []widget.TableRow{row}},
+	if _, err := s.widgets.RenderOpenPanelWithToken(&body, &widget.Table{Columns: []widget.TableColumn{{}}, Rows: []widget.TableRow{{ID: id, Drawer: drawer}}},
 		s.sessionCSRF(r), lang, t, widget.Flash{}); err != nil {
 		http.Error(w, "render error", http.StatusInternalServerError)
 		return
@@ -137,11 +147,98 @@ func (s *Server) handleChangePanel(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write(body.Bytes())
 }
 
+// handleStartPanel is the starting point's drawer: what is set differently
+// now than before the oldest entry kept, and Return to the starting point.
+// Posted to, it stages that return.
+func (s *Server) handleStartPanel(w http.ResponseWriter, r *http.Request) {
+	if s.historyStore == nil {
+		http.NotFound(w, r)
+		return
+	}
+	lang, t := s.localize(r)
+	tr := translatorOrIdentity(t)
+	if !panelRequest(r) && r.Method == http.MethodGet {
+		http.Redirect(w, r, changesPath, http.StatusSeeOther)
+		return
+	}
+	start, now, err := s.readStartAndNow(r.Context())
+	if err != nil {
+		s.entityNotice(w, http.StatusInternalServerError, fmt.Sprintf(tr("The history could not be read (%v)."), err))
+		return
+	}
+	plan := startPlan(start.sections, now)
+	status, failed := http.StatusOK, ""
+	if r.Method == http.MethodPost {
+		all, err := s.historyStore.Changes(r.Context(), changesListed)
+		switch {
+		case err != nil:
+			failed = fmt.Sprintf(tr("The history could not be read (%v)."), err)
+		case r.FormValue("act") != "return":
+			failed = tr("That is not something a change can do.")
+		case len(plan.Steps) == 0:
+			failed = tr("There is nothing to stage.")
+		case !s.stagePlan(r.Context(), s.sessionSID(r), plan, tr):
+			failed = tr("The changes could not be staged. Some may have been: review or discard them from the staged changes.")
+		default:
+			s.relations.set(s.sessionSID(r), stageRelation{relation: "return", reverses: inForceAfter(all, history.Change{})})
+			if panelRequest(r) {
+				w.Header().Set("HX-Redirect", changesPath)
+				w.WriteHeader(http.StatusOK)
+				return
+			}
+			http.Redirect(w, r, changesPath, http.StatusSeeOther)
+			return
+		}
+		status = http.StatusConflict
+	}
+	drawer := &widget.RowDrawer{Title: fmt.Sprintf(tr("Starting point · %s"), changeTitle(start.at, time.Now(), tr)), Verbatim: true,
+		Children: returnBody(plan, startPath, "Return to the starting point", "At the starting point", tr)}
+	s.writeChangeDrawer(w, r, "start", drawer, failed, status, lang, t)
+}
+
+// startReading is the starting point read for a return.
+type startReading struct {
+	at       time.Time
+	sections map[string]map[string]map[string]any
+}
+
+// readStartAndNow is the starting point, and every config as last read.
+func (s *Server) readStartAndNow(ctx context.Context) (startReading, map[string]map[string]map[string]any, error) {
+	start, err := s.historyStore.StartingPoint(ctx)
+	if err != nil {
+		return startReading{}, nil, err
+	}
+	states, err := s.historyStore.ConfigStates(ctx)
+	if err != nil {
+		return startReading{}, nil, err
+	}
+	decode := func(raw map[string]json.RawMessage) (map[string]map[string]map[string]any, error) {
+		out := make(map[string]map[string]map[string]any, len(raw))
+		for config, text := range raw {
+			var sections map[string]map[string]any
+			if err := json.Unmarshal(text, &sections); err != nil {
+				return nil, err
+			}
+			out[config] = sections
+		}
+		return out, nil
+	}
+	then, err := decode(start.Configs)
+	if err != nil {
+		return startReading{}, nil, err
+	}
+	now, err := decode(states)
+	return startReading{at: start.Time, sections: then}, now, err
+}
+
 // changesTable is the listing: lanes by day, a row per entry, named from
 // what it touched. An entry no longer in force (rolled back, undone) is
 // marked over, as a switched-off rule is. viewer is the reader's address, so
 // their own applies say so.
-func changesTable(changes []history.Change, now time.Time, viewer string, tr func(string) string) *widget.Table {
+//
+// The starting point closes the listing where history has one (startAt is
+// its moment): the configs as they stood before the oldest entry kept.
+func changesTable(changes []history.Change, startAt, now time.Time, viewer string, tr func(string) string) *widget.Table {
 	table := &widget.Table{
 		Columns: []widget.TableColumn{
 			{Label: "When", Width: widget.MeasureShort},
@@ -154,15 +251,24 @@ func changesTable(changes []history.Change, now time.Time, viewer string, tr fun
 		EmptyText: "Nothing has been applied yet. Every apply is kept here, with what it replaced.",
 	}
 	when := make(map[int64]time.Time, len(changes))
-	perDay := map[string]int{}
 	for _, c := range changes {
 		when[c.ID] = c.Time
-		perDay[changeDay(c.Time, now, tr)]++
+	}
+	rows := make([]widget.TableRow, 0, len(changes)+1)
+	times := make([]time.Time, 0, len(changes)+1)
+	for _, c := range changes {
+		rows, times = append(rows, changeRow(c, when, now, viewer, tr)), append(times, c.Time)
+	}
+	if !startAt.IsZero() {
+		rows, times = append(rows, startRow(startAt, tr)), append(times, startAt)
+	}
+	perDay := map[string]int{}
+	for _, at := range times {
+		perDay[changeDay(at, now, tr)]++
 	}
 	day := ""
-	for _, c := range changes {
-		row := changeRow(c, when, now, viewer, tr)
-		if d := changeDay(c.Time, now, tr); d != day {
+	for i, row := range rows {
+		if d := changeDay(times[i], now, tr); d != day {
 			day = d
 			tally := tr("1 change")
 			if n := perDay[d]; n != 1 {
@@ -175,12 +281,34 @@ func changesTable(changes []history.Change, now time.Time, viewer string, tr fun
 	return table
 }
 
+// startPath is the starting point's drawer.
+const startPath = changesPath + "/start"
+
+// startRow is the starting point in the listing: kept, never undone, and
+// opening on what is set differently now.
+func startRow(at time.Time, tr func(string) string) widget.TableRow {
+	return widget.TableRow{
+		ID:    "start",
+		Panel: startPath,
+		Cells: []widget.TableCell{
+			{Text: clock.Local(at).Format("15:04"), Verbatim: true},
+			{Text: tr("Starting point"), Parts: []widget.TablePart{{Words: tr("Starting point")}}, Verbatim: true},
+			{},
+			{},
+			{Text: "Kept"},
+			{Actions: []widget.TableRowAct{{Icon: "info", Title: "Details", Opens: true}}},
+		},
+	}
+}
+
 // changeRow is one entry in the listing.
 func changeRow(c history.Change, when map[int64]time.Time, now time.Time, viewer string, tr func(string) string) widget.TableRow {
 	parts, plain := changePhrase(c, tr)
 	// Notes is what the entry is to another, then the operator's own note.
 	var notes []string
-	if related, ok := when[c.Related]; ok {
+	if c.Relation == "return" && c.Related == 0 {
+		notes = append(notes, tr("back to the starting point"))
+	} else if related, ok := when[c.Related]; ok {
 		switch c.Relation {
 		case "undo":
 			notes = append(notes, fmt.Sprintf(tr("undo of %s"), eventTime(related, now)))
@@ -480,7 +608,13 @@ func whatChangedTab(c history.Change, all []history.Change, path string, now tim
 // net of anything since undone or rolled back, and Return to this point,
 // which stages the opposite of all of it.
 func sinceThenTab(c history.Change, all []history.Change, path string, tr func(string) string) widget.Widgets {
-	plan := reverseOf(sinceThen(all, c))
+	return returnBody(reverseOf(sinceThen(all, c)), path, "Return to this point", "At this point", tr)
+}
+
+// returnBody is what a return would stage, an option a row as it is now and
+// as it was then, and the act that stages it, labelled. Nothing to return
+// says the router is as it was.
+func returnBody(plan actPlan, path, label, then string, tr func(string) string) widget.Widgets {
 	if len(plan.Rows) == 0 && !plan.Unknown && len(plan.Secrets) == 0 && len(plan.Files) == 0 {
 		return widget.Widgets{&widget.Text{Markdown: "Nothing has changed since. This is how the router is now."}}
 	}
@@ -495,7 +629,7 @@ func sinceThenTab(c history.Change, all []history.Change, path string, tr func(s
 	table := &widget.Table{Columns: []widget.TableColumn{
 		{Label: "Option", Kind: "mono"},
 		{Label: "Now", Kind: "mono", Width: widget.MeasureName},
-		{Label: "At this point", Kind: "mono", Width: widget.MeasureName},
+		{Label: then, Kind: "mono", Width: widget.MeasureName},
 		{Label: "Change", Kind: "status", Width: widget.MeasureWord},
 	}}
 	for _, row := range plan.Rows {
@@ -510,7 +644,7 @@ func sinceThenTab(c history.Change, all []history.Change, path string, tr func(s
 	}
 	children = append(children, table)
 	if !plan.Unknown && len(plan.Steps) > 0 {
-		children = append(children, actForm(path, "return", "Return to this point"))
+		children = append(children, actForm(path, "return", label))
 	}
 	return children
 }

@@ -63,6 +63,8 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("GET "+eventsPath, s.handleEvents)
 	// Config history (ADR-021): every apply, and each one's drawer.
 	s.mux.HandleFunc("GET "+changesPath, s.handleChanges)
+	s.mux.HandleFunc("GET "+startPath, s.handleStartPanel)
+	s.mux.HandleFunc("POST "+startPath, s.handleStartPanel)
 	s.mux.HandleFunc("GET "+changesPath+"/{id}", s.handleChangePanel)
 	s.mux.HandleFunc("POST "+changesPath+"/{id}", s.handleChangePanel)
 	// Where alerts go (ADR-020): a panel over Events that stages into

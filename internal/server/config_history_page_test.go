@@ -328,7 +328,7 @@ func TestARelationIsANoteBesideTheChange(t *testing.T) {
 	first.ID = 1
 	undo := turnedOff(now)
 	undo.ID, undo.Relation, undo.Related, undo.Note = 2, "undo", 1, "Ping back on"
-	table := changesTable([]history.Change{undo, first}, now, "", identity)
+	table := changesTable([]history.Change{undo, first}, time.Time{}, now, "", identity)
 	if table.Columns[2].Label != "Notes" || table.Columns[2].Kind != "comment" {
 		t.Fatalf("third column = %+v, want Notes", table.Columns[2])
 	}

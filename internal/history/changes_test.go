@@ -182,3 +182,14 @@ func TestAConfigIsKeptAsLastRead(t *testing.T) {
 		t.Fatalf("network = %s, %v, %v", got, ok, err)
 	}
 }
+
+// TestEveryConfigIsReadAsLastKept.
+func TestEveryConfigIsReadAsLastKept(t *testing.T) {
+	store, _ := open(t)
+	_ = store.SetConfigState(ctx, "network", json.RawMessage(`{"lan":{}}`), minute(0))
+	_ = store.SetConfigState(ctx, "firewall", json.RawMessage(`{"r":{}}`), minute(0))
+	states, err := store.ConfigStates(ctx)
+	if err != nil || len(states) != 2 || string(states["firewall"]) != `{"r":{}}` {
+		t.Fatalf("states = %v, %v", states, err)
+	}
+}
