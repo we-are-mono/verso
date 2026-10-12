@@ -173,18 +173,12 @@ fn uptime(live: Option<&Value>) -> String {
         format!("{}m {}s", s / 60, s % 60)
     }
 }
-fn speed(runtime: Option<&Value>) -> String {
+// speed is a port's negotiated link speed in bits per second, from netifd's
+// "1000F"; the shell writes it in the reader's language.
+fn speed(runtime: Option<&Value>) -> Option<f64> {
     let raw = text(runtime.and_then(|v| v.get("speed")));
-    let digits = raw.trim_end_matches(['F', 'H']);
-    if let Ok(mbps) = digits.parse::<u32>() {
-        if mbps >= 1000 {
-            format!("{} Gb/s", f64::from(mbps) / 1000.0)
-        } else {
-            format!("{mbps} Mb/s")
-        }
-    } else {
-        String::new()
-    }
+    let mbps = raw.trim_end_matches(['F', 'H']).parse::<u32>().ok()?;
+    Some(f64::from(mbps) * 1e6)
 }
 fn kind(m: &Model, name: &str, runtime: Option<&Value>) -> String {
     if let Some(d) = m.device(name) {
@@ -209,14 +203,6 @@ fn kind(m: &Model, name: &str, runtime: Option<&Value>) -> String {
         if vid.parse::<u16>().is_ok() {
             return format!("vlan {vid}");
         }
-    }
-    if runtime_kind == "port" {
-        let rate = speed(runtime).replace(" Gb/s", " g").replace(" Mb/s", " m");
-        return if rate.is_empty() {
-            "port".into()
-        } else {
-            format!("port · {rate}")
-        };
     }
     if !runtime_kind.is_empty() {
         return runtime_kind;
@@ -427,7 +413,10 @@ fn device_facts(m: &Model, name: &str, runtime: Option<&Value>, kind: &str) -> V
         )
     } else {
         (
-            fact("Link", speed(runtime)),
+            match speed(runtime) {
+                Some(bps) => Property::rate("Link", bps),
+                None => fact("Link", ""),
+            },
             fact("Driver", text(runtime.and_then(|v| v.get("driver")))),
         )
     };
@@ -703,7 +692,11 @@ fn inventory(m: &Model, drawer: Option<RowDrawer>) -> Envelope {
                         .collect(),
                     ..cell(name)
                 },
-                cell(kind),
+                // A port's type carries its link speed after it.
+                TableCell {
+                    rate: if kind == "port" { speed(runtime) } else { None },
+                    ..cell(kind)
+                },
                 TableCell {
                     copy: !ipv4.is_empty(),
                     ..cell(ipv4.first().cloned().unwrap_or_else(|| "—".into()))

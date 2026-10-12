@@ -1877,6 +1877,11 @@ pub struct Property {
     /// [`Property::spanning`].
     #[serde(skip_serializing_if = "Option::is_none")]
     pub span: Option<PropertySpan>,
+    /// Makes the value a rate, in bits per second: the shell writes it in the
+    /// value's place as every rate is written ("2.5 Gb/s"), in the reader's
+    /// language. Hand over the number, never the text.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub rate: Option<f64>,
 }
 
 /// CollectionItem is one kept thing in a [`Widget::Collection`]: its identity
@@ -1970,6 +1975,16 @@ impl Property {
             tone: tone.as_str().into(),
         });
         self
+    }
+
+    /// rate is a fact whose value is a rate of `bits_per_second`, which the
+    /// shell writes in the reader's language ("2.5 Gb/s").
+    pub fn rate(label: &str, bits_per_second: f64) -> Property {
+        Property {
+            label: label.into(),
+            rate: Some(bits_per_second),
+            ..Property::default()
+        }
     }
 }
 
@@ -2276,6 +2291,11 @@ pub struct TableCell {
     /// names the row and is not drawn.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub parts: Vec<TablePart>,
+    /// A rate in bits per second, which the shell writes as every rate is
+    /// written, in the reader's language: after `text` with a middle dot
+    /// ("port · 2.5 Gb/s"), or alone. Hand over the number, never the text.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub rate: Option<f64>,
 }
 
 /// One part of a phrase cell's line: an entity reference, prose the shell

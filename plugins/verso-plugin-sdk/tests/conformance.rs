@@ -301,6 +301,7 @@ fn write_widget_fixtures() {
                         ..Property::default()
                     }
                     .spanning("2026-08-31", "2027-10-02", 6, Tone::Success),
+                    Property::rate("Link", 2.5e9),
                 ],
                 align: "left".into(),
             },
@@ -613,6 +614,7 @@ fn listing() -> Widget {
                     TableCell::zone("lan"),
                     TableCell {
                         text: "tcp/udp".into(),
+                        rate: Some(1e9),
                         ..TableCell::default()
                     },
                     TableCell {

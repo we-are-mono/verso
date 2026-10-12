@@ -807,3 +807,16 @@ fn an_interface_change_is_about_that_interface() {
         ]
     );
 }
+
+// A port's link speed travels as a number, so the shell writes it in the
+// reader's language; a port that reports none carries no rate.
+#[test]
+fn a_ports_link_speed_is_a_rate_the_shell_writes() {
+    let mut m = Model::read(&request("/", ""));
+    m.live["devices"]["eth2"] = json!({"physical":true,"kind":"port","speed":"2500F"});
+    m.live["devices"]["eth1"] = json!({"physical":true,"kind":"port","up":true});
+    let row = inventory_row(&m, "eth2");
+    assert_eq!(row["cells"][1]["text"], "port");
+    assert_eq!(row["cells"][1]["rate"], 2.5e9);
+    assert!(inventory_row(&m, "eth1")["cells"][1].get("rate").is_none());
+}

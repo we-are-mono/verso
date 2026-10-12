@@ -48,6 +48,23 @@ func TestSDKActDecodes(t *testing.T) {
 	}
 }
 
+// TestSDKRateReachesTheShell: a rate the SDK hands over as a number must arrive
+// as one, or the shell has nothing to write in the reader's language.
+func TestSDKRateReachesTheShell(t *testing.T) {
+	data, err := os.ReadFile(filepath.Join("..", "..", "plugins", "verso-plugin-sdk", "testdata", "widget-properties.json"))
+	if err != nil {
+		t.Skip("SDK properties fixture not present — run `cargo test` in plugins/verso-plugin-sdk to generate it")
+	}
+	w, err := Decode(data)
+	if err != nil {
+		t.Fatalf("SDK properties fixture does not decode: %v", err)
+	}
+	p, ok := w.(*Properties)
+	if !ok || len(p.Items) == 0 || p.Items[len(p.Items)-1].Rate == nil || *p.Items[len(p.Items)-1].Rate != 2.5e9 {
+		t.Errorf("SDK rate lost crossing the wire: %+v", w)
+	}
+}
+
 // TestSDKReshapeReachesTheShell: a choice the SDK marks as reshaping its form
 // must arrive marked, or changing it would ask for nothing.
 func TestSDKReshapeReachesTheShell(t *testing.T) {

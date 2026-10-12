@@ -97,7 +97,8 @@
           ]
         },
         {
-          "text": "tcp/udp"
+          "text": "tcp/udp",
+          "rate": 1000000000.0
         },
         {
           "text": "accept",

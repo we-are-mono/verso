@@ -18,6 +18,11 @@
         "at": 6,
         "tone": "success"
       }
+    },
+    {
+      "label": "Link",
+      "value": "",
+      "rate": 2500000000.0
     }
   ],
   "align": "left"

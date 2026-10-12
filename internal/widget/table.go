@@ -463,7 +463,12 @@ type TableCell struct {
 	Parts        []TablePart     `json:"parts,omitempty"`   // phrase cells: the line's parts, in order; Text is the line read plain, which names the row
 	Figures      []TableFigure   `json:"figures,omitempty"` // figures cells: the figures, in their slots
 	Ink          bool            `json:"ink,omitempty"`     // figures cells: the figures are written in Variant's Deep step, a tone a live listing may change
-	Actions      []TableRowAct   `json:"actions,omitempty"` // actions cells: the row's own acts, as quiet icon buttons
+	// Rate is a rate in bits per second, which the shell writes as every rate
+	// is written (internal/units), in the reader's language: after Text with a
+	// middle dot between them ("port · 2.5 Gb/s"), or alone. A plugin hands
+	// over the number, never the text.
+	Rate    *float64      `json:"rate,omitempty"`
+	Actions []TableRowAct `json:"actions,omitempty"` // actions cells: the row's own acts, as quiet icon buttons
 	// Opens says the row's drawer is where this cell's subject is read. A name
 	// is never drawn as a door (doorAct): the shell puts a Details act on the
 	// row, or the trailing Details link where the row has no acts.
@@ -1274,6 +1279,9 @@ func (t *Table) rowViews(r *Renderer, csrf string, rows []TableRow, hasDetail bo
 			}
 			if i < len(row.Cells) {
 				cv.TableCell = row.Cells[i]
+				if rate := cv.TableCell.Rate; rate != nil {
+					cv.Text = strings.TrimPrefix(cv.Text+" · "+r.numbers().Rate(*rate).String(), " · ")
+				}
 				chipView := func(chip TableChip) tableChipView {
 					view := tableChipView{TableChip: chip}
 					if chip.Title != "" {

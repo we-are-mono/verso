@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"html/template"
 	"io"
+	"slices"
 )
 
 // Properties is a label/value detail list (a description list): each row shows a
@@ -73,6 +74,10 @@ type Property struct {
 	// tone up to where now is. The ends are data, written under the track's
 	// ends and never translated.
 	Span *PropertySpan `json:"span,omitempty"`
+	// Rate makes the value a rate, in bits per second, which the shell writes
+	// in its place as every rate is written (internal/units), in the reader's
+	// language and in sans: a plugin hands over the number, never the text.
+	Rate *float64 `json:"rate,omitempty"`
 }
 
 // PropertySpan is a stretch between From and To, filled At a share of it
@@ -103,5 +108,14 @@ func (p *Properties) children() []Widget {
 }
 
 func (p *Properties) renderInto(r *Renderer, out io.Writer, _ string) error {
-	return r.execute(out, "properties.html.tmpl", p)
+	// Rates are written on a copy: the plugin's widget keeps its numbers.
+	view := *p
+	view.Items = slices.Clone(p.Items)
+	for i, item := range view.Items {
+		if item.Rate != nil {
+			view.Items[i].Value = r.numbers().Rate(*item.Rate).String()
+			view.Items[i].Mono, view.Items[i].Verbatim = false, true
+		}
+	}
+	return r.execute(out, "properties.html.tmpl", &view)
 }
