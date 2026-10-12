@@ -164,3 +164,21 @@ func TestUndoneChangesNameWhatUndidThem(t *testing.T) {
 		t.Errorf("rolled back = %s by %d, want left as it was", c.Status, c.UndoneBy)
 	}
 }
+
+// TestAConfigIsKeptAsLastRead: unknown until first read, then as it was last
+// read, the earlier reading replaced.
+func TestAConfigIsKeptAsLastRead(t *testing.T) {
+	store, _ := open(t)
+	if _, ok, err := store.ConfigState(ctx, "network"); ok || err != nil {
+		t.Fatalf("an unread config: found %v, %v", ok, err)
+	}
+	for _, sections := range []string{`{"lan":{".type":"interface"}}`, `{"wan":{".type":"interface"}}`} {
+		if err := store.SetConfigState(ctx, "network", json.RawMessage(sections), minute(0)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	got, ok, err := store.ConfigState(ctx, "network")
+	if err != nil || !ok || string(got) != `{"wan":{".type":"interface"}}` {
+		t.Fatalf("network = %s, %v, %v", got, ok, err)
+	}
+}

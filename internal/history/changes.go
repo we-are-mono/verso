@@ -238,3 +238,26 @@ func (s *Store) MarkUndone(ctx context.Context, ids []int64, by int64) error {
 	}
 	return tx.Commit()
 }
+
+// ConfigState is config as config history last read it, and false before
+// the first reading.
+func (s *Store) ConfigState(ctx context.Context, config string) (json.RawMessage, bool, error) {
+	var sections string
+	err := s.db.QueryRowContext(ctx, `SELECT sections FROM config_state WHERE config = ?`, config).Scan(&sections)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, false, nil
+	}
+	if err != nil {
+		return nil, false, err
+	}
+	return json.RawMessage(sections), true, nil
+}
+
+// SetConfigState keeps config's sections as config history now reads them,
+// written at at.
+func (s *Store) SetConfigState(ctx context.Context, config string, sections json.RawMessage, at time.Time) error {
+	_, err := s.db.ExecContext(ctx,
+		`INSERT INTO config_state (config, sections, time) VALUES (?, ?, ?) ON CONFLICT (config) DO UPDATE SET sections = excluded.sections, time = excluded.time`,
+		config, string(sections), at.Unix())
+	return err
+}

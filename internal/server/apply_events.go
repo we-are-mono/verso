@@ -29,11 +29,12 @@ type applyWatch struct {
 
 // pendingApply is an apply awaiting its confirm: the stage it applied, as
 // config history keeps it (stagedChange), read before the apply emptied it,
-// and the entries it undoes once kept.
+// the entries it undoes once kept, and when it was made.
 type pendingApply struct {
 	seq      int
 	change   history.Change
 	reverses []int64
+	started  time.Time
 }
 
 // watchApply waits for sid's apply of change to be confirmed, and records it
@@ -48,11 +49,11 @@ func (s *Server) watchApply(sid string, change history.Change, reverses []int64)
 	if s.applies.by == nil {
 		s.applies.by = map[string]pendingApply{}
 	}
-	s.applies.by[sid] = pendingApply{seq: seq, change: change, reverses: reverses}
+	s.applies.by[sid] = pendingApply{seq: seq, change: change, reverses: reverses, started: time.Now()}
 	s.applies.mu.Unlock()
 	s.afterRollback(time.Duration(uciRollbackTimeout)*time.Second+rollbackGrace, func() {
 		if pending, ok := s.takeApply(sid, seq); ok {
-			s.recordApply(history.ChangeRolledBack, pending.change, nil)
+			s.recordApply(history.ChangeRolledBack, pending)
 		}
 	})
 }
@@ -64,7 +65,7 @@ func (s *Server) confirmedApply(sid string) {
 	s.applies.mu.Unlock()
 	if ok {
 		if pending, taken := s.takeApply(sid, pending.seq); taken {
-			s.recordApply(history.ChangeApplied, pending.change, pending.reverses)
+			s.recordApply(history.ChangeApplied, pending)
 		}
 	}
 }
@@ -91,16 +92,20 @@ type changesDetail struct {
 // recordApply keeps change as applied or rolled back: in config history
 // (ADR-021), with the entries it undoes marked so, and as the event naming
 // its pages and opening its entry (ADR-019).
-func (s *Server) recordApply(status string, change history.Change, reverses []int64) {
+func (s *Server) recordApply(status string, pending pendingApply) {
 	now := time.Now()
+	change := pending.change
+	// What the apply wrote, and what a rollback wrote back, are its own, not
+	// edits made outside Verso.
+	s.expected.expect(changedConfigs(change), pending.started, now.Add(ownWriteSlack))
 	var id int64
 	if s.changeLog != nil {
 		change.Time, change.Status = now, status
 		var err error
 		if id, err = s.changeLog.RecordChange(context.Background(), change); err != nil {
 			log.Printf("verso: change not recorded: %v", err)
-		} else if len(reverses) > 0 {
-			if err := s.changeLog.MarkUndone(context.Background(), reverses, id); err != nil {
+		} else if status == history.ChangeApplied && len(pending.reverses) > 0 {
+			if err := s.changeLog.MarkUndone(context.Background(), pending.reverses, id); err != nil {
 				log.Printf("verso: changes not marked undone: %v", err)
 			}
 		}

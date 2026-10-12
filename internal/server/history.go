@@ -72,6 +72,7 @@ func (s *Server) StartHistory(dir string, probes []netip.Addr, notify alerts.Con
 	watchCtx, stopWatch := context.WithCancel(context.Background())
 	var watching sync.WaitGroup
 	watching.Go(func() { watchWAN(watchCtx, store, openwrt.KernelWAN) })
+	watching.Go(func() { s.watchSpool(watchCtx, store, changesSpool) })
 	watching.Go(func() { prober.Run(watchCtx) })
 	watching.Go(func() { alerter.Run(watchCtx) })
 	ctx, cancel := context.WithCancel(context.Background())

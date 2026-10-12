@@ -176,15 +176,47 @@ func (s *Server) staged(ctx context.Context, sid string, tr func(string) string,
 	if len(flat) == 0 {
 		return v
 	}
+	v.Groups, v.Count = s.describedGroups(ctx, sessionStage{s, sid}, flat, tr, pluginTr)
+	v.Label = stagedLabel(v.Count, tr)
+	v.Summary = changeSummary(stagedItems(v, nil), tr)
+	return v
+}
 
-	// The count is the number of things a person did, not the number of uci
-	// writes: each row is one change. A plugin folds all of one item's writes —
-	// a rule's six fields — into a single described row, so the item counts
-	// once; a settings page leaves each option on its own row, so each counts.
-	// The rows gather under the page they belong to, in the order the pages
-	// first appear.
+// changeSource is where a run of changes came from: who made each, on which
+// page, and what the configs read as for the plugin that describes them.
+type changeSource interface {
+	authorOf(c stagedChange) (plugin.Manifest, stageAuthor, bool)
+	snapshot(ctx context.Context, m plugin.Manifest) plugin.UCI
+}
+
+// sessionStage is an operator's stage, read with their session.
+type sessionStage struct {
+	s   *Server
+	sid string
+}
+
+func (st sessionStage) authorOf(c stagedChange) (plugin.Manifest, stageAuthor, bool) {
+	return st.s.authorOf(st.sid, c)
+}
+
+func (st sessionStage) snapshot(ctx context.Context, m plugin.Manifest) plugin.UCI {
+	return st.s.readSnapshot(ctx, m, st.sid)
+}
+
+// describedGroups is the review drawer's rows for a run of changes, under
+// the page each belongs to, and how many there are.
+//
+// The count is the number of things a person did, not the number of uci
+// writes: each row is one change. A plugin folds all of one item's writes —
+// a rule's six fields — into a single described row, so the item counts
+// once; a settings page leaves each option on its own row, so each counts.
+// The rows gather under the page they belong to, in the order the pages
+// first appear.
+func (s *Server) describedGroups(ctx context.Context, src changeSource, flat []stagedChange, tr func(string) string, pluginTr func(string) func(string) string) ([]stagedGroup, int) {
+	var groups []stagedGroup
+	count := 0
 	index := map[string]int{}
-	for _, row := range s.describeStaged(ctx, sid, flat, tr) {
+	for _, row := range s.describeStaged(ctx, src, flat, tr) {
 		page := tr("System")
 		switch {
 		case row.authored && row.author.Shell:
@@ -194,23 +226,21 @@ func (s *Server) staged(ctx context.Context, sid string, tr func(string) string,
 		}
 		i, ok := index[page]
 		if !ok {
-			i = len(v.Groups)
+			i = len(groups)
 			index[page] = i
-			v.Groups = append(v.Groups, stagedGroup{Page: page})
+			groups = append(groups, stagedGroup{Page: page})
 		}
 		if row.authored && !row.author.Shell {
 			row.item.plugin = row.author.Plugin
 		}
-		v.Groups[i].Items = append(v.Groups[i].Items, row.item)
+		groups[i].Items = append(groups[i].Items, row.item)
 	}
-	for i := range v.Groups {
-		n := len(v.Groups[i].Items)
-		v.Groups[i].Tally = stagedTally(n, tr)
-		v.Count += n
+	for i := range groups {
+		n := len(groups[i].Items)
+		groups[i].Tally = stagedTally(n, tr)
+		count += n
 	}
-	v.Label = stagedLabel(v.Count, tr)
-	v.Summary = changeSummary(stagedItems(v, nil), tr)
-	return v
+	return groups, count
 }
 
 // stagedLabel is what the chip and the drawer's title say the stage holds,
@@ -266,7 +296,7 @@ func (s *Server) authorOf(sid string, c stagedChange) (plugin.Manifest, stageAut
 // undescribed — a shell-owned config, a plugin with no describe hook, a describe
 // call that failed — keeps its raw uci line. Order follows the flattened set, and
 // a plain sentence lands where the first change it covers would have.
-func (s *Server) describeStaged(ctx context.Context, sid string, flat []stagedChange, tr func(string) string) []stagedRow {
+func (s *Server) describeStaged(ctx context.Context, src changeSource, flat []stagedChange, tr func(string) string) []stagedRow {
 	// Group each change's position by the plugin it belongs to (authorOf). The
 	// shell's own configs, and any config no installed plugin writes, own no
 	// describer.
@@ -276,7 +306,7 @@ func (s *Server) describeStaged(ctx context.Context, sid string, flat []stagedCh
 	authors := make([]stageAuthor, len(flat))
 	authored := make([]bool, len(flat))
 	for i, c := range flat {
-		m, who, ok := s.authorOf(sid, c)
+		m, who, ok := src.authorOf(c)
 		authors[i], authored[i] = who, ok
 		if !ok {
 			continue
@@ -300,7 +330,7 @@ func (s *Server) describeStaged(ctx context.Context, sid string, flat []stagedCh
 		for j, pos := range positions {
 			reqChanges[j] = describeChange(flat[pos])
 		}
-		snapshot := s.readSnapshot(ctx, m, sid)
+		snapshot := src.snapshot(ctx, m)
 		descs, err := s.transport.Describe(ctx, sockets[id], reqChanges, snapshot)
 		if err != nil {
 			log.Printf("verso: plugin %q describe failed: %v", id, err)
