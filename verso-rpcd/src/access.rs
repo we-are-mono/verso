@@ -193,6 +193,8 @@ pub fn web_listeners(https: &str, http: &str, redirect: &str) -> Result<Value, F
     } else if !uci(&["set", &format!("verso.web.redirect_https={redirect}")])? {
         return Err(Failure::unknown("verso.web.redirect_https could not be written"));
     }
+    // Verso's own act, not an edit made outside it (ADR-021).
+    crate::config_watch::own_write("verso");
     if !uci(&["commit", "verso"])? {
         return Err(Failure::unknown("verso could not be committed"));
     }

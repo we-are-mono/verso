@@ -38,7 +38,7 @@ pub fn committed(configs: &str) -> Result<Value, Failure> {
     Ok(Value::Object(out))
 }
 
-fn read(name: &str) -> Result<Value, Failure> {
+pub(crate) fn read(name: &str) -> Result<Value, Failure> {
     let overriding = Path::new(OVERRIDE_DIR).join(name);
     let path = if overriding.is_file() {
         overriding
@@ -61,7 +61,7 @@ fn read(name: &str) -> Result<Value, Failure> {
 
 /// config_name is libuci's rule for a package name: letters, digits,
 /// underscores and dashes, and not empty.
-fn config_name(name: &str) -> bool {
+pub(crate) fn config_name(name: &str) -> bool {
     !name.is_empty()
         && name.len() <= 64
         && name

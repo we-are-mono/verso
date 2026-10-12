@@ -1,0 +1,509 @@
+// SPDX-License-Identifier: GPL-2.0-only
+// SPDX-FileCopyrightText: 2026 Mono Technologies Inc.
+
+//! Configs written straight to /etc/config, for config history (ADR-021).
+//!
+//! `uci commit` writes a temporary file and renames it over the config
+//! (IN_MOVED_TO); an editor or a script writes it in place (IN_CLOSE_WRITE).
+//! Either way the watch sees it, whoever wrote it: Verso's own apply, the uci
+//! command line over SSH, a script, LuCI or a restored backup. Once a config
+//! has had no write for two seconds, its committed sections are read and
+//! spooled for the shell, which tells Verso's applies from the rest.
+//!
+//! No secret leaves the helper (ADR-014): an option named in the shared list
+//! or a plugin's manifest is spooled as a fingerprint, a keyed hash that says
+//! whether it changed and nothing of what it is. The key never leaves the
+//! router's root.
+//!
+//! The spool holds the latest reading of each config, one file each, written
+//! by renaming into place. When the helper starts it spools every config, so
+//! an edit made while it was not running is found too.
+
+use serde_json::{json, Value};
+use std::collections::{HashMap, HashSet};
+use std::fs;
+use std::io::{ErrorKind, Read, Write};
+use std::os::fd::FromRawFd;
+use std::os::raw::c_char;
+use std::os::unix::fs::{DirBuilderExt, MetadataExt, OpenOptionsExt};
+use std::path::{Path, PathBuf};
+use std::sync::Mutex;
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+
+#[path = "../../plugins/verso-plugin-sdk/src/sha256.rs"]
+#[allow(dead_code)]
+mod sha256;
+
+use crate::uci_committed;
+
+const WATCHED: &str = "/etc/config";
+/// Where the shell takes readings from: a directory its account owns, which
+/// the init script makes.
+const SPOOL: &str = "/var/run/verso/changes";
+/// The fingerprints' key: made once, readable by root alone.
+const KEY: &str = "/etc/verso/fingerprint.key";
+const PLUGINS: &str = "/usr/share/verso/plugins";
+/// The options OpenWrt's own packages keep a secret in, the shell's list.
+const BASE_SECRETS: &str = include_str!("../../internal/secrets/secrets.json");
+/// How long a config is left after its last write before it is read: one
+/// edit, however many writes it takes.
+const SETTLE: Duration = Duration::from_secs(2);
+const POLL: Duration = Duration::from_millis(500);
+
+const IN_CLOSE_WRITE: u32 = 0x0000_0008;
+const IN_MOVED_TO: u32 = 0x0000_0080;
+const IN_NONBLOCK: i32 = 0o4000;
+const IN_CLOEXEC: i32 = 0o2_000_000;
+
+unsafe extern "C" {
+    fn inotify_init1(flags: i32) -> i32;
+    fn inotify_add_watch(fd: i32, path: *const c_char, mask: u32) -> i32;
+}
+
+/// How long a mark of the helper's own write waits for the write it names.
+const OWN_WITHIN: Duration = Duration::from_secs(30);
+
+/// Configs the helper is about to commit itself, and when it said so.
+static OWN: Mutex<Option<HashMap<String, Instant>>> = Mutex::new(None);
+
+/// own_write says the helper is about to commit config itself (the web
+/// listeners, a package that just arrived), so its next reading is spooled
+/// as the helper's own: Verso's act, not an edit made outside it.
+pub fn own_write(config: &str) {
+    if let Ok(mut own) = OWN.lock() {
+        own.get_or_insert_with(HashMap::new)
+            .insert(config.to_owned(), Instant::now());
+    }
+}
+
+/// owned takes the mark of the helper's own write to config, if one is
+/// fresh enough to name the write just seen.
+fn owned(config: &str) -> bool {
+    OWN.lock()
+        .ok()
+        .and_then(|mut own| own.as_mut()?.remove(config))
+        .is_some_and(|at| at.elapsed() <= OWN_WITHIN)
+}
+
+/// watchdog runs the watch for as long as the helper does.
+pub fn watchdog() {
+    std::thread::spawn(|| {
+        if let Err(error) = watch() {
+            eprintln!("verso-rpcd: config watch stopped: {error}");
+        }
+    });
+}
+
+fn watch() -> Result<(), String> {
+    let key = key();
+    let spool = Path::new(SPOOL);
+    // An inotify descriptor, non-blocking so the loop can settle what it saw.
+    let fd = unsafe { inotify_init1(IN_NONBLOCK | IN_CLOEXEC) };
+    if fd < 0 {
+        return Err(format!("inotify: {}", std::io::Error::last_os_error()));
+    }
+    let mut events = unsafe { fs::File::from_raw_fd(fd) };
+    let watched = std::ffi::CString::new(WATCHED).map_err(|e| e.to_string())?;
+    if unsafe { inotify_add_watch(fd, watched.as_ptr(), IN_CLOSE_WRITE | IN_MOVED_TO) } < 0 {
+        return Err(format!(
+            "watch {WATCHED}: {}",
+            std::io::Error::last_os_error()
+        ));
+    }
+    for name in configs_in(Path::new(WATCHED)) {
+        spool_config(spool, &name, now_secs(), false, &key);
+    }
+    let mut pending: HashMap<String, (Instant, u64)> = HashMap::new();
+    let mut buf = [0u8; 4096];
+    loop {
+        loop {
+            match events.read(&mut buf) {
+                Ok(0) => break,
+                Ok(n) => {
+                    for name in event_names(&buf[..n]) {
+                        if uci_committed::config_name(&name) {
+                            pending.insert(name, (Instant::now(), now_secs()));
+                        }
+                    }
+                }
+                Err(error) if error.kind() == ErrorKind::WouldBlock => break,
+                Err(error) if error.kind() == ErrorKind::Interrupted => {}
+                Err(error) => return Err(format!("inotify read: {error}")),
+            }
+        }
+        let settled: Vec<(String, u64)> = pending
+            .iter()
+            .filter(|(_, (at, _))| at.elapsed() >= SETTLE)
+            .map(|(name, (_, written))| (name.clone(), *written))
+            .collect();
+        for (name, written) in settled {
+            pending.remove(&name);
+            spool_config(spool, &name, written, owned(&name), &key);
+        }
+        std::thread::sleep(POLL);
+    }
+}
+
+/// event_names is the file names the inotify events in buf carry: each event
+/// is a wd, a mask, a cookie and a length, then the name, NUL-padded.
+fn event_names(buf: &[u8]) -> Vec<String> {
+    let mut names = Vec::new();
+    let mut at = 0;
+    while at + 16 <= buf.len() {
+        let len = u32::from_ne_bytes(buf[at + 12..at + 16].try_into().unwrap()) as usize;
+        let end = (at + 16 + len).min(buf.len());
+        let name = &buf[at + 16..end];
+        let name = &name[..name.iter().position(|&b| b == 0).unwrap_or(name.len())];
+        if let Ok(name) = std::str::from_utf8(name) {
+            if !name.is_empty() {
+                names.push(name.to_owned());
+            }
+        }
+        at = end;
+    }
+    names
+}
+
+/// configs_in is every config a directory holds: its files named as uci
+/// names a config, leaving uci's own temporary files aside.
+fn configs_in(dir: &Path) -> Vec<String> {
+    let Ok(entries) = fs::read_dir(dir) else {
+        return Vec::new();
+    };
+    let mut names: Vec<String> = entries
+        .filter_map(|e| e.ok())
+        .filter(|e| e.file_type().map(|t| t.is_file()).unwrap_or(false))
+        .filter_map(|e| e.file_name().into_string().ok())
+        .filter(|name| uci_committed::config_name(name))
+        .collect();
+    names.sort();
+    names
+}
+
+/// spool_config reads one config as it is committed and spools it, its
+/// secrets fingerprinted, and own where the helper wrote it itself. A config
+/// that cannot be read is left to its next write; the reason goes to the log.
+fn spool_config(spool: &Path, name: &str, written: u64, own: bool, key: &[u8]) {
+    let mut sections = match uci_committed::read(name) {
+        Ok(sections) => sections,
+        Err(failure) => {
+            eprintln!(
+                "verso-rpcd: config watch: {name} unreadable: {}",
+                failure.message
+            );
+            return;
+        }
+    };
+    fingerprint_secrets(
+        name,
+        &mut sections,
+        &secret_options(Path::new(PLUGINS)),
+        key,
+    );
+    let record = json!({ "time": written, "config": name, "own": own, "sections": sections });
+    if let Err(error) = write_spool(spool, name, &record) {
+        eprintln!("verso-rpcd: config watch: {name} not spooled: {error}");
+    }
+}
+
+/// secret_options is every config.option kept secret: the shared list and
+/// each installed plugin's manifest's.
+fn secret_options(plugins: &Path) -> HashSet<String> {
+    let mut names: HashSet<String> = serde_json::from_str::<Vec<String>>(BASE_SECRETS)
+        .unwrap_or_default()
+        .into_iter()
+        .collect();
+    if let Ok(entries) = fs::read_dir(plugins) {
+        for entry in entries.filter_map(|e| e.ok()) {
+            let Ok(text) = fs::read_to_string(entry.path().join("manifest.json")) else {
+                continue;
+            };
+            let Ok(manifest) = serde_json::from_str::<Value>(&text) else {
+                continue;
+            };
+            if let Some(list) = manifest.get("secrets").and_then(Value::as_array) {
+                names.extend(list.iter().filter_map(Value::as_str).map(str::to_owned));
+            }
+        }
+    }
+    names
+}
+
+/// fingerprint_secrets replaces the value of every secret option in sections
+/// with {"secret": fingerprint}: the same value always gives the same
+/// fingerprint, a changed one another, and none gives the value back.
+fn fingerprint_secrets(config: &str, sections: &mut Value, secrets: &HashSet<String>, key: &[u8]) {
+    let Some(sections) = sections.as_object_mut() else {
+        return;
+    };
+    for (section, options) in sections.iter_mut() {
+        let Some(options) = options.as_object_mut() else {
+            continue;
+        };
+        for (option, value) in options.iter_mut() {
+            if option.starts_with('.') || !secrets.contains(&format!("{config}.{option}")) {
+                continue;
+            }
+            let text = match value {
+                Value::String(s) => s.clone(),
+                Value::Array(list) => list
+                    .iter()
+                    .filter_map(Value::as_str)
+                    .collect::<Vec<_>>()
+                    .join("\n"),
+                _ => continue,
+            };
+            let message = format!("{config}.{section}.{option}\0{text}");
+            *value = json!({ "secret": hex(&hmac(key, message.as_bytes())[..16]) });
+        }
+    }
+}
+
+/// hmac is HMAC-SHA-256 (RFC 2104).
+fn hmac(key: &[u8], message: &[u8]) -> [u8; 32] {
+    let mut block = [0u8; 64];
+    if key.len() > 64 {
+        block[..32].copy_from_slice(&sha256::sha256(key));
+    } else {
+        block[..key.len()].copy_from_slice(key);
+    }
+    let inner: Vec<u8> = block
+        .iter()
+        .map(|b| b ^ 0x36)
+        .chain(message.iter().copied())
+        .collect();
+    let inner = sha256::sha256(&inner);
+    let outer: Vec<u8> = block
+        .iter()
+        .map(|b| b ^ 0x5c)
+        .chain(inner.iter().copied())
+        .collect();
+    sha256::sha256(&outer)
+}
+
+fn hex(bytes: &[u8]) -> String {
+    bytes.iter().map(|b| format!("{b:02x}")).collect()
+}
+
+/// key is the fingerprints' key, made the first time from the kernel's
+/// randomness and kept readable by root alone. Without a place to keep it the
+/// key lives as long as the helper, and a restart reads every secret as
+/// changed once.
+fn key() -> Vec<u8> {
+    if let Ok(key) = fs::read(KEY) {
+        if key.len() == 32 {
+            return key;
+        }
+    }
+    let mut key = vec![0u8; 32];
+    if let Err(error) = fs::File::open("/dev/urandom").and_then(|mut f| f.read_exact(&mut key)) {
+        eprintln!("verso-rpcd: config watch: no randomness for the key: {error}");
+    }
+    let kept = Path::new(KEY)
+        .parent()
+        .map(|dir| {
+            fs::DirBuilder::new()
+                .recursive(true)
+                .mode(0o700)
+                .create(dir)
+        })
+        .transpose()
+        .and_then(|_| {
+            fs::OpenOptions::new()
+                .write(true)
+                .create_new(true)
+                .mode(0o600)
+                .open(KEY)
+                .and_then(|mut f| f.write_all(&key))
+        });
+    if let Err(error) = kept {
+        eprintln!("verso-rpcd: config watch: key not kept at {KEY}: {error}");
+    }
+    key
+}
+
+/// write_spool puts one config's reading in the spool, in place of any
+/// reading of it not yet taken. The spool must be a directory the shell's
+/// account owns, not a link to one: the parent is writable by its group.
+fn write_spool(spool: &Path, config: &str, record: &Value) -> Result<(), String> {
+    let meta = fs::symlink_metadata(spool).map_err(|e| format!("{}: {e}", spool.display()))?;
+    if !meta.is_dir() || meta.uid() != crate::VERSO_UID {
+        return Err(format!("{} is not the shell's directory", spool.display()));
+    }
+    write_reading(spool, config, record)
+}
+
+fn write_reading(spool: &Path, config: &str, record: &Value) -> Result<(), String> {
+    let nanos = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_nanos())
+        .unwrap_or(0);
+    let name = format!("{nanos:020}-{config}.json");
+    let temporary = spool.join(format!(".{name}"));
+    let mut file = fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .mode(0o644)
+        .open(&temporary)
+        .map_err(|e| format!("{}: {e}", temporary.display()))?;
+    file.write_all(record.to_string().as_bytes())
+        .and_then(|_| file.sync_all())
+        .map_err(|e| e.to_string())?;
+    fs::rename(&temporary, spool.join(&name)).map_err(|e| e.to_string())?;
+    for older in readings_of(spool, config) {
+        if older
+            .file_name()
+            .is_some_and(|n| n.to_string_lossy() != name)
+        {
+            let _ = fs::remove_file(older);
+        }
+    }
+    Ok(())
+}
+
+/// readings_of is every reading of config waiting in the spool.
+fn readings_of(spool: &Path, config: &str) -> Vec<PathBuf> {
+    let suffix = format!("-{config}.json");
+    fs::read_dir(spool)
+        .map(|entries| {
+            entries
+                .filter_map(|e| e.ok())
+                .map(|e| e.path())
+                .filter(|p| {
+                    p.file_name()
+                        .and_then(|n| n.to_str())
+                        .is_some_and(|n| !n.starts_with('.') && n.ends_with(&suffix))
+                })
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+fn now_secs() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn event(name: &str, padded: usize) -> Vec<u8> {
+        let mut out = Vec::new();
+        out.extend_from_slice(&1i32.to_ne_bytes());
+        out.extend_from_slice(&IN_MOVED_TO.to_ne_bytes());
+        out.extend_from_slice(&0u32.to_ne_bytes());
+        out.extend_from_slice(&(padded as u32).to_ne_bytes());
+        let mut bytes = name.as_bytes().to_vec();
+        bytes.resize(padded, 0);
+        out.extend_from_slice(&bytes);
+        out
+    }
+
+    #[test]
+    fn events_name_the_files_written() {
+        let mut buf = event("firewall", 16);
+        buf.extend(event(".network.uci-a1b2c3", 32));
+        assert_eq!(event_names(&buf), ["firewall", ".network.uci-a1b2c3"]);
+        // A temporary file is no config.
+        assert!(!uci_committed::config_name(".network.uci-a1b2c3"));
+    }
+
+    #[test]
+    fn hmac_is_rfc_4231() {
+        assert_eq!(
+            hex(&hmac(b"Jefe", b"what do ya want for nothing?")),
+            "5bdcc146bf60754e6a042426089575c75a003f089d2739839dec58b964ec3843"
+        );
+    }
+
+    #[test]
+    fn a_secret_is_spooled_as_its_fingerprint_alone() {
+        let secrets: HashSet<String> =
+            ["network.password".to_owned(), "network.key".to_owned()].into();
+        let read = |password: &str| {
+            let mut sections = json!({
+                "wan": { ".type": "interface", "proto": "pppoe", "username": "t2-41877", "password": password },
+                "vpn": { ".type": "interface", "key": ["a", "b"] }
+            });
+            fingerprint_secrets("network", &mut sections, &secrets, b"k");
+            sections
+        };
+        let first = read("hunter22");
+        assert_eq!(first["wan"]["username"], "t2-41877");
+        assert!(!first.to_string().contains("hunter22"));
+        let fingerprint = first["wan"]["password"]["secret"].as_str().unwrap();
+        assert_eq!(fingerprint.len(), 32);
+        assert!(first["vpn"]["key"]["secret"].is_string());
+        assert_eq!(
+            read("hunter22")["wan"]["password"],
+            first["wan"]["password"]
+        );
+        assert_ne!(
+            read("hunter23")["wan"]["password"],
+            first["wan"]["password"]
+        );
+    }
+
+    #[test]
+    fn a_plugins_secrets_join_the_list() {
+        let dir = std::env::temp_dir().join(format!("verso-secrets-{}", std::process::id()));
+        fs::create_dir_all(dir.join("vpn")).unwrap();
+        fs::write(
+            dir.join("vpn/manifest.json"),
+            r#"{"id":"vpn","secrets":["vpn.auth_pass"]}"#,
+        )
+        .unwrap();
+        let names = secret_options(&dir);
+        assert!(names.contains("vpn.auth_pass") && names.contains("wireless.key"));
+        fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn the_spool_keeps_one_reading_of_a_config() {
+        let dir = std::env::temp_dir().join(format!("verso-spool-{}", std::process::id()));
+        fs::create_dir_all(&dir).unwrap();
+        write_reading(&dir, "network", &json!({"n": 1})).unwrap();
+        write_reading(&dir, "firewall", &json!({"f": 1})).unwrap();
+        write_reading(&dir, "network", &json!({"n": 2})).unwrap();
+        let network = readings_of(&dir, "network");
+        assert_eq!(network.len(), 1);
+        assert_eq!(fs::read_to_string(&network[0]).unwrap(), r#"{"n":2}"#);
+        assert_eq!(readings_of(&dir, "firewall").len(), 1);
+        fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn a_spool_the_shell_does_not_own_is_not_written() {
+        let dir = std::env::temp_dir().join(format!("verso-foreign-{}", std::process::id()));
+        fs::create_dir_all(&dir).unwrap();
+        let link = std::env::temp_dir().join(format!("verso-link-{}", std::process::id()));
+        let _ = fs::remove_file(&link);
+        std::os::unix::fs::symlink(&dir, &link).unwrap();
+        assert!(write_spool(&link, "network", &json!({})).is_err());
+        assert!(readings_of(&dir, "network").is_empty());
+        fs::remove_file(link).unwrap();
+        fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn the_helpers_own_write_is_marked_once() {
+        own_write("verso-test-own");
+        assert!(owned("verso-test-own"));
+        assert!(!owned("verso-test-own"), "a mark names one write");
+        assert!(!owned("verso-test-other"));
+    }
+
+    #[test]
+    fn configs_are_the_files_uci_names() {
+        let dir = std::env::temp_dir().join(format!("verso-configs-{}", std::process::id()));
+        fs::create_dir_all(dir.join("subdir")).unwrap();
+        for name in ["network", "firewall", ".network.uci-x", "bad name"] {
+            fs::write(dir.join(name), "").unwrap();
+        }
+        assert_eq!(configs_in(&dir), ["firewall", "network"]);
+        fs::remove_dir_all(dir).unwrap();
+    }
+}

@@ -143,6 +143,11 @@ pub fn pause() {
 }
 
 pub fn run(argv: &[&str]) -> Result<(), String> {
+    // A config the helper commits is its own act, not an edit made outside
+    // Verso (ADR-021).
+    if let ["/sbin/uci", "commit", config] = argv {
+        crate::config_watch::own_write(config);
+    }
     let output = Command::new(argv[0])
         .args(&argv[1..])
         .output()

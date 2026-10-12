@@ -22,6 +22,7 @@ mod netlink;
 mod openvpn;
 mod packages;
 mod ubus;
+mod config_watch;
 mod uci_committed;
 mod usage;
 
@@ -154,6 +155,7 @@ fn serve(socket: &Path) -> Result<(), String> {
     println!("verso-rpcd: listening on {}", socket.display());
 
     config_files::watchdog();
+    config_watch::watchdog();
     usage::watchdog();
     let collector = firewall_log::Collector::new();
     collector.start();
