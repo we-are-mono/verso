@@ -55,7 +55,7 @@ func TestDiagnosticsPage(t *testing.T) {
 			t.Errorf("diagnostics page missing %q", want)
 		}
 	}
-	for _, refused := range []string{`value="lo"`, ">guest<", "data-verso-colophon"} {
+	for _, refused := range []string{`value="lo"`, ">guest<", "<footer data-verso-colophon"} {
 		if strings.Contains(body, refused) {
 			t.Errorf("diagnostics page carries %q", refused)
 		}

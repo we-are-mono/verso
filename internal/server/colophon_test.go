@@ -60,7 +60,7 @@ func TestColophonClosesEveryPageButALog(t *testing.T) {
 		"/system/logs": false,
 	} {
 		body := get(t, srv, path).Body.String()
-		if got := strings.Contains(body, "data-verso-colophon"); got != want {
+		if got := strings.Contains(body, "<footer data-verso-colophon"); got != want {
 			t.Errorf("%s: colophon shown = %v, want %v", path, got, want)
 		}
 	}
