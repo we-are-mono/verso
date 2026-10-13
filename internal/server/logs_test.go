@@ -96,6 +96,7 @@ func TestSystemLogActsStandOnTheHeadingLine(t *testing.T) {
 		"data-verso-wait", // the log's spinner, turning while lines arrive
 		`<p data-log-health role="status" hidden`,
 		`<div data-verso-masthead="light" class="mb-10 py-4">`, // the light bar, on the page's own ground
+		`<div class="flex min-h-0 flex-1 flex-col">`,           // a live page keeps its own frame, not the sand of the card pages (ADR-023)
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("logs page missing %q", want)

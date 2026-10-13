@@ -52,14 +52,14 @@ func TestAccessContributionStandsOffByThePageGap(t *testing.T) {
 	}
 }
 
-// TestPageMastheadStandsOnAHairline: the heading's line stands 16px over its
-// own hairline, as far as it stands under the bar's top, and the page a cell
-// (20px) under it. The masthead still aligns page acts.
-func TestPageMastheadStandsOnAHairline(t *testing.T) {
+// TestPageMastheadStandsOnTheSand: the heading's line stands 26px under the
+// top bar and 26px over the first card, with no bar or hairline of its own.
+// The masthead still aligns page acts.
+func TestPageMastheadStandsOnTheSand(t *testing.T) {
 	s := passwordServer(t, fakeBackend{})
 	access := get(t, s, "/system/access").Body.String()
-	if !strings.Contains(access, `<div data-verso-masthead class="mb-10 py-4">`) {
-		t.Error("the masthead stands 16px over its hairline and the page a cell under it")
+	if !strings.Contains(access, `<div data-verso-masthead class="py-6.5">`) {
+		t.Error("the heading's line stands 26px clear of the top bar and of the first card")
 	}
 	if strings.Contains(access, "data-verso-bleed") {
 		t.Error("the page's rules are no one page's experiment")
@@ -87,15 +87,15 @@ func TestServerPagesNameEachThingOnce(t *testing.T) {
 	}
 }
 
-// TestMaintenanceSectionsUsePageBands: the masthead stands on its hairline, and
+// TestMaintenanceSectionsUsePageBands: the masthead stands on the sand, and
 // Maintenance is the shell's widgets alone — its sections the section widget's
 // ruled sections, drawn by no hand-built template — so each band's rule stands
 // two cells under the content before it, as its title stands two cells under
 // the rule.
 func TestMaintenanceSectionsUsePageBands(t *testing.T) {
 	body := get(t, passwordServer(t, fakeBackend{}), "/system/maintenance").Body.String()
-	if !strings.Contains(body, `<div data-verso-masthead class="mb-10 py-4">`) {
-		t.Error("the masthead opens onto the first section from its hairline")
+	if !strings.Contains(body, `<div data-verso-masthead class="py-6.5">`) {
+		t.Error("the masthead opens onto the first section from the sand")
 	}
 	// With nothing to say, nothing stands before Firmware: the section opens
 	// the work column right under the masthead's line.

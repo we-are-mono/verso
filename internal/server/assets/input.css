@@ -985,8 +985,6 @@ html {
   main [data-verso-masthead] {
     margin-inline: calc(var(--spacing) * -10) calc(100% - 100cqw + var(--spacing) * 10);
     padding-inline: calc(var(--spacing) * 10) calc(100cqw - var(--spacing) * 10 - var(--verso-measure));
-    border-bottom: 1px solid var(--color-rule);
-    background-color: var(--color-quiet);
   }
   /* The light masthead stands on the page's own ground, as the rail does, for
      a page whose body is itself the darker surface (a live log, a run's
@@ -994,53 +992,8 @@ html {
      one edge. */
   main [data-verso-masthead="light"] {
     margin-bottom: 0;
+    border-bottom: 1px solid var(--color-rule);
     background-color: var(--color-ground);
-  }
-
-  /* A page of the operator's notebook: the 20px grid the charts sit on, in
-     the hairline's colour and fainter, behind the page from the masthead's
-     hairline, fading out within the first screen. The masthead's hairline and
-     the rail's border are the grid's first lines however tall the masthead
-     grows, and the page's 40px gutter starts the heading just past a line,
-     as the rail's border starts the page. It is painted, never laid out, so
-     it costs the page nothing as it scrolls.
-     The grid is the page's last box, anchored to the masthead: its top is
-     the masthead's bottom edge, its sides and bottom the page's. Without
-     anchors it starts where a one-line masthead ends. */
-  .verso-notebook {
-    position: relative;
-    isolation: isolate;
-  }
-  .verso-notebook [data-verso-masthead] {
-    anchor-name: --verso-masthead;
-  }
-  .verso-notebook::after {
-    content: "";
-    position: absolute;
-    inset-inline: 0;
-    top: anchor(--verso-masthead bottom, 4.1875rem);
-    bottom: 0;
-    z-index: -1;
-    pointer-events: none;
-    --verso-grid: color-mix(in srgb, var(--color-rule) 35%, transparent);
-    background-image:
-      linear-gradient(var(--verso-grid) 1px, transparent 1px),
-      linear-gradient(90deg, var(--verso-grid) 1px, transparent 1px);
-    background-size: 1.25rem 1.25rem;
-    /* The hairline and the rail's border each sit one pixel outside the box,
-       so the grid steps back a pixel both ways to continue them. */
-    background-position: -1px -1px;
-    /* Full strength under the masthead, gone 24 cells down: the grid marks
-       the page as paper and never sits behind a long listing's last rows. */
-    mask-image: linear-gradient(to bottom, #000, transparent 30rem);
-  }
-  /* The whole grid, for laying a page out: a dev session switches it on with
-     G (verso-dev.js). */
-  :root[data-verso-grid-full] .verso-notebook::after { mask-image: none; }
-  /* The column is whole cells wide however narrow the window: the measures
-     are whole cells already, and a column the window squeezes rounds down. */
-  .verso-notebook [data-verso-column] {
-    width: round(down, 100%, 1.25rem);
   }
 
   :first-child + .verso-filter-dock { margin-top: -2.5rem; }

@@ -128,18 +128,15 @@
        against. On the notebook's grid the column is whole cells wide however
        narrow the window, so its rules end on a line (input.css). Left-aligned
        against the rail; no centring, which reads better on a wide monitor. */}}
-  {{/* Every page but home and a log is a page of the operator's notebook: the
-       grid the charts sit on, from the masthead's hairline to the page's foot
-       (verso-notebook, input.css). Home opens on its verdict over its cards,
-       on Quiet Sand so the Paper cards stand off it (ADR-022), and a log is
-       its own darker surface. */}}
-  <div class="{{if eq .Width "full"}}flex min-h-0 flex-1 flex-col{{else}}flex-1{{end}}{{if .Overview}} bg-quiet{{end}}{{if not (or .Overview .Light (eq .Width "full"))}} verso-notebook{{end}}">
-    {{/* The masthead is a sand bar under the top bar, as the colophon is one
-         over the window's foot: the title's line stands 16px inside it at top
-         and bottom, so an act on that line sits in the bar's middle, and the
-         bar ends on a hairline, the grid's first line, two cells above what
-         follows it, as far as the page's gutter keeps it from the rail
-         (input.css). The frame's bottom padding becomes the
+  {{/* Every page stands on Quiet Sand so its Paper cards stand off it, home's
+       as every other's (ADR-022, ADR-023); a live page (a log, Diagnostics)
+       keeps its own frame, its output the darker surface. */}}
+  <div class="{{if eq .Width "full"}}flex min-h-0 flex-1 flex-col{{else}}flex-1{{end}}{{if not (or .Light (eq .Width "full"))}} bg-quiet{{end}}">
+    {{/* The heading line stands on the sand 26px under the top bar and 26px
+         over the first card, with no bar of its own (ADR-023). A live page's
+         masthead is the light bar, its title's line 16px inside it at top and
+         bottom, ending on a hairline as far as the page's gutter keeps it
+         from the rail (input.css). The frame's bottom padding becomes the
          natural gap before the footer.
          A full page keeps the side air for its masthead but never the bottom:
          what is below the masthead runs to the edge. Home's display verdict
@@ -149,7 +146,7 @@
     {{if .Heading}}
     {{/* Whatever measure the column keeps, the stylesheet ends the masthead's
          acts under Log out. */}}
-    <div{{if .Light}} data-verso-masthead="light"{{else}} data-verso-masthead{{end}} class="mb-10 py-4">
+    <div{{if .Light}} data-verso-masthead="light" class="mb-10 py-4"{{else}} data-verso-masthead class="py-6.5"{{end}}>
       {{/* The heading line: the heading and what acts on the page, centred on
            each other. The line is an act's height whether it holds one or
            not, so moving between pages never shifts the heading or what sits

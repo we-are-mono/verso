@@ -1011,16 +1011,16 @@ func TestTheTopBarIsItsLineAndItsAir(t *testing.T) {
 	}
 }
 
-// TestEveryPageWearsTheOneMasthead: the shell draws one masthead — the sand
-// bar, the heading and what acts on the page — for its own pages and a
-// plugin's alike, with no second shape (an eyebrow over the heading, a
-// display heading off the bar) for a page to drift into.
+// TestEveryPageWearsTheOneMasthead: the shell draws one masthead — the
+// heading and what acts on the page — for its own pages and a plugin's
+// alike, with no second shape (an eyebrow over the heading, a display
+// heading off its line) for a page to drift into.
 func TestEveryPageWearsTheOneMasthead(t *testing.T) {
 	src, err := os.ReadFile("templates/page.html.tmpl")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if n := strings.Count(string(src), "data-verso-masthead{{end}}"); n != 1 {
+	if n := strings.Count(string(src), `data-verso-masthead class="py-6.5"{{end}}`); n != 1 {
 		t.Errorf("page.html.tmpl draws %d mastheads, want one", n)
 	}
 	tr := &fakeTransport{env: &plugin.Envelope{
@@ -1029,7 +1029,7 @@ func TestEveryPageWearsTheOneMasthead(t *testing.T) {
 	}}
 	s := newServerWith(t, fakeBackend{}, tr, []plugin.Manifest{demoManifest()})
 	body := get(t, s, "/plugins/demo/").Body.String()
-	if !strings.Contains(body, `<div data-verso-masthead class="mb-10 py-4">`) || strings.Contains(body, `class="verso-kicker"`) {
+	if !strings.Contains(body, `<div data-verso-masthead class="py-6.5">`) || strings.Contains(body, `class="verso-kicker"`) {
 		t.Errorf("a plugin's page does not wear the one masthead:\n%s", body)
 	}
 }
@@ -2714,13 +2714,12 @@ func TestTheHeadingKeepsItsLineWhenItsActsWrapUnder(t *testing.T) {
 	}
 }
 
-// TestEveryMastheadStandsOnAHairline: every page's title stands in a sand bar,
-// the colophon's ground, alone on its line — no lede under it — with 16px
-// above and below the line, so an act on it sits in the bar's middle; the bar
-// ends on a hairline, the grid's first line, with a cell (20px) before what
-// follows. A page that opens on a control band keeps the hairline over it:
-// the band is a box in the page, not the bar's continuation.
-func TestEveryMastheadStandsOnAHairline(t *testing.T) {
+// TestAPageStandsOnSandUnderItsHeadingLine: every page but home and a live
+// one stands on Quiet Sand with no grid, its title alone on its line — no lede
+// under it — with 26px above and below the line and no bar or hairline, so
+// the first card stands right under it (ADR-023). The light masthead keeps its
+// Paper and its hairline.
+func TestAPageStandsOnSandUnderItsHeadingLine(t *testing.T) {
 	tr := &fakeTransport{env: &plugin.Envelope{
 		SchemaVersion: 1, Status: http.StatusOK,
 		Title:  "Firewall settings",
@@ -2728,11 +2727,14 @@ func TestEveryMastheadStandsOnAHairline(t *testing.T) {
 	}}
 	s := newServerWith(t, fakeBackend{}, tr, []plugin.Manifest{demoManifest()})
 	body := get(t, s, "/plugins/demo/").Body.String()
-	if !strings.Contains(body, `<div class="px-10 pb-10">`) {
-		t.Errorf("the bar meets the top bar, with no air of the frame's above it:\n%s", body)
+	if !strings.Contains(body, `<div class="flex-1 bg-quiet">`) || strings.Contains(body, "verso-notebook") {
+		t.Errorf("the page does not stand on the sand without the grid:\n%s", body)
 	}
-	if !strings.Contains(body, `<div data-verso-masthead class="mb-10 py-4">`) {
-		t.Errorf("the title's line stands 16px inside the bar at both edges, and the hairline a cell over the page:\n%s", body)
+	if !strings.Contains(body, `<div class="px-10 pb-10">`) {
+		t.Errorf("the heading line meets the top bar, with no air of the frame's above it:\n%s", body)
+	}
+	if !strings.Contains(body, `<div data-verso-masthead class="py-6.5">`) {
+		t.Errorf("the title's line stands 26px clear of the top bar and of the first card:\n%s", body)
 	}
 	if strings.Contains(body, `class="verso-lede`) {
 		t.Error("a page's title carries no lede")
@@ -2745,17 +2747,15 @@ func TestEveryMastheadStandsOnAHairline(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, want := range []string{
-		"main [data-verso-masthead] {\n    margin-inline: calc(var(--spacing) * -10) calc(100% - 100cqw + var(--spacing) * 10);\n    padding-inline: calc(var(--spacing) * 10) calc(100cqw - var(--spacing) * 10 - var(--verso-measure));\n    border-bottom: 1px solid var(--color-rule);\n    background-color: var(--color-quiet);",
-		"main [data-verso-masthead=\"light\"] {\n    margin-bottom: 0;\n    background-color: var(--color-ground);",
+		"main [data-verso-masthead] {\n    margin-inline: calc(var(--spacing) * -10) calc(100% - 100cqw + var(--spacing) * 10);\n    padding-inline: calc(var(--spacing) * 10) calc(100cqw - var(--spacing) * 10 - var(--verso-measure));\n  }",
+		"main [data-verso-masthead=\"light\"] {\n    margin-bottom: 0;\n    border-bottom: 1px solid var(--color-rule);\n    background-color: var(--color-ground);",
 	} {
 		if !strings.Contains(string(css), want) {
 			t.Errorf("stylesheet is missing %s", want)
 		}
 	}
-	// the masthead keeps its hairline over a control band: the band is a box
-	// in the page, not the bar's continuation
-	if strings.Contains(string(css), "main:has([data-verso-actionbar]) [data-verso-masthead]") {
-		t.Error("the masthead runs on into the control band")
+	if strings.Contains(string(css), ".verso-notebook") {
+		t.Error("the stylesheet still draws the notebook's grid")
 	}
 }
 

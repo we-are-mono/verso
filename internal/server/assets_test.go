@@ -444,10 +444,10 @@ func TestAPageOpeningOnAHeadingDrawsOneRule(t *testing.T) {
 }
 
 // TestMastheadEndsUnderLogOut: whatever measure a page's column keeps, its
-// masthead's hairline runs from the rail to the window's right edge, while the
-// title keeps to the page's column and the page's acts end at the right edge
-// Log out ends at: the page's 2.5rem gutter in, never past the top bar's 72rem,
-// rounded down to whole cells so both end on a line of the grid.
+// masthead runs from the rail to the window's right edge, while the title
+// keeps to the page's column and the page's acts end at the right edge Log
+// out ends at: the page's 2.5rem gutter in, never past the top bar's 72rem,
+// rounded down to whole cells.
 func TestMastheadEndsUnderLogOut(t *testing.T) {
 	raw, err := os.ReadFile("assets/verso.css")
 	if err != nil {
@@ -456,11 +456,11 @@ func TestMastheadEndsUnderLogOut(t *testing.T) {
 	css := string(raw)
 	for _, want := range []string{
 		"main{--verso-measure:round(down, min(100cqw - var(--spacing) * 20, var(--container-6xl)), 1.25rem)}",
-		"main [data-verso-masthead]{margin-inline:calc(var(--spacing) * -10) calc(100% - 100cqw + var(--spacing) * 10);padding-inline:calc(var(--spacing) * 10) calc(100cqw - var(--spacing) * 10 - var(--verso-measure));border-bottom:1px solid var(--color-rule);background-color:var(--color-quiet)}",
+		"main [data-verso-masthead]{margin-inline:calc(var(--spacing) * -10) calc(100% - 100cqw + var(--spacing) * 10);padding-inline:calc(var(--spacing) * 10) calc(100cqw - var(--spacing) * 10 - var(--verso-measure))}",
 		"[data-verso-session]>div{width:round(down, min(100cqw - var(--spacing) * 20, var(--container-6xl)), 1.25rem);flex:none}",
 	} {
 		if !strings.Contains(css, want) {
-			t.Errorf("the masthead's hairline runs from the rail to the window's edge and its acts end where Log out does; stylesheet is missing %s", want)
+			t.Errorf("the masthead runs from the rail to the window's edge and its acts end where Log out does; stylesheet is missing %s", want)
 		}
 	}
 }
@@ -658,33 +658,6 @@ func TestStylesheetKeepsFocusAndStillness(t *testing.T) {
 	} {
 		if !strings.Contains(string(css), want) {
 			t.Errorf("stylesheet is missing %q", want)
-		}
-	}
-}
-
-// TestTheNotebookFadesDownThePage: the grid stands at full strength under the
-// masthead and fades out within the first screen, so it marks the page as
-// paper and never sits behind a long listing's last rows.
-func TestTheNotebookFadesDownThePage(t *testing.T) {
-	css, err := os.ReadFile("assets/input.css")
-	if err != nil {
-		t.Fatal(err)
-	}
-	grid := regexp.MustCompile(`\.verso-notebook::after \{[^}]*--verso-grid: color-mix\(in srgb, var\(--color-rule\) 35%, transparent\);[^}]*mask-image: linear-gradient\(to bottom, #000, transparent 30rem\);`)
-	if !grid.Match(css) {
-		t.Error("the notebook's grid does not fade out down the page")
-	}
-	// A dev session shows it whole on G, remembered in the browser.
-	if !strings.Contains(string(css), `:root[data-verso-grid-full] .verso-notebook::after { mask-image: none; }`) {
-		t.Error("the grid has no whole state to switch to")
-	}
-	dev, err := os.ReadFile("assets/verso-dev.js")
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, want := range []string{`toggleAttribute("data-verso-grid-full"`, `event.key.toLowerCase() !== "g"`, `localStorage.setItem(key`} {
-		if !strings.Contains(string(dev), want) {
-			t.Errorf("the dev script does not switch the grid: missing %q", want)
 		}
 	}
 }

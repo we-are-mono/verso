@@ -200,14 +200,14 @@ func TestHardwarePanelArtEmbedded(t *testing.T) {
 	}
 }
 
-// The Hardware page wears every page's masthead — the sand bar, its title
-// the page's name — and appears as the first System tab, active on its own
+// The Hardware page wears every page's masthead — the heading line on the
+// sand, its title the page's name — and appears as the first System tab, active on its own
 // page. The box's own name is the top bar's, so the title does not repeat it.
 func TestHardwarePageMastheadAndTab(t *testing.T) {
 	srv := newServer(t, fakeBackend{board: openwrt.Board{Model: "Supermicro H13SAE-MF"}})
 	body := get(t, srv, "/system/hardware").Body.String()
 	for _, want := range []string{
-		`<div data-verso-masthead class="mb-10 py-4">`,   // every page's sand bar
+		`<div data-verso-masthead class="py-6.5">`,       // every page's heading line on the sand
 		`<h1 class="verso-page-heading">Hardware</h1>`,   // titled as the page
 		`href="/system/hardware"`, `aria-current="page"`, // the active System tab
 		"All sensors", // the full instrument panel
