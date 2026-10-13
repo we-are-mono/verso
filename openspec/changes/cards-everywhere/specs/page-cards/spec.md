@@ -45,6 +45,17 @@ Every top-level section of a page that has a title SHALL render as a card: Paper
 - **WHEN** a section holds a part (SSH's "Authorized keys")
 - **THEN** the part stands inside the section's card on its ledger line, not as a card of its own
 
+### Requirement: A page form's untitled fields stand in an untitled card
+The fields a page form opens with outside any titled section SHALL stand in a card of the same frame with no header, so no field stands loose on the sand.
+
+#### Scenario: System › General
+- **WHEN** an operator opens System › General
+- **THEN** Router name, Private IPv6 prefix and "Spread packet handling over all cores" stand in one card with no title, 20px over the Time card
+
+#### Scenario: Network › DNS
+- **WHEN** an operator opens Network › DNS
+- **THEN** Upstream servers and "Use the servers the ISP hands out" stand in one card with no title, above the Local names card
+
 ### Requirement: A plugin page becomes cards without a plugin change
 The card layout SHALL come from the shell's rendering of the existing widget schema, so a plugin page renders as cards without the plugin being rebuilt and without any new schema field.
 

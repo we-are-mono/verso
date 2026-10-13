@@ -208,11 +208,13 @@
 /* A page's subject is a card (ADR-023): a titled section on a page is Paper
  * in a Strong Hairline frame, its heading band the card's header behind a
  * hairline, its rules reaching the card's edges as a drawer's reach its own.
- * Cards stand 20px apart. A drawer's sections keep their bands.
+ * Cards stand 20px apart. A drawer's sections keep their bands. A page
+ * form's untitled run of fields is a card with no header, so no field stands
+ * loose on the sand.
  *
  * Unlayered, so the card outranks the band rules above, whose surface
  * selectors would otherwise win on specificity alone. */
-.verso-page-body section[data-verso-section]:has(> [data-verso-section-band]):not(section section, dialog *) {
+.verso-page-body section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]):not(section section, dialog *) {
   --verso-reach-start: calc(var(--spacing) * 5);
   --verso-reach-end: calc(var(--spacing) * 5);
   margin: 0;
@@ -221,7 +223,10 @@
   background-color: var(--color-ground);
   padding: 0 calc(var(--spacing) * 5) calc(var(--spacing) * 5);
 }
-.verso-page-body :not(input[type="hidden"], template, script, [hidden]) ~ section[data-verso-section]:has(> [data-verso-section-band]):not(section section, dialog *),
+.verso-page-body section[data-verso-section][data-verso-headless][data-verso-ruled]:not(section section, dialog *) {
+  padding-top: calc(var(--spacing) * 5);
+}
+.verso-page-body :not(input[type="hidden"], template, script, [hidden]) ~ section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]):not(section section, dialog *),
 .verso-page-body > .verso-stack > * + .verso-stack:has(> section[data-verso-section]:first-child > [data-verso-section-band]) {
   margin-top: calc(var(--spacing) * 5);
 }
