@@ -588,6 +588,9 @@
     {{template "verso-empty-slot-body" .EmptyText}}
   </div>
 {{else}}
+{{/* The listing's frame stands outside its scroller, so the fading edge
+     never fades a card's border (sections.css). */}}
+<div data-verso-listing>
 <div{{if .Live}} data-verso-live-table{{end}} data-verso-scroller class="relative overflow-x-auto overflow-y-hidden [&_td:first-of-type]:pl-2.75 [&_th:first-of-type]:pl-2.75 [&_td:last-of-type]:pr-4 [&_th:last-of-type]:pr-4 verso-scroll-edge">
   {{if .Live}}<p data-verso-inventory-stale role="status" hidden class="mb-4 text-sm text-marigold-deep">{{t "Live status could not be refreshed. Retrying…"}}</p>{{end}}
   {{if .Title}}
@@ -648,7 +651,7 @@
   {{/* The marks explained where the marks are: the same dot the rows wear, the
        plain words for it, and hard right the one caveat about what the listing
        includes. */}}
-  <div class="flex flex-wrap items-center gap-5 pt-5{{if not .Dense}} px-4{{end}}">
+  <div data-verso-table-legend class="flex flex-wrap items-center gap-5 pt-5{{if not .Dense}} px-4{{end}}">
     {{range .Legend}}
     {{if .Ink}}
     {{/* an ink explained in the ink itself: the word in the tone's Deep
@@ -664,6 +667,7 @@
   </div>
   {{end}}
   <p data-verso-listing-empty hidden class="border-b border-rule pt-2.5 pr-4 pb-2.25 pl-2.75 text-sm leading-5 text-meta">{{t "Nothing matches."}}</p>
+</div>
 </div>
 {{end}}
 {{end}}

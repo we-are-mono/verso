@@ -32,6 +32,22 @@ func TestTableScrollerSaysThereIsMore(t *testing.T) {
 	}
 }
 
+// TestAListingHoldsItsScrollerInAFrameOfItsOwn: a page that is one listing is
+// one card (ADR-023), and the frame stands outside the scroller, so the edge
+// that fades while more of a wide table waits never fades the card's border.
+func TestAListingHoldsItsScrollerInAFrameOfItsOwn(t *testing.T) {
+	r := newRenderer(t)
+	for name, w := range map[string]Widget{
+		"table":      &Table{Columns: []TableColumn{{Label: "Source"}}, Rows: []TableRow{{ID: "a", Cells: []TableCell{{Text: "wan"}}}}},
+		"interfaces": &Table{Style: "interfaces", Columns: []TableColumn{{Label: "Device"}}},
+	} {
+		got := render(t, r, w)
+		if !strings.Contains(got, "<div data-verso-listing>") || strings.Index(got, "<div data-verso-listing>") > strings.Index(got, "data-verso-scroller") {
+			t.Errorf("%s: the scroller does not stand in its listing's frame:\n%s", name, got)
+		}
+	}
+}
+
 // TestPageSpacingIsThePagesNotTheBlocks: how far a listing stands from what
 // sits above it is the page's rhythm (the stack's), not the listing's own —
 // a titled listing carries no margin of its own, and the page stack names
@@ -46,13 +62,12 @@ func TestPageSpacingIsThePagesNotTheBlocks(t *testing.T) {
 	if !strings.Contains(stack, `class="verso-stack space-y-5"`) {
 		t.Errorf("a plain stack names itself for the page rhythm:\n%s", stack)
 	}
-	// The band's only margins put its frame on the grid's lines, a pixel out
-	// into the air above and the gutter; it adds no gap of its own.
+	// The band adds no gap of its own: it is its listing card's top strip.
 	bar := render(t, r, &ActionBar{Tabs: []ActionTab{{Label: "All", Count: 1, Active: true}}})
 	const open = `data-verso-actionbar class="`
 	at := strings.Index(bar, open)
-	if at < 0 || !strings.HasPrefix(bar[at+len(open):], "-mt-px -ml-px flex") {
-		t.Errorf("a control band's frame stands on the grid's lines:\n%s", bar)
+	if at < 0 {
+		t.Errorf("no control band:\n%s", bar)
 	} else {
 		class := bar[at+len(open):]
 		for _, c := range strings.Fields(class[:strings.Index(class, `"`)]) {

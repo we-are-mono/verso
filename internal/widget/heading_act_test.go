@@ -146,15 +146,13 @@ func TestHeadingActRendersTheActAlone(t *testing.T) {
 	}
 }
 
-// TestControlBandIsTheListingsSurface: the band that narrows a listing is its
-// one filled surface — a mid sand box in a strong hairline, a step darker
-// than the masthead's quiet sand, its frame on the notebook's lines (a pixel
-// out at the top and the left) and three cells tall, its controls centred in
-// them, 12px over a control and 13px under — and it sits flush on the
-// listing's column heads.
-func TestControlBandIsTheListingsSurface(t *testing.T) {
+// TestControlBandIsTheListingCardsTopStrip: the controls that narrow a
+// listing are the top strip of its card (ADR-023): the card's Paper and frame
+// over a hairline, 13px over the controls and 12px under, words 20px in, no
+// Mid Sand box; the listing under it closes the card.
+func TestControlBandIsTheListingCardsTopStrip(t *testing.T) {
 	got := render(t, newRenderer(t), &ActionBar{Tabs: []ActionTab{{Label: "All families", Count: 3, Active: true}}})
-	if !strings.Contains(got, `data-verso-actionbar class="-mt-px -ml-px flex flex-wrap items-center gap-4 rounded-xs border border-rule-strong bg-mid px-3 pt-3 pb-3.25"`) {
+	if !strings.Contains(got, `data-verso-actionbar class="flex flex-wrap items-center gap-4 rounded-t-xs border border-rule-strong border-b-rule bg-ground px-5 pt-3.25 pb-3"`) {
 		t.Errorf("control band surface wrong:\n%s", got)
 	}
 	if strings.Contains(got, "mb-5") || strings.Contains(got, "mb-8") {

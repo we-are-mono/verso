@@ -3,19 +3,15 @@
 {{/* The listing's control band: the surface it is narrowed from, one row under
      the heading. Left is finding things: the search first, then the coarse cuts
      as one counted dropdown, then the dimension the listing is sliced along.
-     It is the
-     listing's one filled surface — the quiet sand between two hairlines, every
-     control 16px from its edges — and it sits flush on the column heads, so
-     band and table read as one object. A live log has none: its search and
+     It is the top strip of the listing's card, on the card's Paper over a
+     hairline, and the listing under it closes the card, so band and table
+     read as one object. A live log has none: its search and
      live control stand on the heading line (TakeLive).
      The page's act is not on it: it is the envelope's (HeadingAct), drawn on
      the heading line by this same template (Heading). */}}
 {{/* A live log has no band: on the heading line its search, its live control
      and what the log offers stand together as equals, and the group is the
      log's bar, which its search narrows the log from. */}}
-{{/* On the notebook's grid the band's frame is on the lines: a pixel out into
-     the masthead's air and the gutter, three cells tall with its controls
-     centred in them (12px over a control, 13px under). */}}
 {{if .Heading}}{{if .Live}}<div data-verso-actionbar="log" class="flex min-w-0 flex-wrap items-center gap-2">{{if .Filter}}{{template "verso-listing-search" .}}{{end}}{{template "actionbar.live" .}}{{template "actionbar.act" .}}</div>{{else}}{{template "actionbar.act" .}}{{end}}{{else}}
 <div data-verso-actionbar class="{{template "verso-control-band-class"}}">
   {{if .Filter}}{{template "verso-listing-search" .}}{{end}}

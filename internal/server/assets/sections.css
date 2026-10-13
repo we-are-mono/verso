@@ -251,14 +251,41 @@
 }
 /* A listing in a card runs to the card's edges, its words 20px in, and one
  * that ends the card closes on the frame. */
-.verso-page-body section[data-verso-section]:not(section section, dialog *) > .verso-rhythm > [data-verso-scroller] {
+.verso-page-body section[data-verso-section]:not(section section, dialog *) > .verso-rhythm > [data-verso-listing] {
   margin-inline: calc(var(--spacing) * -5);
 }
-.verso-page-body section[data-verso-section]:not(section section, dialog *) > .verso-rhythm > [data-verso-scroller] :is(td, th):first-child {
+.verso-page-body section[data-verso-section]:not(section section, dialog *) > .verso-rhythm > [data-verso-listing] :is(td, th):first-child {
   padding-left: calc(var(--spacing) * 5);
 }
-.verso-page-body section[data-verso-section]:has(> .verso-rhythm > [data-verso-scroller]:last-child):not(section section, dialog *) {
+.verso-page-body section[data-verso-section]:has(> .verso-rhythm > [data-verso-listing]:last-child):not(section section, dialog *) {
   padding-bottom: 0;
+}
+/* A page that is one listing is one card with no header: the page's heading
+ * names it. Its control band is the card's top strip (actionbar.html.tmpl),
+ * so the listing under it drops its top edge and joins it. */
+.verso-page-body > [data-verso-listing],
+.verso-page-body > .verso-stack > [data-verso-listing],
+.verso-page-body > .verso-stack > .verso-stack > [data-verso-listing] {
+  border: 1px solid var(--color-rule-strong);
+  border-radius: var(--radius-xs);
+  background-color: var(--color-ground);
+  padding-top: calc(var(--spacing) * 5);
+}
+.verso-page-body > .verso-stack > [data-verso-actionbar] + [data-verso-listing],
+.verso-page-body > .verso-stack > [data-verso-actionbar] + .verso-stack > [data-verso-listing]:first-child {
+  border-top-width: 0;
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+}
+:is(.verso-page-body > [data-verso-listing], .verso-page-body > .verso-stack > [data-verso-listing], .verso-page-body > .verso-stack > .verso-stack > [data-verso-listing]) > [data-verso-scroller]:not([data-verso-inventory]) :is(td, th):first-child {
+  padding-left: calc(var(--spacing) * 5);
+}
+:is(.verso-page-body > [data-verso-listing], .verso-page-body > .verso-stack > [data-verso-listing], .verso-page-body > .verso-stack > .verso-stack > [data-verso-listing]) .verso-table > tbody > tr:last-child > td {
+  border-bottom-color: transparent;
+}
+/* A listing's legend in a card keeps the card's inset and closes it. */
+.verso-page-body [data-verso-listing]:not(dialog *) [data-verso-table-legend] {
+  padding: calc(var(--spacing) * 5);
 }
 /* A framed box in a card (a certificate) gives up its frame and fill: no card
  * holds a card. Its name and sentence stay where they stand. */

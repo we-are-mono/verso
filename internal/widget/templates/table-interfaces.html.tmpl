@@ -6,6 +6,7 @@
 {{/* Match the shared table scroller: it scrolls sideways and clips only
      while the inventory is wider than it (data-verso-scroller), so a row
      act's tip rises over the column heads. */}}
+<div data-verso-listing>
 <div data-verso-inventory data-verso-scroller class="relative min-w-0 overflow-x-auto overflow-y-hidden">
   <p data-verso-inventory-stale role="status" hidden class="mb-4 text-sm text-marigold-deep">{{t "Live status could not be refreshed. Retrying…"}}</p>
   {{/* On the notebook's grid as every listing is (.verso-table): each row two
@@ -75,5 +76,6 @@
   </table>
   <p data-verso-listing-empty hidden class="py-5 text-sm text-meta">{{t "Nothing matches."}}</p>
   {{if .Empty}}<p class="py-5 text-sm text-meta">{{.EmptyText}}</p>{{end}}
+</div>
 </div>
 {{end}}
