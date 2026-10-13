@@ -356,11 +356,10 @@ func TestSectionRulesRunToTheRailOnly(t *testing.T) {
 		t.Fatalf("read stylesheet: %v", err)
 	}
 	// Every rule reaches by its surface's two measures (sections.css): a page
-	// runs 40px out to the rail and none past the column's end; only a form
-	// column, which pads its own end, reaches back through it.
+	// runs 40px out to the rail and none past the column's end; a page card
+	// keeps its rules to its own edges (ADR-023).
 	for _, want := range []string{
 		"main{--verso-reach-start:calc(var(--spacing) * 10);--verso-reach-end:0px}",
-		"[data-verso-form-column]:not(dialog *){--verso-reach-end:calc(var(--spacing) * 10)}",
 		"margin-inline:calc(-1 * var(--verso-reach-start)) calc(-1 * var(--verso-reach-end));padding-inline:var(--verso-reach-start) var(--verso-reach-end)",
 	} {
 		if !strings.Contains(string(css), want) {

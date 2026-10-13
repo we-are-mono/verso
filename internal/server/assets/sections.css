@@ -34,7 +34,6 @@
  * utilities, and only this layer outranks them. */
 @layer utilities {
   main { --verso-reach-start: calc(var(--spacing) * 10); --verso-reach-end: 0px; }
-  [data-verso-form-column]:not(dialog *) { --verso-reach-end: calc(var(--spacing) * 10); }
   [data-verso-drawer-body] {
     --verso-reach-start: calc(var(--spacing) * 10);
     --verso-reach-end: calc(var(--spacing) * 10);
@@ -204,4 +203,82 @@
      first gives its air back the same way. */
   [data-verso-headless] > .verso-rhythm > :not(input[type="hidden"], [hidden]):not(:not(input[type="hidden"], [hidden]) ~ *) { padding-top: 0; }
   [data-verso-headless] > .verso-rhythm > [data-verso-rows]:not(input[type="hidden"], [hidden]):not(:not(input[type="hidden"], [hidden]) ~ *) > :not(input[type="hidden"], [hidden]):not(:not(input[type="hidden"], [hidden]) ~ *) { padding-top: 0; }
+}
+
+/* A page's subject is a card (ADR-023): a titled section on a page is Paper
+ * in a Strong Hairline frame, its heading band the card's header behind a
+ * hairline, its rules reaching the card's edges as a drawer's reach its own.
+ * Cards stand 20px apart. A drawer's sections keep their bands.
+ *
+ * Unlayered, so the card outranks the band rules above, whose surface
+ * selectors would otherwise win on specificity alone. */
+.verso-page-body section[data-verso-section]:has(> [data-verso-section-band]):not(section section, dialog *) {
+  --verso-reach-start: calc(var(--spacing) * 5);
+  --verso-reach-end: calc(var(--spacing) * 5);
+  margin: 0;
+  border: 1px solid var(--color-rule-strong);
+  border-radius: var(--radius-xs);
+  background-color: var(--color-ground);
+  padding: 0 calc(var(--spacing) * 5) calc(var(--spacing) * 5);
+}
+.verso-page-body :not(input[type="hidden"], template, script, [hidden]) ~ section[data-verso-section]:has(> [data-verso-section-band]):not(section section, dialog *),
+.verso-page-body > .verso-stack > * + .verso-stack:has(> section[data-verso-section]:first-child > [data-verso-section-band]) {
+  margin-top: calc(var(--spacing) * 5);
+}
+.verso-page-body section[data-verso-section]:not(section section, dialog *) > [data-verso-section-band] {
+  padding-block: calc(var(--spacing) * 3.75) calc(var(--spacing) * 3.5);
+  border-top-width: 0;
+  border-bottom: 1px solid var(--color-rule);
+}
+.verso-page-body section[data-verso-section]:not(section section, dialog *) > [data-verso-section-band] h2 {
+  font-size: var(--text-base);
+}
+/* A lede is the first thing in the card's body, under the header's hairline. */
+.verso-page-body section[data-verso-section]:not(section section, dialog *) > [data-verso-section-band]:has([data-verso-section-lede]) {
+  padding-bottom: 0;
+  border-bottom-width: 0;
+}
+.verso-page-body section[data-verso-section]:not(section section, dialog *) > [data-verso-section-band] > :has(> [data-verso-section-lede]) {
+  width: calc(100% + var(--spacing) * 10);
+  margin: calc(var(--spacing) * 3.5) calc(var(--spacing) * -5) 0;
+  border-top: 1px solid var(--color-rule);
+  padding: calc(var(--spacing) * 5) calc(var(--spacing) * 5) 0;
+}
+/* A listing in a card runs to the card's edges, its words 20px in, and one
+ * that ends the card closes on the frame. */
+.verso-page-body section[data-verso-section]:not(section section, dialog *) > .verso-rhythm > [data-verso-scroller] {
+  margin-inline: calc(var(--spacing) * -5);
+}
+.verso-page-body section[data-verso-section]:not(section section, dialog *) > .verso-rhythm > [data-verso-scroller] :is(td, th):first-child {
+  padding-left: calc(var(--spacing) * 5);
+}
+.verso-page-body section[data-verso-section]:has(> .verso-rhythm > [data-verso-scroller]:last-child):not(section section, dialog *) {
+  padding-bottom: 0;
+}
+/* A framed box in a card (a certificate) gives up its frame and fill: no card
+ * holds a card. Its name and sentence stay where they stand. */
+.verso-page-body section[data-verso-section] [data-verso-artifact]:not(dialog *) {
+  width: auto;
+  margin: 0;
+  border-width: 0;
+  background-color: transparent;
+  padding-inline: 0;
+}
+/* A page form's Save stands on the sand 20px under the last card, ruled off
+ * by the cards themselves. */
+.verso-page-body [data-verso-form-actions][data-verso-rule]:not(dialog *) {
+  margin: calc(var(--spacing) * 5) 0 0;
+  border-top-width: 0;
+  padding: calc(var(--spacing) * 0.75) 0;
+}
+/* A page form's configuration preview is a card of its own, 20px under the
+ * card before it, its file strip the card's header. */
+.verso-page-body [data-verso-code-divider]:not(dialog *) {
+  margin: calc(var(--spacing) * 5) 0 0;
+  border-top-width: 0;
+  padding: 0;
+}
+.verso-page-body [data-verso-code-divider]:not(dialog *) > [data-verso-code-editor] {
+  margin-left: 0;
+  border-color: var(--color-rule-strong);
 }

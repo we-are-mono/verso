@@ -33,9 +33,10 @@ import (
 type Section struct {
 	Title string `json:"title"`
 	// Icon is the glyph of what the section is, by Lucide name, leading its
-	// title on a part's ledger line (an expanded row's network, its DHCP
-	// server, the bridge under them), so parts of one kind are told apart
-	// from parts of another at a glance. It is identity, never state.
+	// title in a page card's header or on a part's ledger line (an expanded
+	// row's network, its DHCP server, the bridge under them), so subjects of
+	// one kind are told apart from another at a glance. It is identity, never
+	// state.
 	Icon string `json:"icon,omitempty"`
 	// Anchor is the name this section is addressed by — what a link elsewhere on
 	// the page points at to bring it into view. A page long enough to need a list

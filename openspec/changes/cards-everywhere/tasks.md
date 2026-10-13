@@ -10,10 +10,10 @@ Code follows the ponytail rule: the smallest complete change. Reuse the markup t
 
 ## 2. Sections become cards
 
-- [ ] 2.1 Write a failing widget test (`internal/widget/heading_levels_test.go` or a new `section_card_test.go`) that a top-level section with a title and an `Icon` renders the glyph before its title in the band, and a part's ledger line is unchanged. Then add the glyph to `section.html.tmpl`.
+- [x] 2.1 Write a failing widget test (`internal/widget/heading_levels_test.go` or a new `section_card_test.go`) that a top-level section with a title and an `Icon` renders the glyph before its title in the band, and a part's ledger line is unchanged. Then add the glyph to `section.html.tmpl`.
 - [ ] 2.2 In `sections.css`, frame a top-level page section with a band as a card (Paper, Strong Hairline, 2px, the band as a 16px-title header with a hairline under it, 20px body inset, reach variables 20px inside the card, cards 20px apart), scoped to `main` and excluding `dialog`. Verify in the dev container that Firewall settings, Access and the Wi-Fi, DHCP/DNS, VPN and System General pages show one card per section and a drawer (a firewall rule's) is unchanged.
-- [ ] 2.3 Give the configuration preview (`[data-verso-code-divider]`) the card frame with its file strip as the header. Remove the `artifact` card style's frame and fill inside a page card. Verify on Firewall settings (the `/etc/config/firewall` card above "Save settings" on the sand) and Access (the certificate with no inner frame).
-- [ ] 2.4 Write a failing test in `internal/server/password_test.go` (or the Access test file) that the exposure callout renders inside the Web interface section. Then move it in `password.go`.
+- [x] 2.3 Give the configuration preview (`[data-verso-code-divider]`) the card frame with its file strip as the header. Remove the `artifact` card style's frame and fill inside a page card. Verify on Firewall settings (the `/etc/config/firewall` card above "Save settings" on the sand) and Access (the certificate with no inner frame).
+- [x] 2.4 Write a failing test in `internal/server/password_test.go` (or the Access test file) that the exposure callout renders inside the Web interface section. Then move it in `password.go`.
 - [ ] 2.5 Check the hand-built pages that compose sections (Maintenance, and any `grep -l data-verso-section internal/server/*.go` turns up) in the dev container. Convert any that hand-draw a band to the section markup, with a test asserting the section markup.
 - [ ] 2.6 Update DESIGN.md: Section headings on a page are card headers, Configuration cards on a page, the flat direction (cards are the page's subjects; drawers keep bands), and "Overview cards" no longer the only cards.
 

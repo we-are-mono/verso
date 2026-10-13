@@ -946,13 +946,6 @@ html {
   [data-verso-section-lede] p:not(:last-child) { margin-bottom: 1.25rem; }
   [data-verso-section-lede] p:last-child { margin-bottom: 0; }
 
-  /* Page-form sections keep the same 40px inset at both ends of their rules.
-     Apply the end inset once to the work column, never to each nested row;
-     its rules reach back through it (sections.css). */
-  [data-verso-form-column]:not([data-verso-form-column] *, dialog *) {
-    padding-inline-end: calc(var(--spacing) * 10);
-  }
-
   /* A page's masthead is a Quiet Sand bar, the colophon's ground, on a
      hairline that runs from the rail to the window's right edge, while its
      title keeps to the page's column and its

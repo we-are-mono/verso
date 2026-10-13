@@ -83,6 +83,23 @@ func devListeners() *fakeListeners {
 	return &fakeListeners{current: c}
 }
 
+// TestTheExposureWarningStandsInTheWebInterfacesCard: the warning that the
+// internet reaches the web interface is about that card, so it stands at the
+// top of its body, not loose on the page before it (ADR-023).
+func TestTheExposureWarningStandsInTheWebInterfacesCard(t *testing.T) {
+	fw := stockFirewall()
+	fw["wanz"].(map[string]any)["input"] = "ACCEPT"
+	s := newServer(t, fakeBackend{uci: map[string]map[string]any{"verso": {}, "firewall": fw}})
+	s.SetListeners(listenersHolding(listen.PortsOwn))
+	body := get(t, s, "/system/access").Body.String()
+	title := strings.Index(body, ">Web interface</h2>")
+	warn := strings.Index(body, "The internet can reach this web interface")
+	field := strings.Index(body, `name="web_https"`)
+	if title < 0 || !(title < warn && warn < field) {
+		t.Errorf("the warning does not open the web interface's card (title %d, warning %d, field %d)", title, warn, field)
+	}
+}
+
 func TestAccessShowsWhereTheWebInterfaceAnswersInAFormToApply(t *testing.T) {
 	body := get(t, newWebForm(t, listenersHolding(listen.PortsOwn), nil).s, "/system/access").Body.String()
 	for _, want := range []string{"HTTPS port", `name="web_https"`, `value="443"`, "HTTP port", `value="80"`, "Redirect HTTP to HTTPS", ">Apply<"} {
