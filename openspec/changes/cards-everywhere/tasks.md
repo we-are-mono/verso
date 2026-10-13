@@ -27,8 +27,8 @@ Code follows the ponytail rule: the smallest complete change. Reuse the markup t
 
 ## 4. Decision records and backlog
 
-- [ ] 4.1 Write `docs/ADR/023-pages-are-cards.md` (context, the four mocks, decisions: no band, no grid, drawers unchanged, no collapse, the control strip, Save placement; consequences). Amend ADR-022's consequence about the one page with cards in place. Verify that `grep -n "one page with cards" docs/ADR` returns nothing.
-- [ ] 4.2 Update `docs/BACKLOG.md`: remove items this change closes (anything about the grid or the masthead bar) and add the padding-and-margins fine-tuning spec the owner asked for as an open item.
+- [x] 4.1 Write `docs/ADR/023-pages-are-cards.md` (context, the four mocks, decisions: no band, no grid, drawers unchanged, no collapse, the control strip, Save placement; consequences). Amend ADR-022's consequence about the one page with cards in place. Verify that `grep -n "one page with cards" docs/ADR` returns nothing.
+- [x] 4.2 Update `docs/BACKLOG.md`: remove items this change closes (anything about the grid or the masthead bar) and add the padding-and-margins fine-tuning spec the owner asked for as an open item.
 
 ## 5. Integration check
 

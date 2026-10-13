@@ -96,8 +96,9 @@ second's states and rates onto it, so its card heads are the first paint's.
 
 ## Consequences
 
-- The Overview is the one page with cards, and the one exception to the flat
-  direction's frame rule; DESIGN.md's "Overview cards" states it.
+- The Overview is the one page whose cards fold and move; every page is made
+  of cards (ADR-023), and DESIGN.md's "Overview cards" states what is the
+  Overview's own.
 - A layout does not follow an operator to another browser, and a private
   window keeps it only while it is open.
 - The page reloads when a card is hidden or comes back; Arrange carries over

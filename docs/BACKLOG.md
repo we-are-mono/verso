@@ -79,6 +79,18 @@ own and points at the decision that governs it; the rationale lives there, not h
 - **Plugin-contributed cards.** A contract for a plugin to add a card to the
   Overview (WireGuard peers, QoS), as the entity panel's tabs have one.
 
+## Page cards (ADR-023)
+
+- **Paddings and margins.** A pass of its own over the air inside and between
+  page cards, by the owner's eye: the space under a card's opening warning
+  (about 70px from the exposure warning to Access's first web field), the
+  firmware card's gaps on Maintenance, the column heads' air under a card's
+  header, and the action bar strip's inset.
+- **A laned listing behind a control strip.** No page has one; a lane card
+  standing under an action bar would draw its own top edge under the strip's.
+- **An empty page listing.** VPN and Dynamic DNS with nothing in them stand
+  their empty slot loose on the sand rather than in a card.
+
 ## Per-device usage (ADR-018)
 
 - **First Devices visit on the router.** The first history read after the
