@@ -20,11 +20,50 @@ func lanes() *Table {
 	}
 }
 
+// inSection is a listing that is part of a section, not a page's own block.
+func inSection(w Widget) Widget { return &Section{Title: "Rules", Children: []Widget{w}} }
+
+// TestAPagesLanesAreCards: a laned listing that is the page's own block draws
+// each lane as a card (ADR-023): the lane's name, its far end and its tally
+// in the card's header with its add at the end, then its own table repeating
+// the column heads, laid out fixed so every lane's columns line up.
+func TestAPagesLanesAreCards(t *testing.T) {
+	got := render(t, newRenderer(t), &Stack{Children: []Widget{lanes()}})
+	if n := strings.Count(got, "<div data-verso-lane>"); n != 2 {
+		t.Fatalf("want a card per lane, got %d:\n%s", n, got)
+	}
+	if n := strings.Count(got, `class="verso-table w-full table-fixed`); n != 2 {
+		t.Errorf("want a fixed table per lane, got %d:\n%s", n, got)
+	}
+	if n := strings.Count(got, ">Name</th>"); n != 2 {
+		t.Errorf("each lane repeats the column heads, got %d:\n%s", n, got)
+	}
+	if strings.Contains(got, "verso-table-group") {
+		t.Errorf("a lane card's head is its header, not a row:\n%s", got)
+	}
+	first, second := strings.Index(got, "<div data-verso-lane>"), strings.LastIndex(got, "<div data-verso-lane>")
+	for _, want := range []string{"WAN", "Router", "6 rules", `aria-label="Add rule to WAN → Router"`, "Allow-Ping", "Allow-IGMP"} {
+		if at := strings.Index(got[first:second], want); at < 0 {
+			t.Errorf("the first lane's card is missing %q", want)
+		}
+	}
+	if strings.Contains(got[first:second], "Allow-ESP") || !strings.Contains(got[second:], "Allow-ESP") {
+		t.Errorf("a lane's rows stand in its own card:\n%s", got)
+	}
+	if head, table := strings.Index(got[first:], "6 rules"), strings.Index(got[first:], "<table"); head > table {
+		t.Error("the lane's header stands over its table")
+	}
+	// Inside a section a listing keeps its lanes as rows of one table.
+	if inner := render(t, newRenderer(t), inSection(lanes())); strings.Contains(inner, "data-verso-lane>") || strings.Count(inner, "<table") != 1 {
+		t.Errorf("a section's laned listing is split into cards:\n%s", inner)
+	}
+}
+
 // TestLaneIsARowNotABand: a group's head is a row of the listing's own height
 // on the masthead's Quiet Sand between strong hairlines; the air above a
 // later lane stays the page's ground.
 func TestLaneIsARowNotABand(t *testing.T) {
-	got := render(t, newRenderer(t), lanes())
+	got := render(t, newRenderer(t), inSection(lanes()))
 	if strings.Contains(got, `verso-table-group h-13 bg-quiet`) {
 		t.Errorf("a lane is a row, not a band of its own height:\n%s", got)
 	}

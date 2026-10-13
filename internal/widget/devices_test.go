@@ -147,6 +147,12 @@ func TestRenderDevicesUsage(t *testing.T) {
 			t.Errorf("Now draws no meter, found %q", unwanted)
 		}
 	}
+	// The lanes' tables are laid out fixed (ADR-023), so the device's name
+	// keeps what the fixed columns leave: Now holds two rates in 14rem, This
+	// month and Status a word's 9rem.
+	if want := `<col style="width:6rem"><col style="width:12.5rem"><col style="width:14rem"><col style="width:9rem"><col style="width:9rem">`; !strings.Contains(got, want) {
+		t.Errorf("roster's columns want %s in:\n%s", want, got)
+	}
 	// Now's figures are written at 500, a step over the row's words; the
 	// month's total stays at the row's own weight.
 	cell := func(key string) string {

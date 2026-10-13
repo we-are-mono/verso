@@ -220,7 +220,9 @@ func DevicesTable(devices []Device, acts func(d Device) []TableRowAct, usage boo
 
 // devicesColumns is the roster's grid. Every column but the device's own is
 // fixed; with usage on, the MAC gives way to Now, wide enough for two rates
-// each with its unit, and This month.
+// each with its unit, and This month. A page's lanes lay them out fixed
+// (ADR-023), so Now keeps to a name's measure and the device's own column
+// gets the rest.
 func devicesColumns(usage bool) []TableColumn {
 	cols := []TableColumn{
 		{Label: "Device", Kind: "name"},
@@ -229,7 +231,7 @@ func devicesColumns(usage bool) []TableColumn {
 	}
 	if usage {
 		cols = append(cols,
-			TableColumn{Label: "Now", Kind: "figures", Width: MeasureLong},
+			TableColumn{Label: "Now", Kind: "figures", Width: MeasureName},
 			TableColumn{Label: "This month", Kind: "figures", Width: MeasureWord},
 			TableColumn{Label: "Status", Kind: "status", Width: MeasureWord},
 		)

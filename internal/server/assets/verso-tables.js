@@ -10,6 +10,33 @@
 // form listens for it — the form is the truth and the rows follow it, so a
 // discard restores the form and the rows drag themselves back to match.
 
+// A page's laned listing is a card per lane, a table each (ADR-023), so what
+// reads a listing reads every lane's table, through the listing around them.
+
+// versoListingOrder is every draggable row's id across the table's listing, in
+// render order: the file holds one sequence, whichever lane a row was dropped in.
+function versoListingOrder(table) {
+  var scope = table.closest("[data-verso-listing]") || table;
+  return [].map.call(scope.querySelectorAll("tr[data-verso-reorder-row]"), function (row) {
+    return row.dataset.versoReorderId;
+  }).filter(Boolean);
+}
+
+// versoHideEmptyLanes puts away a lane the cut left nothing in, as a lane's
+// band goes with its last row.
+function versoHideEmptyLanes(listing) {
+  [].forEach.call(listing.querySelectorAll("[data-verso-lane]"), function (lane) {
+    lane.hidden = !lane.querySelector("tbody > tr:not([hidden])");
+  });
+}
+
+// versoRefreshParts is what a live listing's refresh swaps: a table's rows, or
+// a laned listing's lanes whole, since their headers count what is in them.
+function versoRefreshParts(inventory, source) {
+  if (inventory.hasAttribute("data-verso-lanes")) return [inventory, source];
+  return [inventory.querySelector("tbody"), source && source.querySelector("tbody")];
+}
+
 // Reorderable table rows. The shell owns the interaction so plugins only declare
 // a reorder column and stable row IDs. Dragging is constrained to the row's
 // evaluation group; the drop changes DOM order and announces the table's whole
@@ -182,9 +209,7 @@
   }
 
   function announceOrder(table, group) {
-    var order = [].map.call(table.querySelectorAll("tr[data-verso-reorder-row]"), function (row) {
-      return row.dataset.versoReorderId;
-    }).filter(Boolean);
+    var order = versoListingOrder(table);
     table.dispatchEvent(new CustomEvent("verso:reorder", {
       bubbles: true,
       detail: { group: group, order: order },
@@ -386,7 +411,7 @@ document.addEventListener(
         if (control) control.classList.remove("verso-filter-out");
       }
     });
-    [].forEach.call(document.querySelectorAll("main section"), function (sec) {
+    [].forEach.call(document.querySelectorAll("main section, main [data-verso-lane]"), function (sec) {
       var rows = sec.querySelectorAll("tbody tr");
       if (!rows.length) return;
       var visible = 0;
@@ -481,7 +506,7 @@ document.addEventListener(
   // Both are a flat run of row elements in render order, which is all the walk
   // below needs.
   var rows = scope.querySelector("[data-verso-console-rows]");
-  var table = rows || scope.querySelector("table");
+  var table = rows || scope.querySelector("[data-verso-listing]") || scope.querySelector("table");
   if (!table) return;
 
   var cut = bar.querySelector("[data-verso-listing-cut]");
@@ -519,7 +544,8 @@ document.addEventListener(
     var tag = cut ? cut.value : "";
     var needle = field ? (field.value || "").trim().toLowerCase() : "";
     var facet = select ? select.value : "";
-    if (table.closest("[data-verso-inventory]")) table.dataset.filtered = String(!!(needle || tag));
+    var tree = table.querySelector && table.querySelector("[data-verso-inventory] table");
+    if (tree) tree.dataset.filtered = String(!!(needle || tag));
 
     var band = null;
     var bandKept = 0;
@@ -555,6 +581,7 @@ document.addEventListener(
       if (keep) { bandKept++; matched++; }
     }
     if (band) band.hidden = bandKept === 0;
+    versoHideEmptyLanes(table);
     var empty = scope.querySelector("[data-verso-listing-empty], [data-verso-stream-empty]");
     if (empty) {
       // The moment the cut leaves nothing is said, since the rows vanish
@@ -737,10 +764,9 @@ document.addEventListener("click", function (event) {
         var response = await fetch(location.pathname + location.search, { credentials: "same-origin", cache: "no-store", headers: { "X-Verso-Refresh": "1" }, signal: controller.signal });
         if (!response.ok) throw new Error("inventory unavailable");
         var doc = versoParse(await response.text());
-        var source = doc.querySelectorAll("[data-verso-inventory], [data-verso-live-table]")[index];
-        var fresh = source && source.querySelector("tbody");
+        var parts = versoRefreshParts(inventory, doc.querySelectorAll("[data-verso-inventory], [data-verso-live-table]")[index]);
+        var current = parts[0], fresh = parts[1];
         if (!fresh || !inventory.isConnected) throw new Error("inventory unavailable");
-        var current = inventory.querySelector("tbody");
         var trigger = current.querySelector('[data-verso-expand-row][aria-expanded="true"]');
         var openID = trigger && trigger.closest("tr").getAttribute("data-verso-row-id");
         var said = versoFactValues(trigger && trigger.closest("tr").nextElementSibling);
@@ -749,6 +775,8 @@ document.addEventListener("click", function (event) {
         var focusedID = focusedRow && focusedRow.getAttribute("data-verso-row-id");
         var focusedLabel = focusedID && focused.getAttribute("aria-label");
         current.replaceChildren(...fresh.childNodes);
+        // Lanes swapped whole bring scrollers of their own to measure.
+        if (window.versoWatchScrollers) window.versoWatchScrollers(inventory);
         if (focusedID && focusedLabel) {
           var replacement = current.querySelector('[data-verso-row-id="' + CSS.escape(focusedID) + '"] [aria-label="' + CSS.escape(focusedLabel) + '"]');
           if (replacement) replacement.focus({ preventScroll: true });
@@ -796,6 +824,7 @@ document.addEventListener("click", function (event) {
     });
   }
   watch(document);
+  window.versoWatchScrollers = watch;
   // A panel or a page part swapped in brings its own tables.
   document.addEventListener("htmx:afterSettle", function (e) {
     if (e.target && e.target.querySelectorAll) watch(e.target);

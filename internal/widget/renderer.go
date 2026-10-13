@@ -148,6 +148,7 @@ func (r *Renderer) RenderWithToken(out io.Writer, w Widget, csrfToken, lang stri
 	// declared it, without each render site remembering to place it first. Whether a
 	// page carries a lens at all is the page's own decision, made before this.
 	w = HoistFilter(w)
+	markPageBlocks(w)
 	if t != nil {
 		translateSchema(w, t)
 	}

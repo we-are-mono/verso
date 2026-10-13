@@ -263,13 +263,27 @@
 /* A page that is one listing is one card with no header: the page's heading
  * names it. Its control band is the card's top strip (actionbar.html.tmpl),
  * so the listing under it drops its top edge and joins it. */
-.verso-page-body > [data-verso-listing],
-.verso-page-body > .verso-stack > [data-verso-listing],
-.verso-page-body > .verso-stack > .verso-stack > [data-verso-listing] {
+.verso-page-body > [data-verso-listing]:not([data-verso-lanes]),
+.verso-page-body > .verso-stack > [data-verso-listing]:not([data-verso-lanes]),
+.verso-page-body > .verso-stack > .verso-stack > [data-verso-listing]:not([data-verso-lanes]) {
   border: 1px solid var(--color-rule-strong);
   border-radius: var(--radius-xs);
   background-color: var(--color-ground);
   padding-top: calc(var(--spacing) * 5);
+}
+/* A laned listing on a page is a card per lane (table.html.tmpl), 20px
+ * apart; the lane's head is the card's header. */
+.verso-page-body [data-verso-lane] {
+  border: 1px solid var(--color-rule-strong);
+  border-radius: var(--radius-xs);
+  background-color: var(--color-ground);
+}
+.verso-page-body [data-verso-lane]:not([hidden]) ~ [data-verso-lane] {
+  margin-top: calc(var(--spacing) * 5);
+}
+/* A row's words start 20px in, as the header's do; a grip keeps its own. */
+.verso-page-body [data-verso-lane] table:not([data-verso-reorder-table]) :is(td, th):first-child {
+  padding-left: calc(var(--spacing) * 5);
 }
 .verso-page-body > .verso-stack > [data-verso-actionbar] + [data-verso-listing],
 .verso-page-body > .verso-stack > [data-verso-actionbar] + .verso-stack > [data-verso-listing]:first-child {

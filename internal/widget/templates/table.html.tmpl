@@ -94,6 +94,35 @@
      visible label leading, so a column of "Revoke" buttons read on their own is
      still a list of different acts. */}}
 {{define "table.rowbtn-name"}}{{if .RowName}} aria-label="{{.Button}} {{.RowName}}"{{end}}{{end}}
+{{/* table.lane-add: a lane's add, given its TableGroup. Adding to this lane
+     opens the panel where the lane is, seeded with the lane's own path — the
+     listing stays put behind it. The link is still a link, so with no script
+     it is followed and the page answers with the panel open on it. */}}
+{{define "table.lane-add"}}{{if and .AddHref .AddPanel}}
+            <span x-data="modal" class="contents">
+              <a href="{{.AddHref}}" @click.prevent="showPanel" aria-label="{{.AddLabel}}" class="{{template "table.laneadd-look" .}}">{{template "table.laneadd-body" .}}</a>
+              {{template "verso-drawer-fetched" ""}}
+            </span>
+            {{else if .AddHref}}<a href="{{.AddHref}}" aria-label="{{.AddLabel}}" class="{{template "table.laneadd-look" .}}">{{template "table.laneadd-body" .}}</a>{{end}}{{end}}
+{{/* table.legend: the marks explained where the marks are: the same dot the
+     rows wear, the plain words for it, and hard right the one caveat about
+     what the listing includes. */}}
+{{define "table.legend"}}{{if or .Legend .Note}}
+  <div data-verso-table-legend class="flex flex-wrap items-center gap-5 pt-5{{if not .Dense}} px-4{{end}}">
+    {{range .Legend}}
+    {{if .Ink}}
+    {{/* an ink explained in the ink itself: the word in the tone's Deep
+         step, as the figures are written, and where it starts and stops. */}}
+    <span class="flex items-center gap-1.5 text-sm whitespace-nowrap"><span class="font-medium {{if eq .Variant "success"}}text-green-deep{{else if eq .Variant "warning"}}text-marigold-deep{{else if eq .Variant "danger"}}text-crimson-deep{{else}}text-ink{{end}}">{{.Label}}</span>{{if .Detail}}<span class="text-meta">{{.Detail}}</span>{{end}}</span>
+    {{else}}
+    <span class="flex items-center gap-2 text-sm whitespace-nowrap text-body">
+      <span class="size-1.5 shrink-0 rounded-[1px] {{if eq .Variant "success"}}bg-green{{else if eq .Variant "warning"}}bg-marigold{{else if eq .Variant "danger"}}bg-crimson{{else if eq .Variant "info"}}bg-denim{{else}}border border-faint{{end}}"></span>{{.Label}}
+    </span>
+    {{end}}
+    {{end}}
+    {{if .Note}}<span class="ml-auto text-sm text-meta">{{.Note}}</span>{{end}}
+  </div>
+{{end}}{{end}}
 {{define "table.rows"}}
       {{range .}}
       {{if .AddLabel}}
@@ -142,16 +171,7 @@
             {{if .Group.Chain}}<span class="font-mono text-base leading-5 font-medium text-meta">{{.Group.Chain}}</span>{{end}}
             {{if .Group.Tally}}<span class="text-faint">·</span><span class="text-meta">{{.Group.Tally}}</span>{{end}}
             <span class="flex-1"></span>
-            {{if and .Group.AddHref .Group.AddPanel}}
-            {{/* Adding to this lane opens the panel where the lane is, seeded
-                 with the lane's own path — the listing stays put behind it. The
-                 link is still a link, so with no script it is followed and the
-                 page answers with the panel open on it. */}}
-            <span x-data="modal" class="contents">
-              <a href="{{.Group.AddHref}}" @click.prevent="showPanel" aria-label="{{.Group.AddLabel}}" class="{{template "table.laneadd-look" .Group}}">{{template "table.laneadd-body" .Group}}</a>
-              {{template "verso-drawer-fetched" ""}}
-            </span>
-            {{else if .Group.AddHref}}<a href="{{.Group.AddHref}}" aria-label="{{.Group.AddLabel}}" class="{{template "table.laneadd-look" .Group}}">{{template "table.laneadd-body" .Group}}</a>{{end}}
+            {{template "table.lane-add" .Group}}
           </span>
         </th>
       </tr>
@@ -192,7 +212,7 @@
              7px over it, 8px under, on the row's middle line: the grip stands on
              a crossing of the notebook's grid. What it gives up on the left it
              keeps on the right, so the column is as wide as ever. */}}
-        <td class="w-6 border-b border-rule pt-1.75 pb-2 pl-1.75! {{if .Dense}}pr-2.25{{else}}pr-4.25{{end}}">
+        <td class="{{if .Dense}}w-8{{else}}w-10{{end}} border-b border-rule pt-1.75 pb-2 pl-1.75! {{if .Dense}}pr-2.25{{else}}pr-4.25{{end}}">
           {{if .Draggable}}
           <button type="button" data-verso-reorder-handle aria-label="{{ t "Reorder" }} {{.RowName}}" aria-keyshortcuts="ArrowUp ArrowDown" title="{{ t "Drag to reorder" }}" class="grid size-6 cursor-grab touch-none place-items-center text-inert transition-colors select-none group-hover:text-glyph active:cursor-grabbing focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-denim">
             {{icon "list-chevrons-up-down" "size-4"}}
@@ -505,7 +525,7 @@
              geometry an endpoint's head starts where the chip's glyph does —
              one hairline and the chip's own inset in — so the word sits over
              the column's ink rather than its border. */}}
-        <th scope="col" class="whitespace-nowrap border-b border-rule-strong pt-0.5 pb-px leading-4 {{if eq .Kind "reorder"}}w-6 pl-1.75! {{if $.Dense}}pr-2.25{{else}}pr-4.25{{end}}{{else}}{{if not $.Dense}}px-3.5{{end}}{{end}} text-xs font-medium tracking-[.08em] text-meta uppercase {{if eq .Kind "rate"}}w-24 min-w-24 max-w-24 text-left{{else if eq .Kind "num"}}text-right{{else if eq .Kind "actions"}}text-right{{else}}text-left{{end}}{{if and $.Dense (eq .Kind "endpoint")}} pl-[0.4375rem]{{end}}">{{.Label}}</th>
+        <th scope="col" class="whitespace-nowrap border-b border-rule-strong pt-0.5 pb-px leading-4 {{if eq .Kind "reorder"}}{{if $.Dense}}w-8{{else}}w-10{{end}} pl-1.75! {{if $.Dense}}pr-2.25{{else}}pr-4.25{{end}}{{else}}{{if not $.Dense}}px-3.5{{end}}{{end}} text-xs font-medium tracking-[.08em] text-meta uppercase {{if eq .Kind "rate"}}w-24 min-w-24 max-w-24 text-left{{else if eq .Kind "num"}}text-right{{else if eq .Kind "actions"}}text-right{{else}}text-left{{end}}{{if and $.Dense (eq .Kind "endpoint")}} pl-[0.4375rem]{{end}}">{{.Label}}</th>
         {{end}}
         {{if .HasDetail}}<th scope="col" class="border-b border-rule-strong"></th>{{end}}
       </tr>
@@ -590,7 +610,38 @@
 {{else}}
 {{/* The listing's frame stands outside its scroller, so the fading edge
      never fades a card's border (sections.css). */}}
-<div data-verso-listing>
+<div data-verso-listing{{if .Lanes}} data-verso-lanes{{if .Live}} data-verso-live-table{{end}}{{end}}>
+{{if .Lanes}}
+{{/* A page's laned listing: each lane a card (ADR-023), its name, far end
+     and chain on the card title's line, its tally and its add at the end,
+     then the lane's own table under the listing's column heads, laid out
+     fixed so every lane's columns line up. Each scrolls on its own. */}}
+  {{if .Live}}<p data-verso-inventory-stale role="status" hidden class="mb-4 text-sm text-marigold-deep">{{t "Live status could not be refreshed. Retrying…"}}</p>{{end}}
+  {{range .Lanes}}
+  <div data-verso-lane>
+    <div data-verso-lane-head class="flex items-center gap-3 border-b border-rule px-5 pt-3.75 pb-3.5 leading-5">
+      <span class="flex items-center gap-2 text-base leading-5 font-semibold tracking-[-0.025em] text-ink">{{.Head.Group.Label}}{{if .Head.Group.To}}<span class="flex text-glyph">{{icon "arrow-right" "size-4"}}</span>{{.Head.Group.To}}{{end}}</span>
+      {{if .Head.Group.Chain}}<span class="font-mono text-base leading-5 font-medium text-meta">{{.Head.Group.Chain}}</span>{{end}}
+      <span class="flex-1"></span>
+      {{if .Head.Group.Tally}}<span class="text-sm text-meta">{{.Head.Group.Tally}}</span>{{end}}
+      <span class="-my-1 flex empty:hidden">{{template "table.lane-add" .Head.Group}}</span>
+    </div>
+    {{if .Rows}}
+    <div data-verso-scroller class="relative overflow-x-auto overflow-y-hidden pt-5 [&_td:first-of-type]:pl-2.75 [&_th:first-of-type]:pl-2.75 [&_td:last-of-type]:pr-4 [&_th:last-of-type]:pr-4 verso-scroll-edge">
+      <table{{if $.Reorderable}} data-verso-reorder-table data-verso-reorder-config="{{$.ReorderConfig}}"{{end}} class="verso-table w-full table-fixed text-sm leading-5">
+        {{if $.HasWidths}}<colgroup>{{range $.Columns}}<col{{if .Width}} style="width:{{.Width.CSS}}"{{end}}>{{end}}{{if $.HasDetail}}<col>{{end}}</colgroup>{{end}}
+        {{if $.HasLabels}}{{template "table.head" $}}{{end}}
+        <tbody>
+{{template "table.rows" .Rows}}
+        </tbody>
+      </table>
+    </div>
+    {{end}}
+  </div>
+  {{end}}
+  {{template "table.legend" .}}
+  <p data-verso-listing-empty hidden class="pt-2.5 pr-4 pb-2.25 pl-5 text-sm leading-5 text-meta">{{t "Nothing matches."}}</p>
+{{else}}
 <div{{if .Live}} data-verso-live-table{{end}} data-verso-scroller class="relative overflow-x-auto overflow-y-hidden [&_td:first-of-type]:pl-2.75 [&_th:first-of-type]:pl-2.75 [&_td:last-of-type]:pr-4 [&_th:last-of-type]:pr-4 verso-scroll-edge">
   {{if .Live}}<p data-verso-inventory-stale role="status" hidden class="mb-4 text-sm text-marigold-deep">{{t "Live status could not be refreshed. Retrying…"}}</p>{{end}}
   {{if .Title}}
@@ -647,27 +698,10 @@
       {{end}}
     </tbody>
   </table>
-  {{if or .Legend .Note}}
-  {{/* The marks explained where the marks are: the same dot the rows wear, the
-       plain words for it, and hard right the one caveat about what the listing
-       includes. */}}
-  <div data-verso-table-legend class="flex flex-wrap items-center gap-5 pt-5{{if not .Dense}} px-4{{end}}">
-    {{range .Legend}}
-    {{if .Ink}}
-    {{/* an ink explained in the ink itself: the word in the tone's Deep
-         step, as the figures are written, and where it starts and stops. */}}
-    <span class="flex items-center gap-1.5 text-sm whitespace-nowrap"><span class="font-medium {{if eq .Variant "success"}}text-green-deep{{else if eq .Variant "warning"}}text-marigold-deep{{else if eq .Variant "danger"}}text-crimson-deep{{else}}text-ink{{end}}">{{.Label}}</span>{{if .Detail}}<span class="text-meta">{{.Detail}}</span>{{end}}</span>
-    {{else}}
-    <span class="flex items-center gap-2 text-sm whitespace-nowrap text-body">
-      <span class="size-1.5 shrink-0 rounded-[1px] {{if eq .Variant "success"}}bg-green{{else if eq .Variant "warning"}}bg-marigold{{else if eq .Variant "danger"}}bg-crimson{{else if eq .Variant "info"}}bg-denim{{else}}border border-faint{{end}}"></span>{{.Label}}
-    </span>
-    {{end}}
-    {{end}}
-    {{if .Note}}<span class="ml-auto text-sm text-meta">{{.Note}}</span>{{end}}
-  </div>
-  {{end}}
+  {{template "table.legend" .}}
   <p data-verso-listing-empty hidden class="border-b border-rule pt-2.5 pr-4 pb-2.25 pl-2.75 text-sm leading-5 text-meta">{{t "Nothing matches."}}</p>
 </div>
+{{end}}
 </div>
 {{end}}
 {{end}}

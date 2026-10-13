@@ -260,8 +260,10 @@ func TestRenderTableWithoutReorderCarriesNoOrderForm(t *testing.T) {
 // as wide and every column after it stays where it was.
 func TestTheGripStandsOnAGridCrossing(t *testing.T) {
 	for dense, want := range map[bool]string{
-		true:  `<td class="w-6 border-b border-rule pt-1.75 pb-2 pl-1.75! pr-2.25">`,
-		false: `<td class="w-6 border-b border-rule pt-1.75 pb-2 pl-1.75! pr-4.25">`,
+		// the column is its padding and the 16px grip whole, so a fixed
+		// layout (a page's lanes) keeps the grip in it
+		true:  `<td class="w-8 border-b border-rule pt-1.75 pb-2 pl-1.75! pr-2.25">`,
+		false: `<td class="w-10 border-b border-rule pt-1.75 pb-2 pl-1.75! pr-4.25">`,
 	} {
 		got := render(t, newRenderer(t), &Table{
 			Dense:   dense,
@@ -271,7 +273,7 @@ func TestTheGripStandsOnAGridCrossing(t *testing.T) {
 		if !strings.Contains(got, want) {
 			t.Errorf("dense=%v: the grip is not on a crossing, want %s in:\n%s", dense, want, got)
 		}
-		head := map[bool]string{true: "w-6 pl-1.75! pr-2.25", false: "w-6 pl-1.75! pr-4.25"}[dense]
+		head := map[bool]string{true: "w-8 pl-1.75! pr-2.25", false: "w-10 pl-1.75! pr-4.25"}[dense]
 		if !strings.Contains(got, head) {
 			t.Errorf("dense=%v: the grip's head keeps the column's width, want %s in:\n%s", dense, head, got)
 		}
@@ -298,7 +300,7 @@ func TestRenderReorderColumnWithoutConfigDrawsNoHandle(t *testing.T) {
 			t.Errorf("table with no reorder_config still carries %q:\n%s", unwanted, got)
 		}
 	}
-	if !strings.Contains(got, `class="w-6 border-b border-rule`) {
+	if !strings.Contains(got, `class="w-10 border-b border-rule`) {
 		t.Errorf("the reorder column should keep its slot:\n%s", got)
 	}
 }
@@ -324,14 +326,15 @@ func TestDecodeTableReorderConfig(t *testing.T) {
 
 func TestRenderTableGroupHeader(t *testing.T) {
 	r := newRenderer(t)
-	got := render(t, r, &Table{
+	// In a section, where a lane stays a row (a page's own lanes are cards).
+	got := render(t, r, inSection(&Table{
 		ReorderConfig: "firewall",
 		Columns:       []TableColumn{{Kind: "reorder"}, {Label: "From", Kind: "endpoint"}},
 		Rows: []TableRow{{ID: "allow-dns", Group: &TableGroup{
 			Key: "input_guest", Label: "Guest", To: "Router", Tally: "3 rules",
 			AddLabel: "Add rule to Guest → Router", AddHref: "/x?open=new&src=guest",
 		}, Cells: []TableCell{{}, {Endpoints: []TableEndpoint{{Kind: "zone", Label: "guest"}}}}}},
-	})
+	}))
 	for _, want := range []string{
 		`colspan="2"`,
 		// The lane by its two ends, the arrow between them a glyph, then what

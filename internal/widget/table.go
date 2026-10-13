@@ -124,6 +124,49 @@ type Table struct {
 	// URL policy like every plugin link.
 	AddLabel string `json:"add_label,omitempty"`
 	AddHref  string `json:"add_href,omitempty"`
+
+	// pageBlock marks the listing as one of the page's own blocks rather than
+	// part of a section or a drawer (markPageBlocks); its lanes are cards.
+	pageBlock bool
+}
+
+// markPageBlocks marks the listings that stand on the page itself, reached
+// through stacks alone (ADR-023).
+func markPageBlocks(w Widget) {
+	switch n := w.(type) {
+	case *Table:
+		n.pageBlock = true
+	case *Stack:
+		for _, c := range n.Children {
+			markPageBlocks(c)
+		}
+	case *headed:
+		markPageBlocks(&n.Stack)
+	}
+}
+
+// tableLaneView is one lane of a page's listing, drawn as a card: its head is
+// the card's header, its rows the card's own table.
+type tableLaneView struct {
+	Head tableRowView
+	Rows []tableRowView
+}
+
+// cardLanes splits a page listing's rows into its lanes, each opening on its
+// group's row; that row keeps its cells but no longer draws the band.
+func cardLanes(rows []tableRowView) []tableLaneView {
+	var lanes []tableLaneView
+	for _, row := range rows {
+		if row.Group != nil {
+			lanes = append(lanes, tableLaneView{Head: row})
+			if row.BandOnly {
+				continue
+			}
+			row.Group = nil
+		}
+		lanes[len(lanes)-1].Rows = append(lanes[len(lanes)-1].Rows, row)
+	}
+	return lanes
 }
 
 // The form fields the shell's reorder interaction posts, and that the gateway
@@ -663,6 +706,9 @@ type tableView struct {
 	Rows        []tableRowView
 	SeamSummary string
 	SeamRows    []tableRowView
+	// Lanes is the page listing's rows split by lane, a card each; nil
+	// draws the listing as one table with its lanes as rows.
+	Lanes []tableLaneView
 }
 
 // tableFacetView is one key/value the client narrows by, flattened for the
@@ -1093,6 +1139,12 @@ func (t *Table) view(r *Renderer, csrf string) (tableView, error) {
 	}
 	if v.Reorderable {
 		v.ReorderIDs = reorderIDs(v.Rows, v.SeamRows)
+	}
+	// ponytail: a listing with a seam or a title keeps one table; no page
+	// lists lanes with either.
+	if t.pageBlock && !empty && !v.EmptyUnderBand && v.Style == "" && v.Title == "" && t.Seam == nil &&
+		len(v.Rows) > 0 && v.Rows[0].Group != nil {
+		v.Lanes = cardLanes(v.Rows)
 	}
 	return v, nil
 }
