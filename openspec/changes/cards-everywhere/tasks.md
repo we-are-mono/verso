@@ -23,7 +23,7 @@ Code follows the ponytail rule: the smallest complete change. Reuse the markup t
 - [x] 3.2 Write a failing test in `internal/widget/lane_test.go`: a laned table renders one `<table>` per lane, each with the listing's `colgroup` and `thead`, the lane's label, detail, tally and add act in that card's header. Then change `table.html.tmpl`, with `table-layout: fixed` on laned listings.
 - [x] 3.3 Add `scripts/listing-lanes.test.cjs` (in the style of `overview-layout.test.cjs`) covering the filter walking rows across every table of a listing and the live inventory refresh replacing each lane's `tbody`. Then update the four single-table assumptions in `verso-tables.js` (filter walk, scope `querySelector("table")`, inventory refresh, scroll edges) until it passes.
 - [x] 3.4 Set Devices' column widths for fixed layout (Now 14rem, This month and Status the 9rem word measure, the set having no 8rem step) in `internal/widget/devices.go`, with `devices_test.go` asserting the colgroup. Check every other laned listing (Firewall rules, Port forwards, Zones, routes) in the dev container for a truncated first column, and adjust its widths the same way.
-- [ ] 3.5 Update DESIGN.md's Control Band and Tables sections (lanes as cards, the control strip, rows to the card's edges, the last row's hairline given to the frame).
+- [x] 3.5 Update DESIGN.md's Control Band and Tables sections (lanes as cards, the control strip, rows to the card's edges, the last row's hairline given to the frame).
 
 ## 4. Decision records and backlog
 
