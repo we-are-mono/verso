@@ -32,7 +32,7 @@ Code follows the ponytail rule: the smallest complete change. Reuse the markup t
 
 ## 5. Integration check
 
-- [ ] 5.1 With `make dev` running, open every page in the nav at 1600px and 390px. Check that there is no grid, no masthead bar, one card per section or lane, no card inside a card, that tables scroll inside their card on a phone, that drawers are unchanged, and that Logs, Firewall › Activity and Diagnostics look exactly as before (compare with screenshots taken before group 1). `make lint` and `make test` are green.
+- [x] 5.1 With `make dev` running, open every page in the nav at 1600px and 390px. Check that there is no grid, no masthead bar, one card per section or lane, no card inside a card, that tables scroll inside their card on a phone, that drawers are unchanged, and that Logs, Firewall › Activity and Diagnostics look exactly as before (compare with screenshots taken before group 1). `make lint` and `make test` are green.
 
 ## Workflow follow-up
 

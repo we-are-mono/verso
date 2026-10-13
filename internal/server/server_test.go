@@ -2730,7 +2730,9 @@ func TestAPageStandsOnSandUnderItsHeadingLine(t *testing.T) {
 	if !strings.Contains(body, `<div class="flex-1 bg-quiet">`) || strings.Contains(body, "verso-notebook") {
 		t.Errorf("the page does not stand on the sand without the grid:\n%s", body)
 	}
-	if !strings.Contains(body, `<div class="px-10 pb-10">`) {
+	// The frame's side air is the Overview's: a cell on a phone, two from md,
+	// so a card's own inset still leaves its content room.
+	if !strings.Contains(body, `<div class="px-5 pb-10 md:px-10">`) {
 		t.Errorf("the heading line meets the top bar, with no air of the frame's above it:\n%s", body)
 	}
 	if !strings.Contains(body, `<div data-verso-masthead class="py-6.5">`) {

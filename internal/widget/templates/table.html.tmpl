@@ -620,15 +620,17 @@
   {{range .Lanes}}
   <div data-verso-lane>
     <div data-verso-lane-head class="flex items-center gap-3 border-b border-rule px-5 pt-3.75 pb-3.5 leading-5">
-      <span class="flex items-center gap-2 text-base leading-5 font-semibold tracking-[-0.025em] text-ink">{{.Head.Group.Label}}{{if .Head.Group.To}}<span class="flex text-glyph">{{icon "arrow-right" "size-4"}}</span>{{.Head.Group.To}}{{end}}</span>
-      {{if .Head.Group.Chain}}<span class="font-mono text-base leading-5 font-medium text-meta">{{.Head.Group.Chain}}</span>{{end}}
+      {{/* On a phone the chain and the tally give way first, then the name
+           is cut short; the add keeps its place. */}}
+      <span class="min-w-0 truncate text-base leading-5 font-semibold tracking-[-0.025em] text-ink">{{.Head.Group.Label}}{{if .Head.Group.To}}<span class="mx-2 inline-flex align-[-0.125rem] text-glyph">{{icon "arrow-right" "size-4"}}</span>{{.Head.Group.To}}{{end}}</span>
+      {{if .Head.Group.Chain}}<span class="font-mono text-base leading-5 font-medium whitespace-nowrap text-meta max-sm:hidden">{{.Head.Group.Chain}}</span>{{end}}
       <span class="flex-1"></span>
-      {{if .Head.Group.Tally}}<span class="text-sm text-meta">{{.Head.Group.Tally}}</span>{{end}}
-      <span class="-my-1 flex empty:hidden">{{template "table.lane-add" .Head.Group}}</span>
+      {{if .Head.Group.Tally}}<span class="text-sm whitespace-nowrap text-meta max-sm:hidden">{{.Head.Group.Tally}}</span>{{end}}
+      <span class="-my-1 flex shrink-0 empty:hidden">{{template "table.lane-add" .Head.Group}}</span>
     </div>
     {{if .Rows}}
     <div data-verso-scroller class="relative overflow-x-auto overflow-y-hidden pt-5 [&_td:first-of-type]:pl-2.75 [&_th:first-of-type]:pl-2.75 [&_td:last-of-type]:pr-4 [&_th:last-of-type]:pr-4 verso-scroll-edge">
-      <table{{if $.Reorderable}} data-verso-reorder-table data-verso-reorder-config="{{$.ReorderConfig}}"{{end}} class="verso-table w-full table-fixed text-sm leading-5">
+      <table{{if $.Reorderable}} data-verso-reorder-table data-verso-reorder-config="{{$.ReorderConfig}}"{{end}} class="verso-table w-full table-fixed text-sm leading-5" style="min-width:{{$.LaneMinWidth}}">
         {{if $.HasWidths}}<colgroup>{{range $.Columns}}<col{{if .Width}} style="width:{{.Width.CSS}}"{{end}}>{{end}}{{if $.HasDetail}}<col>{{end}}</colgroup>{{end}}
         {{if $.HasLabels}}{{template "table.head" $}}{{end}}
         <tbody>

@@ -53,6 +53,17 @@ func TestAPagesLanesAreCards(t *testing.T) {
 	if head, table := strings.Index(got[first:], "6 rules"), strings.Index(got[first:], "<table"); head > table {
 		t.Error("the lane's header stands over its table")
 	}
+	// A fixed layout gives a growing column only what the fixed ones leave,
+	// so the lane's table is never narrower than its measures and a name's
+	// room: a narrow window scrolls the card rather than crushing the name.
+	measured := lanes()
+	measured.Columns = append(measured.Columns, TableColumn{Label: "Port", Width: MeasureShort})
+	for i := range measured.Rows {
+		measured.Rows[i].Cells = append(measured.Rows[i].Cells, TableCell{Text: "22"})
+	}
+	if out := render(t, newRenderer(t), &Stack{Children: []Widget{measured}}); !strings.Contains(out, `style="min-width:calc(12rem &#43; 6rem)"`) {
+		t.Errorf("a lane's table has no floor under its columns:\n%s", out)
+	}
 	// Inside a section a listing keeps its lanes as rows of one table.
 	if inner := render(t, newRenderer(t), inSection(lanes())); strings.Contains(inner, "data-verso-lane>") || strings.Count(inner, "<table") != 1 {
 		t.Errorf("a section's laned listing is split into cards:\n%s", inner)

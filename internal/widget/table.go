@@ -152,6 +152,28 @@ type tableLaneView struct {
 	Rows []tableRowView
 }
 
+// laneMinWidth is the floor under a lane's fixed layout: every column's
+// measure, a growing one counted at a name's room and the grip at its own,
+// so a narrow window scrolls the card rather than crushing a column to
+// nothing.
+func laneMinWidth(cols []TableColumn, hasDetail bool) string {
+	parts := make([]string, 0, len(cols)+1)
+	for _, c := range cols {
+		switch {
+		case c.Width != MeasureGrow:
+			parts = append(parts, c.Width.CSS())
+		case c.Kind == "reorder":
+			parts = append(parts, "2.5rem")
+		default:
+			parts = append(parts, "12rem")
+		}
+	}
+	if hasDetail {
+		parts = append(parts, MeasureShort.CSS())
+	}
+	return "calc(" + strings.Join(parts, " + ") + ")"
+}
+
 // cardLanes splits a page listing's rows into its lanes, each opening on its
 // group's row; that row keeps its cells but no longer draws the band.
 func cardLanes(rows []tableRowView) []tableLaneView {
@@ -709,6 +731,8 @@ type tableView struct {
 	// Lanes is the page listing's rows split by lane, a card each; nil
 	// draws the listing as one table with its lanes as rows.
 	Lanes []tableLaneView
+	// LaneMinWidth is the floor under every lane's fixed layout.
+	LaneMinWidth template.CSS
 }
 
 // tableFacetView is one key/value the client narrows by, flattened for the
@@ -1145,6 +1169,7 @@ func (t *Table) view(r *Renderer, csrf string) (tableView, error) {
 	if t.pageBlock && !empty && !v.EmptyUnderBand && v.Style == "" && v.Title == "" && t.Seam == nil &&
 		len(v.Rows) > 0 && v.Rows[0].Group != nil {
 		v.Lanes = cardLanes(v.Rows)
+		v.LaneMinWidth = template.CSS(laneMinWidth(t.Columns, v.HasDetail)) //nolint:gosec // built from the closed measure set
 	}
 	return v, nil
 }

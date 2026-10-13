@@ -134,8 +134,14 @@ func TestMeterCompactNoTrack(t *testing.T) {
 	}
 	// Where the track would be, the reason there is none reads at the row's
 	// 14px, led by the hollow square: a state with no hue of its own.
-	if !strings.Contains(got, `<span class="flex items-center gap-2 text-sm text-meta"><span class="size-1.5 shrink-0 rounded-[1px] border border-faint" aria-hidden="true"></span>no limits reported</span>`) {
+	if !strings.Contains(got, `<span class="flex min-w-0 items-center gap-2 text-sm text-meta"><span class="size-1.5 shrink-0 rounded-[1px] border border-faint" aria-hidden="true"></span><span class="truncate">no limits reported</span></span>`) {
 		t.Errorf("the missing track is not said at 14px behind a hollow square:\n%s", got)
+	}
+	// In a page card on a phone the row keeps to the card: the name's column
+	// narrows and the track's gives way, its words cut short rather than
+	// pushing the page wider (ADR-023).
+	if !strings.Contains(got, `grid-cols-[7rem_minmax(0,1fr)_6.5rem] sm:grid-cols-[9.5rem_minmax(0,1fr)_6.5rem]`) {
+		t.Errorf("the reading's row does not fit a phone's card:\n%s", got)
 	}
 }
 

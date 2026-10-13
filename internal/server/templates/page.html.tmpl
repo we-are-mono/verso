@@ -137,11 +137,12 @@
          masthead is the light bar, its title's line 16px inside it at top and
          bottom, ending on a hairline as far as the page's gutter keeps it
          from the rail (input.css). The frame's bottom padding becomes the
-         natural gap before the footer.
+         natural gap before the footer. On a phone a card page keeps the
+         Overview's one cell of side air, since a card adds its own inset.
          A full page keeps the side air for its masthead but never the bottom:
          what is below the masthead runs to the edge. Home's display verdict
          keeps the full 40px, as far from the top as from the left. */}}
-    <div class="{{if eq .Width "full"}}flex min-h-0 flex-1 flex-col px-10{{else if .Overview}}px-5 pt-10 pb-20 md:px-10{{else}}px-10 pb-10{{end}}">
+    <div class="{{if eq .Width "full"}}flex min-h-0 flex-1 flex-col px-10{{else if .Overview}}px-5 pt-10 pb-20 md:px-10{{else if .Light}}px-10 pb-10{{else}}px-5 pb-10 md:px-10{{end}}">
     <div data-verso-column class="{{if eq .Width "full"}}verso-page-full{{else if eq .Width "form"}}max-w-form{{else if eq .Width "narrow"}}max-w-4xl{{else if eq .Width "wide"}}max-w-6xl{{else}}max-w-5xl{{end}}">
     {{if .Heading}}
     {{/* Whatever measure the column keeps, the stylesheet ends the masthead's
