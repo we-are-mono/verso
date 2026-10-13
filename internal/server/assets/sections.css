@@ -269,7 +269,6 @@
   border: 1px solid var(--color-rule-strong);
   border-radius: var(--radius-xs);
   background-color: var(--color-ground);
-  padding-top: calc(var(--spacing) * 5);
 }
 /* A laned listing on a page is a card per lane (table.html.tmpl), 20px
  * apart; the lane's head is the card's header. */
@@ -300,6 +299,42 @@
 /* A listing's legend in a card keeps the card's inset and closes it. */
 .verso-page-body [data-verso-listing]:not(dialog *) [data-verso-table-legend] {
   padding: calc(var(--spacing) * 5);
+}
+/* A listing's column heads in a card are a strip of Quiet Sand across the
+ * card, between hairlines, the heads in Ink sentence case: the strip divides
+ * the card's header from its rows, so neither draws a rule or air of its own
+ * against it. Where the strip opens the card (an untitled card, or under its
+ * control band) the frame or the band's hairline is its top edge. */
+.verso-page-body :is([data-verso-lane], section[data-verso-section]:not(section section) > .verso-rhythm > [data-verso-listing], .verso-page-body > [data-verso-listing], .verso-page-body > .verso-stack > [data-verso-listing], .verso-page-body > .verso-stack > .verso-stack > [data-verso-listing]) > [data-verso-scroller] > table > thead > tr > th:not(dialog *) {
+  border-top: 1px solid var(--color-rule);
+  border-bottom: 1px solid var(--color-rule);
+  background-color: var(--color-quiet);
+  padding-block: calc(var(--spacing) * 2) calc(var(--spacing) * 1.75);
+  font-size: var(--text-sm);
+  line-height: calc(var(--spacing) * 4);
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--color-ink);
+}
+.verso-page-body [data-verso-lane] > [data-verso-lane-head] {
+  border-bottom-width: 0;
+}
+.verso-page-body [data-verso-lane] > [data-verso-scroller] {
+  padding-top: 0;
+}
+.verso-page-body section[data-verso-section]:not(section section, dialog *) > [data-verso-section-band]:not(:has([data-verso-section-lede])):has(+ .verso-rhythm > [data-verso-listing]:first-child) {
+  border-bottom-width: 0;
+}
+.verso-page-body section[data-verso-section]:not(section section, dialog *) > [data-verso-section-band]:not(:has([data-verso-section-lede])) + .verso-rhythm > [data-verso-listing]:first-child {
+  margin-top: 0;
+}
+.verso-page-body section[data-verso-section][data-verso-headless][data-verso-ruled]:has(> .verso-rhythm > [data-verso-listing]:first-child):not(section section, dialog *) {
+  padding-top: 0;
+}
+.verso-page-body section[data-verso-section][data-verso-headless][data-verso-ruled]:not(section section, dialog *) > .verso-rhythm > [data-verso-listing]:first-child > [data-verso-scroller] > table > thead > tr > th,
+:is(.verso-page-body > [data-verso-listing], .verso-page-body > .verso-stack > [data-verso-listing], .verso-page-body > .verso-stack > .verso-stack > [data-verso-listing]) > [data-verso-scroller] > table > thead > tr > th {
+  border-top-width: 0;
 }
 /* A framed box in a card (a certificate) gives up its frame and fill: no card
  * holds a card. Its name and sentence stay where they stand. */
