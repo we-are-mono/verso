@@ -9,17 +9,19 @@ import (
 )
 
 // TestPortsSayTheirState: a port's link state is drawn as LED colour, so each
-// port also carries it in words. Both words are present and CSS keeps the one
-// that matches the port's live class, so a stream that relinks the port changes
-// what is read without touching the markup.
+// port also says it in words: its name, its link and its speed, as the label a
+// keyboard or screen reader reaches it by. The panel carries both link words in
+// the reader's language, so a stream that relinks the port relabels it too.
 func TestPortsSayTheirState(t *testing.T) {
 	got := render(t, newRenderer(t), &Ports{Items: []PortItem{
-		{Kind: "rj45", Label: "Network 1", Linked: true, Iface: "eth0"},
+		{Kind: "rj45", Label: "Network 1", Linked: true, Iface: "eth0", Speed: "1G"},
+		{Kind: "rj45", Label: "Network 2", Iface: "eth1", Speed: "—"},
 	}})
 	for _, want := range []string{
-		`role="group" aria-label="Network 1"`,
-		`<span class="verso-port-state-on sr-only">Connected</span>`,
-		`<span class="verso-port-state-off sr-only">Not connected</span>`,
+		`tabindex="0" role="img" aria-label="Network 1, Connected, 1G"`,
+		`tabindex="0" role="img" aria-label="Network 2, Not connected"`,
+		// The words a stream relabels a port with, in the reader's language.
+		`data-verso-word-on="Connected"`, `data-verso-word-off="Not connected"`,
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("port missing %q:\n%s", want, got)

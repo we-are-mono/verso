@@ -17,9 +17,9 @@ func TestRenderPorts(t *testing.T) {
 	for _, want := range []string{
 		"Mono Gateway", "verso-ports--emerald",
 		"Network 1", "Internet",
-		"verso-port-jack", "verso-port-cage", // both connector kinds drawn
-		"is-linked", "is-empty", "is-wan",
-		"eth0", "PPPoE", // hover detail
+		"verso-port-pins", "verso-port-socket", // both connector kinds drawn
+		"is-linked", "is-wan",
+		`data-verso-port-tip="eth0"`, "192.168.1.1", "PPPoE", // hover detail
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("ports missing %q:\n%s", want, got)
@@ -72,20 +72,20 @@ func TestDecodePorts(t *testing.T) {
 		t.Fatalf("decode ports: %v", err)
 	}
 	got := render(t, r, w)
-	for _, want := range []string{"D", "verso-ports--violet", "Internet", "verso-port-cage", "is-linked", "is-wan", "PPPoE"} {
+	for _, want := range []string{"D", "verso-ports--violet", "Internet", "verso-port-socket", "is-linked", "is-wan", "PPPoE", ">10 Gbps</text>"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("decoded ports missing %q:\n%s", want, got)
 		}
 	}
 }
 
-// TestPortsLiveHooks: a port with an Iface carries the handle and the tip's
-// addr/link slots the overview stream updates in place — rendered even while
-// empty, so a later reading has a place to land.
+// TestPortsLiveHooks: a port with an Iface carries the handle, its speed slot
+// and its detail's addr/link slots the overview stream updates in place —
+// rendered even while empty, so a later reading has a place to land.
 func TestPortsLiveHooks(t *testing.T) {
 	r := newRenderer(t)
 	got := render(t, r, &Ports{Items: []PortItem{{Kind: "rj45", Label: "Internet", Role: "wan", Iface: "wan0"}}})
-	for _, want := range []string{`data-verso-port="wan0"`, "data-verso-port-addr", "data-verso-port-link", "verso-port-speed"} {
+	for _, want := range []string{`data-verso-port="wan0"`, `data-verso-port-tip="wan0"`, "data-verso-port-addr", "data-verso-port-link", "data-verso-port-speed"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("live port missing %q:\n%s", want, got)
 		}
@@ -118,8 +118,8 @@ func TestPortsPanelArt(t *testing.T) {
 	})
 	for _, want := range []string{
 		"verso-panel-art",
-		`data-verso-port="eth0" class="port is-linked is-active"`, // link + traffic tagged
-		`data-verso-port="eth3" class="port is-linked is-wan"`,    // link + WAN role tagged
+		`data-verso-port="eth0" class="port is-linked act-2"`,        // link + traffic tagged
+		`data-verso-port="eth3" class="port is-linked act-0 is-wan"`, // link + WAN role tagged
 		"led-link", // the art's own live layer survives intact
 	} {
 		if !strings.Contains(got, want) {
@@ -132,15 +132,47 @@ func TestPortsPanelArt(t *testing.T) {
 	}
 }
 
-// TestPortsGeneratedStripFallback: with no panel art, the generated connector
-// strip is still drawn.
-func TestPortsGeneratedStripFallback(t *testing.T) {
+// TestPortsActivityLevel: a port's traffic LED shows the level the shell
+// measured; a plugin that sends only the boolean active keeps a steady blink,
+// and a level wins when both arrive. Each lit port also carries the phase its
+// blink starts at, the same on every render.
+func TestPortsActivityLevel(t *testing.T) {
 	r := newRenderer(t)
-	got := render(t, r, &Ports{Items: []PortItem{{Kind: "rj45", Label: "eth0", Iface: "eth0", Linked: true}}})
-	if !strings.Contains(got, "verso-ports-chassis") {
-		t.Errorf("a board with no panel art falls back to the strip:\n%s", got)
+	back := `<svg viewBox="0 0 100 40"><g data-verso-port="a" class="port"></g><g data-verso-port="b" class="port"></g><g data-verso-port="c" class="port"></g></svg>`
+	got := render(t, r, &Ports{Back: back, Items: []PortItem{
+		{Iface: "a", Activity: 3, Active: true}, {Iface: "b", Active: true}, {Iface: "c"},
+	}})
+	for _, want := range []string{
+		`data-verso-port="a" class="port act-3" style="--led-phase: ` + phaseText("a") + `" tabindex="0"`,
+		`data-verso-port="b" class="port act-2"`,
+		`data-verso-port="c" class="port act-0"`,
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("activity missing %q:\n%s", want, got)
+		}
 	}
-	if strings.Contains(got, "verso-panel-art") {
-		t.Errorf("no panel art means no panel container:\n%s", got)
+	if strings.Contains(got, "is-active") {
+		t.Errorf("the boolean class is gone; the level carries traffic:\n%s", got)
+	}
+
+	w, err := Decode([]byte(`{"type":"ports","ports":[{"kind":"rj45","label":"x","iface":"a","active":true}]}`))
+	if err != nil {
+		t.Fatalf("decode ports: %v", err)
+	}
+	ports := w.(*Ports)
+	ports.Back = back
+	if got := render(t, r, ports); !strings.Contains(got, `data-verso-port="a" class="port act-2"`) {
+		t.Errorf("a plugin's boolean active should read as a steady blink:\n%s", got)
+	}
+}
+
+// TestPortsArtSizesFromItsViewBox: a panel's own size reaches the stylesheet,
+// which draws it at that size where it fits and shrinks it in whole 8px steps
+// where it does not.
+func TestPortsArtSizesFromItsViewBox(t *testing.T) {
+	r := newRenderer(t)
+	got := render(t, r, &Ports{Back: `<svg viewBox="0 0 504 136"></svg>`, Items: []PortItem{{Iface: "eth0"}}})
+	if !strings.Contains(got, `style="--art-h: 136px; --art-aspect: 0.2698412698412698"`) {
+		t.Errorf("panel face should carry its native height and aspect:\n%s", got)
 	}
 }
