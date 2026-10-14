@@ -299,14 +299,15 @@
 .verso-page-body [data-verso-listing]:not(dialog *) [data-verso-table-legend] {
   padding: var(--spacing-inset);
 }
-/* A page's own listing is the card, so its legend follows it: 16px under the
- * frame, its 24px line closing on the grid, its words in line with the card's edges, the stack's air after it. */
+/* A page's own listing is the card, so its legend follows it close, as a
+ * caption does: 8px under the frame, its 24px lines closing on the grid, its
+ * words in line with the card's edges, the stack's air after it. */
 .verso-page-body [data-verso-listing]:has(+ [data-verso-table-legend]) {
   margin-bottom: 0;
 }
 .verso-page-body [data-verso-listing] + [data-verso-table-legend] {
   margin-top: 0;
-  padding: calc(var(--spacing) * 4) 0 0;
+  padding: calc(var(--spacing) * 2) 0 0;
 }
 /* A listing's column heads in a card are a row of the card's own Paper across
  * it, between hairlines, the heads in Ink sentence case: the row divides the
