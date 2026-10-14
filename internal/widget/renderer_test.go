@@ -580,7 +580,7 @@ func TestRenderConfirm(t *testing.T) {
 		"border-crimson-line bg-crimson-soft", "text-crimson-deep", "size-1.5 flex-none\n    bg-crimson",
 		// The question is the compact callout in the act's tone: a row's
 		// height for a line, its words 10px inside.
-		`<div data-verso-callout class="flex w-full max-w-(--container-3xl) items-start gap-2 rounded-xs border px-3 py-1.75`,
+		`<div data-verso-callout class="flex w-full max-w-(--container-3xl) items-start gap-2 rounded-xs border px-3 pt-1.75 pb-2`,
 		// The answers are the band's acts, on the line a cell under the words;
 		// cancel keeps the explanation's tone and hovers by a soft wash, not a
 		// heavy colour darken.
@@ -671,7 +671,7 @@ func TestRenderCallout(t *testing.T) {
 	// centre, framed one step darker than its ground as every band is, without
 	// the standing band's padding.
 	compact := render(t, r, &Callout{Compact: true, Body: "A short note."})
-	for _, want := range []string{"items-start", "gap-2", "px-3", "py-1.75", "border-denim-line", "mt-[0.5625rem] size-1.5", "bg-denim", "A short note."} {
+	for _, want := range []string{"items-start", "gap-2", "px-3", "pt-1.75 pb-2", "border-denim-line", "mt-[0.5625rem] size-1.5", "bg-denim", "A short note."} {
 		if !strings.Contains(compact, want) {
 			t.Errorf("compact callout missing %q in: %s", want, compact)
 		}

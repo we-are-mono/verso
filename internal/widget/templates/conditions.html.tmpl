@@ -37,8 +37,9 @@
        slot where the first would stand, at the form's measure. The script
        brings it back when the last condition goes, so it is hidden by the
        attribute rather than a class a display utility could outrank. The act
-       stands a cell under the slot, as it does under every set's. */}}
-  <div data-verso-condition-empty data-verso-slot{{if .Active}} hidden{{end}} class="{{template "verso-empty-slot-class"}} max-w-form mb-0">
+       stands a cell under the slot, as it does under every set's, and the
+       slot gives its bottom border's pixel back as every slot does. */}}
+  <div data-verso-condition-empty data-verso-slot{{if .Active}} hidden{{end}} class="{{template "verso-empty-slot-class"}} max-w-form -mb-px">
     {{template "verso-empty-slot-body" (t "No additional conditions. All traffic matching the path and protocol above is included.")}}
   </div>
   {{/* The way in is the act a set adds from, its 28px 24px under the slot and

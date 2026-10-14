@@ -46,9 +46,10 @@
      the set's empty words in Meta. Every set draws its empty state this way (a
      collection's keys, a rule's conditions); the element and its attributes
      stay at the call site, and the add stands 24px under it. On the grid its
-     frame's top border is a line and it is a row's 40px, its words 7px
-     inside the frame above and below, filling a band of the grid. */}}
-{{define "verso-empty-slot-class"}}flex w-full items-center gap-3 rounded-xs border border-dashed border-rule-strong bg-quiet px-4 py-1.75 leading-6{{end}}
+     frame's borders are lines and it is a row's 40px with the bottom
+     border's pixel given back, its words 7px after the top border and 8px
+     over the bottom one, filling a band of the grid. */}}
+{{define "verso-empty-slot-class"}}flex w-full items-center gap-3 rounded-xs border border-dashed border-rule-strong bg-quiet px-4 pt-1.75 pb-2 leading-6{{end}}
 {{define "verso-empty-slot-body"}}<span aria-hidden="true" class="size-1.5 shrink-0 rounded-[1px] border border-faint"></span>
     <p class="min-w-0 flex-1 text-sm leading-6 text-meta">{{.}}</p>{{end}}
 

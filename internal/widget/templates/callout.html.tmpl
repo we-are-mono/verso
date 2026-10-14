@@ -13,10 +13,11 @@
      it just did; the full form is the standing block a page leads with, where
      the tone's hairline frames it instead of a mark.
 
-     Both write on 24px lines and are a multiple of 8px tall with their
-     frame, so they flow as any box does: the frame's top border on a line,
-     the words 7px inside it above and below (the full block 23px), so they
-     fill whole bands of the grid and a line of them is a row's 40px. */}}
+     Both write on 24px lines and are framed as a card is: the frame's top
+     border on a line, the words 7px after it and 8px over the bottom border
+     (the full block 23 and 24), so they fill whole bands of the grid and both
+     borders land on lines; the bottom border's pixel is given back, so a
+     line of them is a row's 40px. */}}
 {{/* callout.verbatim: what a tool reported, in its own words, under a hairline
      of the band's tone 8px down, on a line, its words 7px after it so they
      fill bands of the grid: mono, wrapping rather than scrolling, the copy
@@ -34,9 +35,10 @@
 {{/* It explains the control it sits under, so it keeps that control's
      measure — the form's — rather than running past it. */}}
 {{/* Framed as every band is, in its tone one step darker than its ground.
-     Its words stand 7px inside the frame above and below, so a line of them
-     is a row's 40px with the frame and fills a band of the grid. */}}
-<div data-verso-callout class="flex w-full max-w-(--container-3xl) items-start gap-2 rounded-xs border px-3 py-1.75 text-left text-sm leading-6
+     Its words stand 7px after the frame's top border and 8px over its
+     bottom one, so a line of them fills a band of the grid and is a row's
+     40px with the pixel it gives back. */}}
+<div data-verso-callout class="flex w-full max-w-(--container-3xl) items-start gap-2 rounded-xs border px-3 pt-1.75 pb-2 text-left text-sm leading-6
   {{if eq .Variant "success"}}border-green-line bg-green-soft text-green-deep
   {{else if eq .Variant "warning"}}border-marigold-line bg-marigold-soft text-marigold-deep
   {{else if eq .Variant "danger"}}border-crimson-line bg-crimson-soft text-crimson-deep
@@ -59,7 +61,7 @@
   </div>
 </div>
 {{else}}
-<div data-verso-callout class="flex w-full flex-col rounded-xs border px-6 py-5.75 text-left text-sm leading-6
+<div data-verso-callout class="flex w-full flex-col rounded-xs border px-6 pt-5.75 pb-6 text-left text-sm leading-6
   {{if eq .Variant "success"}}border-green-line bg-green-soft text-green-deep
   {{else if eq .Variant "warning"}}border-marigold-line bg-marigold-soft text-marigold-deep
   {{else if eq .Variant "danger"}}border-crimson-line bg-crimson-soft text-crimson-deep

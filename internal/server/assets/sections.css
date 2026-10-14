@@ -244,8 +244,8 @@
 }
 /* The page's last card gives its bottom border's pixel back as every card
  * does to the next, so the colophon's hairline, the page's 40px on, lands on
- * a line. */
-:is(.verso-page-body, .verso-page-body > .verso-stack, .verso-page-body > .verso-stack > .verso-stack:last-child) > :is(section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]), [data-verso-listing], [data-verso-code-divider]):last-child {
+ * a line. A form column's stack ends the page as well, beside its rail. */
+:is(.verso-page-body, .verso-page-body > .verso-stack, .verso-page-body > .verso-stack > .verso-stack:last-child, .verso-page-body [data-verso-form-column] > .verso-stack:last-child) >:is(section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]), [data-verso-listing], [data-verso-code-divider]):last-child {
   margin-bottom: -1px;
 }
 /* The header is 48px from the frame's line to its hairline's: 11px after the
@@ -324,13 +324,6 @@
 }
 :is(.verso-page-body > [data-verso-listing], .verso-page-body > .verso-stack > [data-verso-listing], .verso-page-body > .verso-stack > .verso-stack > [data-verso-listing]) .verso-table > tbody > tr:not([hidden]):not(:has(~ tr:not([hidden]))) > td {
   border-bottom-width: 0;
-}
-/* An empty set's slot standing on the page itself, rather than in a card,
- * is framed as a card is: a pixel more under its words, so its bottom border
- * lands on a line, and that pixel given back to what follows. */
-:is(.verso-page-body > [data-verso-slot], .verso-page-body > .verso-stack > [data-verso-slot]) {
-  padding-bottom: calc(var(--spacing) * 2);
-  margin-bottom: -1px;
 }
 /* A listing's legend in a card keeps the card's inset and closes it. */
 .verso-page-body [data-verso-listing]:not(dialog *) [data-verso-table-legend] {

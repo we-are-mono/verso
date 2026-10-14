@@ -728,6 +728,9 @@ html {
      and stays on the grid. A control that states its own vertical margin
      keeps it. */
   :is(.h-control, .verso-box, [data-verso-token-list]) { margin-bottom: -1px; }
+  /* A notice and an empty set's slot are framed as a card is, 8px over the
+     bottom border, and give its pixel back the same way. */
+  :is([data-verso-callout], [data-verso-slot]) { margin-bottom: -1px; }
   /* The heading keeps the masthead's act-height line on its own, centred on
      it, so it stands at one height whether an act shares its line or the
      acts wrap to a line of their own under it. */

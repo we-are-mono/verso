@@ -109,7 +109,7 @@
       <h3 class="text-sm leading-6 font-semibold text-ink">{{.Kind}}</h3>
       {{if .Proto}}<span class="{{template "verso-chip-class"}}">{{.Proto}}</span>{{end}}
     </div>
-    {{if .Empty}}<div class="{{template "verso-empty-slot-class"}}">{{template "verso-empty-slot-body" .Empty}}</div>{{else}}{{.Rows}}{{end}}
+    {{if .Empty}}<div data-verso-slot class="{{template "verso-empty-slot-class"}}">{{template "verso-empty-slot-body" .Empty}}</div>{{else}}{{.Rows}}{{end}}
   </section>
   {{end}}
 </div>
