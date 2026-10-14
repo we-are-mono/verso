@@ -21,11 +21,11 @@
   <div class="verso-rhythm max-w-form [&>div]:border-0">{{range .Children}}{{.}}{{end}}</div>
 </section>
 {{end}}
-<fieldset data-verso-conditions class="pt-5">
-  {{/* Headed as every section is: two cells of air (the form's block step and
-       one of its own), the shared band and lede, and a cell under them, so the
+<fieldset data-verso-conditions class="pt-4">
+  {{/* Headed as every section is: 40px of air (the form's 24px block step and
+       16px of its own), the shared band and lede, and 24px under them, so the
        title, its lede and what follows stand as far apart here as anywhere. */}}
-  <div class="{{template "verso-section-band-class"}} mb-5">
+  <div class="{{template "verso-section-band-class"}} mb-6">
     <legend class="{{template "verso-section-title-class"}}">{{if .Label}}{{.Label}}{{else}}{{ t "Conditions" }}{{end}}</legend>
     {{if .Help}}{{template "verso-section-lede" .Help}}{{end}}
   </div>
@@ -84,7 +84,7 @@
           </div>
         </div>
         {{end}}
-        <p data-verso-condition-none hidden class="px-4 py-5 text-sm leading-snug text-body">{{ t "Nothing matches. Try the option's name as the config spells it." }}</p>
+        <p data-verso-condition-none hidden class="px-4 py-6 text-sm leading-snug text-body">{{ t "Nothing matches. Try the option's name as the config spells it." }}</p>
       </div>
     </div>
   </div>

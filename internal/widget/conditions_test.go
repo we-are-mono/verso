@@ -32,8 +32,8 @@ func TestDecodeAndRenderConditions(t *testing.T) {
 		// shared band (the form's block step and one of its own), the lede the
 		// title's next 20px line, a cell from the lede to what follows, and the
 		// shared lede, not a heading of its own spacing.
-		`<fieldset data-verso-conditions class="pt-5">`,
-		`<div class="flex flex-wrap items-center justify-between gap-x-6 mb-5">`,
+		`<fieldset data-verso-conditions class="pt-4">`,
+		`<div class="flex flex-wrap items-center justify-between gap-x-6 mb-6">`,
 		`<legend class="text-lg leading-5 font-semibold tracking-[-0.025em] text-ink">`,
 		`<div data-verso-section-lede class="verso-prose text-body">Combined with and.</div>`,
 		`data-verso-condition-template="rate"`, `name="dest_port"`,

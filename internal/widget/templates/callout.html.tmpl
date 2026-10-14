@@ -13,14 +13,14 @@
      it just did; the full form is the standing block a page leads with, where
      the tone's hairline frames it instead of a mark.
 
-     Both write on the notebook's 20px lines. The compact band keeps half a
-     cell inside at top and bottom, so it is whole cells; the full block's
+     Both write on 20px lines. The compact band keeps a row's 10px inside at
+     top and 9px at the bottom, so it is a row's height; the full block's
      frame stands on the grid's lines — a pixel out at the top and the left —
-     with 19px over its words and a cell under them. */}}
+     with 23px over its words and 24px under them. */}}
 {{/* callout.verbatim: what a tool reported, in its own words, under a hairline
-     of the band's tone half a cell down: mono, wrapping rather than scrolling,
-     the copy control riding its first line. */}}
-{{define "callout.verbatim"}}<div class="mt-2.5 flex items-start border-t pt-2.25 leading-5 {{if eq .Variant "success"}}border-green-line{{else if eq .Variant "warning"}}border-marigold-line{{else if eq .Variant "danger"}}border-crimson-line{{else if eq .Variant "neutral"}}border-rule{{else}}border-denim-line{{end}}">
+     of the band's tone 12px down: mono, wrapping rather than scrolling, the
+     copy control riding its first line. */}}
+{{define "callout.verbatim"}}<div class="mt-3 flex items-start border-t pt-2.75 leading-5 {{if eq .Variant "success"}}border-green-line{{else if eq .Variant "warning"}}border-marigold-line{{else if eq .Variant "danger"}}border-crimson-line{{else if eq .Variant "neutral"}}border-rule{{else}}border-denim-line{{end}}">
   <p class="min-w-0 font-mono text-base leading-5 font-medium [overflow-wrap:anywhere] whitespace-pre-wrap">{{.Verbatim}}</p>
   <button type="button" x-data="copy" @click="run" :data-copy-failed="failed" aria-label="{{ t "Copy" }}" class="verso-copy-inline group/copy relative -my-1 grid size-7 shrink-0 cursor-pointer place-items-center rounded-xs border border-transparent transition-colors hover:bg-white/50 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-current">
     <span x-ref="src" class="hidden">{{.Verbatim}}</span>
@@ -59,7 +59,7 @@
   </div>
 </div>
 {{else}}
-<div data-verso-callout class="-mt-px -ml-px flex w-[calc(100%_+_1px)] flex-col rounded-xs border px-5 pt-4.75 pb-5 text-left text-sm leading-5
+<div data-verso-callout class="-mt-px -ml-px flex w-[calc(100%_+_1px)] flex-col rounded-xs border px-6 pt-5.75 pb-6 text-left text-sm leading-5
   {{if eq .Variant "success"}}border-green-line bg-green-soft text-green-deep
   {{else if eq .Variant "warning"}}border-marigold-line bg-marigold-soft text-marigold-deep
   {{else if eq .Variant "danger"}}border-crimson-line bg-crimson-soft text-crimson-deep
@@ -73,9 +73,7 @@
 </div>
 {{end}}
 {{/* callout.acts: what resolves the notice, inside the band — a row of
-     buttons whose tops stand on the line a cell under its words, with the
-     rest of their two cells (6px under a 34px button) kept below, so the
-     band's padding under them matches the air over its first line and the
-     band stays whole cells tall. The buttons keep their own shape and take
-     the band's ink (input.css, data-verso-callout-acts). */}}
-{{define "callout.acts"}}{{if .RenderedActs}}<div data-verso-callout-acts class="mt-5 flex flex-wrap items-center gap-x-3 gap-y-1.5 pb-1.5">{{range .RenderedActs}}{{.}}{{end}}</div>{{end}}{{end}}
+     32px buttons 24px under its words, so the band stays on the grid. The
+     buttons keep their own shape and take the band's ink (input.css,
+     data-verso-callout-acts). */}}
+{{define "callout.acts"}}{{if .RenderedActs}}<div data-verso-callout-acts class="mt-6 flex flex-wrap items-center gap-x-3 gap-y-2">{{range .RenderedActs}}{{.}}{{end}}</div>{{end}}{{end}}

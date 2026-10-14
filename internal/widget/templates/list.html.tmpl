@@ -79,7 +79,7 @@
          named by that label; the refused one also points at why. The label's
          own for goes to the empty box, where a click means "add one". */}}
     {{range $i, $item := .Items}}
-    <div class="space-y-1.5">
+    <div class="space-y-1">
       {{$err := index $.Errors (printf "%d" $i)}}
       <input name="{{$.Name}}" value="{{$item}}" type="text" aria-labelledby="{{$.Name}}-label"{{if $err}} aria-invalid="true" aria-describedby="{{$.Name}}-error-{{$i}}"{{end}}{{if $.Datatype}} data-datatype="{{$.Datatype}}"{{end}} class="{{template "verso-input-class"}} {{template "verso-input-border" $err}}">
       {{with $err}}<p id="{{$.Name}}-error-{{$i}}" data-verso-error class="{{template "verso-refusal-band"}}">{{template "verso-error-words" .}}</p>{{end}}

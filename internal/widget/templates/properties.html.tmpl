@@ -45,7 +45,7 @@
   <div class="flex items-center gap-6 border-b border-mid pt-2.5 pb-2.25 leading-5">
     <dt class="shrink-0 text-sm leading-5 text-meta{{if eq $.Style "overview-connection"}} w-24 truncate{{end}}" title="{{.Label}}">{{.Label}}</dt>
     <dd class="flex min-w-0 items-center text-ink{{if eq $.Style "overview-system"}} ml-auto text-right{{end}}">
-      {{if .Dot}}<span class="mr-2.5 size-1.5 shrink-0 rounded-[1px] {{if eq .Dot "success"}}bg-green{{else if eq .Dot "warning"}}bg-marigold{{else if eq .Dot "danger"}}bg-crimson{{else}}border border-faint{{end}}"{{if .Key}} data-verso-prop-dot="{{.Key}}"{{end}} aria-hidden="true"></span>{{end}}
+      {{if .Dot}}<span class="mr-2 size-1.5 shrink-0 rounded-[1px] {{if eq .Dot "success"}}bg-green{{else if eq .Dot "warning"}}bg-marigold{{else if eq .Dot "danger"}}bg-crimson{{else}}border border-faint{{end}}"{{if .Key}} data-verso-prop-dot="{{.Key}}"{{end}} aria-hidden="true"></span>{{end}}
       <span{{if .Key}} data-verso-prop="{{.Key}}"{{end}} class="min-w-0 wrap-anywhere font-medium {{if .Mono}}font-mono text-base{{else}}text-sm{{end}} leading-5">{{.Value}}</span>{{if eq .Key "temperature"}}<span data-overview-temp-note class="ml-1 font-sans text-sm leading-5 font-normal text-meta">{{if .Help}}· {{.Help}}{{end}}</span>{{end}}{{if .Copy}}{{template "verso-copy-inline" .Value}}{{end}}
     </dd>
   </div>

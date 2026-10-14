@@ -6,16 +6,16 @@
      are the call(s) to action — typically a modal trigger — so the empty state
      composes the same widgets as the populated page. Icons come from the shared Lucide
      set (icons.go); a "shield" here uses the alert variant — nothing is set up yet.
-     On the notebook's grid: two cells of air, the icon four cells, the title
-     centred in two, the body on 20px lines a cell between paragraphs, and the
-     acts a cell under it, centred in two. */}}
+     On the grid: 40px of air, the 80px icon and 24px under it, the title on
+     its 40px line, the body on 20px lines 16px between paragraphs, and the
+     acts 24px under it. */}}
 <div class="flex flex-col items-center px-6 py-10 text-center">
-  <span class="verso-empty-icon{{if eq .Variant "success"}} verso-empty-icon--success{{end}} mb-5 grid size-20 place-items-center rounded-3xl">
+  <span class="verso-empty-icon{{if eq .Variant "success"}} verso-empty-icon--success{{end}} mb-6 grid size-20 place-items-center rounded-3xl">
     {{if eq .Icon "shield"}}{{icon "shield-alert" "size-9"}}{{else}}{{icon .Icon "size-9"}}{{end}}
   </span>
   {{if .Title}}<h2 class="text-2xl leading-10 font-semibold tracking-[-0.025em] text-balance text-ink">{{.Title}}</h2>{{end}}
   {{/* the body is Markdown, so it brings its own paragraph — the wrapper is a
        div carrying the prose rules, exactly as a section's sub does. */}}
-  {{if .Body}}<div class="verso-prose max-w-[44ch] leading-5 text-body [&_p]:mb-5">{{.Body}}</div>{{end}}
-  {{if .Children}}<div class="mt-5 flex w-full flex-col items-center gap-5 py-0.75">{{range .Children}}{{.}}{{end}}</div>{{end}}
+  {{if .Body}}<div class="verso-prose max-w-[44ch] leading-5 text-body [&_p]:mb-4">{{.Body}}</div>{{end}}
+  {{if .Children}}<div class="mt-6 flex w-full flex-col items-center gap-6">{{range .Children}}{{.}}{{end}}</div>{{end}}
 </div>

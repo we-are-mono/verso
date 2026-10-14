@@ -18,9 +18,9 @@
 </details>
 {{else}}
 <details{{if .Open}} open{{end}} class="verso-disclosure rounded-xs border border-rule {{if eq .Style "condition"}}bg-quiet{{else}}bg-ground{{end}}">
-  {{/* The condition style holds its words 20px in on every side, as the
+  {{/* The condition style holds its words 24px in on every side, as the
        conditions card does, so the drawer's two cards stand alike. */}}
-  <summary class="flex cursor-pointer items-center justify-between gap-2 select-none {{if eq .Style "condition"}}px-5 py-5 text-sm font-semibold text-ink{{else}}px-4 py-3 text-sm font-semibold text-body{{end}} [&::-webkit-details-marker]:hidden">
+  <summary class="flex cursor-pointer items-center justify-between gap-2 select-none {{if eq .Style "condition"}}px-6 py-6 text-sm font-semibold text-ink{{else}}px-4 py-3 text-sm font-semibold text-body{{end}} [&::-webkit-details-marker]:hidden">
     {{.Summary}}
     {{icon "chevron-right" "verso-chevron size-4 text-faint"}}
   </summary>
@@ -31,7 +31,7 @@
   {{/* The rhythm is the form's, not the box's: what it folds away is part of the
        form around it, so two rows inside sit as close together as two rows
        outside and only the blocks between them take air. */}}
-  <div class="verso-rhythm {{if eq .Style "condition"}}[--verso-rhythm:1.25rem] [--verso-form-width:100%] border-t border-rule px-5 py-5{{else}}[--verso-rhythm:1.25rem] border-t border-rule px-4 py-4{{end}} [&_thead_th]:pt-0 [&_tbody_tr:last-child_td]:pb-0">
+  <div class="verso-rhythm {{if eq .Style "condition"}}[--verso-rhythm:1.5rem] [--verso-form-width:100%] border-t border-rule px-6 py-6{{else}}[--verso-rhythm:1.5rem] border-t border-rule px-4 py-4{{end}} [&_thead_th]:pt-0 [&_tbody_tr:last-child_td]:pb-0">
     {{range .Children}}{{.}}{{end}}
   </div>
 </details>

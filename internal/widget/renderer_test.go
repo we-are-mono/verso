@@ -91,23 +91,23 @@ func TestAFlushStackIsARunOfRows(t *testing.T) {
 func TestRenderStackDivided(t *testing.T) {
 	r := newRenderer(t)
 	plain := render(t, r, &Stack{Children: []Widget{&Badge{Text: "a"}, &Badge{Text: "b"}}})
-	// The default stack sets its blocks a cell of the notebook's grid apart.
-	if !strings.Contains(plain, "space-y-5") {
-		t.Errorf("default stack should space its children a cell apart:\n%s", plain)
+	// The default stack sets its blocks 24px apart, the grid's inset.
+	if !strings.Contains(plain, "space-y-6") {
+		t.Errorf("default stack should space its children 24px apart:\n%s", plain)
 	}
 	div := render(t, r, &Stack{Divided: true, Children: []Widget{&Badge{Text: "a"}, &Badge{Text: "b"}}})
 	if !strings.Contains(div, "divide-y") {
 		t.Errorf("divided stack should draw hairlines:\n%s", div)
 	}
 	compact := render(t, r, &Stack{Compact: true, Children: []Widget{&Badge{Text: "a"}, &Badge{Text: "b"}}})
-	if !strings.Contains(compact, "space-y-3") || strings.Contains(compact, "space-y-5") {
+	if !strings.Contains(compact, "space-y-3") || strings.Contains(compact, "space-y-6") {
 		t.Errorf("compact stack should use tighter spacing: %s", compact)
 	}
 	// An inline stack is a wrapping row of acts: 12px between them, its
-	// wrapped rows two cells apart, and the row centred in two cells, 3px
-	// over and under a control's 34px.
+	// wrapped rows 40px apart, and the row 40px tall, 4px over and under a
+	// control's 32px.
 	inline := render(t, r, &Stack{Inline: true, Children: []Widget{&Badge{Text: "a"}, &Text{Markdown: "or"}, &Badge{Text: "b"}}})
-	if !strings.Contains(inline, "flex flex-wrap items-center gap-x-3 gap-y-1.5 py-0.75") || !strings.Contains(inline, ">or</p>") {
+	if !strings.Contains(inline, "flex flex-wrap items-center gap-x-3 gap-y-2 py-1") || !strings.Contains(inline, ">or</p>") {
 		t.Errorf("inline stack should keep its children in one wrapping row: %s", inline)
 	}
 	if strings.Contains(div, "space-y-") {
@@ -583,7 +583,7 @@ func TestRenderConfirm(t *testing.T) {
 		// The answers are the band's acts, on the line a cell under the words;
 		// cancel keeps the explanation's tone and hovers by a soft wash, not a
 		// heavy colour darken.
-		`<div data-verso-callout-acts class="mt-5 flex flex-wrap items-center gap-x-3 gap-y-1.5 pb-1.5"><button type="submit" x-ref="first"`, "hover:bg-crimson-line/50",
+		`<div data-verso-callout-acts class="mt-6 flex flex-wrap items-center gap-x-3 gap-y-2"><button type="submit" x-ref="first"`, "hover:bg-crimson-line/50",
 		"border-crimson bg-crimson text-white",
 		"verso-press",
 		// The trigger is a control like every other button: h-control holds
@@ -866,8 +866,8 @@ func TestRenderDisclosure(t *testing.T) {
 	// its words 20px in on every side, as the conditions card does.
 	for _, want := range []string{
 		"border-rule bg-quiet", "text-sm font-semibold text-ink",
-		"px-5 py-5 text-sm font-semibold text-ink", // the summary
-		"border-t border-rule px-5 py-5",           // what it folds
+		"px-6 py-6 text-sm font-semibold text-ink", // the summary
+		"border-t border-rule px-6 py-6",           // what it folds
 	} {
 		if !strings.Contains(condition, want) {
 			t.Errorf("condition disclosure missing %q: %s", want, condition)
