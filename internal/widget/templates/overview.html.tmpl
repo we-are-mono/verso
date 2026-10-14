@@ -31,11 +31,12 @@
     </div>
   </div>
 
-  {{/* The shelf is a 40px frame 24px under the heading line, its top edge on
-       a line: its words write on one 20px line, 10px under the top edge and
-       8px over the bottom, and its 28px chips ride that line, so the cards
+  {{/* The shelf is a frame 24px under the heading line, its top edge on a
+       line: its words write on one 24px line, 8px under the top edge and 7px
+       over the bottom, so its bottom border lands on a line too, and its 28px
+       chips ride that line. It gives that border's pixel back, so the cards
        24px under it start on a line. */}}
-  <div data-overview-shelf class="mt-6 hidden flex-wrap items-center gap-x-2 gap-y-6 rounded-xs border border-dashed border-rule-strong bg-quiet px-3 pt-2 pb-1.5 text-sm leading-6 text-meta group-data-arranging/overview:flex">
+  <div data-overview-shelf class="mt-6 -mb-px hidden flex-wrap items-center gap-x-2 gap-y-6 rounded-xs border border-dashed border-rule-strong bg-quiet px-3 pt-2 pb-1.75 text-sm leading-6 text-meta group-data-arranging/overview:flex">
     <span class="mr-1">{{if .Hidden}}{{ t "Hidden" }}{{else}}{{ t "No hidden cards" }}{{end}}</span>
     {{range .Hidden}}
     <button type="button" data-overview-restore="{{.ID}}" data-tone="{{.Tone}}" class="group/chip -my-1 inline-flex h-7 cursor-pointer items-center gap-2 rounded-xs border border-rule-strong bg-ground px-2.5 text-ink transition-colors hover:border-denim-line hover:bg-denim-soft hover:text-denim-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim">

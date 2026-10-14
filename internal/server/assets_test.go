@@ -540,7 +540,8 @@ func TestAPageOpeningOnAHeadingDrawsOneRule(t *testing.T) {
 // masthead runs from the rail to the window's right edge, while the title
 // keeps to the page's column and the page's acts end at the right edge Log
 // out ends at: the page's 2.5rem gutter in, never past the wide measure,
-// rounded down to the 8px grid.
+// rounded down to the 8px grid and a pixel more, as a page's column is, so a
+// right border at the end lands on a line.
 func TestMastheadEndsUnderLogOut(t *testing.T) {
 	raw, err := os.ReadFile("assets/verso.css")
 	if err != nil {
@@ -548,9 +549,10 @@ func TestMastheadEndsUnderLogOut(t *testing.T) {
 	}
 	css := string(raw)
 	for _, want := range []string{
-		"main{--verso-measure:round(down, min(100cqw - var(--spacing) * 20, var(--container-6xl)), .5rem)}",
+		"main{--verso-measure:calc(round(down, min(100cqw - var(--spacing) * 20, var(--container-6xl)) - 1px, .5rem) + 1px)}",
 		"main [data-verso-masthead]{margin-inline:calc(var(--spacing) * -10) calc(100% - 100cqw + var(--spacing) * 10);padding-inline:calc(var(--spacing) * 10) calc(100cqw - var(--spacing) * 10 - var(--verso-measure))}",
-		"[data-verso-session]>div{width:round(down, min(100cqw - var(--spacing) * 20, var(--container-6xl)), .5rem);flex:none}",
+		"[data-verso-session]>div{width:calc(round(down, min(100cqw - var(--spacing) * 20, var(--container-6xl)) - 1px, .5rem) + 1px);flex:none}",
+		".w-column{width:calc(round(down,100% - 1px,.5rem) + 1px)}",
 	} {
 		if !strings.Contains(css, want) {
 			t.Errorf("the masthead runs from the rail to the window's edge and its acts end where Log out does; stylesheet is missing %s", want)

@@ -288,6 +288,13 @@
 :is(.verso-page-body > [data-verso-listing], .verso-page-body > .verso-stack > [data-verso-listing], .verso-page-body > .verso-stack > .verso-stack > [data-verso-listing]) .verso-table > tbody > tr:not([hidden]):not(:has(~ tr:not([hidden]))) > td {
   border-bottom-width: 0;
 }
+/* An empty set's slot standing on the page itself, rather than in a card,
+ * is framed as a card is: a pixel more under its words, so its bottom border
+ * lands on a line, and that pixel given back to what follows. */
+:is(.verso-page-body > [data-verso-slot], .verso-page-body > .verso-stack > [data-verso-slot]) {
+  padding-bottom: calc(var(--spacing) * 1.75);
+  margin-bottom: -1px;
+}
 /* A listing's legend in a card keeps the card's inset and closes it. */
 .verso-page-body [data-verso-listing]:not(dialog *) [data-verso-table-legend] {
   padding: var(--spacing-inset);

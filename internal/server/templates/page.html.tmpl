@@ -141,9 +141,12 @@
          Overview's 16px of side air, since a card adds its own inset.
          A full page keeps the side air for its masthead but never the bottom:
          what is below the masthead runs to the edge. Home draws its own
-         heading line, 24px under the top bar as every page's is. */}}
+         heading line, 24px under the top bar as every page's is. The column
+         is its measure, or the room it has rounded down to the grid, and a
+         pixel more, so a card's right border lands on a line as its left
+         one does. */}}
     <div class="{{if eq .Width "full"}}flex min-h-0 flex-1 flex-col px-10{{else if .Overview}}px-4 pt-6 pb-20 md:px-10{{else if .Light}}px-10 pb-10{{else}}px-4 pb-10 md:px-10{{end}}">
-    <div data-verso-column class="{{if eq .Width "full"}}verso-page-full{{else if eq .Width "form"}}max-w-form{{else if eq .Width "narrow"}}max-w-4xl{{else if eq .Width "wide"}}max-w-6xl{{else}}max-w-5xl{{end}}">
+    <div data-verso-column class="{{if eq .Width "full"}}verso-page-full{{else}}{{if eq .Width "form"}}max-w-column-3xl{{else if eq .Width "narrow"}}max-w-column-4xl{{else if eq .Width "wide"}}max-w-column-6xl{{else}}max-w-column-5xl{{end}} w-column{{end}}">
     {{if .Heading}}
     {{/* Whatever measure the column keeps, the stylesheet ends the masthead's
          acts under Log out. */}}

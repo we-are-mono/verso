@@ -114,10 +114,6 @@ own and points at the decision that governs it; the rationale lives there, not h
   under a card's opening warning (Access, from the exposure warning to the
   first web field) and the firmware card's gaps on Maintenance, where blocks
   inside a card stand 40px apart.
-- **Right edges on the line.** A frame's top, left and bottom borders land on
-  the grid's lines; its right border is the column's last pixel, one inside
-  the line, since a column's width is a multiple of 8px. A frame a pixel
-  wider than its column would put it on the line.
 - **An empty page listing.** VPN and Dynamic DNS with nothing in them stand
   their empty slot loose on the sand rather than in a card.
 
