@@ -11,15 +11,16 @@ import (
 )
 
 // Heading actions align to the section's right content edge, including when
-// wrapped below the title. They keep a field's height, centred on the title's
-// 20px line and reaching past it, so the title stays on the grid's line.
+// wrapped below the title. They keep a field's height, giving back its bottom
+// border's pixel, centred on the title's 24px line and reaching past it, so
+// their borders land on lines and the title stays on its line.
 func TestSectionControlAlignsToContentEdge(t *testing.T) {
 	got := render(t, newRenderer(t), &Section{
 		Title: "Time", Meta: "2026-09-23 12:00", MetaPosition: "inline",
 		Control:  &Button{Label: "Use my computer's time", Style: "act", Name: "_action", Value: "clock"},
 		Children: []Widget{&Field{Name: "zonename", Label: "Time zone"}},
 	})
-	column := `<span class="ml-auto flex h-6 w-full items-center justify-end sm:w-auto [&>button]:h-control [&>button]:gap-2 [&>button]:px-4">`
+	column := `<span class="ml-auto flex h-6 w-full items-center justify-end sm:w-auto [&>button]:h-control [&>button]:-mb-px [&>button]:gap-2 [&>button]:px-4">`
 	at := strings.Index(got, column)
 	if at < 0 {
 		t.Fatalf("the heading's control must align to the content edge:\n%s", got)

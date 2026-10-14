@@ -2701,7 +2701,7 @@ func TestPluginNoticeArrivesAsTheNotification(t *testing.T) {
 }
 
 // TestTheHeadingKeepsItsLineWhenItsActsWrapUnder: the h1 stands on the
-// act-height line itself, centred on it, so a page whose acts take a line of
+// 32px act line itself, centred on it, so a page whose acts take a line of
 // their own under the heading (Diagnostics) sets its title exactly where a
 // page with an act beside it, or none, does.
 func TestTheHeadingKeepsItsLineWhenItsActsWrapUnder(t *testing.T) {
@@ -2709,7 +2709,7 @@ func TestTheHeadingKeepsItsLineWhenItsActsWrapUnder(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(css), ".verso-page-heading { min-height: var(--spacing-control); align-content: center;") {
+	if !strings.Contains(string(css), ".verso-page-heading { min-height: calc(var(--spacing) * 8); align-content: center;") {
 		t.Error("the page heading does not keep its act-height line on its own")
 	}
 }

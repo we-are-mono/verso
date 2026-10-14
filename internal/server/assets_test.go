@@ -272,12 +272,15 @@ func TestACardMeasuresOnTheEightPixelGrid(t *testing.T) {
 	}
 	css := string(raw)
 	for _, want := range []string{
-		// the inset: the reach of its rules and the padding around its body
-		"--verso-reach-start: var(--spacing-inset);\n  --verso-reach-end: var(--spacing-inset);",
+		// the inset: a pixel short of 24px after each side border, so the body
+		// is a multiple of 8px and a pixel wide and a box across it has its
+		// borders on lines; the reach of its rules matches it
+		":root { --verso-side: calc(var(--spacing-inset) - 1px); }",
+		"--verso-reach-start: var(--verso-side);\n  --verso-reach-end: var(--verso-side);",
 		// (the body ends on a line, so the full 24px under it, and a pixel
 		// short after the frame or the header's hairline, so its lines fill
 		// whole bands of the grid)
-		"padding: 0 var(--spacing-inset) var(--spacing-inset);",
+		"padding: 0 var(--verso-side) var(--spacing-inset);",
 		"padding-top: calc(var(--spacing-inset) - 1px);",
 		"+ .verso-rhythm:not(:has(> [data-verso-listing]:first-child)) {\n  margin-top: -1px;\n}",
 		// the header: 11px after the frame, its 24px line, 12px under, then its
@@ -305,7 +308,7 @@ func TestTheThemeMeasuresOnTheEightPixelGrid(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, want := range []string{
-		"--spacing-control: 2rem;",
+		"--spacing-control: calc(2rem + 1px);",
 		"--spacing-inset: 1.5rem;",
 		"--spacing-frame: 2.5rem;",
 		"--spacing-act: 1.75rem;",

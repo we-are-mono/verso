@@ -12,14 +12,15 @@ import (
 	"github.com/we-are-mono/verso/internal/plugin"
 )
 
-// TestHeadingLineIsAnActsHeight: the heading line is an act's height whether
-// it holds one or not, so moving from a page with an act (Packages) to one
-// without (Services) never shifts the heading or the band under it.
+// TestHeadingLineIsAnActsHeight: the heading line is an act's 32px whether
+// it holds one or not (an act gives back its bottom border's pixel), so
+// moving from a page with an act (Packages) to one without (Services) never
+// shifts the heading or the band under it.
 func TestHeadingLineIsAnActsHeight(t *testing.T) {
 	s := newServer(t, fakeBackend{access: true})
 	for _, path := range []string{"/system/services", "/system/packages"} {
 		whole := get(t, s, path).Body.String()
-		if !strings.Contains(whole[strings.LastIndex(whole, "</style>"):], `<div class="flex min-h-control flex-wrap items-center justify-between gap-4">`) {
+		if !strings.Contains(whole[strings.LastIndex(whole, "</style>"):], `<div class="flex min-h-8 flex-wrap items-center justify-between gap-4">`) {
 			t.Errorf("%s: the heading line should hold an act's height", path)
 		}
 	}

@@ -156,8 +156,10 @@
            not, so moving between pages never shifts the heading or what sits
            under it. A toned heading is a message about now, not a
            place-label: it tints in the tone vocabulary and drops the
-           " — <tab>" suffix ("neutral" drops the suffix without a tint). */}}
-      <div class="flex min-h-control flex-wrap items-center justify-between gap-4">
+           " — <tab>" suffix ("neutral" drops the suffix without a tint).
+           The line is 32px, a control on it giving back its bottom border's
+           pixel. */}}
+      <div class="flex min-h-8 flex-wrap items-center justify-between gap-4">
         <h1 class="verso-page-heading{{if eq .Tone "info"}} text-denim-deep{{else if eq .Tone "success"}} text-green-deep{{else if eq .Tone "warning"}} text-marigold-deep{{else if eq .Tone "danger"}} text-crimson-deep{{end}}">{{.Heading}}{{if and .HeadingDetail (not .Tone)}}<span class="text-faint"> — {{.HeadingDetail}}</span>{{end}}</h1>
         {{/* A standing note leads the acts, the group as one on the line,
              its wrapped lines 40px apart. */}}

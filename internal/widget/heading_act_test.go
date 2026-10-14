@@ -149,11 +149,12 @@ func TestHeadingActRendersTheActAlone(t *testing.T) {
 // TestControlBandIsTheListingCardsTopStrip: the controls that narrow a
 // listing are the top strip of its card: the card's Paper and frame
 // over a hairline, its top border and its hairline on lines 64px apart (15px
-// over the 32px controls, 16px under), words 24px in, no Mid Sand box; the
-// listing under it closes the card.
+// over the controls, 16px under), the controls 23px after its left border so
+// the first stands on a line, no Mid Sand box; the listing under it closes
+// the card.
 func TestControlBandIsTheListingCardsTopStrip(t *testing.T) {
 	got := render(t, newRenderer(t), &ActionBar{Tabs: []ActionTab{{Label: "All families", Count: 3, Active: true}}})
-	if !strings.Contains(got, `data-verso-actionbar class="flex flex-wrap items-center gap-4 rounded-t-xs border border-rule-strong border-b-rule bg-ground px-6 pt-3.75 pb-4"`) {
+	if !strings.Contains(got, `data-verso-actionbar class="flex flex-wrap items-center gap-4 rounded-t-xs border border-rule-strong border-b-rule bg-ground px-5.75 pt-3.75 pb-4"`) {
 		t.Errorf("control band surface wrong:\n%s", got)
 	}
 	if strings.Contains(got, "mb-5") || strings.Contains(got, "mb-8") {

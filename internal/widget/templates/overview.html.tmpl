@@ -15,7 +15,7 @@
        widths down to the grid, so Arrange and the shelf end where the cards
        do at any window width. */}}
   <div class="verso-overview-cols"><div class="col-span-full min-w-0">
-  <div class="flex min-h-control flex-wrap items-center gap-x-6 gap-y-2">
+  <div class="flex min-h-8 flex-wrap items-center gap-x-6 gap-y-2">
     <h1 class="verso-page-heading text-balance"><span data-overview-lead>{{.Verdict.Lead}}</span><span data-overview-accent class="text-green-deep">{{.Verdict.Accent}}</span><span data-overview-tail>{{.Verdict.Tail}}</span></h1>
     {{if .Verdict.Clock}}
     <div class="flex items-baseline gap-2 text-sm leading-6 text-meta" data-overview-clock data-unix="{{.Verdict.Unix}}" data-offset="{{.Verdict.Offset}}">
@@ -70,7 +70,7 @@
      24px over the frame, so the frame's bottom lands on a line and the next
      card, 23px on, starts on one. */}}
 <article data-overview-card="{{.ID}}" data-tone="{{.Head.Tone}}"{{if .Closed}} data-closed{{end}} aria-labelledby="overview-card-{{.ID}}" class="group/card @container/card verso-overview-card min-w-0 rounded-xs border border-rule-strong bg-ground">
-  <header data-overview-card-head class="flex min-w-0 cursor-pointer items-center gap-2 pt-2.75 pr-2.5 pb-3 pl-6 leading-6 select-none group-data-arranging/overview:cursor-grab group-data-arranging/overview:pl-1.5">
+  <header data-overview-card-head class="flex min-w-0 cursor-pointer items-center gap-2 pt-2.75 pr-2.5 pb-3 pl-5.75 leading-6 select-none group-data-arranging/overview:cursor-grab group-data-arranging/overview:pl-1.5">
     <button type="button" data-overview-grip aria-label="{{printf (t "Move %s. Arrow keys move it.") .Title}}" class="hidden -my-1 {{template "verso-btn-icon"}} cursor-grab group-data-arranging/overview:grid">{{icon "grip-vertical" "size-4"}}</button>
     <span aria-hidden="true" class="flex shrink-0 text-glyph">{{icon .Icon "size-4"}}</span>
     {{/* The title and the closed card's reading share their baseline on one
@@ -88,7 +88,7 @@
     <button type="button" data-overview-toggle aria-expanded="{{if .Closed}}false{{else}}true{{end}}" aria-controls="overview-card-body-{{.ID}}" aria-label="{{if .Closed}}{{printf (t "Open %s") .Title}}{{else}}{{printf (t "Close %s") .Title}}{{end}}" data-open-label="{{printf (t "Open %s") .Title}}" data-close-label="{{printf (t "Close %s") .Title}}" class="grid -my-1 {{template "verso-btn-icon"}} group-data-arranging/overview:hidden"><span class="verso-overview-chevron flex">{{icon "chevron-down" "size-4"}}</span></button>
     <button type="button" data-overview-hide aria-label="{{printf (t "Hide %s") .Title}}" title="{{t "Hide"}}" class="hidden -my-1 {{template "verso-btn-icon"}} hover:border-crimson-line hover:bg-crimson-soft hover:text-crimson-deep group-data-arranging/overview:grid">{{icon "x" "size-4"}}</button>
   </header>
-  <div id="overview-card-body-{{.ID}}" class="verso-overview-body"><div class="min-h-0 overflow-hidden"><div class="verso-overview-content border-t border-rule px-6 pt-5.75 pb-6">{{.Body}}</div></div></div>
+  <div id="overview-card-body-{{.ID}}" class="verso-overview-body"><div class="min-h-0 overflow-hidden"><div class="verso-overview-content border-t border-rule px-5.75 pt-5.75 pb-6">{{.Body}}</div></div></div>
 </article>
 {{end}}
 
