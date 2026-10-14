@@ -78,8 +78,8 @@ The Hardware page opens `/overview/events?reads=interfaces`. With `reads` set, t
 
 `ports.html.tmpl`'s generated branch drops the dark chassis and screws. Each port is an inline SVG in a 48×48 box (pixels at native size), using the connector geometry from `back.svg` translated to the origin. Generated ports and the DK's ports are therefore the same size.
 
-- **Shared:** a 48-wide outline with its body 40 tall and a 16-wide lip 8 under it, and two 8×4 LEDs beside the lip. The generated `viewBox` is `0 24 48 48`, the DK's port coordinates with x from 0, so the connector fills its box.
-- **RJ45:** a 40×32 mouth and 8 pins, 1.5×8, 3 apart.
+- **Shared:** a 48-wide outline with its body 40 tall and a 24-wide lip 6 under it (half the port's width, as the original art had it), and two 8×4 LEDs beside the lip, 2 from it, from the body's bottom edge and from the port's side, their bottoms level with the lip's. The generated `viewBox` is `0 0 48 48`, the DK's port geometry moved to the origin, so the connector fills its box.
+- **RJ45:** a mouth that follows the outline and its lip 4 in all round (40×32 with a 16×6 keyway under it), and 8 pins, 1.5×8, 3 apart. The mouth is a path inside a group, so the outline stays the port's only direct-child `<path>`.
 - **SFP+:** the outline top 8 lower, a 40×24 mouth, and the 24×8 socket with its slit.
 
 Strokes are 1px and sit half a pixel in, so at 1:1 every box edge stands on an 8px line and every detail on a 4px one.

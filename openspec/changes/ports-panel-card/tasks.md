@@ -38,7 +38,7 @@
   - an SFP port renders the lowered outline, mouth and socket;
   - both carry `led-link`/`led-traffic`, the `act-N` class and `--led-phase` on the `data-verso-port` element;
   - the speed slot holds the formatted speed;
-  - each generated port's SVG has the `viewBox` `0 24 48 48`;
+  - each generated port's SVG has the `viewBox` `0 0 48 48`;
   - the wrapper carries `--ports: N`, and the art wrapper carries `--art-h` and `--art-aspect` read from the art's `viewBox`.
   
   Then rewrite the generated branch of `ports.html.tmpl` with the connector geometry from `back.svg`, dropping the chassis and screws. Verify with `go test ./internal/widget`.
