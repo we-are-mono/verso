@@ -273,10 +273,10 @@ func TestAFocusedBoxStaysFocusedUnderThePointer(t *testing.T) {
 // — rather than running past it; it leads with its tone's small square.
 func TestACompactNoteKeepsItsControlsMeasure(t *testing.T) {
 	got := render(t, newRenderer(t), &Callout{Variant: "warning", Compact: true, Body: "Named once."})
-	if !strings.Contains(got, `flex w-full max-w-(--container-3xl) items-start gap-2 rounded-xs`) {
+	if !strings.Contains(got, `flex w-full max-w-(--container-3xl) items-start rounded-xs`) {
 		t.Errorf("a compact note keeps the form's measure:\n%s", got)
 	}
-	if !strings.Contains(got, "size-1.5 flex-none") || !strings.Contains(got, "bg-marigold") {
+	if !strings.Contains(got, "absolute top-4 left-2.25 size-1.5") || !strings.Contains(got, "bg-marigold") {
 		t.Errorf("a compact note leads with its tone's square:\n%s", got)
 	}
 }
@@ -577,10 +577,10 @@ func TestRenderConfirm(t *testing.T) {
 		// Both states stand on crimson's own soft ground inside its hairline,
 		// worded in the step of the hue that can carry words; the full-chroma
 		// value stays a mark, on the square.
-		"border-crimson-line bg-crimson-soft", "text-crimson-deep", "size-1.5 flex-none\n    bg-crimson",
+		"border-crimson-line bg-crimson-soft", "text-crimson-deep", "absolute top-4 left-2.25 size-1.5\n    bg-crimson",
 		// The question is the compact callout in the act's tone: a row's
-		// height for a line, its words 10px inside.
-		`<div data-verso-callout class="flex w-full max-w-(--container-3xl) items-start gap-2 rounded-xs border px-3 pt-1.75 pb-2`,
+		// height for a line, its words 24px in from the frame's edge.
+		`<div data-verso-callout class="relative flex w-full max-w-(--container-3xl) items-start rounded-xs border pt-1.75 pr-3 pb-2 pl-5.75`,
 		// The answers are the band's acts, on the line a cell under the words;
 		// cancel keeps the explanation's tone and hovers by a soft wash, not a
 		// heavy colour darken.
@@ -667,11 +667,12 @@ func TestRenderCallout(t *testing.T) {
 	if !strings.Contains(neutral, "bg-quiet text-body") || !strings.Contains(neutral, "bg-glyph") {
 		t.Errorf("neutral callout should be the quiet band: %s", neutral)
 	}
-	// Compact is the note under a control: the mark on the first line's optical
+	// Compact is the note under a control: its words 24px in from the frame's
+	// edge, the mark in the middle of that 24px on the first line's optical
 	// centre, framed one step darker than its ground as every band is, without
 	// the standing band's padding.
 	compact := render(t, r, &Callout{Compact: true, Body: "A short note."})
-	for _, want := range []string{"items-start", "gap-2", "px-3", "pt-1.75 pb-2", "border-denim-line", "mt-[0.5625rem] size-1.5", "bg-denim", "A short note."} {
+	for _, want := range []string{"items-start", "pl-5.75", "pr-3", "pt-1.75 pr-3 pb-2", "border-denim-line", "absolute top-4 left-2.25 size-1.5", "bg-denim", "A short note."} {
 		if !strings.Contains(compact, want) {
 			t.Errorf("compact callout missing %q in: %s", want, compact)
 		}
