@@ -56,3 +56,21 @@
 
   setInterval(poll, 600);
 })();
+
+// The layout grid: every fixed measure lands on an 8px line, and G, pressed
+// outside a field and without a modifier, draws those lines over the page and
+// takes them away again (input.css, data-verso-grid). The choice holds for the
+// tab, so a hot reload or a redeploy's reload keeps it.
+(function () {
+  var key = "verso-dev-grid";
+  var root = document.documentElement;
+  function apply(on) { root.toggleAttribute("data-verso-grid", on); }
+  try { apply(sessionStorage.getItem(key) === "on"); } catch (_) { /* storage blocked */ }
+  document.addEventListener("keydown", function (event) {
+    if (event.key.toLowerCase() !== "g" || event.ctrlKey || event.metaKey || event.altKey) return;
+    if (event.target.closest && event.target.closest("input, textarea, select, [contenteditable]")) return;
+    var on = !root.hasAttribute("data-verso-grid");
+    apply(on);
+    try { sessionStorage.setItem(key, on ? "on" : "off"); } catch (_) { /* storage blocked */ }
+  });
+})();

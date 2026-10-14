@@ -261,6 +261,50 @@ func TestADevRedeployWaitsForUnsavedWork(t *testing.T) {
 	}
 }
 
+// TestADevSessionCanDrawTheGrid: in a dev session G draws the 8px grid over
+// the page, from the top bar's hairline and the rail's border, and over a
+// drawer's body from its chrome's hairline (layout-grid). Only a dev session
+// loads the script that sets it, so a released build never draws a grid.
+func TestADevSessionCanDrawTheGrid(t *testing.T) {
+	page := func(srv *Server) string {
+		token := srv.sessions.CreateWithMetadata("test-sid", "root", "", "")
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		req.AddCookie(&http.Cookie{Name: sessionCookie, Value: token})
+		rec := httptest.NewRecorder()
+		srv.Handler().ServeHTTP(rec, req)
+		return rec.Body.String()
+	}
+	released := newServer(t, fakeBackend{})
+	if strings.Contains(page(released), "/assets/verso-dev.js") {
+		t.Error("a released build loads the dev script, which can draw the grid")
+	}
+	dev := newServer(t, fakeBackend{})
+	dev.devCSS = t.TempDir() + "/verso-dev.css"
+	if err := os.WriteFile(dev.devCSS, []byte("main{}"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(page(dev), "/assets/verso-dev.js") {
+		t.Error("a dev session does not load the dev script")
+	}
+
+	css, err := os.ReadFile("assets/verso.css")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{
+		":root[data-verso-grid] main{position:relative}",
+		":root[data-verso-grid] main:after{",
+		"pointer-events:none",
+		"background-size:calc(var(--spacing) * 2) calc(var(--spacing) * 2)",
+		":root[data-verso-grid] [data-verso-drawer-body]{",
+		"background-attachment:local",
+	} {
+		if !strings.Contains(string(css), want) {
+			t.Errorf("the dev grid is not drawn; stylesheet is missing %s", want)
+		}
+	}
+}
+
 // TestACardUnderACardDrawsNoSecondDivider: a form that writes more than one
 // file shows a card per file, one under the other. The rule above the first
 // sets the files off from the form; the next card is more of the same answer,

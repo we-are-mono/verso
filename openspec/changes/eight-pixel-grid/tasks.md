@@ -4,10 +4,10 @@ Every task ends green under `make lint` and `make test`. Each step is reviewed i
 
 ## 1. The dev grid overlay
 
-- [ ] 1.1 Write the server test first: a dev page's HTML carries `verso-dev.js`, and the stylesheet carries the `[data-verso-grid]` overlay rule for `main` and for the drawer body, drawn every 8px with `pointer-events: none`. A non-dev page carries no dev script. Watch the test fail.
-- [ ] 1.2 Add the overlay rules to `input.css` (from `main`'s top-left, and from the drawer body's chrome hairline) and rebuild `verso.css`. Verify 1.1 passes.
-- [ ] 1.3 Add the G handler to `verso-dev.js`: toggle `data-verso-grid` on `<html>`, ignore the key in fields and with modifiers, and keep the choice in `sessionStorage` behind try/catch. Add a `node --test` case under `scripts/` that loads the handler on a fake document and covers toggling on and off, typing G in an input, a modifier held, and storage throwing.
-- [ ] 1.4 In the browser: press G on Devices and in an open rule drawer, and confirm the lines start at the top bar's hairline, the rail's border and the drawer chrome. Reload and confirm the grid stays on. Commit.
+- [x] 1.1 Write the server test first: a dev page's HTML carries `verso-dev.js`, and the stylesheet carries the `[data-verso-grid]` overlay rule for `main` and for the drawer body, drawn every 8px with `pointer-events: none`. A non-dev page carries no dev script. Watch the test fail.
+- [x] 1.2 Add the overlay rules to `input.css` (from `main`'s top-left, and from the drawer body's chrome hairline) and rebuild `verso.css`. Verify 1.1 passes.
+- [x] 1.3 Add the G handler to `verso-dev.js`: toggle `data-verso-grid` on `<html>`, ignore the key in fields and with modifiers, and keep the choice in `sessionStorage` behind try/catch. Add a `node --test` case under `scripts/` that loads the handler on a fake document and covers toggling on and off, typing G in an input, a modifier held, and storage throwing.
+- [x] 1.4 In the browser: press G on Devices and in an open rule drawer, and confirm the lines start at the top bar's hairline, the rail's border and the drawer chrome. Reload and confirm the grid stays on. Commit.
 
 ## 2. Tokens and the guard
 
