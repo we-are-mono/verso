@@ -1,5 +1,28 @@
 # Spec Delta
 
+## ADDED Requirements
+
+### Requirement: Facts read as one list
+The facts about one thing SHALL render as the same list wherever they stand (an Overview card, a page card, a drawer): 40px rows, a label and its value on one 24px line, the value on the right edge or beside a fixed label column. A list MAY carry a head over its rows, either a group's title with a chip or the names of its two columns, and MAY say in the empty set's slot that it has nothing to list.
+
+#### Scenario: Maintenance's firmware
+- **WHEN** an operator opens Maintenance
+- **THEN** the firmware's parts stand as a list under the head "Part | Installed", each version beside its part
+- **AND** the rows match the Overview's Internet card row for row
+
+#### Scenario: A build on offer
+- **WHEN** the update server offers a newer build
+- **THEN** each part the build changes shows the new version under the installed one, led by an arrow
+- **AND** a part the build leaves alone says it stays as it is
+
+#### Scenario: An address family with no address
+- **WHEN** the uplink has no IPv6 prefix
+- **THEN** the Internet card's IPv6 head stands over the sentence "No prefix was delegated."
+
+#### Scenario: A plugin's facts
+- **WHEN** a plugin returns a fact list with a head and an empty sentence
+- **THEN** the shell draws them as it draws its own
+
 ## RENAMED Requirements
 
 - FROM: `### Requirement: A laned listing is one card per lane`
@@ -33,15 +56,20 @@ A page's heading line (its h1 and page acts) SHALL stand directly on the sand wi
 - **THEN** they stand on the heading line at its right end, the primary act last
 
 ### Requirement: Each ruled section of a page is a card
-Every top-level section of a page that has a title SHALL render as a card: Paper, a single Strong Hairline frame with 2px corners, a header holding the section's glyph when it has one and its title, and its content behind a hairline. Cards stand 24px apart in one column at the page's measure.
+Every top-level section of a page that has a title SHALL render as a card: Paper, a single Strong Hairline frame with 2px corners, a header holding the section's glyph when it has one, its title and its lede, and its content behind a hairline. Cards stand 24px apart in one column at the page's measure, and the blocks inside a card stand 24px apart; a titled part inside a card starts 40px on.
 
 #### Scenario: Firewall settings
 - **WHEN** an operator opens Firewall settings
 - **THEN** "When no zone applies", "Protection", "Speed", "TCP and helpers" and "Custom rules" each stand in their own card, in that order, 24px apart
 
 #### Scenario: A section's lede
-- **WHEN** a section carries a lede ("Every file in /etc/nftables.d/ loads with the ruleset…")
-- **THEN** the lede stands at the top of the card's body, 24px over the content under it
+- **WHEN** a section carries a lede ("Restoring replaces the saved files and reboots the router.")
+- **THEN** the lede stands in the card's header on the line under the title, at weight 400
+- **AND** the header's hairline stands under the lede
+
+#### Scenario: Blocks in a card
+- **WHEN** an operator opens Maintenance
+- **THEN** the Firmware card's ledger, its upload act, the packages notice and the automatic-check switch stand 24px apart
 
 #### Scenario: A part inside a section
 - **WHEN** a section holds a part (SSH's "Authorized keys")

@@ -7,34 +7,55 @@ The measuring system every page, card and drawer is laid out on: an 8px grid for
 ## ADDED Requirements
 
 ### Requirement: Fixed measures are multiples of 8px
-Every fixed measure of the layout SHALL be a multiple of 8px. This covers a box's height or width, the air between boxes, a card's or a drawer's inset, and a page measure. The measure is taken from the box's outer edge, hairlines included.
+Every fixed measure of the layout SHALL be a multiple of 8px. This covers a box's height or width, the air between boxes, a card's or a drawer's inset, and a page measure. A framed box is measured between the lines its borders stand on, so it is a multiple of 8px and one pixel more from outer edge to outer edge.
 
 #### Scenario: A control
 - **WHEN** a field, a select or a button stands at its control height on any page or in any drawer
-- **THEN** it is 32px tall
+- **THEN** its top and bottom borders stand on grid lines 32px apart
+- **AND** whatever holds it measures it as 32px
 
 #### Scenario: Cards on a page
 - **WHEN** an operator opens Firewall settings
-- **THEN** each card's words start 24px in from its frame
+- **THEN** each card's words start 24px from its frame's outer edge
 - **AND** the cards stand 24px apart
 
 #### Scenario: A page measure
 - **WHEN** a default-measure page stands in a window wide enough for its full measure
-- **THEN** its content column is 1016px wide
+- **THEN** its content column is 1017px wide, 1016px and the pixel its cards' right border lands on
 
 ### Requirement: A squeezed column rounds down to the grid
-A content column the window squeezes SHALL round its width down to a multiple of 8px, so its end and the rules that run to it land on the grid.
+A content column the window squeezes SHALL round its width down to a multiple of 8px and one pixel more, so its end and the rules and frames that run to it land on the grid. A drawer's content column SHALL round the same way, whatever the drawer's width.
 
 #### Scenario: A narrow window
 - **WHEN** the room for a page's content column is 1013px
-- **THEN** the column is 1008px wide
+- **THEN** the column is 1009px wide
+
+#### Scenario: A drawer on a phone
+- **WHEN** an operator opens a rule's drawer on a 390px-wide phone
+- **THEN** a field running the drawer's width ends with its right border on a grid line
+
+### Requirement: Every drawn edge stands on a grid line
+Every border, hairline and frame the layout draws SHALL stand on a grid line, top, bottom, left and right. A box gives its bottom border's pixel back to what follows it, so the next box starts on a line too.
+
+#### Scenario: A notice
+- **WHEN** a page shows a notice
+- **THEN** both its top and bottom borders stand on grid lines
+- **AND** its words start 24px from its frame's outer edge, with its state square in the middle 8px of that 24px
+
+#### Scenario: A field of a fixed width
+- **WHEN** a form shows an address field at its own measure
+- **THEN** its left and right borders both stand on grid lines
+
+#### Scenario: The colophon on a short page
+- **WHEN** a page is shorter than the window, at any window height
+- **THEN** the colophon stands at the window's foot with its hairline on a grid line
 
 ### Requirement: Inside a component a measure steps by 4px
 A component's own box (a chip, a checkbox, a radio row, a row act) SHALL measure a multiple of 4px. Inside that box, padding SHALL centre the component's text on its line, and the 6px between a glyph and its words is the component's own. Marks and glyphs keep their own sizes: the 6px state square, a 14px or 16px icon, a 1px hairline.
 
 #### Scenario: A chip in a row
 - **WHEN** a device row cites its interface as a chip
-- **THEN** the chip is 20px tall and stands centred on the row's 24px line
+- **THEN** the chip is 18px tall and stands 3px inside the row's 24px line at either end
 
 #### Scenario: A checkbox
 - **WHEN** a form shows a checkbox
