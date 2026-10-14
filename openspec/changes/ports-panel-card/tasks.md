@@ -23,10 +23,11 @@
   - TP, an error, or no answer → rj45.
   
   Then implement the prober over `SIOCETHTOOL`/`ETHTOOL_GLINKSETTINGS` with the two-call handshake. `golang.org/x/sys/unix` becomes a direct dependency. Verify with `go test ./internal/ports` and `make lint` (deadcode on arm64 and x86_64).
-- [ ] 2.6 Run the kind prober read-only on the bench DUT or dev container and record the result in the task note: what eth3/eth4 report on the DK, and what a VM's virtio NIC reports. Verify against the panel's drawn kinds.
+- [x] 2.6 Run the kind prober read-only on the bench DUT or dev container and record the result in the task note: what eth3/eth4 report on the DK, and what a VM's virtio NIC reports. Verify against the panel's drawn kinds.
   - Dev host: `eno1`/`eno2` (Intel) report TP → rj45; `enp1s0` (Mellanox mlx4) reports FIBRE → sfp; `lo` answers nothing.
   - Dev container: the veths `eth0`/`lan0`/`wan0` report TP → rj45, and the unprivileged read works there. They have no `device` link, so the container has no physical ports to draw.
-  - DK device tree: `sfp = <&sfp_xfi0/1>` sits on the 10G MAC nodes (`ethernet@f0000`/`@f2000`). Whether `/sys/class/net/eth3/device/of_node` is that MAC node or the `fsl,dpa-ethernet` node needs reading on hardware: `readlink -f /sys/class/net/eth3/device/of_node; ls /sys/class/net/eth3/device/of_node | grep -x sfp; ethtool eth3 | grep Port`.
+  - DK device tree: `sfp = <&sfp_xfi0/1>` sits on the 10G MAC nodes (`ethernet@f0000`/`@f2000`).
+  - DK, read on Zamanifi: `eth3`'s `device/of_node` is `soc/fsl,dpaa/ethernet@8`, the DPAA ethernet node (`compatible`, `dma-coherent`, `fsl,fman-mac`, `name`). It carries no `sfp`, only the `fsl,fman-mac` link to the MAC that does. `ethtool` reports `Port: MII` for both `eth3` and `eth4`. So the generic detection reads both cages as RJ45. The DK draws them right from its own art, so nothing shows wrong there. A DPAA board without a profile is what the backlog's profile connector override covers.
   - The DK also exposes its SFP cage LEDs as `sfp0:link`/`sfp0:activity` GPIO LEDs.
 
 ## 3. The `ports` widget: activity, speed, generated art

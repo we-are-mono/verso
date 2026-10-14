@@ -112,7 +112,9 @@ own and points at the decision that governs it; the rationale lives there, not h
 
 - **A connector override in a profile.** A board whose driver reports no fibre
   port and whose device tree links no SFP cage draws its cages as RJ45; a
-  `kinds` map in `profile.json` would name them.
+  `kinds` map in `profile.json` would name them. NXP's DPAA SDK driver is one:
+  it reports `MII` for its 10G cages, and the port's node reaches the MAC's
+  `sfp` link only through `fsl,fman-mac`.
 - **Live readings on System › Hardware.** The panel is live; the temperatures,
   rails and fans under it are as the page loaded them.
 
