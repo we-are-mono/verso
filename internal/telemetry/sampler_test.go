@@ -167,6 +167,38 @@ func TestADSAConduitIsMarked(t *testing.T) {
 	}
 }
 
+// TestAPortsLinkSpeedIsRead: a physical port carries the speed its link
+// negotiated, in Mb/s; a port without link reports -1 or no speed at all, and
+// a virtual device's speed is not a port's, so each of those reads -1.
+func TestAPortsLinkSpeedIsRead(t *testing.T) {
+	root := t.TempDir()
+	for name, speed := range map[string]string{"eth0": "1000", "eth1": "-1", "eth2": "", "br-lan": "10000"} {
+		writeInterface(t, root, name, "up", 1, 2, 3, 4)
+		if name != "br-lan" {
+			if err := os.MkdirAll(filepath.Join(root, name, "device"), 0o755); err != nil {
+				t.Fatal(err)
+			}
+		}
+		if speed != "" {
+			if err := os.WriteFile(filepath.Join(root, name, "speed"), []byte(speed+"\n"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+
+	sampler := newSampler(root, time.Hour, 60, func() time.Time { return time.Unix(100, 0) })
+	sampler.sample()
+	snapshot, err := sampler.Snapshot(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	for name, want := range map[string]int{"eth0": 1000, "eth1": -1, "eth2": -1, "br-lan": -1} {
+		if got, _ := snapshot.Interface(name); got.SpeedMbps != want {
+			t.Errorf("%s: speed %d, want %d", name, got.SpeedMbps, want)
+		}
+	}
+}
+
 // TestAnUnknownOperstateIsReadByCarrier: a tun or WireGuard device reports no
 // operational state of its own ("unknown"), so the kernel's carrier says
 // whether it carries: a connected tunnel reads up, not unknown.

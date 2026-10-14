@@ -35,6 +35,7 @@ type observation struct {
 	kind      string
 	physical  bool
 	conduit   bool
+	speedMbps int
 	parent    string
 	members   []string
 	counters  counters
@@ -164,7 +165,8 @@ func (s *Sampler) sample() {
 		interfaces = append(interfaces, Interface{
 			Name: name, Operstate: observedInterface.operstate,
 			Kind: observedInterface.kind, Physical: observedInterface.physical,
-			Conduit: observedInterface.conduit, Parent: observedInterface.parent, Members: observedInterface.members,
+			Conduit: observedInterface.conduit, SpeedMbps: observedInterface.speedMbps,
+			Parent: observedInterface.parent, Members: observedInterface.members,
 			History: history,
 		})
 	}
@@ -209,9 +211,13 @@ func readInterfaces(root string, timestampMS uint64) ([]observation, error) {
 			kind, physical, parent, members := readInterfaceMetadata(root, name, names, indexNames)
 			// A DSA conduit carries the switch's tagging under dsa/.
 			conduit := physical && pathExists(filepath.Join(root, name, "dsa"))
+			speed := -1
+			if physical {
+				speed = readSpeed(root, name)
+			}
 			observed = append(observed, observation{
 				name: name, operstate: readOperstate(root, name), kind: kind,
-				physical: physical, conduit: conduit, parent: parent, members: members, counters: current,
+				physical: physical, conduit: conduit, speedMbps: speed, parent: parent, members: members, counters: current,
 			})
 		}
 	}
@@ -330,6 +336,20 @@ func readCounter(path string) (uint64, error) {
 		return 0, fmt.Errorf("telemetry: parse %s: %w", path, err)
 	}
 	return value, nil
+}
+
+// readSpeed is a port's negotiated link speed in Mb/s. The kernel reports -1,
+// or refuses the read, when the port has no link; both read as -1.
+func readSpeed(root, name string) int {
+	raw, err := os.ReadFile(filepath.Join(root, name, "speed"))
+	if err != nil {
+		return -1
+	}
+	speed, err := strconv.Atoi(strings.TrimSpace(string(raw)))
+	if err != nil || speed <= 0 {
+		return -1
+	}
+	return speed
 }
 
 // readOperstate is the device's operational state. A driver that keeps none

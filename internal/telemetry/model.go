@@ -26,9 +26,12 @@ type Interface struct {
 	// Conduit marks a DSA conduit: the physical NIC that links a switch chip
 	// to the SoC, whose ports are the switch's own netdevs, not it.
 	Conduit bool
-	Parent  string
-	Members []string
-	History []Point
+	// SpeedMbps is a physical port's negotiated link speed, -1 when it has no
+	// link, reports none, or is not a port.
+	SpeedMbps int
+	Parent    string
+	Members   []string
+	History   []Point
 }
 
 type Snapshot struct {
