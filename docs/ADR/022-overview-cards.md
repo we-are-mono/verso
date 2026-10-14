@@ -19,10 +19,14 @@ the sheet said again further down.
 
 ### One kind of reading per card
 
-The Overview is seven cards in two columns: Internet, Ports and Tunnels on the
-left by default; Traffic, Resources, Hardware and Firmware on the right. Each
-card holds one kind of reading, and every reading a card shows stands in
-exactly one card. Uptime moves from beside the clock into Firmware.
+The Overview is six cards in two columns: Internet, Ports and Tunnels on the
+left by default; Traffic, Resources and System on the right. Each card holds
+one kind of reading, and every reading a card shows stands in exactly one
+card. System is the router itself: its board, architecture, target platform,
+firmware, kernel and uptime (uptime moves from beside the clock into it). The
+board's sensors are not on the Overview. A browser's layout that names the
+Hardware or Firmware cards of an earlier Overview reads them as System, where
+the first of them stood.
 
 The firewall has no card. A card that said "Active" and counted configured
 rules told the operator nothing they could act on, so the page keeps only the
@@ -53,13 +57,13 @@ WAN state as the rest of the page.
 
 A card's header carries its verdict: the status word and packet at its end,
 open or closed, in the tone's Deep step. A card of readings (Traffic,
-Resources, Hardware, Firmware) speaks only when a reading is out of band, and
+Resources, System) speaks only when a reading is out of band, and
 Ports only when a port in use lost link: every port linked is what its panel
 and list already show, and a header that said so too was fluff. A
 closed card adds one reading after its title, the one most worth a glance and
 never its status again: the uplink's address, the devices connected, the
 tunnels down, the traffic, memory (always memory, so the line never swaps one
-reading for another as they pass), the CPU's temperature, the firmware. The tile
+reading for another as they pass), the firmware. The tile
 strip and the verdict's kicker are gone: the page says once that something
 needs attention, and the card with the problem says which.
 
@@ -96,8 +100,8 @@ the page's script write and read the layout through it unchanged.
 ### The stream follows the layout
 
 The overview stream reads the layout once per connection. It sends no frame
-only hidden cards would read (`meters` for Resources, `sensors` for Hardware,
-`wan` for Traffic and Internet, `interfaces` for Ports and Tunnels) and takes
+only hidden cards would read (`meters` for Resources, `wan` for Traffic and
+Internet, `interfaces` for Ports and Tunnels) and takes
 no reading only such a frame needs; it always sends `clock` and `overview`,
 and takes the readings the verdict counts. Hiding, restoring or resetting
 reloads the page, which reconnects the stream on the new layout.

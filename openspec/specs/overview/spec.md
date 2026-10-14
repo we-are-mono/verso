@@ -6,21 +6,25 @@ The Overview is the landing page: a verdict on the network over cards that each 
 
 ## Requirements
 
-### Requirement: The Overview shows seven cards in two columns
-The Overview SHALL show seven cards, each holding one kind of reading: Internet, Ports, Tunnels, Traffic, Resources, Hardware and Firmware. Cards stand in two columns, each column stacking its cards at their own heights. The default layout puts Internet, Ports and Tunnels on the left, and Traffic, Resources, Hardware and Firmware on the right.
+### Requirement: The Overview shows six cards in two columns
+The Overview SHALL show six cards, each holding one kind of reading: Internet, Ports, Tunnels, Traffic, Resources and System. Cards stand in two columns, each column stacking its cards at their own heights. The default layout puts Internet, Ports and Tunnels on the left, and Traffic, Resources and System on the right.
 
 #### Scenario: First visit
 - **WHEN** a signed-in operator opens the Overview with no layout cookie
 - **THEN** the left column shows Internet, Ports and Tunnels in that order
-- **AND** the right column shows Traffic, Resources, Hardware and Firmware in that order
+- **AND** the right column shows Traffic, Resources and System in that order
 - **AND** every card is open
+
+#### Scenario: A layout from before System
+- **WHEN** the layout cookie names Hardware or Firmware
+- **THEN** System stands where the first of them stood, closed or hidden as that card was
 
 #### Scenario: Narrow screen
 - **WHEN** the page is too narrow for two columns
 - **THEN** the cards stand in one column, the left column's cards first, then the right column's
 
 ### Requirement: Each card's header carries its status
-Every card header SHALL show the card's icon and title. Cards with a verdict (Internet, Ports, Tunnels) show the verdict at the header's end as a status word with its packet in the verdict's tone, whether the card is open or closed. Cards of readings (Traffic, Resources, Hardware, Firmware) show a status only when one of their readings is in a warning or danger band.
+Every card header SHALL show the card's icon and title. Cards with a verdict (Internet, Ports, Tunnels) show the verdict at the header's end as a status word with its packet in the verdict's tone, whether the card is open or closed. Cards of readings (Traffic, Resources, System) show a status only when one of their readings is in a warning or danger band.
 
 #### Scenario: Internet is up
 - **WHEN** the uplink is up
@@ -40,7 +44,7 @@ A closed card SHALL show only its header, with one reading after the title: the 
 #### Scenario: Every card closed
 - **WHEN** the operator closes every card
 - **THEN** Internet shows the uplink's IPv4 address, Ports how many devices are connected, and Tunnels how many tunnels there are, or the down ones by name
-- **AND** Traffic shows the current download and upload, Resources memory, Hardware the CPU's temperature, and Firmware the firmware the router runs
+- **AND** Traffic shows the current download and upload, Resources memory, and System the firmware the router runs
 
 #### Scenario: Internet is down while closed
 - **WHEN** the Internet card is closed and the uplink is down
@@ -89,8 +93,8 @@ The Overview SHALL offer an Arrange act on its heading line. In Arrange mode eve
 In Arrange mode the operator SHALL move a card by dragging it to any place in either column, or by focusing its drag handle and pressing an arrow key. Up and Down move it within its column; Left and Right move it to the same position in the other column. Each move is announced to assistive technology with the card's column and position.
 
 #### Scenario: Drag across columns
-- **WHEN** the operator drags Hardware from the right column and drops it above Ports in the left column
-- **THEN** Hardware stands above Ports in the left column
+- **WHEN** the operator drags System from the right column and drops it above Ports in the left column
+- **THEN** System stands above Ports in the left column
 
 #### Scenario: Keyboard move
 - **WHEN** focus is on the Internet card's drag handle and the operator presses ArrowDown
@@ -101,16 +105,16 @@ In Arrange mode the operator SHALL move a card by dragging it to any place in ei
 Hiding a card SHALL remove it from its column and list it on the shelf. Restoring a card from the shelf puts it at the end of the shorter column. Reset layout restores the default layout, with every card shown and open.
 
 #### Scenario: Hide and restore
-- **WHEN** the operator hides Firmware and then restores it from the shelf
-- **THEN** Firmware leaves the page and is listed on the shelf
+- **WHEN** the operator hides System and then restores it from the shelf
+- **THEN** System leaves the page and is listed on the shelf
 - **AND** after restoring it stands at the end of the shorter column
 
 ### Requirement: The layout is kept per browser in a cookie
 The browser SHALL keep each card's column, order, and open, closed or hidden state in one first-party cookie, scoped to the router's origin, sent to every Overview request and kept until the browser's own cookie limit. Nothing about the layout is stored on the router.
 
 #### Scenario: Layout survives a reload
-- **WHEN** the operator moves Traffic to the left column, closes Firmware and reloads the page
-- **THEN** Traffic is in the left column and Firmware is closed
+- **WHEN** the operator moves Traffic to the left column, closes System and reloads the page
+- **THEN** Traffic is in the left column and System is closed
 
 #### Scenario: Another browser
 - **WHEN** the same operator opens the Overview in another browser
@@ -141,10 +145,6 @@ The shell SHALL NOT render a hidden card, and the Overview's live stream SHALL N
 - **WHEN** Resources is hidden
 - **THEN** the live stream sends no system-meter frames
 
-#### Scenario: Hardware hidden
-- **WHEN** Hardware is hidden
-- **THEN** the live stream sends no sensor frames and reads no hardware sensors
-
 #### Scenario: A hidden card's problem still reaches the verdict
 - **WHEN** Resources is hidden and memory enters its warning band
 - **THEN** the verdict reads "Your network needs attention"
@@ -164,8 +164,7 @@ Every reading the Overview takes SHALL appear in exactly one card, and each card
 - **AND** Tunnels holds each tunnel someone brought up, with its kind, current rate and state
 - **AND** Traffic holds the Internet graph and its window choice
 - **AND** Resources holds load, CPU, memory and storage
-- **AND** Hardware holds the board and its CPU temperature, fan speed and power draw
-- **AND** Firmware holds firmware, kernel and uptime
+- **AND** System holds the board, its architecture and target platform, the firmware, kernel and uptime
 
 #### Scenario: No IPv6
 - **WHEN** no IPv6 prefix was delegated
@@ -182,4 +181,4 @@ Every reading the Overview takes SHALL appear in exactly one card, and each card
 
 #### Scenario: Uptime is shown once
 - **WHEN** the Overview renders
-- **THEN** the router's uptime appears in the Firmware card and nowhere else on the page
+- **THEN** the router's uptime appears in the System card and nowhere else on the page

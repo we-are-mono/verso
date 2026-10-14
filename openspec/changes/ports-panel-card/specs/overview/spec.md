@@ -3,7 +3,7 @@
 ## MODIFIED Requirements
 
 ### Requirement: Each card's header carries its status
-Every card header SHALL show the card's icon and title. Cards with a verdict (Internet, Tunnels) show the verdict at the header's end as a status word with its packet in the verdict's tone, whether the card is open or closed. The Ports card shows a status only when a port a network uses has lost link or its state is unknown, since its panel and list already show every port linked. Cards of readings (Traffic, Resources, Hardware, Firmware) show a status only when one of their readings is in a warning or danger band.
+Every card header SHALL show the card's icon and title. Cards with a verdict (Internet, Tunnels) show the verdict at the header's end as a status word with its packet in the verdict's tone, whether the card is open or closed. The Ports card shows a status only when a port a network uses has lost link or its state is unknown, since its panel and list already show every port linked. Cards of readings (Traffic, Resources, System) show a status only when one of their readings is in a warning or danger band.
 
 #### Scenario: Internet is up
 - **WHEN** the uplink is up
@@ -31,8 +31,7 @@ Every reading the Overview takes SHALL appear in exactly one card, and each card
 - **AND** Tunnels holds each tunnel someone brought up, with its kind, current rate and state
 - **AND** Traffic holds the Internet graph and its window choice
 - **AND** Resources holds load, CPU, memory and storage
-- **AND** Hardware holds the board and its CPU temperature, fan speed and power draw
-- **AND** Firmware holds firmware, kernel and uptime
+- **AND** System holds the board, its architecture and target platform, the firmware, kernel and uptime
 
 #### Scenario: No IPv6
 - **WHEN** no IPv6 prefix was delegated
@@ -49,7 +48,7 @@ Every reading the Overview takes SHALL appear in exactly one card, and each card
 
 #### Scenario: Uptime is shown once
 - **WHEN** the Overview renders
-- **THEN** the router's uptime appears in the Firmware card and nowhere else on the page
+- **THEN** the router's uptime appears in the System card and nowhere else on the page
 
 ## ADDED Requirements
 
