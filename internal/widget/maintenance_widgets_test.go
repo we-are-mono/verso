@@ -26,12 +26,13 @@ func TestAButtonSaysWhatItDoesWhilePressed(t *testing.T) {
 // TestACalloutCarriesTheActsThatResolveIt: a notice that something is missing
 // carries the act that resolves it, inside the band: a row of buttons 24px
 // under the words, so the buttons stand on the band's lines, in the band's own
-// ink.
+// ink. Under a compact band's buttons the row keeps 8px more of its own, so
+// they stand 16px over the frame rather than the words' 8px.
 func TestACalloutCarriesTheActsThatResolveIt(t *testing.T) {
-	for _, compact := range []bool{true, false} {
+	for compact, class := range map[bool]string{true: "mt-6 pb-2 flex", false: "mt-6 flex"} {
 		got := render(t, newRenderer(t), &Callout{Variant: "info", Compact: compact, Title: "Nothing is blocked", Body: "Installing adds a blocklist.",
 			Acts: []Link{{Style: "secondary", Label: "Install adblock", Icon: "download", Href: "/system/packages/package?name=adblock", Panel: true}}})
-		row := strings.Index(got, `<div data-verso-callout-acts class="mt-6 flex flex-wrap items-center gap-x-3 gap-y-2">`)
+		row := strings.Index(got, `<div data-verso-callout-acts class="`+class+` flex-wrap items-center gap-x-3 gap-y-2">`)
 		words := strings.Index(got, "Installing adds a blocklist.")
 		if row < 0 || words < 0 || row < words {
 			t.Errorf("compact=%v: the acts row stands inside the band, under its words:\n%s", compact, got)

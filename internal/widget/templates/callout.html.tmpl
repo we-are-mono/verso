@@ -83,4 +83,4 @@
      32px buttons 24px under its words, so the buttons stand on the band's
      lines and the band stays on the grid. The buttons keep their own shape
      and take the band's ink (input.css, data-verso-callout-acts). */}}
-{{define "callout.acts"}}{{if .RenderedActs}}<div data-verso-callout-acts class="mt-6 flex flex-wrap items-center gap-x-3 gap-y-2">{{range .RenderedActs}}{{.}}{{end}}</div>{{end}}{{end}}
+{{define "callout.acts"}}{{if .RenderedActs}}<div data-verso-callout-acts class="mt-6 {{if .Compact}}pb-2 {{end}}flex flex-wrap items-center gap-x-3 gap-y-2">{{range .RenderedActs}}{{.}}{{end}}</div>{{end}}{{end}}
