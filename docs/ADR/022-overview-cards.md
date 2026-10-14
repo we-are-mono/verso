@@ -19,15 +19,20 @@ the sheet said again further down.
 
 ### One kind of reading per card
 
-The Overview is six cards in two columns: Internet, Ports and Tunnels on the
-left by default; Traffic, Resources and System on the right. Each card holds
-one kind of reading, and every reading a card shows stands in exactly one
-card. System is the router itself: its board, architecture, target platform,
-firmware, kernel, uptime and local time with its zone (both move into it from
-beside the verdict). The
-board's sensors are not on the Overview. A browser's layout that names the
-Hardware or Firmware cards of an earlier Overview reads them as System, where
-the first of them stood.
+The Overview is seven cards in two columns: Internet, Ports and Tunnels on the
+left by default; Traffic, Resources, System and Hardware on the right. Each
+card holds one kind of reading, and every reading a card shows stands in
+exactly one card. System is the router itself: its board, architecture, target
+platform, firmware, kernel, uptime and local time with its zone (both move
+into it from beside the verdict). A browser's layout that names the Firmware
+card of an earlier Overview reads it as System, where it stood.
+
+Hardware is the board's sensors, and stands only on a board whose profile
+lists them: the profile's temperatures, power rails and fans, as three fact
+lists in the profile's order under the profile's names. A board with no
+profile has guesses, not a curation, so it has no Hardware card; its layout
+drops the card wherever a saved value names it, and the Hardware page still
+shows every reading the kernel exposes.
 
 The firewall has no card. A card that said "Active" and counted configured
 rules told the operator nothing they could act on, so the page keeps only the
@@ -58,19 +63,24 @@ WAN state as the rest of the page.
 
 A card's header carries its verdict: the status word and packet at its end,
 open or closed, in the tone's Deep step. A card of readings (Traffic,
-Resources, System) speaks only when a reading is out of band, and
+Resources, System, Hardware) speaks only when a reading is out of band, and
 Ports only when a port in use lost link: every port linked is what its panel
 and list already show, and a header that said so too was fluff. A
 closed card adds one reading after its title, the one most worth a glance and
 never its status again: the uplink's address, the devices connected, the
 tunnels down, the traffic, memory (always memory, so the line never swaps one
-reading for another as they pass), the firmware. The tile
+reading for another as they pass), the firmware, the CPU temperature. Hardware
+grades a temperature only against its own limits (its zone's trip points or
+its chip's), never a guessed one, and names the reading furthest out: a
+temperature before a stopped fan. The tile
 strip and the verdict's kicker are gone: the page says once that something
 needs attention, and the card with the problem says which.
 
 The verdict counts what the cards read whether or not a card is hidden, so
-hiding a card never makes the page read "online". A card stays closed when its
-status turns; its header shows the change.
+hiding a card never makes the page read "online". Hardware is the exception:
+the verdict speaks for the network, and a warm board is not a network that
+needs attention, so Hardware's status never moves it. A card stays closed when
+its status turns; its header shows the change.
 
 ### Arrange is a mode
 
@@ -102,10 +112,16 @@ the page's script write and read the layout through it unchanged.
 
 The overview stream reads the layout once per connection. It sends no frame
 only hidden cards would read (`meters` for Resources, `wan` for Traffic and
-Internet, `interfaces` for Ports and Tunnels) and takes
+Internet, `interfaces` for Ports and Tunnels, `sensors` for Hardware) and takes
 no reading only such a frame needs; it always sends `clock` and `overview`,
 and takes the readings the verdict counts. Hiding, restoring or resetting
 reloads the page, which reconnects the stream on the new layout.
+
+Most of a board's sensors are i2c transactions behind a mux, and the bus is
+slow and shared. One read of them serves every page render and every stream
+connection for five seconds, and the `sensors` frame carries that read's rows
+each second, by key. While Hardware is hidden nothing reads them, since the
+verdict does not count them.
 
 The stream reads the interfaces' topology once per connection and lays each
 second's states and rates onto it, so its card heads are the first paint's.

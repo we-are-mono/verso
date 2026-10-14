@@ -116,7 +116,12 @@ own and points at the decision that governs it; the rationale lives there, not h
   it reports `MII` for its 10G cages, and the port's node reaches the MAC's
   `sfp` link only through `fsl,fman-mac`.
 - **Live readings on System › Hardware.** The panel is live; the temperatures,
-  rails and fans under it are as the page loaded them.
+  rails and fans under it are as the page loaded them. The Overview's
+  five-second sensor read (`sensorSampler`) could feed them.
+- **Board profiles from packages.** The shell reads profiles from
+  `/usr/share/verso/boards/`, so a vendor ships `verso-board-<name>` without a
+  Verso release, and panel art is sanitized when it loads (OpenSpec change
+  `board-profiles-runtime`).
 
 ## Page cards
 

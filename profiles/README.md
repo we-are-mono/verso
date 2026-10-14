@@ -124,28 +124,31 @@ The uniform JSON hides four small mechanics — the resolver picks by kind:
   against the key (`cluster-thermal`). The zone carries its own trip points, so a
   reading surfaces its warn/critical limits for free.
 
-### Flags pick the home-dashboard headlines
+### The arrays are the Overview's Hardware card
 
-Everything in the arrays shows in the **Sensors view**, in array order. Optional
-flags lift one entry each onto the **calm home dashboard**:
+Every entry in `thermal`, `power` and `fans` shows on the Overview's **Hardware
+card**, as three lists (Thermal, Power, Fans) in array order, under the names you
+give them. An entry the kernel does not expose is left out, and a kind the profile
+does not list has no list. A board with no profile, or one whose profile lists no
+sensors, has no Hardware card at all. The **Hardware page** shows every reading the
+box exposes, profiled or not.
 
-- **`"cpu": true`** on a thermal entry → *the* CPU temperature.
-- **`"main": true`** on a fan entry → the primary fan's speed, even when another
-  channel spins faster.
-- **`"main": true`** on a power entry → *the* headline power figure. Use the board
-  **input** rail: downstream regulators (Core/DDR/…) are fed from it, so summing all
-  rails would double-count.
+Optional flags pick the headlines:
 
-The homepage always shows **CPU Temperature**, **Fan speed**, and **Power draw**.
-If the profile has no readable CPU pick, temperature falls back to the system's
-CPU thermal zone or standard CPU hwmon reading, then its hottest thermal zone.
-Fan speed and power draw require a readable entry marked `main`: without a
-matching profile, primary entry, or reading, they show **N/A**. Temperature also
-shows **N/A** when no system reading is available. Missing readings stay N/A in
-live updates; a valid zero remains a measured zero.
+- **`"cpu": true`** on a thermal entry → *the* CPU temperature: the Hardware card's
+  line while it is closed, and the Hardware page's Processor tile.
+- **`"main": true`** on a fan entry → the Hardware page's Cooling tile, even when
+  another channel spins faster.
+- **`"main": true`** on a power entry → the Hardware page's Power draw tile. Use
+  the board **input** rail: downstream regulators (Core/DDR/…) are fed from it, so
+  summing all rails would double-count.
+
+The card's header speaks only when a reading is out of band: a temperature past its
+own warn or critical limit, or a fan with its fault or alarm set. A temperature with
+no limits of its own is never out of band.
 
 There is no separate overrides block — the arrays *are* the labels, the order, and
-the visibility. To hide a reading from the Sensors view, leave it out of the array.
+the visibility. To keep a reading off the Hardware card, leave it out of the array.
 
 ### `ports` — physical order, left to right
 
