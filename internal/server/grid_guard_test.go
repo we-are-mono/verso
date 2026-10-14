@@ -30,8 +30,11 @@ var (
 // each with the reason it does.
 var gridExceptions = map[string]string{
 	"gap-1.5":  "the 6px between a glyph and its words inside a chip, an act or a link is the component's own",
+	"gap-0.5":  "the 2px between the segments of one segmented control is the control's own",
 	"-mx-1.5":  "a middot between two words pulls in its own side bearings",
 	"mt-1.75":  "a 6px state mark centred on its 20px line hangs 7px down it",
+	"mt-9.75":  "a rule 40px under the content, less its own pixel, lands on the line",
+	"mt-5.75":  "a rule 24px under the content, less its own pixel, lands on the line",
 	"-mt-1.75": "a 6px state mark centred on its 20px line hangs 7px down it",
 }
 
@@ -52,17 +55,13 @@ var gridPending = map[string]bool{
 	"../widget/templates/confirm.html.tmpl":    true,
 	"../widget/templates/disclosure.html.tmpl": true,
 	"../widget/templates/empty.html.tmpl":      true,
-	"../widget/templates/field.html.tmpl":      true,
 	"../widget/templates/filter.html.tmpl":     true,
-	"../widget/templates/form.html.tmpl":       true,
 	"../widget/templates/grid.html.tmpl":       true,
 	"../widget/templates/list.html.tmpl":       true,
 	"../widget/templates/meter.html.tmpl":      true,
 	"../widget/templates/modal.html.tmpl":      true,
 	"../widget/templates/overview.html.tmpl":   true,
-	"../widget/templates/ports.html.tmpl":      true,
 	"../widget/templates/properties.html.tmpl": true,
-	"../widget/templates/settings.html.tmpl":   true,
 	"../widget/templates/stack.html.tmpl":      true,
 	"../widget/templates/stat.html.tmpl":       true,
 	"../widget/templates/text.html.tmpl":       true,

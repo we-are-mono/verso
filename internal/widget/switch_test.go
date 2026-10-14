@@ -23,7 +23,7 @@ func TestDecodeAndRenderSwitch(t *testing.T) {
 		"verso-field-control",
 		// The input is screen-reader-only, so the visible box has to be inside
 		// a label: without one, pressing the control does nothing at all.
-		`<label class="flex w-fit cursor-pointer items-center"><span class="relative inline-flex size-4.5`,
+		`<label class="flex w-fit cursor-pointer items-center"><span class="relative inline-flex size-4`,
 		// And its explanation is raised onto the label, as a field's is, rather
 		// than taking a paragraph indented under the control.
 		"data-verso-tip", `aria-describedby="enabled-tip"`, "Applies immediately.",
@@ -54,7 +54,7 @@ func TestDecodeAndRenderSwitch(t *testing.T) {
 func TestSwitchControlIsACheckbox(t *testing.T) {
 	got := render(t, newRenderer(t), &Switch{Name: "enabled", Label: "Enabled", On: true})
 	for _, want := range []string{
-		`<span class="relative inline-flex size-4.5 shrink-0 cursor-pointer items-center justify-center">`,
+		`<span class="relative inline-flex size-4 shrink-0 cursor-pointer items-center justify-center">`,
 		`class="absolute inset-0 rounded-xs border border-choice-border bg-white shadow-[inset_0_1px_2px_rgba(27,25,23,.06)] transition-colors peer-checked:border-choice peer-checked:bg-choice peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-denim-deep peer-disabled:border-inert peer-disabled:shadow-none peer-disabled:peer-checked:bg-inert"`,
 		`<span class="relative text-white opacity-0 peer-checked:opacity-100">`, lucideIcons["check"], "[stroke-width:3]",
 	} {

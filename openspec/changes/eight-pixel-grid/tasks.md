@@ -26,7 +26,7 @@ Every task ends green under `make lint` and `make test`. Each step is reviewed i
 
 ## 5. Forms
 
-- [ ] 5.1 Fields (`field.html.tmpl`, `forms.css`, `form.html.tmpl`, `form_switch.html.tmpl`, `settings.html.tmpl`): 24px air, a 4px gap from the label line to a 32px control, 16px checkboxes, 28px radio rows, value chips in a 32px box, refusal bands, fused and joined rows, and the ledger line. Update `form_test.go`, `field_frame_test.go` and `conditions_test.go` first. Verify with G on: Firewall › Rules' new-rule drawer (conditions), System › Access and Network › DNS. Commit.
+- [x] 5.1 Fields (`field.html.tmpl`, `forms.css`, `form.html.tmpl`, `form_switch.html.tmpl`, `settings.html.tmpl`): 24px air, a 4px gap from the label line to a 32px control, 16px checkboxes, 28px radio rows, value chips in a 32px box, refusal bands, fused and joined rows, and the ledger line. Update `form_test.go`, `field_frame_test.go` and `conditions_test.go` first. Verify with G on: Firewall › Rules' new-rule drawer (conditions), System › Access and Network › DNS. Commit.
 - [ ] 5.2 The remaining form widgets (`list.html.tmpl`, `collection.html.tmpl`, `conditions.html.tmpl`, `conditional.html.tmpl`, `code.html.tmpl`, `callout.html.tmpl`, `confirm.html.tmpl`, `properties.html.tmpl`, `link.html.tmpl`, `button.html.tmpl`, `disclosure.html.tmpl`, `divider.html.tmpl`, `empty.html.tmpl`, `grid.html.tmpl`, `stack.html.tmpl`). Update `collection_test.go`, `properties_test.go` and `maintenance_widgets_test.go` first. Verify with G on: SSH keys, System › Maintenance and a configuration card. Commit.
 
 ## 6. Overview and charts

@@ -68,15 +68,14 @@
   {{else if .UseRadios}}
   {{/* Small single-choice sets stay visible. Native radios retain arrow-key
        navigation, mutual exclusion and the same submitted name/value. A
-       choice is a cell and a half: one cell is too tight for a run of them and
-       two too loose. The run stands half a cell under the field's label, so
-       the first choice straddles a line and every second one sits in a cell,
-       and it ends on a line whatever the count: an odd run keeps a little
-       more air at its end, an even one gives a little back. */}}
+       choice is 28px, its 20px line and 4px over and under: one line is too
+       tight for a run of them and a field's height too loose. The run starts
+       straight under the field's label, so a run of any count is a multiple
+       of 4px. */}}
   {{$selected := .SelectedIndex}}
-  <div role="radiogroup"{{if .Reshapes}} data-verso-reshape{{end}}{{if .Label}} aria-labelledby="{{.Name}}-label"{{end}}{{template "verso-field-aria" .}} class="flex min-w-0 flex-col items-start pt-1.25">
+  <div role="radiogroup"{{if .Reshapes}} data-verso-reshape{{end}}{{if .Label}} aria-labelledby="{{.Name}}-label"{{end}}{{template "verso-field-aria" .}} class="flex min-w-0 flex-col items-start">
     {{range $index, $option := .Options}}
-    <label class="flex max-w-full cursor-pointer items-center gap-2 py-1.25 last-of-type:mb-1.25 [&:nth-of-type(even):last-of-type]:-mb-1.25 {{if $.Words}}font-sans text-sm font-normal{{else}}font-mono text-base font-normal{{end}} leading-5 text-body">
+    <label class="flex max-w-full cursor-pointer items-center gap-2 py-1 {{if $.Words}}font-sans text-sm font-normal{{else}}font-mono text-base font-normal{{end}} leading-5 text-body">
       <input id="{{$.Name}}{{if $index}}-option-{{$index}}{{end}}" type="radio" name="{{$.Name}}" value="{{.Value}}"{{if eq $index $selected}} checked{{end}}{{with $.DescribedBy}} aria-describedby="{{.}}"{{end}}{{if $.Error}} aria-invalid="true"{{end}} class="size-4 shrink-0 cursor-pointer accent-choice focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim-deep">
       <span class="min-w-0 wrap-anywhere">{{.Label}}</span>
     </label>
@@ -97,7 +96,7 @@
        so it posts exactly as the grid does and needs no JavaScript. */}}
   <div role="group"{{if .Label}} aria-labelledby="{{.Name}}-label"{{end}}{{template "verso-field-aria" .}} class="inline-flex w-fit max-w-full flex-wrap gap-0.5 self-start rounded-xs border border-rule-strong bg-quiet p-0.5">
     {{range .Options}}
-    <label class="flex h-7.5 cursor-pointer items-center rounded-xs px-3.5 text-sm font-normal text-body transition-colors hover:text-ink has-checked:bg-choice has-checked:font-semibold has-checked:text-white {{template "verso-segment-focus"}}">
+    <label class="flex h-7 cursor-pointer items-center rounded-xs px-3.5 text-sm font-normal text-body transition-colors hover:text-ink has-checked:bg-choice has-checked:font-semibold has-checked:text-white {{template "verso-segment-focus"}}">
       <input type="checkbox" name="{{$.Name}}" value="{{.Value}}"{{if $.Checked .Value}} checked{{end}} class="sr-only">
       {{/* A checked chip's word goes semibold, which is wider; its hidden
            semibold twin in the same cell holds that width from the start, so
@@ -114,7 +113,7 @@
     {{range .Options}}
     <label class="flex min-h-5 max-w-full cursor-pointer items-center gap-2 text-sm leading-5 text-body">
       <input type="checkbox" name="{{$.Name}}" value="{{.Value}}"{{if $.Checked .Value}} checked{{end}}
-        class="size-4.5 shrink-0 cursor-pointer rounded-xs border-choice-border accent-choice focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim-deep">
+        class="size-4 shrink-0 cursor-pointer rounded-xs border-choice-border accent-choice focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim-deep">
       {{.Label}}
     </label>
     {{end}}

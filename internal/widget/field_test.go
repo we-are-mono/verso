@@ -43,23 +43,21 @@ func TestSingleChoiceCutoff(t *testing.T) {
 	}
 }
 
-// TestRadiosStandACellAndAHalfApart: a cell a radio is too tight for a run
-// of choices and two too loose, so each is a cell and a half. The run stands
-// half a cell under the field's label, so the first choice straddles a line
-// and every second one sits in a cell, and it ends on a line whatever the
-// count: an odd run keeps a little more air at its end, an even one gives a
-// little back.
+// TestRadiosStandACellAndAHalfApart: a line is too tight for a run of
+// choices and a field's height too loose, so each is 28px: its 20px line and
+// 4px over and under. The run starts straight under the field's label, so a
+// run of any count is a multiple of 4px.
 func TestRadiosStandACellAndAHalfApart(t *testing.T) {
 	if RadioOptionLimit < 2 {
 		t.Skip("radios disabled by the shared policy")
 	}
 	got := render(t, newRenderer(t), &Field{Name: "policy", Label: "Policy", Kind: "select", Value: "0", Options: choiceOptions(2)})
-	if !strings.Contains(got, `class="flex min-w-0 flex-col items-start pt-1.25">`) {
-		t.Errorf("the run stands half a cell under the label:\n%s", got)
+	if !strings.Contains(got, `class="flex min-w-0 flex-col items-start">`) {
+		t.Errorf("the run stands straight under the label:\n%s", got)
 	}
-	want := `<label class="flex max-w-full cursor-pointer items-center gap-2 py-1.25 last-of-type:mb-1.25 [&:nth-of-type(even):last-of-type]:-mb-1.25 `
+	want := `<label class="flex max-w-full cursor-pointer items-center gap-2 py-1 `
 	if strings.Count(got, want) != 2 {
-		t.Errorf("each radio is a cell and a half, the run ending on a line, want %q:\n%s", want, got)
+		t.Errorf("each radio is 28px, its 20px line and 4px over and under, want %q:\n%s", want, got)
 	}
 }
 

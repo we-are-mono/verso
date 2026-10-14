@@ -12,11 +12,11 @@
 {{define "settings.value"}}<input id="{{.Name}}" type="text" name="{{.Name}}" value="{{.Value}}"{{with .DescribedBy}} aria-describedby="{{.}}"{{end}}{{if .Inline}} data-verso-inline-input{{with .Datatype}} data-verso-datatype="{{.}}"{{end}}{{end}}{{if eq .Measure "number"}} inputmode="numeric"{{end}} class="{{template "verso-input-class"}} {{template "verso-input-border" .Inline}} tabular-nums{{if eq .Measure "number"}} w-24! max-w-full{{end}}">{{end}}
 {{define "settings.row"}}
   {{if .Frame}}{{.Frame}}{{else}}
-  {{/* Read-only facts and policy pills are fields on the notebook's grid: a
-       cell of air (half a cell, condensed), the name's 20px line and the
-       description's, and the hairline the next cell's line. The pills ride
-       the name's line, a pixel over at either edge. */}}
-  <div data-verso-settings-row class="flex items-start gap-3 {{if .Condensed}}pt-2.5 pb-2.25{{else}}pt-5 pb-4.75{{end}} border-b border-rule last:border-b-0 last:pb-0 [&:has(+details)]:border-b-0">
+  {{/* Read-only facts and policy pills are fields on the grid: 24px of air
+       (a row's 10px, condensed), the name's 20px line and the description's,
+       and the hairline the line after the air under them. The pills ride
+       the name's line. */}}
+  <div data-verso-settings-row class="flex items-start gap-3 {{if .Condensed}}py-row{{else}}pt-6 pb-5.75{{end}} border-b border-rule last:border-b-0 last:pb-0 [&:has(+details)]:border-b-0">
     <div class="min-w-0 flex-1">
       <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
         <div class="text-base leading-5 font-semibold text-ink">{{.Title}}</div>
@@ -28,22 +28,15 @@
   </div>
   {{end}}
 {{end}}
-{{/* bare by default: rows sit straight on the page, hairlines doing the
-     separating. style "card" opts into the box for the select places that
-     earn one — there pb-2.5 + the first/last row's own py-2.5 = the card's
-     px-5 (equal breathing room on both axes), an untitled card trims its top
-     (pt-1.5) so the first row sits where a title row would, the seam swallows
-     the bottom padding with -mb-2.5, and overflow-hidden clips the seam's
-     hover wash to the rounded edge. */}}
-{{/* the card frame is one hairline border — a card reads as a deliberate
-     object on the white canvas without leaning on shadow. Each row brings its
-     own cell of air, so a section adds none above the set (data-verso-settings). */}}
+{{/* bare: rows sit straight on the page, hairlines doing the separating.
+     Each row brings its own air, so a section adds none above the set
+     (data-verso-settings). */}}
 <div data-verso-settings>
   {{/* the group label lives inside its card (same treatment as table column
        heads), so section headings above stay the only floating text. */}}
   {{/* bare groups rule off their head like a table's thead — the same hairline
        under the label; framed cards stay ruleless. */}}
-  {{if .Title}}<div class="flex items-baseline justify-between gap-3 pt-1.5 pb-2 {{if not .Card}}border-b border-rule-strong {{end}}{{template "verso-kicker-class"}}">
+  {{if .Title}}<div class="flex items-baseline justify-between gap-3 pt-1 pb-0.75 {{if not .Card}}border-b border-rule-strong {{end}}{{template "verso-kicker-class"}}">
     <span>{{.Title}}</span>
     {{if .Meta}}<span class="min-w-0 truncate text-xs font-normal normal-case text-faint">{{.Meta}}</span>{{end}}
   </div>{{end}}

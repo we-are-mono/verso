@@ -41,7 +41,7 @@
        actions remain separate controls alongside it. */}}
   <div class="flex max-w-full items-end gap-2 [&>.verso-field-row]:w-80 [&>.verso-field-row]:min-w-0">
     {{range .Fields}}{{.}}{{end}}
-    {{if .Submit}}<button type="submit"{{if .Dirty}} disabled{{end}} class="{{template "verso-btn-box"}} my-0.75 shrink-0 {{template "form.submit-tone" .Tone}}{{if .Dirty}} {{template "verso-btn-waiting"}}{{end}}">{{if .Icon}}{{icon .Icon "size-4"}}{{end}}{{.Submit}}</button>{{end}}
+    {{if .Submit}}<button type="submit"{{if .Dirty}} disabled{{end}} class="{{template "verso-btn-box"}} shrink-0 {{template "form.submit-tone" .Tone}}{{if .Dirty}} {{template "verso-btn-waiting"}}{{end}}">{{if .Icon}}{{icon .Icon "size-4"}}{{end}}{{.Submit}}</button>{{end}}
   </div>
   {{if or .Actions .Note}}
   <div class="flex flex-wrap items-center gap-3">
@@ -59,17 +59,16 @@
        have decided to press. A form driven inline keeps its old tight row: it
        is one control's companion, not a page's ending. */}}
   {{/* A form that commits one section of a page draws no rule: its Save
-       stands a cell under its own fields, and the next section's rule closes
-       it. A page's own form commits the whole page, so its Save stands a cell
-       under a section rule of the page's, run out to the rail, the rule two
-       cells under the content as every section's is. A panel's form
-       closes on its own rule, inside the panel, except when its actions finish
-       the configuration card immediately above them, or when the form is only
-       its act (every field hidden): with nothing to close off, the act stands
-       a cell under what is above it. Every rule lands on the notebook's line
-       (its margin a cell less its own pixel), and the acts stand centred in
-       the two cells after the air (3px above and below a control's 34). */}}
-  <div data-verso-form-actions{{if and .ClosesPage (not .JoinsCode)}} data-verso-rule{{end}} class="flex flex-wrap items-center {{if .Inline}}-ml-3 gap-3{{else if .JoinsCode}}mt-5 gap-4 py-0.75{{else if .Sectioned}}mt-5 gap-4 py-0.75{{else if .ClosesPage}}mt-9.75 gap-4 border-t border-rule pt-5.75 pb-0.75{{else if .LoneAct}}mt-5 gap-4 py-0.75{{else}}mt-4.75 gap-4 border-t border-rule pt-5.75 pb-0.75{{end}}">
+       stands 24px under its own fields, and the next section's rule closes
+       it. A page's own form commits the whole page, so its Save stands 24px
+       under a section rule of the page's, run out to the rail, the rule 40px
+       under the content as every section's is. A panel's form closes on its
+       own rule, 24px under its fields, inside the panel, except when its
+       actions finish the configuration card immediately above them, or when
+       the form is only its act (every field hidden): with nothing to close
+       off, the act stands 24px under what is above it. Every rule lands on a
+       line of the grid (its margin its air less its own pixel). */}}
+  <div data-verso-form-actions{{if and .ClosesPage (not .JoinsCode)}} data-verso-rule{{end}} class="flex flex-wrap items-center {{if .Inline}}-ml-3 gap-3{{else if .JoinsCode}}mt-6 gap-4{{else if .Sectioned}}mt-6 gap-4{{else if .ClosesPage}}mt-9.75 gap-4 border-t border-rule pt-5.75{{else if .LoneAct}}mt-6 gap-4{{else}}mt-5.75 gap-4 border-t border-rule pt-5.75{{end}}">
     {{/* No Submit label, no primary button — a form may be driven by its
          actions or by a confirm among its fields instead. */}}
     {{/* A form that waits for a change draws its acts resting, as the page's
