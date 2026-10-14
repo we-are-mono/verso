@@ -88,20 +88,6 @@ func TestCheckedSaysWhen(t *testing.T) {
 	}
 }
 
-// TestMaintenanceUptimeSingulars: the "1 …" forms carry no verb, so they must
-// not be formatted with the count, or the page prints "%!(EXTRA …)".
-func TestMaintenanceUptimeSingulars(t *testing.T) {
-	for seconds, want := range map[int64]string{
-		86400 + 3600:   "1 day, 1 hour",
-		60:             "1 minute",
-		2*86400 + 7200: "2 days, 2 hours",
-	} {
-		if got := maintenanceUptime(identity, seconds); got != want {
-			t.Errorf("maintenanceUptime(%d) = %q, want %q", seconds, got, want)
-		}
-	}
-}
-
 // TestFirmwareLedgerKernelIsTheRelease: the row already says Kernel, so a board
 // that reports "Linux 6.12.101" shows the release alone.
 func TestFirmwareLedgerKernelIsTheRelease(t *testing.T) {

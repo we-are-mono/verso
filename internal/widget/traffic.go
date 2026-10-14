@@ -56,8 +56,8 @@ type TrafficRange struct {
 var TrafficRanges = []TrafficRange{
 	{"minute", "Last minute", "60 s ago"},
 	{"day", "Last 24 hours", "24 h ago"},
-	{"week", "Last 7 days", "7 days ago"},
-	{"month", "Last 30 days", "30 days ago"},
+	{"week", "Last 7 days", "7 d ago"},
+	{"month", "Last 30 days", "30 d ago"},
 	{"year", "Last year", "a year ago"},
 }
 

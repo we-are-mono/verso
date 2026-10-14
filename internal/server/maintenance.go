@@ -20,6 +20,7 @@ import (
 
 	"github.com/we-are-mono/verso/internal/clock"
 	"github.com/we-are-mono/verso/internal/openwrt"
+	"github.com/we-are-mono/verso/internal/units"
 	"github.com/we-are-mono/verso/internal/widget"
 )
 
@@ -132,7 +133,7 @@ func (s *Server) renderMaintenancePage(w http.ResponseWriter, r *http.Request, s
 		v.Packages = packagesBand(truth)
 	}
 	if systemErr == nil {
-		v.Uptime = maintenanceUptime(tr, si.Uptime)
+		v.Uptime = units.Duration(si.Uptime).String()
 	}
 	// While a check runs, Check again says so itself; the line beside it waits.
 	if !checking {
@@ -414,28 +415,6 @@ func (s *Server) handleFactoryReset(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeRestarting(w, page)
-}
-
-// maintenanceUptime words the router's uptime. Two flat forms per unit (one,
-// and many), translated at composition — the same plural shape the staged-changes chip
-// label carries, with the same TODO(i18n plurals) caveat.
-func maintenanceUptime(tr func(string) string, seconds int64) string {
-	if seconds < 0 {
-		seconds = 0
-	}
-	days, hours := seconds/86400, (seconds%86400)/3600
-	minutes := (seconds % 3600) / 60
-	parts := make([]string, 0, 2)
-	if days > 0 {
-		parts = append(parts, counted(tr, days, "1 day", "%d days"))
-	}
-	if hours > 0 {
-		parts = append(parts, counted(tr, hours, "1 hour", "%d hours"))
-	}
-	if len(parts) == 0 {
-		parts = append(parts, counted(tr, minutes, "1 minute", "%d minutes"))
-	}
-	return strings.Join(parts, ", ")
 }
 
 // counted words a count in its flat one/many form, translated. The "1 …" form

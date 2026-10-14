@@ -22,6 +22,7 @@ import (
 	"github.com/we-are-mono/verso/internal/clock"
 	"github.com/we-are-mono/verso/internal/history"
 	"github.com/we-are-mono/verso/internal/openwrt"
+	"github.com/we-are-mono/verso/internal/units"
 	"github.com/we-are-mono/verso/internal/widget"
 )
 
@@ -218,11 +219,7 @@ func eventRow(e history.Event, now time.Time, tr func(string) string) widget.Tab
 	case "wan.up":
 		var d struct{ After int64 }
 		_ = json.Unmarshal([]byte(e.Detail), &d)
-		after := loginDuration(tr, d.After)
-		if d.After < 60 {
-			after = fmt.Sprintf(tr("%d s"), d.After)
-		}
-		what, variant = fmt.Sprintf(tr("Internet came back after %s"), after), "success"
+		what, variant = fmt.Sprintf(tr("Internet came back after %s"), units.Duration(d.After)), "success"
 	case "boot":
 		var d bootDetail
 		_ = json.Unmarshal([]byte(e.Detail), &d)

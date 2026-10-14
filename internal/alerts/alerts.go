@@ -23,6 +23,7 @@ import (
 
 	"github.com/we-are-mono/verso/internal/clock"
 	"github.com/we-are-mono/verso/internal/history"
+	"github.com/we-are-mono/verso/internal/units"
 )
 
 // The kinds of alert an operator chooses from (verso.alerts.kind).
@@ -333,14 +334,5 @@ func (a *Alerter) Run(ctx context.Context) {
 
 func clockTime(t time.Time) string { return clock.Local(t).Format("15:04") }
 
-// duration says how long, as the Events page does: seconds under a minute,
-// minutes under an hour, then hours and minutes.
-func duration(d time.Duration) string {
-	switch {
-	case d < time.Minute:
-		return fmt.Sprintf("%d s", int(d.Seconds()))
-	case d < time.Hour:
-		return fmt.Sprintf("%d min", int(d.Minutes()))
-	}
-	return fmt.Sprintf("%d h %02d min", int(d.Hours()), int(d.Minutes())%60)
-}
+// duration says how long, as every duration is said (internal/units).
+func duration(d time.Duration) string { return units.Duration(int64(d.Seconds())).String() }

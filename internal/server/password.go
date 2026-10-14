@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/we-are-mono/verso/internal/clock"
+	"github.com/we-are-mono/verso/internal/units"
 	"github.com/we-are-mono/verso/internal/widget"
 )
 
@@ -167,28 +168,10 @@ func sessionSince(tr func(string) string, created, now time.Time) string {
 	return fmt.Sprintf(tr("since %s"), created.Format("2 Jan, 15:04"))
 }
 
-// relativeSessionTime words a session's age. Two flat forms per unit (one, and
-// many) — the same plural shape the staged-changes chip carries, with the same
-// TODO(i18n plurals) caveat: languages with more plural forms than two render
-// the "many" form for all of them.
+// relativeSessionTime words a session's age, as every time ago is said
+// (internal/units).
 func relativeSessionTime(tr func(string) string, last, now time.Time) string {
-	age := now.Sub(last)
-	if age < time.Minute {
-		return tr("Now")
-	}
-	if age < time.Hour {
-		return fmt.Sprintf(tr("%d min ago"), int(age/time.Minute))
-	}
-	if age < 24*time.Hour {
-		if h := int(age / time.Hour); h != 1 {
-			return fmt.Sprintf(tr("%d hours ago"), h)
-		}
-		return tr("1 hour ago")
-	}
-	if d := int(age / (24 * time.Hour)); d != 1 {
-		return fmt.Sprintf(tr("%d days ago"), d)
-	}
-	return tr("1 day ago")
+	return units.For(tr).Ago(int64(now.Sub(last).Seconds()))
 }
 
 func (s *Server) handlePasswordForm(w http.ResponseWriter, r *http.Request) {

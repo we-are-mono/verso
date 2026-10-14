@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/we-are-mono/verso/internal/openwrt"
+	"github.com/we-are-mono/verso/internal/units"
 	"github.com/we-are-mono/verso/internal/updatecheck"
 	"github.com/we-are-mono/verso/internal/widget"
 )
@@ -833,17 +834,9 @@ func (s *Server) handlePackageFiles(w http.ResponseWriter, r *http.Request) {
 	_ = s.pageSet(lang).ExecuteTemplate(w, "package-files.html.tmpl", data)
 }
 
+// localizedAgo says how long ago, as every time ago is said (internal/units).
 func localizedAgo(d time.Duration, tr func(string) string) string {
-	if d < time.Minute {
-		return tr("just now")
-	}
-	if d < time.Hour {
-		return fmt.Sprintf(tr("%d min ago"), int(d.Minutes()))
-	}
-	if d < 48*time.Hour {
-		return fmt.Sprintf(tr("%d h ago"), int(d.Hours()))
-	}
-	return fmt.Sprintf(tr("%d days ago"), int(d.Hours()/24))
+	return units.For(tr).Ago(int64(d.Seconds()))
 }
 
 func (s *Server) handlePackageStatus(w http.ResponseWriter, r *http.Request) {

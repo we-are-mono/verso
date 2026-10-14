@@ -18,6 +18,7 @@ import (
 
 	"github.com/we-are-mono/verso/internal/openwrt"
 	"github.com/we-are-mono/verso/internal/plugin"
+	"github.com/we-are-mono/verso/internal/units"
 	"github.com/we-are-mono/verso/internal/widget"
 )
 
@@ -512,7 +513,7 @@ func serviceNameCell(name string, kind openwrt.ServiceKind) widget.TableCell {
 func runningStateCell(uptime int64) widget.TableCell {
 	cell := widget.TableCell{Text: "Running", Variant: "success"}
 	if uptime > 0 {
-		cell.Sub = compactServiceUptime(uptime)
+		cell.Sub = units.Duration(uptime).String()
 	}
 	return cell
 }
@@ -567,19 +568,4 @@ func serviceListingRow(name string, st openwrt.RCState, state widget.TableCell, 
 		{Text: order}, serviceNameCell(name, kind), {Text: packageOf(name, owners)},
 		{Text: pid}, {Text: memory}, state, {Actions: acts},
 	}}
-}
-
-func compactServiceUptime(seconds int64) string {
-	if seconds < 60 {
-		return fmt.Sprintf("%ds", seconds)
-	}
-	minutes := seconds / 60
-	if minutes < 60 {
-		return fmt.Sprintf("%dm %ds", minutes, seconds%60)
-	}
-	hours := minutes / 60
-	if hours < 24 {
-		return fmt.Sprintf("%dh %dm", hours, minutes%60)
-	}
-	return fmt.Sprintf("%dd %dh", hours/24, hours%24)
 }

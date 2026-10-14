@@ -83,7 +83,7 @@ func TestAnOutageAlreadyReportedIsClosedByASecondMessage(t *testing.T) {
 	}
 	a.Observe(ctx, []history.Event{up("04:17:30")})
 	queued := waiting(t, store)
-	if len(queued) != 1 || queued[0].Title != "home-router: the internet is back" || queued[0].Body != "After 1 h 05 min, down since 03:12." || queued[0].Priority != "default" {
+	if len(queued) != 1 || queued[0].Title != "home-router: the internet is back" || queued[0].Body != "After 1 h 5 min, down since 03:12." || queued[0].Priority != "default" {
 		t.Fatalf("recovery = %+v", queued)
 	}
 }
