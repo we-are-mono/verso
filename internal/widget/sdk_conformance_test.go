@@ -118,3 +118,26 @@ func TestSDKPhraseReachesTheShell(t *testing.T) {
 		t.Errorf("SDK phrase lost a part crossing the wire: %+v", parts)
 	}
 }
+
+// TestSDKFactHeadsReachTheShell: a fact sheet's head arrives as the SDK
+// built it, a group's title and chip or two columns' names, and so does the
+// sentence that stands where its rows would.
+func TestSDKFactHeadsReachTheShell(t *testing.T) {
+	for file, want := range map[string]PropertiesHead{
+		"widget-properties-headed.json":  {Label: "IPv4", Chip: "dhcp"},
+		"widget-properties-columns.json": {Label: "Part", Value: "Installed"},
+	} {
+		data, err := os.ReadFile(filepath.Join("..", "..", "plugins", "verso-plugin-sdk", "testdata", file))
+		if err != nil {
+			t.Skip("SDK fact head fixtures not present — run `cargo test` in plugins/verso-plugin-sdk to generate them")
+		}
+		w, err := Decode(data)
+		if err != nil {
+			t.Fatalf("%s does not decode: %v", file, err)
+		}
+		p, ok := w.(*Properties)
+		if !ok || p.Head == nil || *p.Head != want || p.Empty == "" {
+			t.Errorf("%s: head or empty sentence lost crossing the wire: %+v", file, w)
+		}
+	}
+}

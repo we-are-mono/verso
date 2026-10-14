@@ -753,6 +753,25 @@ cannot do: it never learns the reader's language. The SDK's
 meaning, never a colour: the shell picks the ink, in both themes, and a word
 outside the vocabulary tones nothing.
 
+The default list is the shell's one fact sheet: the same rows an Overview
+card's facts and the firmware ledger are. Values stand on the right edge, or
+with `"align": "left"` beside a fixed label column, for values read line by
+line (addresses, versions). A `head` names the facts on a line over them:
+a group's title with a machine word beside it as a chip, or the names of the
+two columns. `empty` is the sentence that stands in the empty set's slot when
+there are no items, under the head when there is one. The SDK builds them with
+`.grouped_as(title, chip)`, `.columns_named(label, value)` and
+`.empty_says(sentence)`.
+
+```json
+{ "type": "properties", "align": "left",
+  "head": { "label": "IPv4", "chip": "dhcp" },
+  "empty": "No address.",
+  "items": [
+    { "label": "Address", "value": "10.0.0.2/24", "mono": true, "copy": true }
+  ] }
+```
+
 ### actionbar — a listing's controls
 
 The band between a page's heading and its listing, and only the listing's

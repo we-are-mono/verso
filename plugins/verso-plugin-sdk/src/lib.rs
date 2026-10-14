@@ -786,13 +786,21 @@ pub enum Widget {
         variant: String,
         children: Vec<Widget>,
     },
-    /// A label/value fact sheet. Build it with [`Widget::properties`]. `align`
-    /// "left" sets the values beside a fixed label column rather than on the
-    /// right edge — the reading order for a document's facts, read line by line.
+    /// A label/value fact sheet, the same rows an Overview card's facts are.
+    /// Build it with [`Widget::properties`]. `align` "left" sets the values
+    /// beside a fixed label column rather than on the right edge — the reading
+    /// order for a document's facts, read line by line. A head names the facts
+    /// on a line over them ([`Widget::grouped_as`], [`Widget::columns_named`]),
+    /// and `empty` is what stands in their place when there are none
+    /// ([`Widget::empty_says`]).
     Properties {
         items: Vec<Property>,
         #[serde(skip_serializing_if = "String::is_empty")]
         align: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        head: Option<PropertiesHead>,
+        #[serde(skip_serializing_if = "String::is_empty")]
+        empty: String,
     },
     /// Config sections as identical rows under fixed columns: each column
     /// declares a kind ("name", "mono", "keyword", "pill", "endpoint",
@@ -1756,7 +1764,45 @@ impl Widget {
         Widget::Properties {
             items,
             align: String::new(),
+            head: None,
+            empty: String::new(),
         }
+    }
+
+    /// grouped_as heads this fact sheet with the name of the group it lists —
+    /// an address family — and, when not empty, a machine word beside it as a
+    /// chip (its protocol), on the strong hairline a column head stands on.
+    pub fn grouped_as(mut self, title: &str, chip: &str) -> Widget {
+        if let Widget::Properties { head, .. } = &mut self {
+            *head = Some(PropertiesHead {
+                label: title.into(),
+                value: String::new(),
+                chip: chip.into(),
+            });
+        }
+        self
+    }
+
+    /// columns_named heads this fact sheet with the names of its two columns:
+    /// `label` over the labels, `value` over the values ("Part", "Installed").
+    pub fn columns_named(mut self, label: &str, value: &str) -> Widget {
+        if let Widget::Properties { head, .. } = &mut self {
+            *head = Some(PropertiesHead {
+                label: label.into(),
+                value: value.into(),
+                chip: String::new(),
+            });
+        }
+        self
+    }
+
+    /// empty_says is the sentence that stands in the empty set's slot when this
+    /// fact sheet has no rows, under its head if it has one.
+    pub fn empty_says(mut self, sentence: &str) -> Widget {
+        if let Widget::Properties { empty, .. } = &mut self {
+            *empty = sentence.into();
+        }
+        self
     }
 
     /// text is a short run of styled prose.
@@ -1882,6 +1928,19 @@ pub struct Property {
     /// language. Hand over the number, never the text.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub rate: Option<f64>,
+}
+
+/// PropertiesHead is what a fact sheet's head says: a group's title, with a
+/// machine word beside it as a chip, or the names of its two columns. Build it
+/// with [`Widget::grouped_as`] or [`Widget::columns_named`]. The chip is never
+/// translated.
+#[derive(Serialize, Debug, Default)]
+pub struct PropertiesHead {
+    pub label: String,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub value: String,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub chip: String,
 }
 
 /// CollectionItem is one kept thing in a [`Widget::Collection`]: its identity

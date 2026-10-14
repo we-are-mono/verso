@@ -1,0 +1,9 @@
+{
+  "type": "properties",
+  "items": [],
+  "head": {
+    "label": "Part",
+    "value": "Installed"
+  },
+  "empty": "Nothing is installed."
+}

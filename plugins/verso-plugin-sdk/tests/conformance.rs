@@ -304,7 +304,27 @@ fn write_widget_fixtures() {
                     Property::rate("Link", 2.5e9),
                 ],
                 align: "left".into(),
+                head: None,
+                empty: String::new(),
             },
+        ),
+        (
+            "properties-headed",
+            Widget::properties(vec![Property {
+                label: "Address".into(),
+                value: "10.0.0.2/24".into(),
+                mono: true,
+                copy: true,
+                ..Property::default()
+            }])
+            .grouped_as("IPv4", "dhcp")
+            .empty_says("No address."),
+        ),
+        (
+            "properties-columns",
+            Widget::properties(vec![])
+                .columns_named("Part", "Installed")
+                .empty_says("Nothing is installed."),
         ),
         ("text", Widget::text("A short explanatory line.")),
         (

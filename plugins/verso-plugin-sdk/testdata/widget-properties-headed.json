@@ -1,0 +1,16 @@
+{
+  "type": "properties",
+  "items": [
+    {
+      "label": "Address",
+      "value": "10.0.0.2/24",
+      "mono": true,
+      "copy": true
+    }
+  ],
+  "head": {
+    "label": "IPv4",
+    "chip": "dhcp"
+  },
+  "empty": "No address."
+}
