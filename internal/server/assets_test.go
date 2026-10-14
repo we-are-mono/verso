@@ -346,6 +346,25 @@ func TestAPanelMeasuresOnTheEightPixelGrid(t *testing.T) {
 	}
 }
 
+// TestReducedMotionStillsTheTrafficLED: under reduced motion a busy port's
+// traffic LED stays lit and still (device-panel). The rule that stops it must
+// match the rule that starts it selector for selector, or the blink, being
+// more specific, wins and keeps blinking.
+func TestReducedMotionStillsTheTrafficLED(t *testing.T) {
+	raw, err := os.ReadFile("assets/input.css")
+	if err != nil {
+		t.Fatal(err)
+	}
+	css := string(raw)
+	const blinking = ".verso-panel-art [data-verso-port]:is(.act-1, .act-2, .act-3, .act-4) .led-traffic"
+	if !strings.Contains(css, blinking+" {\n    fill:") {
+		t.Fatalf("input.css no longer starts the blink with %s", blinking)
+	}
+	if !strings.Contains(css, "@media (prefers-reduced-motion: reduce) {\n    "+blinking+" { animation: none; }") {
+		t.Errorf("reduced motion must stop the blink with the same selector: %s { animation: none; }", blinking)
+	}
+}
+
 // TestADevSessionCanDrawTheGrid: in a dev session G draws the 8px grid over
 // the page, from the top bar's hairline and the rail's border, and over a
 // drawer's body from its chrome's hairline (layout-grid). Only a dev session
