@@ -147,6 +147,10 @@ html {
      remember a per-element class. */
   button:not(:disabled), summary, [role="button"] { cursor: pointer; }
 
+  /* Type is drawn antialiased, app-wide: subpixel smoothing thickens light
+     text on the Paper and sand grounds, so the weights read heavier than set. */
+  html { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+
   /* The hidden attribute must win over a display utility on the same element
      (e.g. an inline-flex row toggled hidden), regardless of utility source order. */
   [hidden] { display: none !important; }
