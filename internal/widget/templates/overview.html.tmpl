@@ -70,7 +70,10 @@
   <header data-overview-card-head class="flex min-w-0 cursor-pointer items-center gap-2 pt-3 pr-2.5 pb-2.75 pl-6 leading-6 select-none group-data-arranging/overview:cursor-grab group-data-arranging/overview:pl-1.5">
     <button type="button" data-overview-grip aria-label="{{printf (t "Move %s. Arrow keys move it.") .Title}}" class="hidden -my-1 {{template "verso-btn-icon"}} cursor-grab group-data-arranging/overview:grid">{{icon "grip-vertical" "size-4"}}</button>
     <span aria-hidden="true" class="flex shrink-0 text-glyph">{{icon .Icon "size-4"}}</span>
-    <div class="flex min-w-0 flex-1 items-baseline gap-3">
+    {{/* The title and the closed card's reading share their baseline on one
+         24px line; the line holds the row's height, since aligning a 16px and
+         a 14px baseline stands one half a pixel lower in some engines. */}}
+    <div class="flex h-6 min-w-0 flex-1 items-baseline gap-3">
       <h2 id="overview-card-{{.ID}}" class="text-base leading-6 font-semibold tracking-tight whitespace-nowrap text-ink">{{.Title}}</h2>
       <span data-overview-card-summary aria-hidden="{{if .Closed}}false{{else}}true{{end}}" class="verso-overview-summary min-w-0 truncate text-sm leading-6 text-meta tabular-nums">{{.Head.Summary}}</span>
     </div>
