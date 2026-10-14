@@ -5,7 +5,6 @@ package server
 
 import (
 	"os"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -58,37 +57,40 @@ func (s *sensorSampler) Read() sensors.Inventory {
 	return s.inv
 }
 
-// hardwareView is the Hardware card's readings: the profile's entries in its
-// order, written as the Hardware page writes them; nil when none answered.
+// hardwareView is the Hardware card's readings: the CPU, the main rail's
+// draw with its voltage and current, and the main fan, written as the
+// Hardware page writes them; nil when none answered.
 func hardwareView(inv sensors.Inventory) *widget.OverviewSensors {
-	temps, powers, fans := inv.Profiled()
-	if len(temps)+len(powers)+len(fans) == 0 {
-		return nil
-	}
 	v := &widget.OverviewSensors{}
-	key := func(kind string, entry int) string { return "hw-" + kind + "-" + strconv.Itoa(entry) }
-	for _, t := range temps {
-		s := widget.OverviewSensor{Key: key("thermal", t.Entry), Name: t.Name, Value: "—", Tone: tempVariant(t.Level)}
+	if t := inv.CPUTemp(); t != nil {
+		v.CPU = &widget.OverviewSensor{Key: "hw-cpu", Name: t.Name, Value: "—"}
 		if !t.Fault {
-			s.Value = celsiusWhole(t.MilliC) + " °C"
+			v.CPU.Value = celsiusWhole(t.MilliC) + " °C"
 		}
-		if t.CPU {
-			v.CPU = s.Value
+		if tone := tempVariant(t.Level); tone == "warning" || tone == "danger" {
+			v.CPU.Tone = tone
 		}
-		v.Thermal = append(v.Thermal, s)
 	}
-	for _, p := range powers {
-		v.Power = append(v.Power, widget.OverviewSensor{Key: key("power", p.Entry), Name: p.Name, Value: powerText(p.MicroW)})
+	if p := inv.MainPower(); p != nil {
+		value := powerText(p.MicroW)
+		for _, part := range []string{voltage(*p), current(*p)} {
+			if part != "" {
+				value += " · " + part
+			}
+		}
+		v.Power = &widget.OverviewSensor{Key: "hw-power", Name: p.Name, Value: value}
 	}
-	for _, f := range fans {
-		s := widget.OverviewSensor{Key: key("fans", f.Entry), Name: f.Name, Value: "—"}
+	if f := inv.MainFan(); f != nil {
+		v.Fan = &widget.OverviewSensor{Key: "hw-fan", Name: f.Name, Value: "—"}
 		switch f.State {
 		case "running":
-			s.Value = rpmGroup(f.RPM) + " rpm"
+			v.Fan.Value = rpmGroup(f.RPM) + " rpm"
 		case "fault":
-			s.Tone = "warning"
+			v.Fan.Tone = "warning"
 		}
-		v.Fans = append(v.Fans, s)
+	}
+	if v.CPU == nil && v.Power == nil && v.Fan == nil {
+		return nil
 	}
 	return v
 }
@@ -99,8 +101,8 @@ func hardwareRows(v *widget.OverviewSensors) map[string]string {
 	if v == nil {
 		return rows
 	}
-	for _, list := range [][]widget.OverviewSensor{v.Thermal, v.Power, v.Fans} {
-		for _, s := range list {
+	for _, s := range []*widget.OverviewSensor{v.CPU, v.Power, v.Fan} {
+		if s != nil {
 			rows[s.Key] = s.Value
 		}
 	}

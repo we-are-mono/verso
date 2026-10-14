@@ -27,12 +27,14 @@ platform, firmware, kernel, uptime and local time with its zone (both move
 into it from beside the verdict). A browser's layout that names the Firmware
 card of an earlier Overview reads it as System, where it stood.
 
-Hardware is the board's sensors, and stands only on a board whose profile
-lists them: the profile's temperatures, power rails and fans, as three fact
-lists in the profile's order under the profile's names. A board with no
-profile has guesses, not a curation, so it has no Hardware card; its layout
-drops the card wherever a saved value names it, and the Hardware page still
-shows every reading the kernel exposes.
+Hardware is the board's headline readings, and stands only on a board whose
+profile lists sensors: the CPU temperature, the main power rail's draw,
+voltage and current, and the main fan, one row each under the profile's
+names. These are the readings the profile flags `cpu` and `main`, the ones
+the Hardware page's tiles lead with. Every other reading is the Hardware
+page's, a glance's worth on the card and the detail one click away. A board
+with no profile has guesses, not a curation, so it has no Hardware card; its
+layout drops the card wherever a saved value names it.
 
 The firewall has no card. A card that said "Active" and counted configured
 rules told the operator nothing they could act on, so the page keeps only the
@@ -70,9 +72,8 @@ closed card adds one reading after its title, the one most worth a glance and
 never its status again: the uplink's address, the devices connected, the
 tunnels down, the traffic, memory (always memory, so the line never swaps one
 reading for another as they pass), the firmware, the CPU temperature. Hardware
-grades a temperature only against its own limits (its zone's trip points or
-its chip's), never a guessed one, and names the reading furthest out: a
-temperature before a stopped fan. The tile
+grades the CPU only against its own limits (its zone's trip points or its
+chip's), never a guessed one, and names a hot CPU before a stopped fan. The tile
 strip and the verdict's kicker are gone: the page says once that something
 needs attention, and the card with the problem says which.
 

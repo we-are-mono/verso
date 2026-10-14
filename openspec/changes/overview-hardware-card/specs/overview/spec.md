@@ -53,8 +53,8 @@ Every card header SHALL show the card's icon and title. Cards with a verdict (In
 - **THEN** the Resources header shows no status word
 
 #### Scenario: A board runs hot
-- **WHEN** the profile's "Memory" temperature passes its own warn limit
-- **THEN** the Hardware header reads "Memory is hot" in the warning tone
+- **WHEN** the profile's CPU temperature, "cluster", passes its own warn limit
+- **THEN** the Hardware header reads "cluster is hot" in the warning tone
 
 ### Requirement: A closed card says one reading after its title
 A closed card SHALL show only its header, with one reading after the title: the one most worth a glance, never its status again, and never a reading that changes which it is from one second to the next. An open card hides the line, because its body carries the detail.
@@ -106,7 +106,7 @@ Every reading the Overview takes SHALL appear in exactly one card, and each card
 - **AND** Traffic holds the Internet graph and its window choice
 - **AND** Resources holds load, CPU, memory and storage
 - **AND** System holds the board, its architecture and target platform, the firmware, kernel, uptime and the local time with its zone
-- **AND** Hardware, on a board that has a profile, holds the profile's temperatures, power rails and fans
+- **AND** Hardware, on a board that has a profile, holds the CPU temperature, the main power rail and the main fan
 
 #### Scenario: No IPv6
 - **WHEN** no IPv6 prefix was delegated
@@ -127,50 +127,49 @@ Every reading the Overview takes SHALL appear in exactly one card, and each card
 
 ## ADDED Requirements
 
-### Requirement: The Hardware card lists the board profile's sensors
-The Hardware card SHALL show a Thermal, a Power and a Fans section, in that order, each listing the profile's entries of that kind in the profile's order under the names the profile gives them. A section whose kind the profile does not list is left out, and so is an entry the kernel does not expose.
+### Requirement: The Hardware card shows the board's headline readings
+The Hardware card SHALL show at most three rows, in this order, under the names the profile gives them: the CPU temperature (the entry flagged `cpu`), the main power rail (flagged `main`) with its draw, voltage and current, and the main fan (flagged `main`). A reading the board does not have has no row. Each value stands at the row's right edge, so a long name keeps one line. Every other reading stays on the Hardware page.
 
 #### Scenario: The Mono Gateway DK
 - **WHEN** the Overview renders on the DK with Hardware open
-- **THEN** Thermal lists cluster, Memory, Network, SerDes, Crypto, PCB near CPU, CPU (external diode) and SFP+ modules in that order
-- **AND** Power lists USB Power Delivery first and 3.3V PSU last, the profile's eight rails in its order
-- **AND** Fans lists System Fan 1 and System Fan 2
+- **THEN** the card shows cluster with its temperature, USB Power Delivery as "9.8 W · 20.10 V · 0.49 A", and System Fan 1 with its speed, in that order
+- **AND** USB Power Delivery stands on one line
 
-#### Scenario: A profile with no fans
-- **WHEN** the board's profile lists temperatures and power rails but no fans
-- **THEN** the card shows Thermal and Power, and no Fans section
+#### Scenario: A board with no main fan
+- **WHEN** the board's profile flags no fan as main and none is running
+- **THEN** the card shows the CPU and the power rail, and no fan row
 
 #### Scenario: No entry answers
-- **WHEN** the board has a profile but the kernel exposes none of its entries
+- **WHEN** the board has a profile but none of its headline readings answers
 - **THEN** the Hardware card's body says that no sensor answered, and its header reads "Unavailable" in the neutral tone
 
 ### Requirement: Each Hardware reading shows its value or why it has none
-Each Hardware row SHALL show its reading in its unit: temperatures in °C, power rails in W, fans in rpm. A reading the chip marks faulted shows "—". A fan reading zero with no fault shows "—" and is not a problem. A fan reading zero with its fault or alarm set shows "—" and is a fan fault.
-
-#### Scenario: An unpopulated fan header
-- **WHEN** System Fan 2 reads 0 rpm and its chip reports no fault
-- **THEN** its row shows "—" and the Hardware header shows no status
+Each Hardware row SHALL show its reading in its unit: the CPU in °C, the power rail in W followed by V and A where the chip reports them, the fan in rpm. A CPU reading the chip marks faulted shows "—". A fan reading zero shows "—"; with its fault or alarm set, it is a fan fault.
 
 #### Scenario: A fan stops
 - **WHEN** System Fan 1 reads 0 rpm and its chip reports a fault
 - **THEN** its row shows "—" and the Hardware header reads "System Fan 1 stopped" in the warning tone
 
-### Requirement: The Hardware header names the reading furthest out of band
-The Hardware header SHALL grade each temperature against its own limits only: a thermal zone's trip points, or the chip's own limits. Past the warn limit is the warning tone, past the critical limit the danger tone; a temperature with no limits is never out of band. The header names the one reading furthest out of band, a temperature before a fan fault in the same tone.
+#### Scenario: A rail with no current reading
+- **WHEN** the main rail's chip reports power and voltage but no current
+- **THEN** its row shows the power and the voltage only
 
-#### Scenario: A critical temperature
-- **WHEN** cluster passes its critical trip point while a fan has stopped
+### Requirement: The Hardware header names a hot CPU, then a stopped fan
+The Hardware header SHALL grade the CPU temperature against its own limits only: its thermal zone's trip points, or its chip's own limits. Past the warn limit is the warning tone, past the critical limit the danger tone; a CPU with no limits is never out of band. A hot CPU is named before a stopped fan.
+
+#### Scenario: A critical CPU
+- **WHEN** cluster passes its critical trip point while the main fan has stopped
 - **THEN** the Hardware header reads "cluster is hot" in the danger tone
 
 #### Scenario: No limits
-- **WHEN** a temperature with no limits of its own reads 95 °C
+- **WHEN** a CPU with no limits of its own reads 95 °C
 - **THEN** the Hardware header shows no status for it
 
 ### Requirement: Hardware readings refresh every five seconds
 While the Hardware card is shown, open or closed, the Overview SHALL refresh its readings and its header every five seconds. Every open Overview reads the same reading for a given five seconds, however many browsers have it open.
 
-#### Scenario: A temperature changes
-- **WHEN** the Hardware card is open and a temperature rises
+#### Scenario: The CPU warms
+- **WHEN** the Hardware card is open and the CPU temperature rises
 - **THEN** its row shows the new value within five seconds, without a reload
 
 #### Scenario: Two browsers
@@ -181,7 +180,7 @@ While the Hardware card is shown, open or closed, the Overview SHALL refresh its
 The Hardware card's status SHALL NOT change the page's verdict, which speaks for the network.
 
 #### Scenario: A hot board on a healthy network
-- **WHEN** the uplink is up, nothing else needs attention, and the Hardware header reads "Memory is hot"
+- **WHEN** the uplink is up, nothing else needs attention, and the Hardware header reads "cluster is hot"
 - **THEN** the verdict reads "Your network is online"
 
 ### Requirement: The Hardware card opens the Hardware page

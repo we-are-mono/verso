@@ -6,7 +6,6 @@ package sensors
 import (
 	"os"
 	"path/filepath"
-	"slices"
 	"testing"
 )
 
@@ -493,61 +492,4 @@ func TestAFanTripIsNoWarning(t *testing.T) {
 	if r := tempFromZoneReading(fansOnly); r.Level != "" || r.HasLimits {
 		t.Errorf("a zone with only fan trips = %+v, want no limits", r)
 	}
-}
-
-// The Overview's Hardware card lists what the profile lists, in its order —
-// the CPU pick at its place among the temperatures, the rails in the profile's
-// order rather than by draw — and nothing the profile does not name.
-func TestProfiledFollowsProfileOrder(t *testing.T) {
-	p := dkProfile()
-	p.Power[0], p.Power[3] = p.Power[3], p.Power[0] // an order the hwmons do not have
-	temps, powers, fans := ResolveAll(p, buildDK(t)).Profiled()
-
-	if got := tempNames(temps); !slices.Equal(got, entryNames(p.Thermal)) {
-		t.Errorf("thermal = %q, want %q", got, entryNames(p.Thermal))
-	}
-	var got []string
-	for _, r := range powers {
-		got = append(got, r.Name)
-	}
-	if !slices.Equal(got, entryNames(p.Power)) {
-		t.Errorf("power = %q, want %q", got, entryNames(p.Power))
-	}
-	got = nil
-	for _, f := range fans {
-		got = append(got, f.Name)
-	}
-	if !slices.Equal(got, entryNames(p.Fans)) {
-		t.Errorf("fans = %q, want %q", got, entryNames(p.Fans))
-	}
-}
-
-// An entry the kernel does not expose has no row; the rest keep their order.
-func TestProfiledLeavesOutAbsentEntries(t *testing.T) {
-	p := dkProfile()
-	p.Power = append([]Entry{{Path: "i2c-mux@70/i2c@1/power_sensor@40", Name: "Absent"}}, p.Power...)
-	p.Thermal = append(p.Thermal, Entry{Path: "gpu-thermal", Name: "Absent"})
-	temps, powers, _ := ResolveAll(p, buildDK(t)).Profiled()
-	if len(powers) != 4 || powers[0].Name != "USB Power Delivery" {
-		t.Errorf("powers = %+v, want the four rails the board has, the input first", powers)
-	}
-	if got := tempNames(temps); slices.Contains(got, "Absent") || len(got) != 8 {
-		t.Errorf("thermal = %q, want the eight the board has", got)
-	}
-}
-
-func tempNames(ts []TempReading) []string {
-	var out []string
-	for _, x := range ts {
-		out = append(out, x.Name)
-	}
-	return out
-}
-
-func entryNames(es []Entry) []string {
-	var out []string
-	for _, e := range es {
-		out = append(out, e.Name)
-	}
-	return out
 }

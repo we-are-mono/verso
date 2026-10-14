@@ -6,9 +6,9 @@ An operator with a profiled board has no way to see from the landing page whethe
 
 ## What Changes
 
-- The Overview gains a **Hardware** card on a board that has a profile: its Thermal, Power and Fans sections, each listing the profile's entries in the profile's order, under the names the profile gives them. A board with no profile has no Hardware card.
-- Each reading is live. Temperatures show °C, power rails W, fans RPM. A reading the chip marks faulted shows "—"; a fan reading zero with no fault shows "—", quietly, as not connected.
-- The card's header speaks only when a reading is out of band: a temperature past its own warn or critical limit (a thermal zone's trip points, or the chip's own limits), or a fan fault. Closed, it shows the CPU temperature (the entry flagged `cpu`).
+- The Overview gains a **Hardware** card on a board that has a profile: the board's headline readings, one row each under the profile's names. These are the CPU temperature (`cpu`), the main power rail's draw, voltage and current (`main`), and the main fan (`main`). Every other reading stays on the Hardware page. A board with no profile has no Hardware card.
+- Each reading is live. A faulted CPU reading shows "—", and so does a fan reading zero.
+- The card's header speaks only when a reading is out of band: the CPU past its own warn or critical limit (its thermal zone's trip points, or its chip's own limits), or a fan fault. Closed, it shows the CPU temperature.
 - The Hardware card's status does not move the page's verdict, which speaks for the network. Hidden, the card takes no readings.
 - The card's door opens the Hardware page, which keeps every reading the box exposes, profiled or not.
 - The Overview's stream sends a `sensors` frame again, only while the Hardware card is shown, every 5 seconds: most of the profile's readings are i2c transactions behind a mux, and router CPU and the i2c bus are the budget.

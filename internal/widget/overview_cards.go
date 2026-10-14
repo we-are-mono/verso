@@ -401,70 +401,54 @@ func (o *Overview) systemBody(r *Renderer, csrf string) (template.HTML, error) {
 
 // ── Hardware ──
 
-// OverviewSensors is the Hardware card: the board profile's readings, each
-// kind in the profile's order, formatted by the server as the Hardware page
-// writes them. CPU is the cpu entry's value, the closed card's line.
+// OverviewSensors is the Hardware card: the board's headline readings, as the
+// profile names them and the server writes them; nil where none answered.
+// The Hardware page holds the rest.
 type OverviewSensors struct {
-	Thermal, Power, Fans []OverviewSensor
-	CPU                  string
+	CPU, Power, Fan *OverviewSensor
 }
 
 // OverviewSensor is one reading: Key tags its row for the stream, and Tone is
-// "warning" or "danger" for a temperature past its own limit or a stopped fan.
+// "warning" or "danger" for a CPU past its own limit or a stopped fan.
 type OverviewSensor struct {
 	Key, Name, Value, Tone string
 }
 
-// hardwareHead names the reading furthest out of band — a temperature before
-// a stopped fan in the same tone — and its line is always the CPU's.
+func (s *OverviewSensors) rows() []*OverviewSensor {
+	if s == nil {
+		return nil
+	}
+	return slices.DeleteFunc([]*OverviewSensor{s.CPU, s.Power, s.Fan}, func(r *OverviewSensor) bool { return r == nil })
+}
+
+// hardwareHead speaks for a hot CPU, else a stopped fan, and its line is
+// always the CPU temperature.
 func (o *Overview) hardwareHead(tr func(string) string) cardHead {
 	hw := o.Hardware
-	if hw == nil || len(hw.Thermal)+len(hw.Power)+len(hw.Fans) == 0 {
+	if len(hw.rows()) == 0 {
 		return cardHead{Tone: "neutral", Status: tr("Unavailable")}
 	}
-	h := cardHead{Tone: "neutral", Summary: hw.CPU}
-	rank := map[string]int{"warning": 1, "danger": 2}
-	for _, s := range hw.Thermal {
-		if rank[s.Tone] > rank[h.Tone] {
-			h.Tone, h.Status = s.Tone, fmt.Sprintf(tr("%s is hot"), tr(s.Name))
-		}
+	h := cardHead{Tone: "neutral"}
+	switch {
+	case hw.CPU != nil && hw.CPU.Tone != "":
+		h.Tone, h.Status = hw.CPU.Tone, fmt.Sprintf(tr("%s is hot"), tr(hw.CPU.Name))
+	case hw.Fan != nil && hw.Fan.Tone != "":
+		h.Tone, h.Status = hw.Fan.Tone, fmt.Sprintf(tr("%s stopped"), tr(hw.Fan.Name))
 	}
-	for _, s := range hw.Fans {
-		if h.Status == "" && s.Tone != "" {
-			h.Tone, h.Status = s.Tone, fmt.Sprintf(tr("%s stopped"), tr(s.Name))
-		}
+	if hw.CPU != nil {
+		h.Summary = hw.CPU.Value
 	}
 	return h
 }
 
-// hardwareBody is a fact list per kind the profile lists, laid out as the
-// Internet card's address families are.
+// hardwareBody is one fact list, its values on the right edge so a long name
+// keeps its line.
 func (o *Overview) hardwareBody(r *Renderer, csrf string) (template.HTML, error) {
-	if o.Hardware == nil {
-		return o.renderWidget(r, &Properties{Empty: "No sensor answered."}, csrf)
+	list := &Properties{Empty: "No sensor answered."}
+	for _, s := range o.Hardware.rows() {
+		list.Items = append(list.Items, Property{Label: s.Name, Value: s.Value, Verbatim: true, Key: s.Key})
 	}
-	var view overviewInternetView
-	for _, sec := range []struct {
-		title string
-		rows  []OverviewSensor
-	}{{"Thermal", o.Hardware.Thermal}, {"Power", o.Hardware.Power}, {"Fans", o.Hardware.Fans}} {
-		if len(sec.rows) == 0 {
-			continue
-		}
-		list := &Properties{Align: "left", Head: &PropertiesHead{Label: sec.title}}
-		for _, s := range sec.rows {
-			list.Items = append(list.Items, Property{Label: s.Name, Value: s.Value, Verbatim: true, Key: s.Key})
-		}
-		html, err := o.renderWidget(r, list, csrf)
-		if err != nil {
-			return "", err
-		}
-		view.Families = append(view.Families, html)
-	}
-	if len(view.Families) == 0 {
-		return o.renderWidget(r, &Properties{Empty: "No sensor answered."}, csrf)
-	}
-	return r.fragment("overview.internet", view)
+	return o.renderWidget(r, list, csrf)
 }
 
 // LocalTime is the router's clock as the System card reads it, its zone

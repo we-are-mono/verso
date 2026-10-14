@@ -37,11 +37,11 @@ The layout always knows `hardware`: `overviewDefault` gains it at the end of the
 
 *Alternative:* pass the card set into `DefaultOverviewLayout` and `ParseOverviewLayout`. Rejected: it changes two signatures and every test that calls them, while one `Without` at the layout source reaches the same result.
 
-### 2. Profile order comes from the resolver, not from re-sorting at the edge
+### 2. The card reads the inventory's existing headline picks
 
-Each resolved temperature, power and fan reading carries `Entry`, one more than its index in its profile array, or `0` when no entry matched (so the zero value means unprofiled). A new accessor, `inv.Profiled()`, returns the three kinds, each holding only entries with `Entry > 0`, ordered by `Entry`. The `cpu` entry is included in Thermal at its place.
+The card shows what the Hardware page's tiles show: `inv.CPUTemp()`, `inv.MainPower()` and `inv.MainFan()`. These accessors already exist and already pick by the profile's `cpu` and `main` flags, so the card and the page always agree on which reading is the headline. The inventory needs no change.
 
-*Alternative:* match the profile again in the server. Rejected: matching is the resolver's job, and doing it twice risks the card and the Hardware page disagreeing on which reading an entry names. `Entry` is one fact, set where the match happens.
+*Alternative (built first, then dropped on device review):* every profile entry, in three sections in profile order. On the DK that is 18 rows, which belong on the Hardware page and not on a glance.
 
 ### 3. One shared sampler with a five-second freshness
 
@@ -53,17 +53,17 @@ A `sensorSampler` on the Server holds the last `Inventory` and when it was read.
 
 ### 4. The card is fact lists built from a view the server formats
 
-The server turns the sampler's inventory into `Overview.Hardware`: three sections, each a list of `{Key, Name, Value, Level}`, where `Value` is already formatted ("52 °C", "9.4 W", "4 210 rpm", "—"). It uses the Hardware page's formatters (`celsiusWhole`, `watts`, `rpmGroup`), so the two pages print a reading the same way. `hardwareBody` renders each section as a `Properties` with a `Head` naming the section, the same way the Internet card renders IPv4 and IPv6. Each row's `Key` is `hw-<kind>-<entry>`.
+The server turns the sampler's inventory into `Overview.Hardware`: three optional rows (`CPU`, `Power`, `Fan`), each `{Key, Name, Value, Tone}`, where `Value` is already formatted ("52 °C", "9.8 W · 20.10 V · 0.49 A", "2,622 rpm", "—"). It uses the Hardware page's formatters (`celsiusWhole`, `powerText`, `voltage`, `current`, `rpmGroup`), so the two pages print a reading the same way. `Tone` is set only for a CPU past its limit or a fan fault. `hardwareBody` renders one `Properties` with no head and the default alignment, so values sit at the right edge and a long name like "USB Power Delivery" keeps its line. The left-aligned layout's fixed label column wrapped it. The row keys are `hw-cpu`, `hw-power` and `hw-fan`.
 
 This mirrors how `SysMetrics` reaches the Resources card: the widget package renders, and the server formats.
 
 ### 5. The stream sends a `sensors` frame keyed by row
 
-While `layout.Shows("hardware")`, each tick asks the sampler for the inventory (a cached read for up to five seconds), updates `liveOverview.Hardware`, and writes `sensors` as `{"rows": {"hw-thermal-1": "52 °C", …}}`. The `overview` frame that follows carries the Hardware head. The client writes each row's text in place and skips rows whose text hasn't changed. No reading is taken while Hardware is hidden. Sending the cached rows every second, rather than only after a fresh read, costs a few hundred bytes on a LAN, and the client's text check keeps the browser's work flat.
+While `layout.Shows("hardware")`, each tick asks the sampler for the inventory (a cached read for up to five seconds), updates `liveOverview.Hardware`, and writes `sensors` as `{"rows": {"hw-cpu": "52 °C", …}}`. The `overview` frame that follows carries the Hardware head. The client writes each row's text in place and skips rows whose text hasn't changed. No reading is taken while Hardware is hidden. Sending the cached rows every second, rather than only after a fresh read, costs a few hundred bytes on a LAN, and the client's text check keeps the browser's work flat.
 
-### 6. The header ranks temperatures before fans
+### 6. The header ranks the CPU before the fan
 
-`hardwareHead` walks Thermal for the worst `Level`: `critical` is danger and `warn` is warning, naming it "%s is hot". If no temperature is out of band, it looks for a fan whose `State` is `fault`: warning, "%s stopped". The summary is the `cpu` entry's value whenever it resolves, so the line never switches readings. A profile with no entry that answered reads "Unavailable", neutral. `issues()` is untouched: Hardware's readings never feed it.
+`hardwareHead` names a CPU with a tone ("%s is hot", warning or danger), else a fan with one ("%s stopped", warning). The summary is the CPU's value whenever it resolves, so the line never switches readings. A board where none of the three answered reads "Unavailable", neutral. `issues()` is untouched: Hardware's readings never feed it.
 
 ### 7. The door is the shell's own page
 
@@ -71,7 +71,7 @@ The spec gets `Opens: "Hardware"` with a static `/system/hardware` href. The Har
 
 ## Risks / Trade-offs
 
-- [A read that blocks a stream tick] `ResolveAll` reads every hwmon and zone, fibres included, not just the profile's entries. On a cache miss, one connection's tick waits for it. → A task measures `ResolveAll` on the DK. Above 100 ms, the sampler refreshes in a goroutine and serves the previous inventory meanwhile. Reading everything keeps grading identical to the Hardware page's.
+- [A read that blocks a stream tick] `ResolveAll` reads every hwmon and zone, fibres included, not just the profile's entries. On a cache miss, one connection's tick waits for it. → Measured on a Mono Gateway: one pass over every hwmon `*_input` and thermal zone `temp` takes 86 ms of wall time but only about 15 ms of CPU, the rest being i2c wait. The full read, which also reads labels, limits and fault flags, lands near 100–150 ms. That delays one tick's frames once every five seconds, which no one can see, so the read stays synchronous. A background refresh would add a goroutine and a "refreshing" state to hide it. Reading everything keeps grading identical to the Hardware page's.
 - [Cards jump on upgrade] Existing cookies don't name `hardware`, so on a profiled board it arrives open at the end of the shorter column, which may be the left one. → That's the spec's existing rule for a card a cookie doesn't name. Reset layout puts it back in the default place.
 - [The shelf is quiet about a hidden hot board] A hidden Hardware card reads nothing, so its shelf chip is neutral even when the board runs hot. → That's intended (spec: "Hardware hidden"). The verdict doesn't count it either, so nothing claims a status it didn't read.
 - [Startup profile lookup] A profile loaded at construction won't notice a `board_name` that appears late. → `/tmp/sysinfo/board_name` is written before procd starts services, and the history collector already reads it the same way.

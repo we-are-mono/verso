@@ -2,8 +2,8 @@
 
 ## 1. Profile order in the sensor inventory
 
-- [x] 1.1 Write `TestProfiledFollowsProfileOrder` in `internal/sensors/inventory_test.go` against `dkProfile()`. It asserts that Thermal, Power and Fans come out in the profile's array order, that `cpu` is included at its place, and that unmatched readings are absent. Then add `Entry` to `TempReading`, `PowerReading` and `FanReading`, set where each profile match happens, and add `inv.Profiled()`. Verify that `go test ./internal/sensors/...` passes and that `make lint` is clean.
-- [x] 1.2 Write `TestProfiledLeavesOutAbsentEntries`: an entry the fixture's sysfs does not expose produces no row. Verify that the test passes.
+- [x] 1.1 The card reads the inventory's existing headline picks (`CPUTemp`, `MainPower`, `MainFan`), so the inventory is unchanged. The profile-order accessor built first (`Entry`, `Profiled()`) was removed once the card narrowed to three rows. Verify that `go test ./internal/sensors/...` passes.
+- [x] 1.2 Folded into 1.1.
 
 ## 2. A card set that depends on the board
 
@@ -25,20 +25,20 @@
   - concurrent reads on a miss call it once
 
   Then implement `sensorSampler` on the Server. Verify that `go test -race ./internal/server/...` passes.
-- [ ] 3.2 Time `ResolveAll` on the DK bench. Run the read in a loop on the router and record the median in the design's Risks entry. If it exceeds 100 ms, add a test that a miss serves the previous inventory while the refresh runs, then implement that. Verify that the recorded figure is in `design.md`.
+- [x] 3.2 Time `ResolveAll` on the DK bench. Run the read in a loop on the router and record the median in the design's Risks entry. If it exceeds 100 ms, add a test that a miss serves the previous inventory while the refresh runs, then implement that. Verify that the recorded figure is in `design.md`.
 
 ## 4. The Hardware card
 
 - [x] 4.1 Write `overview_cards_test.go` cases for `hardwareHead` first:
   - in band: no status, CPU summary
-  - warn: "Memory is hot", warning
-  - critical with a stopped fan: "cluster is hot", danger
+  - warm CPU: "cluster is hot", warning
+  - critical CPU with a stopped fan: "cluster is hot", danger
   - fan fault alone: "System Fan 1 stopped", warning
-  - no limits at 95 °C: silent (the server gives a reading with no limits no tone, `TestHardwareView`)
-  - no entry answered: "Unavailable", neutral
+  - no limits at 95 °C: silent (the server gives a CPU with no limits no tone, `TestHardwareView`)
+  - no reading answered: "Unavailable", neutral
 
   Then add the `hardware` card spec (icon `cpu`, `Opens: "Hardware"`, href `/system/hardware`), `Overview.Hardware`, and `hardwareHead`. Verify that the tests pass.
-- [ ] 4.2 Write a render test for `hardwareBody` on the DK view: three `Properties` sections in order with their heads, each row carrying its `hw-<kind>-<entry>` key, "—" for an absent fan, and no Fans section when the view has none. Then implement `hardwareBody` composing `Properties`. Verify that the test passes and that the card renders at `make dev` on the dev container.
+- [x] 4.2 Write a render test for `hardwareBody` on the DK view: one `Properties` with no head and the default alignment, rows CPU, power, fan in that order keyed `hw-cpu`, `hw-power`, `hw-fan`, the power value "9.8 W · 20.10 V · 0.49 A", and no fan row when the view has none. Then implement it. Verify that the test passes and, on the DK (the dev container has no profile), that the card shows three rows with "USB Power Delivery" on one line.
 - [x] 4.3 Write a test that the server formats the sampler's inventory into `Overview.Hardware` with the Hardware page's formatters (`celsiusWhole`, `powerText`, `rpmGroup`), and that the page render fills it only while the layout shows `hardware`. Then implement it. Verify that the test passes.
 - [x] 4.4 Write a test that `issues()` ignores a Hardware view with a critical temperature, so the verdict stays "online". Verify that it passes with no change to `issues()`.
 - [x] 4.5 Add the card's strings ("Hardware", "Thermal", "Power", "Fans", "%s is hot", "%s stopped", "No sensor answered.") to `i18n/sl/base.json`. Verify that the i18n audit test reports zero missing keys.

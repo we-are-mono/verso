@@ -50,48 +50,45 @@ func TestSensorSamplerReadsOncePerFreshness(t *testing.T) {
 	}
 }
 
-// The card gets the profile's readings in its order, written as the Hardware
-// page writes them: a faulted temperature and a fan that does not turn read
-// "—", a stopped fan is a warning, a warm reading carries its tone, and the
-// CPU's value is the closed card's line.
+// The card gets the board's headlines, written as the Hardware page writes
+// them: the CPU, the main rail's draw with its voltage and current, and the
+// main fan. Only a CPU past its limit or a stopped fan carries a tone.
 func TestHardwareView(t *testing.T) {
 	inv := sensors.Inventory{
 		Temps: []sensors.TempReading{
-			{Name: "Memory", MilliC: 86_400, Level: "warn", Entry: 2},
-			{Name: "cluster", MilliC: 48_400, Level: "nominal", CPU: true, Entry: 1},
-			{Name: "unprofiled", MilliC: 30_000},
-			{Name: "SFP+ modules", Fault: true, Entry: 3},
+			{Name: "Memory", MilliC: 86_400, Level: "warn"},
+			{Name: "cluster", MilliC: 48_400, Level: "nominal", CPU: true},
 		},
-		Powers: []sensors.PowerReading{{Name: "USB Power Delivery", MicroW: 9_800_000, Entry: 1}},
+		Powers: []sensors.PowerReading{
+			{Name: "1V Core PSU", MicroW: 3_100_000},
+			{Name: "USB Power Delivery", MicroW: 9_800_000, MilliV: 20_100, HasV: true, MilliA: 490, HasA: true, Main: true},
+		},
 		Fans: []sensors.FanReading{
-			{Name: "System Fan 1", RPM: 2622, State: "running", Entry: 1},
-			{Name: "System Fan 2", State: "absent", Entry: 2},
-			{Name: "System Fan 3", State: "fault", Entry: 3},
+			{Name: "System Fan 1", RPM: 2622, State: "running", Main: true},
+			{Name: "System Fan 2", State: "absent"},
 		},
 	}
 	got := hardwareView(inv)
 	want := &widget.OverviewSensors{
-		CPU: "48 °C",
-		Thermal: []widget.OverviewSensor{
-			{Key: "hw-thermal-1", Name: "cluster", Value: "48 °C", Tone: "success"},
-			{Key: "hw-thermal-2", Name: "Memory", Value: "86 °C", Tone: "warning"},
-			{Key: "hw-thermal-3", Name: "SFP+ modules", Value: "—", Tone: "neutral"},
-		},
-		Power: []widget.OverviewSensor{{Key: "hw-power-1", Name: "USB Power Delivery", Value: "9.8 W"}},
-		Fans: []widget.OverviewSensor{
-			{Key: "hw-fans-1", Name: "System Fan 1", Value: "2,622 rpm"},
-			{Key: "hw-fans-2", Name: "System Fan 2", Value: "—"},
-			{Key: "hw-fans-3", Name: "System Fan 3", Value: "—", Tone: "warning"},
-		},
+		CPU:   &widget.OverviewSensor{Key: "hw-cpu", Name: "cluster", Value: "48 °C"},
+		Power: &widget.OverviewSensor{Key: "hw-power", Name: "USB Power Delivery", Value: "9.8 W · 20.10 V · 0.49 A"},
+		Fan:   &widget.OverviewSensor{Key: "hw-fan", Name: "System Fan 1", Value: "2,622 rpm"},
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("view = %+v\nwant %+v", got, want)
 	}
-	if rows := hardwareRows(got); rows["hw-thermal-2"] != "86 °C" || rows["hw-fans-2"] != "—" || len(rows) != 7 {
+	if rows := hardwareRows(got); rows["hw-power"] != "9.8 W · 20.10 V · 0.49 A" || len(rows) != 3 {
 		t.Errorf("rows = %v", rows)
 	}
-	if hardwareView(sensors.Inventory{Temps: []sensors.TempReading{{Name: "unprofiled"}}}) != nil {
-		t.Error("no profiled reading answered: want no view")
+
+	inv.Temps[1].Level, inv.Fans[0].State, inv.Fans[0].RPM = "critical", "fault", 0
+	inv.Powers[1].HasA = false
+	hot := hardwareView(inv)
+	if hot.CPU.Tone != "danger" || hot.Fan.Tone != "warning" || hot.Fan.Value != "—" || hot.Power.Value != "9.8 W · 20.10 V" {
+		t.Errorf("out of band = %+v %+v %+v", hot.CPU, hot.Fan, hot.Power)
+	}
+	if hardwareView(sensors.Inventory{Powers: []sensors.PowerReading{{Name: "1V Core PSU"}}}) != nil {
+		t.Error("no headline answered: want no view")
 	}
 }
 
@@ -104,8 +101,8 @@ func profiledServer(t *testing.T) (*Server, *atomic.Int32) {
 	sampler.read = func() sensors.Inventory {
 		reads.Add(1)
 		return sensors.Inventory{
-			Temps: []sensors.TempReading{{Name: "cluster", MilliC: 52_000, Level: "warn", CPU: true, Entry: 1}},
-			Fans:  []sensors.FanReading{{Name: "System Fan 1", RPM: 2622, State: "running", Entry: 1}},
+			Temps: []sensors.TempReading{{Name: "cluster", MilliC: 52_000, Level: "warn", CPU: true}},
+			Fans:  []sensors.FanReading{{Name: "System Fan 1", RPM: 2622, State: "running", Main: true}},
 		}
 	}
 	srv.layouts, srv.boardSensors = cookieLayout{hardware: true}, sampler
@@ -117,7 +114,7 @@ func profiledServer(t *testing.T) (*Server, *atomic.Int32) {
 func TestOverviewRendersTheHardwareCard(t *testing.T) {
 	srv, _ := profiledServer(t)
 	body := get(t, srv, "/").Body.String()
-	for _, want := range []string{`data-overview-card="hardware"`, `data-verso-prop="hw-thermal-1"`, "52 °C", "cluster is hot", `href="/system/hardware"`} {
+	for _, want := range []string{`data-overview-card="hardware"`, `data-verso-prop="hw-cpu"`, "52 °C", "cluster is hot", `href="/system/hardware"`} {
 		if !strings.Contains(body, want) {
 			t.Errorf("overview missing %q", want)
 		}
@@ -142,7 +139,7 @@ func TestOverviewStreamSendsSensorsWhileHardwareIsShown(t *testing.T) {
 			if got != tc.want || (reads.Load() > 0) != tc.want {
 				t.Fatalf("sensors frame sent = %v after %d reads, want %v", got, reads.Load(), tc.want)
 			}
-			if tc.want && (!strings.Contains(payload, `"hw-thermal-1":"52 °C"`) || !strings.Contains(payload, `"hw-fans-1":"2,622 rpm"`)) {
+			if tc.want && (!strings.Contains(payload, `"hw-cpu":"52 °C"`) || !strings.Contains(payload, `"hw-fan":"2,622 rpm"`)) {
 				t.Errorf("sensors frame = %s", payload)
 			}
 			if tc.want && !strings.Contains(frames["overview"], "cluster is hot") {
