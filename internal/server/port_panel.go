@@ -58,19 +58,15 @@ func (s *Server) devicePanel(snapshot telemetry.Snapshot, wan openwrt.WANState, 
 	return panel
 }
 
-// wanPorts are the ports the WAN rides on: each routed WAN device, and the
-// devices under it (a VLAN's port), as the kernel links them.
+// wanPorts are the ports the WAN rides on: each routed WAN device and the
+// devices under it, down the same parents the Interfaces topology draws
+// (deviceParents: a VLAN's port, a PPPoE session's transport).
 func wanPorts(snapshot telemetry.Snapshot, wan openwrt.WANState) map[string]bool {
+	parents := deviceParents(snapshot, wan)
 	marked := map[string]bool{}
 	for _, d := range wan.Devices {
-		name := d.Device
-		for depth := 0; name != "" && !marked[name] && depth < 8; depth++ {
+		for name, depth := d.Device, 0; name != "" && !marked[name] && depth < 8; name, depth = parents[name], depth+1 {
 			marked[name] = true
-			iface, ok := snapshot.Interface(name)
-			if !ok {
-				break
-			}
-			name = iface.Parent
 		}
 	}
 	return marked

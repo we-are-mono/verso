@@ -130,6 +130,22 @@ func interfaceMeanings(cfg, fwCfg map[string]any) map[string][]interfaceMeaning 
 	return out
 }
 
+// deviceParents is each netdev's lower device: the one the kernel links it
+// to, or, for a WAN device the kernel ties to none (a PPPoE session), the
+// transport netifd runs it over.
+func deviceParents(snapshot telemetry.Snapshot, wan openwrt.WANState) map[string]string {
+	parents := make(map[string]string, len(snapshot.Interfaces))
+	for _, iface := range snapshot.Interfaces {
+		parents[iface.Name] = iface.Parent
+	}
+	for _, device := range wan.Devices {
+		if parents[device.Device] == "" && device.Transport != "" && device.Transport != device.Device {
+			parents[device.Device] = device.Transport
+		}
+	}
+	return parents
+}
+
 // interfaceList builds one row per kernel netdev from the process-wide
 // telemetry snapshot, then enriches those rows with UCI and WAN topology.
 func (s *Server) interfaceList(ctx context.Context, sid string, snapshot telemetry.Snapshot, wan openwrt.WANState) []widget.OverviewInterface {
@@ -145,10 +161,10 @@ func (s *Server) interfaceList(ctx context.Context, sid string, snapshot telemet
 	}
 	meanings := interfaceMeanings(cfg, fwCfg)
 	physical := make(map[string]bool, len(snapshot.Interfaces))
-	parents := make(map[string]string, len(snapshot.Interfaces))
 	for _, iface := range snapshot.Interfaces {
-		physical[iface.Name], parents[iface.Name] = iface.Physical, iface.Parent
+		physical[iface.Name] = iface.Physical
 	}
+	parents := deviceParents(snapshot, wan)
 
 	// Runtime logical ownership follows netifd's exact L3 device. Move (do not
 	// copy) each discovered logical network's metadata from its configured
@@ -158,9 +174,6 @@ func (s *Server) interfaceList(ctx context.Context, sid string, snapshot telemet
 		wanDevices[device.Device] = true
 		for _, network := range device.Networks {
 			moveInterfaceMeaning(meanings, network, device.Device)
-		}
-		if parents[device.Device] == "" && device.Transport != "" && device.Transport != device.Device {
-			parents[device.Device] = device.Transport
 		}
 	}
 

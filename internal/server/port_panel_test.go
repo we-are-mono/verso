@@ -123,6 +123,27 @@ func TestDevicePanelWithoutAProfile(t *testing.T) {
 	}
 }
 
+// TestAPPPoEUplinkMarksItsPort: a PPPoE uplink routes through pppoe-wan,
+// which the kernel links to no port; netifd's own transport for it names the
+// link it rides on, a VLAN here, and the port under that carries the mark.
+func TestAPPPoEUplinkMarksItsPort(t *testing.T) {
+	for _, transport := range []string{"eth0.835", "eth0"} {
+		srv := newServer(t, fakeBackend{wan: openwrt.WANState{Devices: []openwrt.WANDevice{{Device: "pppoe-wan", Transport: transport}}}})
+		srv.telemetry = fakeTelemetry{snapshot: telemetry.Snapshot{Interfaces: []telemetry.Interface{
+			physical("eth0", "up", 10, 1000), physical("eth1", "up", 10, 1000),
+			{Name: "eth0.835", Kind: "vlan", Parent: "eth0"}, {Name: "pppoe-wan", Kind: "pppoe"},
+		}}}
+		panel := panelFor(srv, nil)
+		roles := map[string]string{}
+		for _, it := range panel.Items {
+			roles[it.Iface] = it.Role
+		}
+		if roles["eth0"] != "wan" || roles["eth1"] != "" {
+			t.Errorf("transport %s: roles = %v, want eth0 marked WAN and eth1 not", transport, roles)
+		}
+	}
+}
+
 // TestDevicePanelWithoutPorts: a box with no physical port shows no panel.
 func TestDevicePanelWithoutPorts(t *testing.T) {
 	srv := newServer(t, fakeBackend{})
