@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/we-are-mono/verso/internal/ports"
 	"github.com/we-are-mono/verso/internal/telemetry"
 	"github.com/we-are-mono/verso/internal/units"
 )
@@ -30,6 +31,11 @@ type interfaceReading struct {
 	Variant   string `json:"variant"`
 	RxRate    string `json:"rx_rate"`
 	TxRate    string `json:"tx_rate"`
+	// What a port's LEDs and label show: link, activity level (0–4) and the
+	// negotiated speed as labelled.
+	Linked   bool   `json:"linked"`
+	Activity int    `json:"activity"`
+	Speed    string `json:"speed"`
 }
 
 // telemetrySnapshot shares one immutable in-process snapshot across the page
@@ -76,16 +82,21 @@ func telemetryInterfaceReadings(snapshot telemetry.Snapshot, nums units.Numbers)
 		if state == "up" {
 			variant = "success"
 		}
-		var rxBPS, txBPS uint64
+		var rxBPS, txBPS, pps uint64
 		if len(iface.History) != 0 {
 			point := iface.History[len(iface.History)-1]
-			rxBPS, txBPS = point.RxBPS, point.TxBPS
+			rxBPS, txBPS, pps = point.RxBPS, point.TxBPS, point.RxPPS+point.TxPPS
 		}
 		rx, tx := nums.Rate(float64(rxBPS)).String(), nums.Rate(float64(txBPS)).String()
-		out = append(out, interfaceReading{
+		reading := interfaceReading{
 			Name: iface.Name, Operstate: state, State: strings.ToUpper(state[:1]) + state[1:],
 			Variant: variant, RxRate: rx, TxRate: tx,
-		})
+			Linked: state == "up", Activity: ports.Activity(pps), Speed: ports.SpeedLabel(-1),
+		}
+		if reading.Linked {
+			reading.Speed = ports.SpeedLabel(iface.SpeedMbps)
+		}
+		out = append(out, reading)
 	}
 	return out
 }

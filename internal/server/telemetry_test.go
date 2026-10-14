@@ -60,3 +60,24 @@ func TestTelemetryInterfaceReadings(t *testing.T) {
 		t.Fatalf("tun0 reading = %+v", readings[1])
 	}
 }
+
+// TestInterfaceReadingsLightThePanel: each reading carries what a port's LEDs
+// and label show — its link, its activity level from the packets it moved
+// and its speed — so the stream relights the panel as it relists the table.
+func TestInterfaceReadingsLightThePanel(t *testing.T) {
+	readings := telemetryInterfaceReadings(telemetry.Snapshot{Interfaces: []telemetry.Interface{
+		{Name: "eth0", Physical: true, Operstate: "up", SpeedMbps: 1000, History: []telemetry.Point{{RxPPS: 30_000, TxPPS: 20_000}}},
+		{Name: "eth1", Physical: true, Operstate: "down", SpeedMbps: -1, History: []telemetry.Point{{}}},
+		{Name: "eth2", Physical: true, Operstate: "up", SpeedMbps: 10000, History: []telemetry.Point{{RxPPS: 4}}},
+	}}, units.For(func(s string) string { return s }))
+	for i, want := range []interfaceReading{
+		{Name: "eth0", Linked: true, Activity: 3, Speed: "1G"},
+		{Name: "eth1", Linked: false, Activity: 0, Speed: "—"},
+		{Name: "eth2", Linked: true, Activity: 1, Speed: "10G"},
+	} {
+		got := readings[i]
+		if got.Name != want.Name || got.Linked != want.Linked || got.Activity != want.Activity || got.Speed != want.Speed {
+			t.Errorf("reading %d = %+v, want %+v", i, got, want)
+		}
+	}
+}

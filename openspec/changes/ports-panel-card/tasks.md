@@ -78,7 +78,7 @@
 
 ## 5. Live LEDs over the stream
 
-- [ ] 5.1 Write `overview_events_test.go` cases: interface frames carry `activity`, `linked` and `speed` for physical interfaces, computed by `ports.Activity` and the speed formatter. Then extend `interfaceReading`. Verify with `go test ./internal/server`.
+- [x] 5.1 Write `overview_events_test.go` cases: interface frames carry `activity`, `linked` and `speed` for physical interfaces, computed by `ports.Activity` and the speed formatter. Then extend `interfaceReading`. Verify with `go test ./internal/server`.
 - [ ] 5.2 Write stream tests:
   - `?reads=interfaces` sends only interface frames, whatever the layout cookie hides;
   - an unknown `reads` value sends nothing extra;
