@@ -64,7 +64,7 @@ func (o *Overview) issues() int {
 // verdict is the page's one sentence, tinted by tone: online, needs
 // attention, offline, or unknown.
 func (o *Overview) verdict(tr func(string) string) overviewVerdictView {
-	v := overviewVerdictView{Tone: "neutral", Lead: tr("Your network at a glance"), Clock: o.Clock, Zone: o.Zone, Unix: o.Unix, Offset: o.Offset}
+	v := overviewVerdictView{Tone: "neutral", Lead: tr("Your network at a glance")}
 	switch {
 	case !o.WANKnown:
 	case !o.WANUp:

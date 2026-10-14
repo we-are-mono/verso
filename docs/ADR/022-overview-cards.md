@@ -23,7 +23,8 @@ The Overview is six cards in two columns: Internet, Ports and Tunnels on the
 left by default; Traffic, Resources and System on the right. Each card holds
 one kind of reading, and every reading a card shows stands in exactly one
 card. System is the router itself: its board, architecture, target platform,
-firmware, kernel and uptime (uptime moves from beside the clock into it). The
+firmware, kernel, uptime and local time with its zone (both move into it from
+beside the verdict). The
 board's sensors are not on the Overview. A browser's layout that names the
 Hardware or Firmware cards of an earlier Overview reads them as System, where
 the first of them stood.

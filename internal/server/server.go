@@ -955,10 +955,10 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	lang, catalog := s.localize(r)
 	tr := translatorOrIdentity(catalog)
 	now := clock.Now()
-	zone, offset := now.Zone()
+	zone, _ := now.Zone()
 	// The browser's card layout is read before anything renders, so the page
 	// arrives arranged (ADR-022).
-	ov := &widget.Overview{Clock: now.Format("15:04:05"), Zone: zone, Unix: now.Unix(), Offset: offset, Layout: s.layouts.Layout(r)}
+	ov := &widget.Overview{Clock: now.Format("15:04:05"), Zone: zone, Layout: s.layouts.Layout(r)}
 	board, boardErr := s.backend.Board(r.Context(), sid)
 	if boardErr == nil {
 		ov.Firmware, ov.Kernel, ov.Model = board.Firmware, board.Kernel, board.Model

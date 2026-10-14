@@ -56,7 +56,7 @@ func (s *Server) handleOverviewEvents(w http.ResponseWriter, r *http.Request) {
 		now := clock.Now()
 		uptime := loginUptime()
 		liveOverview.Uptime = &uptime
-		if writeEvent(w, "", "clock", map[string]any{"clock": now.Format("15:04:05"), "uptime": units.Duration(uptime)}) != nil {
+		if writeEvent(w, "", "clock", map[string]any{"time": widget.LocalTime(now), "uptime": units.Duration(uptime)}) != nil {
 			return false
 		}
 		// The verdict counts a resource out of band, so the readings are taken

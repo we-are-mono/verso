@@ -70,19 +70,23 @@ func TestRenderOverviewCards(t *testing.T) {
 		t.Error("the router's uptime is shown outside the System card")
 	}
 	// The System card reads from the hardware up: the board, what it runs as,
-	// then the firmware on it and how long it has been running.
+	// then the firmware on it, how long it has been running, and its clock.
 	labels := regexp.MustCompile(`<dt[^>]*>([^<]+)</dt>`).FindAllStringSubmatch(system, -1)
 	var order []string
 	for _, m := range labels {
 		order = append(order, m[1])
 	}
-	if want := "Board, Architecture, Target platform, Firmware, Kernel, Uptime"; strings.Join(order, ", ") != want {
+	if want := "Board, Architecture, Target platform, Firmware, Kernel, Uptime, Local time"; strings.Join(order, ", ") != want {
 		t.Errorf("System rows = %v, want %s", order, want)
 	}
-	for _, want := range []string{"aarch64_generic", "layerscape/armv8_64b"} {
+	// The local time carries its zone and stays live.
+	for _, want := range []string{"aarch64_generic", "layerscape/armv8_64b", `data-verso-prop="local-time"`, ">14:52:07 CEST<"} {
 		if !strings.Contains(system, want) {
 			t.Errorf("System card missing %q", want)
 		}
+	}
+	if strings.Contains(got, "data-overview-clock") || strings.Count(got, "14:52:07") != 1 {
+		t.Error("the clock stands once, in the System card, not beside the verdict")
 	}
 	if strings.Contains(got, "Firewall") {
 		t.Error("the Overview has no Firewall card")

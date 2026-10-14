@@ -8,6 +8,7 @@ import (
 	"html/template"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/we-are-mono/verso/internal/units"
 )
@@ -381,6 +382,11 @@ func (o *Overview) systemBody(r *Renderer, csrf string) (template.HTML, error) {
 	if o.Uptime != nil {
 		uptime = Property{Label: "Uptime", Duration: o.Uptime, Key: "uptime"}
 	}
+	// The router's clock, in its zone, kept live by the stream.
+	clock := Property{Label: "Local time", Value: "unavailable", Key: "local-time"}
+	if o.Clock != "" {
+		clock = Property{Label: "Local time", Value: localTime(o.Clock, o.Zone), Mono: true, Verbatim: true, Key: "local-time"}
+	}
 	return o.renderWidget(r, &Properties{Items: []Property{
 		sysProp("Board", o.Model, false),
 		sysProp("Architecture", o.Arch, true),
@@ -388,5 +394,16 @@ func (o *Overview) systemBody(r *Renderer, csrf string) (template.HTML, error) {
 		sysProp("Firmware", o.Firmware, true),
 		sysProp("Kernel", o.Kernel, true),
 		uptime,
+		clock,
 	}}, csrf)
 }
+
+// LocalTime is the router's clock as the System card reads it, its zone
+// after it ("14:52:07 CEST"); the page's first paint and the stream write it
+// alike.
+func LocalTime(t time.Time) string {
+	zone, _ := t.Zone()
+	return localTime(t.Format("15:04:05"), zone)
+}
+
+func localTime(clock, zone string) string { return strings.TrimSpace(clock + " " + zone) }

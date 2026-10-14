@@ -71,7 +71,7 @@ A card's open or closed state SHALL change only by the operator's action. A clos
 - **AND** its header reads "Not connected" in the danger tone
 
 ### Requirement: One verdict heads the page
-The Overview SHALL open with one verdict sentence tinted by tone: "Your network is online" (success), "Your network needs attention" (warning) or "Your network is offline" (danger). The page's live clock and time zone stand beside the verdict. The page shows no kicker over the verdict and no status-tile strip.
+The Overview SHALL open with one verdict sentence tinted by tone: "Your network is online" (success), "Your network needs attention" (warning) or "Your network is offline" (danger). The router's live clock and time zone stand in the System card as Local time, not beside the verdict. The page shows no kicker over the verdict and no status-tile strip.
 
 #### Scenario: The firewall is not running
 - **WHEN** the uplink is up and fw4's ruleset is not loaded in the kernel
@@ -164,7 +164,7 @@ Every reading the Overview takes SHALL appear in exactly one card, and each card
 - **AND** Tunnels holds each tunnel someone brought up, with its kind, current rate and state
 - **AND** Traffic holds the Internet graph and its window choice
 - **AND** Resources holds load, CPU, memory and storage
-- **AND** System holds the board, its architecture and target platform, the firmware, kernel and uptime
+- **AND** System holds the board, its architecture and target platform, the firmware, kernel, uptime and the local time with its zone
 
 #### Scenario: No IPv6
 - **WHEN** no IPv6 prefix was delegated

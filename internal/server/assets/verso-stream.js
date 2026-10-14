@@ -133,11 +133,6 @@
   // nobody; hidden, it lets go, and shown again it reconnects, where the first
   // frame is a full snapshot, so the page is current the moment it is seen.
   var es = null;
-  var live = document.querySelector("[data-overview-live]");
-  var pulse = null;
-  if (live && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-    pulse = live.animate([{opacity:1},{opacity:0.28},{opacity:1}], {duration:2600,iterations:Infinity});
-  }
   function connect() {
     if (es) return;
     es = new EventSource(panelOnly ? "/overview/events?reads=interfaces" : "/overview/events");
@@ -181,9 +176,9 @@
     var d;
     try { d = JSON.parse(e.data); } catch (err) { return; }
     if (!d) return;
-    var root = document.querySelector("[data-overview-clock]");
-    if (root) setText(root, "[data-overview-time]", d.clock);
-    // The System card's uptime row.
+    // The System card's local time and uptime rows.
+    var time = document.querySelector('[data-verso-prop="local-time"]');
+    if (time && d.time && time.textContent !== d.time) time.textContent = d.time;
     writeSpan(document.querySelector('[data-verso-prop="uptime"]'), d.uptime);
   });
   // The verdict and every card's header (ADR-022): the words, and the tone the
@@ -211,10 +206,6 @@
       setText(status, "[data-overview-card-word]", card.status);
     });
   });
-  if (live) {
-    es.addEventListener("open", function () { live.classList.remove("bg-faint"); live.classList.add("bg-green"); if (pulse) pulse.play(); });
-    es.addEventListener("error", function () { live.classList.remove("bg-green"); live.classList.add("bg-faint"); if (pulse) pulse.cancel(); });
-  }
   listen(es, "interfaces", "interfaces", applyInterface);
   // The WAN throughput sample hands off to the Internet graph, if present, and
   // the Internet card's row says how long the uplink has been connected.

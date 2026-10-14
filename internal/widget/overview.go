@@ -15,9 +15,9 @@ import (
 // outside the plugin vocabulary; the cards' bodies reuse the existing
 // renderers.
 type Overview struct {
+	// Clock and Zone are the router's time and its zone, for the System
+	// card's Local time.
 	Clock, Zone     string
-	Unix            int64
-	Offset          int
 	InterfacesKnown bool
 	TunnelsHref     string
 	InterfacesHref  string
@@ -183,12 +183,9 @@ func (*Overview) isWidget() {}
 // renderInto runs the localization walk over each widget itself.
 func (*Overview) children() []Widget { return nil }
 
-// overviewVerdictView is the page's one sentence and its live clock.
+// overviewVerdictView is the page's one sentence.
 type overviewVerdictView struct {
 	Tone, Lead, Accent, Tail string
-	Clock, Zone              string
-	Unix                     int64
-	Offset                   int
 }
 
 // overviewCardView is one card as the page draws it.
