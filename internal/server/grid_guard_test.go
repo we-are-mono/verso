@@ -32,13 +32,13 @@ var gridExceptions = map[string]string{
 	"gap-1.5":  "the 6px between a glyph and its words inside a chip, an act or a link is the component's own",
 	"gap-0.5":  "the 2px between the segments of one segmented control is the control's own",
 	"-mx-1.5":  "a middot between two words pulls in its own side bearings",
-	"mt-1.75":  "a 6px state mark centred on its 20px line hangs 7px down it",
+	"mt-1.75":  "a 6px state mark centred on a 20px line of tight prose (sign-in, the stage's note) hangs 7px down it",
 	"-my-0.5":  "a 28px act rides a 24px line, reaching 2px past it either side",
-	"my-0.5":   "a log line's 3px mark stands 2px inside its line at either end",
-	"-my-1.5":  "a 32px control rides a 20px line, reaching 6px past it either side",
-	"my-1.75":  "a 6px bar centred on its 20px line stands 7px off either side",
+	"my-0.5":   "a 20px chip or a log line's mark stands 2px inside its line at either end",
+	"my-2.25":  "a 6px bar centred on its 24px line stands 9px off either side",
+	"mt-2.25":  "a 6px state mark centred on its 24px line hangs 9px down it",
 	"mt-9.75":  "a rule 40px under the content, less its own pixel, lands on the line",
-	"mt-5.75":  "a rule 24px under the content, less its own pixel, lands on the line",
+	"mt-5.75":  "a rule or a framed row 24px under the content, less a border's pixel, lands on the line",
 	"-mt-1.75": "a 6px state mark centred on its 20px line hangs 7px down it",
 }
 

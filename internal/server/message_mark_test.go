@@ -44,7 +44,7 @@ func TestMessagesMarkWithASquareNotAGlyph(t *testing.T) {
 	if err := r.RenderWithToken(&out, form, "", "en", func(s string) string { return s }); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(out.String(), `<span aria-hidden="true" class="mt-1.75 size-1.5 shrink-0 rounded-[1px] bg-crimson"></span>`) {
+	if !strings.Contains(out.String(), `<span aria-hidden="true" class="mt-2.25 size-1.5 shrink-0 rounded-[1px] bg-crimson"></span>`) {
 		t.Errorf("a form's error is marked with the crimson square:\n%s", out.String())
 	}
 }

@@ -34,7 +34,7 @@ func TestDecodeAndRenderConditions(t *testing.T) {
 		// shared lede, not a heading of its own spacing.
 		`<fieldset data-verso-conditions class="pt-4">`,
 		`<div class="flex flex-wrap items-center justify-between gap-x-6 mb-6">`,
-		`<legend class="text-lg leading-5 font-semibold tracking-[-0.025em] text-ink">`,
+		`<legend class="text-lg leading-6 font-semibold tracking-[-0.025em] text-ink">`,
 		`<div data-verso-section-lede class="verso-prose text-body">Combined with and.</div>`,
 		`data-verso-condition-template="rate"`, `name="dest_port"`,
 		`Combined with and.`,
@@ -48,7 +48,7 @@ func TestDecodeAndRenderConditions(t *testing.T) {
 		// Grouped, with the heading set as a kicker over its run of entries.
 		`data-verso-condition-group-name="Endpoints"`,
 		`data-verso-condition-group-name="Rate and time"`,
-		`<span class="text-xs leading-5 font-medium tracking-[.08em] text-meta uppercase">Endpoints</span>`,
+		`<span class="text-xs leading-6 font-medium tracking-[.08em] text-meta uppercase">Endpoints</span>`,
 		// A condition the rule already carries stays in the list and stays legible,
 		// but it is no longer an offer.
 		`data-verso-condition-choose="dest_port" disabled`,
@@ -216,9 +216,9 @@ func TestConditionsSayWhenEmptyAsASetDoes(t *testing.T) {
 	for _, want := range []string{
 		// mb-0: the act stands a cell under the slot, as it does under every
 		// set's, and nothing of the block adds to that.
-		`<div data-verso-condition-empty data-verso-slot class="flex w-full items-center gap-3 rounded-xs border border-dashed border-rule-strong bg-quiet px-4 pt-2.5 pb-2 leading-5 max-w-form mb-0">`,
+		`<div data-verso-condition-empty data-verso-slot class="flex w-full items-center gap-3 rounded-xs border border-dashed border-rule-strong bg-quiet px-4 pt-2 pb-1.5 leading-6 max-w-form mb-0">`,
 		`<span aria-hidden="true" class="size-1.5 shrink-0 rounded-[1px] border border-faint"></span>`,
-		`<p class="min-w-0 flex-1 text-sm leading-5 text-meta">No additional conditions.`,
+		`<p class="min-w-0 flex-1 text-sm leading-6 text-meta">No additional conditions.`,
 		`<div data-verso-condition-picker class="relative pt-6 pb-1">`,
 		// The collection's own add act, glyph first.
 		`group/act relative inline-flex h-7 shrink-0 cursor-pointer items-center gap-1.5 rounded-xs border border-rule-strong bg-transparent text-sm font-medium whitespace-nowrap text-meta transition-colors hover:border-sand-5 hover:bg-rule hover:text-ink focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-denim verso-press pl-2 pr-2.5">`,

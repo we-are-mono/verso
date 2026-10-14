@@ -41,12 +41,13 @@ Every task ends green under `make lint` and `make test`. Each step is reviewed i
 
 ## 8. Docs
 
-- [x] 8.1 DESIGN.md: "The 20px cell" becomes "The 8px grid" (fixed measures on 8, 4 inside a component, 20px text lines, the dev overlay). Update every component measure and the frontmatter tokens (heights 32, spacing group 24, chip 20, checkbox 16, radio 28, plots 192/256). In the same pass, correct the stale lane, column-head and ledger-count passages to match commit 71ab775. Verify with `grep -n "20px cell\|34px\|21px\|a cell" DESIGN.md`: only the intended text lines remain.
+- [x] 8.1 DESIGN.md: "The 20px cell" becomes "The 8px grid" (fixed measures on 8, 4 inside a component, 24px text lines, the dev overlay). Update every component measure and the frontmatter tokens (heights 32, spacing group 24, chip 20, checkbox 16, radio 28, plots 192/256). In the same pass, correct the stale lane, column-head and ledger-count passages to match commit 71ab775. Verify with `grep -n "20px cell\|34px\|21px\|a cell" DESIGN.md`: only the intended text lines remain.
 - [x] 8.2 docs/BACKLOG.md: remove anything this change settles and add any off-grid spot the sweep surfaced but did not fix. Verify against the guard's allowlist. Commit the docs.
 
 ## 9. Integration
 
 - [x] 9.1 Walk every rail page and its drawers in a private window with G on, at 1440px and 390px wide, and fix anything off a line. Then run `make lint` and `make test`, and confirm `openspec validate eight-pixel-grid --strict` passes.
+- [x] 9.2 Text writes on 24px lines (design decision 9): `--text-sm--line-height`, `leading-6` in every template and script, `py-row` 8/7, card header 12/11, field label straight over its control, radio rows 32, marks 9px down, callout acts 23px under the words. Update DESIGN.md and the layout-grid spec. Walk all 23 rail pages at 1440px and 390px requiring every frame's edges on lines; commit.
 
 ## Workflow follow-up
 

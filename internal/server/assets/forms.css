@@ -2,8 +2,8 @@
 /* SPDX-FileCopyrightText: 2026 Mono Technologies Inc. */
 
 /* Shared form geometry for pages, drawers and nested settings, on the 8px
- * grid: a field is 24px of air, its label's 20px line, then its control — a
- * 32px box 4px under the label, so a field is 80px, or a choice's options a
+ * grid: a field is 24px of air, its label's 24px line, then its control — a
+ * 32px box straight under the label, so a field is 80px, or a choice's options a
  * row each — and its description's lines. The shell assigns content
  * measures; plugins never declare presentation widths. */
 @layer components {
@@ -54,13 +54,10 @@
     max-width: 100%;
     min-width: 0;
   }
-  /* A control-height box stands 4px under its label's line, so the label
-     and the box are 56px and a field with its air 80px; what follows the box
-     inside the control — a description's lines, a refusal band — is whole
-     lines. A list of values draws its own rows. */
-  .verso-field-row > .verso-field-control:has(.h-control, .min-h-control, .verso-box):not(:has([data-verso-list])) {
-    margin-top: var(--spacing);
-  }
+  /* A control-height box stands straight under its label's 24px line, so
+     the label and the box are 56px and a field with its air 80px; what
+     follows the box inside the control — a description's lines, a refusal
+     band — is whole lines. A list of values draws its own rows. */
 
   /* Each half needs at least 20rem. Narrow drawers and zoomed pages retain
      the full measure, independently of the viewport's width. */
@@ -86,11 +83,13 @@
     grid-template-columns: calc(var(--spacing) * 4) minmax(0, 1fr);
     align-items: start;
   }
+  /* The 16px box stands centred on its label's 24px line. */
   .verso-field-toggle > [data-verso-control] {
     width: auto;
+    padding-top: var(--spacing);
   }
   /* A description kept in view hangs under the label it explains, the next
-     20px line, rather than a row gap away. */
+     24px line, rather than a row gap away. */
   .verso-field-toggle > [data-verso-field-desc] {
     grid-column: 2;
   }
@@ -169,12 +168,12 @@
   }
   .verso-joined-part { width: fit-content; max-width: 100%; }
   .verso-joined-part select { width: auto; max-width: 100%; }
-  /* The word reads on the controls' own middle line, on a 20px line as the
+  /* The word reads on the controls' own middle line, on a 24px line as the
      words inside them are. */
   .verso-joined-word {
     font-family: var(--font-sans);
     font-size: var(--text-sm);
-    line-height: calc(var(--spacing) * 5);
+    line-height: calc(var(--spacing) * 6);
     color: var(--color-body);
     white-space: nowrap;
   }
@@ -242,7 +241,7 @@
      repeat the name. A condition of several parts sets each part's label
      quieter than the name, so the name reads as the setting and the parts
      as its pieces. */
-  .verso-condition-name { height: calc(var(--spacing) * 5); }
+  .verso-condition-name { height: calc(var(--spacing) * 6); }
   .verso-condition > .verso-rhythm > * + * { margin-top: 0; }
   .verso-condition > .verso-rhythm > :first-child { padding-top: 0; }
   .verso-condition-single > .verso-rhythm .verso-field-label {
@@ -324,10 +323,10 @@
   }
 
   /* A reveal (disclosure style "reveal") is one of its form's rows: folded,
-     its act — 24px of air and its 20px line, as a field's label stands;
+     its act — 24px of air and its 24px line, as a field's label stands;
      open, the rows it folded, the act stepping aside — there is nothing left
      to reveal. The rows are fields and bring their own air. */
   .verso-reveal:not([open]) { padding-top: var(--spacing-inset); }
-  .verso-reveal-act { line-height: calc(var(--spacing) * 5); }
+  .verso-reveal-act { line-height: calc(var(--spacing) * 6); }
   .verso-reveal[open] > .verso-reveal-act { display: none; }
 }

@@ -2,7 +2,7 @@
 
 ## Purpose
 
-The measuring system every page, card and drawer is laid out on: an 8px grid for every fixed measure, a 4px step inside a component, 20px text lines, and the dev-session overlay that checks alignment.
+The measuring system every page, card and drawer is laid out on: an 8px grid for every fixed measure, a 4px step inside a component, 24px text lines, and the dev-session overlay that checks alignment.
 
 ## ADDED Requirements
 
@@ -34,18 +34,22 @@ A component's own box (a chip, a checkbox, a radio row, a row act) SHALL measure
 
 #### Scenario: A chip in a row
 - **WHEN** a device row cites its interface as a chip
-- **THEN** the chip is 20px tall and stands within the row's 20px line
+- **THEN** the chip is 20px tall and stands centred on the row's 24px line
 
 #### Scenario: A checkbox
 - **WHEN** a form shows a checkbox
-- **THEN** its box is 16px square, at the top of its label's 20px line
+- **THEN** its box is 16px square, centred on its label's 24px line
 
 #### Scenario: A radio set
 - **WHEN** a form shows three radio choices
-- **THEN** each choice is a 28px row
+- **THEN** each choice is a 32px row
 
-### Requirement: Text writes on 20px lines
-Body text, labels, cells and ledes SHALL write on 20px lines. A box that grows with its text SHALL end on a 4px step, and a fixed box SHALL end on an 8px step.
+### Requirement: Text writes on 24px lines
+Body text, labels, cells and ledes SHALL write on 24px lines, so a box that grows with its text ends on the 8px grid as a fixed box does.
+
+#### Scenario: A field
+- **WHEN** a page form shows a field with its label
+- **THEN** the label's line is 24px and the 32px control stands straight under it
 
 #### Scenario: A one-line row
 - **WHEN** a table row holds one line of text
@@ -53,7 +57,7 @@ Body text, labels, cells and ledes SHALL write on 20px lines. A box that grows w
 
 #### Scenario: A stacked row
 - **WHEN** a table row holds a value with a detail line under it
-- **THEN** the row is 60px tall
+- **THEN** the row is 64px tall
 
 ### Requirement: Chart plots are ruled every 16px
 A chart's plot SHALL draw its horizontal rules 16px apart, and its height SHALL be a multiple of 64px so each of its four scale labels stands on a rule. The plot is 192px tall in a card or as a short chart, and 256px tall otherwise.

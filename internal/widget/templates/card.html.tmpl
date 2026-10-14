@@ -12,12 +12,12 @@
        name's line and the sentence's, 23px under them, and the hairline the
        line after. */}}
   {{if .Title}}<div class="border-b border-rule-strong pt-6 pb-5.75">
-    <h3 class="text-base leading-5 font-semibold text-ink">{{.Title}}</h3>
-    {{if .Subtitle}}<p class="{{if .SubtitleMono}}font-mono text-base leading-5 font-medium{{else}}text-sm leading-5{{end}} text-body">{{.Subtitle}}</p>{{end}}
+    <h3 class="text-base leading-6 font-semibold text-ink">{{.Title}}</h3>
+    {{if .Subtitle}}<p class="{{if .SubtitleMono}}font-mono text-base leading-6 font-medium{{else}}text-sm leading-6{{end}} text-body">{{.Subtitle}}</p>{{end}}
   </div>{{end}}
   {{else if or .Title .Subtitle}}<div class="{{if eq .Style "preview"}}mt-10{{else}}mb-6{{end}}">
-    {{if .Title}}<h3 class="{{if eq .Style "preview"}}text-sm font-semibold{{else}}text-lg font-semibold tracking-tight{{end}} leading-5 text-ink">{{.Title}}</h3>{{end}}
-    {{if .Subtitle}}<p class="text-sm leading-5 text-body">{{.Subtitle}}</p>{{end}}
+    {{if .Title}}<h3 class="{{if eq .Style "preview"}}text-sm font-semibold{{else}}text-lg font-semibold tracking-tight{{end}} leading-6 text-ink">{{.Title}}</h3>{{end}}
+    {{if .Subtitle}}<p class="text-sm leading-6 text-body">{{.Subtitle}}</p>{{end}}
   </div>{{end}}
   <div class="space-y-6">{{range .Children}}{{.}}{{end}}</div>
 </section>

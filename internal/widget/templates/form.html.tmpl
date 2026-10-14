@@ -25,7 +25,7 @@
        refusal is its band, and the page's navigator counts them; no form says
        to look for them. The band keeps a dividing line's air below it. */}}
   {{if .Error}}
-  <div class="mb-6 flex items-start gap-2 rounded-xs border border-crimson-line bg-crimson-soft px-3 py-2 text-sm leading-5 text-crimson-deep">
+  <div class="mb-6 flex items-start gap-2 rounded-xs border border-crimson-line bg-crimson-soft px-3 py-2 text-sm leading-6 text-crimson-deep">
     {{template "verso-message-mark" "danger"}}
     <span>{{.Error}}</span>
   </div>
@@ -44,7 +44,7 @@
     {{if .Submit}}<button type="submit"{{if .Dirty}} disabled{{end}} class="{{template "verso-btn-box"}} shrink-0 {{template "form.submit-tone" .Tone}}{{if .Dirty}} {{template "verso-btn-waiting"}}{{end}}">{{if .Icon}}{{icon .Icon "size-4"}}{{end}}{{.Submit}}</button>{{end}}
   </div>
   {{if or .Actions .Note}}
-  <div class="flex flex-wrap items-center gap-3">
+  <div class="flex flex-wrap items-center gap-x-3 gap-y-2">
     {{if .CancelHref}}<a href="{{.CancelHref}}"{{if .Frame}} @click.prevent="hide"{{end}} class="{{template "verso-btn-box"}} border {{template "verso-btn-secondary"}}">{{t "Cancel"}}</a>{{end}}
     {{range .Actions}}<button type="submit" name="_action" value="{{.Action}}"{{if $.Dirty}} disabled{{end}} class="{{template "verso-btn-box"}} border {{template "verso-btn-secondary"}} focus-visible:outline-denim">{{if .Icon}}{{icon .Icon "size-4"}}{{end}}{{.Label}}</button>{{end}}
     {{if .Note}}<span class="text-sm text-body [&>p]:inline">{{.Note}}</span>{{end}}

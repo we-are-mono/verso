@@ -16,6 +16,6 @@
   {{if .Title}}<h2 class="text-2xl leading-10 font-semibold tracking-[-0.025em] text-balance text-ink">{{.Title}}</h2>{{end}}
   {{/* the body is Markdown, so it brings its own paragraph — the wrapper is a
        div carrying the prose rules, exactly as a section's sub does. */}}
-  {{if .Body}}<div class="verso-prose max-w-[44ch] leading-5 text-body [&_p]:mb-4">{{.Body}}</div>{{end}}
+  {{if .Body}}<div class="verso-prose max-w-[44ch] leading-6 text-body [&_p]:mb-4">{{.Body}}</div>{{end}}
   {{if .Children}}<div class="mt-6 flex w-full flex-col items-center gap-6">{{range .Children}}{{.}}{{end}}</div>{{end}}
 </div>

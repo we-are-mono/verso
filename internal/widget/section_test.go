@@ -19,7 +19,7 @@ func TestSectionControlAlignsToContentEdge(t *testing.T) {
 		Control:  &Button{Label: "Use my computer's time", Style: "act", Name: "_action", Value: "clock"},
 		Children: []Widget{&Field{Name: "zonename", Label: "Time zone"}},
 	})
-	column := `<span class="ml-auto flex h-5 w-full items-center justify-end sm:w-auto [&>button]:h-control [&>button]:gap-2 [&>button]:px-4">`
+	column := `<span class="ml-auto flex h-6 w-full items-center justify-end sm:w-auto [&>button]:h-control [&>button]:gap-2 [&>button]:px-4">`
 	at := strings.Index(got, column)
 	if at < 0 {
 		t.Fatalf("the heading's control must align to the content edge:\n%s", got)
@@ -73,23 +73,23 @@ func TestListAddHoversAsEverySecondaryButton(t *testing.T) {
 func TestListRowsTakeTheirHeightFromPadding(t *testing.T) {
 	got := render(t, newRenderer(t), &List{Name: "server", Label: "Time servers", Style: "rows", Prompt: "Add a server",
 		Items: []string{"0.openwrt.pool.ntp.org", "1.openwrt.pool.ntp.org"}})
-	const row = `class="flex items-start gap-2 border-t border-rule pt-2.5 pr-3 pb-2.25 pl-1.5 first:border-t-transparent"`
+	const row = `class="flex items-start gap-2 border-t border-rule py-row pr-3 pl-1.5 first:border-t-transparent"`
 	if strings.Count(got, row) != 3 { // two values and the row the shell clones
 		t.Errorf("value rows take their height from padding, want %s three times in:\n%s", row, got)
 	}
 	// Each value leads with the packet in its words' ink, centred on its first
 	// line and in the grid's first column, the value starting at the next; the
 	// values are divided from each other, never from the label.
-	const packet = `<span aria-hidden="true" class="mt-1.75 size-1.5 shrink-0 rounded-[1px] bg-meta"></span>`
-	const value = `class="min-w-0 flex-1 wrap-anywhere font-mono text-base leading-5 text-meta"`
+	const packet = `<span aria-hidden="true" class="mt-2.25 size-1.5 shrink-0 rounded-[1px] bg-meta"></span>`
+	const value = `class="min-w-0 flex-1 wrap-anywhere font-mono text-base leading-6 text-meta"`
 	if strings.Count(got, packet) != 3 || strings.Count(got, value) != 3 {
 		t.Errorf("each value leads with the packet, its words quiet:\n%s", got)
 	}
 	if strings.Contains(got, "min-h-8") {
 		t.Errorf("no fixed row floor:\n%s", got)
 	}
-	if !strings.Contains(got, `<div data-verso-list-items class="has-[>*]:-mt-px has-[>*]:mb-px">`) || !strings.Contains(got, `<div class="flex items-center gap-2 pt-1">`) {
-		t.Errorf("the set takes the label's line for its first hairline only when it holds something, and the add box stands 4px under it:\n%s", got)
+	if !strings.Contains(got, `<div data-verso-list-items class="has-[>*]:-mt-px has-[>*]:mb-px">`) || !strings.Contains(got, `<div class="flex items-center gap-2 pt-2">`) {
+		t.Errorf("the set takes the label's line for its first hairline only when it holds something, and the add box stands 8px under it:\n%s", got)
 	}
 }
 
@@ -217,7 +217,7 @@ func TestRenderSectionAnchor(t *testing.T) {
 func TestRenderSectionKicker(t *testing.T) {
 	r := newRenderer(t)
 	got := render(t, r, &Section{Title: "On this page", Kicker: true})
-	if !strings.Contains(got, `<h2 class="text-xs leading-5 font-medium tracking-[.08em] text-meta uppercase">On this page</h2>`) {
+	if !strings.Contains(got, `<h2 class="text-xs leading-6 font-medium tracking-[.08em] text-meta uppercase">On this page</h2>`) {
 		t.Errorf("kicker is not set as one:\n%s", got)
 	}
 	if strings.Contains(got, "text-lg") {

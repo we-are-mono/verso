@@ -28,7 +28,7 @@
     </div>{{end}}
     </div>
     <template><div data-verso-list-row class="{{template "list.row-class"}}"><input type="hidden" name="{{.Name}}">{{template "list.packet"}}<span data-verso-list-value class="{{template "list.value-class"}}"></span><button type="button" data-verso-list-remove title="{{t "Remove"}}" aria-label="{{t "Remove"}}" class="-my-1 grid {{template "verso-btn-icon"}}">{{icon "x" "size-4"}}</button></div></template>
-    <div class="flex items-center gap-2 pt-1"><input id="{{.Name}}"{{if .Label}} aria-labelledby="{{.Name}}-label"{{end}}{{if .Explained}} aria-describedby="{{.Name}}-tip"{{end}} data-verso-list-input {{if .Datatype}}data-datatype="{{.Datatype}}"{{end}} placeholder="{{if .Prompt}}{{.Prompt}}{{else}}{{t "Add…"}}{{end}}" class="{{template "verso-input-class"}} {{template "verso-input-border" ""}} min-w-0"><button type="button" data-verso-list-add class="{{template "verso-btn-box"}} border {{template "verso-btn-secondary"}}">{{t "Add"}}</button></div>
+    <div class="flex items-center gap-2 pt-2"><input id="{{.Name}}"{{if .Label}} aria-labelledby="{{.Name}}-label"{{end}}{{if .Explained}} aria-describedby="{{.Name}}-tip"{{end}} data-verso-list-input {{if .Datatype}}data-datatype="{{.Datatype}}"{{end}} placeholder="{{if .Prompt}}{{.Prompt}}{{else}}{{t "Add…"}}{{end}}" class="{{template "verso-input-class"}} {{template "verso-input-border" ""}} min-w-0"><button type="button" data-verso-list-add class="{{template "verso-btn-box"}} border {{template "verso-btn-secondary"}}">{{t "Add"}}</button></div>
   </div>
   {{else if eq .Style "tokens"}}
   {{/* The box is a field, and each value inside it is a chip — the same chip a
@@ -93,6 +93,6 @@
 {{/* A value row's parts, shared by the rows drawn and the one the shell clones.
      The row starts just past a column line: 6px in, the 6px packet sits in the
      middle of the first column, and 8px on the value starts at the next. */}}
-{{define "list.row-class"}}flex items-start gap-2 border-t border-rule pt-2.5 pr-3 pb-2.25 pl-1.5 first:border-t-transparent{{end}}
-{{define "list.packet"}}<span aria-hidden="true" class="mt-1.75 size-1.5 shrink-0 rounded-[1px] bg-meta"></span>{{end}}
-{{define "list.value-class"}}min-w-0 flex-1 wrap-anywhere font-mono text-base leading-5 text-meta{{end}}
+{{define "list.row-class"}}flex items-start gap-2 border-t border-rule py-row pr-3 pl-1.5 first:border-t-transparent{{end}}
+{{define "list.packet"}}<span aria-hidden="true" class="mt-2.25 size-1.5 shrink-0 rounded-[1px] bg-meta"></span>{{end}}
+{{define "list.value-class"}}min-w-0 flex-1 wrap-anywhere font-mono text-base leading-6 text-meta{{end}}

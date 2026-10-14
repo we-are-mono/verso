@@ -25,13 +25,17 @@ func TestAButtonSaysWhatItDoesWhilePressed(t *testing.T) {
 
 // TestACalloutCarriesTheActsThatResolveIt: a notice that something is missing
 // carries the act that resolves it, inside the band: a row of buttons 24px
-// under the words, in the
-// band's own ink.
+// under the words less the band's top border's pixel, which the band gives
+// back under them, so the buttons stand on the band's lines, in the band's
+// own ink.
 func TestACalloutCarriesTheActsThatResolveIt(t *testing.T) {
 	for _, compact := range []bool{true, false} {
 		got := render(t, newRenderer(t), &Callout{Variant: "info", Compact: compact, Title: "Nothing is blocked", Body: "Installing adds a blocklist.",
 			Acts: []Link{{Style: "secondary", Label: "Install adblock", Icon: "download", Href: "/system/packages/package?name=adblock", Panel: true}}})
-		row := strings.Index(got, `<div data-verso-callout-acts class="mt-6 flex flex-wrap items-center gap-x-3 gap-y-2">`)
+		row := strings.Index(got, `<div data-verso-callout-acts class="mt-5.75 flex flex-wrap items-center gap-x-3 gap-y-2">`)
+		if want := map[bool]string{true: "has-[[data-verso-callout-acts]]:pb-1.75", false: "has-[[data-verso-callout-acts]]:pb-5.75"}[compact]; !strings.Contains(got, want) {
+			t.Errorf("compact=%v: the band gives the pixel back under its acts (%s):\n%s", compact, want, got)
+		}
 		words := strings.Index(got, "Installing adds a blocklist.")
 		if row < 0 || words < 0 || row < words {
 			t.Errorf("compact=%v: the acts row stands inside the band, under its words:\n%s", compact, got)
@@ -60,7 +64,7 @@ func TestACompactCalloutIsFramedOneStepDarker(t *testing.T) {
 		"danger": "border-crimson-line bg-crimson-soft", "success": "border-green-line bg-green-soft", "neutral": "border-rule bg-quiet",
 	} {
 		got := render(t, newRenderer(t), &Callout{Variant: variant, Compact: true, Body: "x"})
-		if !strings.Contains(got, `flex w-full max-w-(--container-3xl) items-start gap-2 rounded-xs border px-3 pt-2.5 pb-2`) || !strings.Contains(got, border) {
+		if !strings.Contains(got, `flex w-full max-w-(--container-3xl) items-start gap-2 rounded-xs border px-3 pt-2 pb-1.5`) || !strings.Contains(got, border) {
 			t.Errorf("%s: a compact band is framed one step darker on the lines, want %q:\n%s", variant, border, got)
 		}
 	}

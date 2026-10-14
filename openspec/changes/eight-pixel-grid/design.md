@@ -25,7 +25,7 @@ The confirmed target is the Verso grid preview artifact (see proposal.md).
 **Non-Goals:**
 - No change to type sizes, colours, the widget schema or any plugin.
 - No drawn grid for operators. The overlay is dev-only.
-- No change to the 20px text line or the 40px row: both already land on the grid.
+- No change to the 40px row: it already lands on the grid. Its text line becomes 24px with 8px over and 7px under (decision 9).
 
 ## Decisions
 
@@ -46,7 +46,7 @@ Add Tailwind v4 spacing tokens in `@theme`, so the utilities read by role. Tailw
 
 ### 2. Optical padding inside a component lives in named utilities
 
-A row's 10px/9px around its 20px line, a header's 14px/13px, and a strip's 16px/15px are component internals that centre text, so they are exempt from the 4px step. A pair that repeats across templates (a row's) gets one `@utility` in `input.css` (`py-row`), so the next change to it is one edit. A pair that stands in one place stays a plain utility there.
+A row's 8px/7px around its 24px line, a header's 12px/11px, and a strip's 16px/15px are component internals that centre text, so they are exempt from the 4px step. A pair that repeats across templates (a row's) gets one `@utility` in `input.css` (`py-row`), so the next change to it is one edit. A pair that stands in one place stays a plain utility there.
 
 ### 3. Guard test against fractional spacing
 
@@ -55,7 +55,7 @@ A Go test in `internal/widget` walks every embedded template (widget and server)
 - **Air off the 4px step:** a fractional margin, gap or space (`mt-1.75`, `gap-2.5`, `-mb-1.25`). Margins and gaps stand between boxes, so they are layout.
 - **The retired cell as air:** `*-5` (20px) on padding, margin, gap or space. Air between boxes is a role token now.
 
-Padding is left free: inside a component it centres text on its line (a row's 10px over and 9px under), which is the component's business. Sizes are left free too: a 6px state square, a 14px icon and a 20px text line are marks and lines, not layout.
+Padding is left free: inside a component it centres text on its line (a row's 8px over and 7px under), which is the component's business. Sizes are left free too: a 6px state square, a 14px icon and a 24px text line are marks and lines, not layout.
 
 The test is source-level. A layout-level check would need a browser, and the dev overlay covers that by eye.
 
@@ -96,6 +96,10 @@ The overlay comes first, so every later step can be reviewed with G on. Then tok
 
 - **DESIGN.md:** "The 20px cell" becomes "The 8px grid"; the component measures and the frontmatter tokens change with it. The stale passages left by commit 71ab775 are corrected in the same pass: lanes as bands, column heads on Paper, no ledger count.
 - **page-cards spec:** follows through this change's delta.
+
+### 9. Text writes on 24px lines
+
+A 20px line put every box that grows with its text on a 4px step: a code card of an odd line count closed half a step off the grid. Every text line is 24px instead (`--text-sm--line-height`, `leading-6`), so a box of any line count ends on the grid. A row keeps its 40px: 8px over the line, 7px under it, the hairline (`py-row`). A field keeps its 80px: 24px air, the 24px label, the 32px control straight under it. A row of controls is a control's height; a framed row of controls inside a framed box stands 23px under the words, giving the outer border's pixel back, so the controls' edges stay on lines.
 
 ## Risks / Trade-offs
 

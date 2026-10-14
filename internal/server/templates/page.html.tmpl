@@ -91,10 +91,10 @@
   </div>
   {{/* One flat list of destinations — no titles, no rules. The row you are in
        opens its subpages beneath it, so the rail carries the whole path.
-       Each row is 36px and the next 4px on, so the rows stand 40px apart on
-       the grid, the first beside the page's heading line. */}}
+       Each row is 40px, its 24px line and 8px over and under, so the rows
+       stand on the grid, the first beside the page's heading line. */}}
   <nav class="min-h-0 flex-1 overflow-y-auto pt-6 pb-4">
-    <ul data-verso-nav-rows class="flex flex-col gap-1">
+    <ul data-verso-nav-rows class="flex flex-col">
       {{range .Nav.Rows}}{{template "verso-nav-row" .}}{{end}}
     </ul>
   </nav>
@@ -156,8 +156,9 @@
            " — <tab>" suffix ("neutral" drops the suffix without a tint). */}}
       <div class="flex min-h-control flex-wrap items-center justify-between gap-4">
         <h1 class="verso-page-heading{{if eq .Tone "info"}} text-denim-deep{{else if eq .Tone "success"}} text-green-deep{{else if eq .Tone "warning"}} text-marigold-deep{{else if eq .Tone "danger"}} text-crimson-deep{{end}}">{{.Heading}}{{if and .HeadingDetail (not .Tone)}}<span class="text-faint"> — {{.HeadingDetail}}</span>{{end}}</h1>
-        {{/* A standing note leads the acts, the group as one on the line. */}}
-        {{if .HeadingNote}}<div class="flex flex-wrap items-center gap-3"><span data-verso-heading-note class="text-sm text-meta" aria-live="polite">{{.HeadingNote}}</span>{{.HeadingAct}}</div>{{else if .HeadingAct}}{{.HeadingAct}}{{end}}
+        {{/* A standing note leads the acts, the group as one on the line,
+             its wrapped lines 40px apart. */}}
+        {{if .HeadingNote}}<div class="flex flex-wrap items-center gap-x-3 gap-y-2"><span data-verso-heading-note class="text-sm text-meta" aria-live="polite">{{.HeadingNote}}</span>{{.HeadingAct}}</div>{{else if .HeadingAct}}{{.HeadingAct}}{{end}}
       </div>
     </div>
     {{end}}

@@ -68,7 +68,7 @@
       {{/* 70px: the drawer's 40px inset, the 6px mark and its 12px gap, and
            the 12px the row's glyph column adds — the words' own edge. */}}
       <div class="pr-10 pb-3 pl-[4.375rem]">
-        <div class="verso-drawer-scrollbar overflow-x-auto rounded-xs border border-rule bg-quiet px-3 py-2.5 font-mono text-sm leading-relaxed font-medium">
+        <div class="verso-drawer-scrollbar overflow-x-auto rounded-xs border border-rule bg-quiet px-3 py-2 font-mono text-sm leading-relaxed font-medium">
           {{range .Lines}}<div class="flex gap-2 whitespace-pre {{if eq .Op "+"}}text-green-deep{{else if eq .Op "-"}}text-crimson-deep{{else}}text-marigold-deep{{end}}"><span class="w-2.5 shrink-0">{{.Op}}</span><span>{{.Text}}</span></div>{{end}}
         </div>
       </div>

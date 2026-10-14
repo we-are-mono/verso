@@ -48,9 +48,9 @@
      stay at the call site, and the add stands a cell under it. On the
      notebook's grid its frame is on the lines — a pixel out at the top and the
      left — two cells tall, its words on the 20px line between. */}}
-{{define "verso-empty-slot-class"}}flex w-full items-center gap-3 rounded-xs border border-dashed border-rule-strong bg-quiet px-4 pt-2.5 pb-2 leading-5{{end}}
+{{define "verso-empty-slot-class"}}flex w-full items-center gap-3 rounded-xs border border-dashed border-rule-strong bg-quiet px-4 pt-2 pb-1.5 leading-6{{end}}
 {{define "verso-empty-slot-body"}}<span aria-hidden="true" class="size-1.5 shrink-0 rounded-[1px] border border-faint"></span>
-    <p class="min-w-0 flex-1 text-sm leading-5 text-meta">{{.}}</p>{{end}}
+    <p class="min-w-0 flex-1 text-sm leading-6 text-meta">{{.}}</p>{{end}}
 
 {{/* verso-btn-icon: the one dress of a glyph-only act — a table row's edit or
      remove, a list's remove, a copy beside a value or on a code box. A 28px
@@ -104,7 +104,7 @@
      just past a line as they do under a card's frame. */}}
 {{define "verso-control-band-class"}}flex flex-wrap items-center gap-4 rounded-t-xs border border-rule-strong border-b-rule bg-ground px-6 pt-3.75 pb-4{{end}}
 {{define "verso-section-band-class"}}flex flex-wrap items-center justify-between gap-x-6{{end}}
-{{define "verso-section-title-class"}}text-lg leading-5 font-semibold tracking-[-0.025em] text-ink{{end}}
+{{define "verso-section-title-class"}}text-lg leading-6 font-semibold tracking-[-0.025em] text-ink{{end}}
 {{define "verso-section-lede-class"}}verso-prose text-body{{end}}
 {{define "verso-section-lede"}}<div class="w-full"><div data-verso-section-lede class="{{template "verso-section-lede-class"}}">{{.}}</div></div>{{end}}
 {{/* A section meta: a fact standing on the heading's line — how long the
@@ -112,11 +112,11 @@
      meta ink and its value in the body ink at 600, so the value is what the
      eye lands on. data-verso-section-meta is the value's hook for a page that
      rewrites it live. */}}
-{{define "verso-section-meta-class"}}inline-flex items-center gap-1.5 text-sm leading-5{{end}}
+{{define "verso-section-meta-class"}}inline-flex items-center gap-1.5 text-sm leading-6{{end}}
 {{define "verso-section-meta-label-class"}}text-meta{{end}}
 {{define "verso-section-meta-value-class"}}font-semibold text-body{{end}}
 
-{{define "verso-kicker-class"}}text-xs leading-5 font-medium tracking-[.08em] text-meta uppercase{{end}}
+{{define "verso-kicker-class"}}text-xs leading-6 font-medium tracking-[.08em] text-meta uppercase{{end}}
 
 {{/* verso-none: the dash a cell shows when it has no value. The dash is for
      the eye; a screen reader is told "None" instead of hearing a dash read out. */}}
@@ -166,11 +166,11 @@
      words are not chip-sized — a traffic endpoint, which reads at the mono
      reading size because it is an address someone could type. The 16px line box
      is what holds every chip to one height whatever size its words are. */}}
-{{/* A chip is 20px, exactly the line it rides, so the line keeps its 20px: in
-     running text it hangs from the line's top rather than its baseline, which
-     would push the line taller. A 16px glyph fills its line box, so it never
-     makes the chip taller than the line box does. */}}
-{{define "verso-chip-shape"}}verso-chip inline-flex items-center align-top gap-1.5 rounded-xs border px-1.5 py-px leading-4 whitespace-nowrap{{end}}
+{{/* A chip is 20px, 2px inside the 24px line it rides on either side, so the
+     line keeps its 24px: in running text it hangs from the line's top rather
+     than its baseline, which would push the line taller. A 16px glyph fills
+     its line box, so it never makes the chip taller than the line box does. */}}
+{{define "verso-chip-shape"}}verso-chip my-0.5 inline-flex items-center align-top gap-1.5 rounded-xs border px-1.5 py-px leading-4 whitespace-nowrap{{end}}
 
 {{/* One form geometry on pages and in drawers: labels above controls, with
      checkboxes beside their labels. forms.css owns spacing, content measures
@@ -204,7 +204,7 @@
 {{/* verso-field-label-class: a setting's name, wherever a box is labelled —
      a form row, and the sign-in form that stands outside any row. */}}
 {{define "verso-field-label-class"}}text-sm font-semibold text-ink{{end}}
-{{define "verso-field-label-attrs"}}{{with .For}} id="{{.}}-label"{{end}} class="{{if .Mono}}font-mono text-base leading-5 font-medium text-ink{{else}}{{template "verso-field-label-class"}}{{end}}{{if .Explained}} relative cursor-help{{end}}"{{if .Explained}} data-verso-tip tabindex="0" aria-describedby="{{.Tip.ID}}"{{end}}{{end}}
+{{define "verso-field-label-attrs"}}{{with .For}} id="{{.}}-label"{{end}} class="{{if .Mono}}font-mono text-base leading-6 font-medium text-ink{{else}}{{template "verso-field-label-class"}}{{end}}{{if .Explained}} relative cursor-help{{end}}"{{if .Explained}} data-verso-tip tabindex="0" aria-describedby="{{.Tip.ID}}"{{end}}{{end}}
 {{define "verso-field-label-text"}}{{.Label}}{{if .Explained}}{{template "verso-tip-wide" .Tip}}{{end}}{{end}}
 
 {{/* verso-staged-row: this setting's change waits on the stage — the chip's
@@ -240,7 +240,7 @@
   {{if .Lane}}{{if .Removable}}{{template "verso-row-remove" .Change}}{{else}}<span data-verso-remove-lane class="size-7 flex-none" aria-hidden="true"></span>{{end}}{{end}}
 {{end}}
 </div>{{end}}
-{{define "verso-field-desc-class"}}text-sm leading-5 text-pretty text-body{{end}}
+{{define "verso-field-desc-class"}}text-sm leading-6 text-pretty text-body{{end}}
 
 {{/* verso-switch-group: the checkbox rows of one setting asked of several
      things (switchGroupView) — which files load — under the row's one label,
@@ -472,26 +472,26 @@
 
 {{/* verso-flash-class: a flash's box in its tone, for a flash whose words the
      page composes itself (the unanswered request's, with its Reload). */}}
-{{define "verso-flash-class"}}verso-flash mb-6 flex items-start gap-2 rounded-xs border px-4 py-3 text-sm leading-5 {{if eq . "danger"}}border-crimson-line bg-crimson-soft text-crimson-deep{{else if eq . "warning"}}border-marigold-line bg-marigold-soft text-marigold-deep{{else if eq . "info"}}border-denim-line bg-denim-soft text-denim-deep{{else}}border-green-line bg-green-soft text-green-deep{{end}}{{end}}
+{{define "verso-flash-class"}}verso-flash mb-6 flex items-start gap-2 rounded-xs border px-4 py-3 text-sm leading-6 {{if eq . "danger"}}border-crimson-line bg-crimson-soft text-crimson-deep{{else if eq . "warning"}}border-marigold-line bg-marigold-soft text-marigold-deep{{else if eq . "info"}}border-denim-line bg-denim-soft text-denim-deep{{else}}border-green-line bg-green-soft text-green-deep{{end}}{{end}}
 
 {{/* verso-message-mark: how an error, a notice, a warning or a confirmation
      says its tone — the state mark, the 6px square in the tone's hue, hung on
      the message's first 20px line. Never an alert glyph: the square is the
      one mark for state everywhere, and a message is state. */}}
-{{define "verso-message-mark"}}<span aria-hidden="true" class="mt-1.75 size-1.5 shrink-0 rounded-[1px] {{template "verso-message-hue" .}}"></span>{{end}}
+{{define "verso-message-mark"}}<span aria-hidden="true" class="mt-2.25 size-1.5 shrink-0 rounded-[1px] {{template "verso-message-hue" .}}"></span>{{end}}
 
 {{/* verso-error-line: a refusal under the thing it refuses — a box, a row, a
      button. The line's class, and its words after the crimson square; the
      words stand in their own span so a script that says a refusal
      (versoErrorLine, verso.js) writes them without losing the mark. */}}
-{{define "verso-error-line"}}flex items-start gap-2 text-sm leading-5 text-crimson-deep{{end}}
+{{define "verso-error-line"}}flex items-start gap-2 text-sm leading-6 text-crimson-deep{{end}}
 
 {{/* verso-refusal-band: a refusal under the box it refuses — a field, a key's
      box, a list's box — is that line set on crimson's own wash, so a wrong
      value is findable without reading and reads the same wherever it was
      typed. Its words are verso-error-words. Half a cell inside at top and
      bottom keeps it whole cells of the notebook's grid. */}}
-{{define "verso-refusal-band"}}flex items-start gap-2 rounded-xs bg-crimson-soft px-3 py-2.5 text-sm leading-5 text-crimson-deep{{end}}
+{{define "verso-refusal-band"}}flex items-start gap-2 rounded-xs bg-crimson-soft px-3 py-2 text-sm leading-6 text-crimson-deep{{end}}
 {{define "verso-error-words"}}{{template "verso-message-mark" "danger"}}<span data-verso-error-text>{{.}}</span>{{end}}
 
 {{/* verso-message-hue: the square's hue for a tone. Caution is marigold, as
@@ -589,7 +589,7 @@
            outcome layer to say (verso-page.js), never as a line of its own:
            the page is not drawn around this answer, so the panel brings it. */}}
       {{if .Flash.Message}}<template data-verso-arrival>{{template "verso-flash" .Flash}}</template>{{end}}
-      <div data-scroll="sand"{{if not .Choices}} data-verso-drawer-body{{end}} class="verso-drawer-scrollbar min-h-0 flex-1 {{if not .Choices}}space-y-6 {{end}}overflow-x-hidden overflow-y-auto {{if .Choices}}space-y-0 pb-8 [&>section]:pt-0 [&>section>div:first-child]:mb-0 [&>section>div:first-child]:border-y [&>section>div:first-child]:border-rule [&>section>div:first-child]:bg-quiet [&>section>div:first-child]:px-10 [&>section>div:first-child]:py-2.5 [&_h3]:font-medium [&_h3]:tracking-[.08em] [&_.verso-rhythm>*]:!mt-0{{else}}{{template "verso-drawer-inset"}} pt-8 pb-8{{end}} [&_table]:min-w-0 [&_.overflow-x-auto]:!overflow-visible [&_tbody_tr:hover]:!bg-transparent [&_td:last-child]:!text-right [&_th:last-child]:!text-right">
+      <div data-scroll="sand"{{if not .Choices}} data-verso-drawer-body{{end}} class="verso-drawer-scrollbar min-h-0 flex-1 {{if not .Choices}}space-y-6 {{end}}overflow-x-hidden overflow-y-auto {{if .Choices}}space-y-0 pb-8 [&>section]:pt-0 [&>section>div:first-child]:mb-0 [&>section>div:first-child]:border-y [&>section>div:first-child]:border-rule [&>section>div:first-child]:bg-quiet [&>section>div:first-child]:px-10 [&>section>div:first-child]:py-2 [&_h3]:font-medium [&_h3]:tracking-[.08em] [&_.verso-rhythm>*]:!mt-0{{else}}{{template "verso-drawer-inset"}} pt-8 pb-8{{end}} [&_table]:min-w-0 [&_.overflow-x-auto]:!overflow-visible [&_tbody_tr:hover]:!bg-transparent [&_td:last-child]:!text-right [&_th:last-child]:!text-right">
         {{range .Body}}{{.}}{{end}}
       </div>
 {{end}}

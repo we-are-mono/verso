@@ -12,10 +12,10 @@
      line, the figure on two, the bar centred on a line of its own, the
      detail's line. */}}
 <div data-verso-meter="{{.Name}}" data-overview-meter aria-label="{{.Label}} {{.Value}} {{.Unit}}" class="flex min-w-0 flex-col">
-  <div class="flex h-5 items-center justify-between gap-2"><span class="text-xs leading-5 font-medium tracking-[.08em] text-meta uppercase">{{.Label}}</span><span aria-hidden="true" class="text-faint">{{icon .Icon "size-4"}}</span></div>
+  <div class="flex h-6 items-center justify-between gap-2"><span class="text-xs leading-6 font-medium tracking-[.08em] text-meta uppercase">{{.Label}}</span><span aria-hidden="true" class="text-faint">{{icon .Icon "size-4"}}</span></div>
   <div class="flex h-10 items-baseline gap-1.5 leading-10"><span class="font-mono text-4xl leading-10 font-bold tracking-[-.05em] text-ink" data-verso-meter-value>{{.Value}}</span><span class="text-base leading-10 text-meta" data-verso-meter-unit>{{.Unit}}</span></div>
-  <div class="flex h-5 items-center"><div class="h-1.5 w-full overflow-hidden rounded-full bg-rule"><div class="verso-meter-bar h-full w-full {{if eq .Tone "danger"}}bg-crimson{{else if eq .Tone "warning"}}bg-marigold{{else}}bg-green{{end}}" style="clip-path: {{.Clip}}" data-verso-meter-bar></div></div></div>
-  <div class="min-w-0 truncate text-sm leading-5 text-meta" data-verso-meter-detail>{{.Detail}}</div>
+  <div class="flex h-6 items-center"><div class="h-1.5 w-full overflow-hidden rounded-full bg-rule"><div class="verso-meter-bar h-full w-full {{if eq .Tone "danger"}}bg-crimson{{else if eq .Tone "warning"}}bg-marigold{{else}}bg-green{{end}}" style="clip-path: {{.Clip}}" data-verso-meter-bar></div></div></div>
+  <div class="min-w-0 truncate text-sm leading-6 text-meta" data-verso-meter-detail>{{.Detail}}</div>
 </div>
 {{else if .Compact}}
 {{/* compact: one dense row — name · a thin track that fills 0→this reading's own
@@ -28,7 +28,7 @@
      under it, its hairline the line after; the last row draws none and keeps
      the pixel as air. On a phone the name's column narrows and the track's
      gives way, so the row keeps to its card. */}}
-<div class="grid grid-cols-[7rem_minmax(0,1fr)_6.5rem] sm:grid-cols-[9.5rem_minmax(0,1fr)_6.5rem] items-center gap-6 border-b border-rule pt-2.5 pb-2.25 leading-5 last:border-0 last:pb-2.5"{{if .Name}} data-verso-meter="{{.Name}}"{{end}} role="img" aria-label="{{.Label}} {{.Value}} {{.Unit}}">
+<div class="grid grid-cols-[7rem_minmax(0,1fr)_6.5rem] sm:grid-cols-[9.5rem_minmax(0,1fr)_6.5rem] items-center gap-6 border-b border-rule py-row leading-6 last:border-0 last:pb-2"{{if .Name}} data-verso-meter="{{.Name}}"{{end}} role="img" aria-label="{{.Label}} {{.Value}} {{.Unit}}">
   <span class="truncate text-sm font-medium text-ink">{{.Label}}</span>
   {{if .NoTrack}}
   <span class="flex min-w-0 items-center gap-2 text-sm text-meta"><span class="size-1.5 shrink-0 rounded-[1px] border border-faint" aria-hidden="true"></span><span class="truncate">{{if .Detail}}{{.Detail}}{{else}}{{ t "no limits reported" }}{{end}}</span></span>
@@ -41,7 +41,7 @@
   {{end}}
   <span class="flex items-center justify-end gap-2 tabular-nums">
     <span class="size-1.5 shrink-0 rounded-[1px] {{if .NoTrack}}bg-glyph{{else if eq .Tone "danger"}}bg-crimson{{else if eq .Tone "warning"}}bg-marigold{{else}}bg-green{{end}}"></span>
-    <span class="text-base leading-5 font-semibold text-ink"><span data-verso-meter-value>{{.Value}}</span>{{if .Unit}} <span class="font-medium text-meta" data-verso-meter-unit>{{.Unit}}</span>{{end}}</span>
+    <span class="text-base leading-6 font-semibold text-ink"><span data-verso-meter-value>{{.Value}}</span>{{if .Unit}} <span class="font-medium text-meta" data-verso-meter-unit>{{.Unit}}</span>{{end}}</span>
   </span>
 </div>
 {{else}}
@@ -61,9 +61,9 @@
     <span class="text-4xl leading-10 font-extrabold tracking-tight tabular-nums text-ink" data-verso-meter-value>{{.Value}}</span>
     {{if or .Unit .Name}}<span class="text-base leading-10 font-medium text-meta" data-verso-meter-unit>{{.Unit}}</span>{{end}}
   </div>
-  <div class="my-1.75 h-1.5 overflow-hidden rounded-full bg-rule">
+  <div class="my-2.25 h-1.5 overflow-hidden rounded-full bg-rule">
     <div class="verso-meter-bar h-full rounded-full {{if .Role}}{{if eq .Role "sky"}}bg-denim{{else if eq .Role "violet"}}bg-amethyst{{else if eq .Role "emerald"}}bg-green{{else if eq .Role "amber"}}bg-marigold{{else}}bg-glyph{{end}}{{else if eq .Band "danger"}}bg-crimson{{else if eq .Band "warning"}}bg-marigold{{else if eq .Band "info"}}bg-denim{{else}}bg-green{{end}}" style="clip-path: {{.Clip}}" data-verso-meter-bar></div>
   </div>
-  {{if or .Detail .Name}}<div class="text-xs leading-5 text-meta" data-verso-meter-detail>{{.Detail}}</div>{{end}}
+  {{if or .Detail .Name}}<div class="text-xs leading-6 text-meta" data-verso-meter-detail>{{.Detail}}</div>{{end}}
 </div>
 {{end}}

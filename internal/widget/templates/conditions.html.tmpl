@@ -69,7 +69,7 @@
              against the panel's own border and the list ends in a seam. */}}
         {{range $i, $group := .Groups}}
         <div data-verso-condition-group{{if $group.Name}} data-verso-condition-group-name="{{$group.Name}}"{{end}}>
-          {{if $group.Name}}<div class="border-b border-rule bg-quiet px-4 py-2.5{{if $i}} border-t{{end}}"><span class="{{template "verso-kicker-class"}}">{{$group.Name}}</span></div>{{end}}
+          {{if $group.Name}}<div class="border-b border-rule bg-quiet px-4 py-2{{if $i}} border-t{{end}}"><span class="{{template "verso-kicker-class"}}">{{$group.Name}}</span></div>{{end}}
           <div>
             {{range $group.Items}}
             {{/* A condition the rule already carries stays in the list and stays

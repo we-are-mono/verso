@@ -354,7 +354,7 @@ func TestRenderTableGroupHeader(t *testing.T) {
 			t.Errorf("grouped table missing %q:\n%s", want, got)
 		}
 	}
-	if strings.Contains(got, "font-mono text-base leading-5 font-medium text-meta") {
+	if strings.Contains(got, "font-mono text-base leading-6 font-medium text-meta") {
 		t.Errorf("a band with no verbatim string draws none:\n%s", got)
 	}
 }
@@ -698,7 +698,7 @@ func TestRenderTableFlat(t *testing.T) {
 		// A cell writes on 20px lines, 10px over the first and 9px under the
 		// last plus its hairline — which is the row of two cells, arrived at
 		// rather than stated.
-		"px-3.5 py-row leading-5",
+		"px-3.5 py-row leading-6",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("flat table missing %q:\n%s", want, got)
@@ -742,7 +742,7 @@ func TestAnEmptyTableIsTheEmptySlot(t *testing.T) {
 	for _, want := range []string{
 		`<div data-verso-slot class="flex w-full items-center gap-3 rounded-xs border border-dashed border-rule-strong bg-quiet`,
 		`<span aria-hidden="true" class="size-1.5 shrink-0 rounded-[1px] border border-faint"></span>`,
-		`<p class="min-w-0 flex-1 text-sm leading-5 text-meta">No device has a reserved address.</p>`,
+		`<p class="min-w-0 flex-1 text-sm leading-6 text-meta">No device has a reserved address.</p>`,
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("an empty listing is not the empty slot, missing %q:\n%s", want, got)
@@ -795,13 +795,13 @@ func TestRenderTableDense(t *testing.T) {
 	// on the grid's first crossing, so every row's first content lines up with
 	// it; the trailing edge keeps 16px.
 	roomy := render(t, r, &Table{Style: "flat", Columns: columns, Rows: rows})
-	for _, want := range []string{"[&_td:first-of-type]:pl-2.75", "[&_th:last-of-type]:pr-4", "px-3.5 py-row leading-5"} {
+	for _, want := range []string{"[&_td:first-of-type]:pl-2.75", "[&_th:last-of-type]:pr-4", "px-3.5 py-row leading-6"} {
 		if !strings.Contains(roomy, want) {
 			t.Errorf("a listing's rows are inset from its edges, missing %q:\n%s", want, roomy)
 		}
 	}
 	dense := render(t, r, &Table{Style: "flat", Dense: true, Columns: columns, Rows: rows})
-	for _, want := range []string{"[&_td:first-of-type]:pl-2.75", "[&_th:last-of-type]:pr-4", `class="relative border-b border-rule py-row pr-4 leading-5"`} {
+	for _, want := range []string{"[&_td:first-of-type]:pl-2.75", "[&_th:last-of-type]:pr-4", `class="relative border-b border-rule py-row pr-4 leading-6"`} {
 		if !strings.Contains(dense, want) {
 			t.Errorf("a dense listing keeps the edge inset and drops the cells' own, missing %q:\n%s", want, dense)
 		}
@@ -1387,7 +1387,7 @@ func TestAGroupWithNothingInItSaysSo(t *testing.T) {
 	})
 	for _, want := range []string{
 		"verso-table-group", ">Files<", ">0<", ">New file<",
-		`<tr class="group"><td colspan="3" class="border-b border-rule px-4 py-row text-left text-sm leading-5 text-meta">No custom option files</td></tr>`,
+		`<tr class="group"><td colspan="3" class="border-b border-rule px-4 py-row text-left text-sm leading-6 text-meta">No custom option files</td></tr>`,
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("want %s in:\n%s", want, got)
@@ -1411,13 +1411,13 @@ func TestCellDetailStandsUnderItsValue(t *testing.T) {
 		}}},
 	})
 	for _, want := range []string{
-		`<span class="flex items-center gap-x-2 text-sm leading-5 whitespace-nowrap text-meta"><span>Safari · iPhone</span>`,
-		`<span class="flex items-center gap-x-2 text-sm leading-5 whitespace-nowrap text-meta"><span>since today, 16:43</span>`,
+		`<span class="flex items-center gap-x-2 text-sm leading-6 whitespace-nowrap text-meta"><span>Safari · iPhone</span>`,
+		`<span class="flex items-center gap-x-2 text-sm leading-6 whitespace-nowrap text-meta"><span>since today, 16:43</span>`,
 		`>fd42:7ea:aa00::1a2b:3c4d:5e6f:7a8b</span>`,
 		">this browser</span>",
 		// the 20px chip fills the 20px detail line rather than making the line
 		// taller
-		"verso-chip " + chipBox,
+		"verso-chip my-0.5 " + chipBox,
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("want %s in:\n%s", want, got)
@@ -1428,7 +1428,7 @@ func TestCellDetailStandsUnderItsValue(t *testing.T) {
 	// 60px.
 	for _, want := range []string{
 		`<td class="relative border-b border-rule px-3.5 py-row">`,
-		`<td class="border-b border-rule px-3.5 py-row"><div class="leading-5`,
+		`<td class="border-b border-rule px-3.5 py-row"><div class="leading-6`,
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("a stacked cell sits evenly in its row, want %s in:\n%s", want, got)

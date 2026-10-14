@@ -62,14 +62,14 @@ function versoErrorLine(line, message) {
   }
   var mark = document.createElement("span");
   mark.setAttribute("aria-hidden", "true");
-  mark.className = "mt-1.75 size-1.5 shrink-0 rounded-[1px] bg-crimson";
+  mark.className = "mt-2.25 size-1.5 shrink-0 rounded-[1px] bg-crimson";
   var words = document.createElement("span");
   words.setAttribute("data-verso-error-text", "");
   words.textContent = message;
   line.replaceChildren(mark, words);
   return line;
 }
-versoErrorLine.lineClass = "flex items-start gap-2 text-sm leading-5 text-crimson-deep";
+versoErrorLine.lineClass = "flex items-start gap-2 text-sm leading-6 text-crimson-deep";
 
 // versoEl makes one element of a row a script builds: its tag, its classes,
 // and its words as text — never markup, since what a script writes into a

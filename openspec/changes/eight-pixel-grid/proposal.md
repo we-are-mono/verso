@@ -18,10 +18,10 @@ Every page now measures its layout on an 8px grid, with 4px allowed inside a com
 - Inside a component, a measure may step by 4px:
   - chips are 20px (were 21)
   - checkboxes are 16px (were 18)
-  - a radio row is 28px (was 30)
-  - a rail's "On this page" link is 28px (was 30)
+  - a radio row is 32px (was 30)
+  - a rail's "On this page" link is 32px (was 30)
   - row acts stay 28px
-- Text keeps its 20px lines. A box that grows with its text (a 40px row, a 60px stacked row, a warning band) lands on 4px; a fixed box lands on 8px.
+- Text writes on 24px lines (was 20). A box that grows with its text (a 40px row, a 64px stacked row, a warning band) lands on the 8px grid as a fixed box does.
 - Charts rule their plots every 16px. A plot is 192px tall (was 160), so its four scale labels each land on a rule.
 - On a phone the side gutter is 16px (was 20).
 - The page frame (40px), the drawer (760px wide, 40px inset, 56px header and tab strip), the top bar and the colophon (56px), and table rows (40px) keep their sizes: each is already a multiple of 8.

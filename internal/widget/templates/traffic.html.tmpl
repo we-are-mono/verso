@@ -21,10 +21,10 @@
      its values on its right and its window under it. A window chosen in the
      header swaps this section. */}}
 <section aria-label="{{.Title}}" class="verso-traffic-card">
-  <div class="flex flex-wrap items-baseline gap-x-6 pb-4 leading-5 *:flex *:h-5 *:items-baseline *:gap-2">
-    <span><span aria-hidden="true" class="h-0.5 w-3.5 shrink-0 self-center rounded-full bg-denim"></span><span class="font-mono text-lg leading-5 font-semibold text-ink tabular-nums"{{if .Live}} data-verso-live-down{{end}}>{{.DownNow}}</span><span class="text-sm text-meta"{{if .Live}} data-verso-live-down-label{{end}}>{{.DownLabel}}</span></span>
-    <span><span aria-hidden="true" class="h-0.5 w-3.5 shrink-0 self-center rounded-full bg-amethyst"></span><span class="font-mono text-lg leading-5 font-semibold text-ink tabular-nums"{{if .Live}} data-verso-live-up{{end}}>{{.UpNow}}</span><span class="text-sm text-meta"{{if .Live}} data-verso-live-up-label{{end}}>{{.UpLabel}}</span></span>
-    {{if .Latency}}<span><span class="font-mono text-lg leading-5 font-semibold text-ink tabular-nums">{{.Latency}}</span><span class="text-sm text-meta">{{ t "ms to gateway on average" }}</span></span>{{end}}
+  <div class="flex flex-wrap items-baseline gap-x-6 pb-4 leading-6 *:flex *:h-6 *:items-baseline *:gap-2">
+    <span><span aria-hidden="true" class="h-0.5 w-3.5 shrink-0 self-center rounded-full bg-denim"></span><span class="font-mono text-lg leading-6 font-semibold text-ink tabular-nums"{{if .Live}} data-verso-live-down{{end}}>{{.DownNow}}</span><span class="text-sm text-meta"{{if .Live}} data-verso-live-down-label{{end}}>{{.DownLabel}}</span></span>
+    <span><span aria-hidden="true" class="h-0.5 w-3.5 shrink-0 self-center rounded-full bg-amethyst"></span><span class="font-mono text-lg leading-6 font-semibold text-ink tabular-nums"{{if .Live}} data-verso-live-up{{end}}>{{.UpNow}}</span><span class="text-sm text-meta"{{if .Live}} data-verso-live-up-label{{end}}>{{.UpLabel}}</span></span>
+    {{if .Latency}}<span><span class="font-mono text-lg leading-6 font-semibold text-ink tabular-nums">{{.Latency}}</span><span class="text-sm text-meta">{{ t "ms to gateway on average" }}</span></span>{{end}}
   </div>
   <div{{if .Live}} data-verso-live-chart="{{.Live}}" data-verso-live-seed="{{.Seed}}"{{end}}>{{.Chart}}</div>
 </section>

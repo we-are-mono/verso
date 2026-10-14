@@ -24,9 +24,9 @@
     {{template "chart.svg" .}}
   </div>
   <div class="relative -mt-px" data-verso-chart-gutter>
-    {{range .YLabels}}<span class="verso-chart-yl pointer-events-none absolute left-3 -translate-y-1/2 font-mono text-sm leading-5 font-medium whitespace-nowrap text-meta" style="top:{{printf "%.1f" .TopPct}}%">{{.Text}}</span>{{end}}
+    {{range .YLabels}}<span class="verso-chart-yl pointer-events-none absolute left-3 -translate-y-1/2 font-mono text-sm leading-6 font-medium whitespace-nowrap text-meta" style="top:{{printf "%.1f" .TopPct}}%">{{.Text}}</span>{{end}}
   </div>
-  <div class="flex justify-between text-sm leading-5 text-meta" data-verso-chart-window><span>{{.XStart}}</span><span>{{.XEnd}}</span></div>
+  <div class="flex justify-between text-sm leading-6 text-meta" data-verso-chart-window><span>{{.XStart}}</span><span>{{.XEnd}}</span></div>
 </div>
 {{else}}
 <div class="relative {{if .Short}}h-48{{else}}h-64{{end}} overflow-hidden">

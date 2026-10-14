@@ -99,7 +99,7 @@ func TestReadingsKeepTheirCellsApart(t *testing.T) {
 		t.Fatal(err)
 	}
 	body := buf.String()
-	if !strings.Contains(body, "px-3.5 py-row leading-5") {
+	if !strings.Contains(body, "px-3.5 py-row leading-6") {
 		t.Errorf("the readings' cells give up their inset:\n%s", body)
 	}
 }
@@ -176,7 +176,7 @@ func TestAFibreModuleIsAnArtifactCard(t *testing.T) {
 	for _, want := range []string{
 		`<section data-verso-artifact class="w-full rounded-xs border border-rule bg-quiet px-6 pb-5.5">`,
 		`<dt class="shrink-0 text-meta sm:w-24">Link</dt>`,
-		`<p class="font-mono text-base leading-5 font-medium text-body">xfi0</p>`, // the cage, as the machine names it
+		`<p class="font-mono text-base leading-6 font-medium text-body">xfi0</p>`, // the cage, as the machine names it
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("an SFP module is not the certificate's card; missing %s:\n%s", want, body)

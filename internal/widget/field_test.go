@@ -174,7 +174,7 @@ func TestRenderFieldChecks(t *testing.T) {
 	if strings.Contains(got, "grid-cols") {
 		t.Errorf("a set of boxes is one column, not a grid:\n%s", got)
 	}
-	if !strings.Contains(got, `class="flex min-w-0 flex-col items-start"`) || !strings.Contains(got, `<label class="flex min-h-5 max-w-full cursor-pointer items-center gap-2 text-sm leading-5 text-body">`) {
+	if !strings.Contains(got, `class="flex min-w-0 flex-col items-start"`) || !strings.Contains(got, `<label class="flex min-h-6 max-w-full cursor-pointer items-center gap-2 text-sm leading-6 text-body">`) {
 		t.Errorf("a set of boxes takes the radio set's rows:\n%s", got)
 	}
 }

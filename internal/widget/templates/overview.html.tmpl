@@ -18,9 +18,9 @@
   <div class="flex min-h-control flex-wrap items-center gap-x-6 gap-y-2">
     <h1 class="verso-page-heading text-balance"><span data-overview-lead>{{.Verdict.Lead}}</span><span data-overview-accent class="text-green-deep">{{.Verdict.Accent}}</span><span data-overview-tail>{{.Verdict.Tail}}</span></h1>
     {{if .Verdict.Clock}}
-    <div class="flex items-baseline gap-2 text-sm leading-5 text-meta" data-overview-clock data-unix="{{.Verdict.Unix}}" data-offset="{{.Verdict.Offset}}">
+    <div class="flex items-baseline gap-2 text-sm leading-6 text-meta" data-overview-clock data-unix="{{.Verdict.Unix}}" data-offset="{{.Verdict.Offset}}">
       <span aria-hidden="true" data-overview-live class="size-1.5 shrink-0 self-center rounded-[1px] bg-green"></span>
-      <time class="font-mono text-base leading-5 font-medium text-ink tabular-nums" data-overview-time>{{.Verdict.Clock}}</time>
+      <time class="font-mono text-base leading-6 font-medium text-ink tabular-nums" data-overview-time>{{.Verdict.Clock}}</time>
       <span>{{.Verdict.Zone}}</span>
     </div>
     {{end}}
@@ -35,7 +35,7 @@
        a line: its words write on one 20px line, 10px under the top edge and
        8px over the bottom, and its 28px chips ride that line, so the cards
        24px under it start on a line. */}}
-  <div data-overview-shelf class="mt-6 hidden flex-wrap items-center gap-x-2 gap-y-6 rounded-xs border border-dashed border-rule-strong bg-quiet px-3 pt-2.5 pb-2 text-sm leading-5 text-meta group-data-arranging/overview:flex">
+  <div data-overview-shelf class="mt-6 hidden flex-wrap items-center gap-x-2 gap-y-6 rounded-xs border border-dashed border-rule-strong bg-quiet px-3 pt-2 pb-1.5 text-sm leading-6 text-meta group-data-arranging/overview:flex">
     <span class="mr-1">{{if .Hidden}}{{ t "Hidden" }}{{else}}{{ t "No hidden cards" }}{{end}}</span>
     {{range .Hidden}}
     <button type="button" data-overview-restore="{{.ID}}" data-tone="{{.Tone}}" class="group/chip -my-1 inline-flex h-7 cursor-pointer items-center gap-2 rounded-xs border border-rule-strong bg-ground px-2.5 text-ink transition-colors hover:border-denim-line hover:bg-denim-soft hover:text-denim-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim">
@@ -61,21 +61,21 @@
      the door and the chevron. */}}
 {{define "overview.card"}}
 {{/* On the grid the frame's top and left borders are lines, as a page
-     card's are; the header is 48px (a 20px line, 14px over, 13px under, the
+     card's are; the header is 48px (a 24px line, 12px over, 11px under, the
      body's hairline or the frame's bottom the next pixel) with its 28px acts
      riding the line, its words 24px in; the body opens 24px under its
      hairline and ends 23px over the frame, so content on the grid closes on a
      line and the next card, 23px on, starts on one. */}}
 <article data-overview-card="{{.ID}}" data-tone="{{.Head.Tone}}"{{if .Closed}} data-closed{{end}} aria-labelledby="overview-card-{{.ID}}" class="group/card @container/card verso-overview-card min-w-0 rounded-xs border border-rule-strong bg-ground">
-  <header data-overview-card-head class="flex min-w-0 cursor-pointer items-center gap-2 pt-3.5 pr-2.5 pb-3.25 pl-6 leading-5 select-none group-data-arranging/overview:cursor-grab group-data-arranging/overview:pl-1.5">
+  <header data-overview-card-head class="flex min-w-0 cursor-pointer items-center gap-2 pt-3 pr-2.5 pb-2.75 pl-6 leading-6 select-none group-data-arranging/overview:cursor-grab group-data-arranging/overview:pl-1.5">
     <button type="button" data-overview-grip aria-label="{{printf (t "Move %s. Arrow keys move it.") .Title}}" class="hidden -my-1 {{template "verso-btn-icon"}} cursor-grab group-data-arranging/overview:grid">{{icon "grip-vertical" "size-4"}}</button>
     <span aria-hidden="true" class="flex shrink-0 text-glyph">{{icon .Icon "size-4"}}</span>
     <div class="flex min-w-0 flex-1 items-baseline gap-3">
-      <h2 id="overview-card-{{.ID}}" class="text-base leading-5 font-semibold tracking-tight whitespace-nowrap text-ink">{{.Title}}</h2>
-      <span data-overview-card-summary aria-hidden="{{if .Closed}}false{{else}}true{{end}}" class="verso-overview-summary min-w-0 truncate text-sm leading-5 text-meta tabular-nums">{{.Head.Summary}}</span>
+      <h2 id="overview-card-{{.ID}}" class="text-base leading-6 font-semibold tracking-tight whitespace-nowrap text-ink">{{.Title}}</h2>
+      <span data-overview-card-summary aria-hidden="{{if .Closed}}false{{else}}true{{end}}" class="verso-overview-summary min-w-0 truncate text-sm leading-6 text-meta tabular-nums">{{.Head.Summary}}</span>
     </div>
     {{if .Control}}<div data-overview-card-control class="flex shrink-0 items-center gap-3 group-data-arranging/overview:hidden">{{.Control}}</div>{{end}}
-    <span data-overview-card-status class="flex shrink-0 items-center gap-2 text-sm leading-5 font-medium whitespace-nowrap text-body group-data-[tone=success]/card:text-green-deep group-data-[tone=warning]/card:text-marigold-deep group-data-[tone=danger]/card:text-crimson-deep"{{if not .Head.Status}} hidden{{end}}>
+    <span data-overview-card-status class="flex shrink-0 items-center gap-2 text-sm leading-6 font-medium whitespace-nowrap text-body group-data-[tone=success]/card:text-green-deep group-data-[tone=warning]/card:text-marigold-deep group-data-[tone=danger]/card:text-crimson-deep"{{if not .Head.Status}} hidden{{end}}>
       <span aria-hidden="true" class="size-1.5 shrink-0 rounded-[1px] border border-faint group-data-[tone=success]/card:border-transparent group-data-[tone=success]/card:bg-green group-data-[tone=warning]/card:border-transparent group-data-[tone=warning]/card:bg-marigold group-data-[tone=danger]/card:border-transparent group-data-[tone=danger]/card:bg-crimson"></span><span data-overview-card-word>{{.Head.Status}}</span>
     </span>
     {{if .Href}}<a href="{{.Href}}" data-overview-go aria-label="{{.OpenLabel}}" title="{{.OpenLabel}}" class="grid -my-1 {{template "verso-btn-icon"}} group-data-arranging/overview:hidden">{{icon "arrow-up-right" "size-4"}}</a>{{end}}
@@ -94,11 +94,11 @@
   {{if .Uplink}}<div class="min-w-0">{{.Uplink}}</div>{{end}}
   {{range .Families}}
   <section aria-label="{{.Kind}}" class="min-w-0">
-    {{/* the family's name heads its rows as a row of its own: its 20px line,
-         10px over and 9px under, its chip a pixel over the line, and a Strong
-         Hairline under it, as a lane's head has; families stand a cell apart. */}}
-    <div class="flex items-center gap-3 border-b border-rule-strong pt-2.5 pb-2.25">
-      <h3 class="text-sm leading-5 font-semibold text-ink">{{.Kind}}</h3>
+    {{/* the family's name heads its rows as a row of its own: its 24px line,
+         8px over and 7px under, its chip centred on the line, and a Strong
+         Hairline under it, as a lane's head has; families stand 24px apart. */}}
+    <div class="flex items-center gap-3 border-b border-rule-strong py-row">
+      <h3 class="text-sm leading-6 font-semibold text-ink">{{.Kind}}</h3>
       {{if .Proto}}<span class="{{template "verso-chip-class"}}">{{.Proto}}</span>{{end}}
     </div>
     {{if .Empty}}<div class="{{template "verso-empty-slot-class"}}">{{template "verso-empty-slot-body" .Empty}}</div>{{else}}{{.Rows}}{{end}}
@@ -109,9 +109,9 @@
 
 {{/* overview.window: the Traffic card's header control — the graph's window,
      whose choice fetches the graph for it into the card's body. The select
-     rides the header's line, 6px over either edge. */}}
+     rides the header's 24px line, 4px over either edge. */}}
 {{define "overview.window"}}
-<div class="relative -my-1.5 flex items-center">
+<div class="relative -my-1 flex items-center">
   <select name="range" aria-label="{{ t "Window" }}" hx-get="{{.RangeURL}}" hx-trigger="change" hx-target="[data-overview-card='traffic'] .verso-traffic-card" hx-swap="outerHTML"
     class="h-control cursor-pointer appearance-none rounded-xs border border-rule-strong bg-white pr-9 pl-3 text-sm text-ink shadow-[inset_0_1px_2px_rgba(27,25,23,.06)] transition-colors hover:border-faint focus:border-denim focus:outline-none">
     {{range .Ranges}}<option value="{{.Value}}">{{.Label}}</option>{{end}}
@@ -123,5 +123,5 @@
 {{/* overview.meters: the Resources card's gauges, two to a row where the
      card is wide enough, a cell apart both ways, so they stay whole cells. */}}
 {{define "overview.meters"}}
-{{if .}}<div class="grid grid-cols-1 gap-6 @[28rem]/card:grid-cols-2 @[28rem]/card:gap-x-10">{{range .}}{{.}}{{end}}</div>{{else}}<p class="text-sm leading-5 text-meta">{{ t "System readings unavailable" }}</p>{{end}}
+{{if .}}<div class="grid grid-cols-1 gap-6 @[28rem]/card:grid-cols-2 @[28rem]/card:gap-x-10">{{range .}}{{.}}{{end}}</div>{{else}}<p class="text-sm leading-6 text-meta">{{ t "System readings unavailable" }}</p>{{end}}
 {{end}}

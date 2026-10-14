@@ -8,17 +8,21 @@ import (
 	"testing"
 )
 
-// TestARowOfActsIsTwoCellsTall: an inline row stands its controls in 40px, 4px
-// over and under a 32px control. Acts are 28px, so a row of them pads 6px
-// instead and steps its wrapped lines 12px apart: every line of acts is 40px
-// too, and what follows stays on the grid.
-func TestARowOfActsIsTwoCellsTall(t *testing.T) {
+// TestARowOfActsIsAControlTall: an inline row is a 32px control's height, so
+// the control's edges are the row's and land on the grid's lines, its wrapped
+// lines 40px apart. Acts are 28px, so a row of them pads 2px and steps its
+// wrapped lines 12px apart: every line of acts keeps the same 40px pitch, and
+// what follows stays on the grid.
+func TestARowOfActsIsAControlTall(t *testing.T) {
 	r := newRenderer(t)
 	got := render(t, r, &Stack{Inline: true, Children: []Widget{
 		&Link{Label: "Install a certificate", Href: "/x", Style: "act"},
 		&Link{Label: "Download", Href: "/y", Style: "act"},
 	}})
-	for _, want := range []string{"py-1", "has-[.verso-act]:py-1.5", "has-[.verso-act]:gap-y-3"} {
+	if strings.Contains(got, " py-1") {
+		t.Errorf("an inline row adds no air over its controls:\n%s", got)
+	}
+	for _, want := range []string{"has-[.verso-act]:py-0.5", "has-[.verso-act]:gap-y-3"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("an inline row is missing %q:\n%s", want, got)
 		}

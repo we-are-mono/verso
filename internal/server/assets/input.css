@@ -97,14 +97,17 @@
   --default-mono-font-family: var(--font-mono);
   /* The layout's roles on the 8px grid (layout-grid): every fixed measure is
      one of these or another multiple of 8px. One height for every field and
-     button (h-control), 4px clear of the label's 20px line above it. */
+     button (h-control), straight under the label's 24px line. */
   --spacing-control: 2rem;
   /* A card's inset and the air between cards, fields and a group's steps. */
   --spacing-inset: 1.5rem;
   /* The page's frame, a drawer's inset and a block's step in a drawer. */
   --spacing-frame: 2.5rem;
-  /* A row's act and a subsection's act, riding a 20px line. */
+  /* A row's act and a subsection's act, riding a 24px line. */
   --spacing-act: 1.75rem;
+  /* Text writes on 24px lines (layout-grid), so a box that grows with its
+     text grows by a multiple of 8px and stays on the grid. */
+  --text-sm--line-height: calc(1.5 / 0.875);
   /* The page measures are multiples of 8px, so a column's end, and the
      rules that run to it, land on a line: wide 1136, default 1016, narrow
      880, a page form 760. */
@@ -125,12 +128,12 @@
   grid-template-columns: var(--verso-form-width, 40rem) minmax(0, 1fr);
 }
 
-/* A row's own air around its 20px lines: 10px over the first and 9px under
+/* A row's own air around its 24px lines: 8px over the first and 7px under
    the last, its hairline the next pixel, so a row of one line is 40px and one
-   of two is 60px however its values wrap. */
+   of two is 64px however its values wrap. */
 @utility py-row {
-  padding-top: calc(var(--spacing) * 2.5);
-  padding-bottom: calc(var(--spacing) * 2.25);
+  padding-top: calc(var(--spacing) * 2);
+  padding-bottom: calc(var(--spacing) * 1.75);
 }
 
 /* Native buttons inherit the press treatment, including controls inserted by
@@ -923,10 +926,10 @@ html {
   .verso-page-body > .verso-stack > .verso-filter-dock + * { margin-top: calc(var(--spacing) * 2); }
   /* Sections, their air and their rules: sections.css. */
 
-  /* A listing on the notebook's grid: each cell writes on 20px lines with
-     10px over the first and 9px under the last (table.cellpad), so a row is
-     a cell more than its lines and its hairline lands on a line however its
-     values wrap. The borders stay separate, so each row's hairline is its
+  /* A listing on the grid: each cell writes on 24px lines with 8px over the
+     first and 7px under the last (table.cellpad, py-row), so a row is 16px
+     more than its lines and its hairline lands on a line however its values
+     wrap. The borders stay separate, so each row's hairline is its
      own last pixel, the last row's too; every cell stands at the row's top,
      so a row's first lines stay level. :where keeps both under a cell's own
      classes. */
@@ -954,12 +957,12 @@ html {
     font-weight: 300;
     line-height: 1.5;
   }
-  /* A section's lede is a step under the title it explains, written on 20px
+  /* A section's lede is a step under the title it explains, written on 24px
      lines, 16px between its paragraphs. */
   [data-verso-section-lede],
   [data-verso-section-lede] * {
     font-size: var(--text-sm);
-    line-height: 1.25rem;
+    line-height: 1.5rem;
   }
   [data-verso-section-lede] p:not(:last-child) { margin-bottom: 1rem; }
   [data-verso-section-lede] p:last-child { margin-bottom: 0; }

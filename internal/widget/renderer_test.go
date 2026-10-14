@@ -104,10 +104,10 @@ func TestRenderStackDivided(t *testing.T) {
 		t.Errorf("compact stack should use tighter spacing: %s", compact)
 	}
 	// An inline stack is a wrapping row of acts: 12px between them, its
-	// wrapped rows 40px apart, and the row 40px tall, 4px over and under a
-	// control's 32px.
+	// wrapped rows 40px apart, and the row a control's 32px, so its controls'
+	// edges are the row's own and land on the grid's lines.
 	inline := render(t, r, &Stack{Inline: true, Children: []Widget{&Badge{Text: "a"}, &Text{Markdown: "or"}, &Badge{Text: "b"}}})
-	if !strings.Contains(inline, "flex flex-wrap items-center gap-x-3 gap-y-2 py-1") || !strings.Contains(inline, ">or</p>") {
+	if !strings.Contains(inline, `class="flex flex-wrap items-center gap-x-3 gap-y-2 has-[.verso-act]:gap-y-3 has-[.verso-act]:py-0.5"`) || !strings.Contains(inline, ">or</p>") {
 		t.Errorf("inline stack should keep its children in one wrapping row: %s", inline)
 	}
 	if strings.Contains(div, "space-y-") {
@@ -123,7 +123,7 @@ func TestRenderCardChrome(t *testing.T) {
 	r := newRenderer(t)
 
 	got := render(t, r, &Card{Title: "empty"})
-	want := `<section><div class="mb-6"><h3 class="text-lg font-semibold tracking-tight leading-5 text-ink">empty</h3></div><div class="space-y-6"></div></section>`
+	want := `<section><div class="mb-6"><h3 class="text-lg font-semibold tracking-tight leading-6 text-ink">empty</h3></div><div class="space-y-6"></div></section>`
 	if got != want {
 		t.Errorf("Render mismatch:\n got: %s\nwant: %s", got, want)
 	}
@@ -132,10 +132,10 @@ func TestRenderCardChrome(t *testing.T) {
 func TestRenderCardSubtitle(t *testing.T) {
 	r := newRenderer(t)
 	got := render(t, r, &Card{Title: "Your gateway", Subtitle: "the back of the box"})
-	if !strings.Contains(got, `<h3 class="text-lg font-semibold tracking-tight leading-5 text-ink">Your gateway</h3>`) {
+	if !strings.Contains(got, `<h3 class="text-lg font-semibold tracking-tight leading-6 text-ink">Your gateway</h3>`) {
 		t.Errorf("card title missing:\n%s", got)
 	}
-	if !strings.Contains(got, `<p class="text-sm leading-5 text-body">the back of the box</p>`) {
+	if !strings.Contains(got, `<p class="text-sm leading-6 text-body">the back of the box</p>`) {
 		t.Errorf("card subtitle missing or not styled as a subtitle:\n%s", got)
 	}
 }
@@ -435,7 +435,7 @@ func TestRenderPropertiesStyles(t *testing.T) {
 
 	// Each ruled row draws its own hairline as its last pixel, landing it on a
 	// line of the grid; the last row keeps that pixel as air instead.
-	const hairlineRow = "border-b border-mid pt-2.5 pb-2.25 leading-5 last:border-b-0 last:pb-2.5"
+	const hairlineRow = "border-b border-mid py-row leading-6 last:border-b-0 last:pb-2"
 	divided := render(t, r, &Properties{Items: items}) // default
 	if !strings.Contains(divided, hairlineRow) {
 		t.Errorf("default properties should use hairlines:\n%s", divided)
@@ -485,7 +485,7 @@ func TestRenderPropertiesStyles(t *testing.T) {
 	}})
 	for _, want := range []string{
 		`<dt class="shrink-0 text-meta">Installed</dt>`,
-		`<dd class="relative flex min-w-0 items-start justify-end text-right text-base font-medium text-ink [&_*]:leading-5">`,
+		`<dd class="relative flex min-w-0 items-start justify-end text-right text-base font-medium text-ink [&_*]:leading-6">`,
 		`class="min-w-0 wrap-anywhere text-balance font-mono text-base font-medium">aarch64_generic</span>`,
 	} {
 		if !strings.Contains(emphasised, want) {
@@ -579,11 +579,11 @@ func TestRenderConfirm(t *testing.T) {
 		"border-crimson-line bg-crimson-soft", "text-crimson-deep", "size-1.5 flex-none\n    bg-crimson",
 		// The question is the compact callout in the act's tone: a row's
 		// height for a line, its words 10px inside.
-		`<div data-verso-callout class="flex w-full max-w-(--container-3xl) items-start gap-2 rounded-xs border px-3 pt-2.5 pb-2`,
+		`<div data-verso-callout class="flex w-full max-w-(--container-3xl) items-start gap-2 rounded-xs border px-3 pt-2 pb-1.5`,
 		// The answers are the band's acts, on the line a cell under the words;
 		// cancel keeps the explanation's tone and hovers by a soft wash, not a
 		// heavy colour darken.
-		`<div data-verso-callout-acts class="mt-6 flex flex-wrap items-center gap-x-3 gap-y-2"><button type="submit" x-ref="first"`, "hover:bg-crimson-line/50",
+		`<div data-verso-callout-acts class="mt-5.75 flex flex-wrap items-center gap-x-3 gap-y-2"><button type="submit" x-ref="first"`, "hover:bg-crimson-line/50",
 		"border-crimson bg-crimson text-white",
 		"verso-press",
 		// The trigger is a control like every other button: h-control holds
@@ -670,7 +670,7 @@ func TestRenderCallout(t *testing.T) {
 	// centre, framed one step darker than its ground as every band is, without
 	// the standing band's padding.
 	compact := render(t, r, &Callout{Compact: true, Body: "A short note."})
-	for _, want := range []string{"items-start", "gap-2", "px-3", "pt-2.5 pb-2", "border-denim-line", "mt-[0.4375rem] size-1.5", "bg-denim", "A short note."} {
+	for _, want := range []string{"items-start", "gap-2", "px-3", "pt-2 pb-1.5", "border-denim-line", "mt-[0.5625rem] size-1.5", "bg-denim", "A short note."} {
 		if !strings.Contains(compact, want) {
 			t.Errorf("compact callout missing %q in: %s", want, compact)
 		}
@@ -709,7 +709,7 @@ func TestRenderLink(t *testing.T) {
 		`href="#section-speed"`, "data-verso-rail-link", "verso-rail-link",
 		// 28px each, its 20px line and 4px over and under, so a run of any
 		// count is a multiple of 4px; the hairline a pixel out onto the column's
-		"-ml-px flex items-center gap-1.5 border-l border-rule py-1 pl-4 text-sm leading-5",
+		"-ml-px flex items-center gap-1.5 border-l border-rule py-1 pl-4 text-sm leading-6",
 	} {
 		if !strings.Contains(rail, want) {
 			t.Errorf("rail link missing %q: %s", want, rail)
@@ -956,7 +956,7 @@ func TestRenderCodeInUciGrammar(t *testing.T) {
 	}
 	// Each line and its number stand on a 24px line, so a file of any length
 	// closes its card on a line of the 8px grid.
-	if strings.Count(got, "leading-6") < 2 || strings.Contains(got, "pb-5.75 text-right font-mono text-sm leading-5") {
+	if strings.Count(got, "leading-6") < 2 || strings.Contains(got, "text-sm leading-5") || strings.Contains(got, "text-base leading-5") {
 		t.Errorf("the file's lines are not 24px: %s", got)
 	}
 	// A file ends in a newline; the line it closes is not a line of its own.

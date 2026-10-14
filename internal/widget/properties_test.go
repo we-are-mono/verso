@@ -21,7 +21,7 @@ func TestFactSheetRowCarriesItsMarkAndNote(t *testing.T) {
 		`<span class="absolute -left-3.75 top-1.75 size-1.5 rounded-[1px] bg-marigold" aria-hidden="true"></span>`,
 		`<dd class="relative flex min-w-0 items-start`,
 		// the note writes on the row's next 20px line
-		`<p class="basis-full sm:pl-30 text-sm leading-5 font-normal text-body">Browsers warn until you trust it.</p>`,
+		`<p class="basis-full sm:pl-30 text-sm leading-6 font-normal text-body">Browsers warn until you trust it.</p>`,
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("want %s in:\n%s", want, got)
@@ -65,7 +65,7 @@ func TestRowsHangFromTheirFirstLine(t *testing.T) {
 	for _, want := range []string{
 		`<div class="flex items-start justify-between gap-x-6`,
 		`<dd class="relative flex min-w-0 items-start`,
-		`inline-flex h-5 shrink-0 items-center`,
+		`inline-flex h-6 shrink-0 items-center`,
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("want %s in:\n%s", want, got)
@@ -82,7 +82,7 @@ func TestArtifactFrameNamesWhatItHolds(t *testing.T) {
 	for _, want := range []string{
 		// a cell of air over the name, the name's 20px line and the
 		// sentence's, a cell under them, and the hairline on the cell's line
-		`<div class="border-b border-rule-strong pt-6 pb-5.75"><h3 class="text-base leading-5 font-semibold text-ink">HTTPS certificate</h3><p class="text-sm leading-5 text-body">What this router shows browsers.</p></div>`,
+		`<div class="border-b border-rule-strong pt-6 pb-5.75"><h3 class="text-base leading-6 font-semibold text-ink">HTTPS certificate</h3><p class="text-sm leading-6 text-body">What this router shows browsers.</p></div>`,
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("want %s in:\n%s", want, got)
@@ -111,7 +111,7 @@ func TestSpanRowDrawsTheStretchAndWhereNowIs(t *testing.T) {
 	}})
 	for _, want := range []string{
 		`<span class="sr-only">2026-08-31 – 2027-10-02</span>`,
-		`<span class="relative block h-5">`, // the ruler stands on the row's first line, level with its label
+		`<span class="relative block h-6">`, // the ruler stands on the row's first line, level with its label
 		// the meter's own track, never a hairline: a list of hairline rows
 		// must not have one more line in it that means something else
 		`<span class="absolute inset-x-0 top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-rule"></span>`,

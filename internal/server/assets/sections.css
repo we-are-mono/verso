@@ -90,7 +90,7 @@
   .verso-page-body > .verso-stack > * + .verso-stack:has(> section[data-verso-section]:first-child > [data-verso-section-band]) { margin-top: calc(var(--spacing) * 10 - 1px); }
 
   /* The heading band carries its section's rule: the rule, 40px, the
-     title's 20px line, its lede's under it, and the content 24px on — a
+     title's 24px line, its lede's under it, and the content 24px on — a
      field brings that air itself; anything else is given it (below). */
   [data-verso-section-band] {
     display: flex;
@@ -229,10 +229,10 @@
 .verso-page-body > .verso-stack > * {
   margin-bottom: 0;
 }
-/* The header is 48px: 14px over the title's 20px line, 13px under it, then
+/* The header is 48px: 12px over the title's 24px line, 11px under it, then
  * its hairline. */
 .verso-page-body section[data-verso-section]:not(section section, dialog *) > [data-verso-section-band] {
-  padding-block: calc(var(--spacing) * 3.5) calc(var(--spacing) * 3.25);
+  padding-block: calc(var(--spacing) * 3) calc(var(--spacing) * 2.75);
   border-top-width: 0;
   border-bottom: 1px solid var(--color-rule);
 }
@@ -246,7 +246,7 @@
 }
 .verso-page-body section[data-verso-section]:not(section section, dialog *) > [data-verso-section-band] > :has(> [data-verso-section-lede]) {
   width: calc(100% + var(--spacing-inset) * 2);
-  margin: calc(var(--spacing) * 3.25) calc(var(--spacing-inset) * -1) 0;
+  margin: calc(var(--spacing) * 2.75) calc(var(--spacing-inset) * -1) 0;
   border-top: 1px solid var(--color-rule);
   padding: var(--spacing-inset) var(--spacing-inset) 0;
 }
@@ -292,14 +292,14 @@
 .verso-page-body [data-verso-listing]:not(dialog *) [data-verso-table-legend] {
   padding: var(--spacing-inset);
 }
-/* A page's own listing is the card, so its legend follows it: 12px under the
- * frame, its words in line with the card's edges, the stack's air after it. */
+/* A page's own listing is the card, so its legend follows it: 16px under the
+ * frame, its 24px line closing on the grid, its words in line with the card's edges, the stack's air after it. */
 .verso-page-body [data-verso-listing]:has(+ [data-verso-table-legend]) {
   margin-bottom: 0;
 }
 .verso-page-body [data-verso-listing] + [data-verso-table-legend] {
   margin-top: 0;
-  padding: calc(var(--spacing) * 3) 0 0;
+  padding: calc(var(--spacing) * 4) 0 0;
 }
 /* A listing's column heads in a card are a row of the card's own Paper across
  * it, between hairlines, the heads in Ink sentence case: the row divides the

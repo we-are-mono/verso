@@ -275,8 +275,8 @@ func TestACardMeasuresOnTheEightPixelGrid(t *testing.T) {
 		// the inset: the reach of its rules and the padding around its body
 		"--verso-reach-start: var(--spacing-inset);\n  --verso-reach-end: var(--spacing-inset);",
 		"padding: 0 var(--spacing-inset) calc(var(--spacing-inset) - 1px);",
-		// the header: 14px over its 20px line, 13px under, then its hairline
-		"padding-block: calc(var(--spacing) * 3.5) calc(var(--spacing) * 3.25);\n  border-top-width: 0;\n  border-bottom: 1px solid var(--color-rule);",
+		// the header: 12px over its 24px line, 11px under, then its hairline
+		"padding-block: calc(var(--spacing) * 3) calc(var(--spacing) * 2.75);\n  border-top-width: 0;\n  border-bottom: 1px solid var(--color-rule);",
 		// the column-head row: 16px over its 16px line, 15px under, its hairline
 		"padding-block: calc(var(--spacing) * 4 - var(--verso-head-top, 1px)) calc(var(--spacing) * 4 - 1px);",
 		// the air between cards, less the frame's pixel so the next frame lands

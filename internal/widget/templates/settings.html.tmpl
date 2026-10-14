@@ -19,12 +19,12 @@
   <div data-verso-settings-row class="flex items-start gap-3 {{if .Condensed}}py-row{{else}}pt-6 pb-5.75{{end}} border-b border-rule last:border-b-0 last:pb-0 [&:has(+details)]:border-b-0">
     <div class="min-w-0 flex-1">
       <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
-        <div class="text-base leading-5 font-semibold text-ink">{{.Title}}</div>
+        <div class="text-base leading-6 font-semibold text-ink">{{.Title}}</div>
       </div>
-      {{if .Desc}}<div class="text-sm leading-5 text-pretty text-body">{{.Desc}}</div>{{end}}
+      {{if .Desc}}<div class="text-sm leading-6 text-pretty text-body">{{.Desc}}</div>{{end}}
     </div>
     {{range .PillsHTML}}{{.}}{{end}}
-    {{if .Value}}<span class="shrink-0 font-mono text-base leading-5 font-medium tabular-nums text-ink">{{.Value}}</span>{{end}}
+    {{if .Value}}<span class="shrink-0 font-mono text-base leading-6 font-medium tabular-nums text-ink">{{.Value}}</span>{{end}}
   </div>
   {{end}}
 {{end}}

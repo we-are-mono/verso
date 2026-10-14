@@ -437,7 +437,7 @@ func TestAvailableWaitsForExplicitSearch(t *testing.T) {
 	body := get(t, s, "/system/packages/discover").Body.String()
 	// Before a search the listing is its empty slot, saying what goes there.
 	for _, want := range []string{
-		`<p class="min-w-0 flex-1 text-sm leading-5 text-meta">Enter a package name, then select Search. Matching packages will appear here.</p>`,
+		`<p class="min-w-0 flex-1 text-sm leading-6 text-meta">Enter a package name, then select Search. Matching packages will appear here.</p>`,
 		`placeholder="Package name"`,
 		"autofocus",
 	} {
@@ -454,7 +454,7 @@ func TestAvailableNoResultsExplainsRecovery(t *testing.T) {
 	body := get(t, pluginsServer(t, fakeBackend{access: true}, true, mgmtManifest()), "/system/packages/discover?q=missing").Body.String()
 	// No match is the listing's empty slot, telling a filtered nothing apart.
 	for _, want := range []string{
-		`<p class="min-w-0 flex-1 text-sm leading-5 text-meta">No available packages match “missing”. Check the spelling or refresh the package feeds.</p>`,
+		`<p class="min-w-0 flex-1 text-sm leading-6 text-meta">No available packages match “missing”. Check the spelling or refresh the package feeds.</p>`,
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("no-results state missing %q", want)
