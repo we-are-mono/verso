@@ -314,7 +314,7 @@ A set of radios and a rail's "On this page" links are rows of 32px: their 24px l
 
 In a dev session (`make dev`), G draws the 8px grid over the page and behind a drawer's body, and G again takes it away; the choice holds for the tab. A released build never draws it.
 
-**The rhythm is 40 and 24.** Cards on a page stand 24px apart, and inside a card its blocks stand 24px apart too, as the first stands under the title: the card already holds them together. A titled part inside a card starts a group of its own, 40px on. Inside a drawer, blocks stand 40px apart, the same as the body inset; a group's steps (heading to toolbar to table) are 24px. A drawer section's rule stands 40px under the content before it. The band is the rule, 40px, the title's 24px line, its lede's lines under it, then the content straight on: a field brings its own 24px of air, and a band with a lede keeps 24px under it. Height follows the contents, with no fixed or minimum band height.
+**The rhythm is 40 and 24.** Cards on a page stand 24px apart, and inside a card its blocks stand 24px apart too, as the first stands under the title: the card already holds them together. A field after a block takes no margin, since its own 24px of air is the step. A titled part inside a card starts a group of its own, 40px on. Inside a drawer, blocks stand 40px apart, the same as the body inset; a group's steps (heading to toolbar to table) are 24px. A drawer section's rule stands 40px under the content before it. The band is the rule, 40px, the title's 24px line, its lede's lines under it, then the content straight on: a field brings its own 24px of air, and a band with a lede keeps 24px under it. Height follows the contents, with no fixed or minimum band height.
 
 **Sections are one component** (`sections.css`), the same on a page and in a drawer. A section states its kind and the stylesheet gives it its air and its rule:
 
@@ -417,7 +417,7 @@ A warning (marigold) or an error (crimson) said in place, on the tone's Wash, ev
 - **One size:** the title and the text under it are both 14px on 24px lines; the title is bold (600), the text regular, 7px after the frame's top border and 8px over its bottom one (a full notice 23 and 24), framed as a card is: both borders land on lines, the bottom border's pixel is given back, so a line of it is a row's 40px and its words fill a band of the grid. The title never steps up a size and the text is never a lede.
 - **Mark:** the tone's 6px square on the title's first line.
 - **The machine's words:** what a tool reported rides inside, under a Hairline of the tone, verbatim in mono.
-- **Opening a card:** a notice that opens a card's body stands 24px under the title's Hairline and keeps the same 24px over what follows it (a field's own air, or that much margin); one between blocks keeps the card's 24px step on both sides.
+- **In a card:** a notice stands 24px from what is over it and what is under it, the card's step, whether it opens the card or stands between blocks.
 - **The acts that resolve it:** a notice may carry the buttons that resolve what it says (install what is missing): a row of 32px buttons inside the band, 23px under its words and 8px (a full notice 24px) over the frame, so the buttons stand on the band's lines and the band stays on the grid. The buttons keep their own shape and take the band's ink: words and glyph in its deep step, the border that ink thinned, a wash of it under the pointer.
 - A confirmation's question is this band, its answers the band's acts (Confirmation).
 
