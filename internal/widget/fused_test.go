@@ -39,7 +39,7 @@ func TestRelatedValuesAreOneControl(t *testing.T) {
 		}
 	}
 	for _, want := range []string{
-		`<span id="synflood_rate-group-label" class="text-sm font-semibold text-ink">Connection rate</span>`,
+		`<span id="synflood_rate-group-label" class="text-sm font-medium text-ink">Connection rate</span>`,
 		`>synflood_rate · synflood_burst</span>`, // one chip, every option
 		`role="group" aria-labelledby="synflood_rate-group-label"`,
 		`id="synflood_rate" name="synflood_rate" value="25" type="text" aria-label="Connections per second"`,

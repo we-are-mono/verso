@@ -39,7 +39,7 @@ func TestConditionalDecodeAndRender(t *testing.T) {
 		}
 	}
 	// The gate keeps a real label bound to its checkbox by id.
-	if !strings.Contains(got, `<label for="use_psk" id="use_psk-label" class="text-sm font-semibold text-ink">Use a pre-shared key</label>`) {
+	if !strings.Contains(got, `<label for="use_psk" id="use_psk-label" class="text-sm font-medium text-ink">Use a pre-shared key</label>`) {
 		t.Errorf("conditional gate must label its switch at the form measure: %s", got)
 	}
 }

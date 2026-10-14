@@ -26,7 +26,7 @@ func TestSwitchesUnderOneLabelAreOneSetting(t *testing.T) {
 		t.Errorf("a labelled group of switches is one setting, not columns:\n%s", got)
 	}
 	for want, n := range map[string]int{
-		`<span id="include_a-group-label" class="text-sm font-semibold text-ink">Files the config includes</span>`: 1,
+		`<span id="include_a-group-label" class="text-sm font-medium text-ink">Files the config includes</span>`: 1,
 		`>enabled</span>`:            1, // the option, named once for the group
 		`class="verso-switch-group"`: 1,
 		`data-verso-switch`:          2,

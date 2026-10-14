@@ -67,7 +67,7 @@ func TestInlineValueField(t *testing.T) {
 	got := render(t, newRenderer(t), s)
 	for _, want := range []string{
 		"data-verso-inline-field",
-		`<label for="hostname" id="hostname-label" class="text-sm font-semibold text-ink">`, // the ordinary field label
+		`<label for="hostname" id="hostname-label" class="text-sm font-medium text-ink">`, // the ordinary field label
 		`id="hostname" type="text" name="hostname" value="mono-gateway"`,
 		`aria-describedby="hostname-desc hostname-error"`, // read with its description and its refusal
 		"data-verso-inline-input",

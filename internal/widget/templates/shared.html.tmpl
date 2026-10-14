@@ -202,8 +202,10 @@
 </div>
 {{end}}
 {{/* verso-field-label-class: a setting's name, wherever a box is labelled —
-     a form row, and the sign-in form that stands outside any row. */}}
-{{define "verso-field-label-class"}}text-sm font-semibold text-ink{{end}}
+     a form row, and the sign-in form that stands outside any row. It is set
+     at 500, a step under a heading's 600, so a form reads as its headings
+     over the names of what they hold. */}}
+{{define "verso-field-label-class"}}text-sm font-medium text-ink{{end}}
 {{define "verso-field-label-attrs"}}{{with .For}} id="{{.}}-label"{{end}} class="{{if .Mono}}font-mono text-base leading-6 font-medium text-ink{{else}}{{template "verso-field-label-class"}}{{end}}{{if .Explained}} relative cursor-help{{end}}"{{if .Explained}} data-verso-tip tabindex="0" aria-describedby="{{.Tip.ID}}"{{end}}{{end}}
 {{define "verso-field-label-text"}}{{.Label}}{{if .Explained}}{{template "verso-tip-wide" .Tip}}{{end}}{{end}}
 

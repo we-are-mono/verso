@@ -42,7 +42,7 @@ func TestJoinedChoicesAreOneRow(t *testing.T) {
 		}
 	}
 	for _, want := range []string{
-		`<span id="src-group-label" class="text-sm font-semibold text-ink">Path</span>`,
+		`<span id="src-group-label" class="text-sm font-medium text-ink">Path</span>`,
 		`>src · dest</span>`,
 		`role="group" aria-labelledby="src-group-label"`,
 		`<select id="src" name="src" aria-label="Coming from"`,

@@ -98,7 +98,7 @@ func TestAConditionIsOneNamedSetting(t *testing.T) {
 	icmp := got[strings.Index(got, `data-verso-condition="icmp_type"`):strings.Index(got, `data-verso-condition="rate"`)]
 	for _, want := range []string{
 		`role="group" aria-labelledby="condition-icmp_type-label" class="verso-condition verso-condition-single"`,
-		`<span id="condition-icmp_type-label" class="text-sm font-semibold text-ink relative cursor-help`,
+		`<span id="condition-icmp_type-label" class="text-sm font-medium text-ink relative cursor-help`,
 		`Narrow an ICMP rule.`,
 		`>icmp_type</span>`,
 		`data-verso-condition-remove aria-label="Remove ICMP types"`,

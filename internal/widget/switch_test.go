@@ -19,7 +19,7 @@ func TestDecodeAndRenderSwitch(t *testing.T) {
 		"Enabled", "peer-checked:bg-choice",
 		// Checkbox rows share the form measure and keep their text beside them.
 		"verso-field-row max-w-form verso-field-toggle",
-		`<label for="enabled" id="enabled-label" class="text-sm font-semibold text-ink`,
+		`<label for="enabled" id="enabled-label" class="text-sm font-medium text-ink`,
 		"verso-field-control",
 		// The input is screen-reader-only, so the visible box has to be inside
 		// a label: without one, pressing the control does nothing at all.
