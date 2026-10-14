@@ -47,7 +47,7 @@ func TestRenderOverviewCards(t *testing.T) {
 		// Internet
 		"Connected", "IPv4", "dhcp", "172.30.1.171/24", "IPv6", "dhcpv6", "fd42:7ea:aa00::/56", `x-data="copy"`,
 		// Ports and Tunnels
-		"All ports linked", `data-verso-row="interface:eth0"`, "18 Mb/s", `data-verso-row="interface:eth4"`, "wg-home", "wireguard", `href="/plugins/wireguard/"`,
+		`data-verso-row="interface:eth0"`, "18 Mb/s", `data-verso-row="interface:eth4"`, "wg-home", "wireguard", `href="/plugins/wireguard/"`,
 		// Traffic, Resources, Hardware, Firmware
 		"Mb/s down", "verso-chart-area", `data-verso-meter="sys-cpu"`, "Mono Gateway Development Kit", "3630 rpm", "12.4 W",
 		"OpenWrt 25.12.4", "Linux 6.12.101", `data-verso-prop="uptime"`, "6 d 04:00",

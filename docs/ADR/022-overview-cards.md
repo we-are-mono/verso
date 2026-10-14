@@ -53,7 +53,9 @@ WAN state as the rest of the page.
 
 A card's header carries its verdict: the status word and packet at its end,
 open or closed, in the tone's Deep step. A card of readings (Traffic,
-Resources, Hardware, Firmware) speaks only when a reading is out of band. A
+Resources, Hardware, Firmware) speaks only when a reading is out of band, and
+Ports only when a port in use lost link: every port linked is what its panel
+and list already show, and a header that said so too was fluff. A
 closed card adds one reading after its title, the one most worth a glance and
 never its status again: the uplink's address, the devices connected, the
 tunnels down, the traffic, memory (always memory, so the line never swaps one

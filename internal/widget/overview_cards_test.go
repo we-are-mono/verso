@@ -98,9 +98,11 @@ func TestPortsAndTunnelsCardHeads(t *testing.T) {
 	if h := head(t, &Overview{}, "ports"); h.Status != "Unavailable" {
 		t.Errorf("unknown interfaces = %+v", h)
 	}
+	// Every port in use linked is what the panel and the list under the header
+	// already show, so the header says nothing then.
 	linked := head(t, &Overview{InterfacesKnown: true, Interfaces: []OverviewInterface{{Name: "eth0", Physical: true, State: "up", Networks: []string{"wan"}}}}, "ports")
-	if linked.Status != "All ports linked" || linked.Tone != "success" {
-		t.Errorf("linked = %+v", linked)
+	if linked.Status != "" || linked.Tone != "neutral" {
+		t.Errorf("linked = %+v, want no status", linked)
 	}
 }
 
@@ -226,7 +228,7 @@ func TestPortsCardOpensWithThePanel(t *testing.T) {
 	if strings.Contains(ports, "interface:eth9") {
 		t.Error("a DSA conduit is no port and has no row")
 	}
-	if head := o.portsHead(identityTranslator); head.Status != "All ports linked" {
+	if head := o.portsHead(identityTranslator); head.Status != "" || head.Tone != "neutral" {
 		t.Errorf("a conduit's link counts for nothing; head = %+v", head)
 	}
 }

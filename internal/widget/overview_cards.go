@@ -115,9 +115,10 @@ func (o *Overview) internetBody(r *Renderer, csrf string) (template.HTML, error)
 
 // ── Ports ──
 
-// portsHead says whether every port something asked for has its cable, and
-// how many devices hang off them. A spare port's missing cable is nobody's
-// concern.
+// portsHead speaks when a port something asked for has lost its cable, and
+// says how many devices hang off the ports. Every such port linked is what the
+// panel and the list under the header show, so then it says nothing. A spare
+// port's missing cable is nobody's concern.
 func (o *Overview) portsHead(tr func(string) string) cardHead {
 	if !o.InterfacesKnown {
 		return cardHead{Tone: "neutral", Status: tr("Unavailable")}
@@ -147,7 +148,6 @@ func (o *Overview) portsHead(tr func(string) string) cardHead {
 	case unknown > 0:
 		h.Status = tr("State unknown")
 	case ports > 0:
-		h.Tone, h.Status = "success", tr("All ports linked")
 	default:
 		h.Status = tr("Virtual interfaces")
 	}

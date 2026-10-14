@@ -2,6 +2,25 @@
 
 ## MODIFIED Requirements
 
+### Requirement: Each card's header carries its status
+Every card header SHALL show the card's icon and title. Cards with a verdict (Internet, Tunnels) show the verdict at the header's end as a status word with its packet in the verdict's tone, whether the card is open or closed. The Ports card shows a status only when a port a network uses has lost link or its state is unknown, since its panel and list already show every port linked. Cards of readings (Traffic, Resources, Hardware, Firmware) show a status only when one of their readings is in a warning or danger band.
+
+#### Scenario: Internet is up
+- **WHEN** the uplink is up
+- **THEN** the Internet header reads "Connected" in the success tone
+
+#### Scenario: A port loses link
+- **WHEN** a physical port that a network uses loses link
+- **THEN** the Ports header reads "1 port without link" in the warning tone
+
+#### Scenario: Every port in use linked
+- **WHEN** every physical port a network uses has link, and two spare ports have none
+- **THEN** the Ports header shows no status word
+
+#### Scenario: Readings are healthy
+- **WHEN** every Resources reading is in its normal band
+- **THEN** the Resources header shows no status word
+
 ### Requirement: Cards carry the Overview's readings
 Every reading the Overview takes SHALL appear in exactly one card, and each card SHALL hold only its own kind of reading. Each address in the Internet card has a copy control.
 

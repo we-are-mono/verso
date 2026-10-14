@@ -628,7 +628,6 @@
   "%d ports without link (two)": "%d vrata brez povezave",
   "%d ports without link (few)": "%d vrata brez povezave",
   "%d ports without link": "%d vrat brez povezave",
-  "All ports linked": "Vsa vrata povezana",
   "Virtual interfaces": "Navidezni vmesniki",
   "Review firewall settings": "Preglejte nastavitve požarnega zidu",
   "Active": "Aktiven",
