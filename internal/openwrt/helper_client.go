@@ -6,13 +6,16 @@ package openwrt
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net"
 	"time"
 )
 
 const (
-	defaultHelperSocket = "/var/run/verso/verso-rpcd.sock"
+	// defaultHelperSocket sits in a directory of the helper's own, root:verso
+	// 0750: the shell may reach it, but no group member can create a name there.
+	defaultHelperSocket = "/var/run/verso-rpcd/verso-rpcd.sock"
 	helperCallTimeout   = 90 * time.Second
 	// firmwareUpgradeTimeout bounds the one verb whose work is not this
 	// device's: an attended-sysupgrade server queues and compiles an image for
@@ -23,6 +26,13 @@ const (
 	firmwareUpgradeTimeout = 30 * time.Minute
 	helperPermissionDenied = 6
 )
+
+// helperOwnerUID is the account the kernel must report listening behind the
+// helper socket: root, which verso-rpcd runs as. Tests aim it at a fake.
+var helperOwnerUID uint32
+
+// errUntrustedHelper marks a helper socket whose listener is another account.
+var errUntrustedHelper = errors.New("the socket's listener is not the helper's account")
 
 type helperOperationError struct {
 	method  string
@@ -55,8 +65,10 @@ type helperResponse struct {
 // callHelper sends one request to the resident Rust privileged companion. The
 // helper independently verifies SID access over ubus before acting; filesystem
 // permissions on the socket are an additional boundary, not the authorization
-// decision. One request owns one short socket connection, while the root daemon
-// and its package-operation lock remain shared across every browser session.
+// decision. The shell in turn sends nothing until the kernel reports root as the
+// listener, so a request can reach no one but the helper. One request owns one
+// short socket connection, while the root daemon and its package-operation lock
+// remain shared across every browser session.
 func callHelper(ctx context.Context, socket, method, sid string, args map[string]string, result any) error {
 	return callHelperWithin(ctx, socket, method, sid, args, result, helperCallTimeout)
 }
@@ -75,6 +87,9 @@ func callHelperWithin(ctx context.Context, socket, method, sid string, args map[
 		return fmt.Errorf("verso-rpcd: dial %s: %w", socket, err)
 	}
 	defer conn.Close()
+	if err := requireHelperOwner(conn); err != nil {
+		return fmt.Errorf("verso-rpcd: %s: %w", socket, err)
+	}
 
 	deadline := time.Now().Add(timeout)
 	if contextDeadline, ok := ctx.Deadline(); ok && contextDeadline.Before(deadline) {
@@ -104,6 +119,21 @@ func callHelperWithin(ctx context.Context, socket, method, sid string, args map[
 		if err := json.Unmarshal(response.Result, result); err != nil {
 			return fmt.Errorf("verso-rpcd: %s result: %w", method, err)
 		}
+	}
+	return nil
+}
+
+// requireHelperOwner refuses a connection unless the kernel reports the
+// helper's account listening behind it. The path proves nothing on its own:
+// whoever binds it while it is free answers there, and every request carries
+// the operator's session and, for a password change, the new password.
+func requireHelperOwner(conn net.Conn) error {
+	uid, err := socketPeerUID(conn)
+	if err != nil {
+		return fmt.Errorf("peer credentials: %w", err)
+	}
+	if uid != helperOwnerUID {
+		return fmt.Errorf("%w (uid %d)", errUntrustedHelper, uid)
 	}
 	return nil
 }

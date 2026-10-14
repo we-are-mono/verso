@@ -47,10 +47,23 @@ start_service() {
 		chmod 0700 /var/run/verso/changes
 	fi
 
+	# The helper's socket has a directory of its own. In the shared one above any
+	# group member may create a name, so a plugin could bind the helper's path in
+	# the moment a restart frees it and be sent the operator's session. Here only
+	# root creates entries and the verso group may only reach the socket; /var/run
+	# is root's, so nothing can stand where the directory belongs before it exists.
+	# A helper that once served /var/run/verso/verso-rpcd.sock leaves that file,
+	# root's, in place: while it stands no plugin can bind the old name for a shell
+	# that still dials it during an upgrade, so it is never removed.
+	mkdir -p /var/run/verso-rpcd
+	chown root:verso /var/run/verso-rpcd
+	chmod 0750 /var/run/verso-rpcd
+
 	procd_open_instance verso-rpcd
-	procd_set_param command /usr/sbin/verso-rpcd --socket /var/run/verso/verso-rpcd.sock
+	procd_set_param command /usr/sbin/verso-rpcd --socket /var/run/verso-rpcd/verso-rpcd.sock
 	# Root owns the narrow privileged actions. The socket admits the verso group,
-	# and the daemon additionally verifies peer uid 6000 before checking the SID.
+	# and the daemon additionally verifies peer uid 6000 before checking the SID;
+	# the shell, for its part, talks only to a listener the kernel reports as root.
 	procd_set_param user root
 	procd_set_param group verso
 	procd_set_param no_new_privs 1

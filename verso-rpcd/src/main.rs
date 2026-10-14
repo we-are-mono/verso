@@ -43,7 +43,10 @@ use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-const DEFAULT_SOCKET: &str = "/var/run/verso/verso-rpcd.sock";
+/// The socket's directory is the helper's alone (root:verso 0750, made by the
+/// init script): no other account can create a name in it, so none can bind
+/// this path in the moment a restart frees it.
+const DEFAULT_SOCKET: &str = "/var/run/verso-rpcd/verso-rpcd.sock";
 const MAX_REQUEST: u64 = 256 * 1024;
 const VERSO_UID: u32 = 6000;
 /// The group the shell runs in, which alone reads what it is given in /etc/verso.

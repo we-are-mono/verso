@@ -7,7 +7,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"net"
 	"path/filepath"
 	"reflect"
 	"testing"
@@ -18,10 +17,7 @@ import (
 func helperOnce(t *testing.T, response string) (string, <-chan helperRequest) {
 	t.Helper()
 	socket := filepath.Join(t.TempDir(), "helper.sock")
-	listener, err := net.Listen("unix", socket)
-	if err != nil {
-		t.Fatal(err)
-	}
+	listener := listenAsHelper(t, socket)
 	got := make(chan helperRequest, 1)
 	go func() {
 		defer listener.Close()

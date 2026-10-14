@@ -285,10 +285,17 @@ page left open still signs out on inactivity — the renewer keeps the sid ready
 live session, it does not keep the session alive.
 
 The root-action helper (Decision 5) installs at `/usr/sbin/verso-rpcd` and runs
-under procd. Its socket is `/var/run/verso/verso-rpcd.sock`: the containing
-directory and socket permit only root and the `verso` group; the daemon then
+under procd. Its socket is `/var/run/verso-rpcd/verso-rpcd.sock`, in a
+directory of its own (`0750 root:verso`) rather than the shared `1770` one, so no
+plugin can create a name there and bind the helper's path while a restart has
+it free; the socket (`0660`) admits only root and the `verso` group. The daemon
 uses Linux `SO_PEERCRED` to accept only root or the shell's uid 6000, keeping
-plugins that merely share the group out. The rpcd **sid** grant
+plugins that merely share the group out. The check runs both ways: before
+writing a byte, the shell (and the root `verso update-check` run, through the
+same client) reads `SO_PEERCRED` from its side and talks only to a listener
+the kernel reports as root, so the operator's sid, a new password or any other
+argument reaches the helper or no one, and no other account's answer is taken
+for the helper's. The rpcd **sid** grant
 (`/usr/share/rpcd/acl.d/verso-helper.json`) names the group that authorizes each
 method, which the operator's session must hold; the Rust daemon probes that ACL
 over native ubus before every action. A denial reaches the shell as

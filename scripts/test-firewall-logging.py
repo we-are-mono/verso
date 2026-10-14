@@ -68,7 +68,7 @@ def run():
         client.write_text('''package main
 import ("encoding/json"; "net"; "os"; "time"; "io"; "fmt")
 func main() {
- path:="/var/run/verso/verso-rpcd.sock"; if len(os.Args)>1 {path=os.Args[1]}
+ path:="/var/run/verso-rpcd/verso-rpcd.sock"; if len(os.Args)>1 {path=os.Args[1]}
  c,e:=net.DialTimeout("unix",path,time.Second); if e!=nil {panic(e)}
  defer c.Close(); c.SetDeadline(time.Now().Add(5*time.Second))
  var r json.RawMessage; if e=json.NewDecoder(os.Stdin).Decode(&r); e!=nil {panic(e)}
@@ -106,7 +106,7 @@ func main() {
     assert templates == shell("sha256sum /usr/share/firewall4/templates/*.uc")
     assert pending == shell("uci changes firewall")
     shell("uci revert firewall; /etc/init.d/verso-rpcd enable; /etc/init.d/verso-rpcd start")
-    until(lambda: inside("test", "-S", "/var/run/verso/verso-rpcd.sock", check=False),
+    until(lambda: inside("test", "-S", "/var/run/verso-rpcd/verso-rpcd.sock", check=False),
           lambda result: result.returncode == 0, "helper socket missing")
     first = until(read, lambda r: r.get("result", {}).get("available"), "NFLOG unavailable")
     assert read(session="0" * 32)["status"] == 6
@@ -153,7 +153,7 @@ fw4 check''')
     assert_transport()
     assert "VERSO-NFLOG-MANAGED" not in shell("logread")
     shell("/etc/init.d/verso-rpcd start")
-    until(lambda: inside("test", "-S", "/var/run/verso/verso-rpcd.sock", check=False),
+    until(lambda: inside("test", "-S", "/var/run/verso-rpcd/verso-rpcd.sock", check=False),
           lambda result: result.returncode == 0, "helper did not restart")
     restarted = until(read, lambda r: r.get("result", {}).get("available"), "collector did not recover")
     assert restarted["result"]["generation"] != epoch
@@ -165,10 +165,10 @@ fw4 check''')
     assert read()["result"]["entries"]
 
     # A second collector cannot steal the group and must report unavailable.
-    shell("/usr/sbin/verso-rpcd --socket /var/run/verso/second.sock >/tmp/second.log 2>&1 & echo $! >/tmp/second.pid")
-    until(lambda: inside("test", "-S", "/var/run/verso/second.sock", check=False),
+    shell("/usr/sbin/verso-rpcd --socket /var/run/verso-rpcd/second.sock >/tmp/second.log 2>&1 & echo $! >/tmp/second.pid")
+    until(lambda: inside("test", "-S", "/var/run/verso-rpcd/second.sock", check=False),
           lambda result: result.returncode == 0, "second helper did not start")
-    assert not read(socket="/var/run/verso/second.sock")["result"]["available"]
+    assert not read(socket="/var/run/verso-rpcd/second.sock")["result"]["available"]
     shell("kill $(cat /tmp/second.pid)")
     assert_transport()
 
@@ -176,7 +176,7 @@ fw4 check''')
     shell('''cp /usr/share/firewall4/templates/rule.uc /usr/share/firewall4/templates/rule.backup
 echo unsupported > /usr/share/firewall4/templates/rule.uc
 /etc/init.d/verso-rpcd restart''')
-    until(lambda: inside("test", "-S", "/var/run/verso/verso-rpcd.sock", check=False),
+    until(lambda: inside("test", "-S", "/var/run/verso-rpcd/verso-rpcd.sock", check=False),
           lambda result: result.returncode == 0, "routing failure disabled the helper")
     assert not read()["result"]["available"]
     inside("ubus", "call", "session", "grant", json.dumps({

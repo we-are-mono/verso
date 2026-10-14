@@ -4,22 +4,85 @@
 package openwrt
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"errors"
 	"maps"
 	"net"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 )
 
-func TestCallHelperProtocol(t *testing.T) {
+// listenAsHelper binds a fake helper at socket and has the client trust this
+// test process's account behind it, as it trusts root behind the real one.
+func listenAsHelper(t *testing.T, socket string) net.Listener {
+	t.Helper()
+	listener, err := net.Listen("unix", socket)
+	if err != nil {
+		t.Fatal(err)
+	}
+	expectHelperOwner(t, uint32(os.Getuid()))
+	return listener
+}
+
+// expectHelperOwner sets the account the client demands behind the helper
+// socket for the rest of the test.
+func expectHelperOwner(t *testing.T, uid uint32) {
+	t.Helper()
+	previous := helperOwnerUID
+	helperOwnerUID = uid
+	t.Cleanup(func() { helperOwnerUID = previous })
+}
+
+// TestHelperOwnerIsRoot: outside tests the client answers only to root behind
+// the helper socket, the account verso-rpcd runs as.
+func TestHelperOwnerIsRoot(t *testing.T) {
+	if helperOwnerUID != 0 {
+		t.Fatalf("helper owner uid = %d, want 0", helperOwnerUID)
+	}
+}
+
+// TestCallHelperRefusesAListenerOfAnotherAccount: whoever holds the socket path
+// under any account but the helper's gets neither the session nor an argument.
+// The client asks the kernel who listens before it writes a byte, so an
+// impostor's answer is never taken for the helper's either.
+func TestCallHelperRefusesAListenerOfAnotherAccount(t *testing.T) {
 	socket := filepath.Join(t.TempDir(), "helper.sock")
 	listener, err := net.Listen("unix", socket)
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer listener.Close()
+	expectHelperOwner(t, uint32(os.Getuid())+1)
+
+	received := make(chan string, 1)
+	go func() {
+		conn, err := listener.Accept()
+		if err != nil {
+			received <- ""
+			return
+		}
+		defer conn.Close()
+		line, _ := bufio.NewReader(conn).ReadString('\n')
+		received <- line
+		_, _ = conn.Write([]byte(`{"status":0,"result":{"has_password":false}}` + "\n"))
+	}()
+
+	err = dialSetPassword(socket)(context.Background(), "operator-sid", "root", "new-secret")
+	if !errors.Is(err, errUntrustedHelper) {
+		t.Fatalf("error = %v, want errUntrustedHelper", err)
+	}
+	if line := <-received; line != "" {
+		t.Fatalf("the impostor received %q", line)
+	}
+}
+
+func TestCallHelperProtocol(t *testing.T) {
+	socket := filepath.Join(t.TempDir(), "helper.sock")
+	listener := listenAsHelper(t, socket)
 	defer listener.Close()
 
 	done := make(chan error, 1)
@@ -63,10 +126,7 @@ func TestPackageDetailAndBrowseVerbsCarrySessionAndExactArguments(t *testing.T) 
 	for _, method := range []string{"pkgBrowse", "pkgFiles", "pkgUpgradeOne"} {
 		t.Run(method, func(t *testing.T) {
 			socket := filepath.Join(t.TempDir(), "helper.sock")
-			listener, err := net.Listen("unix", socket)
-			if err != nil {
-				t.Fatal(err)
-			}
+			listener := listenAsHelper(t, socket)
 			defer listener.Close()
 			done := make(chan error, 1)
 			go func() {
@@ -123,10 +183,7 @@ func TestPackageDetailAndBrowseVerbsCarrySessionAndExactArguments(t *testing.T) 
 // the shell brokers firewall state without interpreting it (ADR-007).
 func TestFirewallCountersPassesResultThrough(t *testing.T) {
 	socket := filepath.Join(t.TempDir(), "helper.sock")
-	listener, err := net.Listen("unix", socket)
-	if err != nil {
-		t.Fatal(err)
-	}
+	listener := listenAsHelper(t, socket)
 	defer listener.Close()
 
 	done := make(chan error, 1)
@@ -177,10 +234,7 @@ func helperReplying(t *testing.T, method, body string) string {
 func helperReplyingTo(t *testing.T, method string, args map[string]string, body string) string {
 	t.Helper()
 	socket := filepath.Join(t.TempDir(), "helper.sock")
-	listener, err := net.Listen("unix", socket)
-	if err != nil {
-		t.Fatal(err)
-	}
+	listener := listenAsHelper(t, socket)
 	t.Cleanup(func() { _ = listener.Close() })
 	go func() {
 		conn, err := listener.Accept()
@@ -298,10 +352,7 @@ func TestFirmwareUpgradeReportsTheToolsOwnWords(t *testing.T) {
 
 func TestCallHelperMapsPermissionDenied(t *testing.T) {
 	socket := filepath.Join(t.TempDir(), "helper.sock")
-	listener, err := net.Listen("unix", socket)
-	if err != nil {
-		t.Fatal(err)
-	}
+	listener := listenAsHelper(t, socket)
 	defer listener.Close()
 	go func() {
 		conn, acceptErr := listener.Accept()
@@ -314,7 +365,7 @@ func TestCallHelperMapsPermissionDenied(t *testing.T) {
 		_ = json.NewEncoder(conn).Encode(map[string]any{"status": 6, "error": "permission denied"})
 	}()
 
-	err = callHelper(context.Background(), socket, "pkgStatus", "bad-sid", nil, nil)
+	err := callHelper(context.Background(), socket, "pkgStatus", "bad-sid", nil, nil)
 	if !errors.Is(err, ErrAccessDenied) {
 		t.Fatalf("error = %v, want ErrAccessDenied", err)
 	}

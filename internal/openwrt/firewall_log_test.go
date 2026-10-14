@@ -7,7 +7,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"net"
 	"path/filepath"
 	"testing"
 )
@@ -15,10 +14,7 @@ import (
 func TestFirewallLogCarriesSIDAndIndependentCursor(t *testing.T) {
 	for _, denied := range []bool{false, true} {
 		socket := filepath.Join(t.TempDir(), "helper.sock")
-		listener, err := net.Listen("unix", socket)
-		if err != nil {
-			t.Fatal(err)
-		}
+		listener := listenAsHelper(t, socket)
 		done := make(chan error, 1)
 		go func() {
 			defer listener.Close()

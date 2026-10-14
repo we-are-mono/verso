@@ -85,8 +85,9 @@ overwrites the other. What it does, and why each part matters:
   (`aarch64-unknown-linux-musl` or `x86_64-unknown-linux-musl`). `verso-rpcd`
   is one long-running root daemon, not an rpcd exec plugin: the Go shell reaches
   it over
-  `/var/run/verso/verso-rpcd.sock`, and every request carries the operator SID,
-  which the helper validates through native ubus `session.access` before acting.
+  `/var/run/verso-rpcd/verso-rpcd.sock`, only to a listener the kernel reports
+  as root, and every request carries the operator SID, which the helper
+  validates through native ubus `session.access` before acting.
   Verso samples per-interface counters from `/sys/class/net` once per second
   (latest 60 samples, in memory); it does not enumerate conntrack or query ASK/FCI.
 
