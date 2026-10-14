@@ -138,12 +138,13 @@
   grid-template-columns: var(--verso-form-width, 40rem) minmax(0, 1fr);
 }
 
-/* A row's own air around its 24px lines: 8px over the first and 7px under
-   the last, its hairline the next pixel, so a row of one line is 40px and one
-   of two is 64px however its values wrap. */
+/* A row's own air around its 24px lines: 7px over the first, after the
+   hairline it stands under, and 8px under the last, so its lines fill whole
+   bands of the grid, the next hairline lands on a line, and a row of one line
+   is 40px and one of two is 64px however its values wrap. */
 @utility py-row {
-  padding-top: calc(var(--spacing) * 2);
-  padding-bottom: calc(var(--spacing) * 1.75);
+  padding-top: calc(var(--spacing) * 1.75);
+  padding-bottom: calc(var(--spacing) * 2);
 }
 
 /* Native buttons inherit the press treatment, including controls inserted by
@@ -1060,6 +1061,9 @@ html {
   @container overview (min-width: 52rem) {
     .verso-overview-cols { grid-template-columns: repeat(2, calc(round(down, calc((100% - var(--spacing-inset) - 1px) / 2), 8px) + 1px)); }
   }
+  /* The cards give their last bottom pixel back, as the page's last card
+     does, so the colophon's hairline under them lands on a line. */
+  .verso-overview > .verso-overview-cols:has(> [data-overview-col]) { margin-bottom: -1px; }
   .verso-overview-col { display: grid; row-gap: calc(var(--spacing-inset) - 1px); align-content: start; min-width: 0; min-height: 4rem; border-radius: var(--radius-xs); }
   /* Arranging rules each column off 8px outside it, a dashed frame of its
      own rather than an outline, so its corners keep a card's 2px and its four

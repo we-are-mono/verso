@@ -63,13 +63,12 @@ func TestListAddHoversAsEverySecondaryButton(t *testing.T) {
 }
 
 // TestListRowsTakeTheirHeightFromPadding: a list's values are rows, and a row's
-// height is its line plus its padding, never a fixed floor — the value's 20px
-// line with 10px over it and 9px under it plus the hairline above every row, a
-// row of two cells, the 28px remove riding the line. The first row's hairline
-// is the label's own line, so the set pulls up a pixel and gives it back at
-// its foot, and only when it holds something; the add box stands centred in
-// the two cells after it, so a set with nothing in it puts its box directly
-// under the label.
+// height is its line plus its padding, never a fixed floor — the value's 24px
+// line 7px after the hairline above every row and 8px over the next, so its
+// line fills a band of the grid, the 28px remove riding the line. The first
+// row's hairline goes clear and keeps its pixel, on the line under the label;
+// the add box stands 8px after the last row, so a set with nothing in it puts
+// its box directly under the label.
 func TestListRowsTakeTheirHeightFromPadding(t *testing.T) {
 	got := render(t, newRenderer(t), &List{Name: "server", Label: "Time servers", Style: "rows", Prompt: "Add a server",
 		Items: []string{"0.openwrt.pool.ntp.org", "1.openwrt.pool.ntp.org"}})
@@ -88,8 +87,8 @@ func TestListRowsTakeTheirHeightFromPadding(t *testing.T) {
 	if strings.Contains(got, "min-h-8") {
 		t.Errorf("no fixed row floor:\n%s", got)
 	}
-	if !strings.Contains(got, `<div data-verso-list-items class="has-[>*]:-mt-px has-[>*]:mb-px">`) || !strings.Contains(got, `<div class="flex items-center gap-2 pt-2">`) {
-		t.Errorf("the set takes the label's line for its first hairline only when it holds something, and the add box stands 8px under it:\n%s", got)
+	if !strings.Contains(got, `<div data-verso-list-items>`) || !strings.Contains(got, `<div class="flex items-center gap-2 pt-2">`) {
+		t.Errorf("the set's rows start on the line under the label, and the add box stands 8px under them:\n%s", got)
 	}
 }
 

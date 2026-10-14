@@ -32,11 +32,11 @@
   </div>
 
   {{/* The shelf is a frame 24px under the heading line, its top edge on a
-       line: its words write on one 24px line, 8px under the top edge and 7px
-       over the bottom, so its bottom border lands on a line too, and its 28px
-       chips ride that line. It gives that border's pixel back, so the cards
-       24px under it start on a line. */}}
-  <div data-overview-shelf class="mt-6 -mb-px hidden flex-wrap items-center gap-x-2 gap-y-6 rounded-xs border border-dashed border-rule-strong bg-quiet px-3 pt-2 pb-1.75 text-sm leading-6 text-meta group-data-arranging/overview:flex">
+       line: its words write on one 24px line, 7px after the top edge, so they
+       fill a band of the grid, and 8px over the bottom, so its bottom border
+       lands on a line too, and its 28px chips ride that line. It gives that
+       border's pixel back, so the cards 24px under it start on a line. */}}
+  <div data-overview-shelf class="mt-6 -mb-px hidden flex-wrap items-center gap-x-2 gap-y-6 rounded-xs border border-dashed border-rule-strong bg-quiet px-3 pt-1.75 pb-2 text-sm leading-6 text-meta group-data-arranging/overview:flex">
     <span class="mr-1">{{if .Hidden}}{{ t "Hidden" }}{{else}}{{ t "No hidden cards" }}{{end}}</span>
     {{range .Hidden}}
     <button type="button" data-overview-restore="{{.ID}}" data-tone="{{.Tone}}" class="group/chip -my-1 inline-flex h-7 cursor-pointer items-center gap-2 rounded-xs border border-rule-strong bg-ground px-2.5 text-ink transition-colors hover:border-denim-line hover:bg-denim-soft hover:text-denim-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim">
@@ -61,14 +61,16 @@
      the header is where it is picked up, and the grip and hide stand in for
      the door and the chevron. */}}
 {{define "overview.card"}}
-{{/* On the grid the frame's top and left borders are lines, as a page
-     card's are; the header is 48px (a 24px line, 12px over, 11px under, the
-     body's hairline or the frame's bottom the next pixel) with its 28px acts
-     riding the line, its words 24px in; the body opens 24px under its
-     hairline and ends 23px over the frame, so content on the grid closes on a
-     line and the next card, 23px on, starts on one. */}}
+{{/* On the grid the frame's borders are lines, as a page card's are; the
+     header is 48px from the frame's line to its hairline's (11px after the
+     frame, a 24px line, 12px under it, the body's hairline or the frame's
+     bottom the next pixel), its title centred on the header's middle line,
+     its 28px acts riding the line, its words 24px in; the body opens 23px
+     after its hairline, so its lines fill whole bands of the grid, and ends
+     24px over the frame, so the frame's bottom lands on a line and the next
+     card, 23px on, starts on one. */}}
 <article data-overview-card="{{.ID}}" data-tone="{{.Head.Tone}}"{{if .Closed}} data-closed{{end}} aria-labelledby="overview-card-{{.ID}}" class="group/card @container/card verso-overview-card min-w-0 rounded-xs border border-rule-strong bg-ground">
-  <header data-overview-card-head class="flex min-w-0 cursor-pointer items-center gap-2 pt-3 pr-2.5 pb-2.75 pl-6 leading-6 select-none group-data-arranging/overview:cursor-grab group-data-arranging/overview:pl-1.5">
+  <header data-overview-card-head class="flex min-w-0 cursor-pointer items-center gap-2 pt-2.75 pr-2.5 pb-3 pl-6 leading-6 select-none group-data-arranging/overview:cursor-grab group-data-arranging/overview:pl-1.5">
     <button type="button" data-overview-grip aria-label="{{printf (t "Move %s. Arrow keys move it.") .Title}}" class="hidden -my-1 {{template "verso-btn-icon"}} cursor-grab group-data-arranging/overview:grid">{{icon "grip-vertical" "size-4"}}</button>
     <span aria-hidden="true" class="flex shrink-0 text-glyph">{{icon .Icon "size-4"}}</span>
     {{/* The title and the closed card's reading share their baseline on one
@@ -86,7 +88,7 @@
     <button type="button" data-overview-toggle aria-expanded="{{if .Closed}}false{{else}}true{{end}}" aria-controls="overview-card-body-{{.ID}}" aria-label="{{if .Closed}}{{printf (t "Open %s") .Title}}{{else}}{{printf (t "Close %s") .Title}}{{end}}" data-open-label="{{printf (t "Open %s") .Title}}" data-close-label="{{printf (t "Close %s") .Title}}" class="grid -my-1 {{template "verso-btn-icon"}} group-data-arranging/overview:hidden"><span class="verso-overview-chevron flex">{{icon "chevron-down" "size-4"}}</span></button>
     <button type="button" data-overview-hide aria-label="{{printf (t "Hide %s") .Title}}" title="{{t "Hide"}}" class="hidden -my-1 {{template "verso-btn-icon"}} hover:border-crimson-line hover:bg-crimson-soft hover:text-crimson-deep group-data-arranging/overview:grid">{{icon "x" "size-4"}}</button>
   </header>
-  <div id="overview-card-body-{{.ID}}" class="verso-overview-body"><div class="min-h-0 overflow-hidden"><div class="verso-overview-content border-t border-rule px-6 pt-6 pb-5.75">{{.Body}}</div></div></div>
+  <div id="overview-card-body-{{.ID}}" class="verso-overview-body"><div class="min-h-0 overflow-hidden"><div class="verso-overview-content border-t border-rule px-6 pt-5.75 pb-6">{{.Body}}</div></div></div>
 </article>
 {{end}}
 
@@ -97,11 +99,13 @@
 <div class="grid gap-6">
   {{if .Uplink}}<div class="min-w-0">{{.Uplink}}</div>{{end}}
   {{range .Families}}
-  <section aria-label="{{.Kind}}" class="min-w-0">
+  <section aria-label="{{.Kind}}" class="min-w-0 [&>div+dl>div:first-child]:pt-1.75">
     {{/* the family's name heads its rows as a row of its own: its 24px line,
-         8px over and 7px under, its chip centred on the line, and a Strong
-         Hairline under it, as a lane's head has; families stand 24px apart. */}}
-    <div class="flex items-center gap-3 border-b border-rule-strong py-row">
+         8px over and under, its chip centred on the line, and a Strong
+         Hairline under it on a line, as a lane's head has; its first row
+         stands 7px after that hairline, as every row after one does, and
+         families stand 24px apart. */}}
+    <div class="flex items-center gap-3 border-b border-rule-strong py-2">
       <h3 class="text-sm leading-6 font-semibold text-ink">{{.Kind}}</h3>
       {{if .Proto}}<span class="{{template "verso-chip-class"}}">{{.Proto}}</span>{{end}}
     </div>

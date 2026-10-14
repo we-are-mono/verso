@@ -14,13 +14,14 @@
      the tone's hairline frames it instead of a mark.
 
      Both write on 24px lines and are a multiple of 8px tall with their
-     frame, so they flow as any box does. The compact band keeps 8px inside
-     at the top and 6px at the bottom, a row's 40px for a line; the full
-     block keeps 24px over its words and 22px under them. */}}
+     frame, so they flow as any box does: the frame's top border on a line,
+     the words 7px inside it above and below (the full block 23px), so they
+     fill whole bands of the grid and a line of them is a row's 40px. */}}
 {{/* callout.verbatim: what a tool reported, in its own words, under a hairline
-     of the band's tone 12px down: mono, wrapping rather than scrolling, the
-     copy control riding its first line. */}}
-{{define "callout.verbatim"}}<div class="mt-3 flex items-start border-t pt-2.75 leading-6 {{if eq .Variant "success"}}border-green-line{{else if eq .Variant "warning"}}border-marigold-line{{else if eq .Variant "danger"}}border-crimson-line{{else if eq .Variant "neutral"}}border-rule{{else}}border-denim-line{{end}}">
+     of the band's tone 8px down, on a line, its words 7px after it so they
+     fill bands of the grid: mono, wrapping rather than scrolling, the copy
+     control riding its first line. */}}
+{{define "callout.verbatim"}}<div class="mt-2 flex items-start border-t pt-1.75 leading-6 {{if eq .Variant "success"}}border-green-line{{else if eq .Variant "warning"}}border-marigold-line{{else if eq .Variant "danger"}}border-crimson-line{{else if eq .Variant "neutral"}}border-rule{{else}}border-denim-line{{end}}">
   <p class="min-w-0 font-mono text-base leading-6 font-medium [overflow-wrap:anywhere] whitespace-pre-wrap">{{.Verbatim}}</p>
   <button type="button" x-data="copy" @click="run" :data-copy-failed="failed" aria-label="{{ t "Copy" }}" class="verso-copy-inline group/copy relative -my-1 grid size-7 shrink-0 cursor-pointer place-items-center rounded-xs border border-transparent transition-colors hover:bg-white/50 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-current">
     <span x-ref="src" class="hidden">{{.Verbatim}}</span>
@@ -33,9 +34,9 @@
 {{/* It explains the control it sits under, so it keeps that control's
      measure — the form's — rather than running past it. */}}
 {{/* Framed as every band is, in its tone one step darker than its ground.
-     Its words stand 8px inside the frame above and 6px below, so a line of
-     them is a row's 40px with the frame. */}}
-<div data-verso-callout class="flex w-full max-w-(--container-3xl) items-start gap-2 rounded-xs border px-3 pt-2 pb-1.5 text-left text-sm leading-6 has-[[data-verso-callout-acts]]:pb-1.75
+     Its words stand 7px inside the frame above and below, so a line of them
+     is a row's 40px with the frame and fills a band of the grid. */}}
+<div data-verso-callout class="flex w-full max-w-(--container-3xl) items-start gap-2 rounded-xs border px-3 py-1.75 text-left text-sm leading-6
   {{if eq .Variant "success"}}border-green-line bg-green-soft text-green-deep
   {{else if eq .Variant "warning"}}border-marigold-line bg-marigold-soft text-marigold-deep
   {{else if eq .Variant "danger"}}border-crimson-line bg-crimson-soft text-crimson-deep
@@ -58,7 +59,7 @@
   </div>
 </div>
 {{else}}
-<div data-verso-callout class="flex w-full flex-col rounded-xs border px-6 pt-6 pb-5.5 text-left text-sm leading-6 has-[[data-verso-callout-acts]]:pb-5.75
+<div data-verso-callout class="flex w-full flex-col rounded-xs border px-6 py-5.75 text-left text-sm leading-6
   {{if eq .Variant "success"}}border-green-line bg-green-soft text-green-deep
   {{else if eq .Variant "warning"}}border-marigold-line bg-marigold-soft text-marigold-deep
   {{else if eq .Variant "danger"}}border-crimson-line bg-crimson-soft text-crimson-deep
@@ -72,9 +73,7 @@
 </div>
 {{end}}
 {{/* callout.acts: what resolves the notice, inside the band — a row of
-     32px buttons 24px under its words, less the band's top border's pixel,
-     so the buttons stand on the band's lines rather than a pixel past them;
-     the band gives the pixel back under them and stays on the grid. The
-     buttons keep their own shape and take the band's ink (input.css,
-     data-verso-callout-acts). */}}
-{{define "callout.acts"}}{{if .RenderedActs}}<div data-verso-callout-acts class="mt-5.75 flex flex-wrap items-center gap-x-3 gap-y-2">{{range .RenderedActs}}{{.}}{{end}}</div>{{end}}{{end}}
+     32px buttons 24px under its words, so the buttons stand on the band's
+     lines and the band stays on the grid. The buttons keep their own shape
+     and take the band's ink (input.css, data-verso-callout-acts). */}}
+{{define "callout.acts"}}{{if .RenderedActs}}<div data-verso-callout-acts class="mt-6 flex flex-wrap items-center gap-x-3 gap-y-2">{{range .RenderedActs}}{{.}}{{end}}</div>{{end}}{{end}}

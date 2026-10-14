@@ -24,11 +24,12 @@
      a neutral dot. Colour is reserved for state (the fill + dot tone). */}}
 {{/* The bar and its dot share the reading's band: green in the ordinary range,
      marigold past the warn trip, crimson past critical — the canvas's meter. */}}
-{{/* A row of the notebook's grid: its 20px line with 10px over it and 9px
-     under it, its hairline the line after; the last row draws none and keeps
-     the pixel as air. On a phone the name's column narrows and the track's
-     gives way, so the row keeps to its card. */}}
-<div class="grid grid-cols-[7rem_minmax(0,1fr)_6.5rem] sm:grid-cols-[9.5rem_minmax(0,1fr)_6.5rem] items-center gap-6 border-b border-rule py-row leading-6 last:border-0 last:pb-2"{{if .Name}} data-verso-meter="{{.Name}}"{{end}} role="img" aria-label="{{.Label}} {{.Value}} {{.Unit}}">
+{{/* A row on the grid: its 24px line 7px after the hairline above and 8px
+     over its own, which lands on a line; the first row, with no hairline
+     over it, keeps 8px over its line, and the last draws none, so the run
+     starts and ends on lines. On a phone the name's column narrows and the
+     track's gives way, so the row keeps to its card. */}}
+<div class="grid grid-cols-[7rem_minmax(0,1fr)_6.5rem] sm:grid-cols-[9.5rem_minmax(0,1fr)_6.5rem] items-center gap-6 border-b border-rule py-row leading-6 first:pt-2 last:border-0"{{if .Name}} data-verso-meter="{{.Name}}"{{end}} role="img" aria-label="{{.Label}} {{.Value}} {{.Unit}}">
   <span class="truncate text-sm font-medium text-ink">{{.Label}}</span>
   {{if .NoTrack}}
   <span class="flex min-w-0 items-center gap-2 text-sm text-meta"><span class="size-1.5 shrink-0 rounded-[1px] border border-faint" aria-hidden="true"></span><span class="truncate">{{if .Detail}}{{.Detail}}{{else}}{{ t "no limits reported" }}{{end}}</span></span>

@@ -12,11 +12,13 @@
 {{define "settings.value"}}<input id="{{.Name}}" type="text" name="{{.Name}}" value="{{.Value}}"{{with .DescribedBy}} aria-describedby="{{.}}"{{end}}{{if .Inline}} data-verso-inline-input{{with .Datatype}} data-verso-datatype="{{.}}"{{end}}{{end}}{{if eq .Measure "number"}} inputmode="numeric"{{end}} class="{{template "verso-input-class"}} {{template "verso-input-border" .Inline}} tabular-nums{{if eq .Measure "number"}} w-24! max-w-full{{end}}">{{end}}
 {{define "settings.row"}}
   {{if .Frame}}{{.Frame}}{{else}}
-  {{/* Read-only facts and policy pills are fields on the grid: 24px of air
-       (a row's 10px, condensed), the name's 20px line and the description's,
-       and the hairline the line after the air under them. The pills ride
-       the name's line. */}}
-  <div data-verso-settings-row class="flex items-start gap-3 {{if .Condensed}}py-row{{else}}pt-6 pb-5.75{{end}} border-b border-rule last:border-b-0 last:pb-0 [&:has(+details)]:border-b-0">
+  {{/* Read-only facts and policy pills are fields on the grid: 23px after the
+       hairline above (a row's 7px, condensed; the first, with no hairline
+       over it, the full 24px or 8px), the name's 24px line and the
+       description's, filling whole bands, and the full 24px (8px) under them
+       to the hairline, which lands on a line. The pills ride the name's
+       line. */}}
+  <div data-verso-settings-row class="flex items-start gap-3 {{if .Condensed}}py-row first:pt-2{{else}}pt-5.75 pb-6 first:pt-6{{end}} border-b border-rule last:border-b-0 last:pb-0 [&:has(+details)]:border-b-0">
     <div class="min-w-0 flex-1">
       <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
         <div class="text-base leading-6 font-semibold text-ink">{{.Title}}</div>

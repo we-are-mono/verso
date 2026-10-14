@@ -25,11 +25,14 @@ var edgeTrim = regexp.MustCompile(`(?:^|[\s"'])((?:first|last|only)(?:-of-type)?
 func TestRowsNeverTrimTheirOwnEdges(t *testing.T) {
 	allowed := map[string]string{
 		"settings.html.tmpl last:pb-0": "a read-only facts listing closes on its last line, inside no section's rows",
-		// A last row that draws no hairline keeps that pixel as air instead —
-		// it adds to its edge rather than trimming it, so the row stays 16px
-		// more than its lines and ends on one.
-		"meter.html.tmpl last:pb-2":      "a last reading keeps its hairline's pixel as air",
-		"properties.html.tmpl last:pb-2": "a last fact keeps its hairline's pixel as air",
+		// A row stands 7px after the hairline over it; a first row has none
+		// over it and starts on a line, so it keeps the full 8px — it adds to
+		// its edge rather than trimming it, so its line fills a band of the
+		// grid and its hairline lands on a line.
+		"meter.html.tmpl first:pt-2":      "a first reading has no hairline over it",
+		"properties.html.tmpl first:pt-2": "a first fact has no hairline over it",
+		"settings.html.tmpl first:pt-2":   "a first condensed fact has no hairline over it",
+		"settings.html.tmpl first:pt-6":   "a first fact has no hairline over it",
 	}
 	files, err := filepath.Glob("templates/*.tmpl")
 	if err != nil {

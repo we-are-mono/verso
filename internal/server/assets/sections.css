@@ -175,7 +175,7 @@
      the same answer, so it stands 24px under the one before and draws no
      rule of its own. */
   [data-verso-code-divider] {
-    margin-top: calc(var(--spacing) * 10 - 1px);
+    margin-top: calc(var(--spacing) * 10);
     padding-top: calc(var(--spacing) * 10 - 1px);
   }
   [data-verso-code-divider] + [data-verso-code-divider] {
@@ -199,9 +199,12 @@
  * in a Strong Hairline frame, its heading band the card's header behind a
  * hairline, its rules reaching the card's edges as a drawer's reach its own.
  * Cards stand 24px apart, their words 24px in. A frame's edges are lines of
- * the grid: its top border lands on one, so its bottom air and the gap after
- * it each give back the border's pixel and its bottom border and the next
- * card's top land on lines too. A drawer's sections keep their bands. A page
+ * the grid, and its body's lines fill whole bands of it: its top border lands
+ * on a line and the air after it is a pixel short of 24, so the body starts on
+ * the line 24px down; the body ends on a line, the air under it is the full
+ * 24px, so the bottom border lands on a line, and the gap after it gives that
+ * pixel back so the next card's top does too. A drawer's sections keep their
+ * bands. A page
  * form's untitled run of fields is a card with no header, so no field stands
  * loose on the sand.
  *
@@ -214,10 +217,16 @@
   border: 1px solid var(--color-rule-strong);
   border-radius: var(--radius-xs);
   background-color: var(--color-ground);
-  padding: 0 var(--spacing-inset) calc(var(--spacing-inset) - 1px);
+  padding: 0 var(--spacing-inset) var(--spacing-inset);
 }
 .verso-page-body section[data-verso-section][data-verso-headless][data-verso-ruled]:not(section section, dialog *) {
-  padding-top: var(--spacing-inset);
+  padding-top: calc(var(--spacing-inset) - 1px);
+}
+/* Under the header's hairline the body takes its pixel back, so what stands
+ * first (a field's air, a block's 24px) starts its lines on the grid. A
+ * listing that opens the body stands straight on the hairline instead. */
+.verso-page-body section[data-verso-section]:not(section section, dialog *) > [data-verso-section-band]:not(:has([data-verso-section-lede])) + .verso-rhythm:not(:has(> [data-verso-listing]:first-child)) {
+  margin-top: -1px;
 }
 .verso-page-body :not(input[type="hidden"], template, script, [hidden]) ~ section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]):not(section section, dialog *),
 .verso-page-body > .verso-stack > * + .verso-stack:has(> section[data-verso-section]:first-child > [data-verso-section-band]) {
@@ -229,10 +238,17 @@
 .verso-page-body > .verso-stack > * {
   margin-bottom: 0;
 }
-/* The header is 48px: 12px over the title's 24px line, 11px under it, then
- * its hairline. */
+/* The page's last card gives its bottom border's pixel back as every card
+ * does to the next, so the colophon's hairline, the page's 40px on, lands on
+ * a line. */
+:is(.verso-page-body, .verso-page-body > .verso-stack, .verso-page-body > .verso-stack > .verso-stack:last-child) > :is(section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]), [data-verso-listing], [data-verso-code-divider]):last-child {
+  margin-bottom: -1px;
+}
+/* The header is 48px from the frame's line to its hairline's: 11px after the
+ * frame, the title's 24px line, 12px under it, then its hairline, so the
+ * title stands centred on the header's middle line. */
 .verso-page-body section[data-verso-section]:not(section section, dialog *) > [data-verso-section-band] {
-  padding-block: calc(var(--spacing) * 3) calc(var(--spacing) * 2.75);
+  padding-block: calc(var(--spacing) * 2.75) calc(var(--spacing) * 3);
   border-top-width: 0;
   border-bottom: 1px solid var(--color-rule);
 }
@@ -246,9 +262,26 @@
 }
 .verso-page-body section[data-verso-section]:not(section section, dialog *) > [data-verso-section-band] > :has(> [data-verso-section-lede]) {
   width: calc(100% + var(--spacing-inset) * 2);
-  margin: calc(var(--spacing) * 2.75) calc(var(--spacing-inset) * -1) 0;
+  margin: calc(var(--spacing) * 3) calc(var(--spacing-inset) * -1) 0;
   border-top: 1px solid var(--color-rule);
-  padding: var(--spacing-inset) var(--spacing-inset) 0;
+  padding: calc(var(--spacing-inset) - 1px) var(--spacing-inset) 0;
+}
+/* A row stands 7px after the hairline over it. A table with no column heads
+ * has none over its first row, so it stands a pixel down, as if under one,
+ * and every row, a lane's band too, keeps its own air and lands its hairline
+ * on a line. One that opens a card's body already stands on the header's
+ * hairline. */
+.verso-page-body .verso-table:not(:has(> thead)):not(dialog *) {
+  padding-top: 1px;
+}
+.verso-page-body section[data-verso-section] > [data-verso-section-band]:not(:has([data-verso-section-lede])) + .verso-rhythm > [data-verso-listing]:first-child .verso-table {
+  padding-top: 0;
+}
+/* A listing in a card's flow closes on its last row's hairline, on a line,
+ * and gives that pixel back to what follows, as a card does, so the next
+ * block's lines still fill bands of the grid. */
+.verso-page-body section[data-verso-section]:not(dialog *) > .verso-rhythm > [data-verso-listing]:not(:last-child) {
+  margin-bottom: -1px;
 }
 /* A listing in a card runs to the card's edges, its words 24px in, and one
  * that ends the card closes on the frame. */
@@ -292,7 +325,7 @@
  * is framed as a card is: a pixel more under its words, so its bottom border
  * lands on a line, and that pixel given back to what follows. */
 :is(.verso-page-body > [data-verso-slot], .verso-page-body > .verso-stack > [data-verso-slot]) {
-  padding-bottom: calc(var(--spacing) * 1.75);
+  padding-bottom: calc(var(--spacing) * 2);
   margin-bottom: -1px;
 }
 /* A listing's legend in a card keeps the card's inset and closes it. */
@@ -300,27 +333,32 @@
   padding: var(--spacing-inset);
 }
 /* A page's own listing is the card, so its legend follows it close, as a
- * caption does: 8px under the frame, its 24px lines closing on the grid, its
- * words in line with the card's edges, the stack's air after it. */
+ * caption does: 8px under the frame's line (7px after its pixel), its 24px
+ * lines filling whole bands of the grid, its words in line with the card's
+ * edges, the stack's air after it, the full 24px before a card. */
 .verso-page-body [data-verso-listing]:has(+ [data-verso-table-legend]) {
   margin-bottom: 0;
 }
 .verso-page-body [data-verso-listing] + [data-verso-table-legend] {
   margin-top: 0;
-  padding: calc(var(--spacing) * 2) 0 0;
+  padding: calc(var(--spacing) * 1.75) 0 0;
+}
+.verso-page-body :is([data-verso-listing] + [data-verso-table-legend]) ~ section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]):not(section section, dialog *):is([data-verso-table-legend] + *) {
+  margin-top: var(--spacing-inset);
 }
 /* A listing's column heads in a card are a row of the card's own Paper across
  * it, between hairlines, the heads in Ink sentence case: the row divides the
  * card's header from its rows, so neither draws a rule or air of its own
  * against it. Where the row opens the card (an untitled card, or under its
  * control band) the frame or the band's hairline is its top edge. It stands
- * as tall as a card's header: 48px, the 16px line with 16px over it and 15px
- * under, inside its hairlines. Under a titled card's header it draws no top
- * border: the header keeps its own hairline, on the line. */
+ * as tall as a card's header: 48px from the line of the edge over it to its
+ * own hairline's, the 16px line 15px after that edge and 16px over its
+ * hairline, centred on the row's middle line. Under a titled card's header it
+ * draws no top border: the header keeps its own hairline, on the line. */
 .verso-page-body :is(section[data-verso-section]:not(section section) > .verso-rhythm > [data-verso-listing], .verso-page-body > [data-verso-listing], .verso-page-body > .verso-stack > [data-verso-listing], .verso-page-body > .verso-stack > .verso-stack > [data-verso-listing]) > [data-verso-scroller] > table > thead > tr > th:not(dialog *) {
   border-top: var(--verso-head-top, 1px) solid var(--color-rule);
   border-bottom: 1px solid var(--color-rule);
-  padding-block: calc(var(--spacing) * 4 - var(--verso-head-top, 1px)) calc(var(--spacing) * 4 - 1px);
+  padding-block: calc(var(--spacing) * 4 - 1px) calc(var(--spacing) * 4);
   font-size: var(--text-sm);
   line-height: calc(var(--spacing) * 4);
   font-weight: 600;

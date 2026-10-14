@@ -274,11 +274,18 @@ func TestACardMeasuresOnTheEightPixelGrid(t *testing.T) {
 	for _, want := range []string{
 		// the inset: the reach of its rules and the padding around its body
 		"--verso-reach-start: var(--spacing-inset);\n  --verso-reach-end: var(--spacing-inset);",
-		"padding: 0 var(--spacing-inset) calc(var(--spacing-inset) - 1px);",
-		// the header: 12px over its 24px line, 11px under, then its hairline
-		"padding-block: calc(var(--spacing) * 3) calc(var(--spacing) * 2.75);\n  border-top-width: 0;\n  border-bottom: 1px solid var(--color-rule);",
-		// the column-head row: 16px over its 16px line, 15px under, its hairline
-		"padding-block: calc(var(--spacing) * 4 - var(--verso-head-top, 1px)) calc(var(--spacing) * 4 - 1px);",
+		// (the body ends on a line, so the full 24px under it, and a pixel
+		// short after the frame or the header's hairline, so its lines fill
+		// whole bands of the grid)
+		"padding: 0 var(--spacing-inset) var(--spacing-inset);",
+		"padding-top: calc(var(--spacing-inset) - 1px);",
+		"+ .verso-rhythm:not(:has(> [data-verso-listing]:first-child)) {\n  margin-top: -1px;\n}",
+		// the header: 11px after the frame, its 24px line, 12px under, then its
+		// hairline, the title centred on the header's middle line
+		"padding-block: calc(var(--spacing) * 2.75) calc(var(--spacing) * 3);\n  border-top-width: 0;\n  border-bottom: 1px solid var(--color-rule);",
+		// the column-head row: its 16px line 15px after the edge over it, 16px
+		// over its own hairline
+		"padding-block: calc(var(--spacing) * 4 - 1px) calc(var(--spacing) * 4);",
 		// the air between cards, less the frame's pixel so the next frame lands
 		// on a line
 		"[data-verso-section-band]) {\n  margin-top: calc(var(--spacing-inset) - 1px);\n}",
@@ -623,9 +630,10 @@ func TestTheRuleAfterASectionBringsItsOwnAir(t *testing.T) {
 		// a listing that ends its section gives its last hairline to the rule
 		// that closes it, clear but keeping its pixel
 		"section[data-verso-section] > .verso-rhythm > :last-child .verso-table > tbody > tr:last-child > td {\n    border-bottom-color: transparent;\n  }",
-		// the configuration card's rule is a section's rule: two cells under
-		// what it follows, the card two cells under it
-		"[data-verso-code-divider] {\n    margin-top: calc(var(--spacing) * 10 - 1px);\n    padding-top: calc(var(--spacing) * 10 - 1px);\n  }",
+		// the configuration card's rule is a section's rule: 40px under what it
+		// follows, which ends on a line, the card 40px under it, less the
+		// rule's own pixel
+		"[data-verso-code-divider] {\n    margin-top: calc(var(--spacing) * 10);\n    padding-top: calc(var(--spacing) * 10 - 1px);\n  }",
 	} {
 		if !strings.Contains(css, want) {
 			t.Errorf("sections.css is missing %s", want)

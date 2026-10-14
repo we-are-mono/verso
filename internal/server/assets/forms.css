@@ -45,6 +45,9 @@
     gap: 0 calc(var(--spacing) * 2);
     padding-block: var(--spacing-inset) 0;
   }
+  /* After a fact's hairline a field's air is a pixel short, as all air after
+     a drawn edge is, so its label still fills a band of the grid. */
+  [data-verso-settings-row]:not(:last-child) + .verso-field-row { padding-top: calc(var(--spacing-inset) - 1px); }
 
   .verso-field-control {
     display: flex;

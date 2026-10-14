@@ -434,8 +434,9 @@ func TestRenderPropertiesStyles(t *testing.T) {
 	items := []Property{{Label: "A", Value: "1"}, {Label: "B", Value: "2"}}
 
 	// Each ruled row draws its own hairline as its last pixel, landing it on a
-	// line of the grid; the last row keeps that pixel as air instead.
-	const hairlineRow = "border-b border-mid py-row leading-6 last:border-b-0 last:pb-2"
+	// line of the grid; the first, with no hairline over it, keeps 8px over its
+	// line, and the last draws none, so the run starts and ends on lines.
+	const hairlineRow = "border-b border-mid py-row leading-6 first:pt-2 last:border-b-0"
 	divided := render(t, r, &Properties{Items: items}) // default
 	if !strings.Contains(divided, hairlineRow) {
 		t.Errorf("default properties should use hairlines:\n%s", divided)
@@ -579,11 +580,11 @@ func TestRenderConfirm(t *testing.T) {
 		"border-crimson-line bg-crimson-soft", "text-crimson-deep", "size-1.5 flex-none\n    bg-crimson",
 		// The question is the compact callout in the act's tone: a row's
 		// height for a line, its words 10px inside.
-		`<div data-verso-callout class="flex w-full max-w-(--container-3xl) items-start gap-2 rounded-xs border px-3 pt-2 pb-1.5`,
+		`<div data-verso-callout class="flex w-full max-w-(--container-3xl) items-start gap-2 rounded-xs border px-3 py-1.75`,
 		// The answers are the band's acts, on the line a cell under the words;
 		// cancel keeps the explanation's tone and hovers by a soft wash, not a
 		// heavy colour darken.
-		`<div data-verso-callout-acts class="mt-5.75 flex flex-wrap items-center gap-x-3 gap-y-2"><button type="submit" x-ref="first"`, "hover:bg-crimson-line/50",
+		`<div data-verso-callout-acts class="mt-6 flex flex-wrap items-center gap-x-3 gap-y-2"><button type="submit" x-ref="first"`, "hover:bg-crimson-line/50",
 		"border-crimson bg-crimson text-white",
 		"verso-press",
 		// The trigger is a control like every other button: h-control holds
@@ -670,7 +671,7 @@ func TestRenderCallout(t *testing.T) {
 	// centre, framed one step darker than its ground as every band is, without
 	// the standing band's padding.
 	compact := render(t, r, &Callout{Compact: true, Body: "A short note."})
-	for _, want := range []string{"items-start", "gap-2", "px-3", "pt-2 pb-1.5", "border-denim-line", "mt-[0.5625rem] size-1.5", "bg-denim", "A short note."} {
+	for _, want := range []string{"items-start", "gap-2", "px-3", "py-1.75", "border-denim-line", "mt-[0.5625rem] size-1.5", "bg-denim", "A short note."} {
 		if !strings.Contains(compact, want) {
 			t.Errorf("compact callout missing %q in: %s", want, compact)
 		}
@@ -984,7 +985,7 @@ func TestRenderCodeInUciGrammar(t *testing.T) {
 		t.Fatal(err)
 	}
 	if !strings.Contains(got, `class="flex flex-col gap-2 border-t border-rule" data-verso-code-divider`) ||
-		!strings.Contains(string(sections), "[data-verso-code-divider] {\n    margin-top: calc(var(--spacing) * 10 - 1px);\n    padding-top: calc(var(--spacing) * 10 - 1px);\n  }") {
+		!strings.Contains(string(sections), "[data-verso-code-divider] {\n    margin-top: calc(var(--spacing) * 10);\n    padding-top: calc(var(--spacing) * 10 - 1px);\n  }") {
 		t.Errorf("the card stands a cell under its rule: %s", got)
 	}
 	// The path alone names the file: no glyph before it.
