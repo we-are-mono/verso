@@ -484,12 +484,15 @@ type SystemInfo struct {
 
 // Board is the subset of `ubus call system board` Verso renders: the firmware
 // release ("OpenWrt 25.12.4"), the kernel version ("Linux 6.12.101"), the
-// board_name that selects a hardware profile, and the human model string.
+// board_name that selects a hardware profile, and the human model string. Arch
+// is the package architecture the firmware was built for ("aarch64_generic"),
+// which ubus does not carry; it is read from /etc/apk/arch.
 type Board struct {
 	Firmware    string
 	Kernel      string
 	KernelBuild string
 	Target      string
+	Arch        string
 	BoardName   string
 	Model       string
 }
@@ -595,6 +598,7 @@ type NativeBackend struct {
 	restart        maintenanceFn
 	factoryReset   func(ctx context.Context, sid string, eraseHistory bool) error
 	kernelBuild    func() string
+	packageArch    func() string
 	uciChanges     uciChangesFn
 	uciRevert      uciRevertFn
 	uciApply       uciApplyFn
@@ -658,6 +662,14 @@ func NewNativeBackend() *NativeBackend {
 				return ""
 			}
 			return strings.TrimSpace(string(data))
+		},
+		packageArch: func() string {
+			data, err := os.ReadFile("/etc/apk/arch")
+			if err != nil {
+				return ""
+			}
+			line, _, _ := strings.Cut(string(data), "\n")
+			return strings.TrimSpace(line)
 		},
 		uciChanges:     dialUCIChanges(""),
 		configFileCall: nativeConfigFileCall,
@@ -725,6 +737,9 @@ func (b *NativeBackend) Board(ctx context.Context, sid string) (Board, error) {
 		if full := b.kernelBuild(); full != "" {
 			board.KernelBuild = condenseKernelBuild(full, board.Kernel)
 		}
+	}
+	if b.packageArch != nil {
+		board.Arch = b.packageArch()
 	}
 	return board, nil
 }

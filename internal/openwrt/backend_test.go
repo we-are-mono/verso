@@ -58,6 +58,7 @@ func TestBoardPrefersFullReleaseAndKernelBuild(t *testing.T) {
 			}, nil
 		},
 		kernelBuild: func() string { return "Linux version 6.12.101 (builder@host) #1 SMP" },
+		packageArch: func() string { return "aarch64_cortex-a53" },
 	}
 	got, err := b.Board(context.Background(), "sid")
 	if err != nil {
@@ -73,6 +74,9 @@ func TestBoardPrefersFullReleaseAndKernelBuild(t *testing.T) {
 	}
 	if got.Target != "qualcommax/ipq807x" {
 		t.Errorf("target = %q", got.Target)
+	}
+	if got.Arch != "aarch64_cortex-a53" {
+		t.Errorf("arch = %q, want the package architecture", got.Arch)
 	}
 }
 
