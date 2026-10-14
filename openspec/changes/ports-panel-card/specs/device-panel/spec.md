@@ -86,6 +86,13 @@ Each port on a generated panel SHALL carry its interface name and its negotiated
 - **THEN** `eth0`'s detail shows above it, naming its role, address and link
 - **AND** Escape hides it
 
+### Requirement: The router's panel carries no legend
+The router's panel SHALL draw no key to its LEDs or connector kinds: the LEDs read as LEDs, and each port's detail on hover or focus says what they show.
+
+#### Scenario: The Ports card
+- **WHEN** the Overview's Ports card shows the panel
+- **THEN** no legend stands between the panel and the list of ports
+
 ### Requirement: The link LED follows the cable live
 A port's link LED SHALL be lit while the port has link and dark while it has none, on board art and generated panels alike, and SHALL change within one second of a cable being plugged in or pulled out, with no reload.
 

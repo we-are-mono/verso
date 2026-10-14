@@ -36,9 +36,18 @@ the shell's. A plugin contributes no card: a plugin card would need a contract
 of its own, as the entity panel's tabs have, and is a decision of its own.
 
 Bodies compose the existing widgets (`Properties`, `Meter`, `Traffic`,
-`Table`). The Ports and Tunnels listings key their rows `interface:<name>` with
+`Table`, `Ports`). The Ports and Tunnels listings key their rows `interface:<name>` with
 the `rx-rate`, `tx-rate` and `state` cells the interface stream already
 writes, so no new cell kind or client code was needed for them to stay live.
+
+The Ports card opens with the router's panel (`Ports`): the board profile's
+own art, or the panel the shell generates for a board without art, every
+port in its place on the case. The listing under it follows the panel's
+left-to-right order, so the card has one order, and a DSA conduit, the
+switch's link to the SoC, is neither drawn nor listed nor counted. The panel
+carries no legend; each port's detail on hover or focus says what its LEDs
+show. It is built only while the card is shown, from the same snapshot and
+WAN state as the rest of the page.
 
 ### The header is the card's status
 

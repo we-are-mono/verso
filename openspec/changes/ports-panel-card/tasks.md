@@ -74,7 +74,7 @@
   - a conduit has no row and does not count toward "ports without link".
   
   Then add `Panel` to `Overview`, render it in `portsBody`, order the rows, and skip conduits in `portsHead` and the listing. Verify with `go test ./internal/widget ./internal/server`.
-- [ ] 4.3 Amend ADR-022 in place: the Ports card's body holds the device panel above its table, and the table follows the panel's order. Verify the ADR reads as what is, with no staging words.
+- [x] 4.3 Amend ADR-022 in place: the Ports card's body holds the device panel above its table, and the table follows the panel's order. Verify the ADR reads as what is, with no staging words.
 
 ## 5. Live LEDs over the stream
 
