@@ -237,6 +237,13 @@
   border-radius: var(--radius-xs);
   background-color: var(--color-ground);
   padding: 0 var(--verso-side) var(--spacing-inset);
+  /* The card already holds its blocks together, so they stand 24px apart,
+     as the first stands under the title, rather than a page's 40px. */
+  --verso-rhythm: var(--spacing-inset);
+}
+/* A titled part inside a card starts a group of its own, 40px on. */
+.verso-page-body section[data-verso-section]:not(section section, dialog *) > .verso-rhythm > * + section[data-verso-section] {
+  margin-top: var(--spacing-frame);
 }
 .verso-page-body section[data-verso-section][data-verso-headless][data-verso-ruled]:not(section section, dialog *) {
   padding-top: calc(var(--spacing-inset) - 1px);
