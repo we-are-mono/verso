@@ -37,7 +37,7 @@ The Overview SHALL show seven cards, each holding one kind of reading: Internet,
 - **THEN** the cards stand in one column, the left column's cards first, then the right column's
 
 ### Requirement: Each card's header carries its status
-Every card header SHALL show the card's icon and title. Cards with a verdict (Internet, Ports, Tunnels) show the verdict at the header's end as a status word with its packet in the verdict's tone, whether the card is open or closed. Cards of readings (Traffic, Resources, System, Hardware) show a status only when one of their readings is in a warning or danger band.
+Every card header SHALL show the card's icon and title. Cards with a verdict (Internet, Tunnels) show the verdict at the header's end as a status word with its packet in the verdict's tone, whether the card is open or closed. The Ports card shows a status only when a port a network uses has lost link or its state is unknown, since its panel and list already show every port linked. Cards of readings (Traffic, Resources, System, Hardware) show a status only when one of their readings is in a warning or danger band.
 
 #### Scenario: Internet is up
 - **WHEN** the uplink is up
@@ -46,6 +46,10 @@ Every card header SHALL show the card's icon and title. Cards with a verdict (In
 #### Scenario: A port loses link
 - **WHEN** a physical port that a network uses loses link
 - **THEN** the Ports header reads "1 port without link" in the warning tone
+
+#### Scenario: Every port in use linked
+- **WHEN** every physical port a network uses has link, and two spare ports have none
+- **THEN** the Ports header shows no status word
 
 #### Scenario: Readings are healthy
 - **WHEN** every Resources reading is in its normal band
@@ -183,7 +187,7 @@ Every reading the Overview takes SHALL appear in exactly one card, and each card
 #### Scenario: What each card holds
 - **WHEN** the Overview renders with every card open
 - **THEN** Internet holds the uplink's state, its device and how long it has been connected, and the IPv4 and IPv6 facts with their protocol
-- **AND** Ports holds each physical port's network, current rate and link
+- **AND** Ports holds the device panel, then each physical port's network, current rate and link
 - **AND** Tunnels holds each tunnel someone brought up, with its kind, current rate and state
 - **AND** Traffic holds the Internet graph and its window choice
 - **AND** Resources holds load, CPU, memory and storage
@@ -206,6 +210,22 @@ Every reading the Overview takes SHALL appear in exactly one card, and each card
 #### Scenario: Uptime is shown once
 - **WHEN** the Overview renders
 - **THEN** the router's uptime appears in the System card and nowhere else on the page
+
+### Requirement: The Ports card's table follows the panel
+The Ports card's table SHALL list the same ports as the device panel above it, in the panel's left-to-right order, so a DSA conduit is neither drawn nor listed and does not count toward the card's status.
+
+#### Scenario: The DK's order
+- **WHEN** the Ports card renders on the Mono Gateway DK
+- **THEN** its table rows read eth1, eth2, eth0, eth3, eth4, matching the panel above
+
+#### Scenario: A DSA conduit
+- **WHEN** a board's switch chip is linked through the conduit `eth0`
+- **THEN** the Ports card's table has no `eth0` row
+- **AND** `eth0` does not count toward "ports without link"
+
+#### Scenario: Ports card closed
+- **WHEN** the Ports card is closed
+- **THEN** neither the panel nor the table is shown, and the header shows its one reading
 
 ### Requirement: The Hardware card shows the board's headline readings
 The Hardware card SHALL show at most three rows, in this order, under the names the profile gives them: the CPU temperature (the entry flagged `cpu`), the main power rail (flagged `main`) with its draw, voltage and current, and the main fan (flagged `main`). A reading the board does not have has no row. Each value stands at the row's right edge, so a long name keeps one line. Every other reading stays on the Hardware page.
