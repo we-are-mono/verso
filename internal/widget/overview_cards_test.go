@@ -201,6 +201,36 @@ func TestPortsAndTunnelsCardBodies(t *testing.T) {
 	}
 }
 
+// TestPortsCardOpensWithThePanel: the router's panel heads the Ports card and
+// the listing under it follows the panel's left-to-right order, so the card
+// has one order; a DSA conduit is no port, so it has no row and its link
+// counts for nothing.
+func TestPortsCardOpensWithThePanel(t *testing.T) {
+	o := &Overview{InterfacesKnown: true,
+		Panel: &Ports{Items: []PortItem{
+			{Kind: "rj45", Label: "eth1", Iface: "eth1"}, {Kind: "rj45", Label: "eth2", Iface: "eth2"},
+			{Kind: "rj45", Label: "eth0", Iface: "eth0", Linked: true},
+		}},
+		Interfaces: []OverviewInterface{
+			{Name: "eth0", Physical: true, State: "up", Networks: []string{"wan"}},
+			{Name: "eth1", Physical: true, State: "up", Networks: []string{"lan"}},
+			{Name: "eth2", Physical: true, State: "up", Networks: []string{"lan"}},
+			{Name: "eth9", Physical: true, Conduit: true, State: "down", Networks: []string{"lan"}},
+		}}
+	ports := cardBody(t, o, "ports")
+	panel, eth1, eth2, eth0 := strings.Index(ports, "verso-panel-art"),
+		strings.Index(ports, `data-verso-row="interface:eth1"`), strings.Index(ports, `data-verso-row="interface:eth2"`), strings.Index(ports, `data-verso-row="interface:eth0"`)
+	if panel < 0 || !(panel < eth1 && eth1 < eth2 && eth2 < eth0) {
+		t.Errorf("want the panel, then eth1, eth2, eth0 (at %d, %d, %d, %d):\n%s", panel, eth1, eth2, eth0, ports)
+	}
+	if strings.Contains(ports, "interface:eth9") {
+		t.Error("a DSA conduit is no port and has no row")
+	}
+	if head := o.portsHead(identityTranslator); head.Status != "All ports linked" {
+		t.Errorf("a conduit's link counts for nothing; head = %+v", head)
+	}
+}
+
 func TestInternetCardBodySaysWhatIsMissing(t *testing.T) {
 	body := cardBody(t, &Overview{V4: []OverviewFact{{Label: "Address", Value: "192.0.2.1/24", Copy: true}}, V6: []OverviewFact{{Label: "Status", Value: "Not configured"}}}, "internet")
 	if !strings.Contains(body, "192.0.2.1/24") || !strings.Contains(body, `x-data="copy"`) {

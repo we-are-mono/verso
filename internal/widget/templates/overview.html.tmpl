@@ -96,6 +96,15 @@
      long it has been connected, then each address family, a fact list headed
      by its name and protocol (properties.html.tmpl), the families 24px
      apart. */}}
+{{/* overview.ports: the router's panel, then the list of its ports, a block
+     step apart. */}}
+{{define "overview.ports"}}
+<div class="grid gap-6">
+  <div class="min-w-0">{{.Panel}}</div>
+  {{.Table}}
+</div>
+{{end}}
+
 {{define "overview.internet"}}
 <div class="grid gap-6">
   {{if .Uplink}}<div class="min-w-0">{{.Uplink}}</div>{{end}}

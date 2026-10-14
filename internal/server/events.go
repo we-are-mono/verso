@@ -172,7 +172,7 @@ func liveInterfaces(topology []widget.OverviewInterface, snapshot telemetry.Snap
 	for _, iface := range snapshot.Interfaces {
 		n, ok := known[iface.Name]
 		if !ok {
-			n = widget.OverviewInterface{Name: iface.Name, Kind: iface.Kind, Physical: iface.Physical}
+			n = widget.OverviewInterface{Name: iface.Name, Kind: iface.Kind, Physical: iface.Physical, Conduit: iface.Conduit}
 		}
 		n.State = normalOperstate(iface.Operstate)
 		if len(iface.History) != 0 {

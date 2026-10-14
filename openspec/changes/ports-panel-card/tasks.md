@@ -68,7 +68,7 @@
   - a conduit is absent.
   
   Then move `hardwarePanel`/`panelPorts` into `devicePanel` on top of `internal/ports`. Verify with `go test ./internal/server`.
-- [ ] 4.2 Write `overview_cards_test.go` cases:
+- [x] 4.2 Write `overview_cards_test.go` cases:
   - the Ports body renders the panel before the table;
   - table rows follow the panel's order (DK: eth1, eth2, eth0, eth3, eth4);
   - a conduit has no row and does not count toward "ports without link".

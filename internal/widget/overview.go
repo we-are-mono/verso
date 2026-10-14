@@ -69,6 +69,9 @@ type Overview struct {
 	// Interfaces is the live listing: every kernel interface, enriched with its
 	// topology/UCI meaning.
 	Interfaces []OverviewInterface
+	// Panel is the router's panel that opens the Ports card, its ports in
+	// their place on the case; nil on a box with no ports.
+	Panel *Ports
 
 	// The Ports card's line includes the observed device count when available.
 	DevicesOnline int
@@ -83,10 +86,13 @@ type Overview struct {
 // OverviewInterface is one kernel interface enriched with runtime topology and
 // any matching UCI network meaning.
 type OverviewInterface struct {
-	Name      string
-	Kind      string
-	State     string
-	Physical  bool
+	Name     string
+	Kind     string
+	State    string
+	Physical bool
+	// Conduit marks a DSA conduit: physical, but the switch's link to the
+	// SoC, not a port on the case.
+	Conduit   bool
 	WAN       bool
 	Networks  []string
 	Relations []OverviewInterfaceRelation
@@ -103,6 +109,12 @@ type OverviewInterface struct {
 // cable is nobody's concern.
 func (n OverviewInterface) inUse() bool {
 	return len(n.Networks) > 0 || len(n.Relations) > 0
+}
+
+// port is whether the interface is a socket on the case: physical and no DSA
+// conduit.
+func (n OverviewInterface) port() bool {
+	return n.Physical && !n.Conduit
 }
 
 // kernelTunnels are the devices a tunnel module makes for itself when it

@@ -6,6 +6,7 @@ package widget
 import (
 	"fmt"
 	"html/template"
+	"slices"
 	"strings"
 
 	"github.com/we-are-mono/verso/internal/units"
@@ -123,7 +124,7 @@ func (o *Overview) portsHead(tr func(string) string) cardHead {
 	}
 	ports, down, unknown := 0, 0, 0
 	for _, n := range o.Interfaces {
-		if !n.Physical || !n.inUse() {
+		if !n.port() || !n.inUse() {
 			continue
 		}
 		ports++
@@ -185,17 +186,15 @@ func normalState(state string) string {
 	return strings.ToUpper(state[:1]) + state[1:]
 }
 
-// portsBody lists the physical ports: the network each carries, what moves on
-// it now, and its link, status last.
+// portsBody is the router's panel over the list of its ports: the network each
+// carries, what moves on it now, and its link, status last. The list follows
+// the panel's left-to-right order, so the card has one order.
 func (o *Overview) portsBody(r *Renderer, csrf string) (template.HTML, error) {
 	t := &Table{Columns: []TableColumn{
 		{Label: "Port", Kind: "mono"}, {Label: "Network", Kind: "entity"},
 		{Label: "Receive", Kind: "rate"}, {Label: "Transmit", Kind: "rate"}, {Label: "Status", Kind: "status"},
 	}, EmptyText: "No physical ports were found."}
-	for _, n := range o.Interfaces {
-		if !n.Physical {
-			continue
-		}
+	for _, n := range o.portsInPanelOrder() {
 		// A spare port carries no network and moves nothing, so it shows no
 		// rate; its link stays live like any port's.
 		if !n.inUse() {
@@ -215,7 +214,50 @@ func (o *Overview) portsBody(r *Renderer, csrf string) (template.HTML, error) {
 		}
 		t.Rows = append(t.Rows, interfaceRow(r.numbers(), n, TableCell{Chips: chips}))
 	}
-	return o.renderWidget(r, t, csrf)
+	table, err := o.renderWidget(r, t, csrf)
+	if err != nil || o.Panel == nil {
+		return table, err
+	}
+	panel, err := o.renderWidget(r, o.Panel, csrf)
+	if err != nil {
+		return "", err
+	}
+	return r.fragment("overview.ports", overviewPortsView{Panel: panel, Table: table})
+}
+
+type overviewPortsView struct {
+	Panel, Table template.HTML
+}
+
+// portsInPanelOrder is every port on the case, in the panel's left-to-right
+// order; a port the panel does not draw follows in the kernel's order.
+func (o *Overview) portsInPanelOrder() []OverviewInterface {
+	place := map[string]int{}
+	if o.Panel != nil {
+		for i, it := range o.Panel.Items {
+			place[it.Iface] = i + 1
+		}
+	}
+	var out []OverviewInterface
+	for _, n := range o.Interfaces {
+		if n.port() {
+			out = append(out, n)
+		}
+	}
+	slices.SortStableFunc(out, func(a, b OverviewInterface) int {
+		pa, pb := place[a.Name], place[b.Name]
+		switch {
+		case pa == pb:
+			return 0
+		case pa == 0:
+			return 1
+		case pb == 0:
+			return -1
+		default:
+			return pa - pb
+		}
+	})
+	return out
 }
 
 // ── Tunnels ──

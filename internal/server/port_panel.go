@@ -4,8 +4,6 @@
 package server
 
 import (
-	"context"
-
 	"github.com/we-are-mono/verso/internal/openwrt"
 	"github.com/we-are-mono/verso/internal/ports"
 	"github.com/we-are-mono/verso/internal/sensors"
@@ -21,11 +19,10 @@ type portKinds interface {
 // devicePanel is the router's panel, as the Overview's Ports card and the
 // Hardware page draw it: the profile's own art when it ships one, else the
 // panel the widget generates, with every port in its place on the case and
-// carrying its live link, activity, speed and WAN role. A box with no ports
-// gets none.
-func (s *Server) devicePanel(ctx context.Context, sid string, profile *sensors.Profile) *widget.Ports {
-	snapshot, _ := s.telemetrySnapshot(ctx)
-	wan, _ := s.backend.WANStatus(ctx, sid)
+// carrying its live link, activity, speed and WAN role. It reads the page's
+// own snapshot and WAN state, so the panel agrees with the rest of the page.
+// A box with no ports gets none.
+func (s *Server) devicePanel(snapshot telemetry.Snapshot, wan openwrt.WANState, profile *sensors.Profile) *widget.Ports {
 	var profileOrder []string
 	if profile != nil {
 		profileOrder = profile.Ports
@@ -53,7 +50,7 @@ func (s *Server) devicePanel(ctx context.Context, sid string, profile *sensors.P
 		}
 		items = append(items, item)
 	}
-	panel := &widget.Ports{Items: items, Legend: true}
+	panel := &widget.Ports{Items: items}
 	if profile != nil {
 		panel.Back = readPanel(profile.Dir, "back.svg")
 		panel.Front = readPanel(profile.Dir, "front.svg")

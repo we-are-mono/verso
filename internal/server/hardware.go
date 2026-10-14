@@ -77,7 +77,9 @@ func (s *Server) hardwareBody(r *http.Request, board openwrt.Board, profile *sen
 // hardwarePanel renders the router's panel (port_panel.go). A box with no
 // ports at all shows nothing.
 func (s *Server) hardwarePanel(r *http.Request, profile *sensors.Profile) widget.Widget {
-	if panel := s.devicePanel(r.Context(), s.sessionSID(r), profile); panel != nil {
+	snapshot, _ := s.telemetrySnapshot(r.Context())
+	wan, _ := s.wanStatus(r)
+	if panel := s.devicePanel(snapshot, wan, profile); panel != nil {
 		return panel
 	}
 	return nil

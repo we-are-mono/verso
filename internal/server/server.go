@@ -33,11 +33,13 @@ import (
 	"github.com/we-are-mono/verso/internal/openwrt"
 	"github.com/we-are-mono/verso/internal/plugin"
 	"github.com/we-are-mono/verso/internal/ports"
+	"github.com/we-are-mono/verso/internal/sensors"
 	"github.com/we-are-mono/verso/internal/sysstat"
 	"github.com/we-are-mono/verso/internal/telemetry"
 	"github.com/we-are-mono/verso/internal/updatecheck"
 	"github.com/we-are-mono/verso/internal/usage"
 	"github.com/we-are-mono/verso/internal/widget"
+	"github.com/we-are-mono/verso/profiles"
 )
 
 //go:embed templates/*.tmpl
@@ -1000,6 +1002,11 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	// Kernel interfaces come from the same process-wide telemetry snapshot as
 	// the WAN graph and are enriched with UCI topology.
 	ov.Interfaces = s.interfaceList(r.Context(), sid, snapshot, wan)
+	// The router's panel opens the Ports card, when the card is shown.
+	if ov.Layout.Shows("ports") {
+		profile, _ := sensors.LoadProfile(profiles.FS, board.BoardName)
+		ov.Panel = s.devicePanel(snapshot, wan, profile)
+	}
 	// Devices remain their own page; the Ports card carries their count.
 	ov.DevicesOnline, ov.DevicesKnown = s.onlineDevices()
 	// The verdict counts a firewall that is not fully loaded.

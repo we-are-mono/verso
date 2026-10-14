@@ -192,7 +192,7 @@ func (s *Server) interfaceList(ctx context.Context, sid string, snapshot telemet
 	for _, iface := range snapshot.Interfaces {
 		row := widget.OverviewInterface{
 			Name: iface.Name, Kind: iface.Kind, State: normalOperstate(iface.Operstate),
-			Physical: iface.Physical, WAN: wanDevices[iface.Name],
+			Physical: iface.Physical, Conduit: iface.Conduit, WAN: wanDevices[iface.Name],
 		}
 		if iface.Kind == "vlan" {
 			_, row.VLAN = deviceVLAN(iface.Name)

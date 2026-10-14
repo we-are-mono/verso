@@ -49,7 +49,7 @@ func (o *Overview) issues() int {
 		n++
 	}
 	for _, i := range o.Interfaces {
-		if ((i.Physical && i.inUse()) || i.tunnel()) && (i.State == "down" || i.State == "lowerlayerdown") {
+		if ((i.port() && i.inUse()) || i.tunnel()) && (i.State == "down" || i.State == "lowerlayerdown") {
 			n++
 		}
 	}

@@ -34,6 +34,14 @@ func physical(name, state string, pps uint64, speed int) telemetry.Interface {
 	}
 }
 
+// panelFor draws the panel from the server's own snapshot and WAN state, as a
+// page does.
+func panelFor(srv *Server, profile *sensors.Profile) *widget.Ports {
+	snapshot, _ := srv.telemetry.Snapshot(context.Background())
+	wan, _ := srv.backend.WANStatus(context.Background(), "sid")
+	return srv.devicePanel(snapshot, wan, profile)
+}
+
 func panelNames(p *widget.Ports) []string {
 	var names []string
 	for _, it := range p.Items {
@@ -55,9 +63,13 @@ func TestDevicePanelOnTheDK(t *testing.T) {
 	if !ok {
 		t.Fatal("the DK's profile should load")
 	}
-	panel := srv.devicePanel(context.Background(), "sid", profile)
+	panel := panelFor(srv, profile)
 	if panel == nil || panel.Back == "" {
 		t.Fatalf("the DK's panel should carry its art: %+v", panel)
+	}
+	// The LEDs speak for themselves, and each port's detail says the rest.
+	if panel.Legend {
+		t.Error("the router's panel carries no legend")
 	}
 	if got, want := panelNames(panel), []string{"eth1", "eth2", "eth0", "eth3", "eth4"}; !slices.Equal(got, want) {
 		t.Errorf("order = %v, want the profile's %v", got, want)
@@ -96,7 +108,7 @@ func TestDevicePanelWithoutAProfile(t *testing.T) {
 	srv.boardJSON = func() []byte {
 		return []byte(`{"network":{"lan":{"ports":["lan1","lan2"]},"wan":{"device":"wan"}}}`)
 	}
-	panel := srv.devicePanel(context.Background(), "sid", nil)
+	panel := panelFor(srv, nil)
 	if panel == nil {
 		t.Fatal("a board with ports gets a panel")
 	}
@@ -115,7 +127,7 @@ func TestDevicePanelWithoutAProfile(t *testing.T) {
 func TestDevicePanelWithoutPorts(t *testing.T) {
 	srv := newServer(t, fakeBackend{})
 	srv.telemetry = fakeTelemetry{snapshot: telemetry.Snapshot{Interfaces: []telemetry.Interface{{Name: "lo", Kind: "loopback"}}}}
-	if panel := srv.devicePanel(context.Background(), "sid", nil); panel != nil {
+	if panel := panelFor(srv, nil); panel != nil {
 		t.Errorf("no ports, no panel: %+v", panel)
 	}
 }
