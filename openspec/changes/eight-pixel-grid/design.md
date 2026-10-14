@@ -46,16 +46,16 @@ Add Tailwind v4 spacing tokens in `@theme`, so the utilities read by role. Tailw
 
 ### 2. Optical padding inside a component lives in named utilities
 
-A row's 10px/9px around its 20px line, a header's 14px/13px, and a strip's 16px/15px are component internals that centre text, so they are exempt from the 4px step. Each gets one `@utility` in `input.css` (`py-row`, `py-card-head`, `py-strip`, `py-colhead`), and templates use the name. This also removes most of the 400 fractional utilities from the templates.
+A row's 10px/9px around its 20px line, a header's 14px/13px, and a strip's 16px/15px are component internals that centre text, so they are exempt from the 4px step. A pair that repeats across templates (a row's) gets one `@utility` in `input.css` (`py-row`), so the next change to it is one edit. A pair that stands in one place stays a plain utility there.
 
 ### 3. Guard test against fractional spacing
 
-A Go test in `internal/widget` walks every embedded template (widget and server) and every `assets/*.js`. It fails on two kinds of utility outside an explicit allowlist of component internals, which names each exception with its reason:
+A Go test in `internal/widget` walks every embedded template (widget and server) and every `assets/*.js`. It fails on two kinds of utility outside an explicit allowlist, which names each exception with its reason:
 
-- **Fractional spacing** (`-N.25`, `-N.5`, `-N.75` on padding, margin, gap, inset, size, height or width). These are off the 4px step.
-- **The retired cell as air** (`*-5`, 20px, on padding, margin, gap or inset). Air between boxes is a role token now.
+- **Air off the 4px step:** a fractional margin, gap or space (`mt-1.75`, `gap-2.5`, `-mb-1.25`). Margins and gaps stand between boxes, so they are layout.
+- **The retired cell as air:** `*-5` (20px) on padding, margin, gap or space. Air between boxes is a role token now.
 
-A 20px height or size (`h-5`, `size-5`) stays legal: it is a text line or an icon box.
+Padding is left free: inside a component it centres text on its line (a row's 10px over and 9px under), which is the component's business. Sizes are left free too: a 6px state square, a 14px icon and a 20px text line are marks and lines, not layout.
 
 The test is source-level. A layout-level check would need a browser, and the dev overlay covers that by eye.
 

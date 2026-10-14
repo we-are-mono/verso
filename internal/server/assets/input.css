@@ -95,16 +95,23 @@
   --font-mono: "Inconsolata", Menlo, "SFMono-Regular", Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   --default-font-family: var(--font-sans);
   --default-mono-font-family: var(--font-mono);
-  /* One height for every field and button (h-control): centred in two of
-     the notebook's cells, it keeps 3px clear of the label's line above. */
-  --spacing-control: 2.125rem;
-  /* The page measures are whole cells of the notebook's 20px grid, so a
-     column's end, and the rules that run to it, land on a line: wide 1140,
-     default 1020, narrow 880, a page form 760. */
+  /* The layout's roles on the 8px grid (layout-grid): every fixed measure is
+     one of these or another multiple of 8px. One height for every field and
+     button (h-control), 4px clear of the label's 20px line above it. */
+  --spacing-control: 2rem;
+  /* A card's inset and the air between cards, fields and a group's steps. */
+  --spacing-inset: 1.5rem;
+  /* The page's frame, a drawer's inset and a block's step in a drawer. */
+  --spacing-frame: 2.5rem;
+  /* A row's act and a subsection's act, riding a 20px line. */
+  --spacing-act: 1.75rem;
+  /* The page measures are multiples of 8px, so a column's end, and the
+     rules that run to it, land on a line: wide 1136, default 1016, narrow
+     880, a page form 760. */
   --container-3xl: 47.5rem;
   --container-4xl: 55rem;
-  --container-5xl: 63.75rem;
-  --container-6xl: 71.25rem;
+  --container-5xl: 63.5rem;
+  --container-6xl: 71rem;
   /* Wide enough to set a page form beside its rail (@form-split): the
      form's 760px, the 40px gap, and 200px for the rail. */
   --container-form-split: 62.5rem;
@@ -116,6 +123,14 @@
 }
 @utility grid-cols-form {
   grid-template-columns: var(--verso-form-width, 40rem) minmax(0, 1fr);
+}
+
+/* A row's own air around its 20px lines: 10px over the first and 9px under
+   the last, its hairline the next pixel, so a row of one line is 40px and one
+   of two is 60px however its values wrap. */
+@utility py-row {
+  padding-top: calc(var(--spacing) * 2.5);
+  padding-bottom: calc(var(--spacing) * 2.25);
 }
 
 /* Native buttons inherit the press treatment, including controls inserted by
@@ -954,12 +969,12 @@ html {
      title keeps to the page's column and its
      acts end where Log out does, whatever measure the column below keeps:
      the page's gutter in from the window, and never past the top bar's
-     72rem, rounded down to whole cells of the notebook's grid so the acts
-     end on a line (--verso-measure). The page (main) is the size container;
+     wide measure, rounded down to the 8px grid so the acts end on a line
+     (--verso-measure). The page (main) is the size container;
      the margins pull the masthead out past the frame's 2.5rem and the
      column's end to the rail and the window's edge, and the padding brings
      its content back. */
-  main { --verso-measure: round(down, min(100cqw - var(--spacing) * 20, var(--container-6xl)), 1.25rem); }
+  main { --verso-measure: round(down, min(100cqw - var(--spacing) * 20, var(--container-6xl)), 0.5rem); }
   /* Log out ends on the same line: the top bar's session group measures
      itself the way the masthead does, against the same width beside the
      rail. */
@@ -967,7 +982,7 @@ html {
     [data-verso-session] { container-type: inline-size; }
     [data-verso-session] > div {
       flex: none;
-      width: round(down, min(100cqw - var(--spacing) * 20, var(--container-6xl)), 1.25rem);
+      width: round(down, min(100cqw - var(--spacing) * 20, var(--container-6xl)), 0.5rem);
     }
   }
   /* The colophon's words end on the same line too: measured the same way,
@@ -976,7 +991,7 @@ html {
   [data-verso-colophon] { container-type: inline-size; }
   [data-verso-colophon] > div {
     max-width: none;
-    width: calc(round(down, min(100cqw - var(--spacing) * 20, var(--container-6xl)), 1.25rem) + var(--spacing) * 20);
+    width: calc(round(down, min(100cqw - var(--spacing) * 20, var(--container-6xl)), 0.5rem) + var(--spacing) * 20);
   }
   main [data-verso-masthead] {
     margin-inline: calc(var(--spacing) * -10) calc(100% - 100cqw + var(--spacing) * 10);

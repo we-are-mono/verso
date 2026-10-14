@@ -11,8 +11,8 @@ Every task ends green under `make lint` and `make test`. Each step is reviewed i
 
 ## 2. Tokens and the guard
 
-- [ ] 2.1 Write the guard test in `internal/widget` first. It walks every embedded widget and server template and every `assets/*.js`, and fails on fractional spacing utilities and on `*-5` air (padding, margin, gap, inset) outside a named allowlist. Run it and record the current failures as the sweep's checklist.
-- [ ] 2.2 Add the role tokens to `@theme` in `input.css`: `--spacing-control` 2rem, `--spacing-inset` 1.5rem, `--spacing-frame` 2.5rem, `--spacing-act` 1.75rem. Add the optical-padding `@utility` set: `py-row`, `py-card-head`, `py-strip`, `py-colhead`. Change the container measures to 1136, 1016, 880 and 760px, and every `round(down, …)` step to 0.5rem. Update the server tests that pin the measures first, then rebuild. Verify `make test` is green except for the guard.
+- [x] 2.1 Write the guard test in `internal/widget` first. It walks every embedded widget and server template and every `assets/*.js`, and fails on fractional spacing utilities and on `*-5` air (padding, margin, gap, inset) outside a named allowlist. Run it and record the current failures as the sweep's checklist.
+- [x] 2.2 Add the role tokens to `@theme` in `input.css`: `--spacing-control` 2rem, `--spacing-inset` 1.5rem, `--spacing-frame` 2.5rem, `--spacing-act` 1.75rem. Add the row's optical padding as one `@utility py-row`. Change the container measures to 1136, 1016, 880 and 760px, and every `round(down, …)` step to 0.5rem. Update the server tests that pin the measures first, then rebuild. Verify `make test` is green except for the guard.
 
 ## 3. Shell frame
 
@@ -21,8 +21,8 @@ Every task ends green under `make lint` and `make test`. Each step is reviewed i
 
 ## 4. Cards and listings
 
-- [ ] 4.1 Cards (`sections.css`, `section.html.tmpl`, `card.html.tmpl`): inset and gap 24, header 48 (`py-card-head`), body 24 over and under, lede and part steps on the new roles. Update the section, heading-level and lane tests first. Verify with G on: Firewall settings and System › General. Commit.
-- [ ] 4.2 Listings (`table.html.tmpl`, `table-interfaces.html.tmpl`, `actionbar.html.tmpl`, `verso-tables.js`): strip 16 / 32 / 16, column-head row 48 (`py-colhead`), rows via `py-row`, lane bands 40, words 24px in, acts and grip re-centred off the old 20px crossings. Chips (`shared.html.tmpl`) become 20px. Update `table_test.go`, `table_interfaces_test.go`, `lane_test.go` and `renderer_test.go` first. Verify with G on: Devices, Firewall › Rules (lanes and reorder grip) and Network › Interfaces (expanded row). Commit.
+- [ ] 4.1 Cards (`sections.css`, `section.html.tmpl`, `card.html.tmpl`): inset and gap 24, header 48, body 24 over and under, lede and part steps on the new roles. Update the section, heading-level and lane tests first. Verify with G on: Firewall settings and System › General. Commit.
+- [ ] 4.2 Listings (`table.html.tmpl`, `table-interfaces.html.tmpl`, `actionbar.html.tmpl`, `verso-tables.js`): strip 16 / 32 / 16, column-head row 48, rows via `py-row`, lane bands 40, words 24px in, acts and grip re-centred off the old 20px crossings. Chips (`shared.html.tmpl`) become 20px. Update `table_test.go`, `table_interfaces_test.go`, `lane_test.go` and `renderer_test.go` first. Verify with G on: Devices, Firewall › Rules (lanes and reorder grip) and Network › Interfaces (expanded row). Commit.
 
 ## 5. Forms
 
