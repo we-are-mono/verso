@@ -37,39 +37,32 @@ func TestHeadingsFollowThePage(t *testing.T) {
 }
 
 // TestSubheadingIsALedgerLine: a part of a section reads as the start of a
-// group, never as one more field label: its name, then how many things the
-// part holds, stand on a hairline that runs on to the column's end. The count
-// is the set's own length, so it cannot disagree with what is listed under it,
-// and it carries a key the page uses to notice the number change.
+// group, never as one more field label: its name stands on a hairline that
+// runs on to the column's end. The part is never counted.
 func TestSubheadingIsALedgerLine(t *testing.T) {
-	keys := func(n int) *Collection {
-		c := &Collection{Empty: "No keys yet."}
-		for i := 0; i < n; i++ {
-			c.Items = append(c.Items, CollectionItem{Title: "demo@laptop", Detail: "SHA256:x"})
+	keys := &Collection{Empty: "No keys yet.", Items: []CollectionItem{
+		{Title: "demo@laptop", Detail: "SHA256:x"}, {Title: "demo@phone", Detail: "SHA256:y"},
+	}}
+	got := render(t, newRenderer(t), &Section{Title: "SSH", Children: []Widget{
+		&Section{Title: "Authorized keys", Children: []Widget{keys}},
+	}})
+	for _, part := range []string{
+		// one 20px line, and a cell to the first box under it, as a form's
+		// rows stand apart
+		`<div data-verso-ledger class="mb-5 flex h-5 items-center gap-3">`,
+		`<h3 class="shrink-0 text-sm leading-5 font-semibold text-ink">Authorized keys</h3>`,
+		// the strong hairline, so the ledger is told from the rows under it
+		`<span aria-hidden="true" class="h-px min-w-6 flex-1 bg-rule-strong"></span>`,
+	} {
+		if !strings.Contains(got, part) {
+			t.Errorf("ledger line missing %s in:\n%s", part, got)
 		}
-		return c
 	}
-	for n, want := range map[int]string{2: ">2</span>", 0: ">0</span>"} {
-		got := render(t, newRenderer(t), &Section{Title: "SSH", Children: []Widget{
-			&Section{Title: "Authorized keys", Children: []Widget{keys(n)}},
-		}})
-		for _, part := range []string{
-			// one 20px line, and a cell to the first box under it, as a
-			// form's rows stand apart
-			`<div data-verso-ledger class="mb-5 flex h-5 items-center gap-3">`,
-			`<h3 class="shrink-0 text-sm leading-5 font-semibold text-ink">Authorized keys</h3>`,
-			`<span data-verso-count="Authorized keys" class="inline-grid h-5 shrink-0 overflow-hidden text-sm leading-5 font-medium tabular-nums text-meta"><span data-verso-count-value class="[grid-area:1/1]"`,
-			want,
-			// the strong hairline, so the ledger is told from the rows under it
-			`<span aria-hidden="true" class="h-px min-w-6 flex-1 bg-rule-strong"></span>`,
-		} {
-			if !strings.Contains(got, part) {
-				t.Errorf("%d keys: ledger line missing %s in:\n%s", n, part, got)
-			}
-		}
+	if strings.Contains(got, "data-verso-count") || strings.Contains(got, ">2</span>") {
+		t.Errorf("a part counts what it holds:\n%s", got)
 	}
 	// A part with a glyph leads with it, in Glyph, before its name.
-	got := render(t, newRenderer(t), &Section{Title: "Row", Children: []Widget{
+	got = render(t, newRenderer(t), &Section{Title: "Row", Children: []Widget{
 		&Section{Title: "DHCP server", Icon: "server", Meta: "lan", Children: []Widget{&Text{Markdown: "x"}}},
 	}})
 	if !strings.Contains(got, `<div data-verso-ledger class="mb-5 flex h-5 items-center gap-3"><span class="shrink-0 text-glyph"><svg class="size-4"`) {

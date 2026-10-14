@@ -62,10 +62,6 @@ type CollectionAdd struct {
 
 func (*Collection) isWidget() {}
 
-// tally is how many things the set holds, which a subheading over it reads
-// out, so the number can never disagree with what is listed.
-func (c *Collection) tally() int { return len(c.Items) }
-
 func (c *Collection) children() []Widget {
 	var out []Widget
 	for _, item := range c.Items {

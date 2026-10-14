@@ -47,7 +47,6 @@
   <div data-verso-ledger class="mb-5 flex h-5 items-center gap-3">
     {{if .Icon}}<span class="shrink-0 text-glyph">{{icon .Icon "size-4"}}</span>{{end}}
     <h3 class="shrink-0 text-sm leading-5 font-semibold text-ink">{{.Title}}</h3>
-    {{if .Counted}}<span data-verso-count="{{.Title}}" class="inline-grid h-5 shrink-0 overflow-hidden text-sm leading-5 font-medium tabular-nums text-meta"><span data-verso-count-value class="[grid-area:1/1]">{{.Count}}</span></span>{{end}}
     {{/* A part's meta is its name as the config writes it (an expanded
          row's network `lan`), so it is set verbatim, in mono. */}}
     {{if .Meta}}<span data-verso-section-meta class="shrink-0 font-mono text-base leading-5 font-medium text-ink">{{.Meta}}</span>{{end}}

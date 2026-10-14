@@ -262,19 +262,11 @@ func changesTable(changes []history.Change, startAt, now time.Time, viewer strin
 	if !startAt.IsZero() {
 		rows, times = append(rows, startRow(startAt, tr)), append(times, startAt)
 	}
-	perDay := map[string]int{}
-	for _, at := range times {
-		perDay[changeDay(at, now, tr)]++
-	}
 	day := ""
 	for i, row := range rows {
 		if d := changeDay(times[i], now, tr); d != day {
 			day = d
-			tally := tr("1 change")
-			if n := perDay[d]; n != 1 {
-				tally = fmt.Sprintf(tr("%d changes"), n)
-			}
-			row.Group = &widget.TableGroup{Label: d, Tally: tally, Verbatim: true}
+			row.Group = &widget.TableGroup{Label: d, Verbatim: true}
 		}
 		table.Rows = append(table.Rows, row)
 	}

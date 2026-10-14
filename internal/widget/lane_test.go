@@ -12,10 +12,10 @@ func lanes() *Table {
 	return &Table{
 		Columns: []TableColumn{{Label: "Name", Kind: "name"}},
 		Rows: []TableRow{
-			{ID: "a", Group: &TableGroup{Key: "input_wan", Label: "WAN", To: "Router", Tally: "6 rules",
+			{ID: "a", Group: &TableGroup{Key: "input_wan", Label: "WAN", To: "Router",
 				AddText: "Add rule", AddLabel: "Add rule to WAN → Router", AddHref: "/r?open=new&src=wan"}, Cells: []TableCell{{Text: "Allow-Ping"}}},
 			{ID: "b", Cells: []TableCell{{Text: "Allow-IGMP"}}},
-			{ID: "c", Group: &TableGroup{Key: "forward_wan", Label: "WAN", To: "Forwarded traffic", Tally: "3 rules"}, Cells: []TableCell{{Text: "Allow-ESP"}}},
+			{ID: "c", Group: &TableGroup{Key: "forward_wan", Label: "WAN", To: "Forwarded traffic"}, Cells: []TableCell{{Text: "Allow-ESP"}}},
 		},
 	}
 }
@@ -23,50 +23,27 @@ func lanes() *Table {
 // inSection is a listing that is part of a section, not a page's own block.
 func inSection(w Widget) Widget { return &Section{Title: "Rules", Children: []Widget{w}} }
 
-// TestAPagesLanesAreCards: a laned listing that is the page's own block draws
-// each lane as a card (ADR-023): the lane's name, its far end and its tally
-// in the card's header with its add at the end, then its own table repeating
-// the column heads, laid out fixed so every lane's columns line up.
-func TestAPagesLanesAreCards(t *testing.T) {
+// TestAPagesLanesShareOneCard: a laned listing that is the page's own block is
+// one card holding one table: the column heads once, then every lane as a
+// band row before its rules, each band straight after the row above it with
+// no air, since the card already sets the listing apart.
+func TestAPagesLanesShareOneCard(t *testing.T) {
 	got := render(t, newRenderer(t), &Stack{Children: []Widget{lanes()}})
-	if n := strings.Count(got, "<div data-verso-lane>"); n != 2 {
-		t.Fatalf("want a card per lane, got %d:\n%s", n, got)
+	if n := strings.Count(got, "<table"); n != 1 {
+		t.Fatalf("want one table for every lane, got %d:\n%s", n, got)
 	}
-	if n := strings.Count(got, `class="verso-table w-full table-fixed`); n != 2 {
-		t.Errorf("want a fixed table per lane, got %d:\n%s", n, got)
+	if n := strings.Count(got, ">Name</th>"); n != 1 {
+		t.Errorf("the column heads stand once, got %d:\n%s", n, got)
 	}
-	if n := strings.Count(got, ">Name</th>"); n != 2 {
-		t.Errorf("each lane repeats the column heads, got %d:\n%s", n, got)
+	if n := strings.Count(got, `class="verso-table-group"`); n != 2 {
+		t.Errorf("want a band row per lane, got %d:\n%s", n, got)
 	}
-	if strings.Contains(got, "verso-table-group") {
-		t.Errorf("a lane card's head is its header, not a row:\n%s", got)
+	if strings.Contains(got, "pt-11.25") {
+		t.Errorf("a later lane in a page's card opens with air above its band:\n%s", got)
 	}
-	first, second := strings.Index(got, "<div data-verso-lane>"), strings.LastIndex(got, "<div data-verso-lane>")
-	for _, want := range []string{"WAN", "Router", "6 rules", `aria-label="Add rule to WAN → Router"`, "Allow-Ping", "Allow-IGMP"} {
-		if at := strings.Index(got[first:second], want); at < 0 {
-			t.Errorf("the first lane's card is missing %q", want)
-		}
-	}
-	if strings.Contains(got[first:second], "Allow-ESP") || !strings.Contains(got[second:], "Allow-ESP") {
-		t.Errorf("a lane's rows stand in its own card:\n%s", got)
-	}
-	if head, table := strings.Index(got[first:], "6 rules"), strings.Index(got[first:], "<table"); head > table {
-		t.Error("the lane's header stands over its table")
-	}
-	// A fixed layout gives a growing column only what the fixed ones leave,
-	// so the lane's table is never narrower than its measures and a name's
-	// room: a narrow window scrolls the card rather than crushing the name.
-	measured := lanes()
-	measured.Columns = append(measured.Columns, TableColumn{Label: "Port", Width: MeasureShort})
-	for i := range measured.Rows {
-		measured.Rows[i].Cells = append(measured.Rows[i].Cells, TableCell{Text: "22"})
-	}
-	if out := render(t, newRenderer(t), &Stack{Children: []Widget{measured}}); !strings.Contains(out, `style="min-width:calc(12rem &#43; 6rem)"`) {
-		t.Errorf("a lane's table has no floor under its columns:\n%s", out)
-	}
-	// Inside a section a listing keeps its lanes as rows of one table.
-	if inner := render(t, newRenderer(t), inSection(lanes())); strings.Contains(inner, "data-verso-lane>") || strings.Count(inner, "<table") != 1 {
-		t.Errorf("a section's laned listing is split into cards:\n%s", inner)
+	// Inside a section a later lane keeps the air above its band.
+	if inner := render(t, newRenderer(t), inSection(lanes())); !strings.Contains(inner, "pt-11.25") {
+		t.Errorf("a section's later lane lost its air:\n%s", inner)
 	}
 }
 

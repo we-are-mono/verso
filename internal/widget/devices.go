@@ -3,8 +3,6 @@
 
 package widget
 
-import "strconv"
-
 // The Devices roster: one row per device the box has seen, and behind each row
 // the whole story the row has no space for. It is the shell's own page content
 // — like the overview, outside the plugin vocabulary and never decoded — built
@@ -193,7 +191,6 @@ func DevicesTable(devices []Device, acts func(d Device) []TableRowAct, usage boo
 			network = d.Network
 			row.Group = &TableGroup{
 				Key: d.Network, Label: networkLabel(d.Network), Chain: d.NetworkCIDR,
-				Tally: networkTally(devices, d.Network),
 			}
 		}
 		rows = append(rows, row)
@@ -220,9 +217,7 @@ func DevicesTable(devices []Device, acts func(d Device) []TableRowAct, usage boo
 
 // devicesColumns is the roster's grid. Every column but the device's own is
 // fixed; with usage on, the MAC gives way to Now, wide enough for two rates
-// each with its unit, and This month. A page's lanes lay them out fixed
-// (ADR-023), so Now keeps to a name's measure and the device's own column
-// gets the rest.
+// each with its unit, and This month.
 func devicesColumns(usage bool) []TableColumn {
 	cols := []TableColumn{
 		{Label: "Device", Kind: "name"},
@@ -231,7 +226,7 @@ func devicesColumns(usage bool) []TableColumn {
 	}
 	if usage {
 		cols = append(cols,
-			TableColumn{Label: "Now", Kind: "figures", Width: MeasureName},
+			TableColumn{Label: "Now", Kind: "figures", Width: MeasureLong},
 			TableColumn{Label: "This month", Kind: "figures", Width: MeasureWord},
 			TableColumn{Label: "Status", Kind: "status", Width: MeasureWord},
 		)
@@ -316,23 +311,6 @@ func networkLabel(name string) string {
 		return "Local network"
 	}
 	return name
-}
-
-// networkTally is what a network's band says on its right: how many of its
-// devices are here now, and how many are only known.
-func networkTally(devices []Device, network string) string {
-	online, offline := 0, 0
-	for _, d := range devices {
-		if d.Network != network {
-			continue
-		}
-		if d.Presence == "online" {
-			online++
-		} else {
-			offline++
-		}
-	}
-	return strconv.Itoa(online) + " online · " + strconv.Itoa(offline) + " offline"
 }
 
 // presenceCell renders a device's presence as a dot and the word for it. Only a

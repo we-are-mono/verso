@@ -2141,8 +2141,7 @@ pub struct DrawerTab {
 }
 
 /// TableGroup heads a run of rows that share one evaluation lane. Label is
-/// human-facing; Chain keeps the packet filter's exact name visible to experts;
-/// Count is how many rows the run holds.
+/// human-facing; Chain keeps the packet filter's exact name visible to experts.
 #[derive(Serialize, Debug)]
 pub struct TableGroup {
     /// The group's own handle — the config's name for it — which a dragged
@@ -2161,10 +2160,6 @@ pub struct TableGroup {
     /// sets none.
     #[serde(skip_serializing_if = "String::is_empty")]
     pub chain: String,
-    /// What the group amounts to, already worded: "6 rules", "3 rules · 1
-    /// disabled".
-    #[serde(skip_serializing_if = "String::is_empty")]
-    pub tally: String,
     /// The lane's own add control, which the shell puts on this row hard right
     /// with these words on hover — the head of the run it adds to; the href may
     /// pre-seed the editor with the lane's own path. Empty leaves the row's

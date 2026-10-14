@@ -331,16 +331,14 @@ func TestRenderTableGroupHeader(t *testing.T) {
 		ReorderConfig: "firewall",
 		Columns:       []TableColumn{{Kind: "reorder"}, {Label: "From", Kind: "endpoint"}},
 		Rows: []TableRow{{ID: "allow-dns", Group: &TableGroup{
-			Key: "input_guest", Label: "Guest", To: "Router", Tally: "3 rules",
+			Key: "input_guest", Label: "Guest", To: "Router",
 			AddLabel: "Add rule to Guest → Router", AddHref: "/x?open=new&src=guest",
 		}, Cells: []TableCell{{}, {Endpoints: []TableEndpoint{{Kind: "zone", Label: "guest"}}}}}},
 	}))
 	for _, want := range []string{
 		`colspan="2"`,
-		// The lane by its two ends, the arrow between them a glyph, then what
-		// it amounts to after a faint dot.
+		// The lane by its two ends, the arrow between them a glyph.
 		`text-sm font-semibold text-ink">Guest<span class="flex text-glyph">`, lucideIcons["arrow-right"], "</span>Router</span>",
-		`<span class="text-faint">·</span><span class="text-meta">3 rules</span>`,
 		// The lane spans the row, so it is both first and last child and takes
 		// the wrapper's edge inset like every other cell. It is a row of the
 		// listing's own two cells: a 28px line — the add's box — 5px above
@@ -632,7 +630,7 @@ func TestDecodeTableRowDrawer(t *testing.T) {
 	w, err := Decode([]byte(`{
 		"type": "table",
 		"columns": [{"label":"A"}],
-		"rows": [{"id":"r1","group":{"label":"WAN","to":"Router","chain":"input_wan","tally":"2 rules"},"cells":[{"text":"1"}],
+		"rows": [{"id":"r1","group":{"label":"WAN","to":"Router","chain":"input_wan"},"cells":[{"text":"1"}],
 			"drawer": {"title":"Edit","open":true,"children":[{"type":"text","markdown":"body"}]}}]
 	}`))
 	if err != nil {
@@ -642,7 +640,7 @@ func TestDecodeTableRowDrawer(t *testing.T) {
 	if tb.Rows[0].Drawer == nil || tb.Rows[0].Drawer.Title != "Edit" || !tb.Rows[0].Drawer.Open || len(tb.Rows[0].Drawer.Children) != 1 {
 		t.Errorf("row drawer not decoded: %+v", tb.Rows[0].Drawer)
 	}
-	if tb.Rows[0].Group == nil || tb.Rows[0].Group.To != "Router" || tb.Rows[0].Group.Chain != "input_wan" || tb.Rows[0].Group.Tally != "2 rules" {
+	if tb.Rows[0].Group == nil || tb.Rows[0].Group.To != "Router" || tb.Rows[0].Group.Chain != "input_wan" {
 		t.Errorf("row group not decoded: %+v", tb.Rows[0].Group)
 	}
 	if _, err := Decode([]byte(`{"type":"table","columns":[],"rows":[{"cells":[],"drawer":{"title":"x","children":[{"type":"nope"}]}}]}`)); err == nil {

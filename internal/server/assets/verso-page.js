@@ -292,20 +292,12 @@
   });
 })();
 
-// A ledger's count: how many things a part of a section holds. Adding or
-// removing one reloads the page, so the change would otherwise land as a
-// different number with nothing to say it moved. The page remembers each
-// count for the tab's session; when one differs from last time, the old
-// number rolls out and the new one rolls in — upward for more, downward for
-// fewer — and settles from ink to its resting meta, so the eye finds the
-// change where it happened. Reduced motion, or no storage, shows the number
-// as it is.
 // versoRoll rolls a value from what it was to what it is: the old number
 // rolls out and the new one rolls in — upward for more, downward for fewer,
 // upward for a change that is not a number — inside a frame the size of the
 // value, and the words in `warm` (the value itself, or the label beside it)
 // go to ink for a moment and settle back. A frame the caller already keeps
-// (a ledger count's) is used as it is; any other value is framed for the
+// is used as it is; any other value is framed for the
 // roll and unframed after it. A fact that changes under a live refresh rolls
 // the same way (verso-tables.js).
 window.versoRoll = function (value, from, to, frame, warm) {
@@ -349,27 +341,3 @@ window.versoRoll = function (value, from, to, frame, warm) {
   var ink = getComputedStyle(warm).getPropertyValue("--color-ink").trim();
   if (ink) warm.animate([{ color: ink }, { color: ink, offset: 0.35 }, {}], { duration: 1600, easing: "ease-out" });
 };
-
-(function () {
-  var counts = document.querySelectorAll("[data-verso-count]");
-  if (!counts.length) return;
-  var still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
-  function recall(key) {
-    try { return window.sessionStorage.getItem(key); } catch (e) { return null; }
-  }
-  function remember(key, value) {
-    try { window.sessionStorage.setItem(key, value); } catch (e) { /* the number simply does not roll next time */ }
-  }
-
-  counts.forEach(function (count) {
-    var value = count.querySelector("[data-verso-count-value]");
-    if (!value) return;
-    var key = "verso-count:" + location.pathname + ":" + count.getAttribute("data-verso-count");
-    var now = value.textContent.trim();
-    var was = recall(key);
-    remember(key, now);
-    if (was === null || was === now || still || typeof value.animate !== "function") return;
-    window.versoRoll(value, was, now, count);
-  });
-})();

@@ -192,7 +192,7 @@ fn listing(m: &Model, open: &str, drawer: Option<RowDrawer>) -> Envelope {
         let open_here = line.custom.is_some_and(|r| r.id == open);
         let mut row = row(line, if open_here { drawer.take() } else { None });
         if i == 0 || lines[i - 1].v6 != line.v6 {
-            row.group = Some(lane(&lines, line.v6));
+            row.group = Some(lane(line.v6));
         }
         rows.push(row);
     }
@@ -333,25 +333,15 @@ fn kernel(m: &Model) -> Option<Vec<Line<'static>>> {
     )
 }
 
-/// lane heads one family's run: what it holds, and an add that opens New route
+/// lane heads one family's run: its family, and an add that opens New route
 /// with the family already chosen.
-fn lane(lines: &[Line], v6: bool) -> TableGroup {
+fn lane(v6: bool) -> TableGroup {
     let family = if v6 { "IPv6" } else { "IPv4" };
-    let ours: Vec<_> = lines.iter().filter(|l| l.v6 == v6).collect();
-    let custom = ours.iter().filter(|l| l.custom.is_some()).count();
-    let mut tally = match ours.len() {
-        1 => "1 route".to_string(),
-        n => format!("{n} routes"),
-    };
-    if custom > 0 {
-        tally.push_str(&format!(" · {custom} custom"));
-    }
     TableGroup {
         key: family.to_lowercase(),
         label: family.into(),
         to: String::new(),
         chain: String::new(),
-        tally,
         add_label: if v6 {
             "Add IPv6 route"
         } else {
@@ -841,7 +831,7 @@ mod tests {
             ]
         );
         assert_eq!(rows[0]["group"]["label"], "IPv4");
-        assert_eq!(rows[0]["group"]["tally"], "5 routes · 2 custom");
+        assert_eq!(rows[0]["group"]["key"], "ipv4");
         // The lane's add says what it does beside its glyph, as a firewall
         // lane's does; the family rides its accessible name.
         assert_eq!(rows[0]["group"]["add_text"], "Add route");
@@ -851,7 +841,7 @@ mod tests {
             "/plugins/interfaces/routes?open=new&family=ipv4"
         );
         assert_eq!(rows[5]["group"]["label"], "IPv6");
-        assert_eq!(rows[5]["group"]["tally"], "2 routes · 1 custom");
+        assert_eq!(rows[5]["group"]["add_label"], "Add IPv6 route");
         assert!(rows.iter().filter(|r| r.get("group").is_some()).count() == 2);
     }
 

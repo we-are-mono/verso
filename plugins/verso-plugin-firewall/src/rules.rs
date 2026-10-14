@@ -268,7 +268,6 @@ fn table(model: &Firewall, counters: &Counters, open: Option<&Open>) -> Widget {
                     label: from.clone(),
                     to: to.clone(),
                     chain: String::new(),
-                    tally: tally(&lane),
                     add_label: format!(
                         "Add rule to {}",
                         format::group_label(&lane.chain, lane.shared_dest.as_deref())
@@ -379,20 +378,6 @@ fn lanes(rules: &[Rule]) -> Vec<Lane<'_>> {
         lane.shared_dest = shared_dest(&lane.rules);
     }
     lanes
-}
-
-/// tally is what a lane amounts to, in words: how many rules it evaluates, and
-/// how many of those are switched off and so decide nothing.
-fn tally(lane: &Lane) -> String {
-    let off = lane.rules.iter().filter(|rule| !rule.enabled).count();
-    let mut tally = match lane.rules.len() {
-        1 => "1 rule".to_string(),
-        n => format!("{n} rules"),
-    };
-    if off > 0 {
-        tally.push_str(&format!(" · {off} disabled"));
-    }
-    tally
 }
 
 /// add_href aims the lane's tail affordance at the editor with the lane's own
@@ -705,7 +690,7 @@ mod tests {
     fn rules_are_grouped_into_the_chains_that_evaluate_them() {
         let body = body(&Counters::default());
         let rows = table_of(&body)["rows"].as_array().expect("rows").clone();
-        let groups: Vec<(String, String, String, String)> = rows
+        let groups: Vec<(String, String, String)> = rows
             .iter()
             .filter_map(|row| row.get("group"))
             .map(|group| {
@@ -713,39 +698,33 @@ mod tests {
                     group["label"].as_str().unwrap_or_default().to_string(),
                     group["to"].as_str().unwrap_or_default().to_string(),
                     group["key"].as_str().unwrap_or_default().to_string(),
-                    group["tally"].as_str().unwrap_or_default().to_string(),
                 )
             })
             .collect();
-        // The band names the lane by its two ends and what it amounts to; the
-        // chain is the drag's handle, not a word on the band. A lane counts the
-        // rules it holds and says how many of them are off.
+        // The band names the lane by its two ends; the chain is the drag's
+        // handle, not a word on the band.
         assert_eq!(
             groups,
             vec![
                 (
                     "WAN".to_string(),
                     "Router".to_string(),
-                    "input_wan".to_string(),
-                    "4 rules".to_string()
+                    "input_wan".to_string()
                 ),
                 (
                     "Guest".to_string(),
                     "Router".to_string(),
-                    "input_guest".to_string(),
-                    "2 rules · 1 disabled".to_string()
+                    "input_guest".to_string()
                 ),
                 (
                     "WAN".to_string(),
                     "Forwarded traffic".to_string(),
-                    "forward_wan".to_string(),
-                    "2 rules".to_string()
+                    "forward_wan".to_string()
                 ),
                 (
                     "Guest".to_string(),
                     "LAN".to_string(),
-                    "forward_guest".to_string(),
-                    "1 rule".to_string()
+                    "forward_guest".to_string()
                 ),
             ]
         );

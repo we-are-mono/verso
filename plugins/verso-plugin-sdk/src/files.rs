@@ -3,7 +3,7 @@
 //! A set of hand-edited files a page lists and edits in place — dnsmasq's
 //! option files, fw4's rule files. Every such set reads and edits the same
 //! way, whichever daemon reads it, because it is drawn here once: a Files band
-//! with its count and a New file act, a row per file with its folder before its
+//! with a New file act, a row per file with its folder before its
 //! name, and an editor in a drawer whose save is staged through the shell's
 //! file journal (the `config-file-stage` command) and applied, checked and
 //! rolled back with everything else on the stage.
@@ -82,8 +82,7 @@ impl FileSet {
         }
     }
 
-    /// listing is the set's files: the Files band with its count and its New
-    /// file act, then a row per file — its folder before its name, how many
+    /// listing is the set's files: the Files band with its New file act, then a row per file — its folder before its name, how many
     /// lines of setting it holds, and the way into its editor.
     pub fn listing(&self, files: &[Value]) -> Widget {
         let mut rows: Vec<TableRow> = files
@@ -134,8 +133,7 @@ impl FileSet {
             key: String::new(),
             label: "Files".into(),
             to: String::new(),
-            chain: files.len().to_string(),
-            tally: String::new(),
+            chain: String::new(),
             add_label: "New file".into(),
             add_text: "New file".into(),
             add_href: format!("{}new", self.editors),
@@ -317,7 +315,7 @@ mod tests {
         placeholder: "10-local",
     };
 
-    // With no files, the band still stands — its name, its count, its add —
+    // With no files, the band still stands — its name and its add —
     // and the table says it has nothing under it in its own words.
     #[test]
     fn with_no_files_the_band_stands_alone_and_the_table_says_so() {
@@ -325,7 +323,7 @@ mod tests {
         let rows = body["rows"].as_array().unwrap();
         assert_eq!(rows.len(), 1);
         assert_eq!(rows[0]["group"]["label"], "Files");
-        assert_eq!(rows[0]["group"]["chain"], "0");
+        assert!(rows[0]["group"].get("chain").is_none());
         assert_eq!(rows[0]["group"]["add_href"], "/plugins/x/files/new");
         assert!(rows[0]["cells"].as_array().is_none_or(Vec::is_empty));
         assert_eq!(body["empty_text"], "No files");

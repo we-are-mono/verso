@@ -130,11 +130,7 @@ type sectionView struct {
 	Flush      bool
 	// Nested marks a section inside another section: a part of that subject,
 	// titled at h3 on a ledger line, not a second heading beside its parent's.
-	Nested bool
-	// Count is how many things a nested section's set holds, read from the set
-	// itself; Counted is false when the part holds no set to count.
-	Count    int
-	Counted  bool
+	Nested   bool
 	Control  template.HTML
 	Children []template.HTML
 }
@@ -158,19 +154,6 @@ func (v sectionView) Kind() string {
 	return "plain"
 }
 
-// tallied is a widget that holds a set of things and knows how many.
-type tallied interface{ tally() int }
-
-// tallyOf reads the count of the first set among children.
-func tallyOf(children []Widget) (int, bool) {
-	for _, child := range children {
-		if t, ok := child.(tallied); ok {
-			return t.tally(), true
-		}
-	}
-	return 0, false
-}
-
 func (s *Section) renderInto(r *Renderer, out io.Writer, csrf string) error {
 	children, err := r.nested().renderChildren(s.Children, csrf)
 	if err != nil {
@@ -189,9 +172,6 @@ func (s *Section) renderInto(r *Renderer, out io.Writer, csrf string) error {
 		Hairline:   s.Hairline,
 		Flush:      s.Flush,
 		Children:   children,
-	}
-	if v.Nested {
-		v.Count, v.Counted = tallyOf(s.Children)
 	}
 	if s.Control != nil {
 		var buf bytes.Buffer

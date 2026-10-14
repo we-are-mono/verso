@@ -61,8 +61,8 @@ func testActs(d Device) []TableRowAct {
 func TestRenderDevicesTable(t *testing.T) {
 	got := render(t, newRenderer(t), DevicesTable(roster(), testActs, false))
 	for _, want := range []string{
-		"Local network", "192.168.1.0/24", "1 online · 1 offline", // the lan band, and what it amounts to
-		"guest", "192.168.20.0/24", "0 online · 1 offline", // the guest band
+		"Local network", "192.168.1.0/24", // the lan band
+		"guest", "192.168.20.0/24", // the guest band
 		"a4:83:e7:2b:19:0c", "192.168.1.104",
 		"lan1", "lan3", // the port a device attaches through
 		"Intel",                    // the maker, beside the name it qualifies
@@ -77,6 +77,9 @@ func TestRenderDevicesTable(t *testing.T) {
 		if !strings.Contains(got, want) {
 			t.Errorf("devices table missing %q", want)
 		}
+	}
+	if strings.Contains(got, " online · ") {
+		t.Errorf("a network's band counts its devices:\n%s", got)
 	}
 	// A device that is not here reads at the secondary step, all of it.
 	if !strings.Contains(got, "text-meta") {
@@ -146,12 +149,6 @@ func TestRenderDevicesUsage(t *testing.T) {
 		if strings.Contains(got, unwanted) {
 			t.Errorf("Now draws no meter, found %q", unwanted)
 		}
-	}
-	// The lanes' tables are laid out fixed (ADR-023), so the device's name
-	// keeps what the fixed columns leave: Now holds two rates in 14rem, This
-	// month and Status a word's 9rem.
-	if want := `<col style="width:6rem"><col style="width:12.5rem"><col style="width:14rem"><col style="width:9rem"><col style="width:9rem">`; !strings.Contains(got, want) {
-		t.Errorf("roster's columns want %s in:\n%s", want, got)
 	}
 	// Now's figures are written at 500, a step over the row's words; the
 	// month's total stays at the row's own weight.

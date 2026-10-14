@@ -126,7 +126,8 @@ type Table struct {
 	AddHref  string `json:"add_href,omitempty"`
 
 	// pageBlock marks the listing as one of the page's own blocks rather than
-	// part of a section or a drawer (markPageBlocks); its lanes are cards.
+	// part of a section or a drawer (markPageBlocks): its card holds its lanes
+	// as bands with no air between them.
 	pageBlock bool
 }
 
@@ -143,52 +144,6 @@ func markPageBlocks(w Widget) {
 	case *headed:
 		markPageBlocks(&n.Stack)
 	}
-}
-
-// tableLaneView is one lane of a page's listing, drawn as a card: its head is
-// the card's header, its rows the card's own table.
-type tableLaneView struct {
-	Head tableRowView
-	Rows []tableRowView
-}
-
-// laneMinWidth is the floor under a lane's fixed layout: every column's
-// measure, a growing one counted at a name's room and the grip at its own,
-// so a narrow window scrolls the card rather than crushing a column to
-// nothing.
-func laneMinWidth(cols []TableColumn, hasDetail bool) string {
-	parts := make([]string, 0, len(cols)+1)
-	for _, c := range cols {
-		switch {
-		case c.Width != MeasureGrow:
-			parts = append(parts, c.Width.CSS())
-		case c.Kind == "reorder":
-			parts = append(parts, "2.5rem")
-		default:
-			parts = append(parts, "12rem")
-		}
-	}
-	if hasDetail {
-		parts = append(parts, MeasureShort.CSS())
-	}
-	return "calc(" + strings.Join(parts, " + ") + ")"
-}
-
-// cardLanes splits a page listing's rows into its lanes, each opening on its
-// group's row; that row keeps its cells but no longer draws the band.
-func cardLanes(rows []tableRowView) []tableLaneView {
-	var lanes []tableLaneView
-	for _, row := range rows {
-		if row.Group != nil {
-			lanes = append(lanes, tableLaneView{Head: row})
-			if row.BandOnly {
-				continue
-			}
-			row.Group = nil
-		}
-		lanes[len(lanes)-1].Rows = append(lanes[len(lanes)-1].Rows, row)
-	}
-	return lanes
 }
 
 // The form fields the shell's reorder interaction posts, and that the gateway
@@ -432,9 +387,9 @@ type TableGroup struct {
 	// Chain is the machine-verbatim string the group resolves to — a network's
 	// CIDR — set in mono beside the label so an expert reads the exact string.
 	Chain string `json:"chain,omitempty"`
-	// Tally is what this group amounts to, already worded ("3 online · 1
-	// offline", "6 rules"), after the label and a faint dot.
-	Tally string `json:"tally,omitempty"`
+	// Tally is the shell's own words for the group, after the label and a
+	// faint dot: what a change in the history did. A group is never counted.
+	Tally string `json:"-"`
 	// AddLabel and AddHref put the lane's own add control on its row, hard
 	// right — the head of the run it adds to — saying these words on hover;
 	// the href may pre-seed the editor with the lane's own path. A group
@@ -728,11 +683,9 @@ type tableView struct {
 	Rows        []tableRowView
 	SeamSummary string
 	SeamRows    []tableRowView
-	// Lanes is the page listing's rows split by lane, a card each; nil
-	// draws the listing as one table with its lanes as rows.
-	Lanes []tableLaneView
-	// LaneMinWidth is the floor under every lane's fixed layout.
-	LaneMinWidth template.CSS
+	// PageBlock is a listing that is its page's own card: its legend follows
+	// the card rather than closing it.
+	PageBlock bool
 }
 
 // tableFacetView is one key/value the client narrows by, flattened for the
@@ -754,7 +707,8 @@ type tableRowView struct {
 	// is drawn, and no row of cells under it.
 	BandOnly bool
 	// LaneGap marks a group that is not the listing's first: it starts its own
-	// small table, 2.5rem below the last row of the one before.
+	// small table, 2.5rem below the last row of the one before. A page's card
+	// sets its lanes with no air, so no lane there has a gap.
 	LaneGap bool
 	// AddLabel/AddHref mark the synthetic lane-tail add row (see TableGroup);
 	// a view row carrying them renders the affordance and nothing else.
@@ -1092,7 +1046,7 @@ func (t *Table) view(r *Renderer, csrf string) (tableView, error) {
 	stream := t.streaming()
 	v := tableView{
 		Live: t.Style == "live", Card: t.Style == "card", Style: t.consoleStyle(), Dense: t.Dense,
-		Title: t.Title, Detail: t.Detail, Action: t.Action,
+		Title: t.Title, Detail: t.Detail, Action: t.Action, PageBlock: t.pageBlock,
 		// A live listing keeps its heads while it waits: they name what is
 		// about to arrive, and the first event must not shift the layout.
 		HasLabels: hasColumnLabels(t.Columns) && (!empty || stream),
@@ -1163,13 +1117,6 @@ func (t *Table) view(r *Renderer, csrf string) (tableView, error) {
 	}
 	if v.Reorderable {
 		v.ReorderIDs = reorderIDs(v.Rows, v.SeamRows)
-	}
-	// ponytail: a listing with a seam or a title keeps one table; no page
-	// lists lanes with either.
-	if t.pageBlock && !empty && !v.EmptyUnderBand && v.Style == "" && v.Title == "" && t.Seam == nil &&
-		len(v.Rows) > 0 && v.Rows[0].Group != nil {
-		v.Lanes = cardLanes(v.Rows)
-		v.LaneMinWidth = template.CSS(laneMinWidth(t.Columns, v.HasDetail)) //nolint:gosec // built from the closed measure set
 	}
 	return v, nil
 }
@@ -1299,7 +1246,7 @@ func (t *Table) rowViews(r *Renderer, csrf string, rows []TableRow, hasDetail bo
 		}
 		if row.Group != nil {
 			rv.Group = band
-			rv.LaneGap = lanes > 0
+			rv.LaneGap = lanes > 0 && !t.pageBlock
 			rv.BandOnly = len(row.Cells) == 0
 			lanes++
 		}

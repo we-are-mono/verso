@@ -610,40 +610,7 @@
 {{else}}
 {{/* The listing's frame stands outside its scroller, so the fading edge
      never fades a card's border (sections.css). */}}
-<div data-verso-listing{{if .Lanes}} data-verso-lanes{{if .Live}} data-verso-live-table{{end}}{{end}}>
-{{if .Lanes}}
-{{/* A page's laned listing: each lane a card (ADR-023), its name, far end
-     and chain on the card title's line, its tally and its add at the end,
-     then the lane's own table under the listing's column heads, laid out
-     fixed so every lane's columns line up. Each scrolls on its own. */}}
-  {{if .Live}}<p data-verso-inventory-stale role="status" hidden class="mb-4 text-sm text-marigold-deep">{{t "Live status could not be refreshed. Retrying…"}}</p>{{end}}
-  {{range .Lanes}}
-  <div data-verso-lane>
-    <div data-verso-lane-head class="flex items-center gap-3 border-b border-rule px-5 pt-3.75 pb-3.5 leading-5">
-      {{/* On a phone the chain and the tally give way first, then the name
-           is cut short; the add keeps its place. */}}
-      <span class="min-w-0 truncate text-base leading-5 font-semibold tracking-[-0.025em] text-ink">{{.Head.Group.Label}}{{if .Head.Group.To}}<span class="mx-2 inline-flex align-[-0.125rem] text-glyph">{{icon "arrow-right" "size-4"}}</span>{{.Head.Group.To}}{{end}}</span>
-      {{if .Head.Group.Chain}}<span class="font-mono text-base leading-5 font-medium whitespace-nowrap text-meta max-sm:hidden">{{.Head.Group.Chain}}</span>{{end}}
-      <span class="flex-1"></span>
-      {{if .Head.Group.Tally}}<span class="text-sm whitespace-nowrap text-meta max-sm:hidden">{{.Head.Group.Tally}}</span>{{end}}
-      <span class="-my-1 flex shrink-0 empty:hidden">{{template "table.lane-add" .Head.Group}}</span>
-    </div>
-    {{if .Rows}}
-    <div data-verso-scroller class="relative overflow-x-auto overflow-y-hidden pt-5 [&_td:first-of-type]:pl-2.75 [&_th:first-of-type]:pl-2.75 [&_td:last-of-type]:pr-4 [&_th:last-of-type]:pr-4 verso-scroll-edge">
-      <table{{if $.Reorderable}} data-verso-reorder-table data-verso-reorder-config="{{$.ReorderConfig}}"{{end}} class="verso-table w-full table-fixed text-sm leading-5" style="min-width:{{$.LaneMinWidth}}">
-        {{if $.HasWidths}}<colgroup>{{range $.Columns}}<col{{if .Width}} style="width:{{.Width.CSS}}"{{end}}>{{end}}{{if $.HasDetail}}<col>{{end}}</colgroup>{{end}}
-        {{if $.HasLabels}}{{template "table.head" $}}{{end}}
-        <tbody>
-{{template "table.rows" .Rows}}
-        </tbody>
-      </table>
-    </div>
-    {{end}}
-  </div>
-  {{end}}
-  {{template "table.legend" .}}
-  <p data-verso-listing-empty hidden class="pt-2.5 pr-4 pb-2.25 pl-5 text-sm leading-5 text-meta">{{t "Nothing matches."}}</p>
-{{else}}
+<div data-verso-listing>
 <div{{if .Live}} data-verso-live-table{{end}} data-verso-scroller class="relative overflow-x-auto overflow-y-hidden [&_td:first-of-type]:pl-2.75 [&_th:first-of-type]:pl-2.75 [&_td:last-of-type]:pr-4 [&_th:last-of-type]:pr-4 verso-scroll-edge">
   {{if .Live}}<p data-verso-inventory-stale role="status" hidden class="mb-4 text-sm text-marigold-deep">{{t "Live status could not be refreshed. Retrying…"}}</p>{{end}}
   {{if .Title}}
@@ -700,11 +667,13 @@
       {{end}}
     </tbody>
   </table>
-  {{template "table.legend" .}}
+  {{if not .PageBlock}}{{template "table.legend" .}}{{end}}
   <p data-verso-listing-empty hidden class="border-b border-rule pt-2.5 pr-4 pb-2.25 pl-2.75 text-sm leading-5 text-meta">{{t "Nothing matches."}}</p>
 </div>
-{{end}}
 </div>
+{{/* A page's own listing is its card; its legend and note follow the card
+     under its bottom edge, the help about the card rather than a part of it. */}}
+{{if .PageBlock}}{{template "table.legend" .}}{{end}}
 {{end}}
 {{end}}
 {{if .Reorderable}}

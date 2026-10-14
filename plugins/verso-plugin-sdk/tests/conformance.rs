@@ -586,7 +586,6 @@ fn listing() -> Widget {
                     label: "LAN".into(),
                     to: "Router".into(),
                     chain: String::new(),
-                    tally: "2 rules".into(),
                     add_label: "Add rule to LAN → Router".into(),
                     add_text: "Add rule".into(),
                     add_href: "/firewall/rules?open=new&src=lan".into(),
