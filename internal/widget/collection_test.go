@@ -150,7 +150,7 @@ func TestCollectionSaysWhenEmpty(t *testing.T) {
 	  "add":{"label":"Add a key","name":"authorized_key","submit":"Add key"}}`
 	got := renderCollection(t, empty, "")
 	for _, want := range []string{
-		`<div data-verso-slot class="-mt-px -ml-px flex w-[calc(100%_+_1px)] items-center gap-3 rounded-xs border border-dashed border-rule-strong bg-quiet px-4 pt-2.5 pb-2.25 leading-5">`,
+		`<div data-verso-slot class="flex w-full items-center gap-3 rounded-xs border border-dashed border-rule-strong bg-quiet px-4 pt-2.5 pb-2 leading-5">`,
 		`<span aria-hidden="true" class="size-1.5 shrink-0 rounded-[1px] border border-faint"></span>`,
 		`<p class="min-w-0 flex-1 text-sm leading-5 text-meta">No keys are authorized.</p>`,
 		`x-data="confirm" @keydown.escape="escape" class="pt-6.5 pb-1.5"`,

@@ -1039,7 +1039,7 @@ html {
      border is a line and its bottom border the line its content ends on, so
      the next card stands 24px on less that pixel and its frame lands on a
      line down the column. */
-  .verso-overview-cols { display: grid; grid-template-columns: round(down, 100%, 8px); column-gap: var(--spacing-inset); align-items: start; }
+  .verso-overview-cols { display: grid; grid-template-columns: round(down, 100%, 8px); column-gap: var(--spacing-inset); row-gap: calc(var(--spacing-inset) - 1px); align-items: start; }
   @container overview (min-width: 52rem) {
     .verso-overview-cols { grid-template-columns: repeat(2, round(down, calc((100% - var(--spacing-inset)) / 2), 8px)); }
   }

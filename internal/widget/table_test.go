@@ -740,7 +740,7 @@ func TestAnEmptyTableIsTheEmptySlot(t *testing.T) {
 	r := newRenderer(t)
 	got := render(t, r, &Table{Columns: []TableColumn{{Label: "Name"}}, EmptyText: "No device has a reserved address."})
 	for _, want := range []string{
-		`<div data-verso-slot class="-mt-px -ml-px flex w-[calc(100%_+_1px)] items-center gap-3 rounded-xs border border-dashed border-rule-strong bg-quiet`,
+		`<div data-verso-slot class="flex w-full items-center gap-3 rounded-xs border border-dashed border-rule-strong bg-quiet`,
 		`<span aria-hidden="true" class="size-1.5 shrink-0 rounded-[1px] border border-faint"></span>`,
 		`<p class="min-w-0 flex-1 text-sm leading-5 text-meta">No device has a reserved address.</p>`,
 	} {

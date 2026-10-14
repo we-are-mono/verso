@@ -13,10 +13,10 @@
      it just did; the full form is the standing block a page leads with, where
      the tone's hairline frames it instead of a mark.
 
-     Both write on 20px lines. The compact band keeps a row's 10px inside at
-     top and 9px at the bottom, so it is a row's height; the full block's
-     frame stands on the grid's lines — a pixel out at the top and the left —
-     with 23px over its words and 24px under them. */}}
+     Both write on 20px lines and are a multiple of 4px tall with their
+     frame, so they flow as any box does. The compact band keeps 10px inside
+     at the top and 8px at the bottom, a row's 40px for a line; the full
+     block keeps 24px over its words and 22px under them. */}}
 {{/* callout.verbatim: what a tool reported, in its own words, under a hairline
      of the band's tone 12px down: mono, wrapping rather than scrolling, the
      copy control riding its first line. */}}
@@ -36,7 +36,7 @@
      frame stands a pixel out at the top and the left, on the notebook's lines.
      Its words stand half a cell inside the frame, above and below (the pixel
      the frame takes given back underneath), so the band stays whole cells tall. */}}
-<div data-verso-callout class="-mt-px -ml-px flex w-[calc(100%_+_1px)] max-w-[calc(var(--container-3xl)_+_1px)] items-start gap-2 rounded-xs border px-3 pt-2.5 pb-2.25 text-left text-sm leading-5
+<div data-verso-callout class="flex w-full max-w-(--container-3xl) items-start gap-2 rounded-xs border px-3 pt-2.5 pb-2 text-left text-sm leading-5
   {{if eq .Variant "success"}}border-green-line bg-green-soft text-green-deep
   {{else if eq .Variant "warning"}}border-marigold-line bg-marigold-soft text-marigold-deep
   {{else if eq .Variant "danger"}}border-crimson-line bg-crimson-soft text-crimson-deep
@@ -59,7 +59,7 @@
   </div>
 </div>
 {{else}}
-<div data-verso-callout class="-mt-px -ml-px flex w-[calc(100%_+_1px)] flex-col rounded-xs border px-6 pt-5.75 pb-6 text-left text-sm leading-5
+<div data-verso-callout class="flex w-full flex-col rounded-xs border px-6 pt-6 pb-5.5 text-left text-sm leading-5
   {{if eq .Variant "success"}}border-green-line bg-green-soft text-green-deep
   {{else if eq .Variant "warning"}}border-marigold-line bg-marigold-soft text-marigold-deep
   {{else if eq .Variant "danger"}}border-crimson-line bg-crimson-soft text-crimson-deep

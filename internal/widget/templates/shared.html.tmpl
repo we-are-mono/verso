@@ -48,7 +48,7 @@
      stay at the call site, and the add stands a cell under it. On the
      notebook's grid its frame is on the lines — a pixel out at the top and the
      left — two cells tall, its words on the 20px line between. */}}
-{{define "verso-empty-slot-class"}}-mt-px -ml-px flex w-[calc(100%_+_1px)] items-center gap-3 rounded-xs border border-dashed border-rule-strong bg-quiet px-4 pt-2.5 pb-2.25 leading-5{{end}}
+{{define "verso-empty-slot-class"}}flex w-full items-center gap-3 rounded-xs border border-dashed border-rule-strong bg-quiet px-4 pt-2.5 pb-2 leading-5{{end}}
 {{define "verso-empty-slot-body"}}<span aria-hidden="true" class="size-1.5 shrink-0 rounded-[1px] border border-faint"></span>
     <p class="min-w-0 flex-1 text-sm leading-5 text-meta">{{.}}</p>{{end}}
 
@@ -99,10 +99,10 @@
 {{/* verso-control-band-class: a listing's controls, the top strip of its
      card (actionbar.html.tmpl; the listing under it closes the card,
      sections.css). */}}
-{{/* It is 64px: the frame's top pixel, 15px over the 32px controls, 15px
-     under them and the hairline, so the column heads under it start on a
-     line. */}}
-{{define "verso-control-band-class"}}flex flex-wrap items-center gap-4 rounded-t-xs border border-rule-strong border-b-rule bg-ground px-6 pt-3.75 pb-3.75{{end}}
+{{/* Its top border is a line: 15px over the 32px controls, 16px under them,
+     and its hairline the line 64px down, so the column heads under it start
+     just past a line as they do under a card's frame. */}}
+{{define "verso-control-band-class"}}flex flex-wrap items-center gap-4 rounded-t-xs border border-rule-strong border-b-rule bg-ground px-6 pt-3.75 pb-4{{end}}
 {{define "verso-section-band-class"}}flex flex-wrap items-center justify-between gap-x-6{{end}}
 {{define "verso-section-title-class"}}text-lg leading-5 font-semibold tracking-[-0.025em] text-ink{{end}}
 {{define "verso-section-lede-class"}}verso-prose text-body{{end}}

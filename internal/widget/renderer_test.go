@@ -273,8 +273,8 @@ func TestAFocusedBoxStaysFocusedUnderThePointer(t *testing.T) {
 // — rather than running past it; it leads with its tone's small square.
 func TestACompactNoteKeepsItsControlsMeasure(t *testing.T) {
 	got := render(t, newRenderer(t), &Callout{Variant: "warning", Compact: true, Body: "Named once."})
-	if !strings.Contains(got, `flex w-[calc(100%_+_1px)] max-w-[calc(var(--container-3xl)_+_1px)] items-start gap-2 rounded-xs`) {
-		t.Errorf("a compact note keeps the form's measure, its frame a pixel out:\n%s", got)
+	if !strings.Contains(got, `flex w-full max-w-(--container-3xl) items-start gap-2 rounded-xs`) {
+		t.Errorf("a compact note keeps the form's measure:\n%s", got)
 	}
 	if !strings.Contains(got, "size-1.5 flex-none") || !strings.Contains(got, "bg-marigold") {
 		t.Errorf("a compact note leads with its tone's square:\n%s", got)
@@ -577,9 +577,9 @@ func TestRenderConfirm(t *testing.T) {
 		// worded in the step of the hue that can carry words; the full-chroma
 		// value stays a mark, on the square.
 		"border-crimson-line bg-crimson-soft", "text-crimson-deep", "size-1.5 flex-none\n    bg-crimson",
-		// The question is the compact callout in the act's tone: its frame on
-		// the grid's lines, its words half a cell inside.
-		`<div data-verso-callout class="-mt-px -ml-px flex w-[calc(100%_+_1px)] max-w-[calc(var(--container-3xl)_+_1px)] items-start gap-2 rounded-xs border px-3 pt-2.5 pb-2.25`,
+		// The question is the compact callout in the act's tone: a row's
+		// height for a line, its words 10px inside.
+		`<div data-verso-callout class="flex w-full max-w-(--container-3xl) items-start gap-2 rounded-xs border px-3 pt-2.5 pb-2`,
 		// The answers are the band's acts, on the line a cell under the words;
 		// cancel keeps the explanation's tone and hovers by a soft wash, not a
 		// heavy colour darken.
@@ -670,7 +670,7 @@ func TestRenderCallout(t *testing.T) {
 	// centre, framed one step darker than its ground as every band is, without
 	// the standing band's padding.
 	compact := render(t, r, &Callout{Compact: true, Body: "A short note."})
-	for _, want := range []string{"items-start", "gap-2", "px-3", "pt-2.5 pb-2.25", "border-denim-line", "mt-[0.4375rem] size-1.5", "bg-denim", "A short note."} {
+	for _, want := range []string{"items-start", "gap-2", "px-3", "pt-2.5 pb-2", "border-denim-line", "mt-[0.4375rem] size-1.5", "bg-denim", "A short note."} {
 		if !strings.Contains(compact, want) {
 			t.Errorf("compact callout missing %q in: %s", want, compact)
 		}

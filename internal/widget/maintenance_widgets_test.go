@@ -60,7 +60,7 @@ func TestACompactCalloutIsFramedOneStepDarker(t *testing.T) {
 		"danger": "border-crimson-line bg-crimson-soft", "success": "border-green-line bg-green-soft", "neutral": "border-rule bg-quiet",
 	} {
 		got := render(t, newRenderer(t), &Callout{Variant: variant, Compact: true, Body: "x"})
-		if !strings.Contains(got, `-mt-px -ml-px flex w-[calc(100%_+_1px)] max-w-[calc(var(--container-3xl)_+_1px)] items-start gap-2 rounded-xs border px-3 pt-2.5 pb-2.25`) || !strings.Contains(got, border) {
+		if !strings.Contains(got, `flex w-full max-w-(--container-3xl) items-start gap-2 rounded-xs border px-3 pt-2.5 pb-2`) || !strings.Contains(got, border) {
 			t.Errorf("%s: a compact band is framed one step darker on the lines, want %q:\n%s", variant, border, got)
 		}
 	}

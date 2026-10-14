@@ -260,23 +260,20 @@
   /* The conditions a rule carries are one block: the list wears the quiet
      card the Action reading's parameters wear — a hairline frame on Quiet
      Sand, 24px in — while it holds any, and none at all when it is empty, so
-     the card follows every add and remove with no script. Its frame is on
-     the grid's lines, a pixel out at the top and the left onto them: 24px of
-     air inside its top edge before the first name, and its bottom edge the
-     line after the last condition's air. */
+     the card follows every add and remove with no script. It is a multiple
+     of 4px tall with its frame, as every box is: 23px of air inside its top
+     edge before the first name and 23px after the last condition, each with
+     the frame's pixel. */
   .verso-condition-list:has(> .verso-condition) {
     /* The card is the measure its rows stand to, so they fill it and its
        24px inset is the same on both sides at every width. */
     --verso-form-width: 100%;
-    margin-top: -1px;
-    margin-left: -1px;
-    width: calc(100% + 1px);
     border: 1px solid var(--color-rule);
     border-radius: var(--radius-xs);
     background: var(--color-quiet);
     padding-inline: var(--spacing-inset);
   }
-  .verso-condition-list > .verso-condition:first-child { padding-top: var(--spacing-inset); }
+  .verso-condition-list > .verso-condition:first-child { padding-top: calc(var(--spacing-inset) - 1px); }
   .verso-condition-list > .verso-condition:last-child { padding-bottom: calc(var(--spacing-inset) - 1px); }
   /* Two conditions meet on a hairline across the card, 24px from each and
      on a line, and the seam says how they join — "and", a kicker on the

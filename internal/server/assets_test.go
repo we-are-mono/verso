@@ -606,6 +606,11 @@ func TestTheRuleAfterASectionBringsItsOwnAir(t *testing.T) {
 		t.Fatal(err)
 	}
 	css := string(raw)
+	// A notice or an empty slot is a box like any other, a multiple of 4px
+	// tall with its frame, so it takes the full air before it.
+	if strings.Contains(css, ":is([data-verso-slot], [data-verso-callout])") {
+		t.Error("a notice or a slot still takes its air less a pixel, as a frame standing a pixel out did")
+	}
 	for _, want := range []string{
 		"section[data-verso-section=\"ruled\"] {\n    margin-top: calc(var(--spacing) * 10 - 1px);\n    border-top: 1px solid var(--color-rule);\n    padding-top: var(--spacing-inset);\n  }",
 		":not(input[type=\"hidden\"], template, [hidden]) + section[data-verso-section]:has(> [data-verso-section-band]),\n" +
@@ -613,9 +618,6 @@ func TestTheRuleAfterASectionBringsItsOwnAir(t *testing.T) {
 		// a section with no heading that opens under a notice stands the
 		// inset's air under it, rather than flush on it
 		"[data-verso-callout] + section[data-verso-section][data-verso-headless] {\n    margin-top: var(--spacing-inset);\n  }",
-		// a notice or an empty slot further down a section's rows keeps the
-		// rhythm's air less its frame's pixel, never just the pixel's pull
-		".verso-rhythm > :not(input[type=\"hidden\"], [hidden]) ~ :is([data-verso-slot], [data-verso-callout]) {\n    margin-top: calc(var(--verso-rhythm, calc(var(--spacing) * 10)) - 1px);\n  }",
 		// a listing that ends its section gives its last hairline to the rule
 		// that closes it, clear but keeping its pixel
 		"section[data-verso-section] > .verso-rhythm > :last-child .verso-table > tbody > tr:last-child > td {\n    border-bottom-color: transparent;\n  }",

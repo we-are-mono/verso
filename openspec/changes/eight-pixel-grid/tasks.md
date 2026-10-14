@@ -46,7 +46,7 @@ Every task ends green under `make lint` and `make test`. Each step is reviewed i
 
 ## 9. Integration
 
-- [ ] 9.1 Walk every rail page and its drawers in a private window with G on, at 1440px and 390px wide, and fix anything off a line. Then run `make lint` and `make test`, and confirm `openspec validate eight-pixel-grid --strict` passes.
+- [x] 9.1 Walk every rail page and its drawers in a private window with G on, at 1440px and 390px wide, and fix anything off a line. Then run `make lint` and `make test`, and confirm `openspec validate eight-pixel-grid --strict` passes.
 
 ## Workflow follow-up
 

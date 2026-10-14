@@ -91,13 +91,12 @@ func TestArtifactFrameNamesWhatItHolds(t *testing.T) {
 }
 
 // TestArtifactFrameKeepsOneInset: inside the frame around a stored document,
-// every word writes on the notebook's 20px lines, and the frame's own edges
-// are lines like any other — a pixel out at the top and the left onto the
-// grid's own, closing 19px under its last row so its bottom edge is the next
-// line. At the sides the frame holds the words 20px in.
+// every word writes on 20px lines, and the frame is a multiple of 4px tall,
+// closing 22px under its last row. At the sides the frame holds the words
+// 24px in.
 func TestArtifactFrameKeepsOneInset(t *testing.T) {
 	got := render(t, newRenderer(t), &Card{Style: "artifact", Children: []Widget{&Properties{}}})
-	if !strings.Contains(got, `class="-mt-px -ml-px w-[calc(100%_+_1px)] rounded-xs border border-rule bg-quiet px-6 pb-5.75"`) {
+	if !strings.Contains(got, `class="w-full rounded-xs border border-rule bg-quiet px-6 pb-5.5"`) {
 		t.Errorf("want one inset on every side:\n%s", got)
 	}
 }

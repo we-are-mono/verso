@@ -28,7 +28,7 @@
     </div>{{end}}
     </div>
     <template><div data-verso-list-row class="{{template "list.row-class"}}"><input type="hidden" name="{{.Name}}">{{template "list.packet"}}<span data-verso-list-value class="{{template "list.value-class"}}"></span><button type="button" data-verso-list-remove title="{{t "Remove"}}" aria-label="{{t "Remove"}}" class="-my-1 grid {{template "verso-btn-icon"}}">{{icon "x" "size-4"}}</button></div></template>
-    <div class="flex items-center gap-2 py-0.75"><input id="{{.Name}}"{{if .Label}} aria-labelledby="{{.Name}}-label"{{end}}{{if .Explained}} aria-describedby="{{.Name}}-tip"{{end}} data-verso-list-input {{if .Datatype}}data-datatype="{{.Datatype}}"{{end}} placeholder="{{if .Prompt}}{{.Prompt}}{{else}}{{t "Add…"}}{{end}}" class="{{template "verso-input-class"}} {{template "verso-input-border" ""}} min-w-0"><button type="button" data-verso-list-add class="{{template "verso-btn-box"}} border {{template "verso-btn-secondary"}}">{{t "Add"}}</button></div>
+    <div class="flex items-center gap-2 pt-1"><input id="{{.Name}}"{{if .Label}} aria-labelledby="{{.Name}}-label"{{end}}{{if .Explained}} aria-describedby="{{.Name}}-tip"{{end}} data-verso-list-input {{if .Datatype}}data-datatype="{{.Datatype}}"{{end}} placeholder="{{if .Prompt}}{{.Prompt}}{{else}}{{t "Add…"}}{{end}}" class="{{template "verso-input-class"}} {{template "verso-input-border" ""}} min-w-0"><button type="button" data-verso-list-add class="{{template "verso-btn-box"}} border {{template "verso-btn-secondary"}}">{{t "Add"}}</button></div>
   </div>
   {{else if eq .Style "tokens"}}
   {{/* The box is a field, and each value inside it is a chip — the same chip a

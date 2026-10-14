@@ -88,8 +88,8 @@ func TestListRowsTakeTheirHeightFromPadding(t *testing.T) {
 	if strings.Contains(got, "min-h-8") {
 		t.Errorf("no fixed row floor:\n%s", got)
 	}
-	if !strings.Contains(got, `<div data-verso-list-items class="has-[>*]:-mt-px has-[>*]:mb-px">`) || !strings.Contains(got, `<div class="flex items-center gap-2 py-0.75">`) {
-		t.Errorf("the set takes the label's line for its first hairline only when it holds something, and the add box is centred in its two cells:\n%s", got)
+	if !strings.Contains(got, `<div data-verso-list-items class="has-[>*]:-mt-px has-[>*]:mb-px">`) || !strings.Contains(got, `<div class="flex items-center gap-2 pt-1">`) {
+		t.Errorf("the set takes the label's line for its first hairline only when it holds something, and the add box stands 4px under it:\n%s", got)
 	}
 }
 

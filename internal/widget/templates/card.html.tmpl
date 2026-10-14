@@ -1,12 +1,10 @@
 <!-- SPDX-License-Identifier: GPL-2.0-only -->
 <!-- SPDX-FileCopyrightText: 2026 Mono Technologies Inc. -->
 {{/* Legacy groups are sections. A frame is reserved for a stored artifact.
-     Its edges are lines of the grid like any other — a pixel out at the top
-     and the left onto the grid's own — and every word inside it writes on
-     20px lines, so the frame adds nothing to them. At the sides it holds the
-     words 24px in, and it closes 23px under its last row, its edge the next
-     line. */}}
-<section{{if eq .Style "artifact"}} data-verso-artifact class="-mt-px -ml-px w-[calc(100%_+_1px)] rounded-xs border border-rule bg-quiet px-6 pb-5.75"{{end}}>
+     It is a multiple of 4px tall with its frame, as every box is, and every
+     word inside it writes on 20px lines. At the sides it holds the words
+     24px in, and it closes 22px under its last row. */}}
+<section{{if eq .Style "artifact"}} data-verso-artifact class="w-full rounded-xs border border-rule bg-quiet px-6 pb-5.5"{{end}}>
   {{if eq .Style "artifact"}}
   {{/* A stored document says what it is before its facts do: the name over a
        sentence of what it is for, closed off from the facts by the strong

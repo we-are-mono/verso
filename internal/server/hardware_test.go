@@ -174,7 +174,7 @@ func TestAFibreModuleIsAnArtifactCard(t *testing.T) {
 	}
 	body := buf.String()
 	for _, want := range []string{
-		`<section data-verso-artifact class="-mt-px -ml-px w-[calc(100%_+_1px)] rounded-xs border border-rule bg-quiet px-6 pb-5.75">`,
+		`<section data-verso-artifact class="w-full rounded-xs border border-rule bg-quiet px-6 pb-5.5">`,
 		`<dt class="shrink-0 text-meta sm:w-24">Link</dt>`,
 		`<p class="font-mono text-base leading-5 font-medium text-body">xfi0</p>`, // the cage, as the machine names it
 	} {
