@@ -20,6 +20,11 @@
       }
     },
     {
+      "label": "Uptime",
+      "value": "",
+      "duration": 4523580
+    },
+    {
       "label": "Link",
       "value": "",
       "rate": 2500000000.0

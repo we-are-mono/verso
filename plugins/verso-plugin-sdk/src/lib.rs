@@ -1928,6 +1928,11 @@ pub struct Property {
     /// language. Hand over the number, never the text.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub rate: Option<f64>,
+    /// Makes the value a stretch of time, in seconds: the shell writes it in
+    /// the value's place as every duration is written ("52 d 8 h"), its
+    /// figures apart from their units. Hand over the number, never the text.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub duration: Option<u64>,
 }
 
 /// PropertiesHead is what a fact sheet's head says: a group's title, with a
@@ -2042,6 +2047,16 @@ impl Property {
         Property {
             label: label.into(),
             rate: Some(bits_per_second),
+            ..Property::default()
+        }
+    }
+
+    /// duration is a fact whose value is a stretch of `seconds`, which the
+    /// shell writes as every duration is written ("52 d 8 h").
+    pub fn duration(label: &str, seconds: u64) -> Property {
+        Property {
+            label: label.into(),
+            duration: Some(seconds),
             ..Property::default()
         }
     }
@@ -2350,6 +2365,11 @@ pub struct TableCell {
     /// ("port · 2.5 Gb/s"), or alone. Hand over the number, never the text.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub rate: Option<f64>,
+    /// A stretch of time in seconds, which the shell writes in the cell's
+    /// place as every duration is written ("52 d 8 h"), its figures apart
+    /// from their units. Hand over the number, never the text.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub duration: Option<u64>,
 }
 
 /// One part of a phrase cell's line: an entity reference, prose the shell

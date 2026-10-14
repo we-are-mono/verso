@@ -100,6 +100,9 @@
           "rate": 1000000000.0
         },
         {
+          "duration": 8040
+        },
+        {
           "text": "accept",
           "variant": "success",
           "dot": true,
