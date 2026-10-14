@@ -1417,7 +1417,7 @@ func TestCellDetailStandsUnderItsValue(t *testing.T) {
 		">this browser</span>",
 		// the 20px chip fills the 20px detail line rather than making the line
 		// taller
-		"verso-chip my-0.5 " + chipBox,
+		"verso-chip my-0.75 " + chipBox,
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("want %s in:\n%s", want, got)
@@ -1440,14 +1440,14 @@ func TestCellDetailStandsUnderItsValue(t *testing.T) {
 }
 
 // chipBox is the one chip every citation wears, the Interfaces page's: 14px
-// regular words on a 16px line, 1px above and below, inside a 1px border, so
-// the box is 20px, exactly the line it rides.
-const chipBox = "inline-flex items-center align-top gap-1.5 rounded-xs border px-1.5 py-px leading-4 whitespace-nowrap text-sm font-normal"
+// regular words on a 16px line inside a 1px border, so the box is 18px, 3px
+// inside the 24px line it rides on either side, its words on that line.
+const chipBox = "inline-flex items-center align-top gap-1.5 rounded-xs border px-1.5 leading-4 whitespace-nowrap text-sm font-normal"
 
 // chipMonoBox is the same box for a chip whose words the machine wrote: mono,
 // one step heavier (500), because mono at 400 reads a size smaller than the
 // sans beside it.
-const chipMonoBox = "inline-flex items-center align-top gap-1.5 rounded-xs border px-1.5 py-px leading-4 whitespace-nowrap text-sm font-medium font-mono"
+const chipMonoBox = "inline-flex items-center align-top gap-1.5 rounded-xs border px-1.5 leading-4 whitespace-nowrap text-sm font-medium font-mono"
 
 // TestTableTagAlwaysWearsItsHairline: a tag is a chip — the same box as every
 // other chip, with the hairline of its own hue — with or without an icon.

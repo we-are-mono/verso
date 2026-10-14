@@ -14,7 +14,7 @@ import (
 // while its change waits — drawn by the one label, never by hand.
 func TestEveryLabelledRowIsOneFrame(t *testing.T) {
 	r := newRenderer(t)
-	key := `<span class="verso-chip my-0.5 inline-flex items-center align-top gap-1.5 rounded-xs border px-1.5 py-px leading-4 whitespace-nowrap text-sm font-medium font-mono border-rule bg-quiet text-meta">opt</span>`
+	key := `<span class="verso-chip my-0.75 inline-flex items-center align-top gap-1.5 rounded-xs border px-1.5 leading-4 whitespace-nowrap text-sm font-medium font-mono border-rule bg-quiet text-meta">opt</span>`
 	for name, w := range map[string]Widget{
 		"field":    &Field{Name: "opt", Label: "Option", Key: "opt", Staged: true},
 		"code":     &Field{Name: "opt", Label: "Option", Key: "opt", Style: "code", Staged: true},

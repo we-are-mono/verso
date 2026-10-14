@@ -158,19 +158,20 @@
      panel's tab, after a row's name — because a reader who sees two heights
      reads two kinds of thing, and a chip is one kind of thing.
 
-     20px, and the arithmetic that gets there rather than a height anyone has to
-     honour by hand: a 14px value in a 16px line box, 1px of padding above and
-     below, and the 1px hairline. Retune it by moving the line box or the
-     padding and the whole vocabulary follows. */}}
+     18px, and the arithmetic that gets there rather than a height anyone has to
+     honour by hand: a 14px value in a 16px line box and the 1px hairline above
+     and below. Retune it by moving the line box and the whole vocabulary
+     follows. */}}
 {{/* verso-chip-shape is that box with the type left out, for the one chip whose
      words are not chip-sized — a traffic endpoint, which reads at the mono
      reading size because it is an address someone could type. The 16px line box
      is what holds every chip to one height whatever size its words are. */}}
-{{/* A chip is 20px, 2px inside the 24px line it rides on either side, so the
-     line keeps its 24px: in running text it hangs from the line's top rather
-     than its baseline, which would push the line taller. A 16px glyph fills
-     its line box, so it never makes the chip taller than the line box does. */}}
-{{define "verso-chip-shape"}}verso-chip my-0.5 inline-flex items-center align-top gap-1.5 rounded-xs border px-1.5 py-px leading-4 whitespace-nowrap{{end}}
+{{/* A chip is 18px, 3px inside the 24px line it rides on either side, so the
+     line keeps its 24px and the chip stands clear of a field under its label:
+     in running text it hangs from the line's top rather than its baseline,
+     which would push the line taller. Its words stay centred on the line, so
+     they share the baseline of the words beside them. */}}
+{{define "verso-chip-shape"}}verso-chip my-0.75 inline-flex items-center align-top gap-1.5 rounded-xs border px-1.5 leading-4 whitespace-nowrap{{end}}
 
 {{/* One form geometry on pages and in drawers: labels above controls, with
      checkboxes beside their labels. forms.css owns spacing, content measures
