@@ -668,6 +668,8 @@ func newServerFull(t *testing.T, backend openwrt.Backend, tr plugin.Transport, m
 	s.bridgePorts = func() (map[string]string, error) { return nil, errors.New("no fdb in tests") }
 	s.portKinds = fakeKinds{}
 	s.boardJSON = func() []byte { return nil }
+	// Nor a board profile: no Hardware card unless a test gives the board sensors.
+	s.layouts, s.boardSensors = cookieLayout{}, nil
 	s.maintenanceDir = t.TempDir()
 	// The update truth is a file on the device shared with the cron run
 	// (ADR-014 §5); each test gets its own, so one test's answer is never

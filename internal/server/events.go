@@ -39,7 +39,7 @@ func (s *Server) handleOverviewEvents(w http.ResponseWriter, r *http.Request) {
 	_, catalog := s.localize(r)
 	tr := translatorOrIdentity(catalog)
 	layout := s.layouts.Layout(r)
-	liveOverview := &widget.Overview{}
+	liveOverview := &widget.Overview{Layout: layout}
 
 	// What a connection reads once: the board, and the interfaces' topology,
 	// which changes only with an apply, after which the page is read anew.
@@ -140,12 +140,22 @@ func (s *Server) handleOverviewEvents(w http.ResponseWriter, r *http.Request) {
 		down, up := s.wanHist.Latest()
 		return write(down, up)
 	}
+	// The board's sensors, for the Hardware card's rows and header: the
+	// sampler reads them once per five seconds for every connection, and
+	// not at all while the card is hidden (the verdict does not count them).
+	sendSensors := func() bool {
+		if s.boardSensors == nil || !layout.Shows("hardware") {
+			return true
+		}
+		liveOverview.Hardware = hardwareView(s.boardSensors.Read())
+		return writeEvent(w, "", "sensors", map[string]any{"rows": hardwareRows(liveOverview.Hardware)}) == nil
+	}
 	sendOverview := func() bool {
 		s.applyFirewallStatus(r.Context(), sid, liveOverview)
 		return writeEvent(w, "", "overview", liveOverview.LiveStatus(tr)) == nil
 	}
 	s.serveSSE(w, r, func() bool {
-		return sendMeters() && sendInterfaces() && sendWan() && sendOverview()
+		return sendMeters() && sendInterfaces() && sendWan() && sendSensors() && sendOverview()
 	})
 }
 

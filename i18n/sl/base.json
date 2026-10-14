@@ -946,5 +946,9 @@
   "%s down · %s up": "%s prejem · %s oddaja",
   "%s is high": "%s: visoka vrednost",
   "Architecture": "Arhitektura",
-  "Target platform": "Ciljna platforma"
+  "Target platform": "Ciljna platforma",
+  "Thermal": "Temperature",
+  "%s is hot": "%s: visoka temperatura",
+  "%s stopped": "%s: se ne vrti",
+  "No sensor answered.": "Noben senzor se ni odzval."
 }

@@ -19,15 +19,19 @@ type layoutSource interface {
 }
 
 // cookieLayout keeps the layout per browser, in a cookie (ADR-022). It is the
-// layout's interim home until it is kept on the router per user.
-type cookieLayout struct{}
+// layout's interim home until it is kept on the router per user. hardware is
+// whether this board's profile lists sensors; without, there is no Hardware card.
+type cookieLayout struct{ hardware bool }
 
 // Layout reads the request's layout cookie as untrusted input; with none, or
 // one it cannot read, the request gets the default layout.
-func (cookieLayout) Layout(r *http.Request) widget.OverviewLayout {
-	cookie, err := r.Cookie(overviewLayoutCookie)
-	if err != nil {
-		return widget.DefaultOverviewLayout()
+func (c cookieLayout) Layout(r *http.Request) widget.OverviewLayout {
+	l := widget.DefaultOverviewLayout()
+	if cookie, err := r.Cookie(overviewLayoutCookie); err == nil {
+		l = widget.ParseOverviewLayout(cookie.Value)
 	}
-	return widget.ParseOverviewLayout(cookie.Value)
+	if !c.hardware {
+		l = l.Without("hardware")
+	}
+	return l
 }

@@ -47,6 +47,7 @@ type TempReading struct {
 	CPU               bool // the headline processor pick lifted to the vitals grid
 	Curated           bool // shown in the curated Temperatures section
 	Rank              int  // order within the curated section
+	Entry             int  // 1 + its index in the profile's array; 0 when no entry names it
 
 	zoneType string
 	ofNode   string
@@ -68,6 +69,7 @@ type PowerReading struct {
 	HasV   bool
 	HasA   bool
 	Main   bool
+	Entry  int // 1 + its index in the profile's array; 0 when no entry names it
 }
 
 // FanReading is one fan channel. Duty is the pwm duty as a percent (0–255 scaled);
@@ -82,6 +84,7 @@ type FanReading struct {
 	HasDuty bool
 	State   string // "running" | "fault" | "absent"
 	Main    bool
+	Entry   int // 1 + its index in the profile's array; 0 when no entry names it
 }
 
 // FiberModule is one SFP/SFP+ cage's diagnostics, read from its module DOM through
@@ -228,7 +231,7 @@ func curateProfileTemps(temps []TempReading, p *Profile) {
 		if i < 0 {
 			continue
 		}
-		temps[i].Name = e.Name
+		temps[i].Name, temps[i].Entry = e.Name, rank+1
 		if e.CPU {
 			temps[i].CPU, cpu = true, true
 			continue // the CPU pick leads the grid, not the curated list
@@ -297,8 +300,8 @@ func resolvePowers(p *Profile, hwmons []Hwmon, amb map[string]bool) []PowerReadi
 				kernel = "power" + strconv.Itoa(ch)
 			}
 			pr := PowerReading{Kernel: kernel, Source: hwmonSource(h, amb[h.Name]), MicroW: h.Power[ch]}
-			if name, main, ok := matchPowerEntry(p, h); ok {
-				pr.Name, pr.Main = name, main
+			if i := matchPowerEntry(p, h); i >= 0 {
+				pr.Name, pr.Main, pr.Entry = p.Power[i].Name, p.Power[i].Main, i+1
 			}
 			if pr.Name == "" {
 				pr.Name = pr.Kernel
@@ -315,18 +318,18 @@ func resolvePowers(p *Profile, hwmons []Hwmon, amb map[string]bool) []PowerReadi
 	return out
 }
 
-// matchPowerEntry resolves a profile power entry for a chip by its of_node tail —
+// matchPowerEntry finds the profile power entry for a chip (its index, -1 for none) by its of_node tail —
 // each INA rail is its own single-channel hwmon.
-func matchPowerEntry(p *Profile, h Hwmon) (name string, main, ok bool) {
+func matchPowerEntry(p *Profile, h Hwmon) int {
 	if p == nil {
-		return "", false, false
+		return -1
 	}
-	for _, e := range p.Power {
+	for i, e := range p.Power {
 		if suffixMatch(h.OfNode, e.Path) {
-			return e.Name, e.Main, true
+			return i
 		}
 	}
-	return "", false, false
+	return -1
 }
 
 // resolveFans enumerates every hwmon fan channel with its pwm duty and presence.
@@ -354,8 +357,8 @@ func resolveFans(p *Profile, hwmons []Hwmon, amb map[string]bool) []FanReading {
 			default:
 				fr.State = "absent"
 			}
-			if name, main, ok := matchFanEntry(p, h, ch); ok {
-				fr.Name, fr.Main = name, main
+			if i := matchFanEntry(p, h, ch); i >= 0 {
+				fr.Name, fr.Main, fr.Entry = p.Fans[i].Name, p.Fans[i].Main, i+1
 			}
 			out = append(out, fr)
 		}
@@ -499,6 +502,25 @@ func (inv Inventory) OtherFans() []FanReading {
 	return out
 }
 
+// Profiled returns the readings the profile names, each kind in the profile's
+// own order — the Overview's Hardware card.
+func (inv Inventory) Profiled() ([]TempReading, []PowerReading, []FanReading) {
+	return byEntry(inv.Temps, func(t TempReading) int { return t.Entry }),
+		byEntry(inv.Powers, func(p PowerReading) int { return p.Entry }),
+		byEntry(inv.Fans, func(f FanReading) int { return f.Entry })
+}
+
+func byEntry[T any](in []T, entry func(T) int) []T {
+	var out []T
+	for _, r := range in {
+		if entry(r) > 0 {
+			out = append(out, r)
+		}
+	}
+	slices.SortStableFunc(out, func(a, b T) int { return entry(a) - entry(b) })
+	return out
+}
+
 // --- resolution helpers ---------------------------------------------------
 
 // gradeTemp grades a reading against its own limits, never a guessed one: no
@@ -637,22 +659,22 @@ func genericCPUIndex(temps []TempReading) int {
 	return best
 }
 
-// matchFanEntry resolves a profile fan entry for a channel: each key points at a
+// matchFanEntry finds the profile fan entry for a channel (its index, -1 for none): each key points at a
 // controller child (…/fan-controller@2e/fan@0), so the parent of_node identifies
 // the hwmon and the child index the channel (fan@0 → fan1).
-func matchFanEntry(p *Profile, h Hwmon, ch int) (name string, main, ok bool) {
+func matchFanEntry(p *Profile, h Hwmon, ch int) int {
 	if p == nil {
-		return "", false, false
+		return -1
 	}
-	for _, e := range p.Fans {
+	for i, e := range p.Fans {
 		parent, child := splitLastSeg(e.Path)
 		idx, valid := indexAfterAt(child)
 		if !valid || idx+1 != ch || !suffixMatch(h.OfNode, parent) {
 			continue
 		}
-		return e.Name, e.Main, true
+		return i
 	}
-	return "", false, false
+	return -1
 }
 
 // hwmonSource is the mono locator the full table prints for a chip. A chip whose

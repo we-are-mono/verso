@@ -265,3 +265,88 @@ func TestOverviewCardHeadsNeverLeakPluralContext(t *testing.T) {
 		}
 	}
 }
+
+// dkHardware is the DK's Hardware card as the server formats it, every reading
+// in band, the second fan header empty.
+func dkHardware() *OverviewSensors {
+	return &OverviewSensors{
+		CPU: "48 °C",
+		Thermal: []OverviewSensor{
+			{Key: "hw-thermal-1", Name: "cluster", Value: "48 °C"},
+			{Key: "hw-thermal-2", Name: "Memory", Value: "47 °C"},
+		},
+		Power: []OverviewSensor{{Key: "hw-power-1", Name: "USB Power Delivery", Value: "9.8 W"}},
+		Fans: []OverviewSensor{
+			{Key: "hw-fans-1", Name: "System Fan 1", Value: "2 622 rpm"},
+			{Key: "hw-fans-2", Name: "System Fan 2", Value: "—"},
+		},
+	}
+}
+
+// The Hardware header speaks only out of band, naming the reading furthest
+// out: a temperature before a stopped fan in the same tone, a critical one
+// before both. Its line is always the CPU temperature.
+func TestHardwareCardHead(t *testing.T) {
+	cases := []struct {
+		name                  string
+		edit                  func(*OverviewSensors)
+		tone, status, summary string
+	}{
+		{"in band", func(*OverviewSensors) {}, "neutral", "", "48 °C"},
+		{"a warm reading", func(s *OverviewSensors) { s.Thermal[1].Tone = "warning" }, "warning", "Memory is hot", "48 °C"},
+		{"a fan stops", func(s *OverviewSensors) { s.Fans[0].Tone = "warning" }, "warning", "System Fan 1 stopped", "48 °C"},
+		{"a critical reading beside a stopped fan", func(s *OverviewSensors) {
+			s.Fans[0].Tone, s.Thermal[0].Tone = "warning", "danger"
+		}, "danger", "cluster is hot", "48 °C"},
+		{"a warm reading beside a stopped fan", func(s *OverviewSensors) {
+			s.Fans[0].Tone, s.Thermal[1].Tone = "warning", "warning"
+		}, "warning", "Memory is hot", "48 °C"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			hw := dkHardware()
+			c.edit(hw)
+			if h := head(t, &Overview{Hardware: hw}, "hardware"); h.Tone != c.tone || h.Status != c.status || h.Summary != c.summary {
+				t.Errorf("head = %+v, want %s %q %q", h, c.tone, c.status, c.summary)
+			}
+		})
+	}
+	for _, none := range []*OverviewSensors{nil, {}} {
+		if h := head(t, &Overview{Hardware: none}, "hardware"); h.Tone != "neutral" || h.Status != "Unavailable" {
+			t.Errorf("no sensor answered: head = %+v", h)
+		}
+	}
+}
+
+// The Hardware card is the profile's sections in order, each a fact list
+// under its name, every row keyed for the stream; a kind the profile does not
+// list has no section, and a card with no reading says so.
+func TestHardwareCardBody(t *testing.T) {
+	body := cardBody(t, &Overview{Hardware: dkHardware()}, "hardware")
+	thermal, power, fans := strings.Index(body, ">Thermal<"), strings.Index(body, ">Power<"), strings.Index(body, ">Fans<")
+	if thermal < 0 || !(thermal < power && power < fans) {
+		t.Errorf("want Thermal, Power, Fans in order (at %d, %d, %d):\n%s", thermal, power, fans, body)
+	}
+	for _, want := range []string{`data-verso-prop="hw-thermal-2"`, ">Memory<", ">47 °C<", `data-verso-prop="hw-fans-2"`, ">—<"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("body missing %q:\n%s", want, body)
+		}
+	}
+	noFans := dkHardware()
+	noFans.Fans = nil
+	if body := cardBody(t, &Overview{Hardware: noFans}, "hardware"); strings.Contains(body, ">Fans<") {
+		t.Errorf("a profile with no fans has no Fans section:\n%s", body)
+	}
+	if body := cardBody(t, &Overview{}, "hardware"); !strings.Contains(body, "No sensor answered.") {
+		t.Errorf("no reading, no sections, and a sentence that says so:\n%s", body)
+	}
+}
+
+// A hot board is not a network problem: the verdict speaks for the network.
+func TestHardwareStaysOutOfTheVerdict(t *testing.T) {
+	hw := dkHardware()
+	hw.Thermal[0].Tone, hw.Fans[0].Tone = "danger", "warning"
+	if v := (&Overview{WANKnown: true, WANUp: true, Hardware: hw}).verdict(plain); v.Tone != "success" {
+		t.Errorf("verdict = %+v, want online", v)
+	}
+}

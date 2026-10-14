@@ -215,5 +215,15 @@
     if (d && window.versoLiveSample) window.versoLiveSample("wan", d.down, d.up);
     if (d) writeSpan(document.querySelector('[data-verso-prop="wan-uptime"]'), d.connected);
   });
+  // The Hardware card's readings, each row written in place by its key.
+  es.addEventListener("sensors", function (e) {
+    var d;
+    try { d = JSON.parse(e.data); } catch (err) { return; }
+    if (!d || !d.rows) return;
+    Object.keys(d.rows).forEach(function (key) {
+      var el = document.querySelector('[data-verso-prop="' + CSS.escape(key) + '"]');
+      if (el && el.textContent !== d.rows[key]) el.textContent = d.rows[key];
+    });
+  });
   }
 })();

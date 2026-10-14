@@ -25,12 +25,12 @@ const overviewLayoutVersion = "1"
 // doing on the left, what the router is doing on the right.
 var overviewDefault = [2][]string{
 	{"internet", "ports", "tunnels"},
-	{"traffic", "resources", "system"},
+	{"traffic", "resources", "system", "hardware"},
 }
 
 // overviewMerged names the card each retired card lives on in, so a layout a
-// browser saved before the merge keeps its card where the first of them stood.
-var overviewMerged = map[string]string{"hardware": "system", "firmware": "system"}
+// browser saved before the merge keeps its card where it stood.
+var overviewMerged = map[string]string{"firmware": "system"}
 
 // overviewCardIDs are every card the Overview has, in default order.
 func overviewCardIDs() []string {
@@ -130,6 +130,15 @@ func (l OverviewLayout) IsClosed(id string) bool { return slices.Contains(l.Clos
 
 // IsHidden is whether the card is off the page.
 func (l OverviewLayout) IsHidden(id string) bool { return slices.Contains(l.Hidden, id) }
+
+// Without is the layout with a card this router does not have taken out of
+// its column, the closed cards and the shelf; every other card keeps its place.
+func (l OverviewLayout) Without(id string) OverviewLayout {
+	drop := func(ids []string) []string {
+		return slices.DeleteFunc(slices.Clone(ids), func(s string) bool { return s == id })
+	}
+	return OverviewLayout{Cols: [2][]string{drop(l.Cols[0]), drop(l.Cols[1])}, Closed: drop(l.Closed), Hidden: drop(l.Hidden)}
+}
 
 // Shows is whether the card is on the page, open or closed.
 func (l OverviewLayout) Shows(id string) bool { return !l.IsHidden(id) }

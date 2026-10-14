@@ -7,20 +7,21 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"reflect"
+	"slices"
 	"testing"
 
 	"github.com/we-are-mono/verso/internal/widget"
 )
 
 func TestCookieLayout(t *testing.T) {
-	var source layoutSource = cookieLayout{}
+	var source layoutSource = cookieLayout{hardware: true}
 	bare := httptest.NewRequest(http.MethodGet, "/", nil)
 	if got := source.Layout(bare); !reflect.DeepEqual(got, widget.DefaultOverviewLayout()) {
 		t.Errorf("no cookie = %+v, want the default layout", got)
 	}
 
 	saved := httptest.NewRequest(http.MethodGet, "/", nil)
-	value := "1.traffic-internet.ports-tunnels-resources-system.system."
+	value := "1.traffic-internet-hardware.ports-tunnels-resources-system.system."
 	saved.AddCookie(&http.Cookie{Name: overviewLayoutCookie, Value: value})
 	if got := source.Layout(saved).Encode(); got != value {
 		t.Errorf("saved layout = %q, want %q", got, value)
@@ -30,5 +31,14 @@ func TestCookieLayout(t *testing.T) {
 	garbled.Header.Set("Cookie", overviewLayoutCookie+"=1.%%%.;;")
 	if got := source.Layout(garbled); !reflect.DeepEqual(got, widget.DefaultOverviewLayout()) {
 		t.Errorf("garbled cookie = %+v, want the default layout", got)
+	}
+
+	// A board with no profile has no Hardware card, whatever the cookie says.
+	unprofiled := cookieLayout{}
+	if got := unprofiled.Layout(bare); slices.Contains(got.Cols[1], "hardware") {
+		t.Errorf("no profile, default = %+v, want no Hardware", got)
+	}
+	if got := unprofiled.Layout(saved).Encode(); got != "1.traffic-internet.ports-tunnels-resources-system.system." {
+		t.Errorf("no profile, saved = %q, want Hardware dropped and the rest in place", got)
 	}
 }

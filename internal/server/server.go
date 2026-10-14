@@ -141,7 +141,10 @@ type Server struct {
 	auth     Authenticator
 	sessions *Sessions
 	// layouts is where each request's Overview card layout comes from.
-	layouts      layoutSource
+	layouts layoutSource
+	// boardSensors reads the board profile's sensors for the Overview's
+	// Hardware card; nil on a board whose profile lists none.
+	boardSensors *sensorSampler
 	loginLimiter *loginLimiter
 	// loginInternet reads only the public uplink boolean, without an rpcd session.
 	loginInternet func() (bool, error)
@@ -251,6 +254,11 @@ func New(
 	}
 	interfaceSampler := telemetry.NewSampler()
 	interfaceSampler.Start()
+	profile := boardProfile()
+	var boardSensors *sensorSampler
+	if listsSensors(profile) {
+		boardSensors = newSensorSampler(profile)
+	}
 	s := &Server{
 		mux:            http.NewServeMux(),
 		afterRollback:  func(d time.Duration, f func()) { time.AfterFunc(d, f) },
@@ -261,7 +269,8 @@ func New(
 		pluginByID:     indexByID(manifests),
 		auth:           auth,
 		sessions:       newSessions(),
-		layouts:        cookieLayout{},
+		layouts:        cookieLayout{hardware: boardSensors != nil},
+		boardSensors:   boardSensors,
 		loginLimiter:   newLoginLimiter(time.Now),
 		loginInternet:  openwrt.InternetAvailable,
 		css:            template.CSS(cssText),
@@ -1007,6 +1016,10 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	// Kernel interfaces come from the same process-wide telemetry snapshot as
 	// the WAN graph and are enriched with UCI topology.
 	ov.Interfaces = s.interfaceList(r.Context(), sid, snapshot, wan)
+	// The board's sensors fill the Hardware card, when the card is shown.
+	if s.boardSensors != nil && ov.Layout.Shows("hardware") {
+		ov.Hardware = hardwareView(s.boardSensors.Read())
+	}
 	// The router's panel opens the Ports card, when the card is shown.
 	if ov.Layout.Shows("ports") {
 		ov.Panel = s.devicePanel(snapshot, wan, profile)

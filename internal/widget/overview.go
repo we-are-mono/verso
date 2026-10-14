@@ -59,6 +59,10 @@ type Overview struct {
 	// renders an unavailable state.
 	SysMetrics []OverviewMeter
 
+	// Hardware is the board profile's readings, formatted; nil where none
+	// answered or the card is hidden.
+	Hardware *OverviewSensors
+
 	// Model is the board's human name; Arch the package architecture its
 	// firmware was built for, Target the OpenWrt target/subtarget.
 	Model, Arch, Target string

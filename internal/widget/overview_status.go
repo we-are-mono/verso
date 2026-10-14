@@ -5,6 +5,7 @@ package widget
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 )
 
@@ -103,8 +104,12 @@ type overviewCardStatus struct {
 func (o *Overview) LiveStatus(tr func(string) string) OverviewStatus {
 	v := o.verdict(tr)
 	status := OverviewStatus{Lead: v.Lead, Accent: v.Accent, Tail: v.Tail, Tone: v.Tone}
+	layout := o.layout()
 	for _, spec := range overviewCardSpecs() {
-		status.Cards = append(status.Cards, overviewCardStatus{ID: spec.ID, cardHead: spec.head(o, tr)})
+		// A card this router does not have is neither in a column nor hidden.
+		if layout.IsHidden(spec.ID) || slices.Contains(layout.Cols[0], spec.ID) || slices.Contains(layout.Cols[1], spec.ID) {
+			status.Cards = append(status.Cards, overviewCardStatus{ID: spec.ID, cardHead: spec.head(o, tr)})
+		}
 	}
 	return status
 }

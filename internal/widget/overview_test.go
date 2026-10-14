@@ -56,7 +56,7 @@ func TestRenderOverviewCards(t *testing.T) {
 			t.Errorf("overview missing %q", want)
 		}
 	}
-	if want := []string{"internet", "ports", "tunnels", "traffic", "resources", "system"}; strings.Join(cardOrder(got), " ") != strings.Join(want, " ") {
+	if want := []string{"internet", "ports", "tunnels", "traffic", "resources", "system", "hardware"}; strings.Join(cardOrder(got), " ") != strings.Join(want, " ") {
 		t.Errorf("default order = %v, want %v", cardOrder(got), want)
 	}
 	for _, gone := range []string{"Internet is working", "Live overview", "data-overview-tile", "Uptime</span>", "(two)", "(few)", "CPU Temperature", "Fan speed", "Power draw"} {
@@ -95,7 +95,7 @@ func TestRenderOverviewCards(t *testing.T) {
 
 func TestRenderOverviewFollowsTheLayout(t *testing.T) {
 	o := fullOverview()
-	o.Layout = ParseOverviewLayout("1.traffic-internet-ports.tunnels-system.ports.resources")
+	o.Layout = ParseOverviewLayout("1.traffic-internet-ports.tunnels-system.ports.resources").Without("hardware")
 	got := render(t, newRenderer(t), o)
 	if want := "traffic internet ports tunnels system"; strings.Join(cardOrder(got), " ") != want {
 		t.Fatalf("order = %v, want %s", cardOrder(got), want)
