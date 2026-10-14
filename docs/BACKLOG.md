@@ -110,13 +110,14 @@ own and points at the decision that governs it; the rationale lives there, not h
 
 ## Page cards
 
-- **Paddings and margins.** A pass of its own over the air inside and between
-  page cards, by the owner's eye: the space under a card's opening warning
-  (about 70px from the exposure warning to Access's first web field), the
-  firmware card's gaps on Maintenance, the column heads' air under a card's
-  header, and the action bar strip's inset.
-- **A laned listing behind a control strip.** No page has one; a lane card
-  standing under an action bar would draw its own top edge under the strip's.
+- **Paddings and margins.** By the owner's eye on the 8px grid: the space
+  under a card's opening warning (Access, from the exposure warning to the
+  first web field) and the firmware card's gaps on Maintenance, where blocks
+  inside a card stand 40px apart.
+- **Right edges on the line.** A frame's top, left and bottom borders land on
+  the grid's lines; its right border is the column's last pixel, one inside
+  the line, since a column's width is a multiple of 8px. A frame a pixel
+  wider than its column would put it on the line.
 - **An empty page listing.** VPN and Dynamic DNS with nothing in them stand
   their empty slot loose on the sand rather than in a card.
 
