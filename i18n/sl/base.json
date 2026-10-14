@@ -447,7 +447,7 @@
   "1 package changes": "Spremeni se 1 paket",
   "%d packages change": "Spremeni se paketov: %d",
   "Part": "Del",
-  "same": "enako",
+  "Stays as it is": "Ostane, kot je",
   "Not reported by the update server": "Strežnik za posodobitve tega ni sporočil",
   "Download and install %s": "Prenesi in namesti %s",
   "Install %s now?": "Namestim %s zdaj?",

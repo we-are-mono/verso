@@ -210,7 +210,7 @@
     setSensor("power", d.power);
     var dot = document.querySelector('[data-verso-prop-dot="temperature"]');
     if (dot && d.tempLevel) {
-      dot.className = "mr-2 size-1.5 shrink-0 rounded-[1px] " + (d.tempLevel === "neutral" ? "border border-faint" : TONE_DOT(d.tempLevel));
+      dot.className = "mt-2.25 mr-2 shrink-0 size-1.5 rounded-[1px] " + (d.tempLevel === "neutral" ? "border border-faint" : TONE_DOT(d.tempLevel));
     }
   });
   }

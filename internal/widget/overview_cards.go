@@ -66,18 +66,11 @@ func (o *Overview) internetHead(tr func(string) string) cardHead {
 	return cardHead{Tone: "success", Status: tr("Connected"), Summary: address}
 }
 
-// overviewFamilyView is one address family in the Internet card: its name and
-// protocol over its facts, or the sentence that stands where they would.
-type overviewFamilyView struct {
-	Kind, Proto, Empty string
-	Rows               template.HTML
-}
-
 // overviewInternetView is the Internet card's body: the uplink's rows, then
-// its address families.
+// its address families, each a fact list headed by its name and protocol.
 type overviewInternetView struct {
 	Uplink   template.HTML
-	Families []overviewFamilyView
+	Families []template.HTML
 }
 
 // internetBody is the uplink, its device and how long it has been connected
@@ -91,35 +84,30 @@ func (o *Overview) internetBody(r *Renderer, csrf string) (template.HTML, error)
 		{"IPv4", o.V4Proto, "No address.", o.V4},
 		{"IPv6", o.V6Proto, "No prefix was delegated.", o.V6},
 	}
-	view := overviewInternetView{Families: make([]overviewFamilyView, 0, len(families))}
+	view := overviewInternetView{Families: make([]template.HTML, 0, len(families))}
 	if o.WANDevice != "" {
-		uplink := []Property{{Label: "Device", Value: o.WANDevice, Mono: true, Emphasis: true}}
+		uplink := []Property{{Label: "Device", Value: o.WANDevice, Mono: true}}
 		if o.WANUp && o.WANUptime != "" {
-			uplink = append(uplink, Property{Label: "Connected for", Value: o.WANUptime, Key: "wan-uptime", Emphasis: true, Verbatim: true})
+			uplink = append(uplink, Property{Label: "Connected for", Value: o.WANUptime, Key: "wan-uptime", Verbatim: true})
 		}
-		rows, err := o.renderWidget(r, &Properties{Style: "overview-connection", Align: "left", Items: uplink}, csrf)
+		rows, err := o.renderWidget(r, &Properties{Align: "left", Items: uplink}, csrf)
 		if err != nil {
 			return "", err
 		}
 		view.Uplink = rows
 	}
 	for _, f := range families {
-		v := overviewFamilyView{Kind: f.kind, Proto: overviewProtocol(f.proto)}
-		if len(f.facts) == 0 || (len(f.facts) == 1 && f.facts[0].Value == "Not configured") {
-			v.Empty = r.tr(f.empty)
-			view.Families = append(view.Families, v)
-			continue
+		list := &Properties{Align: "left", Head: &PropertiesHead{Label: f.kind, Chip: overviewProtocol(f.proto)}, Empty: f.empty}
+		if len(f.facts) > 0 && (len(f.facts) > 1 || f.facts[0].Value != "Not configured") {
+			for _, fact := range f.facts {
+				list.Items = append(list.Items, Property{Label: fact.Label, Value: fact.Value, Mono: fact.Copy, Copy: fact.Copy, Verbatim: fact.Label == "Expires"})
+			}
 		}
-		items := make([]Property, 0, len(f.facts))
-		for _, fact := range f.facts {
-			items = append(items, Property{Label: fact.Label, Value: fact.Value, Mono: fact.Copy, Emphasis: true, Copy: fact.Copy, Verbatim: fact.Label == "Expires"})
-		}
-		rows, err := o.renderWidget(r, &Properties{Style: "overview-connection", Align: "left", Items: items}, csrf)
+		rows, err := o.renderWidget(r, list, csrf)
 		if err != nil {
 			return "", err
 		}
-		v.Rows = rows
-		view.Families = append(view.Families, v)
+		view.Families = append(view.Families, rows)
 	}
 	return r.fragment("overview.internet", view)
 }
@@ -396,7 +384,7 @@ func (o *Overview) firmwareHead(func(string) string) cardHead {
 func (o *Overview) firmwareBody(r *Renderer, csrf string) (template.HTML, error) {
 	uptime := sysProp("Uptime", o.Uptime, false)
 	uptime.Key = "uptime"
-	return o.renderWidget(r, &Properties{Style: "overview-system", Items: []Property{
+	return o.renderWidget(r, &Properties{Items: []Property{
 		sysProp("Firmware", o.Firmware, true),
 		sysProp("Kernel", o.Kernel, true),
 		uptime,

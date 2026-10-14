@@ -154,6 +154,11 @@ func translateFields(w Widget, t func(string) string) {
 		// a monospaced machine string, Chip an entity identity, Verbatim data
 		// in sans type — none is ours to translate, and a machine value that
 		// collides with a catalog key must not come back as words.
+		if n.Head != nil {
+			n.Head.Label = t(n.Head.Label)
+			n.Head.Value = t(n.Head.Value)
+		}
+		n.Empty = t(n.Empty)
 		for i := range n.Items {
 			n.Items[i].Label = t(n.Items[i].Label)
 			if !n.Items[i].HelpVerbatim {

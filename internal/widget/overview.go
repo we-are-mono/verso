@@ -300,7 +300,7 @@ func (o *Overview) sysRight() *Properties {
 	if tone == "" {
 		tone = "neutral"
 	}
-	return &Properties{Style: "overview-system", Items: []Property{
+	return &Properties{Items: []Property{
 		{Label: "CPU Temperature", Value: value, Help: note, HelpVerbatim: true, Mono: true, Verbatim: true, Dot: tone, Key: "temperature"},
 		{Label: "Fan speed", Value: reading(o.Fan), Mono: true, Verbatim: true, Key: "fan"},
 		{Label: "Power draw", Value: reading(o.Power), Mono: true, Verbatim: true, Key: "power"},

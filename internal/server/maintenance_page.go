@@ -80,7 +80,7 @@ func firmwareSection(v maintenanceView) *widget.Section {
 		s.Children = append(s.Children, notice)
 		autocheck = nil
 	}
-	s.Children = append(s.Children, ledgerTable(v.Ledger))
+	s.Children = append(s.Children, ledgerFacts(v.Ledger))
 	if note := ledgerNote(v.Ledger); note != "" {
 		s.Children = append(s.Children, &widget.Text{Markdown: note})
 	}
@@ -100,39 +100,34 @@ func firmwareSection(v maintenanceView) *widget.Section {
 	return s
 }
 
-// ledgerTable is the firmware's diff: each part, what runs now, and — while a
-// build is offered — what it becomes. Versions stay whole on one line: a
-// version broken mid-token is a misread one.
-func ledgerTable(l firmwareLedger) *widget.Table {
-	t := &widget.Table{Columns: []widget.TableColumn{{Label: "Part", Kind: "name"}, {Label: "Current", Kind: "mono"}}}
-	if l.Offer {
-		t.Columns = append(t.Columns, widget.TableColumn{Label: "Available", Kind: "status"})
-	}
+// ledgerFacts is the firmware's diff, the fact list every card's facts are:
+// each part beside what runs now, under the Part and Current heads, and —
+// while a build is offered — what it becomes, under the value with the arrow.
+// Versions are machine strings, set in mono.
+func ledgerFacts(l firmwareLedger) *widget.Properties {
+	p := &widget.Properties{Align: "left", Head: &widget.PropertiesHead{Label: "Part", Value: "Current"}}
 	for _, row := range l.Rows {
-		current := widget.TableCell{Text: build(row.Current, row.CurrentRev), Verbatim: true}
+		fact := widget.Property{Label: row.Label, Value: build(row.Current, row.CurrentRev), Mono: true}
 		if row.Current == "" {
-			current = widget.TableCell{Text: "Unavailable", Muted: true}
+			fact = widget.Property{Label: row.Label, Value: "Unavailable"}
 		}
-		cells := []widget.TableCell{{Text: row.Label, Verbatim: true}, current}
 		if l.Offer {
-			cells = append(cells, ledgerAvailable(row))
+			ledgerAvailable(&fact, row)
 		}
-		t.Rows = append(t.Rows, widget.TableRow{Cells: cells})
+		p.Items = append(p.Items, fact)
 	}
-	return t
+	return p
 }
 
-// ledgerAvailable is what the Available column can honestly say about a part:
-// the build it becomes, marked as the change; that a sysupgrade cannot change
-// it; or nothing, because the server did not say.
-func ledgerAvailable(row ledgerRow) widget.TableCell {
+// ledgerAvailable says what the offered build can honestly say about a part:
+// the build it becomes, under what runs now; that the update leaves it as it
+// is; or nothing, because the server did not say.
+func ledgerAvailable(fact *widget.Property, row ledgerRow) {
 	switch row.Change {
 	case ledgerChanged:
-		return widget.TableCell{Text: build(row.Next, row.NextRev), Variant: "info", Verbatim: true}
+		fact.Next = build(row.Next, row.NextRev)
 	case ledgerSame:
-		return widget.TableCell{Text: "same"}
-	default:
-		return widget.TableCell{Text: "—"}
+		fact.Help = "Stays as it is"
 	}
 }
 

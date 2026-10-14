@@ -17,9 +17,10 @@ import (
 //
 // Style sets how rows are separated: a hairline between them ("divided", the
 // default), nothing ("plain"), a larger inline identity with its explanation
-// beneath ("identity"), or the overview's strong System fact rows ("system").
-// The shell owns the chrome; the template maps the style to classes, and unknown
-// values fall back to "divided".
+// beneath ("identity"), or the strong System fact rows ("system"). The shell
+// owns the chrome; the template maps the style to classes, and unknown values
+// fall back to "divided". The divided list is the one fact sheet: an
+// Overview card's facts, a ledger and a drawer's details are the same rows.
 type Properties struct {
 	Style string     `json:"style"` // "divided" (default) | "plain" | "identity" | "system"
 	Items []Property `json:"items"`
@@ -28,6 +29,23 @@ type Properties struct {
 	// for values a person compares line by line (addresses), with any status
 	// pill still holding the right edge.
 	Align string `json:"align,omitempty"`
+	// Head names the facts on a line of their own over them, on the strong
+	// hairline a column head stands on. A divided list only.
+	Head *PropertiesHead `json:"head,omitempty"`
+	// Empty is the sentence that stands where the rows would, in the empty
+	// set's slot, when there are none; a list with a head says it under the
+	// head.
+	Empty string `json:"empty,omitempty"`
+}
+
+// PropertiesHead is what a list's head says: a title over a group of facts
+// (an address family, with its protocol as Chip), or the names of the two
+// columns (Label over the labels, Value over the values: Part and Current).
+// Chip is a machine word and never translated.
+type PropertiesHead struct {
+	Label string `json:"label"`
+	Value string `json:"value,omitempty"`
+	Chip  string `json:"chip,omitempty"`
 }
 
 // Property is one row: a label, its value, whether the value is monospaced (for

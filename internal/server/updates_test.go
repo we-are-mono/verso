@@ -313,10 +313,10 @@ func TestMaintenanceUpdatesEverythingCurrent(t *testing.T) {
 			t.Errorf("the up-to-date Updates section is missing %q:\n%s", want, body)
 		}
 	}
-	// Nothing is offered, so the ledger has no Available column; nothing is
-	// wrong, so nothing is explained — no verdict, no warning band.
-	if strings.Contains(body, ">Available<") || ledgerWarning(t, body) != "" {
-		t.Errorf("a current router's ledger should have no Available column and no warning band:\n%s", body)
+	// Nothing is offered, so no part says what it becomes; nothing is wrong,
+	// so nothing is explained — no verdict, no warning band.
+	if strings.Contains(body, `aria-label="Available version"`) || ledgerWarning(t, body) != "" {
+		t.Errorf("a current router's ledger should offer no build and draw no warning band:\n%s", body)
 	}
 	for _, gone := range []string{"Up to date", "This router runs the newest build its update server offers."} {
 		if strings.Contains(body, gone) {
@@ -360,9 +360,10 @@ func TestMaintenanceFirmwareRungs(t *testing.T) {
 			name:     "an available build",
 			firmware: openwrt.FirmwareUpdate{State: openwrt.FirmwareUpdateAvailable, From: "25.12.4 r32933", To: "25.12.5 r33051", Server: "https://sysupgrade.openwrt.org", Packages: 78},
 			want: []string{
-				// The ledger sets the build on offer beside what runs, each as
-				// the update tool writes it; no sentence restates it.
-				">Current<", ">Available<", ">25.12.4 r32933<", ">25.12.5 r33051<",
+				// The ledger sets the build on offer under what runs, led by
+				// the arrow, each as the update tool writes it; no sentence
+				// restates it.
+				">Current<", `aria-label="Available version"`, ">25.12.4 r32933<", ">25.12.5 r33051<",
 				"Built by <code>https://sysupgrade.openwrt.org</code>", "78 packages change",
 				// Installing is caution, not danger: the same one-hue confirm, in
 				// marigold, naming the build.
@@ -441,18 +442,20 @@ func TestMaintenanceFirmwareRungs(t *testing.T) {
 				}
 			}
 			if tc.firmware.State == openwrt.FirmwareUpdateAvailable {
-				// The changed build is the one value the Available column asserts:
-				// its dot is filled in the info tone, where a part a sysupgrade
-				// cannot change wears the empty ring, and one the server did not
-				// report is the absence mark every empty cell is.
-				if cell := ledgerCell(t, body, ">25.12.5 r33051<"); !strings.Contains(cell, "rounded-[1px] bg-denim") {
-					t.Errorf("the changed build should be marked with the info dot in the Available column:\n%s", cell)
+				// The changed build is the one value the offer asserts: what
+				// runs recedes and the build it becomes stands under it, led by
+				// the arrow; a part a sysupgrade cannot change says so under
+				// its value, and one the server did not report says nothing.
+				if fact := ledgerFact(t, body, ">25.12.5 r33051<"); !strings.Contains(fact, `aria-label="Available version"`) || !strings.Contains(fact, `text-meta">25.12.4 r32933<`) {
+					t.Errorf("the changed build should stand under what runs, led by the arrow:\n%s", fact)
 				}
-				if cell := ledgerCell(t, body, ">same<"); !strings.Contains(cell, "border border-faint") {
-					t.Errorf("an unchanged part should wear the empty ring:\n%s", cell)
+				if !strings.Contains(body, ">Stays as it is</p>") {
+					t.Errorf("an unchanged part should say it stays as it is:\n%s", body)
 				}
-				if cell := ledgerCell(t, body, ">—<"); strings.Contains(cell, "border border-faint") || !strings.Contains(cell, "text-faint") {
-					t.Errorf("an unreported part should be the absence mark, with no ring:\n%s", cell)
+				for _, gone := range []string{">same<", ">—<"} {
+					if strings.Contains(body, gone) {
+						t.Errorf("the ledger has no Available column left to hold %q", gone)
+					}
 				}
 			}
 			// The manual image upload is the permanent floor under every rung —
@@ -470,7 +473,7 @@ func TestMaintenanceFirmwareRungs(t *testing.T) {
 // nothing.
 func ledgerWarning(t *testing.T, body string) string {
 	t.Helper()
-	head := section(t, body, `id="section-firmware"`, "<table")
+	head := section(t, body, `id="section-firmware"`, "data-verso-properties-head")
 	at := strings.Index(head, "bg-marigold-soft text-marigold-deep")
 	if at < 0 {
 		return ""
@@ -492,14 +495,18 @@ func verbatimLine(band string) string {
 	return band[at : at+end]
 }
 
-// ledgerCell is the ledger's table cell that holds text, from its opening tag.
-func ledgerCell(t *testing.T, body, text string) string {
+// ledgerFact is the ledger's value that holds text, from its opening tag.
+func ledgerFact(t *testing.T, body, text string) string {
 	t.Helper()
 	at := strings.Index(body, text)
 	if at < 0 {
 		t.Fatalf("the ledger has no %q", text)
 	}
-	return body[strings.LastIndex(body[:at], "<td"):at]
+	start := strings.LastIndex(body[:at], "<dd")
+	if start < 0 {
+		t.Fatalf("%q stands in no fact", text)
+	}
+	return body[start:at]
 }
 
 // TestUpdateInstallRunsOnceInTheBackground: the POST answers at once, the run is
@@ -755,7 +762,7 @@ func TestAutocheckRowUnreadableShowsNoSwitch(t *testing.T) {
 	if notice < 0 {
 		t.Fatalf("an unreadable setting should say so plainly:\n%s", body)
 	}
-	if ledger := strings.Index(body, ">Part</th>"); ledger < 0 || notice > ledger {
+	if ledger := strings.Index(body, "data-verso-properties-head"); ledger < 0 || notice > ledger {
 		t.Errorf("the unreadable notice should lead the ledger, not trail the acts:\n%s", body)
 	}
 	if band := strings.LastIndex(body[:notice], "data-verso-callout"); band < 0 || !strings.Contains(body[band:notice], "bg-marigold-soft") {

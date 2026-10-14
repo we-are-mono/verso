@@ -93,25 +93,13 @@
 {{end}}
 
 {{/* overview.internet: the Internet card's body — the uplink's device and how
-     long it has been connected, then each address family under its name and
-     protocol, or the sentence that stands where its rows would. */}}
+     long it has been connected, then each address family, a fact list headed
+     by its name and protocol (properties.html.tmpl), the families 24px
+     apart. */}}
 {{define "overview.internet"}}
 <div class="grid gap-6">
   {{if .Uplink}}<div class="min-w-0">{{.Uplink}}</div>{{end}}
-  {{range .Families}}
-  <section aria-label="{{.Kind}}" class="min-w-0 [&>div+dl>div:first-child]:pt-1.75">
-    {{/* the family's name heads its rows as a row of its own: its 24px line,
-         8px over and under, its chip centred on the line, and a Strong
-         Hairline under it on a line, as a lane's head has; its first row
-         stands 7px after that hairline, as every row after one does, and
-         families stand 24px apart. */}}
-    <div class="flex items-center gap-3 border-b border-rule-strong py-2">
-      <h3 class="text-sm leading-6 font-semibold text-ink">{{.Kind}}</h3>
-      {{if .Proto}}<span class="{{template "verso-chip-class"}}">{{.Proto}}</span>{{end}}
-    </div>
-    {{if .Empty}}<div data-verso-slot class="{{template "verso-empty-slot-class"}}">{{template "verso-empty-slot-body" .Empty}}</div>{{else}}{{.Rows}}{{end}}
-  </section>
-  {{end}}
+  {{range .Families}}{{.}}{{end}}
 </div>
 {{end}}
 

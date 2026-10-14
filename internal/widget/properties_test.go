@@ -129,3 +129,82 @@ func TestSpanRowDrawsTheStretchAndWhereNowIs(t *testing.T) {
 		t.Errorf("the fill never leaves the stretch:\n%s", over)
 	}
 }
+
+// TestAHeadNamesAGroupOrItsColumns: a list's head stands on the strong
+// hairline a column head does, its first fact 7px after it. Over a group of
+// facts it is the group's title, a heading, with its protocol as a chip
+// beside it (an address family); over two columns it names them, the value's
+// name standing over the values (a ledger's Part and Current).
+func TestAHeadNamesAGroupOrItsColumns(t *testing.T) {
+	group := render(t, newRenderer(t), &Properties{Align: "left", Head: &PropertiesHead{Label: "IPv4", Chip: "dhcp"}, Items: []Property{{Label: "Address", Value: "10.0.0.2", Mono: true}}})
+	for _, want := range []string{
+		`<section aria-label="IPv4" class="min-w-0">`,
+		`border-b border-rule-strong py-2`,
+		`<h3 class="text-sm leading-6 font-semibold text-ink">IPv4</h3>`,
+		">dhcp</span>",
+		"first:pt-1.75",
+	} {
+		if !strings.Contains(group, want) {
+			t.Errorf("want %s in:\n%s", want, group)
+		}
+	}
+	columns := render(t, newRenderer(t), &Properties{Align: "left", Head: &PropertiesHead{Label: "Part", Value: "Current"}, Items: []Property{{Label: "Kernel", Value: "6.12", Mono: true}}})
+	for _, want := range []string{
+		`<span class="shrink-0 sm:w-24">Part</span><span>Current</span>`,
+	} {
+		if !strings.Contains(columns, want) {
+			t.Errorf("want %s in:\n%s", want, columns)
+		}
+	}
+	if strings.Contains(columns, "<h3") {
+		t.Errorf("column names are not a heading:\n%s", columns)
+	}
+	right := render(t, newRenderer(t), &Properties{Head: &PropertiesHead{Label: "Sensor", Value: "Reading"}, Items: []Property{{Label: "Fan", Value: "0 rpm"}}})
+	if !strings.Contains(right, `<span class="ml-auto">Reading</span>`) {
+		t.Errorf("over values on the right edge the value's name holds that edge too:\n%s", right)
+	}
+	bare := render(t, newRenderer(t), &Properties{Items: []Property{{Label: "Fan", Value: "0 rpm"}}})
+	if strings.Contains(bare, "data-verso-properties-head") || strings.Contains(bare, "<section") || !strings.Contains(bare, "first:pt-2") {
+		t.Errorf("a list with no head is the rows alone, its first keeping 8px:\n%s", bare)
+	}
+}
+
+// TestAListWithNoFactsSaysSoInTheSlot: with nothing to list, the empty set's
+// slot stands where the first fact would, under the head, its frame 7px after
+// the head's hairline.
+func TestAListWithNoFactsSaysSoInTheSlot(t *testing.T) {
+	got := render(t, newRenderer(t), &Properties{Head: &PropertiesHead{Label: "IPv6"}, Empty: "No prefix was delegated."})
+	for _, want := range []string{
+		`<div class="pt-1.75"><div data-verso-slot`,
+		"No prefix was delegated.",
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("want %s in:\n%s", want, got)
+		}
+	}
+	if strings.Contains(got, "<dl") {
+		t.Errorf("an empty list draws no rows:\n%s", got)
+	}
+}
+
+// TestALiveFactCarriesItsKey: a row the stream keeps current carries its key
+// on its value and on its mark, so the stream rewrites both in place; on the
+// right edge the mark leads the value on its line, centred 9px down it, and a
+// live temperature's note rides the line after it instead of under it.
+func TestALiveFactCarriesItsKey(t *testing.T) {
+	got := render(t, newRenderer(t), &Properties{Items: []Property{
+		{Label: "CPU Temperature", Value: "48 °C", Help: "normal", HelpVerbatim: true, Mono: true, Verbatim: true, Dot: "success", Key: "temperature"},
+	}})
+	for _, want := range []string{
+		`data-verso-prop="temperature"`,
+		`<span class="mt-2.25 mr-2 shrink-0 size-1.5 rounded-[1px] bg-green" data-verso-prop-dot="temperature" aria-hidden="true">`,
+		`<span data-overview-temp-note class="ml-1 shrink-0 font-sans text-sm font-normal text-meta">· normal</span>`,
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("want %s in:\n%s", want, got)
+		}
+	}
+	if strings.Contains(got, "basis-full") {
+		t.Errorf("a live note rides the value's line, never a line under it:\n%s", got)
+	}
+}

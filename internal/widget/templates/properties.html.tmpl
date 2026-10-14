@@ -35,23 +35,24 @@
      filled in the state's hue up to where now is. The ends are written under
      the track's ends; a screen reader hears them as one range. */}}
 {{define "verso-prop-span"}}<span class="sr-only">{{.From}} – {{.To}}</span><span class="block w-full" aria-hidden="true"><span class="relative block h-6"><span class="absolute inset-x-0 top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-rule"></span><span class="absolute left-0 top-1/2 h-1.5 -translate-y-1/2 rounded-full {{template "verso-mark-hue" .Tone}}" style="width: {{.Pos}}"></span></span><span class="flex justify-between gap-4 text-sm font-normal text-meta tabular-nums"><span class="whitespace-nowrap">{{.From}}</span><span class="whitespace-nowrap">{{.To}}</span></span></span>{{end}}
-<dl class="{{if or (eq .Style "overview-system") (eq .Style "overview-connection")}}{{else if eq .Style "system"}}space-y-0 border-b border-mid not-first:pt-1.75{{else if or (eq .Style "plain") (eq .Style "identity")}}space-y-3{{end}}">
+{{/* The head names the facts on a line of their own: its 24px line, 8px
+     over and under, on the strong hairline a column head stands on, so the
+     hairline lands on a line and the first row stands 7px after it, as every
+     row after a hairline does. A group's title is a heading, its protocol a
+     chip beside it; two column names (Part, Current) stand over the labels
+     and the values, set as the head of a table is. */}}
+{{define "properties.head"}}<div data-verso-properties-head class="flex items-center {{if .Head.Value}}gap-x-6{{else}}gap-3{{end}} border-b border-rule-strong py-2 text-sm leading-6 font-semibold text-ink">
+  {{if .Head.Value}}<span class="shrink-0{{if eq .Align "left"}} sm:w-24{{end}}">{{.Head.Label}}</span><span{{if ne .Align "left"}} class="ml-auto"{{end}}>{{.Head.Value}}</span>
+  {{else}}<h3 class="text-sm leading-6 font-semibold text-ink">{{.Head.Label}}</h3>{{if .Head.Chip}}<span class="{{template "verso-chip-class"}}">{{.Head.Chip}}</span>{{end}}{{end}}
+</div>{{end}}
+{{if .Head}}<section aria-label="{{.Head.Label}}" class="min-w-0">{{template "properties.head" .}}{{end}}
+{{/* No facts: the empty set's slot where the first row would stand, its
+     frame 7px after the head's hairline so it lands on a line. */}}
+{{if and .Empty (not .Items)}}<div{{if .Head}} class="pt-1.75"{{end}}><div data-verso-slot class="{{template "verso-empty-slot-class"}}">{{template "verso-empty-slot-body" .Empty}}</div></div>{{else}}
+{{$first := "first:pt-2"}}{{if .Head}}{{$first = "first:pt-1.75"}}{{end}}
+<dl class="{{if eq .Style "system"}}space-y-0 border-b border-mid not-first:pt-1.75{{else if or (eq .Style "plain") (eq .Style "identity")}}space-y-3{{end}}">
   {{range .Items}}
-  {{if or (eq $.Style "overview-system") (eq $.Style "overview-connection")}}
-  {{/* An Overview card's row on the grid: the label and the value write on
-       one 24px line, 7px after the hairline above and 8px over its own, so
-       the row is 40px, its line fills a band of the grid and its hairline
-       lands on a line; the first row, with no hairline over it, keeps 8px
-       over its line, and the last draws none under it, so a run starts and
-       ends on lines. A copy's 28px rides the line. */}}
-  <div class="flex items-center gap-6 border-b border-mid py-row leading-6 first:pt-2 last:border-b-0">
-    <dt class="shrink-0 text-sm leading-6 text-meta{{if eq $.Style "overview-connection"}} w-24 truncate{{end}}" title="{{.Label}}">{{.Label}}</dt>
-    <dd class="flex min-w-0 items-center text-ink{{if eq $.Style "overview-system"}} ml-auto text-right{{end}}">
-      {{if .Dot}}<span class="mr-2 size-1.5 shrink-0 rounded-[1px] {{if eq .Dot "success"}}bg-green{{else if eq .Dot "warning"}}bg-marigold{{else if eq .Dot "danger"}}bg-crimson{{else}}border border-faint{{end}}"{{if .Key}} data-verso-prop-dot="{{.Key}}"{{end}} aria-hidden="true"></span>{{end}}
-      <span{{if .Key}} data-verso-prop="{{.Key}}"{{end}} class="min-w-0 wrap-anywhere font-medium {{if .Mono}}font-mono text-base{{else}}text-sm{{end}} leading-6">{{.Value}}</span>{{if eq .Key "temperature"}}<span data-overview-temp-note class="ml-1 font-sans text-sm leading-6 font-normal text-meta">{{if .Help}}· {{.Help}}{{end}}</span>{{end}}{{if .Copy}}{{template "verso-copy-inline" .Value}}{{end}}
-    </dd>
-  </div>
-  {{else if eq $.Style "identity"}}
+  {{if eq $.Style "identity"}}
   <div>
     <div class="flex items-baseline gap-2 text-base">
       <dt class="text-meta">{{.Label}}:</dt>
@@ -82,24 +83,32 @@
        row's value does; its note sits under the value, in the value's column,
        and wraps there. */}}
   {{/* Left-set facts are a document's, read beside a fixed label column; on a
-       phone the label sits over its value, which then has the card's width. */}}
-  <div class="flex {{if eq $.Align "left"}}flex-col items-start sm:flex-row {{if .Help}}sm:flex-wrap {{end}}gap-x-6{{else}}{{if .Help}}flex-wrap {{end}}items-start justify-between gap-x-6{{end}} text-sm{{if eq $.Style "plain"}}{{else}} border-b border-mid py-row leading-6 first:pt-2 last:border-b-0{{end}}">
+       phone the label sits over its value, which then has the card's width.
+       A live row carries its key, so the stream rewrites its value (and its
+       mark) in place; a live temperature's note rides its line after it. */}}
+  {{$inlineNote := eq .Key "temperature"}}
+  <div class="flex {{if eq $.Align "left"}}flex-col items-start sm:flex-row {{if and .Help (not $inlineNote)}}sm:flex-wrap {{end}}gap-x-6{{else}}{{if and .Help (not $inlineNote)}}flex-wrap {{end}}items-start justify-between gap-x-6{{end}} text-sm{{if eq $.Style "plain"}}{{else}} border-b border-mid py-row leading-6 {{$first}} last:border-b-0{{end}}">
     <dt class="shrink-0 text-meta{{if eq $.Align "left"}} sm:w-24{{end}}">{{.Label}}</dt>
     <dd class="relative flex min-w-0 items-start {{if eq $.Align "left"}}self-stretch sm:flex-1 sm:self-auto text-left{{else if .Span}}min-w-0 flex-1 text-left{{else}}justify-end text-right{{end}}{{if .Emphasis}} text-base{{end}} font-medium text-ink [&_*]:leading-6">
       {{if .Span}}{{template "verso-prop-span" .Span}}{{else}}
-      {{if .Dot}}<span class="absolute -left-3.75 top-1.75 size-1.5 rounded-[1px] {{template "verso-mark-hue" .Dot}}" aria-hidden="true"></span>{{end}}
+      {{/* A mark hangs in the gutter before a left-set value, so a marked
+           value starts where every other row's does; before a value on the
+           right edge it leads the value on its line, 8px off. */}}
+      {{if .Dot}}<span class="{{if eq $.Align "left"}}absolute -left-3.75 top-1.75{{else}}mt-2.25 mr-2 shrink-0{{end}} size-1.5 rounded-[1px] {{template "verso-mark-hue" .Dot}}"{{if .Key}} data-verso-prop-dot="{{.Key}}"{{end}} aria-hidden="true"></span>{{end}}
       {{if .Chip}}<span class="{{template "verso-chip-class"}}">{{.Value}}</span>{{else if .Next}}
       {{/* What the value becomes, under what it is — as a table's cell says
            it: the value it was recedes to Meta, and what it becomes stands in
            Ink, led by the arrow turning down into it in the action colour. */}}
       <span class="flex min-w-0 flex-col {{if eq $.Align "left"}}items-start{{else}}items-end{{end}}{{if .Mono}} font-mono text-base font-medium{{end}}"><span class="wrap-anywhere text-meta">{{.Value}}</span><span class="flex items-center gap-1.5 text-ink"><span role="img" aria-label="{{t "Available version"}}" title="{{t "Available version"}}" class="flex shrink-0 text-denim">{{icon "corner-down-right" "size-4"}}</span><span class="wrap-anywhere">{{.Next}}</span></span></span>
-      {{else}}<span class="min-w-0 wrap-anywhere text-balance{{if .Mono}} font-mono text-base font-medium{{end}}{{if .Variant}} {{template "verso-tone-text" .Variant}}{{end}}">{{.Value}}</span>{{end}}
+      {{else}}<span{{if .Key}} data-verso-prop="{{.Key}}"{{end}} class="min-w-0 wrap-anywhere text-balance{{if .Mono}} font-mono text-base font-medium{{end}}{{if .Variant}} {{template "verso-tone-text" .Variant}}{{end}}">{{.Value}}</span>{{end}}
+      {{if $inlineNote}}<span data-overview-temp-note class="ml-1 shrink-0 font-sans text-sm font-normal text-meta">{{if .Help}}· {{.Help}}{{end}}</span>{{end}}
       {{if .Copy}}{{template "verso-copy-inline" .Value}}{{end}}
       {{if .Status}}<span class="{{if eq $.Align "left"}}ml-auto pl-3{{else}}ml-2{{end}} inline-flex h-6 shrink-0 items-center">{{template "badge.html.tmpl" .Status}}</span>{{end}}
       {{end}}
     </dd>
-    {{if .Help}}<p class="basis-full {{if eq $.Align "left"}}sm:pl-30{{else}}text-right{{end}} text-sm leading-6 font-normal text-body">{{.Help}}</p>{{end}}
+    {{if and .Help (not $inlineNote)}}<p class="basis-full {{if eq $.Align "left"}}sm:pl-30{{else}}text-right{{end}} text-sm leading-6 font-normal text-body">{{.Help}}</p>{{end}}
   </div>
   {{end}}
   {{end}}
-</dl>
+</dl>{{end}}
+{{if .Head}}</section>{{end}}
