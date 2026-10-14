@@ -108,6 +108,14 @@ own and points at the decision that governs it; the rationale lives there, not h
 - **Plugin-contributed cards.** A contract for a plugin to add a card to the
   Overview (WireGuard peers, QoS), as the entity panel's tabs have one.
 
+## Router's panel (ADR-005, ADR-022)
+
+- **A connector override in a profile.** A board whose driver reports no fibre
+  port and whose device tree links no SFP cage draws its cages as RJ45; a
+  `kinds` map in `profile.json` would name them.
+- **Live readings on System › Hardware.** The panel is live; the temperatures,
+  rails and fans under it are as the page loaded them.
+
 ## Page cards
 
 - **An empty page listing.** VPN and Dynamic DNS with nothing in them stand
@@ -164,6 +172,9 @@ own and points at the decision that governs it; the rationale lives there, not h
   `docs/building.md` §5 when it changes, so publishing from the dev box is the
   whole loop and the router updates itself, with no SSH into it. Dev-only;
   ships disabled.
+- **Ports in the dev container.** Its veths have no `device` link, so they are
+  no physical ports and the router's panel has nothing to draw there; a dev
+  box with virtio NICs (an x86_64 VM) would show the generated panel live.
 
 ## Research
 

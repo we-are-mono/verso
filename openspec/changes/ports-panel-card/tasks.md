@@ -107,7 +107,7 @@
   
   Verify by recording each observation in the task note.
 - [ ] 6.3 Owner check on the Mono Gateway DK (bench DUT, or read-only on the owner's Gateway with their leave): the art lights and blinks by real traffic, and eth3/eth4 read as SFP+. Verify by the owner's confirmation of the look.
-- [ ] 6.4 Update `docs/BACKLOG.md`: delete items this change closes (panel LED blink, live hardware readings for ports), add any follow-up found in 2.6/6.3 (e.g. a profile `kinds` override if a board misreports). Verify with `make lint` and `make test` green.
+- [x] 6.4 Update `docs/BACKLOG.md`: delete items this change closes (panel LED blink, live hardware readings for ports), add any follow-up found in 2.6/6.3 (e.g. a profile `kinds` override if a board misreports). Verify with `make lint` and `make test` green.
 
 ## Workflow follow-up
 
