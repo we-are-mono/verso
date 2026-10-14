@@ -132,7 +132,7 @@ type Table struct {
 }
 
 // markPageBlocks marks the listings that stand on the page itself, reached
-// through stacks alone (ADR-023).
+// through stacks alone.
 func markPageBlocks(w Widget) {
 	switch n := w.(type) {
 	case *Table:

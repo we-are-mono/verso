@@ -108,7 +108,7 @@ own and points at the decision that governs it; the rationale lives there, not h
 - **Plugin-contributed cards.** A contract for a plugin to add a card to the
   Overview (WireGuard peers, QoS), as the entity panel's tabs have one.
 
-## Page cards (ADR-023)
+## Page cards
 
 - **Paddings and margins.** A pass of its own over the air inside and between
   page cards, by the owner's eye: the space under a card's opening warning

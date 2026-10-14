@@ -139,7 +139,7 @@ func TestMeterCompactNoTrack(t *testing.T) {
 	}
 	// In a page card on a phone the row keeps to the card: the name's column
 	// narrows and the track's gives way, its words cut short rather than
-	// pushing the page wider (ADR-023).
+	// pushing the page wider.
 	if !strings.Contains(got, `grid-cols-[7rem_minmax(0,1fr)_6.5rem] sm:grid-cols-[9.5rem_minmax(0,1fr)_6.5rem]`) {
 		t.Errorf("the reading's row does not fit a phone's card:\n%s", got)
 	}

@@ -95,7 +95,6 @@ The overlay comes first, so every later step can be reviewed with G on. Then tok
 ### 8. Docs follow what is drawn
 
 - **DESIGN.md:** "The 20px cell" becomes "The 8px grid"; the component measures and the frontmatter tokens change with it. The stale passages left by commit 71ab775 are corrected in the same pass: lanes as bands, column heads on Paper, no ledger count.
-- **ADR-023:** amended in place where it says the 20px cell sets every measure in a card.
 - **page-cards spec:** follows through this change's delta.
 
 ## Risks / Trade-offs

@@ -2717,7 +2717,7 @@ func TestTheHeadingKeepsItsLineWhenItsActsWrapUnder(t *testing.T) {
 // TestAPageStandsOnSandUnderItsHeadingLine: every page but home and a live
 // one stands on Quiet Sand with no grid, its title alone on its line — no lede
 // under it — with 26px above and below the line and no bar or hairline, so
-// the first card stands right under it (ADR-023). The light masthead keeps its
+// the first card stands right under it. The light masthead keeps its
 // Paper and its hairline.
 func TestAPageStandsOnSandUnderItsHeadingLine(t *testing.T) {
 	tr := &fakeTransport{env: &plugin.Envelope{

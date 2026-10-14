@@ -129,11 +129,11 @@
        narrow the window, so its rules end on a line (input.css). Left-aligned
        against the rail; no centring, which reads better on a wide monitor. */}}
   {{/* Every page stands on Quiet Sand so its Paper cards stand off it, home's
-       as every other's (ADR-022, ADR-023); a live page (a log, Diagnostics)
+       as every other's (ADR-022); a live page (a log, Diagnostics)
        keeps its own frame, its output the darker surface. */}}
   <div class="{{if eq .Width "full"}}flex min-h-0 flex-1 flex-col{{else}}flex-1{{end}}{{if not (or .Light (eq .Width "full"))}} bg-quiet{{end}}">
     {{/* The heading line stands on the sand 26px under the top bar and 26px
-         over the first card, with no bar of its own (ADR-023). A live page's
+         over the first card, with no bar of its own. A live page's
          masthead is the light bar, its title's line 16px inside it at top and
          bottom, ending on a hairline as far as the page's gutter keeps it
          from the rail (input.css). The frame's bottom padding becomes the

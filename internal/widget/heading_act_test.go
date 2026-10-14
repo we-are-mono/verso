@@ -147,7 +147,7 @@ func TestHeadingActRendersTheActAlone(t *testing.T) {
 }
 
 // TestControlBandIsTheListingCardsTopStrip: the controls that narrow a
-// listing are the top strip of its card (ADR-023): the card's Paper and frame
+// listing are the top strip of its card: the card's Paper and frame
 // over a hairline, 13px over the controls and 12px under, words 20px in, no
 // Mid Sand box; the listing under it closes the card.
 func TestControlBandIsTheListingCardsTopStrip(t *testing.T) {

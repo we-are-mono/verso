@@ -58,7 +58,7 @@
   <div{{if $band}} data-verso-section-band{{end}} class="{{if and .Sub (not $band)}}flex flex-wrap items-center justify-between gap-x-6{{else}}{{template "verso-section-band-class"}}{{end}}{{if .Kicker}} mb-5{{end}}">
     <div class="flex flex-wrap items-center gap-3 leading-5">
       {{/* On a page the band is a card's header, led by the glyph of what the
-           section is, as the Overview's cards are (ADR-023). */}}
+           section is, as the Overview's cards are. */}}
       {{if and $band .Icon}}<span aria-hidden="true" class="flex shrink-0 text-glyph">{{icon .Icon "size-4"}}</span>{{end}}
       {{/* A kicker names the group under it and nothing more, so it is set at the
            meta size in caps rather than as a heading — a second 18px heading

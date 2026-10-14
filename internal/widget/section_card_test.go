@@ -10,7 +10,7 @@ import (
 
 // TestASectionsGlyphLeadsItsTitle: a page's section is a card, and the card's
 // header leads with the glyph of what the section is, in Glyph, as the
-// Overview's cards do (ADR-023); a section without one shows none.
+// Overview's cards do; a section without one shows none.
 func TestASectionsGlyphLeadsItsTitle(t *testing.T) {
 	r := newRenderer(t)
 	got := render(t, r, &Section{Title: "SSH", Icon: "terminal"})
@@ -26,7 +26,7 @@ func TestASectionsGlyphLeadsItsTitle(t *testing.T) {
 }
 
 // TestAnArtifactNamesItsFrame: an artifact (a certificate) draws its own
-// frame, which a page card takes away so no card holds a card (ADR-023); the
+// frame, which a page card takes away so no card holds a card; the
 // frame says what it is so the stylesheet can find it.
 func TestAnArtifactNamesItsFrame(t *testing.T) {
 	got := render(t, newRenderer(t), &Card{Style: "artifact", Title: "HTTPS certificate"})

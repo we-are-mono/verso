@@ -42,8 +42,7 @@ Every task ends green under `make lint` and `make test`. Each step is reviewed i
 ## 8. Docs
 
 - [ ] 8.1 DESIGN.md: "The 20px cell" becomes "The 8px grid" (fixed measures on 8, 4 inside a component, 20px text lines, the dev overlay). Update every component measure and the frontmatter tokens (heights 32, spacing group 24, chip 20, checkbox 16, radio 28, plots 192/256). In the same pass, correct the stale lane, column-head and ledger-count passages to match commit 71ab775. Verify with `grep -n "20px cell\|34px\|21px\|a cell" DESIGN.md`: only the intended text lines remain.
-- [ ] 8.2 ADR-023: amend in place where it says the 20px cell sets every measure in a card, and where cards stand 20px apart. Verify the ADR states the 8px grid.
-- [ ] 8.3 docs/BACKLOG.md: remove anything this change settles and add any off-grid spot the sweep surfaced but did not fix. Verify against the guard's allowlist. Commit the docs.
+- [ ] 8.2 docs/BACKLOG.md: remove anything this change settles and add any off-grid spot the sweep surfaced but did not fix. Verify against the guard's allowlist. Commit the docs.
 
 ## 9. Integration
 
@@ -52,5 +51,5 @@ Every task ends green under `make lint` and `make test`. Each step is reviewed i
 ## Workflow follow-up
 
 - The owner uses the build on the Mono Gateway DK and confirms the look.
-- Archive the change once the ADR-023 amendment and DESIGN.md reflect what landed.
+- Archive the change once DESIGN.md reflects what landed.
 - After archive, update the memory notes that pin the 20px cell (notebook grid rules, row heights, page rhythm).

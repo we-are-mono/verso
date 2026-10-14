@@ -85,7 +85,7 @@ func devListeners() *fakeListeners {
 
 // TestTheExposureWarningStandsInTheWebInterfacesCard: the warning that the
 // internet reaches the web interface is about that card, so it stands at the
-// top of its body, not loose on the page before it (ADR-023).
+// top of its body, not loose on the page before it.
 func TestTheExposureWarningStandsInTheWebInterfacesCard(t *testing.T) {
 	fw := stockFirewall()
 	fw["wanz"].(map[string]any)["input"] = "ACCEPT"

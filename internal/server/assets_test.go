@@ -317,7 +317,7 @@ func TestStylesheetTypeSystem(t *testing.T) {
 // TestStylesheetKeepsOnePageRhythm: a page's blocks stand apart by the body's
 // own inset, 2.5rem (two cells) — the gap the page keeps from the window's top
 // and left edge — and a control band's listing stands flush under it, the
-// band being its card's top strip (ADR-023). A log stays flush on its bar. A section on the page takes its standoff from that
+// band being its card's top strip. A log stays flush on its bar. A section on the page takes its standoff from that
 // rhythm rather than adding its own on top, and blocks inside a section keep
 // the same 2.5rem.
 func TestStylesheetKeepsOnePageRhythm(t *testing.T) {
@@ -355,7 +355,7 @@ func TestSectionRulesRunToTheRailOnly(t *testing.T) {
 	}
 	// Every rule reaches by its surface's two measures (sections.css): a page
 	// runs 40px out to the rail and none past the column's end; a page card
-	// keeps its rules to its own edges (ADR-023).
+	// keeps its rules to its own edges.
 	for _, want := range []string{
 		"main{--verso-reach-start:calc(var(--spacing) * 10);--verso-reach-end:0px}",
 		"margin-inline:calc(-1 * var(--verso-reach-start)) calc(-1 * var(--verso-reach-end));padding-inline:var(--verso-reach-start) var(--verso-reach-end)",

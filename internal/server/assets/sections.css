@@ -205,7 +205,7 @@
   [data-verso-headless] > .verso-rhythm > [data-verso-rows]:not(input[type="hidden"], [hidden]):not(:not(input[type="hidden"], [hidden]) ~ *) > :not(input[type="hidden"], [hidden]):not(:not(input[type="hidden"], [hidden]) ~ *) { padding-top: 0; }
 }
 
-/* A page's subject is a card (ADR-023): a titled section on a page is Paper
+/* A page's subject is a card: a titled section on a page is Paper
  * in a Strong Hairline frame, its heading band the card's header behind a
  * hairline, its rules reaching the card's edges as a drawer's reach its own.
  * Cards stand 20px apart. A drawer's sections keep their bands. A page

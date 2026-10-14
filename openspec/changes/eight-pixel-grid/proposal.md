@@ -44,5 +44,5 @@ Every page now measures its layout on an 8px grid, with 4px allowed inside a com
 - **Tests:** Go widget and server tests that assert class strings (`table_test.go`, `renderer_test.go`, `collection_test.go`, `form_test.go`, `lane_test.go` and others) change with the templates. A new guard test keeps fractional spacing out of templates and script class strings.
 - **Plugins:** none. Plugins send a widget schema and no classes, so installed plugins render on the 8px grid unchanged. The Rust SDK and its conformance fixtures are untouched.
 - **On-device state:** none. No UCI option, file or cookie changes, so no migration ships.
-- **Docs:** DESIGN.md (the "20px cell" rules become "The 8px grid", the component measures, and the frontmatter tokens), ADR-023 (amended in place where it says the 20px cell sets every measure inside a card), and docs/BACKLOG.md.
-- **ADRs touched:** ADR-023 (pages are cards). ADR-022 (Overview cards) is unaffected: it pins no measure.
+- **Docs:** DESIGN.md (the "20px cell" rules become "The 8px grid", the component measures, and the frontmatter tokens) and docs/BACKLOG.md.
+- **ADRs touched:** none. The grid is a styleguide matter and lives in DESIGN.md; ADR-022 (Overview cards) pins no measure.

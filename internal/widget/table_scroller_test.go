@@ -33,7 +33,7 @@ func TestTableScrollerSaysThereIsMore(t *testing.T) {
 }
 
 // TestAListingHoldsItsScrollerInAFrameOfItsOwn: a page that is one listing is
-// one card (ADR-023), and the frame stands outside the scroller, so the edge
+// one card, and the frame stands outside the scroller, so the edge
 // that fades while more of a wide table waits never fades the card's border.
 func TestAListingHoldsItsScrollerInAFrameOfItsOwn(t *testing.T) {
 	r := newRenderer(t)
