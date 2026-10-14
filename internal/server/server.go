@@ -962,11 +962,12 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	board, boardErr := s.backend.Board(r.Context(), sid)
 	if boardErr == nil {
 		ov.Firmware, ov.Kernel, ov.Model = board.Firmware, board.Kernel, board.Model
+		ov.Arch, ov.Target = board.Arch, board.Target
 	} else {
 		log.Printf("verso: overview: board unavailable: %v", boardErr)
 	}
 	if si, err := s.backend.SystemInfo(r.Context(), sid); err == nil {
-		ov.Uptime = loginDuration(tr, si.Uptime)
+		ov.Uptime = &si.Uptime
 	} else {
 		log.Printf("verso: overview: system info unavailable: %v", err)
 	}
@@ -974,7 +975,7 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	if wanErr == nil {
 		ov.WANKnown, ov.WANUp = true, wan.Up()
 		if primaryWAN, ok := wan.Primary(); ok {
-			ov.WANUptime = loginDuration(tr, primaryWAN.Uptime)
+			ov.WANUptime = &primaryWAN.Uptime
 		}
 	} else {
 		log.Printf("verso: overview: wan status unavailable: %v", wanErr)
@@ -997,14 +998,17 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	}
 	// The System gauges read live load/CPU/memory/storage; the stream keeps them current.
 	ov.SysMetrics = sysMetricsToWidget(s.systemMeters(r.Context(), sid, tr))
-	// Hardware sensors — CPU temp, fan, power — resolved through the board profile.
-	s.applySensors(ov, board.BoardName, tr)
+	// A profiled board goes by its profile's name, the one the Hardware page
+	// gives it.
+	profile, _ := sensors.LoadProfile(profiles.FS, board.BoardName)
+	if profile != nil && profile.Name != "" {
+		ov.Model = profile.Name
+	}
 	// Kernel interfaces come from the same process-wide telemetry snapshot as
 	// the WAN graph and are enriched with UCI topology.
 	ov.Interfaces = s.interfaceList(r.Context(), sid, snapshot, wan)
 	// The router's panel opens the Ports card, when the card is shown.
 	if ov.Layout.Shows("ports") {
-		profile, _ := sensors.LoadProfile(profiles.FS, board.BoardName)
 		ov.Panel = s.devicePanel(snapshot, wan, profile)
 	}
 	// Devices remain their own page; the Ports card carries their count.
@@ -1076,7 +1080,7 @@ func wanFactsV6(c openwrt.WANConn, tr func(string) string) []widget.OverviewFact
 		f = append(f, widget.OverviewFact{Label: "DNS", Value: d, Copy: true})
 	}
 	if c.V6Valid > 0 {
-		f = append(f, widget.OverviewFact{Label: "Expires", Value: loginDuration(tr, c.V6Valid)})
+		f = append(f, widget.OverviewFact{Label: "Expires", Duration: &c.V6Valid})
 	}
 	if len(f) == 0 {
 		return []widget.OverviewFact{{Label: "Status", Value: "Not configured"}}

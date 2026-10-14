@@ -140,9 +140,6 @@ func TestLoginSlovenianCoversRestingErrorsAndLiveState(t *testing.T) {
 			t.Errorf("lockout status = %d", rec.Code)
 		}
 	}
-	for _, secs := range []int64{0, 60, 3600, 86400} {
-		loginDuration(bundle.Translator("sl"), secs)
-	}
 	for key := range missing {
 		t.Errorf("sign-in falls back to English for %q", key)
 	}

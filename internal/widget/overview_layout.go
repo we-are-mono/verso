@@ -25,8 +25,12 @@ const overviewLayoutVersion = "1"
 // doing on the left, what the router is doing on the right.
 var overviewDefault = [2][]string{
 	{"internet", "ports", "tunnels"},
-	{"traffic", "resources", "hardware", "firmware"},
+	{"traffic", "resources", "system"},
 }
+
+// overviewMerged names the card each retired card lives on in, so a layout a
+// browser saved before the merge keeps its card where the first of them stood.
+var overviewMerged = map[string]string{"hardware": "system", "firmware": "system"}
 
 // overviewCardIDs are every card the Overview has, in default order.
 func overviewCardIDs() []string {
@@ -39,7 +43,8 @@ func DefaultOverviewLayout() OverviewLayout {
 }
 
 // ParseOverviewLayout reads an encoded layout (Encode) from untrusted input.
-// A value it cannot read is the default layout. Unknown cards are dropped, a
+// A value it cannot read is the default layout. A merged card reads as the
+// card it lives on in (overviewMerged), unknown cards are dropped, a
 // card named twice keeps its first place, a closed card no column holds is
 // forgotten, and every card the value leaves out comes back open at the end of
 // the column with fewer cards.
@@ -94,6 +99,11 @@ func layoutIDs(field string) ([]string, bool) {
 	for _, id := range ids {
 		if id == "" || strings.IndexFunc(id, func(r rune) bool { return r < 'a' || r > 'z' }) >= 0 {
 			return nil, false
+		}
+	}
+	for i, id := range ids {
+		if merged, ok := overviewMerged[id]; ok {
+			ids[i] = merged
 		}
 	}
 	return ids, true

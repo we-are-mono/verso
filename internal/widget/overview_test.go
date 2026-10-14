@@ -11,16 +11,16 @@ import (
 
 func fullOverview() *Overview {
 	return &Overview{
-		WANKnown: true, WANUp: true, WANDevice: "pppoe-wan", WANUptime: "2 h 14 min",
+		WANKnown: true, WANUp: true, WANDevice: "pppoe-wan", WANUptime: secs(8040),
 		InterfacesKnown: true, DevicesKnown: true, DevicesOnline: 9,
-		Model:       "Mono Gateway Development Kit",
+		Model: "Mono Gateway Development Kit",
+		Arch:  "aarch64_generic", Target: "layerscape/armv8_64b",
 		TunnelsHref: "/plugins/wireguard/", InterfacesHref: "/plugins/interfaces/",
-		Firmware: "OpenWrt 25.12.4", Kernel: "Linux 6.12.101", Uptime: "6 d 04:00",
+		Firmware: "OpenWrt 25.12.4", Kernel: "Linux 6.12.101", Uptime: secs(532800),
 		Clock: "14:52:07", Zone: "CEST",
-		Temperature: "52 °C", TempDot: "success", Fan: "3630 rpm", Power: "12.4 W",
 		FirewallState: "active",
 		V4Proto:       "DHCP", V4: []OverviewFact{{Label: "Address", Value: "172.30.1.171/24", Copy: true}},
-		V6Proto: "DHCPv6 client", V6: []OverviewFact{{Label: "Prefix", Value: "fd42:7ea:aa00::/56", Copy: true}},
+		V6Proto: "DHCPv6 client", V6: []OverviewFact{{Label: "Prefix", Value: "fd42:7ea:aa00::/56", Copy: true}, {Label: "Expires", Duration: secs(480)}},
 		SysMetrics: []OverviewMeter{{Name: "sys-cpu", Label: "CPU", Icon: "cpu", Value: "27", Unit: "%", Fill: 27, Band: "success"}},
 		Interfaces: []OverviewInterface{
 			{Name: "eth0", Kind: "port", State: "up", Physical: true, Networks: []string{"wan"}, RxBPS: 18_400_000, TxBPS: 2_100_000},
@@ -45,29 +45,44 @@ func TestRenderOverviewCards(t *testing.T) {
 		`data-overview`, `data-overview-tone="success"`, "Your network is", `data-overview-accent class="text-green-deep">online`, "14:52:07", "CEST",
 		"Arrange", "Done", "Reset layout",
 		// Internet
-		"Connected", "IPv4", "dhcp", "172.30.1.171/24", "IPv6", "dhcpv6", "fd42:7ea:aa00::/56", `x-data="copy"`,
+		"Connected", "IPv4", "dhcp", "172.30.1.171/24", "IPv6", "dhcpv6", "fd42:7ea:aa00::/56", `x-data="copy"`, written("8", "min"),
 		// Ports and Tunnels
 		`data-verso-row="interface:eth0"`, "18 Mb/s", `data-verso-row="interface:eth4"`, "wg-home", "wireguard", `href="/plugins/wireguard/"`,
-		// Traffic, Resources, Hardware, Firmware
-		"Mb/s down", "verso-chart-area", `data-verso-meter="sys-cpu"`, "Mono Gateway Development Kit", "3630 rpm", "12.4 W",
-		"OpenWrt 25.12.4", "Linux 6.12.101", `data-verso-prop="uptime"`, "6 d 04:00",
+		// Traffic, Resources, System
+		"Mb/s down", "verso-chart-area", `data-verso-meter="sys-cpu"`, "Mono Gateway Development Kit",
+		"OpenWrt 25.12.4", "Linux 6.12.101", `data-verso-prop="uptime"`, written("6", "d", "4", "h"),
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("overview missing %q", want)
 		}
 	}
-	if want := []string{"internet", "ports", "tunnels", "traffic", "resources", "hardware", "firmware"}; strings.Join(cardOrder(got), " ") != strings.Join(want, " ") {
+	if want := []string{"internet", "ports", "tunnels", "traffic", "resources", "system"}; strings.Join(cardOrder(got), " ") != strings.Join(want, " ") {
 		t.Errorf("default order = %v, want %v", cardOrder(got), want)
 	}
-	for _, gone := range []string{"Internet is working", "Live overview", "data-overview-tile", "Uptime</span>", "(two)", "(few)"} {
+	for _, gone := range []string{"Internet is working", "Live overview", "data-overview-tile", "Uptime</span>", "(two)", "(few)", "CPU Temperature", "Fan speed", "Power draw"} {
 		if strings.Contains(got, gone) {
 			t.Errorf("overview still draws %q", gone)
 		}
 	}
-	firmware := got[strings.Index(got, `data-overview-card="firmware"`):]
-	firmware = firmware[:strings.Index(firmware, "</article>")]
-	if strings.Count(got, "6 d 04:00") != strings.Count(firmware, "6 d 04:00") {
-		t.Error("the router's uptime is shown outside the Firmware card")
+	system := got[strings.Index(got, `data-overview-card="system"`):]
+	system = system[:strings.Index(system, "</article>")]
+	if strings.Count(got, written("6", "d", "4", "h")) != strings.Count(system, written("6", "d", "4", "h")) {
+		t.Error("the router's uptime is shown outside the System card")
+	}
+	// The System card reads from the hardware up: the board, what it runs as,
+	// then the firmware on it and how long it has been running.
+	labels := regexp.MustCompile(`<dt[^>]*>([^<]+)</dt>`).FindAllStringSubmatch(system, -1)
+	var order []string
+	for _, m := range labels {
+		order = append(order, m[1])
+	}
+	if want := "Board, Architecture, Target platform, Firmware, Kernel, Uptime"; strings.Join(order, ", ") != want {
+		t.Errorf("System rows = %v, want %s", order, want)
+	}
+	for _, want := range []string{"aarch64_generic", "layerscape/armv8_64b"} {
+		if !strings.Contains(system, want) {
+			t.Errorf("System card missing %q", want)
+		}
 	}
 	if strings.Contains(got, "Firewall") {
 		t.Error("the Overview has no Firewall card")
@@ -76,9 +91,9 @@ func TestRenderOverviewCards(t *testing.T) {
 
 func TestRenderOverviewFollowsTheLayout(t *testing.T) {
 	o := fullOverview()
-	o.Layout = ParseOverviewLayout("1.traffic-internet-ports.tunnels-hardware-firmware.ports.resources")
+	o.Layout = ParseOverviewLayout("1.traffic-internet-ports.tunnels-system.ports.resources")
 	got := render(t, newRenderer(t), o)
-	if want := "traffic internet ports tunnels hardware firmware"; strings.Join(cardOrder(got), " ") != want {
+	if want := "traffic internet ports tunnels system"; strings.Join(cardOrder(got), " ") != want {
 		t.Fatalf("order = %v, want %s", cardOrder(got), want)
 	}
 	if strings.Contains(got, `data-verso-meter="sys-cpu"`) {
@@ -104,7 +119,7 @@ func TestRenderOverviewFollowsTheLayout(t *testing.T) {
 func TestOverviewDegradesWithoutInventingState(t *testing.T) {
 	r := newRenderer(t)
 	bare := render(t, r, &Overview{})
-	for _, want := range []string{"Your network at a glance", "Unavailable", "N/A", "CPU Temperature", "Fan speed", "Power draw", "System readings unavailable", "No address.", "No prefix was delegated."} {
+	for _, want := range []string{"Your network at a glance", "Unavailable", "System readings unavailable", "No address.", "No prefix was delegated."} {
 		if !strings.Contains(bare, want) {
 			t.Errorf("missing fallback %q", want)
 		}
@@ -186,7 +201,7 @@ func TestOverviewVerdictIgnoresUnusedInterfaces(t *testing.T) {
 
 func TestOverviewLiveStatusCarriesEveryCard(t *testing.T) {
 	o := fullOverview()
-	o.Layout = ParseOverviewLayout("1.internet-ports-tunnels.traffic-hardware-firmware..resources")
+	o.Layout = ParseOverviewLayout("1.internet-ports-tunnels.traffic-system..resources")
 	live := o.LiveStatus(plain)
 	if len(live.Cards) != len(overviewCardIDs()) {
 		t.Fatalf("live cards = %d, want every card, hidden ones included", len(live.Cards))

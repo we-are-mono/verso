@@ -43,9 +43,7 @@ func (s *Server) handleOverviewEvents(w http.ResponseWriter, r *http.Request) {
 
 	// What a connection reads once: the board, and the interfaces' topology,
 	// which changes only with an apply, after which the page is read anew.
-	boardName := ""
 	if b, err := s.backend.Board(r.Context(), sid); err == nil {
-		boardName = b.BoardName
 		liveOverview.Firmware, liveOverview.Kernel, liveOverview.Model = b.Firmware, b.Kernel, b.Model
 	}
 	var topology []widget.OverviewInterface
@@ -56,8 +54,9 @@ func (s *Server) handleOverviewEvents(w http.ResponseWriter, r *http.Request) {
 
 	sendMeters := func() bool {
 		now := clock.Now()
-		liveOverview.Uptime = loginDuration(tr, loginUptime())
-		if writeEvent(w, "", "clock", map[string]string{"clock": now.Format("15:04:05"), "uptime": liveOverview.Uptime}) != nil {
+		uptime := loginUptime()
+		liveOverview.Uptime = &uptime
+		if writeEvent(w, "", "clock", map[string]any{"clock": now.Format("15:04:05"), "uptime": units.Duration(uptime)}) != nil {
 			return false
 		}
 		// The verdict counts a resource out of band, so the readings are taken
@@ -95,13 +94,14 @@ func (s *Server) handleOverviewEvents(w http.ResponseWriter, r *http.Request) {
 	sendWan := func() bool {
 		ws, err := s.backend.WANStatus(r.Context(), sid)
 		liveOverview.WANKnown, liveOverview.WANUp = err == nil, err == nil && ws.Up()
-		liveOverview.WANDevice, liveOverview.WANUptime = "", ""
+		liveOverview.WANDevice, liveOverview.WANUptime = "", nil
 		if err != nil {
 			return true // no uplink is a page-render concern, not a stream killer
 		}
 		primary, found := ws.Primary()
 		if found {
-			liveOverview.WANDevice, liveOverview.WANUptime = primary.Device, loginDuration(tr, primary.Uptime)
+			connected := primary.Uptime
+			liveOverview.WANDevice, liveOverview.WANUptime = primary.Device, &connected
 			if addressDevice == "" || primary.Device != addressDevice || primary.Uptime < addressUptime {
 				liveOverview.WANAddress = ""
 				if conn, err := s.backend.WANConn(r.Context(), sid); err == nil {
@@ -116,9 +116,9 @@ func (s *Server) handleOverviewEvents(w http.ResponseWriter, r *http.Request) {
 		}
 		write := func(down, up float64) bool {
 			liveOverview.DownNow, liveOverview.UpNow = down, up
-			// connected is how long the uplink has held, written for the
-			// Internet card's row.
-			return writeEvent(w, "", "wan", map[string]any{"down": down, "up": up, "uptime": primary.Uptime, "connected": liveOverview.WANUptime}) == nil
+			// connected is how long the uplink has held, in figures and units
+			// for the Internet card's row.
+			return writeEvent(w, "", "wan", map[string]any{"down": down, "up": up, "uptime": primary.Uptime, "connected": units.Duration(primary.Uptime)}) == nil
 		}
 		if !found || primary.Device == "" {
 			return write(0, 0)
@@ -140,24 +140,12 @@ func (s *Server) handleOverviewEvents(w http.ResponseWriter, r *http.Request) {
 		down, up := s.wanHist.Latest()
 		return write(down, up)
 	}
-	// The hardware-sensor frame: CPU temperature, fan speed, power draw, resolved
-	// through the board profile and pushed each readings tick so the Hardware
-	// card's rows keep current the way the gauges do. Nothing reads them while
-	// Hardware is hidden, so then the sensors are left alone.
-	sendSensors := func() bool {
-		if !layout.Shows("hardware") {
-			return true
-		}
-		v := resolveSensors(tr, boardName)
-		liveOverview.Temperature, liveOverview.TempDot, liveOverview.Fan, liveOverview.Power = v.Temperature, v.TempLevel, v.Fan, v.Power
-		return writeEvent(w, "", "sensors", v) == nil
-	}
 	sendOverview := func() bool {
 		s.applyFirewallStatus(r.Context(), sid, liveOverview)
 		return writeEvent(w, "", "overview", liveOverview.LiveStatus(tr)) == nil
 	}
 	s.serveSSE(w, r, func() bool {
-		return sendMeters() && sendInterfaces() && sendWan() && sendSensors() && sendOverview()
+		return sendMeters() && sendInterfaces() && sendWan() && sendOverview()
 	})
 }
 

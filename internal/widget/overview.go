@@ -26,13 +26,15 @@ type Overview struct {
 	// zero value is the default layout.
 	Layout OverviewLayout
 
-	Firmware  string
-	Kernel    string
-	Uptime    string
+	Firmware string
+	Kernel   string
+	// Uptime is how long the router has run, and WANUptime how long the
+	// uplink has held, in seconds; nil is not known.
+	Uptime    *int64
 	WANKnown  bool
 	WANUp     bool
 	WANDevice string
-	WANUptime string
+	WANUptime *int64
 	// WANAddress is the uplink's IPv4 address with its prefix
 	// ("203.0.113.7/32"), the address the internet sees.
 	WANAddress string
@@ -57,14 +59,9 @@ type Overview struct {
 	// renders an unavailable state.
 	SysMetrics []OverviewMeter
 
-	// Model is the board's human name. Temperature/Fan/Power are the resolved
-	// hardware sensor facts (see internal/sensors); an absent reading shows N/A.
-	// TempDot is the temperature status tone ("success"|"warning"|"danger").
-	Model       string
-	Temperature string
-	TempDot     string
-	Fan         string
-	Power       string
+	// Model is the board's human name; Arch the package architecture its
+	// firmware was built for, Target the OpenWrt target/subtarget.
+	Model, Arch, Target string
 
 	// Interfaces is the live listing: every kernel interface, enriched with its
 	// topology/UCI meaning.
@@ -142,6 +139,8 @@ type OverviewFact struct {
 	Label string
 	Value string
 	Copy  bool
+	// Duration makes the fact a stretch of time, in seconds (a lease's term).
+	Duration *int64
 }
 
 // OverviewMeter is one live System gauge — a named bar-layout meter with its
@@ -296,27 +295,6 @@ func (o *Overview) sysMeters() []*Meter {
 		})
 	}
 	return out
-}
-
-// sysRight keeps three sensor rows, with N/A for an unavailable reading. Keys
-// tag each value for the overview stream, including a sensor that appears later.
-func (o *Overview) sysRight() *Properties {
-	reading := func(value string) string {
-		if value == "" {
-			return "N/A"
-		}
-		return value
-	}
-	value, note, _ := strings.Cut(reading(o.Temperature), " · ")
-	tone := o.TempDot
-	if tone == "" {
-		tone = "neutral"
-	}
-	return &Properties{Items: []Property{
-		{Label: "CPU Temperature", Value: value, Help: note, HelpVerbatim: true, Mono: true, Verbatim: true, Dot: tone, Key: "temperature"},
-		{Label: "Fan speed", Value: reading(o.Fan), Mono: true, Verbatim: true, Key: "fan"},
-		{Label: "Power draw", Value: reading(o.Power), Mono: true, Verbatim: true, Key: "power"},
-	}}
 }
 
 // renderToHTML renders one widget to a fragment for injection into a composing

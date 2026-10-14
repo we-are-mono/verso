@@ -69,7 +69,7 @@ func framesUntil(t *testing.T, srv *Server, path, layout, last string) map[strin
 // and the stream sends that one alone, whatever the Overview's layout hides;
 // a frame outside the allowlist is never sent this way.
 func TestAPageReadsOnlyThePortsFrame(t *testing.T) {
-	hidden := "1.internet-firewall.traffic-resources-hardware-firmware..ports-tunnels"
+	hidden := "1.internet-firewall.traffic-resources-system..ports-tunnels"
 	for _, path := range []string{"/overview/events?reads=interfaces", "/overview/events?reads=interfaces,meters,clock"} {
 		frames := framesUntil(t, streamServer(t), path, hidden, "interfaces")
 		if got := sent(frames); !slices.Equal(got, []string{"interfaces"}) {
@@ -105,18 +105,18 @@ func sent(frames map[string]string) []string {
 }
 
 func TestOverviewStreamSendsWhatTheShownCardsRead(t *testing.T) {
-	all := []string{"clock", "interfaces", "meters", "overview", "sensors", "wan"}
+	all := []string{"clock", "interfaces", "meters", "overview", "wan"}
 	for _, tc := range []struct {
 		name, layout string
 		want         []string
 	}{
 		{"default", "", all},
-		{"everything closed", "1.internet-firewall-ports-tunnels.traffic-resources-hardware-firmware.internet-firewall-ports-tunnels-traffic-resources-hardware-firmware.", all},
-		{"Resources hidden", "1.internet-firewall-ports-tunnels.traffic-hardware-firmware..resources", []string{"clock", "interfaces", "overview", "sensors", "wan"}},
-		{"Hardware hidden", "1.internet-firewall-ports-tunnels.traffic-resources-firmware..hardware", []string{"clock", "interfaces", "meters", "overview", "wan"}},
-		{"Traffic and Internet hidden", "1.firewall-ports-tunnels.resources-hardware-firmware..internet-traffic", []string{"clock", "interfaces", "meters", "overview", "sensors"}},
-		{"Ports and Tunnels hidden", "1.internet-firewall.traffic-resources-hardware-firmware..ports-tunnels", []string{"clock", "meters", "overview", "sensors", "wan"}},
-		{"everything hidden", "1....internet-firewall-ports-tunnels-traffic-resources-hardware-firmware", []string{"clock", "overview"}},
+		{"everything closed", "1.internet-firewall-ports-tunnels.traffic-resources-system.internet-firewall-ports-tunnels-traffic-resources-system.", all},
+		{"Resources hidden", "1.internet-firewall-ports-tunnels.traffic-system..resources", []string{"clock", "interfaces", "overview", "wan"}},
+		{"System hidden", "1.internet-firewall-ports-tunnels.traffic-resources..system", []string{"clock", "interfaces", "meters", "overview", "wan"}},
+		{"Traffic and Internet hidden", "1.firewall-ports-tunnels.resources-system..internet-traffic", []string{"clock", "interfaces", "meters", "overview"}},
+		{"Ports and Tunnels hidden", "1.internet-firewall.traffic-resources-system..ports-tunnels", []string{"clock", "meters", "overview", "wan"}},
+		{"everything hidden", "1....internet-firewall-ports-tunnels-traffic-resources-system", []string{"clock", "overview"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			if got := sent(firstFrames(t, streamServer(t), tc.layout)); !slices.Equal(got, tc.want) {
@@ -129,7 +129,7 @@ func TestOverviewStreamSendsWhatTheShownCardsRead(t *testing.T) {
 // A hidden card's reading still reaches the verdict, so hiding a card never
 // makes the page read "online".
 func TestOverviewStreamVerdictCountsHiddenCards(t *testing.T) {
-	frames := firstFrames(t, streamServer(t), "1.internet-firewall.traffic-resources-hardware-firmware..ports-tunnels")
+	frames := firstFrames(t, streamServer(t), "1.internet-firewall.traffic-resources-system..ports-tunnels")
 	var status widget.OverviewStatus
 	if err := json.Unmarshal([]byte(frames["overview"]), &status); err != nil {
 		t.Fatal(err)

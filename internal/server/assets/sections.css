@@ -311,6 +311,9 @@
 .verso-page-body section[data-verso-section]:not(section section, dialog *) > .verso-rhythm > [data-verso-listing] :is(td, th):first-child {
   padding-left: var(--verso-side);
 }
+.verso-page-body section[data-verso-section]:not(section section, dialog *) > .verso-rhythm > [data-verso-listing] :is(td, th):last-of-type {
+  padding-right: var(--verso-side);
+}
 .verso-page-body section[data-verso-section]:has(> .verso-rhythm > [data-verso-listing]:last-child):not(section section, dialog *) {
   padding-bottom: 0;
 }
@@ -337,6 +340,9 @@
 }
 :is(.verso-page-body > [data-verso-listing], .verso-page-body > .verso-stack > [data-verso-listing], .verso-page-body > .verso-stack > .verso-stack > [data-verso-listing]) > [data-verso-scroller]:not([data-verso-inventory]) :is(td, th):first-child {
   padding-left: var(--verso-side);
+}
+:is(.verso-page-body > [data-verso-listing], .verso-page-body > .verso-stack > [data-verso-listing], .verso-page-body > .verso-stack > .verso-stack > [data-verso-listing]) > [data-verso-scroller] :is(td, th):last-of-type {
+  padding-right: var(--verso-side);
 }
 :is(.verso-page-body > [data-verso-listing], .verso-page-body > .verso-stack > [data-verso-listing], .verso-page-body > .verso-stack > .verso-stack > [data-verso-listing]) .verso-table > tbody > tr:not([hidden]):not(:has(~ tr:not([hidden]))) > td {
   border-bottom-width: 0;

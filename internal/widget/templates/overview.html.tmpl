@@ -126,7 +126,8 @@
 {{end}}
 
 {{/* overview.meters: the Resources card's gauges, two to a row where the
-     card is wide enough, a cell apart both ways, so they stay whole cells. */}}
+     card is wide enough, a hairline between the rows (verso-overview-meters
+     in input.css). */}}
 {{define "overview.meters"}}
-{{if .}}<div class="grid grid-cols-1 gap-6 @[28rem]/card:grid-cols-2 @[28rem]/card:gap-x-10">{{range .}}{{.}}{{end}}</div>{{else}}<p class="text-sm leading-6 text-meta">{{ t "System readings unavailable" }}</p>{{end}}
+{{if .}}<div class="verso-overview-meters grid grid-cols-1 gap-6 @[28rem]/card:grid-cols-2 @[28rem]/card:gap-x-10">{{range .}}{{.}}{{end}}</div>{{else}}<p class="text-sm leading-6 text-meta">{{ t "System readings unavailable" }}</p>{{end}}
 {{end}}

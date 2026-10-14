@@ -39,7 +39,7 @@ func TestOverviewSlovenianPageAndStream(t *testing.T) {
 	srv.stats = fakeStats{cpu: 91, root: sysstat.Storage{Used: 95, Free: 5}}
 	srv.telemetry = fakeTelemetry{snapshot: telemetry.Snapshot{TimestampMS: uint64(time.Now().UnixMilli()), Interfaces: []telemetry.Interface{{Name: "eth0", Physical: true, Kind: "port", Operstate: "down"}, {Name: "wg0", Kind: "tunnel", Operstate: "unknown"}}}}
 	body := getLang(t, srv, "/", "sl-SI")
-	for _, want := range []string{"Vaše omrežje zahteva pozornost", "Vrata", "Viri", "Tuneli", "Predpona", "Prehod", "Velja še", "8 min", "Pomnilnik", "Mb/s prejem", "Mb/s oddaja", "pred 60 s", "Povezano že", "2 h 14 min", "192.0.2.1/24", "2001:db8::/56", "Temperatura CPU", "Hitrost ventilatorja", "Poraba energije"} {
+	for _, want := range []string{"Vaše omrežje zahteva pozornost", "Vrata", "Viri", "Tuneli", "Predpona", "Prehod", "Velja še", `>8</span>&nbsp;<span class="verso-duration-unit">min<`, "Pomnilnik", "Mb/s prejem", "Mb/s oddaja", "pred 60 s", "Povezano že", `>14</span>&nbsp;<span class="verso-duration-unit">min<`, "192.0.2.1/24", "2001:db8::/56", "Plošča", "Arhitektura", "Ciljna platforma"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("Slovenian overview missing %q", want)
 		}
@@ -80,9 +80,13 @@ func TestOverviewSlovenianPageAndStream(t *testing.T) {
 			if meters[1].Band != "danger" || strings.Contains(payload, `"role"`) {
 				t.Errorf("CPU should keep critical band in stream: %+v", meters[1])
 			}
+		case "clock":
+			if !strings.Contains(payload, `"uptime":[{"figure":`) {
+				t.Errorf("the clock frame carries the uptime as figures and units: %s", payload)
+			}
 		case "wan":
-			if !strings.Contains(payload, `"connected":"2 h 14 min"`) {
-				t.Errorf("the wan frame says how long the uplink has held, written: %s", payload)
+			if !strings.Contains(payload, `"connected":[{"figure":"2","unit":"h"},{"figure":"14","unit":"min"}]`) {
+				t.Errorf("the wan frame says how long the uplink has held, as figures and units: %s", payload)
 			}
 		case "interfaces":
 			if !strings.Contains(payload, "Ne deluje") || !strings.Contains(payload, "Neznano") {
@@ -96,7 +100,7 @@ func TestOverviewSlovenianPageAndStream(t *testing.T) {
 			if status.Lead != "Vaše omrežje zahteva pozornost" || status.Tone != "warning" {
 				t.Errorf("stream verdict=%+v", status)
 			}
-			if len(status.Cards) != 7 || status.Cards[4].ID != "resources" || status.Cards[4].Status != "CPU: visoka vrednost" {
+			if len(status.Cards) != 6 || status.Cards[4].ID != "resources" || status.Cards[4].Status != "CPU: visoka vrednost" {
 				t.Errorf("untranslated resources reading: %+v", status.Cards)
 			}
 			if status.Cards[0].ID != "internet" || status.Cards[0].Summary != "192.0.2.1" {

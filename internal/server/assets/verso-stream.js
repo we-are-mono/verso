@@ -9,7 +9,7 @@
 // through window.versoLiveSample (verso-chart.js), which draws the curve.
 
 // The overview stream: one EventSource the shell pushes fresh truth into —
-// system meters, interface rates, WAN traffic, and sensors. Each type updates
+// system meters, interface rates and WAN traffic. Each type updates
 // its rendered widget in place (the CSS transitions do the
 // glides). Reconnection after a drop is EventSource's own; when the session
 // ends the reconnect lands on the login redirect — not an event stream —
@@ -56,19 +56,6 @@
     }
     root.setAttribute("aria-label", (reading.label + " " + reading.value + " " + reading.unit).trim());
   }
-  // The status dot's colour for a tone, which is verso-tone-dot in shared.html.tmpl
-  // — the one place in the app that decides what a tone looks like as a dot. Success
-  // pulses, because it marks something live. A reading repainted here has to come
-  // out identical to the one the server rendered a moment earlier, and it did not:
-  // it was three stock Tailwind colours the palette does not contain.
-  function TONE_DOT(tone) {
-    if (tone === "success") return "verso-live-dot bg-green";
-    if (tone === "warning") return "bg-marigold";
-    if (tone === "danger") return "bg-crimson";
-    if (tone === "info") return "bg-denim";
-    return "bg-glyph";
-  }
-
   // The state dot a row carries, repainted. It is the dot the server rendered
   // (table.html.tmpl): a fill in the palette for a state worth a colour, a hollow
   // ring for one that is not. Both the fills and the ring have to come off before
@@ -167,6 +154,27 @@
   });
   if (!document.hidden) connect();
 
+  // A stretch of time the stream sends as its parts, [{figure, unit}], drawn
+  // as verso-duration draws it: each figure and its unit held together by a
+  // no-break space, the unit receding. It is redrawn only when it reads
+  // differently, so a minute's uptime is one change, not sixty.
+  function writeSpan(el, parts) {
+    if (!el || !parts || !parts.length) return;
+    var words = parts.map(function (p) { return p.figure + "\u00a0" + p.unit; }).join(" ");
+    if (el.textContent === words) return;
+    el.textContent = "";
+    parts.forEach(function (p, i) {
+      if (i) el.appendChild(document.createTextNode(" "));
+      var figure = document.createElement("span");
+      figure.className = "verso-duration-figure";
+      figure.textContent = p.figure;
+      var unit = document.createElement("span");
+      unit.className = "verso-duration-unit";
+      unit.textContent = p.unit;
+      el.append(figure, "\u00a0", unit);
+    });
+  }
+
   function wire(es) {
   listen(es, "meters", "meters", applyMeter);
   es.addEventListener("clock", function (e) {
@@ -175,9 +183,8 @@
     if (!d) return;
     var root = document.querySelector("[data-overview-clock]");
     if (root) setText(root, "[data-overview-time]", d.clock);
-    // The Firmware card's uptime row.
-    var uptime = document.querySelector('[data-verso-prop="uptime"]');
-    if (uptime && d.uptime) uptime.textContent = d.uptime;
+    // The System card's uptime row.
+    writeSpan(document.querySelector('[data-verso-prop="uptime"]'), d.uptime);
   });
   // The verdict and every card's header (ADR-022): the words, and the tone the
   // card wears as data-tone, which its status and packet take their colour
@@ -215,34 +222,7 @@
     var d;
     try { d = JSON.parse(e.data); } catch (err) { return; }
     if (d && window.versoLiveSample) window.versoLiveSample("wan", d.down, d.up);
-    var connected = document.querySelector('[data-verso-prop="wan-uptime"]');
-    if (connected && d && d.connected) connected.textContent = d.connected;
-  });
-  // The hardware-sensor frame updates the System panel's temperature/fan/power
-  // rows in place, including N/A when a reading disappears. The temperature
-  // dot returns to its hollow neutral state when no reading is available.
-  function setSensor(name, val) {
-    if (val == null) return;
-    var el = document.querySelector('[data-verso-prop="' + name + '"]');
-    if (!el) return;
-    var note = name === "temperature" && document.querySelector("[data-overview-temp-note]");
-    if (note) {
-      var parts = val.split(" · ");
-      el.textContent = parts.shift();
-      note.textContent = parts.length ? "· " + parts.join(" · ") : "";
-    } else el.textContent = val;
-  }
-  es.addEventListener("sensors", function (e) {
-    var d;
-    try { d = JSON.parse(e.data); } catch (err) { return; }
-    if (!d) return;
-    setSensor("temperature", d.temperature);
-    setSensor("fan", d.fan);
-    setSensor("power", d.power);
-    var dot = document.querySelector('[data-verso-prop-dot="temperature"]');
-    if (dot && d.tempLevel) {
-      dot.className = "mt-2.25 mr-2 shrink-0 size-1.5 rounded-[1px] " + (d.tempLevel === "neutral" ? "border border-faint" : TONE_DOT(d.tempLevel));
-    }
+    if (d) writeSpan(document.querySelector('[data-verso-prop="wan-uptime"]'), d.connected);
   });
   }
 })();

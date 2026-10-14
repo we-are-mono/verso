@@ -175,6 +175,13 @@
      a field at the measure ends on a line too. */
   main { --verso-form-width: calc(var(--container-3xl) + 1px); }
   dialog { --verso-form-width: calc(40rem + 1px); }
+
+  /* A stretch of time (verso-duration): each figure at 500 in the ink of
+     where it stands, each unit receding to Meta at 400, so the figures are
+     read first. In a muted cell the figure is already Meta and the weight
+     alone tells them apart, since no ink lighter than Meta carries words. */
+  .verso-duration-figure { font-weight: 500; font-variant-numeric: tabular-nums; }
+  .verso-duration-unit { font-weight: 400; color: var(--color-meta); }
 }
 
 html {
@@ -1124,6 +1131,29 @@ html {
     .verso-overview-card table :is(th, td):nth-child(4) { display: none; }
   }
 
+  /* Resources' gauges stand in rows with a hairline between them, 24px of air
+     either side: the grid's 24px gap over it and 23px under it, so the
+     hairline and the gauge after it land on lines. Two to a row, the left
+     gauge carries its hairline across the 40px between the columns, so the
+     rule runs the card's width unbroken. */
+  .verso-overview-meters > * + * {
+    position: relative;
+    border-top: 1px solid var(--color-rule);
+    padding-top: calc(var(--spacing) * 5.75);
+  }
+  @container card (min-width: 28rem) {
+    .verso-overview-meters > :nth-child(2) { border-top: 0; padding-top: 0; }
+    .verso-overview-meters > :nth-child(2n + 3)::before {
+      content: "";
+      position: absolute;
+      top: -1px;
+      left: 100%;
+      width: calc(var(--spacing) * 10);
+      height: 1px;
+      background: var(--color-rule);
+    }
+  }
+
   .verso-overview-card[data-lifted] { position: fixed; z-index: 50; pointer-events: none; box-shadow: 0 8px 32px color-mix(in srgb, var(--color-ink) 16%, transparent); }
   .verso-overview-slot { border: 1px dashed var(--color-rule-strong); background: var(--color-quiet); border-radius: var(--radius-xs); }
   .verso-overview-dragging, .verso-overview-dragging * { cursor: grabbing !important; }
@@ -1136,12 +1166,46 @@ html {
 
 /* A list that ends an Overview card ends on the frame: its last row draws no
    hairline and keeps the pixel as air, so the frame stays on its line. A list
-   something follows (IPv4 above IPv6) keeps its hairline. Utilities, since it
-   overrides the rows' own border utilities. */
+   something follows (IPv4 above IPv6) keeps its hairline. A fact list that
+   starts or ends a card gives up its row's own air there, so its first and
+   last lines stand the card's 24px from the frame, as a table's do.
+   Utilities, since it overrides the rows' own border and padding utilities. */
 @layer utilities {
   .verso-overview-content > dl:last-child > div:last-child,
   .verso-overview-content > div:last-child > section:last-child > dl:last-child > div:last-child,
   .verso-overview-content tbody > tr:last-child > td { border-bottom-color: transparent; }
+  .verso-overview-content > dl:last-child > div:last-child,
+  .verso-overview-content > div:last-child > section:last-child > dl:last-child > div:last-child { padding-bottom: 0; }
+  .verso-overview-content > dl:first-child > div:first-child,
+  .verso-overview-content > div:first-child > div:first-child > dl:first-child > div:first-child,
+  .verso-overview-content > div:first-child > section:first-child > :first-child { padding-top: 0; }
+
+  /* A listing in a card is headed as the card's fact lists are (the IPv4
+     and IPv6 heads): its column names in 14px/600 Ink on a 24px line, 8px
+     over and under it, on the strong hairline, so the first row's line
+     lands 7px after it on a line of the grid. A listing that starts the card
+     keeps no air over its head. */
+  .verso-overview-content thead th {
+    padding-top: calc(var(--spacing) * 2);
+    padding-bottom: calc(var(--spacing) * 2);
+    font-size: var(--text-sm);
+    line-height: calc(var(--spacing) * 6);
+    font-weight: 600;
+    letter-spacing: normal;
+    text-transform: none;
+    color: var(--color-ink);
+  }
+  .verso-overview-content > [data-verso-listing]:first-child thead th { padding-top: 0; }
+
+  /* A listing in a card runs to the card's edges, its words in line with the
+     card's (as a page card's does, sections.css): its first and last columns
+     keep the card's inset and no indent of their own, so a port's name
+     stands where IPv4 does in the card beside it. */
+  .verso-overview-content [data-verso-listing] { margin-inline: calc(var(--spacing) * -5.75); }
+  .verso-overview-content [data-verso-listing] :is(td, th):first-of-type,
+  .verso-overview-content [data-verso-listing-empty] { padding-left: calc(var(--spacing) * 5.75); }
+  .verso-overview-content [data-verso-listing] :is(td, th):last-of-type,
+  .verso-overview-content [data-verso-listing-empty] { padding-right: calc(var(--spacing) * 5.75); }
 }
 
 /* A stepped dialog's line (modal.html.tmpl): the steps read left to right with

@@ -42,7 +42,7 @@ func TestInternetCardHead(t *testing.T) {
 	}
 	// Up, its line is the address the internet sees; down, the status says
 	// it all.
-	up := head(t, &Overview{WANKnown: true, WANUp: true, WANDevice: "pppoe-wan", WANUptime: "2 h 14 min", WANAddress: "203.0.113.7/32"}, "internet")
+	up := head(t, &Overview{WANKnown: true, WANUp: true, WANDevice: "pppoe-wan", WANUptime: secs(8040), WANAddress: "203.0.113.7/32"}, "internet")
 	if up.Status != "Connected" || up.Tone != "success" || up.Summary != "203.0.113.7" {
 		t.Errorf("up = %+v", up)
 	}
@@ -108,8 +108,7 @@ func TestPortsAndTunnelsCardHeads(t *testing.T) {
 
 func TestReadingCardsShowAStatusOnlyOutOfBand(t *testing.T) {
 	o := &Overview{
-		DownNow: 84.2, UpNow: 1260, Firmware: "OpenWrt 25.12.4", Uptime: "3 d 4 h",
-		Temperature: "52 °C · normal", TempDot: "success", Fan: "2400 rpm", Power: "7.8 W",
+		DownNow: 84.2, UpNow: 1260, Firmware: "OpenWrt 25.12.4", Uptime: secs(273600),
 		SysMetrics: []OverviewMeter{
 			{Name: "sys-load", Label: "Load", Value: "0.42", Band: "success"},
 			{Name: "sys-cpu", Label: "CPU", Value: "12", Unit: "%", Band: "success"},
@@ -122,8 +121,7 @@ func TestReadingCardsShowAStatusOnlyOutOfBand(t *testing.T) {
 	for id, summary := range map[string]string{
 		"traffic":   "84 Mb/s down · 1.3 Gb/s up",
 		"resources": "Memory 16 %",
-		"hardware":  "52 °C",
-		"firmware":  "OpenWrt 25.12.4",
+		"system":    "OpenWrt 25.12.4",
 	} {
 		if h := head(t, o, id); h.Status != "" || h.Summary != summary {
 			t.Errorf("%s = %+v, want no status and %q", id, h, summary)
@@ -136,13 +134,6 @@ func TestReadingCardsShowAStatusOnlyOutOfBand(t *testing.T) {
 	o.SysMetrics[1].Band = "danger"
 	if h := head(t, o, "resources"); h.Status != "CPU is high" || h.Tone != "danger" {
 		t.Errorf("the worst band names the card = %+v", h)
-	}
-	o.TempDot = "danger"
-	if h := head(t, o, "hardware"); h.Status != "CPU temperature is high" || h.Tone != "danger" {
-		t.Errorf("hot = %+v", h)
-	}
-	if h := head(t, &Overview{}, "hardware"); h.Summary != "" || h.Status != "" {
-		t.Errorf("no sensors = %+v", h)
 	}
 }
 
@@ -246,8 +237,8 @@ func TestInternetCardBodySaysWhatIsMissing(t *testing.T) {
 // The uplink's device and how long it has been connected head the Internet
 // card, the time kept live by the stream; a down uplink has no time to state.
 func TestInternetCardBodyNamesTheUplink(t *testing.T) {
-	up := cardBody(t, &Overview{WANKnown: true, WANUp: true, WANDevice: "pppoe-wan", WANUptime: "2 h 14 min"}, "internet")
-	for _, want := range []string{">Device<", ">pppoe-wan<", ">Connected for<", `data-verso-prop="wan-uptime"`, ">2 h 14 min<"} {
+	up := cardBody(t, &Overview{WANKnown: true, WANUp: true, WANDevice: "pppoe-wan", WANUptime: secs(8040)}, "internet")
+	for _, want := range []string{">Device<", ">pppoe-wan<", ">Connected for<", `data-verso-prop="wan-uptime"`, written("2", "h", "14", "min")} {
 		if !strings.Contains(up, want) {
 			t.Errorf("an up uplink's card missing %q: %s", want, up)
 		}
@@ -255,7 +246,7 @@ func TestInternetCardBodyNamesTheUplink(t *testing.T) {
 	if strings.Index(up, "pppoe-wan") > strings.Index(up, "IPv4") {
 		t.Error("the uplink heads the card, over its address families")
 	}
-	down := cardBody(t, &Overview{WANKnown: true, WANDevice: "pppoe-wan", WANUptime: "2 h 14 min"}, "internet")
+	down := cardBody(t, &Overview{WANKnown: true, WANDevice: "pppoe-wan", WANUptime: secs(8040)}, "internet")
 	if !strings.Contains(down, ">pppoe-wan<") || strings.Contains(down, "Connected for") {
 		t.Errorf("a down uplink names its device and states no time: %s", down)
 	}

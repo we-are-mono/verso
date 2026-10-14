@@ -5,11 +5,11 @@ package server
 
 import (
 	"encoding/json"
-	"fmt"
 	"net"
 	"net/http"
 
 	"github.com/we-are-mono/verso/internal/clock"
+	"github.com/we-are-mono/verso/internal/units"
 )
 
 // loginStatus is the complete public refresh payload. It intentionally cannot
@@ -30,29 +30,13 @@ func (s *Server) readLoginStatus(tr func(string) string) loginStatus {
 	now := clock.Now()
 	zone, offset := now.Zone()
 	status := loginStatus{
-		Uptime: loginDuration(tr, loginUptime()),
+		Uptime: units.Duration(loginUptime()).String(),
 		Clock:  now.Format("15:04:05"), Zone: zone, Unix: now.Unix(), Offset: offset,
 	}
 	if up, err := s.loginInternet(); err == nil {
 		status.Internet = &up
 	}
 	return status
-}
-
-// Compact duration patterns are translated as a whole, leaving each language
-// free to order its units without singular/dual/plural sentence fragments.
-func loginDuration(tr func(string) string, seconds int64) string {
-	if seconds < 0 {
-		seconds = 0
-	}
-	days, hours, minutes := seconds/86400, seconds%86400/3600, seconds%3600/60
-	if days > 0 {
-		return fmt.Sprintf(tr("%d d %02d:%02d"), days, hours, minutes)
-	}
-	if hours > 0 {
-		return fmt.Sprintf(tr("%d h %02d min"), hours, minutes)
-	}
-	return fmt.Sprintf(tr("%d min"), minutes)
 }
 
 func (s *Server) handleLoginStatus(w http.ResponseWriter, r *http.Request) {

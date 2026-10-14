@@ -20,7 +20,7 @@ func TestCookieLayout(t *testing.T) {
 	}
 
 	saved := httptest.NewRequest(http.MethodGet, "/", nil)
-	value := "1.traffic-internet.ports-tunnels-resources-hardware-firmware.firmware."
+	value := "1.traffic-internet.ports-tunnels-resources-system.system."
 	saved.AddCookie(&http.Cookie{Name: overviewLayoutCookie, Value: value})
 	if got := source.Layout(saved).Encode(); got != value {
 		t.Errorf("saved layout = %q, want %q", got, value)

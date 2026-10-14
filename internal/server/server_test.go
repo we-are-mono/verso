@@ -1124,7 +1124,7 @@ func TestIndexRendersOverview(t *testing.T) {
 	body := rec.Body.String()
 	for _, want := range []string{
 		"online", "Internet traffic", "Resources", "Ports",
-		"OpenWrt 25.12.4", "Linux 6.12.101", "1 h 01 min", // live System facts
+		"OpenWrt 25.12.4", "Linux 6.12.101", `>1</span>&nbsp;<span class="verso-duration-unit">h</span> <span class="verso-duration-figure">1</span>&nbsp;<span class="verso-duration-unit">min<`, // live System facts, uptime in figures and units
 		"Connected", ">203.0.113.7<", // live WAN state, and the address its line names
 		`data-verso-row="interface:eth4"`, // the Ports card lists the physical port
 	} {
@@ -1151,17 +1151,17 @@ func TestIndexRendersTheBrowsersLayout(t *testing.T) {
 		}
 		return strings.Join(ids, " ")
 	}
-	if got := order(get(t, s, "/").Body.String()); got != "internet ports tunnels traffic resources hardware firmware" {
+	if got := order(get(t, s, "/").Body.String()); got != "internet ports tunnels traffic resources system" {
 		t.Errorf("no cookie = %s, want the default layout", got)
 	}
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	req.AddCookie(&http.Cookie{Name: overviewLayoutCookie, Value: "1.traffic-internet.ports-tunnels-hardware-firmware.firmware.resources"})
 	body := serve(t, s, req).Body.String()
-	if got := order(body); got != "traffic internet ports tunnels hardware firmware" {
-		t.Errorf("saved layout = %s", got)
+	if got := order(body); got != "traffic internet ports tunnels system" {
+		t.Errorf("a layout saved before Hardware and Firmware merged = %s", got)
 	}
-	if !strings.Contains(body, `data-overview-card="firmware" data-tone="neutral" data-closed`) {
-		t.Error("a card the browser closed must arrive closed")
+	if !strings.Contains(body, `data-overview-card="system" data-tone="neutral" data-closed`) {
+		t.Error("a card the browser closed must arrive closed, Firmware as System")
 	}
 }
 

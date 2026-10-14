@@ -47,8 +47,7 @@ func overviewCardSpecs() []overviewCardSpec {
 		{ID: "tunnels", Title: "Tunnels", Icon: "lock", Opens: "VPN", href: (*Overview).tunnelsHref, head: (*Overview).tunnelsHead, body: (*Overview).tunnelsBody},
 		{ID: "traffic", Title: "Traffic", Icon: "activity", head: (*Overview).trafficHead, body: (*Overview).trafficBody, control: (*Overview).trafficControl},
 		{ID: "resources", Title: "Resources", Icon: "gauge", head: (*Overview).resourcesHead, body: (*Overview).resourcesBody},
-		{ID: "hardware", Title: "Hardware", Icon: "thermometer", head: (*Overview).hardwareHead, body: (*Overview).hardwareBody},
-		{ID: "firmware", Title: "Firmware", Icon: "package", head: (*Overview).firmwareHead, body: (*Overview).firmwareBody},
+		{ID: "system", Title: "System", Icon: "router", head: (*Overview).systemHead, body: (*Overview).systemBody},
 	}
 }
 
@@ -88,8 +87,8 @@ func (o *Overview) internetBody(r *Renderer, csrf string) (template.HTML, error)
 	view := overviewInternetView{Families: make([]template.HTML, 0, len(families))}
 	if o.WANDevice != "" {
 		uplink := []Property{{Label: "Device", Value: o.WANDevice, Mono: true}}
-		if o.WANUp && o.WANUptime != "" {
-			uplink = append(uplink, Property{Label: "Connected for", Value: o.WANUptime, Key: "wan-uptime", Verbatim: true})
+		if o.WANUp && o.WANUptime != nil {
+			uplink = append(uplink, Property{Label: "Connected for", Duration: o.WANUptime, Key: "wan-uptime"})
 		}
 		rows, err := o.renderWidget(r, &Properties{Align: "left", Items: uplink}, csrf)
 		if err != nil {
@@ -101,7 +100,7 @@ func (o *Overview) internetBody(r *Renderer, csrf string) (template.HTML, error)
 		list := &Properties{Align: "left", Head: &PropertiesHead{Label: f.kind, Chip: overviewProtocol(f.proto)}, Empty: f.empty}
 		if len(f.facts) > 0 && (len(f.facts) > 1 || f.facts[0].Value != "Not configured") {
 			for _, fact := range f.facts {
-				list.Items = append(list.Items, Property{Label: fact.Label, Value: fact.Value, Mono: fact.Copy, Copy: fact.Copy, Verbatim: fact.Label == "Expires"})
+				list.Items = append(list.Items, Property{Label: fact.Label, Value: fact.Value, Mono: fact.Copy, Copy: fact.Copy, Duration: fact.Duration})
 			}
 		}
 		rows, err := o.renderWidget(r, list, csrf)
@@ -393,40 +392,23 @@ func (o *Overview) resourcesBody(r *Renderer, csrf string) (template.HTML, error
 	return r.fragment("overview.meters", meters)
 }
 
-// ── Hardware ──
+// ── System ──
 
-// hardwareHead speaks only when the CPU runs hot; its line is the CPU's
-// temperature, where the board has a sensor for it.
-func (o *Overview) hardwareHead(tr func(string) string) cardHead {
-	temp, _, _ := strings.Cut(o.Temperature, " · ")
-	if temp == "N/A" {
-		temp = ""
-	}
-	h := cardHead{Tone: "neutral", Summary: temp}
-	if o.TempDot == "warning" || o.TempDot == "danger" {
-		h.Tone, h.Status = o.TempDot, tr("CPU temperature is high")
-	}
-	return h
-}
-
-func (o *Overview) hardwareBody(r *Renderer, csrf string) (template.HTML, error) {
-	sensors := o.sysRight()
-	sensors.Items = append([]Property{sysProp("Board", o.Model, false)}, sensors.Items...)
-	return o.renderWidget(r, sensors, csrf)
-}
-
-// ── Firmware ──
-
-// firmwareHead's line is the firmware the router runs; its uptime is in the
-// open card.
-func (o *Overview) firmwareHead(func(string) string) cardHead {
+// systemHead's line is the firmware the router runs; the board, what it was
+// built for and how long it has been up are in the open card.
+func (o *Overview) systemHead(func(string) string) cardHead {
 	return cardHead{Tone: "neutral", Summary: o.Firmware}
 }
 
-func (o *Overview) firmwareBody(r *Renderer, csrf string) (template.HTML, error) {
-	uptime := sysProp("Uptime", o.Uptime, false)
-	uptime.Key = "uptime"
+func (o *Overview) systemBody(r *Renderer, csrf string) (template.HTML, error) {
+	uptime := Property{Label: "Uptime", Value: "unavailable", Key: "uptime"}
+	if o.Uptime != nil {
+		uptime = Property{Label: "Uptime", Duration: o.Uptime, Key: "uptime"}
+	}
 	return o.renderWidget(r, &Properties{Items: []Property{
+		sysProp("Board", o.Model, false),
+		sysProp("Architecture", o.Arch, true),
+		sysProp("Target platform", o.Target, true),
 		sysProp("Firmware", o.Firmware, true),
 		sysProp("Kernel", o.Kernel, true),
 		uptime,
