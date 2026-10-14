@@ -21,14 +21,16 @@ import (
 // Numbers writes numbers the way one language does.
 type Numbers struct {
 	decimal string
+	tr      func(string) string
 }
 
 // For is how the language tr translates into writes numbers. Its decimal
 // separator is the catalog's translation of "." (ADR-012), so a language
 // brings it in its catalog with no rebuild of the shell. A nil tr is English.
 func For(tr func(string) string) Numbers {
-	n := Numbers{decimal: "."}
+	n := Numbers{decimal: ".", tr: func(s string) string { return s }}
 	if tr != nil {
+		n.tr = tr
 		if d := tr("."); d != "" {
 			n.decimal = d
 		}
