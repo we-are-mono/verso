@@ -22,17 +22,22 @@ type boardFacts struct {
 	Name  string // model.id, the same string `ubus call system board` reports as board_name
 }
 
-// board reads /etc/board.json once per process — OpenWrt's board detection
-// writes it at first boot and it does not change while the system runs. Reading
-// it locally is also what keeps the sensor profile out of the render path: the
-// board name is otherwise a ubus round-trip, and the chrome needs it on every
-// page.
-var board = sync.OnceValue(func() boardFacts {
+// boardJSON reads /etc/board.json once per process — OpenWrt's board detection
+// writes it at first boot and it does not change while the system runs. It is
+// empty on a system that has none.
+var boardJSON = sync.OnceValue(func() []byte {
 	data, err := os.ReadFile("/etc/board.json")
 	if err != nil {
-		return boardFacts{}
+		return nil
 	}
-	return boardIdentity(data)
+	return data
+})
+
+// board is what the board says about itself. Reading it locally is also what
+// keeps the sensor profile out of the render path: the board name is otherwise
+// a ubus round-trip, and the chrome needs it on every page.
+var board = sync.OnceValue(func() boardFacts {
+	return boardIdentity(boardJSON())
 })
 
 // boardIdentity splits the board's name into the two lines a nameplate stacks:
