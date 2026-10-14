@@ -99,6 +99,57 @@
   }
   document.addEventListener("pointerout", restore);
   document.addEventListener("focusout", restore);
+
+  // A port on a router's panel is a group inside the panel's SVG, which can
+  // hold no HTML, so its detail is a sibling of the art, keyed by the port's
+  // name. It shows over the port's middle as the pointer or focus arrives,
+  // above it when there is room inside whatever would clip it and below when
+  // there is not, and goes as the pointer or focus leaves, or on Escape.
+  var PORT = ".verso-panel-art [data-verso-port]";
+  var shownPort = null;
+  function portTip(port) {
+    var panel = port.closest(".verso-panel-art");
+    return panel && panel.querySelector('[data-verso-port-tip="' + CSS.escape(port.getAttribute("data-verso-port")) + '"]');
+  }
+  function showPort(port) {
+    var tip = portTip(port);
+    if (!tip) return;
+    hidePort();
+    tip.hidden = false;
+    var panel = port.closest(".verso-panel-art").getBoundingClientRect();
+    var rect = port.getBoundingClientRect();
+    var box = clipper(port);
+    var height = tip.offsetHeight + GAP;
+    var below = rect.top - Math.max(0, box.top) < height;
+    tip.toggleAttribute("data-below", below);
+    tip.style.left = rect.left - panel.left + rect.width / 2 + "px";
+    tip.style.top = (below ? rect.bottom - panel.top + GAP : rect.top - panel.top - height) + "px";
+    shownPort = tip;
+  }
+  function hidePort() {
+    if (shownPort) shownPort.hidden = true;
+    shownPort = null;
+  }
+  document.addEventListener("pointerover", function (event) {
+    var port = event.target.closest && event.target.closest(PORT);
+    if (port && !port.contains(event.relatedTarget)) showPort(port);
+  });
+  document.addEventListener("focusin", function (event) {
+    var port = event.target.closest && event.target.closest(PORT);
+    if (port) showPort(port);
+  });
+  function leavePort(event) {
+    var port = event.target.closest && event.target.closest(PORT);
+    if (port && !port.contains(event.relatedTarget)) hidePort();
+  }
+  document.addEventListener("pointerout", leavePort);
+  document.addEventListener("focusout", leavePort);
+  document.addEventListener("keydown", function (event) {
+    if (event.key !== "Escape" || !shownPort) return;
+    hidePort();
+    event.stopPropagation();
+    event.preventDefault();
+  }, true);
 })();
 
 // The rail beside a long page: which of its sections you are reading, marked on

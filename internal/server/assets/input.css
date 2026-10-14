@@ -818,6 +818,7 @@ html {
   .verso-port-tip .r { display: flex; justify-content: space-between; gap: 1.25rem; margin-top: 0.25rem; font-family: var(--font-mono); }
   .verso-port-tip .r .k { color: var(--color-hw-tip-key); }
   .verso-port-tip::after { content: ""; position: absolute; top: 100%; left: 50%; transform: translateX(-50%); border: 5px solid transparent; border-top-color: var(--color-hw-tip); }
+  .verso-port-tip[data-below]::after { top: auto; bottom: 100%; border-top-color: transparent; border-bottom-color: var(--color-hw-tip); }
 
   /* per-device accent: tints the device name. */
   .verso-ports--sky .verso-ports-name     { color: var(--color-denim-line); }
