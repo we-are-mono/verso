@@ -49,7 +49,7 @@ func TestSubheadingIsALedgerLine(t *testing.T) {
 	for _, part := range []string{
 		// one 20px line, and a cell to the first box under it, as a form's
 		// rows stand apart
-		`<div data-verso-ledger class="mb-5 flex h-5 items-center gap-3">`,
+		`<div data-verso-ledger class="mb-6 flex h-5 items-center gap-3">`,
 		`<h3 class="shrink-0 text-sm leading-5 font-semibold text-ink">Authorized keys</h3>`,
 		// the strong hairline, so the ledger is told from the rows under it
 		`<span aria-hidden="true" class="h-px min-w-6 flex-1 bg-rule-strong"></span>`,
@@ -65,7 +65,7 @@ func TestSubheadingIsALedgerLine(t *testing.T) {
 	got = render(t, newRenderer(t), &Section{Title: "Row", Children: []Widget{
 		&Section{Title: "DHCP server", Icon: "server", Meta: "lan", Children: []Widget{&Text{Markdown: "x"}}},
 	}})
-	if !strings.Contains(got, `<div data-verso-ledger class="mb-5 flex h-5 items-center gap-3"><span class="shrink-0 text-glyph"><svg class="size-4"`) {
+	if !strings.Contains(got, `<div data-verso-ledger class="mb-6 flex h-5 items-center gap-3"><span class="shrink-0 text-glyph"><svg class="size-4"`) {
 		t.Errorf("a part's glyph leads its ledger line:\n%s", got)
 	}
 	if !strings.Contains(got, `</svg></span><h3 class="shrink-0 text-sm leading-5 font-semibold text-ink">DHCP server</h3>`) {

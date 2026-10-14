@@ -1,25 +1,25 @@
 <!-- SPDX-License-Identifier: GPL-2.0-only -->
 <!-- SPDX-FileCopyrightText: 2026 Mono Technologies Inc. -->
 {{/* Legacy groups are sections. A frame is reserved for a stored artifact.
-     On the notebook's grid its edges are lines like any other — a pixel out
-     at the top and the left onto the grid's own — and every word inside it
-     writes on the 20px lines, so the frame adds nothing to them. At the sides
-     it holds the words 20px in, and it closes 19px under its last row, its
-     edge the next line. */}}
-<section{{if eq .Style "artifact"}} data-verso-artifact class="-mt-px -ml-px w-[calc(100%_+_1px)] rounded-xs border border-rule bg-quiet px-5 pb-4.75"{{end}}>
+     Its edges are lines of the grid like any other — a pixel out at the top
+     and the left onto the grid's own — and every word inside it writes on
+     20px lines, so the frame adds nothing to them. At the sides it holds the
+     words 24px in, and it closes 23px under its last row, its edge the next
+     line. */}}
+<section{{if eq .Style "artifact"}} data-verso-artifact class="-mt-px -ml-px w-[calc(100%_+_1px)] rounded-xs border border-rule bg-quiet px-6 pb-5.75"{{end}}>
   {{if eq .Style "artifact"}}
   {{/* A stored document says what it is before its facts do: the name over a
        sentence of what it is for, closed off from the facts by the strong
-       hairline a column head sits on — a cell of air above the name, the
-       name's line and the sentence's, a cell under them, and the hairline
-       the cell's line. */}}
-  {{if .Title}}<div class="border-b border-rule-strong pt-5 pb-4.75">
+       hairline a column head sits on — 24px of air above the name, the
+       name's line and the sentence's, 23px under them, and the hairline the
+       line after. */}}
+  {{if .Title}}<div class="border-b border-rule-strong pt-6 pb-5.75">
     <h3 class="text-base leading-5 font-semibold text-ink">{{.Title}}</h3>
     {{if .Subtitle}}<p class="{{if .SubtitleMono}}font-mono text-base leading-5 font-medium{{else}}text-sm leading-5{{end}} text-body">{{.Subtitle}}</p>{{end}}
   </div>{{end}}
-  {{else if or .Title .Subtitle}}<div class="{{if eq .Style "preview"}}mt-10{{else}}mb-5{{end}}">
+  {{else if or .Title .Subtitle}}<div class="{{if eq .Style "preview"}}mt-10{{else}}mb-6{{end}}">
     {{if .Title}}<h3 class="{{if eq .Style "preview"}}text-sm font-semibold{{else}}text-lg font-semibold tracking-tight{{end}} leading-5 text-ink">{{.Title}}</h3>{{end}}
     {{if .Subtitle}}<p class="text-sm leading-5 text-body">{{.Subtitle}}</p>{{end}}
   </div>{{end}}
-  <div class="space-y-5">{{range .Children}}{{.}}{{end}}</div>
+  <div class="space-y-6">{{range .Children}}{{.}}{{end}}</div>
 </section>

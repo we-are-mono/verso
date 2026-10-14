@@ -261,6 +261,34 @@ func TestADevRedeployWaitsForUnsavedWork(t *testing.T) {
 	}
 }
 
+// TestACardMeasuresOnTheEightPixelGrid: a page's card keeps its words 24px in
+// from its frame, stands 24px from the card before it, and its header and its
+// column-head row are 48px each, hairlines included (layout-grid). Its frame's
+// borders are lines: the bottom air and the gap after it give back a pixel.
+func TestACardMeasuresOnTheEightPixelGrid(t *testing.T) {
+	raw, err := os.ReadFile("assets/sections.css")
+	if err != nil {
+		t.Fatal(err)
+	}
+	css := string(raw)
+	for _, want := range []string{
+		// the inset: the reach of its rules and the padding around its body
+		"--verso-reach-start: var(--spacing-inset);\n  --verso-reach-end: var(--spacing-inset);",
+		"padding: 0 var(--spacing-inset) calc(var(--spacing-inset) - 1px);",
+		// the header: 14px over its 20px line, 13px under, then its hairline
+		"padding-block: calc(var(--spacing) * 3.5) calc(var(--spacing) * 3.25);\n  border-top-width: 0;\n  border-bottom: 1px solid var(--color-rule);",
+		// the column-head row: 16px over its 16px line, 15px under, its hairline
+		"padding-block: calc(var(--spacing) * 4 - var(--verso-head-top, 1px)) calc(var(--spacing) * 4 - 1px);",
+		// the air between cards, less the frame's pixel so the next frame lands
+		// on a line
+		"[data-verso-section-band]) {\n  margin-top: calc(var(--spacing-inset) - 1px);\n}",
+	} {
+		if !strings.Contains(css, want) {
+			t.Errorf("a card does not measure on the 8px grid; sections.css is missing %s", want)
+		}
+	}
+}
+
 // TestTheThemeMeasuresOnTheEightPixelGrid: every fixed measure of the layout
 // is a multiple of 8px (layout-grid), stated once as a theme token: a control,
 // a card's inset and air, the page frame, and the page measures.
@@ -339,7 +367,7 @@ func TestACardUnderACardDrawsNoSecondDivider(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read stylesheet: %v", err)
 	}
-	want := "[data-verso-code-divider]+[data-verso-code-divider]{margin-top:calc(var(--spacing) * 5 - 1px);border-top-width:0;padding-top:0}"
+	want := "[data-verso-code-divider]+[data-verso-code-divider]{margin-top:calc(var(--spacing-inset) - 1px);border-top-width:0;padding-top:0}"
 	if !strings.Contains(string(css), want) {
 		t.Errorf("stylesheet is missing %s", want)
 	}
@@ -579,12 +607,12 @@ func TestTheRuleAfterASectionBringsItsOwnAir(t *testing.T) {
 	}
 	css := string(raw)
 	for _, want := range []string{
-		"section[data-verso-section=\"ruled\"] {\n    margin-top: calc(var(--spacing) * 10 - 1px);\n    border-top: 1px solid var(--color-rule);\n    padding-top: calc(var(--spacing) * 5);\n  }",
+		"section[data-verso-section=\"ruled\"] {\n    margin-top: calc(var(--spacing) * 10 - 1px);\n    border-top: 1px solid var(--color-rule);\n    padding-top: var(--spacing-inset);\n  }",
 		":not(input[type=\"hidden\"], template, [hidden]) + section[data-verso-section]:has(> [data-verso-section-band]),\n" +
 			"  .verso-page-body > .verso-stack > * + section[data-verso-section]:has(> [data-verso-section-band]) {\n    margin-top: calc(var(--spacing) * 10 - 1px);\n  }",
-		// a section with no heading that opens under a notice stands a cell
-		// under it, rather than flush on it
-		"[data-verso-callout] + section[data-verso-section][data-verso-headless] {\n    margin-top: calc(var(--spacing) * 5);\n  }",
+		// a section with no heading that opens under a notice stands the
+		// inset's air under it, rather than flush on it
+		"[data-verso-callout] + section[data-verso-section][data-verso-headless] {\n    margin-top: var(--spacing-inset);\n  }",
 		// a notice or an empty slot further down a section's rows keeps the
 		// rhythm's air less its frame's pixel, never just the pixel's pull
 		".verso-rhythm > :not(input[type=\"hidden\"], [hidden]) ~ :is([data-verso-slot], [data-verso-callout]) {\n    margin-top: calc(var(--verso-rhythm, calc(var(--spacing) * 10)) - 1px);\n  }",

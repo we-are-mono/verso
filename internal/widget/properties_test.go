@@ -82,7 +82,7 @@ func TestArtifactFrameNamesWhatItHolds(t *testing.T) {
 	for _, want := range []string{
 		// a cell of air over the name, the name's 20px line and the
 		// sentence's, a cell under them, and the hairline on the cell's line
-		`<div class="border-b border-rule-strong pt-5 pb-4.75"><h3 class="text-base leading-5 font-semibold text-ink">HTTPS certificate</h3><p class="text-sm leading-5 text-body">What this router shows browsers.</p></div>`,
+		`<div class="border-b border-rule-strong pt-6 pb-5.75"><h3 class="text-base leading-5 font-semibold text-ink">HTTPS certificate</h3><p class="text-sm leading-5 text-body">What this router shows browsers.</p></div>`,
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("want %s in:\n%s", want, got)
@@ -97,7 +97,7 @@ func TestArtifactFrameNamesWhatItHolds(t *testing.T) {
 // line. At the sides the frame holds the words 20px in.
 func TestArtifactFrameKeepsOneInset(t *testing.T) {
 	got := render(t, newRenderer(t), &Card{Style: "artifact", Children: []Widget{&Properties{}}})
-	if !strings.Contains(got, `class="-mt-px -ml-px w-[calc(100%_+_1px)] rounded-xs border border-rule bg-quiet px-5 pb-4.75"`) {
+	if !strings.Contains(got, `class="-mt-px -ml-px w-[calc(100%_+_1px)] rounded-xs border border-rule bg-quiet px-6 pb-5.75"`) {
 		t.Errorf("want one inset on every side:\n%s", got)
 	}
 }

@@ -22,8 +22,8 @@ import (
 // (a row's 10px over and 9px under), and so are sizes: a 6px state square, a
 // 14px icon and a 20px text line are marks and lines, not layout.
 var (
-	offGridAir = regexp.MustCompile(`(?:^|[\s"'{:!(])(-?(?:m|mx|my|mt|mb|ml|mr|ms|me|gap|gap-x|gap-y|space-x|space-y)-\d+\.\d+)(?:[^\w.]|$)`)
-	cellAsAir  = regexp.MustCompile(`(?:^|[\s"'{:!(])(-?(?:p|px|py|pt|pb|pl|pr|ps|pe|m|mx|my|mt|mb|ml|mr|ms|me|gap|gap-x|gap-y|space-x|space-y)-5)(?:[^\w.]|$)`)
+	offGridAir = regexp.MustCompile(`(?:^|[\s"'{}:!(])(-?(?:m|mx|my|mt|mb|ml|mr|ms|me|gap|gap-x|gap-y|space-x|space-y)-\d+\.\d+)(?:[^\w.]|$)`)
+	cellAsAir  = regexp.MustCompile(`(?:^|[\s"'{}:!(])(-?(?:p|px|py|pt|pb|pl|pr|ps|pe|m|mx|my|mt|mb|ml|mr|ms|me|gap|gap-x|gap-y|space-x|space-y)-5)(?:[^\w.]|$)`)
 )
 
 // gridExceptions are the utilities that keep an off-grid value on purpose,
@@ -45,7 +45,6 @@ var gridPending = map[string]bool{
 	"templates/staged.html.tmpl":                     true,
 	"../widget/templates/badge.html.tmpl":            true,
 	"../widget/templates/callout.html.tmpl":          true,
-	"../widget/templates/card.html.tmpl":             true,
 	"../widget/templates/code.html.tmpl":             true,
 	"../widget/templates/conditions.html.tmpl":       true,
 	"../widget/templates/confirm.html.tmpl":          true,
@@ -62,7 +61,6 @@ var gridPending = map[string]bool{
 	"../widget/templates/overview.html.tmpl":         true,
 	"../widget/templates/ports.html.tmpl":            true,
 	"../widget/templates/properties.html.tmpl":       true,
-	"../widget/templates/section.html.tmpl":          true,
 	"../widget/templates/settings.html.tmpl":         true,
 	"../widget/templates/shared.html.tmpl":           true,
 	"../widget/templates/stack.html.tmpl":            true,
