@@ -100,6 +100,7 @@
    * because it is a light, not ink.
    */
   --color-hw-pin: #caa14a; /* gold contacts */
+  --color-hw-wan: #6ea8e8; /* the WAN port's outline and name on a dark case — 6.4 : 1 on it */
   --color-hw-led-link: #34d399; /* the link LED, lit */
   --color-hw-led-act: #fbbf24; /* the activity LED, lit */
   --color-hw-tip: #0b0f16; /* a port's tooltip ground */
