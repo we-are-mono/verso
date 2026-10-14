@@ -35,7 +35,7 @@ type Chart struct {
 	// 16px rules rather than sixteen; the viewBox stretches, so the curve is
 	// the same.
 	Short bool
-	// Card stands the plot in an Overview card, on Paper: 192px tall, over
+	// Card stands the plot in an Overview card, on Paper: 128px tall, over
 	// faint rules 16px apart, its value labels in a gutter on its right and
 	// its window's ends under it, so nothing is laid over the curve.
 	Card bool

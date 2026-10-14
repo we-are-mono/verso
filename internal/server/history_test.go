@@ -95,8 +95,8 @@ func TestOverviewTrafficDrawsAPastWindowFromHistory(t *testing.T) {
 	if strings.Contains(body, "data-verso-live-chart") {
 		t.Error("a day's graph is fed by the live stream")
 	}
-	if strings.Contains(body, "<select") {
-		t.Error("the window is chosen in the Traffic card's header; the swapped graph carries no select")
+	if !strings.Contains(body, `<option value="day" selected>`) {
+		t.Error("the swapped graph carries its window on its legend's line, the chosen one selected")
 	}
 
 	if _, live := getSignedIn(t, s, "/overview/traffic?range=minute"); !strings.Contains(live, `data-verso-live-chart="wan"`) {

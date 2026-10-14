@@ -39,6 +39,14 @@
      for words alone. */}}
 {{define "verso-btn-act"}}verso-act group/act relative inline-flex h-7 shrink-0 cursor-pointer items-center gap-1.5 rounded-xs border border-rule-strong bg-transparent text-sm font-medium whitespace-nowrap text-meta transition-colors hover:border-sand-5 hover:bg-rule hover:text-ink focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-denim {{template "verso-press"}}{{end}}
 
+{{/* verso-select-compact and verso-select-compact-chevron: a dropdown on a
+     line of words, its 24px box the line itself, so it rides a legend or a
+     reading without making the line taller. The page's dropdown in its
+     small size: the same Paper, strong hairline and Denim focus, 14px words,
+     its chevron 14px and 8px from the right edge. */}}
+{{define "verso-select-compact"}}h-6 cursor-pointer appearance-none rounded-xs border border-rule-strong bg-white pr-7 pl-2 text-sm leading-none text-ink transition-colors hover:border-faint focus:border-denim focus:outline-none{{end}}
+{{define "verso-select-compact-chevron"}}pointer-events-none absolute right-2 flex text-meta{{end}}
+
 {{/* verso-empty-slot-class and verso-empty-slot-body: where the first of a
      set's things would stand while there is none — a place, not a sentence.
      Quiet Sand inside a dashed Strong Hairline, the one line in the app that

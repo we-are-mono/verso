@@ -34,9 +34,6 @@ type overviewCardSpec struct {
 	href  func(*Overview) string
 	head  func(*Overview, func(string) string) cardHead
 	body  func(*Overview, *Renderer, string) (template.HTML, error)
-	// control is what the header carries for the body beside the status
-	// (Traffic's window); nil carries nothing.
-	control func(*Overview, *Renderer) (template.HTML, error)
 }
 
 // overviewCardSpecs are the Overview's cards, in the default layout's order.
@@ -45,7 +42,7 @@ func overviewCardSpecs() []overviewCardSpec {
 		{ID: "internet", Title: "Internet", Icon: "globe", Opens: "Interfaces", href: func(o *Overview) string { return o.InterfacesHref }, head: (*Overview).internetHead, body: (*Overview).internetBody},
 		{ID: "ports", Title: "Ports", Icon: "ethernet-port", Opens: "Interfaces", href: func(o *Overview) string { return o.InterfacesHref }, head: (*Overview).portsHead, body: (*Overview).portsBody},
 		{ID: "tunnels", Title: "Tunnels", Icon: "lock", Opens: "VPN", href: (*Overview).tunnelsHref, head: (*Overview).tunnelsHead, body: (*Overview).tunnelsBody},
-		{ID: "traffic", Title: "Traffic", Icon: "activity", head: (*Overview).trafficHead, body: (*Overview).trafficBody, control: (*Overview).trafficControl},
+		{ID: "traffic", Title: "Traffic", Icon: "activity", head: (*Overview).trafficHead, body: (*Overview).trafficBody},
 		{ID: "resources", Title: "Resources", Icon: "gauge", head: (*Overview).resourcesHead, body: (*Overview).resourcesBody},
 		{ID: "system", Title: "System", Icon: "router", head: (*Overview).systemHead, body: (*Overview).systemBody},
 	}
@@ -337,27 +334,6 @@ func (o *Overview) trafficBody(r *Renderer, csrf string) (template.HTML, error) 
 		down, up = make([]float64, wanSeriesFallback), make([]float64, wanSeriesFallback)
 	}
 	return renderToHTML(r, InternetTraffic(o.WANDevice, o.DownNow, o.UpNow, down, up, o.TrafficRangeURL, ""), csrf)
-}
-
-// overviewWindowView is the Traffic card's header control: the graph's window,
-// where history stands behind it. The uplink's device is the Internet card's
-// to name.
-type overviewWindowView struct {
-	RangeURL string
-	Ranges   []TrafficRange
-}
-
-// trafficControl puts the graph's window in the card's header; choosing one
-// fetches the graph for it into the card's body.
-func (o *Overview) trafficControl(r *Renderer) (template.HTML, error) {
-	if o.TrafficRangeURL == "" {
-		return "", nil
-	}
-	v := overviewWindowView{RangeURL: o.TrafficRangeURL}
-	for _, option := range TrafficRanges {
-		v.Ranges = append(v.Ranges, TrafficRange{Value: option.Value, Label: r.tr(option.Label)})
-	}
-	return r.fragment("overview.window", v)
 }
 
 // ── Resources ──

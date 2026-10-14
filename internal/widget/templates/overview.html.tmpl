@@ -80,7 +80,6 @@
       <h2 id="overview-card-{{.ID}}" class="text-base leading-6 font-semibold tracking-tight whitespace-nowrap text-ink">{{.Title}}</h2>
       <span data-overview-card-summary aria-hidden="{{if .Closed}}false{{else}}true{{end}}" class="verso-overview-summary min-w-0 truncate text-sm leading-6 text-meta tabular-nums">{{.Head.Summary}}</span>
     </div>
-    {{if .Control}}<div data-overview-card-control class="flex shrink-0 items-center gap-3 group-data-arranging/overview:hidden">{{.Control}}</div>{{end}}
     <span data-overview-card-status class="flex shrink-0 items-center gap-2 text-sm leading-6 font-medium whitespace-nowrap text-body group-data-[tone=success]/card:text-green-deep group-data-[tone=warning]/card:text-marigold-deep group-data-[tone=danger]/card:text-crimson-deep"{{if not .Head.Status}} hidden{{end}}>
       <span aria-hidden="true" class="size-1.5 shrink-0 rounded-[1px] border border-faint group-data-[tone=success]/card:border-transparent group-data-[tone=success]/card:bg-green group-data-[tone=warning]/card:border-transparent group-data-[tone=warning]/card:bg-marigold group-data-[tone=danger]/card:border-transparent group-data-[tone=danger]/card:bg-crimson"></span><span data-overview-card-word>{{.Head.Status}}</span>
     </span>
@@ -109,19 +108,6 @@
 <div class="grid gap-6">
   {{if .Uplink}}<div class="min-w-0">{{.Uplink}}</div>{{end}}
   {{range .Families}}{{.}}{{end}}
-</div>
-{{end}}
-
-{{/* overview.window: the Traffic card's header control — the graph's window,
-     whose choice fetches the graph for it into the card's body. The select
-     rides the header's 24px line, 4px over either edge. */}}
-{{define "overview.window"}}
-<div class="relative -my-1 flex items-center">
-  <select name="range" aria-label="{{ t "Window" }}" hx-get="{{.RangeURL}}" hx-trigger="change" hx-target="[data-overview-card='traffic'] .verso-traffic-card" hx-swap="outerHTML"
-    class="h-control cursor-pointer appearance-none rounded-xs border border-rule-strong bg-white pr-9 pl-3 text-sm text-ink shadow-[inset_0_1px_2px_rgba(27,25,23,.06)] transition-colors hover:border-faint focus:border-denim focus:outline-none">
-    {{range .Ranges}}<option value="{{.Value}}">{{.Label}}</option>{{end}}
-  </select>
-  <span class="pointer-events-none absolute right-3 flex text-meta">{{icon "chevron-down" "size-4"}}</span>
 </div>
 {{end}}
 

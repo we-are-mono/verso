@@ -197,7 +197,6 @@ type overviewCardView struct {
 	Head            cardHead
 	Closed          bool
 	Href, OpenLabel string
-	Control         template.HTML
 	Body            template.HTML
 }
 
@@ -256,11 +255,6 @@ func (o *Overview) card(r *Renderer, spec overviewCardSpec, closed bool, csrf st
 	if spec.href != nil {
 		if v.Href = spec.href(o); v.Href != "" {
 			v.OpenLabel = fmt.Sprintf(r.tr("Open %s"), r.tr(spec.Opens))
-		}
-	}
-	if spec.control != nil {
-		if v.Control, err = spec.control(o, r); err != nil {
-			return overviewCardView{}, fmt.Errorf("overview card %s: %w", spec.ID, err)
 		}
 	}
 	return v, nil

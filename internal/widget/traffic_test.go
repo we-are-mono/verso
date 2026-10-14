@@ -105,3 +105,32 @@ func TestTrafficOffersItsWindow(t *testing.T) {
 		t.Error("a probed window does not state the gateway's latency")
 	}
 }
+
+// TestACardsWindowRidesTheLegend: in an Overview card the window is the compact
+// dropdown on the figures' first line at its right end, and swaps the graph it
+// heads, so the graph
+// that comes back carries it with the chosen window selected. The card's
+// header carries no control.
+func TestACardsWindowRidesTheLegend(t *testing.T) {
+	got := render(t, newRenderer(t), &Traffic{
+		Title: "Internet traffic", Card: true, RangeURL: "/overview/traffic", Range: "week",
+		Down: []float64{0, 1}, Up: []float64{0, 1},
+	})
+	legend := got[strings.Index(got, "verso-traffic-card"):]
+	legend = legend[:strings.Index(legend, "data-verso-chart")]
+	for _, want := range []string{
+		"Mb/s down", `<select name="range"`, `hx-target="closest section"`, `hx-swap="outerHTML"`,
+		`<option value="week" selected>Last 7 days</option>`, "flex-1", `class="h-6 cursor-pointer`,
+	} {
+		if !strings.Contains(legend, want) {
+			t.Errorf("the card's legend line missing %q:\n%s", want, legend)
+		}
+	}
+	if strings.Index(legend, "Mb/s up") > strings.Index(legend, "<select") {
+		t.Error("the window follows the figures on their line")
+	}
+	overview := render(t, newRenderer(t), &Overview{TrafficRangeURL: "/overview/traffic"})
+	if strings.Contains(overview, "data-overview-card-control") || strings.Count(overview, `name="range"`) != 1 {
+		t.Error("the window stands once, in the graph, not in the card's header")
+	}
+}
