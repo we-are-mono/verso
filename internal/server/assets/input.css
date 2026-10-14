@@ -1197,15 +1197,14 @@ html {
   }
   .verso-overview-content > [data-verso-listing]:first-child thead th { padding-top: 0; }
 
-  /* A listing in a card runs to the card's edges, its words in line with the
-     card's (as a page card's does, sections.css): its first and last columns
-     keep the card's inset and no indent of their own, so a port's name
-     stands where IPv4 does in the card beside it. */
-  .verso-overview-content [data-verso-listing] { margin-inline: calc(var(--spacing) * -5.75); }
+  /* A listing in a card stands in the card's inset, its hairlines stopping
+     there as a fact list's do, and its first and last columns take no indent
+     of their own, so a port's name stands where IPv4 does in the card beside
+     it. */
   .verso-overview-content [data-verso-listing] :is(td, th):first-of-type,
-  .verso-overview-content [data-verso-listing-empty] { padding-left: calc(var(--spacing) * 5.75); }
+  .verso-overview-content [data-verso-listing-empty] { padding-left: 0; }
   .verso-overview-content [data-verso-listing] :is(td, th):last-of-type,
-  .verso-overview-content [data-verso-listing-empty] { padding-right: calc(var(--spacing) * 5.75); }
+  .verso-overview-content [data-verso-listing-empty] { padding-right: 0; }
 }
 
 /* A stepped dialog's line (modal.html.tmpl): the steps read left to right with
