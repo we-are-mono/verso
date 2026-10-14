@@ -954,6 +954,11 @@ func TestRenderCodeInUciGrammar(t *testing.T) {
 	if n := strings.Count(got, "data-verso-gutter-line"); n != 4 {
 		t.Errorf("one number a line, got %d: %s", n, got)
 	}
+	// Each line and its number stand on a 24px line, so a file of any length
+	// closes its card on a line of the 8px grid.
+	if strings.Count(got, "leading-6") < 2 || strings.Contains(got, "pb-5.75 text-right font-mono text-sm leading-5") {
+		t.Errorf("the file's lines are not 24px: %s", got)
+	}
 	// A file ends in a newline; the line it closes is not a line of its own.
 	ended := &Code{Value: text + "\n", Grammar: "uci"}
 	if n := len(ended.Lines()); n != 4 {

@@ -219,7 +219,7 @@ func TestConditionsSayWhenEmptyAsASetDoes(t *testing.T) {
 		`<div data-verso-condition-empty data-verso-slot class="flex w-full items-center gap-3 rounded-xs border border-dashed border-rule-strong bg-quiet px-4 pt-2.5 pb-2 leading-5 max-w-form mb-0">`,
 		`<span aria-hidden="true" class="size-1.5 shrink-0 rounded-[1px] border border-faint"></span>`,
 		`<p class="min-w-0 flex-1 text-sm leading-5 text-meta">No additional conditions.`,
-		`<div data-verso-condition-picker class="relative pt-6.5 pb-1.5">`,
+		`<div data-verso-condition-picker class="relative pt-6 pb-1">`,
 		// The collection's own add act, glyph first.
 		`group/act relative inline-flex h-7 shrink-0 cursor-pointer items-center gap-1.5 rounded-xs border border-rule-strong bg-transparent text-sm font-medium whitespace-nowrap text-meta transition-colors hover:border-sand-5 hover:bg-rule hover:text-ink focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-denim verso-press pl-2 pr-2.5">`,
 	} {
