@@ -34,6 +34,13 @@ looks — while still offering a legitimate bridge when no widget yet fits.
    reusable elements (card, table, form, badge, …). Plugins compose and nest them; they
    cannot add widget types or styles. Consistency is enforced by construction — plugins
    emit schema, never markup or CSS.
+   A widget may name a domain only where composing the generic ones cannot draw
+   it, and then stays driven by data alone. The `ports` widget is that case: a
+   router's panel. It takes each port's connector kind, link, activity level
+   (0–4, from the port's packets per second; the boolean `active` reads as 2),
+   speed and role, and the shell draws every pixel — a board profile's own art
+   or, for a board without art, a whole panel it generates from the ports — and
+   lights both by one set of rules.
 4. **A governed "raw" bridge.** When no widget fits, an author may emit a `raw`
    element: **display-only**, **Markdown** (not HTML/CSS), rendered through Verso's
    styling and sanitizer. It grants content freedom, never appearance control.

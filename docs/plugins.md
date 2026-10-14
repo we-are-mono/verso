@@ -1453,6 +1453,36 @@ hidden), so decide from the toggle which branch to interpret and ignore the othe
 (Gating on a `select` with several values is a later realization under the same
 declaration.)
 
+### ports — a router's panel
+
+Draws physical ports as the panel a person recognises: a chassis with each
+connector in order, its link LED lit while it has link and its traffic LED
+blinking at its activity. You send the ports and their state; the shell draws
+every pixel and keeps each port reachable by keyboard, with its detail on hover
+or focus.
+
+```json
+{ "type": "ports", "legend": true, "ports": [
+  { "kind": "sfp", "label": "wan", "verbatim": true, "iface": "wan", "role": "wan",
+    "linked": true, "activity": 3, "speed": "2.5G", "addr": "203.0.113.7" },
+  { "kind": "rj45", "label": "lan1", "verbatim": true, "iface": "lan1",
+    "linked": false, "speed": "—" } ] }
+```
+
+- `kind` — `rj45` or `sfp`, the connector drawn.
+- `label` — the name under the connector; `verbatim: true` when it is a kernel
+  name the language must not touch.
+- `iface` — the interface, which keys the port's live updates and its detail.
+- `linked` — a cable has link: the link LED is lit.
+- `activity` — how busy the traffic LED blinks, `0` (dark) to `4` (near solid):
+  under 10, under 1,000, under 100,000 and from 100,000 packets a second. The
+  boolean `active` is accepted in its place and reads as `2`; `activity` wins
+  when both are sent.
+- `speed` — the negotiated speed as labelled (`1G`), a dash without link.
+- `role` — `wan` marks the port carrying the internet.
+- `addr`, `note` — lines in the port's detail.
+- `legend` — a key to the LEDs and connector kinds under the panel.
+
 ### raw — the governed bridge
 
 Display-only Markdown, for **prose** — running text no widget shapes. Sanitised

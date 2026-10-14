@@ -14,14 +14,14 @@ import (
 	"github.com/we-are-mono/verso/internal/ports"
 )
 
-// Ports renders a device's physical rear panel — the actual RJ45 and SFP+ connectors,
-// drawn to scale, lit when a cable is present — instead of a list of "interfaces" no
-// one recognises. It is data-driven: the panel is built entirely from the supplied
+// Ports renders a device's physical panel — the actual RJ45 and SFP+ connectors, lit
+// from their link and traffic — instead of a list of "interfaces" no one recognises.
+// It is data-driven: a board without art gets a panel generated from the supplied
 // port list, so any device (any count or mix of connectors) renders from data rather
 // than hardcoded chrome, and a device may carry an accent for its own identity.
 //
 // This is the most domain-shaped widget in the set — it names "ports" — but it earns a
-// place by ADR-005 §5: the rear panel is a core, recurring network-appliance visual
+// place by ADR-005 §3: the panel is a core, recurring network-appliance visual
 // that composition of the generic primitives genuinely cannot express, and it stays
 // generic by being driven only by data. The shell owns every pixel (the connector art,
 // the palette, the "connected" colour); the caller supplies only the ports and state.

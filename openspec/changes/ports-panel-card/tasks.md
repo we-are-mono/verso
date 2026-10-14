@@ -58,7 +58,7 @@
   
   First add a guard test to `assets_test.go`'s eight-pixel-grid family: every panel art height in the stylesheet is a `round(down, …, 0.5rem)`. Remove the old chassis/screw/`led-act`/`verso-port-tip` hover rules. Then `make css`, and verify with `make test` and by loading System › Hardware in the dev container.
 - [x] 3.5 Write the port-detail script: on hover or focus of a `[data-verso-port]` group, show its `data-verso-port-tip` detail positioned above the group; hide it on leave, blur or Escape. It is a CSP-safe Alpine component or a plain listener in `verso.js`, with no expressions in bindings. Verify in the dev container with the Playwright browser: hovering and tabbing to a port on System › Hardware shows its detail, and Escape hides it.
-- [ ] 3.6 Update ADR-005 in place: the `ports` widget's generated branch, its activity level, and the boolean kept for plugins. Update the `ports` widget entry in `docs/plugins.md` with `activity` and `speed`. Verify both documents name `activity` (0–4), `speed`, and the boolean `active` fallback.
+- [x] 3.6 Update ADR-005 in place: the `ports` widget's generated branch, its activity level, and the boolean kept for plugins. Update the `ports` widget entry in `docs/plugins.md` with `activity` and `speed`. Verify both documents name `activity` (0–4), `speed`, and the boolean `active` fallback.
 
 ## 4. One panel builder, both surfaces
 
