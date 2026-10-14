@@ -22,6 +22,8 @@ type Set struct {
 	secure   func() *tls.Config
 	name     func() string
 	announce func(net.Addr, string)
+	limits   Limits
+	gate     *gate
 	open     map[string]*served
 	current  Config
 	staged   *Config
@@ -37,9 +39,10 @@ type served struct {
 // NewSet answers with shell over HTTPS, under the TLS config secure makes,
 // and over HTTP with shell or the redirect to HTTPS — at the name a trusted
 // certificate is issued for when name gives one. announce, when given, hears
-// each listener as it opens.
-func NewSet(shell http.Handler, secure func() *tls.Config, name func() string, announce func(net.Addr, string)) *Set {
-	return &Set{shell: shell, secure: secure, name: name, announce: announce, open: map[string]*served{}, failed: make(chan error, 1)}
+// each listener as it opens. Every listener answers within limits, its
+// connections counted against the caps with every other listener's.
+func NewSet(shell http.Handler, secure func() *tls.Config, name func() string, announce func(net.Addr, string), limits Limits) *Set {
+	return &Set{shell: shell, secure: secure, name: name, announce: announce, limits: limits, gate: newGate(limits), open: map[string]*served{}, failed: make(chan error, 1)}
 }
 
 func key(scheme, addr string) string { return scheme + " " + addr }
@@ -128,7 +131,8 @@ func (s *Set) bind(c Config) error {
 			if err != nil {
 				return fmt.Errorf("%s listener %s: %w", scheme, addr, err)
 			}
-			server := &http.Server{Handler: s.shell}
+			l = gated{l, s.gate}
+			server := s.limits.server(s.shell)
 			if scheme == "https" {
 				server.TLSConfig = s.secure()
 			} else {

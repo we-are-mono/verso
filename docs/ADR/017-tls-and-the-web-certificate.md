@@ -95,6 +95,19 @@ WAN zone that accepts input, a rule that accepts the port from a WAN zone, or a
 port forward from a WAN zone to the router itself. It is a reading of the
 firewall's config, so a rule written in raw nftables is not seen.
 
+**Every listener bounds what a client holds before it signs in.** A connection
+has 10 seconds for its TLS handshake and each request's headers, and two
+minutes idle before its next request; a body and an answer are not bounded, so
+a firmware upload and a live stream run their course. The listeners hold 256
+connections between them and 32 from any one client address, IPv4 or IPv6 —
+not an IPv6 /64, which every host on a LAN shares — and close one past either
+cap as it arrives. So a host the firewall admits cannot take the file
+descriptors (typically 4095 for a router's process: Go lifts its soft limit to
+one under the hard limit) the shell answers the operator and dials ubus, the
+helper and the plugins with. A host that connects from enough addresses can
+still hold all 256 connections, and the operator's own is refused until one
+frees.
+
 `CAP_NET_BIND_SERVICE`, kept by the init script, is what lets the unprivileged
 `verso` user bind 80 and 443. procd grants capabilities only through ujail, and
 runs ujail only for an instance that declares a jail, so the script declares

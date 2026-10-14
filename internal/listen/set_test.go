@@ -29,6 +29,13 @@ func freePort(t *testing.T) string {
 
 func testSet(t *testing.T) *Set {
 	t.Helper()
+	shell := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { _, _ = io.WriteString(w, "shell") })
+	return limitedSet(t, shell, DefaultLimits)
+}
+
+// limitedSet is a Set answering with shell within limits.
+func limitedSet(t *testing.T, shell http.Handler, limits Limits) *Set {
+	t.Helper()
 	cert, key, err := tlscert.Generate([]string{"router"}, time.Now())
 	if err != nil {
 		t.Fatal(err)
@@ -37,17 +44,20 @@ func testSet(t *testing.T) *Set {
 	if err != nil {
 		t.Fatal(err)
 	}
-	shell := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { _, _ = io.WriteString(w, "shell") })
-	set := NewSet(shell, func() *tls.Config { return &tls.Config{Certificates: []tls.Certificate{pair}} }, func() string { return "" }, nil)
+	set := NewSet(shell, func() *tls.Config { return &tls.Config{Certificates: []tls.Certificate{pair}} }, func() string { return "" }, nil, limits)
 	t.Cleanup(set.Close)
 	return set
 }
 
 // answers reports what scheme://addr answers, "" when nothing does.
-func answers(scheme, addr string) string {
+func answers(scheme, addr string) string { return answersFrom(nil, scheme, addr) }
+
+// answersFrom is answers asked from the local address from, any when nil.
+func answersFrom(from net.Addr, scheme, addr string) string {
+	dialer := &net.Dialer{LocalAddr: from}
 	client := &http.Client{
 		Timeout:       2 * time.Second,
-		Transport:     &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, DisableKeepAlives: true},
+		Transport:     &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, DisableKeepAlives: true, DialContext: dialer.DialContext},
 		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
 	}
 	resp, err := client.Get(scheme + "://" + addr + "/")

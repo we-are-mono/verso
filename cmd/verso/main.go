@@ -241,7 +241,8 @@ func serve(args []string) {
 			return &tls.Config{GetCertificate: certs.GetCertificate, MinVersion: tls.VersionTLS12}
 		},
 		certs.Name,
-		func(addr net.Addr, scheme string) { info.Printf("verso listening on %s (%s)", addr, scheme) })
+		func(addr net.Addr, scheme string) { info.Printf("verso listening on %s (%s)", addr, scheme) },
+		listen.DefaultLimits)
 	err = set.Open(listeners)
 	// Given no listeners, the router's ports may be held by the web server
 	// LuCI runs on, or closed to a shell not given the capability to bind
