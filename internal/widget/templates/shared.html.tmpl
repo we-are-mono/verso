@@ -295,7 +295,7 @@
      address, a number, a clock time or a date its own measure, anything else
      the column. A part of a joined row is named on its own; a lone field is
      named by its row's label. */}}
-{{define "verso-text-input"}}<input id="{{.Name}}" name="{{.Name}}" value="{{.Value}}" type="text"{{if .Named}} aria-label="{{.Label}}"{{end}}{{if eq .Measure "number"}} inputmode="numeric"{{end}}{{if .Placeholder}} placeholder="{{.Placeholder}}"{{end}}{{if .Autofocus}} autofocus{{end}}{{if .Datatype}} data-datatype="{{.Datatype}}"{{end}}{{template "verso-field-aria" .}} class="{{if .Words}}{{template "verso-input-words"}}{{else}}{{template "verso-input-class"}}{{end}} {{if and (eq .Measure "address") (ne .ControlMeasure "prefix")}}w-44! max-w-full{{else if eq .Measure "number"}}w-24! max-w-full{{else if eq .Measure "short"}}w-32! max-w-full{{else if eq .ControlMeasure "secret"}}w-64! max-w-full{{end}} {{template "verso-input-border" .Error}}">{{end}}
+{{define "verso-text-input"}}<input id="{{.Name}}" name="{{.Name}}" value="{{.Value}}" type="text"{{if .Named}} aria-label="{{.Label}}"{{end}}{{if eq .Measure "number"}} inputmode="numeric"{{end}}{{if .Placeholder}} placeholder="{{.Placeholder}}"{{end}}{{if .Autofocus}} autofocus{{end}}{{if .Datatype}} data-datatype="{{.Datatype}}"{{end}}{{template "verso-field-aria" .}} class="{{if .Words}}{{template "verso-input-words"}}{{else}}{{template "verso-input-class"}}{{end}} {{if and (eq .Measure "address") (ne .ControlMeasure "prefix")}}w-measure-44! max-w-full{{else if eq .Measure "number"}}w-measure-24! max-w-full{{else if eq .Measure "short"}}w-measure-32! max-w-full{{else if eq .ControlMeasure "secret"}}w-measure-64! max-w-full{{end}} {{template "verso-input-border" .Error}}">{{end}}
 
 {{/* verso-time-input: a clock time (a boxPart) — a curfew's edge. The native
      control keeps the platform's own 12/24-hour habit and its picker; the box
@@ -541,14 +541,17 @@
      panels. Only the title and close control belong here; facts live in the body. */}}
 {{/* verso-drawer-inset: a drawer's side inset — the page's own 40px, so what
      stands in a drawer starts as far in from its edge as what stands on a page
-     does from the rail. verso-drawer-bleed runs a band edge to edge inside it.
-     sections.css reaches a drawer's rules and bands by the same 40px. */}}
+     does from the rail; its end inset is 40px and what rounds the column
+     inside to the grid (--verso-drawer-end, sections.css), so a frame across
+     it ends on a line whatever the drawer's width. verso-drawer-bleed runs a
+     band edge to edge inside it. sections.css reaches a drawer's rules and
+     bands by the same insets. */}}
 {{/* verso-drawer-width: the one width every drawer stands at, 768px — a
      page form's measure, so a form, a chooser and a reading each get the same
      frame, and nothing changes size between one object and the next. */}}
 {{define "verso-drawer-width"}}max-w-3xl{{end}}
-{{define "verso-drawer-inset"}}px-10{{end}}
-{{define "verso-drawer-bleed"}}-mx-10{{end}}
+{{define "verso-drawer-inset"}}pl-10 pr-(--verso-drawer-end){{end}}
+{{define "verso-drawer-bleed"}}-ml-10 mr-[calc(var(--verso-drawer-end)*-1)]{{end}}
 
 {{/* The band is 56px as the top bar is, and built the same way: its 28px
      line and 14px of air either side, the hairline drawn inside it. */}}

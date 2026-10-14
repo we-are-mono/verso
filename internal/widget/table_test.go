@@ -557,8 +557,8 @@ func TestRenderTableRowDrawer(t *testing.T) {
 		// the panel is about is still on screen at the bottom of a long form.
 		"ml-auto h-full max-h-none w-full max-w-3xl flex-col open:flex",
 		"overflow-hidden",
-		`<header class="flex flex-none items-center gap-4 bg-quiet px-10 py-3.5 shadow-[inset_0_-1px_0_var(--color-rule)]">`, // the shared drawer panel's header
-		"verso-drawer-scrollbar min-h-0 flex-1 space-y-6 overflow-x-hidden overflow-y-auto px-10",
+		`<header class="flex flex-none items-center gap-4 bg-quiet pl-10 pr-(--verso-drawer-end) py-3.5 shadow-[inset_0_-1px_0_var(--color-rule)]">`, // the shared drawer panel's header
+		"verso-drawer-scrollbar min-h-0 flex-1 space-y-6 overflow-x-hidden overflow-y-auto pl-10 pr-(--verso-drawer-end)",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("row drawer missing %q:\n%s", want, got)
@@ -583,7 +583,7 @@ func TestRenderTableRowDrawerTitleBand(t *testing.T) {
 	tbl := redirectsTable()
 	tbl.Rows[0].Drawer = &RowDrawer{Title: "Edit redirect"}
 	got := render(t, r, tbl)
-	for _, want := range []string{`<h2 class="min-w-0 truncate text-lg font-semibold tracking-tight text-body">Edit redirect</h2>`, "bg-quiet px-10", "pt-8", `aria-label="Close"`} {
+	for _, want := range []string{`<h2 class="min-w-0 truncate text-lg font-semibold tracking-tight text-body">Edit redirect</h2>`, "bg-quiet pl-10 pr-(--verso-drawer-end)", "pt-8", `aria-label="Close"`} {
 		if !strings.Contains(got, want) {
 			t.Errorf("drawer title band missing %q:\n%s", want, got)
 		}
@@ -1282,18 +1282,18 @@ func TestRenderRowDrawerTitleBand(t *testing.T) {
 	for _, want := range []string{
 		// The header and the strip are 56px as the top bar is: a 28px line
 		// and 14px of air either side, the hairline drawn inside the band.
-		`<header class="flex flex-none items-center gap-4 bg-quiet px-10 py-3.5 shadow-[inset_0_-1px_0_var(--color-rule)]">`,
+		`<header class="flex flex-none items-center gap-4 bg-quiet pl-10 pr-(--verso-drawer-end) py-3.5 shadow-[inset_0_-1px_0_var(--color-rule)]">`,
 		`<h2 class="min-w-0 truncate text-lg font-semibold tracking-tight text-body">Allow-DHCP-Renew</h2>`,
 		// The strip: the tab in force carries the action colour under it; the
 		// rest stay quiet. The tabs are the air, so an underline stands on the
 		// strip's own hairline.
-		`<nav class="flex flex-none gap-6 overflow-x-auto px-10 shadow-[inset_0_-1px_0_var(--color-rule)]"`,
+		`<nav class="flex flex-none gap-6 overflow-x-auto pl-10 pr-(--verso-drawer-end) shadow-[inset_0_-1px_0_var(--color-rule)]"`,
 		`class="flex shrink-0 items-center py-3.5 text-sm leading-7 whitespace-nowrap transition`,
 		`aria-current="page"`,
 		"shadow-[inset_0_-2px_0_var(--color-denim-deep)]",
 		// A tabbed panel's body starts 32px under the strip, as a band's title
 		// stands under its rule.
-		"overflow-y-auto px-10 pt-8 pb-8",
+		"overflow-y-auto pl-10 pr-(--verso-drawer-end) pt-8 pb-8",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("drawer nameplate missing %q:\n%s", want, got)
@@ -1311,7 +1311,7 @@ func TestRenderRowDrawerWithoutTabs(t *testing.T) {
 	if strings.Contains(got, `aria-label="Sections"`) {
 		t.Errorf("a panel with no tabs must draw no strip:\n%s", got)
 	}
-	if !strings.Contains(got, "overflow-y-auto px-10 pt-8 pb-8") {
+	if !strings.Contains(got, "overflow-y-auto pl-10 pr-(--verso-drawer-end) pt-8 pb-8") {
 		t.Errorf("untabbed panel lost its own top:\n%s", got)
 	}
 }

@@ -136,6 +136,12 @@
 @utility w-column {
   width: calc(round(down, 100% - 1px, 0.5rem) + 1px);
 }
+/* A field's own measure (an address's, a number's) is on the grid and a
+   pixel more, as a column is, so a field that starts on a line ends with its
+   right border on one. */
+@utility w-measure-* {
+  width: calc(var(--spacing) * --value(integer) + 1px);
+}
 @utility grid-cols-form {
   grid-template-columns: var(--verso-form-width, 40rem) minmax(0, 1fr);
 }
@@ -165,9 +171,10 @@
 
 @layer components {
   /* A page form's measure is a column's: 760px and the pixel its cards'
-     right border lands on (w-column). */
+     right border lands on (w-column). A drawer's is 640px and its pixel, so
+     a field at the measure ends on a line too. */
   main { --verso-form-width: calc(var(--container-3xl) + 1px); }
-  dialog { --verso-form-width: 40rem; }
+  dialog { --verso-form-width: calc(40rem + 1px); }
 }
 
 html {
@@ -183,6 +190,11 @@ html {
   /* Type is drawn antialiased, app-wide: subpixel smoothing thickens light
      text on the Paper and sand grounds, so the weights read heavier than set. */
   html { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+
+  /* A list's bullet is set in its item's face: Firefox's own bullet font
+     stands taller than the item's 24px line and grows it by half a pixel,
+     so a list would push everything under it off the grid. */
+  ::marker { font-family: inherit; }
 
   /* The hidden attribute must win over a display utility on the same element
      (e.g. an inline-flex row toggled hidden), regardless of utility source order. */
@@ -1015,13 +1027,27 @@ html {
     }
   }
   /* The colophon's words end on the same line too: measured the same way,
-     against the same width beside the rail, its 2.5rem gutters outside the
-     rounded measure. */
+     against the same width beside the rail, the page's gutters (16px on a
+     phone, 40px past it) outside the rounded measure. */
   [data-verso-colophon] { container-type: inline-size; }
   [data-verso-colophon] > div {
+    --verso-gutter: calc(var(--spacing) * 4);
     max-width: none;
-    width: calc(round(down, min(100cqw - var(--spacing) * 20, var(--container-6xl)) - 1px, 0.5rem) + 1px + var(--spacing) * 20);
+    width: calc(round(down, min(100cqw - var(--verso-gutter) * 2, var(--container-6xl)) - 1px, 0.5rem) + 1px + var(--verso-gutter) * 2);
   }
+  @media (width >= 48rem) {
+    [data-verso-colophon] > div { --verso-gutter: calc(var(--spacing) * 10); }
+  }
+  /* A short page's ground fills the window down to the colophon, rounded
+     down to the grid, and the colophon takes the few pixels left at the
+     window's foot on its own sand, so its hairline lands on a line whatever
+     the window's height. The colophon is one 56px line, as the top bar is. */
+  .verso-page-ground { flex: 1 0 auto; }
+  .verso-page-ground:has(+ [data-verso-colophon]) {
+    flex: none;
+    min-height: round(down, 100vh - var(--spacing) * 28, 0.5rem);
+  }
+  main > [data-verso-colophon] { flex: 1 0 auto; }
   main [data-verso-masthead] {
     margin-inline: calc(var(--spacing) * -10) calc(100% - 100cqw + var(--spacing) * 10);
     padding-inline: calc(var(--spacing) * 10) calc(100cqw - var(--spacing) * 10 - var(--verso-measure));

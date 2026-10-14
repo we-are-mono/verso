@@ -68,12 +68,15 @@ func TestColophonClosesEveryPageButALog(t *testing.T) {
 
 // The colophon is 56px as the top bar is: its 28px copy and 14px of air
 // either side, the hairline drawn inside the band, so no fixed height or
-// border adds to it.
+// border adds to it. It keeps to one line on a phone, the page's 16px
+// gutter at its sides: its facts end in an ellipsis rather than wrap.
 func TestColophonIsItsLineAndItsAir(t *testing.T) {
 	body := get(t, newServer(t, fakeBackend{}), "/").Body.String()
 	for _, want := range []string{
 		`data-verso-colophon x-data="copy" :data-copied="done" class="bg-quiet shadow-[inset_0_1px_0_var(--color-rule)]"`,
-		`items-center gap-4 px-10 py-3.5 font-mono text-base leading-6 text-meta`,
+		`items-center gap-4 px-4 py-3.5 font-mono text-base leading-6 text-meta md:px-10`,
+		`<p class="flex min-w-0 flex-auto items-center gap-x-3 whitespace-nowrap">`,
+		`<span class="verso-colophon-fact min-w-0 truncate font-medium">`,
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("colophon missing %q", want)

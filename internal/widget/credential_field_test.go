@@ -17,7 +17,7 @@ func TestSignInFieldsTakeTheCredentialMeasure(t *testing.T) {
 		{Name: "username", Label: "Username", Key: "username"},
 		{Name: "password", Label: "Password", Kind: "password", Key: "password"},
 	} {
-		if got := render(t, r, f); !strings.Contains(got, "w-64! max-w-full") {
+		if got := render(t, r, f); !strings.Contains(got, "w-measure-64! max-w-full") {
 			t.Errorf("%s does not take the credential measure:\n%s", f.Name, got)
 		}
 	}

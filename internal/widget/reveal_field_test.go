@@ -23,7 +23,7 @@ func TestRevealPasswordShowsTheKeyOnRequest(t *testing.T) {
 		`@click="toggle"`,
 		`:aria-pressed="pressed"`,
 		`aria-label="Show password"`,
-		"size-9", // the 36px square beside the field
+		"h-control w-control", // a control's square beside the field
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("reveal field missing %q:\n%s", want, got)

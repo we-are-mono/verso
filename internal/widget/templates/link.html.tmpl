@@ -48,8 +48,11 @@
      the specificity. */}}
 {{/* A link is 28px: its 20px line and 4px over and under, close enough for a
      run of 14px words to read as one list, so a run of any count is a
-     multiple of 4px and its edges land on the grid. */}}
-<a href="{{.Href}}" data-verso-rail-link class="verso-rail-link -ml-px flex items-center gap-1.5 border-l border-rule py-1 pl-4 text-sm leading-6 transition-colors">{{template "verso-link-face" .}}</a>
+     multiple of 4px and its edges land on the grid. Beside a form its column
+     starts a pixel past a line (the form's column is a pixel wider than its
+     measure), so the hairline steps back onto it; stacked under the form the
+     column starts on a line and the hairline with it. */}}
+<a href="{{.Href}}" data-verso-rail-link class="verso-rail-link @form-split:-ml-px flex items-center gap-1.5 border-l border-rule py-1 pl-4 text-sm leading-6 transition-colors">{{template "verso-link-face" .}}</a>
 {{else if eq .Style "act"}}
 {{/* act: an act on a part of a section, in the subsection act's one dress. One
      that makes or replaces the thing it stands under opens its form in a drawer

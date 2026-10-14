@@ -32,11 +32,18 @@
  *
  * In utilities: the page stack's rhythm and the rows' own padding are
  * utilities, and only this layer outranks them. */
+/* A drawer's content column is the room inside its 40px insets rounded down
+ * to the grid and a pixel more, as a page's column is (w-column), so a frame
+ * across it ends on a line: the drawer is 760px or the window's width with
+ * its left border, and its end inset takes what the rounding leaves. */
+:root {
+  --verso-drawer-end: calc(var(--spacing) * 10 + mod(min(var(--container-3xl), 100vw) - 1px - var(--spacing) * 20 - 1px, 0.5rem));
+}
 @layer utilities {
   main { --verso-reach-start: calc(var(--spacing) * 10); --verso-reach-end: 0px; }
   [data-verso-drawer-body] {
     --verso-reach-start: calc(var(--spacing) * 10);
-    --verso-reach-end: calc(var(--spacing) * 10);
+    --verso-reach-end: var(--verso-drawer-end);
   }
   .verso-drawer-scrollbar:not([data-verso-drawer-body]) { --verso-reach-start: 0px; --verso-reach-end: 0px; }
 
@@ -420,6 +427,5 @@
   padding: 0;
 }
 .verso-page-body [data-verso-code-divider]:not(dialog *) > [data-verso-code-editor] {
-  margin-left: 0;
   border-color: var(--color-rule-strong);
 }

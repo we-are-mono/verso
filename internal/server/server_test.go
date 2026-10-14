@@ -2727,7 +2727,7 @@ func TestAPageStandsOnSandUnderItsHeadingLine(t *testing.T) {
 	}}
 	s := newServerWith(t, fakeBackend{}, tr, []plugin.Manifest{demoManifest()})
 	body := get(t, s, "/plugins/demo/").Body.String()
-	if !strings.Contains(body, `<div class="flex-1 bg-quiet">`) || strings.Contains(body, "verso-notebook") {
+	if !strings.Contains(body, `<div class="verso-page-ground bg-quiet">`) || strings.Contains(body, "verso-notebook") {
 		t.Errorf("the page does not stand on the sand without the grid:\n%s", body)
 	}
 	// The frame's side air is the Overview's: 16px on a phone, 40px from md,

@@ -89,8 +89,8 @@ func TestJoinedValuesStandApart(t *testing.T) {
 		"<input":                  2,
 		"data-verso-change-field": 2,
 		`<span id="stop_time-join" aria-hidden="true" class="verso-joined-word">to</span>`: 1,
-		"w-32! max-w-full":    2, // a clock time's own width
-		`aria-invalid="true"`: 1,
+		"w-measure-32! max-w-full": 2, // a clock time's own width
+		`aria-invalid="true"`:      1,
 	} {
 		if c := strings.Count(got, want); c != n {
 			t.Errorf("want %d of %q, got %d:\n%s", n, want, c, got)
@@ -159,7 +159,7 @@ func TestAJoinedRowNamesAnOptionOnce(t *testing.T) {
 	if !strings.Contains(got, `>limit</span>`) || strings.Contains(got, "limit · limit") {
 		t.Errorf("the row names its one option once:\n%s", got)
 	}
-	if !strings.Contains(got, "w-24! max-w-full") {
+	if !strings.Contains(got, "w-measure-24! max-w-full") {
 		t.Errorf("a count stands at a number's width:\n%s", got)
 	}
 	if (&Field{Key: "limit_burst"}).Measure() != "number" {

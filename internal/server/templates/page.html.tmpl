@@ -131,7 +131,7 @@
   {{/* Every page stands on Quiet Sand so its Paper cards stand off it, home's
        as every other's (ADR-022); a live page (a log, Diagnostics)
        keeps its own frame, its output the darker surface. */}}
-  <div class="{{if eq .Width "full"}}flex min-h-0 flex-1 flex-col{{else}}flex-1{{end}}{{if not (or .Light (eq .Width "full"))}} bg-quiet{{end}}">
+  <div class="{{if eq .Width "full"}}flex min-h-0 flex-1 flex-col{{else}}verso-page-ground{{end}}{{if not (or .Light (eq .Width "full"))}} bg-quiet{{end}}">
     {{/* The heading line stands on the sand 24px under the top bar and 24px
          over the first card, with no bar of its own. A live page's
          masthead is the light bar, its title's line 16px inside it at top and
@@ -178,16 +178,19 @@
        copy puts the facts on the clipboard as a bug report asks for them, and
        the line answers by washing what it copied, fact by fact, the way a
        selection would (verso.css). It is 56px as the top bar is: its 28px
-       copy and 14px of air either side, the hairline drawn inside it. */}}
+       copy and 14px of air either side, the hairline drawn inside it. It
+       is one line however narrow the window: a fact that has no room ends
+       in an ellipsis rather than wrapping, since the copy carries them all
+       whole. */}}
   {{if ne .Width "full"}}{{with .Colophon}}
   <footer data-verso-colophon x-data="copy" :data-copied="done" class="bg-quiet shadow-[inset_0_1px_0_var(--color-rule)]">
-    <div class="flex max-w-[calc(var(--container-6xl)+5rem)] items-center gap-4 px-10 py-3.5 font-mono text-base leading-6 text-meta">
-      <p class="flex min-w-0 flex-1 flex-wrap items-center gap-x-3">
-        <span class="verso-colophon-fact font-medium">{{.Release}}</span>
-        {{if .Revision}}<span aria-hidden="true" class="hidden sm:inline">·</span><span class="verso-colophon-fact hidden [--fact:1] sm:inline">{{.Revision}}</span>{{end}}
-        {{if .Target}}<span aria-hidden="true" class="hidden xl:inline">·</span><span class="verso-colophon-fact hidden [--fact:2] xl:inline">{{.Target}}</span>{{end}}
+    <div class="flex max-w-[calc(var(--container-6xl)+5rem)] items-center gap-4 px-4 py-3.5 font-mono text-base leading-6 text-meta md:px-10">
+      <p class="flex min-w-0 flex-auto items-center gap-x-3 whitespace-nowrap">
+        <span class="verso-colophon-fact min-w-0 truncate font-medium">{{.Release}}</span>
+        {{if .Revision}}<span aria-hidden="true" class="hidden sm:inline">·</span><span class="verso-colophon-fact hidden min-w-0 truncate [--fact:1] sm:inline">{{.Revision}}</span>{{end}}
+        {{if .Target}}<span aria-hidden="true" class="hidden xl:inline">·</span><span class="verso-colophon-fact hidden min-w-0 truncate [--fact:2] xl:inline">{{.Target}}</span>{{end}}
       </p>
-      <span class="verso-colophon-fact shrink-0 [--fact:3]">Verso {{.Verso}}</span>
+      <span class="verso-colophon-fact min-w-0 truncate [--fact:3]">Verso {{.Verso}}</span>
       <button type="button" @click="run" :data-copy-failed="failed" aria-label="{{ t "Copy for a bug report" }}" class="group/copy relative grid {{template "verso-btn-icon"}}">
         <span x-ref="src" class="hidden">{{.Report}}</span>
         <span x-show="idle">{{icon "copy" "size-4"}}</span>

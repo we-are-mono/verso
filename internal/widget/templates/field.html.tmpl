@@ -122,17 +122,18 @@
   {{else if and (eq .Kind "password") (eq .Style "reveal")}}
   {{/* A shared secret — a Wi-Fi key someone reads out to a guest — sits in the
        field masked, and the eye beside it shows it. Only this style reflects a
-       value; a sign-in password never does. */}}
+       value; a sign-in password never does. The eye is a control's square,
+       the field's height, so the pair is one control's line. */}}
   <span x-data="reveal" class="flex w-full items-center gap-2">
     <input id="{{.Name}}" name="{{.Name}}" type="password" :type="inputType" value="{{.Value}}" autocomplete="off" spellcheck="false"{{template "verso-field-aria" .}} class="min-w-0 flex-1 {{template "verso-input-words"}} {{template "verso-input-border" .Error}}">
-    <button type="button" @click="toggle" :aria-pressed="pressed" aria-pressed="false" aria-label="{{ t "Show password" }}" title="{{ t "Show password" }}" class="grid size-9 shrink-0 cursor-pointer place-items-center rounded-xs border border-rule-strong text-glyph transition-colors hover:border-sand-5 hover:bg-rule hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim">
+    <button type="button" @click="toggle" :aria-pressed="pressed" aria-pressed="false" aria-label="{{ t "Show password" }}" title="{{ t "Show password" }}" class="grid h-control w-control shrink-0 cursor-pointer place-items-center rounded-xs border border-rule-strong text-glyph transition-colors hover:border-sand-5 hover:bg-rule hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim">
       <span x-show="masked" class="flex">{{icon "eye" "size-4"}}</span>
       <span x-show="shown" x-cloak class="flex">{{icon "eye-off" "size-4"}}</span>
     </button>
   </span>
   {{else if eq .Kind "password"}}
   {{/* Never reflect a submitted password back into the value attribute. */}}
-  <input id="{{.Name}}" name="{{.Name}}" type="password" autocomplete="{{if .Autocomplete}}{{.Autocomplete}}{{else}}new-password{{end}}"{{template "verso-field-aria" .}} class="{{template "verso-input-words"}} w-64! max-w-full {{template "verso-input-border" .Error}}">
+  <input id="{{.Name}}" name="{{.Name}}" type="password" autocomplete="{{if .Autocomplete}}{{.Autocomplete}}{{else}}new-password{{end}}"{{template "verso-field-aria" .}} class="{{template "verso-input-words"}} w-measure-64! max-w-full {{template "verso-input-border" .Error}}">
   {{else if eq .Kind "textarea"}}
   <textarea id="{{.Name}}" name="{{.Name}}" rows="5"{{template "verso-field-aria" .}} class="{{template "verso-input-words"}} {{template "verso-input-border" .Error}} h-auto py-2 leading-relaxed">{{.Value}}</textarea>
   {{else if eq .Kind "datetime-local"}}
