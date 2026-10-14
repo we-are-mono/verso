@@ -2,7 +2,7 @@
 
 ## 1. Telemetry: conduits and link speed
 
-- [ ] 1.1 Write `sampler_test.go` cases on a fixture sysfs tree: a netdev with a `dsa/` directory is `Conduit` and stays `Physical`; a plain NIC is neither a conduit nor non-physical. Then add `Conduit` to `telemetry.Interface` and set it in `readInterfaceMetadata`. Verify with `go test ./internal/telemetry`.
+- [x] 1.1 Write `sampler_test.go` cases on a fixture sysfs tree: a netdev with a `dsa/` directory is `Conduit` and stays `Physical`; a plain NIC is neither a conduit nor non-physical. Then add `Conduit` to `telemetry.Interface` and set it in `readInterfaceMetadata`. Verify with `go test ./internal/telemetry`.
 - [ ] 1.2 Write sampler tests for `SpeedMbps`: a fixture `speed` of `1000` reads 1000; `-1`, a missing file, or a non-physical netdev reads -1. Then read `speed` for physical interfaces each tick. Verify with `go test ./internal/telemetry`; `make lint` green.
 
 ## 2. Port inventory (`internal/ports`)

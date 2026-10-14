@@ -137,6 +137,36 @@ func TestSamplerClassifiesInterfaceTopology(t *testing.T) {
 	}
 }
 
+// TestADSAConduitIsMarked: the CPU port that links a switch chip to the SoC is
+// a physical NIC the case has no socket for. It carries a dsa directory, so it
+// is marked a conduit, and stays physical, since that is what it is; the
+// switch's own ports and a plain NIC are no conduits.
+func TestADSAConduitIsMarked(t *testing.T) {
+	root := t.TempDir()
+	for _, name := range []string{"eth0", "lan1", "eth1"} {
+		writeInterface(t, root, name, "up", 1, 2, 3, 4)
+		if err := os.MkdirAll(filepath.Join(root, name, "device"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.MkdirAll(filepath.Join(root, "eth0", "dsa"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	sampler := newSampler(root, time.Hour, 60, func() time.Time { return time.Unix(100, 0) })
+	sampler.sample()
+	snapshot, err := sampler.Snapshot(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	for name, conduit := range map[string]bool{"eth0": true, "lan1": false, "eth1": false} {
+		got, ok := snapshot.Interface(name)
+		if !ok || got.Conduit != conduit || !got.Physical {
+			t.Errorf("%s = %+v, want conduit=%v physical=true", name, got, conduit)
+		}
+	}
+}
+
 // TestAnUnknownOperstateIsReadByCarrier: a tun or WireGuard device reports no
 // operational state of its own ("unknown"), so the kernel's carrier says
 // whether it carries: a connected tunnel reads up, not unknown.

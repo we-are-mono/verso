@@ -23,9 +23,12 @@ type Interface struct {
 	Operstate string
 	Kind      string
 	Physical  bool
-	Parent    string
-	Members   []string
-	History   []Point
+	// Conduit marks a DSA conduit: the physical NIC that links a switch chip
+	// to the SoC, whose ports are the switch's own netdevs, not it.
+	Conduit bool
+	Parent  string
+	Members []string
+	History []Point
 }
 
 type Snapshot struct {
