@@ -69,7 +69,7 @@
            the 12px the row's glyph column adds — the words' own edge. */}}
       <div class="pr-10 pb-3 pl-[4.375rem]">
         <div class="verso-drawer-scrollbar overflow-x-auto rounded-xs border border-rule bg-quiet px-3 py-2.5 font-mono text-sm leading-relaxed font-medium">
-          {{range .Lines}}<div class="flex gap-2.5 whitespace-pre {{if eq .Op "+"}}text-green-deep{{else if eq .Op "-"}}text-crimson-deep{{else}}text-marigold-deep{{end}}"><span class="w-2.5 shrink-0">{{.Op}}</span><span>{{.Text}}</span></div>{{end}}
+          {{range .Lines}}<div class="flex gap-2 whitespace-pre {{if eq .Op "+"}}text-green-deep{{else if eq .Op "-"}}text-crimson-deep{{else}}text-marigold-deep{{end}}"><span class="w-2.5 shrink-0">{{.Op}}</span><span>{{.Text}}</span></div>{{end}}
         </div>
       </div>
     </details>
@@ -80,7 +80,7 @@
     {{/* Why, in the operator's words, for config history (ADR-021): never
          asked for, so an apply is one press as it always was. Its
          placeholder is what the entry's row will say without it. */}}
-    <div class="mt-5 flex flex-col gap-2">
+    <div class="mt-6 flex flex-col gap-2">
       <label for="verso-staged-apply-note" class="{{template "verso-field-label-class"}}">{{ t "Note" }} <span class="font-normal text-meta">{{ t "optional" }}</span></label>
       <input id="verso-staged-apply-note" name="note" type="text" maxlength="200" autocomplete="off" placeholder="{{.Summary}}"
         class="{{template "verso-input-words"}} {{template "verso-input-border" ""}}">
@@ -88,12 +88,12 @@
     {{/* The promise that makes applying safe to press, stating the window the
          apply actually arms rather than a number typed into the markup. The
          same line carries how the apply went, once it has. */}}
-    <div class="mt-5 flex items-start gap-2 rounded-xs bg-denim-soft px-3 py-2 text-sm leading-[1.45] text-denim-deep">
+    <div class="mt-6 flex items-start gap-2 rounded-xs bg-denim-soft px-3 py-2 text-sm leading-[1.45] text-denim-deep">
       <span id="verso-staged-note-mark" aria-hidden="true" class="mt-1.75 size-1.5 shrink-0 rounded-[1px] bg-denim"></span>
       <span id="verso-staged-note">{{ printf (t "Usually takes a couple of seconds, longer if many services are affected. If the router stops answering within %d seconds, the changes are rolled back.") .Rollback }}</span>
     </div>
     {{end}}
-    <div class="mt-5 flex items-center gap-2">
+    <div class="mt-6 flex items-center gap-2">
       {{if .Count}}
       <button type="button" id="verso-staged-apply" data-busy-label="{{ t "Applying…" }}" class="flex h-control cursor-pointer items-center gap-2 rounded-xs border border-denim bg-denim px-4 text-sm font-semibold whitespace-nowrap text-white transition-colors hover:border-denim-deep hover:bg-denim-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim-deep disabled:pointer-events-none disabled:border-rule-strong disabled:bg-quiet disabled:text-glyph">{{ printf (t "Apply %d") .Count }}</button>
       <button type="button" id="verso-staged-discard" data-busy-label="{{ t "Discarding…" }}" class="flex h-control cursor-pointer items-center rounded-xs border px-4 text-sm font-semibold whitespace-nowrap {{template "verso-btn-secondary"}} focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim disabled:pointer-events-none disabled:opacity-50">{{ t "Discard all" }}</button>

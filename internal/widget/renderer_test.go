@@ -1240,7 +1240,7 @@ func TestRenderTokenListKeepsRepeatedFieldContract(t *testing.T) {
 		// cells — and a 20px remove glyph wearing the hover every icon act
 		// wears. The box is a field, so it wears a field's fill: white, with
 		// the inset shadow, and a field's height.
-		`class="flex min-h-control flex-wrap items-center gap-x-1 gap-y-4 rounded-xs border border-rule-strong bg-white shadow-[inset_0_1px_2px_rgba(27,25,23,.06)] p-1`,
+		`class="flex min-h-control flex-wrap items-center gap-x-1 gap-y-4 rounded-xs border border-rule-strong bg-white shadow-[inset_0_1px_2px_rgba(27,25,23,.06)] p-0.75`,
 		`h-6 min-w-18 flex-1`, // the value being typed stands at the chips' height
 		// A value in the box is a step darker than the quiet ground a chip
 		// wears elsewhere, so it stands off the white box it sits in; its

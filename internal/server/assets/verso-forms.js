@@ -574,7 +574,7 @@
     var failure = function (message) {
       if (button) button.disabled = false;
       var notice = versoErrorLine(null, message || T("Could not confirm the action. Check the service state before trying again."));
-      notice.classList.add("mb-5");
+      notice.classList.add("mb-6");
       notice.setAttribute("role", "alert");
       notice.dataset.versoActError = "";
       var old = document.querySelector("[data-verso-act-error]");

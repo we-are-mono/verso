@@ -60,7 +60,7 @@
        while lines arrive; pressed, the mark holds still until the run's
        ending lands. */}}
   <button type="submit" data-verso-diag-run disabled class="ml-auto {{template "verso-btn-box"}} {{template "verso-btn-primary"}} {{template "verso-btn-waiting"}} focus-visible:outline-denim-deep">{{icon "play" "size-4"}}{{t "Run"}}</button>
-  <button type="button" data-verso-diag-stop hidden class="ml-auto {{template "verso-btn-box"}} gap-2.5 border {{template "verso-btn-secondary"}} disabled:pointer-events-none focus-visible:outline-denim">{{template "verso-waiting" ""}}{{t "Stop"}}</button>
+  <button type="button" data-verso-diag-stop hidden class="ml-auto {{template "verso-btn-box"}} gap-2 border {{template "verso-btn-secondary"}} disabled:pointer-events-none focus-visible:outline-denim">{{template "verso-waiting" ""}}{{t "Stop"}}</button>
   <p data-verso-diag-error hidden role="alert" class="basis-full {{template "verso-error-line"}}"></p>
 </form>
 {{end}}

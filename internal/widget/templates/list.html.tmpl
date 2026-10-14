@@ -34,13 +34,13 @@
   {{/* The box is a field, and each value inside it is a chip — the same chip a
        value wears anywhere else, with the one thing added that only an editable
        value has: a way to take it out again. */}}
-  {{/* The 24px chips sit 4px inside the box on every side and 4px apart, so
-       each stands on the box's white rather than crowding its edge, and the box
-       is a field's height. Wrapped rows of chips stand 16px apart, so a box of
-       any number of rows is whole cells of the notebook's grid less the 6px it
-       is centred in. The value being typed stands at the same height as the
+  {{/* The 24px chips sit 4px inside the box's edge on every side (3px and
+       the border's pixel) and 4px apart, so each stands on the box's white
+       rather than crowding its edge, and the box is a field's 32px. Wrapped
+       rows of chips stand 16px apart, so each row adds 40px and the box stays
+       on the grid. The value being typed stands at the same height as the
        chips it is about to join. */}}
-  <div data-verso-token-list class="flex min-h-control flex-wrap items-center gap-x-1 gap-y-4 rounded-xs border border-rule-strong {{template "verso-input-fill"}} p-1 transition-colors hover:not-focus-within:border-faint focus-within:border-denim">
+  <div data-verso-token-list class="flex min-h-control flex-wrap items-center gap-x-1 gap-y-4 rounded-xs border border-rule-strong {{template "verso-input-fill"}} p-0.75 transition-colors hover:not-focus-within:border-faint focus-within:border-denim">
     {{range .Items}}
     <span data-verso-token class="{{template "verso-token-chip"}}">
       <input type="hidden" name="{{$.Name}}" value="{{.}}"><span data-verso-token-label>{{.}}</span>

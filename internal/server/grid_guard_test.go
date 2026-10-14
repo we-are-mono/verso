@@ -34,25 +34,12 @@ var gridExceptions = map[string]string{
 	"-mx-1.5":  "a middot between two words pulls in its own side bearings",
 	"mt-1.75":  "a 6px state mark centred on its 20px line hangs 7px down it",
 	"-my-0.5":  "a 28px act rides a 24px line, reaching 2px past it either side",
+	"my-0.5":   "a log line's 3px mark stands 2px inside its line at either end",
 	"-my-1.5":  "a 32px control rides a 20px line, reaching 6px past it either side",
 	"my-1.75":  "a 6px bar centred on its 20px line stands 7px off either side",
 	"mt-9.75":  "a rule 40px under the content, less its own pixel, lands on the line",
 	"mt-5.75":  "a rule 24px under the content, less its own pixel, lands on the line",
 	"-mt-1.75": "a 6px state mark centred on its 20px line hangs 7px down it",
-}
-
-// gridPending are the sources the 8px sweep has not reached yet. A file leaves
-// this list the moment it is clean, and the test says so when it is.
-var gridPending = map[string]bool{
-	"assets/verso-forms.js":               true,
-	"assets/verso-listing.js":             true,
-	"assets/verso-stream.js":              true,
-	"templates/diagnostics.html.tmpl":     true,
-	"templates/entity-panel.html.tmpl":    true,
-	"templates/login.html.tmpl":           true,
-	"templates/restarting.html.tmpl":      true,
-	"templates/staged.html.tmpl":          true,
-	"../widget/templates/modal.html.tmpl": true,
 }
 
 func gridSources(t *testing.T) []string {
@@ -86,17 +73,8 @@ func TestLayoutAirStaysOnTheGrid(t *testing.T) {
 				}
 			}
 		}
-		name := filepath.ToSlash(file)
-		switch {
-		case gridPending[name] && len(offences) == 0:
-			t.Errorf("%s is on the grid now; take it off gridPending", name)
-		case !gridPending[name] && len(offences) > 0:
-			t.Errorf("%s puts air off the 8px grid: %s", name, strings.Join(offences, " "))
-		}
-	}
-	for name := range gridPending {
-		if _, err := os.Stat(name); err != nil {
-			t.Errorf("gridPending names %s, which no longer exists", name)
+		if len(offences) > 0 {
+			t.Errorf("%s puts air off the 8px grid: %s", filepath.ToSlash(file), strings.Join(offences, " "))
 		}
 	}
 }
