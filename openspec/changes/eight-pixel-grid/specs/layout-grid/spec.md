@@ -30,7 +30,7 @@ A content column the window squeezes SHALL round its width down to a multiple of
 - **THEN** the column is 1008px wide
 
 ### Requirement: Inside a component a measure steps by 4px
-A component's own box (a chip, a checkbox, a radio row, a row act) SHALL measure a multiple of 4px. Inside that box, padding SHALL centre the component's text on its line. Marks and glyphs keep their own sizes: the 6px state square, a 14px or 16px icon, a 1px hairline.
+A component's own box (a chip, a checkbox, a radio row, a row act) SHALL measure a multiple of 4px. Inside that box, padding SHALL centre the component's text on its line, and the 6px between a glyph and its words is the component's own. Marks and glyphs keep their own sizes: the 6px state square, a 14px or 16px icon, a 1px hairline.
 
 #### Scenario: A chip in a row
 - **WHEN** a device row cites its interface as a chip

@@ -34,7 +34,7 @@
             <svg width="66" height="40" viewBox="0 0 66 40" class="relative -mb-px shrink-0 overflow-visible text-glyph" aria-hidden="true">
               <g class="group-data-[filtered=true]/inventory:hidden">{{if $row.TreeRoot}}{{if eq .LeadIcon "physical"}}<rect x="{{$row.TreeNodeX}}" y="16" width="9" height="9" rx="1" stroke="currentColor" stroke-width="1.5" class="fill-ground"/>{{else}}<circle cx="{{$row.TreeNodeCenter}}" cy="20" r="4" stroke="currentColor" stroke-width="1.5" class="fill-ground"/>{{end}}{{end}}</g>
             </svg>
-            <span data-verso-expand-chevron class="mt-1.5 grid size-7 shrink-0 place-items-center rounded-xs border border-rule-strong text-glyph group-aria-expanded/identity:border-denim group-aria-expanded/identity:bg-denim group-aria-expanded/identity:text-white">{{icon "chevron-right" "size-3.5 transition-transform duration-200 ease-out group-aria-expanded/identity:rotate-90 motion-reduce:transition-none"}}</span>
+            <span class="flex h-10 shrink-0 items-center"><span data-verso-expand-chevron class="grid size-7 shrink-0 place-items-center rounded-xs border border-rule-strong text-glyph group-aria-expanded/identity:border-denim group-aria-expanded/identity:bg-denim group-aria-expanded/identity:text-white">{{icon "chevron-right" "size-3.5 transition-transform duration-200 ease-out group-aria-expanded/identity:rotate-90 motion-reduce:transition-none"}}</span></span>
             <span class="flex min-w-0 flex-wrap items-center gap-x-1 pt-2.5 pr-3 pb-2.25 pl-3"><span class="break-all font-mono text-base leading-5 font-bold text-ink">{{.Text}}</span>{{range .Chips}}{{template "verso-chip" .}}{{end}}</span>
           </button>
         </td>
@@ -74,8 +74,8 @@
     {{end}}
     </tbody>
   </table>
-  <p data-verso-listing-empty hidden class="py-5 text-sm text-meta">{{t "Nothing matches."}}</p>
-  {{if .Empty}}<p class="py-5 text-sm text-meta">{{.EmptyText}}</p>{{end}}
+  <p data-verso-listing-empty hidden class="py-row text-sm leading-5 text-meta">{{t "Nothing matches."}}</p>
+  {{if .Empty}}<p class="py-row text-sm leading-5 text-meta">{{.EmptyText}}</p>{{end}}
 </div>
 </div>
 {{end}}

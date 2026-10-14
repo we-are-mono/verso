@@ -148,11 +148,12 @@ func TestHeadingActRendersTheActAlone(t *testing.T) {
 
 // TestControlBandIsTheListingCardsTopStrip: the controls that narrow a
 // listing are the top strip of its card: the card's Paper and frame
-// over a hairline, 13px over the controls and 12px under, words 20px in, no
-// Mid Sand box; the listing under it closes the card.
+// over a hairline, 64px with its frame pixel and hairline (15px over the 32px
+// controls, 15px under), words 24px in, no Mid Sand box; the listing under it
+// closes the card.
 func TestControlBandIsTheListingCardsTopStrip(t *testing.T) {
 	got := render(t, newRenderer(t), &ActionBar{Tabs: []ActionTab{{Label: "All families", Count: 3, Active: true}}})
-	if !strings.Contains(got, `data-verso-actionbar class="flex flex-wrap items-center gap-4 rounded-t-xs border border-rule-strong border-b-rule bg-ground px-5 pt-3.25 pb-3"`) {
+	if !strings.Contains(got, `data-verso-actionbar class="flex flex-wrap items-center gap-4 rounded-t-xs border border-rule-strong border-b-rule bg-ground px-6 pt-3.75 pb-3.75"`) {
 		t.Errorf("control band surface wrong:\n%s", got)
 	}
 	if strings.Contains(got, "mb-5") || strings.Contains(got, "mb-8") {
@@ -173,7 +174,7 @@ func TestColumnHeadsAreARow(t *testing.T) {
 		{Title: "Rules", Columns: []TableColumn{{Label: "Name"}}, Rows: []TableRow{{ID: "a", Cells: []TableCell{{Text: "x"}}}}},
 	} {
 		got := render(t, newRenderer(t), tbl)
-		if !strings.Contains(got, "border-rule-strong pt-0.5 pb-px leading-4 px-3.5 text-xs") || strings.Contains(got, "pt-4 pb-2") {
+		if !strings.Contains(got, "border-rule-strong pt-1 pb-0.75 leading-4 px-3.5 text-xs") || strings.Contains(got, "pt-4 pb-2") {
 			t.Errorf("column heads are not a row of the grid:\n%s", got)
 		}
 	}

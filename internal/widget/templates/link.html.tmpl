@@ -49,7 +49,7 @@
 {{/* A link is 28px: its 20px line and 4px over and under, close enough for a
      run of 14px words to read as one list, so a run of any count is a
      multiple of 4px and its edges land on the grid. */}}
-<a href="{{.Href}}" data-verso-rail-link class="verso-rail-link -ml-px flex items-center gap-2 border-l border-rule py-1 pl-4 text-sm leading-5 transition-colors">{{template "verso-link-face" .}}</a>
+<a href="{{.Href}}" data-verso-rail-link class="verso-rail-link -ml-px flex items-center gap-1.5 border-l border-rule py-1 pl-4 text-sm leading-5 transition-colors">{{template "verso-link-face" .}}</a>
 {{else if eq .Style "act"}}
 {{/* act: an act on a part of a section, in the subsection act's one dress. One
      that makes or replaces the thing it stands under opens its form in a drawer
@@ -70,5 +70,5 @@
 <a href="{{.Href}}"{{if .NewTab}} target="_blank" rel="noopener noreferrer"{{end}} class="{{template "verso-btn-box"}} border {{template "verso-btn-secondary"}} focus-visible:outline-denim">{{template "verso-link-face" .}}</a>
 {{end}}
 {{else}}
-<a href="{{.Href}}"{{if .NewTab}} target="_blank" rel="noopener noreferrer"{{end}} class="inline-flex items-center gap-2 text-sm font-medium text-denim underline underline-offset-2 transition-colors hover:text-denim-deep">{{template "verso-link-face" .}}</a>
+<a href="{{.Href}}"{{if .NewTab}} target="_blank" rel="noopener noreferrer"{{end}} class="inline-flex items-center gap-1.5 text-sm font-medium text-denim underline underline-offset-2 transition-colors hover:text-denim-deep">{{template "verso-link-face" .}}</a>
 {{end}}

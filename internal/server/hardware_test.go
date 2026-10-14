@@ -99,7 +99,7 @@ func TestReadingsKeepTheirCellsApart(t *testing.T) {
 		t.Fatal(err)
 	}
 	body := buf.String()
-	if !strings.Contains(body, "px-3.5 pt-2.5 pb-2.25 leading-5") {
+	if !strings.Contains(body, "px-3.5 py-row leading-5") {
 		t.Errorf("the readings' cells give up their inset:\n%s", body)
 	}
 }

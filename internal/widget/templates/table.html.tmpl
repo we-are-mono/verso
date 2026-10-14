@@ -49,10 +49,10 @@
      inset, but each cell keeps 16px at its end so a value wider than its
      column's measure never runs into the next; elsewhere every cell keeps its
      own. */}}
-{{define "table.cellpad"}}{{if .Dense}}pt-2.5 pr-4 pb-2.25 leading-5{{else}}px-3.5 pt-2.5 pb-2.25 leading-5{{end}}{{end}}
+{{define "table.cellpad"}}{{if .Dense}}py-row pr-4 leading-5{{else}}px-3.5 py-row leading-5{{end}}{{end}}
 {{/* table.cellpad-stack: a cell that stacks two 20px lines — a row of three
      cells, its first line level with every one-line cell's. */}}
-{{define "table.cellpad-stack"}}{{if .Dense}}pt-2.5 pb-2.25{{else}}px-3.5 pt-2.5 pb-2.25{{end}}{{end}}
+{{define "table.cellpad-stack"}}{{if .Dense}}py-row{{else}}px-3.5 py-row{{end}}{{end}}
 {{/* table.confirm-dialog: the alert a row act that ends something asks in,
      inside the act's own x-data="modal": the question, what is at stake, and
      the act named again on the danger button, which posts the one pair. A
@@ -61,10 +61,10 @@
 {{define "table.confirm-dialog"}}
 <template x-teleport="body">
   <dialog x-ref="dialog" tabindex="-1" role="alertdialog" aria-labelledby="{{.ID}}-title" aria-describedby="{{.ID}}-body" {{template "verso-dialog-on"}}
-    class="verso-modal verso-modal-motion mx-auto mt-auto mb-4 sm:mb-auto {{template "verso-dialog-box"}} {{template "modal.frame"}} p-5 text-left whitespace-normal focus:outline-none sm:p-6">
+    class="verso-modal verso-modal-motion mx-auto mt-auto mb-4 sm:mb-auto {{template "verso-dialog-box"}} {{template "modal.frame"}} p-6 text-left whitespace-normal focus:outline-none">
     {{/* the danger square hangs on the title's 24px line, as on every
          message; the words say what is at stake */}}
-    <div class="flex items-start gap-2.5">
+    <div class="flex items-start gap-2">
       <span class="flex shrink-0 pt-0.5">{{template "verso-message-mark" "danger"}}</span>
       <div class="min-w-0">
         <h2 id="{{.ID}}-title" class="text-base leading-6 font-semibold text-ink">{{.Title}}</h2>
@@ -83,7 +83,7 @@
 {{end}}
 {{/* table.cellpad-detail: a value over its detail line, a 20px line each —
      a row of three cells, its first line level with every one-line cell's. */}}
-{{define "table.cellpad-detail"}}{{if .Dense}}pt-2.5 pr-4 pb-2.25{{else}}px-3.5 pt-2.5 pb-2.25{{end}}{{end}}
+{{define "table.cellpad-detail"}}{{if .Dense}}py-row pr-4{{else}}px-3.5 py-row{{end}}{{end}}
 {{/* table.detail: the line of words under a cell's value — what it is, or
      since when — in the secondary step, on one 20px line with the cell's tag
      riding it (the tag keeps to the line). */}}
@@ -108,7 +108,7 @@
      rows wear, the plain words for it, and hard right the one caveat about
      what the listing includes. */}}
 {{define "table.legend"}}{{if or .Legend .Note}}
-  <div data-verso-table-legend class="flex flex-wrap items-center gap-5 pt-5{{if not .Dense}} px-4{{end}}">
+  <div data-verso-table-legend class="flex flex-wrap items-center gap-6 pt-6{{if not .Dense}} px-4{{end}}">
     {{range .Legend}}
     {{if .Ink}}
     {{/* an ink explained in the ink itself: the word in the tone's Deep
@@ -139,7 +139,7 @@
         <td colspan="{{.ColumnSpan}}" class="border-b border-rule !p-0">
           {{/* the same ink the Router endpoint wears in these rows, so the
                listing's affordance and its subject speak one accent. */}}
-          <a href="{{.AddHref}}" class="group/add flex w-full items-center pt-2.5 pr-3.5 pb-2.25 text-sm leading-5 font-semibold text-denim-deep transition-colors hover:bg-quiet focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-denim">
+          <a href="{{.AddHref}}" class="group/add flex w-full items-center py-row pr-3.5 text-sm leading-5 font-semibold text-denim-deep transition-colors hover:bg-quiet focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-denim">
             <span class="flex items-center gap-1.5 transition-transform group-hover/add:translate-x-1 motion-reduce:transition-none motion-reduce:group-hover/add:translate-x-0"><span class="text-denim">{{icon "plus" "size-4"}}</span>{{.AddLabel}}</span>
           </a>
         </td>
@@ -153,13 +153,12 @@
            its last: a listing whose order is its meaning reads top-down, and the
            head is where the eye already is when it decides this is the lane it
            wants. Its words say the act; its tooltip says which lane. */}}
-      {{/* A lane is a row, not a band: the listing's own two cells, a 28px
-           line (the add's box) centred in them, on the masthead's Quiet Sand
-           between strong hairlines: the first lane's top is the column
-           heads' own; a later one draws it on the line where its fill
-           starts, never filling the gap above. Every
-           lane after the first starts its own small
-           table, two cells below the last row of the one before; the air is
+      {{/* A lane is a row, not a band: a row's 40px, a 28px line (the add's
+           box) centred in it, on the masthead's Quiet Sand between strong
+           hairlines: the first lane's top is the column heads' own; a later
+           one draws it on the line where its fill starts, never filling the
+           gap above. Every lane after the first starts its own small
+           table, 40px below the last row of the one before; the air is
            the row's own padding, so a lane the filter hides takes its gap with
            it. Its add sits as the rows' acts do: on the middle line (5px over,
            6px under) and 7px in from the table's edge, so on hover its border
@@ -184,8 +183,8 @@
            back open (a refused submission) is in front of the operator on the
            re-render instead of silently closed. */}}
       {{/* The row states no height. It is as tall as its cells, and every kind
-           of cell arrives at 44px by its own inset (table.cellpad); a value
-           that wraps still grows the row. */}}
+           of cell arrives at 40px by its own inset (table.cellpad, py-row); a
+           value that wraps still grows the row by its 20px lines. */}}
       {{/* the row names the section it is, so an act answered in place can
            find this row again in the page the answer came back with. */}}
       {{/* A row that carries only its group is the band alone. */}}
@@ -227,7 +226,7 @@
              under it into the row, and the row's height stops being the row's. */}}
         {{/* the control sits centred on the row's 24px line, as the words in the
              next cell do; the glyph that stands in for one takes the same line. */}}
-        <td class="w-11 border-b border-rule pt-2.5 pr-1 pb-2.25 pl-3.5">
+        <td class="w-11 border-b border-rule py-row pr-1 pl-3.5">
           <span class="flex h-5 items-center">{{if .Name}}{{template "switch.html.tmpl" .Control}}{{else if .Icon}}<span class="grid size-5 place-items-center text-faint" title="{{.Button}}" aria-label="{{.Button}}">{{icon .Icon "size-4"}}</span>{{end}}</span>
         </td>
         {{else if eq .Kind "action"}}
@@ -504,7 +503,7 @@
         {{end}}
         {{if .Entity}}{{template "verso-entity-drawer" .}}{{else if .PanelURL}}{{template "verso-drawer-fetched" .PanelURL}}{{else if .Drawer}}{{template "verso-drawer-panel" .Panel}}{{end}}
       </tr>
-      {{if .Expanded}}<tr data-verso-expanded-row hidden><td colspan="{{.ColumnSpan}}" class="border-b border-rule bg-quiet px-6 py-5">{{range .Expanded}}{{.}}{{end}}</td></tr>{{end}}
+      {{if .Expanded}}<tr data-verso-expanded-row hidden><td colspan="{{.ColumnSpan}}" class="border-b border-rule bg-quiet px-6 py-6">{{range .Expanded}}{{.}}{{end}}</td></tr>{{end}}
       {{end}}
       {{end}}
       {{end}}
@@ -513,19 +512,19 @@
      one row across every column, the listing's inset, meta words. It gives up
      its hairline to whatever closes the table (the table's own, or the
      section's rule when the table ends its section). */}}
-{{define "table.empty-row"}}<tr class="group"{{if .Stream}} data-verso-stream-empty{{end}}><td colspan="{{.ColumnSpan}}" class="border-b border-rule px-4 pt-2.5 pb-2.25 text-left text-sm leading-5 text-meta">{{.EmptyText}}</td></tr>{{end}}
+{{define "table.empty-row"}}<tr class="group"{{if .Stream}} data-verso-stream-empty{{end}}><td colspan="{{.ColumnSpan}}" class="border-b border-rule px-4 py-row text-left text-sm leading-5 text-meta">{{.EmptyText}}</td></tr>{{end}}
 {{define "table.head"}}
     <thead>
       <tr>
         {{range .Columns}}
-        {{/* The column heads are one cell of the grid: the 12px caps on a
-             16px line, 2px over and a pixel under, the hairline the cell's
-             last pixel, so the rows under them start on a line. */}}
+        {{/* The column heads are 24px: the 12px caps on a 16px line, 4px
+             over and 3px under, the hairline the row's last pixel, so the
+             rows under them start on a line. */}}
         {{/* The heads are the kicker: medium, spaced, quiet. In the listing
              geometry an endpoint's head starts where the chip's glyph does —
              one hairline and the chip's own inset in — so the word sits over
              the column's ink rather than its border. */}}
-        <th scope="col" class="whitespace-nowrap border-b border-rule-strong pt-0.5 pb-px leading-4 {{if eq .Kind "reorder"}}{{if $.Dense}}w-8{{else}}w-10{{end}} pl-1.75! {{if $.Dense}}pr-2.25{{else}}pr-4.25{{end}}{{else}}{{if not $.Dense}}px-3.5{{end}}{{end}} text-xs font-medium tracking-[.08em] text-meta uppercase {{if eq .Kind "rate"}}w-24 min-w-24 max-w-24 text-left{{else if eq .Kind "num"}}text-right{{else if eq .Kind "actions"}}text-right{{else}}text-left{{end}}{{if and $.Dense (eq .Kind "endpoint")}} pl-[0.4375rem]{{end}}">{{.Label}}</th>
+        <th scope="col" class="whitespace-nowrap border-b border-rule-strong pt-1 pb-0.75 leading-4 {{if eq .Kind "reorder"}}{{if $.Dense}}w-8{{else}}w-10{{end}} pl-1.75! {{if $.Dense}}pr-2.25{{else}}pr-4.25{{end}}{{else}}{{if not $.Dense}}px-3.5{{end}}{{end}} text-xs font-medium tracking-[.08em] text-meta uppercase {{if eq .Kind "rate"}}w-24 min-w-24 max-w-24 text-left{{else if eq .Kind "num"}}text-right{{else if eq .Kind "actions"}}text-right{{else}}text-left{{end}}{{if and $.Dense (eq .Kind "endpoint")}} pl-[0.4375rem]{{end}}">{{.Label}}</th>
         {{end}}
         {{if .HasDetail}}<th scope="col" class="border-b border-rule-strong"></th>{{end}}
       </tr>
@@ -668,7 +667,7 @@
     </tbody>
   </table>
   {{if not .PageBlock}}{{template "table.legend" .}}{{end}}
-  <p data-verso-listing-empty hidden class="border-b border-rule pt-2.5 pr-4 pb-2.25 pl-2.75 text-sm leading-5 text-meta">{{t "Nothing matches."}}</p>
+  <p data-verso-listing-empty hidden class="border-b border-rule py-row pr-4 pl-2.75 text-sm leading-5 text-meta">{{t "Nothing matches."}}</p>
 </div>
 </div>
 {{/* A page's own listing is its card; its legend and note follow the card

@@ -58,7 +58,7 @@ func TestPackagesInventory(t *testing.T) {
 		`<select data-verso-listing-cut`, `<option value="upgradable" data-label="Upgradable">Upgradable · `,
 		`<option value="all" data-label="All" data-href="/system/packages?tab=all">All</option>`, // the index is its own listing
 		// the listing card's top strip
-		`data-verso-actionbar class="flex flex-wrap items-center gap-4 rounded-t-xs border border-rule-strong border-b-rule bg-ground px-5 pt-3.25 pb-3"`,
+		`data-verso-actionbar class="flex flex-wrap items-center gap-4 rounded-t-xs border border-rule-strong border-b-rule bg-ground px-6 pt-3.75 pb-3.75"`,
 		"htop", "3.5.1-r1", "packages", // the row
 		"font-mono text-base font-medium", // package versions use the fixed 16px/500 mono treatment
 		"Process viewer",                  // what it is, in its column

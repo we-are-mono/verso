@@ -698,7 +698,7 @@ func TestRenderTableFlat(t *testing.T) {
 		// A cell writes on 20px lines, 10px over the first and 9px under the
 		// last plus its hairline — which is the row of two cells, arrived at
 		// rather than stated.
-		"px-3.5 pt-2.5 pb-2.25 leading-5",
+		"px-3.5 py-row leading-5",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("flat table missing %q:\n%s", want, got)
@@ -774,10 +774,10 @@ func TestRenderTableFlatLabels(t *testing.T) {
 	if strings.Contains(got, "odd:bg-slate-50") {
 		t.Errorf("flat table must not stripe:\n%s", got)
 	}
-	// The column heads are one cell: the 12px caps on a 16px line, 2px over
-	// and a pixel under, the hairline the cell's last pixel.
-	if strings.Count(got, "border-b border-rule-strong pt-0.5 pb-px leading-4") != 2 {
-		t.Errorf("column heads are one cell of the grid:\n%s", got)
+	// The column heads are 24px: the 12px caps on a 16px line, 4px over and
+	// 3px under, the hairline the row's last pixel.
+	if strings.Count(got, "border-b border-rule-strong pt-1 pb-0.75 leading-4") != 2 {
+		t.Errorf("column heads are not 24px on the grid:\n%s", got)
 	}
 }
 
@@ -795,13 +795,13 @@ func TestRenderTableDense(t *testing.T) {
 	// on the grid's first crossing, so every row's first content lines up with
 	// it; the trailing edge keeps 16px.
 	roomy := render(t, r, &Table{Style: "flat", Columns: columns, Rows: rows})
-	for _, want := range []string{"[&_td:first-of-type]:pl-2.75", "[&_th:last-of-type]:pr-4", "px-3.5 pt-2.5 pb-2.25 leading-5"} {
+	for _, want := range []string{"[&_td:first-of-type]:pl-2.75", "[&_th:last-of-type]:pr-4", "px-3.5 py-row leading-5"} {
 		if !strings.Contains(roomy, want) {
 			t.Errorf("a listing's rows are inset from its edges, missing %q:\n%s", want, roomy)
 		}
 	}
 	dense := render(t, r, &Table{Style: "flat", Dense: true, Columns: columns, Rows: rows})
-	for _, want := range []string{"[&_td:first-of-type]:pl-2.75", "[&_th:last-of-type]:pr-4", `class="relative border-b border-rule pt-2.5 pr-4 pb-2.25 leading-5"`} {
+	for _, want := range []string{"[&_td:first-of-type]:pl-2.75", "[&_th:last-of-type]:pr-4", `class="relative border-b border-rule py-row pr-4 leading-5"`} {
 		if !strings.Contains(dense, want) {
 			t.Errorf("a dense listing keeps the edge inset and drops the cells' own, missing %q:\n%s", want, dense)
 		}
@@ -926,7 +926,7 @@ func TestTableRowsHangFromTheirFirstLine(t *testing.T) {
 	if strings.Contains(got, "align-middle") {
 		t.Errorf("no cell centres itself against the others:\n%s", got)
 	}
-	if !strings.Contains(got, "px-3.5 pt-2.5 pb-2.25") {
+	if !strings.Contains(got, "px-3.5 py-row") {
 		t.Errorf("a stacked cell writes its first line on the one-line cell's line:\n%s", got)
 	}
 }
@@ -1387,7 +1387,7 @@ func TestAGroupWithNothingInItSaysSo(t *testing.T) {
 	})
 	for _, want := range []string{
 		"verso-table-group", ">Files<", ">0<", ">New file<",
-		`<tr class="group"><td colspan="3" class="border-b border-rule px-4 pt-2.5 pb-2.25 text-left text-sm leading-5 text-meta">No custom option files</td></tr>`,
+		`<tr class="group"><td colspan="3" class="border-b border-rule px-4 py-row text-left text-sm leading-5 text-meta">No custom option files</td></tr>`,
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("want %s in:\n%s", want, got)
@@ -1415,9 +1415,9 @@ func TestCellDetailStandsUnderItsValue(t *testing.T) {
 		`<span class="flex items-center gap-x-2 text-sm leading-5 whitespace-nowrap text-meta"><span>since today, 16:43</span>`,
 		`>fd42:7ea:aa00::1a2b:3c4d:5e6f:7a8b</span>`,
 		">this browser</span>",
-		// the 21px chip stands a pixel over the 20px detail line rather than
-		// making the line taller
-		"verso-chip -mt-px " + chipBox,
+		// the 20px chip fills the 20px detail line rather than making the line
+		// taller
+		"verso-chip " + chipBox,
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("want %s in:\n%s", want, got)
@@ -1425,10 +1425,10 @@ func TestCellDetailStandsUnderItsValue(t *testing.T) {
 	}
 	// The stack writes on the row's lines: 10px over its value, 9px under its
 	// detail, so its first line is level with a one-line cell's and the row is
-	// three cells.
+	// 60px.
 	for _, want := range []string{
-		`<td class="relative border-b border-rule px-3.5 pt-2.5 pb-2.25">`,
-		`<td class="border-b border-rule px-3.5 pt-2.5 pb-2.25"><div class="leading-5`,
+		`<td class="relative border-b border-rule px-3.5 py-row">`,
+		`<td class="border-b border-rule px-3.5 py-row"><div class="leading-5`,
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("a stacked cell sits evenly in its row, want %s in:\n%s", want, got)
@@ -1440,15 +1440,14 @@ func TestCellDetailStandsUnderItsValue(t *testing.T) {
 }
 
 // chipBox is the one chip every citation wears, the Interfaces page's: 14px
-// regular words on a 15px line, 2px above and below, inside a 1px border; the
-// shape's -mt-px, just before it, stands that 21px box on the line over its
-// 20px line, so its top and bottom borders are the grid's two lines.
-const chipBox = "inline-flex items-center align-top gap-1.5 rounded-xs border px-1.5 py-0.5 leading-[0.9375rem] whitespace-nowrap [&_svg]:-my-px text-sm font-normal"
+// regular words on a 16px line, 1px above and below, inside a 1px border, so
+// the box is 20px, exactly the line it rides.
+const chipBox = "inline-flex items-center align-top gap-1.5 rounded-xs border px-1.5 py-px leading-4 whitespace-nowrap text-sm font-normal"
 
 // chipMonoBox is the same box for a chip whose words the machine wrote: mono,
 // one step heavier (500), because mono at 400 reads a size smaller than the
 // sans beside it.
-const chipMonoBox = "inline-flex items-center align-top gap-1.5 rounded-xs border px-1.5 py-0.5 leading-[0.9375rem] whitespace-nowrap [&_svg]:-my-px text-sm font-medium font-mono"
+const chipMonoBox = "inline-flex items-center align-top gap-1.5 rounded-xs border px-1.5 py-px leading-4 whitespace-nowrap text-sm font-medium font-mono"
 
 // TestTableTagAlwaysWearsItsHairline: a tag is a chip — the same box as every
 // other chip, with the hairline of its own hue — with or without an icon.

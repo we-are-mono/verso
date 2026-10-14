@@ -709,7 +709,7 @@ func TestRenderLink(t *testing.T) {
 		`href="#section-speed"`, "data-verso-rail-link", "verso-rail-link",
 		// 28px each, its 20px line and 4px over and under, so a run of any
 		// count is a multiple of 4px; the hairline a pixel out onto the column's
-		"-ml-px flex items-center gap-2 border-l border-rule py-1 pl-4 text-sm leading-5",
+		"-ml-px flex items-center gap-1.5 border-l border-rule py-1 pl-4 text-sm leading-5",
 	} {
 		if !strings.Contains(rail, want) {
 			t.Errorf("rail link missing %q: %s", want, rail)
