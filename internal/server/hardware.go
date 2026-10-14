@@ -21,8 +21,8 @@ import (
 // handleSystemHardware renders the Hardware page: the device's own model, panel,
 // and every temperature, power rail, fan, and fibre module the kernel exposes,
 // resolved through the board profile. It reads local sysfs only (no network, no
-// blocking), so it renders fresh on each load — no cache, no stream needed for
-// correctness. Live glide of the readings and the panel LED blink are a follow-up.
+// blocking), so it renders fresh on each load, with no cache. The panel stays
+// live from the overview stream's interfaces frame; the readings are as loaded.
 func (s *Server) handleSystemHardware(w http.ResponseWriter, r *http.Request) {
 	sid := s.sessionSID(r)
 	board, boardErr := s.backend.Board(r.Context(), sid)

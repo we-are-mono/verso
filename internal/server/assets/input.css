@@ -794,7 +794,7 @@ html {
 
   /* The generated panel's neutral finish, painted by class from the palette. */
   .verso-panel-generated .verso-panel-chassis { fill: var(--color-quiet); stroke: var(--color-rule-strong); stroke-width: 1; }
-  .verso-panel-generated .verso-port-body { fill: var(--color-canvas); stroke: var(--color-rule-strong); stroke-width: 1; stroke-linejoin: round; }
+  .verso-panel-generated .verso-port-body { fill: var(--color-ground); stroke: var(--color-rule-strong); stroke-width: 1; stroke-linejoin: round; }
   .verso-panel-generated .verso-port-mouth { fill: var(--color-ink); }
   .verso-panel-generated .verso-port-pins { fill: var(--color-hw-pin); opacity: 0.5; }
   .verso-panel-generated .verso-port-socket { fill: var(--color-body); }

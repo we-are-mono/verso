@@ -204,22 +204,39 @@ fan.
 ## Back panel (optional)
 
 A board folder may carry a **`back.svg`** — artwork of the device's rear that the
-dashboard shows to non-technical users in place of the generic port strip. It is a
-**skin over the live ports layer, not a static picture**: tag each connector group
-with `data-verso-port="<iface>"` and its two LEDs with `class="led-link"` and
-`class="led-traffic"`, and the shell lights link/activity on it exactly as it does
-the generated panel — no code per board. It styles a tagged group's outline to mark
-a runtime role (the WAN port), so the role never lives in the art. `ports` gives the
-left-to-right order the generic strip uses when there is no `back.svg`. No `back.svg`
-→ the generic ports panel is drawn instead.
+Overview's Ports card and the Hardware page show in place of the panel the shell
+generates. It is a **skin over the live ports layer, not a static picture**, and the
+shell lights it exactly as it does the generated panel — no code per board. No
+`back.svg` → the generated panel is drawn instead, its ports in the order `ports`
+gives.
+
+What the art carries:
+
+- **One group per port:** `<g data-verso-port="<iface>" class="port">`, named for
+  the silicon interface, in the board's left-to-right order.
+- **The outline as the group's only direct-child `<path>`.** The shell strokes it to
+  mark a runtime role (the WAN port), so the role never lives in the art; put any
+  other path (a mouth that follows the outline) inside a nested `<g>`.
+- **Two LEDs drawn unlit:** `class="led-link"` and `class="led-traffic"`. The shell
+  paints the lit ones.
+- **Its own size in pixels.** Draw it at the size an Overview card shows it (the
+  DK's is 504×136), every box edge on an 8px line and every detail on a 4px one,
+  1px strokes half a pixel in, the chassis filling the `viewBox` from `0 0`. The
+  `viewBox` height is a multiple of 8. The shell draws the art at that size where it
+  fits and shrinks it in whole 8px steps where it does not, so it stays on the
+  layout's grid.
+
+How the shell lights it: each port group gains `is-linked` while it has link,
+`act-0` … `act-4` for how busy its traffic LED blinks (from its packets per second),
+`is-wan` on the WAN port, and a `--led-phase` so busy ports blink out of step. It is
+reachable by keyboard and labelled with its name, link and speed, and its detail
+(role, address, link) shows on hover or focus.
 
 **A submitted SVG is untrusted content and is sanitized before it renders:** inline
 only, no `<script>`, no event handlers (`on*`), no remote refs (`href`/`<image>`),
 no `<foreignObject>`, no `url()` in CSS — an allowlist of elements and attributes,
-the same posture as the `raw` widget but a larger surface. Author it with a
-`viewBox` (so it scales) and `currentColor`/theme vars (so it works in light and
-dark). The validator checks the tagged `data-verso-port` ids against the board's
-real interfaces.
+the same posture as the `raw` widget but a larger surface. The validator checks
+the tagged `data-verso-port` ids against the board's real interfaces.
 
 ## Authoring a profile
 
@@ -238,6 +255,7 @@ the exact key to paste, and validate a profile against the hardware — planned.
 See `mono_gateway-dk/profile.json` for a worked example: the LS1046A's TMU names the
 CPU site `cluster-thermal` (not `cpu-thermal`), fans come from a multi-channel
 `emc2305`, "Power" is the input rail, and the ports enumerate out of silk-screen
-order. Its `mono_gateway-dk/back.svg` is a worked back panel: five
-`data-verso-port` groups in that left-to-right order, each with `led-link` and
-`led-traffic` LEDs drawn dark, and no WAN asserted.
+order. Its `mono_gateway-dk/back.svg` is a worked back panel, 504×136 on the 8px
+grid: USB-C and reset, then five `data-verso-port` groups in that left-to-right
+order, the RJ45 jacks and SFP+ cages sharing one outline, lip and pair of LEDs
+drawn dark, and no WAN asserted.
