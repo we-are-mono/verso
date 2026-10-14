@@ -102,11 +102,10 @@ func (t *Traffic) renderInto(r *Renderer, out io.Writer, csrf string) error {
 			{Label: "up", Role: "violet", Fill: true, Values: t.Up},
 		},
 	}
-	// In an Overview card the download is denim over a soft wash and the
-	// upload its bare amethyst line.
+	// In an Overview card the download is denim and the upload amethyst, each
+	// over a soft wash of its own.
 	if t.Card {
-		chart.Series[0].Role = "denim"
-		chart.Series[1].Fill = false
+		chart.Series[0].Role, chart.Series[1].Role = "denim", "amethyst"
 	}
 	// Composed here rather than through RenderWithToken, so the chart's captions
 	// take the localization walk here (ADR-012).

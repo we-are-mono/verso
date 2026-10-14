@@ -106,6 +106,19 @@ func TestTrafficOffersItsWindow(t *testing.T) {
 	}
 }
 
+// TestACardsSeriesBothWash: in an Overview card each series stands over its
+// own soft wash, the download's denim and the upload's amethyst alike.
+func TestACardsSeriesBothWash(t *testing.T) {
+	got := render(t, newRenderer(t), &Traffic{Title: "Internet traffic", Card: true, Down: []float64{0, 1}, Up: []float64{0, 1}})
+	for _, role := range []string{"denim", "amethyst"} {
+		series := got[strings.Index(got, "verso-chart--"+role):]
+		series = series[:strings.Index(series, "</g>")]
+		if !strings.Contains(series, "verso-chart-area") {
+			t.Errorf("the %s series has no wash: %s", role, series)
+		}
+	}
+}
+
 // TestACardsWindowRidesTheLegend: in an Overview card the window is the compact
 // dropdown on the figures' first line at its right end, and swaps the graph it
 // heads, so the graph
