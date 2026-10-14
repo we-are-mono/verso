@@ -249,7 +249,7 @@
 /* Under the header's hairline the body takes its pixel back, so what stands
  * first (a field's air, a block's 24px) starts its lines on the grid. A
  * listing that opens the body stands straight on the hairline instead. */
-.verso-page-body section[data-verso-section]:not(section section, dialog *) > [data-verso-section-band]:not(:has([data-verso-section-lede])) + .verso-rhythm:not(:has(> [data-verso-listing]:first-child)) {
+.verso-page-body section[data-verso-section]:not(section section, dialog *) > [data-verso-section-band] + .verso-rhythm:not(:has(> [data-verso-listing]:first-child)) {
   margin-top: -1px;
 }
 .verso-page-body :not(input[type="hidden"], template, script, [hidden]) ~ section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]):not(section section, dialog *),
@@ -279,16 +279,12 @@
 .verso-page-body section[data-verso-section]:not(section section, dialog *) > [data-verso-section-band] h2 {
   font-size: var(--text-base);
 }
-/* A lede is the first thing in the card's body, under the header's hairline. */
-.verso-page-body section[data-verso-section]:not(section section, dialog *) > [data-verso-section-band]:has([data-verso-section-lede]) {
-  padding-bottom: 0;
-  border-bottom-width: 0;
-}
-.verso-page-body section[data-verso-section]:not(section section, dialog *) > [data-verso-section-band] > :has(> [data-verso-section-lede]) {
-  width: calc(100% + var(--verso-side) * 2);
-  margin: calc(var(--spacing) * 3) calc(var(--verso-side) * -1) 0;
-  border-top: 1px solid var(--color-rule);
-  padding: calc(var(--spacing-inset) - 1px) var(--verso-side) 0;
+/* A lede belongs to the header: its lines stand straight under the title's,
+ * over the header's hairline, so the header grows by a 24px line for each of
+ * them and its hairline still lands on a line. It reads one step heavier
+ * than a lede elsewhere, at 400, so it holds its own beside the title. */
+.verso-page-body section[data-verso-section]:not(section section, dialog *) > [data-verso-section-band] [data-verso-section-lede] {
+  font-weight: 400;
 }
 /* A row stands 7px after the hairline over it. A table with no column heads
  * has none over its first row, so it stands a pixel down, as if under one,
@@ -298,7 +294,7 @@
 .verso-page-body .verso-table:not(:has(> thead)):not(dialog *) {
   padding-top: 1px;
 }
-.verso-page-body section[data-verso-section] > [data-verso-section-band]:not(:has([data-verso-section-lede])) + .verso-rhythm > [data-verso-listing]:first-child .verso-table {
+.verso-page-body section[data-verso-section] > [data-verso-section-band] + .verso-rhythm > [data-verso-listing]:first-child .verso-table {
   padding-top: 0;
 }
 /* A listing in a card's flow closes on its last row's hairline, on a line,
@@ -396,7 +392,7 @@
 }
 /* A listing that opens a titled card's body stands straight under the
  * header's hairline, which is its top edge on the line. */
-.verso-page-body section[data-verso-section]:not(section section, dialog *) > [data-verso-section-band]:not(:has([data-verso-section-lede])) + .verso-rhythm > [data-verso-listing]:first-child {
+.verso-page-body section[data-verso-section]:not(section section, dialog *) > [data-verso-section-band] + .verso-rhythm > [data-verso-listing]:first-child {
   --verso-head-top: 0px;
   margin-top: 0;
 }
