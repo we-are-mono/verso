@@ -63,7 +63,7 @@ A generated panel SHALL draw a port as an SFP+ cage when the device tree wires i
 - **THEN** the port is drawn as an RJ45 jack
 
 ### Requirement: Connector art is one family
-Both connector kinds SHALL share one outline, lip and pair of LEDs under the mouth. An RJ45 jack has a dark mouth with eight contact pins at its top. An SFP+ cage is shorter, its top lower than a jack's, with a dark mouth holding the connector socket. A generated panel is drawn in the shell's palette in light and dark themes; board art keeps its own finish.
+Both connector kinds SHALL share one outline, lip and pair of LEDs under the mouth. An RJ45 jack has a dark mouth with eight contact pins at its top. An SFP+ cage is shorter, its top lower than a jack's, with a dark mouth holding the connector socket. A generated panel is a chassis holding its ports in one row, drawn in the shell's palette in light and dark themes; board art keeps its own finish.
 
 #### Scenario: A mixed panel
 - **WHEN** a generated panel holds RJ45 and SFP+ ports
@@ -71,7 +71,7 @@ Both connector kinds SHALL share one outline, lip and pair of LEDs under the mou
 - **AND** the SFP+ cages' tops stand lower than the jacks'
 
 ### Requirement: Each port says its name and speed
-Each port on a generated panel SHALL carry its interface name and its negotiated link speed under the connector, the speed showing a dash while the port has no link. Hovering or focusing a port SHALL show its detail: name, role, address and link.
+Each port on a generated panel SHALL carry its interface name and its negotiated link speed under the connector, the speed showing a dash while the port has no link. On board art and generated panels alike, each port SHALL be reachable by keyboard, and hovering or focusing it SHALL show its detail: name, role, address and link.
 
 #### Scenario: A gigabit link
 - **WHEN** `lan1` links at 1000 Mb/s
@@ -80,6 +80,11 @@ Each port on a generated panel SHALL carry its interface name and its negotiated
 #### Scenario: No link
 - **WHEN** `lan2` has no cable
 - **THEN** its speed reads as a dash
+
+#### Scenario: Keyboard on the DK's art
+- **WHEN** the operator tabs to `eth0` on the DK's panel
+- **THEN** `eth0`'s detail shows above it, naming its role, address and link
+- **AND** Escape hides it
 
 ### Requirement: The link LED follows the cable live
 A port's link LED SHALL be lit while the port has link and dark while it has none, on board art and generated panels alike, and SHALL change within one second of a cable being plugged in or pulled out, with no reload.
@@ -122,7 +127,7 @@ The port carrying the WAN SHALL be marked on the panel, on board art and generat
 - **THEN** `eth0`'s connector carries the WAN mark and no other port does
 
 ### Requirement: The panel fits its card in one row
-The panel SHALL keep every port in one row at the width of the card holding it, drawing connectors smaller as ports grow in number or the card narrows. Port labels SHALL keep a readable minimum size; where a label would not fit, the port's hover detail still names it.
+The panel SHALL keep every port in one row at the width of the card holding it, drawing the whole panel smaller as ports grow in number or the card narrows. Labels shrink with the panel; the port's hover and focus detail always names it at full size.
 
 #### Scenario: An eight-port box in a narrow card
 - **WHEN** a board with eight ports renders in a card narrower than eight full-size connectors

@@ -8,9 +8,10 @@ The Overview's Ports card is a table, so you have to read words to find out whic
 
 - **The Ports card opens with the device's panel**, its table below. On the DK it is the board's own art; on any other board it is a generated panel of the ports Verso finds.
 - **The LEDs are live.** Link lights follow the cable each second. The traffic LED blinks at a rate that follows the port's packets per second: dark when idle, an occasional blip on a trickle, a steady blink, a fast flicker, and a near-solid flicker under heavy load. Busy ports do not blink in step. With reduced motion the traffic LED stays lit while traffic flows.
-- **The generated panel uses the DK's connector shapes**: one outline, lip and LED pair for both kinds; RJ45 has a dark mouth with eight contact pins, SFP+ a shorter cage with a dark mouth and the connector socket inside. It is drawn in the shell's palette, not the DK's dark finish.
+- **The generated panel is a whole panel like the DK's**: a chassis holding the ports, with the DK's connector shapes (one outline, lip and LED pair for both kinds; RJ45 with a dark mouth and eight contact pins, SFP+ a shorter cage with its socket inside) and each port's name and speed under it. It is drawn in the shell's palette, not the DK's dark finish, and it is lit, sized and explained exactly as board art is.
+- **Every port explains itself**: on board art and generated panels alike, a port can be reached by keyboard, and hovering or focusing it shows its role, address and link.
 - **Ports are found, not assumed.** Order comes from the board profile, else from OpenWrt's `/etc/board.json`, else from a natural sort of the names. A port is SFP+ when the device tree wires its MAC to an SFP cage or the driver reports fibre or direct-attach, else RJ45. Wireless, virtual and DSA conduit devices are not ports. Each port is labelled with its name and link speed.
-- **Many ports fit**: the panel stays one row and the connectors draw smaller to fit the card; labels keep a readable minimum size and every port keeps its hover detail.
+- **Many ports fit**: the panel stays one row and draws smaller to fit the card, its labels with it; every port keeps its full-size detail on hover and focus.
 - **The panel stands on the 8px grid, at the card's left**: its art is always a whole number of 8px steps tall, shrinking step by step, and it starts at the card's left edge like the text and tables, never centred.
 - **System › Hardware shows the same live panel.**
 - **The DK's `back.svg` is redrawn** (already in the working tree):

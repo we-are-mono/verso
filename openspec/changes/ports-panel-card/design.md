@@ -53,7 +53,7 @@ The sampler reads `/sys/class/net/<if>/speed` for physical interfaces each tick,
 
 ### 4. One lighting vocabulary on the port group
 
-Board art and generated ports wear the same classes on their `data-verso-port` element: `is-linked`, `is-wan`, and `act-0` … `act-4`. Each port also carries an inline `style="--led-phase: N"`, where N is a fraction from 0 to 7/8. The generated template renames its traffic LED from `led-act` to `led-traffic`, so one rule set covers both. `litPanel` adds the activity class and the phase variable beside what it adds today. `is-active` goes away; nothing outside these files uses it.
+Board art and the generated panel are the same kind of thing, an SVG of `data-verso-port` groups (decision 6), so one `litPanel` pass lights both. Each port group gets the classes `is-linked`, `is-wan` and `act-0` … `act-4`, and an inline `style="--led-phase: N"`, where N is a fraction from 0 to 7/8. `is-active` goes away; nothing outside these files uses it.
 
 - **Blinking** is pure CSS. Each level sets `--led-period` and names its keyframes:
   - level 1: a short on-pulse in a long period;
@@ -76,23 +76,25 @@ The Hardware page opens `/overview/events?reads=interfaces`. With `reads` set, t
 
 ### 6. Generated panel art
 
-`ports.html.tmpl`'s generated branch drops the dark chassis and screws. Each port is an inline SVG in a 48×48 box (pixels at native size), using the connector geometry from `back.svg` translated to the origin. Generated ports and the DK's ports are therefore the same size.
+A board without art gets a whole-panel SVG, written in Go by the `ports` widget from its items: a chassis holding the ports left to right, each with its name and speed under it. The result is passed through exactly the path board art takes (`litPanel`, the same CSS, the same sizing and the same tooltip), so there is one way a panel is drawn and lit. The generated-strip branch of `ports.html.tmpl` (the dark chassis, the screws, the per-port SVGs and their HTML labels) is removed.
 
-- **Shared:** a 48-wide outline with its body 40 tall and a 24-wide lip 6 under it (half the port's width, as the original art had it), and two 8×4 LEDs beside the lip, 2 from it, from the body's bottom edge and from the port's side, their bottoms level with the lip's. The generated `viewBox` is `0 0 48 48`, the DK's port geometry moved to the origin, so the connector fills its box.
+**Layout, in pixels at native size, every box edge on an 8px line:**
+- the chassis fills the `viewBox`, 136 high, with 24 inside it on the left and right;
+- ports are 48 wide and 8 apart, with 16 where the connector kind changes (RJ45 to SFP+), as on the DK;
+- the native width is `24 + N·48 + gaps + 24`;
+- ports stand on the DK's lines: the RJ45 body from 24 to 64, the SFP+ body from 32, the lip and LEDs to 70;
+- the name is on the 80–104 line, and the speed on the 104–128 line in a `<text data-verso-port-speed>` the stream rewrites.
+
+**Connector geometry**, shared with `back.svg`:
+- **Shared:** a 48-wide outline with its body 40 tall and a 24-wide lip 6 under it (half the port's width, as the original art had it), and two 8×4 LEDs beside the lip, 2 from it, from the body's bottom edge and from the port's side, their bottoms level with the lip's.
 - **RJ45:** a mouth that follows the outline and its lip 4 in all round (40×32 with a 16×6 keyway under it), and 8 pins, 1.5×8, 3 apart. The mouth is a path inside a group, so the outline stays the port's only direct-child `<path>`.
 - **SFP+:** the outline top 8 lower, a 40×24 mouth, and the 24×8 socket with its slit.
 
 Strokes are 1px and sit half a pixel in, so at 1:1 every box edge stands on an 8px line and every detail on a 4px one.
 
-Fills are classes (`verso-port-body`, `-mouth`, `-pin`, `-socket`) coloured from palette tokens in light and dark. The exact neutral finish is settled by building it and trying it on the device. Ports are inlined per port, not shared through `<use>`: per-port classes must reach each LED, and styling inside a `<use>` shadow tree is awkward.
+Fills are classes (`verso-panel-chassis`, `verso-port-body`, `-mouth`, `-pin`, `-socket`, `-label`, `-speed`), not presentation attributes, coloured from palette tokens in light and dark. The exact neutral finish is settled by building it and trying it on the device. Each port is drawn in full, not shared through `<use>`: per-port classes must reach each LED, and styling inside a `<use>` shadow tree is awkward.
 
-**Scaling, on the 8px grid, left aligned:** the panel wrapper is a size container that starts at the content's left edge. The template sets `style="--ports: N"`, the port count. Each port's art is sized `round(down, min(3rem, (100cqi - (var(--ports) - 1) * 0.5rem) / var(--ports)), 0.5rem)`. It is drawn at its native 48px whenever the row fits, which is pixel-true on the grid, and shrinks in whole 8px steps when it doesn't. It never scales up.
-
-- Every port gets the same size, 8px apart, as on the DK.
-- The row starts on the content's left edge, and any spare width lies to the right of the last port.
-- Labels and speed sit on 24px lines under the art (layout-grid), so the block ends on a line.
-- Labels keep a 0.6875rem floor and clip with an ellipsis.
-- The hover tip (HTML, as now) always names the port.
+**Port detail, hover and focus, for every panel:** `litPanel` gives each port group `tabindex="0"`, `role="img"` and an `aria-label` naming the port and its state ("eth2, connected, 1G"). The widget renders one hidden HTML detail per port beside the art (name, role, address, link), keyed by `data-verso-port-tip="<iface>"`. A small script shows the matching detail positioned above a port group on hover or focus, and hides it on leave, blur or Escape. The DK art gains the detail and keyboard reach it lacked. The stream updates the detail's link slot and the group's `aria-label` with the rest of the port's state.
 
 **Board art on the grid:** art is authored in pixels at its native size, the size it is drawn at in an Overview card. Every box edge is on an 8px line, every detail on a 4px one, and the chassis fills the `viewBox` edge to edge. The DK's `back.svg` is 504×136: an Overview column's card content at the widest page measure is 504px.
 
@@ -102,13 +104,15 @@ The art's `<svg>` is sized `height: min(var(--art-h), round(down, 100cqi * var(-
 - never scales up;
 - keeps its proportions and stands at the content's left edge.
 
-The template sets `style="--art-h: Hpx; --art-aspect: H/W"` on the wrapper, and `readPanel` reads H and W from the art's `viewBox` when it loads the file. A board needs no setting for it, and the art contract (decision 8) requires a `viewBox` whose height is a multiple of 8.
+The template sets `style="--art-h: Hpx; --art-aspect: H/W"` on the wrapper. `readPanel` reads H and W from the art's `viewBox` when it loads the file; the generator knows them already. A generated panel wider than the card (a 12-port box is 744 native) shrinks by the same rule. A board needs no setting for it, and the art contract (decision 8) requires a `viewBox` whose height is a multiple of 8.
 
 CSS `round()` is in every engine Verso supports (Chromium 125+, Firefox 118+, Safari 15.4+). On an older engine the art falls back to the unrounded size, which is correct but off the grid.
 
 The eight-pixel-grid guard tests in `assets_test.go` gain one: every panel art height in the stylesheet is a `round(down, …, 0.5rem)`.
 
-The `ports` widget stays one widget. This is a restyle of its generated branch, not a new widget, so ADR-005's closed set is unchanged.
+The `ports` widget stays one widget. Its generated drawing changes, but no new widget is added, so ADR-005's closed set is unchanged.
+
+*Alternative:* a row of separate per-port SVGs with HTML labels. Rejected: it needed its own sizing formula, its own lighting markup and its own tooltip, beside the art's, and gave an unprofiled board loose connectors instead of a panel.
 
 ### 7. Widget contract
 

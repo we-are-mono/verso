@@ -7,8 +7,8 @@
 
 ## 2. Port inventory (`internal/ports`)
 
-- [ ] 2.1 Write table tests for `Activity(pps)` at 0, 1, 9, 10, 999, 1000, 99999 and 100000 (levels 0,1,1,2,2,3,3,4), and for `Phase(name)`, which must be stable and one of 0, 1/8 … 7/8. Then implement both. Verify with `go test ./internal/ports`.
-- [ ] 2.2 Write tests for the speed formatter: 10→`10M`, 100→`100M`, 1000→`1G`, 2500→`2.5G`, 10000→`10G`, -1→dash. Then implement it. Verify with `go test ./internal/ports`.
+- [x] 2.1 Write table tests for `Activity(pps)` at 0, 1, 9, 10, 999, 1000, 99999 and 100000 (levels 0,1,1,2,2,3,3,4), and for `Phase(name)`, which must be stable and one of 0, 1/8 … 7/8. Then implement both. Verify with `go test ./internal/ports`.
+- [x] 2.2 Write tests for the speed formatter: 10→`10M`, 100→`100M`, 1000→`1G`, 2500→`2.5G`, 10000→`10G`, -1→dash. Then implement it. Verify with `go test ./internal/ports`.
 - [ ] 2.3 Write tests for board.json port order, using fixtures with:
   - `wan.device` + `lan.ports`;
   - `wan.ports` + `lan.device`;
@@ -33,26 +33,28 @@
   - `litPanel` adds `act-N` and `--led-phase` beside `is-linked`/`is-wan`, and no longer adds `is-active`.
   
   Then add `Activity` and `Speed` to `PortItem` and update `litPanel`. Verify with `go test ./internal/widget`.
-- [ ] 3.2 Write template tests for the generated branch:
-  - an RJ45 port renders the outline, mouth and 8 pins;
-  - an SFP port renders the lowered outline, mouth and socket;
-  - both carry `led-link`/`led-traffic`, the `act-N` class and `--led-phase` on the `data-verso-port` element;
-  - the speed slot holds the formatted speed;
-  - each generated port's SVG has the `viewBox` `0 0 48 48`;
-  - the wrapper carries `--ports: N`, and the art wrapper carries `--art-h` and `--art-aspect` read from the art's `viewBox`.
+- [ ] 3.2 Write generator tests for the whole-panel SVG a board without art gets:
+  - its `viewBox` is `0 0 W 136`, with W = 24 + N·48 + gaps + 24 (8 between ports, 16 where the kind changes);
+  - every port is a `<g data-verso-port="…" class="port">` whose only direct-child `<path>` is its outline, with one `led-link` and one `led-traffic`;
+  - an RJ45 port has the lip-following mouth and 8 pins; an SFP port has the lowered outline, the mouth and the socket;
+  - each port's name and its speed (`<text data-verso-port-speed>`) stand under it;
+  - every box edge is on an 8px line;
+  - fills are classes, with no `fill=` colours;
+  - names are escaped.
   
-  Then rewrite the generated branch of `ports.html.tmpl` with the connector geometry from `back.svg`, dropping the chassis and screws. Verify with `go test ./internal/widget`.
-- [ ] 3.3 Write the CSS in `input.css`:
-  - one rule set lighting `led-link`/`led-traffic` for art and generated ports alike;
+  Then write the generator, and make `Ports` render it through `litPanel` when it has no art. Remove the generated-strip branch from `ports.html.tmpl`. Verify with `go test ./internal/widget`.
+- [ ] 3.3 Write tests for port detail: `litPanel` gives each port group `tabindex="0"`, `role="img"` and an `aria-label` with name, state and speed. The widget renders one hidden detail per port, keyed `data-verso-port-tip="<iface>"`, with name, role, address and an empty link slot. The art wrapper carries `--art-h` and `--art-aspect` from the `viewBox`. Then implement them in `ports.go` and `ports.html.tmpl`. Verify with `go test ./internal/widget`.
+- [ ] 3.4 Write the CSS in `input.css`:
+  - one rule set lighting `led-link`/`led-traffic`;
   - `act-1`–`act-4` keyframes with `--led-period`, and a delay from `--led-phase`;
   - a reduced-motion override that keeps the LED lit without blinking;
-  - neutral connector fills from palette tokens for light and dark;
-  - a left-aligned single row whose port art is `round(down, min(3rem, …), 0.5rem)` from `--ports`, 8px apart;
-  - board art height `min(var(--art-h), round(down, 100cqi * var(--art-aspect), 0.5rem))`, never scaled up;
-  - a minimum label size and ellipsis, with labels on 24px lines.
+  - the generated panel's neutral fills from palette tokens for light and dark;
+  - art height `min(var(--art-h), round(down, 100cqi * var(--art-aspect), 0.5rem))`, left aligned, never scaled up;
+  - the port detail's look, and a focus ring on a port group.
   
-  First add a guard test to `assets_test.go`'s eight-pixel-grid family: every panel art height in the stylesheet is a `round(down, …, 0.5rem)`. Remove the old chassis/screw/`led-act` rules. Then `make css`, and verify with `make test` and by loading System › Hardware in the dev container.
-- [ ] 3.4 Update ADR-005 in place: the `ports` widget's generated branch, its activity level, and the boolean kept for plugins. Update the `ports` widget entry in `docs/plugins.md` with `activity` and `speed`. Verify both documents name `activity` (0–4), `speed`, and the boolean `active` fallback.
+  First add a guard test to `assets_test.go`'s eight-pixel-grid family: every panel art height in the stylesheet is a `round(down, …, 0.5rem)`. Remove the old chassis/screw/`led-act`/`verso-port-tip` hover rules. Then `make css`, and verify with `make test` and by loading System › Hardware in the dev container.
+- [ ] 3.5 Write the port-detail script: on hover or focus of a `[data-verso-port]` group, show its `data-verso-port-tip` detail positioned above the group; hide it on leave, blur or Escape. It is a CSP-safe Alpine component or a plain listener in `verso.js`, with no expressions in bindings. Verify in the dev container with the Playwright browser: hovering and tabbing to a port on System › Hardware shows its detail, and Escape hides it.
+- [ ] 3.6 Update ADR-005 in place: the `ports` widget's generated branch, its activity level, and the boolean kept for plugins. Update the `ports` widget entry in `docs/plugins.md` with `activity` and `speed`. Verify both documents name `activity` (0–4), `speed`, and the boolean `active` fallback.
 
 ## 4. One panel builder, both surfaces
 
@@ -79,7 +81,7 @@
   - without `reads`, frames are unchanged.
   
   Then implement the `reads` allowlist. Verify with `go test ./internal/server`.
-- [ ] 5.3 In `verso-stream.js`: add `[data-verso-port]` to the start condition. Have `applyInterface` toggle `is-linked`/`is-empty`, swap `act-N`, and write the speed slot on matching port groups. Make the Hardware page's panel open `/overview/events?reads=interfaces`. Verify in the dev container with the Playwright browser: generating traffic on a port changes its `act-N` class within a second on the Overview and on System › Hardware, with the Ports card hidden.
+- [ ] 5.3 In `verso-stream.js`: add `[data-verso-port]` to the start condition. Have `applyInterface` toggle `is-linked`/`is-empty`, swap `act-N`, and write the speed slot on matching port groups, along with the group's `aria-label` and its detail's link slot. Make the Hardware page's panel open `/overview/events?reads=interfaces`. Verify in the dev container with the Playwright browser: generating traffic on a port changes its `act-N` class within a second on the Overview and on System › Hardware, with the Ports card hidden.
 - [ ] 5.4 Update `profiles/README.md`'s back-panel section with the art contract and lighting classes (design decision 8). Update DESIGN.md with the panel's look, LED meanings and blink levels. Reword the comments in `input.css` and `hardware.go` that call the panel blink "a follow-up" so they state what is. Verify by grepping the touched files for "follow-up" next to the panel.
 
 ## 6. Board art and integration
