@@ -9,31 +9,35 @@
 
 - [x] 2.1 Write table tests for `Activity(pps)` at 0, 1, 9, 10, 999, 1000, 99999 and 100000 (levels 0,1,1,2,2,3,3,4), and for `Phase(name)`, which must be stable and one of 0, 1/8 … 7/8. Then implement both. Verify with `go test ./internal/ports`.
 - [x] 2.2 Write tests for the speed formatter: 10→`10M`, 100→`100M`, 1000→`1G`, 2500→`2.5G`, 10000→`10G`, -1→dash. Then implement it. Verify with `go test ./internal/ports`.
-- [ ] 2.3 Write tests for board.json port order, using fixtures with:
+- [x] 2.3 Write tests for board.json port order, using fixtures with:
   - `wan.device` + `lan.ports`;
   - `wan.ports` + `lan.device`;
   - no network section;
   - malformed JSON (no order, no error surfaced).
   
   Then implement the parser, separate from `boardIdentity`. Share one once-per-process read of `/etc/board.json` with `nameplate.go`. Verify with `go test ./internal/ports ./internal/server`.
-- [ ] 2.4 Write tests for ordering: profile order wins; board.json order next, with the rest after it; natural sort last (`eth1, eth2, eth10`); conduits, wireless and virtual devices are excluded. Then implement `Order`. Verify with `go test ./internal/ports`.
-- [ ] 2.5 Write tests for kind detection with a fixture sysfs tree and a fake link-settings prober:
+- [x] 2.4 Write tests for ordering: profile order wins; board.json order next, with the rest after it; natural sort last (`eth1, eth2, eth10`); conduits, wireless and virtual devices are excluded. Then implement `Order`. Verify with `go test ./internal/ports`.
+- [x] 2.5 Write tests for kind detection with a fixture sysfs tree and a fake link-settings prober:
   - `device/of_node/sfp` present → sfp;
   - prober says FIBRE or DA → sfp;
   - TP, an error, or no answer → rj45.
   
   Then implement the prober over `SIOCETHTOOL`/`ETHTOOL_GLINKSETTINGS` with the two-call handshake. `golang.org/x/sys/unix` becomes a direct dependency. Verify with `go test ./internal/ports` and `make lint` (deadcode on arm64 and x86_64).
 - [ ] 2.6 Run the kind prober read-only on the bench DUT or dev container and record the result in the task note: what eth3/eth4 report on the DK, and what a VM's virtio NIC reports. Verify against the panel's drawn kinds.
+  - Dev host: `eno1`/`eno2` (Intel) report TP → rj45; `enp1s0` (Mellanox mlx4) reports FIBRE → sfp; `lo` answers nothing.
+  - Dev container: the veths `eth0`/`lan0`/`wan0` report TP → rj45, and the unprivileged read works there. They have no `device` link, so the container has no physical ports to draw.
+  - DK device tree: `sfp = <&sfp_xfi0/1>` sits on the 10G MAC nodes (`ethernet@f0000`/`@f2000`). Whether `/sys/class/net/eth3/device/of_node` is that MAC node or the `fsl,dpa-ethernet` node needs reading on hardware: `readlink -f /sys/class/net/eth3/device/of_node; ls /sys/class/net/eth3/device/of_node | grep -x sfp; ethtool eth3 | grep Port`.
+  - The DK also exposes its SFP cage LEDs as `sfp0:link`/`sfp0:activity` GPIO LEDs.
 
 ## 3. The `ports` widget: activity, speed, generated art
 
-- [ ] 3.1 Write `ports_test.go` cases:
+- [x] 3.1 Write `ports_test.go` cases:
   - effective level: `Activity` 3 wins over `Active`; `Active: true` alone is level 2; neither is 0;
   - a wire-decoded `{"active": true}` port renders `act-2`;
   - `litPanel` adds `act-N` and `--led-phase` beside `is-linked`/`is-wan`, and no longer adds `is-active`.
   
   Then add `Activity` and `Speed` to `PortItem` and update `litPanel`. Verify with `go test ./internal/widget`.
-- [ ] 3.2 Write generator tests for the whole-panel SVG a board without art gets:
+- [x] 3.2 Write generator tests for the whole-panel SVG a board without art gets:
   - its `viewBox` is `0 0 W 136`, with W = 24 + N·48 + gaps + 24 (8 between ports, 16 where the kind changes);
   - every port is a `<g data-verso-port="…" class="port">` whose only direct-child `<path>` is its outline, with one `led-link` and one `led-traffic`;
   - an RJ45 port has the lip-following mouth and 8 pins; an SFP port has the lowered outline, the mouth and the socket;
@@ -43,7 +47,7 @@
   - names are escaped.
   
   Then write the generator, and make `Ports` render it through `litPanel` when it has no art. Remove the generated-strip branch from `ports.html.tmpl`. Verify with `go test ./internal/widget`.
-- [ ] 3.3 Write tests for port detail: `litPanel` gives each port group `tabindex="0"`, `role="img"` and an `aria-label` with name, state and speed. The widget renders one hidden detail per port, keyed `data-verso-port-tip="<iface>"`, with name, role, address and an empty link slot. The art wrapper carries `--art-h` and `--art-aspect` from the `viewBox`. Then implement them in `ports.go` and `ports.html.tmpl`. Verify with `go test ./internal/widget`.
+- [x] 3.3 Write tests for port detail: `litPanel` gives each port group `tabindex="0"`, `role="img"` and an `aria-label` with name, state and speed. The widget renders one hidden detail per port, keyed `data-verso-port-tip="<iface>"`, with name, role, address and an empty link slot. The art wrapper carries `--art-h` and `--art-aspect` from the `viewBox`. Then implement them in `ports.go` and `ports.html.tmpl`. Verify with `go test ./internal/widget`.
 - [ ] 3.4 Write the CSS in `input.css`:
   - one rule set lighting `led-link`/`led-traffic`;
   - `act-1`–`act-4` keyframes with `--led-period`, and a delay from `--led-phase`;
@@ -58,7 +62,7 @@
 
 ## 4. One panel builder, both surfaces
 
-- [ ] 4.1 Write `hardware_test.go` cases for `devicePanel`:
+- [x] 4.1 Write `hardware_test.go` cases for `devicePanel`:
   - the DK profile yields the art plus five items in profile order, with kinds from the profile's art;
   - an unprofiled inventory yields items with order, kind, activity, phase, speed and WAN role set;
   - a conduit is absent.

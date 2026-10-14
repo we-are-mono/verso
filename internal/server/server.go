@@ -32,6 +32,7 @@ import (
 	"github.com/we-are-mono/verso/internal/listen"
 	"github.com/we-are-mono/verso/internal/openwrt"
 	"github.com/we-are-mono/verso/internal/plugin"
+	"github.com/we-are-mono/verso/internal/ports"
 	"github.com/we-are-mono/verso/internal/sysstat"
 	"github.com/we-are-mono/verso/internal/telemetry"
 	"github.com/we-are-mono/verso/internal/updatecheck"
@@ -181,6 +182,11 @@ type Server struct {
 	readLeases  func() ([]byte, error)
 	neighbors   func() ([]sysstat.Neighbor, error)
 	bridgePorts func() (map[string]string, error)
+	// portKinds says which connector each port is, and boardJSON is OpenWrt's
+	// board description; both feed the router's panel (port_panel.go), behind
+	// seams so tests read neither the kernel nor /etc.
+	portKinds portKinds
+	boardJSON func() []byte
 	// wanHist accumulates the WAN device's throughput history from the same
 	// stream's once-a-second counter observations (wan_history.go).
 	wanHist *wanHistory
@@ -265,6 +271,8 @@ func New(
 		readLeases:     func() ([]byte, error) { return os.ReadFile(leasesPath) },
 		neighbors:      sysstat.Neighbors,
 		bridgePorts:    sysstat.BridgePorts,
+		portKinds:      ports.NewKinds(),
+		boardJSON:      boardJSON,
 		wanHist:        newWanHistory(time.Now),
 		maintenanceDir: "/var/run/verso",
 		stateDir:       updatecheck.DefaultDir,

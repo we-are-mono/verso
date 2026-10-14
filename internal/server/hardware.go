@@ -14,7 +14,6 @@ import (
 
 	"github.com/we-are-mono/verso/internal/openwrt"
 	"github.com/we-are-mono/verso/internal/sensors"
-	"github.com/we-are-mono/verso/internal/telemetry"
 	"github.com/we-are-mono/verso/internal/widget"
 	"github.com/we-are-mono/verso/profiles"
 )
@@ -51,7 +50,7 @@ func (s *Server) handleSystemHardware(w http.ResponseWriter, r *http.Request) {
 func (s *Server) hardwareBody(r *http.Request, board openwrt.Board, profile *sensors.Profile, inv sensors.Inventory) []widget.Widget {
 	var out []widget.Widget
 
-	if panel := s.hardwarePanel(r, board, profile); panel != nil {
+	if panel := s.hardwarePanel(r, profile); panel != nil {
 		out = append(out, panel)
 	}
 	_, t := s.localize(r)
@@ -75,22 +74,13 @@ func (s *Server) hardwareBody(r *http.Request, board openwrt.Board, profile *sen
 	return out
 }
 
-// hardwarePanel renders the rear panel: the profile's own back.svg (lit from live
-// port state) when it ships one, else the generated connector strip drawn from the
-// box's physical interfaces. A box with no ports at all shows nothing.
-func (s *Server) hardwarePanel(r *http.Request, board openwrt.Board, profile *sensors.Profile) widget.Widget {
-	snapshot, _ := s.telemetrySnapshot(r.Context())
-	wan, _ := s.backend.WANStatus(r.Context(), s.sessionSID(r))
-	items := panelPorts(profile, snapshot, wan)
-	if len(items) == 0 {
-		return nil
+// hardwarePanel renders the router's panel (port_panel.go). A box with no
+// ports at all shows nothing.
+func (s *Server) hardwarePanel(r *http.Request, profile *sensors.Profile) widget.Widget {
+	if panel := s.devicePanel(r.Context(), s.sessionSID(r), profile); panel != nil {
+		return panel
 	}
-	p := &widget.Ports{Items: items, Legend: true}
-	if profile != nil {
-		p.Back = readPanel(profile.Dir, "back.svg")
-		p.Front = readPanel(profile.Dir, "front.svg")
-	}
-	return p
+	return nil
 }
 
 // readPanel loads a profile folder's embedded panel artwork, empty when the folder
@@ -108,45 +98,6 @@ func readPanel(dir, file string) string {
 		return ""
 	}
 	return string(data)
-}
-
-// panelPorts builds the panel's port list — ordered by the profile's left-to-right
-// ports when one exists, else the box's physical interfaces — carrying each port's
-// live link, traffic, and WAN role so the panel lights from real state.
-func panelPorts(profile *sensors.Profile, snapshot telemetry.Snapshot, wan openwrt.WANState) []widget.PortItem {
-	wanDevice := map[string]bool{}
-	for _, d := range wan.Devices {
-		wanDevice[d.Device] = true
-	}
-	order := []string{}
-	if profile != nil && len(profile.Ports) > 0 {
-		order = profile.Ports
-	} else {
-		for _, iface := range snapshot.Interfaces {
-			if iface.Physical && iface.Name != "lo" && iface.Kind != "wireless" {
-				order = append(order, iface.Name)
-			}
-		}
-	}
-	items := make([]widget.PortItem, 0, len(order))
-	for _, name := range order {
-		linked, active := false, false
-		if iface, ok := snapshot.Interface(name); ok {
-			linked = iface.Operstate == "up"
-			if n := len(iface.History); n > 0 {
-				point := iface.History[n-1]
-				active = point.RxBPS > 0 || point.TxBPS > 0
-			}
-		}
-		role := ""
-		if wanDevice[name] {
-			role = "wan"
-		}
-		items = append(items, widget.PortItem{
-			Kind: "rj45", Label: name, Verbatim: true, Iface: name, Linked: linked, Active: active, Role: role,
-		})
-	}
-	return items
 }
 
 // hardwareVitals is the headline instrument grid — the CPU temperature, the main
