@@ -118,6 +118,14 @@
   section[data-verso-section]:has(> [data-verso-section-band]) > .verso-rhythm > :not(input[type="hidden"], [hidden]):not(:not(input[type="hidden"], [hidden]) ~ *):not(.verso-field-row, .verso-form-grid, .verso-conditional, form:not([data-verso-compact-form]):has(.verso-field-row, .verso-form-grid, .verso-conditional), [data-verso-change-field], [data-verso-settings]) {
     margin-top: var(--spacing-inset);
   }
+  /* A notice that opens the body stands as far over what follows as it
+     stands under the title: 24px, a field's own air or that much margin. */
+  section[data-verso-section]:has(> [data-verso-section-band]) > .verso-rhythm > [data-verso-callout]:not(:not(input[type="hidden"], [hidden]) ~ *) + * {
+    margin-top: var(--spacing-inset);
+  }
+  section[data-verso-section]:has(> [data-verso-section-band]) > .verso-rhythm > [data-verso-callout]:not(:not(input[type="hidden"], [hidden]) ~ *) + :is(.verso-field-row, .verso-form-grid, .verso-conditional, form:not([data-verso-compact-form]):has(.verso-field-row, .verso-form-grid, .verso-conditional), [data-verso-change-field], [data-verso-settings]) {
+    margin-top: 0;
+  }
   section[data-verso-section]:has(> [data-verso-section-band]),
   .verso-page-body > .verso-stack > section[data-verso-section]:has(> [data-verso-section-band]) {
     margin-top: 0;

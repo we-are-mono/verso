@@ -110,10 +110,8 @@ own and points at the decision that governs it; the rationale lives there, not h
 
 ## Page cards
 
-- **Paddings and margins.** By the owner's eye on the 8px grid: the space
-  under a card's opening warning (Access, from the exposure warning to the
-  first web field) and the firmware card's gaps on Maintenance, where blocks
-  inside a card stand 40px apart.
+- **Paddings and margins.** By the owner's eye on the 8px grid: the firmware
+  card's gaps on Maintenance, where blocks inside a card stand 40px apart.
 - **An empty page listing.** VPN and Dynamic DNS with nothing in them stand
   their empty slot loose on the sand rather than in a card.
 

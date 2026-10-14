@@ -417,6 +417,7 @@ A warning (marigold) or an error (crimson) said in place, on the tone's Wash, ev
 - **One size:** the title and the text under it are both 14px on 24px lines; the title is bold (600), the text regular, 7px after the frame's top border and 8px over its bottom one (a full notice 23 and 24), framed as a card is: both borders land on lines, the bottom border's pixel is given back, so a line of it is a row's 40px and its words fill a band of the grid. The title never steps up a size and the text is never a lede.
 - **Mark:** the tone's 6px square on the title's first line.
 - **The machine's words:** what a tool reported rides inside, under a Hairline of the tone, verbatim in mono.
+- **Opening a card:** a notice that opens a card's body stands 24px under the title's Hairline and keeps the same 24px over what follows it (a field's own air, or that much margin), rather than the card's 40px block step; one between blocks keeps the step on both sides.
 - **The acts that resolve it:** a notice may carry the buttons that resolve what it says (install what is missing): a row of 32px buttons inside the band, 23px under its words and 8px (a full notice 24px) over the frame, so the buttons stand on the band's lines and the band stays on the grid. The buttons keep their own shape and take the band's ink: words and glyph in its deep step, the border that ink thinned, a wash of it under the pointer.
 - A confirmation's question is this band, its answers the band's acts (Confirmation).
 
