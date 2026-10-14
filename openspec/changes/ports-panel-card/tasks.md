@@ -99,7 +99,7 @@
   - the chassis rect fills the `viewBox`.
   
   Verify with `go test ./internal/server`.
-- [ ] 6.2 Integration in the dev container (`make dev` running):
+- [x] 6.2 Integration in the dev container (`make dev` running):
   - the Overview's Ports card shows the generated panel above the table;
   - pulling a link (`ip link set … down`) darkens its LED within a second;
   - an eight-port fixture stays one row in a narrow card;
@@ -111,7 +111,8 @@
   - At 1440, 1024, 768 and 390 px wide, every panel's height (DK art, generated five-port, generated twelve-port) is a multiple of 8, and each starts at its content's left edge.
   - The twelve-port panel stays one row, shrunk to 88 tall.
   - Reduced motion first showed the blink still running: the stopping rule was less specific than the blinking one. With the selectors matched it reads `animation: none` with the LED lit, and `TestReducedMotionStillsTheTrafficLED` guards it.
-  - Link loss was driven by a scratch stream (5.3). A real cable pull is still to be done on the bench DUT, not on Zamanifi.
+  - Link loss was driven by a scratch stream (5.3).
+  - On Zamanifi (r81) the owner confirmed it works live. That covered plugging a cable into a spare port rather than pulling one from a port in use, since Zamanifi is production.
 - [x] 6.3 Owner check on the Mono Gateway DK (bench DUT, or read-only on the owner's Gateway with their leave): the art lights and blinks by real traffic, and eth3/eth4 read as SFP+. Verify by the owner's confirmation of the look.
 - [x] 6.4 Update `docs/BACKLOG.md`: delete items this change closes (panel LED blink, live hardware readings for ports), add any follow-up found in 2.6/6.3 (e.g. a profile `kinds` override if a board misreports). Verify with `make lint` and `make test` green.
 
