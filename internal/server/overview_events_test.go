@@ -23,11 +23,18 @@ import (
 // every frame sent, by event name, up to and including the overview frame.
 func firstFrames(t *testing.T, srv *Server, layout string) map[string]string {
 	t.Helper()
+	return framesUntil(t, srv, "/overview/events", layout, "overview")
+}
+
+// framesUntil reads a stream from path until the frame named last arrives:
+// every frame sent before it, and it, by event name.
+func framesUntil(t *testing.T, srv *Server, path, layout, last string) map[string]string {
+	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	ts := httptest.NewServer(srv.Handler())
 	defer ts.Close()
-	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, ts.URL+"/overview/events", nil)
+	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, ts.URL+path, nil)
 	req.AddCookie(&http.Cookie{Name: sessionCookie, Value: srv.sessions.CreateWithMetadata("test-sid", "root", "", "")})
 	if layout != "" {
 		req.AddCookie(&http.Cookie{Name: overviewLayoutCookie, Value: layout})
@@ -48,13 +55,30 @@ func firstFrames(t *testing.T, srv *Server, layout string) map[string]string {
 		}
 		if payload, ok := strings.CutPrefix(line, "data: "); ok {
 			frames[event] = payload
-			if event == "overview" {
+			if event == last {
 				return frames
 			}
 		}
 	}
-	t.Fatalf("stream ended before the overview frame: %v", scanner.Err())
+	t.Fatalf("stream ended before the %s frame: %v", last, scanner.Err())
 	return nil
+}
+
+// TestAPageReadsOnlyThePortsFrame: a page that draws the router's panel and
+// nothing else of the Overview (System › Hardware) names the frame it reads,
+// and the stream sends that one alone, whatever the Overview's layout hides;
+// a frame outside the allowlist is never sent this way.
+func TestAPageReadsOnlyThePortsFrame(t *testing.T) {
+	hidden := "1.internet-firewall.traffic-resources-hardware-firmware..ports-tunnels"
+	for _, path := range []string{"/overview/events?reads=interfaces", "/overview/events?reads=interfaces,meters,clock"} {
+		frames := framesUntil(t, streamServer(t), path, hidden, "interfaces")
+		if got := sent(frames); !slices.Equal(got, []string{"interfaces"}) {
+			t.Errorf("%s: frames = %v, want only interfaces", path, got)
+		}
+		if !strings.Contains(frames["interfaces"], `"linked":true`) {
+			t.Errorf("%s: the frame should carry the ports' link: %s", path, frames["interfaces"])
+		}
+	}
 }
 
 func streamServer(t *testing.T) *Server {

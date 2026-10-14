@@ -6,6 +6,7 @@ package server
 import (
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/we-are-mono/verso/internal/clock"
 	"github.com/we-are-mono/verso/internal/openwrt"
@@ -30,6 +31,10 @@ import (
 // hidden, so hiding a card never makes the page read "online". The page
 // reconnects when a card is hidden or comes back.
 func (s *Server) handleOverviewEvents(w http.ResponseWriter, r *http.Request) {
+	if reads, ok := r.URL.Query()["reads"]; ok {
+		s.servePageFrames(w, r, pageFramesNamed(reads))
+		return
+	}
 	sid := s.sessionSID(r)
 	_, catalog := s.localize(r)
 	tr := translatorOrIdentity(catalog)
@@ -76,11 +81,7 @@ func (s *Server) handleOverviewEvents(w http.ResponseWriter, r *http.Request) {
 			return true
 		}
 		liveOverview.DevicesOnline, liveOverview.DevicesKnown = s.onlineDevices()
-		readings := telemetryInterfaceReadings(snapshot, units.For(catalog))
-		for i := range readings {
-			readings[i].State = tr(readings[i].State)
-		}
-		return writeEvent(w, "", "interfaces", map[string]any{"interfaces": readings}) == nil
+		return writeEvent(w, "", "interfaces", interfacesFrame(snapshot, catalog)) == nil
 	}
 	// The WAN throughput frame: sample the uplink device's counters once a
 	// second, fold them into the minute-long history the overview graph draws,
@@ -182,4 +183,49 @@ func liveInterfaces(topology []widget.OverviewInterface, snapshot telemetry.Snap
 		out = append(out, n)
 	}
 	return out
+}
+
+// interfacesFrame is the interface stream's frame: each interface's state,
+// rates, link, activity and speed, its state in the reader's language.
+func interfacesFrame(snapshot telemetry.Snapshot, catalog func(string) string) map[string]any {
+	tr := translatorOrIdentity(catalog)
+	readings := telemetryInterfaceReadings(snapshot, units.For(catalog))
+	for i := range readings {
+		readings[i].State = tr(readings[i].State)
+	}
+	return map[string]any{"interfaces": readings}
+}
+
+// pageFrames are the frames a page other than the Overview may read on their
+// own, by naming them in ?reads=: System › Hardware draws the router's panel
+// and reads only the interfaces.
+var pageFrames = map[string]bool{"interfaces": true}
+
+// pageFramesNamed is the allowed frames among those a page named, in one or
+// more comma-separated reads values; any other name is ignored.
+func pageFramesNamed(reads []string) map[string]bool {
+	named := map[string]bool{}
+	for _, value := range reads {
+		for _, name := range strings.Split(value, ",") {
+			if pageFrames[name] {
+				named[name] = true
+			}
+		}
+	}
+	return named
+}
+
+// servePageFrames streams only the frames a page named, on the same clock as
+// the Overview's stream. It reads nothing else, and no layout: the page is not
+// the Overview.
+func (s *Server) servePageFrames(w http.ResponseWriter, r *http.Request, frames map[string]bool) {
+	_, catalog := s.localize(r)
+	s.serveSSE(w, r, func() bool {
+		if frames["interfaces"] {
+			if snapshot, ok := s.telemetrySnapshot(r.Context()); ok {
+				return writeEvent(w, "", "interfaces", interfacesFrame(snapshot, catalog)) == nil
+			}
+		}
+		return true
+	})
 }
