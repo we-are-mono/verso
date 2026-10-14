@@ -66,7 +66,7 @@
   <div class="flex {{if .Next}}items-start{{else}}items-center{{end}} justify-between gap-6 border-t border-mid py-2.5">
     <dt class="text-sm leading-6 text-meta">{{.Label}}</dt>
     <dd class="flex items-center text-sm font-medium text-ink">
-      {{if .Next}}{{/* what it becomes, under what it is, as a table's cell says it */}}<span data-verso-prop-next class="flex flex-col items-end{{if .Mono}} font-mono text-base font-medium{{end}}"><span class="text-meta">{{.Value}}</span><span class="flex items-center gap-1.5 text-ink"><span role="img" aria-label="{{t "Available version"}}" title="{{t "Available version"}}" class="flex shrink-0 text-denim">{{icon "corner-down-right" "size-4"}}</span><span>{{.Next}}</span></span></span>{{else}}{{if .Dot}}<span class="mr-2 size-1.5 shrink-0 rounded-[1px] {{template "verso-tone-dot" .Dot}}"{{if .Key}} data-verso-prop-dot="{{.Key}}"{{end}}></span>{{end}}<span{{if .Key}} data-verso-prop="{{.Key}}"{{end}} class="{{if .Mono}}font-mono text-base font-medium{{end}}{{if .Variant}} {{template "verso-tone-text" .Variant}}{{end}}">{{.Value}}</span>{{if .Copy}}{{template "verso-copy-inline" .Value}}{{end}}{{end}}
+      {{if .Next}}{{/* what it becomes, under what it is, as a table's cell says it */}}<span data-verso-prop-next class="flex flex-col items-end{{if .Mono}} font-mono text-base font-medium{{end}}"><span class="text-meta">{{.Value}}</span><span class="flex items-center gap-1.5 text-ink"><span role="img" aria-label="{{t "Available version"}}" title="{{t "Available version"}}" class="flex shrink-0 text-denim">{{icon "corner-down-right" "size-4"}}</span><span>{{.Next}}</span></span></span>{{else}}{{if .Dot}}<span class="mr-2 size-1.5 shrink-0 rounded-[1px] {{template "verso-tone-dot" .Dot}}"{{if .Key}} data-verso-prop-dot="{{.Key}}"{{end}}></span>{{end}}<span{{if .Key}} data-verso-prop="{{.Key}}"{{end}} class="{{if .Mono}}font-mono text-base font-medium{{end}}{{if .Variant}} {{template "verso-tone-text" .Variant}}{{end}}">{{if .Lasting}}{{template "verso-duration" .Lasting}}{{else}}{{.Value}}{{end}}</span>{{if .Copy}}{{template "verso-copy-inline" .Value}}{{end}}{{end}}
     </dd>
   </div>
   {{else}}
@@ -85,9 +85,8 @@
   {{/* Left-set facts are a document's, read beside a fixed label column; on a
        phone the label sits over its value, which then has the card's width.
        A live row carries its key, so the stream rewrites its value (and its
-       mark) in place; a live temperature's note rides its line after it. */}}
-  {{$inlineNote := eq .Key "temperature"}}
-  <div class="flex {{if eq $.Align "left"}}flex-col items-start sm:flex-row {{if and .Help (not $inlineNote)}}sm:flex-wrap {{end}}gap-x-6{{else}}{{if and .Help (not $inlineNote)}}flex-wrap {{end}}items-start justify-between gap-x-6{{end}} text-sm{{if eq $.Style "plain"}}{{else}} border-b border-mid py-row leading-6 {{$first}} last:border-b-0{{end}}">
+       mark) in place. */}}
+  <div class="flex {{if eq $.Align "left"}}flex-col items-start sm:flex-row {{if .Help}}sm:flex-wrap {{end}}gap-x-6{{else}}{{if .Help}}flex-wrap {{end}}items-start justify-between gap-x-6{{end}} text-sm{{if eq $.Style "plain"}}{{else}} border-b border-mid py-row leading-6 {{$first}} last:border-b-0{{end}}">
     <dt class="shrink-0 text-meta{{if eq $.Align "left"}} sm:w-24{{end}}">{{.Label}}</dt>
     <dd class="relative flex min-w-0 items-start {{if eq $.Align "left"}}self-stretch sm:flex-1 sm:self-auto text-left{{else if .Span}}min-w-0 flex-1 text-left{{else}}justify-end text-right{{end}}{{if .Emphasis}} text-base{{end}} font-medium text-ink [&_*]:leading-6">
       {{if .Span}}{{template "verso-prop-span" .Span}}{{else}}
@@ -100,13 +99,12 @@
            it: the value it was recedes to Meta, and what it becomes stands in
            Ink, led by the arrow turning down into it in the action colour. */}}
       <span class="flex min-w-0 flex-col {{if eq $.Align "left"}}items-start{{else}}items-end{{end}}{{if .Mono}} font-mono text-base font-medium{{end}}"><span class="wrap-anywhere text-meta">{{.Value}}</span><span class="flex items-center gap-1.5 text-ink"><span role="img" aria-label="{{t "Available version"}}" title="{{t "Available version"}}" class="flex shrink-0 text-denim">{{icon "corner-down-right" "size-4"}}</span><span class="wrap-anywhere">{{.Next}}</span></span></span>
-      {{else}}<span{{if .Key}} data-verso-prop="{{.Key}}"{{end}} class="min-w-0 wrap-anywhere text-balance{{if .Mono}} font-mono text-base font-medium{{end}}{{if .Variant}} {{template "verso-tone-text" .Variant}}{{end}}">{{.Value}}</span>{{end}}
-      {{if $inlineNote}}<span data-overview-temp-note class="ml-1 shrink-0 font-sans text-sm font-normal text-meta">{{if .Help}}· {{.Help}}{{end}}</span>{{end}}
+      {{else}}<span{{if .Key}} data-verso-prop="{{.Key}}"{{end}} class="min-w-0 wrap-anywhere text-balance{{if .Mono}} font-mono text-base font-medium{{end}}{{if .Variant}} {{template "verso-tone-text" .Variant}}{{end}}">{{if .Lasting}}{{template "verso-duration" .Lasting}}{{else}}{{.Value}}{{end}}</span>{{end}}
       {{if .Copy}}{{template "verso-copy-inline" .Value}}{{end}}
       {{if .Status}}<span class="{{if eq $.Align "left"}}ml-auto pl-3{{else}}ml-2{{end}} inline-flex h-6 shrink-0 items-center">{{template "badge.html.tmpl" .Status}}</span>{{end}}
       {{end}}
     </dd>
-    {{if and .Help (not $inlineNote)}}<p class="basis-full {{if eq $.Align "left"}}sm:pl-30{{else}}text-right{{end}} text-sm leading-6 font-normal text-body">{{.Help}}</p>{{end}}
+    {{if .Help}}<p class="basis-full {{if eq $.Align "left"}}sm:pl-30{{else}}text-right{{end}} text-sm leading-6 font-normal text-body">{{.Help}}</p>{{end}}
   </div>
   {{end}}
   {{end}}

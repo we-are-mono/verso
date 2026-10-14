@@ -12,6 +12,8 @@ import (
 	"net/url"
 	"slices"
 	"strings"
+
+	"github.com/we-are-mono/verso/internal/units"
 )
 
 // Table is the Advanced-view listing: config sections as identical rows under
@@ -487,8 +489,13 @@ type TableCell struct {
 	// is written (internal/units), in the reader's language: after Text with a
 	// middle dot between them ("port · 2.5 Gb/s"), or alone. A plugin hands
 	// over the number, never the text.
-	Rate    *float64      `json:"rate,omitempty"`
-	Actions []TableRowAct `json:"actions,omitempty"` // actions cells: the row's own acts, as quiet icon buttons
+	Rate *float64 `json:"rate,omitempty"`
+	// Duration is a stretch of time in seconds, which the shell writes as every
+	// duration is written (internal/units) in the cell's place: its figures in
+	// the cell's ink, its units receding. A plugin hands over the number, never
+	// the text.
+	Duration *int64        `json:"duration,omitempty"`
+	Actions  []TableRowAct `json:"actions,omitempty"` // actions cells: the row's own acts, as quiet icon buttons
 	// Opens says the row's drawer is where this cell's subject is read. A name
 	// is never drawn as a door (doorAct): the shell puts a Details act on the
 	// row, or the trailing Details link where the row has no acts.
@@ -789,6 +796,8 @@ type tableCellView struct {
 	// has none. SuffixSlot is set for every cell of such a column.
 	Figure, Suffix string
 	SuffixSlot     bool
+	// Lasting is the cell's Duration written.
+	Lasting units.Span
 	// Clip is a meter cell's fill, the meter widget's own clip (MeterClip);
 	// empty when the cell has no reading to draw.
 	Clip template.CSS
@@ -1305,6 +1314,10 @@ func (t *Table) rowViews(r *Renderer, csrf string, rows []TableRow, hasDetail bo
 				cv.TableCell = row.Cells[i]
 				if rate := cv.TableCell.Rate; rate != nil {
 					cv.Text = strings.TrimPrefix(cv.Text+" · "+r.numbers().Rate(*rate).String(), " · ")
+				}
+				if d := cv.TableCell.Duration; d != nil {
+					cv.Lasting = units.Duration(*d)
+					cv.Text = cv.Lasting.String()
 				}
 				chipView := func(chip TableChip) tableChipView {
 					view := tableChipView{TableChip: chip}

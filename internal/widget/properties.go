@@ -8,6 +8,8 @@ import (
 	"html/template"
 	"io"
 	"slices"
+
+	"github.com/we-are-mono/verso/internal/units"
 )
 
 // Properties is a label/value detail list (a description list): each row shows a
@@ -96,6 +98,13 @@ type Property struct {
 	// in its place as every rate is written (internal/units), in the reader's
 	// language and in sans: a plugin hands over the number, never the text.
 	Rate *float64 `json:"rate,omitempty"`
+	// Duration makes the value a stretch of time, in seconds, which the shell
+	// writes in its place as every duration is written (internal/units): its
+	// figures in the value's ink, its units receding, in sans. A plugin hands
+	// over the number, never the text.
+	Duration *int64 `json:"duration,omitempty"`
+	// Lasting is Duration written, for the template.
+	Lasting units.Span `json:"-"`
 }
 
 // PropertySpan is a stretch between From and To, filled At a share of it
@@ -126,12 +135,18 @@ func (p *Properties) children() []Widget {
 }
 
 func (p *Properties) renderInto(r *Renderer, out io.Writer, _ string) error {
-	// Rates are written on a copy: the plugin's widget keeps its numbers.
+	// Rates and durations are written on a copy: the plugin's widget keeps its
+	// numbers.
 	view := *p
 	view.Items = slices.Clone(p.Items)
 	for i, item := range view.Items {
 		if item.Rate != nil {
 			view.Items[i].Value = r.numbers().Rate(*item.Rate).String()
+			view.Items[i].Mono, view.Items[i].Verbatim = false, true
+		}
+		if item.Duration != nil {
+			view.Items[i].Lasting = units.Duration(*item.Duration)
+			view.Items[i].Value = view.Items[i].Lasting.String()
 			view.Items[i].Mono, view.Items[i].Verbatim = false, true
 		}
 	}

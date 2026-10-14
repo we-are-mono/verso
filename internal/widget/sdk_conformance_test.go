@@ -65,6 +65,44 @@ func TestSDKRateReachesTheShell(t *testing.T) {
 	}
 }
 
+// TestSDKDurationReachesTheShell: a duration the SDK hands over as seconds must
+// arrive as a number, on a fact and on a cell, or the shell has nothing to
+// write as every duration is written.
+func TestSDKDurationReachesTheShell(t *testing.T) {
+	dir := filepath.Join("..", "..", "plugins", "verso-plugin-sdk", "testdata")
+	props, err := os.ReadFile(filepath.Join(dir, "widget-properties.json"))
+	if err != nil {
+		t.Skip("SDK properties fixture not present — run `cargo test` in plugins/verso-plugin-sdk to generate it")
+	}
+	w, err := Decode(props)
+	if err != nil {
+		t.Fatalf("SDK properties fixture does not decode: %v", err)
+	}
+	found := false
+	for _, item := range w.(*Properties).Items {
+		found = found || (item.Duration != nil && *item.Duration == 4523580)
+	}
+	if !found {
+		t.Errorf("SDK duration lost crossing the wire on a fact: %+v", w)
+	}
+	table, err := os.ReadFile(filepath.Join(dir, "widget-table.json"))
+	if err != nil {
+		t.Fatalf("read the table fixture: %v", err)
+	}
+	if w, err = Decode(table); err != nil {
+		t.Fatalf("SDK table fixture does not decode: %v", err)
+	}
+	found = false
+	for _, row := range w.(*Table).Rows {
+		for _, cell := range row.Cells {
+			found = found || (cell.Duration != nil && *cell.Duration == 8040)
+		}
+	}
+	if !found {
+		t.Errorf("SDK duration lost crossing the wire on a cell")
+	}
+}
+
 // TestSDKReshapeReachesTheShell: a choice the SDK marks as reshaping its form
 // must arrive marked, or changing it would ask for nothing.
 func TestSDKReshapeReachesTheShell(t *testing.T) {

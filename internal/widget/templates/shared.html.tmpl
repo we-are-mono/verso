@@ -124,6 +124,11 @@
 {{/* verso-none: the dash a cell shows when it has no value. The dash is for
      the eye; a screen reader is told "None" instead of hearing a dash read out. */}}
 {{define "verso-none"}}<span aria-hidden="true">—</span><span class="sr-only">{{ t "None" }}</span>{{end}}
+{{/* verso-duration: a stretch of time as the shell writes it (internal/units),
+     each figure at 500 in its context's ink and each unit receding to Meta at
+     400, so the eye reads the figures first; a figure and its unit never part
+     at a line's end. verso-stream.js draws a live one with the same classes. */}}
+{{define "verso-duration"}}{{range $i, $p := .}}{{if $i}} {{end}}<span class="verso-duration-figure">{{$p.Figure}}</span>&nbsp;<span class="verso-duration-unit">{{$p.Unit}}</span>{{end}}{{end}}
 
 {{/* verso-segment-focus: a segment's input is screen-reader-only, so the
      segment it sits in draws the keyboard focus ring for it. */}}

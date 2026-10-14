@@ -189,22 +189,17 @@ func TestAListWithNoFactsSaysSoInTheSlot(t *testing.T) {
 
 // TestALiveFactCarriesItsKey: a row the stream keeps current carries its key
 // on its value and on its mark, so the stream rewrites both in place; on the
-// right edge the mark leads the value on its line, centred 9px down it, and a
-// live temperature's note rides the line after it instead of under it.
+// right edge the mark leads the value on its line, centred 9px down it.
 func TestALiveFactCarriesItsKey(t *testing.T) {
 	got := render(t, newRenderer(t), &Properties{Items: []Property{
-		{Label: "CPU Temperature", Value: "48 °C", Help: "normal", HelpVerbatim: true, Mono: true, Verbatim: true, Dot: "success", Key: "temperature"},
+		{Label: "Link", Value: "Up", Verbatim: true, Dot: "success", Key: "link"},
 	}})
 	for _, want := range []string{
-		`data-verso-prop="temperature"`,
-		`<span class="mt-2.25 mr-2 shrink-0 size-1.5 rounded-[1px] bg-green" data-verso-prop-dot="temperature" aria-hidden="true">`,
-		`<span data-overview-temp-note class="ml-1 shrink-0 font-sans text-sm font-normal text-meta">· normal</span>`,
+		`data-verso-prop="link"`,
+		`<span class="mt-2.25 mr-2 shrink-0 size-1.5 rounded-[1px] bg-green" data-verso-prop-dot="link" aria-hidden="true">`,
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("want %s in:\n%s", want, got)
 		}
-	}
-	if strings.Contains(got, "basis-full") {
-		t.Errorf("a live note rides the value's line, never a line under it:\n%s", got)
 	}
 }
