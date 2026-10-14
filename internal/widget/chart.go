@@ -31,12 +31,13 @@ type Chart struct {
 	// AxisStart and AxisEnd caption the window's two ends ("60 s ago", "now").
 	AxisStart string
 	AxisEnd   string
-	// Short stands the plot at 180px rather than 240px, nine cells of the grid
-	// rather than twelve; the viewBox stretches, so the curve is the same.
+	// Short stands the plot at 192px rather than 256px, twelve of the chart's
+	// 16px rules rather than sixteen; the viewBox stretches, so the curve is
+	// the same.
 	Short bool
-	// Card stands the plot in an Overview card, on Paper: eight cells tall,
-	// over faint rules a cell apart, its value labels in a gutter on its left
-	// and its window's ends under it, so nothing is laid over the curve.
+	// Card stands the plot in an Overview card, on Paper: 192px tall, over
+	// faint rules 16px apart, its value labels in a gutter on its right and
+	// its window's ends under it, so nothing is laid over the curve.
 	Card bool
 	// Marks are what happened over the window (ADR-019), drawn behind the
 	// curves.

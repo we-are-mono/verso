@@ -18,7 +18,9 @@
   "use strict";
   var NS = "http://www.w3.org/2000/svg";
   var INTERVAL = 1000;
-  var GRID = 20;
+  // The chart's rules stand 16px apart (chart.html.tmpl), so a plot's quarter
+  // lines are rules; the paper under a gliding curve moves on the same step.
+  var GRID = 16;
   var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   var clips = 0;
   // Figures and value labels are written as the shell writes every rate
@@ -119,7 +121,7 @@
       });
     }
 
-    // The notebook grid travels with the curve: the section's 20px grid is a
+    // The notebook grid travels with the curve: the section's 16px grid is a
     // background, and each frame shifts it by exactly the distance the curve has
     // slid, so the data and the paper under it move as one. The chart's rendered
     // width is cached (and refreshed on resize) so a frame never reads layout.

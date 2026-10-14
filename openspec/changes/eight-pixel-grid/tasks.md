@@ -31,8 +31,8 @@ Every task ends green under `make lint` and `make test`. Each step is reviewed i
 
 ## 6. Overview and charts
 
-- [ ] 6.1 Overview (`overview.html.tmpl`, `meter.html.tmpl`, `stat.html.tmpl`, `ports.html.tmpl`, `verso-overview.js`, the Overview rules in `input.css`): header 48, body 24, card and column gaps 24, column rounding to 8px, and shelf and Arrange spacing. Update the overview widget tests first. Verify with G on, both closed and open cards, and in Arrange mode. Commit.
-- [ ] 6.2 Charts (`chart.html.tmpl`, `traffic.html.tmpl`, `chart.go`, `verso-chart.js`): rules every 16px, plots 192px in a card or short and 256px otherwise, scale labels on every fourth rule, and the glide keeping the 16px grid travelling with the curve. Update the chart tests that pin `W`/`H` and the plot class first. Verify on the Overview Traffic card and a device's Usage tab, with live data gliding. Commit.
+- [x] 6.1 Overview (`overview.html.tmpl`, `meter.html.tmpl`, `stat.html.tmpl`, `ports.html.tmpl`, `verso-overview.js`, the Overview rules in `input.css`): header 48, body 24, card and column gaps 24, column rounding to 8px, and shelf and Arrange spacing. Update the overview widget tests first. Verify with G on, both closed and open cards, and in Arrange mode. Commit.
+- [x] 6.2 Charts (`chart.html.tmpl`, `traffic.html.tmpl`, `chart.go`, `verso-chart.js`): rules every 16px, plots 192px in a card or short and 256px otherwise, scale labels on every fourth rule, and the glide keeping the 16px grid travelling with the curve. Update the chart tests that pin `W`/`H` and the plot class first. Verify on the Overview Traffic card and a device's Usage tab, with live data gliding. Commit.
 
 ## 7. Drawers and the remaining surfaces
 

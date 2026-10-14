@@ -33,16 +33,16 @@ func TestRenderTraffic(t *testing.T) {
 			t.Errorf("traffic graph missing %q", want)
 		}
 	}
-	if !strings.Contains(got, "h-60") {
-		t.Error("the graph stands at the overview's 240px by default")
+	if !strings.Contains(got, "h-64") {
+		t.Error("the graph stands at 256px by default")
 	}
 
-	// In a panel it stands a quarter shorter, 180px: nine cells, still on the
-	// grid; and two cells apart from what stands above and below it, where the
-	// panel's blocks stand one apart, its top border still on a line.
+	// In a panel it stands a quarter shorter, 192px: twelve of its 16px rules,
+	// still on the grid; and 40px apart from what stands above and below it,
+	// its top border still on a line.
 	panel := render(t, newRenderer(t), &Traffic{Title: "Usage", Live: "usage:x", Panel: true, Down: []float64{0, 1}, Up: []float64{0, 1}})
-	if !strings.Contains(panel, "h-45") || strings.Contains(panel, "h-60") {
-		t.Error("a graph in a panel stands at 180px")
+	if !strings.Contains(panel, "h-48") || strings.Contains(panel, "h-64") {
+		t.Error("a graph in a panel stands at 192px")
 	}
 	if !strings.Contains(panel, "mt-9.75 mb-10") || strings.Contains(panel, "-mt-px") {
 		t.Error("a graph in a panel stands two cells from its neighbours")

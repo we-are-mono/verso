@@ -1027,22 +1027,23 @@ html {
 }
 
 /* The Overview's cards (ADR-022, DESIGN.md "Overview cards"): two columns that
-   stack their cards at their own heights, 20px apart, one column when the page
+   stack their cards at their own heights, 24px apart, one column when the page
    is narrower than two cards want. A card closes by easing its body's row to
    nothing; the line it shows closed fades in where its body was. Arranging
    rules each column off as a place to drop into, and the card in hand floats
    over the page with the dialog's shadow and leaves a slot where it stood. */
 @layer components {
   .verso-overview { container: overview / inline-size; }
-  /* On the grid: each column is whole cells wide, rounded down from its
-     share, and the columns and cards stand a cell apart. A card's frame
-     stands a pixel out at the top and left (the template), so cards of whole
-     cells' height keep every frame on a line down the column. */
-  .verso-overview-cols { display: grid; grid-template-columns: round(down, 100%, 20px); column-gap: 1.25rem; align-items: start; }
+  /* On the grid: each column is a multiple of 8px wide, rounded down from
+     its share, and the columns and cards stand 24px apart. A card's top
+     border is a line and its bottom border the line its content ends on, so
+     the next card stands 24px on less that pixel and its frame lands on a
+     line down the column. */
+  .verso-overview-cols { display: grid; grid-template-columns: round(down, 100%, 8px); column-gap: var(--spacing-inset); align-items: start; }
   @container overview (min-width: 52rem) {
-    .verso-overview-cols { grid-template-columns: repeat(2, round(down, calc((100% - 1.25rem) / 2), 20px)); }
+    .verso-overview-cols { grid-template-columns: repeat(2, round(down, calc((100% - var(--spacing-inset)) / 2), 8px)); }
   }
-  .verso-overview-col { display: grid; row-gap: 1.25rem; align-content: start; min-width: 0; min-height: 4rem; border-radius: var(--radius-xs); }
+  .verso-overview-col { display: grid; row-gap: calc(var(--spacing-inset) - 1px); align-content: start; min-width: 0; min-height: 4rem; border-radius: var(--radius-xs); }
   [data-arranging] .verso-overview-col { outline: 1px dashed var(--color-rule-strong); outline-offset: 0.5rem; }
 
   .verso-overview-body { display: grid; grid-template-rows: 1fr; transition: grid-template-rows 300ms cubic-bezier(0.2, 0.8, 0.2, 1); }

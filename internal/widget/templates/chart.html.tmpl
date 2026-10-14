@@ -9,17 +9,18 @@
      graph. This SVG is the first paint; the live layer glides the same series
      without touching the markup.
 
-     On the notebook's sand the labels lie over the plot's left edge and its
-     bottom corners. In an Overview card they stand outside it: the values in
-     a four-cell gutter on its right, beside "now", where the newest sample is
-     read across onto the scale, each centred on its quarter line; and the
-     window's ends on the 20px line under it, flush with the plot's edges. The
-     card's plot is eight cells tall over faint rules a cell apart, its frame
-     a pixel up so the rules fall on the page's lines, the line over its top
-     included, and every quarter line on a rule. */}}
+     On the sand the labels lie over the plot's left edge and its bottom
+     corners. In an Overview card they stand outside it: the values in a 64px
+     gutter on its right, beside "now", where the newest sample is read across
+     onto the scale, each centred on its quarter line; and the window's ends
+     on the 20px line under it, flush with the plot's edges. A plot is a
+     multiple of 64px tall — 192px in a card or short, 256px otherwise — over
+     faint rules 16px apart, so every quarter line is a rule; the card's frame
+     stands a pixel up so the rules fall on the page's lines, the line over
+     its top included. */}}
 {{if .Card}}
-<div class="grid grid-cols-[minmax(0,1fr)_5rem]">
-  <div class="-mt-px pt-px bg-[linear-gradient(to_bottom,var(--color-mid)_1px,transparent_1px)] bg-size-[100%_20px]">
+<div class="grid grid-cols-[minmax(0,1fr)_4rem]">
+  <div class="-mt-px pt-px bg-[linear-gradient(to_bottom,var(--color-mid)_1px,transparent_1px)] bg-size-[100%_16px]">
     {{template "chart.svg" .}}
   </div>
   <div class="relative -mt-px" data-verso-chart-gutter>
@@ -28,7 +29,7 @@
   <div class="flex justify-between text-sm leading-5 text-meta" data-verso-chart-window><span>{{.XStart}}</span><span>{{.XEnd}}</span></div>
 </div>
 {{else}}
-<div class="relative {{if .Short}}h-45{{else}}h-60{{end}} overflow-hidden">
+<div class="relative {{if .Short}}h-48{{else}}h-64{{end}} overflow-hidden">
   {{template "chart.svg" .}}
   {{range $i, $label := .YLabels}}<span class="verso-chart-yl pointer-events-none absolute left-0! flex h-4.75 {{if eq $i 0}}min-w-29.75{{else}}min-w-14.75{{end}} items-center bg-quiet/85 px-4 font-mono! text-sm! leading-none font-medium text-meta [text-shadow:none]!" style="top:{{printf "%.1f" .TopPct}}%">{{.Text}}</span>{{end}}
   <span class="pointer-events-none absolute bottom-px left-0 flex h-4.75 min-w-24.75 items-center bg-quiet/85 px-4 font-sans text-sm leading-none text-meta">{{.XStart}}</span>
@@ -37,7 +38,7 @@
 {{end}}
 
 {{define "chart.svg"}}
-<svg class="verso-chart block {{if .Card}}h-40!{{else if .Short}}h-45!{{else}}h-60!{{end}} w-full overflow-hidden" viewBox="0 0 {{.W}} {{.H}}" preserveAspectRatio="none" role="img" aria-label="{{.Label}}" data-chart-padding="0">
+<svg class="verso-chart block {{if .Card}}h-48!{{else if .Short}}h-48!{{else}}h-64!{{end}} w-full overflow-hidden" viewBox="0 0 {{.W}} {{.H}}" preserveAspectRatio="none" role="img" aria-label="{{.Label}}" data-chart-padding="0">
   {{range .Marks}}{{if eq .Kind "boot"}}<line class="verso-chart-mark--boot" x1="{{printf "%.1f" .X}}" x2="{{printf "%.1f" .X}}" y1="0" y2="{{$.H}}" vector-effect="non-scaling-stroke"><title>{{.Label}}</title></line>{{else}}<rect class="verso-chart-mark--{{.Kind}}" x="{{printf "%.1f" .X}}" y="0" width="{{printf "%.1f" .Width}}" height="{{$.H}}"><title>{{.Label}}</title></rect>{{end}}
   {{end}}
   {{range .Series}}

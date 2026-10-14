@@ -33,10 +33,11 @@
     </div>
   </div>
 
-  {{/* The shelf is a frame a cell under the heading line, its edges on lines:
-       its words write on one 20px line, 10px under the top edge and 9px over
-       the bottom, and its 28px chips ride that line. */}}
-  <div data-overview-shelf class="mt-4.75 hidden flex-wrap items-center gap-x-2 gap-y-5 rounded-xs border border-dashed border-rule-strong bg-quiet px-3 pt-2.5 pb-2.25 text-sm leading-5 text-meta group-data-arranging/overview:flex">
+  {{/* The shelf is a 40px frame 24px under the heading line, its top edge on
+       a line: its words write on one 20px line, 10px under the top edge and
+       8px over the bottom, and its 28px chips ride that line, so the cards
+       40px under it start on a line. */}}
+  <div data-overview-shelf class="mt-6 hidden flex-wrap items-center gap-x-2 gap-y-6 rounded-xs border border-dashed border-rule-strong bg-quiet px-3 pt-2.5 pb-2 text-sm leading-5 text-meta group-data-arranging/overview:flex">
     <span class="mr-1">{{if .Hidden}}{{ t "Hidden" }}{{else}}{{ t "No hidden cards" }}{{end}}</span>
     {{range .Hidden}}
     <button type="button" data-overview-restore="{{.ID}}" data-tone="{{.Tone}}" class="group/chip -my-1 inline-flex h-7 cursor-pointer items-center gap-2 rounded-xs border border-rule-strong bg-ground px-2.5 text-ink transition-colors hover:border-denim-line hover:bg-denim-soft hover:text-denim-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim">
@@ -61,13 +62,14 @@
      the header is where it is picked up, and the grip and hide stand in for
      the door and the chevron. */}}
 {{define "overview.card"}}
-{{/* On the grid the frame stands a pixel out at the top and the left, so its
-     borders are lines; the header is a row (a 20px line, 10px over, 9px
-     under, the body's hairline or the frame's bottom the next pixel) with its
-     28px acts riding the line; the body opens a cell under its hairline and
-     ends 19px over the frame, so whole cells of content close on a line. */}}
-<article data-overview-card="{{.ID}}" data-tone="{{.Head.Tone}}"{{if .Closed}} data-closed{{end}} aria-labelledby="overview-card-{{.ID}}" class="group/card @container/card verso-overview-card -mt-px -ml-px w-[calc(100%+1px)] min-w-0 rounded-xs border border-rule-strong bg-ground">
-  <header data-overview-card-head class="flex min-w-0 cursor-pointer items-center gap-2.5 pt-3.75 pr-2.5 pb-3.5 pl-5 leading-5 select-none group-data-arranging/overview:cursor-grab group-data-arranging/overview:pl-1.5">
+{{/* On the grid the frame's top and left borders are lines, as a page
+     card's are; the header is 48px (a 20px line, 14px over, 13px under, the
+     body's hairline or the frame's bottom the next pixel) with its 28px acts
+     riding the line, its words 24px in; the body opens 24px under its
+     hairline and ends 23px over the frame, so content on the grid closes on a
+     line and the next card, 23px on, starts on one. */}}
+<article data-overview-card="{{.ID}}" data-tone="{{.Head.Tone}}"{{if .Closed}} data-closed{{end}} aria-labelledby="overview-card-{{.ID}}" class="group/card @container/card verso-overview-card min-w-0 rounded-xs border border-rule-strong bg-ground">
+  <header data-overview-card-head class="flex min-w-0 cursor-pointer items-center gap-2 pt-3.5 pr-2.5 pb-3.25 pl-6 leading-5 select-none group-data-arranging/overview:cursor-grab group-data-arranging/overview:pl-1.5">
     <button type="button" data-overview-grip aria-label="{{printf (t "Move %s. Arrow keys move it.") .Title}}" class="hidden -my-1 {{template "verso-btn-icon"}} cursor-grab group-data-arranging/overview:grid">{{icon "grip-vertical" "size-4"}}</button>
     <span aria-hidden="true" class="flex shrink-0 text-glyph">{{icon .Icon "size-4"}}</span>
     <div class="flex min-w-0 flex-1 items-baseline gap-3">
@@ -82,7 +84,7 @@
     <button type="button" data-overview-toggle aria-expanded="{{if .Closed}}false{{else}}true{{end}}" aria-controls="overview-card-body-{{.ID}}" aria-label="{{if .Closed}}{{printf (t "Open %s") .Title}}{{else}}{{printf (t "Close %s") .Title}}{{end}}" data-open-label="{{printf (t "Open %s") .Title}}" data-close-label="{{printf (t "Close %s") .Title}}" class="grid -my-1 {{template "verso-btn-icon"}} group-data-arranging/overview:hidden"><span class="verso-overview-chevron flex">{{icon "chevron-down" "size-4"}}</span></button>
     <button type="button" data-overview-hide aria-label="{{printf (t "Hide %s") .Title}}" title="{{t "Hide"}}" class="hidden -my-1 {{template "verso-btn-icon"}} hover:border-crimson-line hover:bg-crimson-soft hover:text-crimson-deep group-data-arranging/overview:grid">{{icon "x" "size-4"}}</button>
   </header>
-  <div id="overview-card-body-{{.ID}}" class="verso-overview-body"><div class="min-h-0 overflow-hidden"><div class="verso-overview-content border-t border-rule px-5 pt-5 pb-4.75">{{.Body}}</div></div></div>
+  <div id="overview-card-body-{{.ID}}" class="verso-overview-body"><div class="min-h-0 overflow-hidden"><div class="verso-overview-content border-t border-rule px-6 pt-6 pb-5.75">{{.Body}}</div></div></div>
 </article>
 {{end}}
 
@@ -90,7 +92,7 @@
      long it has been connected, then each address family under its name and
      protocol, or the sentence that stands where its rows would. */}}
 {{define "overview.internet"}}
-<div class="grid gap-5">
+<div class="grid gap-6">
   {{if .Uplink}}<div class="min-w-0">{{.Uplink}}</div>{{end}}
   {{range .Families}}
   <section aria-label="{{.Kind}}" class="min-w-0">
@@ -109,9 +111,9 @@
 
 {{/* overview.window: the Traffic card's header control — the graph's window,
      whose choice fetches the graph for it into the card's body. The select
-     rides the header's line, 7px over either edge. */}}
+     rides the header's line, 6px over either edge. */}}
 {{define "overview.window"}}
-<div class="relative -my-1.75 flex items-center">
+<div class="relative -my-1.5 flex items-center">
   <select name="range" aria-label="{{ t "Window" }}" hx-get="{{.RangeURL}}" hx-trigger="change" hx-target="[data-overview-card='traffic'] .verso-traffic-card" hx-swap="outerHTML"
     class="h-control cursor-pointer appearance-none rounded-xs border border-rule-strong bg-white pr-9 pl-3 text-sm text-ink shadow-[inset_0_1px_2px_rgba(27,25,23,.06)] transition-colors hover:border-faint focus:border-denim focus:outline-none">
     {{range .Ranges}}<option value="{{.Value}}">{{.Label}}</option>{{end}}
@@ -123,5 +125,5 @@
 {{/* overview.meters: the Resources card's gauges, two to a row where the
      card is wide enough, a cell apart both ways, so they stay whole cells. */}}
 {{define "overview.meters"}}
-{{if .}}<div class="grid grid-cols-1 gap-5 @[28rem]/card:grid-cols-2 @[28rem]/card:gap-x-10">{{range .}}{{.}}{{end}}</div>{{else}}<p class="text-sm leading-5 text-meta">{{ t "System readings unavailable" }}</p>{{end}}
+{{if .}}<div class="grid grid-cols-1 gap-6 @[28rem]/card:grid-cols-2 @[28rem]/card:gap-x-10">{{range .}}{{.}}{{end}}</div>{{else}}<p class="text-sm leading-5 text-meta">{{ t "System readings unavailable" }}</p>{{end}}
 {{end}}

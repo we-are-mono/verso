@@ -16,12 +16,12 @@
 {{if .Card}}
 {{/* In an Overview card the card's header names the graph and carries its
      window (overview.window). On the card's Paper: the newest figures at
-     reading size on one 20px line, each led by its series' line, then, a
-     cell under them, the plot (chart.html.tmpl) with its values on its left
-     and its window under it, all on whole cells. A window chosen in the
+     reading size on one 20px line, each led by its series' line, then, one
+     of the chart's 16px rules under them, the plot (chart.html.tmpl) with
+     its values on its right and its window under it. A window chosen in the
      header swaps this section. */}}
 <section aria-label="{{.Title}}" class="verso-traffic-card">
-  <div class="flex flex-wrap items-baseline gap-x-6 pb-5 leading-5 *:flex *:items-baseline *:gap-2">
+  <div class="flex flex-wrap items-baseline gap-x-6 pb-4 leading-5 *:flex *:h-5 *:items-baseline *:gap-2">
     <span><span aria-hidden="true" class="h-0.5 w-3.5 shrink-0 self-center rounded-full bg-denim"></span><span class="font-mono text-lg leading-5 font-semibold text-ink tabular-nums"{{if .Live}} data-verso-live-down{{end}}>{{.DownNow}}</span><span class="text-sm text-meta"{{if .Live}} data-verso-live-down-label{{end}}>{{.DownLabel}}</span></span>
     <span><span aria-hidden="true" class="h-0.5 w-3.5 shrink-0 self-center rounded-full bg-amethyst"></span><span class="font-mono text-lg leading-5 font-semibold text-ink tabular-nums"{{if .Live}} data-verso-live-up{{end}}>{{.UpNow}}</span><span class="text-sm text-meta"{{if .Live}} data-verso-live-up-label{{end}}>{{.UpLabel}}</span></span>
     {{if .Latency}}<span><span class="font-mono text-lg leading-5 font-semibold text-ink tabular-nums">{{.Latency}}</span><span class="text-sm text-meta">{{ t "ms to gateway on average" }}</span></span>{{end}}
@@ -29,7 +29,7 @@
   <div{{if .Live}} data-verso-live-chart="{{.Live}}" data-verso-live-seed="{{.Seed}}"{{end}}>{{.Chart}}</div>
 </section>
 {{else}}
-<section aria-label="{{.Title}}" class="{{if .Panel}}mt-9.75 mb-10 border-t border-rule{{else}}-mt-px border-t border-rule{{end}} bg-quiet bg-[linear-gradient(to_right,var(--color-mid)_1px,transparent_1px),linear-gradient(to_bottom,var(--color-mid)_1px,transparent_1px)] bg-size-[20px_20px] bg-position-[-1px_-1px]">
+<section aria-label="{{.Title}}" class="{{if .Panel}}mt-9.75 mb-10 border-t border-rule{{else}}-mt-px border-t border-rule{{end}} bg-quiet bg-[linear-gradient(to_right,var(--color-mid)_1px,transparent_1px),linear-gradient(to_bottom,var(--color-mid)_1px,transparent_1px)] bg-size-[16px_16px] bg-position-[-1px_-1px]">
   <div class="flex min-h-10 flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2 xl:h-10 xl:py-0">
     <h2 class="text-lg font-semibold tracking-tight text-body">{{.Title}}</h2>
     {{if .Meta}}<span aria-hidden="true" class="text-faint">·</span><span class="font-mono text-base font-medium text-meta">{{.Meta}}</span>{{end}}
@@ -48,6 +48,6 @@
       {{if .Latency}}<span class="inline-flex items-baseline gap-2"><span class="font-mono text-lg font-semibold">{{.Latency}}</span><span class="text-sm text-meta">{{ t "ms to gateway on average" }}</span></span>{{end}}
     </div>
   </div>
-  <div class="pt-5"{{if .Live}} data-verso-live-chart="{{.Live}}" data-verso-live-seed="{{.Seed}}"{{end}}>{{.Chart}}</div>
+  <div class="pt-4"{{if .Live}} data-verso-live-chart="{{.Live}}" data-verso-live-seed="{{.Seed}}"{{end}}>{{.Chart}}</div>
 </section>
 {{end}}
