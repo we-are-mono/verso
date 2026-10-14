@@ -91,7 +91,7 @@
 
 ## 6. Board art and integration
 
-- [ ] 6.1 Keep the redrawn `profiles/mono_gateway-dk/back.svg` (504×136) in this change. Extend `hardware_test.go`'s art test:
+- [x] 6.1 Keep the redrawn `profiles/mono_gateway-dk/back.svg` (504×136) in this change. Extend `hardware_test.go`'s art test:
   - five `data-verso-port` groups, each with one direct-child `<path>`, one `led-link` and one `led-traffic`;
   - the file parses as XML;
   - its `viewBox` starts at 0,0 with width and height multiples of 8;

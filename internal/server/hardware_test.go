@@ -4,6 +4,11 @@
 package server
 
 import (
+	"encoding/xml"
+	"fmt"
+	"io"
+	"slices"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -197,6 +202,82 @@ func TestHardwarePanelArtEmbedded(t *testing.T) {
 	}
 	if readPanel("mono_gateway-dk", "front.svg") != "" {
 		t.Error("the DK ships no front.svg; readPanel should return empty, not error")
+	}
+}
+
+// TestTheDKArtKeepsThePanelContract: the DK's rear art is drawn at its own
+// size on the 8px grid, its chassis filling its viewBox from the origin, and
+// each of its five ports is a group the shell lights: the outline its only
+// direct-child path, one link LED and one traffic LED (profiles/README.md).
+func TestTheDKArtKeepsThePanelContract(t *testing.T) {
+	svg := readPanel("mono_gateway-dk", "back.svg")
+	dec := xml.NewDecoder(strings.NewReader(svg))
+	type port struct{ paths, links, traffic int }
+	ports := map[string]*port{}
+	var order []string
+	var current *port
+	depth, portDepth, chassis := 0, 0, false
+	for {
+		tok, err := dec.Token()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			t.Fatalf("back.svg is not well-formed: %v", err)
+		}
+		switch el := tok.(type) {
+		case xml.StartElement:
+			depth++
+			attr := map[string]string{}
+			for _, a := range el.Attr {
+				attr[a.Name.Local] = a.Value
+			}
+			switch {
+			case el.Name.Local == "svg":
+				var w, h int
+				if _, err := fmt.Sscanf(attr["viewBox"], "0 0 %d %d", &w, &h); err != nil || w%8 != 0 || h%8 != 0 {
+					t.Errorf("viewBox %q should start at 0 0 with a width and height on the 8px grid", attr["viewBox"])
+				}
+				if attr["width"] != strconv.Itoa(w) || attr["height"] != strconv.Itoa(h) {
+					t.Errorf("width/height %s×%s should be the viewBox's own size", attr["width"], attr["height"])
+				}
+			case el.Name.Local == "rect" && depth == 2 && !chassis:
+				// The first drawing is the chassis, filling the box: a 1px
+				// stroke half a pixel in.
+				chassis = attr["x"] == "0.5" && attr["y"] == "0.5"
+				if !chassis {
+					t.Errorf("the chassis should fill the viewBox from the origin, got x=%s y=%s", attr["x"], attr["y"])
+				}
+			case attr["data-verso-port"] != "":
+				current = &port{}
+				ports[attr["data-verso-port"]] = current
+				order = append(order, attr["data-verso-port"])
+				portDepth = depth
+			case current != nil:
+				if el.Name.Local == "path" && depth == portDepth+1 {
+					current.paths++
+				}
+				switch attr["class"] {
+				case "led-link":
+					current.links++
+				case "led-traffic":
+					current.traffic++
+				}
+			}
+		case xml.EndElement:
+			if current != nil && depth == portDepth {
+				current = nil
+			}
+			depth--
+		}
+	}
+	if want := []string{"eth1", "eth2", "eth0", "eth3", "eth4"}; !slices.Equal(order, want) {
+		t.Errorf("ports %v, want %v left to right", order, want)
+	}
+	for name, p := range ports {
+		if p.paths != 1 || p.links != 1 || p.traffic != 1 {
+			t.Errorf("%s: %d direct-child paths, %d link and %d traffic LEDs; want one of each", name, p.paths, p.links, p.traffic)
+		}
 	}
 }
 
