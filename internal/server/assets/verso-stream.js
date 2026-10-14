@@ -16,7 +16,10 @@
 // which closes the client for good.
 (function () {
   if (!window.EventSource) return;
-  if (!document.querySelector("[data-overview]") && !document.querySelector("[data-verso-meter]") && !document.querySelector("[data-verso-row]") && !document.querySelector('[data-verso-live-chart="wan"]') && !document.querySelector("[data-verso-prop]")) return;
+  if (!document.querySelector("[data-overview]") && !document.querySelector("[data-verso-meter]") && !document.querySelector("[data-verso-row]") && !document.querySelector('[data-verso-live-chart="wan"]') && !document.querySelector("[data-verso-prop]") && !document.querySelector("[data-verso-port]")) return;
+  // A page whose only live part is the router's panel (System › Hardware)
+  // reads the interfaces and nothing else of the Overview's stream.
+  var panelOnly = !document.querySelector("[data-overview]") && !document.querySelector("[data-verso-meter]") && !document.querySelector("[data-verso-row]") && !document.querySelector('[data-verso-live-chart="wan"]') && !document.querySelector("[data-verso-prop]");
   // The meter's bar tints by its health band (the tone vocabulary), in the classes
   // meter.html.tmpl renders — the live layer and the first paint have to name the
   // same colour or a reading changes shade the moment it updates, which it did:
@@ -82,7 +85,32 @@
     else DOT_RING.forEach(function (c) { dot.classList.add(c); });
   }
 
+  // applyPort relights a port on a router's panel: its link LED, its traffic
+  // LED's activity level (the class keeps its blink running when the level
+  // holds), its speed, the label a keyboard reaches it by, and its detail's
+  // link line. The link words come in the reader's language from the panel.
+  function applyPort(port, iface) {
+    port.classList.toggle("is-linked", !!iface.linked);
+    var level = "act-" + (iface.activity || 0);
+    if (!port.classList.contains(level)) {
+      for (var i = 0; i <= 4; i++) port.classList.remove("act-" + i);
+      port.classList.add(level);
+    }
+    var speed = port.querySelector("[data-verso-port-speed]");
+    if (speed) speed.textContent = iface.speed;
+    var panel = port.closest(".verso-panel-art");
+    if (!panel) return;
+    var word = panel.getAttribute(iface.linked ? "data-verso-word-on" : "data-verso-word-off") || "";
+    var tip = panel.querySelector('[data-verso-port-tip="' + CSS.escape(iface.name) + '"]');
+    var name = tip && tip.querySelector("b") ? tip.querySelector("b").textContent : iface.name;
+    var label = name + ", " + word + (iface.linked && iface.speed && iface.speed !== "—" ? ", " + iface.speed : "");
+    if (port.getAttribute("aria-label") !== label) port.setAttribute("aria-label", label);
+    if (tip) setText(tip, "[data-verso-port-link]", iface.linked ? iface.speed : word);
+  }
   function applyInterface(iface) {
+    document.querySelectorAll('[data-verso-port="' + CSS.escape(iface.name) + '"]').forEach(function (port) {
+      applyPort(port, iface);
+    });
     var rows = document.querySelectorAll("[data-verso-row]");
     var root = null, key = "interface:" + iface.name;
     rows.forEach(function (row) {
@@ -122,7 +150,7 @@
   }
   function connect() {
     if (es) return;
-    es = new EventSource("/overview/events");
+    es = new EventSource(panelOnly ? "/overview/events?reads=interfaces" : "/overview/events");
     wire(es);
   }
   function disconnect() {
