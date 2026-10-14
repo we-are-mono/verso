@@ -749,104 +749,87 @@ html {
   .verso-page-heading { min-height: calc(var(--spacing) * 8); align-content: center; font-size: 1.5rem; font-weight: 600; letter-spacing: -0.025em; line-height: 1.1; color: var(--color-ink); }
   .verso-lede { margin-top: 0.5rem; color: var(--color-body); }
 
-  /* ports widget: a device's physical rear panel, drawn to scale from data. The
-     chassis is a physical object — deliberately dark in both themes. Display-only;
-     the hover/focus tooltip is pure CSS (no JS). Connector art has no utility
-     equivalent, so it lives here rather than in the template's classes. */
-  /* Bottom room so the legend never sits flush against whatever follows the panel
-     (the vitals grid) — the page's own space-y between blocks is a snug 1rem. */
-  .verso-ports { padding-bottom: 1.5rem; }
-  .verso-ports-name { text-align: center; margin-bottom: 0.5rem; font-size: 0.8125rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--color-meta); }
-  .verso-ports-chassis-wrap { text-align: center; }
-  .verso-ports-chassis {
-    position: relative; display: inline-flex; gap: 1.375rem; align-items: flex-start; max-width: 100%;
-    padding: 1.5rem 1.875rem 1.125rem;
-    background: linear-gradient(180deg, var(--color-hw-case), var(--color-hw-case-low));
-    border: 1px solid var(--color-hw-case-edge); border-radius: 0.875rem;
-    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.06), inset 0 -14px 30px rgb(0 0 0 / 0.35);
-  }
-  .verso-ports-screw { position: absolute; width: 0.5rem; height: 0.5rem; border-radius: 9999px; background: radial-gradient(circle at 35% 35%, var(--color-hw-screw), var(--color-hw-screw-low)); box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.4); }
-  .verso-ports-screw.tl { top: 0.5rem; left: 0.5rem; } .verso-ports-screw.tr { top: 0.5rem; right: 0.5rem; }
-  .verso-ports-screw.bl { bottom: 0.5rem; left: 0.5rem; } .verso-ports-screw.br { bottom: 0.5rem; right: 0.5rem; }
+  /* ports widget: a router's panel — a board profile's own art, or the panel the
+     widget generates for a board without art. Either is SVG of data-verso-port
+     groups litPanel tagged, so these rules, not per-board code, carry the live
+     state of every panel. A CSS property beats the SVG's own presentation
+     attribute, so art ships its LEDs drawn dark and the shell paints the lit
+     ones. Connector art has no utility equivalent, so it lives here. */
+  .verso-ports-name { margin-bottom: 0.5rem; font-size: 0.8125rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--color-meta); }
 
-  .verso-port { position: relative; display: flex; flex-direction: column; align-items: center; gap: 0.5625rem; }
-  /* The port's link state in words, for a screen reader: only the one that
-     matches the port's live class is left in the accessibility tree. */
-  .verso-port.is-linked .verso-port-state-off, .verso-port:not(.is-linked) .verso-port-state-on { display: none; }
-  .verso-port-jack, .verso-port-cage { height: 3.375rem; width: auto; display: block; }
-  .verso-port-frame { fill: var(--color-hw-jack); stroke: var(--color-hw-jack-edge); stroke-width: 1; }
-  .verso-port-mouth { fill: var(--color-hw-mouth); }
-  .verso-port-pin { stroke: var(--color-hw-pin); stroke-width: 1.1; }
-  .verso-port-clasp { stroke: var(--color-hw-jack-edge); stroke-width: 2; stroke-linecap: round; fill: none; }
-  .verso-port-module { fill: var(--color-hw-off); opacity: 0; transition: opacity 0.2s; }
-  /* Two LEDs per connector, in the lip: green carries link, amber carries
-     traffic — the amber one blinks (a hardware-ish ~4 Hz steps cadence) while
-     the port is active. */
-  .verso-port-led { fill: var(--color-hw-off); transition: fill 0.2s; }
-  .verso-port.is-linked .verso-port-module { opacity: 1; }
-  .verso-port.is-linked .verso-port-led.led-link { fill: var(--color-hw-led-link); filter: drop-shadow(0 0 3px color-mix(in srgb, var(--color-hw-led-link) 90%, transparent)); }
-  .verso-port.is-active .verso-port-led.led-act { fill: var(--color-hw-led-act); filter: drop-shadow(0 0 3px color-mix(in srgb, var(--color-hw-led-act) 90%, transparent)); animation: verso-led-blink 0.26s steps(1) infinite; }
-  @keyframes verso-led-blink {
-    50% { fill: var(--color-hw-off); filter: none; }
+  /* The panel stands at the content's left edge and is drawn at its own size
+     wherever it fits, where every edge it draws is on the 8px grid; where it
+     does not fit it shrinks to a whole number of 8px steps tall, its width
+     following its proportions. It never grows past its own size. The face
+     carries its size (--art-h, --art-aspect) from its viewBox. */
+  .verso-panel-art { position: relative; container-type: inline-size; }
+  .verso-panel-face svg { display: block; width: auto; max-width: none; height: min(var(--art-h), round(down, 100cqi * var(--art-aspect), 0.5rem)); }
+
+  /* The link LED is lit while the port has link. */
+  .verso-panel-art [data-verso-port].is-linked .led-link { fill: var(--color-hw-led-link); filter: drop-shadow(0 0 3px color-mix(in srgb, var(--color-hw-led-link) 85%, transparent)); }
+  /* The traffic LED blinks at the port's activity level (ports.Activity): an
+     occasional blip, a steady blink, a fast flicker, a near-solid flicker. Its
+     dark beat is the lit LED dimmed, which reads as unlit on any finish, and
+     opacity is the cheapest property to animate. Each port starts its blink
+     part of a period late (--led-phase), so busy ports never blink in step. */
+  .verso-panel-art [data-verso-port]:is(.act-1, .act-2, .act-3, .act-4) .led-traffic {
+    fill: var(--color-hw-led-act); filter: drop-shadow(0 0 3px color-mix(in srgb, var(--color-hw-led-act) 80%, transparent));
+    animation: var(--led-beat) var(--led-period) steps(1, end) infinite;
+    animation-delay: calc(var(--led-period) * var(--led-phase, 0) * -1);
   }
+  .verso-panel-art .act-1 { --led-beat: verso-led-blip; --led-period: 1.8s; }
+  .verso-panel-art .act-2 { --led-beat: verso-led-blink; --led-period: 0.5s; }
+  .verso-panel-art .act-3 { --led-beat: verso-led-blink; --led-period: 0.16s; }
+  .verso-panel-art .act-4 { --led-beat: verso-led-flicker; --led-period: 0.08s; }
+  @keyframes verso-led-blip { 0% { opacity: 1; } 8%, 100% { opacity: 0.2; filter: none; } }
+  @keyframes verso-led-blink { 0% { opacity: 1; } 50%, 100% { opacity: 0.2; filter: none; } }
+  @keyframes verso-led-flicker { 0% { opacity: 1; } 75%, 100% { opacity: 0.2; filter: none; } }
   @media (prefers-reduced-motion: reduce) {
-    .verso-port.is-active .verso-port-led.led-act { animation: none; }
+    .verso-panel-art [data-verso-port] .led-traffic { animation: none; }
   }
-  .verso-port.is-linked .verso-port-frame { stroke: var(--color-hw-linked-edge); }
-  .verso-port.is-linked .verso-port-jack, .verso-port.is-linked .verso-port-cage { filter: drop-shadow(0 0 9px color-mix(in srgb, var(--color-hw-led-link) 35%, transparent)); }
-  .verso-port.is-empty .verso-port-jack, .verso-port.is-empty .verso-port-cage { opacity: 0.5; }
-  .verso-port-label { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.02em; color: var(--color-hw-label); }
-  .verso-port-speed { font-family: var(--font-mono); font-size: 0.6875rem; }
-  .verso-port.is-linked .verso-port-speed { color: var(--color-hw-led-link); }
-  .verso-port.is-empty .verso-port-speed { color: var(--color-hw-quiet); }
+  /* The WAN port's outline, and a port the keyboard is on. */
+  .verso-panel-art [data-verso-port].is-wan > path { stroke: var(--color-denim-line); stroke-width: 1.5; }
+  .verso-panel-art [data-verso-port] { outline: none; }
+  .verso-panel-art [data-verso-port]:focus-visible > path { stroke: var(--color-denim); stroke-width: 2; }
 
-  /* per-device accent: tints the device name and the WAN port's label. One of these
-     sits on the page and the other on the dark chassis, so the accent is the
-     palette's lightest step of each hue — the one that carries on both grounds.
-     The role names are the wire's, from when they were the names of ramps. */
-  .verso-ports--sky .verso-ports-name,     .verso-ports--sky .is-wan .verso-port-label     { color: var(--color-denim-line); }
-  .verso-ports--emerald .verso-ports-name, .verso-ports--emerald .is-wan .verso-port-label { color: var(--color-green-line); }
-  .verso-ports--violet .verso-ports-name,  .verso-ports--violet .is-wan .verso-port-label  { color: var(--color-amethyst-line); }
-  .verso-ports--amber .verso-ports-name,   .verso-ports--amber .is-wan .verso-port-label   { color: var(--color-marigold-line); }
+  /* The generated panel's neutral finish, painted by class from the palette. */
+  .verso-panel-generated .verso-panel-chassis { fill: var(--color-quiet); stroke: var(--color-rule-strong); stroke-width: 1; }
+  .verso-panel-generated .verso-port-body { fill: var(--color-canvas); stroke: var(--color-rule-strong); stroke-width: 1; stroke-linejoin: round; }
+  .verso-panel-generated .verso-port-mouth { fill: var(--color-ink); }
+  .verso-panel-generated .verso-port-pins { fill: var(--color-hw-pin); opacity: 0.5; }
+  .verso-panel-generated .verso-port-socket { fill: var(--color-body); }
+  .verso-panel-generated .verso-port-slit { fill: var(--color-ink); }
+  .verso-panel-generated :is(.led-link, .led-traffic) { fill: var(--color-inert); }
+  .verso-panel-generated :is(.verso-port-label, .verso-port-speed) { font-family: var(--font-mono); font-size: 0.6875rem; }
+  .verso-panel-generated .verso-port-label { fill: var(--color-ink); }
+  .verso-panel-generated .verso-port-speed { fill: var(--color-meta); }
 
+  /* A port's detail, shown above it on hover or keyboard focus (verso.js
+     places it). */
   .verso-port-tip {
-    position: absolute; bottom: calc(100% + 0.75rem); left: 50%; transform: translateX(-50%) translateY(0.25rem);
-    z-index: 5; opacity: 0; pointer-events: none; white-space: nowrap; text-align: left;
-    padding: 0.5625rem 0.75rem; border-radius: 0.5625rem; font-size: 0.75rem;
+    position: absolute; z-index: 5; pointer-events: none; white-space: nowrap; text-align: left;
+    padding: 0.5rem 0.75rem; border-radius: 0.5rem; font-size: 0.75rem;
     background: var(--color-hw-tip); color: var(--color-hw-tip-text); border: 1px solid var(--color-hw-tip-edge);
     box-shadow: 0 12px 26px -10px rgb(0 0 0 / 0.7);
-    transition: opacity 0.15s, transform 0.15s;
+    transform: translateX(-50%);
   }
   .verso-port-tip b { color: var(--color-canvas); font-weight: 600; }
   .verso-port-tip .role { text-transform: uppercase; }
-  .verso-port-tip .r { display: flex; justify-content: space-between; gap: 1.25rem; margin-top: 0.1875rem; font-family: var(--font-mono); }
+  .verso-port-tip .r { display: flex; justify-content: space-between; gap: 1.25rem; margin-top: 0.25rem; font-family: var(--font-mono); }
   .verso-port-tip .r .k { color: var(--color-hw-tip-key); }
-  .verso-port:hover .verso-port-tip, .verso-port:focus-within .verso-port-tip { opacity: 1; transform: translateX(-50%) translateY(0); }
   .verso-port-tip::after { content: ""; position: absolute; top: 100%; left: 50%; transform: translateX(-50%); border: 5px solid transparent; border-top-color: var(--color-hw-tip); }
 
-  .verso-ports-legend { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.5rem 1.25rem; margin-top: 0.875rem; font-size: 0.8125rem; color: var(--color-meta); }
-  .verso-ports-key { display: inline-flex; align-items: center; gap: 0.4375rem; }
+  /* per-device accent: tints the device name. */
+  .verso-ports--sky .verso-ports-name     { color: var(--color-denim-line); }
+  .verso-ports--emerald .verso-ports-name { color: var(--color-green-line); }
+  .verso-ports--violet .verso-ports-name  { color: var(--color-amethyst-line); }
+  .verso-ports--amber .verso-ports-name   { color: var(--color-marigold-line); }
+
+  .verso-ports-legend { display: flex; flex-wrap: wrap; gap: 0.5rem 1.25rem; margin-top: 1rem; font-size: 0.8125rem; color: var(--color-meta); }
+  .verso-ports-key { display: inline-flex; align-items: center; gap: 0.5rem; }
   .verso-ports-dot { width: 0.375rem; height: 0.375rem; border-radius: 1px; background: var(--color-inert); }
   .verso-ports-dot.on { background: var(--color-green); }
   .verso-ports-dot.act { background: var(--color-marigold); }
-
-  @media (max-width: 560px) {
-    .verso-port-jack, .verso-port-cage { height: 2.5rem; }
-    .verso-ports-chassis { gap: 0.625rem; padding: 1.125rem 0.875rem 0.875rem; }
-    .verso-port-label { font-size: 0.6875rem; } .verso-port-speed { font-size: 0.625rem; }
-  }
-
-  /* Panel art: a board profile's own rear/front SVG, shown in place of the
-     generated strip. The shell lights it through the art's own data-verso-port
-     groups (litPanel tags them), so these rules — not per-board code — carry the
-     live state, exactly as the generated strip's .verso-port rules do. A CSS
-     property beats the SVG's inline presentation attribute, so the art ships its
-     LEDs drawn dark and the shell paints the lit ones. The traffic LED lights
-     steadily here; its blink is a follow-up on the live stream. */
-  .verso-panel-art svg { display: block; width: 100%; height: auto; }
-  .verso-panel-art [data-verso-port].is-linked .led-link { fill: var(--color-hw-led-link); filter: drop-shadow(0 0 3px color-mix(in srgb, var(--color-hw-led-link) 85%, transparent)); }
-  .verso-panel-art [data-verso-port].is-active .led-traffic { fill: var(--color-hw-led-act); filter: drop-shadow(0 0 3px color-mix(in srgb, var(--color-hw-led-act) 80%, transparent)); }
-  .verso-panel-art [data-verso-port].is-wan > path { stroke: var(--color-denim-line); stroke-width: 1.8; }
 
   /* The running-fan glyph (customGlyphs["fan-spin"]) turns while a fan runs — a
      calm, unhurried rotation, stilled for reduced-motion. A stalled or absent

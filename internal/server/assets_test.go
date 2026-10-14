@@ -323,6 +323,29 @@ func TestTheThemeMeasuresOnTheEightPixelGrid(t *testing.T) {
 	}
 }
 
+// TestAPanelMeasuresOnTheEightPixelGrid: a router's panel is drawn at its own
+// size where it fits, so every edge it draws stands on a line, and where it
+// does not it shrinks to a whole number of 8px steps tall, its width following
+// its proportions and its left edge the content's (device-panel).
+func TestAPanelMeasuresOnTheEightPixelGrid(t *testing.T) {
+	raw, err := os.ReadFile("assets/input.css")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{
+		".verso-panel-art { position: relative; container-type: inline-size; }",
+		".verso-panel-face svg { display: block; width: auto; max-width: none; height: min(var(--art-h), round(down, 100cqi * var(--art-aspect), 0.5rem)); }",
+	} {
+		if !strings.Contains(string(raw), want) {
+			t.Errorf("the panel does not measure on the 8px grid: input.css is missing %s", want)
+		}
+	}
+	// No panel rule sizes the art any other way.
+	if strings.Contains(string(raw), ".verso-panel-art svg { display: block; width: 100%; height: auto; }") {
+		t.Error("the panel's art is still stretched to its column's width, off the grid")
+	}
+}
+
 // TestADevSessionCanDrawTheGrid: in a dev session G draws the 8px grid over
 // the page, from the top bar's hairline and the rail's border, and over a
 // drawer's body from its chrome's hairline (layout-grid). Only a dev session

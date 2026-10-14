@@ -48,7 +48,7 @@
   
   Then write the generator, and make `Ports` render it through `litPanel` when it has no art. Remove the generated-strip branch from `ports.html.tmpl`. Verify with `go test ./internal/widget`.
 - [x] 3.3 Write tests for port detail: `litPanel` gives each port group `tabindex="0"`, `role="img"` and an `aria-label` with name, state and speed. The widget renders one hidden detail per port, keyed `data-verso-port-tip="<iface>"`, with name, role, address and an empty link slot. The art wrapper carries `--art-h` and `--art-aspect` from the `viewBox`. Then implement them in `ports.go` and `ports.html.tmpl`. Verify with `go test ./internal/widget`.
-- [ ] 3.4 Write the CSS in `input.css`:
+- [x] 3.4 Write the CSS in `input.css`:
   - one rule set lighting `led-link`/`led-traffic`;
   - `act-1`–`act-4` keyframes with `--led-period`, and a delay from `--led-phase`;
   - a reduced-motion override that keeps the LED lit without blinking;

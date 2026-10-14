@@ -48,7 +48,7 @@ func generatedPanel(items []PortItem) string {
 	}
 	width := x + panelInset
 	var b strings.Builder
-	fmt.Fprintf(&b, `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 %d %d" width="%d" height="%d">`, width, panelHeight, width, panelHeight)
+	fmt.Fprintf(&b, `<svg xmlns="http://www.w3.org/2000/svg" class="verso-panel-generated" viewBox="0 0 %d %d" width="%d" height="%d">`, width, panelHeight, width, panelHeight)
 	fmt.Fprintf(&b, `<rect class="verso-panel-chassis" x="0.5" y="0.5" width="%d" height="%d" rx="8"/>`, width-1, panelHeight-1)
 	b.WriteString(body.String())
 	b.WriteString(`</svg>`)
