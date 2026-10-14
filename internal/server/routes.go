@@ -13,6 +13,7 @@ func (s *Server) routes() {
 	// The stylesheet at a stable URL (more specific than /assets/, so it wins): the
 	// page inlines CSS for first paint, and the dev hot-reload script re-fetches this.
 	s.mux.HandleFunc("GET /assets/verso.css", s.handleCSS)
+	s.mux.HandleFunc("GET /favicon.ico", s.handleFavicon)
 	// The rail's press-time fetch rules, which a page names in its headers.
 	s.mux.HandleFunc("GET "+speculationRulesPath, s.handleSpeculationRules)
 	s.mux.HandleFunc("GET /login", s.handleLoginForm)

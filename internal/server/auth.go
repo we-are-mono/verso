@@ -26,7 +26,8 @@ type Authenticator interface {
 }
 
 func isPublicPath(p string) bool {
-	return p == "/login" || p == "/login/status" || p == "/healthz" || strings.HasPrefix(p, "/assets/")
+	return p == "/login" || p == "/login/status" || p == "/healthz" || p == "/favicon.ico" ||
+		strings.HasPrefix(p, "/assets/")
 }
 
 // requireAuth redirects unauthenticated requests to the login page; public paths

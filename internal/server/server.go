@@ -59,9 +59,9 @@ var speculationRules []byte
 // speculationRulesPath is where speculationRules is served.
 const speculationRulesPath = "/assets/speculation-rules.json"
 
-// scriptFS holds the shell's client-side JS and self-hosted fonts, served under
-// /assets. The page chrome loads the scripts (ADR-004); CSS loads the embedded
-// font subsets without a third-party request.
+// scriptFS holds the shell's client-side JS, self-hosted fonts and icons,
+// served under /assets. The page chrome loads the scripts (ADR-004); CSS loads
+// the embedded font subsets without a third-party request.
 //
 //go:embed assets/htmx.min.js assets/alpine.csp.min.js assets/verso-dev.js assets/verso-boot.js
 //go:embed assets/verso.js assets/verso-forms.js assets/verso-tables.js assets/verso-commit.js
@@ -70,8 +70,11 @@ const speculationRulesPath = "/assets/speculation-rules.json"
 //go:embed assets/verso-stream.js assets/verso-chart.js assets/verso-listing.js assets/verso-takeover.js assets/verso-page.js
 //go:embed assets/verso-overview.js assets/verso-units.js
 //go:embed assets/verso-login.js
-//go:embed assets/fonts
+//go:embed assets/fonts assets/icons
 var scriptFS embed.FS
+
+// faviconPath is the icon file a browser asks the site root for.
+const faviconPath = "assets/icons/favicon.ico"
 
 // devCSSPath is the hot-reload stylesheet drop point. When scripts/dev.sh is driving a
 // session it compiles the CSS here, and the shell reads it fresh on every render (and
@@ -619,7 +622,21 @@ func (s *Server) assets() http.Handler {
 	// redeployed binary is always what the browser shows (no stale asset, no hash
 	// in the URL to bust). The one cost is a possible font re-fetch flash on
 	// navigation; on a local network it is negligible.
-	return http.StripPrefix("/assets/", http.FileServerFS(sub))
+	files := http.StripPrefix("/assets/", http.FileServerFS(sub))
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// The web app manifest's type, which Go's table and a router's lack of
+		// /etc/mime.types would otherwise leave as text/plain.
+		if strings.HasSuffix(r.URL.Path, ".webmanifest") {
+			w.Header().Set("Content-Type", "application/manifest+json")
+		}
+		files.ServeHTTP(w, r)
+	})
+}
+
+// handleFavicon answers a browser that looks for the icon at the site root
+// rather than reading the page's head.
+func (s *Server) handleFavicon(w http.ResponseWriter, r *http.Request) {
+	http.ServeFileFS(w, r, scriptFS, faviconPath)
 }
 
 func (s *Server) handleHealth(w http.ResponseWriter, _ *http.Request) {
