@@ -820,3 +820,14 @@ fn a_ports_link_speed_is_a_rate_the_shell_writes() {
     assert_eq!(row["cells"][1]["rate"], 2.5e9);
     assert!(inventory_row(&m, "eth1")["cells"][1].get("rate").is_none());
 }
+
+// A network's uptime is handed over in seconds, which the shell writes as
+// every duration is written; a network netifd reports no uptime for says so.
+#[test]
+fn a_networks_uptime_is_seconds_for_the_shell_to_write() {
+    let up = page::uptime(Some(&json!({"uptime": 4_523_580})));
+    assert_eq!(up.label, "Uptime");
+    assert_eq!(up.duration, Some(4_523_580));
+    let unknown = page::uptime(None);
+    assert_eq!((unknown.duration, unknown.value.as_str()), (None, "—"));
+}

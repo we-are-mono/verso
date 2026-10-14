@@ -161,16 +161,12 @@ fn ula(address: &str) -> bool {
         .and_then(|a| a.parse::<Ipv6Addr>().ok())
         .is_some_and(|a| a.segments()[0] & 0xfe00 == 0xfc00)
 }
-fn uptime(live: Option<&Value>) -> String {
-    let Some(s) = live.and_then(|l| l.get("uptime")).and_then(Value::as_u64) else {
-        return String::new();
-    };
-    if s >= 86400 {
-        format!("{}d {}h {}m", s / 86400, s % 86400 / 3600, s % 3600 / 60)
-    } else if s >= 3600 {
-        format!("{}h {}m", s / 3600, s % 3600 / 60)
-    } else {
-        format!("{}m {}s", s / 60, s % 60)
+// uptime is how long netifd says the network has been up, in seconds for the
+// shell to write as every duration is written.
+pub(crate) fn uptime(live: Option<&Value>) -> Property {
+    match live.and_then(|l| l.get("uptime")).and_then(Value::as_u64) {
+        Some(seconds) => Property::duration("Uptime", seconds),
+        None => fact("Uptime", ""),
     }
 }
 // speed is a port's negotiated link speed in bits per second, from netifd's
@@ -308,7 +304,7 @@ fn details(
                     .join(", "),
             ),
             fact("Protocol", protocol),
-            fact("Uptime", uptime(live)),
+            uptime(live),
         ];
         // A device carrying more than one network says which state is whose.
         let several = nets.len() > 1;
