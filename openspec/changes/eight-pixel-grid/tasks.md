@@ -16,8 +16,8 @@ Every task ends green under `make lint` and `make test`. Each step is reviewed i
 
 ## 3. Shell frame
 
-- [ ] 3.1 Page frame: heading line 24 / 32 / 24, phone gutter 16px, measure rounding to 8px. Update `page.html.tmpl` and the frame rules in `input.css`, changing the server tests that pin the heading air first. With G on, verify the h1 line and the first card's top edge land on lines on Access and Firewall settings. Commit.
-- [ ] 3.2 Rail: rows keep 40px, the "On this page" links become 28px, and the nav row's spacing comes off fractions (`nav-row.html.tmpl`). Update the guard checklist entries for these templates. Verify with G on. Commit.
+- [x] 3.1 Page frame: heading line 24 / 32 / 24, phone gutter 16px, measure rounding to 8px. Update `page.html.tmpl` and the frame rules in `input.css`, changing the server tests that pin the heading air first. With G on, verify the h1 line and the first card's top edge land on lines on Access and Firewall settings. Commit.
+- [x] 3.2 Rail: rows keep 40px, the "On this page" links become 28px, and the nav row's spacing comes off fractions (`nav-row.html.tmpl`). Update the guard checklist entries for these templates. Verify with G on. Commit.
 
 ## 4. Cards and listings
 

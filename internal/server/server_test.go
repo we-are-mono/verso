@@ -771,12 +771,12 @@ func postPluginRequest(t *testing.T, srv *Server, path string, form url.Values, 
 }
 
 // TestTheRailStandsOnTheTitlesBaseline: beside the page, the rail's first row
-// reads on the h1's baseline — 19px of air above the rows, against the
-// masthead's 16px and its 36px heading line — while the phone's drawer keeps
-// its own 28px under the close button.
+// stands 24px under the top bar, as the heading line does, and its rows stand
+// 40px apart on the grid; the phone's drawer keeps the same 24px under its
+// close button.
 func TestTheRailStandsOnTheTitlesBaseline(t *testing.T) {
 	body := get(t, newServer(t, fakeBackend{}), "/").Body.String()
-	if !strings.Contains(body, `<nav class="min-h-0 flex-1 overflow-y-auto pt-7 pb-4 md:pt-4.75">`) {
+	if !strings.Contains(body, `<nav class="min-h-0 flex-1 overflow-y-auto pt-6 pb-4">`) {
 		t.Error("the rail's rows do not stand on the title's baseline")
 	}
 }
@@ -1020,7 +1020,7 @@ func TestEveryPageWearsTheOneMasthead(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if n := strings.Count(string(src), `data-verso-masthead class="py-6.5"{{end}}`); n != 1 {
+	if n := strings.Count(string(src), `data-verso-masthead class="py-6"{{end}}`); n != 1 {
 		t.Errorf("page.html.tmpl draws %d mastheads, want one", n)
 	}
 	tr := &fakeTransport{env: &plugin.Envelope{
@@ -1029,7 +1029,7 @@ func TestEveryPageWearsTheOneMasthead(t *testing.T) {
 	}}
 	s := newServerWith(t, fakeBackend{}, tr, []plugin.Manifest{demoManifest()})
 	body := get(t, s, "/plugins/demo/").Body.String()
-	if !strings.Contains(body, `<div data-verso-masthead class="py-6.5">`) || strings.Contains(body, `class="verso-kicker"`) {
+	if !strings.Contains(body, `<div data-verso-masthead class="py-6">`) || strings.Contains(body, `class="verso-kicker"`) {
 		t.Errorf("a plugin's page does not wear the one masthead:\n%s", body)
 	}
 }
@@ -2716,7 +2716,7 @@ func TestTheHeadingKeepsItsLineWhenItsActsWrapUnder(t *testing.T) {
 
 // TestAPageStandsOnSandUnderItsHeadingLine: every page but home and a live
 // one stands on Quiet Sand with no grid, its title alone on its line — no lede
-// under it — with 26px above and below the line and no bar or hairline, so
+// under it — with 24px above and below the line and no bar or hairline, so
 // the first card stands right under it. The light masthead keeps its
 // Paper and its hairline.
 func TestAPageStandsOnSandUnderItsHeadingLine(t *testing.T) {
@@ -2730,13 +2730,13 @@ func TestAPageStandsOnSandUnderItsHeadingLine(t *testing.T) {
 	if !strings.Contains(body, `<div class="flex-1 bg-quiet">`) || strings.Contains(body, "verso-notebook") {
 		t.Errorf("the page does not stand on the sand without the grid:\n%s", body)
 	}
-	// The frame's side air is the Overview's: a cell on a phone, two from md,
+	// The frame's side air is the Overview's: 16px on a phone, 40px from md,
 	// so a card's own inset still leaves its content room.
-	if !strings.Contains(body, `<div class="px-5 pb-10 md:px-10">`) {
+	if !strings.Contains(body, `<div class="px-4 pb-10 md:px-10">`) {
 		t.Errorf("the heading line meets the top bar, with no air of the frame's above it:\n%s", body)
 	}
-	if !strings.Contains(body, `<div data-verso-masthead class="py-6.5">`) {
-		t.Errorf("the title's line stands 26px clear of the top bar and of the first card:\n%s", body)
+	if !strings.Contains(body, `<div data-verso-masthead class="py-6">`) {
+		t.Errorf("the title's line stands 24px clear of the top bar and of the first card:\n%s", body)
 	}
 	if strings.Contains(body, `class="verso-lede`) {
 		t.Error("a page's title carries no lede")

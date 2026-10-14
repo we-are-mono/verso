@@ -91,10 +91,10 @@
   </div>
   {{/* One flat list of destinations — no titles, no rules. The row you are in
        opens its subpages beneath it, so the rail carries the whole path.
-       Beside the page its first row reads on the h1's baseline: 19px above
-       the rows, against the masthead's 16px and its 36px heading line. */}}
-  <nav class="min-h-0 flex-1 overflow-y-auto pt-7 pb-4 md:pt-4.75">
-    <ul data-verso-nav-rows class="flex flex-col gap-0.5">
+       Each row is 36px and the next 4px on, so the rows stand 40px apart on
+       the grid, the first beside the page's heading line. */}}
+  <nav class="min-h-0 flex-1 overflow-y-auto pt-6 pb-4">
+    <ul data-verso-nav-rows class="flex flex-col gap-1">
       {{range .Nav.Rows}}{{template "verso-nav-row" .}}{{end}}
     </ul>
   </nav>
@@ -113,7 +113,7 @@
        starts at the content. */}}
   {{if .Banner}}
   {{/* the square hangs on the banner's first 28px line */}}
-  <div class="relative z-10 -mt-px flex items-start gap-2.5 border-y px-8 py-3 text-sm leading-7
+  <div class="relative z-10 -mt-px flex items-start gap-2 border-y px-8 py-3 text-sm leading-7
     {{if eq .Banner.Variant "danger"}}border-crimson-line bg-crimson-soft text-crimson-deep
     {{else if eq .Banner.Variant "warning"}}border-marigold-line bg-marigold-soft text-marigold-deep
     {{else}}border-denim-line bg-denim-soft text-denim-deep{{end}}">
@@ -124,37 +124,37 @@
   {{/* The page's frame: 40px of air on every side, and inside it a measure the
        page declares (default normal). The padding is outside the cap, so the
        cap is the content's real width rather than a box the padding eats into —
-       a wide page is 1140px of content, which is what every canvas is drawn
-       against. On the notebook's grid the column is whole cells wide however
-       narrow the window, so its rules end on a line (input.css). Left-aligned
+       a wide page is 1136px of content, which is what every canvas is drawn
+       against. The column is a multiple of 8px however narrow the window, so
+       its rules end on a line of the grid (input.css). Left-aligned
        against the rail; no centring, which reads better on a wide monitor. */}}
   {{/* Every page stands on Quiet Sand so its Paper cards stand off it, home's
        as every other's (ADR-022); a live page (a log, Diagnostics)
        keeps its own frame, its output the darker surface. */}}
   <div class="{{if eq .Width "full"}}flex min-h-0 flex-1 flex-col{{else}}flex-1{{end}}{{if not (or .Light (eq .Width "full"))}} bg-quiet{{end}}">
-    {{/* The heading line stands on the sand 26px under the top bar and 26px
+    {{/* The heading line stands on the sand 24px under the top bar and 24px
          over the first card, with no bar of its own. A live page's
          masthead is the light bar, its title's line 16px inside it at top and
          bottom, ending on a hairline as far as the page's gutter keeps it
          from the rail (input.css). The frame's bottom padding becomes the
          natural gap before the footer. On a phone a card page keeps the
-         Overview's one cell of side air, since a card adds its own inset.
+         Overview's 16px of side air, since a card adds its own inset.
          A full page keeps the side air for its masthead but never the bottom:
          what is below the masthead runs to the edge. Home's display verdict
          keeps the full 40px, as far from the top as from the left. */}}
-    <div class="{{if eq .Width "full"}}flex min-h-0 flex-1 flex-col px-10{{else if .Overview}}px-5 pt-10 pb-20 md:px-10{{else if .Light}}px-10 pb-10{{else}}px-5 pb-10 md:px-10{{end}}">
+    <div class="{{if eq .Width "full"}}flex min-h-0 flex-1 flex-col px-10{{else if .Overview}}px-4 pt-10 pb-20 md:px-10{{else if .Light}}px-10 pb-10{{else}}px-4 pb-10 md:px-10{{end}}">
     <div data-verso-column class="{{if eq .Width "full"}}verso-page-full{{else if eq .Width "form"}}max-w-form{{else if eq .Width "narrow"}}max-w-4xl{{else if eq .Width "wide"}}max-w-6xl{{else}}max-w-5xl{{end}}">
     {{if .Heading}}
     {{/* Whatever measure the column keeps, the stylesheet ends the masthead's
          acts under Log out. */}}
-    <div{{if .Light}} data-verso-masthead="light" class="mb-10 py-4"{{else}} data-verso-masthead class="py-6.5"{{end}}>
+    <div{{if .Light}} data-verso-masthead="light" class="mb-10 py-4"{{else}} data-verso-masthead class="py-6"{{end}}>
       {{/* The heading line: the heading and what acts on the page, centred on
            each other. The line is an act's height whether it holds one or
            not, so moving between pages never shifts the heading or what sits
            under it. A toned heading is a message about now, not a
            place-label: it tints in the tone vocabulary and drops the
            " — <tab>" suffix ("neutral" drops the suffix without a tint). */}}
-      <div class="flex min-h-control flex-wrap items-center justify-between gap-5">
+      <div class="flex min-h-control flex-wrap items-center justify-between gap-4">
         <h1 class="verso-page-heading{{if eq .Tone "info"}} text-denim-deep{{else if eq .Tone "success"}} text-green-deep{{else if eq .Tone "warning"}} text-marigold-deep{{else if eq .Tone "danger"}} text-crimson-deep{{end}}">{{.Heading}}{{if and .HeadingDetail (not .Tone)}}<span class="text-faint"> — {{.HeadingDetail}}</span>{{end}}</h1>
         {{/* A standing note leads the acts, the group as one on the line. */}}
         {{if .HeadingNote}}<div class="flex flex-wrap items-center gap-3"><span data-verso-heading-note class="text-sm text-meta" aria-live="polite">{{.HeadingNote}}</span>{{.HeadingAct}}</div>{{else if .HeadingAct}}{{.HeadingAct}}{{end}}
@@ -239,13 +239,13 @@
 {{if .SessionExpiry}}
 <dialog id="verso-session-ending" role="alertdialog" aria-labelledby="verso-session-ending-title" aria-describedby="verso-session-ending-body" tabindex="-1"
   class="verso-modal m-auto {{template "verso-dialog-box"}} rounded-xs border border-rule-strong bg-ground shadow-[0_8px_32px_rgba(27,25,23,.16)] focus:outline-none">
-  <div class="px-5 pt-4 pb-5">
+  <div class="px-6 pt-4 pb-6">
     <h2 id="verso-session-ending-title" class="text-base font-semibold text-ink">
       <span data-verso-session-extendable>{{ t "You’ll be signed out in" }}</span><span data-verso-session-capped hidden>{{ t "Your session ends in" }}</span>
       <span data-verso-session-countdown class="tabular-nums">1:00</span>
     </h2>
     <p id="verso-session-ending-body" class="mt-2 text-sm leading-[1.45] text-body text-pretty"><span data-verso-session-capped hidden>{{ t "Sessions last at most 12 hours." }} </span>{{ t "Staged changes are kept. Anything typed but not saved will be lost." }}</p>
-    <div class="mt-6 flex items-center gap-2 border-t border-rule pt-5">
+    <div class="mt-6 flex items-center gap-2 border-t border-rule pt-6">
       <button type="button" data-verso-session-stay data-verso-session-extendable class="{{template "verso-btn-box"}} {{template "verso-btn-primary"}} focus-visible:outline-denim-deep">{{ t "Stay signed in" }}</button>
       <button type="button" data-verso-session-dismiss data-verso-session-capped hidden class="{{template "verso-btn-box"}} {{template "verso-btn-primary"}} focus-visible:outline-denim-deep">{{ t "Keep working" }}</button>
       <form method="post" action="/logout" class="flex">

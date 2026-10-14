@@ -52,14 +52,14 @@ func TestAccessContributionStandsOffByThePageGap(t *testing.T) {
 	}
 }
 
-// TestPageMastheadStandsOnTheSand: the heading's line stands 26px under the
-// top bar and 26px over the first card, with no bar or hairline of its own.
+// TestPageMastheadStandsOnTheSand: the heading's line stands 24px under the
+// top bar and 24px over the first card, with no bar or hairline of its own.
 // The masthead still aligns page acts.
 func TestPageMastheadStandsOnTheSand(t *testing.T) {
 	s := passwordServer(t, fakeBackend{})
 	access := get(t, s, "/system/access").Body.String()
-	if !strings.Contains(access, `<div data-verso-masthead class="py-6.5">`) {
-		t.Error("the heading's line stands 26px clear of the top bar and of the first card")
+	if !strings.Contains(access, `<div data-verso-masthead class="py-6">`) {
+		t.Error("the heading's line stands 24px clear of the top bar and of the first card")
 	}
 	if strings.Contains(access, "data-verso-bleed") {
 		t.Error("the page's rules are no one page's experiment")
@@ -94,7 +94,7 @@ func TestServerPagesNameEachThingOnce(t *testing.T) {
 // the rule.
 func TestMaintenanceSectionsUsePageBands(t *testing.T) {
 	body := get(t, passwordServer(t, fakeBackend{}), "/system/maintenance").Body.String()
-	if !strings.Contains(body, `<div data-verso-masthead class="py-6.5">`) {
+	if !strings.Contains(body, `<div data-verso-masthead class="py-6">`) {
 		t.Error("the masthead opens onto the first section from the sand")
 	}
 	// With nothing to say, nothing stands before Firmware: the section opens

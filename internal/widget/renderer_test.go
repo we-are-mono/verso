@@ -707,13 +707,9 @@ func TestRenderLink(t *testing.T) {
 	rail := render(t, r, &Link{Label: "Speed", Href: "#speed", Style: "rail"})
 	for _, want := range []string{
 		`href="#section-speed"`, "data-verso-rail-link", "verso-rail-link",
-		// a cell and a half each: two cells is too loose for a run of 14px
-		// words and one too tight. The run reaches its padding out at either
-		// end, so every second link's words stand in a cell and the ones
-		// between straddle a line; the hairline a pixel out onto the column's
-		"-ml-px flex items-center gap-1.5 border-l border-rule py-1.25 pl-4 text-sm leading-5",
-		// and ends on a line whatever the count
-		"first:-mt-1.25 last:-mb-1.25 [&:nth-child(even):last-child]:mb-1.25",
+		// 28px each, its 20px line and 4px over and under, so a run of any
+		// count is a multiple of 4px; the hairline a pixel out onto the column's
+		"-ml-px flex items-center gap-2 border-l border-rule py-1 pl-4 text-sm leading-5",
 	} {
 		if !strings.Contains(rail, want) {
 			t.Errorf("rail link missing %q: %s", want, rail)

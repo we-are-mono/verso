@@ -14,7 +14,7 @@
      act on a thing of its own (a package) opens that thing's drawer over the
      page; the page keeps its address, since the drawer is not a place on it. */}}
 <div class="{{template "verso-field-row-class"}}">
-  <div class="flex min-w-0 flex-wrap items-center gap-x-2.5 leading-5">
+  <div class="flex min-w-0 flex-wrap items-center gap-x-2 leading-5">
     <span aria-hidden="true" class="size-1.5 shrink-0 rounded-[1px] border border-faint"></span>
     <span class="text-sm font-semibold text-ink">{{.Label}}</span>
     {{if .Code}}<span class="{{template "verso-chip-class"}}">{{.Code}}</span>{{end}}
@@ -28,11 +28,11 @@
   </div>{{end}}
 </div>
 {{else if eq .Style "choice"}}
-<a href="{{.Href}}" class="group flex items-start gap-3.5 border-b border-rule px-10 py-4 text-ink transition-colors hover:bg-quiet focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-denim">
-  {{if .Icon}}<span class="mt-0.5 shrink-0 text-glyph">{{icon .Icon "size-4"}}</span>{{end}}
-  <span class="min-w-0 flex-1"><span class="flex flex-wrap items-baseline gap-2 text-sm"><span class="font-semibold">{{.Label}}</span>{{if .Code}}<span class="{{template "verso-chip-class"}}">{{.Code}}</span>{{end}}</span>
+<a href="{{.Href}}" class="group flex items-start gap-4 border-b border-rule px-10 py-4 text-ink transition-colors hover:bg-quiet focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-denim">
+  {{if .Icon}}<span class="flex h-5 shrink-0 items-center text-glyph">{{icon .Icon "size-4"}}</span>{{end}}
+  <span class="min-w-0 flex-1"><span class="flex flex-wrap items-baseline gap-2 text-sm leading-5"><span class="font-semibold">{{.Label}}</span>{{if .Code}}<span class="{{template "verso-chip-class"}}">{{.Code}}</span>{{end}}</span>
   {{if .Desc}}<span class="mt-1 block text-sm leading-relaxed text-body">{{.Desc}}</span>{{end}}</span>
-  <span class="mt-0.5 shrink-0 text-faint group-hover:text-denim">{{icon "chevron-right" "size-4"}}</span>
+  <span class="flex h-5 shrink-0 items-center text-faint group-hover:text-denim">{{icon "chevron-right" "size-4"}}</span>
 </a>
 {{else if eq .Style "button"}}
 <a href="{{.Href}}"{{if .NewTab}} target="_blank" rel="noopener noreferrer"{{end}} class="{{template "verso-btn-box"}} {{template "verso-btn-primary"}} focus-visible:outline-denim-deep">{{template "verso-link-face" .}}</a>
@@ -46,13 +46,10 @@
      are one set of three states, and a utility for any of them would beat the
      rule that draws the other two — the utility layer wins the cascade whatever
      the specificity. */}}
-{{/* A link is a cell and a half: two cells is too loose for a run of 14px
-     words and one too tight. The run reaches half its padding out over the
-     first, so its words stand in a cell, every second link's after them, and
-     the ones between straddle a line, centred on it. It ends on a line
-     whatever the count: an odd run gives the half back at its end, an even
-     one keeps it. */}}
-<a href="{{.Href}}" data-verso-rail-link class="verso-rail-link -ml-px flex items-center gap-1.5 border-l border-rule py-1.25 pl-4 text-sm leading-5 transition-colors first:-mt-1.25 last:-mb-1.25 [&:nth-child(even):last-child]:mb-1.25">{{template "verso-link-face" .}}</a>
+{{/* A link is 28px: its 20px line and 4px over and under, close enough for a
+     run of 14px words to read as one list, so a run of any count is a
+     multiple of 4px and its edges land on the grid. */}}
+<a href="{{.Href}}" data-verso-rail-link class="verso-rail-link -ml-px flex items-center gap-2 border-l border-rule py-1 pl-4 text-sm leading-5 transition-colors">{{template "verso-link-face" .}}</a>
 {{else if eq .Style "act"}}
 {{/* act: an act on a part of a section, in the subsection act's one dress. One
      that makes or replaces the thing it stands under opens its form in a drawer
@@ -73,5 +70,5 @@
 <a href="{{.Href}}"{{if .NewTab}} target="_blank" rel="noopener noreferrer"{{end}} class="{{template "verso-btn-box"}} border {{template "verso-btn-secondary"}} focus-visible:outline-denim">{{template "verso-link-face" .}}</a>
 {{end}}
 {{else}}
-<a href="{{.Href}}"{{if .NewTab}} target="_blank" rel="noopener noreferrer"{{end}} class="inline-flex items-center gap-1.5 text-sm font-medium text-denim underline underline-offset-2 transition-colors hover:text-denim-deep">{{template "verso-link-face" .}}</a>
+<a href="{{.Href}}"{{if .NewTab}} target="_blank" rel="noopener noreferrer"{{end}} class="inline-flex items-center gap-2 text-sm font-medium text-denim underline underline-offset-2 transition-colors hover:text-denim-deep">{{template "verso-link-face" .}}</a>
 {{end}}
