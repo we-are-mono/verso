@@ -140,9 +140,9 @@
          natural gap before the footer. On a phone a card page keeps the
          Overview's 16px of side air, since a card adds its own inset.
          A full page keeps the side air for its masthead but never the bottom:
-         what is below the masthead runs to the edge. Home's display verdict
-         keeps the full 40px, as far from the top as from the left. */}}
-    <div class="{{if eq .Width "full"}}flex min-h-0 flex-1 flex-col px-10{{else if .Overview}}px-4 pt-10 pb-20 md:px-10{{else if .Light}}px-10 pb-10{{else}}px-4 pb-10 md:px-10{{end}}">
+         what is below the masthead runs to the edge. Home draws its own
+         heading line, 24px under the top bar as every page's is. */}}
+    <div class="{{if eq .Width "full"}}flex min-h-0 flex-1 flex-col px-10{{else if .Overview}}px-4 pt-6 pb-20 md:px-10{{else if .Light}}px-10 pb-10{{else}}px-4 pb-10 md:px-10{{end}}">
     <div data-verso-column class="{{if eq .Width "full"}}verso-page-full{{else if eq .Width "form"}}max-w-form{{else if eq .Width "narrow"}}max-w-4xl{{else if eq .Width "wide"}}max-w-6xl{{else}}max-w-5xl{{end}}">
     {{if .Heading}}
     {{/* Whatever measure the column keeps, the stylesheet ends the masthead's

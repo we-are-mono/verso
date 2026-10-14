@@ -136,11 +136,16 @@ func TestPageContentAppearsWithoutEntranceAnimation(t *testing.T) {
 		t.Fatal("page loads must not carry an entrance animation")
 	}
 	body := whole[strings.LastIndex(whole, "</style>"):]
-	// The homepage keeps the page inset every page keeps: 2.5rem from the top,
-	// and from the sidebar once there is room for it; a cell on a phone, so the
-	// cards' frames still land on the grid's lines.
-	if !strings.Contains(body, `<div class="px-4 pt-10 pb-20 md:px-10">`) {
+	// The homepage keeps the air every page keeps: its heading line 24px under
+	// the top bar, 40px from the sidebar once there is room for it and 16px on
+	// a phone, so the cards' frames land on the grid's lines.
+	if !strings.Contains(body, `<div class="px-4 pt-6 pb-20 md:px-10">`) {
 		t.Error("the page's air is the frame's, outside the content measure")
+	}
+	// Its h1 is every page's heading, on a control's line, and the cards
+	// stand 24px under it as they do under any heading line.
+	if !strings.Contains(body, `<h1 class="verso-page-heading text-balance">`) || !strings.Contains(body, `<div class="verso-overview-cols mt-6">`) {
+		t.Error("the homepage's heading is not every page's heading")
 	}
 	if !strings.Contains(body, `<div data-verso-column class="max-w-`) {
 		t.Error("the content measure must sit inside that air")
