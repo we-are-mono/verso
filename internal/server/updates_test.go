@@ -306,7 +306,7 @@ func TestMaintenanceUpdatesEverythingCurrent(t *testing.T) {
 		// The ledger states the build as the update tool writes it, version
 		// and revision together, and names the server it was checked
 		// against, the name verbatim in mono.
-		">Current<", ">25.12.4 r32933-4ccb782af7<",
+		">Installed<", ">25.12.4 r32933-4ccb782af7<",
 		"Checked against <code>https://sysupgrade.mono.si</code>",
 	} {
 		if !strings.Contains(body, want) {
@@ -363,7 +363,7 @@ func TestMaintenanceFirmwareRungs(t *testing.T) {
 				// The ledger sets the build on offer under what runs, led by
 				// the arrow, each as the update tool writes it; no sentence
 				// restates it.
-				">Current<", `aria-label="Available version"`, ">25.12.4 r32933<", ">25.12.5 r33051<",
+				">Installed<", `aria-label="Available version"`, ">25.12.4 r32933<", ">25.12.5 r33051<",
 				"Built by <code>https://sysupgrade.openwrt.org</code>", "78 packages change",
 				// Installing is caution, not danger: the same one-hue confirm, in
 				// marigold, naming the build.

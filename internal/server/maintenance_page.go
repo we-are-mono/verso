@@ -101,11 +101,12 @@ func firmwareSection(v maintenanceView) *widget.Section {
 }
 
 // ledgerFacts is the firmware's diff, the fact list every card's facts are:
-// each part beside what runs now, under the Part and Current heads, and —
+// each part beside what runs now, under the Part and Installed heads ("Current" would be read as a
+// rail's current in a language that tells the two apart), and —
 // while a build is offered — what it becomes, under the value with the arrow.
 // Versions are machine strings, set in mono.
 func ledgerFacts(l firmwareLedger) *widget.Properties {
-	p := &widget.Properties{Align: "left", Head: &widget.PropertiesHead{Label: "Part", Value: "Current"}}
+	p := &widget.Properties{Align: "left", Head: &widget.PropertiesHead{Label: "Part", Value: "Installed"}}
 	for _, row := range l.Rows {
 		fact := widget.Property{Label: row.Label, Value: build(row.Current, row.CurrentRev), Mono: true}
 		if row.Current == "" {
