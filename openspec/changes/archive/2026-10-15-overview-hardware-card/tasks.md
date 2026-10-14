@@ -51,7 +51,7 @@
   - its `rows` carry each keyed value, and the `overview` frame carries Hardware's head
 
   Then add the frame to `handleOverviewEvents`, sent each tick from the sampler's cached read. Verify that `go test ./internal/server/...` passes.
-- [ ] 5.2 Add the client's `sensors` handler in `internal/server/assets/verso-stream.js`, which writes each `rows` entry's text to `[data-verso-prop="<key>"]`. Verify on `make dev`: with the Hardware card open, a temperature row changes within five seconds without a reload, and the closed header's CPU summary updates.
+- [x] 5.2 Add the client's `sensors` handler in `internal/server/assets/verso-stream.js`, which writes each `rows` entry's text to `[data-verso-prop="<key>"]`. Verify on `make dev`: with the Hardware card open, a temperature row changes within five seconds without a reload, and the closed header's CPU summary updates.
 
 ## 6. Documents
 
@@ -68,7 +68,7 @@
 
 ## 7. Integration
 
-- [ ] 7.1 Run `make lint` and `make test`. Then on `make dev`:
+- [x] 7.1 Run `make lint` and `make test`. Then on `make dev`:
   - a fresh browser shows Hardware at the end of the right column
   - hiding Hardware stops the `sensors` frames (browser network panel)
   - Reset layout restores it
