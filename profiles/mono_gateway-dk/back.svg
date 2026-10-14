@@ -15,12 +15,12 @@
 
     WAN is a runtime role, not fixed hardware, so this art asserts no WAN port.
     Each ethernet group is tagged data-verso-port="<iface>" with the silicon
-    name (eth0 … eth4). Verso marks whichever port UCI assigns to WAN by injecting
-    one style rule at render time, e.g.:
-      [data-verso-port="eth0"] > path { stroke: #38bdf8; stroke-width: 1.5; }
-    The two LEDs in each port carry class="led-link" and class="led-traffic";
-    Verso lights and blinks them the same way (fill + injected ledLink/ledTraffic
-    keyframes) from live link and traffic state.
+    name (eth0 … eth4), its outline as its only direct-child path, and an empty
+    class="verso-port-role" text 8px over the port. Verso marks whichever port
+    carries the WAN: it strokes that outline blue and writes "WAN" into its role
+    slot. The two LEDs in each port carry class="led-link" and
+    class="led-traffic"; Verso lights and blinks them from live link and traffic
+    state.
   -->
 
   <!-- Chassis -->
@@ -43,6 +43,7 @@
 
   <!-- eth1 (leftmost cage) -->
   <g data-verso-port="eth1" class="port">
+    <text class="verso-port-role" x="192" y="40" text-anchor="middle" font-family="'JetBrains Mono', monospace" font-size="11"></text>
     <path d="M171.5,48.5 H212.5 A3,3 0 0 1 215.5,51.5 V84.5 A3,3 0 0 1 212.5,87.5 H203.5 V92 A1.5,1.5 0 0 1 202,93.5 H182 A1.5,1.5 0 0 1 180.5,92 V87.5 H171.5 A3,3 0 0 1 168.5,84.5 V51.5 A3,3 0 0 1 171.5,48.5 Z" fill="#2b313a" stroke="#4c5563" stroke-width="1" stroke-linejoin="round" />
     <g fill="#12151a"><path d="M173.5,52 H210.5 A1.5,1.5 0 0 1 212,53.5 V82.5 A1.5,1.5 0 0 1 210.5,84 H200 V89 A1,1 0 0 1 199,90 H185 A1,1 0 0 1 184,89 V84 H173.5 A1.5,1.5 0 0 1 172,82.5 V53.5 A1.5,1.5 0 0 1 173.5,52 Z" /></g>
     <g fill="#f0a419" opacity="0.5">
@@ -62,6 +63,7 @@
 
   <!-- eth2 -->
   <g data-verso-port="eth2" class="port">
+    <text class="verso-port-role" x="248" y="40" text-anchor="middle" font-family="'JetBrains Mono', monospace" font-size="11"></text>
     <path d="M227.5,48.5 H268.5 A3,3 0 0 1 271.5,51.5 V84.5 A3,3 0 0 1 268.5,87.5 H259.5 V92 A1.5,1.5 0 0 1 258,93.5 H238 A1.5,1.5 0 0 1 236.5,92 V87.5 H227.5 A3,3 0 0 1 224.5,84.5 V51.5 A3,3 0 0 1 227.5,48.5 Z" fill="#2b313a" stroke="#4c5563" stroke-width="1" stroke-linejoin="round" />
     <g fill="#12151a"><path d="M229.5,52 H266.5 A1.5,1.5 0 0 1 268,53.5 V82.5 A1.5,1.5 0 0 1 266.5,84 H256 V89 A1,1 0 0 1 255,90 H241 A1,1 0 0 1 240,89 V84 H229.5 A1.5,1.5 0 0 1 228,82.5 V53.5 A1.5,1.5 0 0 1 229.5,52 Z" /></g>
     <g fill="#f0a419" opacity="0.5">
@@ -81,6 +83,7 @@
 
   <!-- eth0 -->
   <g data-verso-port="eth0" class="port">
+    <text class="verso-port-role" x="304" y="40" text-anchor="middle" font-family="'JetBrains Mono', monospace" font-size="11"></text>
     <path d="M283.5,48.5 H324.5 A3,3 0 0 1 327.5,51.5 V84.5 A3,3 0 0 1 324.5,87.5 H315.5 V92 A1.5,1.5 0 0 1 314,93.5 H294 A1.5,1.5 0 0 1 292.5,92 V87.5 H283.5 A3,3 0 0 1 280.5,84.5 V51.5 A3,3 0 0 1 283.5,48.5 Z" fill="#2b313a" stroke="#4c5563" stroke-width="1" stroke-linejoin="round" />
     <g fill="#12151a"><path d="M285.5,52 H322.5 A1.5,1.5 0 0 1 324,53.5 V82.5 A1.5,1.5 0 0 1 322.5,84 H312 V89 A1,1 0 0 1 311,90 H297 A1,1 0 0 1 296,89 V84 H285.5 A1.5,1.5 0 0 1 284,82.5 V53.5 A1.5,1.5 0 0 1 285.5,52 Z" /></g>
     <g fill="#f0a419" opacity="0.5">
@@ -100,6 +103,7 @@
 
   <!-- eth3 (SFP cage) -->
   <g data-verso-port="eth3" class="port">
+    <text class="verso-port-role" x="368" y="40" text-anchor="middle" font-family="'JetBrains Mono', monospace" font-size="11"></text>
     <path d="M347.5,56.5 H388.5 A3,3 0 0 1 391.5,59.5 V84.5 A3,3 0 0 1 388.5,87.5 H379.5 V92 A1.5,1.5 0 0 1 378,93.5 H358 A1.5,1.5 0 0 1 356.5,92 V87.5 H347.5 A3,3 0 0 1 344.5,84.5 V59.5 A3,3 0 0 1 347.5,56.5 Z" fill="#2b313a" stroke="#4c5563" stroke-width="1" stroke-linejoin="round" />
     <rect x="348" y="60" width="40" height="24" rx="1.5" fill="#12151a" />
     <rect x="356" y="70" width="24" height="8" rx="1" fill="#2b313a" />
@@ -111,6 +115,7 @@
 
   <!-- eth4 (SFP cage) -->
   <g data-verso-port="eth4" class="port">
+    <text class="verso-port-role" x="424" y="40" text-anchor="middle" font-family="'JetBrains Mono', monospace" font-size="11"></text>
     <path d="M403.5,56.5 H444.5 A3,3 0 0 1 447.5,59.5 V84.5 A3,3 0 0 1 444.5,87.5 H435.5 V92 A1.5,1.5 0 0 1 434,93.5 H414 A1.5,1.5 0 0 1 412.5,92 V87.5 H403.5 A3,3 0 0 1 400.5,84.5 V59.5 A3,3 0 0 1 403.5,56.5 Z" fill="#2b313a" stroke="#4c5563" stroke-width="1" stroke-linejoin="round" />
     <rect x="404" y="60" width="40" height="24" rx="1.5" fill="#12151a" />
     <rect x="412" y="70" width="24" height="8" rx="1" fill="#2b313a" />

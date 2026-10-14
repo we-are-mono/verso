@@ -219,6 +219,9 @@ What the art carries:
   other path (a mouth that follows the outline) inside a nested `<g>`.
 - **Two LEDs drawn unlit:** `class="led-link"` and `class="led-traffic"`. The shell
   paints the lit ones.
+- **An empty role slot over the port:** `<text class="verso-port-role" …></text>`,
+  centred 8px above the port's top. The shell writes "WAN" into the WAN port's slot;
+  the art never names the role itself.
 - **Its own size in pixels.** Draw it at the size an Overview card shows it (the
   DK's is 504×136), every box edge on an 8px line and every detail on a 4px one,
   1px strokes half a pixel in, the chassis filling the `viewBox` from `0 0`. The

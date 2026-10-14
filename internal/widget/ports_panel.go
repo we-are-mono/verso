@@ -19,12 +19,13 @@ const (
 	portWidth     = 48
 	portGap       = 8  // between ports of one kind
 	portKindGap   = 16 // where the connector kind changes
-	jackTop       = 16 // an RJ45 body's top; an SFP+ cage's is 8 lower
+	roleBaseline  = 16 // the WAN tag, on the 0–24 line over the ports
+	jackTop       = 24 // an RJ45 body's top; an SFP+ cage's is 8 lower
 	cageDrop      = 8
-	bodyBottom    = 56
-	lipBottom     = 62
-	labelBaseline = 88  // the name, on the 72–96 line
-	speedBaseline = 112 // the speed, on the 96–120 line
+	bodyBottom    = 64
+	lipBottom     = 70
+	labelBaseline = 96  // the name, on the 80–104 line
+	speedBaseline = 120 // the speed, on the 104–128 line
 )
 
 // generatedPanel draws a whole panel for a board without art: a chassis
@@ -90,6 +91,9 @@ func writePort(b *strings.Builder, x int, it PortItem) {
 		}
 		b.WriteString(`</g>`)
 	}
+	// The role slot over the port: empty here, filled by litPanel on the WAN
+	// port, so which port is WAN never lives in the drawing.
+	fmt.Fprintf(b, `<text class="verso-port-role" x="%s" y="%d" text-anchor="middle"></text>`, f(24), roleBaseline)
 	fmt.Fprintf(b, `<rect class="led-link" x="%s" y="%d" width="8" height="4" rx="1"/>`, f(2), bodyBottom+2)
 	fmt.Fprintf(b, `<rect class="led-traffic" x="%s" y="%d" width="8" height="4" rx="1"/>`, f(38), bodyBottom+2)
 	fmt.Fprintf(b, `<text class="verso-port-label" x="%s" y="%d" text-anchor="middle">%s</text>`, f(24), labelBaseline, html.EscapeString(it.Label))

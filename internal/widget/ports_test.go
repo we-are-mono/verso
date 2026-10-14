@@ -166,6 +166,28 @@ func TestPortsActivityLevel(t *testing.T) {
 	}
 }
 
+// TestTheWANPortIsTaggedAboveIt: the art carries an empty role slot over each
+// port, never the role itself; the shell writes "WAN" into the WAN port's slot
+// alone, and the port's label names the role too.
+func TestTheWANPortIsTaggedAboveIt(t *testing.T) {
+	r := newRenderer(t)
+	back := `<svg viewBox="0 0 100 40">` +
+		`<g data-verso-port="eth0" class="port"><path/><text class="verso-port-role" x="10" y="8"></text><text>eth0</text></g>` +
+		`<g data-verso-port="eth1" class="port"><path/><text class="verso-port-role" x="60" y="8"></text><text>eth1</text></g></svg>`
+	got := render(t, r, &Ports{Back: back, Items: []PortItem{
+		{Label: "eth0", Iface: "eth0", Role: "wan", Linked: true, Speed: "1G"}, {Label: "eth1", Iface: "eth1"},
+	}})
+	for _, want := range []string{
+		`<text class="verso-port-role" x="10" y="8">WAN</text>`,
+		`<text class="verso-port-role" x="60" y="8"></text>`,
+		`aria-label="eth0, WAN, Connected, 1G"`,
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("WAN tag missing %q:\n%s", want, got)
+		}
+	}
+}
+
 // TestPortsArtSizesFromItsViewBox: a panel's own size reaches the stylesheet,
 // which draws it at that size where it fits and shrinks it in whole 8px steps
 // where it does not.

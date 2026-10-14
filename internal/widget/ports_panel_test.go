@@ -98,8 +98,9 @@ func TestGeneratedPanelLayout(t *testing.T) {
 	}
 	// Each port's outline starts 3.5 in from its box's left edge (the corner
 	// radius, its stroke half a pixel in): boxes at 24, 80 and 144. An RJ45's
-	// body starts at 16, an SFP+ cage's at 24.
-	for _, want := range []string{`d="M27.5,16.5 `, `d="M83.5,16.5 `, `d="M147.5,24.5 `} {
+	// body starts at 24, under the line its WAN tag stands on, an SFP+
+	// cage's at 32.
+	for _, want := range []string{`d="M27.5,24.5 `, `d="M83.5,24.5 `, `d="M147.5,32.5 `} {
 		if !strings.Contains(svg, want) {
 			t.Errorf("generated panel missing outline %q:\n%s", want, svg)
 		}
@@ -144,6 +145,13 @@ func TestGeneratedPanelPorts(t *testing.T) {
 	}
 	if rj.texts["verso-port-label"] != "lan1" || rj.texts["verso-port-speed"] != "1G" {
 		t.Errorf("RJ45 texts = %v, want lan1 and 1G", rj.texts)
+	}
+	// Each port carries an empty role slot over it, which the shell fills on
+	// the WAN port.
+	for _, p := range ports {
+		if role, ok := p.texts["verso-port-role"]; !ok || role != "" {
+			t.Errorf("%s: role slot = %q (present %v), want an empty slot", p.iface, role, ok)
+		}
 	}
 	if sfp.texts["verso-port-speed"] != "—" {
 		t.Errorf("SFP+ speed = %q, want a dash", sfp.texts["verso-port-speed"])

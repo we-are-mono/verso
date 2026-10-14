@@ -98,6 +98,8 @@ type portsView struct {
 	Front     panelFace // the front panel, lit from live state
 	// The link words a stream relabels a port with, in the reader's language.
 	WordOn, WordOff string
+	// WordWAN is the tag written over the WAN port.
+	WordWAN string
 }
 
 // panelFace is one face of a panel: its lit art and the size it is drawn at
@@ -132,7 +134,7 @@ func (p *Ports) renderInto(r *Renderer, out io.Writer, _ string) error {
 		accent = "sky"
 	}
 	v := portsView{Device: p.Device, Accent: accent, Items: p.Items, Legend: p.Legend,
-		WordOn: r.tr("Connected"), WordOff: r.tr("Not connected")}
+		WordOn: r.tr("Connected"), WordOff: r.tr("Not connected"), WordWAN: r.tr("WAN")}
 	// The legend explains only what this device actually has, derived from its ports.
 	for _, it := range p.Items {
 		switch it.Kind {
@@ -158,12 +160,16 @@ func (p *Ports) renderInto(r *Renderer, out io.Writer, _ string) error {
 }
 
 // portLabel is what a keyboard or screen reader reaches a port by: its name,
-// its link in words, and its speed while it has link.
+// its role, its link in words, and its speed while it has link.
 func portLabel(it PortItem, v portsView) string {
-	if !it.Linked {
-		return it.Label + ", " + v.WordOff
+	name := it.Label
+	if it.Role == "wan" {
+		name += ", " + v.WordWAN
 	}
-	label := it.Label + ", " + v.WordOn
+	if !it.Linked {
+		return name + ", " + v.WordOff
+	}
+	label := name + ", " + v.WordOn
 	if it.Speed != "" && it.Speed != "—" {
 		label += ", " + it.Speed
 	}
@@ -199,6 +205,38 @@ func litPanel(svg string, items []PortItem, v portsView) template.HTML {
 		lit := anchor + " " + strings.Join(classes, " ") + `" style="--led-phase: ` + phaseText(it.Iface) + `"` +
 			` tabindex="0" role="img" aria-label="` + html.EscapeString(portLabel(it, v)) + `"`
 		svg = strings.Replace(svg, anchor+`"`, lit, 1)
+		if it.Role == "wan" {
+			svg = tagRole(svg, lit, v.WordWAN)
+		}
 	}
 	return template.HTML(svg) //nolint:gosec // first-party art embedded in the binary; only a runtime-contributed profile would need sanitizing, and none exists
+}
+
+// roleSlotEnd closes an empty role slot, the text element the art keeps over
+// each port for the shell to write its role into.
+const roleSlotEnd = `></text>`
+
+// tagRole writes word into the role slot of the port whose lit group opening
+// is group: the first slot after it and before the next port's group, so a
+// port without a slot is left untouched rather than tagging its neighbour.
+func tagRole(svg, group, word string) string {
+	start := strings.Index(svg, group)
+	if start < 0 {
+		return svg
+	}
+	end := len(svg)
+	if next := strings.Index(svg[start+len(group):], `data-verso-port="`); next >= 0 {
+		end = start + len(group) + next
+	}
+	slot := strings.Index(svg[start:end], `class="verso-port-role"`)
+	if slot < 0 {
+		return svg
+	}
+	slot += start
+	closing := strings.Index(svg[slot:end], roleSlotEnd)
+	if closing < 0 {
+		return svg
+	}
+	closing += slot
+	return svg[:closing] + ">" + html.EscapeString(word) + "</text>" + svg[closing+len(roleSlotEnd):]
 }

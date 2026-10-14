@@ -103,6 +103,9 @@
     var word = panel.getAttribute(iface.linked ? "data-verso-word-on" : "data-verso-word-off") || "";
     var tip = panel.querySelector('[data-verso-port-tip="' + CSS.escape(iface.name) + '"]');
     var name = tip && tip.querySelector("b") ? tip.querySelector("b").textContent : iface.name;
+    // The WAN port keeps its role in its label: the word the shell wrote over it.
+    var role = port.querySelector(".verso-port-role");
+    if (role && role.textContent) name += ", " + role.textContent;
     var label = name + ", " + word + (iface.linked && iface.speed && iface.speed !== "—" ? ", " + iface.speed : "");
     if (port.getAttribute("aria-label") !== label) port.setAttribute("aria-label", label);
     if (tip) setText(tip, "[data-verso-port-link]", iface.linked ? iface.speed : word);

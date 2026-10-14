@@ -212,7 +212,7 @@ func TestHardwarePanelArtEmbedded(t *testing.T) {
 func TestTheDKArtKeepsThePanelContract(t *testing.T) {
 	svg := readPanel("mono_gateway-dk", "back.svg")
 	dec := xml.NewDecoder(strings.NewReader(svg))
-	type port struct{ paths, links, traffic int }
+	type port struct{ paths, links, traffic, roles int }
 	ports := map[string]*port{}
 	var order []string
 	var current *port
@@ -262,6 +262,8 @@ func TestTheDKArtKeepsThePanelContract(t *testing.T) {
 					current.links++
 				case "led-traffic":
 					current.traffic++
+				case "verso-port-role":
+					current.roles++
 				}
 			}
 		case xml.EndElement:
@@ -275,8 +277,8 @@ func TestTheDKArtKeepsThePanelContract(t *testing.T) {
 		t.Errorf("ports %v, want %v left to right", order, want)
 	}
 	for name, p := range ports {
-		if p.paths != 1 || p.links != 1 || p.traffic != 1 {
-			t.Errorf("%s: %d direct-child paths, %d link and %d traffic LEDs; want one of each", name, p.paths, p.links, p.traffic)
+		if p.paths != 1 || p.links != 1 || p.traffic != 1 || p.roles != 1 {
+			t.Errorf("%s: %d direct-child paths, %d link and %d traffic LEDs, %d role slots; want one of each", name, p.paths, p.links, p.traffic, p.roles)
 		}
 	}
 }

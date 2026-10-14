@@ -788,12 +788,13 @@ html {
     .verso-panel-art [data-verso-port]:is(.act-1, .act-2, .act-3, .act-4) .led-traffic { animation: none; }
   }
   /* The WAN port's outline, and a port the keyboard is on. */
-  /* The WAN port's outline and name are blue: the hardware blue on board
-     art's dark finish, Denim on the generated panel's sand. */
+  /* The WAN port's outline and its WAN tag over it are blue: the hardware
+     blue on board art's dark finish, Denim on the generated panel's sand.
+     Its name stays as every port's. */
   .verso-panel-art [data-verso-port].is-wan > path { stroke: var(--color-hw-wan); stroke-width: 1.5; }
-  .verso-panel-art [data-verso-port].is-wan text:not(.verso-port-speed) { fill: var(--color-hw-wan); }
+  .verso-panel-art .verso-port-role { fill: var(--color-hw-wan); font-weight: 600; letter-spacing: 0.04em; }
   .verso-panel-generated [data-verso-port].is-wan > path { stroke: var(--color-denim); }
-  .verso-panel-generated [data-verso-port].is-wan text.verso-port-label { fill: var(--color-denim); }
+  .verso-panel-generated .verso-port-role { fill: var(--color-denim); font-family: var(--font-mono); font-size: 0.6875rem; }
   .verso-panel-art [data-verso-port] { outline: none; }
   .verso-panel-art [data-verso-port]:focus-visible > path { stroke: var(--color-denim); stroke-width: 2; }
 
