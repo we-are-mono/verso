@@ -602,7 +602,7 @@ func TestHumanizeChange(t *testing.T) {
 		{[]string{"set", "proton", "cert_password", "x"}, "network: proton.cert_password = ••••••••"},
 	}
 	for _, c := range cases {
-		if got := humanizeChange("network", c.ch); got != c.want {
+		if got := humanizeChange("network", c.ch, nil); got != c.want {
 			t.Errorf("humanizeChange(%v) = %q, want %q", c.ch, got, c.want)
 		}
 	}
@@ -610,7 +610,7 @@ func TestHumanizeChange(t *testing.T) {
 
 func TestCustomFileReviewShowsThePathAndProposedContents(t *testing.T) {
 	tuple := []string{"file", "/etc/dnsmasq.conf", "log-queries\n"}
-	raw := humanizeChange("dhcp", tuple)
+	raw := humanizeChange("dhcp", tuple, nil)
 	if raw != "/etc/dnsmasq.conf" {
 		t.Fatal(raw)
 	}

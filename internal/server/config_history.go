@@ -6,6 +6,7 @@ package server
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"log"
 	"strings"
 
@@ -21,7 +22,7 @@ type changeRecorder interface {
 }
 
 // secretOptions is every option config history keeps no value of: OpenWrt's
-// own (internal/secrets), and each installed plugin's.
+// own (internal/secrets), and each installed plugin's (pluginSecrets).
 func (s *Server) secretOptions() map[string]bool {
 	base := secrets.Base()
 	names := make(map[string]bool, len(base))
@@ -29,8 +30,23 @@ func (s *Server) secretOptions() map[string]bool {
 		names[name] = true
 	}
 	for _, m := range s.manifestList() {
-		for _, name := range m.Secrets {
+		for _, name := range pluginSecrets(m) {
 			names[name] = true
+		}
+	}
+	return names
+}
+
+// pluginSecrets is the secrets m's manifest names in a config its acl
+// writes. A plugin says which options of the configs it writes hold a secret,
+// never of one it only reads or does not touch: a secret's values leave all
+// of config history.
+func pluginSecrets(m plugin.Manifest) []string {
+	own := declaredUCIConfigs(m)
+	var names []string
+	for _, name := range m.Secrets {
+		if config, _, ok := strings.Cut(name, "."); ok && own[config] {
+			names = append(names, name)
 		}
 	}
 	return names
@@ -44,7 +60,8 @@ func (s *Server) secretOptions() map[string]bool {
 func (s *Server) stagedChange(ctx context.Context, sid, user, address string) history.Change {
 	identity := func(s string) string { return s }
 	view := s.staged(ctx, sid, identity, func(string) func(string) string { return identity })
-	change := history.Change{User: user, Address: address, Items: stagedItems(view, s.secretOptions())}
+	secrets := s.secretOptions()
+	change := history.Change{User: user, Address: address, Items: stagedItems(view, secrets)}
 	var configs []string
 	seen := map[string]bool{}
 	for _, item := range change.Items {
@@ -68,11 +85,49 @@ func (s *Server) stagedChange(ctx context.Context, sid, user, address string) hi
 	for i := range change.Items {
 		for j := range change.Items[i].Ops {
 			op := &change.Items[i].Ops[j]
-			op.Old = replaced(committed, *op)
+			op.Old = replaced(committed, *op, secrets)
 		}
 	}
 	change.OldRead = true
 	return change
+}
+
+// scrubHistory takes every secret the shell knows out of config history:
+// what a shell kept before it kept no copy of one, and what was kept of a
+// secret before the list or a plugin's manifest named it. It runs when the
+// history opens and each time the plugins are read again, and writes only
+// what holds a value still.
+func (s *Server) scrubHistory(ctx context.Context) {
+	if s.historyStore == nil {
+		return
+	}
+	secrets := s.secretOptions()
+	n, err := s.historyStore.ScrubSecrets(ctx, secrets, func(op history.ChangeOp) string {
+		return humanizeChange(op.Config, opTuple(op), secrets)
+	})
+	if n > 0 {
+		log.Printf("verso: config history: %d rows scrubbed of secrets", n)
+	}
+	switch {
+	case errors.Is(err, history.ErrNotRewritten):
+		log.Printf("verso: config history: history.db keeps what its scrubbed rows held until it is rewritten, which every scrub tries: %v", err)
+	case err != nil:
+		log.Printf("verso: %v", err)
+	}
+}
+
+// opTuple is a secret's change as `uci changes` lists it, its value masked:
+// what a verbatim row's raw line is made from. It is masked here, not by the
+// names the shell knows, as a secret's change may name an option no list
+// names any more, or one only the helper's reading of the manifests named.
+func opTuple(op history.ChangeOp) []string {
+	switch op.Op {
+	case "remove-option":
+		return []string{"remove", op.Section, op.Option}
+	case "set", "list-add", "list-del":
+		return []string{op.Op, op.Section, op.Option, maskedValue}
+	}
+	return []string{op.Op, op.Section}
 }
 
 // stagedItems is the review drawer's rows as config history keeps them,
@@ -140,11 +195,12 @@ func changeOp(c stagedChange, secrets map[string]bool) history.ChangeOp {
 }
 
 // replaced is what op's target held committed, as JSON: the option's value
-// for a change to an option, the whole section for a section removed. A new
-// section, a file, and anything that was not there replaced nothing.
-func replaced(committed map[string]map[string]any, op history.ChangeOp) json.RawMessage {
+// for a change to an option, the whole section for a section removed, each
+// option secrets names (config.option) in it not kept. A new section, a file,
+// a secret, and anything that was not there replaced nothing.
+func replaced(committed map[string]map[string]any, op history.ChangeOp, secrets map[string]bool) json.RawMessage {
 	section, ok := committed[op.Config][op.Section].(map[string]any)
-	if !ok {
+	if !ok || op.Secret {
 		return nil
 	}
 	var old any
@@ -156,7 +212,7 @@ func replaced(committed map[string]map[string]any, op history.ChangeOp) json.Raw
 		}
 		old = value
 	case "remove-section":
-		old = section
+		old, _ = history.WithoutSecrets(op.Config, section, secrets)
 	default:
 		return nil
 	}

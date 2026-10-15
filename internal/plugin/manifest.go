@@ -30,7 +30,9 @@ type Manifest struct {
 	ACL        ACL         `json:"acl"`
 	// Secrets are the options that hold a secret, as config.option in any
 	// section ("network.password"): config history records that they changed
-	// and never their values (ADR-021).
+	// and never their values (ADR-021). One counts only in a config the
+	// plugin's acl writes with scope "uci"; the shell and the helper leave one
+	// in any other config out alike.
 	Secrets []string `json:"secrets,omitempty"`
 }
 

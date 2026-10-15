@@ -29,32 +29,9 @@ import (
 // in memory instead, so collection goes on. The uplink is probed at its
 // gateway and at each of probes, and alerts go where notify says (ADR-020).
 func (s *Server) StartHistory(dir string, probes []netip.Addr, notify alerts.Config) {
-	path := filepath.Join(dir, "history.db")
-	store, openErr := history.Open(path)
-	onDisk := openErr == nil
-	if !onDisk {
-		log.Printf("verso: history kept in memory only, %s cannot be written: %v", path, openErr)
-		var err error
-		if store, err = history.Open(":memory:"); err != nil {
-			log.Printf("verso: no history: %v", err)
-			return
-		}
-	}
-	// The alerter begins before this boot is recorded, so an unclean one
-	// alerts.
-	host, _ := os.Hostname()
-	alerter := alerts.New(store, host)
-	alerter.Configure(notify)
-	if err := alerter.Begin(context.Background()); err != nil {
-		log.Printf("verso: alerts: %v", err)
-	}
-	s.historyStore, s.changeLog, s.alerter = store, store, alerter
-	store.OnHealth(s.storageTurned)
-	if !onDisk {
-		store.Fail(fmt.Sprintf("%s cannot be written: %v", path, openErr), time.Now())
-	}
-	if onDisk {
-		recordBoot(context.Background(), store, dir)
+	store, onDisk := s.openHistory(dir, notify)
+	if store == nil {
+		return
 	}
 	prober := probe.New(probes)
 	collector := history.NewCollector(store,
@@ -74,7 +51,7 @@ func (s *Server) StartHistory(dir string, probes []netip.Addr, notify alerts.Con
 	watching.Go(func() { watchWAN(watchCtx, store, openwrt.KernelWAN) })
 	watching.Go(func() { s.watchSpool(watchCtx, store, changesSpool) })
 	watching.Go(func() { prober.Run(watchCtx) })
-	watching.Go(func() { alerter.Run(watchCtx) })
+	watching.Go(func() { s.alerter.Run(watchCtx) })
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan struct{})
 	go func() {
@@ -90,6 +67,42 @@ func (s *Server) StartHistory(dir string, probes []netip.Addr, notify alerts.Con
 			markStopped(dir)
 		}
 	}
+}
+
+// openHistory opens dir/history.db, or a history in memory where the file
+// cannot be written, and keeps it on s with its alerter. A history on disk
+// records this boot and is scrubbed of every secret the shell knows. It
+// answers the store, nil when there is none, and whether it is on disk.
+func (s *Server) openHistory(dir string, notify alerts.Config) (*history.Store, bool) {
+	path := filepath.Join(dir, "history.db")
+	store, openErr := history.Open(path)
+	onDisk := openErr == nil
+	if !onDisk {
+		log.Printf("verso: history kept in memory only, %s cannot be written: %v", path, openErr)
+		var err error
+		if store, err = history.Open(":memory:"); err != nil {
+			log.Printf("verso: no history: %v", err)
+			return nil, false
+		}
+	}
+	// The alerter begins before this boot is recorded, so an unclean one
+	// alerts.
+	host, _ := os.Hostname()
+	alerter := alerts.New(store, host)
+	alerter.Configure(notify)
+	if err := alerter.Begin(context.Background()); err != nil {
+		log.Printf("verso: alerts: %v", err)
+	}
+	s.historyStore, s.changeLog, s.alerter = store, store, alerter
+	store.OnHealth(s.storageTurned)
+	if !onDisk {
+		store.Fail(fmt.Sprintf("%s cannot be written: %v", path, openErr), time.Now())
+	}
+	if onDisk {
+		recordBoot(context.Background(), store, dir)
+		s.scrubHistory(context.Background())
+	}
+	return store, onDisk
 }
 
 // interfaceRates hands over each interface's per-second rates, in bits per

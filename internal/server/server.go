@@ -566,7 +566,17 @@ func (s *Server) Rescan() {
 			log.Printf("verso: grants not refreshed for a session: %v", err)
 		}
 	}
+	// A plugin may name secrets config history kept a value of before it
+	// arrived. The scrub has time of its own, as rewriting history.db takes
+	// as long as the file is large: one cut short is owed, and made by the
+	// next scrub, the next start's at the latest, which has no deadline.
+	scrubCtx, cancelScrub := context.WithTimeout(context.Background(), rescanScrubTimeout)
+	defer cancelScrub()
+	s.scrubHistory(scrubCtx)
 }
+
+// rescanScrubTimeout bounds the scrub of config history a rescan runs.
+const rescanScrubTimeout = 2 * time.Minute
 
 // manifestList is the served manifest set; manifestByID resolves one plugin.
 // Both take the read lock so a concurrent rescan swaps atomically underneath.

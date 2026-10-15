@@ -180,16 +180,16 @@ func (s *Server) takeReading(ctx context.Context, store *history.Store, reading 
 // that writes the config describes it, with what each change replaced.
 func (s *Server) directChange(ctx context.Context, reading configReading, before map[string]map[string]any, tuples [][]string, secret map[string]bool) history.Change {
 	config := reading.Config
-	flat := make([]stagedChange, len(tuples))
-	for i, tuple := range tuples {
-		flat[i] = stagedChange{config: config, tuple: tuple, raw: humanizeChange(config, tuple)}
-	}
-	identity := func(s string) string { return s }
-	groups, _ := s.describedGroups(ctx, directSource{s, config, reading.Sections}, flat, identity, func(string) func(string) string { return identity })
-	secrets := map[string]bool{}
+	secrets := s.secretOptions()
 	for option := range secret {
 		secrets[config+"."+option] = true
 	}
+	flat := make([]stagedChange, len(tuples))
+	for i, tuple := range tuples {
+		flat[i] = stagedChange{config: config, tuple: tuple, raw: humanizeChange(config, tuple, secrets)}
+	}
+	identity := func(s string) string { return s }
+	groups, _ := s.describedGroups(ctx, directSource{s, config, reading.Sections}, flat, identity, func(string) func(string) string { return identity })
 	change := history.Change{Time: time.Unix(reading.Time, 0), Status: history.ChangeApplied, OldRead: true,
 		Items: stagedItems(stagedView{Groups: groups}, secrets)}
 	held := map[string]any{}
@@ -200,7 +200,7 @@ func (s *Server) directChange(ctx context.Context, reading configReading, before
 	for i := range change.Items {
 		for j := range change.Items[i].Ops {
 			op := &change.Items[i].Ops[j]
-			op.Old = replaced(committed, *op)
+			op.Old = replaced(committed, *op, secrets)
 		}
 	}
 	return change

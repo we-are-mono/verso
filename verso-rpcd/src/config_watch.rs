@@ -208,7 +208,7 @@ fn spool_config(spool: &Path, name: &str, written: u64, own: bool, key: &[u8]) {
 }
 
 /// secret_options is every config.option kept secret: the shared list and
-/// each installed plugin's manifest's.
+/// each installed plugin's manifest's (plugin_secrets).
 fn secret_options(plugins: &Path) -> HashSet<String> {
     let mut names: HashSet<String> = serde_json::from_str::<Vec<String>>(BASE_SECRETS)
         .unwrap_or_default()
@@ -216,18 +216,63 @@ fn secret_options(plugins: &Path) -> HashSet<String> {
         .collect();
     if let Ok(entries) = fs::read_dir(plugins) {
         for entry in entries.filter_map(|e| e.ok()) {
-            let Ok(text) = fs::read_to_string(entry.path().join("manifest.json")) else {
+            let Ok(bytes) = fs::read(entry.path().join("manifest.json")) else {
                 continue;
             };
+            // As the shell's encoding/json: a byte that is not UTF-8 reads as
+            // U+FFFD, and the manifest is read still.
+            let text = String::from_utf8_lossy(&bytes);
             let Ok(manifest) = serde_json::from_str::<Value>(&text) else {
                 continue;
             };
-            if let Some(list) = manifest.get("secrets").and_then(Value::as_array) {
-                names.extend(list.iter().filter_map(Value::as_str).map(str::to_owned));
-            }
+            names.extend(plugin_secrets(&manifest));
         }
     }
     names
+}
+
+/// plugin_secrets is the secrets a manifest names in a config its acl writes
+/// with scope uci, as the shell's pluginSecrets takes them: a plugin says
+/// which options of the configs it writes hold a secret, never of another.
+/// Its keys are matched as the shell matches them (fields).
+fn plugin_secrets(manifest: &Value) -> Vec<String> {
+    let own: HashSet<&str> = fields(manifest, "acl")
+        .flat_map(|acl| fields(acl, "write"))
+        .filter_map(Value::as_array)
+        .flatten()
+        .filter(|scope| fields(scope, "scope").any(|name| name.as_str() == Some("uci")))
+        .flat_map(|scope| fields(scope, "object"))
+        .filter_map(Value::as_str)
+        .collect();
+    fields(manifest, "secrets")
+        .filter_map(Value::as_array)
+        .flatten()
+        .filter_map(Value::as_str)
+        .filter(|name| matches!(name.split_once('.'), Some((config, _)) if own.contains(config)))
+        .map(str::to_owned)
+        .collect()
+}
+
+/// fields is the value of each key of object that names field, a lower-case
+/// name, as the shell's encoding/json matches a key to a field: by Unicode
+/// simple case folding, so an ASCII letter in either case, ſ for s and the
+/// Kelvin sign for k. Each of a field's spellings counts.
+fn fields<'a>(object: &'a Value, field: &'a str) -> impl Iterator<Item = &'a Value> {
+    object
+        .as_object()
+        .into_iter()
+        .flatten()
+        .filter(move |(key, _)| folds_to(key, field))
+        .map(|(_, value)| value)
+}
+
+fn folds_to(key: &str, field: &str) -> bool {
+    let mut key = key.chars();
+    field.chars().all(|f| {
+        key.next().is_some_and(|c| {
+            c.to_ascii_lowercase() == f || (f == 's' && c == 'ſ') || (f == 'k' && c == '\u{212a}')
+        })
+    }) && key.next().is_none()
 }
 
 /// fingerprint_secrets replaces the value of every secret option in sections
@@ -466,12 +511,79 @@ mod tests {
         fs::create_dir_all(dir.join("vpn")).unwrap();
         fs::write(
             dir.join("vpn/manifest.json"),
-            r#"{"id":"vpn","secrets":["vpn.auth_pass"]}"#,
+            r#"{"id":"vpn","acl":{"write":[{"scope":"uci","object":"vpn","function":"write"}]},"secrets":["vpn.auth_pass"]}"#,
         )
         .unwrap();
         let names = secret_options(&dir);
         assert!(names.contains("vpn.auth_pass") && names.contains("wireless.key"));
         fs::remove_dir_all(dir).unwrap();
+    }
+
+    // As the shell's pluginSecrets: a secret a manifest names in a config its
+    // acl does not write with scope uci, one it only reads included, is not
+    // taken for one, so the helper fingerprints exactly the options the shell
+    // scrubs.
+    #[test]
+    fn a_plugin_names_secrets_only_in_the_configs_it_writes() {
+        let dir = std::env::temp_dir().join(format!("verso-own-secrets-{}", std::process::id()));
+        fs::create_dir_all(dir.join("demo")).unwrap();
+        fs::write(
+            dir.join("demo/manifest.json"),
+            r#"{"id":"demo","acl":{
+                "read":[{"scope":"uci","object":"vpn","function":"read"},{"scope":"ubus","object":"network","function":"read"}],
+                "write":[{"scope":"uci","object":"system","function":"write"},{"scope":"ubus","object":"dhcp","function":"write"}]},
+              "secrets":["system.notes","vpn.auth_pass","network.ipaddr","dhcp.key_file"]}"#,
+        )
+        .unwrap();
+        let names = secret_options(&dir);
+        fs::remove_dir_all(dir).unwrap();
+        assert!(
+            names.contains("system.notes"),
+            "system.notes, in a config the plugin writes, is no secret"
+        );
+        for other in ["vpn.auth_pass", "network.ipaddr", "dhcp.key_file"] {
+            assert!(
+                !names.contains(other),
+                "{other}, in a config the plugin does not write, is a secret"
+            );
+        }
+        assert!(
+            names.contains("network.password"),
+            "the shared list's secrets are gone"
+        );
+    }
+
+    // The shell's test reads the same cases: what one takes for a plugin's
+    // secrets, the other does.
+    #[test]
+    fn a_plugins_secrets_are_read_as_the_shell_reads_them() {
+        let cases: Vec<Value> = serde_json::from_str(include_str!(
+            "../../internal/server/testdata/plugin-secrets.json"
+        ))
+        .unwrap();
+        for case in cases {
+            let mut got = plugin_secrets(&case["manifest"]);
+            got.sort();
+            let want: Vec<String> = serde_json::from_value(case["secrets"].clone()).unwrap();
+            assert_eq!(got, want, "{}", case["case"]);
+        }
+    }
+
+    // The shell reads a manifest that is not all UTF-8 with each byte that is
+    // not as U+FFFD, and so does the helper.
+    #[test]
+    fn a_manifest_not_all_utf8_is_still_read() {
+        let dir = std::env::temp_dir().join(format!("verso-lossy-secrets-{}", std::process::id()));
+        fs::create_dir_all(dir.join("demo")).unwrap();
+        let mut manifest = br#"{"id":"demo","name":"Demo "#.to_vec();
+        manifest.push(0xff);
+        manifest.extend_from_slice(
+            br#"","acl":{"write":[{"scope":"uci","object":"vpn","function":"write"}]},"secrets":["vpn.auth_pass"]}"#,
+        );
+        fs::write(dir.join("demo/manifest.json"), manifest).unwrap();
+        let names = secret_options(&dir);
+        fs::remove_dir_all(dir).unwrap();
+        assert!(names.contains("vpn.auth_pass"));
     }
 
     #[test]

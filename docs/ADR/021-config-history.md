@@ -136,14 +136,48 @@ The options OpenWrt's own packages keep a secret in (`network.password`,
 `wireless.key`, `wireless.sae_password`, `ddns.password` and the like) are
 listed once, in `internal/secrets/secrets.json`, compiled into the shell and
 the helper alike; a plugin's manifest names any other its config holds, as
-`config.option` (`"secrets": ["vpn.auth_pass"]`), and both add those. History
+`config.option` (`"secrets": ["vpn.auth_pass"]`), and both add those. Shell
+and helper alike take a plugin's secret only in a config the plugin's acl
+writes with scope `uci`: a plugin names the secrets of the configs it writes,
+never of one it only reads or another's, whose values a scrub would erase
+from the whole history. Both match a manifest's keys as the shell's JSON
+decoder does, in any case, and read the same test cases, so the options the
+helper fingerprints are the ones the shell scrubs. History
 records that such an option changed, never its value, before or after; a
 plugin that forgets to name one of OpenWrt's still leaks nothing. A test fails
 the build when a core plugin's password field writes an option neither the list
 nor its manifest names.
 
+No copy keeps the value either. A section removed is kept whole but for its
+secrets, each kept as `{"secret": true}`: the option was there, what it held
+is not, and the drawer lists it as not kept. The raw uci line an undescribed
+row is kept as masks the value of every option the list or a manifest names,
+as the review drawer's line does, besides any whose name says it is a
+password or a key. A config's reading keeps a secret only as its fingerprint.
+
+The shell scrubs `history.db` of every secret it knows when it opens the file
+and each time it reads the plugins again: a removed section's secrets are
+kept as not kept, a change to a named option is marked a secret's and loses
+its values, a verbatim row for one is worded with the value masked, and each
+config's current state and starting point keeps no value of one. A history
+written before a secret was named, by an older shell or before the plugin
+naming it arrived, is so scrubbed once the name is known. SQLite keeps what a
+row held in the pages it frees and in its write-ahead log, so a scrub that
+wrote any row then rewrites the file (`VACUUM`) and empties the log. The
+rows commit first, and with them a mark in the file that the rewrite is owed
+(`rewrite_owed`); the mark goes only once the rewrite and the emptied log
+both succeed. A rewrite that fails or never finishes (a full disk, the power
+going, the scrub's time running out) leaves the mark, and every later scrub
+makes the rewrite, though it finds no row to write, until one succeeds; the
+start's scrub has no deadline. Once it has, no byte of the file or its log
+holds a secret a scrub took out. Scrubbing what is scrubbed, with no rewrite
+owed, writes nothing, the file and its log included. `secure_delete` stays
+off: nothing written after a scrub holds a secret, so it would only add flash
+writes.
+
 Undoing an entry that changed a secret stages everything else and leaves the
-secret as it is, and the drawer says so before the act.
+secret as it is, and the drawer says so before the act. Undoing the removal of
+a section makes it again without its secrets, which stay unset.
 
 ### Undo, Return and Stage again only stage
 

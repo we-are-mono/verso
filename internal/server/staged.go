@@ -167,10 +167,11 @@ func (s *Server) staged(ctx context.Context, sid string, tr func(string) string,
 		}
 	}
 	sort.Strings(configs)
+	secrets := s.secretOptions()
 	var flat []stagedChange
 	for _, cfg := range configs {
 		for _, ch := range coalesceChanges(changes[cfg]) {
-			flat = append(flat, stagedChange{config: cfg, tuple: ch, raw: humanizeChange(cfg, ch)})
+			flat = append(flat, stagedChange{config: cfg, tuple: ch, raw: humanizeChange(cfg, ch, secrets)})
 		}
 	}
 	if len(flat) == 0 {
@@ -178,7 +179,7 @@ func (s *Server) staged(ctx context.Context, sid string, tr func(string) string,
 	}
 	v.Groups, v.Count = s.describedGroups(ctx, sessionStage{s, sid}, flat, tr, pluginTr)
 	v.Label = stagedLabel(v.Count, tr)
-	v.Summary = changeSummary(stagedItems(v, nil), tr)
+	v.Summary = changeSummary(stagedItems(v, secrets), tr)
 	return v
 }
 
@@ -485,20 +486,25 @@ func (s *Server) configOwner(config string) (plugin.Manifest, bool) {
 	return plugin.Manifest{}, false
 }
 
-// humanizeChange renders one uci change tuple ([op, section, option?, value?])
-// as a plain line. Mechanical on purpose (ADR-010): config, section, option,
-// value — no per-plugin interpretation.
-// shownValue is an option's value as the review shows it: a secret (a
-// password, a private or preshared key, Wi-Fi's key) is staged like any value
-// but stands masked, so a shared screen never carries it.
-func shownValue(option, value string) string {
-	if option == "key" || strings.HasSuffix(option, "password") || strings.HasSuffix(option, "_key") {
-		return "••••••••"
+// shownValue is an option's value as the review shows it: a secret is staged
+// like any value but stands masked, so a shared screen never carries it. A
+// secret is one secrets names (config.option, secretOptions), and any option
+// whose name says it is one: a password, a private or preshared key, Wi-Fi's
+// key.
+func shownValue(config, option, value string, secrets map[string]bool) string {
+	if secrets[config+"."+option] || option == "key" || strings.HasSuffix(option, "password") || strings.HasSuffix(option, "_key") {
+		return maskedValue
 	}
 	return value
 }
 
-func humanizeChange(config string, ch []string) string {
+// maskedValue is what a secret's value stands as wherever it is shown.
+const maskedValue = "••••••••"
+
+// humanizeChange renders one uci change tuple ([op, section, option?, value?])
+// as a plain line, a secret's value masked (shownValue). Mechanical on purpose
+// (ADR-010): config, section, option, value — no per-plugin interpretation.
+func humanizeChange(config string, ch []string, secrets map[string]bool) string {
 	if len(ch) < 2 {
 		return config + ": " + strings.Join(ch, " ")
 	}
@@ -507,7 +513,7 @@ func humanizeChange(config string, ch []string) string {
 	case op == "file" && len(ch) == 3:
 		return section
 	case op == "set" && len(ch) == 4:
-		return fmt.Sprintf("%s: %s.%s = %s", config, section, ch[2], shownValue(ch[2], ch[3]))
+		return fmt.Sprintf("%s: %s.%s = %s", config, section, ch[2], shownValue(config, ch[2], ch[3], secrets))
 	case op == "set" && len(ch) == 3:
 		return fmt.Sprintf("%s: new %s section %s", config, ch[2], section)
 	case op == "add" && len(ch) == 3:
@@ -517,9 +523,9 @@ func humanizeChange(config string, ch []string) string {
 	case op == "remove":
 		return fmt.Sprintf("%s: remove %s", config, section)
 	case op == "list-add" && len(ch) == 4:
-		return fmt.Sprintf("%s: %s.%s += %s", config, section, ch[2], ch[3])
+		return fmt.Sprintf("%s: %s.%s += %s", config, section, ch[2], shownValue(config, ch[2], ch[3], secrets))
 	case op == "list-del" && len(ch) == 4:
-		return fmt.Sprintf("%s: %s.%s -= %s", config, section, ch[2], ch[3])
+		return fmt.Sprintf("%s: %s.%s -= %s", config, section, ch[2], shownValue(config, ch[2], ch[3], secrets))
 	default:
 		return fmt.Sprintf("%s: %s %s", config, op, strings.Join(ch[1:], " "))
 	}

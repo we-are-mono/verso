@@ -695,7 +695,8 @@ func changeOpsTable(c history.Change, tr func(string) string) *widget.Table {
 
 // opRows is one uci change as the drawer's rows: the option, what it held
 // and holds, and what happened to it. A section removed is listed with each
-// option it held; a secret's values are not kept.
+// option it held; a secret's values are not kept, in a change to it or in a
+// section removed.
 func opRows(op history.ChangeOp, tr func(string) string) []widget.TableRow {
 	const none = "—"
 	path := op.Config + "." + op.Section
@@ -753,6 +754,10 @@ func opRows(op history.ChangeOp, tr func(string) string) []widget.TableRow {
 		}
 		sort.Strings(keys)
 		for _, k := range keys {
+			if isFingerprint(section[k]) {
+				rows = append(rows, row(path+"."+k, tr("not kept"), none, "Removed", "danger"))
+				continue
+			}
 			v := fmt.Sprint(section[k])
 			if list, ok := section[k].([]any); ok {
 				words := make([]string, len(list))

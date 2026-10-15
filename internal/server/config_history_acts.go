@@ -96,7 +96,8 @@ func optionOp(op history.ChangeOp) bool {
 // reverseOf is what returns the configs to how they were before the first of
 // entries (oldest first): each option to what the first change to it
 // replaced, each section made since removed, each removed since made again
-// with what it held. An option changed and changed back needs nothing.
+// with what it held but its secrets, which were not kept. An option changed
+// and changed back needs nothing.
 func reverseOf(entries []history.Change) actPlan {
 	var plan actPlan
 	order, touches := bySection(entries, &plan)
@@ -139,7 +140,11 @@ func reverseOf(entries []history.Change) actPlan {
 			typ, _ := held[".type"].(string)
 			values := map[string]any{}
 			for k, v := range held {
-				if !strings.HasPrefix(k, ".") {
+				switch {
+				case strings.HasPrefix(k, "."):
+				case isFingerprint(v):
+					plan.secret(key + "." + k)
+				default:
 					values[k] = uciValue(v)
 				}
 			}
@@ -627,8 +632,9 @@ func startPlan(start, now map[string]map[string]map[string]any) actPlan {
 	return plan
 }
 
-// isFingerprint reports whether a value is a secret's fingerprint, as
-// verso-rpcd spools one.
+// isFingerprint reports whether a value stands for a secret's: its
+// fingerprint, as verso-rpcd spools one, or the secret not kept, as a section
+// removed keeps it (history.NotKept).
 func isFingerprint(v any) bool {
 	_, ok := v.(map[string]any)
 	return ok
