@@ -363,12 +363,12 @@ type tabTransport struct {
 	lastPost plugin.Request
 }
 
-func (t *tabTransport) Fetch(_ context.Context, socket string, req plugin.Request) (*plugin.Envelope, error) {
-	t.lastSocket, t.lastReq = socket, req
+func (t *tabTransport) Fetch(_ context.Context, target plugin.Endpoint, req plugin.Request) (*plugin.Envelope, error) {
+	t.lastSocket, t.lastReq = target.Socket, req
 	if req.Method == http.MethodPost {
 		t.lastPost = req
 	}
-	if env, ok := t.bySocket[socket]; ok {
+	if env, ok := t.bySocket[target.Socket]; ok {
 		return env, nil
 	}
 	return t.env, t.err

@@ -10,12 +10,21 @@ start_service() {
 	grep -q '^verso-plugin-firewall:' /etc/passwd 2>/dev/null || \
 		echo 'verso-plugin-firewall:x:6006:6000:Verso firewall plugin:/var/run/verso:/bin/false' >> /etc/passwd
 
-	mkdir -p /var/run/verso
-	chown root:verso /var/run/verso
-	chmod 1770 /var/run/verso
+	# The socket has a directory of its own, which only this plugin's account
+	# writes and the verso group may only reach (ADR-007). In the shared
+	# /var/run/verso any plugin may create a name, and could take this one in
+	# the moment a restart frees it. /var/run is root's, so nothing can stand
+	# where the directory belongs before it exists. A plugin that once served
+	# /var/run/verso/firewall.sock leaves that file, its own account's, in place:
+	# while it stands no other plugin can bind the old name for a shell that
+	# still dials it during an upgrade, so it is never removed.
+	mkdir -p /var/run/verso-plugin-firewall
+	chown verso-plugin-firewall:verso /var/run/verso-plugin-firewall
+	chmod 0750 /var/run/verso-plugin-firewall
 
 	procd_open_instance firewall
 	procd_set_param command /usr/bin/verso-plugin-firewall
+	procd_set_param env VERSO_FIREWALL_SOCKET=/var/run/verso-plugin-firewall/firewall.sock
 	procd_set_param user verso-plugin-firewall
 	procd_set_param group verso
 	procd_set_param respawn 3600 5 5

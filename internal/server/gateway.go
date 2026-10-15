@@ -304,7 +304,7 @@ func (s *Server) pluginBodyAt(r *http.Request, m plugin.Manifest, pluginPath str
 	req.UCI = s.readSnapshot(r.Context(), m, s.sessionSID(r))
 	req.Ubus = s.readUbus(r.Context(), m, s.sessionSID(r))
 
-	env, err := s.transport.Fetch(r.Context(), m.Socket, req)
+	env, err := s.transport.Fetch(r.Context(), m.Endpoint(), req)
 	if err != nil {
 		log.Printf("verso: plugin %q unavailable: %v", m.ID, err)
 		return s.unavailable(m, tr), http.StatusOK

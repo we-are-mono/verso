@@ -55,7 +55,7 @@ func (s *Server) sectionPages(section, active string) []pageTab {
 	}
 	var tabs []pageTab
 	for _, m := range s.manifestList() {
-		if !s.probe(m.Socket) {
+		if !s.probe(m.Endpoint()) {
 			continue
 		}
 		for _, entry := range m.Nav {

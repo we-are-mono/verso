@@ -11,7 +11,8 @@ export PATH=/usr/sbin:/usr/bin:/sbin:/bin
 sed -i -e '/^verso:/d' -e '/^verso-plugin-system:/d' -e '/^verso-plugin-firewall:/d' \
 	-e '/^verso-plugin-interfaces:/d' /etc/passwd
 sed -i '/^verso:/d' /etc/group
-rm -rf /etc/verso /var/run/verso /var/run/verso-rpcd
+rm -rf /etc/verso /var/run/verso /var/run/verso-rpcd /var/run/verso-plugin-system \
+	/var/run/verso-plugin-firewall /var/run/verso-plugin-interfaces
 [ -x /etc/init.d/rpcd ] && /etc/init.d/rpcd reload
 killall -HUP ubusd 2>/dev/null
 exit 0

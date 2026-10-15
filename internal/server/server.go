@@ -176,10 +176,10 @@ type Server struct {
 	// keptSessions is where Close leaves the sessions and New takes them back,
 	// "" outside a dev session (devSessionsPath).
 	keptSessions string
-	// probe reports whether a plugin's unix socket accepts a connection — the
-	// liveness half of the management surface (ADR-011); a seam so tests need
-	// no real sockets.
-	probe func(path string) bool
+	// probe reports whether a plugin accepts a connection as its own account —
+	// the liveness half of the management surface (ADR-011), the transport's
+	// Alive; a seam so tests need no real sockets.
+	probe func(plugin.Endpoint) bool
 	// stats reads local machine health (CPU busy share, root fullness) for the
 	// overview meters; a seam so tests need no kernel.
 	stats statSource
@@ -277,7 +277,7 @@ func New(
 		loginLimiter:   newLoginLimiter(time.Now),
 		loginInternet:  openwrt.InternetAvailable,
 		css:            template.CSS(cssText),
-		probe:          probeSocket,
+		probe:          func(at plugin.Endpoint) bool { return transport.Alive(at) },
 		stats:          sysstat.New(),
 		telemetry:      interfaceSampler,
 		telemetryStop:  interfaceSampler.Stop,

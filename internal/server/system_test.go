@@ -82,7 +82,7 @@ func TestNetworkRootRedirectsToFirstLiveRegisteredPage(t *testing.T) {
 			t.Errorf("GET %s = %d %q, want a redirect to Interfaces", path, rec.Code, rec.Header().Get("Location"))
 		}
 	}
-	s.probe = func(string) bool { return false }
+	s.probe = func(plugin.Endpoint) bool { return false }
 	if rec := get(t, s, "/network"); rec.Code != http.StatusNotFound {
 		t.Errorf("GET /network with nothing live = %d, want 404", rec.Code)
 	}
@@ -112,7 +112,7 @@ func TestNetworkFiledPluginPageOpensTheNetworkRow(t *testing.T) {
 
 func TestStoppedSystemPluginWithdrawsGeneralRegistration(t *testing.T) {
 	s := newServerWith(t, fakeBackend{}, &fakeTransport{}, []plugin.Manifest{systemManifest()})
-	s.probe = func(string) bool { return false }
+	s.probe = func(plugin.Endpoint) bool { return false }
 
 	rec := get(t, s, "/system")
 	if rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != "/system/hardware" {

@@ -76,7 +76,8 @@ func TestBundledPluginPages(t *testing.T) {
 		"network": {"lan": map[string]any{".name": "lan", ".type": "interface", "proto": "static", "device": "br-lan", "ipaddr": "192.0.2.1", "netmask": "255.255.255.0"}},
 		"dhcp":    {"dnsmasq": map[string]any{".name": "dnsmasq", ".type": "dnsmasq"}},
 	}}
-	srv := newServerWith(t, backend, plugin.NewSocketTransport(), installed)
+	// The plugins run as this test's account, so that is each one's account.
+	srv := newServerWith(t, backend, plugin.NewSocketTransport(accountOf{uid: uint32(os.Getuid())}), installed)
 	token := srv.sessions.CreateWithMetadata("smoke", "root", "127.0.0.1", "")
 	paths := []string{"/", "/devices", "/system/access", "/system/packages", "/system/services", "/system/maintenance", "/system/logs"}
 	for _, m := range installed {

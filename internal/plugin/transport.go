@@ -8,6 +8,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -15,6 +16,8 @@ import (
 	"net/url"
 	"strings"
 	"time"
+
+	"github.com/we-are-mono/verso/internal/peercred"
 )
 
 // HeaderUCI carries the uci read snapshot the shell brokers to a plugin (ADR-007),
@@ -255,41 +258,67 @@ type describeResponse struct {
 	Descriptions []Description `json:"descriptions"`
 }
 
+// Endpoint is where the shell reaches a plugin and whose that place must be:
+// the socket its manifest names, and the id that names the account which must
+// be listening there (ADR-007).
+type Endpoint struct {
+	ID     string
+	Socket string
+}
+
+// Endpoint is where the shell reaches m.
+func (m Manifest) Endpoint() Endpoint { return Endpoint{ID: m.ID, Socket: m.Socket} }
+
 // Transport exchanges a request with a plugin and returns its schema envelope.
 // It is the injected seam (ADR-003): the shell depends on this interface, tests
 // supply a fake, production dials the unix socket. Implementations MUST bound
-// the call in time so a hung plugin cannot wedge the shell.
+// the call in time so a hung plugin cannot wedge the shell, and MUST send
+// nothing to, and take nothing from, any listener but the plugin itself.
 type Transport interface {
-	Fetch(ctx context.Context, socket string, req Request) (*Envelope, error)
+	Fetch(ctx context.Context, target Endpoint, req Request) (*Envelope, error)
 	// Describe asks the plugin to render its pending changes in plain words. The
 	// snapshot is the plugin's own configs (as Fetch injects them), so it can
 	// resolve a section handle to the name a person would recognize. A plugin
 	// with no describe hook, or one that describes only some changes, is not an
 	// error: the shell falls back to the raw uci line for whatever comes back
 	// undescribed. Only a transport failure is an error.
-	Describe(ctx context.Context, socket string, changes []DescribeChange, snapshot UCI) ([]Description, error)
+	Describe(ctx context.Context, target Endpoint, changes []DescribeChange, snapshot UCI) ([]Description, error)
+	// Alive reports whether the plugin itself accepts a connection right now —
+	// the same reachability its pages depend on — writing nothing to it.
+	Alive(target Endpoint) bool
 }
+
+// errUntrustedPlugin marks a plugin socket whose listener is another account.
+var errUntrustedPlugin = errors.New("the socket's listener is not the plugin's account")
 
 // SocketTransport speaks HTTP/1.1 to a plugin over its unix domain socket. It
 // dials per call (no pooling) — simple and correct for admin-UI request rates;
-// a pool is a later optimization behind this same interface.
+// a pool is a later optimization behind this same interface. Each connection
+// is used only once the kernel reports the plugin's own account listening
+// behind it, as accounts names that account.
 type SocketTransport struct {
-	timeout time.Duration
+	timeout  time.Duration
+	accounts Accounts
 }
 
-// NewSocketTransport returns a transport with the default per-call timeout.
-func NewSocketTransport() *SocketTransport { return newSocketTransport(5 * time.Second) }
-
-func newSocketTransport(timeout time.Duration) *SocketTransport {
-	return &SocketTransport{timeout: timeout}
+// NewSocketTransport returns a transport with the default per-call timeout
+// that talks to each plugin only as the account accounts names for it.
+func NewSocketTransport(accounts Accounts) *SocketTransport {
+	return newSocketTransport(5*time.Second, accounts)
 }
 
-// Fetch dials socket, issues req as an HTTP request, and decodes the JSON schema
-// envelope. A 200 or a 422 both carry a renderable envelope (ADR-006 §5); any
-// other status, a dial failure, a timeout, or a non-JSON body is an error — the
-// gateway turns that into a contained "plugin unavailable" state, never a 500.
-func (t *SocketTransport) Fetch(ctx context.Context, socket string, req Request) (*Envelope, error) {
-	client := t.dial(socket)
+func newSocketTransport(timeout time.Duration, accounts Accounts) *SocketTransport {
+	return &SocketTransport{timeout: timeout, accounts: accounts}
+}
+
+// Fetch dials the plugin, issues req as an HTTP request, and decodes the JSON
+// schema envelope. A 200 or a 422 both carry a renderable envelope (ADR-006 §5);
+// any other status, a dial failure, a listener that is not the plugin's
+// account, a timeout, or a non-JSON body is an error — the gateway turns that
+// into a contained "plugin unavailable" state, never a 500.
+func (t *SocketTransport) Fetch(ctx context.Context, target Endpoint, req Request) (*Envelope, error) {
+	socket := target.Socket
+	client := t.dial(target)
 
 	httpReq, err := t.buildRequest(ctx, req)
 	if err != nil {
@@ -326,8 +355,9 @@ func (t *SocketTransport) Fetch(ctx context.Context, socket string, req Request)
 // so the plugin can resolve a section handle to a recognizable name. A non-200, a
 // dial failure, a timeout, or a non-JSON body is a transport error; the caller then
 // falls back to the raw uci line for every change.
-func (t *SocketTransport) Describe(ctx context.Context, socket string, changes []DescribeChange, snapshot UCI) ([]Description, error) {
-	client := t.dial(socket)
+func (t *SocketTransport) Describe(ctx context.Context, target Endpoint, changes []DescribeChange, snapshot UCI) ([]Description, error) {
+	socket := target.Socket
+	client := t.dial(target)
 
 	body, err := json.Marshal(describeRequest{Changes: changes})
 	if err != nil {
@@ -367,19 +397,64 @@ func (t *SocketTransport) Describe(ctx context.Context, socket string, changes [
 	return out.Descriptions, nil
 }
 
+// aliveTimeout bounds the liveness dial; a plugin that cannot accept a
+// connection this fast is not answering pages either.
+const aliveTimeout = 400 * time.Millisecond
+
+// Alive connects as Fetch does and hangs up. A listener of another account at
+// the plugin's path is not the plugin, so it does not make a plugin that is
+// down read as running.
+func (t *SocketTransport) Alive(target Endpoint) bool {
+	ctx, cancel := context.WithTimeout(context.Background(), aliveTimeout)
+	defer cancel()
+	conn, err := t.connect(ctx, target)
+	if err != nil {
+		return false
+	}
+	_ = conn.Close()
+	return true
+}
+
 // dial builds the per-call HTTP client that speaks to a plugin over its unix
 // socket — one dial per call, no pooling (see SocketTransport).
-func (t *SocketTransport) dial(socket string) *http.Client {
+func (t *SocketTransport) dial(target Endpoint) *http.Client {
 	return &http.Client{
 		Timeout: t.timeout,
 		Transport: &http.Transport{
 			DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
-				var d net.Dialer
-				return d.DialContext(ctx, "unix", socket)
+				return t.connect(ctx, target)
 			},
 			DisableKeepAlives: true,
 		},
 	}
+}
+
+// connect hands the HTTP client a connection to the plugin only once the
+// kernel reports the plugin's own account listening behind it. The path proves
+// nothing: whoever binds it while it is free answers there, and every request
+// carries the configs read with the operator's session, and a submission the
+// operator's form, while the answer's commands run with the operator's session
+// under this plugin's grants. So nothing is written before this passes.
+func (t *SocketTransport) connect(ctx context.Context, target Endpoint) (net.Conn, error) {
+	want, err := t.accounts.UID(target.ID)
+	if err != nil {
+		return nil, fmt.Errorf("plugin %q account: %w", target.ID, err)
+	}
+	var d net.Dialer
+	conn, err := d.DialContext(ctx, "unix", target.Socket)
+	if err != nil {
+		return nil, err
+	}
+	got, err := peercred.UID(conn)
+	if err != nil {
+		_ = conn.Close()
+		return nil, fmt.Errorf("peer credentials: %w", err)
+	}
+	if got != want {
+		_ = conn.Close()
+		return nil, fmt.Errorf("%w (uid %d, %s is %d)", errUntrustedPlugin, got, accountName(target.ID), want)
+	}
+	return conn, nil
 }
 
 // buildRequest turns a plugin Request into an HTTP request. The host is a fixed

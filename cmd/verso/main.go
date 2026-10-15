@@ -185,7 +185,9 @@ func serve(args []string) {
 	srv, err := server.New(
 		renderer,
 		openwrt.NewNativeBackend(),
-		plugin.NewSocketTransport(),
+		// The shell talks to each plugin only as the account it runs as,
+		// verso-plugin-<id> in the system's user database (ADR-007).
+		plugin.NewSocketTransport(plugin.PasswdAccounts{Path: "/etc/passwd"}),
 		manifests,
 		openwrt.NewRPCDAuthenticator(),
 	)

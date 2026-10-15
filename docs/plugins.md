@@ -42,7 +42,7 @@ Ship a `manifest.json`. The shell discovers it by globbing the plugins directory
 {
   "id": "ntp",
   "name": "Time synchronization",
-  "socket": "/var/run/verso/ntp.sock",
+  "socket": "/var/run/verso-plugin-ntp/ntp.sock",
   "schema_version": 1,
   "contributions": [
     {
@@ -67,7 +67,7 @@ Ship a `manifest.json`. The shell discovers it by globbing the plugins directory
 |---|---|
 | `id` | stable, URL-safe; mounts your plugin at `/plugins/<id>/` |
 | `name` | display name |
-| `socket` | absolute path your process listens on |
+| `socket` | absolute path your process listens on, in a directory of your own (see [Your account and your socket](#your-account-and-your-socket)) |
 | `schema_version` | the widget vocabulary you emit (currently `1`) |
 | `nav` | optional list of menu entries; one plugin may place several standalone pages |
 | `nav[].section` | which shell nav group the entry appears under |
@@ -593,8 +593,15 @@ START=80          # before the shell (verso is START=95): your socket is up soon
 STOP=10
 
 start_service() {
+    mkdir -p /var/run/verso-plugin-system   # your socket's own directory
+    chown verso-plugin-system:verso /var/run/verso-plugin-system
+    chmod 0750 /var/run/verso-plugin-system
+
     procd_open_instance system       # a NAMED instance -> procd runs exactly one
     procd_set_param command /usr/bin/verso-plugin-system
+    procd_set_param env VERSO_SYSTEM_SOCKET=/var/run/verso-plugin-system/system.sock
+    procd_set_param user verso-plugin-system  # your own account (below)
+    procd_set_param group verso
     procd_set_param respawn 3600 5 5 # self-heal crashes; give up after 5 in 3600s
     procd_set_param stdout 1
     procd_set_param stderr 1         # your logs/crashes -> syslog -> `logread`
@@ -619,6 +626,27 @@ This buys you four things for free:
 Enable it once (`/etc/init.d/<name> enable`) and procd starts it on every boot.
 To show isolation with a plugin that stays down, `/etc/init.d/<name> stop` —
 procd will not respawn a stopped service.
+
+### Your account and your socket
+
+Your plugin runs as a system account of its own, named `verso-plugin-<id>` after
+your manifest's `id`, with primary group `verso` (ADR-007). Your package or init
+script adds it to `/etc/passwd`. The shell finds your account by that name and,
+before it sends you a byte, asks the kernel which account is listening behind
+your socket (`SO_PEERCRED`). Only `verso-plugin-<id>` is talked to: any other
+listener at your path, and any plugin with no such account, gets nothing — no
+snapshot, no form — and the page reads "plugin unavailable". So a plugin that
+runs under another name, or as root, is never reached.
+
+Bind your socket in a directory of your own, `/var/run/verso-plugin-<id>/`,
+which your init script makes as root, owned by your account, group `verso`, mode
+`0750`, before it starts you (above). `/var/run` is root's and the directory is
+yours, so no other plugin can create a name there and take your path in the
+moment a restart frees it. The SDK binds `VERSO_<ID>_SOCKET` when it is set, and
+stops your start, with the reason on stderr, when something it cannot remove
+holds the path. A socket in the shared `/var/run/verso` (the SDK's default) is
+served too, but there another plugin can keep yours from binding while a restart
+has the path free; the peer check keeps it from answering as you.
 
 ### Installing and removing
 
@@ -1628,7 +1656,8 @@ A correct plugin:
 4. Reads a `list` as a multi-value form field, dropping blank slots.
 5. Never assumes it is reachable: it is fine for the shell to render
    "unavailable", and your plugin must not depend on always being up.
-6. Runs as a single procd instance with output/crashes visible in `logread`.
+6. Runs as a single procd instance with output/crashes visible in `logread`,
+   as its own account `verso-plugin-<id>`, listening in a directory of its own.
 
 Hold all six and your plugin renders natively and cannot take the shell down.
 

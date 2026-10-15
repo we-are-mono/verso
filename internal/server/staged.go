@@ -301,7 +301,6 @@ func (s *Server) describeStaged(ctx context.Context, src changeSource, flat []st
 	// shell's own configs, and any config no installed plugin writes, own no
 	// describer.
 	byPlugin := map[string][]int{}
-	sockets := map[string]string{}
 	manifests := map[string]plugin.Manifest{}
 	authors := make([]stageAuthor, len(flat))
 	authored := make([]bool, len(flat))
@@ -312,7 +311,6 @@ func (s *Server) describeStaged(ctx context.Context, src changeSource, flat []st
 			continue
 		}
 		byPlugin[m.ID] = append(byPlugin[m.ID], i)
-		sockets[m.ID] = m.Socket
 		manifests[m.ID] = m
 	}
 
@@ -331,7 +329,7 @@ func (s *Server) describeStaged(ctx context.Context, src changeSource, flat []st
 			reqChanges[j] = describeChange(flat[pos])
 		}
 		snapshot := src.snapshot(ctx, m)
-		descs, err := s.transport.Describe(ctx, sockets[id], reqChanges, snapshot)
+		descs, err := s.transport.Describe(ctx, m.Endpoint(), reqChanges, snapshot)
 		if err != nil {
 			log.Printf("verso: plugin %q describe failed: %v", id, err)
 			continue // leave this plugin's changes as raw lines

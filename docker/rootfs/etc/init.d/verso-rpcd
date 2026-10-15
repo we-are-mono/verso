@@ -12,10 +12,12 @@ start_service() {
 	mkdir -p /var/run/verso
 	chown root:verso /var/run/verso
 	# Shared runtime dir: the shell stages bounded upload temps (0600, owner-only)
-	# and plugins bind their sockets here. The sticky bit lets a group member
-	# create its own entries but never rename or remove another account's, so a
-	# plugin cannot swap the shell's staged archive; the helper still validates
-	# file type, owner, and basename. Matches the mode the plugin init scripts set.
+	# here, and installed plugins with no socket directory of their own bind
+	# their sockets here, their init scripts setting this same mode; bundled
+	# plugins bind in a directory of their own. The sticky bit lets a group
+	# member create its own entries but never rename or remove another account's,
+	# so a plugin cannot swap the shell's staged archive; the helper still
+	# validates file type, owner, and basename.
 	chmod 1770 /var/run/verso
 
 	# The update truth has two writers — the daily cron run as root and the

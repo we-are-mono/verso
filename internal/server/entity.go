@@ -88,7 +88,6 @@ type entityTab struct {
 // entityClaim is one live plugin's claim on one slot.
 type entityClaim struct {
 	plugin.EntityTab
-	Socket   string
 	PluginID string
 }
 
@@ -98,12 +97,12 @@ type entityClaim struct {
 func (s *Server) entityContributors(kind string) []entityClaim {
 	var out []entityClaim
 	for _, m := range s.manifestList() {
-		if !s.probe(m.Socket) {
+		if !s.probe(m.Endpoint()) {
 			continue
 		}
 		for _, t := range m.EntityTabs {
 			if t.Entity == kind && t.Slot != "" {
-				out = append(out, entityClaim{EntityTab: t, Socket: m.Socket, PluginID: m.ID})
+				out = append(out, entityClaim{EntityTab: t, PluginID: m.ID})
 			}
 		}
 	}
@@ -117,7 +116,7 @@ func (s *Server) entityContributors(kind string) []entityClaim {
 func (s *Server) entityActs(kind, id string) map[string]string {
 	acts := map[string]string{}
 	for _, m := range s.manifestList() {
-		if !s.probe(m.Socket) {
+		if !s.probe(m.Endpoint()) {
 			continue
 		}
 		for _, a := range m.EntityActs {
@@ -205,7 +204,7 @@ func (s *Server) fetchEntity(ctx context.Context, r *http.Request, claim entityC
 		UCI:    s.readSnapshot(ctx, m, s.sessionSID(r)),
 		Ubus:   s.readUbus(ctx, m, s.sessionSID(r)),
 	}
-	return s.transport.Fetch(ctx, claim.Socket, req)
+	return s.transport.Fetch(ctx, m.Endpoint(), req)
 }
 
 // entityTabs asks every live contributor for its tab on one subject. A plugin
@@ -488,7 +487,7 @@ func (s *Server) handleEntitySave(w http.ResponseWriter, r *http.Request) {
 	}
 
 	sid := s.sessionSID(r)
-	env, err := s.transport.Fetch(r.Context(), claim.Socket, plugin.Request{
+	env, err := s.transport.Fetch(r.Context(), m.Endpoint(), plugin.Request{
 		Method: http.MethodPost,
 		Path:   entityPath + kind + "/" + id,
 		Query:  r.URL.Query(),

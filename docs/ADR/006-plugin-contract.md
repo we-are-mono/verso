@@ -48,7 +48,7 @@ over a local socket**, exchanging *data*, not markup.
    {
      "id": "system",
      "name": "System — General",
-     "socket": "/var/run/verso/system.sock",
+     "socket": "/var/run/verso-plugin-system/system.sock",
      "schema_version": 1,
      "nav": [ { "section": "System", "label": "General", "path": "/" } ],
      "acl": { "write": [ { "scope": "uci", "object": "system", "function": "write" } ] }
@@ -185,8 +185,10 @@ over a local socket**, exchanging *data*, not markup.
    - **Manifest `id`:** the short `<name>` (e.g. `system`), **without** the
      `verso-plugin-` prefix. The id namespaces the `/plugins/<id>/` mount and the
      socket; the prefix lives on the program name, not the id.
-   - **Socket:** by convention `/var/run/verso/<id>.sock` (the manifest states it
-     explicitly regardless).
+   - **Socket:** by convention `/var/run/verso-plugin-<id>/<id>.sock`, in a
+     directory of the plugin's own (the manifest states it explicitly
+     regardless). The shell talks only to a listener the kernel reports as the
+     plugin's account, `verso-plugin-<id>` (ADR-007).
    - **Runtime discovery:** `/usr/share/verso/plugins/<id>/manifest.json`,
      overridable via `$VERSO_PLUGINS_DIR`. This install path is distinct from the
      `./plugins/` source directory above.

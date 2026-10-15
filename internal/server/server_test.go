@@ -622,16 +622,19 @@ type fakeTransport struct {
 	lastDescribe []plugin.DescribeChange
 }
 
-func (f *fakeTransport) Fetch(_ context.Context, socket string, req plugin.Request) (*plugin.Envelope, error) {
-	f.lastSocket = socket
+func (f *fakeTransport) Fetch(_ context.Context, target plugin.Endpoint, req plugin.Request) (*plugin.Envelope, error) {
+	f.lastSocket = target.Socket
 	f.lastReq = req
 	return f.env, f.err
 }
 
-func (f *fakeTransport) Describe(_ context.Context, _ string, changes []plugin.DescribeChange, _ plugin.UCI) ([]plugin.Description, error) {
+func (f *fakeTransport) Describe(_ context.Context, _ plugin.Endpoint, changes []plugin.DescribeChange, _ plugin.UCI) ([]plugin.Description, error) {
 	f.lastDescribe = changes
 	return f.descriptions, f.describeErr
 }
+
+// Alive is unused by the tests' servers, which replace s.probe themselves.
+func (f *fakeTransport) Alive(plugin.Endpoint) bool { return true }
 
 // fakeAuth is the authenticator seam double (ADR-003): no ubus, no device.
 type fakeAuth struct {
@@ -656,7 +659,7 @@ func newServerFull(t *testing.T, backend openwrt.Backend, tr plugin.Transport, m
 	t.Cleanup(s.Close)
 	// Tests have no real plugin sockets; default to alive so nav and pages
 	// render fully. Liveness-specific tests override s.probe themselves.
-	s.probe = func(string) bool { return true }
+	s.probe = func(plugin.Endpoint) bool { return true }
 	// Tests read no real kernel either: canned box health (meters-specific
 	// tests substitute their own), and no roster files (roster tests supply
 	// theirs).

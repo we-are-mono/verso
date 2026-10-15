@@ -49,9 +49,15 @@ pub mod vocabulary;
 /// serve binds `/var/run/verso/<id>.sock` (override with `VERSO_<ID>_SOCKET`) and
 /// serves forever: GET → `get`, POST → `post`. Both see the [`Request`] — the
 /// page asked for and the snapshot read for it — and `post` additionally the
-/// submitted [`Form`]; each returns the full [`Envelope`]. A bind failure logs
-/// and exits; per-connection work runs on its own thread. This never returns
-/// under normal operation.
+/// submitted [`Form`]; each returns the full [`Envelope`]. A path it cannot clear
+/// or bind logs and exits; per-connection work runs on its own thread. This
+/// never returns under normal operation.
+///
+/// The socket belongs in a directory of the plugin's own: the init script, as
+/// root, makes `/var/run/verso-plugin-<id>` owned by the plugin's account and
+/// sets `VERSO_<ID>_SOCKET` inside it, so no other plugin can take the path
+/// while a restart has it free (docs/plugins.md). The shell answers only a
+/// listener the kernel reports as the plugin's account wherever the path is.
 pub fn serve<G, P>(id: &str, get: G, post: P)
 where
     G: Fn(&Request) -> Envelope + Send + Sync + 'static,
@@ -79,7 +85,10 @@ where
     if let Some(dir) = Path::new(&socket).parent() {
         let _ = fs::create_dir_all(dir);
     }
-    let _ = fs::remove_file(&socket); // clear a stale socket from a previous run
+    if let Err(e) = clear_stale_socket(Path::new(&socket)) {
+        eprintln!("verso-plugin {id}: clear {socket}: {e}");
+        std::process::exit(1);
+    }
 
     let listener = match UnixListener::bind(&socket) {
         Ok(l) => l,
@@ -101,6 +110,18 @@ where
         thread::spawn(move || {
             let _ = handle(stream, g.as_ref(), p.as_ref(), d.as_ref());
         });
+    }
+}
+
+/// clear_stale_socket removes what a previous run left at `socket`, so the bind
+/// that follows can take the path. Nothing there is fine. Anything else that
+/// stops the removal is not: whatever holds the path is not this plugin's to
+/// serve from — in a directory others can write, another account may have bound
+/// it — so the start stops there rather than carrying on past it.
+fn clear_stale_socket(socket: &Path) -> std::io::Result<()> {
+    match fs::remove_file(socket) {
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(()),
+        result => result,
     }
 }
 
@@ -3520,5 +3541,52 @@ mod tests {
             json,
             serde_json::json!({"variant": "success", "text": "accept"})
         );
+    }
+
+    // A scratch directory of the test's own, gone when the guard drops.
+    struct Scratch(std::path::PathBuf);
+
+    impl Scratch {
+        fn new(name: &str) -> Self {
+            let dir = std::env::temp_dir()
+                .join(format!("verso-plugin-sdk-{name}-{}", std::process::id()));
+            let _ = std::fs::remove_dir_all(&dir);
+            std::fs::create_dir_all(&dir).unwrap();
+            Scratch(dir)
+        }
+    }
+
+    impl Drop for Scratch {
+        fn drop(&mut self) {
+            let _ = std::fs::remove_dir_all(&self.0);
+        }
+    }
+
+    // A socket a previous run left goes, and nothing at the path is no trouble:
+    // either way the bind that follows can take it.
+    #[test]
+    fn a_stale_socket_is_cleared_and_an_empty_path_is_fine() {
+        let scratch = Scratch::new("stale");
+        let socket = scratch.0.join("p.sock");
+        drop(std::os::unix::net::UnixListener::bind(&socket).unwrap());
+        assert!(socket.exists());
+
+        super::clear_stale_socket(&socket).unwrap();
+        assert!(!socket.exists());
+        super::clear_stale_socket(&socket).unwrap();
+    }
+
+    // What cannot be removed is not the plugin's to serve from: a path held by
+    // something else stops the start rather than being bound past, so the shell
+    // is never left dialling whatever holds it.
+    #[test]
+    fn a_path_that_cannot_be_cleared_stops_the_start() {
+        let scratch = Scratch::new("held");
+        let socket = scratch.0.join("p.sock");
+        std::fs::create_dir(&socket).unwrap();
+        std::fs::write(socket.join("held"), b"").unwrap();
+
+        assert!(super::clear_stale_socket(&socket).is_err());
+        assert!(socket.join("held").exists());
     }
 }

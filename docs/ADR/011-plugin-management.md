@@ -104,9 +104,10 @@ rediscovery so the shell never restarts itself.**
    and forwarding rules rather than stopping a harmless resident process;
    the rest, network included, stays the operator's call. Verso plugin
    services sharpen the state with the socket probe (running / not
-   responding). Turning a plugin off also withdraws its manifest-registered pages
-   from navigation on the next render; the Services row remains available so it
-   can be turned back on. The Packages inventory carries no lifecycle cells at all.
+   responding), which counts only the plugin's own account listening
+   (ADR-007). Turning a plugin off also withdraws its manifest-registered
+   pages from navigation on the next render; the Services row remains
+   available so it can be turned back on. The Packages inventory carries no lifecycle cells at all.
 
 6. **Available reads a cached index; the network is touched only on request.**
    Opening the page never contacts the feeds; it shows when the index was last

@@ -134,7 +134,7 @@ func TestPluginPageAndNavUseTheirCatalog(t *testing.T) {
 		Nav: []plugin.NavEntry{{Section: "Apps", Label: "Widgets", Path: "/"}},
 	}
 	srv := newServerWith(t, fakeBackend{}, &fakeTransport{env: env}, []plugin.Manifest{m})
-	srv.probe = func(string) bool { return true }
+	srv.probe = func(plugin.Endpoint) bool { return true }
 
 	bundle, problems := i18n.Load(fstest.MapFS{
 		"sl/base.json": {Data: []byte(`{"Save":"Shrani","Overview":"Pregled","Hostname":"BASE-WRONG"}`)},

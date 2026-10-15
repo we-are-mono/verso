@@ -7,10 +7,13 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -31,6 +34,153 @@ func serveUnix(t *testing.T, h http.Handler) string {
 	return sock
 }
 
+// ownAccount is the Accounts double for plugins this test process serves:
+// every plugin's account is the uid the test runs as, which is what the
+// kernel reports behind serveUnix's sockets.
+type ownAccount struct{}
+
+func (ownAccount) UID(string) (uint32, error) { return uint32(os.Getuid()), nil }
+
+// otherAccount names an account that is not the one listening: the uid beside
+// the test's own, as a sibling plugin holding the path would be.
+type otherAccount struct{}
+
+func (otherAccount) UID(string) (uint32, error) { return uint32(os.Getuid()) + 1, nil }
+
+// noAccount is a plugin with no account on the system.
+type noAccount struct{}
+
+func (noAccount) UID(id string) (uint32, error) { return 0, fmt.Errorf("no account for %q", id) }
+
+func testTransport() *SocketTransport { return NewSocketTransport(ownAccount{}) }
+
+// at is the endpoint of a test plugin listening on sock.
+func at(sock string) Endpoint { return Endpoint{ID: "test", Socket: sock} }
+
+// listenRecording stands in for whoever holds a plugin's path without being the
+// plugin: it accepts every connection, never answers, and hands back each
+// connection's bytes once the dialler has closed it.
+func listenRecording(t *testing.T) (string, <-chan []byte) {
+	t.Helper()
+	sock := filepath.Join(t.TempDir(), "p.sock")
+	ln, err := net.Listen("unix", sock)
+	if err != nil {
+		t.Fatalf("listen unix: %v", err)
+	}
+	t.Cleanup(func() { _ = ln.Close() })
+	received := make(chan []byte, 8)
+	go func() {
+		for {
+			conn, err := ln.Accept()
+			if err != nil {
+				return
+			}
+			go func() {
+				defer func() { _ = conn.Close() }()
+				_ = conn.SetReadDeadline(time.Now().Add(5 * time.Second))
+				data, _ := io.ReadAll(conn)
+				received <- data
+			}()
+		}
+	}()
+	return sock, received
+}
+
+// TestSocketTransportRefusesAnotherAccountsListener: a listener at the
+// manifest's path under any account but the plugin's own is sent nothing — no
+// request line, no X-Verso-UCI or X-Verso-Ubus, no form — and nothing it could
+// answer is taken for the plugin's. The kernel's word on who listens is the
+// test; the path proves nothing, since whoever binds it while it is free
+// answers there.
+func TestSocketTransportRefusesAnotherAccountsListener(t *testing.T) {
+	calls := map[string]func(*SocketTransport, Endpoint) error{
+		"fetch": func(tr *SocketTransport, ep Endpoint) error {
+			_, err := tr.Fetch(context.Background(), ep, Request{
+				Method: http.MethodPost, Path: "/access",
+				Form: url.Values{"authorized_key": {"what the operator typed"}},
+				UCI:  UCI{"wireless": {"default_radio0": map[string]any{".type": "wifi-iface", "key": "not-a-real-psk"}}},
+				Ubus: Ubus{"firewallCounters": json.RawMessage(`{"counters":[]}`)},
+			})
+			return err
+		},
+		"describe": func(tr *SocketTransport, ep Endpoint) error {
+			_, err := tr.Describe(context.Background(), ep,
+				[]DescribeChange{{Config: "wireless", Op: "set", Section: "default_radio0", Option: "ssid", Value: "home"}},
+				UCI{"wireless": {"default_radio0": map[string]any{".type": "wifi-iface", "key": "not-a-real-psk"}}})
+			return err
+		},
+	}
+	for name, call := range calls {
+		t.Run(name, func(t *testing.T) {
+			sock, received := listenRecording(t)
+			err := call(NewSocketTransport(otherAccount{}), at(sock))
+			if !errors.Is(err, errUntrustedPlugin) {
+				t.Fatalf("err = %v, want the listener refused as another account's", err)
+			}
+			select {
+			case data := <-received:
+				if len(data) != 0 {
+					t.Fatalf("another account's listener was sent %d bytes:\n%s", len(data), data)
+				}
+			case <-time.After(5 * time.Second):
+				t.Fatal("the dial never reached the listener")
+			}
+		})
+	}
+}
+
+// TestSocketTransportRefusesAPluginWithNoAccount: a plugin whose account the
+// system does not know has no one the shell could be talking to, so its socket
+// is not even dialled.
+func TestSocketTransportRefusesAPluginWithNoAccount(t *testing.T) {
+	sock, received := listenRecording(t)
+	if _, err := NewSocketTransport(noAccount{}).Fetch(context.Background(), at(sock),
+		Request{Method: http.MethodGet, Path: "/"}); err == nil {
+		t.Fatal("Fetch: want an error for a plugin with no account")
+	}
+	select {
+	case data := <-received:
+		t.Fatalf("a plugin with no account was dialled and sent %q", data)
+	default:
+	}
+}
+
+// TestSocketTransportAliveOnlyAsThePluginsAccount: a plugin is alive when its
+// own account accepts a connection at its socket. Another account holding the
+// path is not the plugin, so a squatter cannot make a plugin that is down look
+// running; nor is a plugin with no account, or a path nothing listens on.
+func TestSocketTransportAliveOnlyAsThePluginsAccount(t *testing.T) {
+	sock, received := listenRecording(t)
+	for name, tc := range map[string]struct {
+		accounts Accounts
+		socket   string
+		want     bool
+	}{
+		"its own account":   {ownAccount{}, sock, true},
+		"another account":   {otherAccount{}, sock, false},
+		"no account":        {noAccount{}, sock, false},
+		"nothing listening": {ownAccount{}, filepath.Join(t.TempDir(), "absent.sock"), false},
+	} {
+		t.Run(name, func(t *testing.T) {
+			if got := NewSocketTransport(tc.accounts).Alive(at(tc.socket)); got != tc.want {
+				t.Errorf("Alive = %v, want %v", got, tc.want)
+			}
+		})
+	}
+	// The probe only asks who listens: no listener, the plugin's own included,
+	// is sent a byte.
+	for range 2 {
+		select {
+		case data := <-received:
+			if len(data) != 0 {
+				t.Errorf("the probe sent %d bytes:\n%s", len(data), data)
+			}
+		case <-time.After(5 * time.Second):
+			t.Fatal("the probe never reached the listener")
+		}
+	}
+}
+
 func envelopeJSON(w http.ResponseWriter, status int, body string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
@@ -43,7 +193,7 @@ func TestSocketTransportFetchGET(t *testing.T) {
 			`{"schema_version":1,"title":"General","widget":{"type":"card","title":"Hostname"}}`)
 	}))
 
-	env, err := NewSocketTransport().Fetch(context.Background(), sock,
+	env, err := testTransport().Fetch(context.Background(), at(sock),
 		Request{Method: http.MethodGet, Path: "/"})
 	if err != nil {
 		t.Fatalf("Fetch: %v", err)
@@ -85,7 +235,7 @@ func TestSocketTransportDescribe(t *testing.T) {
 		{Config: "firewall", Op: "set", Section: "cfg99", Option: "name", Value: "Allow DNS"},
 	}
 	snap := UCI{"firewall": {"cfg99": map[string]any{".type": "rule"}}}
-	descs, err := NewSocketTransport().Describe(context.Background(), sock, changes, snap)
+	descs, err := testTransport().Describe(context.Background(), at(sock), changes, snap)
 	if err != nil {
 		t.Fatalf("Describe: %v", err)
 	}
@@ -115,7 +265,7 @@ func TestSocketTransportDescribeBadStatus(t *testing.T) {
 	sock := serveUnix(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 	}))
-	if _, err := NewSocketTransport().Describe(context.Background(), sock, nil, nil); err == nil {
+	if _, err := testTransport().Describe(context.Background(), at(sock), nil, nil); err == nil {
 		t.Fatal("Describe: want error on non-200, got nil")
 	}
 }
@@ -133,7 +283,7 @@ func TestSocketTransportDecodesCommitShapes(t *testing.T) {
 			]}`)
 	}))
 
-	env, err := NewSocketTransport().Fetch(context.Background(), sock,
+	env, err := testTransport().Fetch(context.Background(), at(sock),
 		Request{Method: http.MethodPost, Path: "/rules/allow_ping"})
 	if err != nil {
 		t.Fatalf("Fetch: %v", err)
@@ -169,7 +319,7 @@ func TestSocketTransportForwardsMethodPathForm(t *testing.T) {
 			fmt.Sprintf(`{"schema_version":1,"title":%q,"widget":{"type":"card"}}`, title))
 	}))
 
-	env, err := NewSocketTransport().Fetch(context.Background(), sock, Request{
+	env, err := testTransport().Fetch(context.Background(), at(sock), Request{
 		Method: http.MethodPost,
 		Path:   "/apply",
 		Query:  url.Values{"q": {"1"}},
@@ -205,7 +355,7 @@ func TestSocketTransportInjectsUCISnapshot(t *testing.T) {
 			fmt.Sprintf(`{"schema_version":1,"title":%q,"widget":{"type":"card"}}`, proto))
 	}))
 
-	env, err := NewSocketTransport().Fetch(context.Background(), sock, Request{
+	env, err := testTransport().Fetch(context.Background(), at(sock), Request{
 		Method: http.MethodGet, Path: "/",
 		UCI: UCI{"network": {"wg0": map[string]any{"proto": "wireguard"}}},
 	})
@@ -228,7 +378,7 @@ func TestSocketTransportOmitsSnapshotHeaderWhenEmpty(t *testing.T) {
 		envelopeJSON(w, http.StatusOK, fmt.Sprintf(
 			`{"schema_version":1,"title":%q,"widget":{"type":"card"}}`, absent))
 	}))
-	env, err := NewSocketTransport().Fetch(context.Background(), sock,
+	env, err := testTransport().Fetch(context.Background(), at(sock),
 		Request{Method: http.MethodGet, Path: "/"})
 	if err != nil {
 		t.Fatalf("Fetch: %v", err)
@@ -269,7 +419,7 @@ func TestSocketTransportInjectsBrokeredReads(t *testing.T) {
 			counters.Counters[0].Name, counters.Counters[0].Packets))
 	}))
 
-	env, err := NewSocketTransport().Fetch(context.Background(), sock, Request{
+	env, err := testTransport().Fetch(context.Background(), at(sock), Request{
 		Method: http.MethodGet, Path: "/",
 		Ubus: Ubus{"firewallCounters": json.RawMessage(
 			`{"counters":[{"chain":"input_wan","name":"Allow-Ping","packets":12}]}`)},
@@ -293,7 +443,7 @@ func TestSocketTransportOmitsBrokeredHeaderWhenEmpty(t *testing.T) {
 		envelopeJSON(w, http.StatusOK, fmt.Sprintf(
 			`{"schema_version":1,"title":%q,"widget":{"type":"card"}}`, absent))
 	}))
-	env, err := NewSocketTransport().Fetch(context.Background(), sock, Request{
+	env, err := testTransport().Fetch(context.Background(), at(sock), Request{
 		Method: http.MethodGet, Path: "/",
 		UCI: UCI{"firewall": {"cfg01": map[string]any{".type": "defaults"}}},
 	})
@@ -309,8 +459,8 @@ func TestSocketTransportOmitsBrokeredHeaderWhenEmpty(t *testing.T) {
 // transport layer: a dead plugin surfaces as an error, which the gateway turns
 // into "plugin unavailable" (asserted in the server package).
 func TestSocketTransportDialRefusedErrors(t *testing.T) {
-	_, err := NewSocketTransport().Fetch(context.Background(),
-		filepath.Join(t.TempDir(), "nope.sock"), Request{Method: http.MethodGet, Path: "/"})
+	_, err := testTransport().Fetch(context.Background(),
+		at(filepath.Join(t.TempDir(), "nope.sock")), Request{Method: http.MethodGet, Path: "/"})
 	if err == nil {
 		t.Fatal("Fetch: want error dialing a nonexistent socket")
 	}
@@ -320,7 +470,7 @@ func TestSocketTransportNonJSONErrors(t *testing.T) {
 	sock := serveUnix(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, _ = fmt.Fprint(w, "<html>not a schema</html>")
 	}))
-	if _, err := NewSocketTransport().Fetch(context.Background(), sock,
+	if _, err := testTransport().Fetch(context.Background(), at(sock),
 		Request{Method: http.MethodGet, Path: "/"}); err == nil {
 		t.Fatal("Fetch: want error for a non-JSON body")
 	}
@@ -330,7 +480,7 @@ func TestSocketTransportServerErrorIsError(t *testing.T) {
 	sock := serveUnix(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "boom", http.StatusInternalServerError)
 	}))
-	if _, err := NewSocketTransport().Fetch(context.Background(), sock,
+	if _, err := testTransport().Fetch(context.Background(), at(sock),
 		Request{Method: http.MethodGet, Path: "/"}); err == nil {
 		t.Fatal("Fetch: want error for a 5xx response")
 	}
@@ -343,7 +493,7 @@ func TestSocketTransport422ReturnsEnvelope(t *testing.T) {
 		envelopeJSON(w, http.StatusUnprocessableEntity,
 			`{"schema_version":1,"title":"General","widget":{"type":"card"}}`)
 	}))
-	env, err := NewSocketTransport().Fetch(context.Background(), sock,
+	env, err := testTransport().Fetch(context.Background(), at(sock),
 		Request{Method: http.MethodPost, Path: "/"})
 	if err != nil {
 		t.Fatalf("422 must return an envelope, got err: %v", err)
@@ -361,7 +511,7 @@ func TestSocketTransportTimeout(t *testing.T) {
 	}))
 
 	start := time.Now()
-	if _, err := newSocketTransport(50*time.Millisecond).Fetch(context.Background(), sock,
+	if _, err := newSocketTransport(50*time.Millisecond, ownAccount{}).Fetch(context.Background(), at(sock),
 		Request{Method: http.MethodGet, Path: "/"}); err == nil {
 		t.Fatal("Fetch: want a timeout error")
 	}

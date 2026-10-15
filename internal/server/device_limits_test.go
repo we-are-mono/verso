@@ -20,7 +20,7 @@ type limitSummaryTransport struct {
 	clearOnSave bool
 }
 
-func (t *limitSummaryTransport) Fetch(ctx context.Context, socket string, req plugin.Request) (*plugin.Envelope, error) {
+func (t *limitSummaryTransport) Fetch(ctx context.Context, target plugin.Endpoint, req plugin.Request) (*plugin.Envelope, error) {
 	if req.Path == "/entity/device/" {
 		t.reads++
 		return &plugin.Envelope{SchemaVersion: 1, Entities: t.summaries}, nil
@@ -29,7 +29,7 @@ func (t *limitSummaryTransport) Fetch(ctx context.Context, socket string, req pl
 		empty := []plugin.EntitySummary{}
 		t.summaries = &empty
 	}
-	return t.tabTransport.Fetch(ctx, socket, req)
+	return t.tabTransport.Fetch(ctx, target, req)
 }
 
 func limitRosterServer(t *testing.T, tr *limitSummaryTransport) *Server {

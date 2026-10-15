@@ -1,7 +1,7 @@
 {
   "id": "firewall",
   "name": "Firewall",
-  "socket": "/var/run/verso/firewall.sock",
+  "socket": "/var/run/verso-plugin-firewall/firewall.sock",
   "schema_version": 1,
   "nav": [
     { "section": "Security", "label": "Firewall", "path": "/", "pages": true }

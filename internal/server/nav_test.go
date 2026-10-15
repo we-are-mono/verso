@@ -28,7 +28,7 @@ func navServer(manifests ...plugin.Manifest) *Server {
 	// degrade-without-a-count case.
 	return &Server{
 		manifests: manifests,
-		probe:     func(string) bool { return true },
+		probe:     func(plugin.Endpoint) bool { return true },
 		neighbors: func() ([]sysstat.Neighbor, error) { return nil, errors.New("no neighbour table in tests") },
 	}
 }
@@ -152,7 +152,7 @@ func TestBuildSidebarCollapsedSectionIsOneRow(t *testing.T) {
 // so Network leads nowhere and stays out of the rail.
 func TestBuildSidebarEmptyCollapsedSectionHasNoRow(t *testing.T) {
 	s := navServer(manifest("interfaces", nav("Network", "Interfaces", "/")))
-	s.probe = func(string) bool { return false }
+	s.probe = func(plugin.Endpoint) bool { return false }
 	if labels := railLabels(sidebar(s, "/")); slices.Contains(labels, "Network") {
 		t.Fatalf("rail = %v, want no Network row without a live Network page", labels)
 	}
@@ -242,7 +242,7 @@ func TestBuildSidebarDropsARowWithoutALivePlugin(t *testing.T) {
 	firewall := manifest("firewall", nav("Security", "Firewall", "/"))
 	firewall.Socket = "/dead/firewall.sock"
 	s := navServer(firewall)
-	s.probe = func(string) bool { return false }
+	s.probe = func(plugin.Endpoint) bool { return false }
 
 	for _, label := range railLabels(sidebar(s, "/")) {
 		if label == "Firewall" {
@@ -388,7 +388,7 @@ func TestSystemPagesUseOnlyLivePluginRegistrations(t *testing.T) {
 	vpn := manifest("vpn", nav("System", "VPN", "/"))
 	vpn.Socket = "/dead/vpn.sock"
 	s := navServer(system, vpn)
-	s.probe = func(path string) bool { return path == "/live/system.sock" }
+	s.probe = func(at plugin.Endpoint) bool { return at.Socket == "/live/system.sock" }
 
 	pages := s.sectionPages("System", "/plugins/system/")
 	if len(pages) != 10 || pages[0].Label != "General" || pages[0].Href != "/plugins/system/" || !pages[0].Active {
@@ -481,7 +481,7 @@ func TestBuildSidebarHidesDeadPlugins(t *testing.T) {
 	)
 	s.manifests[0].Socket = "/dead/fw.sock"
 	s.manifests[1].Socket = "/live/vpn.sock"
-	s.probe = func(path string) bool { return path == "/live/vpn.sock" }
+	s.probe = func(at plugin.Endpoint) bool { return at.Socket == "/live/vpn.sock" }
 
 	want := []string{"Overview", "Devices", "System", "WireGuard"}
 	if got := railLabels(sidebar(s, "/")); !slices.Equal(got, want) {

@@ -185,7 +185,7 @@ func (s *Server) buildSidebar(active string, tr func(string) string, pluginTr fu
 	var places []filed
 	var hrefs []string // every live registration, rail row or not
 	for _, m := range s.manifestList() {
-		if !s.probe(m.Socket) {
+		if !s.probe(m.Endpoint()) {
 			continue
 		}
 		for _, entry := range m.Nav {
@@ -318,7 +318,7 @@ func navEntryAt(m plugin.Manifest, pluginPath string) (plugin.NavEntry, bool) {
 func (s *Server) navLabelHref(label string) string {
 	for _, manifest := range s.manifestList() {
 		for _, entry := range manifest.Nav {
-			if entry.Label == label && s.probe(manifest.Socket) {
+			if entry.Label == label && s.probe(manifest.Endpoint()) {
 				return pluginHref(manifest.ID, entry.Path)
 			}
 		}

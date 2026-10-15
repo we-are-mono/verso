@@ -23,10 +23,10 @@ func (s *Server) deviceLimits(r *http.Request) (devices []widget.Device, offered
 			if tab.Entity != "device" || tab.Slot != "shape" || !tab.Summaries {
 				continue
 			}
-			if !s.probe(m.Socket) {
+			if !s.probe(m.Endpoint()) {
 				return nil, true, false
 			}
-			env, err := s.fetchEntity(r.Context(), r, entityClaim{EntityTab: tab, PluginID: m.ID, Socket: m.Socket}, "device", "")
+			env, err := s.fetchEntity(r.Context(), r, entityClaim{EntityTab: tab, PluginID: m.ID}, "device", "")
 			if err != nil || env == nil || env.SchemaVersion != supportedSchemaVersion || env.Entities == nil {
 				return nil, true, false
 			}

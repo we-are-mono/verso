@@ -34,7 +34,7 @@ func mgmtManifest() plugin.Manifest {
 func pluginsServer(t *testing.T, b fakeBackend, alive bool, manifests ...plugin.Manifest) *Server {
 	t.Helper()
 	s := newServerWith(t, b, &fakeTransport{}, manifests)
-	s.probe = func(string) bool { return alive }
+	s.probe = func(plugin.Endpoint) bool { return alive }
 	return s
 }
 
@@ -567,7 +567,7 @@ func refreshServer(t *testing.T, b openwrt.Backend) *Server {
 	feedRefresh.active, feedRefresh.failure = false, nil
 	feedRefresh.mu.Unlock()
 	s := newServerWith(t, b, &fakeTransport{}, []plugin.Manifest{mgmtManifest()})
-	s.probe = func(string) bool { return true }
+	s.probe = func(plugin.Endpoint) bool { return true }
 	return s
 }
 

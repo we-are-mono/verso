@@ -7,14 +7,12 @@ import (
 	"context"
 	"fmt"
 	"html/template"
-	"net"
 	"net/http"
 	"regexp"
 	"slices"
 	"sort"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/we-are-mono/verso/internal/openwrt"
 	"github.com/we-are-mono/verso/internal/plugin"
@@ -65,21 +63,6 @@ var svcNameRe = regexp.MustCompile(`^[a-z0-9][a-zA-Z0-9._-]{0,63}$`)
 
 func svcNameOK(name string) bool { return svcNameRe.MatchString(name) }
 
-// socketProbeTimeout bounds the liveness dial; a plugin that cannot accept a
-// connection this fast is not answering pages either.
-const socketProbeTimeout = 400 * time.Millisecond
-
-// probeSocket reports whether the plugin's unix socket accepts a connection
-// right now — the same reachability its pages depend on.
-func probeSocket(path string) bool {
-	conn, err := net.DialTimeout("unix", path, socketProbeTimeout)
-	if err != nil {
-		return false
-	}
-	_ = conn.Close()
-	return true
-}
-
 // pluginState is one installed plugin's assembled truth: the manifest identity
 // plus procd's view and the socket probe.
 type pluginState struct {
@@ -111,7 +94,7 @@ func (s *Server) pluginStates(rc map[string]openwrt.RCState) []pluginState {
 			st.Kind, st.PIDs, st.Memory, st.Uptime, st.Order = r.Kind, r.PIDs, r.MemoryBytes, r.Uptime, r.Order
 		}
 		if st.Running {
-			st.Alive = s.probe(m.Socket)
+			st.Alive = s.probe(m.Endpoint())
 		}
 		states = append(states, st)
 	}

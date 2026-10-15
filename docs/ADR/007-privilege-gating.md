@@ -266,12 +266,44 @@ bus access: it cannot reach
 the shell's brokered objects (`uci`, `system`, `session`) nor the privileged
 `verso-rpcd` root-action socket (Decision 5). Plugins need none — the shell brokers every
 read and write. The shared `verso` group serves one purpose only: the shell (in
-that group) reaches each plugin's socket (`0660`, in a `1770` sticky dir so a
-plugin creates its own socket but cannot remove a peer's). The one remaining
-cross-plugin path — a plugin connecting to a peer's socket over the shared group,
-an HTTP-only surface with no memory or `ptrace` access — is a lesser residual left
-to tighten (a per-plugin socket group) if a plugin ever handles a secret a peer
-must never reach.
+that group) reaches each plugin's socket (`0660`).
+
+A socket's path proves nothing about who answers there: whoever binds it while
+it is free does, and a plugin restart (an upgrade, a crash and respawn) frees it
+between the old socket's removal and the new bind. So the shell takes the kernel's
+word instead. Before it writes a byte to a plugin — no request line, no
+`X-Verso-UCI` snapshot read with the operator's sid, no `X-Verso-Ubus` read, no
+form — the transport reads `SO_PEERCRED` from the connected socket and goes on only
+when the listener's uid is the plugin's own account, `verso-plugin-<id>`, looked
+up by the manifest's id in `/etc/passwd` (which root writes and no plugin can).
+A plugin with no such account is not dialled at all. Any other listener is
+refused and the page renders "plugin unavailable", so another plugin holding the
+path receives none of the operator's reads or submissions, and nothing it answers
+— a commit, a command such as `ssh-key-add` — runs under the plugin's grants.
+The liveness probe, which decides whether a plugin reads as running and whether
+its pages and panel tabs are offered, makes the same check and writes nothing, so
+a listener of another account cannot make a plugin that is down look up.
+
+As defense in depth, a bundled plugin's socket lives in a directory of its own,
+`/var/run/verso-plugin-<id>/` (`0750`, owned by the plugin's account, group
+`verso`), which its init script makes as root and points the plugin at through
+`VERSO_<ID>_SOCKET`. `/var/run` is root's, so no plugin can stand where the
+directory belongs before it exists, and no other plugin can create a name inside
+it, so a sibling cannot keep the plugin from binding its path. A bundled plugin
+that once bound in the shared directory leaves that socket file, its own
+account's, in place: while it stands no sibling can bind the old name for a shell
+that still dials it during an upgrade. A manifest may name a socket in the shared
+`/var/run/verso` (`1770` sticky, group-writable), the SDK's default, where a
+plugin whose init script makes no directory of its own binds; there the peer
+check alone holds the line, and a sibling that takes the path during a restart
+can keep the plugin down but cannot answer as it. The plugin SDK stops a start
+whose path it cannot clear (anything but "nothing there") rather than binding
+past it.
+
+The one remaining cross-plugin path — a plugin connecting to a peer's socket over
+the shared group, an HTTP-only surface with no memory or `ptrace` access — is a
+lesser residual left to tighten (a per-plugin socket group) if a plugin ever
+handles a secret a peer must never reach.
 
 The sid renewer (Decision 7) lives with the session store: one goroutine that, on
 its own interval (well under rpcd's 300 s), calls `session.access` for each live
