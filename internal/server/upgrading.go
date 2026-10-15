@@ -63,6 +63,7 @@ func firmwareTakeoverActive() bool {
 // server renders that surface with the tool's own words already in place.
 type upgradingView struct {
 	Lang       string
+	BarColour  string // the browser bar's colour: the takeover's ground, Canvas
 	CSS        template.CSS
 	JSStrings  template.JS
 	Initial    string // "preparing" | "installing" | "failed"
@@ -110,6 +111,7 @@ func (s *Server) renderUpgrading(w http.ResponseWriter, r *http.Request) {
 
 	view := upgradingView{
 		Lang:       langAttr(lang),
+		BarColour:  s.barColour("canvas"),
 		CSS:        s.currentCSS(),
 		JSStrings:  jsCatalog(tr),
 		Initial:    initial,

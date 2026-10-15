@@ -823,7 +823,7 @@ html {
     position: absolute; z-index: 5; pointer-events: none; white-space: nowrap; text-align: left;
     padding: 0.5rem 0.75rem; border-radius: 0.5rem; font-size: 0.75rem;
     background: var(--color-hw-tip); color: var(--color-hw-tip-text); border: 1px solid var(--color-hw-tip-edge);
-    box-shadow: 0 12px 26px -10px rgb(0 0 0 / 0.7);
+    box-shadow: var(--shadow-port-tip);
     transform: translateX(-50%);
   }
   .verso-port-tip b { color: var(--color-canvas); font-weight: 600; }
@@ -867,21 +867,21 @@ html {
 
   /* The series hues: green for what comes down, amethyst for what goes up. */
   .verso-chart--violet .verso-chart-line { stroke: var(--color-amethyst); }
-  .verso-chart--violet .verso-chart-fill-0 { stop-color: var(--color-amethyst); stop-opacity: 0.24; }
-  .verso-chart--violet .verso-chart-fill-1 { stop-color: var(--color-amethyst); stop-opacity: 0; }
+  .verso-chart--violet .verso-chart-fill-0 { stop-color: var(--color-amethyst); stop-opacity: var(--chart-role-wash-from); }
+  .verso-chart--violet .verso-chart-fill-1 { stop-color: var(--color-amethyst); stop-opacity: var(--chart-role-wash-to); }
 
   .verso-chart--emerald .verso-chart-line { stroke: var(--color-green); }
-  .verso-chart--emerald .verso-chart-fill-0 { stop-color: var(--color-green); stop-opacity: 0.24; }
-  .verso-chart--emerald .verso-chart-fill-1 { stop-color: var(--color-green); stop-opacity: 0; }
+  .verso-chart--emerald .verso-chart-fill-0 { stop-color: var(--color-green); stop-opacity: var(--chart-role-wash-from); }
+  .verso-chart--emerald .verso-chart-fill-1 { stop-color: var(--color-green); stop-opacity: var(--chart-role-wash-to); }
 
   /* An Overview card's download and upload: denim and amethyst, each over a
      soft wash of its own. */
   .verso-chart--denim .verso-chart-line { stroke: var(--color-denim); }
-  .verso-chart--denim .verso-chart-fill-0 { stop-color: var(--color-denim); stop-opacity: 0.16; }
-  .verso-chart--denim .verso-chart-fill-1 { stop-color: var(--color-denim); stop-opacity: 0.04; }
+  .verso-chart--denim .verso-chart-fill-0 { stop-color: var(--color-denim); stop-opacity: var(--chart-wash-from); }
+  .verso-chart--denim .verso-chart-fill-1 { stop-color: var(--color-denim); stop-opacity: var(--chart-wash-to); }
   .verso-chart--amethyst .verso-chart-line { stroke: var(--color-amethyst); }
-  .verso-chart--amethyst .verso-chart-fill-0 { stop-color: var(--color-amethyst); stop-opacity: 0.16; }
-  .verso-chart--amethyst .verso-chart-fill-1 { stop-color: var(--color-amethyst); stop-opacity: 0.04; }
+  .verso-chart--amethyst .verso-chart-fill-0 { stop-color: var(--color-amethyst); stop-opacity: var(--chart-wash-from); }
+  .verso-chart--amethyst .verso-chart-fill-1 { stop-color: var(--color-amethyst); stop-opacity: var(--chart-wash-to); }
 
   /* What happened over a past window, behind the curves: an outage a crimson
      wash thin enough for the notebook grid to show through, packet loss the
@@ -1158,7 +1158,7 @@ html {
     }
   }
 
-  .verso-overview-card[data-lifted] { position: fixed; z-index: 50; pointer-events: none; box-shadow: 0 8px 32px color-mix(in srgb, var(--color-ink) 16%, transparent); }
+  .verso-overview-card[data-lifted] { position: fixed; z-index: 50; pointer-events: none; box-shadow: var(--shadow-dialog); }
   .verso-overview-slot { border: 1px dashed var(--color-rule-strong); background: var(--color-quiet); border-radius: var(--radius-xs); }
   .verso-overview-dragging, .verso-overview-dragging * { cursor: grabbing !important; }
 

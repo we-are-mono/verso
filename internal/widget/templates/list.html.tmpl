@@ -68,7 +68,7 @@
   {{/* A listbox the box drives: the arrow keys move through what is showing
        and Enter takes it, while focus stays in the box being typed into. The
        options are out of the tab order for the same reason. */}}
-  <div id="{{.Name}}-options" data-verso-token-menu role="listbox"{{if .Label}} aria-labelledby="{{.Name}}-label"{{end}} hidden class="verso-drawer-scrollbar absolute top-full right-0 left-0 z-20 mt-1 max-h-56 overflow-y-auto rounded-xs border border-rule-strong bg-ground py-1 shadow-[0_4px_12px_rgba(27,25,23,.14)]">
+  <div id="{{.Name}}-options" data-verso-token-menu role="listbox"{{if .Label}} aria-labelledby="{{.Name}}-label"{{end}} hidden class="verso-drawer-scrollbar absolute top-full right-0 left-0 z-20 mt-1 max-h-56 overflow-y-auto rounded-xs border border-rule-strong bg-ground py-1 shadow-(--shadow-float)">
     {{range $i, $o := .Options}}
     <button type="button" id="{{$.Name}}-option-{{$i}}" role="option" aria-selected="false" tabindex="-1" data-verso-token-option="{{$o.Value}}" class="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left font-mono text-base font-medium text-ink transition-colors hover:bg-denim-soft hover:text-denim-deep aria-selected:bg-denim-soft aria-selected:text-denim-deep">{{.Label}}</button>
     {{end}}

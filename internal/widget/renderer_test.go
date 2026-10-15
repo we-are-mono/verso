@@ -302,7 +302,7 @@ func TestRenderMultipleChoiceChips(t *testing.T) {
 		Options: []Option{{Value: "mon", Label: "Mon"}, {Value: "tue", Label: "Tue"}}})
 	for _, want := range []string{
 		`class="inline-flex w-fit max-w-full flex-wrap gap-0.5 self-start rounded-xs border border-rule-strong bg-quiet p-0.5">`,
-		`<label class="flex h-7 cursor-pointer items-center rounded-xs px-3.5 text-sm font-normal text-body transition-colors hover:text-ink has-checked:bg-choice has-checked:font-semibold has-checked:text-white has-focus-visible:outline-2`,
+		`<label class="flex h-7 cursor-pointer items-center rounded-xs px-3.5 text-sm font-normal text-body transition-colors hover:text-ink has-checked:bg-choice has-checked:font-semibold has-checked:text-on-fill has-focus-visible:outline-2`,
 	} {
 		if !strings.Contains(days, want) {
 			t.Errorf("segmented field missing %q:\n%s", want, days)
@@ -548,7 +548,7 @@ func TestRenderConfirmCaution(t *testing.T) {
 	for _, want := range []string{
 		`data-verso-confirm-tone="caution"`,
 		"border-marigold-line bg-marigold-soft", "text-marigold-deep", "text-marigold", "hover:border-marigold",
-		"border-marigold-deep bg-marigold-deep text-white", "hover:bg-marigold-line/50",
+		"border-marigold-deep bg-marigold-deep text-on-fill transition-[", "hover:bg-marigold-line/50",
 		"Download and install 25.12.5", "Install 25.12.5 now?", "Install firmware", "Not yet",
 	} {
 		if !strings.Contains(got, want) {
@@ -585,7 +585,7 @@ func TestRenderConfirm(t *testing.T) {
 		// cancel keeps the explanation's tone and hovers by a soft wash, not a
 		// heavy colour darken.
 		`<div data-verso-callout-acts class="mt-6 pb-2 flex flex-wrap items-center gap-x-3 gap-y-2"><button type="submit" x-ref="first"`, "hover:bg-crimson-line/50",
-		"border-crimson bg-crimson text-white",
+		"border-crimson bg-crimson text-on-fill transition-colors",
 		"verso-press",
 		// The trigger is a control like every other button: h-control holds
 		// the border inside the height, where a line plus padding would add 2px,
@@ -765,7 +765,7 @@ func TestRenderLink(t *testing.T) {
 func TestRenderButton(t *testing.T) {
 	r := newRenderer(t)
 	inert := render(t, r, &Button{Label: "Choose firmware…", Icon: "upload"})
-	for _, want := range []string{`type="button"`, "border-denim bg-denim text-white", "hover:border-denim-deep hover:bg-denim-deep", "verso-press", "size-4", "Choose firmware…"} {
+	for _, want := range []string{`type="button"`, "border-denim bg-denim text-on-fill", "hover:border-denim-deep hover:bg-denim-deep", "verso-press", "size-4", "Choose firmware…"} {
 		if !strings.Contains(inert, want) {
 			t.Errorf("inert button missing %q: %s", want, inert)
 		}
@@ -1247,7 +1247,7 @@ func TestRenderTokenListKeepsRepeatedFieldContract(t *testing.T) {
 		// cells — and a 20px remove glyph wearing the hover every icon act
 		// wears. The box is a field, so it wears a field's fill: white, with
 		// the inset shadow, and a field's height.
-		`class="flex min-h-control flex-wrap items-center gap-x-1 gap-y-4 rounded-xs border border-rule-strong bg-white shadow-[inset_0_1px_2px_rgba(27,25,23,.06)] p-0.75`,
+		`class="flex min-h-control flex-wrap items-center gap-x-1 gap-y-4 rounded-xs border border-rule-strong bg-canvas shadow-(--shadow-field) p-0.75`,
 		`h-6 min-w-18 flex-1`, // the value being typed stands at the chips' height
 		// A value in the box is a step darker than the quiet ground a chip
 		// wears elsewhere, so it stands off the white box it sits in; its
@@ -1307,7 +1307,7 @@ func TestRenderFormSubmit(t *testing.T) {
 	if !strings.Contains(got, ">Apply<") {
 		t.Errorf("custom submit label missing: %s", got)
 	}
-	if !strings.Contains(got, "border border-denim bg-denim text-white") {
+	if !strings.Contains(got, "border border-denim bg-denim text-on-fill transition-colors") {
 		t.Errorf("form submit missing the primary-button treatment: %s", got)
 	}
 	if !strings.Contains(got, "hover:border-denim-deep hover:bg-denim-deep") ||

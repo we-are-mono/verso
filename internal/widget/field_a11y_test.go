@@ -235,7 +235,7 @@ func TestCoarseCutsAreOneCountedDropdown(t *testing.T) {
 // to the ordinary hairline and the action colour.
 // Focused, the edge doubles to 2px — an inset line inside the border, beside
 // the field's own inset shadow — so focus reads without the box growing.
-const refusedBorder = "border-rule-strong hover:border-faint focus:border-denim aria-invalid:border-crimson aria-invalid:hover:border-crimson-deep aria-invalid:focus:border-crimson-deep aria-invalid:focus:shadow-[inset_0_0_0_1px_var(--color-crimson-deep),inset_0_1px_2px_rgba(27,25,23,.06)]"
+const refusedBorder = "border-rule-strong hover:border-faint focus:border-denim aria-invalid:border-crimson aria-invalid:hover:border-crimson-deep aria-invalid:focus:border-crimson-deep aria-invalid:focus:shadow-[inset_0_0_0_1px_var(--color-crimson-deep),var(--shadow-field)]"
 
 // TestRefusedFieldStaysCrimsonWhileFocused: a refused field is marked as the
 // one that is wrong at rest, under the pointer and while it has focus, and

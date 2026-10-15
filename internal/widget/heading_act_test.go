@@ -161,7 +161,7 @@ func TestControlBandIsTheListingCardsTopStrip(t *testing.T) {
 		t.Errorf("the band sits flush on its listing:\n%s", got)
 	}
 	console := render(t, newRenderer(t), &Table{Style: "console", Stream: &TableStream{Source: StreamSourceFirewallLog}})
-	if !strings.Contains(console, `class="verso-console -mx-10 flex min-h-0 flex-1 flex-col bg-quiet shadow-[inset_0_4px_4px_-4px_rgba(27,25,23,.14)]"`) {
+	if !strings.Contains(console, `class="verso-console -mx-10 flex min-h-0 flex-1 flex-col bg-quiet shadow-(--shadow-edge)"`) {
 		t.Errorf("a live log stands on Quiet Sand, a step under its light bar, sunk under it:\n%s", console)
 	}
 }

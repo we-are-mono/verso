@@ -42,7 +42,7 @@ func TestPanelFacesSwitchWithoutExpressions(t *testing.T) {
 			t.Errorf("panel faces missing %q:\n%s", want, got)
 		}
 	}
-	for _, gone := range []string{"face ===", "bg-denim text-white"} {
+	for _, gone := range []string{"face ===", "bg-denim text-on-fill"} {
 		if strings.Contains(got, gone) {
 			t.Errorf("panel faces must not carry %q:\n%s", gone, got)
 		}

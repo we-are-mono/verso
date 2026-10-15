@@ -52,7 +52,7 @@
        The picker is a list someone reads or filters, and pressing a line adds it. */}}
   <div data-verso-condition-picker class="relative pt-6 pb-1">
     <button type="button" data-verso-condition-open aria-expanded="false" class="{{template "verso-btn-act"}} pl-2 pr-2.5">{{icon "plus" "size-4"}}{{ t "Add a condition" }}</button>
-    <div data-verso-condition-menu hidden class="absolute top-full left-0 z-30 mt-2 w-[36rem] max-w-[calc(100vw-2rem)] rounded-xs border border-rule-strong bg-ground shadow-[0_8px_24px_rgba(27,25,23,.14)]">
+    <div data-verso-condition-menu hidden class="absolute top-full left-0 z-30 mt-2 w-[36rem] max-w-[calc(100vw-2rem)] rounded-xs border border-rule-strong bg-ground shadow-(--shadow-menu)">
       {{/* The filter is the first thing focus lands on, because on a catalogue
            this size typing the name is faster than reading to find it. It is not
            a form control of this form: it filters a list and posts nothing. */}}

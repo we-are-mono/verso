@@ -34,7 +34,7 @@
             <svg width="66" height="40" viewBox="0 0 66 40" class="relative -mb-px shrink-0 overflow-visible text-glyph" aria-hidden="true">
               <g class="group-data-[filtered=true]/inventory:hidden">{{if $row.TreeRoot}}{{if eq .LeadIcon "physical"}}<rect x="{{$row.TreeNodeX}}" y="16" width="9" height="9" rx="1" stroke="currentColor" stroke-width="1.5" class="fill-ground"/>{{else}}<circle cx="{{$row.TreeNodeCenter}}" cy="20" r="4" stroke="currentColor" stroke-width="1.5" class="fill-ground"/>{{end}}{{end}}</g>
             </svg>
-            <span class="-mb-px flex h-10 shrink-0 items-center"><span data-verso-expand-chevron class="grid size-7 shrink-0 place-items-center rounded-xs border border-rule-strong text-glyph group-aria-expanded/identity:border-denim group-aria-expanded/identity:bg-denim group-aria-expanded/identity:text-white">{{icon "chevron-right" "size-3.5 transition-transform duration-200 ease-out group-aria-expanded/identity:rotate-90 motion-reduce:transition-none"}}</span></span>
+            <span class="-mb-px flex h-10 shrink-0 items-center"><span data-verso-expand-chevron class="grid size-7 shrink-0 place-items-center rounded-xs border border-rule-strong text-glyph group-aria-expanded/identity:border-denim group-aria-expanded/identity:bg-denim group-aria-expanded/identity:text-on-fill">{{icon "chevron-right" "size-3.5 transition-transform duration-200 ease-out group-aria-expanded/identity:rotate-90 motion-reduce:transition-none"}}</span></span>
             <span class="flex min-w-0 flex-wrap items-center gap-x-1 py-row pr-3 pl-3"><span class="break-all font-mono text-base leading-6 font-bold text-ink">{{.Text}}</span>{{range .Chips}}{{template "verso-chip" .}}{{end}}</span>
           </button>
         </td>
@@ -65,7 +65,7 @@
            it rise, one after another. */}}
       <tr data-verso-expanded-row hidden><td colspan="6" class="p-0">
         <div class="verso-unfold"><div>
-          <div class="relative border-b border-rule bg-[#f9f7f3] pt-6 pr-4 pb-8 pl-26.25">
+          <div class="relative border-b border-rule bg-ground pt-6 pr-4 pb-8 pl-26.25">
             {{if .TreeContinuation}}<svg width="66" viewBox="0 0 66 1" preserveAspectRatio="none" aria-hidden="true" class="absolute inset-y-0 left-2.75 h-full text-faint group-data-[filtered=true]/inventory:hidden"><path d="{{.TreeContinuation}}" fill="none" stroke="currentColor" vector-effect="non-scaling-stroke"/></svg>{{end}}
             <div class="@container min-w-0">{{range .Expanded}}{{.}}{{end}}</div>
           </div>

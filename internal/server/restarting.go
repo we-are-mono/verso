@@ -78,6 +78,7 @@ func factoryResetPlan(tr func(string) string, address string) restartPlan {
 type restartingView struct {
 	Lang, Title, Lede, Estimate, Status string
 	Hostname, Maker, Model, Target      string
+	BarColour                           string // the browser bar's colour: the takeover's ground, Paper
 	CSS                                 template.CSS
 	Budget                              int
 	Address                             template.HTML
@@ -92,7 +93,7 @@ func (s *Server) restartingPage(r *http.Request, plan restartPlan) (string, erro
 	tr := translatorOrIdentity(t)
 	hw := board()
 	view := restartingView{
-		Lang: langAttr(lang), CSS: s.currentCSS(), Status: restartStatusPath,
+		Lang: langAttr(lang), BarColour: s.barColour("ground"), CSS: s.currentCSS(), Status: restartStatusPath,
 		Title: plan.Title, Lede: plan.Lede, Estimate: plan.Estimate,
 		Hostname: s.nameplate(r), Maker: hw.Maker, Model: hw.Model,
 		Budget: int(plan.Budget / time.Second), Target: plan.Target,

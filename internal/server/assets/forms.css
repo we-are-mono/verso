@@ -113,8 +113,8 @@
     height: var(--spacing-control);
     border: 1px solid var(--color-rule-strong);
     border-radius: var(--radius-xs);
-    background: var(--color-white);
-    box-shadow: inset 0 1px 2px rgba(27, 25, 23, .06);
+    background: var(--color-canvas);
+    box-shadow: var(--shadow-field);
     transition-property: border-color, box-shadow;
     transition-duration: 150ms;
     transition-timing-function: var(--default-transition-timing-function);
@@ -125,7 +125,7 @@
   .verso-box:has([aria-invalid="true"]):hover { border-color: var(--color-crimson-deep); }
   .verso-box:has([aria-invalid="true"]):focus-within {
     border-color: var(--color-crimson-deep);
-    box-shadow: inset 0 0 0 1px var(--color-crimson-deep), inset 0 1px 2px rgba(27, 25, 23, .06);
+    box-shadow: inset 0 0 0 1px var(--color-crimson-deep), var(--shadow-field);
   }
   /* What stands under a box — its refusals, its description — is as wide as
      the box, never the column: the words wrap inside the box's own measure

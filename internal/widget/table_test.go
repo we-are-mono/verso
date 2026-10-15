@@ -991,8 +991,8 @@ func TestRenderTableDirectAction(t *testing.T) {
 		`method="post"`, `name="_action"`, `value="end-session:iphone"`,
 		`role="alertdialog"`, `>End this session?<`, "Anyone using it will be signed out.",
 		"size-1.5 shrink-0 rounded-[1px] bg-crimson", `>End session<`, `>Cancel<`, // the alarm's mark: the square at full chroma
-		"border-crimson bg-crimson text-white",        // the destructive act
-		"border-rule-strong bg-transparent text-meta", // Cancel is the ordinary quiet button
+		"border-crimson bg-crimson text-on-fill transition-colors", // the destructive act
+		"border-rule-strong bg-transparent text-meta",              // Cancel is the ordinary quiet button
 		"verso-press",
 	} {
 		if !strings.Contains(got, want) {

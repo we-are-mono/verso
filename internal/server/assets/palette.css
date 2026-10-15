@@ -88,10 +88,24 @@
   --color-amethyst-soft: #f4ebfa; /* the upload area's fill */
 
   /*
-   * White — the one surface a step above the page: the top bar, and the page
-   * behind a takeover.
+   * Canvas — the one surface a step above the page: the top bar, a field's and
+   * a select's fill, and the page behind a takeover.
    */
   --color-canvas: #ffffff;
+
+  /*
+   * On-fill — the words and the check on a filled control: the primary, danger
+   * and caution buttons, a checked choice, a picked filter. White in this
+   * palette, as Canvas is, and a token of its own because the two are two jobs.
+   */
+  --color-on-fill: #ffffff;
+
+  /*
+   * Tailwind's own white and black are no colour of this palette: a surface is
+   * Canvas and a label on a fill is On-fill, so `text-white` compiles to nothing.
+   */
+  --color-white: initial;
+  --color-black: initial;
 
   /*
    * Hardware — the colours of a physical object: a router's port panel. These
@@ -107,6 +121,34 @@
   --color-hw-tip-text: #e8edf5;
   --color-hw-tip-edge: #333b49;
   --color-hw-tip-key: #8a94a8;
+}
+
+/*
+ * Shadows — one per job, each the whole shadow: offset, blur, colour and
+ * strength together, since what lifts a layer off one ground is not what lifts
+ * it off another. Only what floats over the page casts one (DESIGN.md, Flat by
+ * default). They sit outside @theme so the page reads each through var(): a
+ * Tailwind shadow token would be copied into its utility instead.
+ */
+:root {
+  --shadow-field: inset 0 1px 2px rgba(27, 25, 23, .06); /* every field and select: a slot cut into the paper */
+  --shadow-float: 0 4px 12px rgba(27, 25, 23, .14); /* a tooltip, a notification, a token's menu */
+  --shadow-menu: 0 8px 24px rgba(27, 25, 23, .14); /* a condition's menu */
+  --shadow-dialog: 0 8px 32px rgba(27, 25, 23, .16); /* a dialog, and an Overview card in hand */
+  --shadow-drawer: -8px 0 32px rgba(27, 25, 23, .12); /* the side panel, cast leftward over the page */
+  --shadow-edge: inset 0 4px 4px -4px rgba(27, 25, 23, .14); /* a scroller's top edge, the page sliding under it */
+  --shadow-lifted: 0 1.25rem 2.5rem -0.75rem rgb(27 25 23 / .24), 0 .5rem 1rem -.5rem rgb(27 25 23 / .18); /* a row in hand */
+  --shadow-port-tip: 0 12px 26px -10px rgb(0 0 0 / .7); /* a port's dark tip over the router's panel */
+
+  /*
+   * Chart washes — how strongly a series' hue fills the plot under its line,
+   * where the wash starts at the line and where it fades to. Strengths, not
+   * colours: the hue is the series' own.
+   */
+  --chart-wash-from: .16; /* the live traffic series: download and upload */
+  --chart-wash-to: .04;
+  --chart-role-wash-from: .24; /* a role series (violet, emerald) */
+  --chart-role-wash-to: 0;
 }
 
 /*

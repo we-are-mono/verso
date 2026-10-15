@@ -388,7 +388,7 @@ document.addEventListener("alpine:init", function () {
   // property here; the face shown is filled in the body ink, as every selected
   // segment in the app is.
   Alpine.data("panelFaces", function () {
-    var on = "bg-body font-semibold text-white";
+    var on = "bg-body font-semibold text-on-fill";
     var off = "font-normal text-body hover:text-ink";
     return {
       face: "rear",

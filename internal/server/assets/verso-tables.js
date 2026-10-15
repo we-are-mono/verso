@@ -63,7 +63,7 @@
 
   function floatingRow(row, tableRect, rowRect) {
     var shell = document.createElement("div");
-    shell.className = "verso-reorder-float fixed z-[70] overflow-hidden rounded-xs bg-ground ring-1 ring-rule-strong shadow-[0_1.25rem_2.5rem_-0.75rem_rgb(27_25_23/0.24),0_0.5rem_1rem_-0.5rem_rgb(27_25_23/0.18)] pointer-events-none origin-center scale-y-[1.01] opacity-[0.98] will-change-[top,transform] motion-reduce:transform-none [&_td]:border-b-transparent [&_td]:bg-ground";
+    shell.className = "verso-reorder-float fixed z-[70] overflow-hidden rounded-xs bg-ground ring-1 ring-rule-strong shadow-(--shadow-lifted) pointer-events-none origin-center scale-y-[1.01] opacity-[0.98] will-change-[top,transform] motion-reduce:transform-none [&_td]:border-b-transparent [&_td]:bg-ground";
     // The copy leaves the table wrapper. Carry its cell-inset utilities along
     // so the first and last values stay on the same grid while dragging.
     var wrap = row.closest(".overflow-x-auto");

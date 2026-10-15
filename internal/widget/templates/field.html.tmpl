@@ -96,7 +96,7 @@
        so it posts exactly as the grid does and needs no JavaScript. */}}
   <div role="group"{{if .Label}} aria-labelledby="{{.Name}}-label"{{end}}{{template "verso-field-aria" .}} class="inline-flex w-fit max-w-full flex-wrap gap-0.5 self-start rounded-xs border border-rule-strong bg-quiet p-0.5">
     {{range .Options}}
-    <label class="flex h-7 cursor-pointer items-center rounded-xs px-3.5 text-sm font-normal text-body transition-colors hover:text-ink has-checked:bg-choice has-checked:font-semibold has-checked:text-white {{template "verso-segment-focus"}}">
+    <label class="flex h-7 cursor-pointer items-center rounded-xs px-3.5 text-sm font-normal text-body transition-colors hover:text-ink has-checked:bg-choice has-checked:font-semibold has-checked:text-on-fill {{template "verso-segment-focus"}}">
       <input type="checkbox" name="{{$.Name}}" value="{{.Value}}"{{if $.Checked .Value}} checked{{end}} class="sr-only">
       {{/* A checked chip's word goes semibold, which is wider; its hidden
            semibold twin in the same cell holds that width from the start, so

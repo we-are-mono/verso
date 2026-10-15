@@ -20,7 +20,7 @@
 
 {{/* verso-btn-primary: the primary action's colour + interaction chain. The
      call site owns layout (flex, gap, padding, radius, focus treatment). */}}
-{{define "verso-btn-primary"}}border border-denim bg-denim text-white transition-colors hover:border-denim-deep hover:bg-denim-deep {{template "verso-press"}}{{end}}
+{{define "verso-btn-primary"}}border border-denim bg-denim text-on-fill transition-colors hover:border-denim-deep hover:bg-denim-deep {{template "verso-press"}}{{end}}
 
 {{/* verso-btn-waiting: a primary that has nothing to act on yet — a settings
      form's Save before anything in it changed. It rests in sand, as a control
@@ -44,7 +44,7 @@
      reading without making the line taller. The page's dropdown in its
      small size: the same Paper, strong hairline and Denim focus, 14px words,
      its chevron 14px and 8px from the right edge. */}}
-{{define "verso-select-compact"}}h-6 cursor-pointer appearance-none rounded-xs border border-rule-strong bg-white pr-7 pl-2 text-sm leading-none text-ink transition-colors hover:border-faint focus:border-denim focus:outline-none{{end}}
+{{define "verso-select-compact"}}h-6 cursor-pointer appearance-none rounded-xs border border-rule-strong bg-canvas pr-7 pl-2 text-sm leading-none text-ink transition-colors hover:border-faint focus:border-denim focus:outline-none{{end}}
 {{define "verso-select-compact-chevron"}}pointer-events-none absolute right-2 flex text-meta{{end}}
 
 {{/* verso-empty-slot-class and verso-empty-slot-body: where the first of a
@@ -76,12 +76,12 @@
 
 {{/* verso-btn-danger: the destructive action's colour + interaction chain —
      one red across the confirm widget and the table's confirmed row action. */}}
-{{define "verso-btn-danger"}}border border-crimson bg-crimson text-white transition-colors hover:border-crimson-deep hover:bg-crimson-deep {{template "verso-press"}}{{end}}
+{{define "verso-btn-danger"}}border border-crimson bg-crimson text-on-fill transition-colors hover:border-crimson-deep hover:bg-crimson-deep {{template "verso-press"}}{{end}}
 
 {{/* verso-btn-caution: the act a caution confirm asks for. White on full
      marigold fails the 4.5 floor, so it is white on the deep step; the palette
      has no step below that, so hover darkens by a tenth instead. */}}
-{{define "verso-btn-caution"}}border border-marigold-deep bg-marigold-deep text-white transition-[color,background-color,border-color,filter] hover:brightness-90 {{template "verso-press"}}{{end}}
+{{define "verso-btn-caution"}}border border-marigold-deep bg-marigold-deep text-on-fill transition-[color,background-color,border-color,filter] hover:brightness-90 {{template "verso-press"}}{{end}}
 
 {{/* verso-input-border: a form control's border, the only thing that changes
      about it — the strong hairline at rest, the faint step under the pointer,
@@ -93,7 +93,7 @@
      aria-invalid, which the page drops on the first keystroke (verso-forms.js),
      since the refusal was about the value that was there — the box then
      returns to the hairline and the action colour. */}}
-{{define "verso-input-border"}}border-rule-strong hover:border-faint focus:border-denim{{if .}} aria-invalid:border-crimson aria-invalid:hover:border-crimson-deep aria-invalid:focus:border-crimson-deep aria-invalid:focus:shadow-[inset_0_0_0_1px_var(--color-crimson-deep),inset_0_1px_2px_rgba(27,25,23,.06)]{{end}}{{end}}
+{{define "verso-input-border"}}border-rule-strong hover:border-faint focus:border-denim{{if .}} aria-invalid:border-crimson aria-invalid:hover:border-crimson-deep aria-invalid:focus:border-crimson-deep aria-invalid:focus:shadow-[inset_0_0_0_1px_var(--color-crimson-deep),var(--shadow-field)]{{end}}{{end}}
 
 {{/* verso-kicker-class: the one kicker — a word or two naming the group under
      it, never a heading's rival: 12px at 500, uppercase at .08em, in the meta
@@ -156,7 +156,7 @@
 {{/* verso-input-fill: what anything typed into stands on — white, pressed in
      by the inset shadow — so a plain box and a box of tokens read as the same
      kind of field. */}}
-{{define "verso-input-fill"}}bg-white shadow-[inset_0_1px_2px_rgba(27,25,23,.06)]{{end}}
+{{define "verso-input-fill"}}bg-canvas shadow-(--shadow-field){{end}}
 
 {{/* verso-input-class: the box for a machine string — an address, a port, a
      name a daemon will answer to — set in mono at the reading size, at the
@@ -295,7 +295,7 @@
 {{define "verso-listing-search"}}<div class="relative flex max-w-full items-center">
     <span class="pointer-events-none absolute left-2.5 flex text-faint">{{icon "search" "size-4"}}</span>
     <input type="search"{{if not .Paged}} data-verso-listing-filter{{end}}{{with .Query}} value="{{.}}"{{end}} autocomplete="off" placeholder="{{.Filter}}" aria-label="{{.Filter}}"
-      class="h-control w-80 max-w-full rounded-xs border border-rule-strong bg-white pr-3 pl-8.5 text-sm text-ink shadow-[inset_0_1px_2px_rgba(27,25,23,.06)] transition-colors placeholder:font-normal placeholder:text-meta hover:border-faint focus:border-denim focus:outline-none">
+      class="h-control w-80 max-w-full rounded-xs border border-rule-strong bg-canvas pr-3 pl-8.5 text-sm text-ink shadow-(--shadow-field) transition-colors placeholder:font-normal placeholder:text-meta hover:border-faint focus:border-denim focus:outline-none">
   </div>{{end}}
 {{/* verso-reshape-wait: the waiting mark beside a choice that reshapes its
      form, hidden until the choice is made and the form it names is on its way
@@ -395,7 +395,7 @@
      It rests above whatever raises it and flush to that thing's right edge, so a
      tip on the last column stays inside the table. Hidden until its named group
      is hovered or focused; the caller supplies those variants. */}}
-{{define "verso-tip-class"}}pointer-events-none absolute right-0 bottom-full z-30 mb-2 rounded-xs border border-rule-strong bg-ground px-3 py-2 text-sm leading-tight font-normal whitespace-nowrap text-ink opacity-0 shadow-[0_4px_12px_rgba(27,25,23,.14)] transition-opacity{{end}}
+{{define "verso-tip-class"}}pointer-events-none absolute right-0 bottom-full z-30 mb-2 rounded-xs border border-rule-strong bg-ground px-3 py-2 text-sm leading-tight font-normal whitespace-nowrap text-ink opacity-0 shadow-(--shadow-float) transition-opacity{{end}}
 
 {{/* Copy feedback is prose, even beside a machine value. A refused copy keeps
      its explanation visible briefly, including after a touch activation. */}}
@@ -422,7 +422,7 @@
      shown, and bridged across the gap to its label), so a pointer can move
      onto the sentence to read it, and Escape puts it away (verso-page.js). */}}
 {{define "verso-tip-wide"}}
-<span role="tooltip" id="{{.ID}}" class="absolute left-0 z-30 flex w-80 flex-col gap-2 rounded-xs border border-rule-strong bg-ground p-3 text-left font-normal whitespace-normal shadow-[0_4px_12px_rgba(27,25,23,.14)]">
+<span role="tooltip" id="{{.ID}}" class="absolute left-0 z-30 flex w-80 flex-col gap-2 rounded-xs border border-rule-strong bg-ground p-3 text-left font-normal whitespace-normal shadow-(--shadow-float)">
   {{with .Tip}}<span class="text-sm leading-[1.45] text-ink">{{.}}</span>{{end}}
   {{/* A fused control with no one sentence of its own explains each part
        under that part's name. */}}
@@ -440,7 +440,7 @@
 {{/* verso-chip: the entity chip (an interface, a zone, a port) — the label
      names the one, led by one mark or none: a Lucide glyph naming the kind, or
      the packet square in the chip's tone. An icon wins. */}}
-{{define "verso-chip"}}<span{{if .Title}} data-verso-tip tabindex="0" aria-describedby="{{.TipID}}"{{end}} class="{{if .LocalizeLabel}}{{template "verso-chip-box"}} font-sans{{else}}{{template "verso-chip-mono"}}{{end}} {{if eq .Tone "accent"}}border-denim-line bg-denim-soft text-denim-deep{{else if eq .Tone "success"}}border-green-line bg-green-soft text-green-deep{{else if eq .Tone "warning"}}border-marigold-line bg-marigold-soft text-marigold-deep{{else if eq .Tone "danger"}}border-crimson-line bg-crimson-soft text-crimson-deep{{else}}border-rule bg-quiet text-meta{{end}}{{if .Title}} relative z-10 cursor-help focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim{{end}}">{{if .Icon}}<span class="{{if eq .Tone "accent"}}text-denim{{else if eq .Tone "success"}}text-green-deep{{else if eq .Tone "warning"}}text-marigold-deep{{else if eq .Tone "danger"}}text-crimson-deep{{else}}text-faint{{end}}">{{icon .Icon "size-3.5"}}</span>{{else if .Dot}}{{template "verso-chip-packet" .Tone}}{{end}}{{.Label}}{{if .Title}}<span role="tooltip" id="{{.TipID}}" class="absolute left-0 z-30 {{if .LimitTip}}w-72 p-4{{else}}w-max max-w-64 px-3 py-2{{end}} rounded-xs border border-rule-strong bg-ground text-left font-sans text-sm leading-tight font-normal {{if .LimitTip}}whitespace-normal{{else}}whitespace-pre-line{{end}} text-ink shadow-[0_4px_12px_rgba(27,25,23,.14)]">{{if .LimitTip}}<span class="sr-only">{{.Title}}</span>{{template "verso-device-limit-tip" .LimitTip}}{{else}}{{.Title}}{{end}}</span>{{end}}</span>{{end}}
+{{define "verso-chip"}}<span{{if .Title}} data-verso-tip tabindex="0" aria-describedby="{{.TipID}}"{{end}} class="{{if .LocalizeLabel}}{{template "verso-chip-box"}} font-sans{{else}}{{template "verso-chip-mono"}}{{end}} {{if eq .Tone "accent"}}border-denim-line bg-denim-soft text-denim-deep{{else if eq .Tone "success"}}border-green-line bg-green-soft text-green-deep{{else if eq .Tone "warning"}}border-marigold-line bg-marigold-soft text-marigold-deep{{else if eq .Tone "danger"}}border-crimson-line bg-crimson-soft text-crimson-deep{{else}}border-rule bg-quiet text-meta{{end}}{{if .Title}} relative z-10 cursor-help focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim{{end}}">{{if .Icon}}<span class="{{if eq .Tone "accent"}}text-denim{{else if eq .Tone "success"}}text-green-deep{{else if eq .Tone "warning"}}text-marigold-deep{{else if eq .Tone "danger"}}text-crimson-deep{{else}}text-faint{{end}}">{{icon .Icon "size-3.5"}}</span>{{else if .Dot}}{{template "verso-chip-packet" .Tone}}{{end}}{{.Label}}{{if .Title}}<span role="tooltip" id="{{.TipID}}" class="absolute left-0 z-30 {{if .LimitTip}}w-72 p-4{{else}}w-max max-w-64 px-3 py-2{{end}} rounded-xs border border-rule-strong bg-ground text-left font-sans text-sm leading-tight font-normal {{if .LimitTip}}whitespace-normal{{else}}whitespace-pre-line{{end}} text-ink shadow-(--shadow-float)">{{if .LimitTip}}<span class="sr-only">{{.Title}}</span>{{template "verso-device-limit-tip" .LimitTip}}{{else}}{{.Title}}{{end}}</span>{{end}}</span>{{end}}
 
 {{/* verso-tone-dot: the status dot's colour for a tone (the badge vocabulary);
      success pulses — it marks something live. */}}
@@ -469,7 +469,7 @@
      (input.css, .verso-drawer-motion). Flex only while open: a closed dialog
      is not drawn, and a display utility would draw it. The caller says how it
      clips. */}}
-{{define "verso-drawer-box"}}verso-modal verso-drawer-motion ml-auto h-full max-h-none w-full {{template "verso-drawer-width"}} flex-col open:flex border-l border-rule-strong bg-ground text-ink shadow-[-8px_0_32px_rgba(27,25,23,.12)] focus:outline-none{{end}}
+{{define "verso-drawer-box"}}verso-modal verso-drawer-motion ml-auto h-full max-h-none w-full {{template "verso-drawer-width"}} flex-col open:flex border-l border-rule-strong bg-ground text-ink shadow-(--shadow-drawer) focus:outline-none{{end}}
 
 {{/* verso-close-btn: the × that dismisses an overlay. */}}
 {{define "verso-close-btn"}}<button type="button" @click="hide" aria-label="{{ t "Close" }}" class="grid size-7 shrink-0 cursor-pointer place-items-center rounded-xs text-meta transition-colors hover:bg-mid/50 hover:text-ink focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-denim">{{icon "x" "size-4"}}</button>{{end}}

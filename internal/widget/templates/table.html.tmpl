@@ -567,7 +567,7 @@
 {{if eq .Style "interfaces"}}
 {{template "table.interfaces" .}}
 {{else if eq .Style "console"}}
-<div class="verso-console -mx-10 flex min-h-0 flex-1 flex-col bg-quiet shadow-[inset_0_4px_4px_-4px_rgba(27,25,23,.14)]"
+<div class="verso-console -mx-10 flex min-h-0 flex-1 flex-col bg-quiet shadow-(--shadow-edge)"
   data-verso-stream="{{.StreamSource}}" data-verso-stream-ring="{{.StreamRing}}" data-verso-stream-style="console">
   <div data-verso-console-rows data-scroll="sand" class="verso-drawer-scrollbar min-h-0 flex-1 overflow-y-auto pt-3 pb-6 grid content-start grid-cols-[auto_4.5rem_5.5rem_minmax(min-content,max-content)_1.5rem_minmax(min-content,max-content)_6rem_minmax(12.75rem,1fr)] gap-x-3">
     <div data-verso-stream-empty class="col-span-full px-11 py-6 text-sm text-meta">{{.EmptyText}}</div>

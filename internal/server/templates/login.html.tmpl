@@ -24,7 +24,7 @@
 
   <main class="flex flex-1 items-center justify-center px-4 py-12 sm:px-6">
     <div class="flex w-full max-w-full flex-col lg:w-auto">
-      <div class="flex flex-col overflow-hidden rounded-xs border border-rule bg-white lg:flex-row">
+      <div class="flex flex-col overflow-hidden rounded-xs border border-rule bg-canvas lg:flex-row">
         {{/* Only public facts cross this boundary. The browser refreshes this
              small status model; it never receives the authenticated overview. */}}
         <section aria-label="{{ t "Router status" }}" data-login-status
@@ -84,7 +84,7 @@
               {{end}}
             </div>
             <button type="submit" data-login-submit aria-disabled="false"
-              class="group mt-2 flex h-control w-full items-center justify-center rounded-xs border border-denim bg-denim text-sm font-semibold text-white transition-colors enabled:hover:border-denim-deep enabled:hover:bg-denim-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim disabled:pointer-events-none disabled:transition-none disabled:border-rule-strong disabled:bg-quiet disabled:text-glyph">
+              class="group mt-2 flex h-control w-full items-center justify-center rounded-xs border border-denim bg-denim text-sm font-semibold text-on-fill transition-colors enabled:hover:border-denim-deep enabled:hover:bg-denim-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim disabled:pointer-events-none disabled:transition-none disabled:border-rule-strong disabled:bg-quiet disabled:text-glyph">
               <span class="group-disabled:hidden">{{ t "Sign in to router" }}</span>
               <span role="status" class="hidden items-center gap-2 group-disabled:flex">
                 <span data-verso-wait aria-hidden="true" class="relative block size-3.5 shrink-0">

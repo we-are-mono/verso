@@ -32,7 +32,7 @@
      in, and its forms are never nested in another. */}}
 {{/* The window is a card like every other card — one hairline on the page's own
      ground — lifted off the scrim by a shadow rather than by a second colour. */}}
-{{define "modal.frame"}}rounded-xs border border-rule-strong bg-ground shadow-[0_8px_32px_rgba(27,25,23,.16)]{{end}}
+{{define "modal.frame"}}rounded-xs border border-rule-strong bg-ground shadow-(--shadow-dialog){{end}}
 <div x-data="modal" data-open="{{if .Open}}true{{else}}false{{end}}">
   {{if eq .TriggerStyle "link"}}
   {{/* "link" trigger: a quiet ghost link, for a door that sits under a primary

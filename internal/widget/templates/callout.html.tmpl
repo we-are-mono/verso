@@ -24,7 +24,7 @@
      control riding its first line. */}}
 {{define "callout.verbatim"}}<div class="mt-2 flex items-start border-t pt-1.75 leading-6 {{if eq .Variant "success"}}border-green-line{{else if eq .Variant "warning"}}border-marigold-line{{else if eq .Variant "danger"}}border-crimson-line{{else if eq .Variant "neutral"}}border-rule{{else}}border-denim-line{{end}}">
   <p class="min-w-0 font-mono text-base leading-6 font-medium [overflow-wrap:anywhere] whitespace-pre-wrap">{{.Verbatim}}</p>
-  <button type="button" x-data="copy" @click="run" :data-copy-failed="failed" aria-label="{{ t "Copy" }}" class="verso-copy-inline group/copy relative -my-1 grid size-7 shrink-0 cursor-pointer place-items-center rounded-xs border border-transparent transition-colors hover:bg-white/50 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-current">
+  <button type="button" x-data="copy" @click="run" :data-copy-failed="failed" aria-label="{{ t "Copy" }}" class="verso-copy-inline group/copy relative -my-1 grid size-7 shrink-0 cursor-pointer place-items-center rounded-xs border border-transparent transition-colors hover:bg-canvas/50 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-current">
     <span x-ref="src" class="hidden">{{.Verbatim}}</span>
     <span x-show="idle">{{icon "copy" "size-4"}}</span>
     <span x-show="done" x-cloak>{{icon "check" "size-4"}}</span>

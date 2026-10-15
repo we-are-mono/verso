@@ -20,7 +20,7 @@
 {{define "traffic.window"}}
 <div class="relative flex {{if .Card}}shrink-0{{end}} items-center">
   <select name="range" aria-label="{{ t "Window" }}" hx-get="{{.RangeURL}}" hx-trigger="change" hx-target="closest section" hx-swap="outerHTML"
-    class="{{if .Card}}{{template "verso-select-compact"}}{{else}}h-control cursor-pointer appearance-none rounded-xs border border-rule-strong bg-white pr-9 pl-3 text-sm text-ink shadow-[inset_0_1px_2px_rgba(27,25,23,.06)] transition-colors hover:border-faint focus:border-denim focus:outline-none{{end}}">
+    class="{{if .Card}}{{template "verso-select-compact"}}{{else}}h-control cursor-pointer appearance-none rounded-xs border border-rule-strong bg-canvas pr-9 pl-3 text-sm text-ink shadow-(--shadow-field) transition-colors hover:border-faint focus:border-denim focus:outline-none{{end}}">
     {{range .Ranges}}<option value="{{.Value}}"{{if eq .Value $.Range}} selected{{end}}>{{.Label}}</option>{{end}}
   </select>
   {{if .Card}}<span class="{{template "verso-select-compact-chevron"}}">{{icon "chevron-down" "size-3.5"}}</span>{{else}}<span class="pointer-events-none absolute right-3 flex text-meta">{{icon "chevron-down" "size-4"}}</span>{{end}}
