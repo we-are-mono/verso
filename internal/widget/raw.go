@@ -6,6 +6,7 @@ package widget
 import (
 	"bytes"
 	"fmt"
+	"html"
 	"html/template"
 	"io"
 	"strings"
@@ -53,47 +54,110 @@ func newMarkdown() goldmark.Markdown {
 	)
 }
 
+// safeLinks holds every link, image and autolink to the scheme allowlist on
+// its own terms, whatever the renderer would screen: a destination fails if
+// any decoding of it names a scheme off the list.
 type safeLinks struct{}
 
-func (safeLinks) Transform(doc *ast.Document, _ text.Reader, _ parser.Context) {
+func (safeLinks) Transform(doc *ast.Document, reader text.Reader, _ parser.Context) {
+	source := reader.Source()
+	var unlinked []*ast.AutoLink
 	_ = ast.Walk(doc, func(n ast.Node, entering bool) (ast.WalkStatus, error) {
 		if !entering {
 			return ast.WalkContinue, nil
 		}
 		switch v := n.(type) {
 		case *ast.Link:
-			if !schemeAllowed(v.Destination, false) {
+			if !destinationAllowed(v.Destination, false) {
 				v.Destination = []byte("#")
 			}
 		case *ast.Image:
-			if !schemeAllowed(v.Destination, true) {
+			if !destinationAllowed(v.Destination, true) {
 				v.Destination = []byte("")
+			}
+		case *ast.AutoLink:
+			// An email autolink always renders as mailto:.
+			if v.AutoLinkType != ast.AutoLinkEmail && !destinationAllowed(v.URL(source), false) {
+				unlinked = append(unlinked, v)
 			}
 		}
 		return ast.WalkContinue, nil
 	})
+	// A refused autolink becomes its own text, HTML-escaped as its label would
+	// be. Swapped after the walk, so the walk never steps off a detached node.
+	for _, link := range unlinked {
+		label := ast.NewString(link.Label(source))
+		label.SetRaw(true)
+		link.Parent().ReplaceChild(link.Parent(), link, label)
+	}
+}
+
+// maxDecodes bounds how many layers of encoding destinationAllowed peels; a
+// destination still changing past it is refused.
+const maxDecodes = 8
+
+// destinationAllowed reports whether a destination's scheme is on the
+// allowlist as written and after every decoding of it: the renderer resolves
+// backslash escapes and character references before writing the URL, and a
+// browser decodes the attribute's entities again, so each layer is checked.
+func destinationAllowed(dest []byte, image bool) bool {
+	for range maxDecodes {
+		if !schemeAllowed(dest, image) {
+			return false
+		}
+		next := decodeDestination(dest)
+		if bytes.Equal(next, dest) {
+			return true
+		}
+		dest = next
+	}
+	return false
+}
+
+// decodeDestination peels one layer of encoding, the way goldmark's renderer
+// does (backslash escapes, numeric then named references) and then as HTML
+// does.
+func decodeDestination(dest []byte) []byte {
+	d := util.UnescapePunctuations(dest)
+	d = util.ResolveNumericReferences(d)
+	d = util.ResolveEntityNames(d)
+	return []byte(html.UnescapeString(string(d)))
 }
 
 // schemeAllowed reports whether a link/image destination's URL scheme is safe.
 // Relative destinations (no scheme) are allowed; http/https always; mailto for
 // links only. Everything else (javascript:, data:, vbscript:, …) is rejected.
+// The scheme is read as a browser reads it: leading and trailing controls and
+// spaces trimmed, tabs and newlines dropped anywhere, case ignored.
 func schemeAllowed(dest []byte, image bool) bool {
-	s := strings.ToLower(strings.TrimSpace(string(dest)))
+	s := strings.TrimFunc(string(dest), func(r rune) bool { return r <= ' ' })
+	s = strings.Map(func(r rune) rune {
+		switch {
+		case r == '\t' || r == '\n' || r == '\r':
+			return -1
+		case 'A' <= r && r <= 'Z':
+			return r + ('a' - 'A')
+		}
+		return r
+	}, s)
 	if s == "" {
 		return false
 	}
-	colon := strings.IndexByte(s, ':')
-	slash := strings.IndexByte(s, '/')
-	// A colon before any slash marks an explicit scheme; otherwise it's relative.
-	if colon >= 0 && (slash == -1 || colon < slash) {
-		switch s[:colon] {
-		case "http", "https":
-			return true
-		case "mailto":
-			return !image
-		default:
-			return false
-		}
+	// A colon before any slash, query or fragment marks an explicit scheme;
+	// otherwise it's relative.
+	end := strings.IndexAny(s, "/?#")
+	if end < 0 {
+		end = len(s)
 	}
-	return true // relative
+	colon := strings.IndexByte(s[:end], ':')
+	if colon < 0 {
+		return true // relative
+	}
+	switch s[:colon] {
+	case "http", "https":
+		return true
+	case "mailto":
+		return !image
+	}
+	return false
 }
