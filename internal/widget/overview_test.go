@@ -145,9 +145,11 @@ func TestOverviewDegradesWithoutInventingState(t *testing.T) {
 
 func TestRenderOverviewTrafficAutoScale(t *testing.T) {
 	got := render(t, newRenderer(t), &Overview{DownSeries: []float64{80, 400, 120}, UpSeries: []float64{20, 40, 30}})
-	for _, want := range []string{">600 Mb/s<", ">450<", ">300<", ">150<", `viewBox="0 0 620 240"`, `data-chart-padding="0"`, "verso-traffic-card"} {
+	// The download lane scales to its own peak (400 under 600), the upload lane
+	// to its own (40 under 60).
+	for _, want := range []string{">600 Mb/s<", ">450<", ">300<", ">150<", ">60 Mb/s<", `viewBox="0 0 620 240"`, `data-chart-padding="0"`, `id="overview-traffic-graph"`} {
 		if !strings.Contains(got, want) {
-			t.Errorf("existing shared-scale renderer missing %q", want)
+			t.Errorf("the Traffic card's graph missing %q", want)
 		}
 	}
 	if strings.Contains(got, ">Internet traffic</h2>") {

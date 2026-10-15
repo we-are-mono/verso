@@ -45,8 +45,8 @@
     <div class="relative" data-verso-chart-gutter>
       {{range .YLabels}}<span class="verso-chart-yl pointer-events-none absolute left-3 -translate-y-1/2 whitespace-nowrap" style="top:{{printf "%.1f" .TopPct}}%">{{.Text}}</span>{{end}}
     </div>
-    <div class="verso-chart-axis relative h-6" data-verso-chart-window>
+    {{if .Ticks}}<div class="verso-chart-axis relative h-6" data-verso-chart-window>
       {{range .Ticks}}<span class="verso-chart-tick absolute top-0 whitespace-nowrap" data-verso-chart-tick data-align="{{.Align}}" style="left:{{printf "%.0f" .Pct}}%">{{.Text}}</span>{{end}}
-    </div>
+    </div>{{end}}
   </div>
 </div>

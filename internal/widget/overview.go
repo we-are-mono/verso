@@ -166,17 +166,21 @@ type OverviewMeter struct {
 // the Traffic card: the live minute when window is empty or "minute", else the
 // past window drawn from history, its figures the window's averages. Rates are
 // in Mbit/s.
-func InternetTraffic(device string, downNow, upNow float64, down, up []float64, rangeURL, window string) *Traffic {
+func InternetTraffic(downNow, upNow float64, down, up []float64, rangeURL, window string) *Traffic {
 	label := "Internet traffic — download and upload, last minute"
 	if window != "" && window != TrafficRanges[0].Value {
 		label = "Internet traffic — download and upload"
 	}
 	return &Traffic{
-		Title: "Internet traffic", Meta: device, Live: "wan", Label: label,
+		Live: "wan", Label: label, ID: InternetTrafficID,
 		DownNow: downNow, UpNow: upNow, Down: down, Up: up,
-		RangeURL: rangeURL, Range: window, Card: true,
+		RangeURL: rangeURL, Range: window, Place: PlaceCompact,
 	}
 }
+
+// InternetTrafficID addresses the Overview's Internet graph, so the window
+// fetched for it lands in its place.
+const InternetTrafficID = "overview-traffic-graph"
 
 // wanSeriesFallback is the flat-line length drawn before any WAN sample lands.
 const wanSeriesFallback = 60

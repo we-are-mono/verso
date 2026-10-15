@@ -103,22 +103,22 @@ func TestAChartWithoutALegendDrawsNone(t *testing.T) {
 	}
 }
 
-// TestALiveWindowIsLabelledAtItsEnds: a live window's lines travel with the
-// curve, so only its two ends are named.
-func TestALiveWindowIsLabelledAtItsEnds(t *testing.T) {
-	got := ticks(render(t, newRenderer(t), &Chart{Live: true, Span: time.Minute, Series: []ChartSeries{{Values: []float64{1, 2}}}}))
-	if strings.Join(got, "|") != "60 s ago|now" {
-		t.Errorf("live axis %q, want [60 s ago now]", got)
+// TestTheLiveMinuteIsLabelledAtItsQuarters: the grid stands still under a live
+// curve, so the minute's quarters are named on their lines as any window's.
+func TestTheLiveMinuteIsLabelledAtItsQuarters(t *testing.T) {
+	got := ticks(render(t, newRenderer(t), &Chart{Span: time.Minute, Series: []ChartSeries{{Values: []float64{1, 2}}}}))
+	if strings.Join(got, "|") != "60 s|45 s|30 s|15 s|now" {
+		t.Errorf("live axis %q, want [60 s 45 s 30 s 15 s now]", got)
 	}
 }
 
 // TestRenderChart: the plot stretches edge to edge, its peak sits under a
 // round top (100 under 120, counted in thirties), the value labels ride the
-// quarter lines with the unit on the topmost, and a live window is captioned
-// at its two ends.
+// quarter lines with the unit on the topmost, and the window's quarters are
+// named under it.
 func TestRenderChart(t *testing.T) {
 	got := render(t, newRenderer(t), &Chart{
-		Live: true, Span: time.Minute, Label: "Traffic",
+		Span: time.Minute, Label: "Traffic",
 		Series: []ChartSeries{
 			{Values: []float64{0, 100}, Role: "emerald", Fill: true},
 			{Values: []float64{0, 50}, Role: "violet"},
@@ -129,7 +129,7 @@ func TestRenderChart(t *testing.T) {
 		"verso-chart--emerald", "verso-chart--violet",
 		"620.0 40.0", // 100 under a top of 120 lands at 240 - 100/120·240
 		">120 Mb/s<", ">90<", ">60<", ">30<", `style="top:0.0%"`, `style="top:75.0%"`,
-		">60 s ago<", ">now<",
+		">60 s<", ">30 s<", ">now<",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("chart missing %q:\n%s", want, got)

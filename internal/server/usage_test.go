@@ -93,7 +93,8 @@ func TestDevicePanelDetailsSayWhatTheDeviceMoves(t *testing.T) {
 		t.Error("usage is a section of Details, not a tab")
 	}
 	for _, want := range []string{
-		`data-verso-live-chart="usage:42:e6:ad:ff:b7:af"`, "Mb/s down", "Mb/s up", `<svg class="verso-chart`,
+		`data-verso-live-chart="usage:42:e6:ad:ff:b7:af"`, `data-verso-live-lane="down"`, `data-verso-live-lane="up"`,
+		">Download<", ">Upload<", `data-chart-place="compact"`, `<svg class="verso-chart`,
 		">Downloaded<", ">Uploaded<",
 		">Today<", ">Last 7 days<", ">This month<", ">Last month<",
 		">2 GiB<", ">512 MiB<", // today down and up

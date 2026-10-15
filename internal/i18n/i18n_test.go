@@ -115,6 +115,34 @@ func TestPluginTranslatorOverlaysBase(t *testing.T) {
 // layer's job (values must reach the browser only as html/template data, never as
 // template source or template.HTML). This pins that the package neither mangles
 // nor sanitizes them, so the invariant lives downstream, deliberately.
+// TestAWordInContextHasItsOwnTranslation: one English word can mean two things
+// ("Download" a verb on a button, a noun over a graph), so a context keys its
+// own translation, and a context with none falls back to the English word, not
+// to the word's other meaning.
+func TestAWordInContextHasItsOwnTranslation(t *testing.T) {
+	tr := func(s string) string {
+		return map[string]string{"Download": "Prenesi", "Download|traffic": "Prejem"}[s]
+	}
+	fallback := func(s string) string {
+		if s == "Download" {
+			return "Prenesi"
+		}
+		return s
+	}
+	if got := Contextual(tr, "traffic", "Download"); got != "Prejem" {
+		t.Errorf("Contextual(traffic, Download) = %q, want Prejem", got)
+	}
+	if got := Contextual(fallback, "traffic", "Download"); got != "Download" {
+		t.Errorf("an untranslated context = %q, want the English word", got)
+	}
+	if got := Contextual(func(s string) string { return s }, "traffic", "Upload"); got != "Upload" {
+		t.Errorf("English = %q, want Upload", got)
+	}
+	if InContext("traffic", "Download") != "Download|traffic" {
+		t.Errorf("InContext = %q", InContext("traffic", "Download"))
+	}
+}
+
 func TestTranslatorReturnsValuesVerbatim(t *testing.T) {
 	b, _ := Load(fstest.MapFS{
 		"sl/base.json": {Data: []byte(`{"x":"<b>{{.}}</b> 100%"}`)},

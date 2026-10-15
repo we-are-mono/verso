@@ -335,7 +335,7 @@ func (o *Overview) trafficBody(r *Renderer, csrf string) (template.HTML, error) 
 	if len(down) < 2 || len(up) < 2 {
 		down, up = make([]float64, wanSeriesFallback), make([]float64, wanSeriesFallback)
 	}
-	return renderToHTML(r, InternetTraffic(o.WANDevice, o.DownNow, o.UpNow, down, up, o.TrafficRangeURL, ""), csrf)
+	return renderToHTML(r, InternetTraffic(o.DownNow, o.UpNow, down, up, o.TrafficRangeURL, ""), csrf)
 }
 
 // ── Resources ──

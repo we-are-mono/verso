@@ -46,11 +46,8 @@ The legend line and the axis take the same width, so the peak and "now" end at t
 - **Alternative rejected:** callers pre-writing labels. Every caller would then repeat the round-step rule.
 
 ### 4. The time axis is computed from the window
-`Chart.Span time.Duration` and `Chart.Live bool` replace `AxisStart`/`AxisEnd`.
-- **Past window:** the five quarter labels come from `units.Duration` (two largest units), the last one "now".
-- **Live:** "60 s ago" and "now" at the ends.
-
-Labels sit at 0/25/50/75/100% of the snapped width, so they fall on lines.
+`Chart.Span time.Duration` replaces `AxisStart`/`AxisEnd`. Every window, live or past, names its five quarters, from `units.DurationWithin` (the duration rule in no unit larger than a quarter reaches, so a day reads "24 h · 18 h …" and the live minute "60 s · 45 s · 30 s · 15 s · now"), the last one "now". Labels sit at 0/25/50/75/100% of the snapped width, so they fall on lines.
+- **Changed during build (owner's call, 2026-10-16):** the grid no longer travels with a live curve. The owner wanted the live minute labelled at its quarters too, and a fixed label can't follow a moving line.
 
 ### 5. Legend and peak are series data
 `ChartSeries` gains `Name`, `Figure` (already written, with the unit), `Caption` ("now" or "on average") and `Peak` (a value on the scale, plus a written figure). The template draws the legend from them and a dotted peak `<line>` at the peak's y.
@@ -63,12 +60,12 @@ Labels sit at 0/25/50/75/100% of the snapped width, so they fall on lines.
 
 ### 7. Live lanes in `verso-chart.js`
 `[data-verso-live-chart]` holds two `[data-verso-live-lane]` plots. Each lane keeps its own series, scale (re-written only when a step is crossed) and clip.
-- **One sample** slides both lanes over one interval with CSS transforms, as today.
-- **Grid travel:** the lane's plot background shifts by the glided distance modulo `--chart-cell` (read once, refreshed on resize), so the vertical lines travel with the curve. Horizontal rules stay put.
-- **Figures:** each lane's figure and peak are rewritten through `verso-units.js`.
+- **One sample** slides both lanes' curves over one interval with CSS transforms, as today. The grid stands still (see decision 4), so the time labels keep their lines.
+- **Figures:** each lane's figure, peak text and dotted peak line are rewritten through `verso-units.js`.
 - **Reduced motion** steps.
 
-The grid-travel behaviour is the loved "paper moves with the curve" contract, now with columns.
+### 11. A word in context
+A lane's name ("Download") is a noun, but the catalog already keys "Download" as the button's verb (Slovenian "Prenesi"). `i18n.InContext`/`i18n.Contextual` key a word said in a context apart (`"Download|traffic"`) and fall back to the English word, never to the word's other meaning. The owner chose this over renaming the lanes (2026-10-16), since the same collision will recur.
 
 ### 8. Where the choices stand
 - **Overview Traffic window:** `overviewCardSpec` gains an optional `control` that renders into the header before the open-close button, hidden in Arrange mode like the other header buttons. Traffic's control is the compact window `<select>`, with `hx-get=/overview/traffic`, `hx-target=#overview-traffic-graph` and `hx-swap=outerHTML`. `verso-overview.js` ignores header clicks that start inside `[data-overview-card-control]`, so choosing never toggles the card.

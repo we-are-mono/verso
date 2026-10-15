@@ -1,15 +1,18 @@
 // SPDX-License-Identifier: GPL-2.0-only
 // SPDX-FileCopyrightText: 2026 Mono Technologies Inc.
 
-// verso-chart.js — a live traffic graph (widget.Traffic): the overview's
-// Internet graph and a device's in its panel. Each seeds from the minute the
-// server rendered (data-verso-live-seed) and then FLOWS left continuously as
-// fresh samples arrive from its stream, named by data-verso-live-chart ("wan",
+// verso-chart.js — a live traffic graph (widget.Traffic) in two lanes,
+// download over upload: the overview's Internet graph and a device's in its
+// drawer. It seeds both lanes from the minute the server rendered
+// (data-verso-live-seed) and then FLOWS left continuously as fresh samples
+// arrive from its stream, named by data-verso-live-chart ("wan",
 // "usage:<mac>"). Each frame the curves translate by a fraction of one sample;
 // when a sample lands the value is committed and the translate resets — a
-// seamless treadmill drawing the same smooth curve and dynamic shared scale the
-// server drew. A clip hides what scrolls past the edges. Reduced motion still
-// updates, just in discrete steps instead of a glide.
+// seamless treadmill drawing the same smooth curve the server drew. Each lane
+// keeps its own round scale, figure and peak. The grid stands still under the
+// curve, so each time label under the plot keeps its line. A clip hides what
+// scrolls past the edges. Reduced motion still updates, just in discrete steps
+// instead of a glide.
 //
 // A graph is set up when it is on the page, and when a panel's contents
 // arrive with one in them (htmx), so a graph in a drawer starts only once the
@@ -18,69 +21,59 @@
   "use strict";
   var NS = "http://www.w3.org/2000/svg";
   var INTERVAL = 1000;
-  // The chart's rules stand 16px apart (chart.html.tmpl), so a plot's quarter
-  // lines are rules; the paper under a gliding curve moves on the same step.
-  var GRID = 16;
-  var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  // The pure arithmetic, apart so it can be held to cases
+  // (scripts/chart.test.cjs).
+  var math = {
+    // peak is the highest finite value among vals, zero when there is none.
+    peak: function (vals) {
+      var p = 0;
+      vals.forEach(function (v) { if (typeof v === "number" && isFinite(v) && v > p) p = v; });
+      return p;
+    },
+    // laneScale is a lane's round scale over its points (Mbit/s), written by
+    // numbers (verso-units.js): its top in Mbit/s and its labels.
+    laneScale: function (vals, numbers) {
+      var scaled = numbers.chartScale(math.peak(vals) * 1e6);
+      return { top: scaled.top / 1e6, labels: scaled.labels };
+    },
+  };
+  window.versoChartMath = math;
+  if (typeof document === "undefined" || !window.matchMedia) return;
+
+  var reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   var clips = 0;
   // Figures and value labels are written as the shell writes every rate
   // (verso-units.js), in the page's language. The series are in Mbit/s.
   var tr = typeof T === "function" ? T : function (s) { return s; };
   var nums = window.versoUnits.numbers(tr("."));
 
-  function liveChart(host) {
-    if (host.__versoLive) return host.__versoLive;
-    var svg = host.querySelector("svg.verso-chart");
+  function rateText(mbps) {
+    var rate = nums.rate(mbps * 1e6);
+    return rate.value + " " + rate.unit;
+  }
+
+  // lane is one plot's live state: its series (the visible minute and one
+  // extra point off-right until a sample lands), its scale, and the elements
+  // it rewrites.
+  function lane(el, vals, step) {
+    var svg = el.querySelector("svg.verso-chart");
     if (!svg) return null;
     var vb = svg.viewBox.baseVal;
-    var W = vb.width, H = vb.height, PAD = svg.hasAttribute("data-chart-padding") ? Number(svg.getAttribute("data-chart-padding")) : 8;
-    var groups = svg.querySelectorAll("g.verso-chart-series");
-    var frameEl = host.closest("section") || host;
-    var downEl = frameEl.querySelector("[data-verso-live-down]");
-    var upEl = frameEl.querySelector("[data-verso-live-up]");
-    var downLabelEl = frameEl.querySelector("[data-verso-live-down-label]");
-    var upLabelEl = frameEl.querySelector("[data-verso-live-up-label]");
-
-    // Seed the live series from the server's rendered minute.
-    var seed = {};
-    try { seed = JSON.parse(host.getAttribute("data-verso-live-seed") || "{}"); } catch (e) { seed = {}; }
-    var down = (seed.down || []).slice(), up = (seed.up || []).slice();
-    var N = Math.min(down.length, up.length); // visible points fill 0..W
-    if (N < 2) return null;
-    down.push(down[N - 1]); up.push(up[N - 1]); // one extra, off-right, until a sample lands
-    var step = W / (N - 1);
-    var series = [down, up];
-
-    // Download and upload share one domain so their relative sizes remain
-    // truthful. Recalculate it from the whole visible minute whenever a sample
-    // arrives, as the round scale the server drew (units.RateScale): it moves
-    // only when the traffic crosses a step, and then its labels are rewritten.
-    // Including the off-right point grows the scale just before that new value
-    // scrolls into view.
-    var max = 1;
-    function updateScale() {
-      var peak = 0;
-      series.forEach(function (vals) {
-        vals.forEach(function (v) {
-          if (typeof v === "number" && isFinite(v) && v > peak) peak = v;
-        });
-      });
-      var scale = nums.chartScale(peak * 1e6);
-      if (scale.top / 1e6 === max) return;
-      max = scale.top / 1e6;
-      host.querySelectorAll(".verso-chart-yl").forEach(function (el, i) {
-        if (scale.labels[i] !== undefined) el.textContent = scale.labels[i];
-      });
-    }
-    // A figure and the unit and direction after it, as the server wrote them.
-    function writeFigure(el, labelEl, label, mbps) {
-      var rate = nums.rate(mbps * 1e6);
-      if (el) el.textContent = rate.value;
-      if (labelEl) labelEl.textContent = tr(label).replace("%s", rate.unit);
-    }
-
-    // Clip each series to the plot rect so the treadmill's off-edge content
-    // hides; each graph its own clip, since a drawer's sits beside the page's.
+    var W = vb.width, H = vb.height;
+    var N = vals.length - 1;
+    var g = svg.querySelector("g.verso-chart-series");
+    var self = {
+      W: W, H: H, svg: svg, vals: vals, max: 0,
+      line: g && g.querySelector(".verso-chart-line"),
+      area: g && g.querySelector(".verso-chart-area"),
+      peakLine: svg.querySelector(".verso-chart-peak"),
+      labels: el.querySelectorAll(".verso-chart-yl"),
+      figure: el.querySelector("[data-verso-live-figure]"),
+      peakText: el.querySelector("[data-verso-live-peak]"),
+    };
+    // Clip the series to the plot so the treadmill's off-edge content hides;
+    // each lane its own clip, since a drawer's graph sits beside the page's.
     var clipID = "verso-live-clip-" + (++clips);
     var clip = document.createElementNS(NS, "clipPath");
     clip.setAttribute("id", clipID);
@@ -88,16 +81,9 @@
     rect.setAttribute("x", "0"); rect.setAttribute("y", "0");
     rect.setAttribute("width", String(W)); rect.setAttribute("height", String(H));
     clip.appendChild(rect); svg.appendChild(clip);
+    if (g) g.setAttribute("clip-path", "url(#" + clipID + ")");
 
-    var lines = [], areas = [];
-    groups.forEach(function (g) {
-      g.setAttribute("clip-path", "url(#" + clipID + ")");
-      lines.push(g.querySelector(".verso-chart-line"));
-      areas.push(g.querySelector(".verso-chart-area"));
-    });
-
-    function y(v) { return H - PAD - (v / max) * (H - 2 * PAD); }
-    function points(vals) { return vals.map(function (v, j) { return [j * step, y(v)]; }); }
+    function y(v) { return H - (v / self.max) * H; }
     // The same Catmull-Rom spline the server draws, so the live curve matches.
     function segments(p) {
       var s = "";
@@ -112,29 +98,57 @@
       }
       return s;
     }
-    function draw() {
-      updateScale();
-      series.forEach(function (vals, idx) {
-        var p = points(vals), head = "M" + p[0][0].toFixed(1) + " " + p[0][1].toFixed(1) + segments(p);
-        if (lines[idx]) { lines[idx].setAttribute("d", head); lines[idx].style.transform = "none"; }
-        if (areas[idx]) { areas[idx].setAttribute("d", "M0 " + H.toFixed(1) + " L" + p[0][0].toFixed(1) + " " + p[0][1].toFixed(1) + segments(p) + " L" + p[N][0].toFixed(1) + " " + H.toFixed(1) + " Z"); areas[idx].style.transform = "none"; }
+    // The lane's scale is the round one the server drew (units.RateScale),
+    // over the whole visible minute and the point about to scroll in, so it
+    // grows just before a new peak arrives; it moves only when the traffic
+    // crosses a step, and then its labels are rewritten.
+    function scale() {
+      var scaled = math.laneScale(self.vals, nums);
+      if (scaled.top === self.max) return;
+      self.max = scaled.top;
+      self.labels.forEach(function (label, i) {
+        if (scaled.labels[i] !== undefined) label.textContent = scaled.labels[i];
       });
     }
+    self.draw = function () {
+      scale();
+      var p = self.vals.map(function (v, j) { return [j * step, y(v)]; });
+      var head = "M" + p[0][0].toFixed(1) + " " + p[0][1].toFixed(1) + segments(p);
+      if (self.line) { self.line.setAttribute("d", head); self.line.style.transform = "none"; }
+      if (self.area) {
+        self.area.setAttribute("d", "M0 " + H.toFixed(1) + " L" + p[0][0].toFixed(1) + " " + p[0][1].toFixed(1) + segments(p) + " L" + p[N][0].toFixed(1) + " " + H.toFixed(1) + " Z");
+        self.area.style.transform = "none";
+      }
+      // The minute's peak, its words and its dotted line.
+      var peak = math.peak(self.vals.slice(0, N));
+      if (self.peakText) self.peakText.textContent = rateText(peak);
+      if (self.peakLine) {
+        var py = y(peak).toFixed(1);
+        self.peakLine.setAttribute("y1", py); self.peakLine.setAttribute("y2", py);
+      }
+    };
+    self.slide = function (tf) {
+      if (self.line) self.line.style.transform = tf;
+      if (self.area) self.area.style.transform = tf;
+    };
+    return self;
+  }
 
-    // The notebook grid travels with the curve: the section's 16px grid is a
-    // background, and each frame shifts it by exactly the distance the curve has
-    // slid, so the data and the paper under it move as one. The chart's rendered
-    // width is cached (and refreshed on resize) so a frame never reads layout.
-    var gridEl = host.closest("section");
-    var gridBase = 0;
-    var svgW = svg.getBoundingClientRect().width;
-    if (window.ResizeObserver) new ResizeObserver(function () { svgW = svg.getBoundingClientRect().width; }).observe(svg);
-    function stepPx() { return (svgW / W) * step; }
-    function moveGrid(progress) {
-      if (!gridEl) return;
-      var off = (gridBase + progress * stepPx()) % GRID;
-      gridEl.style.backgroundPositionX = (-1 - off).toFixed(2) + "px";
-    }
+  function liveChart(host) {
+    if (host.__versoLive) return host.__versoLive;
+    var seed = {};
+    try { seed = JSON.parse(host.getAttribute("data-verso-live-seed") || "{}"); } catch (e) { seed = {}; }
+    var down = (seed.down || []).slice(), up = (seed.up || []).slice();
+    var N = Math.min(down.length, up.length); // visible points fill 0..W
+    if (N < 2) return null;
+    down.push(down[N - 1]); up.push(up[N - 1]); // one extra, off-right, until a sample lands
+    var downEl = host.querySelector('[data-verso-live-lane="down"]');
+    var upEl = host.querySelector('[data-verso-live-lane="up"]');
+    var probe = downEl && downEl.querySelector("svg.verso-chart");
+    if (!probe || !upEl) return null;
+    var step = probe.viewBox.baseVal.width / (N - 1);
+    var lanes = [lane(downEl, down, step), lane(upEl, up, step)].filter(Boolean);
+    if (lanes.length < 2) return null;
 
     var lastCommit = null;
     var gliding = false;
@@ -148,27 +162,23 @@
       // out on every frame, the style only repaints it. In the SVG's own user
       // units, which is what px means inside a viewBox.
       var tf = "translateX(" + (-progress * step).toFixed(2) + "px)";
-      lines.forEach(function (l) { if (l) l.style.transform = tf; });
-      areas.forEach(function (a) { if (a) a.style.transform = tf; });
-      moveGrid(progress);
+      lanes.forEach(function (l) { l.slide(tf); });
       if (progress < 1) requestAnimationFrame(frame);
       else gliding = false;
     }
 
-    draw();
+    lanes.forEach(function (l) { l.draw(); });
     host.__versoLive = {
       // A fresh sample: commit the newest down/up, drop the oldest, redraw, and
       // start the glide toward it if one is not already running.
       sample: function (nd, nu) {
         if (typeof nd !== "number" || typeof nu !== "number") return;
-        // The curve drops its oldest point and snaps back to zero; the grid keeps
-        // the step it already travelled, so the two stay in register.
-        if (lastCommit !== null) gridBase = (gridBase + stepPx()) % GRID;
-        down.push(nd); down.shift();
-        up.push(nu); up.shift();
-        draw();
-        writeFigure(downEl, downLabelEl, "%s down", nd);
-        writeFigure(upEl, upLabelEl, "%s up", nu);
+        [nd, nu].forEach(function (v, i) {
+          var l = lanes[i];
+          l.vals.push(v); l.vals.shift();
+          l.draw();
+          if (l.figure) l.figure.textContent = rateText(v);
+        });
         lastCommit = performance.now();
         if (!reduce && !gliding) {
           gliding = true;

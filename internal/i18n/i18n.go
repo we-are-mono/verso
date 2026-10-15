@@ -200,6 +200,23 @@ func (b *Bundle) PluginTranslator(code, plugin string) func(string) string {
 	return lookup(comps[BaseComponent], comps[plugin], b.sink(code, plugin))
 }
 
+// InContext is the catalog key for source said in a context. A catalog keys by
+// the English word, and one word can mean two things ("Download", a verb on a
+// button and a noun over a graph), so the context tells them apart in the
+// catalog: "Download|traffic".
+func InContext(context, source string) string { return source + "|" + context }
+
+// Contextual translates source said in context through tr: the context's own
+// translation where the catalog has one, else the English word itself, never
+// the word's other meaning.
+func Contextual(tr func(string) string, context, source string) string {
+	key := InContext(context, source)
+	if t := tr(key); t != key && t != "" {
+		return t
+	}
+	return source
+}
+
 // lookup builds a source→translation function that tries the overlay first, then
 // the base, then the source itself. A nil catalog contributes nothing; two nil
 // catalogs yield the identity, so English (no catalogs) is a no-op. A non-nil

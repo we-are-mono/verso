@@ -51,7 +51,7 @@ A chart's scale SHALL start at zero and top out at a round value that clears its
 - **THEN** its scale reads 80 Mb/s, 60, 40, 20
 
 ### Requirement: The time axis is labelled at the quarters
-Under the plot, the window's quarters SHALL be labelled on their lines with how long ago each stands, as the One Duration Rule writes it, the last one "now" (24 h · 18 h · 12 h · 6 h · now for a day). Every other cell column SHALL draw a line with no label. A live window SHALL label only its two ends.
+Under the plot, the window's quarters SHALL be labelled on their lines with how long ago each stands, as the One Duration Rule writes it in no unit larger than a quarter reaches, the last one "now" (24 h · 18 h · 12 h · 6 h · now for a day). Every other cell column SHALL draw a line with no label. A live window is labelled the same way.
 
 #### Scenario: A week
 - **WHEN** the operator picks Last 7 days
@@ -59,7 +59,7 @@ Under the plot, the window's quarters SHALL be labelled on their lines with how 
 
 #### Scenario: The live minute
 - **WHEN** the Traffic card shows the live minute
-- **THEN** the axis reads "60 s ago" and "now" at its ends, and the vertical lines travel with the curve
+- **THEN** the axis reads 60 s · 45 s · 30 s · 15 s · now, each on its line
 
 ### Requirement: Axis labels are quiet
 Time and scale labels SHALL be set alike: the sans face at 12px, weight 500, in Meta, on a 24px line, with tabular figures. A scale label stands centred on its rule in a gutter right of the plot, and nothing is laid over the curve.
@@ -117,11 +117,11 @@ A choice that governs one graph alone SHALL be a labelled form field standing ov
 - **THEN** only the graph and its legend redraw, for Memory, and the page does not reload
 
 ### Requirement: A live chart glides
-A live chart SHALL draw the server's minute first, then slide each new sample in from the right, the curves and the vertical lines moving together. Its scale SHALL change only when the readings cross a step. Under reduced motion it SHALL step instead of slide.
+A live chart SHALL draw the server's minute first, then slide each new sample in from the right while its grid stands still, so each time label keeps its line. Its scale SHALL change only when the readings cross a step. Under reduced motion it SHALL step instead of slide.
 
 #### Scenario: A sample lands
 - **WHEN** a new traffic sample arrives
-- **THEN** both lanes slide one sample left over a second, their vertical lines with them
+- **THEN** both lanes' curves slide one sample left over a second, and their grid lines and time labels stay where they are
 
 #### Scenario: Reduced motion
 - **WHEN** the reader prefers reduced motion

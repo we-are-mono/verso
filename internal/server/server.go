@@ -842,9 +842,9 @@ func jsCatalog(tr func(string) string) template.JS {
 		"Moved to position %d of %d", "Copied",
 		// Where an Overview card stands once Arrange has moved it (ADR-022).
 		"%s: left column, position %d.", "%s: right column, position %d.",
-		// A live traffic graph's figures: the language's decimal separator,
-		// and the unit and direction after each figure (verso-units.js).
-		".", "%s down", "%s up",
+		// A live traffic graph's figures: the language's decimal separator
+		// (verso-units.js).
+		".",
 		"Couldn’t copy. Select the text and copy it manually.",
 		// A file uploading from its dialog: how far along, and what to do when
 		// the upload stops.

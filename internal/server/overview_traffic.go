@@ -50,8 +50,8 @@ func (s *Server) handleOverviewTraffic(w http.ResponseWriter, r *http.Request) {
 	window := r.URL.Query().Get("range")
 	var traffic *widget.Traffic
 	if window == widget.TrafficRanges[0].Value {
-		device, down, up, downNow, upNow := s.wanMinute(r)
-		traffic = widget.InternetTraffic(device, downNow, upNow, down, up, overviewTrafficPath, window)
+		_, down, up, downNow, upNow := s.wanMinute(r)
+		traffic = widget.InternetTraffic(downNow, upNow, down, up, overviewTrafficPath, window)
 	} else {
 		layout, offered := historyWindowOf(window)
 		if !offered {
@@ -88,25 +88,31 @@ func (s *Server) pastTraffic(r *http.Request, window string, res history.Resolut
 	step := time.Duration(res) * time.Second
 	start := now.Truncate(step).Add(-time.Duration(n-1) * step)
 	end := start.Add(time.Duration(n) * step)
-	read := func(series string, value func(float64) float64) ([]float64, error) {
+	// read is a series' averages over the window, slot by slot, and the
+	// highest peak among its periods.
+	read := func(series string, value func(float64) float64) ([]float64, float64, error) {
 		points, err := s.historyStore.Points(r.Context(), series, res, start, end)
-		return history.Slots(points, func(p history.Point) float64 { return value(p.Average) }, start, res, n), err
+		peak := 0.0
+		for _, p := range points {
+			peak = max(peak, value(p.Peak))
+		}
+		return history.Slots(points, func(p history.Point) float64 { return value(p.Average) }, start, res, n), peak, err
 	}
 	asIs := func(v float64) float64 { return v }
 	mbps := func(v float64) float64 { return rateMbps(uint64(v)) }
-	down, err := read("iface."+device+".rx", mbps)
+	down, downPeak, err := read("iface."+device+".rx", mbps)
 	if err != nil {
 		return nil, err
 	}
-	up, err := read("iface."+device+".tx", mbps)
+	up, upPeak, err := read("iface."+device+".tx", mbps)
 	if err != nil {
 		return nil, err
 	}
-	loss, err := read("wan.gateway.loss", asIs)
+	loss, _, err := read("wan.gateway.loss", asIs)
 	if err != nil {
 		return nil, err
 	}
-	latency, err := read("wan.gateway.latency", asIs)
+	latency, _, err := read("wan.gateway.latency", asIs)
 	if err != nil {
 		return nil, err
 	}
@@ -116,7 +122,8 @@ func (s *Server) pastTraffic(r *http.Request, window string, res history.Resolut
 	}
 	_, t := s.localize(r)
 	tr := translatorOrIdentity(t)
-	traffic := widget.InternetTraffic(device, mean(down), mean(up), down, up, overviewTrafficPath, window)
+	traffic := widget.InternetTraffic(mean(down), mean(up), down, up, overviewTrafficPath, window)
+	traffic.DownPeak, traffic.UpPeak = downPeak, upPeak
 	traffic.Marks = eventMarks(events, start, end, now, tr)
 	traffic.Marks = append(traffic.Marks, lossMarks(loss, start, step, traffic.Marks, now, tr)...)
 	if ms, ok := average(latency); ok {

@@ -36,11 +36,12 @@ type Chart struct {
 	// Unit is what the values are counted in, which writes the scale and the
 	// legend's figures: Mbit/s by default, or °C.
 	Unit units.Unit
-	// Span is how far back the window reaches. A past window names its
-	// quarters under the plot (24 h · 18 h · 12 h · 6 h · now); a Live one,
-	// whose lines travel with the curve, names only its two ends.
+	// Span is how far back the window reaches; its quarters are named under
+	// the plot (24 h · 18 h · 12 h · 6 h · now).
 	Span time.Duration
-	Live bool
+	// NoAxis leaves the time axis off: a lane standing over another, whose
+	// axis serves both.
+	NoAxis bool
 	// Marks are what happened over the window (ADR-019), drawn behind the
 	// curves.
 	Marks []ChartMark
@@ -177,7 +178,10 @@ func (c *Chart) renderInto(r *Renderer, out io.Writer, _ string) error {
 	nums := r.numbers()
 	top, labels := nums.Scale(c.Unit, peak)
 
-	view := chartView{Label: c.Label, W: chartW, H: chartH, Place: c.Place.String(), Ticks: c.ticks(r)}
+	view := chartView{Label: c.Label, W: chartW, H: chartH, Place: c.Place.String()}
+	if !c.NoAxis {
+		view.Ticks = c.ticks(r)
+	}
 	for _, s := range c.Series {
 		if s.Legend == nil {
 			continue
@@ -236,18 +240,15 @@ func chartHue(role string) string {
 	}
 }
 
-// ticks are the time axis's labels: a live window's two ends ("60 s ago",
-// "now"), or a past window's quarters, each how long ago it stands as every
-// duration is written, counted in no unit larger than a quarter reaches
-// (units.DurationWithin: "24 h · 18 h · 12 h · 6 h"), the last "now".
+// ticks are the time axis's labels: the window's quarters, live or past, each
+// how long ago it stands as every duration is written, counted in no unit
+// larger than a quarter reaches (units.DurationWithin: "24 h · 18 h · 12 h ·
+// 6 h", "60 s · 45 s · 30 s · 15 s"), the last "now". The grid stands still
+// under a live curve, so each label keeps its line.
 func (c *Chart) ticks(r *Renderer) []chartTick {
 	now := r.tr("now")
 	seconds := int64(c.Span / time.Second)
 	quarter := seconds / 4
-	if c.Live {
-		ago := fmt.Sprintf(r.tr("%s ago"), units.DurationWithin(seconds, quarter))
-		return []chartTick{{ago, 0, "start"}, {now, 100, "end"}}
-	}
 	out := make([]chartTick, 0, 5)
 	for q := range int64(4) {
 		align := "center"

@@ -70,27 +70,29 @@ func deviceFacts(d widget.Device) widget.Widget {
 	return &widget.Properties{Align: "left", Items: items}
 }
 
-// deviceUsage is what the device moves: its traffic graph, as the overview
-// draws the Internet's, fed by the roster's stream under the name of the
-// device, and its calendar periods. The series are bits per second; without
-// them there is no graph, only the periods.
+// deviceUsage is what the device moves, under the drawer's "Usage" heading:
+// its traffic graph in two lanes, as the overview draws the Internet's, fed by
+// the roster's stream under the name of the device, and its calendar periods.
+// The series are bits per second; without them there is no graph, only the
+// periods.
 func deviceUsage(nums units.Numbers, d widget.Device, downBPS, upBPS []float64, p usage.Periods) widget.Widgets {
 	mac := strings.ToLower(d.MAC)
-	periods := usagePeriods(nums, mac, p)
+	section := &widget.Section{Title: "Usage", Hairline: true, Children: widget.Widgets{usagePeriods(nums, mac, p)}}
 	if len(downBPS) == 0 {
-		return widget.Widgets{periods}
+		return widget.Widgets{section}
 	}
 	down, up := make([]float64, len(downBPS)), make([]float64, len(upBPS))
 	for i := range downBPS {
 		down[i], up[i] = downBPS[i]/1_000_000, upBPS[i]/1_000_000
 	}
 	traffic := &widget.Traffic{
-		Title: "Usage", Live: "usage:" + mac,
+		Live:    "usage:" + mac,
 		Label:   "Device traffic — download and upload, last minute",
 		DownNow: down[len(down)-1], UpNow: up[len(up)-1],
-		Down: down, Up: up, Panel: true,
+		Down: down, Up: up, Place: widget.PlaceCompact,
 	}
-	return widget.Widgets{traffic, periods}
+	section.Children = append(widget.Widgets{traffic}, section.Children...)
+	return widget.Widgets{section}
 }
 
 // usagePeriods is the device's calendar periods, each down and up.

@@ -84,9 +84,11 @@ func TestOverviewTrafficDrawsAPastWindowFromHistory(t *testing.T) {
 		t.Fatalf("status = %d, body:\n%s", status, body)
 	}
 	for _, want := range []string{
-		">24 h<", ">18 h<", ">30<", "Mb/s down on average", ">2<", "Mb/s up on average",
+		">24 h<", ">18 h<", ">30 Mb/s<", ">2 Mb/s<", ">on average<",
+		// Each lane's peak is the highest the history kept, not the averages'.
+		">50 Mb/s<", ">3 Mb/s<",
 		`class="verso-chart-line`, `class="verso-chart-mark--outage"`, "<title>Internet down ",
-		`class="verso-chart-mark--loss"`, "<title>Packet loss up to 33 % ", ">12<", "ms to gateway on average",
+		`class="verso-chart-mark--loss"`, "<title>Packet loss up to 33 % ", ">Gateway<", ">12 ms<",
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("a day's graph missing %q", want)
