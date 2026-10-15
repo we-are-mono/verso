@@ -155,7 +155,8 @@ passes its own warn or critical limit, or the main fan has its fault or alarm se
 A CPU with no limits of its own is never out of band.
 
 There is no separate overrides block — the arrays *are* the labels, the order, and
-the visibility. To keep a reading off the Hardware page, leave it out of the array.
+the visibility. A name is only a label: the history records each sensor under the
+kernel's name for it, so renaming an entry keeps what was recorded. To keep a reading off the Hardware page, leave it out of the array.
 
 ### `ports` — physical order, left to right
 

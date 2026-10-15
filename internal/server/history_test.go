@@ -172,18 +172,19 @@ func TestMemoryInUseIsTotalLessAvailable(t *testing.T) {
 
 // TestTemperatureSeriesNameEveryAmbiguousSensorByItsChip: two drives that both
 // call a sensor "Composite" are told apart by chip, whichever is read first, so
-// a series always means the same sensor; a faulted reading is a gap.
+// a series always means the same sensor; each is named as the kernel names it,
+// never as a profile does; a faulted reading is a gap.
 func TestTemperatureSeriesNameEveryAmbiguousSensorByItsChip(t *testing.T) {
 	got := temperatureSeries([]sensors.TempReading{
-		{Name: "Composite", Source: "nvme · 0f:00", MilliC: 46000},
-		{Name: "CPU", Source: "k10temp", MilliC: 80500},
-		{Name: "Composite", Source: "nvme · 0e:00", MilliC: 48000},
-		{Name: "Remote", Source: "lm75", Fault: true},
+		{Name: "Composite", Kernel: "Composite", Source: "nvme · 0f:00", MilliC: 46000},
+		{Name: "CPU", Kernel: "cluster-thermal", Source: "thermal zone", Kind: "zone", MilliC: 80500},
+		{Name: "Composite", Kernel: "Composite", Source: "nvme · 0e:00", MilliC: 48000},
+		{Name: "Remote", Kernel: "temp2", Source: "lm75", Fault: true},
 	})
 	want := map[string][]float64{
 		"temp.Composite.nvme · 0f:00": {46},
 		"temp.Composite.nvme · 0e:00": {48},
-		"temp.CPU":                    {80.5},
+		"temp.cluster-thermal":        {80.5},
 	}
 	if len(got) != len(want) {
 		t.Fatalf("series = %v, want %v", got, want)
@@ -192,6 +193,34 @@ func TestTemperatureSeriesNameEveryAmbiguousSensorByItsChip(t *testing.T) {
 		if !slices.Equal(got[series], values) {
 			t.Fatalf("series = %v, want %v", got, want)
 		}
+	}
+}
+
+// TestAStartKeepsWhatWasRecordedUnderTheOldNames: the history a shell
+// recorded under a reading's display name moves to the kernel's name for it
+// when the history opens, and starting again moves nothing more.
+func TestAStartKeepsWhatWasRecordedUnderTheOldNames(t *testing.T) {
+	store, err := history.Open(history.Memory)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = store.Close() }()
+	at := time.Unix(1_800_000_000, 0).Truncate(time.Minute)
+	store.Add(history.Point{Series: "temp.Memory", Time: at, Average: 47, Peak: 48})
+	if err := store.Flush(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	temps := []sensors.TempReading{{Name: "Memory", Kernel: "ddr-thermal", Source: "thermal zone", Kind: "zone", MilliC: 47000}}
+
+	for range 2 {
+		keepTemperatureHistory(context.Background(), store, temps)
+	}
+	moved, err := store.Points(context.Background(), "temp.ddr-thermal", history.Minute, at, at.Add(time.Minute))
+	if err != nil || len(moved) != 1 || moved[0].Average != 47 {
+		t.Fatalf("temp.ddr-thermal holds %+v (%v), want the point recorded as temp.Memory", moved, err)
+	}
+	if old, _ := store.Points(context.Background(), "temp.Memory", history.Minute, at, at.Add(time.Minute)); len(old) != 0 {
+		t.Fatalf("temp.Memory still holds %+v", old)
 	}
 }
 

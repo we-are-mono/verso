@@ -6,8 +6,10 @@ package history
 import (
 	"database/sql"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 	"testing/fstest"
 )
@@ -228,6 +230,115 @@ func TestStepsMustBeNumberedOneByOne(t *testing.T) {
 				t.Fatal("loadSteps accepted it")
 			}
 		})
+	}
+}
+
+// beforeKernelNames is a file at version 8, before temperatures were recorded
+// under the kernel's names: one series per name, minutes 0 to 2 of each
+// valued at the series' id, and any extra rows setup adds.
+func beforeKernelNames(t *testing.T, names []string, extra string) string {
+	t.Helper()
+	setup := `CREATE TABLE series (id INTEGER PRIMARY KEY, name TEXT NOT NULL UNIQUE);
+CREATE TABLE points (series_id INTEGER NOT NULL REFERENCES series (id), resolution INTEGER NOT NULL, time INTEGER NOT NULL, average REAL NOT NULL, peak REAL NOT NULL, PRIMARY KEY (series_id, resolution, time)) WITHOUT ROWID;
+`
+	for i, name := range names {
+		setup += fmt.Sprintf("INSERT INTO series (id, name) VALUES (%d, '%s');\n", i+1, name)
+		for m := range 3 {
+			setup += fmt.Sprintf("INSERT INTO points VALUES (%d, 60, %d, %d, %d);\n", i+1, minute(m).Unix(), i+1, i+1)
+		}
+	}
+	return fileAt(t, 8, setup+extra)
+}
+
+func averages(t *testing.T, store *Store, series string) []float64 {
+	t.Helper()
+	points, err := store.Points(ctx, series, Minute, minute(0), minute(5))
+	if err != nil {
+		t.Fatal(err)
+	}
+	out := make([]float64, 0, len(points))
+	for _, p := range points {
+		out = append(out, p.Average)
+	}
+	return out
+}
+
+// TestTheDKsTemperaturesMoveToTheKernelsNames: a DK recorded its temperatures
+// under the names its profile gave them; step 9 moves each, every point with
+// it, to the name the kernel gives its sensor, and leaves every other series
+// as it was.
+func TestTheDKsTemperaturesMoveToTheKernelsNames(t *testing.T) {
+	const near, sfpArea = "soc/i2c@2180000/i2c-mux@70/i2c@1/temp-sensor@4c", "soc/i2c@2180000/i2c-mux@70/i2c@2/temp-sensor@4c"
+	moves := map[string]string{
+		"temp.cluster":              "temp.cluster-thermal",
+		"temp.Memory":               "temp.ddr-thermal",
+		"temp.Network":              "temp.fman-thermal",
+		"temp.SerDes":               "temp.serdes-thermal",
+		"temp.Crypto":               "temp.sec-thermal",
+		"temp.PCB near CPU":         "temp.temp1." + near,
+		"temp.CPU (external diode)": "temp.temp2." + near,
+		"temp.SFP+ modules":         "temp.temp1." + sfpArea,
+	}
+	kept := []string{"cpu", "temp.temperature.sfp · xfi0"}
+	names := append(slices.Sorted(maps.Keys(moves)), kept...)
+	store, err := Open(beforeKernelNames(t, names, ""))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = store.Close() }()
+
+	for i, old := range names {
+		want := []float64{float64(i + 1), float64(i + 1), float64(i + 1)}
+		name := old
+		if moved, ok := moves[old]; ok {
+			name = moved
+			if got := averages(t, store, old); len(got) != 0 {
+				t.Errorf("%s still holds %v", old, got)
+			}
+		}
+		if got := averages(t, store, name); !slices.Equal(got, want) {
+			t.Errorf("%s holds %v, want %v", name, got, want)
+		}
+	}
+	if got := countOf(t, store.db, "series"); got != len(names) {
+		t.Errorf("the file holds %d series, want %d", got, len(names))
+	}
+}
+
+// TestAMovedSeriesJoinsOneAlreadyThere: a DK whose shell already recorded
+// under the kernel's name keeps those points, and gains the older ones.
+func TestAMovedSeriesJoinsOneAlreadyThere(t *testing.T) {
+	path := beforeKernelNames(t, []string{"temp.cluster"},
+		fmt.Sprintf("INSERT INTO series (id, name) VALUES (9, 'temp.cluster-thermal');\nINSERT INTO points VALUES (9, 60, %d, 50, 50);\nINSERT INTO points VALUES (9, 60, %d, 51, 51);\n", minute(2).Unix(), minute(3).Unix()))
+	store, err := Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = store.Close() }()
+	if got, want := averages(t, store, "temp.cluster-thermal"), []float64{1, 1, 50, 51}; !slices.Equal(got, want) {
+		t.Errorf("temp.cluster-thermal holds %v, want %v", got, want)
+	}
+	if got := countOf(t, store.db, "series"); got != 1 {
+		t.Errorf("the file holds %d series, want 1", got)
+	}
+}
+
+// TestAnotherBoardsTemperaturesStay: only a DK's file holds temp.cluster, the
+// name its profile gave the CPU; a box that happens to name a sensor "Memory"
+// keeps its series under that name.
+func TestAnotherBoardsTemperaturesStay(t *testing.T) {
+	store, err := Open(beforeKernelNames(t, []string{"temp.Memory", "temp.Tctl"}, ""))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = store.Close() }()
+	for _, name := range []string{"temp.Memory", "temp.Tctl"} {
+		if got := averages(t, store, name); len(got) != 3 {
+			t.Errorf("%s holds %v, want its three points", name, got)
+		}
+	}
+	if got := averages(t, store, "temp.ddr-thermal"); len(got) != 0 {
+		t.Errorf("another board's Memory moved to ddr-thermal: %v", got)
 	}
 }
 

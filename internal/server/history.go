@@ -21,7 +21,6 @@ import (
 	"github.com/we-are-mono/verso/internal/openwrt"
 	"github.com/we-are-mono/verso/internal/probe"
 	"github.com/we-are-mono/verso/internal/sensors"
-	"github.com/we-are-mono/verso/profiles"
 )
 
 // StartHistory records the router's measurements into dir/history.db
@@ -33,6 +32,8 @@ func (s *Server) StartHistory(dir string, probes []netip.Addr, notify alerts.Con
 	if store == nil {
 		return
 	}
+	board := boardProfile()
+	keepTemperatureHistory(context.Background(), store, sensors.ResolveAll(board, &sensors.Reader{}).Temps)
 	prober := probe.New(probes)
 	collector := history.NewCollector(store,
 		prober.Source,
@@ -42,7 +43,7 @@ func (s *Server) StartHistory(dir string, probes []netip.Addr, notify alerts.Con
 			"memory":    func() (float64, error) { return readThen("/proc/meminfo", memoryInUse) },
 			"conntrack": func() (float64, error) { return readThen("/proc/sys/net/netfilter/nf_conntrack_count", number) },
 		}),
-		temperatures(),
+		temperatures(board),
 	)
 	// The watcher, the prober, the alerter and a rescan's scrub, cut short,
 	// stop before the collector, which closes the store.
@@ -152,31 +153,37 @@ func gauges(reads map[string]func() (float64, error)) history.Source {
 
 // temperatures reads every working temperature sensor, in °C, named as the
 // Hardware page names it.
-func temperatures() history.Source {
-	board, _ := os.ReadFile("/tmp/sysinfo/board_name")
-	profile, _ := sensors.LoadProfile(profiles.FS, strings.TrimSpace(string(board)))
+func temperatures(profile *sensors.Profile) history.Source {
 	return func(time.Time) map[string][]float64 {
 		return temperatureSeries(sensors.ResolveAll(profile, &sensors.Reader{}).Temps)
 	}
 }
 
-// temperatureSeries names each working sensor's series by its name, and by its
-// chip as well wherever another sensor shares the name.
-func temperatureSeries(temps []sensors.TempReading) map[string][]float64 {
-	named := map[string]int{}
-	for _, t := range temps {
-		named[t.Name]++
+// keepTemperatureHistory moves what the shell recorded under the names it gave
+// temperatures before the kernel's (sensors.SeriesRenames) to the names it
+// records under now, before the first minute is recorded. Once moved there is
+// nothing under the old names, so every start after asks for nothing.
+func keepTemperatureHistory(ctx context.Context, store *history.Store, temps []sensors.TempReading) {
+	renames := map[string]string{}
+	for was, now := range sensors.SeriesRenames(temps) {
+		renames["temp."+was] = "temp." + now
 	}
+	if err := store.RenameSeries(ctx, renames); err != nil {
+		log.Printf("verso: history: temperatures recorded under their old names stay there: %v", err)
+	}
+}
+
+// temperatureSeries records each working sensor under the name the kernel
+// gives it (sensors.SeriesNames), so a profile that renames a reading keeps its
+// history.
+func temperatureSeries(temps []sensors.TempReading) map[string][]float64 {
+	names := sensors.SeriesNames(temps)
 	out := map[string][]float64{}
-	for _, t := range temps {
+	for i, t := range temps {
 		if t.Fault {
 			continue
 		}
-		series := "temp." + t.Name
-		if named[t.Name] > 1 {
-			series += "." + t.Source
-		}
-		out[series] = []float64{float64(t.MilliC) / 1000}
+		out["temp."+names[i]] = []float64{float64(t.MilliC) / 1000}
 	}
 	return out
 }

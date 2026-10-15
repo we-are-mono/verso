@@ -49,7 +49,14 @@ The schema has three tables:
 The tables are the same on every router. A series is a name for what it
 measures (`iface.eth0.rx`, `cpu`, `temp.<sensor>`), and a point is one row: a
 router with more ports or sensors has more rows, never more columns, and a
-device that appears needs no change to the file. Points carry the series' id,
+device that appears needs no change to the file. A temperature's `<sensor>` is
+the kernel's name for it (a zone's type, a chip channel's label, told apart by
+the chip's device-tree node where two share one), never the name a board
+profile gives the reading, so renaming a reading keeps its history. Shells
+before that recorded a temperature under its display name, told apart by its
+bus address; on start, the shell moves any series it finds under a sensor's old
+name to the kernel's, and migration step 9 moves the one old name no sensor
+gives any more (the DK's CPU, once "cluster"). Points carry the series' id,
 so a long sensor name is stored once rather than on every point.
 
 The file changes shape by numbered migration steps, one SQL file each
