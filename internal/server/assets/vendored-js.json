@@ -1,0 +1,32 @@
+{
+  "results": [
+    {
+      "source": {
+        "path": "internal/server/assets/vendored-js.json",
+        "type": "lockfile"
+      },
+      "packages": [
+        {
+          "package": {
+            "name": "htmx.org",
+            "version": "2.0.4",
+            "ecosystem": "npm"
+          },
+          "file": "htmx.min.js",
+          "url": "https://cdn.jsdelivr.net/npm/htmx.org@2.0.4/dist/htmx.min.js",
+          "sha256": "e209dda5c8235479f3166defc7750e1dbcd5a5c1808b7792fc2e6733768fb447"
+        },
+        {
+          "package": {
+            "name": "@alpinejs/csp",
+            "version": "3.14.9",
+            "ecosystem": "npm"
+          },
+          "file": "alpine.csp.min.js",
+          "url": "https://cdn.jsdelivr.net/npm/@alpinejs/csp@3.14.9/dist/cdn.min.js",
+          "sha256": "820bc9503874024057da244dc30c21301548329eb9a00e7937e91c4d3908b273"
+        }
+      ]
+    }
+  ]
+}
