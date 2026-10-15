@@ -17,19 +17,6 @@ import (
 // overviewTrafficPath answers the Internet graph for the window chosen on it.
 const overviewTrafficPath = "/overview/traffic"
 
-// trafficWindows lays each past window out as periods of one resolution
-// (ADR-019): a day of minutes, a week of quarters, a month of hours, a year
-// of days.
-var trafficWindows = map[string]struct {
-	res history.Resolution
-	n   int
-}{
-	"day":   {history.Minute, 24 * 60},
-	"week":  {history.Quarter, 7 * 24 * 4},
-	"month": {history.Hour, 30 * 24},
-	"year":  {history.Day, 365},
-}
-
 // wanMinute is the uplink's live minute for the Internet graph: its device,
 // the minute's series in Mbit/s and the newest of each. The process-wide
 // sampler normally supplies an already-warm minute; the netifd device counters
@@ -66,13 +53,13 @@ func (s *Server) handleOverviewTraffic(w http.ResponseWriter, r *http.Request) {
 		device, down, up, downNow, upNow := s.wanMinute(r)
 		traffic = widget.InternetTraffic(device, downNow, upNow, down, up, overviewTrafficPath, window)
 	} else {
-		layout, offered := trafficWindows[window]
+		layout, offered := historyWindowOf(window)
 		if !offered {
 			http.Error(w, "no such window", http.StatusBadRequest)
 			return
 		}
 		var err error
-		if traffic, err = s.pastTraffic(r, window, layout.res, layout.n); err != nil {
+		if traffic, err = s.pastTraffic(r, window, layout.Res, layout.N); err != nil {
 			http.Error(w, "history unavailable", http.StatusInternalServerError)
 			return
 		}
