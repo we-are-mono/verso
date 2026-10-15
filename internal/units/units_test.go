@@ -115,26 +115,28 @@ func TestATemperatureScaleIsRound(t *testing.T) {
 		top    float64
 		labels string
 	}{
-		{59, 80, "80 °C|60|40|20"},
-		{46.8, 60, "60 °C|45|30|15"},
-		{95, 120, "120 °C|90|60|30"},
+		{59, 80, "80|60|40|20"},
+		{46.8, 60, "60|45|30|15"},
+		{95, 120, "120|90|60|30"},
 	} {
-		top, got := For(nil).Scale(UnitCelsius, tc.peak)
-		if top != tc.top || strings.Join(got, "|") != tc.labels {
-			t.Errorf("Scale(°C, %v) = %v %q, want %v %q", tc.peak, top, got, tc.top, tc.labels)
+		top, word, got := For(nil).Scale(UnitCelsius, tc.peak)
+		if top != tc.top || word != "°C" || strings.Join(got, "|") != tc.labels {
+			t.Errorf("Scale(°C, %v) = %v %q %q, want %v °C %q", tc.peak, top, word, got, tc.top, tc.labels)
 		}
 	}
-	if top, _ := For(nil).Scale(UnitCelsius, math.NaN()); top != 4 {
+	if top, _, _ := For(nil).Scale(UnitCelsius, math.NaN()); top != 4 {
 		t.Errorf("Scale(°C, NaN) = %v, want the smallest scale, 4", top)
 	}
 }
 
-// A rate chart's values are Mbit/s, and its scale is the rate scale's.
+// A rate chart's values are Mbit/s, and its scale is the rate scale's: the
+// same top and figures, its unit apart.
 func TestARateScaleIsInTheChartsUnit(t *testing.T) {
 	for _, tc := range readFixtures(t).Scales {
-		top, got := For(nil).Scale(UnitRate, tc.PeakBPS/1e6)
-		if math.Abs(top-tc.TopBPS/1e6) > 1e-6 || strings.Join(got, "|") != strings.Join(tc.Labels, "|") {
-			t.Errorf("Scale(rate, %v) = %v %q, want %v %q", tc.PeakBPS/1e6, top, got, tc.TopBPS/1e6, tc.Labels)
+		top, word, got := For(nil).Scale(UnitRate, tc.PeakBPS/1e6)
+		composed := append([]string{got[0] + " " + word}, got[1:]...)
+		if math.Abs(top-tc.TopBPS/1e6) > 1e-6 || strings.Join(composed, "|") != strings.Join(tc.Labels, "|") {
+			t.Errorf("Scale(rate, %v) = %v %q %q, want %v %q", tc.PeakBPS/1e6, top, word, got, tc.TopBPS/1e6, tc.Labels)
 		}
 	}
 }

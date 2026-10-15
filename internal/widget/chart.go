@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"strconv"
 	"strings"
 	"time"
 
@@ -106,9 +107,26 @@ func (*Chart) isWidget() {}
 
 func (*Chart) children() []Widget { return nil }
 
-// The plot's viewBox. The CSS fixes the height and stretches the width, so the
-// curve meets both edges at any column width.
-const chartW, chartH = 620.0, 240.0
+// chartW is the plot's viewBox width; the CSS stretches it, so the curve meets
+// both edges at any column width.
+const chartW = 620.0
+
+// plotHeight is the plot's height in pixels, four cells, which is also its
+// viewBox height, so one unit up the plot is one pixel: a zero reading can
+// stand exactly one pixel over the bottom border.
+func (p ChartPlace) plotHeight() float64 {
+	if p == PlaceCompact {
+		return 96
+	}
+	return 128
+}
+
+// plotY is where value v stands on a plot h pixels tall whose scale tops out
+// at top: zero at the bottom border, except that nothing stands lower than one
+// pixel over it, so a quiet line rides just above the border instead of on it.
+func plotY(v, top, h float64) float64 {
+	return min(h-v/top*h, h-1)
+}
 
 // chartMarkMinWidth is the narrowest an outage band draws, in plot units:
 // about three pixels at the overview's width.
@@ -119,13 +137,25 @@ type chartView struct {
 	Empty   string
 	Label   string
 	W, H    float64
+	Unit    string // what the scale counts in, written once over its figures
 	YLabels []chartYLabel
-	Ticks   []chartTick
+	// Axes are the time axis's label sets, one per step the window offers;
+	// the page shows the one whose step gives the widest plot of whole cells
+	// (verso-chart.js), the first until it has measured.
+	Axes    []chartAxis
+	Steps   string // the offered steps, "4,6,3", in order of preference
+	Step    int    // the first offered step
 	Series  []chartSeriesView
 	Place   string
 	Marks   []chartMarkView
 	Legends []chartLegendView
 	Peaks   []chartPeakView
+}
+
+// chartAxis is the time axis's labels when the window is cut into Steps.
+type chartAxis struct {
+	Steps int
+	Ticks []chartTick
 }
 
 // chartLegendView is a legend line, its figures already written in the
@@ -185,15 +215,24 @@ func (c *Chart) renderInto(r *Renderer, out io.Writer, _ string) error {
 		}
 	}
 	nums := r.numbers()
-	top, labels := nums.Scale(c.Unit, peak)
+	top, word, labels := nums.Scale(c.Unit, peak)
 
-	view := chartView{ID: c.ID, Label: c.Label, W: chartW, H: chartH, Place: c.Place.String()}
+	h := c.Place.plotHeight()
+	view := chartView{ID: c.ID, Label: c.Label, W: chartW, H: h, Place: c.Place.String(), Unit: word}
 	if c.Empty != "" && !c.drawable() {
 		view.Empty = c.Empty
 		return r.execute(out, "chart.html.tmpl", view)
 	}
-	if !c.NoAxis {
-		view.Ticks = c.ticks(r)
+	steps := c.steps()
+	view.Step = steps[0]
+	for i, n := range steps {
+		if i > 0 {
+			view.Steps += ","
+		}
+		view.Steps += strconv.Itoa(n)
+		if !c.NoAxis {
+			view.Axes = append(view.Axes, c.axis(r, n))
+		}
 	}
 	for _, s := range c.Series {
 		if s.Legend == nil {
@@ -204,7 +243,7 @@ func (c *Chart) renderInto(r *Renderer, out io.Writer, _ string) error {
 			Hue: chartHue(s.Role), Name: l.Name, Caption: r.tr(l.Caption),
 			Figure: nums.Reading(c.Unit, l.Figure), Peak: nums.Reading(c.Unit, l.Peak),
 		})
-		view.Peaks = append(view.Peaks, chartPeakView{Role: s.Role, Y: chartH - l.Peak/top*chartH})
+		view.Peaks = append(view.Peaks, chartPeakView{Role: s.Role, Y: plotY(l.Peak, top, h)})
 	}
 	for _, m := range c.Marks {
 		view.Marks = append(view.Marks, chartMarkView{
@@ -224,9 +263,9 @@ func (c *Chart) renderInto(r *Renderer, out io.Writer, _ string) error {
 			continue // a line needs at least two points
 		}
 		var line, area strings.Builder
-		for _, run := range chartRuns(chartPoints(s.Values, chartW, chartH, top)) {
+		for _, run := range chartRuns(chartPoints(s.Values, chartW, h, top)) {
 			line.WriteString(chartCurve(run))
-			area.WriteString(chartCurveArea(run, chartH))
+			area.WriteString(chartCurveArea(run, h))
 		}
 		if line.Len() == 0 {
 			continue
@@ -269,24 +308,56 @@ func chartHue(role string) string {
 	}
 }
 
-// ticks are the time axis's labels: the window's quarters, live or past, each
-// how long ago it stands as every duration is written, counted in no unit
-// larger than a quarter reaches (units.DurationWithin: "24 h · 18 h · 12 h ·
-// 6 h", "60 s · 45 s · 30 s · 15 s"), the last "now". The grid stands still
-// under a live curve, so each label keeps its line.
-func (c *Chart) ticks(r *Renderer) []chartTick {
-	now := r.tr("now")
+// chartSteps are how many steps a time axis may cut its window into, in order
+// of preference: quarters, sixths, thirds.
+var chartSteps = []int{4, 6, 3}
+
+// steps are the cuts the window offers: those whose step is a whole number of
+// its own unit (a minute's 15 s, 10 s, 20 s; a day's 6 h, 4 h, 8 h; a month's
+// 5 d and 10 d, not its 7 d 12 h), or quarters where none is.
+func (c *Chart) steps() []int {
 	seconds := int64(c.Span / time.Second)
-	quarter := seconds / 4
-	out := make([]chartTick, 0, 5)
-	for q := range int64(4) {
+	var out []int
+	for _, n := range chartSteps {
+		if seconds%int64(n) == 0 && wholeInItsUnit(seconds/int64(n)) {
+			out = append(out, n)
+		}
+	}
+	if len(out) == 0 {
+		return chartSteps[:1]
+	}
+	return out
+}
+
+// wholeInItsUnit reports whether a stretch of seconds is a whole number of the
+// largest unit it reaches (d, h, min, s).
+func wholeInItsUnit(seconds int64) bool {
+	for _, unit := range []int64{86400, 3600, 60, 1} {
+		if seconds >= unit {
+			return seconds%unit == 0
+		}
+	}
+	return false
+}
+
+// axis is the time axis's labels when the window is cut into n steps, live or
+// past: each how long ago it stands as every duration is written, counted in
+// no unit larger than a step reaches (units.DurationWithin: "24 h · 18 h ·
+// 12 h · 6 h", "60 s · 50 s · 40 s …"), the last "now". The grid stands still
+// under a live curve, so each label keeps its line.
+func (c *Chart) axis(r *Renderer, n int) chartAxis {
+	seconds := int64(c.Span / time.Second)
+	step := seconds / int64(n)
+	out := chartAxis{Steps: n}
+	for k := range int64(n) {
 		align := "center"
-		if q == 0 {
+		if k == 0 {
 			align = "start"
 		}
-		out = append(out, chartTick{units.DurationWithin(quarter*(4-q), quarter).String(), float64(q) * 25, align})
+		out.Ticks = append(out.Ticks, chartTick{units.DurationWithin(step*(int64(n)-k), step).String(), float64(k) * 100 / float64(n), align})
 	}
-	return append(out, chartTick{now, 100, "end"})
+	out.Ticks = append(out.Ticks, chartTick{r.tr("now"), 100, "end"})
+	return out
 }
 
 // chartPoints maps the values to plot coordinates: x spreads them evenly across the
@@ -294,7 +365,7 @@ func (c *Chart) ticks(r *Renderer) []chartTick {
 func chartPoints(vals []float64, w, h, top float64) [][2]float64 {
 	pts := make([][2]float64, len(vals))
 	for i, v := range vals {
-		pts[i] = [2]float64{float64(i) / float64(len(vals)-1) * w, h - v/top*h}
+		pts[i] = [2]float64{float64(i) / float64(len(vals)-1) * w, plotY(v, top, h)}
 	}
 	return pts
 }

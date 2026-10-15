@@ -37,29 +37,44 @@ func TestAChartIsSizedByItsPlace(t *testing.T) {
 
 var tickLabel = regexp.MustCompile(`data-verso-chart-tick[^>]*>([^<]*)<`)
 
-// ticks are the time axis's labels, left to right.
-func ticks(html string) []string {
+// ticks are the labels of the time axis that cuts the window into steps, left
+// to right.
+func ticks(html string, steps string) []string {
+	_, axis, _ := strings.Cut(html, `data-chart-axis="`+steps+`"`)
+	axis, _, _ = strings.Cut(axis, "</div>")
 	var out []string
-	for _, m := range tickLabel.FindAllStringSubmatch(html, -1) {
+	for _, m := range tickLabel.FindAllStringSubmatch(axis, -1) {
 		out = append(out, m[1])
 	}
 	return out
 }
 
-// TestAPastWindowIsLabelledAtItsQuarters: a past window's axis names how long
-// ago each quarter stands, as every duration is written, the last "now".
-func TestAPastWindowIsLabelledAtItsQuarters(t *testing.T) {
+// TestAWindowOffersTheStepsItCutsInto: a window offers each cut whose step is
+// a whole number of its unit, in order of preference (quarters, sixths,
+// thirds), each its own labels, how long ago each step stands as every
+// duration is written, the last "now"; a window no such step cuts keeps its
+// quarters. The page shows the one that gives the widest plot.
+func TestAWindowOffersTheStepsItCutsInto(t *testing.T) {
 	series := []ChartSeries{{Values: []float64{1, 2, 3}}}
 	for _, tc := range []struct {
-		span time.Duration
-		want string
+		span  time.Duration
+		steps string
+		axes  map[string]string
 	}{
-		{24 * time.Hour, "24 h|18 h|12 h|6 h|now"},
-		{7 * 24 * time.Hour, "7 d|5 d 6 h|3 d 12 h|1 d 18 h|now"},
+		{24 * time.Hour, "4,6,3", map[string]string{
+			"4": "24 h|18 h|12 h|6 h|now", "6": "24 h|20 h|16 h|12 h|8 h|4 h|now", "3": "24 h|16 h|8 h|now",
+		}},
+		{30 * 24 * time.Hour, "6,3", map[string]string{"6": "30 d|25 d|20 d|15 d|10 d|5 d|now", "3": "30 d|20 d|10 d|now"}},
+		{7 * 24 * time.Hour, "4", map[string]string{"4": "7 d|5 d 6 h|3 d 12 h|1 d 18 h|now"}},
 	} {
-		got := ticks(render(t, newRenderer(t), &Chart{Span: tc.span, Series: series}))
-		if strings.Join(got, "|") != tc.want {
-			t.Errorf("span %v: axis %q, want %q", tc.span, got, tc.want)
+		got := render(t, newRenderer(t), &Chart{Span: tc.span, Series: series})
+		if !strings.Contains(got, `data-chart-steps="`+tc.steps+`"`) {
+			t.Errorf("span %v does not offer %s:\n%s", tc.span, tc.steps, got)
+		}
+		for steps, want := range tc.axes {
+			if axis := strings.Join(ticks(got, steps), "|"); axis != want {
+				t.Errorf("span %v in %s steps: axis %q, want %q", tc.span, steps, axis, want)
+			}
 		}
 	}
 }
@@ -78,9 +93,9 @@ func TestAChartsLegendSaysItsSeriesFigureAndPeak(t *testing.T) {
 	})
 	for _, want := range []string{
 		"data-verso-chart-legend", `bg-denim`, ">CPU<", ">48.7 °C<", ">on average<", ">peak<", ">59.0 °C<",
-		">80 °C<", ">60<",
-		// 59 °C under a top of 80 lands at 240 - 59/80·240.
-		`<line class="verso-chart-peak verso-chart-peak--denim" x1="0" x2="620" y1="63.0" y2="63.0"`,
+		">80<", ">60<", "data-verso-chart-unit>°C<",
+		// 59 °C under a top of 80 lands at 128 - 59/80·128 on a page's 128px plot.
+		`<line class="verso-chart-peak verso-chart-peak--denim" x1="0" x2="620" y1="33.6" y2="33.6"`,
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("chart missing %q:\n%s", want, got)
@@ -103,18 +118,38 @@ func TestAChartWithoutALegendDrawsNone(t *testing.T) {
 	}
 }
 
-// TestTheLiveMinuteIsLabelledAtItsQuarters: the grid stands still under a live
-// curve, so the minute's quarters are named on their lines as any window's.
-func TestTheLiveMinuteIsLabelledAtItsQuarters(t *testing.T) {
-	got := ticks(render(t, newRenderer(t), &Chart{Span: time.Minute, Series: []ChartSeries{{Values: []float64{1, 2}}}}))
-	if strings.Join(got, "|") != "60 s|45 s|30 s|15 s|now" {
-		t.Errorf("live axis %q, want [60 s 45 s 30 s 15 s now]", got)
+// TestAQuietLineRidesOverTheBottomBorder: the plot is drawn in its own pixels
+// (128 on a page, 96 in a card), and a zero reading stands one pixel over the
+// bottom border instead of on it, while its wash still reaches the border.
+func TestAQuietLineRidesOverTheBottomBorder(t *testing.T) {
+	for place, want := range map[ChartPlace]struct{ viewBox, line, area string }{
+		PlacePage:    {`viewBox="0 0 620 128"`, `d="M0.0 127.0 `, `M0.0 128.0 L0.0 127.0 `},
+		PlaceCompact: {`viewBox="0 0 620 96"`, `d="M0.0 95.0 `, `M0.0 96.0 L0.0 95.0 `},
+	} {
+		got := render(t, newRenderer(t), &Chart{Place: place, Span: time.Hour, Series: []ChartSeries{{Values: []float64{0, 0, 5}, Fill: true}}})
+		for _, w := range []string{want.viewBox, want.line, want.area} {
+			if !strings.Contains(got, w) {
+				t.Errorf("place %v missing %q:\n%s", place, w, got)
+			}
+		}
+	}
+}
+
+// TestTheLiveMinuteIsLabelledAtItsSteps: the grid stands still under a live
+// curve, so the minute is named on its lines as any window is, in 15 s, 10 s
+// or 20 s.
+func TestTheLiveMinuteIsLabelledAtItsSteps(t *testing.T) {
+	got := render(t, newRenderer(t), &Chart{Span: time.Minute, Series: []ChartSeries{{Values: []float64{1, 2}}}})
+	for steps, want := range map[string]string{"4": "60 s|45 s|30 s|15 s|now", "6": "60 s|50 s|40 s|30 s|20 s|10 s|now", "3": "60 s|40 s|20 s|now"} {
+		if axis := strings.Join(ticks(got, steps), "|"); axis != want {
+			t.Errorf("the minute in %s steps: %q, want %q", steps, axis, want)
+		}
 	}
 }
 
 // TestRenderChart: the plot stretches edge to edge, its peak sits under a
-// round top (100 under 120, counted in thirties), the value labels ride the
-// quarter lines with the unit on the topmost, and the window's quarters are
+// round top (100 under 120, counted in thirties), the scale's figures ride the
+// quarter lines bare, its unit on its baseline, and the window's quarters are
 // named under it.
 func TestRenderChart(t *testing.T) {
 	got := render(t, newRenderer(t), &Chart{
@@ -127,8 +162,9 @@ func TestRenderChart(t *testing.T) {
 	for _, want := range []string{
 		`preserveAspectRatio="none"`, `aria-label="Traffic"`, `data-chart-padding="0"`,
 		"verso-chart--emerald", "verso-chart--violet",
-		"620.0 40.0", // 100 under a top of 120 lands at 240 - 100/120·240
-		">120 Mb/s<", ">90<", ">60<", ">30<", `style="top:0.0%"`, `style="top:75.0%"`,
+		"620.0 21.3", // 100 under a top of 120 lands at 128 - 100/120·128
+		">120<", ">90<", ">60<", ">30<", `style="top:0.0%"`, `style="top:75.0%"`,
+		`style="top:100%" data-verso-chart-unit>Mb/s<`,
 		">60 s<", ">30 s<", ">now<",
 	} {
 		if !strings.Contains(got, want) {
@@ -203,8 +239,8 @@ func TestChartMarksWhatHappened(t *testing.T) {
 		},
 	})
 	for _, want := range []string{
-		`<rect class="verso-chart-mark--outage" x="155.0" y="0" width="155.0" height="240"><title>Internet down 03:12–03:20</title></rect>`,
-		`<line class="verso-chart-mark--boot" x1="465.0" x2="465.0" y1="0" y2="240" vector-effect="non-scaling-stroke"><title>Router started at 04:00</title></line>`,
+		`<rect class="verso-chart-mark--outage" x="155.0" y="0" width="155.0" height="128"><title>Internet down 03:12–03:20</title></rect>`,
+		`<line class="verso-chart-mark--boot" x1="465.0" x2="465.0" y1="0" y2="128" vector-effect="non-scaling-stroke"><title>Router started at 04:00</title></line>`,
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("chart missing %s\n%s", want, got)

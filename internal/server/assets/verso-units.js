@@ -44,10 +44,10 @@
         unit = "Gb/s"; per = 1e9;
         step = roundStep(need / per / 4);
       }
-      var labels = AXIS.map(function (f, i) {
-        return figure(4 * step * f) + (i === 0 ? " " + unit : "");
-      });
-      return { top: 4 * step * per, labels: labels };
+      var figures = AXIS.map(function (f) { return figure(4 * step * f); });
+      var labels = figures.map(function (f, i) { return f + (i === 0 ? " " + unit : ""); });
+      // A chart writes its figures bare and its unit once over its scale.
+      return { top: 4 * step * per, labels: labels, figures: figures, unit: unit };
     }
     return { figure: figure, rate: rate, chartScale: chartScale };
   }

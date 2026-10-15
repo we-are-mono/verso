@@ -44,7 +44,7 @@ func TestTheTemperatureGraphAnswersAChosenReading(t *testing.T) {
 	}
 	for _, want := range []string{
 		`id="hardware-temperature-graph"`, `data-chart-place="page"`, ">cluster<",
-		">48.7 °C<", ">on average<", ">peak<", ">59.0 °C<", ">80 °C<", ">24 h<", `class="verso-chart-line`,
+		">48.7 °C<", ">on average<", ">peak<", ">59.0 °C<", `style="top:0.0%">80<`, "data-verso-chart-unit>°C<", ">24 h<", `class="verso-chart-line`,
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("the graph missing %q:\n%s", want, body)

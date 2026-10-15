@@ -867,19 +867,35 @@ html {
 
   /* The plot stands over square cells, four tall, so each rule is a quarter
      line: 32px on a page's card, 24px in an Overview card or a drawer. Its
-     width rounds down to whole quarters of cells beside the 64px gutter, so
-     each time label stands on its line; the left edge is the first column's
-     line and the right edge draws its own. Every rule lands on the page's
-     8px grid: the plot starts on a line and its cells are multiples of 8. */
-  .verso-chart-graph { --chart-cell: 2rem; --chart-quarters: round(down, 100% - 4rem, calc(var(--chart-cell) * 4)); }
+     width is whole cells beside the 40px scale column, as many as fit in a
+     whole number of the window's steps (verso-chart.js picks the step, among
+     those the window offers, that gives the widest plot); before it has
+     measured, whole cuts of the first step offered. So each time label stands
+     on its line. The left edge is the first column's line, and the right edge
+     and the bottom border (the zero line, on the grid line under the plot)
+     draw their own. Every rule lands on the page's 8px grid: the plot starts
+     on a line and its cells are multiples of 8. A zero reading rides one pixel
+     over the bottom border (widget.plotY). */
+  .verso-chart-graph {
+    --chart-cell: 2rem; --chart-gutter: 2.5rem;
+    --chart-plot: round(down, 100% - var(--chart-gutter), calc(var(--chart-cell) * var(--chart-step, 4)));
+  }
   .verso-chart-graph[data-chart-place="compact"] { --chart-cell: 1.5rem; }
-  .verso-chart-frame { display: grid; grid-template-columns: var(--chart-quarters) 4rem; }
+  .verso-chart-graph[data-chart-axis] { --chart-plot: calc(var(--chart-cell) * var(--chart-cols)); }
+  .verso-chart-frame, .verso-chart-head { display: grid; grid-template-columns: var(--chart-plot) var(--chart-gutter); }
+  .verso-chart-head { margin-bottom: calc(var(--spacing) * 2); }
+  /* One time axis shows: the one for the step picked, the first before. */
+  .verso-chart-axis { display: none; grid-column: 1; }
+  .verso-chart-graph:not([data-chart-axis]) .verso-chart-axis[data-chart-axis-first],
+  .verso-chart-graph[data-chart-axis="3"] .verso-chart-axis[data-chart-axis="3"],
+  .verso-chart-graph[data-chart-axis="4"] .verso-chart-axis[data-chart-axis="4"],
+  .verso-chart-graph[data-chart-axis="6"] .verso-chart-axis[data-chart-axis="6"] { display: block; }
   .verso-chart-plot {
     background-image:
       linear-gradient(to bottom, var(--color-mid) 1px, transparent 1px),
       linear-gradient(to right, var(--color-mid) 1px, transparent 1px);
     background-size: var(--chart-cell) var(--chart-cell);
-    box-shadow: inset -1px 0 var(--color-mid);
+    box-shadow: inset -1px 0 var(--color-mid), 0 1px 0 var(--color-mid);
   }
   .verso-chart-plot > svg { height: calc(var(--chart-cell) * 4); }
 
@@ -894,13 +910,12 @@ html {
 
   /* The legend over the plot reads as the Overview's facts do: the series'
      packet, its name as the term in Meta, its figure as the value in Ink at
-     500, and the window's peak at the plot's right edge. It takes the plot's
-     width, so the peak ends where the plot does. */
+     500, and the window's peak at the plot's right edge. It stands over the
+     plot's column, so the peak ends where the plot does. */
   .verso-chart-legend {
     display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
     gap: calc(var(--spacing) * 2) calc(var(--spacing) * 6);
-    width: var(--chart-quarters); margin-bottom: calc(var(--spacing) * 2);
-    font-size: var(--text-sm); line-height: calc(var(--spacing) * 6);
+    min-width: 0; font-size: var(--text-sm); line-height: calc(var(--spacing) * 6);
   }
   .verso-chart-legend-series, .verso-chart-legend-peak { display: flex; align-items: center; gap: calc(var(--spacing) * 2); min-width: 0; white-space: nowrap; }
   .verso-chart-legend-peak { margin-left: auto; gap: var(--spacing); }

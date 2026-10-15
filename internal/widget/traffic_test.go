@@ -65,10 +65,10 @@ func TestEachLaneHasItsOwnScale(t *testing.T) {
 	down, up := trafficLanes(t, render(t, newRenderer(t), &Traffic{
 		Down: []float64{0, 57}, Up: []float64{0, 8.5},
 	}))
-	if !strings.Contains(down, ">80 Mb/s<") {
+	if !strings.Contains(down, `style="top:0.0%">80<`) {
 		t.Errorf("the download lane's scale is not its own:\n%s", down)
 	}
-	if !strings.Contains(up, ">10 Mb/s<") {
+	if !strings.Contains(up, `style="top:0.0%">10<`) {
 		t.Errorf("the upload lane's scale is not its own:\n%s", up)
 	}
 }

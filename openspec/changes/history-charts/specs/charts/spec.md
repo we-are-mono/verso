@@ -21,16 +21,23 @@ A chart's plot SHALL be ruled in square cells and stand four cells tall, so each
 - **WHEN** an operator opens a device's drawer that shows its Usage graph
 - **THEN** each lane's plot is 96px tall, ruled every 24px across and down
 
-### Requirement: A plot's width is whole quarters of cells
-A plot's width SHALL be the widest whole number of quarters, each a whole number of cells, that fits beside its 64px scale gutter, so every time label stands on a vertical line. The plot SHALL draw a line at its right end, and its left edge SHALL be a line.
+### Requirement: A plot's width is whole cells cut into whole steps
+A plot's width SHALL be the most whole cells that fit beside its 40px scale column and cut into a whole number of one of the window's steps, the step preferred first winning a tie, so every time label stands on a vertical line. It SHALL fit again when its room changes. The plot SHALL draw a line at its right end, and its left edge SHALL be a line.
 
-#### Scenario: A page card 960px wide
-- **WHEN** the Temperatures card leaves 960px for the plot and its gutter
-- **THEN** the plot is 896px wide, 28 cells of 32px, with lines at 0, 224, 448, 672 and 896px
+#### Scenario: Room for 17 cells
+- **WHEN** an Overview card leaves room for 17 cells of 24px and the live minute offers quarters, sixths and thirds
+- **THEN** the plot is 16 cells, 384px, cut into quarters
 
-#### Scenario: A narrower card
-- **WHEN** an Overview card leaves 448px for the plot and its gutter
-- **THEN** the plot is 384px wide, 16 cells of 24px
+#### Scenario: Room for 18 cells
+- **WHEN** the card leaves room for 18 cells
+- **THEN** the plot is 18 cells, 432px, cut into sixths of 10 s
+
+### Requirement: A quiet line rides over the bottom border
+A plot SHALL draw a bottom border in its grid's colour on the grid line under it, as the zero line, and a reading SHALL never stand lower than one pixel over that border. Its wash SHALL fade to nothing at the border.
+
+#### Scenario: A silent minute
+- **WHEN** the live minute moves no traffic
+- **THEN** each lane's line stands one pixel over its bottom border, and the border shows under it
 
 ### Requirement: The rules stand on the page's lines
 Every rule and line a plot draws SHALL stand on the page's 8px grid, its top rule on the line the plot starts on.
@@ -40,33 +47,41 @@ Every rule and line a plot draws SHALL stand on the page's 8px grid, its top rul
 - **THEN** each of the plot's horizontal rules coincides with a grid line
 
 ### Requirement: The scale is round and written in its unit
-A chart's scale SHALL start at zero and top out at a round value that clears its tallest point by at least a tenth, chosen as the One Rate Rule chooses. Its top label SHALL carry the unit and the labels under it figures in that unit. A rate chart writes rates; a temperature chart writes °C.
+A chart's scale SHALL start at zero and top out at a round value that clears its tallest point by at least a tenth, chosen as the One Rate Rule chooses. Its labels SHALL be bare figures, and the unit they count in SHALL stand once on its baseline, the zero line. A rate chart counts in Mb/s or Gb/s; a temperature chart in °C.
 
 #### Scenario: A day of the CPU
 - **WHEN** the CPU's day peaks at 59.0 °C
-- **THEN** the scale reads 80 °C, 60, 40, 20 from the top
+- **THEN** the scale reads 80, 60, 40, 20 from the top, and °C on its baseline
 
 #### Scenario: A day of downloads
 - **WHEN** the download lane's day peaks at 57 Mb/s
-- **THEN** its scale reads 80 Mb/s, 60, 40, 20
+- **THEN** its scale reads 80, 60, 40, 20, and Mb/s on its baseline
 
-### Requirement: The time axis is labelled at the quarters
-Under the plot, the window's quarters SHALL be labelled on their lines with how long ago each stands, as the One Duration Rule writes it in no unit larger than a quarter reaches, the last one "now" (24 h · 18 h · 12 h · 6 h · now for a day). Every other cell column SHALL draw a line with no label. A live window is labelled the same way.
+### Requirement: The time axis is labelled at the window's steps
+Under the plot, the window cut into steps SHALL be labelled on its lines, each with how long ago it stands as the One Duration Rule writes it in no unit larger than a step reaches, the last one "now". A window SHALL offer each cut into quarters, sixths or thirds whose step is a whole number of its unit, in that order, and its quarters where none is. Every other cell column SHALL draw a line with no label. A live window is labelled the same way.
+
+#### Scenario: A day
+- **WHEN** the Hardware page shows a day in sixths
+- **THEN** the axis reads 24 h · 20 h · 16 h · 12 h · 8 h · 4 h · now, each on its line
 
 #### Scenario: A week
 - **WHEN** the operator picks Last 7 days
-- **THEN** the axis reads 7 d · 5 d 6 h · 3 d 12 h · 1 d 18 h · now, each on its line, with unlabelled lines between
+- **THEN** the window offers only its quarters, and the axis reads 7 d · 5 d 6 h · 3 d 12 h · 1 d 18 h · now
+
+#### Scenario: A month
+- **WHEN** the operator picks Last 30 days
+- **THEN** the window offers sixths and thirds, so the axis reads in steps of 5 d or 10 d
 
 #### Scenario: The live minute
-- **WHEN** the Traffic card shows the live minute
-- **THEN** the axis reads 60 s · 45 s · 30 s · 15 s · now, each on its line
+- **WHEN** the Traffic card shows the live minute in sixths
+- **THEN** the axis reads 60 s · 50 s · 40 s · 30 s · 20 s · 10 s · now, each on its line
 
 ### Requirement: Axis labels are quiet
-Time and scale labels SHALL be set alike: the sans face at 12px, weight 500, in Meta, on a 24px line, with tabular figures. A scale label stands centred on its rule in a gutter right of the plot, and nothing is laid over the curve.
+Time and scale labels SHALL be set alike: the sans face at 12px, weight 500, in Meta, on a 24px line, with tabular figures. A scale label stands centred on its rule in a column right of the plot, and nothing is laid over the curve.
 
 #### Scenario: Reading the axes
 - **WHEN** the Temperatures graph renders
-- **THEN** "80 °C" and "24 h" share one face, size, weight and colour
+- **THEN** "80", "°C" and "24 h" share one face, size, weight and colour
 
 ### Requirement: The legend says the series, its figure and its peak
 Above each plot, a legend line SHALL show the series' packet square in its hue, its name in Meta at 400, its figure in Ink at 500, a Meta word saying what the figure is ("now" live, "on average" for a past window), and at the plot's right edge "peak" in Meta with the window's highest reading in Ink at 500. All are 14px sans.

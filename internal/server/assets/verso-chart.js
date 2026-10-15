@@ -32,10 +32,22 @@
       return p;
     },
     // laneScale is a lane's round scale over its points (Mbit/s), written by
-    // numbers (verso-units.js): its top in Mbit/s and its labels.
+    // numbers (verso-units.js): its top in Mbit/s, its bare figures and the
+    // unit written once over them.
     laneScale: function (vals, numbers) {
       var scaled = numbers.chartScale(math.peak(vals) * 1e6);
-      return { top: scaled.top / 1e6, labels: scaled.labels };
+      return { top: scaled.top / 1e6, figures: scaled.figures, unit: scaled.unit };
+    },
+    // fit is the widest plot of whole cells, among cells that fit, cut into a
+    // whole number of one of the window's steps; steps come in order of
+    // preference, which breaks a tie.
+    fit: function (cells, steps) {
+      var best = { cols: 0, step: steps[0] };
+      steps.forEach(function (n) {
+        var cols = Math.floor(cells / n) * n;
+        if (cols > best.cols) best = { cols: cols, step: n };
+      });
+      return best;
     },
   };
   window.versoChartMath = math;
@@ -69,6 +81,7 @@
       area: g && g.querySelector(".verso-chart-area"),
       peakLine: svg.querySelector(".verso-chart-peak"),
       labels: el.querySelectorAll(".verso-chart-yl"),
+      unit: el.querySelector("[data-verso-chart-unit]"),
       figure: el.querySelector("[data-verso-live-figure]"),
       peakText: el.querySelector("[data-verso-live-peak]"),
     };
@@ -83,7 +96,9 @@
     clip.appendChild(rect); svg.appendChild(clip);
     if (g) g.setAttribute("clip-path", "url(#" + clipID + ")");
 
-    function y(v) { return H - (v / self.max) * H; }
+    // As the server places it (widget.plotY): one viewBox unit is one pixel,
+    // and nothing stands lower than one pixel over the bottom border.
+    function y(v) { return Math.min(H - (v / self.max) * H, H - 1); }
     // The same Catmull-Rom spline the server draws, so the live curve matches.
     function segments(p) {
       var s = "";
@@ -107,8 +122,9 @@
       if (scaled.top === self.max) return;
       self.max = scaled.top;
       self.labels.forEach(function (label, i) {
-        if (scaled.labels[i] !== undefined) label.textContent = scaled.labels[i];
+        if (scaled.figures[i] !== undefined) label.textContent = scaled.figures[i];
       });
+      if (self.unit) self.unit.textContent = scaled.unit;
     }
     self.draw = function () {
       scale();
@@ -189,7 +205,30 @@
     return host.__versoLive;
   }
 
+  // fitGraph widens a chart's plot to the most whole cells its room holds,
+  // cut into whole steps of its window, and shows that step's time axis; it
+  // keeps fitting as the room changes.
+  var fits = window.ResizeObserver ? new ResizeObserver(function (entries) {
+    entries.forEach(function (e) { fitGraph(e.target); });
+  }) : null;
+  function fitGraph(g) {
+    var plot = g.querySelector(".verso-chart-plot");
+    var gutter = g.querySelector("[data-verso-chart-gutter]");
+    if (!plot || !gutter) return;
+    var cell = parseFloat(getComputedStyle(plot).backgroundSize);
+    if (!(cell > 0)) return;
+    var steps = (g.getAttribute("data-chart-steps") || "4").split(",").map(Number);
+    var best = math.fit(Math.floor((g.clientWidth - gutter.getBoundingClientRect().width) / cell), steps);
+    if (!best.cols) return;
+    g.style.setProperty("--chart-cols", String(best.cols));
+    g.setAttribute("data-chart-axis", String(best.step));
+  }
+
   function setUp(root) {
+    (root || document).querySelectorAll(".verso-chart-graph").forEach(function (g) {
+      fitGraph(g);
+      if (fits) fits.observe(g);
+    });
     (root || document).querySelectorAll("[data-verso-live-chart]").forEach(liveChart);
   }
 
@@ -201,5 +240,8 @@
   };
 
   setUp();
-  document.addEventListener("htmx:afterSwap", function (e) { setUp(e.target); });
+  // A swap can replace the graph itself (a window chosen, a reading picked),
+  // so the whole page is looked over again; a graph set up already keeps its
+  // state.
+  document.addEventListener("htmx:afterSwap", function () { setUp(); });
 })();

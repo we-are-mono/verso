@@ -8,7 +8,7 @@
 ## MODIFIED Requirements
 
 ### Requirement: Chart plots are ruled in squares
-A chart's plot SHALL be ruled in square cells, four cells tall, so each of its four scale labels stands on a rule, and its width SHALL be whole quarters of cells. The cell SHALL be 32px on a page's card (a 128px plot) and 24px in an Overview card or a drawer (a 96px plot). Every rule stands on an 8px grid line.
+A chart's plot SHALL be ruled in square cells, four cells tall, so each of its four scale labels stands on a rule, and its width SHALL be whole cells cut into whole steps of its window, with a bottom border on the grid line under it. The cell SHALL be 32px on a page's card (a 128px plot) and 24px in an Overview card or a drawer (a 96px plot). Every rule stands on an 8px grid line.
 
 #### Scenario: A full-size graph
 - **WHEN** a page shows a graph in one of its cards

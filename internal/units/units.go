@@ -79,6 +79,13 @@ func (n Numbers) Rate(bps float64) Rate {
 // the scale moves only when the traffic crosses a step, not with every
 // second's peak.
 func (n Numbers) RateScale(peak float64) (top float64, labels []string) {
+	top, unit, labels := n.rateScale(peak)
+	labels[0] += " " + unit
+	return top, labels
+}
+
+// rateScale is RateScale's top, its unit and its figures, apart.
+func (n Numbers) rateScale(peak float64) (top float64, unit string, figures []string) {
 	if !(peak > 0) || math.IsInf(peak, 1) {
 		peak = 0 // nothing recorded, or nothing a chart could draw
 	}
@@ -89,12 +96,16 @@ func (n Numbers) RateScale(peak float64) (top float64, labels []string) {
 		unit, per = "Gb/s", 1e9
 		step = roundStep(need / per / 4)
 	}
-	labels = make([]string, len(AxisFractions))
+	return 4 * step * per, unit, n.quarters(step)
+}
+
+// quarters are the figures at AxisFractions on a scale four steps high.
+func (n Numbers) quarters(step float64) []string {
+	figures := make([]string, len(AxisFractions))
 	for i, f := range AxisFractions {
-		labels[i] = n.Figure(4 * step * f)
+		figures[i] = n.Figure(4 * step * f)
 	}
-	labels[0] += " " + unit
-	return 4 * step * per, labels
+	return figures
 }
 
 // Unit is what a chart's readings are counted in, so how its scale and its
@@ -109,24 +120,20 @@ const (
 )
 
 // Scale is a chart's scale for readings in unit whose tallest is peak: a round
-// top in that unit, and its labels at AxisFractions, the first carrying the
-// unit and the rest figures in it. Every unit counts in the rate scale's round
-// steps (roundStep), at least a tenth over the peak.
-func (n Numbers) Scale(unit Unit, peak float64) (top float64, labels []string) {
+// top in that unit, the word the scale counts in ("Mb/s", "Gb/s", "°C"), which
+// the chart writes once over its figures, and the figures at AxisFractions.
+// Every unit counts in the rate scale's round steps (roundStep), at least a
+// tenth over the peak.
+func (n Numbers) Scale(unit Unit, peak float64) (top float64, word string, figures []string) {
 	if unit == UnitRate {
-		bps, labels := n.RateScale(peak * 1e6)
-		return bps / 1e6, labels
+		bps, word, figures := n.rateScale(peak * 1e6)
+		return bps / 1e6, word, figures
 	}
 	if !(peak > 0) || math.IsInf(peak, 1) {
 		peak = 0
 	}
 	step := roundStep(max(peak*1.1, 4) / 4)
-	labels = make([]string, len(AxisFractions))
-	for i, f := range AxisFractions {
-		labels[i] = n.Figure(4 * step * f)
-	}
-	labels[0] += " °C"
-	return 4 * step, labels
+	return 4 * step, "°C", n.quarters(step)
 }
 
 // Reading writes one reading v in unit with its unit: a rate as every rate is

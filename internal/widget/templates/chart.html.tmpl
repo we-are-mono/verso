@@ -15,7 +15,7 @@
      Labels are HTML, not SVG <text>: text inside a viewBox scales with the
      graph. This SVG is the first paint; the live layer glides the same series
      without touching the markup. */}}
-<div class="verso-chart-graph"{{if .ID}} id="{{.ID}}"{{end}} data-chart-place="{{.Place}}">
+<div class="verso-chart-graph"{{if .ID}} id="{{.ID}}"{{end}} data-chart-place="{{.Place}}" data-chart-steps="{{.Steps}}" style="--chart-step: {{.Step}}">
   {{if .Empty}}
   {{/* Nothing to draw: the chart says so where its plot would stand. */}}
   <p class="flex items-center gap-2 text-sm leading-6 text-meta" data-verso-chart-empty><span aria-hidden="true" class="size-1.5 shrink-0 rounded-[1px] border border-faint"></span>{{.Empty}}</p>
@@ -24,9 +24,11 @@
        the series' packet, its name as the term, its figure as the value and
        what the figure is, and the window's peak at the plot's right edge. */}}
   {{range .Legends}}
-  <div class="verso-chart-legend" data-verso-chart-legend>
-    <span class="verso-chart-legend-series"><span aria-hidden="true" class="size-1.5 shrink-0 self-center rounded-[1px] {{.Hue}}"></span><span class="text-meta">{{.Name}}</span><span class="verso-chart-figure" data-verso-live-figure>{{.Figure}}</span><span class="text-meta" data-verso-live-caption>{{.Caption}}</span></span>
-    <span class="verso-chart-legend-peak"><span class="text-meta">{{ t "peak" }}</span><span class="verso-chart-figure" data-verso-live-peak>{{.Peak}}</span></span>
+  <div class="verso-chart-head">
+    <div class="verso-chart-legend" data-verso-chart-legend>
+      <span class="verso-chart-legend-series"><span aria-hidden="true" class="size-1.5 shrink-0 self-center rounded-[1px] {{.Hue}}"></span><span class="text-meta">{{.Name}}</span><span class="verso-chart-figure" data-verso-live-figure>{{.Figure}}</span><span class="text-meta" data-verso-live-caption>{{.Caption}}</span></span>
+      <span class="verso-chart-legend-peak"><span class="text-meta">{{ t "peak" }}</span><span class="verso-chart-figure" data-verso-live-peak>{{.Peak}}</span></span>
+    </div>
   </div>
   {{end}}
   <div class="verso-chart-frame">
@@ -48,9 +50,12 @@
     </div>
     <div class="relative" data-verso-chart-gutter>
       {{range .YLabels}}<span class="verso-chart-yl pointer-events-none absolute left-3 -translate-y-1/2 whitespace-nowrap" style="top:{{printf "%.1f" .TopPct}}%">{{.Text}}</span>{{end}}
+      {{/* What the scale counts in, once, on its baseline: the zero line,
+           where no figure stands, clear of the legend's peak. */}}
+      <span class="verso-chart-yl pointer-events-none absolute left-3 -translate-y-1/2 whitespace-nowrap" style="top:100%" data-verso-chart-unit>{{.Unit}}</span>
     </div>
-    {{if .Ticks}}<div class="verso-chart-axis relative h-6" data-verso-chart-window>
-      {{range .Ticks}}<span class="verso-chart-tick absolute top-0 whitespace-nowrap" data-verso-chart-tick data-align="{{.Align}}" style="left:{{printf "%.0f" .Pct}}%">{{.Text}}</span>{{end}}
+    {{range $i, $a := .Axes}}<div class="verso-chart-axis relative h-6" data-verso-chart-window data-chart-axis="{{.Steps}}"{{if eq $i 0}} data-chart-axis-first{{end}}>
+      {{range .Ticks}}<span class="verso-chart-tick absolute top-0 whitespace-nowrap" data-verso-chart-tick data-align="{{.Align}}" style="left:{{printf "%.3f" .Pct}}%">{{.Text}}</span>{{end}}
     </div>{{end}}
   </div>
   {{end}}
