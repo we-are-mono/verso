@@ -31,7 +31,7 @@
 
 ## 6. Temperature series identity
 
-- [ ] 6.1 Write `internal/sensors` tests that `ResolveAll` fills `TempReading.Series` with the name `SeriesNames` gives (including a shared kernel name told apart by its chip, and an SFP module's temperature), then add the field and fill it once in `ResolveAll`; point the history collector's temperature source at it. Verify: `go test ./internal/sensors ./internal/server -run 'Series|Temperature'`.
+- [x] 6.1 Write `internal/sensors` tests that `ResolveAll` fills `TempReading.Series` with the name `SeriesNames` gives (including a shared kernel name told apart by its chip, and an SFP module's temperature), then add the field and fill it once in `ResolveAll`; point the history collector's temperature source at it. Verify: `go test ./internal/sensors ./internal/server -run 'Series|Temperature'`.
 
 ## 7. The fetching field (after 1.1)
 

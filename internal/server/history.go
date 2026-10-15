@@ -173,17 +173,16 @@ func keepTemperatureHistory(ctx context.Context, store *history.Store, temps []s
 	}
 }
 
-// temperatureSeries records each working sensor under the name the kernel
-// gives it (sensors.SeriesNames), so a profile that renames a reading keeps its
-// history.
+// temperatureSeries records each working sensor under its series, the name the
+// kernel gives it (sensors.TempReading.Series), so a profile that renames a
+// reading keeps its history.
 func temperatureSeries(temps []sensors.TempReading) map[string][]float64 {
-	names := sensors.SeriesNames(temps)
 	out := map[string][]float64{}
-	for i, t := range temps {
-		if t.Fault {
+	for _, t := range temps {
+		if t.Fault || t.Series == "" {
 			continue
 		}
-		out["temp."+names[i]] = []float64{float64(t.MilliC) / 1000}
+		out[t.Series] = []float64{float64(t.MilliC) / 1000}
 	}
 	return out
 }

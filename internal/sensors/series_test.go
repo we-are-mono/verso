@@ -51,6 +51,30 @@ func TestASeriesIsNamedAsTheKernelNamesItsSensor(t *testing.T) {
 	}
 }
 
+// TestEachReadingKnowsItsSeries: a resolved reading carries the series its
+// history is recorded under, so the page, the collector and the graph's route
+// share one name for it: a zone's, a shared channel's told apart by its chip,
+// and an SFP module's own.
+func TestEachReadingKnowsItsSeries(t *testing.T) {
+	temps := ResolveAll(dkProfile(), buildDK(t)).Temps
+	names := SeriesNames(temps)
+	bySource := map[string]string{}
+	for i, r := range temps {
+		if r.Series != "temp."+names[i] {
+			t.Errorf("%s@%s: Series %q, want %q", r.Name, r.Source, r.Series, "temp."+names[i])
+		}
+		bySource[r.Name+"@"+r.Source] = r.Series
+	}
+	for reading, want := range map[string]string{
+		"CPU@thermal zone":       "temp.cluster-thermal",
+		"temperature@sfp · xfi1": "temp.temperature.sfp · xfi1",
+	} {
+		if bySource[reading] != want {
+			t.Errorf("%s: Series %q, want %q", reading, bySource[reading], want)
+		}
+	}
+}
+
 // TestAnUnprofiledBoxKeepsItsSeries: a box no profile describes already
 // recorded under the kernel's names, a shared one told apart by its chip, so
 // its series are the names it has always had.

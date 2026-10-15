@@ -48,6 +48,10 @@ type TempReading struct {
 	Rank              int  // order among the curated readings
 	Named             bool // a profile entry named it
 	Fiber             bool // an SFP module's own temperature, which its fibre card carries
+	// Series is the history series the reading is recorded under: "temp."
+	// and the kernel's name for its sensor (SeriesNames), never a profile's,
+	// so renaming a reading keeps its history.
+	Series string
 
 	zoneType string
 	ofNode   string
@@ -126,8 +130,12 @@ func ResolveAll(p *Profile, r *Reader) Inventory {
 	zones := r.Zones()
 	hwmons := r.Hwmons()
 	amb := ambiguousNames(hwmons)
+	temps := resolveTemps(p, zones, hwmons, amb)
+	for i, name := range SeriesNames(temps) {
+		temps[i].Series = "temp." + name
+	}
 	return Inventory{
-		Temps:  resolveTemps(p, zones, hwmons, amb),
+		Temps:  temps,
 		Powers: resolvePowers(p, hwmons, amb),
 		Fans:   resolveFans(p, hwmons, amb),
 		Fibers: resolveFibers(hwmons),

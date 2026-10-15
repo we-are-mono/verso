@@ -177,16 +177,16 @@ func TestMemoryInUseIsTotalLessAvailable(t *testing.T) {
 	}
 }
 
-// TestTemperatureSeriesNameEveryAmbiguousSensorByItsChip: two drives that both
-// call a sensor "Composite" are told apart by chip, whichever is read first, so
-// a series always means the same sensor; each is named as the kernel names it,
-// never as a profile does; a faulted reading is a gap.
-func TestTemperatureSeriesNameEveryAmbiguousSensorByItsChip(t *testing.T) {
+// TestTemperatureSeriesRecordEachSensorUnderItsSeries: each working reading is
+// recorded under the series it resolved with (the kernel's name, told apart by
+// chip where shared: sensors.SeriesNames), never as a profile names it; a
+// faulted reading is a gap.
+func TestTemperatureSeriesRecordEachSensorUnderItsSeries(t *testing.T) {
 	got := temperatureSeries([]sensors.TempReading{
-		{Name: "Composite", Kernel: "Composite", Source: "nvme · 0f:00", MilliC: 46000},
-		{Name: "CPU", Kernel: "cluster-thermal", Source: "thermal zone", Kind: "zone", MilliC: 80500},
-		{Name: "Composite", Kernel: "Composite", Source: "nvme · 0e:00", MilliC: 48000},
-		{Name: "Remote", Kernel: "temp2", Source: "lm75", Fault: true},
+		{Name: "Composite", Kernel: "Composite", Source: "nvme · 0f:00", MilliC: 46000, Series: "temp.Composite.nvme · 0f:00"},
+		{Name: "CPU", Kernel: "cluster-thermal", Source: "thermal zone", Kind: "zone", MilliC: 80500, Series: "temp.cluster-thermal"},
+		{Name: "Composite", Kernel: "Composite", Source: "nvme · 0e:00", MilliC: 48000, Series: "temp.Composite.nvme · 0e:00"},
+		{Name: "Remote", Kernel: "temp2", Source: "lm75", Fault: true, Series: "temp.temp2"},
 	})
 	want := map[string][]float64{
 		"temp.Composite.nvme · 0f:00": {46},
