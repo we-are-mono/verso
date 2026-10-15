@@ -1533,6 +1533,20 @@ not a style choice — each has an owner: the envelope's `notice` for outcomes,
 { "type": "raw", "markdown": "WireGuard keeps a tunnel silent until traffic flows, so a peer can look idle while it is perfectly healthy." }
 ```
 
+### slot — a block the shell owns
+
+A place on your page for a block the shell draws and answers for: you say
+where it stands, the shell says what it is. The ids are the shell's, a closed
+set; a slot the shell has no block for draws nothing.
+
+- `appearance` — the Appearance card, where the operator picks the router's
+  theme (ADR-024). The system plugin leaves it on General, between its router
+  settings and Time.
+
+```json
+{ "type": "slot", "id": "appearance" }
+```
+
 ## Translations
 
 Write only English. The shell localizes your envelopes for you (ADR-012): the

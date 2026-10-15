@@ -266,6 +266,14 @@ A warm, near-neutral sand ground carries a single cool action blue and four stat
 
 **The 4.5 Floor.** Nothing below 4.5:1 against Paper carries words. That rules out Faint and Glyph for text, and every bare hue.
 
+### Themes
+The palette above is **Sand light**. A theme (ADR-024) is a file of colours keyed by these token names, laid over it after the stylesheet; whatever it leaves out stays Sand light's. Everything a theme changes is a colour: a shadow's shape and every measure stay the shell's, and a translucent colour (a shadow, a wash) is an 8-digit hex.
+- **Sand, following the browser** (the default): Sand light under a light preference, **Sand dark** under a dark one.
+- **Sand, always light** and **Sand, always dark**: one of the two, whatever the browser prefers.
+- **Any other theme** (Catppuccin Mocha ships beside Sand dark): fixed, whatever the browser prefers, its scheme declared so the browser's own controls follow.
+
+Sand dark mirrors Sand's steps at the same warm hue, each token keeping its job: the page (Quiet Sand) is the darkest ground, cards (Paper) one step up, Canvas the slot a field is cut into, Ink the lightest. A hue's deep step, which carries words on its wash, climbs toward light instead of falling, so it still clears the 4.5 Floor; On-fill turns dark, since the fills it sits on are lighter. Shadows are black at 35–50%, and chart washes start at 25%. Every theme Verso ships is held to the floors by a test; any other theme's shortfalls are logged when it loads.
+
 ## Typography
 
 **Display Font:** Hanken Grotesk (with ui-sans-serif, system-ui)
@@ -555,6 +563,9 @@ Save stages a change; nothing happens on the router until it is applied from the
 - **Sections:** each drawer starts its own heading hierarchy, independent of the page section that opened it. Full sections use the standard Quiet Sand heading band, edge to edge, with an 18px heading and any lede inside. A drawer has no visible grid but keeps the page's geometry, measured from its chrome's Hairline: sections, bands, fields, rows and cards stand exactly as they do on a page, and blocks inside a drawer form stand 24px apart. Headings, ledes and fields retain their 40px horizontal inset; subsection and list dividers stay inset. The opening section has no leading divider: the chrome's own Hairline (the header's, or the tab strip's) is its rule, and its title stands 40px under it, as under any rule. The object's own state and name (Forward is active, Name) open the drawer under no heading, since the drawer's title already names the object, and the next section's rule stands 40px under that untitled block, as every section's does.
 - **Configuration card:** the drawer reads as form name → fields → configuration card → actions. The filename alone labels the card, above the code; it has no section heading, marker, “Written to” prefix or repeated explanation of staging. A full-width hairline separates it from the fields; the filename and code keep the content's 40px horizontal inset. Live previews and copy controls stay part of the card.
 - **Footer:** when a configuration card ends the form, Save follows it with a small gap and no intervening hairline: the card and the act that saves it are one unit. Other drawer footers keep their inset Hairline. Removing an object belongs to its listing’s trash action, which opens a compact confirmation naming the object and its consequences, with the destructive act and Cancel. Edit drawers carry no duplicate removal action.
+
+### Appearance
+The theme is picked on System › General, in an **Appearance** card between the router's settings and Time, placed there by the system plugin's `appearance` slot and drawn by the shell. One dropdown, keyed `theme`: Sand following the browser, Sand always light, Sand always dark, then every other theme by family and name. Under it, in the card's body ink, one line: "Takes effect immediately, for everyone who signs in to this router." A pick is written at once, outside the stage: the page repaints in place, nothing on it is lost, the staged-changes chip does not move, and Save above stays as it was. A refusal is the top-right notification, and the dropdown goes back to the theme in force.
 
 ### Overview cards
 The Overview (ADR-022) is made of cards as every page is, and is the one page whose cards the operator arranges: each holds one kind of reading (Internet, Ports, Tunnels, Traffic, Resources, System, and Hardware on a board whose profile lists sensors), in two columns, each card folding and moving. Every other page's cards stand in one column and stay as they are. Cards are a page's subjects; inside a drawer, a frame still marks only an object instance.

@@ -50,7 +50,10 @@ category does not exist until something real needs it.**
    these options through the same sid-gated rpcd `uci` calls that broker every
    plugin write (ADR-007), staged and applied from the review drawer (ADR-010) — a
    Verso setting is reviewed, discarded, and committed exactly like a firewall
-   rule. The shell's rpcd ACL policy grants `uci verso` read and write.
+   rule. The shell's rpcd ACL policy grants `uci verso` read and write. A
+   setting that changes only how the pages look, `verso.ui.theme` (ADR-024),
+   is written when it is picked instead: the helper commits it on its own,
+   leaving the stage as it is, since there is nothing to review or roll back.
    Plugins do not touch this config: a plugin wanting product-level behavior
    asks for a contract, not the file.
 

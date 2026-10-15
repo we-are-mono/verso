@@ -60,7 +60,10 @@ whose Apply is rpcd's `uci apply` with its native rollback.**
    plugin answers with a stage intent for `enabled`, and the chip's count goes
    up. A dropped row posts its listing's order the moment it lands. No
    client-side ledger, no divergence between what a control shows and what
-   `uci changes` holds.
+   `uci changes` holds. The one setting outside the stage is one that changes
+   only how the pages look: the theme (ADR-024) is written and committed on its
+   own when it is picked, through the helper, and touches nothing the stage
+   holds. Nothing on the network can break, so there is nothing to roll back.
 
 3. **The stage has one surface: a chip in the top bar, left of Log out, on
    screen while a change is staged.** It says how many changes wait and that

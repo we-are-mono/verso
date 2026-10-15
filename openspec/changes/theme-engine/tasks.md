@@ -37,10 +37,10 @@ Every task ends green under `make lint` and `make test`; a task that touches a t
 
 ## 6. Docs
 
-- [ ] 6.1 Write ADR-024 (themes are packaged data): a theme is a file, the format and its validation, `verso-theme-<name>` beside `verso-plugin-<name>` and `verso-board-<name>`, everything a theme changes is a colour, Sand built in and following the browser; verify it reads as what is
-- [ ] 6.2 Amend in place ADR-005 §6 (the theme mechanism in place of "one light theme"; the closed widget set gains `slot`), ADR-010 and ADR-013 (a setting that changes only how the pages look takes effect when picked, outside the stage); verify each reads as what is
-- [ ] 6.3 Update DESIGN.md: a Themes section (Sand light and dark, fixed themes, the scheme), Sand dark's role table, and the Appearance card under Components; verify `impeccable context` loads it
-- [ ] 6.4 Keep `docs/BACKLOG.md` current: add the release-notes line (a dark-preferring browser gets Sand dark; System › General forces light) and remove anything this change closes; verify by reading the diff
+- [x] 6.1 Write ADR-024 (themes are packaged data): a theme is a file, the format and its validation, `verso-theme-<name>` beside `verso-plugin-<name>` and `verso-board-<name>`, everything a theme changes is a colour, Sand built in and following the browser; verify it reads as what is
+- [x] 6.2 Amend in place ADR-005 §6 (the theme mechanism in place of "one light theme"; the closed widget set gains `slot`), ADR-010 and ADR-013 (a setting that changes only how the pages look takes effect when picked, outside the stage); verify each reads as what is
+- [x] 6.3 Update DESIGN.md: a Themes section (Sand light and dark, fixed themes, the scheme), Sand dark's role table, and the Appearance card under Components; verify `impeccable context` loads it
+- [x] 6.4 Keep `docs/BACKLOG.md` current: add the release-notes line (a dark-preferring browser gets Sand dark; System › General forces light) and remove anything this change closes; verify by reading the diff
 
 ## 7. Integration
 

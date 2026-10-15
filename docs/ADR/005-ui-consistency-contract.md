@@ -41,6 +41,11 @@ looks — while still offering a legitimate bridge when no widget yet fits.
    speed and role, and the shell draws every pixel — a board profile's own art
    or, for a board without art, a whole panel it generates from the ports — and
    lights both by one set of rules.
+   A `slot` is the one place a plugin hands a block to the shell: the plugin
+   says where on its page the block stands, and the shell, whose ids are a
+   closed set, decides what it is and answers for it. The system plugin leaves
+   `appearance` on General for the Appearance card (ADR-024); a slot the shell
+   has no block for draws nothing.
 4. **A governed "raw" bridge.** When no widget fits, an author may emit a `raw`
    element: **display-only**, **Markdown** (not HTML/CSS), rendered through Verso's
    styling and sanitizer. It grants content freedom, never appearance control.
@@ -55,15 +60,18 @@ looks — while still offering a legitimate bridge when no widget yet fits.
    author migrates. Health metric: raw usage *declines* for recurring needs.
 6. **Tailwind v4, over the design palette.** The templates use Tailwind's utility
    classes over one `@theme` — `palette.css`, the design palette (`DESIGN.md`),
-   which replaces Tailwind's own colour scales. One light theme; there is no
-   dark palette. Every colour and shadow the shell paints is a named token of
+   which replaces Tailwind's own colour scales. It is Sand light; a theme
+   (ADR-024) is a file of colours laid over it, keyed by the same token names,
+   and the shell carries the theme in force after the stylesheet. Every colour
+   and shadow the shell paints is a named token of
    `palette.css`: templates, stylesheets, the client's scripts and the Go that
    renders name the token and never write the value, and a surface (Canvas) and
    a label on a filled control (On-fill) are two tokens though both are white.
    A guard test (`TestNothingPaintsALiteralColour`) fails on a colour literal
-   anywhere else; a literal kept on purpose is listed with its reason. Shadows
-   and chart wash strengths are custom properties read through `var()`, not
-   `@theme` tokens, since Tailwind copies a shadow theme token into its utility.
+   anywhere else; a literal kept on purpose is listed with its reason. A
+   shadow is the shell's shape over a colour token, and a chart wash a pair of
+   colour tokens; both are custom properties read through `var()`, not `@theme`
+   tokens, since Tailwind copies a shadow theme token into its utility.
    The stylesheet compiles via the
    standalone CLI (no Node) to an embedded file. This is an engine choice, not a contract
    change: plugins never see classes, so the styling stays reversible with zero plugin

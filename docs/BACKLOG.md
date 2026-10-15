@@ -128,6 +128,16 @@ own and points at the decision that governs it; the rationale lives there, not h
 - **An empty page listing.** VPN and Dynamic DNS with nothing in them stand
   their empty slot loose on the sand rather than in a card.
 
+## Themes (ADR-024)
+
+- **Release note: Sand dark by default.** The release that carries themes
+  shows Sand dark to every operator whose system prefers dark, with no theme
+  chosen. Say so in its notes, and that System › General › Appearance forces
+  Sand light.
+- **The sign-in card under Sand dark.** It stands on Canvas, which is the
+  darkest step in Sand dark, so the card reads sunk into the page rather than
+  lifted off it. Try it on the device and settle the step it stands on.
+
 ## Per-device usage (ADR-018)
 
 - **First Devices visit on the router.** The first history read after the
