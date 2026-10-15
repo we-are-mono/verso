@@ -35,7 +35,7 @@
 
 ## 7. The fetching field (after 1.1)
 
-- [ ] 7.1 Write field tests: a select Field with `Fetch` renders `hx-get`, `hx-include` of its joined row and `hx-target`, and no `data-verso-change-field`/`data-verso-writes`; a Field without `Fetch` renders as today; `Fetch` never appears in the widget JSON. Then implement `Field.Fetch` in the field and grid templates. Verify: `go test ./internal/widget -run 'Field|Grid'`.
+- [x] 7.1 Write field tests: a select Field with `Fetch` renders `hx-get`, `hx-include` of its joined row and `hx-target`, and no `data-verso-change-field`/`data-verso-writes`; a Field without `Fetch` renders as today; `Fetch` never appears in the widget JSON. Then implement `Field.Fetch` in the field and grid templates. Verify: `go test ./internal/widget -run 'Field|Grid'`.
 
 ## 8. The Temperatures graph
 

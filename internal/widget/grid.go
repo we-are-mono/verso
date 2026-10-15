@@ -90,12 +90,13 @@ func (g *Grid) bareFields(kind func(*Field) bool) ([]*Field, bool) {
 	return fields, true
 }
 
-// groupParts is a group's parts as one row's: every part tracked and named on
-// its own, the group's word standing before every part after the first.
+// groupParts is a group's parts as one row's: every part named on its own and
+// tracked by the stage unless it fetches a view instead, the group's word
+// standing before every part after the first.
 func groupParts(g *Grid, fields []*Field) boxView {
 	var parts boxView
 	for i, f := range fields {
-		part := boxPart{Field: f, Track: true, Named: true}
+		part := boxPart{Field: f, Track: f.Fetch == nil, Named: true}
 		if i > 0 && g.Join != "" {
 			part.Join, part.JoinID = g.Join, f.Name+"-join"
 		}

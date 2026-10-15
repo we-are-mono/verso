@@ -55,6 +55,11 @@ type Field struct {
 	// carries no name, so the form around it neither submits it nor counts it,
 	// and the page posts a pick on its own (verso-forms.js). Shell only.
 	Theme bool `json:"-"`
+	// Fetch makes a select a choice of what to look at, not a setting: changed,
+	// it fetches the view for its row's choices into the page and stages
+	// nothing (the Temperatures graph's reading and window). Shell only, as
+	// Theme is.
+	Fetch *FieldFetch `json:"-"`
 	// Tip explains what the field is to someone meeting it for the first time,
 	// on hovering or focusing the label. It is the deliberate version of Help:
 	// where both are set the label raises this one, because a plugin's Help was
@@ -219,6 +224,12 @@ func (f *Field) TipView() TipView {
 		}
 	}
 	return TipView{ID: f.Name + "-tip", Tip: f.explanation(), Footer: strings.Join(parts, " · ")}
+}
+
+// FieldFetch is where a fetching choice gets its view: URL answers it for the
+// row's choices, which land in place of the element Target selects.
+type FieldFetch struct {
+	URL, Target string
 }
 
 // Option is one choice in a select or checks field.

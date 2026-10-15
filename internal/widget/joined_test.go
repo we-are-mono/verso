@@ -4,6 +4,7 @@
 package widget
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 )
@@ -16,6 +17,60 @@ func path() *Grid {
 		&Field{Name: "src", Label: "Coming from", Key: "src", Kind: "select", Value: "lan", Options: zones},
 		&Field{Name: "dest", Label: "Going to", Key: "dest", Kind: "select", Value: "wan", Options: zones},
 	}}
+}
+
+// chartChoice is the Temperatures graph's field: which reading, over which
+// window, each a choice of what to look at, not a setting.
+func chartChoice() *Grid {
+	fetch := &FieldFetch{URL: "/system/hardware/temperature", Target: "#hardware-temperature-graph"}
+	return &Grid{Style: "form", Label: "Show chart for", Join: "over", Children: []Widget{
+		&Field{Name: "sensor", Label: "Reading", Kind: "select", Value: "temp.cluster-thermal", Fetch: fetch,
+			Options: []Option{{Value: "temp.cluster-thermal", Label: "CPU"}, {Value: "temp.ddr-thermal", Label: "Memory"}}},
+		&Field{Name: "range", Label: "Window", Kind: "select", Value: "day", Fetch: fetch,
+			Options: []Option{{Value: "day", Label: "Last 24 hours"}, {Value: "week", Label: "Last 7 days"}}},
+	}}
+}
+
+// TestAFetchingChoiceFetchesAViewAndStagesNothing: a choice of what to look at
+// fetches the view for the row's choices into its place when changed, and
+// stages nothing, so the page's changes never count it; the row reads as the
+// sentence it is.
+func TestAFetchingChoiceFetchesAViewAndStagesNothing(t *testing.T) {
+	got := render(t, newRenderer(t), chartChoice())
+	for want, n := range map[string]int{
+		`hx-get="/system/hardware/temperature"`:                      2,
+		`hx-target="#hardware-temperature-graph"`:                    2,
+		`hx-include="closest .verso-joined"`:                         2,
+		`hx-trigger="change"`:                                        2,
+		`hx-swap="outerHTML"`:                                        2,
+		`name="sensor"`:                                              1,
+		`name="range"`:                                               1,
+		">Show chart for<":                                           1,
+		`class="verso-joined-word">over</span>`:                      1,
+		"data-verso-change-field":                                    0,
+		"data-verso-writes":                                          0,
+		`<option value="temp.cluster-thermal" selected>CPU</option>`: 1,
+	} {
+		if c := strings.Count(got, want); c != n {
+			t.Errorf("%q appears %d times, want %d:\n%s", want, c, n, got)
+		}
+	}
+	// A setting's dropdown still stages as it always has.
+	if setting := render(t, newRenderer(t), path()); strings.Contains(setting, "hx-get") || strings.Count(setting, "data-verso-change-field") != 2 {
+		t.Errorf("a setting's dropdown fetches or does not stage:\n%s", setting)
+	}
+}
+
+// TestAFetchIsTheShellsOwn: a plugin cannot ask a field to fetch: Fetch never
+// travels in the widget schema.
+func TestAFetchIsTheShellsOwn(t *testing.T) {
+	data, err := json.Marshal(&Field{Name: "sensor", Fetch: &FieldFetch{URL: "/x", Target: "#y"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if s := strings.ToLower(string(data)); strings.Contains(s, "fetch") || strings.Contains(s, "/x") {
+		t.Errorf("Fetch travels in the schema: %s", data)
+	}
 }
 
 // TestJoinedChoicesAreOneRow: two picks that are one answer are one row — one
