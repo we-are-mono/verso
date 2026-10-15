@@ -11,10 +11,12 @@
 # The record is a few lines in RAM, gone on reboot like the tunnel, read by
 # verso-rpcd (openvpn.rs). It carries the PID of the OpenVPN that wrote it — this
 # script's parent — so a record from an earlier run is never taken for the one
-# running now. A profile that drops privileges (user nobody) runs these hooks as
-# that user, so the directory takes anyone's file but lets no one replace
-# another's (1733), and the reader trusts a record only when it is owned by the
-# user the instance runs as.
+# running now. A profile that drops privileges (user nobody) runs its first up,
+# and route-up unless a non-pulling profile delays its routes, as root and the
+# hooks after as that user, so the directory takes anyone's file but lets no one
+# replace another's (1733). The hook carries over only a record its own user
+# wrote, a file and no link, and the reader trusts a record only when it is
+# owned by the user the instance runs as.
 
 case "$INSTANCE" in
 	'' | *[!A-Za-z0-9_-]*) exit 0 ;;
@@ -34,7 +36,7 @@ dir=/var/run/verso-openvpn
 record="$dir/$INSTANCE"
 
 since= address= server= device=
-if [ -f "$record" ]; then
+if [ -f "$record" ] && [ ! -L "$record" ] && [ -O "$record" ]; then
 	while IFS='=' read -r key value; do
 		case "$key" in
 			pid) [ "$value" = "$PPID" ] || break ;;
@@ -53,6 +55,12 @@ fi
 [ "$ACTION" = route-up ] && since=$(date +%s)
 [ -n "$state" ] || state=connecting
 
-tmp="$dir/.$INSTANCE.$$"
+# Anyone may stand a file or FIFO at any name here, so the temporary takes a
+# name no one can guess and is made only where nothing stands: a planted entry
+# can neither block the write nor be renamed in as the record. A directory
+# standing at the record's name is the record's name all the same (-T), never a
+# place to move the temporary into.
+tmp=$(mktemp "$dir/.$INSTANCE.XXXXXX") || exit 0
 printf 'pid=%s\nstate=%s\nsince=%s\naddress=%s\nserver=%s\ndevice=%s\n' \
-	"$PPID" "$state" "$since" "$address" "$server" "$device" > "$tmp" && mv -f "$tmp" "$record"
+	"$PPID" "$state" "$since" "$address" "$server" "$device" > "$tmp" &&
+	chmod 644 "$tmp" && mv -fT "$tmp" "$record" || rm -f "$tmp"
