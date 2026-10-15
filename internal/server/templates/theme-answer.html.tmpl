@@ -1,0 +1,5 @@
+{{/* The answer to a pick on the Appearance card (verso-forms.js): the style
+     the page carries after the stylesheet, which replaces the page's own, and,
+     when the pick is refused, how it went, for the outcome layer to say. */}}
+<style id="verso-theme">{{.Theme}}</style>
+{{if .Flash.Message}}<template data-verso-arrival>{{template "verso-flash" .Flash}}</template>{{end}}

@@ -368,6 +368,14 @@ fn dispatch(request: &Value, state: &State, uid: u32) -> Result<Value, Failure> 
                 text_argument(request, "redirect")?,
             )
         }
+        "setTheme" => {
+            // One commit of verso at a time: the web listeners commit it too.
+            let _guard = state
+                .maintenance
+                .lock()
+                .map_err(|_| Failure::unknown("credential-operation lock poisoned"))?;
+            access::set_theme(argument(request, "theme")?)
+        }
         "makeWebCertificate" => {
             let _guard = state
                 .maintenance
@@ -1379,6 +1387,7 @@ mod tests {
         "setWebCertificate",
         "makeWebCertificate",
         "setWebListeners",
+        "setTheme",
         "setPassword",
         "setSystemTime",
         "pkgStatus",

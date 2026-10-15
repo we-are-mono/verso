@@ -56,9 +56,11 @@ type fakeBackend struct {
 	// password or return an error. Nil means "succeed silently".
 	setPassword func(ctx context.Context, sid, username, password string) error
 	// webOwner backs SetWebOwner, answering for the owner asked; webListeners
-	// backs SetWebListeners.
+	// backs SetWebListeners; setTheme backs SetTheme, given the session and the
+	// theme, and nil refuses, as a router with no helper would.
 	webOwner         func(owner string) error
 	webListeners     func(https, http []string, redirect string) error
+	setTheme         func(sid, id string) error
 	setSystemTime    func(ctx context.Context, sid, datetime, timezone string) error
 	createBackup     func(ctx context.Context, sid, path string) error
 	restoreBackup    func(ctx context.Context, sid, path string) error
@@ -622,6 +624,13 @@ func (f fakeBackend) SetWebListeners(_ context.Context, _ string, https, http []
 		return errNoHelper
 	}
 	return f.webListeners(https, http, redirect)
+}
+
+func (f fakeBackend) SetTheme(_ context.Context, sid, id string) error {
+	if f.setTheme == nil {
+		return errNoHelper
+	}
+	return f.setTheme(sid, id)
 }
 
 func (f fakeBackend) SetWebOwner(_ context.Context, _ string, owner string) error {

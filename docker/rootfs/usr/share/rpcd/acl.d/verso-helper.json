@@ -33,6 +33,7 @@
           "factoryReset",
           "setWebOwner",
           "setWebListeners",
+          "setTheme",
           "pkgStatus",
           "pkgUpdate",
           "pkgSearch",

@@ -202,6 +202,38 @@ pub fn web_listeners(https: &str, http: &str, redirect: &str) -> Result<Value, F
     Ok(json!({"result":true}))
 }
 
+/// set_theme puts a theme in force (ADR-024): it writes verso.ui.theme and
+/// commits verso on its own, through root's save directory, so what an
+/// operator has staged, which rpcd keeps per session, stays staged. Sand
+/// following the browser is the option's absence. The service is not reloaded:
+/// the running shell swaps its own theme, and the init script carries the
+/// option to the next start.
+pub fn set_theme(id: &str) -> Result<Value, Failure> {
+    set_theme_with(id, uci)?;
+    Ok(json!({"result": true}))
+}
+
+/// set_theme_with is set_theme over run, the way one uci command is run.
+fn set_theme_with(id: &str, mut run: impl FnMut(&[&str]) -> Result<bool, Failure>) -> Result<(), Failure> {
+    if id.is_empty() || id.len() > 64 || !id.bytes().all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'-') {
+        return Err(Failure::invalid("invalid theme"));
+    }
+    if !run(&["set", "verso.ui=ui"])? {
+        return Err(Failure::unknown("verso.ui could not be created"));
+    }
+    if id == "sand" {
+        run(&["-q", "delete", "verso.ui.theme"])?;
+    } else if !run(&["set", &format!("verso.ui.theme={id}")])? {
+        return Err(Failure::unknown("verso.ui.theme could not be written"));
+    }
+    // Verso's own act, not an edit made outside it (ADR-021).
+    crate::config_watch::own_write("verso");
+    if !run(&["commit", "verso"])? {
+        return Err(Failure::unknown("verso could not be committed"));
+    }
+    Ok(())
+}
+
 /// make has the router make a new self-signed certificate, named as at first
 /// boot for every way the LAN reaches it, by the init script's own step; the
 /// key is born here, as root, and never crosses into the shell's request.
@@ -270,6 +302,41 @@ mod tests {
         }
         assert!(web_listeners("0.0.0.0:443;x", "", "").is_err());
         assert!(web_listeners("", "", "yes").is_err());
+    }
+
+    /// The uci commands set_theme_with runs for id, in order.
+    fn theme_commands(id: &str) -> Result<Vec<String>, Failure> {
+        let mut ran = Vec::new();
+        set_theme_with(id, |args| {
+            ran.push(args.join(" "));
+            Ok(true)
+        })?;
+        Ok(ran)
+    }
+
+    #[test]
+    fn a_theme_is_written_and_committed_on_its_own() {
+        assert_eq!(
+            theme_commands("catppuccin-mocha").unwrap(),
+            ["set verso.ui=ui", "set verso.ui.theme=catppuccin-mocha", "commit verso"]
+        );
+        // Sand following the browser is the option's absence.
+        assert_eq!(theme_commands("sand").unwrap(), ["set verso.ui=ui", "-q delete verso.ui.theme", "commit verso"]);
+    }
+
+    #[test]
+    fn a_theme_id_is_letters_digits_and_hyphens() {
+        let long = "a".repeat(65);
+        for bad in ["", "Mocha", "night;reboot", "../x", "a b", "night\n", long.as_str()] {
+            assert!(theme_commands(bad).is_err(), "{bad:?} accepted");
+        }
+        assert!(theme_commands(&"a".repeat(64)).is_ok());
+    }
+
+    #[test]
+    fn a_theme_that_does_not_commit_says_so() {
+        let failed = set_theme_with("sand-dark", |args| Ok(args[0] != "commit"));
+        assert!(failed.is_err());
     }
 
     #[test]

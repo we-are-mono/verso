@@ -33,6 +33,15 @@ func (*NativeBackend) SetWebListeners(ctx context.Context, sid string, https, ht
 		"https": strings.Join(https, " "), "http": strings.Join(http, " "), "redirect": redirect,
 	}, nil)
 }
+func (*NativeBackend) SetTheme(ctx context.Context, sid, id string) error {
+	return setTheme(ctx, "", sid, id)
+}
+
+// setTheme asks the helper at socket to put theme id in force for the
+// session sid (ADR-024).
+func setTheme(ctx context.Context, socket, sid, id string) error {
+	return callHelper(ctx, socket, "setTheme", sid, map[string]string{"theme": id}, nil)
+}
 func (*NativeBackend) SetWebOwner(ctx context.Context, sid, owner string) error {
 	return callHelper(ctx, "", "setWebOwner", sid, map[string]string{"owner": owner}, nil)
 }

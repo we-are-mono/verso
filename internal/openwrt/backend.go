@@ -273,6 +273,9 @@ type Backend interface {
 	// their own, leaving whatever else the session stages: a nil list, or an
 	// empty redirect, clears its option.
 	SetWebListeners(ctx context.Context, sid string, https, http []string, redirect string) error
+	// SetTheme puts a theme in force (verso.ui.theme), committed on its own,
+	// leaving whatever else the session stages; "sand" clears the option.
+	SetTheme(ctx context.Context, sid, id string) error
 	// DiagStart starts a network diagnostic on the router and names the run;
 	// DiagRead reads what it has written past a cursor, and DiagStop ends it.
 	// A run is its operator's alone: the helper answers another session's read

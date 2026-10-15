@@ -24,16 +24,16 @@ Every task ends green under `make lint` and `make test`; a task that touches a t
 
 ## 4. Picking a theme
 
-- [ ] 4.1 Write the Rust tests first: `setTheme` refuses an id outside `[a-z0-9-]{1,64}`, writes `verso.ui.theme` (creating `verso.ui=ui` when missing), deletes it for `sand`, and commits through root's own save directory without reloading; `EVERY_METHOD` and `verso-helper.json` grant it; then implement in `verso-rpcd` and verify with `cargo test`
-- [ ] 4.2 Write the test first: the Go backend's `SetTheme(ctx, sid, id)` calls `verso.setTheme` with the session; then add it to `openwrt.Backend` and the fake; verify
-- [ ] 4.3 Write the tests first: `POST /system/theme` refuses an id no loaded theme or built-in has, calls `SetTheme`, swaps the in-memory choice and answers with the new `<style id="verso-theme">` as an out-of-band swap; on a backend error it keeps the theme and answers `HX-Reswap: none` with the outcome template ("The theme wasn't changed."); it reads only `theme` from the request; then implement and verify
+- [x] 4.1 Write the Rust tests first: `setTheme` refuses an id outside `[a-z0-9-]{1,64}`, writes `verso.ui.theme` (creating `verso.ui=ui` when missing), deletes it for `sand`, and commits through root's own save directory without reloading; `EVERY_METHOD` and `verso-helper.json` grant it; then implement in `verso-rpcd` and verify with `cargo test`
+- [x] 4.2 Write the test first: the Go backend's `SetTheme(ctx, sid, id)` calls `verso.setTheme` with the session; then add it to `openwrt.Backend` and the fake; verify
+- [x] 4.3 Write the tests first: `POST /system/theme` (CSRF-checked) refuses an id no loaded theme or built-in has, calls `SetTheme` with the session, swaps the in-memory choice and answers with the new `<style id="verso-theme">`; on a refusal or a backend error it keeps the theme and answers with the outcome in a `template[data-verso-arrival]` ("That theme isn't installed." / "The theme wasn't changed."); then implement and verify
 
 ## 5. The Appearance card
 
 - [ ] 5.1 Write the tests first: `{"type":"slot","id":"appearance"}` decodes to `widget.Slot`; the server fills a known slot before rendering and renders nothing for an unknown one; then implement `Slot`, the fill walk and the catalogue entry; verify
 - [ ] 5.2 Write the Rust tests first: `Widget::slot("appearance")` serialises as the shell decodes it, and the system plugin's General page places it between its untitled section and Time; then implement in the SDK and the system plugin; verify with `cargo test` and a shell render of General
-- [ ] 5.3 Write the tests first: the Appearance block renders as a ruled section titled "Appearance" with a select keyed `theme`, its options Sand following the browser, Sand always light, Sand always dark and each other theme as "<family> <name>", the theme in force selected, the takes-effect description under it, `form="verso-theme"`, `hx-post="/system/theme"`, `hx-trigger="change"`, `hx-params="theme"`, `hx-swap="none"`, and the page carries `<form id="verso-theme">` with its CSRF token outside the plugin's form; then implement the shell-only select properties and the block; verify
-- [ ] 5.4 Make `verso-forms.js` count a change toward a form only when `event.target.form` is that form; verify in the dev container that picking a theme with a half-typed router name keeps the text, raises no unsaved-changes prompt and leaves Save as it was
+- [ ] 5.3 Write the tests first: the Appearance block renders as a ruled section titled "Appearance" with a select keyed `theme`, its options Sand following the browser, Sand always light, Sand always dark and each other theme as "<family> <name>", the theme in force selected, the takes-effect description under it, and the select carrying `data-verso-theme` and no `name`; then implement the shell-only select property and the block; verify
+- [ ] 5.4 Make `verso-forms.js` post a pick of a `select[data-verso-theme]` to `/system/theme`, replace the page's `<style id="verso-theme">` from the answer, and on a refusal show the answer's outcome and put the select back; verify in the dev container that picking a theme repaints in place, and that with a half-typed router name it keeps the text, raises no unsaved-changes prompt and leaves Save as it was
 
 ## 6. Docs
 

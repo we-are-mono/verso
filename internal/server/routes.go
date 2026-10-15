@@ -73,6 +73,8 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("GET "+alertsPath, s.handleAlerts)
 	s.mux.HandleFunc("POST "+alertsPath, s.handleAlerts)
 	s.mux.HandleFunc("POST "+alertsTestPath, s.handleAlertsTest)
+	// The Appearance card's pick (ADR-024): written at once, outside the stage.
+	s.mux.HandleFunc("POST "+themePath, s.handleTheme)
 	s.mux.HandleFunc("GET /system/logs/settings", s.handleLogSettings)
 	s.mux.HandleFunc("POST /system/logs/settings", s.handleLogSettings)
 	// Diagnostics: a run starts in the helper, its output is read back over
