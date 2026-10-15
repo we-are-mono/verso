@@ -305,11 +305,67 @@ file's size.
 
 `firstboot` clears the overlay and leaves `/data`, so history outlives a reset.
 The Factory reset form carries **Also erase the router's history**, checked by
-default: `verso-rpcd` empties the history directory (changes, events, charts
-and per-device usage) before `firstboot` runs. A router handed to someone else
-leaves nothing of its past behind. Unchecked, the reset is recorded as an entry
-made outside Verso on the next start, and Return to a point before it is
-offered like any other.
+default: `verso-rpcd` empties every place the history may be in (changes,
+events, charts and per-device usage) before `firstboot` runs. Those are the
+defaults, `/data/verso`, `/usr/share/verso/history`, `/data/nlbwmon` and
+`/usr/share/nlbwmon/db`, which the shell and nlbwmon open again once
+`firstboot` puts their configs back, whatever directory was chosen before; and
+the chosen directories, the one set and the one the running shell was started
+with (an applied change reaches the shell as a SIGHUP, not a restart). Each
+is reached as the shell reaches it: made clean as Go's `filepath.Clean` makes
+it, from `/` where it is relative (procd starts the shell there), then
+followed through its links. A default that is a directory of its own, the
+`verso` user's or root's in a directory only root may change, reached through
+no link and no mount's root (by its device, or the mount table, which shows a
+bind mount too), holds the history alone and is emptied whole; a filesystem
+mounted inside it is left with all it holds. Everywhere else the history
+shares its directory with whatever its owner keeps there, so only its
+writer's files go, each a file by its name, never following a link or going
+into a directory, whoever owns the directory: the shell's `history.db`, the
+files SQLite keeps beside it and the `stopped` mark, or nlbwmon's `<day>.db`
+and `<day>.db.gz`, the names nlbwmon itself prunes, and either with `.broken`
+after it, a day the usage watchdog moved aside (ADR-018). That holds for a
+default of another account's, a stick mounted at a default, a default linked
+to a stick by hand, `/var` linked to `/tmp`, `/data` or a stick's root chosen
+(`block` mounts a stick it has no mount point for at `/mnt/<device>`), a
+directory on a stick whose root any account may change (`ntfs3` shows a
+volume's root as `0777`, and a FAT stick shared over Samba is mounted
+`umask=000`), and a directory of another account's the shell writes in all
+the same (a FAT or NTFS stick mounted with `quiet` or `noacsrules` lets the
+shell's `chmod` succeed without effect). The option is the `verso` user's to
+set, so naming a directory never has root remove more there than those
+files. A path the shell's open fails on, a name absent or too long, a file
+where a directory must be or too many links, holds nothing.
+
+Root empties the directory it reached and no other: it holds each one open,
+never through a link at its last name, and goes on only if it is the
+directory reached, so a directory replaced since, through a link or in a
+directory others may change, is left as it is and its place answered as a
+failure; one gone from its place since leaves nothing there to empty. Each
+directory inside a default emptied whole is held open the same way as it is
+emptied. A chosen directory inside a default emptied whole is gone with it;
+one a link there leads to is emptied where it leads.
+
+The helper empties the history before it answers, reaching every place
+before emptying any, so a place it cannot reach or empty is answered as a
+failure naming the place and why, shown as the notification on Maintenance,
+and the router is not reset. Once the answer is out it stops the shell and
+nlbwmon, which write as they stop, and waits until their processes are gone,
+killing any still there after ten seconds: procd signals and returns, and
+what is written after the second emptying would outlive it. It then empties
+again every place it can, logging any it cannot, and runs `firstboot`. A
+`firstboot` that returns has not restarted the router: the helper logs what
+came of it and starts again those of the shell and nlbwmon that ran before,
+or whose processes procd could not list.
+
+A router handed to someone else keeps no history in those places. A history
+left in a directory no longer chosen or running (changing the option moves
+nothing, ADR-019) is outside them and the operator's to remove. So is
+nlbwmon's usage in a `database_directory` the owner set themselves, which the
+package's usage-setup keeps (ADR-018): the reset empties nlbwmon's defaults
+only, and leaves that directory as it is. Unchecked, the reset is recorded as
+an entry made outside Verso on the next start, and Return to a point before
+it is offered like any other.
 
 ## Consequences
 

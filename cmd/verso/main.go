@@ -96,6 +96,8 @@ func serve(args []string) {
 	// procd records stdout as info and stderr as err. Keep normal lifecycle
 	// messages off the error stream; logd already supplies their timestamp.
 	info := log.New(os.Stdout, "", 0)
+	// verso-rpcd reads -history-dir from a running shell's command line as
+	// this set parses it, every flag taking a value (reset.rs, history_flag).
 	flags := flag.NewFlagSet("verso", flag.ContinueOnError)
 	var https, plain []string
 	flags.Func("listen-https", "an address:port to serve HTTPS on (repeatable)", func(v string) error { https = append(https, v); return nil })

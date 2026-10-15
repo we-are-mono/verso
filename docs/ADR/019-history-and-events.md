@@ -79,7 +79,11 @@ already is never given away: it is the `verso` user's from an earlier start,
 or one the shell cannot write, warned about below. The two defaults sit below
 directories only root writes, so they are handed over standing too, unless a
 link: a sysupgrade that keeps settings restores the files and makes the
-directory again as root's.
+directory again as root's. A factory reset that erases the history empties a
+default that is a directory of its own, and from any other default, the
+chosen directory and the one the running shell was started with, reached as
+the shell reaches them, removes only the history's files, whoever owns the
+directory (ADR-021).
 
 The directory and the file are the `verso` user's alone, whatever the umask
 the shell runs under: the shell makes the directory `0700` and `history.db`
@@ -88,13 +92,11 @@ files the file's own mode. A directory that is a mount, or `/data` itself,
 keeps its mode, since other daemons keep their files there too; the files are
 still `0600`. The file holds copies of configs only root may read (ADR-021).
 
-The same directory holds nlbwmon's database, as `<directory>/nlbwmon`
-(ADR-018), so all of Verso's history lives where the operator put it.
-
-Changing the directory moves the history: `verso-rpcd` creates the new
-directory, the shell copies the database there with `VACUUM INTO`, switches to
-the copy and removes the old file, and `verso-rpcd` stops nlbwmon, moves its
-directory and starts it again.
+nlbwmon keeps its database apart, in the directory the package's usage-setup
+gives it (ADR-018): `/data/nlbwmon` where `/data` is a mount, else
+`/usr/share/nlbwmon/db`, unless the owner set one themselves. Changing
+`verso.history.directory` moves neither: the shell opens `history.db` in the
+new directory on its next start, and the old file stays where it was.
 
 A directory that cannot be written is warned about, never refused. The shell
 keeps collecting in memory, and System → Events says above its listing that

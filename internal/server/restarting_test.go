@@ -128,6 +128,49 @@ func TestFactoryResetChecksTheHostnameOnTheServer(t *testing.T) {
 	assertRestartingTakeover(t, res.Body.String(), "Erasing and restarting", `data-verso-restarting-budget="300"`)
 }
 
+// refusedReset is the helper refusing an erase, with the reason it names.
+type refusedReset string
+
+func (e refusedReset) Error() string             { return "verso-rpcd: factoryReset: " + string(e) }
+func (e refusedReset) ValidationMessage() string { return string(e) }
+
+// TestFactoryResetNotDoneIsANotification: a reset the router refuses or fails
+// leaves it as it was, so the operator is sent back to Maintenance with a
+// notification naming why, never an error page in place of the takeover.
+func TestFactoryResetNotDoneIsANotification(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		err  error
+		want string
+	}{
+		{"refused", refusedReset("the history in /mnt/usb/verso cannot be emptied: it was replaced after it was reached"),
+			"The router was not reset, since the history in /mnt/usb/verso cannot be emptied: it was replaced after it was reached."},
+		{"failed", errors.New("verso-rpcd: dial: no such file"), "Could not reset the router."},
+	} {
+		s := newServerFull(t, fakeBackend{hn: "verso-lab", factoryReset: func(context.Context, string, bool) error { return tc.err }},
+			&fakeTransport{}, nil, fakeAuth{sid: "test-sid"})
+		res, token := postPluginRequest(t, s, "/system/maintenance/factory-reset", url.Values{"hostname": {"verso-lab"}, "history": {"erase"}}, nil)
+		if res.Code != http.StatusSeeOther || res.Header().Get("Location") != maintenancePath {
+			t.Errorf("%s: reset = %d → %q; want a redirect back to Maintenance", tc.name, res.Code, res.Header().Get("Location"))
+		}
+		if variant, message := s.sessions.TakeFlash(token); variant != "danger" || message != tc.want {
+			t.Errorf("%s: notification = %s %q; want danger %q", tc.name, variant, message, tc.want)
+		}
+	}
+}
+
+// TestFactoryResetRefusalIsTranslated: both wordings reach the operator in
+// their language.
+func TestFactoryResetRefusalIsTranslated(t *testing.T) {
+	tr := func(s string) string { return "«" + s + "»" }
+	if got := factoryResetRefusal(tr, errors.New("verso-rpcd: dial: no such file")); got != "«Could not reset the router.»" {
+		t.Errorf("failed = %q; want it translated", got)
+	}
+	if got := factoryResetRefusal(tr, refusedReset("x")); got != "«The router was not reset, since x.»" {
+		t.Errorf("refused = %q; want it translated", got)
+	}
+}
+
 // TestRestartStatusAnswersWhileTheSessionLives: the takeover's poll. While the
 // router is still up the answer is JSON; after the restart the session is gone
 // and the same request meets the login redirect instead, which is the client's

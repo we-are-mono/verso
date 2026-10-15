@@ -759,6 +759,8 @@
   "The router hasn't answered here yet. It may still be starting.": "Usmerjevalnik se tu še ni odzval. Morda se še zaganja.",
   "Try the router again": "Znova odpri usmerjevalnik",
   "The hostname doesn't match. Type it exactly as shown.": "Ime gostitelja se ne ujema. Vnesite ga natanko tako, kot je prikazano.",
+  "The router was not reset, since %s.": "Usmerjevalnik ni bil ponastavljen, ker %s.",
+  "Could not reset the router.": "Usmerjevalnika ni bilo mogoče ponastaviti.",
   "The package database could not be read (%v).": "Podatkovne zbirke paketov ni bilo mogoče prebrati (%v).",
   "The package index could not be read (%v). Refresh the feeds and try again.": "Kazala paketov ni bilo mogoče prebrati (%v). Osvežite vire in poskusite znova.",
   "%s is not in the package feeds. Refresh the index on Packages and try again.": "Paketa %s ni v virih paketov. Osvežite kazalo na strani Paketi in poskusite znova.",

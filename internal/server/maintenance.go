@@ -7,6 +7,7 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
+	"errors"
 	"fmt"
 	"html/template"
 	"io"
@@ -404,17 +405,30 @@ func (s *Server) handleFactoryReset(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	_, t := s.localize(r)
-	page, err := s.restartingPage(r, factoryResetPlan(translatorOrIdentity(t), boardFactoryLAN()))
+	tr := translatorOrIdentity(t)
+	page, err := s.restartingPage(r, factoryResetPlan(tr, boardFactoryLAN()))
 	if err != nil {
 		http.Error(w, "restarting page error", http.StatusInternalServerError)
 		return
 	}
 	if err := s.backend.FactoryReset(r.Context(), s.sessionSID(r), r.FormValue("history") == "erase"); err != nil {
 		log.Printf("verso: factory reset: %v", err)
-		http.Error(w, "Could not reset the router.", http.StatusBadGateway)
+		s.flash(r, "danger", factoryResetRefusal(tr, err))
+		http.Redirect(w, r, maintenancePath, http.StatusSeeOther)
 		return
 	}
 	writeRestarting(w, page)
+}
+
+// factoryResetRefusal words a reset the router did not start. A reason the
+// helper names, such as history it cannot empty, is the operator's to act on,
+// so it is shown; any other failure is not theirs to read.
+func factoryResetRefusal(tr func(string) string, err error) string {
+	var refused interface{ ValidationMessage() string }
+	if errors.As(err, &refused) && refused.ValidationMessage() != "" {
+		return fmt.Sprintf(tr("The router was not reset, since %s."), refused.ValidationMessage())
+	}
+	return tr("Could not reset the router.")
 }
 
 // counted words a count in its flat one/many form, translated. The "1 …" form

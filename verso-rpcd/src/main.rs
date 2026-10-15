@@ -807,6 +807,24 @@ const O_NOFOLLOW: i32 = 0o100000;
     target_arch = "loongarch64"
 ))]
 const O_NOFOLLOW: i32 = 0o400000;
+// O_DIRECTORY fails an open of anything but a directory before it opens it, so
+// a FIFO or a device put where a directory was is never opened.
+#[cfg(any(
+    target_arch = "aarch64",
+    target_arch = "arm",
+    target_arch = "powerpc",
+    target_arch = "powerpc64"
+))]
+const O_DIRECTORY: i32 = 0o40000;
+#[cfg(any(
+    target_arch = "x86",
+    target_arch = "x86_64",
+    target_arch = "mips",
+    target_arch = "mips64",
+    target_arch = "riscv64",
+    target_arch = "loongarch64"
+))]
+const O_DIRECTORY: i32 = 0o200000;
 
 fn root_open_new(work: &str) -> Result<(fs::File, PathBuf), Failure> {
     let dest = Path::new("/tmp").join(work);

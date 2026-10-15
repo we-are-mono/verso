@@ -42,16 +42,17 @@ Verso configures it so that each period is one day:
 |---|---|
 | `database_interval` | `2026-01-01/1` (a period every day) |
 | `database_generations` | `400` (13 months of days) |
-| `database_directory` | `nlbwmon` in Verso's history directory (ADR-019) |
+| `database_directory` | `/data/nlbwmon` where `/data` is a mount, else `/usr/share/nlbwmon/db` |
 | `commit_interval` | `24h` (unchanged) |
 
-The package's post-install (`/usr/libexec/verso/usage-setup`) sets the interval,
-the generations and the directory on every install and upgrade, because the
-shell reads days and nothing else, and reads them where all of Verso's history
-lives. The stock `/var/lib/nlbwmon` is tmpfs and loses its history on every
-reboot. Where the directory goes, and how it moves when the operator changes
-it, is ADR-019's. A power cut costs at most the day since the last commit. An installation that kept monthly periods
-before keeps its current month as the archive of the month's first day.
+The package's post-install (`/usr/libexec/verso/usage-setup`) sets the interval
+and the generations on every install and upgrade, because the shell reads days
+and nothing else, and the directory while it is the stock `/var/lib/nlbwmon`,
+which is tmpfs and loses its history on every reboot; a directory the owner
+set themselves stays. It is apart from the shell's history directory and does
+not follow `verso.history.directory` (ADR-019). A power cut costs at most the
+day since the last commit. An installation that kept monthly periods before
+keeps its current month as the archive of the month's first day.
 
 Months are calendar months, summed by the shell from the days. Days before today
 never change, so the shell keeps each day's per-device totals once read and asks

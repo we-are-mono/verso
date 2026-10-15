@@ -338,6 +338,19 @@ func TestFirmwareUpgradeCarriesNothingButTheSession(t *testing.T) {
 	}
 }
 
+// TestFactoryResetRefusalKeepsTheHelpersWords: a reset the helper refuses,
+// history it cannot empty, comes back with its reason for the page to name.
+func TestFactoryResetRefusalKeepsTheHelpersWords(t *testing.T) {
+	reason := "the history in /mnt/usb/verso cannot be emptied: it was replaced after it was reached"
+	socket := helperReplyingTo(t, "factoryReset", map[string]string{"history": "erase"},
+		`{"status":2,"error":"`+reason+`"}`)
+	err := dialFactoryReset(socket)(context.Background(), "good-sid", true)
+	var refused interface{ ValidationMessage() string }
+	if !errors.As(err, &refused) || refused.ValidationMessage() != reason {
+		t.Fatalf("refusal = %v", err)
+	}
+}
+
 // TestFirmwareUpgradeReportsTheToolsOwnWords: an upgrade the update server
 // refused comes back with owut's complaint intact, so the page can quote the
 // tool rather than paraphrase it.
