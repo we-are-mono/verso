@@ -12,7 +12,7 @@ use std::process::Command;
 const KEYS: &str = "/etc/dropbear/authorized_keys";
 const LIMIT: usize = 64 * 1024;
 /// The certificate Verso serves HTTPS with (ADR-017 §3): the pair's directory.
-/// The group the shell runs in alone may read the key.
+/// The shell's account alone may read the key; plugins run in its group.
 const TLS_DIR: &str = "/etc/verso";
 fn tls_files(dir: &Path) -> (PathBuf, PathBuf) {
     (dir.join("tls.crt"), dir.join("tls.key"))
@@ -57,9 +57,9 @@ pub fn state() -> Result<Value, Failure> {
     )
 }
 // write_new writes value beside path under a private name, with mode and, when
-// given, group set before a byte is written: the file is never readable by
-// anyone it is not meant for, even before it is renamed into place.
-fn write_new(path: &Path, value: &[u8], mode: u32, group: Option<u32>) -> Result<PathBuf, Failure> {
+// given, owner (uid, gid) set before a byte is written: the file is never
+// readable by anyone it is not meant for, even before it is renamed into place.
+fn write_new(path: &Path, value: &[u8], mode: u32, owner: Option<(u32, u32)>) -> Result<PathBuf, Failure> {
     let mut filename = path
         .file_name()
         .ok_or_else(|| Failure::invalid("invalid destination"))?
@@ -72,8 +72,8 @@ fn write_new(path: &Path, value: &[u8], mode: u32, group: Option<u32>) -> Result
         .mode(mode & 0o600)
         .open(&tmp)
         .map_err(|e| Failure::unknown(e.to_string()))?;
-    let written = group
-        .map_or(Ok(()), |gid| std::os::unix::fs::fchown(&f, None, Some(gid)))
+    let written = owner
+        .map_or(Ok(()), |(uid, gid)| std::os::unix::fs::fchown(&f, Some(uid), Some(gid)))
         .and_then(|_| f.set_permissions(std::os::unix::fs::PermissionsExt::from_mode(mode)))
         .and_then(|_| f.write_all(value))
         .and_then(|_| f.sync_all());
@@ -107,18 +107,19 @@ pub fn certificate(cert: &str, key: &str) -> Result<Value, Failure> {
     {
         return Err(Failure::invalid("invalid PEM certificate or key"));
     }
-    install(Path::new(TLS_DIR), cert, key, Some(crate::VERSO_GID))?;
+    // verso:root, as the verso-rpcd init script sets it on every start.
+    install(Path::new(TLS_DIR), cert, key, Some((crate::VERSO_UID, 0)))?;
     announce()
 }
 
-// install replaces the pair in dir: the key first, readable by group alone,
-// then the certificate. A certificate that cannot take its place puts the old
-// key back, so the pair on disk always matches.
-fn install(dir: &Path, cert: &str, key: &str, group: Option<u32>) -> Result<(), Failure> {
+// install replaces the pair in dir: the key first, readable by its owner
+// alone, then the certificate. A certificate that cannot take its place puts
+// the old key back, so the pair on disk always matches.
+fn install(dir: &Path, cert: &str, key: &str, owner: Option<(u32, u32)>) -> Result<(), Failure> {
     let (certpath, keypath) = tls_files(dir);
     let oldkey = read_bytes(&keypath)?;
     let certtmp = write_new(&certpath, cert.as_bytes(), 0o644, None)?;
-    let keytmp = match write_new(&keypath, key.as_bytes(), 0o640, group) {
+    let keytmp = match write_new(&keypath, key.as_bytes(), 0o600, owner) {
         Ok(p) => p,
         Err(e) => {
             let _ = fs::remove_file(&certtmp);
@@ -131,7 +132,7 @@ fn install(dir: &Path, cert: &str, key: &str, group: Option<u32>) -> Result<(), 
         return Err(Failure::unknown(e.to_string()));
     }
     if let Err(e) = fs::rename(&certtmp, &certpath) {
-        if let Ok(tmp) = write_new(&keypath, &oldkey, 0o640, group) {
+        if let Ok(tmp) = write_new(&keypath, &oldkey, 0o600, owner) {
             let _ = fs::rename(tmp, &keypath);
         }
         let _ = fs::remove_file(&certtmp);
@@ -242,13 +243,13 @@ mod tests {
         let cert = write_new(&dir.join("tls.crt"), b"public", 0o644, None)
             .ok()
             .unwrap();
-        let key = write_new(&dir.join("tls.key"), b"private", 0o640, None)
+        let key = write_new(&dir.join("tls.key"), b"private", 0o600, None)
             .ok()
             .unwrap();
         assert_ne!(cert, key);
         assert_eq!(
             fs::metadata(&key).unwrap().permissions().mode() & 0o777,
-            0o640
+            0o600
         );
         assert_eq!(
             fs::metadata(&cert).unwrap().permissions().mode() & 0o777,
@@ -279,16 +280,51 @@ mod tests {
         let (cert, key) = tls_files(&dir);
         fs::write(&cert, "old certificate").unwrap();
         fs::write(&key, "old key").unwrap();
-        // The test's own group stands in for verso's: the key is given to it.
-        let gid = fs::metadata(&dir).unwrap().gid();
-        install(&dir, "new certificate", "new key", Some(gid))
+        // The test's own account stands in for verso's, and another of its
+        // groups, where it has one, for root's: the key is given to both.
+        let uid = fs::metadata(&dir).unwrap().uid();
+        let made_with = fs::metadata(&dir).unwrap().gid();
+        let gid = fs::read_to_string("/proc/self/status")
+            .unwrap()
+            .lines()
+            .find_map(|line| line.strip_prefix("Groups:"))
+            .and_then(|groups| {
+                groups
+                    .split_whitespace()
+                    .filter_map(|g| g.parse().ok())
+                    .find(|&g| g != made_with)
+            })
+            .unwrap_or(made_with);
+        install(&dir, "new certificate", "new key", Some((uid, gid)))
             .ok()
             .unwrap();
         assert_eq!(fs::read_to_string(&cert).unwrap(), "new certificate");
         assert_eq!(fs::read_to_string(&key).unwrap(), "new key");
+        // The shell's account alone reads the key: plugins share its group.
         let key_meta = fs::metadata(&key).unwrap();
-        assert_eq!(key_meta.permissions().mode() & 0o777, 0o640);
-        assert_eq!(key_meta.gid(), gid);
+        assert_eq!(key_meta.permissions().mode() & 0o777, 0o600);
+        assert_eq!((key_meta.uid(), key_meta.gid()), (uid, gid));
+        assert_eq!(fs::read_dir(&dir).unwrap().count(), 2, "temporaries left");
+        fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn a_key_that_cannot_be_given_to_its_owner_leaves_the_pair_as_it_was() {
+        use std::os::unix::fs::MetadataExt;
+        let dir = std::env::temp_dir().join(format!("verso-tls-owner-{}", std::process::id()));
+        fs::create_dir_all(&dir).unwrap();
+        let (uid, gid) = (fs::metadata(&dir).unwrap().uid(), fs::metadata(&dir).unwrap().gid());
+        if uid == 0 {
+            // Root may give a file to anyone.
+            fs::remove_dir_all(dir).unwrap();
+            return;
+        }
+        let (cert, key) = tls_files(&dir);
+        fs::write(&cert, "old certificate").unwrap();
+        fs::write(&key, "old key").unwrap();
+        assert!(install(&dir, "new certificate", "new key", Some((uid + 1, gid))).is_err());
+        assert_eq!(fs::read_to_string(&cert).unwrap(), "old certificate");
+        assert_eq!(fs::read_to_string(&key).unwrap(), "old key");
         assert_eq!(fs::read_dir(&dir).unwrap().count(), 2, "temporaries left");
         fs::remove_dir_all(dir).unwrap();
     }

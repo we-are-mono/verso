@@ -45,7 +45,7 @@ func main() {
 	// `verso certificate generate` is the init script's, run as root before the
 	// shell starts when it has no certificate to serve (ADR-017 §5).
 	if len(os.Args) > 1 && os.Args[1] == "certificate" {
-		if err := certificate(os.Args[2:]); err != nil {
+		if err := certificate(os.Args[2:], shellUID); err != nil {
 			fmt.Fprintf(os.Stderr, "verso: certificate: %v\n", err)
 			os.Exit(1)
 		}
@@ -54,9 +54,13 @@ func main() {
 	serve(os.Args[1:])
 }
 
+// shellUID is the de-privileged `verso` account the shell serves as, mirroring
+// VERSO_UID in verso-rpcd: the one account besides root that reads the key.
+const shellUID = 6000
+
 // certificate makes a self-signed pair in dir for the names given that a LAN
-// visit can use, and leaves the key's group to the init script.
-func certificate(args []string) error {
+// visit can use, the key keyOwner's alone.
+func certificate(args []string, keyOwner int) error {
 	if len(args) < 2 || args[0] != "generate" {
 		return errors.New("usage: verso certificate generate DIR NAME...")
 	}
@@ -65,7 +69,7 @@ func certificate(args []string) error {
 	if err != nil {
 		return err
 	}
-	if err := tlscert.Write(args[1], cert, key); err != nil {
+	if err := tlscert.Write(args[1], cert, key, keyOwner); err != nil {
 		return err
 	}
 	fmt.Printf("verso: certificate made for %s\n", strings.Join(names, " "))

@@ -38,17 +38,24 @@ chown() { echo "$*" >>"$CHOWNS"; }
 // historyDirFunction is history_dir as the init script spells it.
 func historyDirFunction(t *testing.T) string {
 	t.Helper()
-	script, err := os.ReadFile(initScript)
+	return initFunction(t, initScript, "history_dir")
+}
+
+// initFunction is the shell function name as the init script at path spells
+// it.
+func initFunction(t *testing.T, path, name string) string {
+	t.Helper()
+	script, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatal(err)
 	}
-	start := bytes.Index(script, []byte("\nhistory_dir() {\n"))
+	start := bytes.Index(script, []byte("\n"+name+"() {\n"))
 	if start < 0 {
-		t.Fatalf("%s holds no history_dir", initScript)
+		t.Fatalf("%s holds no %s", path, name)
 	}
 	end := bytes.Index(script[start:], []byte("\n}\n"))
 	if end < 0 {
-		t.Fatalf("%s: history_dir does not end", initScript)
+		t.Fatalf("%s: %s does not end", path, name)
 	}
 	return string(script[start+1 : start+end+3])
 }

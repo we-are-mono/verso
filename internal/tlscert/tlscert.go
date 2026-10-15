@@ -103,22 +103,29 @@ func LANNames(candidates []string) []string {
 }
 
 // Write replaces the pair in dir: the certificate readable by all, the key by
-// its owner and group, which is the verso group the shell runs in. Each file
-// is written aside and renamed into place, so a reader never meets half a file.
-func Write(dir string, certPEM, keyPEM []byte) error {
-	if err := replace(filepath.Join(dir, KeyFile), keyPEM, 0o640); err != nil {
+// keyOwner alone, the account the shell runs as. Not by its group: every
+// plugin runs in the shell's group too. Each file is written aside, given its
+// owner and mode before a byte of it, and renamed into place, so a reader
+// never meets half a file and nobody else ever meets the key.
+func Write(dir string, certPEM, keyPEM []byte, keyOwner int) error {
+	if err := replace(filepath.Join(dir, KeyFile), keyPEM, 0o600, keyOwner); err != nil {
 		return err
 	}
-	return replace(filepath.Join(dir, CertFile), certPEM, 0o644)
+	return replace(filepath.Join(dir, CertFile), certPEM, 0o644, -1)
 }
 
-func replace(path string, data []byte, mode os.FileMode) error {
+// replace writes data to path for owner, or the writer itself when owner is -1.
+func replace(path string, data []byte, mode os.FileMode, owner int) error {
 	f, err := os.CreateTemp(filepath.Dir(path), "."+filepath.Base(path)+".*")
 	if err != nil {
 		return err
 	}
 	tmp := f.Name()
 	defer os.Remove(tmp)
+	if err := f.Chown(owner, -1); err != nil {
+		f.Close()
+		return err
+	}
 	if err := f.Chmod(mode); err != nil {
 		f.Close()
 		return err

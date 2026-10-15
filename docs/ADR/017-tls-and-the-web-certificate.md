@@ -155,16 +155,27 @@ same uci configs, so nothing moves between them.
 |---|---|---|
 | `/etc/verso/` | 0750 | root:verso |
 | `/etc/verso/tls.crt` | 0644 | root |
-| `/etc/verso/tls.key` | 0640 | root:verso |
+| `/etc/verso/tls.key` | 0600 | verso:root |
 
 The directory is shared: `verso-rpcd` keeps its config fingerprint key there,
 0600 and root's alone. Whichever of the two makes the directory gives it this
 owner and mode, and the `verso` init script sets them again on every start.
 
+The key is the `verso` account's alone, not its group's: every plugin runs in
+the `verso` group too (ADR-007), so a key the group reads would be every
+plugin's. Both writers give the key to that account before a byte of it is
+written, and the `verso-rpcd` init script, which starts before any plugin,
+sets this owner and mode again on every start, so a key written group-readable
+or brought back so by sysupgrade or a restored backup is closed before a plugin
+runs. It gives the key by uid, which holds whatever `/etc/passwd` a restore
+left, and leaves a link standing at the key's name as it is: following one a
+restored backup brought back would hand the `verso` account what it names.
+
 The certificate file holds the leaf followed by its chain. The key is the one file
 under `/etc` the shell opens directly: it is credential material Verso must hold
 to serve, not configuration, so the brokered-read rule of ADR-007 and ADR-013 does
-not apply to it. `verso-rpcd` remains the only writer.
+not apply to it. The shell never writes it: the `verso` init script makes the
+pair, as root, and `verso-rpcd` replaces it.
 
 The package installs `/lib/upgrade/keep.d/verso` naming `/etc/verso/`, so the
 certificate survives sysupgrade with the configs.

@@ -16,6 +16,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"syscall"
 	"testing"
 	"time"
 )
@@ -82,16 +83,18 @@ func TestLANNamesKeepWhatALANVisitUsesAndDropTheRest(t *testing.T) {
 	}
 }
 
+// The key is its owner's alone: plugins run in the shell's group, so a key
+// the group could read would be every plugin's.
 func TestWrittenFilesAreThePairWithAPrivateKeyAndNoLeftovers(t *testing.T) {
 	dir := t.TempDir()
 	certPEM, keyPEM, err := Generate([]string{"router"}, time.Now())
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := Write(dir, certPEM, keyPEM); err != nil {
+	if err := Write(dir, certPEM, keyPEM, os.Getuid()); err != nil {
 		t.Fatal(err)
 	}
-	for file, mode := range map[string]os.FileMode{CertFile: 0o644, KeyFile: 0o640} {
+	for file, mode := range map[string]os.FileMode{CertFile: 0o644, KeyFile: 0o600} {
 		info, err := os.Stat(filepath.Join(dir, file))
 		if err != nil {
 			t.Fatal(err)
@@ -99,6 +102,13 @@ func TestWrittenFilesAreThePairWithAPrivateKeyAndNoLeftovers(t *testing.T) {
 		if info.Mode().Perm() != mode {
 			t.Errorf("%s mode = %v, want %v", file, info.Mode().Perm(), mode)
 		}
+	}
+	info, err := os.Stat(filepath.Join(dir, KeyFile))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if uid := info.Sys().(*syscall.Stat_t).Uid; int(uid) != os.Getuid() {
+		t.Errorf("key owner = %d, want %d", uid, os.Getuid())
 	}
 	entries, _ := os.ReadDir(dir)
 	if len(entries) != 2 {
@@ -109,10 +119,38 @@ func TestWrittenFilesAreThePairWithAPrivateKeyAndNoLeftovers(t *testing.T) {
 	}
 }
 
+// The key is handed to its owner before it takes its place: a key that cannot
+// be given away is not written, and the pair on disk stays as it was.
+func TestAKeyThatCannotBeGivenToItsOwnerLeavesThePairAsItWas(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("root may give a file to anyone")
+	}
+	dir := t.TempDir()
+	first, firstKey, _ := Generate([]string{"first"}, time.Now())
+	if err := Write(dir, first, firstKey, os.Getuid()); err != nil {
+		t.Fatal(err)
+	}
+	second, secondKey, _ := Generate([]string{"second"}, time.Now())
+	if err := Write(dir, second, secondKey, os.Getuid()+1); err == nil {
+		t.Fatal("a key was written for an owner it could not be given to")
+	}
+	pair, err := tls.LoadX509KeyPair(filepath.Join(dir, CertFile), filepath.Join(dir, KeyFile))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if pair.Leaf.Subject.CommonName != "first" {
+		t.Errorf("the pair on disk is %q", pair.Leaf.Subject.CommonName)
+	}
+	entries, _ := os.ReadDir(dir)
+	if len(entries) != 2 {
+		t.Errorf("directory holds %d entries, want the pair alone", len(entries))
+	}
+}
+
 func TestTheStoreServesThePairOnDiskAndKeepsItWhenAReloadFails(t *testing.T) {
 	dir := t.TempDir()
 	first, firstKey, _ := Generate([]string{"first"}, time.Now())
-	if err := Write(dir, first, firstKey); err != nil {
+	if err := Write(dir, first, firstKey, os.Getuid()); err != nil {
 		t.Fatal(err)
 	}
 	store := NewStore(dir)
@@ -130,13 +168,13 @@ func TestTheStoreServesThePairOnDiskAndKeepsItWhenAReloadFails(t *testing.T) {
 		t.Fatalf("serves %q", served())
 	}
 	second, secondKey, _ := Generate([]string{"second"}, time.Now())
-	if err := Write(dir, second, secondKey); err != nil {
+	if err := Write(dir, second, secondKey, os.Getuid()); err != nil {
 		t.Fatal(err)
 	}
 	if err := store.Load(); err != nil || served() != "second" {
 		t.Fatalf("reload: %v, serves %q", err, served())
 	}
-	if err := os.WriteFile(filepath.Join(dir, KeyFile), firstKey, 0o640); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, KeyFile), firstKey, 0o600); err != nil {
 		t.Fatal(err)
 	}
 	if err := store.Load(); err == nil {
@@ -176,13 +214,13 @@ func TestTheStoreNamesTheDomainATrustedCertificateIsIssuedFor(t *testing.T) {
 		t.Errorf("an empty store names %q", store.Name())
 	}
 	selfCert, selfKey, _ := Generate([]string{"router.example.com"}, time.Now())
-	_ = Write(dir, selfCert, selfKey)
+	_ = Write(dir, selfCert, selfKey, os.Getuid())
 	_ = store.Load()
 	if store.Name() != "" {
 		t.Errorf("a self-signed certificate names %q", store.Name())
 	}
 	cert, key := signedBy(t, "*.example.com", "router.example.com")
-	_ = Write(dir, cert, key)
+	_ = Write(dir, cert, key, os.Getuid())
 	if err := store.Load(); err != nil {
 		t.Fatal(err)
 	}

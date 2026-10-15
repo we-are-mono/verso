@@ -6,6 +6,19 @@ USE_PROCD=1
 START=18
 STOP=11
 
+# close_web_key makes the web certificate's key at $1 the shell's account's
+# alone (ADR-017 §3): every plugin runs in the shell's group, so a key that
+# group reads is theirs too. A key written group-readable by an earlier
+# release, or brought back so by a sysupgrade or a restored backup, is closed
+# here, before any plugin starts. A link there is left as it stands: one a
+# restored backup brought back would hand the shell's account what it names.
+# The owner is numeric, so it holds whatever /etc/passwd a restore left.
+close_web_key() {
+	[ -f "$1" ] && [ ! -L "$1" ] || return 0
+	chmod 0600 "$1"
+	chown 6000:0 "$1"
+}
+
 start_service() {
 	# Prepare NFLOG before firewall (START=19) can install logging rules.
 	/usr/libexec/verso/firewall-logging-setup || logger -t verso-rpcd -p daemon.err 'Firewall packet logging setup failed'
@@ -60,6 +73,8 @@ start_service() {
 	mkdir -p /var/run/verso-rpcd
 	chown root:verso /var/run/verso-rpcd
 	chmod 0750 /var/run/verso-rpcd
+
+	close_web_key /etc/verso/tls.key
 
 	procd_open_instance verso-rpcd
 	procd_set_param command /usr/sbin/verso-rpcd --socket /var/run/verso-rpcd/verso-rpcd.sock

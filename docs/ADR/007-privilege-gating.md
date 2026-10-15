@@ -315,7 +315,9 @@ bus access: it cannot reach
 the shell's brokered objects (`uci`, `system`, `session`) nor the privileged
 `verso-rpcd` root-action socket (Decision 5). Plugins need none — the shell brokers every
 read and write. The shared `verso` group serves one purpose only: the shell (in
-that group) reaches each plugin's socket (`0660`).
+that group) reaches each plugin's socket (`0660`). It is never what keeps a secret
+of the shell's: the web certificate's key is owned by the shell's uid, `0600`
+(ADR-017 §3), so a plugin in the group cannot read it.
 
 A socket's path proves nothing about who answers there: whoever binds it while
 it is free does, and a plugin restart (an upgrade, a crash and respawn) frees it

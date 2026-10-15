@@ -49,7 +49,8 @@ use std::time::Duration;
 const DEFAULT_SOCKET: &str = "/var/run/verso-rpcd/verso-rpcd.sock";
 const MAX_REQUEST: u64 = 256 * 1024;
 const VERSO_UID: u32 = 6000;
-/// The group the shell runs in, which alone reads what it is given in /etc/verso.
+/// The group the shell runs in, and every plugin with it: it may enter
+/// /etc/verso, where what is the shell's alone is owned by VERSO_UID.
 const VERSO_GID: u32 = 6000;
 
 /// rpcd's local-root convention: automation running as root on the device itself

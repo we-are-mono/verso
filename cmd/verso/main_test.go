@@ -53,7 +53,7 @@ func writePair(t *testing.T, dir, name string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := tlscert.Write(dir, cert, key); err != nil {
+	if err := tlscert.Write(dir, cert, key, os.Getuid()); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -185,8 +185,15 @@ func TestAListenerThatIsNoAddressStopsTheShell(t *testing.T) {
 
 func TestCertificateGenerateNamesWhatTheLANUses(t *testing.T) {
 	dir := t.TempDir()
-	if err := certificate([]string{"generate", dir, "verso-lab", "verso-lab.lan", "192.168.1.1", "2a02:1::1", "fd00::1"}); err != nil {
+	if err := certificate([]string{"generate", dir, "verso-lab", "verso-lab.lan", "192.168.1.1", "2a02:1::1", "fd00::1"}, os.Getuid()); err != nil {
 		t.Fatal(err)
+	}
+	info, err := os.Stat(filepath.Join(dir, tlscert.KeyFile))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if info.Mode().Perm() != 0o600 {
+		t.Errorf("key mode = %v, want its owner's alone", info.Mode().Perm())
 	}
 	pair, err := tls.LoadX509KeyPair(filepath.Join(dir, tlscert.CertFile), filepath.Join(dir, tlscert.KeyFile))
 	if err != nil {
@@ -195,7 +202,7 @@ func TestCertificateGenerateNamesWhatTheLANUses(t *testing.T) {
 	if fmt.Sprint(pair.Leaf.DNSNames, pair.Leaf.IPAddresses) != "[verso-lab verso-lab.lan] [192.168.1.1 fd00::1]" {
 		t.Errorf("names: %v %v", pair.Leaf.DNSNames, pair.Leaf.IPAddresses)
 	}
-	if err := certificate([]string{"generate"}); err == nil {
+	if err := certificate([]string{"generate"}, os.Getuid()); err == nil {
 		t.Error("a generate with no directory succeeded")
 	}
 }
