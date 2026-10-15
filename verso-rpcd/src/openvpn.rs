@@ -856,11 +856,15 @@ mod tests {
     /// of the process that ran it (this test, standing in for OpenVPN).
     #[test]
     fn the_hotplug_hook_records_each_transition() {
-        let dir = scratch("hook");
+        // The records stand one level inside this test's own directory, so a
+        // name that climbs out of them lands where only this test writes.
+        let root = scratch("hook");
+        let dir = root.join("records");
+        fs::create_dir_all(&dir).expect("record dir");
         let hook = fs::read_to_string("../docker/rootfs/etc/hotplug.d/openvpn/50-verso")
             .expect("hook")
             .replace("/var/run/verso-openvpn", dir.to_str().expect("utf-8"));
-        let script = dir.join("hook.sh");
+        let script = root.join("hook.sh");
         fs::write(&script, hook).expect("script");
         let run = |action: &str, env: &[(&str, &str)]| {
             let status = Command::new("sh")
@@ -888,8 +892,8 @@ mod tests {
         assert_eq!(run("down", &[]).state, "stopped");
         // a name the hook will not write under
         Command::new("sh").arg(&script).env("ACTION", "route-up").env("INSTANCE", "../x").status().expect("sh");
-        assert!(!dir.join("../x").exists());
-        let _ = fs::remove_dir_all(&dir);
+        assert!(!root.join("x").exists());
+        let _ = fs::remove_dir_all(&root);
     }
 
     #[test]
