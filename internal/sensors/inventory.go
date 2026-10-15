@@ -44,9 +44,11 @@ type TempReading struct {
 	SentinelDiscarded bool // limit files existed but held out-of-range sentinels
 	Level             string
 	Fault             bool
-	CPU               bool // the headline processor pick lifted to the vitals grid
-	Curated           bool // shown in the curated Temperatures section
-	Rank              int  // order within the curated section
+	CPU               bool // the headline processor pick, which leads the Overview card and the page's Temperatures
+	Curated           bool // one of the board's own temperatures, in Rank order after the CPU
+	Rank              int  // order among the curated readings
+	Named             bool // a profile entry named it
+	Fiber             bool // an SFP module's own temperature, which its fibre card carries
 
 	zoneType string
 	ofNode   string
@@ -68,6 +70,7 @@ type PowerReading struct {
 	HasV   bool
 	HasA   bool
 	Main   bool
+	Named  bool // a profile entry named it
 }
 
 // FanReading is one fan channel. Duty is the pwm duty as a percent (0–255 scaled);
@@ -82,6 +85,7 @@ type FanReading struct {
 	HasDuty bool
 	State   string // "running" | "fault" | "absent"
 	Main    bool
+	Named   bool // a profile entry named it
 }
 
 // FiberModule is one SFP/SFP+ cage's diagnostics, read from its module DOM through
@@ -201,7 +205,7 @@ func tempFromHwmon(h Hwmon, ch int, ambiguous bool) TempReading {
 	fault := readFlag(filepath.Join(h.Dir, tempAttr(ch, "fault")))
 	t := TempReading{
 		Name: kernel, Kernel: kernel, Source: hwmonSource(h, ambiguous), Kind: "hwmon",
-		MilliC: h.Temp[ch], Warn: warn, Crit: crit, Fault: fault,
+		MilliC: h.Temp[ch], Warn: warn, Crit: crit, Fault: fault, Fiber: isFiber(h.Name),
 		ofNode: h.OfNode, channel: ch, chip: h.Name, instance: h.Dir,
 	}
 	t.HasLimits = warn > 0 || crit > 0
@@ -228,7 +232,7 @@ func curateProfileTemps(temps []TempReading, p *Profile) {
 		if i < 0 {
 			continue
 		}
-		temps[i].Name = e.Name
+		temps[i].Name, temps[i].Named = e.Name, true
 		if e.CPU {
 			temps[i].CPU, cpu = true, true
 			continue // the CPU pick leads the grid, not the curated list
@@ -298,7 +302,7 @@ func resolvePowers(p *Profile, hwmons []Hwmon, amb map[string]bool) []PowerReadi
 			}
 			pr := PowerReading{Kernel: kernel, Source: hwmonSource(h, amb[h.Name]), MicroW: h.Power[ch]}
 			if name, main, ok := matchPowerEntry(p, h); ok {
-				pr.Name, pr.Main = name, main
+				pr.Name, pr.Main, pr.Named = name, main, true
 			}
 			if pr.Name == "" {
 				pr.Name = pr.Kernel
@@ -355,7 +359,7 @@ func resolveFans(p *Profile, hwmons []Hwmon, amb map[string]bool) []FanReading {
 				fr.State = "absent"
 			}
 			if name, main, ok := matchFanEntry(p, h, ch); ok {
-				fr.Name, fr.Main = name, main
+				fr.Name, fr.Main, fr.Named = name, main, true
 			}
 			out = append(out, fr)
 		}
@@ -411,9 +415,10 @@ func fiberFrom(h Hwmon) FiberModule {
 // rxLightFloorMicroW is ~−20 dBm — under it a 10G receiver has no usable signal.
 const rxLightFloorMicroW = 10
 
-// --- convenience selectors the page composes with -------------------------
+// --- the headline readings -------------------------------------------------
 
-// CPUTemp returns the reading lifted onto the vitals grid, or nil.
+// CPUTemp returns the processor's temperature, the Overview card's first row
+// and the head of the page's Temperatures, or nil.
 func (inv Inventory) CPUTemp() *TempReading {
 	for i := range inv.Temps {
 		if inv.Temps[i].CPU {
@@ -435,7 +440,8 @@ func (inv Inventory) CuratedTemps() []TempReading {
 	return out
 }
 
-// MainPower returns the input rail (the system total), or nil when unprofiled.
+// MainPower returns the input rail (the system total), the Overview card's
+// second row and the head of the page's Power, or nil when unprofiled.
 func (inv Inventory) MainPower() *PowerReading {
 	for i := range inv.Powers {
 		if inv.Powers[i].Main {
@@ -470,7 +476,7 @@ func (inv Inventory) RunningFans() int {
 	return n
 }
 
-// MainFan returns the fan lifted onto the grid — the profile's main, else the
+// MainFan returns the Overview card's fan: the profile's main, else the
 // fastest running channel.
 func (inv Inventory) MainFan() *FanReading {
 	var pick *FanReading
