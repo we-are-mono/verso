@@ -52,9 +52,9 @@ func TestEveryShadowIsAShapeOverAPaletteColour(t *testing.T) {
 func TestAChartsWashIsAPairOfPaletteColours(t *testing.T) {
 	for _, decl := range []string{
 		"--color-chart-denim-from: color-mix(in srgb, var(--color-denim) 16%, transparent);",
-		"--color-chart-denim-to: color-mix(in srgb, var(--color-denim) 4%, transparent);",
+		"--color-chart-denim-to: transparent;",
 		"--color-chart-amethyst-from: color-mix(in srgb, var(--color-amethyst) 16%, transparent);",
-		"--color-chart-amethyst-to: color-mix(in srgb, var(--color-amethyst) 4%, transparent);",
+		"--color-chart-amethyst-to: transparent;",
 		"--color-chart-violet-from: color-mix(in srgb, var(--color-amethyst) 24%, transparent);",
 		"--color-chart-violet-to: transparent;",
 		"--color-chart-emerald-from: color-mix(in srgb, var(--color-green) 24%, transparent);",

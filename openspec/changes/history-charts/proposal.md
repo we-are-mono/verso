@@ -25,6 +25,7 @@ The router has recorded every temperature each minute since ADR-019, but nothing
 - `hardware-page`: the Temperatures card holds a history graph with its "Show chart for" field above its table, so the card is no longer only a table.
 - `overview`: the Traffic card's window choice rides the card's header, and its Internet graph is two lanes.
 - `layout-grid`: "Chart plots are ruled every 16px" becomes square cells, four squares tall, 32px on a page card and 24px in an Overview card or drawer.
+- `palette`: a chart's wash fades to transparent at the plot's bottom border instead of to 4% of its hue.
 
 ## Impact
 
