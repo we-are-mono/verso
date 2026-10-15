@@ -71,6 +71,10 @@ own and points at the decision that governs it; the rationale lives there, not h
   (`docs/plugins.md` carries the checklist).
 - **Dashboard card order.** A reorderable set of dashboard cards, kept in the
   `verso` config (ADR-013).
+- **Narrow unit spaces.** The shell and `verso-units.js` still write a full
+  space before a unit, and none before `%`; DESIGN.md's Narrow Space Rule sets
+  U+202F after every figure (`internal/units` rates, sizes and `Span.String`,
+  the Hardware page's °C/V/A/W/rpm/dBm, the duty `%`, `testdata/durations.json`).
 
 ## Simplification
 
