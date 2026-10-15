@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/we-are-mono/verso/internal/theme"
 	"github.com/we-are-mono/verso/internal/widget"
 )
 
@@ -63,8 +64,9 @@ func firmwareTakeoverActive() bool {
 // server renders that surface with the tool's own words already in place.
 type upgradingView struct {
 	Lang       string
-	BarColour  string // the browser bar's colour: the takeover's ground, Canvas
+	Bars       []theme.Bar // the browser bar's colours: the takeover's ground, Canvas, under the theme
 	CSS        template.CSS
+	Theme      template.CSS
 	JSStrings  template.JS
 	Initial    string // "preparing" | "installing" | "failed"
 	Preparing  template.HTML
@@ -111,8 +113,9 @@ func (s *Server) renderUpgrading(w http.ResponseWriter, r *http.Request) {
 
 	view := upgradingView{
 		Lang:       langAttr(lang),
-		BarColour:  s.barColour("canvas"),
+		Bars:       s.themeBars("canvas"),
 		CSS:        s.currentCSS(),
+		Theme:      s.themeCSS(),
 		JSStrings:  jsCatalog(tr),
 		Initial:    initial,
 		Preparing:  surface(upgradingPreparing(), false),

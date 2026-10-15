@@ -189,8 +189,14 @@ type Server struct {
 	// token it declares, the keys a theme may set.
 	palette palette.Palette
 	tokens  []string
-	devCSS  string // dev hot-reload stylesheet path, "" in a normal build
-	bootID  string // per-process id handleCSS exposes in dev, so the hot-reload script detects a redeploy
+	// theme is the router's themes and the one in force (ADR-024), swapped
+	// whole by a pick and by a rescan; themesFS is where they are read from,
+	// nil before SetThemes.
+	theme    atomic.Pointer[themeState]
+	themesFS fs.FS
+
+	devCSS string // dev hot-reload stylesheet path, "" in a normal build
+	bootID string // per-process id handleCSS exposes in dev, so the hot-reload script detects a redeploy
 	// keptSessions is where Close leaves the sessions and New takes them back,
 	// "" outside a dev session (devSessionsPath).
 	keptSessions string
@@ -570,8 +576,10 @@ func (s *Server) SetRescan(rescan func() []plugin.Manifest) { s.rescan = rescan 
 // Rescan replaces the served manifest set from disk: after an install or remove
 // on the management surface, and on SIGHUP, which a plugin package's scripts
 // send when apk installs or removes it outside the shell. With no re-reader
-// wired it is a no-op — the startup set stands.
+// wired it is a no-op — the startup set stands. A theme package lands the same
+// way, so the themes directory is read again first, the choice kept.
 func (s *Server) Rescan() {
+	s.reloadThemes()
 	if s.rescan == nil {
 		return
 	}
@@ -709,6 +717,7 @@ type pageData struct {
 	HeadingNote   *string       // the standing fact before the acts (pageHeader.HeadingNote)
 	Width         string        // content-column width preset: "form" (768px) | "narrow" | "normal" (default) | "wide"
 	CSS           template.CSS
+	Theme         template.CSS // the theme in force, after the stylesheet (ADR-024)
 	Nav           navModel
 	Body          template.HTML
 	NoPassword    bool
@@ -971,6 +980,7 @@ func (s *Server) renderPage(w http.ResponseWriter, r *http.Request, status int, 
 		HeadingNote:   hdr.HeadingNote,
 		Width:         width,
 		CSS:           s.currentCSS(),
+		Theme:         s.themeCSS(),
 		Nav:           s.buildSidebar(r.URL.Path, tr, pluginTr, localizedPages),
 		Body:          body,
 		NoPassword:    !hasPassword,

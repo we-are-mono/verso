@@ -228,6 +228,7 @@ func validCSRF(r *http.Request, want string) bool {
 type loginData struct {
 	Lang           string // negotiated language for <html lang>, "en" when English
 	CSS            template.CSS
+	Theme          template.CSS // the theme in force, after the stylesheet (ADR-024)
 	Error          string
 	Notice         string // a statement about how the visitor got here, shown in a marigold notice
 	Version        string // the deployed Verso build ("dev" when un-stamped), so the running version is verifiable without signing in
@@ -422,7 +423,7 @@ func (s *Server) renderLogin(w http.ResponseWriter, r *http.Request, status int,
 	}
 	var buf bytes.Buffer
 	if err := s.pageSet(lang).ExecuteTemplate(&buf, "login.html.tmpl", loginData{
-		Lang: langAttr(lang), CSS: s.currentCSS(), Error: tr(errMsg), Notice: tr(expiryNotice(r)),
+		Lang: langAttr(lang), CSS: s.currentCSS(), Theme: s.themeCSS(), Error: tr(errMsg), Notice: tr(expiryNotice(r)),
 		Version: Version, Firmware: loginFirmware(),
 		Hostname: hostname, Maker: hw.Maker, Model: hw.Model,
 		Status: s.readLoginStatus(tr), Username: username,

@@ -1,0 +1,62 @@
+{
+  "name": "Mocha",
+  "family": "Catppuccin",
+  "scheme": "dark",
+  "colors": {
+    "canvas": "#11111b",
+    "ground": "#1e1e2e",
+    "quiet": "#181825",
+    "mid": "#313244",
+    "rule": "#2a2b3d",
+    "rule-strong": "#45475a",
+    "inert": "#585b70",
+    "sand-5": "#6c7086",
+    "faint": "#6c7086",
+    "glyph": "#7f849c",
+    "meta": "#9399b2",
+    "body": "#bac2de",
+    "ink": "#cdd6f4",
+    "on-fill": "#11111b",
+
+    "denim": "#89b4fa",
+    "denim-deep": "#b4befe",
+    "denim-line": "#3e4b6b",
+    "denim-soft": "#2b3046",
+
+    "green": "#a6e3a1",
+    "green-deep": "#a6e3a1",
+    "green-line": "#475950",
+    "green-soft": "#2e363c",
+
+    "marigold": "#f9e2af",
+    "marigold-deep": "#f9e2af",
+    "marigold-line": "#605955",
+    "marigold-soft": "#38363d",
+
+    "crimson": "#f38ba8",
+    "crimson-deep": "#f38ba8",
+    "crimson-line": "#5e3f53",
+    "crimson-soft": "#382b3d",
+
+    "amethyst": "#cba6f7",
+    "amethyst-deep": "#cba6f7",
+    "amethyst-line": "#52476a",
+    "amethyst-soft": "#332e46",
+
+    "shadow-field": "#11111b59",
+    "shadow-float": "#11111b73",
+    "shadow-menu": "#11111b73",
+    "shadow-dialog": "#11111b80",
+    "shadow-drawer": "#11111b73",
+    "shadow-edge": "#11111b66",
+    "shadow-lifted": "#11111b8c",
+    "shadow-lifted-near": "#11111b66",
+
+    "chart-denim-from": "#89b4fa40",
+    "chart-denim-to": "#89b4fa0d",
+    "chart-amethyst-from": "#cba6f740",
+    "chart-amethyst-to": "#cba6f70d",
+    "chart-violet-from": "#cba6f74d",
+    "chart-emerald-from": "#a6e3a14d"
+  }
+}

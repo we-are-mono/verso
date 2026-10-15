@@ -5,12 +5,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-{{with .BarColour}}<meta name="theme-color" content="{{.}}">{{end}}
+{{range .Bars}}<meta name="theme-color"{{with .Media}} media="{{.}}"{{end}} content="{{.Colour}}">{{end}}
 <title>{{ .Title }} · OpenWrt</title>
 {{template "verso-icons"}}
 <link rel="preload" href="/assets/fonts/hanken-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/assets/fonts/inconsolata-latin.woff2" as="font" type="font/woff2" crossorigin>
 <style id="verso-css">{{.CSS}}</style>
+<style id="verso-theme">{{.Theme}}</style>
 </head>
 {{/* The restarting takeover: chrome-less, one column, the router's nameplate on
      top so the person knows which box they are waiting for. The three surfaces

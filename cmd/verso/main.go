@@ -105,6 +105,7 @@ func serve(args []string) {
 	redirect := flags.String("redirect-https", "", "0 serves the shell over HTTP instead of redirecting to HTTPS")
 	historyDir := flags.String("history-dir", "", "the directory the router's history is kept in; empty keeps none")
 	historyChanges := flags.Int("history-changes", 1000, "how many entries config history keeps")
+	themeChoice := flags.String("theme", "", "the theme in force (verso.ui.theme); empty follows the browser in Sand")
 	var probes []netip.Addr
 	flags.Func("probe", "an address on the internet to probe beside the WAN's gateway (repeatable)", func(v string) error {
 		addr, err := netip.ParseAddr(v)
@@ -202,6 +203,14 @@ func serve(args []string) {
 	}
 	// Install the catalogs discovered at startup; English is the built-in source.
 	srv.SetBundle(loadBundle())
+	// Themes are data packages too (ADR-024): files of colours in one
+	// directory, the one in force named by verso.ui.theme. A file that fails is
+	// skipped and reported, never fatal; Rescan reads the directory again.
+	themesDir := os.Getenv("VERSO_THEMES_DIR")
+	if themesDir == "" {
+		themesDir = "/usr/share/verso/themes"
+	}
+	srv.SetThemes(os.DirFS(themesDir), *themeChoice)
 	// The management surface rescans manifests after an install or remove
 	// (ADR-011 §7), so a plugin package appears without a shell restart. A catalog
 	// apk lands the same way, so re-read the catalogs on the same trigger — a new

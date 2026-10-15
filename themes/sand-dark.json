@@ -1,0 +1,62 @@
+{
+  "name": "Sand",
+  "family": "Sand",
+  "scheme": "dark",
+  "colors": {
+    "canvas": "#121110",
+    "ground": "#1c1a17",
+    "quiet": "#151412",
+    "mid": "#2a2723",
+    "rule": "#2b2825",
+    "rule-strong": "#3d3934",
+    "inert": "#4a453f",
+    "sand-5": "#57514a",
+    "faint": "#736d63",
+    "glyph": "#8f897e",
+    "meta": "#a49e92",
+    "body": "#bdb6aa",
+    "ink": "#eeeae3",
+    "on-fill": "#0f141b",
+
+    "denim": "#6b9bd6",
+    "denim-deep": "#9cc0ec",
+    "denim-line": "#344150",
+    "denim-soft": "#212834",
+
+    "green": "#34b98a",
+    "green-deep": "#7dd6b0",
+    "green-line": "#234a3a",
+    "green-soft": "#182a22",
+
+    "marigold": "#f0a419",
+    "marigold-deep": "#f2c266",
+    "marigold-line": "#5c4318",
+    "marigold-soft": "#2e2414",
+
+    "crimson": "#e25a55",
+    "crimson-deep": "#f3a29d",
+    "crimson-line": "#572d2a",
+    "crimson-soft": "#311d1b",
+
+    "amethyst": "#a97fd8",
+    "amethyst-deep": "#d0b1f0",
+    "amethyst-line": "#463851",
+    "amethyst-soft": "#2a2131",
+
+    "shadow-field": "#00000059",
+    "shadow-float": "#00000073",
+    "shadow-menu": "#00000073",
+    "shadow-dialog": "#00000080",
+    "shadow-drawer": "#00000073",
+    "shadow-edge": "#00000066",
+    "shadow-lifted": "#0000008c",
+    "shadow-lifted-near": "#00000066",
+
+    "chart-denim-from": "#6b9bd640",
+    "chart-denim-to": "#6b9bd60d",
+    "chart-amethyst-from": "#a97fd840",
+    "chart-amethyst-to": "#a97fd80d",
+    "chart-violet-from": "#a97fd84d",
+    "chart-emerald-from": "#34b98a4d"
+  }
+}

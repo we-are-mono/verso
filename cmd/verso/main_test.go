@@ -9,6 +9,7 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"os"
@@ -42,9 +43,83 @@ func serveProcess(t *testing.T, addr string, args ...string) (*exec.Cmd, context
 	t.Cleanup(cancel)
 	cmd := exec.CommandContext(ctx, executable, "-test.run=^TestServeProcess$")
 	args = append([]string{"-listen-https", addr, "-listen-http", "127.0.0.1:0"}, args...)
+	// The themes the verso package ships, as an install has them.
+	shipped, err := filepath.Abs(filepath.Join("..", "..", "themes"))
+	if err != nil {
+		t.Fatal(err)
+	}
 	cmd.Env = append(os.Environ(), "VERSO_TEST_SERVE=1", "VERSO_TEST_ARGS="+strings.Join(args, " "),
-		"VERSO_TLS_DIR="+tlsDir, "VERSO_PLUGINS_DIR="+t.TempDir(), "VERSO_I18N_DIR="+t.TempDir())
+		"VERSO_TLS_DIR="+tlsDir, "VERSO_PLUGINS_DIR="+t.TempDir(), "VERSO_I18N_DIR="+t.TempDir(),
+		"VERSO_THEMES_DIR="+shipped)
 	return cmd, cancel
+}
+
+// themesDir points cmd at a themes directory of its own, which it returns.
+func themesDir(t *testing.T, cmd *exec.Cmd) string {
+	t.Helper()
+	dir := t.TempDir()
+	cmd.Env = append(cmd.Env, "VERSO_THEMES_DIR="+dir)
+	return dir
+}
+
+// writeTheme writes a dark theme setting only the page's ground.
+func writeTheme(t *testing.T, dir, id, ground string) {
+	t.Helper()
+	body := `{"name":"` + id + `","scheme":"dark","colors":{"ground":"` + ground + `"}}`
+	if err := os.WriteFile(filepath.Join(dir, id+".json"), []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// signIn is the sign-in page the HTTP listener serves.
+func signIn(t *testing.T, addr string) string {
+	t.Helper()
+	resp, err := http.Get("http://" + addr + "/login")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(body)
+}
+
+// TestTheThemeFlagPutsAThemeInForce: verso.ui.theme reaches the shell as
+// -theme, and the theme of that id in the themes directory draws every page.
+func TestTheThemeFlagPutsAThemeInForce(t *testing.T) {
+	cmd, cancel := serveProcess(t, "127.0.0.1:0", "-redirect-https", "0", "-theme", "night")
+	writeTheme(t, themesDir(t, cmd), "night", "#101010")
+	addrs, _ := started(t, cmd)
+	defer func() { cancel(); _ = cmd.Wait() }()
+	if want := `<style id="verso-theme">:root{color-scheme:dark;--color-ground:#101010;}</style>`; !strings.Contains(signIn(t, addrs["http"]), want) {
+		t.Errorf("the sign-in page does not carry %s", want)
+	}
+}
+
+// TestHUPOffersAThemeInstalledSince: a theme package's install script signals
+// the shell, which reads the themes directory again and keeps the choice.
+func TestHUPOffersAThemeInstalledSince(t *testing.T) {
+	cmd, cancel := serveProcess(t, "127.0.0.1:0", "-redirect-https", "0", "-theme", "later")
+	dir := themesDir(t, cmd)
+	addrs, rest := started(t, cmd)
+	defer func() { cancel(); _ = cmd.Wait() }()
+	if body := signIn(t, addrs["http"]); !strings.Contains(body, `<style id="verso-theme"></style>`) {
+		t.Fatal("a theme not yet installed draws something other than Sand")
+	}
+	writeTheme(t, dir, "later", "#202020")
+	if err := cmd.Process.Signal(syscall.SIGHUP); err != nil {
+		t.Fatal(err)
+	}
+	for line := range rest {
+		if strings.Contains(line, "rediscovered") {
+			break
+		}
+	}
+	if want := "--color-ground:#202020;"; !strings.Contains(signIn(t, addrs["http"]), want) {
+		t.Errorf("after SIGHUP the sign-in page does not carry %s", want)
+	}
 }
 
 func writePair(t *testing.T, dir, name string) {

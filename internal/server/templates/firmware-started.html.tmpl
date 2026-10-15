@@ -5,11 +5,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-{{with .BarColour}}<meta name="theme-color" content="{{.}}">{{end}}
+{{range .Bars}}<meta name="theme-color"{{with .Media}} media="{{.}}"{{end}} content="{{.Colour}}">{{end}}
 <title>{{ t "Firmware installation started" }} · OpenWrt</title>
 {{template "verso-icons"}}
 <link rel="preload" href="/assets/fonts/hanken-latin.woff2" as="font" type="font/woff2" crossorigin>
 <style>{{.CSS}}</style>
+<style id="verso-theme">{{.Theme}}</style>
 </head>
 <body class="m-0 min-h-screen bg-canvas font-sans text-sm leading-normal text-ink">
   <main class="flex min-h-screen items-center px-6 py-12 sm:px-8">

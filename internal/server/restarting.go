@@ -13,6 +13,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/we-are-mono/verso/internal/theme"
 )
 
 // The restarting takeover is where every act that takes the router down ends: a
@@ -78,8 +80,8 @@ func factoryResetPlan(tr func(string) string, address string) restartPlan {
 type restartingView struct {
 	Lang, Title, Lede, Estimate, Status string
 	Hostname, Maker, Model, Target      string
-	BarColour                           string // the browser bar's colour: the takeover's ground, Paper
-	CSS                                 template.CSS
+	Bars                                []theme.Bar // the browser bar's colours: the takeover's ground, Paper, under the theme
+	CSS, Theme                          template.CSS
 	Budget                              int
 	Address                             template.HTML
 }
@@ -93,7 +95,7 @@ func (s *Server) restartingPage(r *http.Request, plan restartPlan) (string, erro
 	tr := translatorOrIdentity(t)
 	hw := board()
 	view := restartingView{
-		Lang: langAttr(lang), BarColour: s.barColour("ground"), CSS: s.currentCSS(), Status: restartStatusPath,
+		Lang: langAttr(lang), Bars: s.themeBars("ground"), CSS: s.currentCSS(), Theme: s.themeCSS(), Status: restartStatusPath,
 		Title: plan.Title, Lede: plan.Lede, Estimate: plan.Estimate,
 		Hostname: s.nameplate(r), Maker: hw.Maker, Model: hw.Model,
 		Budget: int(plan.Budget / time.Second), Target: plan.Target,

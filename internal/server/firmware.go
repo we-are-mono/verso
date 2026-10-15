@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/we-are-mono/verso/internal/openwrt"
+	"github.com/we-are-mono/verso/internal/theme"
 	"github.com/we-are-mono/verso/internal/widget"
 )
 
@@ -219,10 +220,10 @@ func (s *Server) renderFirmwareStarted(w http.ResponseWriter, r *http.Request) {
 	lang, _ := s.localize(r)
 	var body strings.Builder
 	if err := s.pageSet(lang).ExecuteTemplate(&body, "firmware-started.html.tmpl", struct {
-		Lang      string
-		BarColour string
-		CSS       template.CSS
-	}{Lang: langAttr(lang), BarColour: s.barColour("canvas"), CSS: s.currentCSS()}); err != nil {
+		Lang       string
+		Bars       []theme.Bar
+		CSS, Theme template.CSS
+	}{Lang: langAttr(lang), Bars: s.themeBars("canvas"), CSS: s.currentCSS(), Theme: s.themeCSS()}); err != nil {
 		http.Error(w, "firmware started page error", http.StatusInternalServerError)
 		return
 	}
