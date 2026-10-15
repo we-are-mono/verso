@@ -97,6 +97,47 @@ func (n Numbers) RateScale(peak float64) (top float64, labels []string) {
 	return 4 * step * per, labels
 }
 
+// Unit is what a chart's readings are counted in, so how its scale and its
+// figures read: a rate chart's values are Mbit/s, a temperature chart's °C.
+type Unit int
+
+const (
+	// UnitRate is a rate in Mbit/s, written by the One Rate Rule.
+	UnitRate Unit = iota
+	// UnitCelsius is a temperature in °C, written to one decimal.
+	UnitCelsius
+)
+
+// Scale is a chart's scale for readings in unit whose tallest is peak: a round
+// top in that unit, and its labels at AxisFractions, the first carrying the
+// unit and the rest figures in it. Every unit counts in the rate scale's round
+// steps (roundStep), at least a tenth over the peak.
+func (n Numbers) Scale(unit Unit, peak float64) (top float64, labels []string) {
+	if unit == UnitRate {
+		bps, labels := n.RateScale(peak * 1e6)
+		return bps / 1e6, labels
+	}
+	if !(peak > 0) || math.IsInf(peak, 1) {
+		peak = 0
+	}
+	step := roundStep(max(peak*1.1, 4) / 4)
+	labels = make([]string, len(AxisFractions))
+	for i, f := range AxisFractions {
+		labels[i] = n.Figure(4 * step * f)
+	}
+	labels[0] += " °C"
+	return 4 * step, labels
+}
+
+// Reading writes one reading v in unit with its unit: a rate as every rate is
+// written ("57 Mb/s"), a temperature to one decimal ("48.7 °C").
+func (n Numbers) Reading(unit Unit, v float64) string {
+	if unit == UnitRate {
+		return n.Rate(v * 1e6).String()
+	}
+	return strings.Replace(strconv.FormatFloat(v, 'f', 1, 64), ".", n.decimal, 1) + " °C"
+}
+
 // roundSteps are the steps a scale counts in, times a power of ten: close
 // enough together that the next one up is never more than half again.
 var roundSteps = []float64{1, 1.5, 2, 2.5, 3, 4, 5, 6, 8}

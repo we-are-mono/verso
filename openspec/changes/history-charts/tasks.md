@@ -6,7 +6,7 @@
 
 ## 2. Scales and history windows
 
-- [ ] 2.1 Write `internal/units` tests for `Scale(Celsius, peak)`: a 59.0 °C peak gives 80 °C · 60 · 40 · 20; a 0 peak still gives a drawable scale; the rate cases keep today's `RateScale` output. Then add the `Unit` value and `Scale`, with `RateScale` as the rate case. Verify: `go test ./internal/units`.
+- [x] 2.1 Write `internal/units` tests for `Scale(Celsius, peak)`: a 59.0 °C peak gives 80 °C · 60 · 40 · 20; a 0 peak still gives a drawable scale; the rate cases keep today's `RateScale` output. Then add the `Unit` value and `Scale`, with `RateScale` as the rate case. Verify: `go test ./internal/units`.
 - [ ] 2.2 Write a test pinning `historyWindows` (day, week, month, year → resolution, period count, span, label), then move `trafficWindows` to `historyWindows` in `internal/server` and point `pastTraffic` at it. Verify: `go test ./internal/server -run 'Traffic|HistoryWindows'` passes unchanged.
 
 ## 3. The chart: square grid, axis, legend, peak

@@ -108,3 +108,53 @@ func TestALanguageWithoutASeparatorKeepsThePoint(t *testing.T) {
 		t.Errorf("Figure(2.5) with no separator translated = %q, want 2.5", got)
 	}
 }
+
+func TestATemperatureScaleIsRound(t *testing.T) {
+	for _, tc := range []struct {
+		peak   float64
+		top    float64
+		labels string
+	}{
+		{59, 80, "80 °C|60|40|20"},
+		{46.8, 60, "60 °C|45|30|15"},
+		{95, 120, "120 °C|90|60|30"},
+	} {
+		top, got := For(nil).Scale(UnitCelsius, tc.peak)
+		if top != tc.top || strings.Join(got, "|") != tc.labels {
+			t.Errorf("Scale(°C, %v) = %v %q, want %v %q", tc.peak, top, got, tc.top, tc.labels)
+		}
+	}
+	if top, _ := For(nil).Scale(UnitCelsius, math.NaN()); top != 4 {
+		t.Errorf("Scale(°C, NaN) = %v, want the smallest scale, 4", top)
+	}
+}
+
+// A rate chart's values are Mbit/s, and its scale is the rate scale's.
+func TestARateScaleIsInTheChartsUnit(t *testing.T) {
+	for _, tc := range readFixtures(t).Scales {
+		top, got := For(nil).Scale(UnitRate, tc.PeakBPS/1e6)
+		if math.Abs(top-tc.TopBPS/1e6) > 1e-6 || strings.Join(got, "|") != strings.Join(tc.Labels, "|") {
+			t.Errorf("Scale(rate, %v) = %v %q, want %v %q", tc.PeakBPS/1e6, top, got, tc.TopBPS/1e6, tc.Labels)
+		}
+	}
+}
+
+func TestAReadingIsWrittenInItsUnit(t *testing.T) {
+	for _, tc := range []struct {
+		unit Unit
+		v    float64
+		want string
+	}{
+		{UnitCelsius, 48.66, "48.7 °C"},
+		{UnitCelsius, 59, "59.0 °C"},
+		{UnitRate, 7.6, "7.6 Mb/s"},
+		{UnitRate, 57.4, "57 Mb/s"},
+	} {
+		if got := For(nil).Reading(tc.unit, tc.v); got != tc.want {
+			t.Errorf("Reading(%v, %v) = %q, want %q", tc.unit, tc.v, got, tc.want)
+		}
+	}
+	if got := For(comma).Reading(UnitCelsius, 48.66); got != "48,7 °C" {
+		t.Errorf("Reading(°C, 48.66) with a decimal comma = %q, want %q", got, "48,7 °C")
+	}
+}
