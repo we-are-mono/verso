@@ -44,4 +44,4 @@ Every task ends green under `make lint` and `make test`; a task that touches a t
 
 ## 7. Integration
 
-- [ ] 7.1 Walk the dev container: Sand follows a light and a dark browser; forcing Sand light and Sand dark; Mocha on a light browser; picking each with an alerts change staged leaves it staged and `uci show verso` holds the theme; a broken theme file in the directory is logged and not offered; installing a theme file and sending SIGHUP offers it; the three takeovers in the theme; then `make lint` and `make test` once more
+- [x] 7.1 Walk the dev container: Sand follows a light and a dark browser; forcing Sand light and Sand dark; Mocha on a light browser; picking each with an alerts change staged leaves it staged and `uci show verso` holds the theme; a broken theme file in the directory is logged and not offered; installing a theme file and sending SIGHUP offers it; the three takeovers in the theme; then `make lint` and `make test` once more

@@ -33,29 +33,41 @@ A surface a step above the page (a field's fill, a select's fill, the top bar) S
 - **THEN** fields, the top bar and labels on fills show the same white as before the split
 
 ### Requirement: Every shadow is a palette token
-Every shadow the shell casts SHALL be a named palette token, one per job: a field's inset, a tooltip, a menu, a dialog, a drawer, a scroll edge, a lifted row and a port's tip. A template, stylesheet or client script SHALL name the token, never write the shadow's colour.
+Every shadow the shell casts SHALL keep its shape (offset, blur, spread) in the shell and take its colour from a named palette token, one per job: a field's inset, a tooltip, a menu, a dialog, a drawer, a scroll edge, a lifted row and a port's tip. A template, stylesheet or client script SHALL name the shadow, never write its colour.
 
 #### Scenario: A drawer opens
 - **WHEN** an operator opens a rule's drawer
-- **THEN** the drawer casts the Drawer shadow token, the same shadow as before
+- **THEN** the drawer casts the Drawer shadow in the Drawer shadow colour, the same shadow as before under Sand light
 
 #### Scenario: A field with an error
 - **WHEN** a field holds an invalid value and has focus
 - **THEN** its crimson ring and its inset read tokens, and the inset is the same Field shadow every field casts
 
-### Requirement: A chart's wash strength is a palette token
-The strength of the wash under a chart series SHALL be a pair of palette tokens, where the wash starts at the line and where it fades to, for the live traffic series and for a role series alike.
+#### Scenario: A theme darkens a shadow
+- **WHEN** the theme in force sets the Dialog shadow colour to black at half strength
+- **THEN** a dialog casts its shadow at the same offset and blur, in that colour
 
-#### Scenario: The Traffic card
-- **WHEN** the Overview's Traffic card draws download and upload
-- **THEN** each series' wash runs from the start token to the end token, 16% to 4% of its hue
+### Requirement: A chart's wash is a pair of palette colours
+The wash under a chart series SHALL run between two palette colour tokens, where it starts at the line and where it fades to, for each series hue. By default each SHALL be the series' own hue at its strength (16% to 4% for the live traffic series, 24% to 0 for a role series), so a theme that changes the hue changes its wash.
+
+#### Scenario: The Traffic card under Sand light
+- **WHEN** the Overview's Traffic card draws download and upload under Sand light
+- **THEN** each series' wash runs from its hue at 16% to its hue at 4%
+
+#### Scenario: A theme sets the wash
+- **WHEN** the theme in force sets download's wash to start at `#6b9bd640`
+- **THEN** download's wash starts at that colour, and the grid rules still show through it
 
 ### Requirement: Takeover pages take their bar colour from the palette
-The upgrading, restarting and firmware-started takeovers SHALL declare the browser bar colour from the palette's own value for their ground (Canvas for upgrading and firmware-started, Paper for restarting), read from the palette, never typed into the page.
+The upgrading, restarting and firmware-started takeovers SHALL declare the browser bar colour from the theme in force's value for their ground (Canvas for upgrading and firmware-started, Paper for restarting), never typed into the page. Under Sand following the browser they SHALL declare one bar colour for each preference, light and dark.
 
 #### Scenario: Restarting on a phone
-- **WHEN** a phone shows the restarting takeover
-- **THEN** the page declares the palette's Paper value as its bar colour
+- **WHEN** a phone shows the restarting takeover under Sand, always light
+- **THEN** the page declares Sand light's Paper value as its bar colour
+
+#### Scenario: Restarting under Sand following a dark phone
+- **WHEN** a phone that prefers dark shows the restarting takeover with no theme chosen
+- **THEN** the page declares Sand dark's Paper value as its bar colour for a dark preference
 
 ### Requirement: A guard keeps colour literals out of the shell's sources
 A test SHALL fail when a template, stylesheet or client script outside the palette writes a colour literal: a hex value, an `rgb()`, `rgba()` or `hsl()` value, a white or black utility, or an arbitrary hex class. A literal kept on purpose SHALL be listed with its reason.
