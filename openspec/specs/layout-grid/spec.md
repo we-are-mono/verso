@@ -79,17 +79,21 @@ Body text, labels, cells and ledes SHALL write on 24px lines, so a box that grow
 - **WHEN** a table row holds a value with a detail line under it
 - **THEN** the row is 64px tall
 
-### Requirement: Chart plots are ruled every 16px
-A chart's plot SHALL draw its horizontal rules 16px apart, and its height SHALL be a multiple of 64px so each of its four scale labels stands on a rule. The plot is 192px tall in a card or as a short chart, and 256px tall otherwise.
+### Requirement: Chart plots are ruled in squares
+A chart's plot SHALL be ruled in square cells, four cells tall, so each of its four scale labels stands on a rule, and its width SHALL be whole cells cut into whole steps of its window, with a bottom border on the grid line under it. The cell SHALL be 32px on a page's card (a 128px plot) and 24px in an Overview card or a drawer (a 96px plot). Every rule stands on an 8px grid line.
 
 #### Scenario: A full-size graph
-- **WHEN** a page shows a graph that is neither in a card nor short
-- **THEN** the plot is 256px tall with a rule every 16px
+- **WHEN** a page shows a graph in one of its cards
+- **THEN** the plot is 128px tall with a rule every 32px across and down
 
 #### Scenario: The Overview's traffic graph
 - **WHEN** an operator opens the Overview with the Traffic card open
-- **THEN** the plot is 192px tall with a rule every 16px
-- **AND** the scale labels stand on the rules at 48, 96 and 144px down and at the top
+- **THEN** each lane's plot is 96px tall with a rule every 24px across and down
+- **AND** the scale labels stand on the rules at 24, 48 and 72px down and at the top
+
+#### Scenario: A drawer's graph
+- **WHEN** an operator opens a device's drawer with its Usage graph
+- **THEN** each lane's plot is 96px tall with a rule every 24px across and down
 
 ### Requirement: A dev session can draw the grid
 In a dev session, pressing G outside a text field SHALL draw the 8px grid over the page, from the top bar's hairline and the rail's border, and over an open drawer, from its chrome's hairline and its left edge. Pressing G again SHALL remove it. A real deployment SHALL never draw the grid.
