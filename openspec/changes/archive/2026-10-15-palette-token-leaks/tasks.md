@@ -34,4 +34,4 @@ Every task ends green under `make lint` and `make test`, and a task that touches
 
 ## 6. Integration
 
-- [ ] 6.1 Walk the dev container (`make dev`) through the Overview, a list page with a drawer open, a dialog, an invalid field, Logs, the Interfaces table with a panel open, and each takeover, and confirm nothing changed visibly; then run `make lint` and `make test` once more
+- [x] 6.1 Walk the dev container (`make dev`) through the Overview, a list page with a drawer open, a dialog, an invalid field, Logs, the Interfaces table with a panel open, and each takeover, and confirm nothing changed visibly; then run `make lint` and `make test` once more
