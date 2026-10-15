@@ -241,6 +241,20 @@ func (s *Sessions) destroyID(id string) bool {
 	return false
 }
 
+// destroyAccountExcept removes every session of username but the one carrying
+// keepID, queuing each one's sid for teardown: what a password change does to
+// the sessions signed in with the password it replaced.
+func (s *Sessions) destroyAccountExcept(username, keepID string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for token, sess := range s.items {
+		if sess.username == username && sess.id != keepID {
+			delete(s.items, token)
+			s.killSID(sess.sid)
+		}
+	}
+}
+
 func (s *Sessions) expired(sess session, now time.Time) bool {
 	return now.Sub(sess.lastSeen) > s.idle || now.Sub(sess.created) > s.absolute
 }

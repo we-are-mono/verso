@@ -119,14 +119,21 @@ broken socket.**
    shorter than a Verso session (30 min idle, 12 h absolute). Verso therefore treats
    the `sid` as a resource its session owns: a background renewer touches each live
    session's `sid` (`session.access`, which rpcd renews the session on) well inside
-   the 300 s window, and a session that ends — by idle expiry, absolute cap, or
-   logout — has its `sid` destroyed. Nothing else keeps the `sid` warm: an idle
-   operator's session renews on the renewer's clock, not on request traffic, so the
-   `sid` is ready the instant they act again and gone once their session is. Verso
-   never re-mints a `sid` on its own — it holds no credential to do so (it keeps the
-   `sid`, never the password) — so if rpcd reports a live session's `sid` unknown
-   (rpcd's own restart, say), Verso ends that Verso session and the operator signs in
-   again, rather than presenting a half-working shell whose every gated read fails.
+   the 300 s window, and a session that ends — by idle expiry, absolute cap,
+   logout, a revoke on Access, a password change, or signing in again — has its
+   `sid` destroyed. A password change ends every other session of the account
+   whose password it replaced, keeping only the session that made the change, so
+   no browser signed in with the old password outlives it; another account's
+   sessions stand, an rpcd login that signs in with a system account's password
+   (`$p$root`) among them. Signing in again from a browser that presents a live
+   session ends that session as the new one starts. Nothing else keeps the `sid`
+   warm: an idle operator's session renews on the renewer's clock, not on request
+   traffic, so the `sid` is ready the instant they act again and gone once their
+   session is. Verso never re-mints a `sid` on its own — it holds no credential to
+   do so (it keeps the `sid`, never the password) — so if rpcd reports a live
+   session's `sid` unknown (rpcd's own restart, say), Verso ends that Verso session
+   and the operator signs in again, rather than presenting a half-working shell
+   whose every gated read fails.
 
 8. **A plugin installed while the operator is signed in is granted to their session as
    signing in would grant it.** rpcd works out a session's grants once, at

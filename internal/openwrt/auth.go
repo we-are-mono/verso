@@ -91,8 +91,9 @@ func (a *RPCDAuthenticator) Renew(_ context.Context, sid string) bool {
 }
 
 // Destroy tears down the rpcd session behind sid, called when the Verso session
-// that owned it ends — idle expiry, absolute cap, or logout (ADR-007 §7). Best
-// effort: an undestroyed session would expire on rpcd's own clock regardless.
+// that owned it ends — idle expiry, absolute cap, logout, a revoke on Access, a
+// password change, or signing in again (ADR-007 §7). Best effort: an
+// undestroyed session would expire on rpcd's own clock regardless.
 func (a *RPCDAuthenticator) Destroy(_ context.Context, sid string) {
 	a.destroy(sid)
 }

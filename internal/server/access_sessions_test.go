@@ -4,6 +4,8 @@
 package server
 
 import (
+	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -146,6 +148,102 @@ func TestAnotherAccountsSessionsNeedRPCDsSessionGrants(t *testing.T) {
 	}
 	if _, alive := s.sessions.get(guestToken); alive {
 		t.Error("root's end left the session live")
+	}
+}
+
+// Changing a password ends every other session of the account whose password
+// it was, on either route the form posts to: a browser signed in with the old
+// password lands on sign-in and its rpcd sid is torn down. The browser that
+// made the change stays signed in, and another account's sessions stand.
+func TestPasswordChangeEndsTheAccountsOtherSessions(t *testing.T) {
+	for _, path := range []string{"/system/access", "/system/password"} {
+		t.Run(path, func(t *testing.T) {
+			s := passwordServer(t, fakeBackend{setPassword: func(context.Context, string, string, string) error { return nil }})
+			k := &fakeKeeper{alive: true}
+			s.sessions.keeper = k
+			changing := s.sessions.CreateWithMetadata("sid-changing", "root", "10.0.0.2", "Firefox/142.0")
+			stale := s.sessions.CreateWithMetadata("sid-stale", "root", "10.0.0.66", "Firefox/142.0")
+			guest := s.sessions.CreateWithMetadata("sid-guest", "guest", "10.0.0.50", "Firefox/142.0")
+			sess, _ := s.sessions.get(changing)
+			send := func(token, method, path string, form url.Values) *httptest.ResponseRecorder {
+				var req *http.Request
+				if form != nil {
+					req = httptest.NewRequest(method, path, strings.NewReader(form.Encode()))
+					req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+				} else {
+					req = httptest.NewRequest(method, path, nil)
+				}
+				req.AddCookie(&http.Cookie{Name: sessionCookie, Value: token})
+				rec := httptest.NewRecorder()
+				s.Handler().ServeHTTP(rec, req)
+				return rec
+			}
+
+			rec := send(changing, http.MethodPost, path, url.Values{
+				"_csrf": {sess.csrf}, "current_password": {"old-password"}, "password": {"correct-horse"}, "confirm": {"correct-horse"},
+			})
+			if rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != "/system/access" {
+				t.Fatalf("password change = %d → %q, want 303 → /system/access", rec.Code, rec.Header().Get("Location"))
+			}
+
+			if rec := send(stale, http.MethodGet, "/system/access", nil); rec.Code != http.StatusSeeOther ||
+				!strings.HasPrefix(rec.Header().Get("Location"), "/login") {
+				t.Errorf("the account's other session = %d → %q, want 303 → sign-in", rec.Code, rec.Header().Get("Location"))
+			}
+			if rec := send(changing, http.MethodGet, "/system/access", nil); rec.Code != http.StatusOK {
+				t.Errorf("the session that changed the password = %d, want 200", rec.Code)
+			}
+			if rec := send(guest, http.MethodGet, "/system/access", nil); rec.Code != http.StatusOK {
+				t.Errorf("another account's session = %d, want 200", rec.Code)
+			}
+			s.sessions.renewTick(context.Background())
+			if _, destroyed := k.counts(); len(destroyed) != 1 || destroyed[0] != "sid-stale" {
+				t.Errorf("destroyed sids = %v, want the other session's sid-stale alone", destroyed)
+			}
+		})
+	}
+}
+
+// A password change that fails ends no session: the old password still holds.
+func TestFailedPasswordChangeEndsNoSession(t *testing.T) {
+	s := passwordServer(t, fakeBackend{setPassword: func(context.Context, string, string, string) error {
+		return errors.New("passwd failed")
+	}})
+	other := s.sessions.CreateWithMetadata("sid-other", "root", "10.0.0.66", "Firefox/142.0")
+	rec := postPlugin(t, s, "/system/access", url.Values{
+		"current_password": {"old-password"}, "password": {"correct-horse"}, "confirm": {"correct-horse"},
+	})
+	if rec.Code != http.StatusInternalServerError {
+		t.Fatalf("failed change = %d, want 500", rec.Code)
+	}
+	if !s.sessions.alive(other) {
+		t.Error("a failed password change ended another session")
+	}
+}
+
+// A session ended between the sign-in check and the change, by another browser
+// changing the password say, changes nothing: the browser goes to sign in.
+func TestPasswordChangeFromAnEndedSessionChangesNothing(t *testing.T) {
+	changed := false
+	s := passwordServer(t, fakeBackend{setPassword: func(context.Context, string, string, string) error {
+		changed = true
+		return nil
+	}})
+	other := s.sessions.CreateWithMetadata("sid-other", "root", "10.0.0.66", "Firefox/142.0")
+	form := url.Values{"current_password": {"old-password"}, "password": {"correct-horse"}, "confirm": {"correct-horse"}}
+	req := httptest.NewRequest(http.MethodPost, "/system/access", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.AddCookie(&http.Cookie{Name: sessionCookie, Value: "ended"})
+	rec := httptest.NewRecorder()
+	s.handlePassword(rec, req)
+	if rec.Code != http.StatusSeeOther || !strings.HasPrefix(rec.Header().Get("Location"), "/login") {
+		t.Errorf("change from an ended session = %d → %q, want 303 → sign-in", rec.Code, rec.Header().Get("Location"))
+	}
+	if changed {
+		t.Error("a session that had ended changed the password")
+	}
+	if _, ok := s.sessions.get(other); !ok {
+		t.Error("a session that had ended ended another")
 	}
 }
 

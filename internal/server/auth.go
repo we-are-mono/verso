@@ -60,11 +60,12 @@ func (s *Server) requireAuth(next http.Handler) http.Handler {
 
 // loginRedirect is where a request without a live session goes. A browser that
 // presents a session cookie was signed in and is not any more — the sign-in ran
-// out of time — so its login page carries the marker that explains the sign-out.
-// A browser presenting no cookie was never signed in and is told nothing; a
-// deliberate sign-out clears the cookie before it redirects, and so lands there
-// too. Both POST and GET take this exit: once the session is gone the work is
-// lost either way, and a redirect is the honest outcome.
+// out of time, or was ended on Access or by a password change — so its login
+// page carries the marker, which words the sign-out as inactivity, its common
+// cause. A browser presenting no cookie was never signed in and is told
+// nothing; a deliberate sign-out clears the cookie before it redirects, and so
+// lands there too. Both POST and GET take this exit: once the session is gone
+// the work is lost either way, and a redirect is the honest outcome.
 func loginRedirect(r *http.Request) string {
 	if cookie, err := r.Cookie(sessionCookie); err == nil && cookie.Value != "" {
 		return "/login?expired=1"
@@ -379,6 +380,11 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.loginLimiter.success(key)
+	// Signing in again replaces the session this browser presented rather than
+	// leaving it live beside the new one until its idle window runs out.
+	if cookie, err := r.Cookie(sessionCookie); err == nil {
+		s.sessions.destroy(cookie.Value)
+	}
 	token := s.sessions.CreateWithMetadata(sid, username, clientIP(r), r.UserAgent())
 	http.SetCookie(w, &http.Cookie{
 		Name:     sessionCookie,

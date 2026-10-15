@@ -3166,6 +3166,50 @@ func TestLoginSuccessSetsHttpOnlyCookieAndRedirects(t *testing.T) {
 	}
 }
 
+// Signing in again from a browser already signed in replaces its session: the
+// session it presented ends and its rpcd sid is torn down, rather than living
+// on beside the new one until its idle window runs out. A failed attempt
+// leaves the presented session as it was.
+func TestReLoginEndsThePresentedSession(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		err      error
+		survives bool
+	}{
+		{"signed in", nil, false},
+		{"refused", errors.New("denied"), true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			srv := newServerFull(t, fakeBackend{}, &fakeTransport{}, nil, fakeAuth{sid: "sid-new", err: tc.err})
+			k := &fakeKeeper{alive: true}
+			srv.sessions.keeper = k
+			old := srv.sessions.CreateWithMetadata("sid-old", "root", "10.0.0.2", "Firefox/142.0")
+			other := srv.sessions.CreateWithMetadata("sid-other", "root", "10.0.0.66", "Firefox/142.0")
+
+			req := httptest.NewRequest(http.MethodPost, "/login", strings.NewReader(url.Values{"username": {"root"}, "password": {"pw"}}.Encode()))
+			req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+			req.AddCookie(&http.Cookie{Name: sessionCookie, Value: old})
+			rec := httptest.NewRecorder()
+			srv.Handler().ServeHTTP(rec, req)
+
+			if got := srv.sessions.alive(old); got != tc.survives {
+				t.Errorf("presented session alive = %v, want %v", got, tc.survives)
+			}
+			if !srv.sessions.alive(other) {
+				t.Error("signing in again ended a session the browser did not present")
+			}
+			srv.sessions.renewTick(context.Background())
+			_, destroyed := k.counts()
+			if tc.survives && len(destroyed) != 0 {
+				t.Errorf("destroyed sids = %v, want none", destroyed)
+			}
+			if !tc.survives && (len(destroyed) != 1 || destroyed[0] != "sid-old") {
+				t.Errorf("destroyed sids = %v, want the presented session's sid-old alone", destroyed)
+			}
+		})
+	}
+}
+
 func TestLoginFailureShowsErrorAndNoCookie(t *testing.T) {
 	srv := newServerFull(t, fakeBackend{}, &fakeTransport{}, nil, fakeAuth{err: errors.New("denied")})
 

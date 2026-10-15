@@ -239,11 +239,21 @@ func (s *Server) handlePassword(w http.ResponseWriter, r *http.Request) {
 	}
 
 	password := r.PostForm.Get("password")
-	if err := s.backend.SetPassword(r.Context(), s.sessionSID(r), s.sessionUser(r), password); err != nil {
+	// A session ended since the sign-in check, by another browser's change say,
+	// names no account to change the password of.
+	current, ok := s.currentSession(r)
+	if !ok {
+		http.Redirect(w, r, loginRedirect(r), http.StatusSeeOther)
+		return
+	}
+	if err := s.backend.SetPassword(r.Context(), current.sid, current.username, password); err != nil {
 		log.Printf("verso: set password failed: %v", err)
 		s.renderAccess(w, r, http.StatusInternalServerError, nil, "The password couldn’t be changed just now. Try again in a moment.")
 		return
 	}
+	// A browser signed in with the password just replaced is signed out, its
+	// rpcd sid with it; the browser that changed it stays (ADR-007 §7).
+	s.sessions.destroyAccountExcept(current.username, current.id)
 	// Access is read again rather than drawn as the answer to the post, so a
 	// reload never sends the password a second time; how it went arrives with
 	// it, as the notification.
