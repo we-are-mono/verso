@@ -115,9 +115,18 @@ own and points at the decision that governs it; the rationale lives there, not h
   `kinds` map in `profile.json` would name them. NXP's DPAA SDK driver is one:
   it reports `MII` for its 10G cages, and the port's node reaches the MAC's
   `sfp` link only through `fsl,fman-mac`.
-- **Live readings on System › Hardware.** The panel is live; the temperatures,
-  rails and fans under it are as the page loaded them. The Overview's
-  five-second sensor read (`sensorSampler`) could feed them.
+- **Live readings on System › Hardware.** The panel is live; the
+  Temperatures, Power and Cooling cards under it are as the page loaded them.
+  The Overview's five-second sensor read (`sensorSampler`) could feed them.
+- **The fibre lists side by side on a phone.** System › Hardware sets its SFP
+  modules' fact lists in a two-column `Grid`, which stays two columns at every
+  width, so on a phone each list is half the card and a dark receiver's
+  "−25.2 dBm · no light" wraps. A grid that stacks under the card's own width
+  would keep each list whole.
+- **SFP module identity.** Each module's list gives its optical readings but
+  not which module it is: vendor, part number, wavelength and serial live in
+  the module's EEPROM (`ethtool -m`), which the shell cannot read unprivileged.
+  A `verso-rpcd` reader would head each list with them.
 - **Board profiles from packages.** The shell reads profiles from
   `/usr/share/verso/boards/`, so a vendor ships `verso-board-<name>` without a
   Verso release, and panel art is sanitized when it loads (OpenSpec change
