@@ -487,9 +487,11 @@ type SystemInfo struct {
 
 // Board is the subset of `ubus call system board` Verso renders: the firmware
 // release ("OpenWrt 25.12.4"), the kernel version ("Linux 6.12.101"), the
-// board_name that selects a hardware profile, and the human model string. Arch
-// is the package architecture the firmware was built for ("aarch64_generic"),
-// which ubus does not carry; it is read from /etc/apk/arch.
+// board_name that selects a hardware profile, the human model string, and the
+// processor as the kernel names it (System: "AMD Ryzen 7 7700 8-Core
+// Processor", or "ARMv8 Processor rev 2" on an Arm board). Arch is the package
+// architecture the firmware was built for ("aarch64_generic"), which ubus does
+// not carry; it is read from /etc/apk/arch.
 type Board struct {
 	Firmware    string
 	Kernel      string
@@ -498,6 +500,7 @@ type Board struct {
 	Arch        string
 	BoardName   string
 	Model       string
+	System      string
 }
 
 // FirmwareInfo is the device-side verdict for one uploaded sysupgrade image.
@@ -1554,6 +1557,7 @@ func parseBoard(m map[string]any) Board {
 	var b Board
 	b.BoardName = str(m["board_name"])
 	b.Model = str(m["model"])
+	b.System = str(m["system"])
 	if k := str(m["kernel"]); k != "" {
 		b.Kernel = "Linux " + k
 	}

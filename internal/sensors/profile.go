@@ -28,10 +28,13 @@ type Profile struct {
 	ID      string   `json:"id"`
 	Aliases []string `json:"aliases"`
 	Name    string   `json:"name"`
-	Ports   []string `json:"ports"`
-	Fans    []Entry  `json:"fans"`
-	Power   []Entry  `json:"power"`
-	Thermal []Entry  `json:"thermal"`
+	// Processor is the chip people know the board by ("NXP LS1046A"), which
+	// an Arm kernel does not name; empty leaves it to the kernel's name.
+	Processor string   `json:"processor"`
+	Ports     []string `json:"ports"`
+	Fans      []Entry  `json:"fans"`
+	Power     []Entry  `json:"power"`
+	Thermal   []Entry  `json:"thermal"`
 
 	Dir string `json:"-"`
 }

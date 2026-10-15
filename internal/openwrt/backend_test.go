@@ -45,6 +45,21 @@ func TestSystemInfoMapsFields(t *testing.T) {
 	}
 }
 
+// TestBoardCarriesTheProcessorsName: `system` is the processor as the kernel
+// names it, the Hardware page's Processor when no profile names the chip.
+func TestBoardCarriesTheProcessorsName(t *testing.T) {
+	b := &NativeBackend{systemBoard: func(context.Context, string) (map[string]any, error) {
+		return map[string]any{"system": "AMD Ryzen 7 7700 8-Core Processor", "model": "Supermicro H13SAE-MF"}, nil
+	}}
+	got, err := b.Board(context.Background(), "sid")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.System != "AMD Ryzen 7 7700 8-Core Processor" || got.Model != "Supermicro H13SAE-MF" {
+		t.Errorf("board = %+v", got)
+	}
+}
+
 func TestBoardPrefersFullReleaseAndKernelBuild(t *testing.T) {
 	b := &NativeBackend{
 		systemBoard: func(context.Context, string) (map[string]any, error) {

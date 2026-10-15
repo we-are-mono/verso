@@ -58,6 +58,7 @@ searching, no label-matching, no traversal — the key *is* the location.
 {
   "id": "mono,gateway-dk",
   "name": "Mono Gateway Development Kit",
+  "processor": "NXP LS1046A",
 
   "ports": ["eth1", "eth2", "eth0", "eth3", "eth4"],
 
@@ -77,6 +78,12 @@ searching, no label-matching, no traversal — the key *is* the location.
   ]
 }
 ```
+
+`name` titles the Hardware page's board card. `processor` (optional) is the chip
+the board is known by, the Processor fact on that card; without it the card shows
+the processor as the kernel names it, which on an Arm board is only
+"ARMv8 Processor rev 2". The card adds the cores and the top clock the kernel
+reports either way.
 
 ### The key is a device-tree path
 
@@ -127,22 +134,23 @@ The uniform JSON hides four small mechanics — the resolver picks by kind:
 ### Flags pick the headlines
 
 Every entry in the arrays shows on the **Hardware page**, in array order, under the
-names you give them. Optional flags lift one entry each onto the Hardware page's
-tiles and the Overview's **Hardware card**:
+names you give them, one card per kind: Temperatures, Power and Cooling. Optional
+flags lift one entry each to the head of its card and onto the Overview's
+**Hardware card**:
 
-- **`"cpu": true`** on a thermal entry → *the* CPU temperature: the card's first
-  row and its line while closed, and the page's Processor tile.
-- **`"main": true`** on a power entry → *the* headline power: the card's second row
-  (draw, voltage and current) and the page's Power draw tile. Use the board
-  **input** rail: downstream regulators (Core/DDR/…) are fed from it, so summing all
-  rails would double-count.
-- **`"main": true`** on a fan entry → the card's third row and the page's Cooling
-  tile, even when another channel spins faster.
+- **`"cpu": true`** on a thermal entry → *the* CPU temperature: the first row of
+  the page's Temperatures, and the card's first row and its line while closed.
+- **`"main": true`** on a power entry → *the* headline power: the first row of the
+  page's Power, tagged "input", and the card's second row (draw, voltage and
+  current). Use the board **input** rail: downstream regulators (Core/DDR/…) are fed
+  from it, so summing all rails would double-count.
+- **`"main": true`** on a fan entry → the first row of the page's Cooling and the
+  card's third row, even when another channel spins faster.
 
 A board with no profile, or one whose profile lists no sensors, has no Hardware
-card. The card's header speaks only when the CPU passes its own warn or critical
-limit, or the main fan has its fault or alarm set. A CPU with no limits of its own
-is never out of band.
+card. The card's header, and the Hardware page's heading, speak only when the CPU
+passes its own warn or critical limit, or the main fan has its fault or alarm set.
+A CPU with no limits of its own is never out of band.
 
 There is no separate overrides block — the arrays *are* the labels, the order, and
 the visibility. To keep a reading off the Hardware page, leave it out of the array.
@@ -172,15 +180,17 @@ readings to show, and what to call them.
 The reader scales by fact type (temperature is milli-°C, power is µW, fan is raw
 RPM), so a profile only names sensors — it carries no units.
 
-## The Sensors view (show everything)
+## A board with no profile shows everything
 
-An Advanced page that lists **every** reading the box exposes — for the power user,
-off the calm home glance. **It needs no profile at all:** by default the shell
-enumerates every `/sys/class/thermal/*` and `/sys/class/hwmon/*` and renders it with
-the label the kernel gives — so an unknown board still shows all its temps, rails,
-and fans. A profile's arrays only supply nicer names and a deliberate order.
+The Hardware page needs no profile at all: without one, the shell enumerates every
+`/sys/class/thermal/*` and `/sys/class/hwmon/*` and lists it with the label the
+kernel gives, so an unknown board still shows all its temps, rails, and fans. A
+profile chooses instead: its arrays supply the names, the order, and which readings
+stand. A profile that names nothing of a kind the box reports (no `power` array on a
+board with rails) lists that kind as if unprofiled, so a stale profile never hides
+what the hardware says.
 
-Two rules make this complete across boards:
+Two rules make the unprofiled listing complete across boards:
 
 - **Read both sources.** Temperatures come from `/sys/class/thermal/thermal_zone*`
   *and* hwmon `temp*_input` — because some boards have only zones, some (x86/ACPI,

@@ -7,7 +7,6 @@ import (
 	"maps"
 	"path/filepath"
 	"slices"
-	"sort"
 	"strconv"
 	"strings"
 )
@@ -27,7 +26,7 @@ type Inventory struct {
 
 // TempReading is one temperature the box measures — a thermal zone or a hwmon
 // channel. Name is the display name (the profile's when curated, else the kernel's);
-// Kernel is the verbatim name the full table prints; Source is the chip locator.
+// Kernel is the verbatim name the kernel gives it; Source is the chip locator.
 // Warn/Crit are the reading's own limits in milli-°C (0 when unset); Level grades
 // it against them ("nominal"/"warn"/"critical", "" when it has no limits and must
 // not be graded against a guess). Fault marks an invalid reading — a disconnected
@@ -220,11 +219,11 @@ func tempFromHwmon(h Hwmon, ch int, ambiguous bool) TempReading {
 }
 
 // curateProfileTemps lifts the profile's thermal entries onto the matching
-// readings: each entry's chosen name, its place in the curated section, and the
-// one entry flagged the CPU. An entry keyed with a :tempN selector matches a
+// readings: each entry's chosen name, its place among the curated readings, and
+// the one entry flagged the CPU. An entry keyed with a :tempN selector matches a
 // specific hwmon channel; a bare zone type matches a zone. A profile whose CPU
 // pick is absent or unreadable falls back to the generic detection an unprofiled
-// board gets, so the grid never loses its temperature to a stale profile.
+// board gets, so the CPU is never lost to a stale profile.
 func curateProfileTemps(temps []TempReading, p *Profile) {
 	cpu := false
 	for rank, e := range p.Thermal {
@@ -235,7 +234,7 @@ func curateProfileTemps(temps []TempReading, p *Profile) {
 		temps[i].Name, temps[i].Named = e.Name, true
 		if e.CPU {
 			temps[i].CPU, cpu = true, true
-			continue // the CPU pick leads the grid, not the curated list
+			continue // the CPU pick leads its own row, not among the curated readings
 		}
 		temps[i].Curated = true
 		temps[i].Rank = rank
@@ -249,7 +248,8 @@ func curateProfileTemps(temps []TempReading, p *Profile) {
 
 // curateGenericTemps curates an unprofiled board: every zone, and each chip's
 // primary (lowest-index) channel, except the auto-detected CPU pick — which leads
-// the grid. Secondary channels (a drive's per-die sensors) stay in the full table.
+// the readings. Secondary channels (a drive's per-die sensors) follow the curated
+// ones.
 func curateGenericTemps(temps []TempReading) {
 	cpu := genericCPUIndex(temps)
 	if cpu >= 0 {
@@ -288,7 +288,7 @@ func curateGenericTemps(temps []TempReading) {
 // resolvePowers enumerates every hwmon power channel (excluding the optical power
 // an SFP module reports — that belongs to its fibre card), pairing each with its
 // voltage and current from the same chip. A profile names the rails and flags the
-// input rail Main; unprofiled, the channels still list in the full table.
+// input rail Main; unprofiled, every channel lists under the kernel's name.
 func resolvePowers(p *Profile, hwmons []Hwmon, amb map[string]bool) []PowerReading {
 	var out []PowerReading
 	for _, h := range hwmons {
@@ -428,18 +428,6 @@ func (inv Inventory) CPUTemp() *TempReading {
 	return nil
 }
 
-// CuratedTemps returns the curated Temperatures section rows, in profile order.
-func (inv Inventory) CuratedTemps() []TempReading {
-	var out []TempReading
-	for _, t := range inv.Temps {
-		if t.Curated {
-			out = append(out, t)
-		}
-	}
-	sort.SliceStable(out, func(i, j int) bool { return out[i].Rank < out[j].Rank })
-	return out
-}
-
 // MainPower returns the input rail (the system total), the Overview card's
 // second row and the head of the page's Power, or nil when unprofiled.
 func (inv Inventory) MainPower() *PowerReading {
@@ -449,31 +437,6 @@ func (inv Inventory) MainPower() *PowerReading {
 		}
 	}
 	return nil
-}
-
-// OtherPowers returns the non-main rails sorted by draw, descending — the Power
-// section's itemization of what the input feeds.
-func (inv Inventory) OtherPowers() []PowerReading {
-	var out []PowerReading
-	for _, p := range inv.Powers {
-		if !p.Main {
-			out = append(out, p)
-		}
-	}
-	sort.SliceStable(out, func(i, j int) bool { return out[i].MicroW > out[j].MicroW })
-	return out
-}
-
-// RunningFans counts the fan channels actually spinning — the collapse rule's
-// input (one running fan drops the Fans section; two or more keep it).
-func (inv Inventory) RunningFans() int {
-	n := 0
-	for _, f := range inv.Fans {
-		if f.State == "running" {
-			n++
-		}
-	}
-	return n
 }
 
 // MainFan returns the Overview card's fan: the profile's main, else the
@@ -489,20 +452,6 @@ func (inv Inventory) MainFan() *FanReading {
 		}
 	}
 	return pick
-}
-
-// OtherFans returns every fan except the one lifted onto the grid — the tile-strip's
-// contents when a board runs more than one, so the grid fan is never shown twice.
-func (inv Inventory) OtherFans() []FanReading {
-	main := inv.MainFan()
-	var out []FanReading
-	for _, f := range inv.Fans {
-		if main != nil && f.Source == main.Source && f.Kernel == main.Kernel {
-			continue
-		}
-		out = append(out, f)
-	}
-	return out
 }
 
 // --- resolution helpers ---------------------------------------------------
@@ -661,7 +610,7 @@ func matchFanEntry(p *Profile, h Hwmon, ch int) (name string, main, ok bool) {
 	return "", false, false
 }
 
-// hwmonSource is the mono locator the full table prints for a chip. A chip whose
+// hwmonSource is the mono locator the page prints for a chip. A chip whose
 // driver name is unique on the box reads as the bare name (`sensors`' own style:
 // "k10temp", "amdgpu"). Only when a name is shared by several chips does the bus
 // address disambiguate them — "tmp431 · 5-4c", "ina234 · 12-40", "nvme · 05:00" —

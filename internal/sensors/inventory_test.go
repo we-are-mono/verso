@@ -118,13 +118,13 @@ func TestResolveAllTemps(t *testing.T) {
 		t.Fatalf("cpu pick: %+v", cpu)
 	}
 	if cpu.Curated {
-		t.Fatal("the CPU pick leads the grid and must not also sit in the curated list")
+		t.Fatal("the CPU pick leads the Temperatures and must not also sit among the curated readings")
 	}
 	if cpu.Warn != 85000 || cpu.Crit != 95000 {
 		t.Fatalf("cpu limits from zone trips: warn=%d crit=%d", cpu.Warn, cpu.Crit)
 	}
 
-	curated := inv.CuratedTemps()
+	curated := curatedTemps(inv)
 	wantNames := []string{"Memory", "Network engine", "SerDes", "Crypto engine", "PCB near CPU", "CPU (external diode)", "SFP+ modules"}
 	if len(curated) != len(wantNames) {
 		t.Fatalf("curated: got %d, want %d\n%s", len(curated), len(wantNames), dumpTemps(curated))
@@ -135,12 +135,11 @@ func TestResolveAllTemps(t *testing.T) {
 		}
 	}
 
-	// The unconnected remote diode is a fault: excluded from the curated list,
-	// graded neutral, present in the full list to render "—".
-	// The unconnected remote is the SFP-area chip's temp2, which the profile does
-	// not curate; it stays a kernel-named, uncurated, neutral, present-in-table row.
+	// The unconnected remote diode is the SFP-area chip's temp2, which the
+	// profile does not name: a fault, graded neutral, kept under the kernel's
+	// name, and off the page.
 	fault := findTemp(inv.Temps, func(x TempReading) bool { return x.Fault })
-	if fault == nil || fault.MilliC != 0 || fault.Level != "" || fault.Curated || fault.Kernel != "temp2" {
+	if fault == nil || fault.MilliC != 0 || fault.Level != "" || fault.Curated || fault.Named || fault.Kernel != "temp2" {
 		t.Fatalf("faulted diode: %+v", fault)
 	}
 
@@ -165,29 +164,27 @@ func TestResolveAllPower(t *testing.T) {
 		t.Fatalf("main rail V/A: %+v", main)
 	}
 
-	others := inv.OtherPowers()
-	if len(others) != 3 {
-		t.Fatalf("other rails: got %d, want 3", len(others))
+	rails := inv.PageRails()
+	if len(rails) != 4 || !rails[0].Main {
+		t.Fatalf("page rails: got %d with %+v first, want 4 led by the input", len(rails), rails[0])
 	}
-	// Sorted by draw, descending, and the main rail is not among them.
+	// The rails the input feeds, sorted by draw, descending.
+	others := rails[1:]
 	if others[0].MicroW < others[1].MicroW || others[1].MicroW < others[2].MicroW {
 		t.Fatalf("rails not sorted desc: %v", []int64{others[0].MicroW, others[1].MicroW, others[2].MicroW})
 	}
 	for _, p := range others {
 		if p.Main {
-			t.Fatal("main rail leaked into the itemization")
+			t.Fatal("the input stands among the rails it feeds")
 		}
-	}
-	if others[0].Source != "ina234 · 12-42" && others[0].Name != "1V Core PSU" {
-		t.Logf("top rail: %+v", others[0])
 	}
 }
 
 func TestResolveAllFans(t *testing.T) {
 	inv := ResolveAll(dkProfile(), buildDK(t))
 
-	if got := inv.RunningFans(); got != 1 {
-		t.Fatalf("running fans: got %d, want 1", got)
+	if fans := inv.PageFans(); len(fans) != 2 || fans[0].Name != "System Fan 1" {
+		t.Fatalf("page fans: %+v, want both, System Fan 1 first", fans)
 	}
 	main := inv.MainFan()
 	if main == nil || main.Name != "System Fan 1" || main.RPM != 2622 {
@@ -292,7 +289,7 @@ func TestResolveAllGeneric(t *testing.T) {
 
 	// Curated = each chip's primary channel except the CPU pick: edge, and one
 	// Composite per drive. The per-die Sensor channels stay out of the section.
-	curated := inv.CuratedTemps()
+	curated := curatedTemps(inv)
 	names := map[string]int{}
 	for _, c := range curated {
 		names[c.Name]++
@@ -348,7 +345,7 @@ func TestGenericInstanceGrouping(t *testing.T) {
 	inv := ResolveAll(nil, &Reader{Root: filepath.Join(root, "sys")})
 
 	composites := 0
-	for _, c := range inv.CuratedTemps() {
+	for _, c := range curatedTemps(inv) {
 		if c.Name == "Composite" {
 			composites++
 		}
@@ -357,7 +354,7 @@ func TestGenericInstanceGrouping(t *testing.T) {
 		}
 	}
 	if composites != 2 {
-		t.Fatalf("both drives must curate their own Composite, got %d\n%s", composites, dumpTemps(inv.CuratedTemps()))
+		t.Fatalf("both drives must curate their own Composite, got %d\n%s", composites, dumpTemps(curatedTemps(inv)))
 	}
 }
 
@@ -467,6 +464,18 @@ func findFan(fs []FanReading, pred func(FanReading) bool) *FanReading {
 		}
 	}
 	return nil
+}
+
+// curatedTemps is the board's own temperatures after the CPU, in curation
+// order: what the curation marks, read back as the page orders it.
+func curatedTemps(inv Inventory) []TempReading {
+	var out []TempReading
+	for _, t := range inv.PageTemps() {
+		if t.Curated {
+			out = append(out, t)
+		}
+	}
+	return out
 }
 
 func dumpTemps(ts []TempReading) string {

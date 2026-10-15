@@ -57,6 +57,22 @@ func TestLoadProfile(t *testing.T) {
 	if _, ok := LoadProfile(fsys, "no-such-board"); ok {
 		t.Fatal("unknown board should not load")
 	}
+	if p.Processor != "" {
+		t.Fatalf("a profile that names no processor leaves it to the kernel: %q", p.Processor)
+	}
+}
+
+// TestAProfileNamesItsProcessor: the chip people know the box by, which the
+// kernel does not say on an Arm board ("ARMv8 Processor rev 2").
+func TestAProfileNamesItsProcessor(t *testing.T) {
+	fsys := fstest.MapFS{"b/profile.json": {Data: []byte(`{"id": "vendor,board", "name": "Board", "processor": "NXP LS1046A"}`)}}
+	p, ok := LoadProfile(fsys, "vendor,board")
+	if !ok || p.Processor != "NXP LS1046A" {
+		t.Fatalf("processor = %+v", p)
+	}
+	if dk, ok := LoadProfile(profiles.FS, "mono,gateway-dk"); !ok || dk.Processor != "NXP LS1046A" {
+		t.Fatalf("the DK's profile should name its processor: %+v", dk)
+	}
 }
 
 // --- resolution: profiled board (device tree) ------------------------------

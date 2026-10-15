@@ -7,34 +7,40 @@ import (
 	"encoding/xml"
 	"fmt"
 	"io"
+	"regexp"
 	"slices"
 	"strconv"
 	"strings"
 	"testing"
 
+	"github.com/we-are-mono/verso/internal/machine"
 	"github.com/we-are-mono/verso/internal/openwrt"
 	"github.com/we-are-mono/verso/internal/sensors"
 	"github.com/we-are-mono/verso/internal/widget"
 )
 
-// dkInventory is a Mono Gateway DK-shaped inventory — the profiled path the dev
-// container can't exercise (the DK isn't in it), so the composition is verified
-// against a faithful in-memory inventory instead.
+// dkInventory is a Mono Gateway DK-shaped inventory as ResolveAll gives it on
+// the DK — the profiled path the dev container can't exercise (the DK isn't in
+// it), so the page is verified against a faithful in-memory inventory instead.
+// The unconnected remote diode is a reading the profile does not name, and the
+// SFP modules' temperatures are their own.
 func dkInventory() sensors.Inventory {
 	return sensors.Inventory{
 		Temps: []sensors.TempReading{
-			{Name: "cluster", Kernel: "cluster-thermal", Source: "thermal zone", Kind: "zone", MilliC: 48000, Warn: 85000, Crit: 95000, HasLimits: true, Level: "nominal", CPU: true},
-			{Name: "Memory", Kernel: "ddr-thermal", Source: "thermal zone", Kind: "zone", MilliC: 47000, Warn: 85000, Crit: 95000, HasLimits: true, Level: "nominal", Curated: true, Rank: 1},
-			{Name: "temp2", Kernel: "temp2", Source: "tmp431 · 6-4c", Kind: "hwmon", Fault: true},
-			{Name: "temperature", Kernel: "temperature", Source: "sfp · xfi0", Kind: "hwmon", MilliC: 47200, Warn: 73000, Crit: 78000, HasLimits: true, Level: "nominal"},
+			{Name: "cluster", Kernel: "cluster-thermal", Source: "thermal zone", Kind: "zone", MilliC: 48000, Warn: 85000, Crit: 95000, HasLimits: true, Level: "nominal", CPU: true, Named: true},
+			{Name: "Memory", Kernel: "ddr-thermal", Source: "thermal zone", Kind: "zone", MilliC: 47000, Warn: 85000, Crit: 95000, HasLimits: true, Level: "nominal", Curated: true, Named: true, Rank: 1},
+			{Name: "PCB near CPU", Kernel: "temp1", Source: "tmp431 · 13-4c", Kind: "hwmon", MilliC: 41200, Warn: 85000, Crit: 108000, HasLimits: true, Level: "nominal", Curated: true, Named: true, Rank: 5},
+			{Name: "temp2", Kernel: "temp2", Source: "tmp431 · 14-4c", Kind: "hwmon", Fault: true},
+			{Name: "temperature", Kernel: "temperature", Source: "sfp · xfi0", Kind: "hwmon", MilliC: 47200, Warn: 73000, Crit: 78000, HasLimits: true, Level: "nominal", Fiber: true},
 		},
 		Powers: []sensors.PowerReading{
-			{Name: "USB Power Delivery", Kernel: "power1", Source: "ina234 · 12-40", MilliV: 20100, MilliA: 490, MicroW: 9800000, HasV: true, HasA: true, Main: true},
-			{Name: "5V PSU", Kernel: "power1", Source: "ina234 · 12-41", MilliV: 4970, MilliA: 420, MicroW: 2100000, HasV: true, HasA: true},
+			{Name: "5V PSU", Kernel: "power1", Source: "ina234 · 12-41", MilliV: 4970, MilliA: 420, MicroW: 2100000, HasV: true, HasA: true, Named: true},
+			{Name: "USB Power Delivery", Kernel: "power1", Source: "ina234 · 12-40", MilliV: 20100, MilliA: 490, MicroW: 9800000, HasV: true, HasA: true, Main: true, Named: true},
+			{Name: "1.2V DDR PSU", Kernel: "power1", Source: "ina234 · 12-43", MilliV: 1200, MilliA: 710, MicroW: 852000, HasV: true, HasA: true, Named: true},
 		},
 		Fans: []sensors.FanReading{
-			{Name: "System Fan 1", Kernel: "fan1", Source: "emc2305 · 7-2e", RPM: 2622, Duty: 30, HasDuty: true, State: "running", Main: true},
-			{Name: "fan2", Kernel: "fan2", Source: "emc2305 · 7-2e", State: "absent"},
+			{Name: "System Fan 1", Kernel: "fan1", Source: "emc2305 · 15-2e", RPM: 2622, Duty: 30, HasDuty: true, State: "running", Main: true, Named: true},
+			{Name: "System Fan 2", Kernel: "fan2", Source: "emc2305 · 15-2e", State: "absent", Named: true},
 		},
 		Fibers: []sensors.FiberModule{
 			{Cage: "xfi0", Source: "sfp · xfi0", TempMilliC: 47200, VccMilliV: 3300, HasVcc: true, BiasMilliA: 9, HasBias: true, TxMicroW: 542, HasTx: true, RxMicroW: 412, HasRx: true, RxHasLight: true},
@@ -43,154 +49,294 @@ func dkInventory() sensors.Inventory {
 	}
 }
 
-// The profiled composition: a spinning fan tile in the grid, a Power section that
-// itemizes the rails the input feeds (the input itself is the grid tile, not
-// repeated), fibre cards with a plain link verdict, and the four grouped readings
-// tables — a faulted channel rendering "—".
-func TestHardwareProfiledComposition(t *testing.T) {
-	s := newServer(t, fakeBackend{})
-	inv := dkInventory()
-	profile := &sensors.Profile{Name: "Mono Gateway Development Kit"}
-
-	sections := []widget.Widget{
-		hardwareVitals(identityTranslator, profile, inv), hardwareTemps(identityTranslator, profile, inv),
-		hardwarePower(identityTranslator, inv), hardwareFans(identityTranslator, inv), hardwareFibre(inv),
-	}
-	sections = append(sections, hardwareReadings(inv)...)
-	var live []widget.Widget
-	for _, w := range sections {
-		if w != nil {
-			live = append(live, w)
-		}
-	}
-	var buf strings.Builder
-	if err := s.widgets.RenderWithToken(&buf, &widget.Stack{Children: live}, "", "en", nil); err != nil {
-		t.Fatalf("render: %v", err)
-	}
-	body := buf.String()
-
-	for _, want := range []string{
-		"Cooling", "2,622", // the fan leads the grid with the spinning glyph
-		"Power", "5V PSU", "4.97 V", "2.1 W", // the Power section itemizes the fed rails
-		"SFP", "xfi0", "xfi1", "Receiving light", "No signal", "dBm", // fibre cards
-		"cluster-thermal", "USB Power Delivery", "sensor fault", // the full readings tables
-	} {
-		if !strings.Contains(body, want) {
-			t.Errorf("profiled composition missing %q", want)
-		}
-	}
-	// The input rail leads the grid, so the Power section does not repeat it — but
-	// the full readings table still lists it (the value above appears once, always
-	// in the table): once in the grid, once in the readings table.
-	if strings.Count(body, "USB Power Delivery") < 2 {
-		t.Errorf("the input rail should appear in both the grid and the readings table")
-	}
-	// One connected fan means no Fans tile-strip section — the cooling glyph turns
-	// exactly once, in the grid. (The readings Fans table lists both channels but
-	// draws no glyph.)
-	if n := strings.Count(body, "verso-glyph-fan"); n != 1 {
-		t.Errorf("the fan glyph should appear once (the grid tile), got %d", n)
-	}
-}
-
-// TestReadingsKeepTheirCellsApart: a reading's value and its limits are
-// neighbouring columns, the value set right and the limits left, so each cell
-// keeps its own inset — a four-column table has the measure for it — or the
-// two run together ("46.9 °Chigh 81 °C").
-func TestReadingsKeepTheirCellsApart(t *testing.T) {
-	s := newServer(t, fakeBackend{})
-	var buf strings.Builder
-	if err := s.widgets.RenderWithToken(&buf, &widget.Stack{Children: hardwareReadings(dkInventory())}, "", "en", nil); err != nil {
-		t.Fatal(err)
-	}
-	body := buf.String()
-	if !strings.Contains(body, "px-3.5 py-row leading-6") {
-		t.Errorf("the readings' cells give up their inset:\n%s", body)
-	}
-}
-
 // unprofiledInventory is the dev container's box: no profile, two drives that
 // both call their reading "Composite", a GPU edge with no limits, a drive's
-// extra sensor whose limit was a sentinel, and no fans or main power rail.
+// extra sensor whose limit was a sentinel, a faulted channel, a GPU power
+// channel, and no fans or fibre.
 func unprofiledInventory() sensors.Inventory {
 	return sensors.Inventory{
 		Temps: []sensors.TempReading{
+			{Name: "Tctl", Kernel: "Tctl", Source: "k10temp", Kind: "hwmon", MilliC: 77900, CPU: true},
 			{Name: "Composite", Kernel: "Composite", Source: "nvme · 05:00", Kind: "hwmon", MilliC: 46900, Warn: 81000, Crit: 85000, HasLimits: true, Level: "nominal", Curated: true},
 			{Name: "Composite", Kernel: "Composite", Source: "nvme · 0e:00", Kind: "hwmon", MilliC: 44900, Warn: 81000, Crit: 85000, HasLimits: true, Level: "nominal", Curated: true, Rank: 1},
 			{Name: "edge", Kernel: "edge", Source: "amdgpu", Kind: "hwmon", MilliC: 71000, Curated: true, Rank: 2},
 			{Name: "Sensor 1", Kernel: "Sensor 1", Source: "nvme · 05:00", Kind: "hwmon", MilliC: 46900, SentinelDiscarded: true},
+			{Name: "temp3", Kernel: "temp3", Source: "nct6798", Kind: "hwmon", Fault: true},
+		},
+		Powers: []sensors.PowerReading{
+			{Name: "PPT", Kernel: "PPT", Source: "amdgpu", MicroW: 7000},
 		},
 	}
 }
 
-// TestAnUnprofiledBoxSaysOnlyWhatItHas: a box with no profile shows what the
-// kernel reports and says nothing about what it lacks — no notice that it has
-// no fans, no note restating that bars need limits, no driver jargon, and no
-// line of bus addresses under a reading's name.
-func TestAnUnprofiledBoxSaysOnlyWhatItHas(t *testing.T) {
-	s := newServer(t, fakeBackend{})
-	inv := unprofiledInventory()
-	live := append([]widget.Widget{hardwareTemps(identityTranslator, nil, inv)}, hardwareReadings(inv)...)
-	var buf strings.Builder
-	if err := s.widgets.RenderWithToken(&buf, &widget.Stack{Children: live}, "", "en", nil); err != nil {
-		t.Fatal(err)
+func dkInput() hardwareInput {
+	return hardwareInput{
+		board:   openwrt.Board{Model: "Mono Gateway DK", BoardName: "mono,gateway-dk", System: "ARMv8 Processor rev 2"},
+		profile: &sensors.Profile{Name: "Mono Gateway Development Kit", Processor: "NXP LS1046A"},
+		inv:     dkInventory(),
+		facts:   machine.Facts{Cores: 4, MaxKHz: 1600000, MemoryBytes: 8070316 * 1024, Disk: &machine.Disk{Bytes: 61071360 * 512, Kind: "eMMC"}},
+		panel:   &widget.Ports{Items: []widget.PortItem{{Label: "eth0", Iface: "eth0"}}},
 	}
-	body := buf.String()
-	for _, never := range []string{"No fans or curated power rails", "bars drawn only where", "sentinel"} {
+}
+
+func unprofiledInput() hardwareInput {
+	return hardwareInput{
+		board: openwrt.Board{Model: "Supermicro H13SAE-MF", BoardName: "supermicro-h13sae-mf", System: "AMD Ryzen 7 7700 8-Core Processor"},
+		inv:   unprofiledInventory(),
+		facts: machine.Facts{Cores: 16, MemoryBytes: 32 << 30},
+		panel: &widget.Ports{Items: []widget.PortItem{{Label: "eth0", Iface: "eth0"}}},
+	}
+}
+
+func renderCards(t *testing.T, in hardwareInput) string {
+	t.Helper()
+	s := newServer(t, fakeBackend{})
+	var buf strings.Builder
+	if err := s.widgets.RenderWithToken(&buf, &widget.Stack{Children: hardwareCards(identityTranslator, in)}, "", "en", nil); err != nil {
+		t.Fatalf("render: %v", err)
+	}
+	return buf.String()
+}
+
+var cardTitle = regexp.MustCompile(`<h2 class="[^"]*">([^<]*)</h2>`)
+
+func cardTitles(body string) []string {
+	var out []string
+	for _, m := range cardTitle.FindAllStringSubmatch(body, -1) {
+		out = append(out, m[1])
+	}
+	return out
+}
+
+// card is the markup of the card titled title, up to the next card.
+func card(t *testing.T, body, title string) string {
+	t.Helper()
+	marker := ">" + title + "</h2>"
+	i := strings.Index(body, marker)
+	if i < 0 {
+		t.Fatalf("no %q card:\n%s", title, body)
+	}
+	rest := body[i+len(marker):]
+	if j := strings.Index(rest, "<section data-verso-section"); j >= 0 {
+		rest = rest[:j]
+	}
+	return rest
+}
+
+// The page is the board card, then one card per kind of reading, in order.
+func TestHardwareCardsStandInOrder(t *testing.T) {
+	got := cardTitles(renderCards(t, dkInput()))
+	want := []string{"Mono Gateway Development Kit", "Temperatures", "Power", "Cooling", "Fiber modules"}
+	if !slices.Equal(got, want) {
+		t.Fatalf("cards %q, want %q", got, want)
+	}
+}
+
+// A board with no reading of a kind has no card for it.
+func TestAKindWithNoReadingHasNoCard(t *testing.T) {
+	got := cardTitles(renderCards(t, unprofiledInput()))
+	want := []string{"Supermicro H13SAE-MF", "Temperatures", "Power"}
+	if !slices.Equal(got, want) {
+		t.Fatalf("cards %q, want %q", got, want)
+	}
+}
+
+// The page shows each reading once: no tile strip over the cards, and no
+// table of all sensors under them.
+func TestEachReadingAppearsOnce(t *testing.T) {
+	body := renderCards(t, dkInput())
+	for _, once := range []string{">cluster<", ">USB Power Delivery<", ">System Fan 1<"} {
+		if n := strings.Count(body, once); n != 1 {
+			t.Errorf("%s appears %d times, want once", once, n)
+		}
+	}
+	for _, never := range []string{"All sensors", "divide-x divide-rule border-y", "Processor</span>", "Power draw"} {
 		if strings.Contains(body, never) {
-			t.Errorf("the page says %q", never)
+			t.Errorf("the page still draws %q", never)
 		}
 	}
-	temps := body[strings.Index(body, "Temperatures"):strings.Index(body, "All sensors")]
-	if strings.Contains(temps, "nvme · 05:00") {
-		t.Errorf("Temperatures prints a reading's bus address under its name:\n%s", temps)
+}
+
+// The board card is titled with the profile's name, else the model, else
+// "Ports", so the panel never stands under an empty heading.
+func TestTheBoardCardsTitle(t *testing.T) {
+	if got := cardTitles(renderCards(t, dkInput()))[0]; got != "Mono Gateway Development Kit" {
+		t.Errorf("profiled title %q", got)
 	}
-	// The readings are rows, each with its own air above and below its
-	// hairline; a spaced stack would add a gap under each hairline that the
-	// row's other side does not have.
-	if strings.Contains(temps, "verso-stack space-y-") || !strings.Contains(temps, "data-verso-rows") {
-		t.Errorf("Temperatures spaces its rows apart instead of letting each keep its own air:\n%s", temps)
+	if got := cardTitles(renderCards(t, unprofiledInput()))[0]; got != "Supermicro H13SAE-MF" {
+		t.Errorf("unprofiled title %q", got)
+	}
+	in := unprofiledInput()
+	in.board = openwrt.Board{}
+	if got := cardTitles(renderCards(t, in))[0]; got != "Ports" {
+		t.Errorf("a board that says nothing of itself is titled %q", got)
 	}
 }
 
-// TestOnlyAProfileEarnsTheVitals: the vitals across the top are a profile's
-// picks — the processor, the input rail, the main fan. A box no profile
-// describes has no such picks, only guesses, so it draws no vitals; its
-// readings stand in Temperatures and All sensors.
-func TestOnlyAProfileEarnsTheVitals(t *testing.T) {
-	if grid := hardwareVitals(identityTranslator, nil, unprofiledInventory()); grid != nil {
-		t.Errorf("an unprofiled box draws vitals: %#v", grid)
-	}
-	if grid := hardwareVitals(identityTranslator, &sensors.Profile{Name: "Mono Gateway Development Kit"}, dkInventory()); grid == nil {
-		t.Error("a profiled box draws no vitals")
-	}
-}
-
-// TestAFibreModuleIsAnArtifactCard: an SFP module is a thing the box holds,
-// read as one, so it wears the card Access gives its HTTPS certificate — the
-// sand frame (a pixel out onto the grid's lines), the title over its line, the
-// facts set left under it.
-func TestAFibreModuleIsAnArtifactCard(t *testing.T) {
-	s := newServer(t, fakeBackend{})
-	inv := dkInventory()
-	var buf strings.Builder
-	if err := s.widgets.RenderWithToken(&buf, fibreCard(&inv.Fibers[0]), "", "en", nil); err != nil {
-		t.Fatal(err)
-	}
-	body := buf.String()
+// The board card says what the box is made of, a fact it cannot answer left
+// out.
+func TestTheBoardCardsFacts(t *testing.T) {
+	board := card(t, renderCards(t, dkInput()), "Mono Gateway Development Kit")
 	for _, want := range []string{
-		`<section data-verso-artifact class="w-full rounded-xs border border-rule bg-quiet px-6 pb-5.5">`,
-		`<dt class="shrink-0 text-meta sm:w-24">Link</dt>`,
-		`<p class="font-mono text-base leading-6 font-medium text-body">xfi0</p>`, // the cage, as the machine names it
+		"verso-ports",                       // the panel
+		`data-verso-facts`,                  // two columns where the card is wide
+		">NXP LS1046A · 4 cores · 1.6 GHz<", // the profile's chip, the kernel's cores and clock
+		">7.7 GiB<",
+		">29 GiB eMMC<", // whole GiB from ten up, as every size in the shell
+		">mono,gateway-dk<",
 	} {
-		if !strings.Contains(body, want) {
-			t.Errorf("an SFP module is not the certificate's card; missing %s:\n%s", want, body)
+		if !strings.Contains(board, want) {
+			t.Errorf("board card missing %q:\n%s", want, board)
 		}
 	}
-	// The section says nothing about where its readings come from: a module's
-	// facts are its own, and a note beside the heading restates it.
-	if section := hardwareFibre(inv).(*widget.Section); section.Meta != "" {
-		t.Errorf("Fiber modules carries a note: %q", section.Meta)
+
+	board = card(t, renderCards(t, unprofiledInput()), "Supermicro H13SAE-MF")
+	if !strings.Contains(board, ">AMD Ryzen 7 7700 8-Core Processor · 16 cores<") {
+		t.Errorf("an unprofiled processor reads as the kernel names it, with its cores:\n%s", board)
+	}
+	if strings.Contains(board, "Storage") || strings.Contains(board, "GHz") {
+		t.Errorf("a fact the box cannot answer should be left out:\n%s", board)
+	}
+}
+
+// Temperatures is one table: the CPU first, the profile's entries in its
+// order, nothing the profile leaves out, and an SFP module's temperature on
+// its fibre list.
+func TestTemperaturesListTheProfilesReadings(t *testing.T) {
+	temps := card(t, renderCards(t, dkInput()), "Temperatures")
+	for _, col := range []string{">Reading<", ">Source<", ">Temperature<", ">Limits<"} {
+		if !strings.Contains(temps, col) {
+			t.Errorf("Temperatures missing the column %s", col)
+		}
+	}
+	i, j, k := strings.Index(temps, ">cluster<"), strings.Index(temps, ">Memory<"), strings.Index(temps, ">PCB near CPU<")
+	if i < 0 || j < i || k < j {
+		t.Errorf("rows out of order: cluster=%d Memory=%d PCB=%d", i, j, k)
+	}
+	for _, never := range []string{"temp2", "sfp · xfi0"} {
+		if strings.Contains(temps, never) {
+			t.Errorf("Temperatures lists %q, which the profile does not name", never)
+		}
+	}
+	// A zone's source is its type; a chip's is the chip and its channel.
+	for _, src := range []string{">cluster-thermal<", ">tmp431 · 13-4c temp1<"} {
+		if !strings.Contains(temps, src) {
+			t.Errorf("Temperatures missing the source %s", src)
+		}
+	}
+}
+
+// Each row's bar runs to its protect limit with ticks at both limits, and its
+// Limits say them.
+func TestATemperatureShowsItsHeadroom(t *testing.T) {
+	temps := card(t, renderCards(t, dkInput()), "Temperatures")
+	for _, want := range []string{
+		`bg-marigold-deep" style="left: 89%"`,             // warns at 85 of 95
+		`bg-crimson" style="left: calc(100% - 0.125rem)"`, // protects at the bar's end
+		`clip-path: inset(0 50% 0 0 round 9999px)`,        // 48 of 95
+		">48.0 °C<",
+		">warns 85 °C · protects 95 °C<",
+	} {
+		if !strings.Contains(temps, want) {
+			t.Errorf("Temperatures missing %q", want)
+		}
+	}
+}
+
+// Every temperature on a box with no profile, under the kernel's names; one
+// with no limits has no bar, and a faulted one reads "—".
+func TestAnUnprofiledBoxListsEveryTemperature(t *testing.T) {
+	temps := card(t, renderCards(t, unprofiledInput()), "Temperatures")
+	for _, want := range []string{">Tctl<", ">edge<", ">Sensor 1<", ">temp3<", ">no limits reported<", ">sensor fault<", ">71.0 °C<"} {
+		if !strings.Contains(temps, want) {
+			t.Errorf("Temperatures missing %q", want)
+		}
+	}
+	if n := strings.Count(temps, ">Composite<"); n != 2 {
+		t.Errorf("both drives' Composite should list, got %d", n)
+	}
+	// A chip's channel that is named for itself is not said twice.
+	if strings.Contains(temps, "nvme · 05:00 Composite") {
+		t.Errorf("a labelled channel repeats its name in its source:\n%s", temps)
+	}
+}
+
+// Power is every rail, the input first and tagged, the rest by draw, with no
+// total beside the title: the input's row says it.
+func TestPowerLeadsWithTheInput(t *testing.T) {
+	power := card(t, renderCards(t, dkInput()), "Power")
+	i, j, k := strings.Index(power, ">USB Power Delivery<"), strings.Index(power, ">5V PSU<"), strings.Index(power, ">1.2V DDR PSU<")
+	if i < 0 || j < i || k < j {
+		t.Errorf("rails out of order: input=%d 5V=%d DDR=%d", i, j, k)
+	}
+	for _, want := range []string{">input<", ">20.10 V<", ">0.49 A<", ">9.8 W<", ">852 mW<", ">ina234 · 12-40<"} {
+		if !strings.Contains(power, want) {
+			t.Errorf("Power missing %q", want)
+		}
+	}
+	if strings.Contains(power, "data-verso-section-meta") || strings.Contains(power, "rails") {
+		t.Errorf("Power's heading carries a summary:\n%s", power)
+	}
+	if strings.Contains(card(t, renderCards(t, unprofiledInput()), "Power"), ">input<") {
+		t.Error("an unprofiled rail is tagged the input")
+	}
+}
+
+// Cooling stands for one fan as for several, each fan's state last.
+func TestCoolingListsEveryFan(t *testing.T) {
+	cooling := card(t, renderCards(t, dkInput()), "Cooling")
+	for _, want := range []string{">System Fan 1<", ">2,622 rpm<", ">30%<", ">Running<", ">System Fan 2<", ">Not connected<", ">emc2305 · 15-2e fan1<"} {
+		if !strings.Contains(cooling, want) {
+			t.Errorf("Cooling missing %q", want)
+		}
+	}
+	in := dkInput()
+	in.inv.Fans = in.inv.Fans[:1]
+	in.inv.Fans[0].State, in.inv.Fans[0].RPM = "fault", 0
+	cooling = card(t, renderCards(t, in), "Cooling")
+	if !strings.Contains(cooling, ">Stalled<") || !strings.Contains(cooling, "bg-marigold") {
+		t.Errorf("a stalled fan should read Stalled in the warning tone:\n%s", cooling)
+	}
+}
+
+// Each SFP module is a headed fact list, as the Overview heads an address
+// family, never a card inside the card.
+func TestEachModuleIsAHeadedList(t *testing.T) {
+	fibre := card(t, renderCards(t, dkInput()), "Fiber modules")
+	for _, want := range []string{"data-verso-properties-head", ">SFP&#43; module<", ">xfi0<", ">xfi1<", ">Receiving light<", ">No signal<"} {
+		if !strings.Contains(fibre, want) {
+			t.Errorf("Fiber modules missing %q", want)
+		}
+	}
+	if strings.Contains(fibre, "data-verso-artifact") {
+		t.Errorf("a module stands as a card inside the card:\n%s", fibre)
+	}
+}
+
+// The heading reads "Hardware" while all is well, and says what needs
+// attention in its tone, in the Overview card's words.
+func TestTheHeadingSaysWhatNeedsAttention(t *testing.T) {
+	cases := []struct {
+		name          string
+		edit          func(*sensors.Inventory)
+		heading, tone string
+	}{
+		{"all well", func(*sensors.Inventory) {}, "Hardware", "neutral"},
+		{"a hot CPU", func(inv *sensors.Inventory) { inv.Temps[0].MilliC, inv.Temps[0].Level = 87000, "warn" }, "cluster is hot", "warning"},
+		{"a critical CPU beside a stopped fan", func(inv *sensors.Inventory) {
+			inv.Temps[0].MilliC, inv.Temps[0].Level = 96000, "critical"
+			inv.Fans[0].State, inv.Fans[0].RPM = "fault", 0
+		}, "cluster is hot", "danger"},
+		{"a stopped fan", func(inv *sensors.Inventory) { inv.Fans[0].State, inv.Fans[0].RPM = "fault", 0 }, "System Fan 1 stopped", "warning"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			inv := dkInventory()
+			c.edit(&inv)
+			if h := hardwareHeading(identityTranslator, inv); h.Heading != c.heading || h.Tone != c.tone {
+				t.Errorf("heading = %q %q, want %q %q", h.Heading, h.Tone, c.heading, c.tone)
+			}
+		})
 	}
 }
 
@@ -291,9 +437,8 @@ func TestHardwarePageMastheadAndTab(t *testing.T) {
 	body := get(t, srv, "/system/hardware").Body.String()
 	for _, want := range []string{
 		`<div data-verso-masthead class="py-6">`,         // every page's heading line on the sand
-		`<h1 class="verso-page-heading">Hardware</h1>`,   // titled as the page
 		`href="/system/hardware"`, `aria-current="page"`, // the active System tab
-		"All sensors", // the full instrument panel
+		">Supermicro H13SAE-MF</h2>", // the board card
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("Hardware page missing %q", want)
@@ -301,6 +446,9 @@ func TestHardwarePageMastheadAndTab(t *testing.T) {
 	}
 	if strings.Contains(body, `verso-page-heading">Supermicro H13SAE-MF`) {
 		t.Error("the page's title repeats the box's name the top bar already carries")
+	}
+	if strings.Contains(body, "All sensors") {
+		t.Error("the page still closes on a table of all sensors")
 	}
 	// Hardware leads the shell's System tabs, before Access.
 	if i, j := strings.Index(body, `href="/system/hardware"`), strings.Index(body, `href="/system/access"`); i < 0 || j < 0 || i > j {

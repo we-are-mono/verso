@@ -1,6 +1,7 @@
 {
   "id": "mono,gateway-dk",
   "name": "Mono Gateway Development Kit",
+  "processor": "NXP LS1046A",
 
   "ports": ["eth1", "eth2", "eth0", "eth3", "eth4"],
 

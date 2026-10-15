@@ -12,17 +12,20 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/we-are-mono/verso/internal/machine"
 	"github.com/we-are-mono/verso/internal/openwrt"
 	"github.com/we-are-mono/verso/internal/sensors"
+	"github.com/we-are-mono/verso/internal/units"
 	"github.com/we-are-mono/verso/internal/widget"
 	"github.com/we-are-mono/verso/profiles"
 )
 
-// handleSystemHardware renders the Hardware page: the device's own model, panel,
-// and every temperature, power rail, fan, and fibre module the kernel exposes,
-// resolved through the board profile. It reads local sysfs only (no network, no
-// blocking), so it renders fresh on each load, with no cache. The panel stays
-// live from the overview stream's interfaces frame; the readings are as loaded.
+// handleSystemHardware renders the Hardware page: the board card (its name,
+// its panel, what it is made of), then one card per kind of reading the board
+// has: Temperatures, Power, Cooling and Fiber modules, each reading once. It
+// reads local sysfs and procfs only (no network, no blocking), so it renders
+// fresh on each load, with no cache. The panel stays live from the overview
+// stream's interfaces frame; the readings are as loaded.
 func (s *Server) handleSystemHardware(w http.ResponseWriter, r *http.Request) {
 	sid := s.sessionSID(r)
 	board, boardErr := s.backend.Board(r.Context(), sid)
@@ -30,52 +33,69 @@ func (s *Server) handleSystemHardware(w http.ResponseWriter, r *http.Request) {
 		log.Printf("verso: hardware: board unavailable: %v", boardErr)
 	}
 	profile, _ := sensors.LoadProfile(profiles.FS, board.BoardName)
-	inv := sensors.ResolveAll(profile, &sensors.Reader{})
+	in := hardwareInput{
+		board:   board,
+		profile: profile,
+		inv:     sensors.ResolveAll(profile, &sensors.Reader{}),
+		facts:   (&machine.Reader{}).Read(),
+		panel:   s.hardwarePanel(r, profile),
+	}
 
-	root := &widget.Stack{Children: s.hardwareBody(r, board, profile, inv)}
+	lang, t := s.localize(r)
+	tr := translatorOrIdentity(t)
+	root := &widget.Stack{Children: hardwareCards(tr, in)}
 
 	var body strings.Builder
-	lang, t := s.localize(r)
 	if err := s.widgets.RenderWithToken(&body, root, s.sessionCSRF(r), lang, t); err != nil {
 		http.Error(w, "render error", http.StatusInternalServerError)
 		return
 	}
-	s.renderPage(w, r, http.StatusOK, pageHeader{Heading: "Hardware", Tone: "neutral"},
-		"narrow", s.sectionPages("System", r.URL.Path), template.HTML(body.String()))
+	// Wide, as every page of listings: the Temperatures table's bar takes what
+	// its name, source and limits leave.
+	s.renderPage(w, r, http.StatusOK, hardwareHeading(tr, in.inv),
+		"wide", s.sectionPages("System", r.URL.Path), template.HTML(body.String()))
 }
 
-// hardwareBody composes the page's widget tree: the panel, the vitals grid, the
-// curated detail sections the hardware can fill, and the full readings tables
-// under the page-wide filter.
-func (s *Server) hardwareBody(r *http.Request, board openwrt.Board, profile *sensors.Profile, inv sensors.Inventory) []widget.Widget {
-	var out []widget.Widget
+// hardwareInput is everything the page is drawn from.
+type hardwareInput struct {
+	board   openwrt.Board
+	profile *sensors.Profile
+	inv     sensors.Inventory
+	facts   machine.Facts
+	panel   widget.Widget // nil for a box with no ports
+}
 
-	if panel := s.hardwarePanel(r, profile); panel != nil {
-		out = append(out, panel)
+// hardwareHeading is the page's heading: "Hardware" while all is well, else
+// what needs attention in its tone, in the words the Overview's Hardware card
+// speaks, from the same grading.
+func hardwareHeading(tr func(string) string, inv sensors.Inventory) pageHeader {
+	if tone, words := hardwareView(inv).Verdict(tr); tone != "" {
+		return pageHeader{Heading: words, Tone: tone}
 	}
-	_, t := s.localize(r)
-	tr := translatorOrIdentity(t)
-	if grid := hardwareVitals(tr, profile, inv); grid != nil {
-		out = append(out, grid)
+	return pageHeader{Heading: "Hardware", Tone: "neutral"}
+}
+
+// hardwareCards composes the page: the board card, then each kind of reading
+// the board has, in a card of its own. A kind with no reading has no card.
+func hardwareCards(tr func(string) string, in hardwareInput) []widget.Widget {
+	nums := units.For(tr)
+	var out []widget.Widget
+	for _, card := range []widget.Widget{
+		boardCard(tr, nums, in),
+		temperaturesCard(tr, in.inv.PageTemps()),
+		powerCard(in.inv.PageRails()),
+		coolingCard(in.inv.PageFans()),
+		fibreCard(in.inv.Fibers),
+	} {
+		if card != nil {
+			out = append(out, card)
+		}
 	}
-	if temps := hardwareTemps(tr, profile, inv); temps != nil {
-		out = append(out, temps)
-	}
-	if power := hardwarePower(tr, inv); power != nil {
-		out = append(out, power)
-	}
-	if fans := hardwareFans(tr, inv); fans != nil {
-		out = append(out, fans)
-	}
-	if fibre := hardwareFibre(inv); fibre != nil {
-		out = append(out, fibre)
-	}
-	out = append(out, hardwareReadings(inv)...)
 	return out
 }
 
 // hardwarePanel renders the router's panel (port_panel.go). A box with no
-// ports at all shows nothing.
+// ports shows nothing.
 func (s *Server) hardwarePanel(r *http.Request, profile *sensors.Profile) widget.Widget {
 	snapshot, _ := s.telemetrySnapshot(r.Context())
 	wan, _ := s.wanStatus(r)
@@ -102,218 +122,280 @@ func readPanel(dir, file string) string {
 	return string(data)
 }
 
-// hardwareVitals is the headline instrument grid — the CPU temperature, the main
-// power draw, and the main fan, each pulled out of the detail below. They are a
-// profile's picks: a box no profile describes has only guesses, so it draws no
-// grid, and its readings stand in Temperatures and All sensors. A profiled box
-// that reports less shows fewer tiles.
-func hardwareVitals(tr func(string) string, profile *sensors.Profile, inv sensors.Inventory) widget.Widget {
-	if profile == nil {
+// --- the board card --------------------------------------------------------
+
+// boardCard names the router (the profile's name, else its model, else
+// "Ports", so the panel never stands under an empty heading) and holds its
+// panel, then what it is made of in two columns.
+func boardCard(tr func(string) string, nums units.Numbers, in hardwareInput) widget.Widget {
+	title := "Ports"
+	switch {
+	case in.profile != nil && in.profile.Name != "":
+		title = in.profile.Name
+	case in.board.Model != "":
+		title = in.board.Model
+	}
+	var children []widget.Widget
+	if in.panel != nil {
+		children = append(children, in.panel)
+	}
+	if facts := machineFacts(tr, nums, in); facts != nil {
+		children = append(children, facts)
+	}
+	if len(children) == 0 {
 		return nil
 	}
-	var tiles []widget.Widget
-	if cpu := inv.CPUTemp(); cpu != nil {
-		tiles = append(tiles, cpuTile(tr, cpu))
+	return &widget.Section{Title: title, Children: children}
+}
+
+// machineFacts is what the box is made of: Processor and Memory, then Storage
+// and Board name. A fact the box cannot answer is left out.
+func machineFacts(tr func(string) string, nums units.Numbers, in hardwareInput) widget.Widget {
+	var left, right []widget.Property
+	if v := processorFact(tr, nums, in); v != "" {
+		left = append(left, widget.Property{Label: "Processor", Value: v, Verbatim: true})
 	}
-	if p := inv.MainPower(); p != nil {
-		tiles = append(tiles, powerTile(tr, p))
+	if in.facts.MemoryBytes > 0 {
+		left = append(left, widget.Property{Label: "Memory", Value: nums.Bytes(in.facts.MemoryBytes), Verbatim: true})
 	}
-	if f := inv.MainFan(); f != nil {
-		tiles = append(tiles, fanTile(tr, f))
+	if d := in.facts.Disk; d != nil {
+		right = append(right, widget.Property{Label: "Storage", Value: nums.Bytes(d.Bytes) + " " + tr(d.Kind), Verbatim: true})
 	}
-	if len(tiles) == 0 {
+	if in.board.BoardName != "" {
+		right = append(right, widget.Property{Label: "Board name", Value: in.board.BoardName, Mono: true})
+	}
+	if len(left)+len(right) == 0 {
 		return nil
 	}
-	return &widget.Grid{Style: "strip", Columns: len(tiles), Children: tiles}
+	return &widget.Grid{Style: "facts", Children: []widget.Widget{
+		&widget.Properties{Align: "left", Items: left},
+		&widget.Properties{Align: "left", Items: right},
+	}}
 }
 
-func cpuTile(tr func(string) string, t *sensors.TempReading) widget.Widget {
-	// Composed prose translates its format at the point of composition — the
-	// schema walk can only match whole catalog keys ("warns at 81 °C" is not
-	// one) — and rides SubVerbatim; the plain fallback is a whole key the walk
-	// localizes itself.
-	sub, subVerbatim := "no limit reported", false
-	if t.Warn > 0 {
-		sub, subVerbatim = fmt.Sprintf(tr("warns at %s"), celsiusRound(t.Warn)), true
-	} else if t.Crit > 0 {
-		sub, subVerbatim = fmt.Sprintf(tr("protects at %s"), celsiusRound(t.Crit)), true
+// processorFact is the chip (the profile's, else the kernel's name for it),
+// its cores, and its top clock where cpufreq reports one.
+func processorFact(tr func(string) string, nums units.Numbers, in hardwareInput) string {
+	var parts []string
+	switch {
+	case in.profile != nil && in.profile.Processor != "":
+		parts = append(parts, in.profile.Processor)
+	case in.board.System != "":
+		parts = append(parts, in.board.System)
 	}
-	return &widget.Stat{
-		Style: "bare", Label: "Processor", Icon: "thermometer",
-		Value: celsiusWhole(t.MilliC), Verbatim: true, Unit: "°C",
-		Sub: sub, SubVerbatim: subVerbatim,
-		Variant: tempVariant(t.Level),
+	switch n := in.facts.Cores; {
+	case n == 1:
+		parts = append(parts, tr("1 core"))
+	case n > 1:
+		parts = append(parts, fmt.Sprintf(tr("%d cores"), n))
 	}
+	if khz := in.facts.MaxKHz; khz > 0 {
+		parts = append(parts, nums.Figure(float64(khz)/1e6)+" GHz")
+	}
+	return strings.Join(parts, " · ")
 }
 
-func powerTile(tr func(string) string, p *sensors.PowerReading) widget.Widget {
-	return &widget.Stat{
-		Style: "bare", Label: "Power draw", Icon: "zap",
-		Value: watts(p.MicroW), Verbatim: true, Unit: "W",
-		Sub: p.Name + " · " + tr("the input"), SubVerbatim: true,
-		Variant: "success",
-	}
-}
+// --- the kinds of reading --------------------------------------------------
 
-func fanTile(tr func(string) string, f *sensors.FanReading) widget.Widget {
-	sub := f.Name
-	if f.HasDuty {
-		sub = f.Name + " · " + fmt.Sprintf(tr("%d%% duty"), f.Duty)
-	}
-	return &widget.Stat{
-		Style: "bare", Label: "Cooling", Icon: "fan-spin",
-		Value: rpmGroup(f.RPM), Verbatim: true, Unit: "rpm",
-		Sub: sub, SubVerbatim: true, Variant: "success",
-	}
-}
-
-// hardwareTemps is the curated Temperatures section — the profile's picks (or the
-// auto-detected set), each a compact headroom bar scaled to its own critical, with
-// a quiet note pointing at the rest in the full table.
-func hardwareTemps(tr func(string) string, profile *sensors.Profile, inv sensors.Inventory) widget.Widget {
-	curated := inv.CuratedTemps()
-	if len(curated) == 0 {
+// temperaturesCard is one table of the board's temperatures, each a headroom
+// bar to the point where the hardware would protect itself.
+func temperaturesCard(tr func(string) string, temps []sensors.TempReading) widget.Widget {
+	if len(temps) == 0 {
 		return nil
 	}
-	rows := make([]widget.Widget, 0, len(curated))
-	for i := range curated {
-		rows = append(rows, tempRow(&curated[i]))
+	rows := make([]widget.TableRow, 0, len(temps))
+	for i := range temps {
+		t := &temps[i]
+		rows = append(rows, widget.TableRow{Cells: []widget.TableCell{
+			{Text: t.Name, Verbatim: true, Muted: t.Fault},
+			{Text: tempSource(t), Verbatim: true, Muted: t.Fault},
+			tempMeter(t),
+			{Text: tempLimits(tr, t), Verbatim: true, Muted: t.Fault},
+		}})
 	}
-	// A run of rows: each reading keeps its own air above and below its
-	// hairline, so the stack adds none between them.
-	sec := &widget.Section{
-		Title:    "Temperatures",
-		Children: []widget.Widget{&widget.Stack{Flush: true, Children: rows}},
+	return &widget.Section{
+		Title: "Temperatures", Hairline: true,
+		Sub: "Each bar runs to the point where the hardware would protect itself.",
+		Children: []widget.Widget{&widget.Table{
+			Columns: []widget.TableColumn{
+				{Label: "Reading", Kind: "name", Width: widget.MeasureName},
+				{Label: "Source", Kind: "mono", Width: widget.MeasureAddress},
+				{Label: "Temperature", Kind: "meter"},
+				{Label: "Limits", Kind: "comment"},
+			},
+			Rows: rows,
+		}},
 	}
-	if profile != nil {
-		sec.Sub = "Each bar runs to the point where the hardware would protect itself."
-		if cpu := inv.CPUTemp(); cpu != nil && cpu.Crit > 0 {
-			sec.Meta = fmt.Sprintf(tr("warns at %s"), celsiusRound(cpu.Warn)) + " · " + fmt.Sprintf(tr("protects at %s"), celsiusRound(cpu.Crit))
-			sec.MetaVerbatim = true
-		}
-	} else {
-		sec.Sub = "No profile exists for this board, so this page shows whatever the kernel exposes, under the kernel's own names."
-	}
-	return sec
 }
 
-// tempRow renders one curated temperature as a compact headroom meter: the bar
-// fills 0→this sensor's critical, with warn/critical ticks; a reading with no
-// limit shows no bar (never a guessed threshold).
-func tempRow(t *sensors.TempReading) widget.Widget {
-	m := &widget.Meter{Compact: true, Label: t.Name, Verbatim: true, Value: celsiusOne(t.MilliC), Unit: "°C"}
+// tempSource is where a temperature is read: a zone's type, or a chip and the
+// channel it names, the channel left off where the reading is already named
+// for it.
+func tempSource(t *sensors.TempReading) string {
+	if t.Kind == "zone" || t.Source == "" {
+		return t.Kernel
+	}
+	if t.Kernel == t.Name {
+		return t.Source
+	}
+	return t.Source + " " + t.Kernel
+}
+
+// tempMeter fills a reading's bar to its own protect limit (its warn limit
+// when that is all it has), ticked at each; a reading with no limit has no
+// bar, never one against a guessed ceiling, and a faulted channel no reading.
+func tempMeter(t *sensors.TempReading) widget.TableCell {
+	if t.Fault {
+		return widget.TableCell{Text: "—", Muted: true}
+	}
+	cell := widget.TableCell{Text: celsiusOne(t.MilliC) + " °C", Verbatim: true}
 	ceiling := t.Crit
 	if ceiling == 0 {
 		ceiling = t.Warn
 	}
 	if ceiling == 0 {
-		m.NoTrack = true
-		return m
+		cell.NoTrack = true
+		return cell
 	}
-	m.Fill = percent(t.MilliC, ceiling)
+	cell.Fill = percent(t.MilliC, ceiling)
 	if t.Warn > 0 {
-		m.WarnMark = percent(t.Warn, ceiling)
+		cell.WarnMark = percent(t.Warn, ceiling)
 	}
 	if t.Crit > 0 {
-		m.CritMark = 100
+		cell.CritMark = 100
 	}
-	m.Tone = tempTone(t.Level)
-	return m
+	switch t.Level {
+	case "warn":
+		cell.Variant = "warning"
+	case "critical":
+		cell.Variant = "danger"
+	}
+	return cell
 }
 
-// hardwarePower itemizes the rails the input feeds — sorted by draw, voltage quiet,
-// watts the number that moves. The system total (the main rail) is the grid tile
-// above, so it is not repeated here. Rendered only where a profile named a main
-// rail; an unprofiled box has no honest "total" to itemize against.
-func hardwarePower(tr func(string) string, inv sensors.Inventory) widget.Widget {
-	if inv.MainPower() == nil {
-		return nil
+// tempLimits says a reading's limits, or why it has none.
+func tempLimits(tr func(string) string, t *sensors.TempReading) string {
+	switch {
+	case t.Fault:
+		return tr("sensor fault")
+	case t.Warn > 0 && t.Crit > 0:
+		return fmt.Sprintf(tr("warns %s · protects %s"), celsiusRound(t.Warn), celsiusRound(t.Crit))
+	case t.Crit > 0:
+		return fmt.Sprintf(tr("protects %s"), celsiusRound(t.Crit))
+	case t.Warn > 0:
+		return fmt.Sprintf(tr("warns %s"), celsiusRound(t.Warn))
+	default:
+		// A driver's sentinel standing in for a limit is no limit, and reads
+		// as one.
+		return tr("no limits reported")
 	}
-	rails := inv.OtherPowers()
+}
+
+// powerCard is one table of the board's rails, the input first and tagged as
+// it: its row states the draw, so the heading carries no total.
+func powerCard(rails []sensors.PowerReading) widget.Widget {
 	if len(rails) == 0 {
 		return nil
 	}
 	rows := make([]widget.TableRow, 0, len(rails))
 	for _, p := range rails {
+		name := widget.TableCell{Text: p.Name, Verbatim: true}
+		if p.Main {
+			name.Tag = "input"
+		}
 		rows = append(rows, widget.TableRow{Cells: []widget.TableCell{
-			{Text: p.Name},
-			{Text: voltage(p)},
-			{Text: current(p)},
-			{Text: powerText(p.MicroW)},
+			name,
+			{Text: p.Source, Verbatim: true},
+			{Text: voltage(p), Verbatim: true},
+			{Text: current(p), Verbatim: true},
+			{Text: powerText(p.MicroW), Verbatim: true},
 		}})
-	}
-	table := &widget.Table{
-		Dense: true,
-		Columns: []widget.TableColumn{
-			{Label: "Rail", Kind: "name"},
-			{Label: "Voltage", Kind: "num"},
-			{Label: "Current", Kind: "num"},
-			{Label: "Power", Kind: "num"},
-		},
-		Rows: rows,
-	}
-	meta := fmt.Sprintf(tr("%d rails · sorted by draw"), len(rails))
-	if len(rails) == 1 {
-		meta = tr("1 rail · sorted by draw")
 	}
 	return &widget.Section{
 		Title: "Power", Hairline: true,
-		Meta: meta, MetaVerbatim: true,
-		Children: []widget.Widget{table},
+		Children: []widget.Widget{&widget.Table{
+			Columns: []widget.TableColumn{
+				{Label: "Rail", Kind: "name", Width: widget.MeasureName},
+				{Label: "Source", Kind: "mono"},
+				{Label: "Voltage", Kind: "num"},
+				{Label: "Current", Kind: "num"},
+				{Label: "Power", Kind: "num"},
+			},
+			Rows: rows,
+		}},
 	}
 }
 
-// hardwareFans keeps a fan tile-strip only when two or more fans actually run —
-// one running fan leads the grid above and needs no section. An unpopulated header
-// (0 RPM, no alarm) shows quietly as absent.
-func hardwareFans(tr func(string) string, inv sensors.Inventory) widget.Widget {
-	if inv.RunningFans() < 2 {
+// coolingCard is one table of the board's fans, one fan as several, each
+// fan's state last.
+func coolingCard(fans []sensors.FanReading) widget.Widget {
+	if len(fans) == 0 {
 		return nil
 	}
-	others := inv.OtherFans()
-	tiles := make([]widget.Widget, 0, len(others))
-	for i := range others {
-		tiles = append(tiles, fanStripTile(tr, &others[i]))
+	rows := make([]widget.TableRow, 0, len(fans))
+	for i := range fans {
+		f := &fans[i]
+		speed, duty := "—", ""
+		if f.State == "running" {
+			speed = rpmGroup(f.RPM) + " rpm"
+			if f.HasDuty {
+				duty = fmt.Sprintf("%d%%", f.Duty)
+			}
+		}
+		rows = append(rows, widget.TableRow{Cells: []widget.TableCell{
+			{Text: f.Name, Verbatim: true, Muted: f.State == "absent"},
+			{Text: f.Source + " " + f.Kernel, Verbatim: true, Muted: f.State == "absent"},
+			{Text: speed, Verbatim: true, Muted: f.State != "running"},
+			{Text: duty, Verbatim: true},
+			fanStatus(f.State),
+		}})
 	}
 	return &widget.Section{
-		Title: "Fans", Hairline: true,
-		Children: []widget.Widget{&widget.Grid{Columns: len(tiles), Children: tiles}},
+		Title: "Cooling", Hairline: true,
+		Children: []widget.Widget{&widget.Table{
+			Columns: []widget.TableColumn{
+				{Label: "Fan", Kind: "name", Width: widget.MeasureName},
+				{Label: "Source", Kind: "mono"},
+				{Label: "Speed", Kind: "num"},
+				{Label: "Duty", Kind: "num"},
+				{Label: "Status", Kind: "status"},
+			},
+			Rows: rows,
+		}},
 	}
 }
 
-func fanStripTile(tr func(string) string, f *sensors.FanReading) widget.Widget {
-	switch f.State {
+// fanStatus is a fan's state: spinning, stalled with its alarm raised, or an
+// unpopulated header, which is quiet.
+func fanStatus(state string) widget.TableCell {
+	switch state {
 	case "running":
-		sub := f.Name
-		if f.HasDuty {
-			sub = f.Name + " · " + fmt.Sprintf(tr("%d%% duty"), f.Duty)
-		}
-		return &widget.Stat{Style: "bare", Label: f.Name, Icon: "fan-spin", Value: rpmGroup(f.RPM), Verbatim: true, Unit: "rpm", Sub: sub, SubVerbatim: true, Variant: "success"}
+		return widget.TableCell{Text: "Running", Variant: "success"}
 	case "fault":
-		return &widget.Stat{Style: "bare", Label: f.Name, Icon: "fan", Value: "—", Verbatim: true, Sub: "stalled — alarm raised", Variant: "warning"}
+		return widget.TableCell{Text: "Stalled", Variant: "warning"}
 	default:
-		return &widget.Stat{Style: "bare", Label: f.Name, Icon: "fan", Value: "—", Verbatim: true, Sub: "not connected"}
+		return widget.TableCell{Text: "Not connected"}
 	}
 }
 
-// hardwareFibre renders one card per SFP cage from its module DOM — the optical
-// transmit/receive pair leading (dBm, with raw microwatts as the quiet twin), then
-// temperature, supply, and laser bias, under a plain link verdict.
-func hardwareFibre(inv sensors.Inventory) widget.Widget {
-	if len(inv.Fibers) == 0 {
+// fibreCard heads each SFP module's facts as the Overview heads an address
+// family: "SFP+ module" with its cage as a chip, the optical pair leading
+// (dBm, with raw microwatts as the quiet twin) under a plain link verdict.
+func fibreCard(fibers []sensors.FiberModule) widget.Widget {
+	if len(fibers) == 0 {
 		return nil
 	}
-	cards := make([]widget.Widget, 0, len(inv.Fibers))
-	for i := range inv.Fibers {
-		cards = append(cards, fibreCard(&inv.Fibers[i]))
+	lists := make([]widget.Widget, 0, len(fibers))
+	for i := range fibers {
+		lists = append(lists, fibreFacts(&fibers[i]))
 	}
 	return &widget.Section{
 		Title: "Fiber modules", Hairline: true,
-		Children: []widget.Widget{&widget.Grid{Columns: 2, Children: cards}},
+		Children: []widget.Widget{&widget.Grid{Columns: 2, Children: lists}},
 	}
 }
 
-func fibreCard(f *sensors.FiberModule) widget.Widget {
+func fibreFacts(f *sensors.FiberModule) widget.Widget {
 	link := widget.Property{Label: "Link", Value: "Receiving light", Dot: "success"}
 	if !f.RxHasLight {
 		link = widget.Property{Label: "Link", Value: "No signal", Dot: "warning"}
@@ -332,197 +414,14 @@ func fibreCard(f *sensors.FiberModule) widget.Widget {
 	if f.HasBias {
 		items = append(items, widget.Property{Label: "Laser bias", Value: fmt.Sprintf("%d mA", f.BiasMilliA), Mono: true})
 	}
-	// The card Access gives its HTTPS certificate: a thing the box holds, its
-	// facts set left under its title.
-	return &widget.Card{
-		Style:        "artifact",
-		Title:        "SFP+ module",
-		Subtitle:     f.Cage,
-		SubtitleMono: true,
-		Children:     []widget.Widget{&widget.Properties{Align: "left", Items: items}},
+	return &widget.Properties{
+		Align: "left",
+		Head:  &widget.PropertiesHead{Label: "SFP+ module", Chip: f.Cage},
+		Items: items,
 	}
 }
 
-// hardwareReadings is the full instrument panel: every reading the kernel exposes,
-// by its own name, in one table banded by kind — a subsection title row spanning the
-// columns before each run, the way the firewall listing bands its rules.
-func hardwareReadings(inv sensors.Inventory) []widget.Widget {
-	var rows []widget.TableRow
-	rows = bandReadings(rows, "Temperatures", tempReadingRows(inv))
-	rows = bandReadings(rows, "Power", powerReadingRows(inv))
-	rows = bandReadings(rows, "Fans", fanReadingRows(inv))
-	rows = bandReadings(rows, "Fiber modules", fibreReadingRows(inv))
-	if len(rows) == 0 {
-		return nil
-	}
-	section := &widget.Section{
-		Title:    "All sensors",
-		Hairline: true,
-		// Not dense: the value (set right) and its limits (set left) stand side
-		// by side and need their cells' inset between them, which four columns
-		// have the measure for.
-		Children: []widget.Widget{&widget.Table{Columns: readingColumns(), Rows: rows}},
-	}
-	return []widget.Widget{section}
-}
-
-// bandReadings titles a run of rows as a subsection: the kind's name on a header row
-// spanning the table, then the rows themselves. An empty kind contributes nothing.
-func bandReadings(rows []widget.TableRow, label string, band []widget.TableRow) []widget.TableRow {
-	if len(band) == 0 {
-		return rows
-	}
-	band[0].Group = &widget.TableGroup{Label: label}
-	return append(rows, band...)
-}
-
-func readingColumns() []widget.TableColumn {
-	return []widget.TableColumn{
-		{Label: "Reading", Kind: "name"},
-		{Label: "Source", Kind: "mono"},
-		{Label: "Value", Kind: "num"},
-		{Label: "Limits", Kind: "comment"},
-	}
-}
-
-func tempReadingRows(inv sensors.Inventory) []widget.TableRow {
-	rows := make([]widget.TableRow, 0, len(inv.Temps))
-	for i := range inv.Temps {
-		t := &inv.Temps[i]
-		value := celsiusOne(t.MilliC) + " °C"
-		muted := false
-		if t.Fault {
-			value, muted = "—", true
-		}
-		rows = append(rows, widget.TableRow{Cells: []widget.TableCell{
-			{Text: t.Kernel, LeadIcon: "thermometer", Muted: muted},
-			{Text: t.Source, Muted: muted},
-			{Text: value, Muted: muted},
-			{Text: tempLimitText(t), Muted: muted},
-		}})
-	}
-	return rows
-}
-
-func powerReadingRows(inv sensors.Inventory) []widget.TableRow {
-	rows := make([]widget.TableRow, 0, len(inv.Powers))
-	for _, p := range inv.Powers {
-		rows = append(rows, widget.TableRow{Cells: []widget.TableCell{
-			{Text: p.Name, LeadIcon: "zap"},
-			{Text: p.Source},
-			{Text: powerText(p.MicroW)},
-			{Text: powerLimitText(p)},
-		}})
-	}
-	return rows
-}
-
-func fanReadingRows(inv sensors.Inventory) []widget.TableRow {
-	rows := make([]widget.TableRow, 0, len(inv.Fans))
-	for i := range inv.Fans {
-		f := &inv.Fans[i]
-		value, detail, muted := rpmGroup(f.RPM)+" rpm", fanLimitText(f), false
-		if f.State != "running" {
-			value, muted = "—", true
-		}
-		rows = append(rows, widget.TableRow{Cells: []widget.TableCell{
-			{Text: f.Kernel, LeadIcon: "fan", Muted: muted},
-			{Text: f.Source, Muted: muted},
-			{Text: value, Muted: muted},
-			{Text: detail, Muted: muted},
-		}})
-	}
-	return rows
-}
-
-func fibreReadingRows(inv sensors.Inventory) []widget.TableRow {
-	var rows []widget.TableRow
-	for i := range inv.Fibers {
-		f := &inv.Fibers[i]
-		if f.HasVcc {
-			rows = append(rows, fibreRow("VCC", f.Source, fmt.Sprintf("%.2f V", float64(f.VccMilliV)/1000), voltLimit(f.VccMin, f.VccMax)))
-		}
-		if f.HasTx {
-			rows = append(rows, fibreRow("TX_power", f.Source, optical(f.TxMicroW), opticalLimit(f.TxMin, f.TxMax)))
-		}
-		if f.HasRx {
-			rows = append(rows, fibreRow("RX_power", f.Source, optical(f.RxMicroW), opticalLimit(f.RxMin, f.RxMax)))
-		}
-		if f.HasBias {
-			rows = append(rows, fibreRow("bias", f.Source, fmt.Sprintf("%d mA", f.BiasMilliA), biasLimit(f.BiasMax)))
-		}
-	}
-	return rows
-}
-
-func fibreRow(name, source, value, limit string) widget.TableRow {
-	return widget.TableRow{Cells: []widget.TableCell{
-		{Text: name, LeadIcon: "radio"}, {Text: source}, {Text: value}, {Text: limit},
-	}}
-}
-
-// --- limit + unit formatting ----------------------------------------------
-
-func tempLimitText(t *sensors.TempReading) string {
-	switch {
-	case t.Fault:
-		return "sensor fault"
-	case t.HasLimits && t.Kind == "zone":
-		return fmt.Sprintf("warn %s · crit %s", celsiusRound(t.Warn), celsiusRound(t.Crit))
-	case t.HasLimits:
-		return fmt.Sprintf("high %s · crit %s", celsiusRound(t.Warn), celsiusRound(t.Crit))
-	default:
-		// A driver's sentinel standing in for a limit is no limit, and reads
-		// as one.
-		return "no limits reported"
-	}
-}
-
-func powerLimitText(p sensors.PowerReading) string {
-	parts := make([]string, 0, 2)
-	if p.HasV {
-		parts = append(parts, voltage(p))
-	}
-	if p.HasA {
-		parts = append(parts, current(p))
-	}
-	return strings.Join(parts, " · ")
-}
-
-func fanLimitText(f *sensors.FanReading) string {
-	switch f.State {
-	case "fault":
-		return "stalled — alarm"
-	case "absent":
-		return "not connected"
-	case "running":
-		if f.HasDuty {
-			return fmt.Sprintf("pwm %d%%", f.Duty)
-		}
-	}
-	return ""
-}
-
-func voltLimit(min, max int) string {
-	if min == 0 && max == 0 {
-		return ""
-	}
-	return fmt.Sprintf("min %.2f · max %.2f", float64(min)/1000, float64(max)/1000)
-}
-
-func opticalLimit(min, max int64) string {
-	if min == 0 && max == 0 {
-		return ""
-	}
-	return fmt.Sprintf("min %s · max %s", optical(min), optical(max))
-}
-
-func biasLimit(max int) string {
-	if max == 0 {
-		return ""
-	}
-	return fmt.Sprintf("max %d mA", max)
-}
+// --- unit formatting -------------------------------------------------------
 
 func voltage(p sensors.PowerReading) string {
 	if !p.HasV {
@@ -539,16 +438,14 @@ func current(p sensors.PowerReading) string {
 }
 
 // celsiusRound renders a milli-°C as a whole degree ("85 °C"); celsiusOne keeps
-// one decimal ("47.0 °C").
+// one decimal ("47.0").
 func celsiusRound(milliC int) string { return fmt.Sprintf("%d °C", (milliC+500)/1000) }
 
-// celsiusWhole is the rounded degrees with no unit — a tile carries its "°C" in the
-// Stat's own unit slot, so the value must not repeat it.
+// celsiusWhole is the rounded degrees with no unit, for a figure that carries
+// its "°C" beside it.
 func celsiusWhole(milliC int) string { return fmt.Sprintf("%d", (milliC+500)/1000) }
 
 func celsiusOne(milliC int) string { return fmt.Sprintf("%.1f", float64(milliC)/1000) }
-
-func watts(microW int64) string { return fmt.Sprintf("%.1f", float64(microW)/1e6) }
 
 // powerText renders a channel's draw in the unit that keeps its figure legible —
 // milliwatts for the sub-watt channels a GPU reports, watts for a rail.
@@ -631,16 +528,5 @@ func tempVariant(level string) string {
 		return "success"
 	default:
 		return "neutral"
-	}
-}
-
-func tempTone(level string) string {
-	switch level {
-	case "warn":
-		return "warning"
-	case "critical":
-		return "danger"
-	default:
-		return "success"
 	}
 }
