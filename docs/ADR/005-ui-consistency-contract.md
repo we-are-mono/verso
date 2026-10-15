@@ -56,7 +56,15 @@ looks — while still offering a legitimate bridge when no widget yet fits.
 6. **Tailwind v4, over the design palette.** The templates use Tailwind's utility
    classes over one `@theme` — `palette.css`, the design palette (`DESIGN.md`),
    which replaces Tailwind's own colour scales. One light theme; there is no
-   dark palette. The stylesheet compiles via the
+   dark palette. Every colour and shadow the shell paints is a named token of
+   `palette.css`: templates, stylesheets, the client's scripts and the Go that
+   renders name the token and never write the value, and a surface (Canvas) and
+   a label on a filled control (On-fill) are two tokens though both are white.
+   A guard test (`TestNothingPaintsALiteralColour`) fails on a colour literal
+   anywhere else; a literal kept on purpose is listed with its reason. Shadows
+   and chart wash strengths are custom properties read through `var()`, not
+   `@theme` tokens, since Tailwind copies a shadow theme token into its utility.
+   The stylesheet compiles via the
    standalone CLI (no Node) to an embedded file. This is an engine choice, not a contract
    change: plugins never see classes, so the styling stays reversible with zero plugin
    impact. Shell templates use utilities; plugins never do.
