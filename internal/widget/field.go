@@ -51,6 +51,10 @@ type Field struct {
 	Target string `json:"target,omitempty"`
 	// Staged is the shell's word that this field's option waits to be applied.
 	Staged bool `json:"-"`
+	// Theme makes a select the Appearance card's theme pick (ADR-024): it
+	// carries no name, so the form around it neither submits it nor counts it,
+	// and the page posts a pick on its own (verso-forms.js). Shell only.
+	Theme bool `json:"-"`
 	// Tip explains what the field is to someone meeting it for the first time,
 	// on hovering or focusing the label. It is the deliberate version of Help:
 	// where both are set the label raises this one, because a plugin's Help was

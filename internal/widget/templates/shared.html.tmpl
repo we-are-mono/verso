@@ -281,7 +281,7 @@
      hugs the border and can't follow the theme. A part of a joined row is
      named on its own; a lone field is named by its row's label. */}}
 {{define "verso-select"}}<div class="relative">
-    <select id="{{.Name}}" name="{{.Name}}"{{if .Reshapes}} data-verso-reshape{{end}}{{if .Named}} aria-label="{{.Label}}"{{end}}{{template "verso-field-aria" .}} class="{{if .Words}}{{template "verso-input-words"}}{{else}}{{template "verso-input-class"}}{{end}} {{template "verso-input-border" .Error}} cursor-pointer appearance-none pr-9">
+    <select id="{{.Name}}"{{if .Theme}} data-verso-theme{{else}} name="{{.Name}}"{{end}}{{if .Reshapes}} data-verso-reshape{{end}}{{if .Named}} aria-label="{{.Label}}"{{end}}{{template "verso-field-aria" .}} class="{{if .Words}}{{template "verso-input-words"}}{{else}}{{template "verso-input-class"}}{{end}} {{template "verso-input-border" .Error}} cursor-pointer appearance-none pr-9">
       {{range .Options}}<option value="{{.Value}}"{{if eq .Value $.Value}} selected{{end}}>{{.Label}}</option>{{end}}
     </select>
     <span class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-meta">{{icon "chevron-down" "size-4"}}</span>

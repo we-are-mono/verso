@@ -555,6 +555,9 @@ func (s *Server) pluginBodyAt(r *http.Request, m plugin.Manifest, pluginPath str
 		hdr.Light = true
 	}
 	hdr.HeadingAct = s.headingAct(r, head, lang, t)
+	// A slot the plugin left for the shell takes the shell's block, in the
+	// shell's own words (the base catalog under the plugin's).
+	s.fillSlots(wdg, tr)
 	var b strings.Builder
 	if err := s.widgets.RenderWithToken(&b, wdg, s.sessionCSRF(r), lang, t); err != nil {
 		log.Printf("verso: plugin %q render failed: %v", m.ID, err)

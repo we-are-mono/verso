@@ -102,6 +102,7 @@ var catalog = map[string]func() Widget{
 	"settings":    func() Widget { return new(Settings) },
 	"actionbar":   func() Widget { return new(ActionBar) },
 	"filter":      func() Widget { return new(Filter) },
+	"slot":        func() Widget { return new(Slot) },
 }
 
 // Decode parses one widget from its JSON schema representation, using the

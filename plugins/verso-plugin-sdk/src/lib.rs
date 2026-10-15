@@ -924,6 +924,11 @@ pub enum Widget {
     /// (ADR-005 §4). Metered — its usage is the demand signal for the next
     /// widget.
     Raw { markdown: String },
+    /// A place on the page for a block the shell owns (ADR-005): the plugin
+    /// says where it stands, the shell decides what it is. The ids are the
+    /// shell's — `appearance`, the Appearance card on General — and a slot a
+    /// shell has no block for draws nothing.
+    Slot { id: String },
 }
 
 /// SectionWidget is the body of [`Widget::Section`]; set what differs from the
@@ -1838,6 +1843,12 @@ impl Widget {
         Widget::Raw {
             markdown: markdown.into(),
         }
+    }
+
+    /// slot leaves the place for the shell's block named id, as
+    /// `Widget::slot("appearance")` leaves the Appearance card's.
+    pub fn slot(id: &str) -> Widget {
+        Widget::Slot { id: id.into() }
     }
 
     /// button is a direct action. Style is the semantic emphasis — "primary",

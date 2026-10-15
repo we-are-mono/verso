@@ -378,6 +378,7 @@ fn write_widget_fixtures() {
                 "WireGuard keeps a silent tunnel silent — an idle peer can be perfectly healthy.",
             ),
         ),
+        ("slot", Widget::slot("appearance")),
         ("table", listing()),
         (
             "settings",

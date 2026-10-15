@@ -488,6 +488,42 @@
   });
 })();
 
+// A theme pick posts itself (ADR-024): the Appearance card's select has no
+// name, so it is no part of the form it stands in, and its change is an
+// instruction of its own, written at once. The answer's style replaces the
+// page's, so the page repaints where it is and what was typed stays typed. A
+// refusal says how it went and puts the select back on the theme in force.
+(function () {
+  function back(el) {
+    [].forEach.call(el.options, function (o) { o.selected = o.defaultSelected; });
+  }
+  document.addEventListener("change", function (e) {
+    var el = e.target;
+    if (!el || !el.matches || !el.matches("select[data-verso-theme]")) return;
+    el.disabled = true; // one pick, one round-trip
+    versoPost("/system/theme", versoBody([["theme", el.value]])).then(function (res) {
+      return res.text().then(function (html) {
+        el.disabled = false;
+        var doc = versoParse(html);
+        var style = doc.getElementById("verso-theme");
+        var mine = document.getElementById("verso-theme");
+        if (res.ok && style && mine) {
+          mine.textContent = style.textContent;
+          [].forEach.call(el.options, function (o) { o.defaultSelected = o.selected; });
+          return;
+        }
+        back(el);
+        var carried = doc.querySelector("template[data-verso-arrival]");
+        var outcome = carried && carried.content.firstElementChild;
+        if (outcome && window.versoOutcome) window.versoOutcome.show(document.importNode(outcome, true));
+      });
+    }).catch(function () {
+      el.disabled = false;
+      back(el);
+    });
+  });
+})();
+
 // The two acts that answer in place and leave the page around them where it
 // was: a row's own act, and a panel's form posting back into its frame. A full
 // render would have handed each of them two things for free — the row the act

@@ -30,10 +30,10 @@ Every task ends green under `make lint` and `make test`; a task that touches a t
 
 ## 5. The Appearance card
 
-- [ ] 5.1 Write the tests first: `{"type":"slot","id":"appearance"}` decodes to `widget.Slot`; the server fills a known slot before rendering and renders nothing for an unknown one; then implement `Slot`, the fill walk and the catalogue entry; verify
-- [ ] 5.2 Write the Rust tests first: `Widget::slot("appearance")` serialises as the shell decodes it, and the system plugin's General page places it between its untitled section and Time; then implement in the SDK and the system plugin; verify with `cargo test` and a shell render of General
-- [ ] 5.3 Write the tests first: the Appearance block renders as a ruled section titled "Appearance" with a select keyed `theme`, its options Sand following the browser, Sand always light, Sand always dark and each other theme as "<family> <name>", the theme in force selected, the takes-effect description under it, and the select carrying `data-verso-theme` and no `name`; then implement the shell-only select property and the block; verify
-- [ ] 5.4 Make `verso-forms.js` post a pick of a `select[data-verso-theme]` to `/system/theme`, replace the page's `<style id="verso-theme">` from the answer, and on a refusal show the answer's outcome and put the select back; verify in the dev container that picking a theme repaints in place, and that with a half-typed router name it keeps the text, raises no unsaved-changes prompt and leaves Save as it was
+- [x] 5.1 Write the tests first: `{"type":"slot","id":"appearance"}` decodes to `widget.Slot`; the server fills a known slot before rendering and renders nothing for an unknown one; then implement `Slot`, the fill walk and the catalogue entry; verify
+- [x] 5.2 Write the Rust tests first: `Widget::slot("appearance")` serialises as the shell decodes it, and the system plugin's General page places it between its untitled section and Time; then implement in the SDK and the system plugin; verify with `cargo test` and a shell render of General
+- [x] 5.3 Write the tests first: the Appearance block renders as a ruled section titled "Appearance" with a select keyed `theme`, its options Sand following the browser, Sand always light, Sand always dark and each other theme as "<family> <name>", the theme in force selected, the takes-effect description under it, and the select carrying `data-verso-theme` and no `name`; then implement the shell-only select property and the block; verify
+- [x] 5.4 Make `verso-forms.js` post a pick of a `select[data-verso-theme]` to `/system/theme`, replace the page's `<style id="verso-theme">` from the answer, and on a refusal show the answer's outcome and put the select back; verify in the dev container that picking a theme repaints in place, and that with a half-typed router name it keeps the text, raises no unsaved-changes prompt and leaves Save as it was
 
 ## 6. Docs
 

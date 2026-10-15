@@ -123,6 +123,23 @@ fn general_names_what_it_saves() {
     assert_eq!(page["widget"]["style"], "settings", "{page}");
 }
 #[test]
+fn general_leaves_the_appearance_card_above_time() {
+    // The theme is the shell's to pick and answer for (ADR-024); General only
+    // says where its card stands: after the router's settings, before Time.
+    let page = serde_json::to_value(get(&request())).unwrap();
+    let fields = page["widget"]["fields"].as_array().expect("fields");
+    let kinds: Vec<String> = fields
+        .iter()
+        .map(|f| match f["type"].as_str() {
+            Some("slot") => format!("slot {}", f["id"].as_str().unwrap_or("")),
+            Some(other) => format!("{other} {}", f["title"].as_str().unwrap_or("")),
+            None => String::new(),
+        })
+        .collect();
+    assert_eq!(kinds, ["section ", "slot appearance", "section Time"], "{page}");
+}
+
+#[test]
 fn general_says_where_each_option_lives() {
     // The shell marks a control whose option waits on the stage by its full
     // address, so every control names the config and section it writes.

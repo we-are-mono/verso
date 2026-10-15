@@ -345,6 +345,9 @@ fn page(v: Facts, e: &BTreeMap<String, String>) -> Envelope {
                 ],
             )
             .ruled(),
+            // The Appearance card is the shell's (ADR-024): the theme is its to
+            // pick and answer for, and it stands here, before Time.
+            Widget::slot("appearance"),
             time,
         ],
     };

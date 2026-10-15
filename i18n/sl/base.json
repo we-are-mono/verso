@@ -957,5 +957,13 @@
   "Target platform": "Ciljna platforma",
   "%s is hot": "%s: visoka temperatura",
   "%s stopped": "%s: se ne vrti",
-  "No sensor answered.": "Noben senzor se ni odzval."
+  "No sensor answered.": "Noben senzor se ni odzval.",
+  "Appearance": "Videz",
+  "Theme": "Tema",
+  "Sand, follows the browser": "Sand, sledi brskalniku",
+  "Sand, always light": "Sand, vedno svetla",
+  "Sand, always dark": "Sand, vedno temna",
+  "Takes effect immediately, for everyone who signs in to this router.": "Velja takoj, za vse, ki se prijavijo v ta usmerjevalnik.",
+  "That theme isn't installed.": "Ta tema ni nameščena.",
+  "The theme wasn't changed.": "Tema ni bila spremenjena."
 }
