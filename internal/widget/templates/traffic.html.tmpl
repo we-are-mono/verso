@@ -2,25 +2,26 @@
 <!-- SPDX-FileCopyrightText: 2026 Mono Technologies Inc. -->
 {{/* traffic: a traffic graph in two lanes, download over upload, 24px apart,
      each a chart (chart.html.tmpl) with its own legend, scale and peak, and one
-     time axis under the upload. Whatever it stands in names it. The live layer
-     (verso-chart.js) finds the graph by data-verso-live-chart, seeds both lanes
-     from data-verso-live-seed, and glides each lane it finds by
-     data-verso-live-lane; a past window carries none of the live attributes,
-     and its figures are averages. A graph with history behind it offers its
-     window as the compact dropdown, which fetches the graph for the window
-     chosen in this section's place. */}}
+     time axis under the upload. Whatever it stands in names it, and offers its
+     window (traffic.window). The live layer (verso-chart.js) finds the graph by
+     data-verso-live-chart, seeds both lanes from data-verso-live-seed, and
+     glides each lane it finds by data-verso-live-lane; a past window carries
+     none of the live attributes, and its figures are averages. */}}
 <section aria-label="{{.Label}}" class="verso-traffic"{{if .ID}} id="{{.ID}}"{{end}}{{if .Live}} data-verso-live-chart="{{.Live}}" data-verso-live-seed="{{.Seed}}"{{end}}>
-  {{if .Ranges}}
-  <div class="mb-4 flex justify-end">
-    <div class="relative flex shrink-0 items-center">
-      <select name="range" aria-label="{{ t "Window" }}" hx-get="{{.RangeURL}}" hx-trigger="change" hx-target="closest section" hx-swap="outerHTML" class="{{template "verso-select-compact"}}">
-        {{range .Ranges}}<option value="{{.Value}}"{{if eq .Value $.Range}} selected{{end}}>{{.Label}}</option>{{end}}
-      </select>
-      <span class="{{template "verso-select-compact-chevron"}}">{{icon "chevron-down" "size-3.5"}}</span>
-    </div>
-  </div>
-  {{end}}
   <div data-verso-live-lane="down">{{.Down}}</div>
   <div class="mt-6" data-verso-live-lane="up">{{.Up}}</div>
   {{if .Latency}}<p class="mt-2 flex items-baseline gap-2 text-sm leading-6"><span class="text-meta">{{ t "Gateway" }}</span><span class="font-medium text-ink tabular-nums">{{.Latency}} ms</span><span class="text-meta">{{ t "on average" }}</span></p>{{end}}
 </section>
+
+{{/* traffic.window: a traffic graph's window, the compact dropdown that
+     fetches the window chosen into the graph's place (Target), so the graph
+     that comes back is that window's and the dropdown keeps the choice. The
+     Overview's Traffic card carries it in its header. */}}
+{{define "traffic.window"}}
+<div class="relative flex shrink-0 items-center">
+  <select name="range" aria-label="{{ t "Window" }}" hx-get="{{.URL}}" hx-trigger="change" hx-target="{{.Target}}" hx-swap="outerHTML" class="{{template "verso-select-compact"}}">
+    {{range .Ranges}}<option value="{{.Value}}"{{if eq .Value $.Range}} selected{{end}}>{{.Label}}</option>{{end}}
+  </select>
+  <span class="{{template "verso-select-compact-chevron"}}">{{icon "chevron-down" "size-3.5"}}</span>
+</div>
+{{end}}

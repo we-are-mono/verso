@@ -40,13 +40,10 @@ type Traffic struct {
 	// Place is where the graph stands: an Overview card or a drawer is
 	// compact.
 	Place ChartPlace
-	// RangeURL, where history stands behind the graph (ADR-019), offers its
-	// window as a dropdown: choosing one fetches the graph for it from RangeURL
-	// with ?range=<value>, in this one's place. Range is the window drawn, one
-	// of TrafficRanges; empty is the live minute. A past window is drawn once,
-	// its figures its averages.
-	RangeURL string
-	Range    string
+	// Range is the window drawn, one of TrafficRanges; empty is the live
+	// minute. A past window is drawn once, its figures its averages. What the
+	// graph stands in offers the window (traffic.window).
+	Range string
 	// Marks are the events over a past window, drawn on both lanes.
 	Marks []ChartMark
 	// Latency is the gateway's average round trip over a past window, in ms,
@@ -78,8 +75,6 @@ type trafficView struct {
 	Label, Live, ID string
 	Seed            string
 	Down, Up        template.HTML
-	RangeURL, Range string
-	Ranges          []TrafficRange
 	Latency         string
 }
 
@@ -120,15 +115,7 @@ func (t *Traffic) renderInto(r *Renderer, out io.Writer, csrf string) error {
 	if err != nil {
 		return err
 	}
-	view := trafficView{
-		Label: r.tr(t.Label), Live: live, ID: t.ID, Down: down, Up: up,
-		RangeURL: t.RangeURL, Range: window.Value, Latency: t.Latency,
-	}
-	if t.RangeURL != "" {
-		for _, option := range TrafficRanges {
-			view.Ranges = append(view.Ranges, TrafficRange{Value: option.Value, Label: r.tr(option.Label)})
-		}
-	}
+	view := trafficView{Label: r.tr(t.Label), Live: live, ID: t.ID, Down: down, Up: up, Latency: t.Latency}
 	// Only the live minute seeds the live layer; a past window's gaps are
 	// NaN, which JSON cannot carry, and it is never fed.
 	if live != "" {

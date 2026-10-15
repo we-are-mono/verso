@@ -97,8 +97,13 @@ func TestOverviewTrafficDrawsAPastWindowFromHistory(t *testing.T) {
 	if strings.Contains(body, "data-verso-live-chart") {
 		t.Error("a day's graph is fed by the live stream")
 	}
-	if !strings.Contains(body, `<option value="day" selected>`) {
-		t.Error("the swapped graph carries its window on its legend's line, the chosen one selected")
+	// The window lives in the card's header: what comes back is the graph
+	// alone, in its two lanes, under the id the header's dropdown targets.
+	if !strings.Contains(body, `id="overview-traffic-graph"`) || !strings.Contains(body, `data-verso-live-lane="up"`) {
+		t.Error("the fetched graph is not the addressed two-lane graph")
+	}
+	if strings.Contains(body, "<select") {
+		t.Error("the fetched graph carries a window of its own; the card's header holds it")
 	}
 
 	if _, live := getSignedIn(t, s, "/overview/traffic?range=minute"); !strings.Contains(live, `data-verso-live-chart="wan"`) {

@@ -81,8 +81,15 @@
     next.closed = next.closed.indexOf(id) >= 0 ? without(next.closed, id) : next.closed.concat([id]);
     return next;
   }
+  // togglesFrom is whether a click that starts at t, in a card's header, opens
+  // or closes the card: the card's own control (the Traffic card's window),
+  // its door and any button but the toggle keep their own click.
+  function togglesFrom(t) {
+    if (t.closest("[data-overview-card-control], a, select, input")) return false;
+    return !(t.closest("button") && !t.closest("[data-overview-toggle]"));
+  }
 
-  window.versoOverviewLayout = { encode: encode, cookie: cookie, forget: forget, move: move, nudge: nudge, hide: hide, restore: restore, toggle: toggle };
+  window.versoOverviewLayout = { encode: encode, cookie: cookie, forget: forget, move: move, nudge: nudge, hide: hide, restore: restore, toggle: toggle, togglesFrom: togglesFrom };
 
   // ── the page ──
   var root = document.querySelector("[data-overview]");
@@ -178,7 +185,7 @@
     if (t.closest("[data-overview-hide]")) return reload(hide(read(), idOf(card)));
     if (root.hasAttribute("data-arranging") || !t.closest("[data-overview-card-head]")) return;
     // The door and any other control in the header keep their own click.
-    if (t.closest("a, select, input") || (t.closest("button") && !t.closest("[data-overview-toggle]"))) return;
+    if (!togglesFrom(t)) return;
     setOpen(card, card.hasAttribute("data-closed"));
     persist(read());
   });

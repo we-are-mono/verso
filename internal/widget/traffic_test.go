@@ -93,37 +93,19 @@ func TestAPastWindowSaysItsAveragesAndPeaks(t *testing.T) {
 	}
 }
 
-// TestTrafficOffersItsWindow: a graph with history behind it offers its window
-// as the compact dropdown, which fetches the graph for the window chosen in
-// its place. The minute is live; a past window is drawn once, not fed by the
-// stream.
-func TestTrafficOffersItsWindow(t *testing.T) {
-	live := render(t, newRenderer(t), &Traffic{Live: "wan", RangeURL: "/overview/traffic", Down: []float64{0, 1}, Up: []float64{0, 1}})
-	for _, want := range []string{
-		`<select name="range"`, `hx-get="/overview/traffic"`, `hx-trigger="change"`, `hx-swap="outerHTML"`,
-		`<option value="minute" selected>Last minute</option>`,
-		`<option value="day">Last 24 hours</option>`, `<option value="week">Last 7 days</option>`,
-		`<option value="month">Last 30 days</option>`, `<option value="year">Last year</option>`,
-		`data-verso-live-chart="wan"`,
-	} {
-		if !strings.Contains(live, want) {
-			t.Errorf("live graph missing %q", want)
-		}
+// TestAPastWindowIsNotLive: the minute is live; a past window is drawn once,
+// not fed by the stream. The graph carries no window choice of its own: what
+// it stands in offers one.
+func TestAPastWindowIsNotLive(t *testing.T) {
+	live := render(t, newRenderer(t), &Traffic{Live: "wan", ID: "g", Down: []float64{0, 1}, Up: []float64{0, 1}})
+	if !strings.Contains(live, `data-verso-live-chart="wan"`) || !strings.Contains(live, `id="g"`) {
+		t.Errorf("the live graph is not fed or not addressable:\n%s", live)
 	}
-
-	day := render(t, newRenderer(t), &Traffic{Live: "wan", RangeURL: "/overview/traffic", Range: "day", Down: []float64{0, 1}, Up: []float64{0, 1}})
-	if !strings.Contains(day, `<option value="day" selected>Last 24 hours</option>`) {
-		t.Error("a day's graph does not say its window")
-	}
-	for _, unwanted := range []string{"data-verso-live-chart", "data-verso-live-seed", ">60 s<"} {
+	day := render(t, newRenderer(t), &Traffic{Live: "wan", Range: "day", Down: []float64{0, 1}, Up: []float64{0, 1}})
+	for _, unwanted := range []string{"data-verso-live-chart", "data-verso-live-seed", ">60 s<", "<select"} {
 		if strings.Contains(day, unwanted) {
-			t.Errorf("a day's graph carries %q, but it is not live", unwanted)
+			t.Errorf("a day's graph carries %q", unwanted)
 		}
-	}
-
-	// With no history behind it, a graph offers no window.
-	if bare := render(t, newRenderer(t), &Traffic{Live: "usage:x", Down: []float64{0, 1}, Up: []float64{0, 1}}); strings.Contains(bare, "<select") {
-		t.Error("a graph with no history to read offers a window")
 	}
 }
 

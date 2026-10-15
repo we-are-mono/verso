@@ -95,6 +95,19 @@ test('the moves leave the layout they were given alone', () => {
   assert.deepEqual(plain(l), plain(base()));
 });
 
+// at is an element a click starts on, inside the ancestors it names: closest
+// answers whether any selector in a list matches it or an ancestor.
+const at = (...matches) => ({closest: list => list.split(',').some(sel => matches.includes(sel.trim())) || null});
+
+test('choosing in a card\'s header control never opens or closes the card', () => {
+  assert.equal(L.togglesFrom(at('[data-overview-card-control]')), false, 'the control\'s own padding');
+  assert.equal(L.togglesFrom(at('select', '[data-overview-card-control]')), false, 'the window\'s dropdown');
+  assert.equal(L.togglesFrom(at('a')), false, 'the door');
+  assert.equal(L.togglesFrom(at('button')), false, 'another button');
+  assert.equal(L.togglesFrom(at('button', '[data-overview-toggle]')), true, 'the toggle');
+  assert.equal(L.togglesFrom(at()), true, 'the header itself');
+});
+
 test('the cookie is first-party, long-lived and secure over HTTPS', () => {
   assert.equal(L.cookie('1.a.b..', 'https:'), 'verso_overview=1.a.b..; Path=/; Max-Age=34560000; SameSite=Lax; Secure');
   assert.equal(L.cookie('1.a.b..', 'http:'), 'verso_overview=1.a.b..; Path=/; Max-Age=34560000; SameSite=Lax');

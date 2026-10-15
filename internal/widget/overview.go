@@ -166,7 +166,7 @@ type OverviewMeter struct {
 // the Traffic card: the live minute when window is empty or "minute", else the
 // past window drawn from history, its figures the window's averages. Rates are
 // in Mbit/s.
-func InternetTraffic(downNow, upNow float64, down, up []float64, rangeURL, window string) *Traffic {
+func InternetTraffic(downNow, upNow float64, down, up []float64, window string) *Traffic {
 	label := "Internet traffic — download and upload, last minute"
 	if window != "" && window != TrafficRanges[0].Value {
 		label = "Internet traffic — download and upload"
@@ -174,7 +174,7 @@ func InternetTraffic(downNow, upNow float64, down, up []float64, rangeURL, windo
 	return &Traffic{
 		Live: "wan", Label: label, ID: InternetTrafficID,
 		DownNow: downNow, UpNow: upNow, Down: down, Up: up,
-		RangeURL: rangeURL, Range: window, Place: PlaceCompact,
+		Range: window, Place: PlaceCompact,
 	}
 }
 
@@ -202,6 +202,7 @@ type overviewCardView struct {
 	Head            cardHead
 	Closed          bool
 	Href, OpenLabel string
+	Control         template.HTML
 	Body            template.HTML
 }
 
@@ -257,6 +258,11 @@ func (o *Overview) card(r *Renderer, spec overviewCardSpec, closed bool, csrf st
 		return overviewCardView{}, fmt.Errorf("overview card %s: %w", spec.ID, err)
 	}
 	v := overviewCardView{ID: spec.ID, Title: r.tr(spec.Title), Icon: spec.Icon, Head: spec.head(o, r.tr), Closed: closed, Body: body}
+	if spec.control != nil {
+		if v.Control, err = spec.control(o, r); err != nil {
+			return overviewCardView{}, fmt.Errorf("overview card %s: %w", spec.ID, err)
+		}
+	}
 	if spec.href != nil {
 		if v.Href = spec.href(o); v.Href != "" {
 			v.OpenLabel = fmt.Sprintf(r.tr("Open %s"), r.tr(spec.Opens))

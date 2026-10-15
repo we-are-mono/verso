@@ -219,6 +219,36 @@ func TestOverviewLiveStatusCarriesEveryCard(t *testing.T) {
 	}
 }
 
+// TestTheTrafficCardsWindowRidesItsHeader: the window governs the whole card,
+// so it is the compact dropdown in the card's header, before the open-close
+// control and hidden while arranging, fetching the window into the graph's
+// place; no other card carries a control, and the graph carries none of its
+// own. With no history behind the graph there is no window to offer.
+func TestTheTrafficCardsWindowRidesItsHeader(t *testing.T) {
+	got := render(t, newRenderer(t), &Overview{TrafficRangeURL: "/overview/traffic"})
+	head := between(got, `data-overview-card="traffic"`, `</header>`)
+	for _, want := range []string{
+		"data-overview-card-control", "group-data-arranging/overview:hidden",
+		`<select name="range"`, `hx-get="/overview/traffic"`, `hx-target="#overview-traffic-graph"`, `hx-swap="outerHTML"`,
+		`<option value="minute" selected>Last minute</option>`, `<option value="day">Last 24 hours</option>`,
+		`<option value="week">Last 7 days</option>`, `<option value="month">Last 30 days</option>`, `<option value="year">Last year</option>`,
+		`class="h-6 cursor-pointer`,
+	} {
+		if !strings.Contains(head, want) {
+			t.Errorf("the Traffic card's header missing %q:\n%s", want, head)
+		}
+	}
+	if strings.Index(head, "data-overview-card-control") > strings.Index(head, "data-overview-toggle") {
+		t.Error("the window stands after the open-close control")
+	}
+	if strings.Count(got, "data-overview-card-control") != 1 || strings.Count(got, `name="range"`) != 1 {
+		t.Error("a control stands in more than the Traffic card's header")
+	}
+	if bare := render(t, newRenderer(t), &Overview{}); strings.Contains(bare, "data-overview-card-control") {
+		t.Error("with no history behind it, the Traffic card offers a window")
+	}
+}
+
 func TestOverviewCountGrammarAndFallback(t *testing.T) {
 	catalog := map[string]string{"%d tunnel": "%d tunel", "%d tunnels (two)": "%d tunela", "%d tunnels (few)": "%d tuneli", "%d tunnels": "%d tunelov"}
 	tr := func(key string) string {

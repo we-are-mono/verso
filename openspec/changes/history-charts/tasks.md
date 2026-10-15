@@ -25,9 +25,9 @@
 
 ## 5. The Traffic card's header control
 
-- [ ] 5.1 Write overview tests: the Traffic card header renders the compact window select before the open-close button, hidden under Arrange mode, with `hx-target=#overview-traffic-graph`; no other card renders a control. Then add `control` to `overviewCardSpec` and the header template, and give the Traffic graph block its id. Verify: `go test ./internal/widget -run Overview`.
-- [ ] 5.2 Write a `verso-overview.js` test that a pointer or keyboard event starting in `[data-overview-card-control]` does not toggle the card, then add the guard. Verify: `node --test scripts/*.test.cjs` and, in `make dev`, choosing a window leaves the card open.
-- [ ] 5.3 Make `handleOverviewTraffic` answer the graph block for the header's target, with a test that a `range=day` request returns two lanes and no window select. Amend ADR-022 in place for the header control. Verify: `go test ./internal/server -run OverviewTraffic`.
+- [x] 5.1 Write overview tests: the Traffic card header renders the compact window select before the open-close button, hidden under Arrange mode, with `hx-target=#overview-traffic-graph`; no other card renders a control. Then add `control` to `overviewCardSpec` and the header template, and give the Traffic graph block its id. Verify: `go test ./internal/widget -run Overview`.
+- [x] 5.2 Write a `verso-overview.js` test that a pointer or keyboard event starting in `[data-overview-card-control]` does not toggle the card, then add the guard. Verify: `node --test scripts/*.test.cjs` and, in `make dev`, choosing a window leaves the card open.
+- [x] 5.3 Make `handleOverviewTraffic` answer the graph block for the header's target, with a test that a `range=day` request returns two lanes and no window select. Amend ADR-022 in place for the header control. Verify: `go test ./internal/server -run OverviewTraffic`.
 
 ## 6. Temperature series identity
 

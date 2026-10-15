@@ -51,7 +51,7 @@ func (s *Server) handleOverviewTraffic(w http.ResponseWriter, r *http.Request) {
 	var traffic *widget.Traffic
 	if window == widget.TrafficRanges[0].Value {
 		_, down, up, downNow, upNow := s.wanMinute(r)
-		traffic = widget.InternetTraffic(downNow, upNow, down, up, overviewTrafficPath, window)
+		traffic = widget.InternetTraffic(downNow, upNow, down, up, window)
 	} else {
 		layout, offered := historyWindowOf(window)
 		if !offered {
@@ -122,7 +122,7 @@ func (s *Server) pastTraffic(r *http.Request, window string, res history.Resolut
 	}
 	_, t := s.localize(r)
 	tr := translatorOrIdentity(t)
-	traffic := widget.InternetTraffic(mean(down), mean(up), down, up, overviewTrafficPath, window)
+	traffic := widget.InternetTraffic(mean(down), mean(up), down, up, window)
 	traffic.DownPeak, traffic.UpPeak = downPeak, upPeak
 	traffic.Marks = eventMarks(events, start, end, now, tr)
 	traffic.Marks = append(traffic.Marks, lossMarks(loss, start, step, traffic.Marks, now, tr)...)
