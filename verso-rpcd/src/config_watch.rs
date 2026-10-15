@@ -29,7 +29,7 @@ use std::os::fd::FromRawFd;
 use std::os::raw::c_char;
 use std::os::unix::fs::{DirBuilderExt, MetadataExt, OpenOptionsExt, PermissionsExt};
 use std::path::{Path, PathBuf};
-use std::sync::Mutex;
+use std::sync::{Mutex, PoisonError};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 #[path = "../../plugins/verso-plugin-sdk/src/sha256.rs"]
@@ -42,8 +42,8 @@ const WATCHED: &str = "/etc/config";
 /// Where the shell takes readings from: a directory its account owns, which
 /// the init script makes.
 const SPOOL: &str = "/var/run/verso/changes";
-/// The fingerprints' key: made once, readable by root alone, in the shell's
-/// directory.
+/// The helper's key, for fingerprints and file versions: made once, readable
+/// by root alone, in the shell's directory.
 const KEY: &str = "/etc/verso/fingerprint.key";
 const PLUGINS: &str = "/usr/share/verso/plugins";
 /// The options OpenWrt's own packages keep a secret in, the shell's list.
@@ -98,8 +98,13 @@ pub fn watchdog() {
 }
 
 fn watch() -> Result<(), String> {
-    let key = key();
     let spool = Path::new(SPOOL);
+    // With no key no secret can be fingerprinted, so nothing is spooled: the
+    // config is left to its next write, the reason in the log.
+    let spool_config = |name: &str, written: u64, own: bool| match key() {
+        Ok(key) => spool_config(spool, name, written, own, key),
+        Err(error) => eprintln!("verso-rpcd: config watch: {name} not spooled: {error}"),
+    };
     // An inotify descriptor, non-blocking so the loop can settle what it saw.
     let fd = unsafe { inotify_init1(IN_NONBLOCK | IN_CLOEXEC) };
     if fd < 0 {
@@ -114,7 +119,7 @@ fn watch() -> Result<(), String> {
         ));
     }
     for name in configs_in(Path::new(WATCHED)) {
-        spool_config(spool, &name, now_secs(), false, &key);
+        spool_config(&name, now_secs(), false);
     }
     let mut pending: HashMap<String, (Instant, u64)> = HashMap::new();
     let mut buf = [0u8; 4096];
@@ -141,7 +146,7 @@ fn watch() -> Result<(), String> {
             .collect();
         for (name, written) in settled {
             pending.remove(&name);
-            spool_config(spool, &name, written, owned(&name), &key);
+            spool_config(&name, written, owned(&name));
         }
         std::thread::sleep(POLL);
     }
@@ -370,7 +375,7 @@ fn fingerprint_secrets(config: &str, sections: &mut Value, secrets: &HashSet<Str
 }
 
 /// hmac is HMAC-SHA-256 (RFC 2104).
-fn hmac(key: &[u8], message: &[u8]) -> [u8; 32] {
+pub(crate) fn hmac(key: &[u8], message: &[u8]) -> [u8; 32] {
     let mut block = [0u8; 64];
     if key.len() > 64 {
         block[..32].copy_from_slice(&sha256::sha256(key));
@@ -391,31 +396,55 @@ fn hmac(key: &[u8], message: &[u8]) -> [u8; 32] {
     sha256::sha256(&outer)
 }
 
-fn hex(bytes: &[u8]) -> String {
+pub(crate) fn hex(bytes: &[u8]) -> String {
     bytes.iter().map(|b| format!("{b:02x}")).collect()
 }
 
-/// key is the fingerprints' key, made the first time from the kernel's
-/// randomness and kept readable by root alone. Without a place to keep it the
-/// key lives as long as the helper, and a restart reads every secret as
-/// changed once.
-fn key() -> Vec<u8> {
-    key_at(Path::new(KEY), crate::VERSO_GID)
+/// key is the helper's key, made the first time from the kernel's randomness
+/// and kept readable by root alone: it fingerprints secrets here and versions
+/// the hand-edited files (config_files). It is read once, so both use the
+/// same one. Without a place to keep it the key lives as long as the helper,
+/// and a restart reads every secret and every file as changed once. Without
+/// the kernel's randomness there is no key, and each use tries again.
+pub(crate) fn key() -> Result<&'static [u8], String> {
+    static HELD: Mutex<Option<&'static [u8]>> = Mutex::new(None);
+    held(&HELD, || key_at(Path::new(KEY), crate::VERSO_GID, urandom))
 }
 
-/// key_at reads or makes the key at path. Its directory is the shell's too,
-/// where the shell reads its certificate (ADR-017 §3), so it is made readable
-/// by group, the shell's; the key itself is root's alone by its own mode.
-fn key_at(path: &Path, group: u32) -> Vec<u8> {
+/// held is the key cell holds, made by make the first time it succeeds.
+fn held(
+    cell: &Mutex<Option<&'static [u8]>>,
+    make: impl FnOnce() -> Result<Vec<u8>, String>,
+) -> Result<&'static [u8], String> {
+    let mut held = cell.lock().unwrap_or_else(PoisonError::into_inner);
+    if let Some(key) = *held {
+        return Ok(key);
+    }
+    let key: &'static [u8] = Box::leak(make()?.into_boxed_slice());
+    *held = Some(key);
+    Ok(key)
+}
+
+fn urandom(key: &mut [u8]) -> std::io::Result<()> {
+    fs::File::open("/dev/urandom")?.read_exact(key)
+}
+
+/// key_at reads or makes the key at path, from random. Its directory is the
+/// shell's too, where the shell reads its certificate (ADR-017 §3), so it is
+/// made readable by group, the shell's; the key itself is root's alone by its
+/// own mode.
+pub(crate) fn key_at(
+    path: &Path,
+    group: u32,
+    random: impl FnOnce(&mut [u8]) -> std::io::Result<()>,
+) -> Result<Vec<u8>, String> {
     if let Ok(key) = fs::read(path) {
         if key.len() == 32 {
-            return key;
+            return Ok(key);
         }
     }
     let mut key = vec![0u8; 32];
-    if let Err(error) = fs::File::open("/dev/urandom").and_then(|mut f| f.read_exact(&mut key)) {
-        eprintln!("verso-rpcd: config watch: no randomness for the key: {error}");
-    }
+    random(&mut key).map_err(|error| format!("no randomness for the key: {error}"))?;
     let kept = path
         .parent()
         .map(|dir| {
@@ -441,7 +470,7 @@ fn key_at(path: &Path, group: u32) -> Vec<u8> {
             path.display()
         );
     }
-    key
+    Ok(key)
 }
 
 /// write_spool puts one config's reading in the spool, in place of any
@@ -747,13 +776,30 @@ mod tests {
         let path = root.join("etc/verso/fingerprint.key");
         // A group the test may give a directory to: its own.
         let group = fs::metadata(&root).unwrap().gid();
-        let made = key_at(&path, group);
+        let made = key_at(&path, group, urandom).unwrap();
         let dir = fs::metadata(path.parent().unwrap()).unwrap();
         assert_eq!(dir.mode() & 0o777, 0o750, "the shell reads its certificate here");
         assert_eq!(dir.gid(), group);
         assert_eq!(fs::metadata(&path).unwrap().mode() & 0o777, 0o600);
-        assert_eq!(key_at(&path, group), made, "a key made once is kept");
+        assert_eq!(key_at(&path, group, urandom).unwrap(), made, "a key made once is kept");
         fs::remove_dir_all(root).unwrap();
+    }
+
+    /// Without the kernel's randomness there is no key: none is made or
+    /// kept, nothing is keyed under a stand-in, and the next use tries again.
+    #[test]
+    fn without_randomness_nothing_is_keyed() {
+        let root = std::env::temp_dir().join(format!("verso-nokey-{}", std::process::id()));
+        let path = root.join("etc/verso/fingerprint.key");
+        let starved = |_: &mut [u8]| Err(std::io::Error::other("no randomness"));
+        assert!(key_at(&path, 0, starved).is_err());
+        assert!(!path.exists(), "no key is kept");
+        let cell = Mutex::new(None);
+        assert!(held(&cell, || key_at(&path, 0, starved)).is_err());
+        assert!(cell.lock().unwrap().is_none(), "a failure is not held");
+        assert_eq!(held(&cell, || Ok(vec![5; 32])).unwrap(), [5; 32]);
+        assert_eq!(held(&cell, || Err("unused".into())).unwrap(), [5; 32], "a key is made once");
+        let _ = fs::remove_dir_all(root);
     }
 
     #[test]

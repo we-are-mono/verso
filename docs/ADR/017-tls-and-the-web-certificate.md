@@ -157,9 +157,10 @@ same uci configs, so nothing moves between them.
 | `/etc/verso/tls.crt` | 0644 | root |
 | `/etc/verso/tls.key` | 0600 | verso:root |
 
-The directory is shared: `verso-rpcd` keeps its config fingerprint key there,
-0600 and root's alone. Whichever of the two makes the directory gives it this
-owner and mode, and the `verso` init script sets them again on every start.
+The directory is shared: `verso-rpcd` keeps its key there (config
+fingerprints, hand-edited file versions), 0600 and root's alone. Whichever of
+the two makes the directory gives it this owner and mode, and the `verso` init
+script sets them again on every start.
 
 The key is the `verso` account's alone, not its group's: every plugin runs in
 the `verso` group too (ADR-007), so a key the group reads would be every

@@ -276,12 +276,42 @@ fn read(path: &Path) -> Result<Option<String>, Failure> {
         .map(Some)
         .map_err(|_| Failure::invalid("The file must contain UTF-8 text."))
 }
-fn version(body: Option<&str>) -> String {
-    let mut h = 0xcbf29ce484222325u64;
-    for b in body.unwrap_or("").bytes().chain([u8::from(body.is_some())]) {
-        h = (h ^ b as u64).wrapping_mul(0x100000001b3);
-    }
-    format!("{h:016x}")
+/// NEW_FILE is the version of a file that does not exist: fixed, public, and
+/// what the plugin SDK's NEW_FILE_VERSION sends to create one. No present
+/// file's version is this long, so a save meant to create a file never
+/// replaces one.
+const NEW_FILE: &str = "af63bd4c8601b7df";
+/// version is what a save is checked against: the file at path changed since
+/// its editor read it, or not. It is keyed under the helper's root-only key
+/// and names its path, so a profile's version gives nothing of its folded
+/// blocks to whoever holds it, nor checks a guess at another path's file; the
+/// key is kept, so an open editor outlives a helper restart. Without the key
+/// there is no version, and no file is read or saved.
+fn version(path: &str, body: Option<&str>) -> Result<String, Failure> {
+    version_from(crate::config_watch::key, path, body)
+}
+/// version_from is version under the key that key gives; its refusal is the
+/// operator's to read.
+fn version_from<K: AsRef<[u8]>>(
+    key: impl FnOnce() -> Result<K, String>,
+    path: &str,
+    body: Option<&str>,
+) -> Result<String, Failure> {
+    let Some(body) = body else {
+        return Ok(NEW_FILE.to_string());
+    };
+    let key = key().map_err(|error| {
+        eprintln!("verso-rpcd: config files: {error}");
+        Failure::invalid("The router has no key to check its files against.")
+    })?;
+    Ok(version_under(key.as_ref(), path, body))
+}
+fn version_under(key: &[u8], path: &str, body: &str) -> String {
+    let mut message = b"verso config-file version\0".to_vec();
+    message.extend_from_slice(&(path.len() as u64).to_be_bytes());
+    message.extend_from_slice(path.as_bytes());
+    message.extend_from_slice(body.as_bytes());
+    crate::config_watch::hex(&crate::config_watch::hmac(key, &message)[..16])
 }
 fn atomic(path: &Path, body: &str, mode: u32) -> Result<(), Failure> {
     check_path(path)?;
@@ -433,17 +463,36 @@ pub fn state() -> Result<Value, Failure> {
             files.push(json!({"path":key,"family":family.name(),"error":family.over_limit()}));
             continue;
         }
-        // A profile is reported folded, keys left in the helper; its version
-        // is still the whole file's, which is what a save is checked against.
-        let content = match family {
-            Family::Openvpn => crate::openvpn::fold(body.as_deref().unwrap_or("")),
-            _ => body.clone().unwrap_or_default(),
-        };
-        files.push(json!({"path":key,"family":family.name(),"content":content,"version":version(body.as_deref()),"pending":j["files"].get(key.as_ref()).is_some(),"exists":body.is_some()}));
+        let pending = j["files"].get(key.as_ref()).is_some();
+        files.push(listed(&key, family, body.as_deref(), pending, version));
     }
     Ok(
         json!({"files":files,"active":j["active"],"uci":j["uci"],"uci_confirmed":j["uci_confirmed"]}),
     )
+}
+/// listed is how state reports one file. A profile is reported folded, keys
+/// left in the helper; its version is the whole file's, keyed, which is what
+/// a save is checked against. A file with no version has the reason in its
+/// place, so it fails no other file's listing.
+fn listed(
+    path: &str,
+    family: Family,
+    body: Option<&str>,
+    pending: bool,
+    version: impl FnOnce(&str, Option<&str>) -> Result<String, Failure>,
+) -> Value {
+    let content = match family {
+        Family::Openvpn => crate::openvpn::fold(body.unwrap_or("")),
+        _ => body.unwrap_or_default().to_string(),
+    };
+    match version(path, body) {
+        Ok(version) => {
+            json!({"path":path,"family":family.name(),"content":content,"version":version,"pending":pending,"exists":body.is_some()})
+        }
+        Err(e) => {
+            json!({"path":path,"family":family.name(),"content":content,"error":e.message,"pending":pending,"exists":body.is_some()})
+        }
+    }
 }
 fn validate_dnsmasq(body: &str) -> Result<(), Failure> {
     let dir = Path::new(JOURNAL).parent().unwrap();
@@ -482,7 +531,7 @@ pub fn stage(path: &str, expected: &str, body: &str) -> Result<Value, Failure> {
     }
     let before = read(Path::new(path))?;
     let previous = j["files"][path]["after"].as_str().or(before.as_deref());
-    if version(previous) != expected {
+    if version(path, previous)? != expected {
         return Err(Failure::invalid(
             "This file changed. Reopen it before saving.",
         ));
@@ -851,7 +900,89 @@ mod tests {
         ] {
             assert!(!allowed(p));
         }
-        assert_ne!(version(None), version(Some("")));
+    }
+    const KEY: [u8; 32] = [7; 32];
+    const PATH: &str = "/etc/openvpn/proton.ovpn";
+    /// A file that does not exist has the version the plugin SDK sends to
+    /// create one; an empty file has another.
+    #[test]
+    fn a_new_file_has_the_sdks_version() {
+        let sdk = include_str!("../../plugins/verso-plugin-sdk/src/files.rs");
+        let new = version(PATH, None).unwrap();
+        assert!(sdk.contains(&format!("NEW_FILE_VERSION: &str = \"{new}\"")), "{new}");
+        assert_eq!(new, version("/etc/openvpn/other.ovpn", None).unwrap());
+        assert_ne!(new, version_under(&KEY, PATH, ""));
+    }
+    /// The same file at two paths has two versions, so one path's version
+    /// checks no guess at another's.
+    #[test]
+    fn a_version_is_its_paths_alone() {
+        let body = "client\n<key>\nSECRET\n</key>\n";
+        assert_ne!(
+            version_under(&KEY, PATH, body),
+            version_under(&KEY, "/etc/openvpn/other.ovpn", body)
+        );
+        // the path's length is part of the message, so no split of path and
+        // body reads as another
+        assert_ne!(
+            version_under(&KEY, "/etc/openvpn/a", "b\n"),
+            version_under(&KEY, "/etc/openvpn/ab", "\n")
+        );
+    }
+    /// A folded profile's version tells a save the file changed and nothing
+    /// of what its folded blocks hold: without the key no guess at a block
+    /// can be checked against it.
+    #[test]
+    fn a_profiles_version_gives_nothing_of_its_folded_blocks() {
+        let profile = |password: &str| {
+            format!("client\nremote vpn.test.invalid 1194\n<auth-user-pass>\noperator7\n{password}\n</auth-user-pass>\nverb 3\n")
+        };
+        let (held, other) = (profile("m4x9p"), profile("m4x9q"));
+        assert_eq!(crate::openvpn::fold(&held), crate::openvpn::fold(&other));
+        let reported = version_under(&KEY, PATH, &held);
+        assert_ne!(reported, version_under(&KEY, PATH, &other), "a changed block changes the version");
+        assert_eq!(reported, version_under(&KEY, PATH, &held), "the same file keeps its version");
+        assert_ne!(reported, version_under(&[8; 32], PATH, &held), "the version is the key's");
+        // an unkeyed FNV-1a, which a reader could run over every guess at
+        // the password
+        let fnv = |body: &str| {
+            let mut h = 0xcbf29ce484222325u64;
+            for b in body.bytes().chain([1]) {
+                h = (h ^ b as u64).wrapping_mul(0x100000001b3);
+            }
+            format!("{h:016x}")
+        };
+        assert!(["m4x9p", "m4x9q"].iter().all(|guess| fnv(&profile(guess)) != reported));
+        assert_ne!(Some(reported), version(PATH, None).ok(), "a file never reads as new");
+    }
+    /// Without the kernel's randomness there is no key and so no version: a
+    /// present file is listed with the reason in its place, as one that
+    /// cannot be read is, so the other files still list and a staged one
+    /// still reaches the review and its apply. The reason is the operator's
+    /// to read, and a save is refused with it.
+    #[test]
+    fn a_file_with_no_version_is_listed_with_the_reason() {
+        let dir = std::env::temp_dir().join(format!("verso-file-nokey-{}", std::process::id()));
+        let starved = || {
+            crate::config_watch::key_at(&dir.join("fingerprint.key"), 0, |_: &mut [u8]| {
+                Err(std::io::Error::other("no randomness"))
+            })
+        };
+        let unkeyed = |path: &str, body: Option<&str>| version_from(starved, path, body);
+        let body = "client\n<key>\nSECRET\n</key>\n";
+        let file = listed(PATH, Family::Openvpn, Some(body), true, unkeyed);
+        assert_eq!(file["error"], "The router has no key to check its files against.");
+        assert!(file.get("version").is_none(), "{file}");
+        assert_eq!((&file["path"], &file["family"], &file["pending"]), (&json!(PATH), &json!("openvpn"), &json!(true)));
+        assert_eq!(file["content"], crate::openvpn::fold(body), "staged content still reads folded");
+        assert!(!file.to_string().contains("SECRET"), "{file}");
+        let refused = version_from(starved, PATH, Some(body)).unwrap_err();
+        assert_eq!(refused.status, crate::STATUS_INVALID_ARGUMENT, "the operator reads why");
+        // a file that does not exist needs no key
+        let new = listed(PATH, Family::Openvpn, None, true, unkeyed);
+        assert_eq!((&new["version"], &new["exists"]), (&json!(NEW_FILE), &json!(false)));
+        assert!(new.get("error").is_none());
+        assert!(!dir.exists(), "no key is kept");
     }
     #[test]
     fn journal_round_trip_and_restore() {
