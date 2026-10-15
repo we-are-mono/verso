@@ -333,6 +333,23 @@ fn counting_day() -> Result<String, String> {
     period_day(&header).ok_or_else(|| "nlbwmon named no day it is counting".into())
 }
 
+/// Read the live totals between two period stamps. nlbwmon may roll over
+/// between socket requests; a changed stamp means those bytes have no safe
+/// label yet. Retry the whole reading, or fail without updating the cache.
+fn live_day_with(
+    mut day: impl FnMut() -> Result<String, String>,
+    mut totals: impl FnMut() -> Result<Map<String, Value>, String>,
+) -> Result<(String, Map<String, Value>), String> {
+    for _ in 0..3 {
+        let before = day()?;
+        let bytes = totals()?;
+        if before == day()? {
+            return Ok((before, bytes));
+        }
+    }
+    Err("nlbwmon changed its counting day during the live reading".into())
+}
+
 /// nlbw_option is one of nlbwmon's options as uci holds it.
 fn nlbw_option(option: &str) -> String {
     Command::new("uci")
@@ -392,7 +409,7 @@ pub fn days(known: &str) -> Result<Value, String> {
     if !enabled() {
         return Ok(json!({"enabled": false}));
     }
-    let today = counting_day()?;
+    let (today, live) = live_day_with(counting_day, || parse_day(&nlbw(&day_args("", true))?))?;
     let archived: Vec<String> = fs::read_dir(nlbw_option("database_directory"))
         .map(|entries| {
             entries
@@ -407,11 +424,11 @@ pub fn days(known: &str) -> Result<Value, String> {
         .map(str::to_string)
         .collect();
     let wanted = days_to_read(&today, &archived, &known, WINDOW_DAYS);
-    let mut out = Map::new();
-    for (i, day) in wanted.iter().enumerate() {
+    let mut out = Map::from_iter([(today, Value::Object(live))]);
+    for day in wanted.iter().skip(1) {
         out.insert(
             day.clone(),
-            Value::Object(parse_day(&nlbw(&day_args(day, i == 0))?)?),
+            Value::Object(parse_day(&nlbw(&day_args(day, false))?)?),
         );
     }
     Ok(json!({"enabled": true, "today": wanted.first(), "days": out}))
@@ -486,6 +503,73 @@ pub fn watchdog() {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn live_bytes_follow_their_period_when_nlbwmon_rolls_over() {
+        let mut stamps = ["2026-10-11", "2026-10-12", "2026-10-12", "2026-10-12"].into_iter();
+        let mut readings = [700u64, 900].into_iter();
+        let (day, totals) = live_day_with(
+            || Ok(stamps.next().expect("unexpected period read").to_string()),
+            || {
+                Ok(Map::from_iter([(
+                    "02:00:00:00:00:01".into(),
+                    json!({"received": readings.next().unwrap(), "sent": 0}),
+                )]))
+            },
+        )
+        .unwrap();
+        assert_eq!(day, "2026-10-12");
+        assert_eq!(totals["02:00:00:00:00:01"]["received"], 900);
+    }
+
+    #[test]
+    fn a_stable_period_keeps_one_reading_and_errors_are_propagated() {
+        let mut reads = 0;
+        let (_, bytes) = live_day_with(
+            || Ok("2026-10-12".into()),
+            || {
+                reads += 1;
+                Ok(Map::new())
+            },
+        )
+        .unwrap();
+        assert_eq!(reads, 1);
+        assert!(bytes.is_empty());
+        assert_eq!(
+            live_day_with(
+                || Err("stamp unavailable".into()),
+                || panic!("must not read bytes")
+            )
+            .unwrap_err(),
+            "stamp unavailable"
+        );
+        assert_eq!(
+            live_day_with(
+                || Ok("2026-10-12".into()),
+                || Err("bytes unavailable".into())
+            )
+            .unwrap_err(),
+            "bytes unavailable"
+        );
+    }
+
+    #[test]
+    fn an_unstable_period_is_bounded_and_returns_no_mislabeled_totals() {
+        let mut stamp = 20261011;
+        let mut reads = 0;
+        assert!(live_day_with(
+            || {
+                stamp += 1;
+                Ok(stamp.to_string())
+            },
+            || {
+                reads += 1;
+                Ok(Map::new())
+            },
+        )
+        .is_err());
+        assert_eq!(reads, 3);
+    }
 
     /// One direction of a connection: source, destination, ports, and the
     /// bytes its source sent (None while the kernel keeps no accounting).

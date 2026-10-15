@@ -62,6 +62,11 @@ router's date. `verso-rpcd` takes today from the header of the live database
 are never read as two days. Totals are keyed by MAC, the identity the roster uses;
 `nlbwmon` records it per stream from the neighbour table.
 
+The helper reads the period again after the live totals. If it changed between
+the two stamps, it retries the reading rather than assigning the next period's
+bytes to the previous day. After three unstable readings it returns an error,
+leaving the shell's existing history unchanged.
+
 Usage is on while the `nlbwmon` service is enabled, and the Services page is
 where it is switched. With it disabled, the roster draws no usage columns and the
 device panel no Usage tab.
