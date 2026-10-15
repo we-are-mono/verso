@@ -505,6 +505,32 @@ mod tests {
         );
     }
 
+    // Wi-Fi's RADIUS, 802.11r and WPS secrets and the alert addresses, under
+    // each name uci knows them by, leave the helper as fingerprints alone.
+    #[test]
+    fn the_lists_secrets_are_spooled_as_fingerprints() {
+        let secrets = secret_options(Path::new("/nonexistent"));
+        let mut wireless = json!({ "corp": {
+            ".type": "wifi-iface", "ssid": "Corp",
+            "dae_secret": "PLAIN", "radius_das_secret": "PLAIN",
+            "auth_server_shared_secret": "PLAIN", "acct_server_shared_secret": "PLAIN",
+            "r0kh": ["02:00:00:00:00:01,*,PLAIN"], "r1kh": ["02:00:00:00:00:01,02:00:00:00:00:01,PLAIN"],
+            "ap_pin": "PLAIN", "wps_pin": "PLAIN", "multi_ap_backhaul_key": "PLAIN",
+            "priv_key2_pwd": "PLAIN", "private_key2_passwd": "PLAIN",
+            "hostapd_bss_options": ["wpa_passphrase=PLAIN", "sae_password=PLAIN"]
+        }});
+        let mut verso = json!({ "alerts": {
+            ".type": "alerts", "url": "PLAIN", "heartbeat": "PLAIN", "kind": ["boot"]
+        }});
+        fingerprint_secrets("wireless", &mut wireless, &secrets, b"k");
+        fingerprint_secrets("verso", &mut verso, &secrets, b"k");
+        for (config, sections) in [("wireless", &wireless), ("verso", &verso)] {
+            assert!(!sections.to_string().contains("PLAIN"), "{config}: {sections}");
+        }
+        assert_eq!(wireless["corp"]["ssid"], "Corp");
+        assert_eq!(verso["alerts"]["kind"], json!(["boot"]));
+    }
+
     #[test]
     fn a_plugins_secrets_join_the_list() {
         let dir = std::env::temp_dir().join(format!("verso-secrets-{}", std::process::id()));

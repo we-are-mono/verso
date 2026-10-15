@@ -122,6 +122,9 @@ rpcd and `reload_config`, so a plain `uci commit` over SSH never raises it.
 An edit made while `verso-rpcd` or the shell is not running (a config restored
 before boot, an edit during an upgrade) is found when the helper starts: it
 spools every config, and the shell compares each with the reading it kept.
+A secret the kept reading holds only as not kept, as a scrub leaves an option
+named a secret after it was read, is nothing to compare: a fingerprint read
+in its place is no edit, so an upgrade that names a secret records none.
 
 Who made an outside edit is not known. inotify names no process, and the
 `uci` process that wrote the file has exited before it could be traced to a
@@ -133,9 +136,20 @@ no logo, so a reader may not know what "Verso" is.
 ### Secrets are not kept
 
 The options OpenWrt's own packages keep a secret in (`network.password`,
-`wireless.key`, `wireless.sae_password`, `ddns.password` and the like) are
+`wireless.key`, `wireless.sae_password`, `ddns.password` and the like), each
+under every name uci knows it by (`wireless.dae_secret` and
+`wireless.radius_das_secret` alike), and the shell's own alert and heartbeat
+addresses (`verso.url`, `verso.heartbeat`), which let whoever holds one post
+to the operator's channel or keep a heartbeat alive, are
 listed once, in `internal/secrets/secrets.json`, compiled into the shell and
-the helper alike; a plugin's manifest names any other its config holds, as
+the helper alike. A test holds the Wi-Fi network's options to OpenWrt's
+`wifi-iface` schema: each whose name says it may hold a secret (secret, key,
+pin, pwd, passwd, password, kh, psk) is listed, or named in the test with what
+it holds instead (a key file's path, a lifetime, a switch);
+`wireless.hostapd_bss_options`, whose raw hostapd lines may carry
+`wpa_passphrase=` or `sae_password=`, is listed though its name does not say
+so. A plugin's manifest
+names any other secret its config holds, as
 `config.option` (`"secrets": ["vpn.auth_pass"]`), and both add those. Shell
 and helper alike take a plugin's secret only in a config the plugin's acl
 writes with scope `uci`: a plugin names the secrets of the configs it writes,

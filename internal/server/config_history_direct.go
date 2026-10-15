@@ -242,6 +242,7 @@ func (d directSource) snapshot(context.Context, plugin.Manifest) plugin.UCI {
 // list's values added and removed, in each section in the order the config
 // holds them; a section made with every option it holds; a section removed.
 // secret names the options whose value is a fingerprint, set with no value.
+// A secret's value not kept on either side tells no change.
 func diffConfig(before, after map[string]map[string]any) ([][]string, map[string]bool) {
 	var tuples [][]string
 	secret := map[string]bool{}
@@ -263,6 +264,9 @@ func diffConfig(before, after map[string]map[string]any) ([][]string, map[string
 			_, wasSecret := was.(map[string]any)
 			_, isSecret := is.(map[string]any)
 			switch {
+			case had && has && (notKept(was) || notKept(is)):
+				// A value the history does not keep, as a scrub leaves
+				// one, is nothing to compare: no change is known.
 			case wasSecret || isSecret:
 				if !had || !has || !reflectEqual(was, is) {
 					secret[option] = true
@@ -285,6 +289,12 @@ func diffConfig(before, after map[string]map[string]any) ([][]string, map[string
 		}
 	}
 	return tuples, secret
+}
+
+// notKept is whether value stands for a secret's value the history does not
+// keep (history.NotKept), not a fingerprint of one.
+func notKept(value any) bool {
+	return reflectEqual(value, history.NotKept())
 }
 
 // optionChange is one option's change to is, from was where it had one: a

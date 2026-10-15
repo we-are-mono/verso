@@ -5,6 +5,7 @@ package server
 
 import (
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -12,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/we-are-mono/verso/internal/alerts"
 	"github.com/we-are-mono/verso/internal/history"
 )
 
@@ -58,6 +60,72 @@ func TestADirectEditReadsAsTheChangesUCIWouldList(t *testing.T) {
 	}
 	if tuples, _ := diffConfig(before, before); len(tuples) != 0 {
 		t.Errorf("a reading like the last differs by %v", tuples)
+	}
+}
+
+// TestASecretNotKeptIsNoChange: a secret's value the history does not keep,
+// as a scrub leaves one, is nothing to compare a fingerprint with, or a
+// fingerprint with it: either reads as no change. Set where it was not, or
+// removed, it is a change still.
+func TestASecretNotKeptIsNoChange(t *testing.T) {
+	notKept := `{".type":"alerts",".index":0,"url":{"secret":true}}`
+	fingerprint := `{".type":"alerts",".index":0,"url":{"secret":"aa"}}`
+	none := `{".type":"alerts",".index":0}`
+	for _, c := range []struct {
+		name, before, after string
+		want                [][]string
+	}{
+		{"not kept, then a fingerprint", notKept, fingerprint, nil},
+		{"a fingerprint, then not kept", fingerprint, notKept, nil},
+		{"not kept, then not kept", notKept, notKept, nil},
+		{"not kept, then removed", notKept, none, [][]string{{"remove", "alerts", "url"}}},
+		{"none, then a fingerprint", none, fingerprint, [][]string{{"set", "alerts", "url", ""}}},
+	} {
+		before := sections(t, `{"alerts":`+c.before+`}`)
+		after := sections(t, `{"alerts":`+c.after+`}`)
+		if tuples, _ := diffConfig(before, after); !reflect.DeepEqual(tuples, c.want) {
+			t.Errorf("%s: tuples %v, want %v", c.name, tuples, c.want)
+		}
+	}
+}
+
+// TestAnUpgradeListingASecretRecordsNoEdit: a shell whose list left out the
+// alert address kept it in plaintext as the config last read; the scrub as
+// the history opens leaves it not kept, and the helper's first reading, its
+// fingerprint for the same address, is no edit made directly.
+func TestAnUpgradeListingASecretRecordsNoEdit(t *testing.T) {
+	dir := t.TempDir()
+	written, err := history.Open(filepath.Join(dir, "history.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	alertsSection := func(url any) map[string]map[string]any {
+		return map[string]map[string]any{"alerts": {".type": "alerts", ".name": "alerts", ".anonymous": false,
+			".index": float64(0), "url": url, "kind": []any{"boot"}}}
+	}
+	held, _ := json.Marshal(alertsSection("https://ntfy.sh/topic"))
+	if err := errors.Join(written.SetConfigState(t.Context(), "verso", held, time.Unix(60, 0)),
+		written.StartConfig(t.Context(), "verso", held, time.Unix(0, 0)), written.Close()); err != nil {
+		t.Fatal(err)
+	}
+
+	s := newServerWith(t, fakeBackend{}, &fakeTransport{}, nil)
+	store, onDisk := s.openHistory(dir, alerts.Config{})
+	if store == nil || !onDisk {
+		t.Fatalf("history not opened on disk: %v, %v", store, onDisk)
+	}
+	t.Cleanup(func() { _ = store.Close() })
+	reading := configReading{Time: 120, Config: "verso",
+		Sections: alertsSection(map[string]any{"secret": "0123456789abcdef0123456789abcdef"})}
+	if err := s.takeReading(t.Context(), store, reading); err != nil {
+		t.Fatal(err)
+	}
+	if got := entries(t, store); len(got) != 0 {
+		t.Errorf("the helper's first reading made entries: %+v", got)
+	}
+	state, _, err := store.ConfigState(t.Context(), "verso")
+	if err != nil || !strings.Contains(string(state), "0123456789abcdef") {
+		t.Errorf("the reading is not kept as the config last read: %s, %v", state, err)
 	}
 }
 

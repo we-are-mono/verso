@@ -27,7 +27,10 @@ power sends nothing at all. Silence has to be noticed from outside.
 
 Both reach out to an address the operator chose, so both are off until one is
 set (ADR-014). The shell sends both: it runs all the time, and neither needs a
-privilege the `verso` user lacks.
+privilege the `verso` user lacks. Each address works as a password (whoever
+holds the alert address can post to the operator's channel, whoever holds the
+heartbeat's can keep it alive), so config history records that one changed,
+never its value (ADR-021).
 
 ### What is sent
 

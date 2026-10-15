@@ -6,6 +6,7 @@ package server
 import (
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -319,6 +320,73 @@ func TestOpeningTheHistoryScrubsIt(t *testing.T) {
 	t.Cleanup(func() { _ = store.Close() })
 	if found := heldIn(t, path, wifiKey); len(found) > 0 {
 		t.Fatalf("history.db holds the key:\n%s", strings.Join(found, "\n"))
+	}
+}
+
+// TestAHistoryKeptBeforeAnOptionWasListedIsScrubbedOfIt: Wi-Fi's RADIUS,
+// 802.11r and WPS secrets, its raw hostapd lines, and the alert addresses,
+// under each name uci knows them by, were kept in plaintext by a shell whose
+// list left them out: in a change's values and its raw words, and in each
+// config as last read and as it stood at the starting point. The scrub the
+// shell runs as it opens the history takes every one out, and keeps what is
+// no secret.
+func TestAHistoryKeptBeforeAnOptionWasListedIsScrubbedOfIt(t *testing.T) {
+	listed := map[string][]string{
+		"wireless": {"dae_secret", "radius_das_secret", "auth_server_shared_secret", "acct_server_shared_secret",
+			"r0kh", "r1kh", "ap_pin", "wps_pin", "multi_ap_backhaul_key", "priv_key2_pwd", "private_key2_passwd",
+			"hostapd_bss_options"},
+		"verso": {"url", "heartbeat"},
+	}
+	dir := t.TempDir()
+	path := filepath.Join(dir, "history.db")
+	written, err := history.Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	reading := map[string]map[string]any{}
+	var items []history.ChangeItem
+	for config, options := range listed {
+		section := map[string]any{".type": "kept", "label": "NO-SECRET"}
+		for _, option := range options {
+			value := "PLAINTEXT-" + option
+			op, words, was := "set", " = ", `"PLAINTEXT-BEFORE-`+option+`"`
+			section[option] = value
+			if option == "r0kh" || option == "r1kh" || option == "hostapd_bss_options" {
+				// A key holder is a list entry, its key the entry's last
+				// field; a raw hostapd line one, its value after the =.
+				op, words, was = "list-add", " += ", `["PLAINTEXT-BEFORE-`+option+`"]`
+				section[option] = []string{value}
+			}
+			items = append(items, history.ChangeItem{Page: "P", Verb: "changed", Verbatim: true,
+				Words: config + ": s." + option + words + value,
+				Ops: []history.ChangeOp{{Config: config, Section: "s", Op: op, Option: option,
+					Value: text(value), Old: old(was)}}})
+		}
+		reading[config] = map[string]any{"s": section}
+	}
+	record(t, written, history.Change{Time: time.Unix(60, 0), Status: history.ChangeApplied, OldRead: true, Items: items})
+	for config, sections := range reading {
+		held, _ := json.Marshal(sections)
+		if err := errors.Join(written.SetConfigState(t.Context(), config, held, time.Unix(60, 0)),
+			written.StartConfig(t.Context(), config, held, time.Unix(0, 0))); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := written.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	s := newServerWith(t, fakeBackend{}, &fakeTransport{}, nil)
+	store, onDisk := s.openHistory(dir, alerts.Config{})
+	if store == nil || !onDisk {
+		t.Fatalf("history not opened on disk: %v, %v", store, onDisk)
+	}
+	t.Cleanup(func() { _ = store.Close() })
+	if found := heldIn(t, path, "PLAINTEXT"); len(found) > 0 {
+		t.Fatalf("history.db holds a listed secret:\n%s", strings.Join(found, "\n"))
+	}
+	if found := heldIn(t, path, "NO-SECRET"); len(found) != 2*len(listed) {
+		t.Errorf("what is no secret is kept in %d readings, want %d", len(found), 2*len(listed))
 	}
 }
 
