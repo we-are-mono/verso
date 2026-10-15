@@ -861,9 +861,33 @@ html {
      palette. This SVG is the first paint — the live layer glides the same data. */
   .verso-chart-line { fill: none; stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; }
   .verso-chart-area { stroke: none; }
-  /* the value labels: HTML overlaid on the plot at a true, fixed size (SVG <text>
-     would scale with the graph). */
-  .verso-chart-yl { font-variant-numeric: tabular-nums; }
+
+  /* The plot stands over square cells, four tall, so each rule is a quarter
+     line: 32px on a page's card, 24px in an Overview card or a drawer. Its
+     width rounds down to whole quarters of cells beside the 64px gutter, so
+     each time label stands on its line; the left edge is the first column's
+     line and the right edge draws its own. Every rule lands on the page's
+     8px grid: the plot starts on a line and its cells are multiples of 8. */
+  .verso-chart-graph { --chart-cell: 2rem; --chart-quarters: round(down, 100% - 4rem, calc(var(--chart-cell) * 4)); }
+  .verso-chart-graph[data-chart-place="compact"] { --chart-cell: 1.5rem; }
+  .verso-chart-frame { display: grid; grid-template-columns: var(--chart-quarters) 4rem; }
+  .verso-chart-plot {
+    background-image:
+      linear-gradient(to bottom, var(--color-mid) 1px, transparent 1px),
+      linear-gradient(to right, var(--color-mid) 1px, transparent 1px);
+    background-size: var(--chart-cell) var(--chart-cell);
+    box-shadow: inset -1px 0 var(--color-mid);
+  }
+  .verso-chart-plot > svg { height: calc(var(--chart-cell) * 4); }
+
+  /* The axes' labels: HTML at a true, fixed size (SVG <text> would scale with
+     the graph), quieter than the legend over the plot. */
+  .verso-chart-yl, .verso-chart-tick {
+    font-size: var(--text-xs); font-weight: var(--font-weight-medium); line-height: calc(var(--spacing) * 6);
+    color: var(--color-meta); font-variant-numeric: tabular-nums;
+  }
+  .verso-chart-tick[data-align="center"] { translate: -50% 0; }
+  .verso-chart-tick[data-align="end"] { left: auto !important; right: 0; }
 
   /* The series hues: green for what comes down, amethyst for what goes up. */
   .verso-chart--violet .verso-chart-line { stroke: var(--color-amethyst); }

@@ -5,6 +5,7 @@ package units
 
 import (
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
 )
@@ -40,16 +41,21 @@ var durationUnits = []struct {
 // minute, minutes under an hour, and from there its two largest units
 // ("2 h 14 min", "52 d 8 h"), the second left out when it is nothing. A
 // negative stretch reads as none.
-func Duration(seconds int64) Span { return span(seconds, 2) }
+func Duration(seconds int64) Span { return span(seconds, 2, math.MaxInt64) }
+
+// DurationWithin is Duration counted in no unit larger than the largest a step
+// of step seconds reaches, so an axis stepping in hours reads "24 h", not
+// "1 d", and one stepping in seconds "60 s".
+func DurationWithin(seconds, step int64) Span { return span(seconds, 2, step) }
 
 // Since writes how long ago something was in its largest unit alone ("2 h"),
 // as a time ago is said.
-func Since(seconds int64) Span { return span(seconds, 1) }
+func Since(seconds int64) Span { return span(seconds, 1, math.MaxInt64) }
 
-func span(seconds int64, units int) Span {
+func span(seconds int64, units int, step int64) Span {
 	seconds = max(seconds, 0)
 	for i, u := range durationUnits {
-		if seconds < u.seconds && i < len(durationUnits)-1 {
+		if (seconds < u.seconds || u.seconds > step) && i < len(durationUnits)-1 {
 			continue
 		}
 		out := Span{{strconv.FormatInt(seconds/u.seconds, 10), u.symbol}}

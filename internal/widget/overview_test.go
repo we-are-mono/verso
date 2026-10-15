@@ -153,9 +153,9 @@ func TestRenderOverviewTrafficAutoScale(t *testing.T) {
 	if strings.Contains(got, ">Internet traffic</h2>") {
 		t.Error("the card's header names the graph; the graph draws no title of its own")
 	}
-	// In the card the plot is 128px tall, its values in a gutter on its right
-	// and its window's ends under it, none of them laid over the curve.
-	for _, want := range []string{"data-verso-chart-gutter", "h-32!", "data-verso-chart-window"} {
+	// In the card the plot is ruled in 24px squares, its values in a gutter on
+	// its right and its window under it, none of them laid over the curve.
+	for _, want := range []string{"data-verso-chart-gutter", `data-chart-place="compact"`, "data-verso-chart-window"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("the card's chart layout missing %q", want)
 		}

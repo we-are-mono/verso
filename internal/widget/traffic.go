@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"html/template"
 	"io"
+	"time"
 )
 
 // Traffic is a live traffic graph: its title and what it measures, the newest
@@ -48,17 +49,18 @@ type Traffic struct {
 
 // TrafficRange is one window a traffic graph can show.
 type TrafficRange struct {
-	Value, Label, AxisStart string
+	Value, Label string
+	Span         time.Duration
 }
 
 // TrafficRanges are the windows a graph with history offers, the live minute
 // first.
 var TrafficRanges = []TrafficRange{
-	{"minute", "Last minute", "60 s ago"},
-	{"day", "Last 24 hours", "24 h ago"},
-	{"week", "Last 7 days", "7 d ago"},
-	{"month", "Last 30 days", "30 d ago"},
-	{"year", "Last year", "a year ago"},
+	{"minute", "Last minute", time.Minute},
+	{"day", "Last 24 hours", 24 * time.Hour},
+	{"week", "Last 7 days", 7 * 24 * time.Hour},
+	{"month", "Last 30 days", 30 * 24 * time.Hour},
+	{"year", "Last year", 365 * 24 * time.Hour},
 }
 
 func (*Traffic) isWidget() {}
@@ -90,13 +92,16 @@ func (t *Traffic) renderInto(r *Renderer, out io.Writer, csrf string) error {
 	if window != TrafficRanges[0] {
 		live = ""
 	}
+	place := PlacePage
+	if t.Card || t.Panel {
+		place = PlaceCompact
+	}
 	chart := &Chart{
-		AxisStart: window.AxisStart,
-		AxisEnd:   "now",
-		Label:     t.Label,
-		Short:     t.Panel,
-		Card:      t.Card,
-		Marks:     t.Marks,
+		Span:  window.Span,
+		Live:  window == TrafficRanges[0],
+		Label: t.Label,
+		Place: place,
+		Marks: t.Marks,
 		Series: []ChartSeries{
 			{Label: "down", Role: "emerald", Fill: true, Values: t.Down},
 			{Label: "up", Role: "violet", Fill: true, Values: t.Up},

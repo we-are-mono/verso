@@ -8,15 +8,18 @@ import (
 	"io"
 	"math"
 	"strings"
+	"time"
 
 	"github.com/we-are-mono/verso/internal/units"
 )
 
-// Chart is the overview's traffic plot: lines, optionally filled as areas, drawn
-// server-side to static SVG edge to edge on the notebook grid, with value labels
-// riding the quarter lines and the window captioned in the bottom corners. This
-// SVG is the first paint; the live layer (verso-stream.js) glides the same series
-// without changing the markup.
+// Chart is a reading over time: lines, optionally filled as areas, drawn
+// server-side to static SVG over square cells, four cells tall so every rule
+// is a quarter line, its value labels in a gutter on the plot's right and the
+// window's quarters named under it, so nothing is laid over the curve. The
+// plot's width is whole quarters of cells (the CSS rounds it), so each time
+// label stands on its line. This SVG is the first paint; the live layer
+// (verso-chart.js) glides the same series without changing the markup.
 //
 // Colours are set by CSS classes, never SVG presentation attributes: var() resolves in
 // CSS properties but not inside SVG attributes, so a .verso-chart-* class carries the
@@ -28,20 +31,32 @@ import (
 type Chart struct {
 	Series []ChartSeries // drawn back to front
 	Label  string        // accessible description of the whole plot
-	// AxisStart and AxisEnd caption the window's two ends ("60 s ago", "now").
-	AxisStart string
-	AxisEnd   string
-	// Short stands the plot at 192px rather than 256px, twelve of the chart's
-	// 16px rules rather than sixteen; the viewBox stretches, so the curve is
-	// the same.
-	Short bool
-	// Card stands the plot in an Overview card, on Paper: 128px tall, over
-	// faint rules 16px apart, its value labels in a gutter on its right and
-	// its window's ends under it, so nothing is laid over the curve.
-	Card bool
+	// Place is where the chart stands, which sizes its cells.
+	Place ChartPlace
+	// Span is how far back the window reaches. A past window names its
+	// quarters under the plot (24 h · 18 h · 12 h · 6 h · now); a Live one,
+	// whose lines travel with the curve, names only its two ends.
+	Span time.Duration
+	Live bool
 	// Marks are what happened over the window (ADR-019), drawn behind the
 	// curves.
 	Marks []ChartMark
+}
+
+// ChartPlace is where a chart stands: on a page's card, its cells 32px, or in
+// an Overview card or a drawer, its cells 24px.
+type ChartPlace int
+
+const (
+	PlacePage ChartPlace = iota
+	PlaceCompact
+)
+
+func (p ChartPlace) String() string {
+	if p == PlaceCompact {
+		return "compact"
+	}
+	return "page"
 }
 
 // ChartMark is one event on a chart's time axis. From and To are fractions of
@@ -78,12 +93,18 @@ type chartView struct {
 	Label   string
 	W, H    float64
 	YLabels []chartYLabel
-	XStart  string
-	XEnd    string
+	Ticks   []chartTick
 	Series  []chartSeriesView
-	Short   bool
-	Card    bool
+	Place   string
 	Marks   []chartMarkView
+}
+
+// chartTick is one label on the time axis, at Pct of the plot's width; the
+// first stands from its line rightward, the last leftward, the rest centred.
+type chartTick struct {
+	Text  string
+	Pct   float64
+	Align string // "start" | "center" | "end"
 }
 
 // chartMarkView is a mark in the plot's own units.
@@ -122,7 +143,7 @@ func (c *Chart) renderInto(r *Renderer, out io.Writer, _ string) error {
 	topBPS, labels := r.numbers().RateScale(peak * 1e6)
 	top := topBPS / 1e6
 
-	view := chartView{Label: c.Label, W: chartW, H: chartH, XStart: c.AxisStart, XEnd: c.AxisEnd, Short: c.Short, Card: c.Card}
+	view := chartView{Label: c.Label, W: chartW, H: chartH, Place: c.Place.String(), Ticks: c.ticks(r)}
 	for _, m := range c.Marks {
 		view.Marks = append(view.Marks, chartMarkView{
 			// A brief outage keeps a width the eye can find.
@@ -156,6 +177,29 @@ func (c *Chart) renderInto(r *Renderer, out io.Writer, _ string) error {
 		view.Series = append(view.Series, sv)
 	}
 	return r.execute(out, "chart.html.tmpl", view)
+}
+
+// ticks are the time axis's labels: a live window's two ends ("60 s ago",
+// "now"), or a past window's quarters, each how long ago it stands as every
+// duration is written, counted in no unit larger than a quarter reaches
+// (units.DurationWithin: "24 h · 18 h · 12 h · 6 h"), the last "now".
+func (c *Chart) ticks(r *Renderer) []chartTick {
+	now := r.tr("now")
+	seconds := int64(c.Span / time.Second)
+	quarter := seconds / 4
+	if c.Live {
+		ago := fmt.Sprintf(r.tr("%s ago"), units.DurationWithin(seconds, quarter))
+		return []chartTick{{ago, 0, "start"}, {now, 100, "end"}}
+	}
+	out := make([]chartTick, 0, 5)
+	for q := range int64(4) {
+		align := "center"
+		if q == 0 {
+			align = "start"
+		}
+		out = append(out, chartTick{units.DurationWithin(quarter*(4-q), quarter).String(), float64(q) * 25, align})
+	}
+	return append(out, chartTick{now, 100, "end"})
 }
 
 // chartPoints maps the values to plot coordinates: x spreads them evenly across the

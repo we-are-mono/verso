@@ -51,6 +51,27 @@ func TestADurationKeepsItsFiguresApartFromItsUnits(t *testing.T) {
 	}
 }
 
+// An axis counts in no unit larger than its step reaches, so a day's quarters
+// read in hours and a week's in days and hours.
+func TestAnAxisCountsInItsStepsUnit(t *testing.T) {
+	for _, tc := range []struct {
+		seconds, step int64
+		want          string
+	}{
+		{86400, 21600, "24 h"},      // a day in quarters of 6 h
+		{64800, 21600, "18 h"},      // its first inner quarter
+		{604800, 151200, "7 d"},     // a week in quarters of 1 d 18 h
+		{453600, 151200, "5 d 6 h"}, // its first inner quarter
+		{60, 15, "60 s"},            // a minute in quarters of 15 s
+		{2592000, 648000, "30 d"},   // a month
+		{1944000, 648000, "22 d 12 h"},
+	} {
+		if got := DurationWithin(tc.seconds, tc.step).String(); got != tc.want {
+			t.Errorf("DurationWithin(%d, %d) = %q, want %q", tc.seconds, tc.step, got, tc.want)
+		}
+	}
+}
+
 // A time ago is translated as a whole pattern, so a language puts its word for
 // ago where it belongs.
 func TestAgoIsTheLanguagesPattern(t *testing.T) {

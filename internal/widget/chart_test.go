@@ -5,17 +5,79 @@ package widget
 
 import (
 	"math"
+	"regexp"
 	"strings"
 	"testing"
+	"time"
 )
+
+// TestAChartIsSizedByItsPlace: a page's card rules its plot in 32px squares,
+// an Overview card or a drawer in 24px ones; the plot stands on its own line,
+// never a pixel up.
+func TestAChartIsSizedByItsPlace(t *testing.T) {
+	series := []ChartSeries{{Values: []float64{1, 2, 3}}}
+	for _, tc := range []struct {
+		place ChartPlace
+		want  string
+	}{
+		{PlacePage, `data-chart-place="page"`},
+		{PlaceCompact, `data-chart-place="compact"`},
+	} {
+		got := render(t, newRenderer(t), &Chart{Place: tc.place, Span: 24 * time.Hour, Series: series})
+		if !strings.Contains(got, tc.want) {
+			t.Errorf("place %v: missing %s:\n%s", tc.place, tc.want, got)
+		}
+		if strings.Contains(got, "-mt-px") {
+			t.Errorf("place %v: the plot is shifted a pixel up:\n%s", tc.place, got)
+		}
+	}
+}
+
+var tickLabel = regexp.MustCompile(`data-verso-chart-tick[^>]*>([^<]*)<`)
+
+// ticks are the time axis's labels, left to right.
+func ticks(html string) []string {
+	var out []string
+	for _, m := range tickLabel.FindAllStringSubmatch(html, -1) {
+		out = append(out, m[1])
+	}
+	return out
+}
+
+// TestAPastWindowIsLabelledAtItsQuarters: a past window's axis names how long
+// ago each quarter stands, as every duration is written, the last "now".
+func TestAPastWindowIsLabelledAtItsQuarters(t *testing.T) {
+	series := []ChartSeries{{Values: []float64{1, 2, 3}}}
+	for _, tc := range []struct {
+		span time.Duration
+		want string
+	}{
+		{24 * time.Hour, "24 h|18 h|12 h|6 h|now"},
+		{7 * 24 * time.Hour, "7 d|5 d 6 h|3 d 12 h|1 d 18 h|now"},
+	} {
+		got := ticks(render(t, newRenderer(t), &Chart{Span: tc.span, Series: series}))
+		if strings.Join(got, "|") != tc.want {
+			t.Errorf("span %v: axis %q, want %q", tc.span, got, tc.want)
+		}
+	}
+}
+
+// TestALiveWindowIsLabelledAtItsEnds: a live window's lines travel with the
+// curve, so only its two ends are named.
+func TestALiveWindowIsLabelledAtItsEnds(t *testing.T) {
+	got := ticks(render(t, newRenderer(t), &Chart{Live: true, Span: time.Minute, Series: []ChartSeries{{Values: []float64{1, 2}}}}))
+	if strings.Join(got, "|") != "60 s ago|now" {
+		t.Errorf("live axis %q, want [60 s ago now]", got)
+	}
+}
 
 // TestRenderChart: the plot stretches edge to edge, its peak sits under a
 // round top (100 under 120, counted in thirties), the value labels ride the
-// quarter lines with the unit on the topmost, and the window is captioned at
-// its two ends.
+// quarter lines with the unit on the topmost, and a live window is captioned
+// at its two ends.
 func TestRenderChart(t *testing.T) {
 	got := render(t, newRenderer(t), &Chart{
-		AxisStart: "60 s ago", AxisEnd: "now", Label: "Traffic",
+		Live: true, Span: time.Minute, Label: "Traffic",
 		Series: []ChartSeries{
 			{Values: []float64{0, 100}, Role: "emerald", Fill: true},
 			{Values: []float64{0, 50}, Role: "violet"},

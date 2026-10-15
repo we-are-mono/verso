@@ -45,8 +45,6 @@ func translateFields(w Widget, t func(string) string) {
 		}
 	case *Chart:
 		n.Label = t(n.Label)
-		n.AxisStart = t(n.AxisStart)
-		n.AxisEnd = t(n.AxisEnd)
 		for i := range n.Series {
 			n.Series[i].Label = t(n.Series[i].Label)
 		}

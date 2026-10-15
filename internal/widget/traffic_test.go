@@ -33,16 +33,15 @@ func TestRenderTraffic(t *testing.T) {
 			t.Errorf("traffic graph missing %q", want)
 		}
 	}
-	if !strings.Contains(got, "h-64") {
-		t.Error("the graph stands at 256px by default")
+	if !strings.Contains(got, `data-chart-place="page"`) {
+		t.Error("a graph on a page is ruled in a page's 32px squares")
 	}
 
-	// In a panel it stands a quarter shorter, 192px: twelve of its 16px rules,
-	// still on the grid; and 40px apart from what stands above and below it,
-	// its top border still on a line.
+	// In a panel it is ruled in 24px squares; and 40px apart from what stands
+	// above and below it, its top border still on a line.
 	panel := render(t, newRenderer(t), &Traffic{Title: "Usage", Live: "usage:x", Panel: true, Down: []float64{0, 1}, Up: []float64{0, 1}})
-	if !strings.Contains(panel, "h-48") || strings.Contains(panel, "h-64") {
-		t.Error("a graph in a panel stands at 192px")
+	if !strings.Contains(panel, `data-chart-place="compact"`) {
+		t.Error("a graph in a panel is ruled in 24px squares")
 	}
 	if !strings.Contains(panel, "mt-9.75 mb-10") || strings.Contains(panel, "-mt-px") {
 		t.Error("a graph in a panel stands two cells from its neighbours")
@@ -79,7 +78,7 @@ func TestTrafficOffersItsWindow(t *testing.T) {
 		DownNow: 12.3, UpNow: 1234, Down: []float64{0, 1}, Up: []float64{0, 1},
 	})
 	for _, want := range []string{
-		`<option value="day" selected>Last 24 hours</option>`, "24 h ago",
+		`<option value="day" selected>Last 24 hours</option>`, ">24 h<",
 		">12<", "Mb/s down on average", ">1.2<", "Gb/s up on average",
 	} {
 		if !strings.Contains(day, want) {
