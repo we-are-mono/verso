@@ -39,7 +39,7 @@
 
 ## 7. Integration
 
-- [ ] 7.1 On `make dev`, open System › Hardware in light and dark themes and at phone width: the unprofiled dev box shows its board card with Processor, Memory and Board name (Storage absent under the container's overlay), Temperatures, and no empty cards; no horizontal page scroll. Then install the build on the bench DUT (`make apk APK_GOARCH=arm64`, served over LAN) and check the DK page against the approved mock, including Storage reading the eMMC
+- [x] 7.1 On `make dev`, open System › Hardware in light and dark themes and at phone width: the unprofiled dev box shows its board card with Processor, Memory and Board name (Storage absent under the container's overlay), Temperatures, and no empty cards; no horizontal page scroll. Then install the build on the bench DUT (`make apk APK_GOARCH=arm64`, served over LAN) and check the DK page against the approved mock, including Storage reading the eMMC
 - [x] 7.2 Update `docs/BACKLOG.md`: reword "Live readings on System › Hardware" to name the Temperatures, Power and Cooling cards; add the narrow-screen stacking of the fibre lists and the SFP module identity (EEPROM through `verso-rpcd`) as open items; verify `make lint`, then commit
 
 ## Workflow follow-up
