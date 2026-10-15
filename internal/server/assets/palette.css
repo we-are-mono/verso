@@ -124,31 +124,47 @@
 }
 
 /*
- * Shadows — one per job, each the whole shadow: offset, blur, colour and
- * strength together, since what lifts a layer off one ground is not what lifts
- * it off another. Only what floats over the page casts one (DESIGN.md, Flat by
- * default). They sit outside @theme so the page reads each through var(): a
- * Tailwind shadow token would be copied into its utility instead.
+ * Shadows — one per job. Only what floats over the page casts one (DESIGN.md,
+ * Flat by default). A shadow's shape (offset, blur, spread) is the shell's; its
+ * colour, Ink at the strength the job needs, is a token of its own, written as
+ * a hex with alpha, since what lifts a layer off one ground is not what lifts
+ * it off another. Both sit outside @theme so the page reads them through
+ * var(): a Tailwind shadow token would be copied into its utility instead.
  */
 :root {
-  --shadow-field: inset 0 1px 2px rgba(27, 25, 23, .06); /* every field and select: a slot cut into the paper */
-  --shadow-float: 0 4px 12px rgba(27, 25, 23, .14); /* a tooltip, a notification, a token's menu */
-  --shadow-menu: 0 8px 24px rgba(27, 25, 23, .14); /* a condition's menu */
-  --shadow-dialog: 0 8px 32px rgba(27, 25, 23, .16); /* a dialog, and an Overview card in hand */
-  --shadow-drawer: -8px 0 32px rgba(27, 25, 23, .12); /* the side panel, cast leftward over the page */
-  --shadow-edge: inset 0 4px 4px -4px rgba(27, 25, 23, .14); /* a scroller's top edge, the page sliding under it */
-  --shadow-lifted: 0 1.25rem 2.5rem -0.75rem rgb(27 25 23 / .24), 0 .5rem 1rem -.5rem rgb(27 25 23 / .18); /* a row in hand */
-  --shadow-port-tip: 0 12px 26px -10px rgb(0 0 0 / .7); /* a port's dark tip over the router's panel */
+  --shadow-field: inset 0 1px 2px var(--color-shadow-field); /* every field and select: a slot cut into the paper */
+  --shadow-float: 0 4px 12px var(--color-shadow-float); /* a tooltip, a notification, a token's menu */
+  --shadow-menu: 0 8px 24px var(--color-shadow-menu); /* a condition's menu */
+  --shadow-dialog: 0 8px 32px var(--color-shadow-dialog); /* a dialog, and an Overview card in hand */
+  --shadow-drawer: -8px 0 32px var(--color-shadow-drawer); /* the side panel, cast leftward over the page */
+  --shadow-edge: inset 0 4px 4px -4px var(--color-shadow-edge); /* a scroller's top edge, the page sliding under it */
+  --shadow-lifted: 0 1.25rem 2.5rem -0.75rem var(--color-shadow-lifted), 0 .5rem 1rem -.5rem var(--color-shadow-lifted-near); /* a row in hand */
+  --shadow-port-tip: 0 12px 26px -10px var(--color-shadow-port-tip); /* a port's dark tip over the router's panel */
+
+  --color-shadow-field: #1b19170f; /* Ink at 6% */
+  --color-shadow-float: #1b191724; /* Ink at 14% */
+  --color-shadow-menu: #1b191724; /* Ink at 14% */
+  --color-shadow-dialog: #1b191729; /* Ink at 16% */
+  --color-shadow-drawer: #1b19171f; /* Ink at 12% */
+  --color-shadow-edge: #1b191724; /* Ink at 14% */
+  --color-shadow-lifted: #1b19173d; /* Ink at 24%, the far drop of a row in hand */
+  --color-shadow-lifted-near: #1b19172e; /* Ink at 18%, its near drop */
+  --color-shadow-port-tip: #000000b3; /* black at 70%, under a dark tip */
 
   /*
-   * Chart washes — how strongly a series' hue fills the plot under its line,
-   * where the wash starts at the line and where it fades to. Strengths, not
-   * colours: the hue is the series' own.
+   * Chart washes — the colour under a series' line, where it starts at the
+   * line and where it fades to. Each is the series' own hue at a strength, so
+   * the wash moves with the hue; translucent, so the grid's rules and the other
+   * series show through it.
    */
-  --chart-wash-from: .16; /* the live traffic series: download and upload */
-  --chart-wash-to: .04;
-  --chart-role-wash-from: .24; /* a role series (violet, emerald) */
-  --chart-role-wash-to: 0;
+  --color-chart-denim-from: color-mix(in srgb, var(--color-denim) 16%, transparent); /* download */
+  --color-chart-denim-to: color-mix(in srgb, var(--color-denim) 4%, transparent);
+  --color-chart-amethyst-from: color-mix(in srgb, var(--color-amethyst) 16%, transparent); /* upload */
+  --color-chart-amethyst-to: color-mix(in srgb, var(--color-amethyst) 4%, transparent);
+  --color-chart-violet-from: color-mix(in srgb, var(--color-amethyst) 24%, transparent); /* a role series in amethyst */
+  --color-chart-violet-to: transparent;
+  --color-chart-emerald-from: color-mix(in srgb, var(--color-green) 24%, transparent); /* a role series in green */
+  --color-chart-emerald-to: transparent;
 }
 
 /*

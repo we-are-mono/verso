@@ -185,8 +185,10 @@ type Server struct {
 	bundle atomic.Pointer[i18n.Bundle]
 	css    template.CSS
 	// palette is the palette's colours, read once from the embedded palette.css,
-	// for what the shell writes outside the stylesheet.
+	// for what the shell writes outside the stylesheet; tokens is every colour
+	// token it declares, the keys a theme may set.
 	palette palette.Palette
+	tokens  []string
 	devCSS  string // dev hot-reload stylesheet path, "" in a normal build
 	bootID  string // per-process id handleCSS exposes in dev, so the hot-reload script detects a redeploy
 	// keptSessions is where Close leaves the sessions and New takes them back,
@@ -298,6 +300,7 @@ func New(
 		loginInternet:  openwrt.InternetAvailable,
 		css:            template.CSS(cssText),
 		palette:        colours,
+		tokens:         palette.TokenNames(paletteText),
 		probe:          func(at plugin.Endpoint) bool { return transport.Alive(at) },
 		stats:          sysstat.New(),
 		telemetry:      interfaceSampler,

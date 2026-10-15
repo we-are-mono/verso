@@ -10,6 +10,7 @@ package palette
 import (
 	"errors"
 	"regexp"
+	"sort"
 	"strings"
 )
 
@@ -20,7 +21,40 @@ var (
 	comment = regexp.MustCompile(`(?s)/\*.*?\*/`)
 	theme   = regexp.MustCompile(`@theme\s*\{([^}]*)\}`)
 	colour  = regexp.MustCompile(`--color-([a-z0-9-]+)\s*:\s*(#[0-9a-fA-F]{3,8})\s*;`)
+	// root is a plain :root block standing at the top level, where the
+	// palette keeps the tokens Tailwind does not make utilities of.
+	root  = regexp.MustCompile(`(?m)^:root\s*\{([^}]*)\}`)
+	token = regexp.MustCompile(`--color-([a-z0-9-]+)\s*:\s*([^;]+);`)
 )
+
+// TokenNames is every colour token the palette declares, by name ("ground"
+// for --color-ground), in its @theme block and its top-level :root blocks:
+// the colours a theme may set. A token holding another's value or a mix is
+// one, since a theme may give it its own; a token the palette unsets
+// (initial) is not, and a switched-off row's re-pointing is no token at all.
+func TokenNames(src string) []string {
+	src = comment.ReplaceAllString(src, "")
+	var blocks []string
+	if m := theme.FindStringSubmatch(src); m != nil {
+		blocks = append(blocks, m[1])
+	}
+	for _, m := range root.FindAllStringSubmatch(src, -1) {
+		blocks = append(blocks, m[1])
+	}
+	seen := map[string]bool{}
+	var names []string
+	for _, block := range blocks {
+		for _, m := range token.FindAllStringSubmatch(block, -1) {
+			if strings.TrimSpace(m[2]) == "initial" || seen[m[1]] {
+				continue
+			}
+			seen[m[1]] = true
+			names = append(names, m[1])
+		}
+	}
+	sort.Strings(names)
+	return names
+}
 
 // Parse reads the colour tokens of src's @theme block. A token that hands its
 // job to another (var(--color-…)) is not a value of its own and is left out,

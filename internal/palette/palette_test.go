@@ -54,6 +54,58 @@ func TestParseLeavesOutWhatIsNotAColourValue(t *testing.T) {
 	}
 }
 
+const withRoot = sample + `
+:root {
+  --shadow-dialog: 0 8px 32px var(--color-shadow-dialog);
+  --color-shadow-dialog: #1b191729; /* a dialog's shadow */
+  --color-chart-denim-from: color-mix(in srgb, var(--color-denim) 16%, transparent);
+}
+`
+
+func TestTokenNamesAreEveryColourATokenHolds(t *testing.T) {
+	names := TokenNames(withRoot)
+	has := map[string]bool{}
+	for _, n := range names {
+		has[n] = true
+	}
+	// A theme may set any colour token: one the theme block holds as a value
+	// or as a reference, and one the plain :root block holds as a hex value
+	// or a mix.
+	for _, want := range []string{"ground", "ink", "choice", "shadow-dialog", "chart-denim-from"} {
+		if !has[want] {
+			t.Errorf("TokenNames lacks %q: %v", want, names)
+		}
+	}
+	// green is re-pointed only inside a switched-off row, and dialog is a
+	// shadow, not a colour.
+	for _, gone := range []string{"green", "dialog"} {
+		if has[gone] {
+			t.Errorf("TokenNames carries %q, which is no token a theme sets", gone)
+		}
+	}
+	if got, ok := MustParse(t, withRoot).Colour("shadow-dialog"); ok {
+		t.Errorf("Colour(shadow-dialog) = %q; only the theme block's values are the palette's colours", got)
+	}
+}
+
+func TestTokenNamesLeaveOutUnsetTokens(t *testing.T) {
+	for _, n := range TokenNames("@theme {\n  --color-ink: #1b1917;\n  --color-white: initial;\n}\n") {
+		if n == "white" {
+			t.Error("TokenNames carries white, which the palette unsets")
+		}
+	}
+}
+
+// MustParse parses src or fails the test.
+func MustParse(t *testing.T, src string) Palette {
+	t.Helper()
+	p, err := Parse(src)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return p
+}
+
 func TestParseRefusesASourceWithNoTheme(t *testing.T) {
 	for _, src := range []string{"", "/* nothing */", "@theme {\n}\n"} {
 		if _, err := Parse(src); err == nil {
@@ -77,5 +129,17 @@ func TestTheShippedPaletteParses(t *testing.T) {
 		if got, ok := p.Colour(name); !ok || got != want {
 			t.Errorf("Colour(%q) = %q, %v; want %q", name, got, ok, want)
 		}
+	}
+	names := map[string]bool{}
+	for _, n := range TokenNames(string(src)) {
+		names[n] = true
+	}
+	for _, want := range []string{"canvas", "on-fill", "choice", "choice-border", "hw-tip"} {
+		if !names[want] {
+			t.Errorf("the shipped palette's TokenNames lacks %q", want)
+		}
+	}
+	if names["white"] || names["black"] {
+		t.Error("the shipped palette's TokenNames carries Tailwind's unset white or black")
 	}
 }

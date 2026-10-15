@@ -4,10 +4,10 @@ Every task ends green under `make lint` and `make test`; a task that touches a t
 
 ## 1. Everything a theme changes is a colour
 
-- [ ] 1.1 Write the tests first: `internal/palette` names every `--color-*` token `palette.css` declares in `@theme` and in its top-level `:root` block (including `var()` and `color-mix()` defaults, excluding `[data-verso-off]`), while `Colour` still answers only hex values; then implement `Names()` and verify the tests pass
-- [ ] 1.2 Write the test first: `palette.css` declares `--color-shadow-field`, `-float`, `-menu`, `-dialog`, `-drawer`, `-edge`, `-lifted`, `-lifted-near` and `-port-tip` with today's colours, and each `--shadow-*` is its shape over `var(--color-shadow-…)`; then split the shadows and verify the compiled stylesheet computes the same shadows (the existing shadow test updated to the split)
-- [ ] 1.3 Write the test first: `palette.css` declares `--color-chart-{denim,amethyst,violet,emerald}-{from,to}` as `color-mix()` of the series hue at 16%/4% and 24%/0, no `--chart-wash-*` remains, and every `.verso-chart--*` stop reads `stop-color: var(--color-chart-…)` at `stop-opacity: 1`; then move the stops and verify the Traffic card's washes look unchanged in the dev container
-- [ ] 1.4 Update the `palette` main-spec-bound docs: DESIGN.md's Shadow Vocabulary names each shadow's shape and colour token, and the Traffic card's wash names its colour tokens; verify `impeccable context` still loads DESIGN.md
+- [x] 1.1 Write the tests first: `internal/palette` names every `--color-*` token `palette.css` declares in `@theme` and in its top-level `:root` block (including `var()` and `color-mix()` defaults, excluding `[data-verso-off]` and unset tokens), while `Colour` still answers only hex values; then implement `TokenNames()` and verify the tests pass
+- [x] 1.2 Write the test first: `palette.css` declares `--color-shadow-field`, `-float`, `-menu`, `-dialog`, `-drawer`, `-edge`, `-lifted`, `-lifted-near` and `-port-tip` with today's colours, and each `--shadow-*` is its shape over `var(--color-shadow-…)`; then split the shadows and verify the compiled stylesheet computes the same shadows (the existing shadow test updated to the split)
+- [x] 1.3 Write the test first: `palette.css` declares `--color-chart-{denim,amethyst,violet,emerald}-{from,to}` as `color-mix()` of the series hue at 16%/4% and 24%/0, no `--chart-wash-*` remains, and every `.verso-chart--*` stop reads `stop-color: var(--color-chart-…)` at `stop-opacity: 1`; then move the stops and verify the Traffic card's washes look unchanged in the dev container
+- [x] 1.4 Update the `palette` main-spec-bound docs: DESIGN.md's Shadow Vocabulary names each shadow's shape and colour token, and the Traffic card's wash names its colour tokens; verify `impeccable context` still loads DESIGN.md
 
 ## 2. Theme files
 
