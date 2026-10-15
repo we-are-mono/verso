@@ -51,16 +51,63 @@ VERSION_PKG := github.com/we-are-mono/verso/internal/server.Version
 # version into the binary without a source edit.
 LDFLAGS  := -s -w -X $(VERSION_PKG)=$(VER)
 
+# The two tools fetched as release binaries, Tailwind and golangci-lint, are
+# pinned by SHA-256 as well as by version: a release asset can be replaced
+# under the same tag and name, and both tools run on the host that signs the
+# packages. A download lands beside its target, runs only once its bytes match
+# the digest recorded here, and the cached file is checked again before every
+# use. A bump updates the version and every digest of that tool together.
+# Both are the Linux x86_64 builds; any other build host fails naming that.
+TOOLS_HOST_OS   := Linux
+TOOLS_HOST_ARCH := x86_64
+
 # Tailwind v4 standalone CLI (no Node); runs on the build host, pinned + cached.
+# TAILWIND_SHA256 is tailwindcss-linux-x64 in the release's sha256sums.txt.
 TAILWIND         := $(BUILDDIR)/tools/tailwindcss
 TAILWIND_VERSION := v4.3.3
+TAILWIND_SHA256  := dc61b3ac6b8c9ca874c0cc4c57b2409791a64c5540404ca5f5367360babc313a
+TAILWIND_URL     := https://github.com/tailwindlabs/tailwindcss/releases/download/$(TAILWIND_VERSION)/tailwindcss-linux-x64
 CSS_IN           := internal/server/assets/input.css
 CSS_OUT          := internal/server/assets/verso.css
 
 # golangci-lint, pinned + cached on the build host (a dev tool, not a runtime dep).
 # Each version caches in its own directory, so bumping one fetches it afresh.
-GOLANGCI_VERSION := v2.14.0
-GOLANGCI         := $(BUILDDIR)/tools/golangci-lint-$(GOLANGCI_VERSION)/golangci-lint
+# GOLANGCI_TARBALL_SHA256 is the tarball's line in the release's
+# golangci-lint-<version>-checksums.txt; GOLANGCI_SHA256 is the golangci-lint
+# binary inside that tarball, the file the cache keeps.
+GOLANGCI_VERSION        := v2.14.0
+GOLANGCI                := $(BUILDDIR)/tools/golangci-lint-$(GOLANGCI_VERSION)/golangci-lint
+# GOLANGCI_DIST names both the release tarball (plus .tar.gz) and the directory
+# inside it that holds the binary.
+GOLANGCI_DIST           := golangci-lint-$(GOLANGCI_VERSION:v%=%)-linux-amd64
+GOLANGCI_TARBALL_SHA256 := ab90aeb7b066f92a33415b638a50fe5344bbb75a0d32ad30cc248d88f81032ab
+GOLANGCI_SHA256         := 9f44104281628a17a0dc5aea2429ef51e256d405fd1af38342939578b2e2c83d
+GOLANGCI_URL            := https://github.com/golangci/golangci-lint/releases/download/$(GOLANGCI_VERSION)/$(GOLANGCI_DIST).tar.gz
+
+# require_sha256sum fails before any check when sha256sum is missing, so a
+# missing tool never reads as a mismatch that deletes a good file.
+require_sha256sum = command -v sha256sum >/dev/null \
+	|| { echo "sha256sum is not on PATH; it checks the pinned Tailwind and golangci-lint builds"; exit 1; }
+
+# verify_sha256 checks file $(1) against SHA-256 $(2). On a mismatch it deletes
+# the file and fails, so neither a substituted download nor a cached tool
+# altered since it was fetched ever runs; the next make fetches it afresh.
+# Output is discarded rather than passed --status, which BusyBox's sha256sum
+# rejects. The braces keep it one command, so `&&` after it runs only on a match.
+verify_sha256 = { $(require_sha256sum); echo "$(2)  $(1)" | sha256sum -c - >/dev/null \
+	|| { rm -f "$(1)"; echo "$(1) does not match its recorded SHA-256 $(2); removed it"; exit 1; }; }
+
+# require_tools_host fails a download on a host the pinned builds do not run
+# on, or that cannot check them, before anything is fetched.
+require_tools_host = test "$$(uname -s)/$$(uname -m)" = $(TOOLS_HOST_OS)/$(TOOLS_HOST_ARCH) \
+	|| { echo "the pinned Tailwind and golangci-lint builds are $(TOOLS_HOST_OS)/$(TOOLS_HOST_ARCH); this host is $$(uname -s)/$$(uname -m)"; exit 1; }; \
+	$(require_sha256sum)
+
+# tool_tmp opens a fetch recipe line: it binds "$$tmp" to a fresh directory
+# beside target $@, so concurrent fetches never share a partial download, and
+# removes it when the line's shell exits, on success, failure or interrupt.
+tool_tmp = tmp=$$(mktemp -d "$@.XXXXXX") || exit 1; \
+	trap 'rm -rf "$$tmp"' EXIT; trap 'exit 1' HUP INT TERM
 
 # Whole-program Go dead-code analysis, also pinned + cached on the build host.
 DEADCODE_VERSION := v0.51.0
@@ -133,14 +180,20 @@ version:
 	@echo $(VER)
 
 $(TAILWIND):
+	@$(require_tools_host)
 	@mkdir -p $(dir $@)
-	curl -fsSL https://github.com/tailwindlabs/tailwindcss/releases/download/$(TAILWIND_VERSION)/tailwindcss-linux-x64 -o $@
-	@chmod +x $@
+	@$(tool_tmp); \
+	echo "curl -fsSL $(TAILWIND_URL)"; \
+	curl -fsSL $(TAILWIND_URL) -o "$$tmp/tailwindcss" \
+	&& $(call verify_sha256,$$tmp/tailwindcss,$(TAILWIND_SHA256)) \
+	&& chmod +x "$$tmp/tailwindcss" && mv "$$tmp/tailwindcss" $@
 
 # css compiles the embedded stylesheet. The generated CSS_OUT is committed so a
 # bare `go build`/`go test` stays self-contained; regenerate it here on change.
+# The cached tool is checked and run in one shell line.
 css: $(TAILWIND)
-	$(TAILWIND) -i $(CSS_IN) -o $(CSS_OUT) --minify
+	@$(call verify_sha256,$(TAILWIND),$(TAILWIND_SHA256)) \
+	&& $(TAILWIND) -i $(CSS_IN) -o $(CSS_OUT) --minify
 
 # build cross-compiles verso (Go) and verso-rpcd (Rust) for every arch in ARCHES.
 # Outputs are arch-suffixed: build/verso-<arch>, build/verso-rpcd-<arch>. The Rust
@@ -170,15 +223,20 @@ test:
 # lint replaces plain `go vet` (govet is one of the linters it runs), with
 # golangci-lint's default linter set as .golangci.yml tunes it.
 $(GOLANGCI):
+	@$(require_tools_host)
 	@mkdir -p $(dir $@)
-	curl -fsSL https://github.com/golangci/golangci-lint/releases/download/$(GOLANGCI_VERSION)/golangci-lint-$(GOLANGCI_VERSION:v%=%)-linux-amd64.tar.gz \
-		| tar -xz -C $(dir $@) --strip-components=1 golangci-lint-$(GOLANGCI_VERSION:v%=%)-linux-amd64/golangci-lint
-	@chmod +x $@
+	@$(tool_tmp); \
+	echo "curl -fsSL $(GOLANGCI_URL)"; \
+	curl -fsSL $(GOLANGCI_URL) -o "$$tmp/dist.tar.gz" \
+	&& $(call verify_sha256,$$tmp/dist.tar.gz,$(GOLANGCI_TARBALL_SHA256)) \
+	&& tar -xzf "$$tmp/dist.tar.gz" -O $(GOLANGCI_DIST)/golangci-lint > "$$tmp/golangci-lint" \
+	&& $(call verify_sha256,$$tmp/golangci-lint,$(GOLANGCI_SHA256)) \
+	&& chmod +x "$$tmp/golangci-lint" && mv "$$tmp/golangci-lint" $@
 
 $(DEADCODE):
 	@mkdir -p $(dir $@)
 	# Built with the project's toolchain: deadcode cannot load code newer than itself.
-	GOTOOLCHAIN=$$(go env GOVERSION) GOBIN=$(abspath $(dir $@)) go install golang.org/x/tools/cmd/deadcode@$(DEADCODE_VERSION)
+	$(VERIFIED_INSTALL) GOTOOLCHAIN=$$(go env GOVERSION) GOBIN=$(abspath $(dir $@)) go install golang.org/x/tools/cmd/deadcode@$(DEADCODE_VERSION)
 
 # Analyze the production executables for every architecture we ship. deadcode
 # reports findings on stdout without failing, so turn non-empty output into a
@@ -195,7 +253,8 @@ deadcode: $(DEADCODE)
 
 lint: deadcode $(GOLANGCI)
 	@fmt_drift=$$(gofmt -l cmd internal); if [ -n "$$fmt_drift" ]; then echo "gofmt drift:"; echo "$$fmt_drift"; exit 1; fi
-	$(GOLANGCI) run ./...
+	@$(call verify_sha256,$(GOLANGCI),$(GOLANGCI_SHA256)) \
+	&& $(GOLANGCI) run ./...
 	set -e; for m in $(CRATES); do $(CARGO) clippy --locked --manifest-path $$m --all-targets -- -D warnings; done
 
 $(GOVULNCHECK):

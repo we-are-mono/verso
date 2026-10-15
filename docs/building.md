@@ -91,6 +91,29 @@ overwrites the other. What it does, and why each part matters:
   Verso samples per-interface counters from `/sys/class/net` once per second
   (latest 60 samples, in memory); it does not enumerate conntrack or query ASK/FCI.
 
+- **Compiles the stylesheet with a digest-pinned Tailwind.** The build
+  regenerates `internal/server/assets/verso.css`, which is embedded in the
+  signed binary, with the Tailwind standalone CLI from its GitHub release. A
+  release asset can be replaced under the same tag and name, so the Makefile
+  records its SHA-256 (`TAILWIND_SHA256`) beside the version: the download
+  lands in a temporary directory of its own beside `build/tools/tailwindcss`
+  (so two builds fetching at once never share a file), is checked with
+  `sha256sum -c`, and only then is made executable and moved into place; the
+  temporary directory is removed however the fetch ends. The cached file is
+  checked again in the same shell command that runs it. On a mismatch the
+  file is deleted and the build stops, naming the file and the expected
+  digest; the next run fetches it afresh. golangci-lint, which `make lint`
+  and the pre-commit hook run, is fetched the same way: `GOLANGCI_TARBALL_SHA256` checks the release tarball
+  (its line in `golangci-lint-<version>-checksums.txt`) and `GOLANGCI_SHA256`
+  the `golangci-lint` binary extracted from it, on download and before every
+  run. The pinned builds are Linux x86_64; on any other build host (an Intel
+  Mac included), or one without `sha256sum` on `PATH`, the download stops
+  before fetching and says so. To bump either tool, change its version and
+  every digest of it together, taking the digests from the release's checksum
+  file.
+  `deadcode` installs with `go install` under the same checksum-database
+  enforcement as the [vulnerability scanners](#vulnerability-checks).
+
 - **Assembles a CLEAN payload** — only Verso's own files. It never ships
   `/etc/config/*` or `netfix`; those are docker-harness defaults that would
   clobber the router's live network/firewall config. The eight files:
