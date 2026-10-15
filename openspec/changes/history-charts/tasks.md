@@ -46,9 +46,9 @@
 
 ## 9. Integration
 
-- [ ] 9.1 In `make dev`, check the Hardware page, the Overview (live minute and a past window) and a device drawer in light and dark, against the mock. Measure the rules, legend, plot and axis on the 8px grid with playwright. Verify: every measured edge is on a line, and the screenshots match the mock's settled look.
-- [ ] 9.2 Update docs/BACKLOG.md: remove what this change closed, and add any follow-up it left (for example, listing recently seen SFP modules). Verify: the backlog names no chart item that has landed.
-- [ ] 9.3 Run `make lint` and `make test`, then `graphify update .`. Verify: both pass green and the graph is updated.
+- [x] 9.1 In `make dev`, check the Hardware page, the Overview (live minute and a past window) and a device drawer in light and dark, against the mock. Measure the rules, legend, plot and axis on the 8px grid with playwright. Verify: every measured edge is on a line, and the screenshots match the mock's settled look.
+- [x] 9.2 Update docs/BACKLOG.md: remove what this change closed, and add any follow-up it left (for example, listing recently seen SFP modules). Verify: the backlog names no chart item that has landed.
+- [x] 9.3 Run `make lint` and `make test`, then `graphify update .`. Verify: both pass green and the graph is updated.
 
 ## Workflow follow-up
 

@@ -122,6 +122,12 @@ own and points at the decision that governs it; the rationale lives there, not h
 - **Live readings on System › Hardware.** The panel is live; the
   Temperatures, Power and Cooling cards under it are as the page loaded them.
   The Overview's five-second sensor read (`sensorSampler`) could feed them.
+- **Recently seen SFP modules in the Temperatures graph.** The graph's choices
+  are the modules plugged in now, so an unplugged module's history goes
+  unread; listing the modules seen over the last 30 days would reach it.
+- **The temperature history under a grant.** `handleTemperatureHistory`
+  answers history.db's temperatures to every signed-in session; gate it as
+  ADR-007 §9 gates the roster and the events page.
 - **The fibre lists side by side on a phone.** System › Hardware sets its SFP
   modules' fact lists in a two-column `Grid`, which stays two columns at every
   width, so on a phone each list is half the card and a dark receiver's
