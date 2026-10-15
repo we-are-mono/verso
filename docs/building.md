@@ -163,7 +163,9 @@ make apk-publish                    # runs `make apk`, then copies + rebuilds th
 make apk-publish APK_GOARCH=amd64   # the same for the x86_64 feed
 ```
 
-This copies the fresh `.apk` into `VERSO_REPO_DIR` (default `/srv/verso`, the only
+It runs `make vuln` first ([Vulnerability checks](#vulnerability-checks)): an
+untriaged advisory against anything the package ships stops the publish before
+the build. Then it copies the fresh `.apk` into `VERSO_REPO_DIR` (default `/srv/verso`, the only
 dev-box-specific path) under its arch subdir (`aarch64_generic/` or `x86_64/`),
 checks that every package there is built for that arch or for none
 (`scripts/check-feed-arch.sh`, which names any that is not and stops), and
@@ -229,6 +231,83 @@ The `post-upgrade` hook does the rest: it reloads the ubusd + rpcd ACLs
 rate-limiter is in-memory, so the restart also clears any lockout. **An ACL or
 manifest change lands here** — through a real reinstall — not via `make dev`'s
 binary hot-swap.
+
+---
+
+## Vulnerability checks
+
+```sh
+make vuln
+```
+
+`make vuln` checks everything a release ships against the published advisories
+and fails on any it has not been told to accept. It needs the network: the
+advisory databases are fetched on every run.
+
+| What | Scanner | Fails on |
+|---|---|---|
+| The Go module and the standard library of the toolchain that builds it, for each release target (`linux/arm64`, `linux/amd64`, `CGO_ENABLED=0`) | `govulncheck ./...` (Go vulnerability database) | an advisory whose vulnerable function Verso's code calls on any target |
+| `verso-rpcd`, the plugin SDK and the System, Firewall and Interfaces plugins: every committed `Cargo.lock` | `osv-scanner` (OSV.dev, which carries the RustSec advisories) | any advisory against a pinned crate version |
+| The vendored scripts, htmx and Alpine (CSP build) | `osv-scanner`, reading the vendored-scripts manifest | any advisory against the recorded npm version |
+
+Go advisories the code imports but never calls, or only requires, are listed
+for the record and do not fail the run; a Rust or npm advisory has no such
+analysis, so a pinned affected version counts as reached.
+`cmd/vulngate` reads both scanners' JSON results, sets them against the
+ignore list, prints one table, and decides. It refuses a result that cannot
+carry that decision: a govulncheck scan below symbol level (which follows no
+calls) or against any database but `https://vuln.go.dev`, and an osv-scanner
+result missing any file it was asked to read (osv-scanner leaves out a
+lockfile that lists no package). osv-scanner runs with `--config /dev/null`,
+so an `osv-scanner.toml` beside a lockfile cannot drop findings past the
+ignore list.
+
+**One scanner per ecosystem it does best.** govulncheck is the Go team's
+scanner and the only one that follows calls into the standard library and
+modules. osv-scanner reads Cargo lockfiles and the scripts' manifest against
+one database, OSV.dev, which mirrors RustSec and the GitHub advisories for npm,
+so the Rust crates and the vendored scripts share one check instead of
+cargo-audit plus a second tool for npm. Both are Go programs, so both install
+the way the linters do.
+
+**Pinned and verified tools.** The Makefile pins each scanner's exact version
+(`GOVULNCHECK_VERSION`, `OSV_SCANNER_VERSION`) and builds it with `go install
+<module>@<version>` into `build/tools/<tool>-<version>/`. The module and every
+dependency are checked against the Go checksum database: the install forces
+`GOSUMDB=sum.golang.org`, clears `GONOSUMDB`, `GOPRIVATE` and `GOFLAGS`, and
+sets `GOENV=off`, so neither the environment nor a `go env -w` setting can
+switch the check off (go reads an empty variable as unset and falls back to
+that file). Bumping a version installs afresh.
+
+**The ignore list.** `vuln-ignore.txt` at the repository root holds the
+advisories triaged as not stopping a release, one per line:
+
+```
+GO-2026-0000 2027-01-31 the vulnerable parser only reads the build host's own files
+```
+
+The advisory may be named by any identifier the report prints for it (GO-,
+RUSTSEC-, GHSA-, CVE-). The date is required, at most 180 days out, and the
+entry lapses the day after it, so every triage is revisited; the reason is
+required. `make vuln` names lapsed entries and entries that match no finding,
+so the list stays short. Fixing the dependency is preferred over an entry.
+
+**The vendored scripts.** `internal/server/assets/vendored-js.json` records,
+for each third-party script the shell embeds, its npm package and version, the
+upstream URL of the exact file, and its SHA-256. `go test ./internal/server`
+hashes the embedded files against it (`TestVendoredScriptsMatchTheirRecord`)
+and fails on any embedded script outside the shell's own `verso*.js` that has
+no record (`TestEveryVendoredScriptIsRecorded`). The manifest is in
+osv-scanner's custom-lockfile shape, so `make vuln` checks the same versions
+the test pins. To upgrade a script: fetch the file from its npm release (the
+`url` with the new version), replace it under `internal/server/assets/`, and
+update `version`, `url` and `sha256` together.
+
+**When it runs.** `make apk-publish` runs it before building, so a package
+reaches no feed past an untriaged advisory. The GitHub Actions workflow
+`.github/workflows/vuln.yml` runs it on every push and pull request, and daily
+at 05:17 UTC, so an advisory published against an unchanged tree still
+surfaces. It is not in the pre-commit hook, which runs offline.
 
 ---
 

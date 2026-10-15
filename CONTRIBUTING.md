@@ -93,6 +93,7 @@ auto-fetched (pinned). Nothing machine-specific is baked in.
 
 ```
 make test     # go test ./... + cargo test — hermetic, no device needed
+make vuln     # govulncheck + osv-scanner against the advisory databases (needs the network)
 make build    # cross-compiles verso + verso-rpcd for amd64 and arm64 (CSS first)
               #   -> build/verso-{amd64,arm64}, build/verso-rpcd-{amd64,arm64}
 make dev      # hot-reload loop against the running container
@@ -103,7 +104,7 @@ docker compose up -d --build     # boots OpenWrt + verso; serves on :8080
 
 ```
 make apk          # build + sign a router .apk  -> build/apk/verso-<version>.apk
-make apk-publish  # also copy it into the local dev repo + rebuild the signed index
+make apk-publish  # make vuln, then copy it into the local dev repo + rebuild the signed index
 ```
 
 `make apk` is machine-agnostic: the one input that varies per host is the OpenWrt

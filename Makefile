@@ -66,6 +66,25 @@ GOLANGCI         := $(BUILDDIR)/tools/golangci-lint-$(GOLANGCI_VERSION)/golangci
 DEADCODE_VERSION := v0.51.0
 DEADCODE         := $(BUILDDIR)/tools/deadcode-$(DEADCODE_VERSION)/deadcode
 
+# The vulnerability scanners, pinned + cached like the linters. govulncheck
+# checks the Go module and the toolchain's standard library, following calls
+# so only reachable advisories count; osv-scanner checks every committed Rust
+# lockfile and the vendored scripts' manifest against OSV.dev, which carries
+# the RustSec, GitHub and npm advisories. Both install with `go install` at an
+# exact version, verified against the Go checksum database (forced on below:
+# go reads an empty variable as unset and falls back to the `go env -w` file,
+# so GOENV=off drops that file and the empty values then mean the defaults).
+GOVULNCHECK_VERSION := v1.8.0
+GOVULNCHECK         := $(BUILDDIR)/tools/govulncheck-$(GOVULNCHECK_VERSION)/govulncheck
+OSV_SCANNER_VERSION := v2.6.0
+OSV_SCANNER         := $(BUILDDIR)/tools/osv-scanner-$(OSV_SCANNER_VERSION)/osv-scanner
+VERIFIED_INSTALL    := GOENV=off GOSUMDB=sum.golang.org GONOSUMDB= GOPRIVATE= GOFLAGS=
+VENDORED_JS         := internal/server/assets/vendored-js.json
+CARGO_LOCKS         := $(foreach m,$(CRATES),$(dir $(m))Cargo.lock)
+OSV_LOCKFILES       := $(CARGO_LOCKS) $(VENDORED_JS)
+VULN_IGNORE         := vuln-ignore.txt
+VULN_DIR            := $(BUILDDIR)/vuln
+
 # ── apk packaging ────────────────────────────────────────────────────────────
 # `make apk` cross-builds one arch, assembles a clean payload, and produces a
 # signed .apk under build/apk/<apk-arch>/. It is portable: the only machine-specific input
@@ -104,7 +123,7 @@ VERSO_REPO_DIR ?= /srv/verso
 
 # build-<arch> is intentionally NOT phony: make skips pattern rules for phony
 # targets, and no file of that name is ever produced, so the rule fires each run.
-.PHONY: all build dev css test lint deadcode hooks clean apk apk-publish apk-preflight apk-i18n apk-i18n-publish i18n-audit version
+.PHONY: all build dev css test lint deadcode vuln hooks clean apk apk-publish apk-preflight apk-i18n apk-i18n-publish i18n-audit version
 
 all: lint test build
 
@@ -179,6 +198,38 @@ lint: deadcode $(GOLANGCI)
 	$(GOLANGCI) run ./...
 	set -e; for m in $(CRATES); do $(CARGO) clippy --locked --manifest-path $$m --all-targets -- -D warnings; done
 
+$(GOVULNCHECK):
+	@mkdir -p $(dir $@)
+	# Built with the project's toolchain: govulncheck cannot load code newer than itself.
+	$(VERIFIED_INSTALL) GOTOOLCHAIN=$$(go env GOVERSION) GOBIN=$(abspath $(dir $@)) go install golang.org/x/vuln/cmd/govulncheck@$(GOVULNCHECK_VERSION)
+
+$(OSV_SCANNER):
+	@mkdir -p $(dir $@)
+	$(VERIFIED_INSTALL) GOBIN=$(abspath $(dir $@)) go install github.com/google/osv-scanner/v2/cmd/osv-scanner@$(OSV_SCANNER_VERSION)
+
+# vuln checks what a release ships against the published advisories: the Go
+# module and standard library (govulncheck), every Rust crate's lockfile, and
+# the vendored scripts (osv-scanner). cmd/vulngate sets both results against
+# vuln-ignore.txt and fails on any advisory that is reached (Go) or pinned
+# (Rust, scripts) and not triaged there. It needs the network, so it gates
+# publishing and CI, not commits. govulncheck scans each release target, as
+# the binaries build, since a call path can exist on one architecture alone.
+# osv-scanner exits 1 when it finds an advisory; vulngate decides on those, so
+# only other exit codes stop here. --all-packages lists every scanned package
+# and vulngate checks each requested file is in the result, so a clean result
+# still shows each file was read. --config /dev/null keeps an osv-scanner.toml
+# beside a lockfile from dropping findings past the dated ignore list.
+vuln: $(GOVULNCHECK) $(OSV_SCANNER)
+	@mkdir -p $(VULN_DIR)
+	set -e; for arch in $(ARCHES); do \
+		CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$$arch $(GOVULNCHECK) -format json ./... > $(VULN_DIR)/govulncheck-$$arch.json; \
+	done
+	$(OSV_SCANNER) scan source --config /dev/null --format json --all-packages --output-file $(VULN_DIR)/osv-scanner.json \
+		$(addprefix -L ,$(CARGO_LOCKS)) -L osv-scanner:$(VENDORED_JS) \
+		|| [ $$? -eq 1 ]
+	go run ./cmd/vulngate $(foreach arch,$(ARCHES),-govulncheck $(VULN_DIR)/govulncheck-$(arch).json) \
+		-osv $(VULN_DIR)/osv-scanner.json $(addprefix -lockfile ,$(OSV_LOCKFILES)) -ignore $(VULN_IGNORE)
+
 # hooks points git at the tracked pre-commit hook so commits are gated on lint.
 hooks:
 	git config core.hooksPath scripts/hooks
@@ -250,8 +301,10 @@ apk: apk-preflight build-$(APK_GOARCH)
 # apk-publish copies the built package into the local dev repo and rebuilds the
 # signed v3 index (packages.adb). Dev-box-specific: it writes to VERSO_REPO_DIR.
 # --allow-untrusted only skips verification on THIS host (it doesn't trust our
-# own key); the index is still signed and the router verifies it.
-apk-publish: apk
+# own key); the index is still signed and the router verifies it. Publishing
+# runs `make vuln` first, so no package reaches a feed past an untriaged
+# advisory; `make apk` alone builds without it.
+apk-publish: vuln apk
 	mkdir -p $(VERSO_REPO_DIR)/$(APK_ARCH)
 	rm -f $(VERSO_REPO_DIR)/$(APK_ARCH)/*.apk
 	cp $(APK_OUT) $(VERSO_REPO_DIR)/$(APK_ARCH)/

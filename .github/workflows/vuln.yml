@@ -1,0 +1,38 @@
+# SPDX-License-Identifier: GPL-2.0-only
+# SPDX-FileCopyrightText: 2026 Mono Technologies Inc.
+
+# Vulnerability scan: `make vuln` on every push and pull request, and daily, so
+# an advisory published against a shipped dependency surfaces without a code
+# change. Actions are pinned by commit; the tag each stands for is beside it.
+name: vuln
+
+on:
+  push:
+  pull_request:
+  schedule:
+    - cron: "17 5 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: vuln-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  vuln:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          # No restored module or build cache: the scanners install and the
+          # module downloads afresh, verified, on every run.
+          cache: false
+      - name: make vuln
+        run: make vuln

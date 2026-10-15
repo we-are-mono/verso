@@ -1,0 +1,17 @@
+# SPDX-License-Identifier: GPL-2.0-only
+# SPDX-FileCopyrightText: 2026 Mono Technologies Inc.
+#
+# Advisories triaged as not stopping a release. `make vuln` fails on every
+# advisory Verso's Go code calls, and on every advisory against a version a
+# Rust lockfile or internal/server/assets/vendored-js.json pins, unless an
+# entry here names it.
+#
+# One entry per line:
+#
+#   <advisory> <until YYYY-MM-DD> <why it does not affect Verso>
+#
+# <advisory> is any identifier the report prints for it (GO-, RUSTSEC-, GHSA-,
+# CVE-). An entry holds through its date and lapses the day after, so every
+# triage is revisited; set the date to when the fix is expected. `make vuln`
+# refuses a date more than 180 days out. Fixing the dependency beats an entry
+# here; remove an entry once `make vuln` reports it as matching no finding.
