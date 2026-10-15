@@ -16,11 +16,21 @@
      graph. This SVG is the first paint; the live layer glides the same series
      without touching the markup. */}}
 <div class="verso-chart-graph" data-chart-place="{{.Place}}">
+  {{/* A legend line per series that has one, as the Overview's facts read:
+       the series' packet, its name as the term, its figure as the value and
+       what the figure is, and the window's peak at the plot's right edge. */}}
+  {{range .Legends}}
+  <div class="verso-chart-legend" data-verso-chart-legend>
+    <span class="verso-chart-legend-series"><span aria-hidden="true" class="size-1.5 shrink-0 self-center rounded-[1px] {{.Hue}}"></span><span class="text-meta">{{.Name}}</span><span class="verso-chart-figure" data-verso-live-figure>{{.Figure}}</span><span class="text-meta" data-verso-live-caption>{{.Caption}}</span></span>
+    <span class="verso-chart-legend-peak"><span class="text-meta">{{ t "peak" }}</span><span class="verso-chart-figure" data-verso-live-peak>{{.Peak}}</span></span>
+  </div>
+  {{end}}
   <div class="verso-chart-frame">
     <div class="verso-chart-plot">
       <svg class="verso-chart block w-full overflow-hidden" viewBox="0 0 {{.W}} {{.H}}" preserveAspectRatio="none" role="img" aria-label="{{.Label}}" data-chart-padding="0">
         {{range .Marks}}{{if eq .Kind "boot"}}<line class="verso-chart-mark--boot" x1="{{printf "%.1f" .X}}" x2="{{printf "%.1f" .X}}" y1="0" y2="{{$.H}}" vector-effect="non-scaling-stroke"><title>{{.Label}}</title></line>{{else}}<rect class="verso-chart-mark--{{.Kind}}" x="{{printf "%.1f" .X}}" y="0" width="{{printf "%.1f" .Width}}" height="{{$.H}}"><title>{{.Label}}</title></rect>{{end}}
         {{end}}
+        {{range .Peaks}}<line class="verso-chart-peak verso-chart-peak--{{.Role}}" x1="0" x2="{{$.W}}" y1="{{printf "%.1f" .Y}}" y2="{{printf "%.1f" .Y}}" vector-effect="non-scaling-stroke"/>{{end}}
         {{range .Series}}
         <g class="verso-chart-series verso-chart--{{.Role}}">
           {{if .Area}}

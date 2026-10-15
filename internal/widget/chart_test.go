@@ -9,6 +9,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/we-are-mono/verso/internal/units"
 )
 
 // TestAChartIsSizedByItsPlace: a page's card rules its plot in 32px squares,
@@ -59,6 +61,45 @@ func TestAPastWindowIsLabelledAtItsQuarters(t *testing.T) {
 		if strings.Join(got, "|") != tc.want {
 			t.Errorf("span %v: axis %q, want %q", tc.span, got, tc.want)
 		}
+	}
+}
+
+// TestAChartsLegendSaysItsSeriesFigureAndPeak: over the plot, the series'
+// packet in its hue, its name, its figure in its unit and what the figure is,
+// and at the plot's right edge the window's peak, which a dotted line marks in
+// the plot; the scale and figures are written in the chart's unit.
+func TestAChartsLegendSaysItsSeriesFigureAndPeak(t *testing.T) {
+	got := render(t, newRenderer(t), &Chart{
+		Unit: units.UnitCelsius, Span: 24 * time.Hour,
+		Series: []ChartSeries{{
+			Values: []float64{46, 58, 48}, Role: "denim", Fill: true,
+			Legend: &ChartLegend{Name: "CPU", Figure: 48.66, Caption: "on average", Peak: 59},
+		}},
+	})
+	for _, want := range []string{
+		"data-verso-chart-legend", `bg-denim`, ">CPU<", ">48.7 °C<", ">on average<", ">peak<", ">59.0 °C<",
+		">80 °C<", ">60<",
+		// 59 °C under a top of 80 lands at 240 - 59/80·240.
+		`<line class="verso-chart-peak verso-chart-peak--denim" x1="0" x2="620" y1="63.0" y2="63.0"`,
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("chart missing %q:\n%s", want, got)
+		}
+	}
+	if strings.Index(got, "data-verso-chart-legend") > strings.Index(got, "<svg") {
+		t.Error("the legend stands under the plot")
+	}
+	if strings.Index(got, "verso-chart-peak") > strings.Index(got, "verso-chart-series") {
+		t.Error("the peak line is drawn over the curve")
+	}
+}
+
+// TestAChartWithoutALegendDrawsNone: a series with no legend has no legend
+// line and no peak mark.
+func TestAChartWithoutALegendDrawsNone(t *testing.T) {
+	got := render(t, newRenderer(t), &Chart{Span: time.Hour, Series: []ChartSeries{{Values: []float64{1, 2}}}})
+	if strings.Contains(got, "data-verso-chart-legend") || strings.Contains(got, "verso-chart-peak") {
+		t.Errorf("a series with no legend drew one:\n%s", got)
 	}
 }
 

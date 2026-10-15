@@ -33,6 +33,9 @@ type Chart struct {
 	Label  string        // accessible description of the whole plot
 	// Place is where the chart stands, which sizes its cells.
 	Place ChartPlace
+	// Unit is what the values are counted in, which writes the scale and the
+	// legend's figures: Mbit/s by default, or °C.
+	Unit units.Unit
 	// Span is how far back the window reaches. A past window names its
 	// quarters under the plot (24 h · 18 h · 12 h · 6 h · now); a Live one,
 	// whose lines travel with the curve, names only its two ends.
@@ -73,8 +76,22 @@ type ChartMark struct {
 type ChartSeries struct {
 	Label  string    // series name, for the plot's description
 	Values []float64 // the points, left to right
-	Role   string    // palette slot: violet | emerald | denim
+	Role   string    // palette slot: violet | emerald | denim | amethyst
 	Fill   bool      // fill the area under the line, not only the line
+	// Legend, when set, says the series over the plot and marks its peak.
+	Legend *ChartLegend
+}
+
+// ChartLegend is what a series' legend line says, as the Overview's facts are
+// said: its name (a term, in Meta), its figure in the chart's unit (in Ink)
+// and what the figure is, and at the plot's right edge the window's peak,
+// which a dotted line also marks in the plot. The name is shown as given: a
+// caller translates a word and leaves a profile's name as it is.
+type ChartLegend struct {
+	Name    string
+	Figure  float64
+	Caption string // "now" for a live window, "on average" for a past one
+	Peak    float64
 }
 
 func (*Chart) isWidget() {}
@@ -97,6 +114,20 @@ type chartView struct {
 	Series  []chartSeriesView
 	Place   string
 	Marks   []chartMarkView
+	Legends []chartLegendView
+	Peaks   []chartPeakView
+}
+
+// chartLegendView is a legend line, its figures already written in the
+// chart's unit.
+type chartLegendView struct {
+	Hue, Name, Figure, Caption, Peak string
+}
+
+// chartPeakView is a peak's dotted line, at Y in the plot's own units.
+type chartPeakView struct {
+	Role string
+	Y    float64
 }
 
 // chartTick is one label on the time axis, at Pct of the plot's width; the
@@ -129,9 +160,9 @@ type chartSeriesView struct {
 }
 
 func (c *Chart) renderInto(r *Renderer, out io.Writer, _ string) error {
-	// Scale to a round top over the tallest point across every series, the
-	// scale every rate chart takes (units.RateScale): its labels read as
-	// counted, and it never divides by zero.
+	// Scale to a round top over the tallest point across every series and
+	// every peak a legend marks, in the chart's unit (units.Scale): its labels
+	// read as counted, and it never divides by zero.
 	peak := 0.0
 	for _, s := range c.Series {
 		for _, v := range s.Values {
@@ -139,11 +170,25 @@ func (c *Chart) renderInto(r *Renderer, out io.Writer, _ string) error {
 				peak = max(peak, v)
 			}
 		}
+		if s.Legend != nil && !math.IsNaN(s.Legend.Peak) {
+			peak = max(peak, s.Legend.Peak)
+		}
 	}
-	topBPS, labels := r.numbers().RateScale(peak * 1e6)
-	top := topBPS / 1e6
+	nums := r.numbers()
+	top, labels := nums.Scale(c.Unit, peak)
 
 	view := chartView{Label: c.Label, W: chartW, H: chartH, Place: c.Place.String(), Ticks: c.ticks(r)}
+	for _, s := range c.Series {
+		if s.Legend == nil {
+			continue
+		}
+		l := s.Legend
+		view.Legends = append(view.Legends, chartLegendView{
+			Hue: chartHue(s.Role), Name: l.Name, Caption: r.tr(l.Caption),
+			Figure: nums.Reading(c.Unit, l.Figure), Peak: nums.Reading(c.Unit, l.Peak),
+		})
+		view.Peaks = append(view.Peaks, chartPeakView{Role: s.Role, Y: chartH - l.Peak/top*chartH})
+	}
 	for _, m := range c.Marks {
 		view.Marks = append(view.Marks, chartMarkView{
 			// A brief outage keeps a width the eye can find.
@@ -177,6 +222,18 @@ func (c *Chart) renderInto(r *Renderer, out io.Writer, _ string) error {
 		view.Series = append(view.Series, sv)
 	}
 	return r.execute(out, "chart.html.tmpl", view)
+}
+
+// chartHue is the packet's colour for a series' palette slot.
+func chartHue(role string) string {
+	switch role {
+	case "denim":
+		return "bg-denim"
+	case "emerald":
+		return "bg-green"
+	default:
+		return "bg-amethyst"
+	}
 }
 
 // ticks are the time axis's labels: a live window's two ends ("60 s ago",

@@ -889,6 +889,26 @@ html {
   .verso-chart-tick[data-align="center"] { translate: -50% 0; }
   .verso-chart-tick[data-align="end"] { left: auto !important; right: 0; }
 
+  /* The legend over the plot reads as the Overview's facts do: the series'
+     packet, its name as the term in Meta, its figure as the value in Ink at
+     500, and the window's peak at the plot's right edge. It takes the plot's
+     width, so the peak ends where the plot does. */
+  .verso-chart-legend {
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+    gap: calc(var(--spacing) * 2) calc(var(--spacing) * 6);
+    width: var(--chart-quarters); margin-bottom: calc(var(--spacing) * 2);
+    font-size: var(--text-sm); line-height: calc(var(--spacing) * 6);
+  }
+  .verso-chart-legend-series, .verso-chart-legend-peak { display: flex; align-items: center; gap: calc(var(--spacing) * 2); min-width: 0; white-space: nowrap; }
+  .verso-chart-legend-peak { margin-left: auto; gap: var(--spacing); }
+  .verso-chart-figure { font-weight: var(--font-weight-medium); color: var(--color-ink); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+  /* The window's peak, a dotted line in the series' hue behind the curve. */
+  .verso-chart-peak { stroke-width: 1; stroke-dasharray: 2 3; }
+  .verso-chart-peak--denim { stroke: var(--color-denim); }
+  .verso-chart-peak--amethyst, .verso-chart-peak--violet { stroke: var(--color-amethyst); }
+  .verso-chart-peak--emerald { stroke: var(--color-green); }
+
   /* The series hues: green for what comes down, amethyst for what goes up. */
   .verso-chart--violet .verso-chart-line { stroke: var(--color-amethyst); }
   .verso-chart--violet .verso-chart-fill-0 { stop-color: var(--color-chart-violet-from); }
