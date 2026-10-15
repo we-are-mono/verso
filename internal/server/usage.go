@@ -5,11 +5,13 @@ package server
 
 import (
 	"context"
+	"errors"
 	"log"
 	"net/http"
 	"strings"
 	"time"
 
+	"github.com/we-are-mono/verso/internal/openwrt"
 	"github.com/we-are-mono/verso/internal/units"
 	"github.com/we-are-mono/verso/internal/usage"
 	"github.com/we-are-mono/verso/internal/widget"
@@ -31,25 +33,44 @@ type rosterUsage struct {
 	nums    units.Numbers         // how the reader's language writes the figures
 }
 
+// The shell holds one copy of what the helper's usage reads answered, shared
+// by every page (the days, the last rates and the minute of them a device's
+// graph opens on), so a session sees it only while rpcd grants that session
+// the read it came from (ADR-007): the days under usageDays, the rates under
+// usageLive.
+var (
+	usageDaysGrant = aclProbe{"ubus", "verso", "usageDays"}
+	usageLiveGrant = aclProbe{"ubus", "verso", "usageLive"}
+)
+
 // readUsage reads the roster's usage under the operator's session: the
 // history first, since it says whether usage is on, then the live rates.
 func (s *Server) readUsage(ctx context.Context, sid string, roster []widget.Device, nums units.Numbers) rosterUsage {
-	u := rosterUsage{on: s.readUsageHistory(ctx, sid), nums: nums}
+	g := s.grantsFor(sid)
+	u := rosterUsage{on: s.readUsageHistory(ctx, g), nums: nums}
 	if !u.on {
 		return u
 	}
 	u.periods = s.usageHistory.Periods()
-	u.rates = s.readUsageRates(ctx, sid, roster)
+	u.rates = s.readUsageRates(ctx, g, roster)
 	return u
 }
 
 // readUsageHistory asks nlbwmon for today and the days not yet held, and
-// answers whether usage is on. A failed read leaves the held days as they were
-// and keeps usage on: the month then reads from what is known.
-func (s *Server) readUsageHistory(ctx context.Context, sid string) bool {
-	read, err := s.backend.UsageDays(ctx, sid, s.usageHistory.Known())
+// answers whether usage is on for the session. A read that fails on the way
+// leaves the held days as they were and keeps usage on: the month then reads
+// from what is known. A session refused the read, by its grants or by the
+// helper, has usage off: what is held is another session's reading.
+func (s *Server) readUsageHistory(ctx context.Context, g *sessionGrants) bool {
+	if !g.may(ctx, usageDaysGrant) {
+		return false
+	}
+	read, err := s.backend.UsageDays(ctx, g.sid, s.usageHistory.Known())
 	if err != nil {
 		log.Printf("verso: usage history unavailable: %v", err)
+		if errors.Is(err, openwrt.ErrAccessDenied) {
+			return false
+		}
 		return s.usageHistory.Periods().Known
 	}
 	if !read.Enabled {
@@ -73,15 +94,19 @@ func (s *Server) readUsageHistory(ctx context.Context, sid string) bool {
 	return true
 }
 
-// readUsageRates is each device's live rate, its addresses folded into it.
-func (s *Server) readUsageRates(ctx context.Context, sid string, roster []widget.Device) map[string]usage.Rate {
+// readUsageRates is each device's live rate, its addresses folded into it,
+// for a session granted the live read; none for any other.
+func (s *Server) readUsageRates(ctx context.Context, g *sessionGrants, roster []widget.Device) map[string]usage.Rate {
+	if !g.may(ctx, usageLiveGrant) {
+		return nil
+	}
 	owners := addressOwners(roster)
 	addrs := make([]string, 0, len(owners))
 	for a := range owners {
 		addrs = append(addrs, a)
 	}
 	read := func(ctx context.Context, addrs []string) (map[string]usage.Counter, error) {
-		live, err := s.backend.UsageLive(ctx, sid, addrs)
+		live, err := s.backend.UsageLive(ctx, g.sid, addrs)
 		if err != nil {
 			return nil, err
 		}
@@ -157,26 +182,31 @@ type usageFrame struct {
 // handleDevicesUsage streams the roster's usage while the Devices page is
 // open: each device's rate every tick, its month every usageMonthRefresh. The
 // roster's addresses are read again with the month, so a device that joins is
-// counted within half a minute.
+// counted within half a minute, and the session's grants asked again with it;
+// usage off for the session at one month's read stays off until the next.
 func (s *Server) handleDevicesUsage(w http.ResponseWriter, r *http.Request) {
 	sid := s.sessionSID(r)
 	_, t := s.localize(r)
 	nums := units.For(t)
 	var roster []widget.Device
 	var monthAt time.Time
+	var g *sessionGrants
+	var on bool
 	s.serveSSE(w, r, func() bool {
 		withMonth := time.Since(monthAt) >= usageMonthRefresh
-		u := rosterUsage{on: true, nums: nums}
+		u := rosterUsage{nums: nums}
 		if withMonth {
+			g = s.grantsFor(sid)
 			roster, _ = s.connectedDevices(r.Context(), sid, clientIP(r))
-			u.on = s.readUsageHistory(r.Context(), sid)
+			on = s.readUsageHistory(r.Context(), g)
 			u.periods = s.usageHistory.Periods()
 			monthAt = time.Now()
 		}
+		u.on = on
 		if !u.on {
 			return writeEvent(w, "", "usage", map[string]any{"devices": []usageFrame{}}) == nil
 		}
-		u.rates = s.readUsageRates(r.Context(), sid, roster)
+		u.rates = s.readUsageRates(r.Context(), g, roster)
 		frames := make([]usageFrame, 0, len(roster))
 		for _, d := range roster {
 			du := u.deviceUsage(d.MAC)

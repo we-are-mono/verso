@@ -396,6 +396,9 @@ func (f fakeBackend) PkgInfo(_ context.Context, _ string, name string) (openwrt.
 }
 
 func (f fakeBackend) UsageLive(_ context.Context, _ string, addrs []string) (openwrt.UsageLive, error) {
+	if f.usageErr != nil {
+		return openwrt.UsageLive{}, f.usageErr
+	}
 	out := openwrt.UsageLive{Accounting: true, Addresses: map[string]openwrt.UsageCounter{}}
 	for _, a := range addrs {
 		if f.usageLive != nil {

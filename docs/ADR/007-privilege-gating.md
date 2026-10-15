@@ -151,13 +151,16 @@ broken socket.**
    grant that guards the same fact through rpcd.** Some readings never pass rpcd: a
    file or kernel table the shell opens itself, a cache of a helper's answer, the
    shell's own stores. For those the shell asks rpcd `session.access` with the
-   reading session's sid, once per grant per request, and shows the reading only on
+   reading session's sid, once per grant for each page it renders and again each time
+   a stream reads afresh, and shows the reading only on
    a yes; a denial and an unreachable rpcd both withhold it. The grant is the one an
    rpcd read of the same fact needs, never one the shell invents:
 
    | Reading | Grant |
    |---|---|
    | dnsmasq's lease file and the kernel neighbour table (the Devices roster, a device's panel, the brokered `dhcpLeases` read) | `ubus dhcp ipv6leases`, the DHCPv6 lease read connected devices are declared under |
+   | The held per-device usage days (the roster's month, a device's periods, the usage stream) | `ubus verso usageDays` |
+   | The held per-device rates and the minute of them a device's graph opens on | `ubus verso usageLive` |
 
    A session refused the grant sees the reading's absence said plainly (an empty
    roster that says the account may not see devices), and a plugin receives no entry

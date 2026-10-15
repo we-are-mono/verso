@@ -4,6 +4,10 @@
 package server
 
 import (
+	"context"
+	"errors"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"strings"
 	"testing"
@@ -119,6 +123,124 @@ func TestAReadWithoutTodayKeepsTheDaysHeld(t *testing.T) {
 	days.Today, days.Days = "", nil
 	if body := get(t, s, "/devices").Body.String(); !strings.Contains(body, ">3.5 GiB<") {
 		t.Error("a read with no today must not blank the month already held")
+	}
+}
+
+// TestUsageIsShownOnlyUnderTheReadersGrant: the shell holds one copy of what
+// the helper last answered, shared by every page, so a session rpcd refuses
+// usageDays and usageLive sees none of it — not on the roster, not in a
+// device's panel, not on the usage stream — whoever filled it a moment ago.
+// Root's '*' sees usage as before, each grant asked once a page.
+func TestUsageIsShownOnlyUnderTheReadersGrant(t *testing.T) {
+	var received uint64 = 1_000_000
+	s, clock := usageServer(t, &received)
+	root := s.backend.(fakeBackend)
+	var probes []string
+	root.probes = &probes
+	s.backend = root
+	get(t, s, "/devices")
+	*clock = clock.Add(2 * time.Second)
+	received += 2_000_000
+	body := get(t, s, "/devices").Body.String()
+	for _, want := range []string{">This month<", ">3.5 GiB<", ">512 MiB<", "data-verso-figure-text>8 Mb/s<"} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("root's roster missing %q", want)
+		}
+	}
+	for _, grant := range []string{"ubus verso usageDays", "ubus verso usageLive"} {
+		if n := strings.Count(strings.Join(probes, "\n"), grant); n != 2 {
+			t.Errorf("%s probed %d times over two pages, want once each: %q", grant, n, probes)
+		}
+	}
+
+	refused := root
+	refused.probes = nil
+	refused.grant = grantAllBut("ubus verso usageDays", "ubus verso usageLive")
+	refused.usageErr = openwrt.ErrAccessDenied
+	s.backend = refused
+	*clock = clock.Add(100 * time.Millisecond) // inside the sampler's gap
+	body = get(t, s, "/devices").Body.String()
+	for _, leaked := range []string{">This month<", ">3.5 GiB<", ">512 MiB<", "8 Mb/s"} {
+		if strings.Contains(body, leaked) {
+			t.Errorf("a refused session's roster shows %q", leaked)
+		}
+	}
+	panel := get(t, s, "/entity/device/42:e6:ad:ff:b7:af").Body.String()
+	for _, leaked := range []string{">Usage<", ">2 GiB<", ">3 GiB<", ">9 GiB<", "data-verso-live-chart"} {
+		if strings.Contains(panel, leaked) {
+			t.Errorf("a refused session's device panel shows %q", leaked)
+		}
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel() // one frame, then the stream ends
+	stream := serve(t, s, httptest.NewRequestWithContext(ctx, http.MethodGet, "/devices/usage", nil)).Body.String()
+	if !strings.Contains(stream, `"devices":[]`) || strings.Contains(stream, "GiB") {
+		t.Errorf("a refused session's usage stream = %s", stream)
+	}
+
+	// The days without the live read: the periods, and no graph of the
+	// minute another session watched.
+	daysOnly := root
+	daysOnly.probes = nil
+	daysOnly.grant = grantAllBut("ubus verso usageLive")
+	s.backend = daysOnly
+	panel = get(t, s, "/entity/device/42:e6:ad:ff:b7:af").Body.String()
+	if !strings.Contains(panel, ">This month<") || strings.Contains(panel, "data-verso-live-chart") {
+		t.Errorf("a session granted only the days: periods = %v, graph = %v",
+			strings.Contains(panel, ">This month<"), strings.Contains(panel, "data-verso-live-chart"))
+	}
+	if body = get(t, s, "/devices").Body.String(); strings.Contains(body, "8 Mb/s") {
+		t.Error("a session refused the live read is shown no rate")
+	}
+}
+
+// TestUsageHeldStandsOnlyForAGrantedReader: a granted session whose read
+// fails on the way keeps the month already held; one the helper itself
+// refuses is refused what is held too.
+func TestUsageHeldStandsOnlyForAGrantedReader(t *testing.T) {
+	var received uint64
+	s, _ := usageServer(t, &received)
+	if body := get(t, s, "/devices").Body.String(); !strings.Contains(body, ">3.5 GiB<") {
+		t.Fatal("the first read should give the month")
+	}
+	failing := s.backend.(fakeBackend)
+	failing.usageErr = errors.New("helper unreachable")
+	s.backend = failing
+	if body := get(t, s, "/devices").Body.String(); !strings.Contains(body, ">3.5 GiB<") {
+		t.Error("a failed read must not blank the month already held")
+	}
+	failing.usageErr = openwrt.ErrAccessDenied
+	s.backend = failing
+	if body := get(t, s, "/devices").Body.String(); strings.Contains(body, ">3.5 GiB<") {
+		t.Error("a read the helper refuses must not fall back to the month held")
+	}
+}
+
+// TestUsageStreamStaysOffBetweenItsMonths: a session refused the days has
+// usage off (ADR-018), on the stream as on the page: the ticks between two
+// reads of the month carry no rate, though rpcd grants the session the live
+// read.
+func TestUsageStreamStaysOffBetweenItsMonths(t *testing.T) {
+	var received uint64 = 1_000_000
+	s, clock := usageServer(t, &received)
+	get(t, s, "/devices")
+	*clock = clock.Add(2 * time.Second)
+	received += 2_000_000
+	if body := get(t, s, "/devices").Body.String(); !strings.Contains(body, "data-verso-figure-text>8 Mb/s<") {
+		t.Fatal("root's second page should state a rate")
+	}
+	liveOnly := s.backend.(fakeBackend)
+	liveOnly.grant = grantAllBut("ubus verso usageDays")
+	s.backend = liveOnly
+	s.eventInterval = 5 * time.Millisecond
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Millisecond)
+	defer cancel()
+	stream := serve(t, s, httptest.NewRequestWithContext(ctx, http.MethodGet, "/devices/usage", nil)).Body.String()
+	if n := strings.Count(stream, "event: usage"); n < 3 {
+		t.Fatalf("the stream sent %d frames, want several: %s", n, stream)
+	}
+	if strings.Contains(stream, `"mac"`) {
+		t.Errorf("a session refused the days is streamed rates: %s", stream)
 	}
 }
 

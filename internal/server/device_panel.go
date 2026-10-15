@@ -21,11 +21,16 @@ import (
 // deviceTabs are the shell's tabs for one device.
 func (s *Server) deviceTabs(r *http.Request, d widget.Device) []entityTab {
 	body := widget.Widgets{deviceFacts(d)}
-	if s.readUsageHistory(r.Context(), s.sessionSID(r)) {
+	g := s.grantsIn(r.Context(), s.sessionSID(r))
+	if s.readUsageHistory(r.Context(), g) {
 		// The graph opens on the minute the roster's stream has watched, and
 		// the stream feeds it from there; nothing here reads the router again.
-		owners := addressOwners([]widget.Device{d})
-		down, up := s.usageSampler.Series(owners, strings.ToLower(d.MAC))
+		// That minute is the live read's, so only its grant draws the graph.
+		var down, up []float64
+		if g.may(r.Context(), usageLiveGrant) {
+			owners := addressOwners([]widget.Device{d})
+			down, up = s.usageSampler.Series(owners, strings.ToLower(d.MAC))
+		}
 		_, t := s.localize(r)
 		body = append(body, deviceUsage(units.For(t), d, down, up, s.usageHistory.Periods())...)
 	}
@@ -67,9 +72,14 @@ func deviceFacts(d widget.Device) widget.Widget {
 
 // deviceUsage is what the device moves: its traffic graph, as the overview
 // draws the Internet's, fed by the roster's stream under the name of the
-// device, and its calendar periods. The series are bits per second.
+// device, and its calendar periods. The series are bits per second; without
+// them there is no graph, only the periods.
 func deviceUsage(nums units.Numbers, d widget.Device, downBPS, upBPS []float64, p usage.Periods) widget.Widgets {
 	mac := strings.ToLower(d.MAC)
+	periods := usagePeriods(nums, mac, p)
+	if len(downBPS) == 0 {
+		return widget.Widgets{periods}
+	}
 	down, up := make([]float64, len(downBPS)), make([]float64, len(upBPS))
 	for i := range downBPS {
 		down[i], up[i] = downBPS[i]/1_000_000, upBPS[i]/1_000_000
@@ -80,11 +90,16 @@ func deviceUsage(nums units.Numbers, d widget.Device, downBPS, upBPS []float64, 
 		DownNow: down[len(down)-1], UpNow: up[len(up)-1],
 		Down: down, Up: up, Panel: true,
 	}
+	return widget.Widgets{traffic, periods}
+}
+
+// usagePeriods is the device's calendar periods, each down and up.
+func usagePeriods(nums units.Numbers, mac string, p usage.Periods) *widget.Table {
 	period := func(label string, totals map[string]usage.Totals) widget.TableRow {
 		t := totals[mac]
 		return widget.TableRow{Cells: []widget.TableCell{{Text: label}, {Text: nums.Bytes(t.Down)}, {Text: nums.Bytes(t.Up)}}}
 	}
-	periods := &widget.Table{
+	return &widget.Table{
 		Style: "flat",
 		Columns: []widget.TableColumn{
 			{Label: "Period"},
@@ -100,5 +115,4 @@ func deviceUsage(nums units.Numbers, d widget.Device, downBPS, upBPS []float64, 
 			period("Last month", p.LastMonth),
 		},
 	}
-	return widget.Widgets{traffic, periods}
 }

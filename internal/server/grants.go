@@ -30,7 +30,7 @@ var leaseGrant = aclProbe{"ubus", "dhcp", "ipv6leases"}
 // its own privilege. The ACL groups Verso ships grant each of them to a login
 // whose lists name '*', as root's do, so root sees every such reading whatever
 // else is installed.
-var shellProbes = []aclProbe{leaseGrant}
+var shellProbes = []aclProbe{leaseGrant, usageDaysGrant, usageLiveGrant}
 
 // permissionsUnchecked is what a page says in place of a reading rpcd did not
 // answer the grant of: the reading may be the session's to see.

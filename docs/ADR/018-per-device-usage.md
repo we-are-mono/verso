@@ -96,6 +96,15 @@ The shell reads it every two seconds while a Devices page or a device panel is
 open, and not at all otherwise. It folds addresses into devices by the neighbour
 table.
 
+### Held readings follow the reader's grant
+
+The shell holds one copy of the days, the last rates and the minute of rates a
+device's graph opens on, shared by every page, so the helper is read once however
+many look. A session sees the days only while rpcd grants it `verso usageDays`, and
+the rates and the graph only while it grants `verso usageLive` (ADR-007); a session
+refused the days has usage off. A read that fails on the way keeps the days held
+for a granted session; one the helper refuses keeps nothing.
+
 ### What is never stored
 
 Only byte totals per device. No connection, peer address or destination is
