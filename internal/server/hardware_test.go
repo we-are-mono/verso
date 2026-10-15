@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/we-are-mono/verso/internal/machine"
 	"github.com/we-are-mono/verso/internal/openwrt"
@@ -27,11 +28,12 @@ import (
 func dkInventory() sensors.Inventory {
 	return sensors.Inventory{
 		Temps: []sensors.TempReading{
-			{Name: "cluster", Kernel: "cluster-thermal", Source: "thermal zone", Kind: "zone", MilliC: 48000, Warn: 85000, Crit: 95000, HasLimits: true, Level: "nominal", CPU: true, Named: true},
-			{Name: "Memory", Kernel: "ddr-thermal", Source: "thermal zone", Kind: "zone", MilliC: 47000, Warn: 85000, Crit: 95000, HasLimits: true, Level: "nominal", Curated: true, Named: true, Rank: 1},
-			{Name: "PCB near CPU", Kernel: "temp1", Source: "tmp431 · 13-4c", Kind: "hwmon", MilliC: 41200, Warn: 85000, Crit: 108000, HasLimits: true, Level: "nominal", Curated: true, Named: true, Rank: 5},
-			{Name: "temp2", Kernel: "temp2", Source: "tmp431 · 14-4c", Kind: "hwmon", Fault: true},
-			{Name: "temperature", Kernel: "temperature", Source: "sfp · xfi0", Kind: "hwmon", MilliC: 47200, Warn: 73000, Crit: 78000, HasLimits: true, Level: "nominal", Fiber: true},
+			{Name: "cluster", Kernel: "cluster-thermal", Source: "thermal zone", Kind: "zone", MilliC: 48000, Warn: 85000, Crit: 95000, HasLimits: true, Level: "nominal", CPU: true, Named: true, Series: "temp.cluster-thermal"},
+			{Name: "Memory", Kernel: "ddr-thermal", Source: "thermal zone", Kind: "zone", MilliC: 47000, Warn: 85000, Crit: 95000, HasLimits: true, Level: "nominal", Curated: true, Named: true, Rank: 1, Series: "temp.ddr-thermal"},
+			{Name: "PCB near CPU", Kernel: "temp1", Source: "tmp431 · 13-4c", Kind: "hwmon", MilliC: 41200, Warn: 85000, Crit: 108000, HasLimits: true, Level: "nominal", Curated: true, Named: true, Rank: 5, Series: "temp.temp1"},
+			{Name: "temp2", Kernel: "temp2", Source: "tmp431 · 14-4c", Kind: "hwmon", Fault: true, Series: "temp.temp2"},
+			{Name: "temperature", Kernel: "temperature", Source: "sfp · xfi0", Kind: "hwmon", MilliC: 47200, Warn: 73000, Crit: 78000, HasLimits: true, Level: "nominal", Fiber: true, Series: "temp.temperature.sfp · xfi0"},
+			{Name: "temperature", Kernel: "temperature", Source: "sfp · xfi1", Kind: "hwmon", MilliC: 54600, Warn: 90000, Crit: 95000, HasLimits: true, Level: "nominal", Fiber: true, Series: "temp.temperature.sfp · xfi1"},
 		},
 		Powers: []sensors.PowerReading{
 			{Name: "5V PSU", Kernel: "power1", Source: "ina234 · 12-41", MilliV: 4970, MilliA: 420, MicroW: 2100000, HasV: true, HasA: true, Named: true},
@@ -223,6 +225,48 @@ func TestTemperaturesListTheProfilesReadings(t *testing.T) {
 		if !strings.Contains(temps, src) {
 			t.Errorf("Temperatures missing the source %s", src)
 		}
+	}
+}
+
+// TestTemperaturesChartOneReadingAtATime: over its table, the card asks which
+// reading to chart and over which window, as a sentence ("Show chart for [CPU]
+// over [Last 24 hours]"): the table's rows in order, then each SFP module, by
+// the series their history is under; the CPU and the day chosen. The graph
+// stands under the field and over the table, and the card's heading carries no
+// control.
+func TestTemperaturesChartOneReadingAtATime(t *testing.T) {
+	in := dkInput()
+	in.tempGraph = &widget.Chart{ID: temperatureGraphID, Span: 24 * time.Hour, Series: []widget.ChartSeries{{Values: []float64{48, 49}}}}
+	temps := card(t, renderCards(t, in), "Temperatures")
+	for _, want := range []string{
+		">Show chart for<", `class="verso-joined-word">over</span>`,
+		`hx-get="/system/hardware/temperature"`, `hx-target="#hardware-temperature-graph"`,
+		`<option value="temp.cluster-thermal" selected>cluster</option>`,
+		`<option value="temp.temperature.sfp · xfi0">SFP&#43; module xfi0</option>`,
+		`<option value="temp.temperature.sfp · xfi1">SFP&#43; module xfi1</option>`,
+		`<option value="day" selected>Last 24 hours</option>`, `<option value="year">Last year</option>`,
+	} {
+		if !strings.Contains(temps, want) {
+			t.Errorf("Temperatures missing %q:\n%s", want, temps)
+		}
+	}
+	// The choices follow the table's rows, then the modules; a faulted
+	// channel the profile leaves out is no choice.
+	order := []string{">cluster</option>", ">Memory</option>", ">PCB near CPU</option>", ">SFP&#43; module xfi0</option>", ">SFP&#43; module xfi1</option>"}
+	for i := 1; i < len(order); i++ {
+		if strings.Index(temps, order[i-1]) > strings.Index(temps, order[i]) {
+			t.Errorf("%s comes after %s", order[i-1], order[i])
+		}
+	}
+	if strings.Contains(temps, ">temp2</option>") {
+		t.Error("a channel the profile does not name is a choice")
+	}
+	field, graph, table := strings.Index(temps, ">Show chart for<"), strings.Index(temps, `id="hardware-temperature-graph"`), strings.Index(temps, "<table")
+	if field < 0 || graph < field || table < graph {
+		t.Errorf("not field, graph, table: field=%d graph=%d table=%d", field, graph, table)
+	}
+	if strings.Index(temps, "<select") < strings.Index(temps, "Each bar runs") {
+		t.Error("the card's heading carries a control")
 	}
 }
 

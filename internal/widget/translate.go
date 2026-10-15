@@ -99,8 +99,10 @@ func translateFields(w Widget, t func(string) string) {
 		if n.Style == "locked" {
 			n.Value = t(n.Value)
 		}
-		for i := range n.Options {
-			n.Options[i].Label = t(n.Options[i].Label)
+		if !n.OptionsVerbatim {
+			for i := range n.Options {
+				n.Options[i].Label = t(n.Options[i].Label)
+			}
 		}
 	case *Filter:
 		n.Placeholder = t(n.Placeholder)

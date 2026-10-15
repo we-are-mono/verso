@@ -207,6 +207,9 @@ type Server struct {
 	// stats reads local machine health (CPU busy share, root fullness) for the
 	// overview meters; a seam so tests need no kernel.
 	stats statSource
+	// inventory resolves the board's sensors by its profile; nil reads sysfs
+	// (sensors.ResolveAll), a seam so tests stand a board's sensors in.
+	inventory func(*sensors.Profile) sensors.Inventory
 	// eventInterval paces the overview stream's readings clock; tests shrink it.
 	eventInterval time.Duration
 	// readLeases and neighbors feed the device roster and its detail drawer

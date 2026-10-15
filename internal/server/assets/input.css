@@ -638,6 +638,9 @@ html {
      wherever they are. */
   .verso-rhythm > * + * { margin-top: var(--verso-rhythm, calc(var(--spacing) * 10)); }
   .verso-rhythm > :is(.verso-field-row, .verso-form-grid, [data-verso-change-field]) + :is(.verso-field-row, .verso-form-grid, [data-verso-change-field]) { margin-top: 0; }
+  /* A graph stands a group's step under the field that chooses what it shows
+     ("Show chart for …"): the two are one block. */
+  .verso-rhythm > .verso-field-row + .verso-chart-graph { margin-top: var(--spacing-inset); }
   /* Hidden carriers are not blocks: the first row after them — the first a
      reader sees — takes no gap above it. */
   .verso-rhythm > :not(input[type="hidden"]):not(:not(input[type="hidden"]) ~ *) { margin-top: 0; }

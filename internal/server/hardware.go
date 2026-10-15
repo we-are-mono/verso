@@ -36,13 +36,18 @@ func (s *Server) handleSystemHardware(w http.ResponseWriter, r *http.Request) {
 	in := hardwareInput{
 		board:   board,
 		profile: profile,
-		inv:     sensors.ResolveAll(profile, &sensors.Reader{}),
+		inv:     s.sensorInventory(profile),
 		facts:   (&machine.Reader{}).Read(),
 		panel:   s.hardwarePanel(r, profile),
 	}
 
 	lang, t := s.localize(r)
 	tr := translatorOrIdentity(t)
+	// The page opens on the first reading's day, drawn here, so the graph
+	// needs no second request.
+	if choices := temperatureChoices(tr, in.inv); len(choices) > 0 {
+		in.tempGraph = s.temperatureGraph(r.Context(), tr, choices[0], historyWindows[0])
+	}
 	root := &widget.Stack{Children: hardwareCards(tr, in)}
 
 	var body strings.Builder
@@ -63,6 +68,10 @@ type hardwareInput struct {
 	inv     sensors.Inventory
 	facts   machine.Facts
 	panel   widget.Widget // nil for a box with no ports
+	// tempGraph is the Temperatures graph as the page opens on it: the first
+	// reading (the CPU) over the last 24 hours. Without it the card is its
+	// table alone.
+	tempGraph widget.Widget
 }
 
 // hardwareHeading is the page's heading: "Hardware" while all is well, else
@@ -82,7 +91,7 @@ func hardwareCards(tr func(string) string, in hardwareInput) []widget.Widget {
 	var out []widget.Widget
 	for _, card := range []widget.Widget{
 		boardCard(tr, nums, in),
-		temperaturesCard(tr, in.inv.PageTemps()),
+		temperaturesCard(tr, in),
 		powerCard(in.inv.PageRails()),
 		coolingCard(in.inv.PageFans()),
 		fibreCard(in.inv.Fibers),
@@ -197,11 +206,17 @@ func processorFact(tr func(string) string, nums units.Numbers, in hardwareInput)
 
 // --- the kinds of reading --------------------------------------------------
 
-// temperaturesCard is one table of the board's temperatures, each a headroom
-// bar to the point where the hardware would protect itself.
-func temperaturesCard(tr func(string) string, temps []sensors.TempReading) widget.Widget {
+// temperaturesCard is the board's temperatures: one reading's history,
+// chosen in the field over it, then one table of every reading, each a
+// headroom bar to the point where the hardware would protect itself.
+func temperaturesCard(tr func(string) string, in hardwareInput) widget.Widget {
+	temps := in.inv.PageTemps()
 	if len(temps) == 0 {
 		return nil
+	}
+	var children []widget.Widget
+	if choices := temperatureChoices(tr, in.inv); in.tempGraph != nil && len(choices) > 0 {
+		children = append(children, temperatureField(choices, choices[0].Series, historyWindows[0].Value), in.tempGraph)
 	}
 	rows := make([]widget.TableRow, 0, len(temps))
 	for i := range temps {
@@ -216,7 +231,7 @@ func temperaturesCard(tr func(string) string, temps []sensors.TempReading) widge
 	return &widget.Section{
 		Title: "Temperatures", Hairline: true,
 		Sub: "Each bar runs to the point where the hardware would protect itself.",
-		Children: []widget.Widget{&widget.Table{
+		Children: append(children, &widget.Table{
 			Columns: []widget.TableColumn{
 				{Label: "Reading", Kind: "name", Width: widget.MeasureName},
 				{Label: "Source", Kind: "mono", Width: widget.MeasureAddress},
@@ -224,7 +239,7 @@ func temperaturesCard(tr func(string) string, temps []sensors.TempReading) widge
 				{Label: "Limits", Kind: "comment"},
 			},
 			Rows: rows,
-		}},
+		}),
 	}
 }
 

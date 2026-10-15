@@ -39,10 +39,10 @@
 
 ## 8. The Temperatures graph
 
-- [ ] 8.1 Write `hardware_test.go` cases with the DK fixture: the Temperatures card renders the "Show chart for" field ([CPU ▾] over [Last 24 hours ▾]; sensor options in table order, then "SFP+ module xfi0" and "SFP+ module xfi1"; option values are series names), then the graph, then the unchanged table; the card's heading carries no control. Then compose it in `temperaturesCard`. Verify: `go test ./internal/server -run 'Hardware|Temperature'`.
-- [ ] 8.2 Write route tests for `GET /system/hardware/temperature`: a known sensor and window answer the graph block with the window's averages and peak ("48.7 °C on average", "peak 59.0 °C" from a seeded store); an unknown sensor or window answers 400; a series with no points answers the empty message; no history store answers that the router keeps none. Then add the handler and route. Verify: `go test ./internal/server -run TemperatureHistory`.
-- [ ] 8.3 Make the page's first paint draw the CPU over 24 hours inline, with a test that the page's HTML already holds the CPU's lane. Amend ADR-019 in place to name the temperature graph as a reader of the history. Verify: `go test ./internal/server -run Hardware`.
-- [ ] 8.4 Update the `hardware-page` paragraphs of DESIGN.md (the Temperatures card's field, graph and table order). Verify: DESIGN.md describes the field's words "Show chart for" and "over".
+- [x] 8.1 Write `hardware_test.go` cases with the DK fixture: the Temperatures card renders the "Show chart for" field ([CPU ▾] over [Last 24 hours ▾]; sensor options in table order, then "SFP+ module xfi0" and "SFP+ module xfi1"; option values are series names), then the graph, then the unchanged table; the card's heading carries no control. Then compose it in `temperaturesCard`. Verify: `go test ./internal/server -run 'Hardware|Temperature'`.
+- [x] 8.2 Write route tests for `GET /system/hardware/temperature`: a known sensor and window answer the graph block with the window's averages and peak ("48.7 °C on average", "peak 59.0 °C" from a seeded store); an unknown sensor or window answers 400; a series with no points answers the empty message; no history store answers that the router keeps none. Then add the handler and route. Verify: `go test ./internal/server -run TemperatureHistory`.
+- [x] 8.3 Make the page's first paint draw the CPU over 24 hours inline, with a test that the page's HTML already holds the CPU's lane. Amend ADR-019 in place to name the temperature graph as a reader of the history. Verify: `go test ./internal/server -run Hardware`.
+- [x] 8.4 Update the `hardware-page` paragraphs of DESIGN.md (the Temperatures card's field, graph and table order). Verify: DESIGN.md describes the field's words "Show chart for" and "over".
 
 ## 9. Integration
 

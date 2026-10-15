@@ -15,7 +15,11 @@
      Labels are HTML, not SVG <text>: text inside a viewBox scales with the
      graph. This SVG is the first paint; the live layer glides the same series
      without touching the markup. */}}
-<div class="verso-chart-graph" data-chart-place="{{.Place}}">
+<div class="verso-chart-graph"{{if .ID}} id="{{.ID}}"{{end}} data-chart-place="{{.Place}}">
+  {{if .Empty}}
+  {{/* Nothing to draw: the chart says so where its plot would stand. */}}
+  <p class="flex items-center gap-2 text-sm leading-6 text-meta" data-verso-chart-empty><span aria-hidden="true" class="size-1.5 shrink-0 rounded-[1px] border border-faint"></span>{{.Empty}}</p>
+  {{else}}
   {{/* A legend line per series that has one, as the Overview's facts read:
        the series' packet, its name as the term, its figure as the value and
        what the figure is, and the window's peak at the plot's right edge. */}}
@@ -49,4 +53,5 @@
       {{range .Ticks}}<span class="verso-chart-tick absolute top-0 whitespace-nowrap" data-verso-chart-tick data-align="{{.Align}}" style="left:{{printf "%.0f" .Pct}}%">{{.Text}}</span>{{end}}
     </div>{{end}}
   </div>
+  {{end}}
 </div>

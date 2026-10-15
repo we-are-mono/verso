@@ -224,6 +224,11 @@ out to it unattended is opt-in (ADR-014).
   or more of the gateway's echoes as a marigold wash, titled with the worst
   period; loss inside an outage is the outage's. Beside the traffic's averages
   stands the gateway's average latency over the window.
+- System → Hardware's Temperatures card charts one temperature at a time over
+  a past window, chosen in the field over its graph ("Show chart for [CPU] over
+  [Last 24 hours]"): each period's average, the window's average and its
+  highest peak, a boot as its mark. It reads the series by the kernel's name
+  the reading resolved with, and only a series the board offers.
 - System → Events lists the timeline, newest first: when, on which interface,
   and what happened as a status coloured by its weight. It is a page of its
   own beside Logs, whose console fills its page. Each event shows only to a

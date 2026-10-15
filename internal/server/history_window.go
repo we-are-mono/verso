@@ -3,7 +3,11 @@
 
 package server
 
-import "github.com/we-are-mono/verso/internal/history"
+import (
+	"time"
+
+	"github.com/we-are-mono/verso/internal/history"
+)
 
 // historyWindow is one past window a history graph offers (ADR-019): its value
 // on the wire, its words in the dropdown, and its periods at one resolution.
@@ -11,6 +15,21 @@ type historyWindow struct {
 	Value, Label string
 	Res          history.Resolution
 	N            int
+}
+
+// Span is how far back the window reaches.
+func (w historyWindow) Span() time.Duration {
+	return time.Duration(w.N) * w.step()
+}
+
+// step is one period of the window's resolution.
+func (w historyWindow) step() time.Duration { return time.Duration(w.Res) * time.Second }
+
+// bounds are the window's periods as of now: from the start of the first to
+// the end of the one now falls in.
+func (w historyWindow) bounds(now time.Time) (start, end time.Time) {
+	start = now.Truncate(w.step()).Add(-time.Duration(w.N-1) * w.step())
+	return start, start.Add(w.Span())
 }
 
 // historyWindows are the past windows every history graph offers, in the

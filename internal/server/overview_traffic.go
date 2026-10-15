@@ -59,7 +59,7 @@ func (s *Server) handleOverviewTraffic(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		var err error
-		if traffic, err = s.pastTraffic(r, window, layout.Res, layout.N); err != nil {
+		if traffic, err = s.pastTraffic(r, layout); err != nil {
 			http.Error(w, "history unavailable", http.StatusInternalServerError)
 			return
 		}
@@ -74,10 +74,10 @@ func (s *Server) handleOverviewTraffic(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write([]byte(body.String()))
 }
 
-// pastTraffic is the Internet graph over n periods of res ending now: the
+// pastTraffic is the Internet graph over a past window ending now: the
 // uplink's traffic, its events and its stretches of packet loss as marks, and
 // the gateway's average latency beside the traffic's.
-func (s *Server) pastTraffic(r *http.Request, window string, res history.Resolution, n int) (*widget.Traffic, error) {
+func (s *Server) pastTraffic(r *http.Request, w historyWindow) (*widget.Traffic, error) {
 	var device string
 	if wan, err := s.wanStatus(r); err == nil {
 		if primary, ok := wan.Primary(); ok {
@@ -85,9 +85,8 @@ func (s *Server) pastTraffic(r *http.Request, window string, res history.Resolut
 		}
 	}
 	now := time.Now()
-	step := time.Duration(res) * time.Second
-	start := now.Truncate(step).Add(-time.Duration(n-1) * step)
-	end := start.Add(time.Duration(n) * step)
+	res, n, step := w.Res, w.N, w.step()
+	start, end := w.bounds(now)
 	// read is a series' averages over the window, slot by slot, and the
 	// highest peak among its periods.
 	read := func(series string, value func(float64) float64) ([]float64, float64, error) {
@@ -122,7 +121,7 @@ func (s *Server) pastTraffic(r *http.Request, window string, res history.Resolut
 	}
 	_, t := s.localize(r)
 	tr := translatorOrIdentity(t)
-	traffic := widget.InternetTraffic(mean(down), mean(up), down, up, window)
+	traffic := widget.InternetTraffic(mean(down), mean(up), down, up, w.Value)
 	traffic.DownPeak, traffic.UpPeak = downPeak, upPeak
 	traffic.Marks = eventMarks(events, start, end, now, tr)
 	traffic.Marks = append(traffic.Marks, lossMarks(loss, start, step, traffic.Marks, now, tr)...)

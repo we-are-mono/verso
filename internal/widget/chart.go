@@ -31,6 +31,13 @@ import (
 type Chart struct {
 	Series []ChartSeries // drawn back to front
 	Label  string        // accessible description of the whole plot
+	// ID addresses the chart, so a choice outside it (the Temperatures
+	// graph's field) can fetch another reading or window in its place.
+	ID string
+	// Empty is what the chart says in place of its plot when no series has a
+	// reading to draw ("Nothing was recorded for CPU over the last 24 hours.").
+	// Without it an empty chart still draws its frame.
+	Empty string
 	// Place is where the chart stands, which sizes its cells.
 	Place ChartPlace
 	// Unit is what the values are counted in, which writes the scale and the
@@ -108,6 +115,8 @@ const chartW, chartH = 620.0, 240.0
 const chartMarkMinWidth = 1.5
 
 type chartView struct {
+	ID      string
+	Empty   string
 	Label   string
 	W, H    float64
 	YLabels []chartYLabel
@@ -178,7 +187,11 @@ func (c *Chart) renderInto(r *Renderer, out io.Writer, _ string) error {
 	nums := r.numbers()
 	top, labels := nums.Scale(c.Unit, peak)
 
-	view := chartView{Label: c.Label, W: chartW, H: chartH, Place: c.Place.String()}
+	view := chartView{ID: c.ID, Label: c.Label, W: chartW, H: chartH, Place: c.Place.String()}
+	if c.Empty != "" && !c.drawable() {
+		view.Empty = c.Empty
+		return r.execute(out, "chart.html.tmpl", view)
+	}
 	if !c.NoAxis {
 		view.Ticks = c.ticks(r)
 	}
@@ -226,6 +239,22 @@ func (c *Chart) renderInto(r *Renderer, out io.Writer, _ string) error {
 		view.Series = append(view.Series, sv)
 	}
 	return r.execute(out, "chart.html.tmpl", view)
+}
+
+// drawable reports whether any series has two readings to draw a line through.
+func (c *Chart) drawable() bool {
+	for _, s := range c.Series {
+		n := 0
+		for _, v := range s.Values {
+			if !math.IsNaN(v) {
+				n++
+			}
+		}
+		if n >= 2 {
+			return true
+		}
+	}
+	return false
 }
 
 // chartHue is the packet's colour for a series' palette slot.

@@ -60,6 +60,10 @@ type Field struct {
 	// nothing (the Temperatures graph's reading and window). Shell only, as
 	// Theme is.
 	Fetch *FieldFetch `json:"-"`
+	// OptionsVerbatim declares the options' labels names the machine or a
+	// profile gave (a reading's "Memory", an SFP module's cage), which the
+	// localization walk leaves as they are. Shell only.
+	OptionsVerbatim bool `json:"-"`
 	// Tip explains what the field is to someone meeting it for the first time,
 	// on hovering or focusing the label. It is the deliberate version of Help:
 	// where both are set the label raises this one, because a plugin's Help was

@@ -42,6 +42,7 @@ func (s *Server) routes() {
 	// Hardware: shell-owned "about this box" — the device's model, panel, and
 	// every sensor reading, read from local sysfs with no configuration to stage.
 	s.mux.HandleFunc("GET /system/hardware", s.handleSystemHardware)
+	s.mux.HandleFunc("GET "+temperaturePath, s.handleTemperatureHistory)
 
 	// Shell-owned auth surface (ADR-009 §3): the shell serves the password page
 	// itself, since it mutates the credential that gates the shell.
