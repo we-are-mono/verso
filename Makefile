@@ -334,6 +334,7 @@ apk: apk-preflight build-$(APK_GOARCH)
 	install -Dm644 docker/rootfs/usr/share/acl.d/verso.json            $(APK_PAYLOAD)/usr/share/acl.d/verso.json
 	install -Dm644 docker/rootfs/usr/share/rpcd/acl.d/verso-shell.json  $(APK_PAYLOAD)/usr/share/rpcd/acl.d/verso-shell.json
 	install -Dm644 docker/rootfs/usr/share/rpcd/acl.d/verso-helper.json $(APK_PAYLOAD)/usr/share/rpcd/acl.d/verso-helper.json
+	install -Dm644 docker/rootfs/usr/share/rpcd/acl.d/verso-admin.json  $(APK_PAYLOAD)/usr/share/rpcd/acl.d/verso-admin.json
 	install -Dm755 $(BUILDDIR)/verso-plugin-interfaces-$(APK_GOARCH) $(APK_PAYLOAD)/usr/bin/verso-plugin-interfaces
 	install -Dm755 plugins/verso-plugin-interfaces/rootfs/etc/init.d/verso-plugin-interfaces $(APK_PAYLOAD)/etc/init.d/verso-plugin-interfaces
 	install -Dm644 plugins/verso-plugin-interfaces/manifest.json $(APK_PAYLOAD)/usr/share/verso/plugins/interfaces/manifest.json

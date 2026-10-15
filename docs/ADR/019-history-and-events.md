@@ -217,7 +217,8 @@ out to it unattended is opt-in (ADR-014).
   stands the gateway's average latency over the window.
 - System → Events lists the timeline, newest first: when, on which interface,
   and what happened as a status coloured by its weight. It is a page of its
-  own beside Logs, whose console fills its page.
+  own beside Logs, whose console fills its page. Each event shows only to a
+  session rpcd grants the read its fact comes from (ADR-007, ADR-021).
 - System → Maintenance gains the "History is kept in" row, its description
   stating the file's size and the free space beside it.
 

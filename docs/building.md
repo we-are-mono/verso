@@ -116,7 +116,7 @@ overwrites the other. What it does, and why each part matters:
 
 - **Assembles a CLEAN payload** — only Verso's own files. It never ships
   `/etc/config/*` or `netfix`; those are docker-harness defaults that would
-  clobber the router's live network/firewall config. The eight files:
+  clobber the router's live network/firewall config. The nine files:
 
   ```
   /usr/bin/verso
@@ -127,6 +127,7 @@ overwrites the other. What it does, and why each part matters:
   /usr/share/acl.d/verso.json
   /usr/share/rpcd/acl.d/verso-shell.json
   /usr/share/rpcd/acl.d/verso-helper.json
+  /usr/share/rpcd/acl.d/verso-admin.json
   ```
 
 - **Records root:root ownership — via `fakeroot`, no `sudo`.** `apk mkpkg` stamps

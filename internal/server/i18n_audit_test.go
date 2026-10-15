@@ -65,7 +65,9 @@ func TestI18nAudit(t *testing.T) {
 		}
 	})
 
-	srv := newServer(t, fakeBackend{})
+	// The crawl is root's: its '*' takes up every group Verso ships, which
+	// grant every probe the shell asks (TestRootIsGrantedEveryShellProbe).
+	srv := newServer(t, fakeBackend{access: true})
 	srv.SetBundle(recorded)
 
 	token := srv.sessions.CreateWithMetadata("audit-sid", "root", "", "")

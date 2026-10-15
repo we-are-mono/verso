@@ -219,7 +219,7 @@ func actsServer(t *testing.T, stage map[string][][]string) (*Server, *history.St
 	m := demoACLManifest()
 	m.ACL.Write = append(m.ACL.Write, plugin.ACLScope{Scope: "uci", Object: "firewall", Function: "write"})
 	writes, confirms := []uciWrite{}, 0
-	s := newServerWith(t, fakeBackend{writes: &writes, confirms: &confirms, changes: stage}, &fakeTransport{}, []plugin.Manifest{m})
+	s := newServerWith(t, fakeBackend{access: true, writes: &writes, confirms: &confirms, changes: stage}, &fakeTransport{}, []plugin.Manifest{m})
 	store, err := history.Open(filepath.Join(t.TempDir(), "history.db"))
 	if err != nil {
 		t.Fatal(err)

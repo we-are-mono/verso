@@ -44,8 +44,15 @@ var subjectIcons = map[string]string{
 	"setting":      "sliders-horizontal",
 }
 
+// partNotReadable refuses an act on what the session sees only in part;
+// notWritable one into configs rpcd will not let it write.
+const (
+	partNotReadable = "Part of this is in settings this account may not read, so it cannot be staged from here."
+	notWritable     = "This account may not change these settings, so nothing was staged."
+)
+
 // handleChanges lists every apply config history keeps, newest first, in
-// lanes by day (ADR-021).
+// lanes by day (ADR-021), as far as the session may read it.
 func (s *Server) handleChanges(w http.ResponseWriter, r *http.Request) {
 	if s.historyStore == nil {
 		http.NotFound(w, r)
@@ -53,17 +60,21 @@ func (s *Server) handleChanges(w http.ResponseWriter, r *http.Request) {
 	}
 	lang, t := s.localize(r)
 	tr := translatorOrIdentity(t)
-	changes, err := s.historyStore.Changes(r.Context(), changesListed)
+	g := s.grantsFor(s.sessionSID(r))
+	all, err := s.historyStore.Changes(r.Context(), changesListed)
 	if err != nil {
 		http.Error(w, "history unavailable", http.StatusInternalServerError)
 		return
 	}
+	changes := visibleChanges(r.Context(), g, all)
 	var startAt time.Time
-	if start, err := s.historyStore.StartingPoint(r.Context()); err == nil && len(start.Configs) > 0 {
-		startAt = start.Time
+	if start, err := s.historyStore.StartingPoint(r.Context()); err == nil {
+		if readable, _ := readableConfigs(r.Context(), g, start.Configs); len(readable) > 0 {
+			startAt = start.Time
+		}
 	}
 	table := changesTable(changes, startAt, time.Now(), clientIP(r), tr)
-	var notices []widget.Widget
+	notices := uncheckedNotice(g, table)
 	if h := s.historyStore.Health(); !h.OK {
 		notices = append(notices, &widget.Callout{Variant: "warning", Compact: true, Verbatim: h.Cause,
 			Body: "History is not being saved. Changes applied now are kept in memory until the storage answers again."})
@@ -84,7 +95,8 @@ func (s *Server) handleChanges(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleChangePanel is one entry's drawer: who applied it from where, how it
-// stands, and what it changed.
+// stands, and what it changed, as far as the session may read it. An act is
+// offered, and staged, only on what the session sees whole.
 func (s *Server) handleChangePanel(w http.ResponseWriter, r *http.Request) {
 	if s.historyStore == nil {
 		http.NotFound(w, r)
@@ -101,17 +113,25 @@ func (s *Server) handleChangePanel(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, changesPath, http.StatusSeeOther)
 		return
 	}
-	all, err := s.historyStore.Changes(r.Context(), changesListed)
+	g := s.grantsFor(s.sessionSID(r))
+	full, err := s.historyStore.Changes(r.Context(), changesListed)
 	if err != nil {
 		s.entityNotice(w, http.StatusInternalServerError, fmt.Sprintf(tr("The history could not be read (%v)."), err))
 		return
 	}
-	i := slices.IndexFunc(all, func(c history.Change) bool { return c.ID == id })
+	all := visibleChanges(r.Context(), g, full)
+	if g.anyUnchecked() {
+		s.entityNotice(w, http.StatusServiceUnavailable, tr(permissionsUnchecked))
+		return
+	}
+	byID := func(c history.Change) bool { return c.ID == id }
+	i := slices.IndexFunc(all, byID)
 	if i < 0 {
 		s.entityNotice(w, http.StatusNotFound, tr("This change is no longer kept."))
 		return
 	}
 	c, since, status := all[i], r.URL.Query().Get("tab") == "since", http.StatusOK
+	kept := full[slices.IndexFunc(full, byID)]
 	var failed string
 	if r.Method == http.MethodPost {
 		if err := r.ParseForm(); err != nil {
@@ -120,8 +140,12 @@ func (s *Server) handleChangePanel(w http.ResponseWriter, r *http.Request) {
 		}
 		act := r.PostForm.Get("act")
 		// Staged, so not yet done: the page comes back with the chip saying
-		// a change waits.
-		if failed = s.changeAct(r.Context(), s.sessionSID(r), act, c, all, tr); failed == "" {
+		// a change waits. The act is the kept entry's, seen whole.
+		failed = tr(partNotReadable)
+		if readableWhole(r.Context(), g, actSpan(act, full, kept)) {
+			failed = s.changeAct(r.Context(), g, act, kept, full, tr)
+		}
+		if failed == "" {
 			if panelRequest(r) {
 				w.Header().Set("HX-Redirect", changesPath)
 				w.WriteHeader(http.StatusOK)
@@ -132,7 +156,21 @@ func (s *Server) handleChangePanel(w http.ResponseWriter, r *http.Request) {
 		}
 		since, status = act == "return", http.StatusConflict
 	}
-	s.writeChangeDrawer(w, r, strconv.FormatInt(id, 10), changeDrawer(c, all, since, time.Now(), tr), failed, status, lang, t)
+	offered := "undo"
+	if since {
+		offered = "return"
+	}
+	hidden := !readableWhole(r.Context(), g, actSpan(offered, full, kept))
+	s.writeChangeDrawer(w, r, strconv.FormatInt(id, 10), changeDrawer(c, all, since, hidden, time.Now(), tr), failed, status, lang, t)
+}
+
+// actSpan is the entries an act on c stages from: every one in force since
+// it for a return, c itself for any other.
+func actSpan(act string, all []history.Change, c history.Change) []history.Change {
+	if act == "return" {
+		return sinceThen(all, c)
+	}
+	return []history.Change{c}
 }
 
 // writeChangeDrawer answers with one drawer of config history, open, a
@@ -172,7 +210,23 @@ func (s *Server) handleStartPanel(w http.ResponseWriter, r *http.Request) {
 		s.entityNotice(w, http.StatusInternalServerError, fmt.Sprintf(tr("The history could not be read (%v)."), err))
 		return
 	}
-	plan := startPlan(start.sections, now)
+	// The drawer shows, and a return stages, only the configs the session
+	// may read; a return that would reach past them is not offered.
+	g := s.grantsFor(s.sessionSID(r))
+	readableStart, _ := readableConfigs(r.Context(), g, start.sections)
+	readableNow, _ := readableConfigs(r.Context(), g, now)
+	plan := startPlan(readableStart, readableNow)
+	hidden := !planReadable(r.Context(), g, startPlan(start.sections, now))
+	switch {
+	case g.anyUnchecked():
+		s.entityNotice(w, http.StatusServiceUnavailable, tr(permissionsUnchecked))
+		return
+	case len(readableStart) == 0:
+		// As the listing, which lists the starting point only where one of
+		// its configs is readable.
+		s.entityNotice(w, http.StatusNotFound, tr("The starting point is no longer kept."))
+		return
+	}
 	status, failed := http.StatusOK, ""
 	if r.Method == http.MethodPost {
 		all, err := s.historyStore.Changes(r.Context(), changesListed)
@@ -181,8 +235,12 @@ func (s *Server) handleStartPanel(w http.ResponseWriter, r *http.Request) {
 			failed = fmt.Sprintf(tr("The history could not be read (%v)."), err)
 		case r.FormValue("act") != "return":
 			failed = tr("That is not something a change can do.")
+		case hidden:
+			failed = tr(partNotReadable)
 		case len(plan.Steps) == 0:
 			failed = tr("There is nothing to stage.")
+		case !mayStage(r.Context(), g, plan):
+			failed = tr(g.refusal(notWritable))
 		case !s.stagePlan(r.Context(), s.sessionSID(r), plan, tr):
 			failed = tr("The changes could not be staged. Some may have been: review or discard them from the staged changes.")
 		default:
@@ -198,7 +256,7 @@ func (s *Server) handleStartPanel(w http.ResponseWriter, r *http.Request) {
 		status = http.StatusConflict
 	}
 	drawer := &widget.RowDrawer{Title: fmt.Sprintf(tr("Starting point · %s"), changeTitle(start.at, time.Now(), tr)), Verbatim: true,
-		Children: returnBody(plan, startPath, "Return to the starting point", "At the starting point", tr)}
+		Children: returnBody(plan, startPath, "Return to the starting point", "At the starting point", hidden, tr)}
 	s.writeChangeDrawer(w, r, "start", drawer, failed, status, lang, t)
 }
 
@@ -529,8 +587,9 @@ func oldValue(old json.RawMessage) (string, bool) {
 }
 
 // changeDrawer is an entry's drawer, on one of its two tabs: what it changed,
-// or what has changed since.
-func changeDrawer(c history.Change, all []history.Change, since bool, now time.Time, tr func(string) string) *widget.RowDrawer {
+// or what has changed since. hidden says the tab's act would reach configs
+// the reader may not read, so it is not offered.
+func changeDrawer(c history.Change, all []history.Change, since, hidden bool, now time.Time, tr func(string) string) *widget.RowDrawer {
 	path := fmt.Sprintf("%s/%d", changesPath, c.ID)
 	d := &widget.RowDrawer{
 		Title: changeTitle(c.Time, now, tr), Verbatim: true,
@@ -540,17 +599,18 @@ func changeDrawer(c history.Change, all []history.Change, since bool, now time.T
 		},
 	}
 	if since {
-		d.Children = sinceThenTab(c, all, path, tr)
+		d.Children = sinceThenTab(c, all, path, hidden, tr)
 	} else {
-		d.Children = whatChangedTab(c, all, path, now, tr)
+		d.Children = whatChangedTab(c, all, path, now, hidden, tr)
 	}
 	return d
 }
 
 // whatChangedTab is what its row cannot hold, its note, then every uci
 // change it made, and the act that takes it back or puts it back: Undo for
-// one in force, Stage again for one rolled back or undone.
-func whatChangedTab(c history.Change, all []history.Change, path string, now time.Time, tr func(string) string) widget.Widgets {
+// one in force, Stage again for one rolled back or undone. Neither is offered
+// on an entry the reader sees only in part.
+func whatChangedTab(c history.Change, all []history.Change, path string, now time.Time, hidden bool, tr func(string) string) widget.Widgets {
 	var children widget.Widgets
 	if c.Note != "" {
 		children = append(children, &widget.Text{Markdown: markdownLiteral(c.Note), Translated: true})
@@ -592,6 +652,9 @@ func whatChangedTab(c history.Change, all []history.Change, path string, now tim
 			act = actForm(path, "again", label)
 		}
 	}
+	if hidden {
+		notes, act = append([]string{tr(partNotReadable)}, notes...), nil
+	}
 	for _, note := range notes {
 		children = append(children, &widget.Callout{Variant: "warning", Compact: true, Body: note})
 	}
@@ -605,21 +668,25 @@ func whatChangedTab(c history.Change, all []history.Change, path string, now tim
 // sinceThenTab is what is set differently now than just after this entry,
 // net of anything since undone or rolled back, and Return to this point,
 // which stages the opposite of all of it.
-func sinceThenTab(c history.Change, all []history.Change, path string, tr func(string) string) widget.Widgets {
-	return returnBody(reverseOf(sinceThen(all, c)), path, "Return to this point", "At this point", tr)
+func sinceThenTab(c history.Change, all []history.Change, path string, hidden bool, tr func(string) string) widget.Widgets {
+	return returnBody(reverseOf(sinceThen(all, c)), path, "Return to this point", "At this point", hidden, tr)
 }
 
 // returnBody is what a return would stage, an option a row as it is now and
 // as it was then, and the act that stages it, labelled. Nothing to return
-// says the router is as it was.
-func returnBody(plan actPlan, path, label, then string, tr func(string) string) widget.Widgets {
-	if len(plan.Rows) == 0 && !plan.Unknown && len(plan.Secrets) == 0 && len(plan.Files) == 0 {
+// says the router is as it was. A return that would reach configs the reader
+// may not read (hidden) says so in place of its act.
+func returnBody(plan actPlan, path, label, then string, hidden bool, tr func(string) string) widget.Widgets {
+	if len(plan.Rows) == 0 && !plan.Unknown && len(plan.Secrets) == 0 && len(plan.Files) == 0 && !hidden {
 		return widget.Widgets{&widget.Text{Markdown: "Nothing has changed since. This is how the router is now."}}
 	}
 	var children widget.Widgets
 	notes := planNotes(plan, tr)
 	if plan.Unknown {
 		notes = append([]string{tr("A change since then was recorded before what it replaced was kept, so the router cannot be returned to this point.")}, notes...)
+	}
+	if hidden {
+		notes = append([]string{tr(partNotReadable)}, notes...)
 	}
 	for _, note := range notes {
 		children = append(children, &widget.Callout{Variant: "warning", Compact: true, Body: note})
@@ -641,7 +708,7 @@ func returnBody(plan actPlan, path, label, then string, tr func(string) string) 
 		table.Rows = append(table.Rows, widget.TableRow{Cells: []widget.TableCell{{Text: row.Option}, {Text: row.Now}, {Text: row.Then}, {Text: verb, Variant: variant}}})
 	}
 	children = append(children, table)
-	if !plan.Unknown && len(plan.Steps) > 0 {
+	if !hidden && !plan.Unknown && len(plan.Steps) > 0 {
 		children = append(children, actForm(path, "return", label))
 	}
 	return children

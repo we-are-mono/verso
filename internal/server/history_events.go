@@ -160,7 +160,9 @@ func watchWAN(ctx context.Context, store *history.Store, read func() (openwrt.WA
 	}
 }
 
-// handleEvents lists what happened, newest first (ADR-019).
+// handleEvents lists what happened, newest first (ADR-019), as far as the
+// session may see it: each event under the grant its reading needs, an
+// apply under its entry in config history (ADR-007).
 func (s *Server) handleEvents(w http.ResponseWriter, r *http.Request) {
 	if s.historyStore == nil {
 		http.NotFound(w, r)
@@ -174,6 +176,13 @@ func (s *Server) handleEvents(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "history unavailable", http.StatusInternalServerError)
 		return
 	}
+	entries, err := s.historyStore.Changes(r.Context(), changesListed)
+	if err != nil {
+		http.Error(w, "history unavailable", http.StatusInternalServerError)
+		return
+	}
+	g := s.grantsFor(s.sessionSID(r))
+	view := newEventsView(r.Context(), g, entries, s.readsAllHistory(r.Context(), g, entries))
 	table := &widget.Table{
 		Columns: []widget.TableColumn{
 			{Label: "When", Width: widget.MeasureName},
@@ -184,14 +193,16 @@ func (s *Server) handleEvents(w http.ResponseWriter, r *http.Request) {
 		EmptyText: "Nothing has happened yet. The router records when the internet goes down and comes back, and when it starts.",
 	}
 	for _, e := range events {
-		table.Rows = append(table.Rows, eventRow(e, now, tr))
+		if shown, ok := view.show(r.Context(), e); ok {
+			table.Rows = append(table.Rows, eventRow(shown, now, tr))
+		}
 	}
-	page := &widget.Stack{Children: []widget.Widget{table}}
+	page := &widget.Stack{Children: append(uncheckedNotice(g, table), table)}
 	// While the history is not being saved, the page that reads it says so,
 	// and why (ADR-019).
 	if h := s.historyStore.Health(); !h.OK {
-		page.Children = []widget.Widget{&widget.Callout{Variant: "warning", Compact: true, Verbatim: h.Cause,
-			Body: "History is not being saved. Measurements and events are kept in memory until the storage answers again."}, table}
+		page.Children = append([]widget.Widget{&widget.Callout{Variant: "warning", Compact: true, Verbatim: h.Cause,
+			Body: "History is not being saved. Measurements and events are kept in memory until the storage answers again."}}, page.Children...)
 	}
 	var body strings.Builder
 	if err := s.widgets.RenderWithToken(&body, page, s.sessionCSRF(r), lang, t); err != nil {

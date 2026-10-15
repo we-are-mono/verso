@@ -137,12 +137,34 @@ func grantedBy(grants []aclGrant, p aclProbe) []string {
 // TestRootIsGrantedEveryShellProbe: root's login lists '*', so rpcd gives its
 // session every group on disk; the groups Verso ships alone must grant every
 // probe the shell asks, or root loses a reading on a router without LuCI's
-// groups beside them.
+// groups beside them. Config history names whatever config an apply or a
+// direct edit touched, one no group declares among them, and root reads and
+// acts on it whole.
 func TestRootIsGrantedEveryShellProbe(t *testing.T) {
 	root := loginGrants(t, []string{"*"}, []string{"*"})
-	for _, p := range shellProbes {
+	probes := slices.Clone(shellProbes)
+	for _, config := range []string{"network", "dhcp", "wireless", "nothing-declares-this"} {
+		probes = append(probes, configGrant(config, "read"), configGrant(config, "write"))
+	}
+	for _, p := range probes {
 		if len(grantedBy(root, p)) == 0 {
 			t.Errorf("no shipped ACL group grants root %s %s %s", p.scope, p.object, p.function)
 		}
+	}
+}
+
+// TestARestrictedLoginLeavesTheAdminGroupOut: verso-admin's reach is for a
+// login whose lists name '*'. One that lists the shell's other groups by name
+// reads and writes only the configs those declare.
+func TestARestrictedLoginLeavesTheAdminGroupOut(t *testing.T) {
+	restricted := loginGrants(t, []string{"verso-shell", "verso-helper", "verso-plugin-*"}, []string{"verso-shell"})
+	for _, perm := range []string{"read", "write"} {
+		if got := grantedBy(restricted, configGrant("nothing-declares-this", perm)); len(got) != 0 {
+			t.Errorf("a restricted login is granted uci %s on any config by %v", perm, got)
+		}
+	}
+	root := loginGrants(t, []string{"*"}, []string{"*"})
+	if got := grantedBy(root, configGrant("nothing-declares-this", "write")); !slices.Equal(got, []string{"verso-admin"}) {
+		t.Errorf("uci write on any config is granted by %v, want verso-admin alone", got)
 	}
 }

@@ -247,6 +247,37 @@ reverses `undone`.
 - **System → Events** keeps its applied and rolled-back events, and each opens
   its entry.
 
+### A session reads only the configs rpcd lets it read
+
+`history.db` is the shell's own store, read with no rpcd call, so each session
+reads of it only what its rpcd ACL lets it read (ADR-007): the shell asks
+`session.access` for `uci <config> read`, once per config per page. An uci
+change to any other config is left out, a row left with none goes, and an
+entry left with none is not there for the session, who applied it and from
+where with it; its drawer answers as one no longer kept. The starting point and
+the current readings hold only readable configs, and the starting point's row is
+listed, and its drawer opens, only when one is left. Where rpcd does not answer,
+history is withheld the same way, and the page says the permissions could not
+be checked. Verso's own `verso-admin` group grants `uci *` read and write, and
+root's `*` takes it up, so root reads history whole and may act on all of it
+whatever else is installed, LuCI or not (ADR-007).
+
+An act is offered, and staged, only on what the session sees whole: Undo and
+Stage again when every change of the entry is in a readable config, Return when
+every entry it reverses is, Return to the starting point when every config it
+writes is. Otherwise the drawer says part of it is in settings the account may
+not read, and a posted act is refused with the same words. An act the session
+sees whole is refused before anything is staged when rpcd will not let the
+session write one of its configs (`uci <config> write`); rpcd checks each write
+again as it is staged.
+
+On System → Events, an applied or rolled-back event follows its entry, naming
+only the pages of the rows the session reads; one whose entry history no longer
+keeps shows only to a session that reads every config history names. The other
+events follow the read their fact comes from: the internet going down and coming
+back `ubus network.interface dump`, the router starting `ubus system info`; the
+history's own storage events need none.
+
 ### Where it lives, and for how long
 
 Entries are a `changes` table in ADR-019's `history.db`, in

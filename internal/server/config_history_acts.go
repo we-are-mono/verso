@@ -520,8 +520,9 @@ func hasPrefixKey(set map[string]bool, prefix string) bool {
 }
 
 // changeAct stages act on c (undo, return or again) and remembers what the
-// stage is to history, or says why it could not.
-func (s *Server) changeAct(ctx context.Context, sid, act string, c history.Change, all []history.Change, tr func(string) string) string {
+// stage is to history, or says why it could not. A session rpcd will not let
+// write a config the act stages into is refused before any of it is staged.
+func (s *Server) changeAct(ctx context.Context, g *sessionGrants, act string, c history.Change, all []history.Change, tr func(string) string) string {
 	var plan actPlan
 	var rel stageRelation
 	switch act {
@@ -549,10 +550,12 @@ func (s *Server) changeAct(ctx context.Context, sid, act string, c history.Chang
 		return tr("What it replaced was never recorded, so it cannot be put back.")
 	case len(plan.Steps) == 0:
 		return tr("There is nothing to stage.")
-	case !s.stagePlan(ctx, sid, plan, tr):
+	case !mayStage(ctx, g, plan):
+		return tr(g.refusal(notWritable))
+	case !s.stagePlan(ctx, g.sid, plan, tr):
 		return tr("The changes could not be staged. Some may have been: review or discard them from the staged changes.")
 	}
-	s.relations.set(sid, rel)
+	s.relations.set(g.sid, rel)
 	return ""
 }
 

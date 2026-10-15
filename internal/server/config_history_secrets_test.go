@@ -94,7 +94,7 @@ func heldIn(t *testing.T, path, needle string) []string {
 // for its key, which history.db holds as not kept and the drawer shows so;
 // undoing the removal makes the network again without a key, and says so.
 func TestARemovedSectionKeepsNoSecret(t *testing.T) {
-	s, store, path, writes, window := wifiServer(t, fakeBackend{
+	s, store, path, writes, window := wifiServer(t, fakeBackend{access: true,
 		changes: map[string][][]string{"wireless": {{"remove", "guestnet"}}},
 		committed: map[string]map[string]any{"wireless": {
 			"guestnet": map[string]any{".type": "wifi-iface", ".name": "guestnet", ".anonymous": false,

@@ -27,10 +27,17 @@ type aclProbe struct{ scope, object, function string }
 var leaseGrant = aclProbe{"ubus", "dhcp", "ipv6leases"}
 
 // shellProbes is every probe the shell asks before a reading it makes with
-// its own privilege. The ACL groups Verso ships grant each of them to a login
-// whose lists name '*', as root's do, so root sees every such reading whatever
-// else is installed.
-var shellProbes = []aclProbe{leaseGrant, usageDaysGrant, usageLiveGrant}
+// its own privilege, but config history's: `uci <config> read`, and `write`
+// for an act, of each config it names (configGrant). The ACL groups Verso
+// ships grant each of them to a login whose lists name '*', as root's do, so
+// root sees every such reading whatever else is installed.
+var shellProbes = []aclProbe{
+	leaseGrant, usageDaysGrant, usageLiveGrant, interfaceGrant, systemGrant,
+	alertsReadGrant, alertsWriteGrant,
+}
+
+// configGrant is the uci grant of perm, read or write, on config.
+func configGrant(config, perm string) aclProbe { return aclProbe{"uci", config, perm} }
 
 // permissionsUnchecked is what a page says in place of a reading rpcd did not
 // answer the grant of: the reading may be the session's to see.
@@ -101,7 +108,35 @@ func (g *sessionGrants) answer(ctx context.Context, p aclProbe) grantAnswer {
 	return a
 }
 
+// anyUnchecked reports whether rpcd left a probe asked so far unanswered: a
+// page that withheld what it asked about says so rather than that it is not
+// there.
+func (g *sessionGrants) anyUnchecked() bool {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	for _, a := range g.asked {
+		if a == unchecked {
+			return true
+		}
+	}
+	return false
+}
+
+// refusal is words refusing what the session asked, or, where rpcd left a
+// probe unanswered, that the permissions could not be checked.
+func (g *sessionGrants) refusal(words string) string {
+	if g.anyUnchecked() {
+		return permissionsUnchecked
+	}
+	return words
+}
+
 // may reports whether rpcd grants the session the probe.
 func (g *sessionGrants) may(ctx context.Context, p aclProbe) bool {
 	return g.answer(ctx, p) == granted
+}
+
+// mayReadConfig reports whether rpcd lets the session read config.
+func (g *sessionGrants) mayReadConfig(ctx context.Context, config string) bool {
+	return g.may(ctx, configGrant(config, "read"))
 }

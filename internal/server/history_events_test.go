@@ -95,7 +95,7 @@ func TestBootTimeIsReadFromProcStat(t *testing.T) {
 // TestEventsPageListsWhatHappenedNewestFirst: each event is a row — when, on
 // which interface, and what happened as a status, coloured by its weight.
 func TestEventsPageListsWhatHappenedNewestFirst(t *testing.T) {
-	s := newServer(t, fakeBackend{})
+	s := newServer(t, fakeBackend{access: true})
 	store, err := history.Open(filepath.Join(t.TempDir(), "history.db"))
 	if err != nil {
 		t.Fatal(err)

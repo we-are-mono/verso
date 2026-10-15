@@ -1,0 +1,15 @@
+{
+  "verso-admin": {
+    "description": "Session grants for an administrator's login, whose lists name '*' (root's do): every uci config read and written, for config history to show and act on whatever config an apply or a direct edit touched. Verso ships it so an administrator holds these whatever else is installed; a restricted login lists the groups it may use by name and leaves this one out.",
+    "read": {
+      "uci": [
+        "*"
+      ]
+    },
+    "write": {
+      "uci": [
+        "*"
+      ]
+    }
+  }
+}

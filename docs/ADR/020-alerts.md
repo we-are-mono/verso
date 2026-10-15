@@ -102,6 +102,12 @@ alert URL with a "Send test" act, the heartbeat URL, and the event kinds as
 checkboxes (a set the operator chooses members of). Each URL's description
 states its last delivery and whether it succeeded.
 
+The URLs are secrets (internal/secrets). The last delivery is kept in the
+shell's own outbox and the test is the running alerter's, so neither passes
+rpcd: the last delivery shows only to a session rpcd grants `uci verso read`,
+and the test is offered and sent only to one it also grants `uci verso write`
+(ADR-007). Why a delivery failed is kept and said without the URL.
+
 ## Consequences
 
 - With either URL set, the router contacts an address on the operator's say,

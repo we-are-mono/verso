@@ -130,7 +130,7 @@ func TestAnUndescribedChangeIsNamedByItsSection(t *testing.T) {
 // directory.
 func changesServer(t *testing.T) (*Server, *history.Store) {
 	t.Helper()
-	s := newServer(t, fakeBackend{})
+	s := newServer(t, fakeBackend{access: true})
 	store, err := history.Open(filepath.Join(t.TempDir(), "history.db"))
 	if err != nil {
 		t.Fatal(err)

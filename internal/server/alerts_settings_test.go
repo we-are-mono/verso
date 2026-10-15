@@ -4,12 +4,16 @@
 package server
 
 import (
+	"context"
 	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"path/filepath"
 	"slices"
 	"strings"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/we-are-mono/verso/internal/alerts"
 	"github.com/we-are-mono/verso/internal/history"
@@ -44,7 +48,7 @@ func TestAlertsConfigReadsVersoAlerts(t *testing.T) {
 // TestAlertsFormShowsWhatIsSet: the Events page offers Alerts on its heading
 // line, and the form holds the addresses and the kinds as they stand.
 func TestAlertsFormShowsWhatIsSet(t *testing.T) {
-	s := newServer(t, fakeBackend{uci: map[string]map[string]any{"verso": {"alerts": map[string]any{
+	s := newServer(t, fakeBackend{access: true, uci: map[string]map[string]any{"verso": {"alerts": map[string]any{
 		".type": "alerts", "url": "https://ntfy.sh/home", "heartbeat": "https://hc-ping.com/abc",
 	}}}})
 	withAlerter(t, s)
@@ -63,6 +67,60 @@ func TestAlertsFormShowsWhatIsSet(t *testing.T) {
 		if !strings.Contains(body, want) {
 			t.Errorf("alerts form missing %q", want)
 		}
+	}
+}
+
+// TestAlertResultsFollowTheSettingsGrants: how the last alert went is kept in
+// the shell's own outbox, and a test alert is the running alerter's, so
+// neither passes rpcd; a session rpcd refuses uci verso read is not told how
+// the last alert went, whose words could name the address, and one refused
+// the write sends no test. Root's '*' holds both.
+func TestAlertResultsFollowTheSettingsGrants(t *testing.T) {
+	var sent atomic.Int32
+	receiver := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { sent.Add(1) }))
+	defer receiver.Close()
+	address := receiver.URL + "/s3cret-topic"
+	s := newServer(t, fakeBackend{access: true})
+	store := withAlerter(t, s)
+	s.alerter.Configure(alerts.Config{URL: address})
+	id, err := store.Enqueue(context.Background(), history.Alert{Created: time.Now(), Title: "home-router: the internet is down"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Attempted(context.Background(), id, time.Now(), "pending", `Post "`+address+`": connection refused`, time.Now().Add(time.Minute)); err != nil {
+		t.Fatal(err)
+	}
+
+	for _, refused := range [][]string{{"uci verso read", "uci verso write"}, {"uci verso write"}} {
+		b := s.backend.(fakeBackend)
+		b.grant = grantAllBut(refused...)
+		s.backend = b
+		_, body := getSignedIn(t, s, alertsPath)
+		if strings.Contains(body, "Send a test alert") {
+			t.Errorf("refused %v: the test alert is offered", refused)
+		}
+		readable := len(refused) == 1
+		if strings.Contains(body, "The last alert") != readable {
+			t.Errorf("refused %v: how the last alert went shown = %v, want %v", refused, !readable, readable)
+		}
+		if !readable && strings.Contains(body, "s3cret") {
+			t.Errorf("refused %v: the page names the alert address", refused)
+		}
+		postPlugin(t, s, alertsTestPath, nil)
+		if sent.Load() != 0 {
+			t.Fatalf("refused %v: a test alert was sent", refused)
+		}
+	}
+
+	b := s.backend.(fakeBackend)
+	b.grant = nil
+	s.backend = b
+	if _, body := getSignedIn(t, s, alertsPath); !strings.Contains(body, "Send a test alert") || !strings.Contains(body, "The last alert has not arrived yet") {
+		t.Error("root is offered the test and told how the last alert went")
+	}
+	postPlugin(t, s, alertsTestPath, nil)
+	if n := sent.Load(); n != 1 {
+		t.Errorf("root's test alert reached the receiver %d times, want once", n)
 	}
 }
 

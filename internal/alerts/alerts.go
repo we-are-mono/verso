@@ -15,6 +15,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	neturl "net/url"
 	"slices"
 	"strconv"
 	"strings"
@@ -230,7 +231,7 @@ func (a *Alerter) Deliver(ctx context.Context) {
 func (a *Alerter) post(ctx context.Context, url string, alert history.Alert) (int, string) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, strings.NewReader(alert.Body))
 	if err != nil {
-		return 0, err.Error()
+		return 0, withoutAddress(err)
 	}
 	req.Header.Set("Content-Type", "text/plain; charset=utf-8")
 	req.Header.Set("Title", alert.Title)
@@ -239,10 +240,22 @@ func (a *Alerter) post(ctx context.Context, url string, alert history.Alert) (in
 	}
 	res, err := a.client.Do(req)
 	if err != nil {
-		return 0, err.Error()
+		return 0, withoutAddress(err)
 	}
 	_ = res.Body.Close()
 	return res.StatusCode, strconv.Itoa(res.StatusCode)
+}
+
+// withoutAddress is why a request to an alert address failed, without the
+// address: Go's client names it in every error it returns, and an alert
+// address is a secret (internal/secrets) that what an attempt keeps, a test's
+// answer and the log never carry.
+func withoutAddress(err error) string {
+	var failed *neturl.Error
+	if errors.As(err, &failed) {
+		return failed.Err.Error()
+	}
+	return err.Error()
 }
 
 // Urgent sends an alert of kind at once, once, if that kind was chosen. It
@@ -297,7 +310,7 @@ func (a *Alerter) Beat(ctx context.Context) {
 	a.mu.Unlock()
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
-		log.Printf("verso: heartbeat: %v", err)
+		log.Printf("verso: heartbeat: %s", withoutAddress(err))
 		return
 	}
 	res, err := a.client.Do(req)

@@ -57,7 +57,7 @@ RUN apk add --no-check-certificate ca-bundle \
  && echo 'verso:x:6000:' >> /etc/group \
  # ubusd skips any acl.d file that is group/world-writable or not root-owned
  # (ubusd_acl.c:579-586); git tracks only the exec bit, so normalize here.
- && chmod 0644 /usr/share/acl.d/verso.json /etc/capabilities/verso.json /usr/share/rpcd/acl.d/verso-helper.json /usr/share/rpcd/acl.d/verso-shell.json \
+ && chmod 0644 /usr/share/acl.d/verso.json /etc/capabilities/verso.json /usr/share/rpcd/acl.d/verso-helper.json /usr/share/rpcd/acl.d/verso-shell.json /usr/share/rpcd/acl.d/verso-admin.json \
  && chmod 0644 /etc/config/verso \
  # The daily update check ships as package content in a real install (the script,
  # the crontab line, and crond enabled); the dev image carries the same pieces so

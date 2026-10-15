@@ -105,9 +105,10 @@ func (s *Server) handleAlerts(w http.ResponseWriter, r *http.Request) {
 	if message != "" {
 		children = append(children, &widget.Callout{Variant: "danger", Compact: true, Body: message})
 	}
+	g := s.grantsFor(sid)
 	children = append(children, &widget.Form{Action: alertsPath, Submit: "Save alerts", Fields: []widget.Widget{
 		&widget.Field{Name: "url", Label: "Alert address", Value: cfg.URL, Placeholder: "https://ntfy.sh/your-topic",
-			Help: s.alertsHelp(r, tr)},
+			Help: s.alertsHelp(r, g, tr)},
 		&widget.Field{Name: "heartbeat", Label: "Heartbeat address", Value: cfg.Heartbeat, Placeholder: "Optional",
 			Help: "The router calls this every five minutes, and a monitor there (Healthchecks.io, Uptime Kuma) tells you when the calls stop: the one way to hear of an outage while it lasts."},
 		&widget.Field{Name: "kind", Label: "Alert when", Kind: "checks", Values: kinds, Options: []widget.Option{
@@ -117,7 +118,7 @@ func (s *Server) handleAlerts(w http.ResponseWriter, r *http.Request) {
 			{Value: alerts.KindStorage, Label: "History cannot be saved"},
 		}},
 	}})
-	if s.alerter.Configured() {
+	if s.alerter.Configured() && mayTestAlerts(r.Context(), g) {
 		children = append(children, &widget.Form{Action: alertsTestPath, NoSubmit: true, Fields: []widget.Widget{
 			&widget.Button{Label: "Send a test alert", Busy: "Sending…", Style: "act", Icon: "send"},
 		}})
@@ -198,10 +199,28 @@ func (s *Server) stageAlerts(ctx context.Context, sid string, verso map[string]a
 	return nil
 }
 
+// The alert settings are verso.alerts, read and staged through rpcd; how the
+// last alert went and a test alert are the shell's own, from the outbox in
+// history.db and the running alerter, so they reach a session only under the
+// grants of the settings they concern (ADR-007): the last alert under the
+// read, a test under the read and the write.
+var (
+	alertsReadGrant  = configGrant(versoConfig, "read")
+	alertsWriteGrant = configGrant(versoConfig, "write")
+)
+
+// mayTestAlerts reports whether the session may send a test alert.
+func mayTestAlerts(ctx context.Context, g *sessionGrants) bool {
+	return g.may(ctx, alertsReadGrant) && g.may(ctx, alertsWriteGrant)
+}
+
 // alertsHelp is the alert address's description: what it is, and how the
-// last alert went.
-func (s *Server) alertsHelp(r *http.Request, tr func(string) string) string {
+// last alert went to a session that may read the settings.
+func (s *Server) alertsHelp(r *http.Request, g *sessionGrants, tr func(string) string) string {
 	help := tr("Each alert is posted here with ntfy's headers; any webhook reads it. While the internet is down, alerts wait and arrive when it returns, unless this address is on your network.")
+	if !g.may(r.Context(), alertsReadGrant) {
+		return help
+	}
 	last, found, err := s.historyStore.LastAlert(r.Context())
 	if err != nil || !found {
 		return help
@@ -217,7 +236,7 @@ func (s *Server) alertsHelp(r *http.Request, tr func(string) string) string {
 }
 
 // handleAlertsTest posts a test alert to the address in force, and says how
-// it went.
+// it went, for a session that may read and change the alert settings.
 func (s *Server) handleAlertsTest(w http.ResponseWriter, r *http.Request) {
 	if s.alerter == nil {
 		http.NotFound(w, r)
@@ -225,6 +244,11 @@ func (s *Server) handleAlertsTest(w http.ResponseWriter, r *http.Request) {
 	}
 	_, t := s.localize(r)
 	tr := translatorOrIdentity(t)
+	if g := s.grantsFor(s.sessionSID(r)); !mayTestAlerts(r.Context(), g) {
+		s.flash(r, "danger", tr(g.refusal("This account may not send a test alert.")))
+		http.Redirect(w, r, eventsPath, http.StatusSeeOther)
+		return
+	}
 	if err := s.alerter.Test(r.Context()); err != nil {
 		s.flash(r, "danger", fmt.Sprintf(tr("The test alert did not arrive: %s."), err))
 	} else {

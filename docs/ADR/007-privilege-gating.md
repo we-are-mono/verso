@@ -161,6 +161,9 @@ broken socket.**
    | dnsmasq's lease file and the kernel neighbour table (the Devices roster, a device's panel, the brokered `dhcpLeases` read) | `ubus dhcp ipv6leases`, the DHCPv6 lease read connected devices are declared under |
    | The held per-device usage days (the roster's month, a device's periods, the usage stream) | `ubus verso usageDays` |
    | The held per-device rates and the minute of them a device's graph opens on | `ubus verso usageLive` |
+   | How the last alert went (ADR-020), whose words could name the address, and a test alert | `uci verso read`; a test also `uci verso write` |
+   | Config history (ADR-021): each entry's changes, the starting point, the current readings | `uci <config> read` for each config; an act on it also `uci <config> write` |
+   | System → Events: the internet going down and coming back; the router starting; an apply | `ubus network.interface dump`; `ubus system info`; its config history entry's grants |
 
    A session refused the grant sees the reading's absence said plainly (an empty
    roster that says the account may not see devices), and a plugin receives no entry
@@ -256,7 +259,13 @@ ubusd's uid-0 ACL exemption, so every backend call is bounded by rpcd plus a ubu
   (to bind :80/:443) and `no_new_privs`. A separate rpcd grant,
   `/usr/share/rpcd/acl.d/verso-shell.json`, gives the operator's *session* the reads the
   overview needs (network interfaces, devices, dhcp) — a sid grant, distinct from the ubusd
-  `verso.json` and the helper's `verso-helper.json`.
+  `verso.json` and the helper's `verso-helper.json`. A third,
+  `/usr/share/rpcd/acl.d/verso-admin.json`, holds what an administrator's session
+  needs beyond any page's reads: `uci *` read and write, for config history to show
+  and act on whatever config it names (ADR-021). A login whose lists name `*`, as
+  root's do, takes it up with every other group, so root holds every grant §9 asks
+  without LuCI's groups beside Verso's; a restricted login lists the groups it may
+  use by name and leaves `verso-admin` out.
 
 Plugins are confined the same way, and the isolation model separates each by uid: **each
 plugin gets its own non-root uid** (`verso-plugin-<name>`), sharing only the `verso` group.

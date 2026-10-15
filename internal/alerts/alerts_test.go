@@ -239,6 +239,29 @@ func TestTestSaysWhetherAlertsArrive(t *testing.T) {
 	}
 }
 
+// TestAnAddressNeverReachesWhatAnAlertSays: the alert address is a secret
+// (internal/secrets), and Go's client names it in its errors; a failed test
+// answers, and a failed attempt keeps, why it failed without the address.
+func TestAnAddressNeverReachesWhatAnAlertSays(t *testing.T) {
+	srv := httptest.NewServer(&receiver{status: http.StatusOK})
+	address := srv.URL + "/s3cret-topic"
+	srv.Close() // nobody answers there now
+	a, store := newAlerter(t)
+	a.Configure(Config{URL: address})
+	if err := a.Test(ctx); err == nil || strings.Contains(err.Error(), "s3cret") {
+		t.Fatalf("a failed test = %v, want why without the address", err)
+	}
+	clock := at("03:12:00")
+	a.now = func() time.Time { return clock }
+	a.Observe(ctx, []history.Event{down("03:12:00")})
+	clock = clock.Add(time.Minute)
+	a.Deliver(ctx)
+	last, found, err := store.LastAlert(ctx)
+	if err != nil || !found || last.Result == "" || strings.Contains(last.Result, "s3cret") {
+		t.Fatalf("the attempt kept %q (found %v, %v), want why without the address", last.Result, found, err)
+	}
+}
+
 // TestUrgentGoesOutAtOnceWithoutTheOutbox: what cannot be kept in the
 // history — that the history is not being saved — is sent straight away,
 // once, and only if its kind was chosen.
