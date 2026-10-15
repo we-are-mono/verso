@@ -292,7 +292,10 @@ offered like any other.
 - An anonymous section is named by its place in its config (`cfg0792bd`), so
   one added ahead of it, outside Verso, reads as sections removed and made.
 - A history that holds config also holds addresses, hostnames and PPPoE user
-  names; the directory is the `verso` user's alone.
+  names, and copies of configs only root may read: the directory is `0700`,
+  unless a mount or `/data` itself, and `history.db` with its `-wal` and
+  `-shm` files `0600`, the `verso` user's alone whatever the umask, made so
+  each time the shell opens the file (ADR-019).
 - The words of an entry stay in the language of the session that applied it.
 - Entries recorded while history cannot be written are lost at a reboot, as
   ADR-019's events are.

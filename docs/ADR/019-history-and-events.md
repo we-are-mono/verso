@@ -71,7 +71,22 @@ config history) cannot be measured again.
 
 The init script resolves the directory on every start, creates it and hands it
 to the `verso` user, since a USB stick, a fresh `/data` and the overlay are
-root's; the shell receives it as `-history-dir`.
+root's; the shell receives it as `-history-dir`. The option is the `verso`
+user's to set, so root hands over only a directory it has just made, `0700`
+from the start, one name into `/data` or `/tmp` or two into `/mnt`, where
+sticks are mounted, reached through no link. Any other directory that stands
+already is never given away: it is the `verso` user's from an earlier start,
+or one the shell cannot write, warned about below. The two defaults sit below
+directories only root writes, so they are handed over standing too, unless a
+link: a sysupgrade that keeps settings restores the files and makes the
+directory again as root's.
+
+The directory and the file are the `verso` user's alone, whatever the umask
+the shell runs under: the shell makes the directory `0700` and `history.db`
+`0600` each time it opens the file, and SQLite gives the `-wal` and `-shm`
+files the file's own mode. A directory that is a mount, or `/data` itself,
+keeps its mode, since other daemons keep their files there too; the files are
+still `0600`. The file holds copies of configs only root may read (ADR-021).
 
 The same directory holds nlbwmon's database, as `<directory>/nlbwmon`
 (ADR-018), so all of Verso's history lives where the operator put it.

@@ -13,8 +13,13 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"io/fs"
 	"math"
+	"os"
+	"path/filepath"
+	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	_ "modernc.org/sqlite"
@@ -91,8 +96,9 @@ type Store struct {
 	failed   bool // Fail: no write here saves anything
 }
 
-// Open opens or creates the history file at path. The directory must exist:
-// creating it is root's, and an unwritable one is the caller's to report.
+// Open opens or creates the history file at path, readable by the shell's
+// account alone, or keeps the history in memory for Memory. The directory must
+// exist: creating it is root's, and an unwritable one is the caller's to report.
 func Open(path string) (*Store, error) {
 	db, err := connect(path)
 	if err != nil {
@@ -110,7 +116,12 @@ func Open(path string) (*Store, error) {
 // SQLite takes it only on a file with nothing written yet, and switching to
 // WAL writes the file's header.
 func connect(path string) (*sql.DB, error) {
-	db, err := sql.Open(driver, "file:"+path+
+	if path != Memory {
+		if err := keepPrivate(path, sharedDirectory); err != nil {
+			return nil, err
+		}
+	}
+	db, err := sql.Open(driver, "file:"+uriPath.Replace(path)+
 		"?_pragma=auto_vacuum(INCREMENTAL)&_pragma=journal_mode(WAL)&_pragma=synchronous(NORMAL)&_pragma=busy_timeout(5000)")
 	if err != nil {
 		return nil, err
@@ -121,6 +132,74 @@ func connect(path string) (*sql.DB, error) {
 		return nil, err
 	}
 	return db, nil
+}
+
+// uriPath spells a path as the path of the file: URI SQLite opens, where ?
+// starts the parameters, # a fragment and %xx stands for a byte, so a
+// directory named with any of them holds the file rather than one its prefix
+// or decoding names.
+var uriPath = strings.NewReplacer("%", "%25", "?", "%3f", "#", "%23")
+
+// Memory is the path Open takes for a history kept in memory, which has no
+// file.
+const Memory = ":memory:"
+
+// keepPrivate makes the file at path, creating it empty if it is absent, the
+// WAL files beside it and its directory the shell's account's alone: it holds
+// copies of configs only root may read, and the umask procd's jail runs the
+// shell under leaves what is made readable to every account. SQLite gives the
+// WAL files it makes the file's own mode; ones an earlier start left, and a
+// directory root made readable, are tightened here. A directory that shared
+// reports as other daemons' too keeps its mode; only the files are guarded.
+func keepPrivate(path string, shared func(dir string) (bool, error)) error {
+	dir := filepath.Dir(path)
+	isShared, err := shared(dir)
+	if err != nil {
+		return err
+	}
+	if !isShared {
+		if err := os.Chmod(dir, 0o700); err != nil {
+			return err
+		}
+	}
+	f, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, 0o600)
+	if err != nil {
+		return err
+	}
+	err = f.Chmod(0o600)
+	if closeErr := f.Close(); err == nil {
+		err = closeErr
+	}
+	if err != nil {
+		return err
+	}
+	for _, side := range []string{path + "-wal", path + "-shm"} {
+		if err := os.Chmod(side, 0o600); err != nil && !errors.Is(err, fs.ErrNotExist) {
+			return err
+		}
+	}
+	return nil
+}
+
+// sharedDirectory reports whether dir is one other daemons keep their files in
+// too, which an operator may name for history: /data itself, or a mount, a
+// stick's root say, whose device differs from its parent's.
+func sharedDirectory(dir string) (bool, error) {
+	dir, err := filepath.Abs(dir)
+	if err != nil {
+		return false, err
+	}
+	if dir == "/data" {
+		return true, nil
+	}
+	var here, above syscall.Stat_t
+	if err := syscall.Stat(dir, &here); err != nil {
+		return false, &fs.PathError{Op: "stat", Path: dir, Err: err}
+	}
+	if err := syscall.Stat(filepath.Dir(dir), &above); err != nil {
+		return false, &fs.PathError{Op: "stat", Path: filepath.Dir(dir), Err: err}
+	}
+	return here.Dev != above.Dev, nil
 }
 
 // Add keeps minute points in memory until the next Flush.

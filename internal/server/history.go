@@ -81,7 +81,7 @@ func (s *Server) openHistory(dir string, notify alerts.Config) (*history.Store, 
 	if !onDisk {
 		log.Printf("verso: history kept in memory only, %s cannot be written: %v", path, openErr)
 		var err error
-		if store, err = history.Open(":memory:"); err != nil {
+		if store, err = history.Open(history.Memory); err != nil {
 			log.Printf("verso: no history: %v", err)
 			return nil, false
 		}

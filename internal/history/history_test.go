@@ -6,9 +6,12 @@ package history
 import (
 	"context"
 	"database/sql"
+	"errors"
+	"io/fs"
 	"math"
 	"os"
 	"path/filepath"
+	"syscall"
 	"testing"
 	"time"
 )
@@ -358,6 +361,156 @@ func TestCloseFlushes(t *testing.T) {
 	}
 }
 
+// underUmask runs the rest of the test under mask, as procd's jail runs the
+// shell under 022.
+func underUmask(t *testing.T, mask int) {
+	t.Helper()
+	was := syscall.Umask(mask)
+	t.Cleanup(func() { syscall.Umask(was) })
+}
+
+// readableDir is a directory made as root's init script makes one, readable
+// to every account under the umask.
+func readableDir(t *testing.T) string {
+	t.Helper()
+	dir := filepath.Join(t.TempDir(), "history")
+	if err := os.Mkdir(dir, 0o777); err != nil {
+		t.Fatal(err)
+	}
+	if info, err := os.Stat(dir); err != nil || info.Mode().Perm() != 0o755 {
+		t.Fatalf("directory before opening: %v (%v), want 0755", info, err)
+	}
+	return dir
+}
+
+// wantPrivate fails unless the directory, the file and the WAL files beside it
+// are the shell's account's alone.
+func wantPrivate(t *testing.T, path string) {
+	t.Helper()
+	want := map[string]os.FileMode{filepath.Dir(path): 0o700, path: 0o600, path + "-wal": 0o600, path + "-shm": 0o600}
+	for name, perm := range want {
+		info, err := os.Stat(name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if mode := info.Mode().Perm(); mode != perm {
+			t.Errorf("%s is %#o, want %#o", filepath.Base(name), mode, perm)
+		}
+	}
+}
+
+// TestOpenMakesTheFileItsAccountsAloneWhateverTheUmask: the file holds copies
+// of configs only root may read, so neither it, its WAL files nor its
+// directory are left to the umask, which procd's jail sets to 022.
+func TestOpenMakesTheFileItsAccountsAloneWhateverTheUmask(t *testing.T) {
+	underUmask(t, 0o022)
+	path := filepath.Join(readableDir(t), "history.db")
+	store, err := Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = store.Close() }()
+	store.Add(Point{Series: "cpu", Time: minute(0), Average: 1, Peak: 1})
+	if err := store.Flush(ctx); err != nil {
+		t.Fatal(err)
+	}
+	wantPrivate(t, path)
+}
+
+// TestOpenTightensAFileLeftReadable: a router whose directory, file and the WAL
+// files an unclean stop left beside it were made readable to every account has
+// them made private on the next start.
+func TestOpenTightensAFileLeftReadable(t *testing.T) {
+	underUmask(t, 0o022)
+	path := filepath.Join(readableDir(t), "history.db")
+	earlier, err := sql.Open(driver, "file:"+path+"?_pragma=journal_mode(WAL)")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = earlier.Close() }()
+	if _, err := earlier.Exec(`CREATE TABLE kept (x)`); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{path, path + "-wal", path + "-shm"} {
+		if info, err := os.Stat(name); err != nil || info.Mode().Perm() != 0o644 {
+			t.Fatalf("%s before opening: %v (%v), want 0644", filepath.Base(name), info, err)
+		}
+	}
+	store, err := Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = store.Close() }()
+	wantPrivate(t, path)
+}
+
+// TestKeepPrivateLeavesASharedDirectoryOpen: history kept in a stick's root or
+// in /data itself shares the directory with other daemons, so its mode is
+// left as it stands; the files are still the shell's account's alone.
+func TestKeepPrivateLeavesASharedDirectoryOpen(t *testing.T) {
+	underUmask(t, 0o022)
+	dir := readableDir(t)
+	path := filepath.Join(dir, "history.db")
+	asked := ""
+	shared := func(d string) (bool, error) { asked = d; return true, nil }
+	if err := keepPrivate(path, shared); err != nil {
+		t.Fatal(err)
+	}
+	if asked != dir {
+		t.Errorf("asked whether %q is shared, want %q", asked, dir)
+	}
+	if info, err := os.Stat(dir); err != nil || info.Mode().Perm() != 0o755 {
+		t.Errorf("shared directory is %v (%v), want 0755 as it stood", info, err)
+	}
+	if info, err := os.Stat(path); err != nil || info.Mode().Perm() != 0o600 {
+		t.Errorf("file is %v (%v), want 0600", info, err)
+	}
+}
+
+// TestKeepPrivateFailsWhenItCannotTellTheDirectory: a directory that cannot be
+// looked at cannot be written either, and the caller reports it.
+func TestKeepPrivateFailsWhenItCannotTellTheDirectory(t *testing.T) {
+	failed := errors.New("no such directory")
+	err := keepPrivate(filepath.Join(t.TempDir(), "history.db"), func(string) (bool, error) { return false, failed })
+	if !errors.Is(err, failed) {
+		t.Fatalf("keepPrivate = %v, want %v", err, failed)
+	}
+}
+
+// TestSharedDirectory: /data itself and a mount, whose device differs from its
+// parent's, are shared; a directory made for history is not.
+func TestSharedDirectory(t *testing.T) {
+	if shared, err := sharedDirectory("/data"); err != nil || !shared {
+		t.Errorf("sharedDirectory(/data) = %v, %v; want shared", shared, err)
+	}
+	if shared, err := sharedDirectory(t.TempDir()); err != nil || shared {
+		t.Errorf("sharedDirectory(made) = %v, %v; want not shared", shared, err)
+	}
+	if _, err := sharedDirectory(filepath.Join(t.TempDir(), "absent")); err == nil {
+		t.Error("sharedDirectory(absent) succeeded")
+	}
+	if _, err := os.Stat("/proc/self"); err != nil {
+		t.Skip("no /proc mounted to tell a mount by")
+	}
+	if shared, err := sharedDirectory("/proc"); err != nil || !shared {
+		t.Errorf("sharedDirectory(/proc) = %v, %v; want shared", shared, err)
+	}
+}
+
+// TestOpenInMemoryMakesNoFile: the history kept in memory, where the directory
+// cannot be written, has no file to guard and leaves none behind.
+func TestOpenInMemoryMakesNoFile(t *testing.T) {
+	t.Chdir(t.TempDir())
+	store, err := Open(Memory)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = store.Close() }()
+	if entries, err := os.ReadDir("."); err != nil || len(entries) != 0 {
+		t.Fatalf("Open(Memory) left %v (%v), want nothing", entries, err)
+	}
+}
+
 // TestOpenFailsOnAnUnwritableDirectory: the caller learns the cause and keeps
 // collecting in memory; Open does not create directories.
 func TestOpenFailsOnAnUnwritableDirectory(t *testing.T) {
@@ -367,5 +520,50 @@ func TestOpenFailsOnAnUnwritableDirectory(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Dir(missing)); !os.IsNotExist(err) {
 		t.Fatalf("Open created the directory: %v", err)
+	}
+}
+
+// TestOpenWritesTheFileItNames: SQLite reads its name as a URI, where ? starts
+// the parameters, # a fragment and %xx is a byte, so a directory spelled with
+// any of them still holds the file, private, and nothing lands elsewhere. The
+// base is spelled plainly, so a name cut short at ? or # stays inside it.
+func TestOpenWritesTheFileItNames(t *testing.T) {
+	underUmask(t, 0o022)
+	root := t.TempDir()
+	for _, name := range []string{"a?b", "c#d", "h%69st", "e%3fx"} {
+		t.Run(name, func(t *testing.T) {
+			base, err := os.MkdirTemp(root, "case")
+			if err != nil {
+				t.Fatal(err)
+			}
+			dir := filepath.Join(base, name)
+			if err := os.MkdirAll(dir, 0o700); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.Mkdir(filepath.Join(base, "hist"), 0o700); err != nil {
+				t.Fatal(err)
+			}
+			path := filepath.Join(dir, "history.db")
+			store, err := Open(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			store.Add(Point{Series: "cpu", Time: minute(0), Average: 1, Peak: 1})
+			if err := store.Flush(ctx); err != nil {
+				t.Fatal(err)
+			}
+			if err := store.Close(); err != nil {
+				t.Fatal(err)
+			}
+			if info, err := os.Stat(path); err != nil || info.Size() == 0 || info.Mode().Perm() != 0o600 {
+				t.Errorf("%s: %v (%v), want the history, 0600", path, info, err)
+			}
+			_ = filepath.WalkDir(base, func(p string, d fs.DirEntry, err error) error {
+				if err == nil && !d.IsDir() && p != path {
+					t.Errorf("Open wrote %s", p)
+				}
+				return nil
+			})
+		})
 	}
 }

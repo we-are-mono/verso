@@ -42,6 +42,17 @@ certificate() {
 # choice, else /data/verso where /data is a mount, else on the overlay. It is
 # made here, as root, and given to the verso user, since the shell cannot make
 # a directory on /data, the overlay or a USB stick.
+#
+# The path is the verso user's to set, and root handing that user a directory
+# it names, /etc or one holding root's files, would hand it the router. So
+# root gives away only a directory it makes here, private from the start, one
+# name into /data or /tmp, or two into /mnt where sticks are mounted: below
+# directories the verso user cannot rearrange, reached through no link. One
+# that stands already is the verso user's from an earlier start, or the shell,
+# unable to write it, says so (ADR-019); the shell keeps its own private
+# (ADR-021). The two defaults, below directories only root writes, are handed
+# over standing too, unless a link: a sysupgrade that keeps settings brings
+# them back as root's.
 history_dir() {
 	local dir
 	config_get dir history directory
@@ -52,7 +63,20 @@ history_dir() {
 			dir=/usr/share/verso/history
 		fi
 	fi
-	mkdir -p "$dir" && chown verso:verso "$dir" && echo "$dir"
+	case "$dir" in
+		/data/*/* | /tmp/*/* | /mnt/*/*/* | /usr/share/verso/history/*) ;;
+		/data/verso | /usr/share/verso/history)
+			[ "$(readlink -f "${dir%/*}")" = "${dir%/*}" ] &&
+				{ mkdir -m 0700 "$dir" 2>/dev/null || { [ -d "$dir" ] && [ ! -L "$dir" ]; }; } &&
+				chown -h verso:verso "$dir"
+			;;
+		/data/?* | /tmp/?* | /mnt/?*/?*)
+			[ "$(readlink -f "${dir%/*}")" = "${dir%/*}" ] &&
+				mkdir -m 0700 "$dir" 2>/dev/null &&
+				chown -h verso:verso "$dir"
+			;;
+	esac
+	echo "$dir"
 }
 
 start_service() {
