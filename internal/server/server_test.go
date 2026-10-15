@@ -136,6 +136,11 @@ type fakeBackend struct {
 	// The helper's diagnostic runs: what the shell started and stopped, and
 	// the output each read returns in turn (pointer: fakeBackend is by value).
 	diag *fakeDiag
+	// grant, when set, answers session.access per probe in place of access —
+	// a restricted rpcd login that may do some things and not others. probes
+	// records every probe asked, as "scope object function".
+	grant  func(scope, object, function string) bool
+	probes *[]string
 }
 
 type fakeDiag struct {
@@ -218,8 +223,22 @@ func (f fakeBackend) Hostname(context.Context, string) (string, error) {
 	return f.hn, nil
 }
 
-func (f fakeBackend) Access(context.Context, string, string, string, string) (bool, error) {
+func (f fakeBackend) Access(_ context.Context, _, scope, object, function string) (bool, error) {
+	if f.probes != nil {
+		*f.probes = append(*f.probes, scope+" "+object+" "+function)
+	}
+	if f.grant != nil {
+		return f.grant(scope, object, function), f.accessErr
+	}
 	return f.access, f.accessErr
+}
+
+// grantAllBut is a restricted rpcd login: every probe granted but those
+// refused, each named "scope object function".
+func grantAllBut(refused ...string) func(scope, object, function string) bool {
+	return func(scope, object, function string) bool {
+		return !slices.Contains(refused, scope+" "+object+" "+function)
+	}
 }
 
 // uciWrite records a UCISet call so the broker tests can assert what the shell

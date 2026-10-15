@@ -147,6 +147,26 @@ broken socket.**
    call; this replicates only how a login fills a session, not the evaluation
    Alternative C rejects.
 
+9. **What the shell reads with its own privilege reaches a session only under the
+   grant that guards the same fact through rpcd.** Some readings never pass rpcd: a
+   file or kernel table the shell opens itself, a cache of a helper's answer, the
+   shell's own stores. For those the shell asks rpcd `session.access` with the
+   reading session's sid, once per grant per request, and shows the reading only on
+   a yes; a denial and an unreachable rpcd both withhold it. The grant is the one an
+   rpcd read of the same fact needs, never one the shell invents:
+
+   | Reading | Grant |
+   |---|---|
+   | dnsmasq's lease file and the kernel neighbour table (the Devices roster, a device's panel, the brokered `dhcpLeases` read) | `ubus dhcp ipv6leases`, the DHCPv6 lease read connected devices are declared under |
+
+   A session refused the grant sees the reading's absence said plainly (an empty
+   roster that says the account may not see devices), and a plugin receives no entry
+   for the brokered read, as for any read rpcd refuses. A reading whose grant rpcd
+   does not answer is withheld the same way, and the page says the permissions
+   could not be checked rather than that the account may not see it. A page asks
+   each grant once however many of its parts need it: a device's panel asks the
+   lease grant once for its facts and every contributing plugin's lease read.
+
 ## Consequences
 
 ### Positive

@@ -22,7 +22,14 @@ import (
 // a device with its friendly name and expiry when there is one. So a static host,
 // a v6-only SLAAC device, and a DHCP client all appear alike, keyed by MAC — the
 // identity a person recognises, not the DHCPv6 DUID.
-func (s *Server) connectedDevices(ctx context.Context, sid, client string) []widget.Device {
+//
+// The shell reads both tables with its own privilege, so the roster is read
+// only for a session rpcd grants the lease read (leaseGrant); for any other it
+// is empty, and access says whether rpcd refused the grant or did not answer.
+func (s *Server) connectedDevices(ctx context.Context, sid, client string) (roster []widget.Device, access grantAnswer) {
+	if access = s.grantsIn(ctx, sid).answer(ctx, leaseGrant); access != granted {
+		return nil, access
+	}
 	neigh, err := s.neighbors()
 	if err != nil {
 		log.Printf("verso: devices: neighbour table unavailable: %v", err)
@@ -152,7 +159,7 @@ func (s *Server) connectedDevices(ctx context.Context, sid, client string) []wid
 	// Grouped by network first, because that is how the listing bands them, then
 	// by presence and name inside each band — the devices that are here lead.
 	sortDevices(out)
-	return out
+	return out, granted
 }
 
 func sortDevices(out []widget.Device) {
@@ -169,12 +176,15 @@ func sortDevices(out []widget.Device) {
 
 // deviceByMAC finds one device in the roster. The panel reads the roster fresh
 // rather than trusting the id it was handed: a MAC in a URL is a claim, and the
-// facts a panel pins had better be the ones the box can still see.
-func (s *Server) deviceByMAC(r *http.Request, mac string) (widget.Device, bool) {
+// facts a panel pins had better be the ones the box can still see. A device
+// found nowhere is errNoSuchEntity, or errGrantsUnchecked where rpcd did not
+// answer the roster's grant.
+func (s *Server) deviceByMAC(r *http.Request, mac string) (widget.Device, error) {
 	want := strings.ToLower(strings.TrimSpace(mac))
-	for _, d := range s.connectedDevices(r.Context(), s.sessionSID(r), clientIP(r)) {
+	roster, access := s.connectedDevices(r.Context(), s.sessionSID(r), clientIP(r))
+	for _, d := range roster {
 		if strings.ToLower(d.MAC) == want {
-			return d, true
+			return d, nil
 		}
 	}
 	// A saved policy outlives leases and neighbor entries. Its drawer must stay
@@ -182,10 +192,13 @@ func (s *Server) deviceByMAC(r *http.Request, mac string) (widget.Device, bool) 
 	configured, _, _ := s.deviceLimits(r)
 	for _, d := range configured {
 		if d.MAC == want {
-			return d, true
+			return d, nil
 		}
 	}
-	return widget.Device{}, false
+	if access == unchecked {
+		return widget.Device{}, errGrantsUnchecked
+	}
+	return widget.Device{}, errNoSuchEntity
 }
 
 // networkRank orders the bands: the local network leads, every other named one

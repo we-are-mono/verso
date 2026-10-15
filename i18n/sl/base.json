@@ -140,6 +140,7 @@
   "TX total": "Skupaj TX",
   "Everything that has joined this network — what it is, where it sits, and whether it is here right now.": "Vse, kar se je pridružilo temu omrežju — kaj je, kje je in ali je trenutno tukaj.",
   "Nothing has joined this network yet.": "Temu omrežju se še ni pridružila nobena naprava.",
+  "This account may not see the devices on the network.": "Ta račun ne sme videti naprav v omrežju.",
   "Up": "Deluje",
   "Down": "Ne deluje",
   "Unknown": "Neznano",

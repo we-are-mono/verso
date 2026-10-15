@@ -296,9 +296,10 @@ func (s *Server) handleEntity(w http.ResponseWriter, r *http.Request) {
 	}
 	lang, t := s.localize(r)
 	tr := translatorOrIdentity(t)
+	r = withGrants(r, s.grantsFor(s.sessionSID(r)))
 	data, err := s.entityPanel(r, kind, id, r.URL.Query().Get("tab"), lang, tr, nil)
 	if err != nil {
-		http.NotFound(w, r)
+		s.entityPanelMissing(w, r, err, tr)
 		return
 	}
 	var buf bytes.Buffer
@@ -346,9 +347,9 @@ func (s *Server) entityPanel(r *http.Request, kind, id, active, lang string, tr 
 		// Keep the subject of this successful submission visible until close.
 		data.Title = posted.Title
 	case kind == "device":
-		d, ok := s.deviceByMAC(r, id)
-		if !ok {
-			return data, errNoSuchEntity
+		d, err := s.deviceByMAC(r, id)
+		if err != nil {
+			return data, err
 		}
 		data.Title = d.Name
 		shell = s.deviceTabs(r, d)
@@ -398,6 +399,16 @@ func newSubjectTitle(kind string, tr func(string) string) string {
 
 // errNoSuchEntity is a panel asked for a subject this board does not have.
 var errNoSuchEntity = errors.New("verso: no such entity")
+
+// entityPanelMissing answers a panel entityPanel could not assemble: one whose
+// subject rpcd did not answer the grant of says so, and any other is not here.
+func (s *Server) entityPanelMissing(w http.ResponseWriter, r *http.Request, err error, tr func(string) string) {
+	if errors.Is(err, errGrantsUnchecked) {
+		s.entityNotice(w, http.StatusServiceUnavailable, tr(permissionsUnchecked))
+		return
+	}
+	http.NotFound(w, r)
+}
 
 // entityPost is one tab's answer to a submission, carried into the panel render
 // so the tab that was saved shows what its plugin said — a success, or a refusal
@@ -451,6 +462,7 @@ func (s *Server) handleEntitySave(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
+	r = withGrants(r, s.grantsFor(s.sessionSID(r)))
 	claim, ok := s.entityContributor(kind, r.URL.Query().Get("tab"))
 	if !ok {
 		http.NotFound(w, r)
@@ -481,7 +493,7 @@ func (s *Server) handleEntitySave(w http.ResponseWriter, r *http.Request) {
 	r.PostForm.Del("_csrf") // the shell's CSRF token is not the plugin's business
 	subjectTitle := ""
 	if kind == "device" && id != entityNew {
-		if device, found := s.deviceByMAC(r, id); found {
+		if device, err := s.deviceByMAC(r, id); err == nil {
 			subjectTitle = device.Name
 		}
 	}
@@ -514,7 +526,7 @@ func (s *Server) handleEntitySave(w http.ResponseWriter, r *http.Request) {
 	}
 	data, err := s.entityPanel(r, kind, id, claim.Slot, lang, tr, &entityPost{Slot: claim.Slot, Env: env, Title: subjectTitle})
 	if err != nil {
-		http.NotFound(w, r)
+		s.entityPanelMissing(w, r, err, tr)
 		return
 	}
 	var buf bytes.Buffer

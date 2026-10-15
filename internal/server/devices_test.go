@@ -39,7 +39,7 @@ func testNeighbors() ([]sysstat.Neighbor, error) {
 // rosterBackend carries the config the roster reads: the lan interface's subnet,
 // the firewall zone that covers it, and one DHCP reservation.
 func rosterBackend() fakeBackend {
-	return fakeBackend{uci: map[string]map[string]any{
+	return fakeBackend{access: true, uci: map[string]map[string]any{
 		"network": {
 			"lan": map[string]any{".type": "interface", ".name": "lan",
 				"device": "br-lan", "ipaddr": "192.168.77.1", "netmask": "255.255.255.0"},
@@ -78,7 +78,8 @@ func rosterServer(t *testing.T) *Server {
 func roster(t *testing.T, s *Server) map[string]widget.Device {
 	t.Helper()
 	byName := map[string]widget.Device{}
-	for _, device := range s.connectedDevices(context.Background(), "test-sid", "") {
+	devices, _ := s.connectedDevices(context.Background(), "test-sid", "")
+	for _, device := range devices {
 		byName[device.Name] = device
 	}
 	return byName
@@ -125,6 +126,114 @@ func TestDevicesPageRendersTheRoster(t *testing.T) {
 		if strings.Contains(markup, never) {
 			t.Errorf("GET /devices: the roster carries a filter bar's %q", never)
 		}
+	}
+}
+
+// TestDevicesRosterNeedsTheLeaseGrant: the roster is the lease file and the
+// kernel's neighbour table, both read with the shell's own privilege, so a
+// session rpcd refuses the lease grant sees no device, on the page or in a
+// device's panel, and the page says why rather
+// than claiming the network is empty. Root's '*' sees the roster as before,
+// for one probe a page.
+func TestDevicesRosterNeedsTheLeaseGrant(t *testing.T) {
+	leaked := []string{"toms-iphone", "42:e6:ad:ff:b7:af", "192.168.77.102", "a2:8c:d7:4a:0e:57", "old-printer"}
+	refused := rosterServer(t)
+	b := rosterBackend()
+	b.grant = grantAllBut("ubus dhcp ipv6leases")
+	refused.backend = b
+
+	body := get(t, refused, "/devices").Body.String()
+	for _, value := range leaked {
+		if strings.Contains(body, value) {
+			t.Errorf("a refused session's roster shows %q", value)
+		}
+	}
+	if !strings.Contains(body, "This account may not see the devices on the network.") {
+		t.Error("the refused roster must say why it is empty")
+	}
+	if strings.Contains(body, "Nothing has joined this network yet.") {
+		t.Error("a refused roster is not an empty network")
+	}
+	if rec := get(t, refused, "/entity/device/42:e6:ad:ff:b7:af"); rec.Code != http.StatusNotFound {
+		t.Errorf("a refused session's device panel = %d, want 404", rec.Code)
+	}
+	if got := roster(t, refused); len(got) != 0 {
+		t.Errorf("a refused session's roster = %v", got)
+	}
+
+	root := rosterServer(t)
+	var probes []string
+	b = rosterBackend()
+	b.probes = &probes
+	root.backend = b
+	body = get(t, root, "/devices").Body.String()
+	for _, value := range leaked {
+		if !strings.Contains(body, value) {
+			t.Errorf("root's roster misses %q", value)
+		}
+	}
+	if strings.Contains(body, "This account may not see") {
+		t.Error("root's roster is not withheld")
+	}
+	if n := strings.Count(strings.Join(probes, "\n"), "ubus dhcp ipv6leases"); n != 1 {
+		t.Errorf("lease grant probed %d times for one page, want once: %q", n, probes)
+	}
+}
+
+// TestDevicesRosterUncheckedSaysSo: an rpcd that does not answer the lease
+// grant withholds the roster as a refusal does, but the page says the
+// permissions could not be checked rather than that the account may not see
+// devices, and a device's panel says the same instead of answering as one not
+// there.
+func TestDevicesRosterUncheckedSaysSo(t *testing.T) {
+	s := rosterServer(t)
+	b := rosterBackend()
+	b.accessErr = errors.New("rpcd gone")
+	s.backend = b
+
+	body := get(t, s, "/devices").Body.String()
+	if strings.Contains(body, "toms-iphone") {
+		t.Error("an unchecked grant still withholds the roster")
+	}
+	if !strings.Contains(body, permissionsUnchecked) {
+		t.Error("the roster must say the permissions could not be checked")
+	}
+	for _, wrong := range []string{"This account may not see", "Nothing has joined this network yet."} {
+		if strings.Contains(body, wrong) {
+			t.Errorf("an unchecked roster says %q", wrong)
+		}
+	}
+	rec := get(t, s, "/entity/device/42:e6:ad:ff:b7:af")
+	if rec.Code != http.StatusServiceUnavailable || !strings.Contains(rec.Body.String(), "couldn’t be checked") {
+		t.Errorf("an unchecked device panel = %d %q, want 503 saying so", rec.Code, rec.Body.String())
+	}
+}
+
+// TestDevicePanelAsksTheLeaseGrantOnce: a device's panel reads the roster for
+// its facts and hands each contributing plugin that declares the lease read
+// its table, all under the one lease grant; the panel asks rpcd for it once.
+func TestDevicePanelAsksTheLeaseGrantOnce(t *testing.T) {
+	leases := plugin.ACLScope{Scope: "ubus", Object: "verso", Function: "dhcpLeases"}
+	reserving, shaping := reservingManifest(), shapingManifest()
+	reserving.ACL.Read = append(reserving.ACL.Read, leases)
+	shaping.ACL.Read = append(shaping.ACL.Read, leases)
+	tr := twoTabs()
+	s := newServerWith(t, rosterBackend(), tr, []plugin.Manifest{reserving, shaping})
+	s.readLeases = func() ([]byte, error) { return []byte(testLeases), nil }
+	s.neighbors = testNeighbors
+	var probes []string
+	b := rosterBackend()
+	b.probes = &probes
+	s.backend = b
+
+	if rec := get(t, s, "/entity/device/42:e6:ad:ff:b7:af"); rec.Code != http.StatusOK {
+		t.Fatalf("panel status = %d", rec.Code)
+	}
+	if _, ok := tr.lastReq.Ubus["dhcpLeases"]; !ok {
+		t.Fatal("a contributing plugin received no lease table")
+	}
+	if n := strings.Count(strings.Join(probes, "\n"), "ubus dhcp ipv6leases"); n != 1 {
+		t.Errorf("lease grant probed %d times for one panel, want once: %q", n, probes)
 	}
 }
 

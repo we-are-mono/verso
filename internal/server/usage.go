@@ -168,7 +168,7 @@ func (s *Server) handleDevicesUsage(w http.ResponseWriter, r *http.Request) {
 		withMonth := time.Since(monthAt) >= usageMonthRefresh
 		u := rosterUsage{on: true, nums: nums}
 		if withMonth {
-			roster = s.connectedDevices(r.Context(), sid, clientIP(r))
+			roster, _ = s.connectedDevices(r.Context(), sid, clientIP(r))
 			u.on = s.readUsageHistory(r.Context(), sid)
 			u.periods = s.usageHistory.Periods()
 			monthAt = time.Now()

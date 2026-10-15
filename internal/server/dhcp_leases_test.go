@@ -6,6 +6,7 @@ package server
 import (
 	"encoding/json"
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/we-are-mono/verso/internal/openwrt"
@@ -34,7 +35,7 @@ func leasesServer(t *testing.T, v6 []openwrt.V6Lease, leases func() ([]byte, err
 	tr := &fakeTransport{env: &plugin.Envelope{
 		SchemaVersion: 1, Title: "DHCP", Widget: json.RawMessage(`{"type":"card"}`),
 	}}
-	s := newServerWith(t, fakeBackend{v6Leases: v6}, tr, []plugin.Manifest{dhcpLeasesManifest()})
+	s := newServerWith(t, fakeBackend{access: true, v6Leases: v6}, tr, []plugin.Manifest{dhcpLeasesManifest()})
 	s.readLeases = leases
 	return s, tr
 }
@@ -100,6 +101,44 @@ func TestDHCPLeasesDegradeWithoutTheLeaseFile(t *testing.T) {
 	}
 	if tr.lastReq.Ubus != nil {
 		t.Errorf("a failed read must contribute nothing: %+v", tr.lastReq.Ubus)
+	}
+}
+
+// TestDHCPLeasesNeedTheLeaseGrant: the shell reads the lease file itself, so
+// rpcd never sees the read; the session must hold the grant the DHCPv6 lease
+// read is made under, or the plugin receives no lease table at all — as for
+// any brokered read rpcd refuses (ADR-007). A session holding it, as root's
+// '*' does, receives the table as before, for one probe.
+func TestDHCPLeasesNeedTheLeaseGrant(t *testing.T) {
+	read := func() ([]byte, error) { return []byte(dhcpLeasesFile), nil }
+	for _, tc := range []struct {
+		name    string
+		backend fakeBackend
+		served  bool
+	}{
+		{"refused", fakeBackend{grant: grantAllBut("ubus dhcp ipv6leases")}, false},
+		{"rpcd unreachable", fakeBackend{access: true, accessErr: errors.New("rpcd gone")}, false},
+		{"root", fakeBackend{access: true}, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			s, tr := leasesServer(t, nil, read)
+			var probes []string
+			tc.backend.probes = &probes
+			s.backend = tc.backend
+			if rec := get(t, s, "/plugins/demo/"); rec.Code != 200 {
+				t.Fatalf("status = %d, want 200", rec.Code)
+			}
+			raw, ok := tr.lastReq.Ubus["dhcpLeases"]
+			if ok != tc.served {
+				t.Fatalf("lease table forwarded = %v, want %v: %s", ok, tc.served, raw)
+			}
+			if tc.served && !strings.Contains(string(raw), "toms-iphone") {
+				t.Errorf("root's lease table = %s", raw)
+			}
+			if n := strings.Count(strings.Join(probes, "\n"), "ubus dhcp ipv6leases"); n != 1 {
+				t.Errorf("lease grant probed %d times, want once: %q", n, probes)
+			}
+		})
 	}
 }
 

@@ -16,7 +16,9 @@ import (
 // The brokered `dhcpLeases` read: who holds an address on this router right now.
 // Config says which addresses may be handed out; only the live lease table says
 // which ones are. A plugin cannot read either source itself (ADR-007), so the
-// shell reads both with the operator's session and hands down one list.
+// shell reads both for the operator's session and hands down one list: the v6
+// table through rpcd with the sid, the lease file itself, and that only for a
+// session rpcd grants the lease read (leaseGrant).
 //
 // dnsmasq's lease file is the spine — it is the DHCPv4 table, and it is what the
 // DHCP domain is about — and odhcpd's DHCPv6 table enriches a device that also
@@ -37,8 +39,12 @@ type dhcpLease struct {
 
 // dhcpLeases answers the brokered read. A failure to read the v6 table costs
 // only the v6 addresses; a failure to read the lease file is the whole answer,
-// and the gateway degrades the page rather than failing it.
+// and the gateway degrades the page rather than failing it. A session refused
+// the lease grant is refused the read.
 func (s *Server) dhcpLeases(ctx context.Context, sid string) (json.RawMessage, error) {
+	if !s.grantsIn(ctx, sid).may(ctx, leaseGrant) {
+		return nil, openwrt.ErrAccessDenied
+	}
 	raw, err := s.readLeases()
 	if err != nil {
 		return nil, err
