@@ -80,7 +80,7 @@ history_dir() {
 }
 
 start_service() {
-	local listen_http listen_https redirect_https addr history changes probes alert_url heartbeat_url alert_kinds kind
+	local listen_http listen_https redirect_https addr history changes probes alert_url heartbeat_url alert_kinds kind theme
 	make_certificate
 	# Where the shell answers is a Verso setting (ADR-017 §1): read here and
 	# handed over on the command line, as uhttpd's init script hands uhttpd its
@@ -129,6 +129,11 @@ start_service() {
 	for kind in $alert_kinds; do
 		procd_append_param command -alert-kind "$kind"
 	done
+	# The theme in force (ADR-024); unset, Sand follows the browser. The
+	# Appearance card writes it and the running shell swaps its own, so this
+	# carries the choice to the next start.
+	config_get theme ui theme
+	[ -n "$theme" ] && procd_append_param command -theme "$theme"
 	# Multipart uploads spill to a private, group-protected runtime directory.
 	# This keeps large backup/firmware bodies out of the shared system /tmp and
 	# works even on images whose tmpfs is not writable by unprivileged services.

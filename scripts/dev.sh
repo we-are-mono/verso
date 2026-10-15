@@ -172,6 +172,17 @@ deploy_i18n() {
 	log "i18n catalogs reloaded"
 }
 
+# deploy_themes lands the repo's themes (ADR-024) — data files the shell reads
+# from disk — under the shell's themes dir and signals it, as a theme package's
+# install script does, so the dropdown offers them without a restart.
+deploy_themes() {
+	docker exec "$CONTAINER" mkdir -p /usr/share/verso/themes
+	docker exec "$CONTAINER" sh -c 'rm -f /usr/share/verso/themes/*.json'
+	docker cp themes/. "$CONTAINER":/usr/share/verso/themes/
+	docker exec "$CONTAINER" sh -c 'chown -R root:root /usr/share/verso/themes; chmod 0644 /usr/share/verso/themes/*.json; kill -HUP $(pidof verso) 2>/dev/null' || true
+	log "themes reloaded"
+}
+
 # dev_plugins lists the plugins `make dev` builds and deploys: every Rust plugin
 # under plugins/ — the core ones tracked here, and the non-core ones checked out
 # beside them from their own repositories — so a plugin is deployed without
@@ -286,6 +297,7 @@ sync_all() {
 	seed_dev_livelog
 	seed_dev_listeners
 	deploy_i18n
+	deploy_themes
 	deploy_helper
 	deploy_plugins
 	deploy_shell
@@ -317,6 +329,7 @@ plugins_sig() {
 }
 acl_sig() { find "$ACL_SRC" "$RPCD_ACL_SRC" -name '*.json' -printf '%T@ %p\n' 2>/dev/null | sha1sum; }
 i18n_sig() { find i18n -name '*.json' -printf '%T@ %p\n' 2>/dev/null | sha1sum; }
+themes_sig() { find themes -name '*.json' -printf '%T@ %p\n' 2>/dev/null | sha1sum; }
 css_sig() { find "$CSS_IN" -printf '%T@\n' 2>/dev/null | sha1sum; }
 
 ensure_container
@@ -328,6 +341,7 @@ last_helper="$(helper_sig)"
 last_plugins="$(plugins_sig)"
 last_acl="$(acl_sig)"
 last_i18n="$(i18n_sig)"
+last_themes="$(themes_sig)"
 last_css="$(css_sig)"
 sync_all
 
@@ -338,6 +352,7 @@ while sleep 1; do
 	cur_plugins="$(plugins_sig)"
 	cur_acl="$(acl_sig)"
 	cur_i18n="$(i18n_sig)"
+	cur_themes="$(themes_sig)"
 	cur_css="$(css_sig)"
 
 	if [ "$cur_acl" != "$last_acl" ]; then
@@ -349,6 +364,10 @@ while sleep 1; do
 	if [ "$cur_i18n" != "$last_i18n" ]; then
 		last_i18n="$cur_i18n"
 		deploy_i18n
+	fi
+	if [ "$cur_themes" != "$last_themes" ]; then
+		last_themes="$cur_themes"
+		deploy_themes
 	fi
 	if [ "$cur_helper" != "$last_helper" ]; then
 		last_helper="$cur_helper"

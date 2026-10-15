@@ -342,6 +342,7 @@ apk: apk-preflight build-$(APK_GOARCH)
 	install -Dm644 plugins/verso-plugin-system/rootfs/usr/share/rpcd/acl.d/verso-plugin-system.json $(APK_PAYLOAD)/usr/share/rpcd/acl.d/verso-plugin-system.json
 	install -Dm644 plugins/verso-plugin-interfaces/i18n/sl.json $(APK_PAYLOAD)/usr/share/verso/plugins/interfaces/i18n/sl.json
 	install -Dm644 plugins/verso-plugin-system/i18n/sl.json $(APK_PAYLOAD)/usr/share/verso/plugins/system/i18n/sl.json
+	for theme in themes/*.json; do install -Dm644 "$$theme" "$(APK_PAYLOAD)/usr/share/verso/$$theme"; done
 	fakeroot -- sh -c 'chown -R 0:0 "$(APK_PAYLOAD)" && "$(APK)" mkpkg \
 	  --info name:verso --info version:$(VER) --info arch:$(APK_ARCH) \
 	  --info "description:Verso — a modern web UI for OpenWrt" \

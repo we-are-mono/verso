@@ -20,7 +20,7 @@ Every task ends green under `make lint` and `make test`; a task that touches a t
 
 - [x] 3.1 Write the tests first: the server, given a theme set and a choice, renders `<style id="verso-theme">` straight after the stylesheet on a page, the sign-in page and the three takeovers, and the takeovers declare the theme's bar colours (two media metas under `sand`); then hold the theme state behind an atomic pointer in the server and render it in the five templates (page, login, upgrading, restarting, firmware-started); verify
 - [x] 3.2 Write the test first for `cmd/verso`: `-theme` sets the choice and `VERSO_THEMES_DIR` (default `/usr/share/verso/themes`) the directory, and a theme installed after start is in force after SIGHUP; then wire the flag, load at start, log each problem, contrast report and a missing Sand dark, and re-read the directory in `Rescan` on SIGHUP; verify
-- [ ] 3.3 Pass `-theme` from `verso.ui.theme` in the init script (docker rootfs and package), install `themes/*.json` into `/usr/share/verso/themes/` in the `verso` apk payload and the dev container (`scripts/dev.sh` deploys and signals on change); verify with `make apk APK_GOARCH=arm64` listing the files and the dev container serving Sand dark to a dark-preferring browser
+- [x] 3.3 Pass `-theme` from `verso.ui.theme` in the init script (docker rootfs and package), install `themes/*.json` into `/usr/share/verso/themes/` in the `verso` apk payload and the dev container (`scripts/dev.sh` deploys and signals on change); verify with `make apk APK_GOARCH=arm64` listing the files and the dev container serving Sand dark to a dark-preferring browser
 
 ## 4. Picking a theme
 
