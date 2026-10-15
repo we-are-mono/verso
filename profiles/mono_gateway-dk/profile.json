@@ -22,7 +22,7 @@
   ],
 
   "thermal": [
-    { "cluster-thermal": "cluster", "cpu": true },
+    { "cluster-thermal": "CPU", "main": true },
     { "ddr-thermal": "Memory" },
     { "fman-thermal": "Network" },
     { "serdes-thermal": "SerDes" },

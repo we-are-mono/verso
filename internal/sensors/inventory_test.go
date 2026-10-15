@@ -27,7 +27,7 @@ func dkProfile() *Profile {
 			{Path: "i2c-mux@70/i2c@1/power_sensor@43", Name: "3.3V PSU"},
 		},
 		Thermal: []Entry{
-			{Path: "cluster-thermal", Name: "cluster", CPU: true},
+			{Path: "cluster-thermal", Name: "CPU", Main: true},
 			{Path: "ddr-thermal", Name: "Memory"},
 			{Path: "fman-thermal", Name: "Network engine"},
 			{Path: "serdes-thermal", Name: "SerDes"},

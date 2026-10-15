@@ -30,7 +30,7 @@ card of an earlier Overview reads it as System, where it stood.
 Hardware is the board's headline readings, and stands only on a board whose
 profile lists sensors: the CPU temperature, the main power rail's draw,
 voltage and current, and the main fan, one row each under the profile's
-names. These are the readings the profile flags `cpu` and `main`, the ones
+names. These are the readings the profile flags `main`, the ones
 that lead the Hardware page's Temperatures, Power and Cooling cards, and the
 card's verdict is the page heading's. Every other reading is the Hardware
 page's, a glance's worth on the card and the detail one click away. A board

@@ -4,6 +4,8 @@
 package sensors
 
 import (
+	"encoding/json"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"testing"
@@ -24,7 +26,7 @@ func TestLoadProfile(t *testing.T) {
 	    { "i2c-mux@70/i2c@0/power_sensor@40": "USB Power Delivery" },
 	    { "i2c-mux@70/i2c@0/power_sensor@41": "5V PSU", "main": true }
 	  ],
-	  "thermal": [ { "cluster-thermal": "cluster", "cpu": true } ]
+	  "thermal": [ { "cluster-thermal": "CPU", "main": true } ]
 	}`
 	// The folder name (an underscore) is only storage; the match is the id, which
 	// carries the raw board_name's comma. The folder is recorded for the panel art.
@@ -51,7 +53,7 @@ func TestLoadProfile(t *testing.T) {
 		t.Fatal("primary fan flag not loaded")
 	}
 	cpu := p.Thermal[0]
-	if cpu.Path != "cluster-thermal" || !cpu.CPU {
+	if cpu.Path != "cluster-thermal" || cpu.Name != "CPU" || !cpu.Main {
 		t.Fatalf("cpu thermal entry wrong: %+v", cpu)
 	}
 	if _, ok := LoadProfile(fsys, "no-such-board"); ok {
@@ -59,6 +61,46 @@ func TestLoadProfile(t *testing.T) {
 	}
 	if p.Processor != "" {
 		t.Fatalf("a profile that names no processor leaves it to the kernel: %q", p.Processor)
+	}
+}
+
+// TestEveryShippedProfileLoads: a profile the shell cannot parse is skipped,
+// and its board falls back to guesses with no word said, so every profile in
+// the tree must load, under its own id.
+func TestEveryShippedProfileLoads(t *testing.T) {
+	files, err := fs.Glob(profiles.FS, "*/profile.json")
+	if err != nil || len(files) == 0 {
+		t.Fatalf("no shipped profiles: %v", err)
+	}
+	for _, file := range files {
+		data, err := fs.ReadFile(profiles.FS, file)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var p Profile
+		if err := json.Unmarshal(data, &p); err != nil {
+			t.Errorf("%s does not parse: %v", file, err)
+			continue
+		}
+		if _, ok := LoadProfile(profiles.FS, p.ID); !ok {
+			t.Errorf("%s does not load as %q", file, p.ID)
+		}
+	}
+}
+
+// TestOneFlagPicksEachHeadline: `main` lifts the headline of every kind, the
+// CPU among the temperatures as the input among the rails; the retired `cpu`
+// flag is no flag, so a profile still carrying it fails to load rather than
+// load with no CPU.
+func TestOneFlagPicksEachHeadline(t *testing.T) {
+	fsys := fstest.MapFS{"b/profile.json": {Data: []byte(`{"id": "b", "thermal": [ { "cluster-thermal": "CPU", "main": true }, { "ddr-thermal": "Memory" } ]}`)}}
+	p, ok := LoadProfile(fsys, "b")
+	if !ok || !p.Thermal[0].Main || p.Thermal[1].Main {
+		t.Fatalf("thermal main flag: %+v", p)
+	}
+	old := fstest.MapFS{"b/profile.json": {Data: []byte(`{"id": "b", "thermal": [ { "cluster-thermal": "cluster", "cpu": true } ]}`)}}
+	if _, ok := LoadProfile(old, "b"); ok {
+		t.Fatal("a profile with the retired cpu flag loads")
 	}
 }
 
@@ -95,7 +137,7 @@ func TestResolveProfiled(t *testing.T) {
 	p := &Profile{
 		Fans:    []Entry{{Path: "i2c-mux@70/i2c@3/fan-controller@2e/fan@0", Name: "System Fan 1", Main: true}, {Path: "i2c-mux@70/i2c@3/fan-controller@2e/fan@1", Name: "System Fan 2"}},
 		Power:   []Entry{{Path: "i2c-mux@70/i2c@0/power_sensor@41", Name: "5V PSU", Main: true}, {Path: "i2c-mux@70/i2c@0/power_sensor@42", Name: "1V"}},
-		Thermal: []Entry{{Path: "cluster-thermal", Name: "cluster", CPU: true}},
+		Thermal: []Entry{{Path: "cluster-thermal", Name: "CPU", Main: true}},
 	}
 	inv := ResolveAll(p, &Reader{Root: filepath.Join(root, "sys")})
 
@@ -115,7 +157,7 @@ func TestResolveProfiled(t *testing.T) {
 func TestResolveGradesOnlyAgainstOwnTrips(t *testing.T) {
 	root := t.TempDir()
 	zone(t, root, 0, "cluster-thermal", 88000, [][2]string{{"passive", "85000"}, {"critical", "95000"}})
-	p := &Profile{Thermal: []Entry{{Path: "cluster-thermal", CPU: true}}}
+	p := &Profile{Thermal: []Entry{{Path: "cluster-thermal", Main: true}}}
 	if cpu := ResolveAll(p, &Reader{Root: filepath.Join(root, "sys")}).CPUTemp(); cpu == nil || cpu.Level != "warn" {
 		t.Fatalf("expected warn: %+v", cpu)
 	}
@@ -168,7 +210,7 @@ func TestResolvePrimaryMissingAndTemperatureFallback(t *testing.T) {
 		{"missing primary sensors", &Profile{
 			Fans:    []Entry{{Path: "board/fan-controller@2e/fan@0", Main: true}, {Path: "board/fan-controller@2e/fan@1"}},
 			Power:   []Entry{{Path: "board/power_sensor@40", Main: true}, {Path: "board/power_sensor@41"}},
-			Thermal: []Entry{{Path: "missing-thermal", CPU: true}},
+			Thermal: []Entry{{Path: "missing-thermal", Main: true}},
 		}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

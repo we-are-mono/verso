@@ -220,7 +220,7 @@ func tempFromHwmon(h Hwmon, ch int, ambiguous bool) TempReading {
 
 // curateProfileTemps lifts the profile's thermal entries onto the matching
 // readings: each entry's chosen name, its place among the curated readings, and
-// the one entry flagged the CPU. An entry keyed with a :tempN selector matches a
+// the one entry flagged main, the CPU. An entry keyed with a :tempN selector matches a
 // specific hwmon channel; a bare zone type matches a zone. A profile whose CPU
 // pick is absent or unreadable falls back to the generic detection an unprofiled
 // board gets, so the CPU is never lost to a stale profile.
@@ -232,7 +232,7 @@ func curateProfileTemps(temps []TempReading, p *Profile) {
 			continue
 		}
 		temps[i].Name, temps[i].Named = e.Name, true
-		if e.CPU {
+		if e.Main {
 			temps[i].CPU, cpu = true, true
 			continue // the CPU pick leads its own row, not among the curated readings
 		}

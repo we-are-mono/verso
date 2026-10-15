@@ -27,7 +27,7 @@ func tempNames(ts []TempReading) []string {
 // listed.
 func TestPageTempsListsTheProfilesEntries(t *testing.T) {
 	got := tempNames(ResolveAll(dkProfile(), buildDK(t)).PageTemps())
-	want := []string{"cluster", "Memory", "Network engine", "SerDes", "Crypto engine", "PCB near CPU", "CPU (external diode)", "SFP+ modules"}
+	want := []string{"CPU", "Memory", "Network engine", "SerDes", "Crypto engine", "PCB near CPU", "CPU (external diode)", "SFP+ modules"}
 	if !slices.Equal(got, want) {
 		t.Fatalf("page temps = %q, want %q", got, want)
 	}

@@ -40,17 +40,18 @@ type Profile struct {
 }
 
 // Entry is one sensor: its of_node path tail (Path), the display Name, and the
-// optional headline flags. It marshals from the object form
+// optional headline flag. It marshals from the object form
 // `{ "<path>": "<name>", "main": true }` — the single non-flag key is the path.
 type Entry struct {
 	Path string
 	Name string
-	Main bool // fan: the primary channel; power: the headline draw (input rail)
-	CPU  bool // thermal: the CPU temperature
+	// Main lifts the kind's headline: thermal, the CPU temperature; power, the
+	// input rail; fan, the primary channel.
+	Main bool
 }
 
-// UnmarshalJSON reads the `{ "<path>": "<name>", "main"|"cpu": true }` shape: the
-// one key that isn't a flag is the path, its string value the name.
+// UnmarshalJSON reads the `{ "<path>": "<name>", "main": true }` shape: the one
+// key that isn't the flag is the path, its string value the name.
 func (e *Entry) UnmarshalJSON(b []byte) error {
 	var raw map[string]json.RawMessage
 	if err := json.Unmarshal(b, &raw); err != nil {
@@ -60,10 +61,6 @@ func (e *Entry) UnmarshalJSON(b []byte) error {
 		switch k {
 		case "main":
 			if err := json.Unmarshal(v, &e.Main); err != nil {
-				return err
-			}
-		case "cpu":
-			if err := json.Unmarshal(v, &e.CPU); err != nil {
 				return err
 			}
 		default:

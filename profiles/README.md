@@ -73,7 +73,7 @@ searching, no label-matching, no traversal — the key *is* the location.
   ],
 
   "thermal": [
-    { "cluster-thermal": "cluster", "cpu": true },
+    { "cluster-thermal": "CPU", "main": true },
     { "ddr-thermal": "Memory" }
   ]
 }
@@ -131,14 +131,16 @@ The uniform JSON hides four small mechanics — the resolver picks by kind:
   against the key (`cluster-thermal`). The zone carries its own trip points, so a
   reading surfaces its warn/critical limits for free.
 
-### Flags pick the headlines
+### One flag picks the headlines
 
 Every entry in the arrays shows on the **Hardware page**, in array order, under the
-names you give them, one card per kind: Temperatures, Power and Cooling. Optional
-flags lift one entry each to the head of its card and onto the Overview's
-**Hardware card**:
+names you give them, one card per kind: Temperatures, Power and Cooling. One
+optional flag, `"main": true`, lifts one entry of each kind to the head of its card
+and onto the Overview's **Hardware card**. A thermal entry once marked the CPU
+with `"cpu": true`; that is no flag now, and a profile still carrying it does not
+load.
 
-- **`"cpu": true`** on a thermal entry → *the* CPU temperature: the first row of
+- **`"main": true`** on a thermal entry → *the* CPU temperature: the first row of
   the page's Temperatures, and the card's first row and its line while closed.
 - **`"main": true`** on a power entry → *the* headline power: the first row of the
   page's Power, tagged "input", and the card's second row (draw, voltage and

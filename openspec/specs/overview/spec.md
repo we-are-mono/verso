@@ -228,7 +228,7 @@ The Ports card's table SHALL list the same ports as the device panel above it, i
 - **THEN** neither the panel nor the table is shown, and the header shows its one reading
 
 ### Requirement: The Hardware card shows the board's headline readings
-The Hardware card SHALL show at most three rows, in this order, under the names the profile gives them: the CPU temperature (the entry flagged `cpu`), the main power rail (flagged `main`) with its draw, voltage and current, and the main fan (flagged `main`). A reading the board does not have has no row. Each value stands at the row's right edge, so a long name keeps one line. Every other reading stays on the Hardware page.
+The Hardware card SHALL show at most three rows, in this order, under the names the profile gives them: the CPU temperature (the thermal entry flagged `main`), the main power rail (flagged `main`) with its draw, voltage and current, and the main fan (flagged `main`). A reading the board does not have has no row. Each value stands at the row's right edge, so a long name keeps one line. Every other reading stays on the Hardware page.
 
 #### Scenario: The Mono Gateway DK
 - **WHEN** the Overview renders on the DK with Hardware open
