@@ -10,6 +10,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -48,10 +49,15 @@ func accessForm(hasPassword bool, username string, fieldErrs map[string]string, 
 	}
 	return &widget.Form{Style: "settings", Action: "/system/access", Submit: label, Error: formErr, Fields: fields}
 }
-func accessBody(hasPassword bool, username string, fieldErrs map[string]string, formErr string, sessions []accessSession, tr func(string) string) *widget.Stack {
+
+// accessBody is the password form over the sessions signed in now, kept to
+// those g lets the session see: where rpcd did not answer for another
+// account's, the list says the permissions could not be checked.
+func accessBody(hasPassword bool, username string, fieldErrs map[string]string, formErr string, sessions []accessSession, g *sessionGrants, tr func(string) string) *widget.Stack {
+	table := accessSessionsTable(sessions, tr)
 	return &widget.Stack{Children: []widget.Widget{
 		&widget.Section{Title: "Router password", Children: []widget.Widget{accessForm(hasPassword, username, fieldErrs, formErr)}},
-		&widget.Section{Title: "Signed in now", Hairline: true, Children: []widget.Widget{accessSessionsTable(sessions, tr)}},
+		&widget.Section{Title: "Signed in now", Hairline: true, Children: append(uncheckedNotice(g, table), table)},
 	}}
 }
 
@@ -88,10 +94,14 @@ func accessSessionsTable(sessions []accessSession, tr func(string) string) *widg
 	return &widget.Table{Columns: []widget.TableColumn{{Label: "Source", Kind: "reference"}, {Label: "Last seen", Kind: "text"}, {Kind: "actions"}}, Rows: rows}
 }
 
-func (s *Server) accessSessions(r *http.Request) []accessSession {
+// accessSessions is the sessions signed in now that g lets the request's
+// session list: its own account's, and another's under rpcd's session list.
+func (s *Server) accessSessions(r *http.Request, g *sessionGrants) []accessSession {
 	current, _ := s.currentSession(r)
 	now := time.Now()
-	items := s.sessions.list()
+	items := slices.DeleteFunc(s.sessions.list(), func(sess session) bool {
+		return !mayManageSession(r.Context(), g, current, sess, sessionListGrant)
+	})
 	sort.Slice(items, func(i, j int) bool {
 		if items[i].id == current.id {
 			return true
@@ -241,16 +251,32 @@ func (s *Server) handlePassword(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/system/access", http.StatusSeeOther)
 }
 
+// Another account's sessions are rpcd's to manage (ADR-007): a session lists
+// and ends its own account's, and another account's only under the grants
+// rpcd's own session object needs to list and to destroy sessions.
+var (
+	sessionListGrant    = aclProbe{"ubus", "session", "list"}
+	sessionDestroyGrant = aclProbe{"ubus", "session", "destroy"}
+)
+
+// mayManageSession reports whether current may act on sess under grant: any
+// session of its own account, another's only as rpcd grants.
+func mayManageSession(ctx context.Context, g *sessionGrants, current, sess session, grant aclProbe) bool {
+	return sess.username == current.username || g.may(ctx, grant)
+}
+
 // handleEndSession revokes one session. This browser's own is logging out, so
 // it ends the way Log out does: the cookie goes and the browser lands on
-// sign-in.
+// sign-in. Another account's session it may not end answers as one not there.
 func (s *Server) handleEndSession(w http.ResponseWriter, r *http.Request, id string) {
 	current, _ := s.currentSession(r)
 	if id != "" && id == current.id {
 		s.handleLogout(w, r)
 		return
 	}
-	if id == "" || !s.sessions.destroyID(id) {
+	target, found := s.sessions.byID(id)
+	if id == "" || !found || !mayManageSession(r.Context(), s.grantsFor(current.sid), current, target, sessionDestroyGrant) ||
+		!s.sessions.destroyID(id) {
 		s.renderAccess(w, r, http.StatusBadRequest, nil, "That session could not be ended.")
 		return
 	}
@@ -284,7 +310,8 @@ func (s *Server) renderAccess(w http.ResponseWriter, r *http.Request, status int
 		username = "root"
 	}
 	lang, t := s.localize(r)
-	access := accessBody(hasPassword, username, fieldErrs, formErr, s.accessSessions(r), translatorOrIdentity(t))
+	g := s.grantsFor(s.sessionSID(r))
+	access := accessBody(hasPassword, username, fieldErrs, formErr, s.accessSessions(r, g), g, translatorOrIdentity(t))
 	hdr := pageHeader{Heading: "Access", Tone: "neutral"}
 	r = withStageMemo(r)
 	for _, manifest := range s.manifestList() {

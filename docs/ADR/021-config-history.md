@@ -258,9 +258,10 @@ where with it; its drawer answers as one no longer kept. The starting point and
 the current readings hold only readable configs, and the starting point's row is
 listed, and its drawer opens, only when one is left. Where rpcd does not answer,
 history is withheld the same way, and the page says the permissions could not
-be checked. Verso's own `verso-admin` group grants `uci *` read and write, and
-root's `*` takes it up, so root reads history whole and may act on all of it
-whatever else is installed, LuCI or not (ADR-007).
+be checked. Verso's own `verso-admin` group grants `uci *` read and write to a
+login whose `write` list names `*`, as root's does, so root reads history whole
+and may act on all of it whatever else is installed, LuCI or not (ADR-007); a
+login that reads `*` but writes less reads the configs the other groups declare.
 
 An act is offered, and staged, only on what the session sees whole: Undo and
 Stage again when every change of the entry is in a readable config, Return when

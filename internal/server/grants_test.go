@@ -5,6 +5,11 @@ package server
 
 import (
 	"encoding/json"
+	"fmt"
+	"go/ast"
+	"go/parser"
+	"go/token"
+	"maps"
 	"os"
 	"path"
 	"path/filepath"
@@ -153,18 +158,234 @@ func TestRootIsGrantedEveryShellProbe(t *testing.T) {
 	}
 }
 
-// TestARestrictedLoginLeavesTheAdminGroupOut: verso-admin's reach is for a
-// login whose lists name '*'. One that lists the shell's other groups by name
-// reads and writes only the configs those declare.
-func TestARestrictedLoginLeavesTheAdminGroupOut(t *testing.T) {
-	restricted := loginGrants(t, []string{"verso-shell", "verso-helper", "verso-plugin-*"}, []string{"verso-shell"})
-	for _, perm := range []string{"read", "write"} {
-		if got := grantedBy(restricted, configGrant("nothing-declares-this", perm)); len(got) != 0 {
-			t.Errorf("a restricted login is granted uci %s on any config by %v", perm, got)
+// TestEveryShellProbeIsListed: TestRootIsGrantedEveryShellProbe holds root to
+// shellProbes, so a probe the shell asks must be listed there to be held. Each
+// is a package var whose value is an aclProbe literal or a configGrant, and
+// shellProbes names every such var; an aclProbe written anywhere else, past
+// that list, is configGrant's own, which config history asks of whatever
+// config it names.
+func TestEveryShellProbeIsListed(t *testing.T) {
+	files, err := filepath.Glob("*.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	fset := token.NewFileSet()
+	var parsed []*ast.File
+	for _, name := range files {
+		if strings.HasSuffix(name, "_test.go") {
+			continue
+		}
+		f, err := parser.ParseFile(fset, name, nil, 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		parsed = append(parsed, f)
+	}
+	probeVars, listed, escaped := scanProbes(fset, parsed)
+	for _, problem := range escaped {
+		t.Error(problem)
+	}
+	if len(probeVars) == 0 || len(listed) == 0 {
+		t.Fatalf("found probe vars %v and shellProbes %v; the scan no longer sees them", probeVars, listed)
+	}
+	for name, at := range probeVars {
+		if !slices.Contains(listed, name) {
+			t.Errorf("%s: probe %s is not in shellProbes", at, name)
 		}
 	}
+}
+
+// TestTheProbeScanSeesEveryProbeWritten: an aclProbe written with its type
+// left out, as an element of a slice, array or map of them, escapes
+// shellProbes as one written whole does; a list of named probes writes none.
+func TestTheProbeScanSeesEveryProbeWritten(t *testing.T) {
+	const src = `package server
+var shellProbes = []aclProbe{listedGrant, configured}
+var listedGrant = aclProbe{"ubus", "a", "b"}
+var configured = configGrant("network", "read")
+var unlisted = aclProbe{"ubus", "c", "d"}
+var named = map[string]*aclProbe{"k": &listedGrant, "n": nil}
+func asks() { _ = []aclProbe{listedGrant} }
+func inline() { _ = aclProbe{"ubus", "e", "f"} }
+func sliced() { _ = []aclProbe{{"ubus", "g", "h"}} }
+var arrayed = [1]aclProbe{{"ubus", "i", "j"}}
+var indexed = [2]aclProbe{1: {"ubus", "k", "l"}}
+var mapped = map[string]aclProbe{"k": {"ubus", "m", "n"}}
+var keyed = map[aclProbe]bool{{"ubus", "o", "p"}: true}
+var pointed = []*aclProbe{{"ubus", "q", "r"}}
+`
+	fset := token.NewFileSet()
+	f, err := parser.ParseFile(fset, "probes.go", src, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	probeVars, listed, escaped := scanProbes(fset, []*ast.File{f})
+	if got := slices.Sorted(maps.Keys(probeVars)); !slices.Equal(got, []string{"configured", "listedGrant", "unlisted"}) {
+		t.Errorf("probe vars %v, want configured, listedGrant and unlisted", got)
+	}
+	if !slices.Equal(listed, []string{"listedGrant", "configured"}) {
+		t.Errorf("shellProbes lists %v, want listedGrant and configured", listed)
+	}
+	want := []string{"inline", "sliced", "arrayed", "indexed", "mapped", "keyed", "pointed"}
+	if len(escaped) != len(want) || slices.ContainsFunc(want, func(name string) bool {
+		return !slices.ContainsFunc(escaped, func(problem string) bool { return strings.Contains(problem, " inside "+name+" ") })
+	}) {
+		t.Errorf("escaped %q, want one each inside %v", escaped, want)
+	}
+}
+
+// scanProbes reads files as TestEveryShellProbeIsListed holds them: it
+// answers each package var whose value is an aclProbe literal or a
+// configGrant, with where it is declared; the vars shellProbes names; and,
+// ending in the func or var it sits in, each aclProbe written anywhere else.
+func scanProbes(fset *token.FileSet, files []*ast.File) (probeVars map[string]string, listed, escaped []string) {
+	probeVars = map[string]string{}
+	isProbe := func(typ ast.Expr) bool {
+		if star, ok := typ.(*ast.StarExpr); ok {
+			typ = star.X
+		}
+		id, ok := typ.(*ast.Ident)
+		return ok && id.Name == "aclProbe"
+	}
+	isWholeProbe := func(n ast.Node) bool {
+		lit, ok := n.(*ast.CompositeLit)
+		if !ok {
+			return false
+		}
+		id, ok := lit.Type.(*ast.Ident)
+		return ok && id.Name == "aclProbe"
+	}
+	// isProbeLiteral: an aclProbe literal, or a slice, array or map literal
+	// of aclProbes holding one with its type left out.
+	isProbeLiteral := func(n ast.Node) bool {
+		if isWholeProbe(n) {
+			return true
+		}
+		lit, ok := n.(*ast.CompositeLit)
+		if !ok {
+			return false
+		}
+		var elements []ast.Expr
+		switch typ := lit.Type.(type) {
+		case *ast.ArrayType:
+			if isProbe(typ.Elt) {
+				for _, elt := range lit.Elts {
+					if kv, ok := elt.(*ast.KeyValueExpr); ok {
+						elt = kv.Value
+					}
+					elements = append(elements, elt)
+				}
+			}
+		case *ast.MapType:
+			for _, elt := range lit.Elts {
+				if kv, ok := elt.(*ast.KeyValueExpr); ok {
+					if isProbe(typ.Key) {
+						elements = append(elements, kv.Key)
+					}
+					if isProbe(typ.Value) {
+						elements = append(elements, kv.Value)
+					}
+				}
+			}
+		}
+		return slices.ContainsFunc(elements, func(e ast.Expr) bool {
+			elided, ok := e.(*ast.CompositeLit)
+			return ok && elided.Type == nil
+		})
+	}
+	isConfigGrant := func(n ast.Node) bool {
+		call, ok := n.(*ast.CallExpr)
+		if !ok {
+			return false
+		}
+		id, ok := call.Fun.(*ast.Ident)
+		return ok && id.Name == "configGrant"
+	}
+	for _, f := range files {
+		for _, decl := range f.Decls {
+			switch d := decl.(type) {
+			case *ast.FuncDecl:
+				if d.Recv == nil && d.Name.Name == "configGrant" {
+					continue
+				}
+				ast.Inspect(d, func(n ast.Node) bool {
+					if isProbeLiteral(n) {
+						escaped = append(escaped, fmt.Sprintf("%s: an aclProbe written inside %s escapes shellProbes; declare it as a package var and list it", fset.Position(n.Pos()), d.Name.Name))
+					}
+					return true
+				})
+			case *ast.GenDecl:
+				for _, spec := range d.Specs {
+					vs, ok := spec.(*ast.ValueSpec)
+					if !ok {
+						continue
+					}
+					for i, value := range vs.Values {
+						name := vs.Names[i].Name
+						switch {
+						case name == "shellProbes":
+							lit, ok := value.(*ast.CompositeLit)
+							if !ok {
+								escaped = append(escaped, fmt.Sprintf("%s: shellProbes is no longer a list the scan reads", fset.Position(value.Pos())))
+								continue
+							}
+							for _, elt := range lit.Elts {
+								if id, ok := elt.(*ast.Ident); ok {
+									listed = append(listed, id.Name)
+								} else {
+									escaped = append(escaped, fmt.Sprintf("%s: shellProbes lists a probe by its value; name its var", fset.Position(elt.Pos())))
+								}
+							}
+						case isWholeProbe(value) || isConfigGrant(value):
+							probeVars[name] = fset.Position(value.Pos()).String()
+						default:
+							ast.Inspect(value, func(n ast.Node) bool {
+								if isProbeLiteral(n) {
+									escaped = append(escaped, fmt.Sprintf("%s: an aclProbe written inside %s escapes shellProbes; declare it as its own var and list it", fset.Position(n.Pos()), name))
+								}
+								return true
+							})
+						}
+					}
+				}
+			}
+		}
+	}
+	return probeVars, listed, escaped
+}
+
+// TestARestrictedLoginLeavesTheAdminGroupOut: verso-admin's reach is for a
+// login whose write list names '*'. One that lists the shell's other groups by
+// name reads and writes only the configs those declare, and neither lists nor
+// ends another account's sessions. One that reads '*' and writes nothing
+// reads what every other group declares and takes nothing of verso-admin's:
+// rpcd's session list answers every session's sid, which LuCI's /ubus beside
+// Verso would let it call as that session.
+func TestARestrictedLoginLeavesTheAdminGroupOut(t *testing.T) {
+	admin := []aclProbe{
+		configGrant("nothing-declares-this", "read"), configGrant("nothing-declares-this", "write"),
+		sessionListGrant, sessionDestroyGrant,
+	}
+	logins := map[string][]aclGrant{
+		"a restricted login": loginGrants(t, []string{"verso-shell", "verso-helper", "verso-plugin-*"}, []string{"verso-shell"}),
+		"a read-only login":  loginGrants(t, []string{"*"}, nil),
+	}
 	root := loginGrants(t, []string{"*"}, []string{"*"})
-	if got := grantedBy(root, configGrant("nothing-declares-this", "write")); !slices.Equal(got, []string{"verso-admin"}) {
-		t.Errorf("uci write on any config is granted by %v, want verso-admin alone", got)
+	for _, p := range admin {
+		for login, grants := range logins {
+			if got := grantedBy(grants, p); len(got) != 0 {
+				t.Errorf("%s is granted %s %s %s by %v", login, p.scope, p.object, p.function, got)
+			}
+		}
+		if got := grantedBy(root, p); !slices.Equal(got, []string{"verso-admin"}) {
+			t.Errorf("%s %s %s is granted by %v, want verso-admin alone", p.scope, p.object, p.function, got)
+		}
+	}
+	for _, p := range []aclProbe{configGrant("network", "read"), configGrant("verso", "read"), leaseGrant} {
+		want := slices.DeleteFunc(grantedBy(root, p), func(group string) bool { return group == "verso-admin" })
+		if got := grantedBy(logins["a read-only login"], p); len(want) == 0 || !slices.Equal(got, want) {
+			t.Errorf("a read-only login is granted %s %s %s by %v, want root's groups but verso-admin, %v",
+				p.scope, p.object, p.function, got, want)
+		}
 	}
 }

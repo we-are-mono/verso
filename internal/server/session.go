@@ -217,6 +217,16 @@ func (s *Sessions) list() []session {
 	return out
 }
 
+// byID is the live session carrying a non-secret management id.
+func (s *Sessions) byID(id string) (session, bool) {
+	for _, sess := range s.list() {
+		if sess.id == id {
+			return sess, true
+		}
+	}
+	return session{}, false
+}
+
 // destroyID removes the session carrying a non-secret management id.
 func (s *Sessions) destroyID(id string) bool {
 	s.mu.Lock()

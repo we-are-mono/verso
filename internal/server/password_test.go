@@ -265,3 +265,31 @@ func TestPasswordLinkAlwaysInNav(t *testing.T) {
 		t.Error("Access page missing from System pages")
 	}
 }
+
+// Access lists another account's sessions only on rpcd's yes to ubus session
+// list; where rpcd does not answer, the page says the permissions could not be
+// checked rather than showing this account's sessions as all there are. With
+// no other account's session to withhold, nothing is asked and nothing said.
+func TestAccessSaysWhenSessionListIsUnchecked(t *testing.T) {
+	s := passwordServer(t, fakeBackend{access: true, accessErr: errors.New("rpcd gone")})
+	token := s.sessions.CreateWithMetadata("sid-guest", "guest", "10.0.0.50", "Firefox/142.0")
+	access := func() string {
+		req := httptest.NewRequest(http.MethodGet, "/system/access", nil)
+		req.AddCookie(&http.Cookie{Name: sessionCookie, Value: token})
+		rec := httptest.NewRecorder()
+		s.Handler().ServeHTTP(rec, req)
+		return rec.Body.String()
+	}
+
+	if body := access(); strings.Contains(body, permissionsUnchecked) {
+		t.Error("Access says the permissions could not be checked with no other account's session to withhold")
+	}
+	s.sessions.CreateWithMetadata("sid-root", "root", "10.0.0.2", "Firefox/142.0")
+	body := access()
+	if strings.Contains(body, "10.0.0.2<") {
+		t.Error("another account's session is listed while rpcd does not answer")
+	}
+	if !strings.Contains(body, permissionsUnchecked) || !strings.Contains(body, "10.0.0.50") {
+		t.Error("Access lists this account's sessions without saying the permissions could not be checked")
+	}
+}

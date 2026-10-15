@@ -86,6 +86,69 @@ func TestRevokingOwnSessionLogsOut(t *testing.T) {
 	}
 }
 
+// Another account's sessions are rpcd's to manage: a session sees and ends
+// its own account's sessions, and another account's only while rpcd grants
+// it ubus session list and session destroy, as rpcd's own session object
+// would ask. Root's '*' holds both, through verso-admin
+// (TestRootIsGrantedEveryShellProbe), and sees and ends every session as
+// before.
+func TestAnotherAccountsSessionsNeedRPCDsSessionGrants(t *testing.T) {
+	s := passwordServer(t, fakeBackend{grant: grantAllBut("ubus session list", "ubus session destroy")})
+	rootToken := s.sessions.CreateWithMetadata("sid-root", "root", "10.0.0.2", "Firefox/142.0")
+	guestToken := s.sessions.CreateWithMetadata("sid-guest", "guest", "10.0.0.50", "Firefox/142.0")
+	phoneToken := s.sessions.CreateWithMetadata("sid-guest-phone", "guest", "10.0.0.51", "Mozilla/5.0 (iPhone) Version/18.0 Safari/605.1")
+	root, _ := s.sessions.get(rootToken)
+	guest, _ := s.sessions.get(guestToken)
+	phone, _ := s.sessions.get(phoneToken)
+	access := func(token string) string {
+		req := httptest.NewRequest(http.MethodGet, "/system/access", nil)
+		req.AddCookie(&http.Cookie{Name: sessionCookie, Value: token})
+		rec := httptest.NewRecorder()
+		s.Handler().ServeHTTP(rec, req)
+		return rec.Body.String()
+	}
+	end := func(token, csrf, id string) int {
+		form := url.Values{"_csrf": {csrf}, "_action": {"end-session:" + id}}
+		post := httptest.NewRequest(http.MethodPost, "/system/access", strings.NewReader(form.Encode()))
+		post.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		post.AddCookie(&http.Cookie{Name: sessionCookie, Value: token})
+		rec := httptest.NewRecorder()
+		s.Handler().ServeHTTP(rec, post)
+		return rec.Code
+	}
+
+	body := access(guestToken)
+	if strings.Contains(body, "10.0.0.2<") || strings.Contains(body, "end-session:"+root.id) {
+		t.Error("a session without rpcd's session list grant sees another account's session")
+	}
+	if !strings.Contains(body, "10.0.0.51") || !strings.Contains(body, "end-session:"+phone.id) {
+		t.Error("a session sees its own account's other sessions")
+	}
+	if code := end(guestToken, guest.csrf, root.id); code != http.StatusBadRequest {
+		t.Errorf("ending another account's session without the grant = %d, want 400", code)
+	}
+	if _, alive := s.sessions.get(rootToken); !alive {
+		t.Fatal("a session without rpcd's session destroy grant ended root's session")
+	}
+	if code := end(guestToken, guest.csrf, phone.id); code != http.StatusSeeOther {
+		t.Errorf("ending its own account's other session = %d, want 303", code)
+	}
+
+	b := s.backend.(fakeBackend)
+	b.grant = nil
+	b.access = true
+	s.backend = b
+	if body := access(rootToken); !strings.Contains(body, "10.0.0.50") || !strings.Contains(body, "end-session:"+guest.id) {
+		t.Error("root sees every account's sessions")
+	}
+	if code := end(rootToken, root.csrf, guest.id); code != http.StatusSeeOther {
+		t.Errorf("root ending another account's session = %d, want 303", code)
+	}
+	if _, alive := s.sessions.get(guestToken); alive {
+		t.Error("root's end left the session live")
+	}
+}
+
 // When a session started is said as "since", today by the clock alone and any
 // other day by its date.
 func TestSessionSince(t *testing.T) {

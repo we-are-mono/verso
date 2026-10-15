@@ -164,6 +164,7 @@ broken socket.**
    | How the last alert went (ADR-020), whose words could name the address, and a test alert | `uci verso read`; a test also `uci verso write` |
    | Config history (ADR-021): each entry's changes, the starting point, the current readings | `uci <config> read` for each config; an act on it also `uci <config> write` |
    | System → Events: the internet going down and coming back; the router starting; an apply | `ubus network.interface dump`; `ubus system info`; its config history entry's grants |
+   | Access's signed-in sessions of another rpcd account, and ending one | `ubus session list`; `ubus session destroy` — rpcd's own session object's grants, which no page's group carries and `verso-admin` does. A session's own account's sessions need none |
 
    A session refused the grant sees the reading's absence said plainly (an empty
    roster that says the account may not see devices), and a plugin receives no entry
@@ -262,10 +263,19 @@ ubusd's uid-0 ACL exemption, so every backend call is bounded by rpcd plus a ubu
   `verso.json` and the helper's `verso-helper.json`. A third,
   `/usr/share/rpcd/acl.d/verso-admin.json`, holds what an administrator's session
   needs beyond any page's reads: `uci *` read and write, for config history to show
-  and act on whatever config it names (ADR-021). A login whose lists name `*`, as
-  root's do, takes it up with every other group, so root holds every grant §9 asks
-  without LuCI's groups beside Verso's; a restricted login lists the groups it may
-  use by name and leaves `verso-admin` out.
+  and act on whatever config it names (ADR-021), and `ubus session list` and
+  `destroy`, for Access to list and end other accounts' sessions. It declares all
+  of them under `write` alone, as table entries (`"uci": {"*": ["read",
+  "write"]}`, `"ubus": {"session": ["list", "destroy"]}`) so each keeps its
+  function: a login takes the group up only through its `write` list, and one
+  that reads `*` but writes less takes none of it — `session list` answers every
+  session's `ubus_rpc_session`, which LuCI's `/ubus` beside Verso would let it
+  call as that session. A login whose `write` list names `*`, as root's does,
+  takes it up with every other group, so root holds every grant §9 asks without
+  LuCI's groups beside Verso's. A pattern takes up every group it matches, so a
+  restricted login lists the groups it may use by name and leaves `verso-admin`
+  out; a `write` pattern such as `verso-*` matches it and hands over the whole
+  group, unless a `!verso-admin` beside it denies it first.
 
 Plugins are confined the same way, and the isolation model separates each by uid: **each
 plugin gets its own non-root uid** (`verso-plugin-<name>`), sharing only the `verso` group.

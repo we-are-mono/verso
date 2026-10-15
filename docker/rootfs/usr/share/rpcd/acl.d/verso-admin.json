@@ -1,15 +1,19 @@
 {
   "verso-admin": {
-    "description": "Session grants for an administrator's login, whose lists name '*' (root's do): every uci config read and written, for config history to show and act on whatever config an apply or a direct edit touched. Verso ships it so an administrator holds these whatever else is installed; a restricted login lists the groups it may use by name and leaves this one out.",
-    "read": {
-      "uci": [
-        "*"
-      ]
-    },
+    "description": "Session grants for an administrator's login, whose write list names '*' (root's does): every uci config read and written, for config history to show and act on whatever config an apply or a direct edit touched, and rpcd's session list and destroy, for Access to list and end other accounts' sessions. All of it sits under write, so a login that reads '*' but writes less takes none of it: session list answers every session's sid. Verso ships it so an administrator holds these whatever else is installed; a restricted login lists the groups it may use by name and leaves this one out.",
     "write": {
-      "uci": [
-        "*"
-      ]
+      "ubus": {
+        "session": [
+          "list",
+          "destroy"
+        ]
+      },
+      "uci": {
+        "*": [
+          "read",
+          "write"
+        ]
+      }
     }
   }
 }

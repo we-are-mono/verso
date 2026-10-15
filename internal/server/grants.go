@@ -29,11 +29,13 @@ var leaseGrant = aclProbe{"ubus", "dhcp", "ipv6leases"}
 // shellProbes is every probe the shell asks before a reading it makes with
 // its own privilege, but config history's: `uci <config> read`, and `write`
 // for an act, of each config it names (configGrant). The ACL groups Verso
-// ships grant each of them to a login whose lists name '*', as root's do, so
-// root sees every such reading whatever else is installed.
+// ships grant each of them to a login whose write list names '*', as root's
+// does, so root sees every such reading whatever else is installed. Each is a
+// package var listed here, never an aclProbe written where it is asked, so
+// the test holding root to this list holds it to every probe.
 var shellProbes = []aclProbe{
 	leaseGrant, usageDaysGrant, usageLiveGrant, interfaceGrant, systemGrant,
-	alertsReadGrant, alertsWriteGrant,
+	alertsReadGrant, alertsWriteGrant, sessionListGrant, sessionDestroyGrant,
 }
 
 // configGrant is the uci grant of perm, read or write, on config.
