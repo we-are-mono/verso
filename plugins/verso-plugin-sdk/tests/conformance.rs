@@ -848,6 +848,53 @@ fn write_subject_kinds_fixture() {
     fs::write(format!("{dir}/subject-kinds.json"), json).unwrap();
 }
 
+// A meter cell's limits: one headroom with its warn and protect ticks, one
+// reading with no ceiling, and one share that sends neither and serializes as
+// it always has.
+#[test]
+fn write_meter_marks_fixture() {
+    let cells = vec![
+        TableCell {
+            text: "48.0 °C".into(),
+            fill: 50,
+            warn_mark: 89,
+            crit_mark: 100,
+            ..Default::default()
+        },
+        TableCell {
+            text: "71.0 °C".into(),
+            no_track: true,
+            ..Default::default()
+        },
+        TableCell {
+            text: "61 %".into(),
+            fill: 61,
+            ..Default::default()
+        },
+    ];
+    let share = serde_json::to_value(&cells[2]).unwrap();
+    assert_eq!(share, serde_json::json!({"text": "61 %", "fill": 61}));
+    let table = Widget::Table(Table {
+        columns: vec![TableColumn {
+            label: "Temperature".into(),
+            kind: "meter".into(),
+            ..Default::default()
+        }],
+        rows: cells
+            .into_iter()
+            .map(|cell| TableRow {
+                cells: vec![cell],
+                ..Default::default()
+            })
+            .collect(),
+        ..Default::default()
+    });
+    let dir = concat!(env!("CARGO_MANIFEST_DIR"), "/testdata");
+    fs::create_dir_all(dir).unwrap();
+    let json = serde_json::to_vec_pretty(&table).unwrap();
+    fs::write(format!("{dir}/widget-table-meter-marks.json"), json).unwrap();
+}
+
 // A phrase cell: the shell reads each part back as the one it is, in order.
 #[test]
 fn write_phrase_fixture() {

@@ -28,7 +28,7 @@ None. The Overview's Hardware card and the device panel keep their requirements:
 ## Impact
 
 - **ADR-022 (Overview cards)** names "the Hardware page's tiles" as what the `cpu` and `main` flags lead; amended in place to say those readings lead the page's Temperatures, Power and Cooling cards.
-- **ADR-005 (UI consistency contract)**: the meter cell's tick marks join the table schema; the SDK crate (`plugins/verso-plugin-sdk`) mirrors the new optional fields and its conformance test covers them.
+- **ADR-005 (UI consistency contract)**: the meter cell's tick marks join the table schema, documented in `docs/plugins.md`; the SDK crate (`plugins/verso-plugin-sdk`) mirrors the new optional fields and its conformance test covers them.
 - `internal/server/hardware.go`: the page composition, rebuilt from `Section`, `Table`, `Properties` and `Grid`; the tile builders (`hardwareVitals`, `cpuTile`, `powerTile`, `fanTile`, `fanStripTile`) and the readings table (`hardwareReadings`, `bandReadings`) go.
 - A new package for the board's facts (processor, cores, clock, memory, boot disk), reading sysfs and procfs once per page load behind an injectable root, as `sensors.Reader` does. `openwrt.Board` gains the `system` string from `ubus call system board` as the processor's fallback name.
 - `profile.json` gains an optional `processor` field (the DK: "NXP LS1046A"), documented in `profiles/README.md`. It is additive: a profile without it gets the kernel's name. The in-flight `board-profiles-runtime` change moves `profiles/` to `boards/`; whichever lands second carries the field to the new place.

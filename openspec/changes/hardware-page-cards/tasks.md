@@ -2,10 +2,10 @@
 
 ## 1. Meter cell: ticks, no track, figure slot
 
-- [ ] 1.1 Write failing tests in `internal/widget/meter_cell_test.go`: a meter cell with `WarnMark`/`CritMark` draws two ticks at those positions in the marigold-deep and crimson tones; `NoTrack` with a Text draws the figure and no track; a cell with neither renders exactly as today; the figure "100.0 °C" stays on one line in its slot
-- [ ] 1.2 Add `WarnMark`, `CritMark` and `NoTrack` to `TableCell` (`internal/widget/table.go`) and draw them in `templates/table.html.tmpl`: the track stops clipping its children, the figure slot widens, the track keeps a minimum width; verify 1.1 passes and the existing meter-cell and scroller tests stay green
-- [ ] 1.3 Mirror `warn_mark`, `crit_mark` and `no_track` on the SDK's `TableCell` (`plugins/verso-plugin-sdk/src/lib.rs`) as optional fields, with a conformance case in `tests/conformance.rs` that round-trips them and one that omits them; verify `cargo test` in the SDK crate
-- [ ] 1.4 Document the meter cell's ticks and no-track state in the table kinds comment (`table.go`), in DESIGN.md's table section, and in ADR-005's widget schema; rebuild `verso.css`; verify `make lint` and `make test`, then commit
+- [x] 1.1 Write failing tests in `internal/widget/meter_cell_test.go`: a meter cell with `WarnMark`/`CritMark` draws two ticks at those positions in the marigold-deep and crimson tones; `NoTrack` with a Text draws the figure and no track; a cell with neither renders exactly as today; the figure "100.0 °C" stays on one line in its slot
+- [x] 1.2 Add `WarnMark`, `CritMark` and `NoTrack` to `TableCell` (`internal/widget/table.go`) and draw them in `templates/table.html.tmpl`: the track stops clipping its children, the figure slot widens, the track keeps a minimum width; verify 1.1 passes and the existing meter-cell and scroller tests stay green
+- [x] 1.3 Mirror `warn_mark`, `crit_mark` and `no_track` on the SDK's `TableCell` (`plugins/verso-plugin-sdk/src/lib.rs`) as optional fields, with a conformance case in `tests/conformance.rs` that round-trips them and one that omits them; verify `cargo test` in the SDK crate
+- [x] 1.4 Document the meter cell's ticks and no-track state in the table kinds comment (`table.go`), in DESIGN.md's table section, and in the widget schema reference (`docs/plugins.md`); rebuild `verso.css`; verify `make lint` and `make test`, then commit
 
 ## 2. Sensors: the page's selectors
 

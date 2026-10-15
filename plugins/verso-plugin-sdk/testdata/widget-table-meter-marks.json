@@ -1,0 +1,37 @@
+{
+  "type": "table",
+  "columns": [
+    {
+      "label": "Temperature",
+      "kind": "meter"
+    }
+  ],
+  "rows": [
+    {
+      "cells": [
+        {
+          "text": "48.0 °C",
+          "fill": 50,
+          "warn_mark": 89,
+          "crit_mark": 100
+        }
+      ]
+    },
+    {
+      "cells": [
+        {
+          "text": "71.0 °C",
+          "no_track": true
+        }
+      ]
+    },
+    {
+      "cells": [
+        {
+          "text": "61 %",
+          "fill": 61
+        }
+      ]
+    }
+  ]
+}

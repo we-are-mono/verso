@@ -157,6 +157,29 @@ func TestSDKPhraseReachesTheShell(t *testing.T) {
 	}
 }
 
+// TestSDKMeterMarksReachTheShell: a meter cell's ticks and its no-track state
+// arrive as the SDK built them, and a share that sends neither arrives bare.
+func TestSDKMeterMarksReachTheShell(t *testing.T) {
+	data, err := os.ReadFile(filepath.Join("..", "..", "plugins", "verso-plugin-sdk", "testdata", "widget-table-meter-marks.json"))
+	if err != nil {
+		t.Skip("SDK meter marks fixture not present — run `cargo test` in plugins/verso-plugin-sdk to generate it")
+	}
+	w, err := Decode(data)
+	if err != nil {
+		t.Fatalf("SDK meter marks fixture does not decode: %v", err)
+	}
+	rows := w.(*Table).Rows
+	if c := rows[0].Cells[0]; c.WarnMark != 89 || c.CritMark != 100 || c.Fill != 50 || c.NoTrack {
+		t.Errorf("SDK headroom lost its marks crossing the wire: %+v", c)
+	}
+	if c := rows[1].Cells[0]; !c.NoTrack || c.Text != "71.0 °C" {
+		t.Errorf("SDK reading with no ceiling lost its state crossing the wire: %+v", c)
+	}
+	if c := rows[2].Cells[0]; c.WarnMark != 0 || c.CritMark != 0 || c.NoTrack || c.Fill != 61 {
+		t.Errorf("SDK share gained marks crossing the wire: %+v", c)
+	}
+}
+
 // TestSDKFactHeadsReachTheShell: a fact sheet's head arrives as the SDK
 // built it, a group's title and chip or two columns' names, and so does the
 // sentence that stands where its rows would.

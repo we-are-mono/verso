@@ -2338,6 +2338,18 @@ pub struct TableCell {
     /// `variant` its band.
     #[serde(skip_serializing_if = "is_zero")]
     pub fill: u32,
+    /// A meter cell's warn limit, a tick at this percent of the track; 0
+    /// draws none.
+    #[serde(skip_serializing_if = "is_zero")]
+    pub warn_mark: u32,
+    /// A meter cell's protect limit, a tick at this percent of the track with
+    /// its right edge on the point; 0 draws none.
+    #[serde(skip_serializing_if = "is_zero")]
+    pub crit_mark: u32,
+    /// A meter cell with no ceiling to measure against: `text` alone, with
+    /// no track.
+    #[serde(skip_serializing_if = "is_false")]
+    pub no_track: bool,
     #[serde(skip_serializing_if = "is_false")]
     pub dot: bool,
     #[serde(skip_serializing_if = "String::is_empty")]

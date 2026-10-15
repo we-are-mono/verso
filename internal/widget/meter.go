@@ -109,6 +109,15 @@ func MeterClip(pct int) string {
 	return fmt.Sprintf("inset(0 %d%% 0 0 round 9999px)", 100-pct)
 }
 
+// meterMark places a tick at pct percent of a track, as a CSS position; no
+// tick at all for zero or less, and none past the track's end.
+func meterMark(pct int) string {
+	if pct <= 0 {
+		return ""
+	}
+	return fmt.Sprintf("%d%%", min(pct, 100))
+}
+
 func (m *Meter) renderInto(r *Renderer, out io.Writer, _ string) error {
 	fill := m.Fill
 	if fill < 0 {
@@ -116,21 +125,12 @@ func (m *Meter) renderInto(r *Renderer, out io.Writer, _ string) error {
 	} else if fill > 100 {
 		fill = 100
 	}
-	mark := func(pct int) string {
-		if pct <= 0 {
-			return ""
-		}
-		if pct > 100 {
-			pct = 100
-		}
-		return fmt.Sprintf("%d%%", pct)
-	}
 	return r.execute(out, "meter.html.tmpl", meterView{
 		Overview: m.Overview,
 		Label:    m.Label, Value: m.Value, Unit: m.Unit, Detail: m.Detail,
 		Name: m.Name, Icon: m.Icon, Role: m.Role, Band: MeterBand(fill, m.Variant),
 		Clip:    template.CSS(MeterClip(fill)), //nolint:gosec // built here from a clamped integer, never from input
-		Compact: m.Compact, WarnMark: mark(m.WarnMark), CritMark: mark(m.CritMark),
+		Compact: m.Compact, WarnMark: meterMark(m.WarnMark), CritMark: meterMark(m.CritMark),
 		Tone: m.Tone, NoTrack: m.NoTrack,
 	})
 }

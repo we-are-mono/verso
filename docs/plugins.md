@@ -893,7 +893,14 @@ Column kinds, one treatment each (never mix them per row):
 - `"meter"` — a share of something: a 6px bar filled to the cell's `fill`
   (0–100) with `text` as the figure beside it (`"61 %"`). `variant` bands the
   fill — `warning` marigold, `danger` crimson, anything else green — so the
-  listing sets its own thresholds. A cell with no `text` is the faint dash.
+  listing sets its own thresholds. A headroom (a temperature against the
+  point the hardware protects itself) ticks its limits on the bar:
+  `warn_mark` and `crit_mark` place a tick at that percent of the bar, the
+  critical tick's right edge on its point; 0 draws none. A cell that sends
+  neither draws no tick, so a share keeps the bar it has always had. A reading with no
+  ceiling sets `no_track`: its `text` stands in the figure's place and no bar
+  is drawn, never a bar against a guessed ceiling. A cell with no `text` is
+  the faint dash.
 - A `text` cell may carry a `chip`: the config value the word stands for
   (`"WPA3"` beside `sae`).
 - `"toggle"` — an on/off checkbox; the cell carries `on` and an optional form `name`.

@@ -46,7 +46,10 @@ import (
 //	"meter"    — a share of something: a 6px track filled to the cell's Fill
 //	             (0–100) with the figure (Text) beside it; Variant bands the
 //	             fill (warning marigold, danger crimson, else green), so the
-//	             listing owns its thresholds. No Text is the faint dash
+//	             listing owns its thresholds. WarnMark and CritMark tick a
+//	             headroom's limits on the track; NoTrack keeps the figure
+//	             and draws no track, for a reading with no ceiling. No Text
+//	             is the faint dash
 //	"figures"  — one or more figures side by side, each in a fixed slot, in
 //	             Ink; an inked cell (Ink) writes them in its Variant's Deep
 //	             step instead (success green, warning marigold, danger
@@ -456,6 +459,9 @@ type TableCell struct {
 	Text         string          `json:"text,omitempty"`
 	Variant      string          `json:"variant,omitempty"`       // pill cells: the badge vocabulary ("success" | "warning" | "danger" | "info" | "neutral"); meter cells: the fill's band
 	Fill         int             `json:"fill,omitempty"`          // meter cells: the share filled, 0–100; Text is the figure beside it
+	WarnMark     int             `json:"warn_mark,omitempty"`     // meter cells: a tick at this percent of the track (a warn limit); 0 draws none
+	CritMark     int             `json:"crit_mark,omitempty"`     // meter cells: a tick at this percent of the track (a protect limit), its right edge on the point; 0 draws none
+	NoTrack      bool            `json:"no_track,omitempty"`      // meter cells: the figure alone, for a reading with no ceiling to measure against
 	Dot          bool            `json:"dot,omitempty"`           // pill cells: leading status dot — the same cue the badge carries elsewhere
 	Icon         string          `json:"icon,omitempty"`          // pill cells: a leading Lucide icon on the badge (e.g. a firewall verdict's check/ban)
 	Copy         bool            `json:"copy,omitempty"`          // mono cells: offer the inline copy button beside the value
@@ -799,8 +805,11 @@ type tableCellView struct {
 	// Lasting is the cell's Duration written.
 	Lasting units.Span
 	// Clip is a meter cell's fill, the meter widget's own clip (MeterClip);
-	// empty when the cell has no reading to draw.
+	// empty when the cell has no reading to draw or no track to draw it on.
 	Clip template.CSS
+	// WarnAt and CritAt are a meter cell's ticks as CSS positions ("89%"),
+	// the meter widget's own (meterMark); empty draws none.
+	WarnAt, CritAt string
 	// FiguresShown is whether any of a figures cell's figures has a number,
 	// so the dash stands only for a cell with none.
 	FiguresShown bool
@@ -1386,9 +1395,10 @@ func (t *Table) rowViews(r *Renderer, csrf string, rows []TableRow, hasDetail bo
 				if kind == "pill" && cv.Text != "" {
 					cv.Pill = &Badge{Variant: cv.Variant, Text: cv.Text, Dot: cv.Dot, Icon: cv.Icon}
 				}
-				if kind == "meter" && cv.Text != "" && cv.Text != "—" {
+				if kind == "meter" && cv.Text != "" && cv.Text != "—" && !cv.NoTrack {
 					fill := min(max(cv.Fill, 0), 100)
 					cv.Clip = template.CSS(MeterClip(fill)) //nolint:gosec // built from a clamped integer, never from input text
+					cv.WarnAt, cv.CritAt = meterMark(cv.WarnMark), meterMark(cv.CritMark)
 				}
 				if kind == "figures" {
 					for _, f := range cv.Figures {

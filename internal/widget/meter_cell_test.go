@@ -61,6 +61,65 @@ func TestMeterCellWithNoReadingIsADash(t *testing.T) {
 	}
 }
 
+// TestMeterCellMarksItsLimits: a headroom listing (a temperature against the
+// point the hardware protects itself) ticks its warn and protect limits on the
+// track, as the compact meter does, so the bar says how far the reading is
+// from each.
+func TestMeterCellMarksItsLimits(t *testing.T) {
+	got := render(t, newRenderer(t), meterTable(TableCell{Text: "48.0 °C", Fill: 50, WarnMark: 89, CritMark: 100}))
+	for _, want := range []string{
+		`bg-marigold-deep" style="left: 89%"`,
+		`bg-crimson" style="left: calc(100% - 0.125rem)"`,
+		`>48.0 °C<`,
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("meter cell missing %q:\n%s", want, got)
+		}
+	}
+	// The ticks stand a pixel past the track above and below, so the track no
+	// longer clips what it holds; the fill clips itself.
+	if strings.Contains(got, "overflow-hidden rounded-full bg-rule") {
+		t.Errorf("the track clips its ticks:\n%s", got)
+	}
+}
+
+// TestMeterCellWithoutMarksIsUnchanged: a share (airtime, leases) has no
+// limits, so its cell draws no tick.
+func TestMeterCellWithoutMarksIsUnchanged(t *testing.T) {
+	got := render(t, newRenderer(t), meterTable(TableCell{Text: "61 %", Fill: 61}))
+	if strings.Contains(got, "-top-1 -bottom-1") {
+		t.Errorf("a meter cell with no marks drew a tick:\n%s", got)
+	}
+}
+
+// TestMeterCellWithNoTrackKeepsItsFigure: a reading with no limits has no
+// honest headroom, so it shows its figure in the figure's slot and no track,
+// never a bar against a guessed ceiling.
+func TestMeterCellWithNoTrackKeepsItsFigure(t *testing.T) {
+	got := render(t, newRenderer(t), meterTable(TableCell{Text: "71.0 °C", NoTrack: true}))
+	if strings.Contains(got, "clip-path") || strings.Contains(got, "bg-rule") {
+		t.Errorf("a no-track cell drew a track:\n%s", got)
+	}
+	if !strings.Contains(got, `>71.0 °C<`) || strings.Contains(got, `aria-hidden="true">—<`) {
+		t.Errorf("a no-track cell should show its figure, not the dash:\n%s", got)
+	}
+}
+
+// TestMeterCellFigureHoldsAReadingWithItsUnit: the figure's slot is one width
+// for every row, so the bars end together, and it holds a temperature with its
+// unit on one line.
+func TestMeterCellFigureHoldsAReadingWithItsUnit(t *testing.T) {
+	got := render(t, newRenderer(t), meterTable(TableCell{Text: "100.0 °C", Fill: 100}))
+	if !strings.Contains(got, `w-16 shrink-0 text-right tabular-nums whitespace-nowrap`) {
+		t.Errorf("the figure's slot should be 4rem, one line:\n%s", got)
+	}
+	// The track keeps a floor, so a narrow window scrolls the table rather
+	// than shrinking the bar to a stub.
+	if !strings.Contains(got, `min-w-16 flex-1`) {
+		t.Errorf("the track should keep a minimum width:\n%s", got)
+	}
+}
+
 // TestTextCellCarriesItsChip: a plain word can cite the config value it stands
 // for — "WPA3" beside the `sae` it writes — in the same chip a name cell uses.
 func TestTextCellCarriesItsChip(t *testing.T) {
