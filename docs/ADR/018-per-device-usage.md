@@ -126,9 +126,10 @@ Nothing is drawn as a share: the router knows no line speed, and a share of the
 WAN's current total says only who else is busy, so a device alone on the line
 would read as full at any rate. Idle rows show the empty dash. The device panel
 opens on the shell's Details tab: the machine facts
-the roster does not show (the MAC among them), then the device's live traffic
-graph, the overview's Internet graph drawn for the device, and Today, Last 7
-days, This month and Last month. The shell keeps the last minute of rates it
+the roster does not show (the MAC among them), then, under the heading "Usage",
+the device's live traffic graph, the overview's Internet graph drawn for the
+device in its two lanes (download over upload, each its own scale and peak, on
+the drawer's 24px cells), and Today, Last 7 days, This month and Last month. The shell keeps the last minute of rates it
 took while the roster streamed, so the graph opens on what was watched before
 the panel, flat where nothing was, and the roster's stream feeds it from there;
 it is drawn only in the panel's own fetch, when a device is opened.
