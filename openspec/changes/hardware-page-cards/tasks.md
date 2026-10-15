@@ -35,7 +35,7 @@
 
 ## 6. The strip grid style goes
 
-- [ ] 6.1 Remove the `strip` branch from `internal/widget/templates/grid.html.tmpl` and `"strip"` from the style list in `grid_test.go`; verify no Go or Rust source names the style (`grep -rn '"strip"'` finds only the unrelated days strip in `field_a11y_test.go`), `make lint` and `make test`, then commit
+- [x] 6.1 Remove the `strip` branch from `internal/widget/templates/grid.html.tmpl` and `"strip"` from the style list in `grid_test.go`; verify no Go or Rust source names the style (`grep -rn '"strip"'` finds only the unrelated days strip in `field_a11y_test.go`), `make lint` and `make test`, then commit
 
 ## 7. Integration
 

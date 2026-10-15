@@ -160,7 +160,7 @@ func TestGridColumnsReachTheStylesheet(t *testing.T) {
 	attr := regexp.MustCompile(`class="([^"]*)"`)
 	escape := strings.NewReplacer("@", `\@`, ":", `\:`, "[", `\[`, "]", `\]`, ".", `\.`)
 	r := newRenderer(t)
-	for _, style := range []string{"", "form", "strip", "rail"} {
+	for _, style := range []string{"", "form", "rail"} {
 		for columns := 1; columns <= 5; columns++ {
 			got := render(t, r, &Grid{Style: style, Columns: columns, Children: []Widget{&Callout{Body: "a"}, &Callout{Body: "b"}}})
 			for _, m := range attr.FindAllStringSubmatch(got, -1) {
