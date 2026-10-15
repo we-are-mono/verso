@@ -493,9 +493,14 @@ pub fn stage(path: &str, expected: &str, body: &str) -> Result<Value, Failure> {
     {
         return Err(Failure::invalid("Too many staged files."));
     }
-    // A profile was edited folded; its keys go back in from what it held.
+    // A profile was edited folded; its keys go back in from what it held,
+    // never where the next fold would show them.
     let restored = match family {
-        Family::Openvpn => Some(crate::openvpn::unfold(body, previous.unwrap_or(""))),
+        Family::Openvpn => Some(crate::openvpn::unfold(body, previous.unwrap_or("")).ok_or_else(|| {
+            Failure::invalid(
+                "A folded block was moved, or a line added before it, where OpenVPN would not read it as a block. Move it back, or paste the block in whole.",
+            )
+        })?),
         _ => None,
     };
     let body = restored.as_deref().unwrap_or(body);
