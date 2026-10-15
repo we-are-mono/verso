@@ -31,6 +31,7 @@ import (
 	"github.com/we-are-mono/verso/internal/i18n"
 	"github.com/we-are-mono/verso/internal/listen"
 	"github.com/we-are-mono/verso/internal/openwrt"
+	"github.com/we-are-mono/verso/internal/palette"
 	"github.com/we-are-mono/verso/internal/plugin"
 	"github.com/we-are-mono/verso/internal/ports"
 	"github.com/we-are-mono/verso/internal/sensors"
@@ -47,6 +48,12 @@ var templateFS embed.FS
 
 //go:embed assets/verso.css
 var cssText string
+
+// paletteText is the palette's source, read for the colours the shell writes
+// outside the stylesheet.
+//
+//go:embed assets/palette.css
+var paletteText string
 
 // speculationRules has the browser fetch a rail destination the moment its
 // row is pressed, so the page is on its way before the press ends. A page
@@ -177,8 +184,11 @@ type Server struct {
 	// pointer atomically (ADR-012).
 	bundle atomic.Pointer[i18n.Bundle]
 	css    template.CSS
-	devCSS string // dev hot-reload stylesheet path, "" in a normal build
-	bootID string // per-process id handleCSS exposes in dev, so the hot-reload script detects a redeploy
+	// palette is the palette's colours, read once from the embedded palette.css,
+	// for what the shell writes outside the stylesheet.
+	palette palette.Palette
+	devCSS  string // dev hot-reload stylesheet path, "" in a normal build
+	bootID  string // per-process id handleCSS exposes in dev, so the hot-reload script detects a redeploy
 	// keptSessions is where Close leaves the sessions and New takes them back,
 	// "" outside a dev session (devSessionsPath).
 	keptSessions string
@@ -261,6 +271,10 @@ func New(
 	if err != nil {
 		return nil, fmt.Errorf("server: parse templates: %w", err)
 	}
+	colours, err := palette.Parse(paletteText)
+	if err != nil {
+		return nil, fmt.Errorf("server: %w", err)
+	}
 	interfaceSampler := telemetry.NewSampler()
 	interfaceSampler.Start()
 	profile := boardProfile()
@@ -283,6 +297,7 @@ func New(
 		loginLimiter:   newLoginLimiter(time.Now),
 		loginInternet:  openwrt.InternetAvailable,
 		css:            template.CSS(cssText),
+		palette:        colours,
 		probe:          func(at plugin.Endpoint) bool { return transport.Alive(at) },
 		stats:          sysstat.New(),
 		telemetry:      interfaceSampler,
