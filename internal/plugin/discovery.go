@@ -4,10 +4,13 @@
 package plugin
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io/fs"
 	"sort"
+	"strconv"
+	"strings"
 )
 
 // Discover parses every manifest matched by glob within fsys. It is resilient by
@@ -38,6 +41,10 @@ func Discover(fsys fs.FS, glob string) (manifests []Manifest, problems []error) 
 			problems = append(problems, fmt.Errorf("plugin: parse %s: %w", path, err))
 			continue
 		}
+		if err := readAlike(data); err != nil {
+			problems = append(problems, fmt.Errorf("plugin: %s: %w", path, err))
+			continue
+		}
 		if err := m.validate(); err != nil {
 			problems = append(problems, fmt.Errorf("plugin: %s: %w", path, err))
 			continue
@@ -50,4 +57,141 @@ func Discover(fsys fs.FS, glob string) (manifests []Manifest, problems []error) 
 		manifests = append(manifests, m)
 	}
 	return manifests, problems
+}
+
+// readAlike is an error when a manifest, valid JSON, is one verso-rpcd, which
+// reads the manifest for its secrets (ADR-021), would read otherwise than
+// encoding/json does, or not at all: one spelling a key twice (keysOnce),
+// nesting a value deeper than its reader allows (maxDepth), or escaping half
+// a surrogate pair (surrogatesPaired). Neither reads such a manifest, so both
+// take the same secrets from every manifest they read.
+func readAlike(data []byte) error {
+	if err := surrogatesPaired(data); err != nil {
+		return err
+	}
+	return keysOnce(data)
+}
+
+// maxDepth is the deepest a manifest's objects and arrays nest, the manifest
+// itself one level: serde_json, verso-rpcd's reader, refuses one deeper,
+// where encoding/json reads it.
+const maxDepth = 127
+
+// keysOnce is an error when a manifest, valid JSON, spells a key twice in one
+// object, in the same case or another (fieldName), or nests deeper than
+// maxDepth. encoding/json takes the last of two spellings of one field, and
+// decodes a repeated object into the first; verso-rpcd would keep both
+// spellings, or the last object whole.
+func keysOnce(data []byte) error {
+	return valueKeysOnce(json.NewDecoder(bytes.NewReader(data)), 1)
+}
+
+// valueKeysOnce reads the next value from dec, at depth, as keysOnce. Token
+// reads a number as a float64, so one past its range is an error here, as
+// serde_json refuses it.
+func valueKeysOnce(dec *json.Decoder, depth int) error {
+	token, err := dec.Token()
+	if err != nil {
+		return err
+	}
+	if delim, ok := token.(json.Delim); ok && depth > maxDepth {
+		return fmt.Errorf("%c nested deeper than %d", delim, maxDepth)
+	}
+	switch token {
+	case json.Delim('{'):
+		spelled := map[string]string{}
+		for dec.More() {
+			token, err := dec.Token()
+			if err != nil {
+				return err
+			}
+			key, _ := token.(string)
+			if before, twice := spelled[fieldName(key)]; twice {
+				return fmt.Errorf("key %q spelled twice, also as %q", key, before)
+			}
+			spelled[fieldName(key)] = key
+			if err := valueKeysOnce(dec, depth+1); err != nil {
+				return err
+			}
+		}
+	case json.Delim('['):
+		for dec.More() {
+			if err := valueKeysOnce(dec, depth+1); err != nil {
+				return err
+			}
+		}
+	default:
+		return nil
+	}
+	_, err = dec.Token()
+	return err
+}
+
+// surrogatesPaired is an error when a string in a manifest, valid JSON,
+// escapes half a surrogate pair: a \u escape of a leading surrogate not
+// followed at once by one of a trailing surrogate, or of a trailing one
+// alone. encoding/json reads it as U+FFFD; serde_json refuses it.
+func surrogatesPaired(data []byte) error {
+	inString := false
+	for i := 0; i < len(data); i++ {
+		switch c := data[i]; {
+		case !inString:
+			inString = c == '"'
+		case c == '"':
+			inString = false
+		case c == '\\':
+			i++
+			if data[i] != 'u' {
+				continue
+			}
+			r := escaped(data[i+1 : i+5])
+			i += 4
+			switch {
+			case isTrailing(r):
+				return fmt.Errorf(`\u%04x escapes a trailing surrogate alone`, r)
+			case isLeading(r):
+				if len(data) < i+7 || !bytes.HasPrefix(data[i+1:], []byte(`\u`)) || !isTrailing(escaped(data[i+3:i+7])) {
+					return fmt.Errorf(`\u%04x escapes a leading surrogate alone`, r)
+				}
+				i += 6
+			}
+		}
+	}
+	return nil
+}
+
+// escaped is the code unit four hex digits of a \u escape spell, or -1.
+func escaped(hex []byte) rune {
+	n, err := strconv.ParseUint(string(hex), 16, 16)
+	if err != nil {
+		return -1
+	}
+	return rune(n)
+}
+
+func isLeading(r rune) bool  { return r >= 0xd800 && r < 0xdc00 }
+func isTrailing(r rune) bool { return r >= 0xdc00 && r < 0xe000 }
+
+// Runes encoding/json folds into an ASCII letter of a field's name.
+const (
+	longS      = 0x17f  // ſ, an s
+	kelvinSign = 0x212a // K, a k
+)
+
+// fieldName is the field of a manifest a key names, as encoding/json matches
+// a key to a field. Every field's name is ASCII, so a key names one in any
+// case, the long s for s and the Kelvin sign for k; any other rune names
+// itself. verso-rpcd folds a key alike.
+func fieldName(key string) string {
+	return strings.Map(func(r rune) rune {
+		switch {
+		case r >= 'A' && r <= 'Z':
+			return r + 'a' - 'A'
+		case r == longS:
+			return 's'
+		case r == kelvinSign:
+			return 'k'
+		}
+		return r
+	}, key)
 }

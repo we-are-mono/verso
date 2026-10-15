@@ -19,8 +19,10 @@
 //! by renaming into place. When the helper starts it spools every config, so
 //! an edit made while it was not running is found too.
 
+use serde::de::{self, Deserialize, Deserializer, MapAccess, SeqAccess, Visitor};
 use serde_json::{json, Value};
 use std::collections::{HashMap, HashSet};
+use std::fmt;
 use std::fs;
 use std::io::{ErrorKind, Read, Write};
 use std::os::fd::FromRawFd;
@@ -221,14 +223,72 @@ fn secret_options(plugins: &Path) -> HashSet<String> {
             };
             // As the shell's encoding/json: a byte that is not UTF-8 reads as
             // U+FFFD, and the manifest is read still.
-            let text = String::from_utf8_lossy(&bytes);
-            let Ok(manifest) = serde_json::from_str::<Value>(&text) else {
-                continue;
-            };
-            names.extend(plugin_secrets(&manifest));
+            names.extend(manifest_secrets(&String::from_utf8_lossy(&bytes)).unwrap_or_default());
         }
     }
     names
+}
+
+/// manifest_secrets is the secrets a manifest's text names (plugin_secrets),
+/// or None for one the shell does not read: not JSON, or spelling a key twice
+/// in one object (KeysOnce).
+fn manifest_secrets(text: &str) -> Option<Vec<String>> {
+    serde_json::from_str::<KeysOnce>(text).ok()?;
+    let manifest: Value = serde_json::from_str(text).ok()?;
+    Some(plugin_secrets(&manifest))
+}
+
+/// KeysOnce reads a JSON value, and fails on one that spells a key twice in
+/// one object, as written or in another case (folded). The shell's decoder
+/// takes the last of two spellings of one field, and decodes a repeated
+/// object into the first, where a Value keeps both spellings, or the last
+/// object whole: the shell skips such a manifest, and so does the helper.
+struct KeysOnce;
+
+impl<'de> Deserialize<'de> for KeysOnce {
+    fn deserialize<D: Deserializer<'de>>(json: D) -> Result<Self, D::Error> {
+        json.deserialize_any(KeysOnce)
+    }
+}
+
+impl<'de> Visitor<'de> for KeysOnce {
+    type Value = KeysOnce;
+
+    fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str("a JSON value")
+    }
+    fn visit_unit<E>(self) -> Result<KeysOnce, E> {
+        Ok(KeysOnce)
+    }
+    fn visit_bool<E>(self, _: bool) -> Result<KeysOnce, E> {
+        Ok(KeysOnce)
+    }
+    fn visit_i64<E>(self, _: i64) -> Result<KeysOnce, E> {
+        Ok(KeysOnce)
+    }
+    fn visit_u64<E>(self, _: u64) -> Result<KeysOnce, E> {
+        Ok(KeysOnce)
+    }
+    fn visit_f64<E>(self, _: f64) -> Result<KeysOnce, E> {
+        Ok(KeysOnce)
+    }
+    fn visit_str<E>(self, _: &str) -> Result<KeysOnce, E> {
+        Ok(KeysOnce)
+    }
+    fn visit_seq<A: SeqAccess<'de>>(self, mut items: A) -> Result<KeysOnce, A::Error> {
+        while items.next_element::<KeysOnce>()?.is_some() {}
+        Ok(KeysOnce)
+    }
+    fn visit_map<A: MapAccess<'de>>(self, mut object: A) -> Result<KeysOnce, A::Error> {
+        let mut spelled = HashSet::new();
+        while let Some(key) = object.next_key::<String>()? {
+            if !spelled.insert(folded(&key)) {
+                return Err(de::Error::custom(format!("key {key:?} spelled twice")));
+            }
+            object.next_value::<KeysOnce>()?;
+        }
+        Ok(KeysOnce)
+    }
 }
 
 /// plugin_secrets is the secrets a manifest names in a config its acl writes
@@ -254,25 +314,29 @@ fn plugin_secrets(manifest: &Value) -> Vec<String> {
 }
 
 /// fields is the value of each key of object that names field, a lower-case
-/// name, as the shell's encoding/json matches a key to a field: by Unicode
-/// simple case folding, so an ASCII letter in either case, ſ for s and the
-/// Kelvin sign for k. Each of a field's spellings counts.
+/// name, as the shell's encoding/json matches a key to a field (folded). A
+/// manifest read spells each field once (KeysOnce).
 fn fields<'a>(object: &'a Value, field: &'a str) -> impl Iterator<Item = &'a Value> {
     object
         .as_object()
         .into_iter()
         .flatten()
-        .filter(move |(key, _)| folds_to(key, field))
+        .filter(move |(key, _)| folded(key) == field)
         .map(|(_, value)| value)
 }
 
-fn folds_to(key: &str, field: &str) -> bool {
-    let mut key = key.chars();
-    field.chars().all(|f| {
-        key.next().is_some_and(|c| {
-            c.to_ascii_lowercase() == f || (f == 's' && c == 'ſ') || (f == 'k' && c == '\u{212a}')
+/// folded is the field a key names, as the shell's encoding/json matches a
+/// key to a field, by Unicode simple case folding. Every field's name is
+/// ASCII, so a key names one in any case, ſ for s and the Kelvin sign for k;
+/// any other character names itself. The shell folds a key alike.
+fn folded(key: &str) -> String {
+    key.chars()
+        .map(|c| match c {
+            'ſ' => 's',
+            '\u{212a}' => 'k',
+            c => c.to_ascii_lowercase(),
         })
-    }) && key.next().is_none()
+        .collect()
 }
 
 /// fingerprint_secrets replaces the value of every secret option in sections
@@ -580,7 +644,10 @@ mod tests {
     }
 
     // The shell's test reads the same cases: what one takes for a plugin's
-    // secrets, the other does.
+    // secrets, the other does, and a manifest one does not read, neither does.
+    // A case's text is its manifest as written, where the file cannot hold it
+    // as a value: nested deep, escaping half a surrogate pair, or a number
+    // past a float64's range.
     #[test]
     fn a_plugins_secrets_are_read_as_the_shell_reads_them() {
         let cases: Vec<Value> = serde_json::from_str(include_str!(
@@ -588,11 +655,45 @@ mod tests {
         ))
         .unwrap();
         for case in cases {
-            let mut got = plugin_secrets(&case["manifest"]);
-            got.sort();
-            let want: Vec<String> = serde_json::from_value(case["secrets"].clone()).unwrap();
+            let text = match case["text"].as_str() {
+                Some(text) => text.to_owned(),
+                None => case["manifest"].to_string(),
+            };
+            let got = manifest_secrets(&text).map(|mut got| {
+                got.sort();
+                got
+            });
+            let want: Option<Vec<String>> = if case["skipped"] == true {
+                None
+            } else {
+                Some(serde_json::from_value(case["secrets"].clone()).unwrap())
+            };
             assert_eq!(got, want, "{}", case["case"]);
         }
+    }
+
+    // A key spelled twice in one object, as written or in another case, is
+    // one field the shell's decoder takes the last of, or merges, so the
+    // shell skips the manifest and the helper takes none of its secrets.
+    #[test]
+    fn a_manifest_spelling_a_key_twice_is_not_read() {
+        let head =
+            r#"{"id":"z","acl":{"write":[{"scope":"uci","object":"vpn","function":"write"}]},"#;
+        for twice in [
+            r#""secrets":["vpn.a"],"secrets":["vpn.b"]}"#,
+            r#""acl":{"read":[]},"secrets":["vpn.a"]}"#,
+            concat!(r#""secrets":["vpn.a"],"\"#, r#"u0053ECRETS":["vpn.b"]}"#),
+            r#""secrets":["vpn.a"],"nav":[{"label":"L","LABEL":"M"}]}"#,
+            "\"secrets\":[\"vpn.a\"],\"soc\u{212a}et\":1,\"socket\":2}",
+        ] {
+            assert_eq!(manifest_secrets(&format!("{head}{twice}")), None, "{twice}");
+        }
+        assert_eq!(
+            manifest_secrets(&format!(r#"{head}"secrets":["vpn.a"],"wrıte":1}}"#)),
+            Some(vec!["vpn.a".to_owned()]),
+            "a dotless i is no i"
+        );
+        assert_eq!(manifest_secrets("{ not json"), None);
     }
 
     // The shell reads a manifest that is not all UTF-8 with each byte that is

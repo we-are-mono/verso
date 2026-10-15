@@ -4,16 +4,20 @@
 package server
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"reflect"
 	"slices"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"testing/fstest"
 	"time"
@@ -253,12 +257,226 @@ func TestHistoryIsScrubbedOfTheSecretsTheShellKnows(t *testing.T) {
 	m.Secrets = []string{"vpn.auth_pass"}
 	s.SetRescan(func() []plugin.Manifest { return []plugin.Manifest{m} })
 	s.Rescan()
+	s.scrubs.wait()
 	if found := heldIn(t, path, "PASS-BEFORE-ITS-PLUGIN"); len(found) > 0 {
 		t.Fatalf("history.db holds the plugin's secret:\n%s", strings.Join(found, "\n"))
 	}
 	all, _ := store.Changes(t.Context(), 10)
 	if words := all[0].Items[1].Words; words != "vpn: office.auth_pass = ••••••••" {
 		t.Errorf("words = %q", words)
+	}
+}
+
+// TestARescanAnswersBeforeItsScrub: a rescan answers an operator's install
+// or remove, and rewriting history.db takes as long as the file is large, so
+// the plugins it read are served, and the sessions given their grants, while
+// its scrub waits on another; the scrub runs once that one ends.
+func TestARescanAnswersBeforeItsScrub(t *testing.T) {
+	var refreshed []string
+	s := newServerWith(t, grantsBackend{refreshed: &refreshed}, &fakeTransport{}, nil)
+	path := filepath.Join(t.TempDir(), "history.db")
+	store, err := history.Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = store.Close() })
+	s.historyStore, s.changeLog = store, store
+	s.sessions.CreateWithMetadata("sid-1", "root", "", "")
+	record(t, store, history.Change{Time: time.Unix(60, 0), Status: history.ChangeApplied, OldRead: true, Items: []history.ChangeItem{
+		{Page: "VPN", Verb: "changed", Words: "vpn: office.auth_pass = PASS-BEFORE-ITS-PLUGIN", Verbatim: true, Ops: []history.ChangeOp{
+			{Config: "vpn", Section: "office", Op: "set", Option: "auth_pass", Value: text("PASS-BEFORE-ITS-PLUGIN")},
+		}},
+	}})
+	m := demoACLManifest()
+	m.ID = "vpn"
+	m.ACL.Write = append(m.ACL.Write, plugin.ACLScope{Scope: "uci", Object: "vpn", Function: "write"})
+	m.Secrets = []string{"vpn.auth_pass"}
+	s.SetRescan(func() []plugin.Manifest { return []plugin.Manifest{m} })
+
+	s.scrubbing.Lock()
+	answered := make(chan struct{})
+	go func() {
+		s.Rescan()
+		close(answered)
+	}()
+	select {
+	case <-answered:
+	case <-time.After(5 * time.Second):
+		s.scrubbing.Unlock()
+		t.Fatal("the rescan waited on the scrub")
+	}
+	if _, served := s.manifestByID("vpn"); !served || !slices.Equal(refreshed, []string{"sid-1"}) {
+		t.Errorf("before its scrub, the rescan served the plugin %v and refreshed the grants of %q", served, refreshed)
+	}
+	if found := heldIn(t, path, "PASS-BEFORE-ITS-PLUGIN"); len(found) == 0 {
+		t.Fatal("scrubbed while another scrub ran")
+	}
+	s.scrubbing.Unlock()
+	s.scrubs.wait()
+	if found := heldIn(t, path, "PASS-BEFORE-ITS-PLUGIN"); len(found) > 0 {
+		t.Fatalf("history.db holds the plugin's secret:\n%s", strings.Join(found, "\n"))
+	}
+}
+
+// TestScrubsAskedForMeanwhileRunOnceMore: a scrub asked for while one runs
+// is run once more after it, with the secrets known then, however many were
+// asked for; never two at once.
+func TestScrubsAskedForMeanwhileRunOnceMore(t *testing.T) {
+	var q coalesced
+	release := make(chan struct{})
+	started := make(chan struct{}, 10)
+	var mu sync.Mutex
+	runs, running, most := 0, 0, 0
+	job := func(context.Context) {
+		mu.Lock()
+		runs, running = runs+1, running+1
+		most = max(most, running)
+		mu.Unlock()
+		started <- struct{}{}
+		<-release
+		mu.Lock()
+		running--
+		mu.Unlock()
+	}
+	q.run(job)
+	<-started
+	for range 3 {
+		q.run(job)
+	}
+	close(release)
+	q.wait()
+	mu.Lock()
+	defer mu.Unlock()
+	if runs != 2 || most != 1 {
+		t.Errorf("ran %d times, %d at once; want twice, one at a time", runs, most)
+	}
+}
+
+// TestClosedScrubsEndAndStartNoMore: procd gives the shell seconds to stop,
+// fewer than a rescan's scrub may take, so closing the scrubs cuts the one
+// running short through its context and drops one asked for meanwhile; one
+// asked for after, by a SIGHUP as the shell exits, starts none.
+func TestClosedScrubsEndAndStartNoMore(t *testing.T) {
+	var q coalesced
+	started := make(chan struct{}, 10)
+	var runs atomic.Int32
+	job := func(ctx context.Context) {
+		runs.Add(1)
+		started <- struct{}{}
+		<-ctx.Done()
+	}
+	q.run(job)
+	<-started
+	q.run(job)
+	ended := make(chan struct{})
+	go func() {
+		q.close()
+		q.wait()
+		close(ended)
+	}()
+	select {
+	case <-ended:
+	case <-time.After(5 * time.Second):
+		t.Fatal("closing waited on the running scrub to end by itself")
+	}
+	q.run(job)
+	q.wait()
+	if n := runs.Load(); n != 1 {
+		t.Errorf("ran %d times, want once", n)
+	}
+}
+
+// TestARescanAsTheHistoryStopsStartsNoScrub: a rescan once the history
+// stops serves the plugins it reads, and starts no scrub of the store that
+// closes; the next start's scrub takes the secret out.
+func TestARescanAsTheHistoryStopsStartsNoScrub(t *testing.T) {
+	s := newServerWith(t, fakeBackend{}, &fakeTransport{}, nil)
+	path := filepath.Join(t.TempDir(), "history.db")
+	store, err := history.Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = store.Close() })
+	s.historyStore, s.changeLog = store, store
+	record(t, store, history.Change{Time: time.Unix(60, 0), Status: history.ChangeApplied, OldRead: true, Items: []history.ChangeItem{
+		{Page: "VPN", Verb: "changed", Words: "vpn: office.auth_pass = PASS-BEFORE-ITS-PLUGIN", Verbatim: true, Ops: []history.ChangeOp{
+			{Config: "vpn", Section: "office", Op: "set", Option: "auth_pass", Value: text("PASS-BEFORE-ITS-PLUGIN")},
+		}},
+	}})
+	m := demoACLManifest()
+	m.ID = "vpn"
+	m.ACL.Write = append(m.ACL.Write, plugin.ACLScope{Scope: "uci", Object: "vpn", Function: "write"})
+	m.Secrets = []string{"vpn.auth_pass"}
+	s.SetRescan(func() []plugin.Manifest { return []plugin.Manifest{m} })
+
+	s.stopScrubs()
+	s.Rescan()
+	s.scrubs.wait()
+	if _, served := s.manifestByID("vpn"); !served {
+		t.Error("the rescan did not serve the plugin")
+	}
+	if found := heldIn(t, path, "PASS-BEFORE-ITS-PLUGIN"); len(found) == 0 {
+		t.Error("a rescan scrubbed the history as it stopped")
+	}
+}
+
+// TestARewriteThatFailsIsToldUntilOneIsMade: a scrub whose rewrite of
+// history.db fails leaves what it took out in the file's free pages. The
+// storage alert tells the operator once, and the Changes page says so, and
+// why, until a scrub makes the rewrite; a scrub that wrote no row says
+// nothing of the file.
+func TestARewriteThatFailsIsToldUntilOneIsMade(t *testing.T) {
+	var mu sync.Mutex
+	var posted []string
+	receiver := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		defer mu.Unlock()
+		posted = append(posted, r.Header.Get("Title"))
+	}))
+	t.Cleanup(receiver.Close)
+	s := newServer(t, fakeBackend{})
+	withAlerter(t, s)
+	s.alerter.Configure(alerts.Config{URL: receiver.URL})
+	const notice = "Config history could not be rewritten."
+	shown := func() string {
+		t.Helper()
+		_, body := getSignedIn(t, s, changesPath)
+		if !strings.Contains(body, notice) {
+			return ""
+		}
+		return body
+	}
+	if shown() != "" {
+		t.Fatal("a notice while history.db holds nothing scrubbed")
+	}
+
+	// A scrub cut short, by a rescan's deadline or the history stopping, owes
+	// its rewrite to the next, the start's at the latest, which has none: it
+	// failed at nothing, and is not told.
+	cutShort, cancel := context.WithCancel(t.Context())
+	cancel()
+	s.scrubbed(cutShort, 3, fmt.Errorf("%w: interrupted", history.ErrNotRewritten))
+	if shown() != "" {
+		t.Fatal("a notice of a scrub cut short")
+	}
+
+	full := fmt.Errorf("%w: database or disk is full", history.ErrNotRewritten)
+	s.scrubbed(t.Context(), 3, full)
+	s.scrubbed(t.Context(), 0, full)
+	s.scrubbed(t.Context(), 0, errors.New("config history not scrubbed of secrets: disk I/O error"))
+	s.scrubbed(cutShort, 0, fmt.Errorf("%w: interrupted", history.ErrNotRewritten))
+	if body := shown(); !strings.Contains(body, "database or disk is full") {
+		t.Fatalf("no notice, or no cause, while the rewrite fails:\n%s", body)
+	}
+	mu.Lock()
+	if len(posted) != 1 || posted[0] != "home-router: config history could not be rewritten" {
+		t.Errorf("alerts = %q, want one", posted)
+	}
+	mu.Unlock()
+
+	s.scrubbed(t.Context(), 0, nil)
+	if shown() != "" {
+		t.Error("the notice stands after the rewrite is made")
 	}
 }
 
@@ -417,6 +635,10 @@ func TestAPluginNamesSecretsOnlyInTheConfigsItWrites(t *testing.T) {
 // TestAPluginsSecretsAreReadAsTheHelperReadsThem: verso-rpcd fingerprints
 // the secrets the shell scrubs only if both read a manifest alike, so both
 // read the cases in testdata/plugin-secrets.json, its own test the helper's.
+// A case skipped is a manifest neither reads, so neither takes its secrets.
+// A case's text is its manifest as written, where the file cannot hold it as
+// a value the helper's reader takes: nested deep, escaping half a surrogate
+// pair, or a number past a float64's range.
 func TestAPluginsSecretsAreReadAsTheHelperReadsThem(t *testing.T) {
 	data, err := os.ReadFile(filepath.Join("testdata", "plugin-secrets.json"))
 	if err != nil {
@@ -425,14 +647,26 @@ func TestAPluginsSecretsAreReadAsTheHelperReadsThem(t *testing.T) {
 	var cases []struct {
 		Case     string          `json:"case"`
 		Manifest json.RawMessage `json:"manifest"`
+		Text     string          `json:"text"`
 		Secrets  []string        `json:"secrets"`
+		Skipped  bool            `json:"skipped"`
 	}
 	if err := json.Unmarshal(data, &cases); err != nil {
 		t.Fatal(err)
 	}
 	for _, c := range cases {
 		t.Run(c.Case, func(t *testing.T) {
-			manifests, problems := plugin.Discover(fstest.MapFS{"p/manifest.json": {Data: c.Manifest}}, "*/manifest.json")
+			manifest := []byte(c.Manifest)
+			if c.Text != "" {
+				manifest = []byte(c.Text)
+			}
+			manifests, problems := plugin.Discover(fstest.MapFS{"p/manifest.json": {Data: manifest}}, "*/manifest.json")
+			if c.Skipped {
+				if len(manifests) != 0 || len(problems) != 1 {
+					t.Fatalf("the manifest is taken: %+v", manifests)
+				}
+				return
+			}
 			if len(manifests) != 1 || len(problems) > 0 {
 				t.Fatalf("the manifest is not taken: %v", problems)
 			}

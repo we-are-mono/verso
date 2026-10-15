@@ -4,6 +4,7 @@
 package plugin
 
 import (
+	"strings"
 	"testing"
 	"testing/fstest"
 )
@@ -244,6 +245,77 @@ func TestDiscoverRejectsAMalformedSecret(t *testing.T) {
 		})
 		if got, problems := Discover(fsys, testGlob); len(got) != 0 || len(problems) != 1 {
 			t.Errorf("secret %q: got=%d problems=%d, want it skipped", secret, len(got), len(problems))
+		}
+	}
+}
+
+// TestDiscoverRejectsAKeySpelledTwice: encoding/json takes the last of two
+// spellings of one field, merging two objects, where verso-rpcd's reading
+// would keep both or the last whole, so the two would take different secrets
+// from one manifest (ADR-021). A manifest spelling any key twice in one
+// object, in the same case or another, is not read.
+func TestDiscoverRejectsAKeySpelledTwice(t *testing.T) {
+	const head = `{"id":"z","name":"N","socket":"/run/verso/z.sock","schema_version":1,`
+	const nav = `"nav":[{"section":"S","label":"L","path":"/"}]`
+	const write = `"acl":{"write":[{"scope":"uci","object":"vpn","function":"write"}]}`
+	for name, body := range map[string]string{
+		"secrets twice":        head + nav + `,` + write + `,"secrets":["vpn.a"],"secrets":["vpn.b"]}`,
+		"acl twice":            head + nav + `,` + write + `,"acl":{"read":[]},"secrets":["vpn.a"]}`,
+		"acl in another case":  head + nav + `,` + write + `,"ACL":{"read":[]},"secrets":["vpn.a"]}`,
+		"an escaped spelling":  head + nav + `,` + write + `,"secrets":["vpn.a"],"\` + `u0073ecrets":["vpn.b"]}`,
+		"a Kelvin sign":        head + nav + `,` + write + `,"socKet":"/run/verso/y.sock"}`,
+		"a nav entry's pages":  head + `"nav":[{"section":"S","label":"L","path":"/","pages":true,"pages":false}],` + write + `}`,
+		"a nav entry's label":  head + `"nav":[{"section":"S","label":"L","path":"/","LABEL":"M"}],` + write + `}`,
+		"a scope's object":     head + nav + `,"acl":{"write":[{"scope":"uci","object":"vpn","objecT":"x","function":"write"}]}}`,
+		"a key no field takes": head + nav + `,"x-note":1,"X-Note":2}`,
+	} {
+		fsys := mapFS(map[string]string{"plugins/z/manifest.json": body})
+		if got, problems := Discover(fsys, testGlob); len(got) != 0 || len(problems) != 1 {
+			t.Errorf("%s: got=%d problems=%v, want it skipped", name, len(got), problems)
+		}
+	}
+
+	// A dotless i is no i: two keys, not one spelled twice.
+	fsys := mapFS(map[string]string{"plugins/z/manifest.json": head + nav + `,` + write + `,"wrıte":1}`})
+	if got, problems := Discover(fsys, testGlob); len(got) != 1 || len(problems) != 0 {
+		t.Errorf("a dotless i: got=%d problems=%v, want it read", len(got), problems)
+	}
+}
+
+// TestDiscoverRejectsWhatTheHelperCannotRead: verso-rpcd's JSON reader
+// refuses a value nested deeper than 127 and a \u escape of half a surrogate
+// pair, where encoding/json reads the one and takes the other for U+FFFD, so
+// the helper would take none of a manifest's secrets the shell scrubs
+// (ADR-021). Neither is read; a pair, and an escaped backslash before u, are.
+func TestDiscoverRejectsWhatTheHelperCannotRead(t *testing.T) {
+	const head = `{"id":"z","name":"N","socket":"/run/verso/z.sock","schema_version":1,` +
+		`"nav":[{"section":"S","label":"L","path":"/"}],` +
+		`"acl":{"write":[{"scope":"uci","object":"vpn","function":"write"}]},"secrets":["vpn.a"],`
+	nested := func(depth int) string {
+		// The manifest is one level; the rest are arrays.
+		return head + `"x":` + strings.Repeat("[", depth-1) + strings.Repeat("]", depth-1) + `}`
+	}
+	for name, c := range map[string]struct {
+		body string
+		read bool
+	}{
+		"nested 127 deep":                  {nested(127), true},
+		"nested 128 deep":                  {nested(128), false},
+		"a leading surrogate alone":        {head + `"x":"\ud800"}`, false},
+		"a leading surrogate at the end":   {head + `"x":"a\udbff"}`, false},
+		"a trailing surrogate alone":       {head + `"x":"\udc00"}`, false},
+		"a leading surrogate, then a char": {head + `"x":"\ud800A"}`, false},
+		"a leading surrogate, then \\n":    {head + `"x":"\ud800\n"}`, false},
+		"a surrogate in a key":             {head + `"\ud800":1}`, false},
+		"a surrogate pair":                 {head + `"x":"😀"}`, true},
+		"an escaped surrogate pair":        {head + `"x":"\ud83d` + `\ude00"}`, true},
+		"an escaped backslash before u":    {head + `"x":"\\ud800"}`, true},
+		"an escaped quote before it":       {head + `"x":"\"\\ud800"}`, true},
+	} {
+		fsys := mapFS(map[string]string{"plugins/z/manifest.json": c.body})
+		got, problems := Discover(fsys, testGlob)
+		if read := len(got) == 1 && len(problems) == 0; read != c.read {
+			t.Errorf("%s: got=%d problems=%v, want read %v", name, len(got), problems, c.read)
 		}
 	}
 }

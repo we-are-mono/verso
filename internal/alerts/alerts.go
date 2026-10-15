@@ -246,8 +246,9 @@ func (a *Alerter) post(ctx context.Context, url string, alert history.Alert) (in
 }
 
 // Urgent sends an alert of kind at once, once, if that kind was chosen. It
-// is for what the outbox cannot hold: the history it lives in not being
-// saved. An alert that does not arrive is not tried again.
+// is for news of the history the outbox lives in: its not being saved, which
+// the outbox cannot hold, or its file not being rewritten. An alert that does
+// not arrive is not tried again.
 func (a *Alerter) Urgent(ctx context.Context, kind, what, body string) {
 	a.mu.Lock()
 	url, wanted := a.cfg.URL, a.wants(kind)

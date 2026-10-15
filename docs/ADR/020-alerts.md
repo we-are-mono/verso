@@ -60,7 +60,7 @@ it by from outside.
 | `wan` | the internet going down and coming back (ADR-019's WAN events) |
 | `boot` | a start after losing power or crashing; a clean reboot is not news |
 | `rollback` | applied changes the router undid because nobody could confirm them: someone locked themselves out; changes kept are not news |
-| `storage` | the history not being saved. The outbox lives in that history, so this one is sent at once and only once, outside it; if it does not arrive it is not tried again |
+| `storage` | the history not being saved, or its file not being rewritten of the secrets a scrub took out (ADR-021). The outbox lives in that history, so this one is sent at once and only once, outside it; if it does not arrive it is not tried again |
 
 ### Incidents, not events
 

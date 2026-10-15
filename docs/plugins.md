@@ -63,6 +63,12 @@ Ship a `manifest.json`. The shell discovers it by globbing the plugins directory
 }
 ```
 
+Spell each key once in an object. The shell matches a key to its field in any
+case, and a manifest spelling one twice (`"secrets"` and `"Secrets"`, or
+`"acl"` twice) is not read: the shell serves no page of it and takes none of
+its secrets, and neither does the helper. Nor is one nesting a value deeper
+than 127, or escaping half a surrogate pair (`"\ud800"` alone).
+
 | field | meaning |
 |---|---|
 | `id` | stable, URL-safe; mounts your plugin at `/plugins/<id>/` |

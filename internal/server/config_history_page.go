@@ -63,11 +63,17 @@ func (s *Server) handleChanges(w http.ResponseWriter, r *http.Request) {
 		startAt = start.Time
 	}
 	table := changesTable(changes, startAt, time.Now(), clientIP(r), tr)
-	page := &widget.Stack{Children: []widget.Widget{table}}
+	var notices []widget.Widget
 	if h := s.historyStore.Health(); !h.OK {
-		page.Children = []widget.Widget{&widget.Callout{Variant: "warning", Compact: true, Verbatim: h.Cause,
-			Body: "History is not being saved. Changes applied now are kept in memory until the storage answers again."}, table}
+		notices = append(notices, &widget.Callout{Variant: "warning", Compact: true, Verbatim: h.Cause,
+			Body: "History is not being saved. Changes applied now are kept in memory until the storage answers again."})
 	}
+	// A scrub's rewrite that failed leaves secrets in the file (ADR-021).
+	if cause := s.unrewritten.read(); cause != "" {
+		notices = append(notices, &widget.Callout{Variant: "warning", Compact: true, Verbatim: cause,
+			Body: "Config history could not be rewritten. Secrets taken out of it stay in the file's free space until it is, which is tried each time the router starts and each time a plugin is installed or removed."})
+	}
+	page := &widget.Stack{Children: append(notices, table)}
 	var body strings.Builder
 	if err := s.widgets.RenderWithToken(&body, page, s.sessionCSRF(r), lang, t); err != nil {
 		http.Error(w, "render error", http.StatusInternalServerError)

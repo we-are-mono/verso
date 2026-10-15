@@ -9,7 +9,9 @@ import (
 	"errors"
 	"log"
 	"strings"
+	"sync"
 
+	"github.com/we-are-mono/verso/internal/alerts"
 	"github.com/we-are-mono/verso/internal/history"
 	"github.com/we-are-mono/verso/internal/plugin"
 	"github.com/we-are-mono/verso/internal/secrets"
@@ -95,25 +97,156 @@ func (s *Server) stagedChange(ctx context.Context, sid, user, address string) hi
 // scrubHistory takes every secret the shell knows out of config history:
 // what a shell kept before it kept no copy of one, and what was kept of a
 // secret before the list or a plugin's manifest named it. It runs when the
-// history opens and each time the plugins are read again, and writes only
-// what holds a value still.
+// history opens and each time the plugins are read again, one scrub at a
+// time, and writes only what holds a value still.
 func (s *Server) scrubHistory(ctx context.Context) {
 	if s.historyStore == nil {
 		return
 	}
+	s.scrubbing.Lock()
+	defer s.scrubbing.Unlock()
 	secrets := s.secretOptions()
 	n, err := s.historyStore.ScrubSecrets(ctx, secrets, func(op history.ChangeOp) string {
 		return humanizeChange(op.Config, opTuple(op), secrets)
 	})
+	s.scrubbed(ctx, n, err)
+}
+
+// scrubbed takes the outcome of a scrub run with ctx: n rows written, and
+// err. A rewrite that fails leaves what the rows held in history.db's free
+// pages, which the operator is told of by the storage alert, once until a
+// scrub makes it, and the Changes page while it lasts (unrewritten); a scrub
+// that makes the rewrite, or owes none, ends it. A scrub cut short, as ctx
+// ended (a rescan's deadline, the history stopping), failed at nothing: what
+// it leaves undone the next scrub does, the start's at the latest, which has
+// no deadline, so it is only logged.
+func (s *Server) scrubbed(ctx context.Context, n int, err error) {
 	if n > 0 {
 		log.Printf("verso: config history: %d rows scrubbed of secrets", n)
 	}
 	switch {
+	case err != nil && ctx.Err() != nil:
+		log.Printf("verso: config history: scrub cut short, left to the next: %v", err)
 	case errors.Is(err, history.ErrNotRewritten):
 		log.Printf("verso: config history: history.db keeps what its scrubbed rows held until it is rewritten, which every scrub tries: %v", err)
+		if s.unrewritten.fail(err) && s.alerter != nil {
+			s.alerter.Urgent(context.Background(), alerts.KindStorage, "config history could not be rewritten",
+				err.Error()+". Secrets taken out of it stay in the file's free space until it is, which is tried each time the router starts and each time a plugin is installed or removed.")
+		}
 	case err != nil:
 		log.Printf("verso: %v", err)
+	default:
+		s.unrewritten.clear()
 	}
+}
+
+// unrewritten is why history.db still holds what a scrub took out of its
+// rows: the rewrite they owe failed, and no scrub has made it since. Empty
+// while the file holds nothing scrubbed.
+type unrewritten struct {
+	mu    sync.Mutex
+	cause string
+}
+
+// fail takes a rewrite that failed with err, and answers whether the file
+// held nothing scrubbed until then.
+func (u *unrewritten) fail(err error) bool {
+	u.mu.Lock()
+	defer u.mu.Unlock()
+	first := u.cause == ""
+	u.cause = err.Error()
+	return first
+}
+
+// clear takes a rewrite made, or none owed.
+func (u *unrewritten) clear() {
+	u.mu.Lock()
+	defer u.mu.Unlock()
+	u.cause = ""
+}
+
+// read is why the file holds what was scrubbed; "" while it holds nothing
+// scrubbed.
+func (u *unrewritten) read() string {
+	u.mu.Lock()
+	defer u.mu.Unlock()
+	return u.cause
+}
+
+// coalesced runs a job in the background, one run at a time. A run asked for
+// while one runs is made once more after it, however many were asked for
+// meanwhile, so each ask is served by a run that starts after it. Once
+// closed, it cuts the run in progress short and makes none after.
+type coalesced struct {
+	mu     sync.Mutex
+	ended  chan struct{}      // closed once the runs end; nil while none runs
+	cancel context.CancelFunc // cuts the runs in progress short; nil while none runs
+	again  bool
+	closed bool
+}
+
+// run makes job run in the background, now or after the run in progress,
+// with a context that ends as c closes; once c is closed, it runs nothing.
+func (c *coalesced) run(job func(context.Context)) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.closed {
+		return
+	}
+	if c.ended != nil {
+		c.again = true
+		return
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	ended := make(chan struct{})
+	c.ended, c.cancel = ended, cancel
+	go func() {
+		defer close(ended)
+		defer cancel()
+		for {
+			job(ctx)
+			c.mu.Lock()
+			again := c.again && !c.closed
+			c.again = false
+			if !again {
+				c.ended, c.cancel = nil, nil
+			}
+			c.mu.Unlock()
+			if !again {
+				return
+			}
+		}
+	}()
+}
+
+// close cuts the run in progress short, drops one asked for meanwhile, and
+// makes run run nothing from then on. wait returns once the run has ended.
+func (c *coalesced) close() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.closed, c.again = true, false
+	if c.cancel != nil {
+		c.cancel()
+	}
+}
+
+// wait returns once no run is in progress.
+func (c *coalesced) wait() {
+	c.mu.Lock()
+	ended := c.ended
+	c.mu.Unlock()
+	if ended != nil {
+		<-ended
+	}
+}
+
+// stopScrubs cuts a rescan's scrub short, and starts none after, as the
+// history stops: procd gives the shell seconds to stop, and a scrub may take
+// minutes. What it leaves undone the next start's scrub does: rows it did not
+// commit, and the rewrite it owes, kept in history.db (rewrite_owed).
+func (s *Server) stopScrubs() {
+	s.scrubs.close()
+	s.scrubs.wait()
 }
 
 // opTuple is a secret's change as `uci changes` lists it, its value masked:

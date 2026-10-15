@@ -44,8 +44,8 @@ func (s *Server) StartHistory(dir string, probes []netip.Addr, notify alerts.Con
 		}),
 		temperatures(),
 	)
-	// The watcher, the prober and the alerter stop before the collector,
-	// which closes the store.
+	// The watcher, the prober, the alerter and a rescan's scrub, cut short,
+	// stop before the collector, which closes the store.
 	watchCtx, stopWatch := context.WithCancel(context.Background())
 	var watching sync.WaitGroup
 	watching.Go(func() { watchWAN(watchCtx, store, openwrt.KernelWAN) })
@@ -61,6 +61,7 @@ func (s *Server) StartHistory(dir string, probes []netip.Addr, notify alerts.Con
 	s.historyStop = func() {
 		stopWatch()
 		watching.Wait()
+		s.stopScrubs()
 		cancel()
 		<-done
 		if onDisk {

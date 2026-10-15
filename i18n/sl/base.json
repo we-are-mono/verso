@@ -892,6 +892,7 @@
   "The history could not be read (%v).": "Zgodovine ni bilo mogoče prebrati (%v).",
   "Nothing has been applied yet. Every apply is kept here, with what it replaced.": "Uveljavljenega še ni ničesar. Vsaka uveljavitev se hrani tukaj, skupaj s tem, kar je zamenjala.",
   "History is not being saved. Changes applied now are kept in memory until the storage answers again.": "Zgodovina se ne shranjuje. Spremembe, uveljavljene zdaj, ostanejo v pomnilniku, dokler se shramba spet ne odzove.",
+  "Config history could not be rewritten. Secrets taken out of it stay in the file's free space until it is, which is tried each time the router starts and each time a plugin is installed or removed.": "Zgodovine sprememb ni bilo mogoče prepisati. Skrivnosti, odstranjene iz nje, ostanejo v prostem prostoru datoteke, dokler ni prepisana; to se poskusi ob vsakem zagonu usmerjevalnika in ob vsaki namestitvi ali odstranitvi vtičnika.",
   "What changed": "Kaj se je spremenilo",
   "Notes": "Opombe",
   "Starting point": "Izhodišče",

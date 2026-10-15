@@ -118,6 +118,12 @@ type Server struct {
 	changeLog changeRecorder
 	// alerter sends alerts and the heartbeat (ADR-020); nil without a history.
 	alerter *alerts.Alerter
+	// scrubbing is held by the scrub of config history that runs (ADR-021);
+	// scrubs runs a rescan's in the background; unrewritten is why history.db
+	// still holds what a scrub took out of its rows.
+	scrubbing   sync.Mutex
+	scrubs      coalesced
+	unrewritten unrewritten
 	// applies is the applies awaiting their confirm, recorded as kept or
 	// rolled back (ADR-019).
 	applies applyWatch
@@ -567,12 +573,16 @@ func (s *Server) Rescan() {
 		}
 	}
 	// A plugin may name secrets config history kept a value of before it
-	// arrived. The scrub has time of its own, as rewriting history.db takes
-	// as long as the file is large: one cut short is owed, and made by the
-	// next scrub, the next start's at the latest, which has no deadline.
-	scrubCtx, cancelScrub := context.WithTimeout(context.Background(), rescanScrubTimeout)
-	defer cancelScrub()
-	s.scrubHistory(scrubCtx)
+	// arrived. Rewriting history.db takes as long as the file is large, and a
+	// rescan answers an operator's install, so the scrub runs in the
+	// background, on a deadline of its own, and ends as the history stops:
+	// one cut short is owed, and made by the next scrub, the next start's at
+	// the latest, which has no deadline.
+	s.scrubs.run(func(ctx context.Context) {
+		ctx, cancel := context.WithTimeout(ctx, rescanScrubTimeout)
+		defer cancel()
+		s.scrubHistory(ctx)
+	})
 }
 
 // rescanScrubTimeout bounds the scrub of config history a rescan runs.
