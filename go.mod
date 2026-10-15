@@ -3,8 +3,8 @@ module github.com/we-are-mono/verso
 go 1.27.1
 
 require (
-	github.com/yuin/goldmark v1.7.8
-	golang.org/x/crypto v0.46.0
+	github.com/yuin/goldmark v1.7.17
+	golang.org/x/crypto v0.56.0
 	modernc.org/sqlite v1.60.1
 )
 
