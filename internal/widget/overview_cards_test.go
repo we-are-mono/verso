@@ -307,6 +307,40 @@ func TestHardwareCardHead(t *testing.T) {
 	}
 }
 
+// The hardware's verdict is one grading the Overview card's header and the
+// Hardware page's heading both speak: a hot CPU before a stopped fan, and
+// nothing while both are in band.
+func TestHardwareVerdict(t *testing.T) {
+	identity := func(s string) string { return s }
+	cases := []struct {
+		name        string
+		edit        func(*OverviewSensors)
+		tone, words string
+	}{
+		{"in band", func(*OverviewSensors) {}, "", ""},
+		{"a warm CPU", func(s *OverviewSensors) { s.CPU.Tone = "warning" }, "warning", "cluster is hot"},
+		{"a critical CPU", func(s *OverviewSensors) { s.CPU.Tone = "danger" }, "danger", "cluster is hot"},
+		{"the fan stops", func(s *OverviewSensors) { s.Fan.Tone = "warning" }, "warning", "System Fan 1 stopped"},
+		{"a hot CPU beside a stopped fan", func(s *OverviewSensors) {
+			s.Fan.Tone, s.CPU.Tone = "warning", "warning"
+		}, "warning", "cluster is hot"},
+		{"no CPU, a stopped fan", func(s *OverviewSensors) { s.CPU, s.Fan.Tone = nil, "warning" }, "warning", "System Fan 1 stopped"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			hw := dkHardware()
+			c.edit(hw)
+			if tone, words := hw.Verdict(identity); tone != c.tone || words != c.words {
+				t.Errorf("verdict = %q %q, want %q %q", tone, words, c.tone, c.words)
+			}
+		})
+	}
+	var none *OverviewSensors
+	if tone, words := none.Verdict(identity); tone != "" || words != "" {
+		t.Errorf("no sensors: verdict = %q %q", tone, words)
+	}
+}
+
 // The Hardware card is the CPU, the main power rail and the main fan, one
 // row each under the profile's names, their values on the right edge so a
 // long name keeps its line; every row is keyed for the stream, a reading the

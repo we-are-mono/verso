@@ -421,19 +421,31 @@ func (s *OverviewSensors) rows() []*OverviewSensor {
 	return slices.DeleteFunc([]*OverviewSensor{s.CPU, s.Power, s.Fan}, func(r *OverviewSensor) bool { return r == nil })
 }
 
-// hardwareHead speaks for a hot CPU, else a stopped fan, and its line is
-// always the CPU temperature.
+// Verdict grades the hardware for whatever speaks for it (the Overview
+// card's header, the Hardware page's heading): a hot CPU in its own tone,
+// else a stopped fan, in words; none, the empty tone and words, while both
+// are in band.
+func (s *OverviewSensors) Verdict(tr func(string) string) (tone, words string) {
+	switch {
+	case s == nil:
+	case s.CPU != nil && s.CPU.Tone != "":
+		return s.CPU.Tone, fmt.Sprintf(tr("%s is hot"), tr(s.CPU.Name))
+	case s.Fan != nil && s.Fan.Tone != "":
+		return s.Fan.Tone, fmt.Sprintf(tr("%s stopped"), tr(s.Fan.Name))
+	}
+	return "", ""
+}
+
+// hardwareHead speaks the hardware's verdict, and its line is always the CPU
+// temperature.
 func (o *Overview) hardwareHead(tr func(string) string) cardHead {
 	hw := o.Hardware
 	if len(hw.rows()) == 0 {
 		return cardHead{Tone: "neutral", Status: tr("Unavailable")}
 	}
 	h := cardHead{Tone: "neutral"}
-	switch {
-	case hw.CPU != nil && hw.CPU.Tone != "":
-		h.Tone, h.Status = hw.CPU.Tone, fmt.Sprintf(tr("%s is hot"), tr(hw.CPU.Name))
-	case hw.Fan != nil && hw.Fan.Tone != "":
-		h.Tone, h.Status = hw.Fan.Tone, fmt.Sprintf(tr("%s stopped"), tr(hw.Fan.Name))
+	if tone, words := hw.Verdict(tr); tone != "" {
+		h.Tone, h.Status = tone, words
 	}
 	if hw.CPU != nil {
 		h.Summary = hw.CPU.Value
