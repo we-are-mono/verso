@@ -43,12 +43,13 @@ func TestMarkStagedFindsWhatWaits(t *testing.T) {
 	}
 }
 
-// TestAStagedRowWearsTheStagesMark: the mark is the chip's own square and
-// word beside the row's name, drawn by the server so it stands on every visit
-// until the change is applied or discarded.
+// TestAStagedRowWearsTheStagesMark: the mark is a bar in the stage's
+// marigold down the row's left edge, its word said to a screen reader only,
+// drawn by the server so it stands on every visit until the change is
+// applied or discarded.
 func TestAStagedRowWearsTheStagesMark(t *testing.T) {
 	r := newRenderer(t)
-	mark := `<span data-verso-staged-row class="inline-flex items-center gap-1.5 text-sm font-medium text-marigold-deep"><span aria-hidden="true" class="size-1.5 shrink-0 rounded-[1px] bg-marigold"></span>staged</span>`
+	mark := `<span data-verso-staged-row class="verso-staged-bar"><span aria-hidden="true"></span><span class="sr-only">staged</span></span>`
 	for name, w := range map[string]Widget{
 		"field":  &Field{Name: "Port", Label: "Port", Key: "Port", Staged: true},
 		"switch": &Switch{Name: "RootPasswordAuth", Label: "Allow root", Key: "RootPasswordAuth", Staged: true},

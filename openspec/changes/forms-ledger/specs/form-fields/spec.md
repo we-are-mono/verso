@@ -26,6 +26,11 @@ Field rows SHALL be separated by hairlines that run the full width of what holds
 - **THEN** a hairline between "Slow down SYN floods" and "Connection rate" touches the card's left and right borders
 - **AND** both names start 24px from the card's left border
 
+#### Scenario: A card's first and last rows
+- **WHEN** an operator opens the Protection card on Firewall settings
+- **THEN** "Slow down SYN floods" stands 15px after the header's seam, as a name stands after the hairline between rows
+- **AND** the card's frame closes 16px under its last row's words
+
 #### Scenario: Pointing at a row
 - **WHEN** an operator moves the pointer over "Connection rate"
 - **THEN** the row keeps the card's Paper, with no tint

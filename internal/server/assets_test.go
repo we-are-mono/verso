@@ -621,6 +621,49 @@ func TestDescriptionsFoldAway(t *testing.T) {
 	}
 }
 
+// TestACardsRowsKeepARowsAirAtItsEdges: a card whose body opens on a row
+// stands that row's name 15px after the header's seam (or the headless
+// frame), as a name stands after the hairline between rows, and a card whose
+// body ends on a row closes 16px under its last words, as a row stands over
+// the next one's hairline: the card's own 24px is a block's (form-fields).
+func TestACardsRowsKeepARowsAirAtItsEdges(t *testing.T) {
+	raw, err := os.ReadFile("assets/sections.css")
+	if err != nil {
+		t.Fatal(err)
+	}
+	css := string(raw)
+	for _, want := range []string{
+		// under a header, the pull counts in the seam's pixel the body took back
+		"> .verso-rhythm > :not(input[type=\"hidden\"], [hidden], template):not(:not(input[type=\"hidden\"], [hidden], template) ~ *):is(.verso-field-row) {\n  margin-top: calc(var(--spacing) * -2 - 1px);",
+		"> .verso-rhythm > :not(input[type=\"hidden\"], [hidden], template):not(:not(input[type=\"hidden\"], [hidden], template) ~ *):is(.verso-field-row) {\n  margin-top: calc(var(--spacing) * -2);",
+		"> .verso-rhythm > :not(input[type=\"hidden\"], [hidden], template):not(:has(~ :not(input[type=\"hidden\"], [hidden], template))):is(.verso-field-row) {\n  margin-bottom: calc(var(--spacing) * -2);",
+	} {
+		if !strings.Contains(css, want) {
+			t.Errorf("sections.css lacks %q", want)
+		}
+	}
+}
+
+// TestAStagedRowIsMarkedDownItsEdge: a row whose change waits wears a 3px
+// bar in the stage's marigold down its left edge, from line to line: on a
+// card's border where rows run to it, at a drawer's edge where they do not.
+func TestAStagedRowIsMarkedDownItsEdge(t *testing.T) {
+	raw, err := os.ReadFile("assets/forms.css")
+	if err != nil {
+		t.Fatal(err)
+	}
+	css := string(raw)
+	bar := cssBlock(t, css, ".verso-staged-bar > [aria-hidden] {")
+	for _, want := range []string{"position: absolute;", "inset-block: 0;", "left: 0;", "width: calc(var(--spacing) * 0.75);", "background: var(--color-marigold);"} {
+		if !strings.Contains(bar, want) {
+			t.Errorf("the staged bar lacks %s: %s", want, bar)
+		}
+	}
+	if !strings.Contains(cssBlock(t, css, "dialog .verso-staged-bar > [aria-hidden] {"), "left: calc(var(--spacing) * -10);") {
+		t.Error("in a drawer the staged bar does not stand at the drawer's edge")
+	}
+}
+
 // TestASwitchShowsTheWordForItsState: a form switch holds both words and the
 // stylesheet shows the one its box is in, with no script (form-fields).
 func TestASwitchShowsTheWordForItsState(t *testing.T) {

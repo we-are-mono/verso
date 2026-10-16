@@ -45,7 +45,23 @@
     --verso-field-width-prefix: calc(var(--spacing) * 56 + 1px);
     --verso-field-width-endpoint: calc(var(--spacing) * 128 + 1px);
     container: verso-field / inline-size;
+    position: relative;
     padding-block: var(--spacing-inset) 0;
+  }
+  /* A row whose change waits on the stage wears the stage's marigold as a
+     3px bar down its left edge, from line to line, as a changed line wears it
+     in a configuration card's gutter: on a card's border, where rows run to
+     it, and at a drawer's edge, where they keep its 40px inset. The word
+     stays for a screen reader, beside the setting's name. */
+  .verso-staged-bar > [aria-hidden] {
+    position: absolute;
+    inset-block: 0;
+    left: 0;
+    width: calc(var(--spacing) * 0.75);
+    background: var(--color-marigold);
+  }
+  dialog .verso-staged-bar > [aria-hidden] {
+    left: calc(var(--spacing) * -10);
   }
   /* Rows that follow each other meet on a hairline: the one keeps 16px under
      its last line, the line lands on the grid, and the next one's name stands
