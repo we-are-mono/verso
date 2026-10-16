@@ -14,7 +14,8 @@ use std::collections::HashMap;
 
 use verso_plugin::{Change, Description, Snapshot, SubjectKind};
 
-use crate::model::CONFIG;
+use crate::model::{Firewall, CONFIG};
+use crate::settings;
 
 /// describe answers the shell's pending-change list with one sentence per changed
 /// firewall object, in first-seen order.
@@ -35,9 +36,50 @@ pub fn describe(changes: &[Change], snapshot: &Snapshot) -> Vec<Description> {
 
     let mut out = Vec::new();
     for section in &order {
-        if let Some(d) = describe_section(section, &groups[section], changes, snapshot) {
+        if is_defaults(section, &groups[section], changes, snapshot) {
+            out.extend(describe_defaults(&groups[section], changes, snapshot));
+        } else if let Some(d) = describe_section(section, &groups[section], changes, snapshot) {
             out.push(d);
         }
+    }
+    out
+}
+
+/// is_defaults says whether a section is the global defaults: by the type its
+/// add-section change carries, or the staged snapshot's.
+fn is_defaults(section: &str, idxs: &[usize], changes: &[Change], snapshot: &Snapshot) -> bool {
+    idxs.iter()
+        .find(|&&i| changes[i].op == "add-section")
+        .map(|&i| changes[i].option.clone())
+        .or_else(|| snapshot.section(CONFIG, section).map(|s| s.scalar(".type")))
+        .is_some_and(|typ| typ == "defaults")
+}
+
+/// describe_defaults says each change to the global defaults as its row on
+/// Settings does: that page is rendered from the staged config and each
+/// changed option read off it, so the review uses the page's own label and
+/// shows what its control now holds. A section made for the defaults folds into
+/// the first row; an option the page does not draw keeps its raw line.
+fn describe_defaults(idxs: &[usize], changes: &[Change], snapshot: &Snapshot) -> Vec<Description> {
+    let page = settings::page(&Firewall::read(snapshot)).widget;
+    let made = idxs.iter().copied().find(|&i| changes[i].op == "add-section");
+    let mut out: Vec<Description> = Vec::new();
+    for &i in idxs {
+        let option = &changes[i].option;
+        if changes[i].op == "add-section" {
+            continue;
+        }
+        let Some(read) = page.reading(option) else {
+            continue;
+        };
+        let mut covers = vec![i];
+        if out.is_empty() {
+            covers.extend(made);
+            covers.sort_unstable();
+        }
+        let said = Description::setting(&read.label, &read.value, option, covers)
+            .about(SubjectKind::Setting, &read.label);
+        out.push(if read.words { said } else { said.verbatim() });
     }
     out
 }
@@ -148,6 +190,42 @@ mod tests {
             option: option.to_string(),
             value: value.to_string(),
         }
+    }
+
+    // A global default reads as its row on Settings does: the label that page
+    // gives it, the value its control now shows (a switch on or off, a pick by
+    // its words), and the option as its key — read off the page itself, so
+    // the review can never say a setting in other words than the page.
+    #[test]
+    fn a_global_default_reads_as_its_settings_row() {
+        let snap = snapshot(json!({"firewall": {"d": {
+            ".type": "defaults", ".name": "d", "drop_invalid": "1", "input": "drop", "tcp_ecn": "2"
+        }}}));
+        let changes = vec![
+            change("set", "d", "drop_invalid", "1"),
+            change("set", "d", "input", "drop"),
+            change("set", "d", "tcp_ecn", "2"),
+            change("remove-option", "d", "synflood_protect", ""),
+        ];
+        let rows: Vec<_> = describe(&changes, &snap)
+            .into_iter()
+            .map(|d| {
+                let s = d.setting.expect("a setting");
+                (s.label, s.value, s.key, d.covers)
+            })
+            .collect();
+        let row = |label: &str, value: &str, key: &str, at: usize| {
+            (label.to_string(), value.to_string(), key.to_string(), vec![at])
+        };
+        assert_eq!(
+            rows,
+            vec![
+                row("Drop packets that belong to no connection", "on", "drop_invalid", 0),
+                row("Traffic to this router", "drop", "input", 1),
+                row("Congestion notification", "Incoming only", "tcp_ecn", 2),
+                row("Slow down SYN floods", "off", "synflood_protect", 3),
+            ]
+        );
     }
 
     #[test]

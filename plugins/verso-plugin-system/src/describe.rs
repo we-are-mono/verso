@@ -187,10 +187,14 @@ pub fn describe(changes: &[Change], snapshot: &Snapshot) -> Vec<Description> {
         }
         covers.sort_unstable();
         let now = reading(setting, config, section, &runs[key], changes, snapshot);
-        out.push(
-            Description::new(format!("{}: {now}", setting.label), covers)
-                .about(SubjectKind::Setting, setting.label),
-        );
+        let said = Description::setting(setting.label, &now, setting.option, covers)
+            .about(SubjectKind::Setting, setting.label);
+        // A flag reads in words; a name, an address or a list of servers is
+        // what the machine holds, set verbatim.
+        out.push(match setting.reads {
+            Reads::Flag => said,
+            Reads::Value | Reads::List => said.verbatim(),
+        });
     }
     out
 }
@@ -285,6 +289,23 @@ mod tests {
         let d = describe(&changes, &staged());
         let plain: Vec<_> = d.iter().map(|d| d.plain.as_str()).collect();
         assert_eq!(plain, ["Router name: edge", "Allow password login: off"]);
+        // The review reads each as its row did: label, value, the option's key.
+        // A name is the machine's string; a flag reads in words.
+        let name = d[0].setting.as_ref().expect("a setting");
+        assert_eq!(
+            (
+                name.label.as_str(),
+                name.value.as_str(),
+                name.key.as_str(),
+                name.verbatim
+            ),
+            ("Router name", "edge", "hostname", true)
+        );
+        let login = d[1].setting.as_ref().expect("a setting");
+        assert_eq!(
+            (login.value.as_str(), login.key.as_str(), login.verbatim),
+            ("off", "PasswordAuth", false)
+        );
     }
 
     /// A setting's line is about that setting, by the label its page gives it.
