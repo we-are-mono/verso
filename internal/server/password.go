@@ -67,9 +67,10 @@ type accessSession struct {
 }
 
 // accessSessionsTable lists who is signed in: where from, with the browser
-// under the address, and when last seen, with when it started under that. Two
-// stacked columns and an icon keep a full IPv6 address and the way to revoke
-// inside the form's measure. Every session revokes the same way and asks
+// beside the address, and when last seen, with when it started beside that.
+// As a list, each detail rides its value's line where there is room and
+// wraps under it where there is not, so a full IPv6 address and the way to
+// revoke still fit a phone. Every session revokes the same way and asks
 // first; revoking this browser's own is logging out, and the question says so.
 func accessSessionsTable(sessions []accessSession, tr func(string) string) *widget.Table {
 	rows := make([]widget.TableRow, 0, len(sessions))

@@ -177,3 +177,15 @@ func TestAListStandsInItsCardsInset(t *testing.T) {
 		t.Errorf("a listing is not a list: %s", got)
 	}
 }
+
+// A list's detail rides its value's line where the column has room for both
+// and wraps under it where it has not — a long IPv6 address, a phone. The
+// detail says it is one, so the sheet can flow it (sections.css).
+func TestAListsDetailIsMarkedToFlowBesideItsValue(t *testing.T) {
+	r := newRenderer(t)
+	tbl := &Table{Style: "list", Columns: []TableColumn{{Label: "Source", Kind: "reference"}, {Label: "Last seen"}},
+		Rows: []TableRow{{ID: "a", Cells: []TableCell{{Text: "10.0.0.2", Detail: "Firefox · Linux"}, {Text: "Now", Detail: "since today, 16:43"}}}}}
+	if got := render(t, r, tbl); strings.Count(got, "data-verso-detail") != 2 {
+		t.Errorf("each detail should say it is one: %s", got)
+	}
+}

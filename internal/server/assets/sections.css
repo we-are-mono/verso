@@ -339,6 +339,22 @@
 .verso-page-body [data-verso-list] .verso-table > tbody > tr:hover {
   background-color: transparent;
 }
+/* A list's detail rides its value's line where the column has room for both
+ * ("10.0.0.232  Chrome · Linux"), and wraps under the value where it has not
+ * — a long IPv6 address, a phone — so the second line is there only when it
+ * earns its place. */
+.verso-page-body [data-verso-list] td:has(> [data-verso-detail]) > * {
+  display: inline-flex;
+  vertical-align: top;
+}
+.verso-page-body [data-verso-list] td:has(> [data-verso-detail]) > :not([data-verso-detail]) {
+  margin-inline-end: calc(var(--spacing) * 3);
+}
+/* Wrapped under its value, the detail is still one phrase: its words keep
+ * together, and only a tag after them takes a line of its own. */
+.verso-page-body [data-verso-list] [data-verso-detail] > span:first-child {
+  white-space: nowrap;
+}
 /* A page that is one listing is one card with no header: the page's heading
  * names it. Its control band is the card's top strip (actionbar.html.tmpl),
  * so the listing under it drops its top edge and joins it. */

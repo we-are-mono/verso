@@ -1461,8 +1461,8 @@ func TestCellDetailStandsUnderItsValue(t *testing.T) {
 		}}},
 	})
 	for _, want := range []string{
-		`<span class="flex items-center gap-x-2 text-sm leading-6 whitespace-nowrap max-sm:flex-wrap max-sm:whitespace-normal text-meta"><span>Safari · iPhone</span>`,
-		`<span class="flex items-center gap-x-2 text-sm leading-6 whitespace-nowrap max-sm:flex-wrap max-sm:whitespace-normal text-meta"><span>since today, 16:43</span>`,
+		`<span data-verso-detail class="flex items-center gap-x-2 text-sm leading-6 whitespace-nowrap max-sm:flex-wrap max-sm:whitespace-normal text-meta"><span>Safari · iPhone</span>`,
+		`<span data-verso-detail class="flex items-center gap-x-2 text-sm leading-6 whitespace-nowrap max-sm:flex-wrap max-sm:whitespace-normal text-meta"><span>since today, 16:43</span>`,
 		`>fd42:7ea:aa00::1a2b:3c4d:5e6f:7a8b</span>`,
 		">this browser</span>",
 		// the 20px chip fills the 20px detail line rather than making the line
