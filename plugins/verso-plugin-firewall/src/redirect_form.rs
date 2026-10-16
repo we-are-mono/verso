@@ -500,7 +500,7 @@ impl RedirectForm {
             if zone != "*" && !zones.iter().any(|known| known == zone) {
                 errors.field(
                     "reflection_zone",
-                    "Name zones this router defines, or leave it blank.",
+                    "Untick the zones this router no longer defines.",
                 );
             }
         }

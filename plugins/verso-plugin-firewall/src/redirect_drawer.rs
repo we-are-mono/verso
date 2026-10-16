@@ -375,24 +375,45 @@ fn reach(model: &Firewall, redirect: &RedirectForm, errors: &Errors) -> Widget {
             // Which inside networks get the hairpin rules. firewall4 writes
             // them for the zone the traffic is forwarded into unless this
             // names others, which is what a router with a second inside
-            // network needs and what nothing here could say before.
-            fields::token_list(
-                "reflection_zone",
-                "Which of your networks",
-                "Zone name",
-                WHICH_NETWORKS_HELP,
-                &redirect.reflection_zones,
-                errors,
-            )
-            .writes("reflection_zone")
-            .suggesting(conditions::named(&model.zone_names())),
+            // network needs and what nothing here could say before. It is
+            // membership in this config's zones, so it is ticked, not typed.
+            reflection_zones(model, redirect, errors),
         ],
         Vec::new(),
     )
 }
 
-const WHICH_NETWORKS_HELP: &str = "Blank covers the network the device is on, which is what most \
-routers need. Name zones to cover others as well.";
+const WHICH_NETWORKS_HELP: &str = "None ticked covers the network the device is on, which is what \
+most routers need. Tick others to cover them as well.";
+
+/// reflection_zones is the forward's reflection zones as ticks over this
+/// config's zones. A zone the forward names that the config no longer defines
+/// stays on offer, ticked, so a save never quietly drops it — the save refuses
+/// it instead, naming why.
+fn reflection_zones(model: &Firewall, redirect: &RedirectForm, errors: &Errors) -> Widget {
+    let mut options = conditions::named(&model.zone_names());
+    for zone in &redirect.reflection_zones {
+        if !options.iter().any(|option| option.value == *zone) {
+            let label = match zone.as_str() {
+                "*" => "Every zone",
+                other => other,
+            };
+            options.push(SelectOption::new(zone, label));
+        }
+    }
+    let mut ticks = Widget::checks(
+        "reflection_zone",
+        "Which of your networks",
+        &redirect.reflection_zones,
+        options,
+    )
+    .writes("reflection_zone");
+    if let Widget::Field(field) = &mut ticks {
+        field.help = WHICH_NETWORKS_HELP.into();
+        field.error = errors.get("reflection_zone").into();
+    }
+    ticks
+}
 
 /// handling is what the forward does besides rewriting: whether its matches are
 /// counted, and whether they reach the system log.
@@ -965,6 +986,37 @@ mod tests {
         assert_eq!(departs["open"], true, "a logged forward shows that it logs");
     }
 
+    /// Which networks a forward is reflected for is membership in this config's
+    /// zones, ticked rather than typed — a zone name typed wrong reflects for
+    /// nothing. A zone the forward names that the config no longer defines stays
+    /// on offer, ticked, so saving never quietly drops it.
+    #[test]
+    fn the_reflection_zones_are_ticked_from_this_configs_zones() {
+        let body = submit(
+            "https_to_nas",
+            &[
+                ("src", "wan"),
+                ("src_dport", "8443"),
+                ("reflection", "1"),
+                ("reflection_zone", "lan"),
+                ("reflection_zone", "gone"),
+            ],
+        );
+        let zones = control(&body, "reflection_zone");
+        assert_eq!(zones["kind"], "checks");
+        assert_eq!(zones["key"], "reflection_zone");
+        assert_eq!(zones["values"], serde_json::json!(["lan", "gone"]));
+        let offered: Vec<&str> = zones["options"]
+            .as_array()
+            .expect("options")
+            .iter()
+            .map(|o| o["value"].as_str().unwrap_or_default())
+            .collect();
+        let mut want = fixture::firewall().zone_names();
+        want.push("gone".into());
+        assert_eq!(offered, want);
+    }
+
     #[test]
     fn a_switch_the_submission_left_out_turns_its_option_off() {
         let body = submit("https_to_nas", &[("src", "wan"), ("src_dport", "8443")]);
@@ -1137,7 +1189,7 @@ mod tests {
         assert_eq!(control(&body, "src_dip_match")["value"], "exclude");
         assert_eq!(control(&body, "helper")["value"], "ftp");
         assert_eq!(
-            control(&body, "reflection_zone")["items"],
+            control(&body, "reflection_zone")["values"],
             serde_json::json!(["lan"])
         );
         // A switch that is off carries no `on` at all, which is how the schema
