@@ -1084,8 +1084,9 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	// Kernel interfaces come from the same process-wide telemetry snapshot as
 	// the WAN graph and are enriched with UCI topology.
 	ov.Interfaces = s.interfaceList(r.Context(), sid, snapshot, wan)
-	// The board's sensors fill the Hardware card, when the card is shown.
-	if s.boardSensors != nil && ov.Layout.Shows("hardware") {
+	// The board's sensors fill the Hardware card and weigh in the heading, so
+	// they are read whether the card is shown or hidden.
+	if s.boardSensors != nil {
 		ov.Hardware = hardwareView(s.boardSensors.Read())
 	}
 	// The router's panel opens the Ports card, when the card is shown.

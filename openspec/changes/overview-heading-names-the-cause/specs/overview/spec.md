@@ -16,8 +16,12 @@ The Overview SHALL open with one verdict sentence tinted by tone, the most impor
 - **THEN** the verdict reads "Storage is high" in the warning tone
 
 #### Scenario: A tunnel down reads without its card
-- **WHEN** the uplink is up, one of two tunnels has lost link, and nothing else is wrong
-- **THEN** the verdict reads "1 of 2 tunnels down" in the danger tone, while the Tunnels header reads "1 of 2 down"
+- **WHEN** the uplink is up, one of two tunnels, wg0, has lost link, and nothing else is wrong
+- **THEN** the verdict reads "Tunnel wg0 is down" in the danger tone, while the Tunnels header reads "1 of 2 down"
+
+#### Scenario: Several tunnels down
+- **WHEN** the uplink is up, two of three tunnels have lost link, and nothing else is wrong
+- **THEN** the verdict reads "2 of 3 tunnels down" in the danger tone
 
 #### Scenario: Several problems are counted
 - **WHEN** the uplink is up, one port a network uses has lost link, and storage enters its warning band

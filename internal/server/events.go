@@ -140,14 +140,18 @@ func (s *Server) handleOverviewEvents(w http.ResponseWriter, r *http.Request) {
 		down, up := s.wanHist.Latest()
 		return write(down, up)
 	}
-	// The board's sensors, for the Hardware card's rows and header: the
-	// sampler reads them once per five seconds for every connection, and
-	// not at all while the card is hidden (the verdict does not count them).
+	// The board's sensors, for the Hardware card's rows and header and for the
+	// heading: the sampler reads them once per five seconds for every
+	// connection, the card hidden or not, because the heading counts a board
+	// past its limits. Only the card's rows wait on it being shown.
 	sendSensors := func() bool {
-		if s.boardSensors == nil || !layout.Shows("hardware") {
+		if s.boardSensors == nil {
 			return true
 		}
 		liveOverview.Hardware = hardwareView(s.boardSensors.Read())
+		if !layout.Shows("hardware") {
+			return true
+		}
 		return writeEvent(w, "", "sensors", map[string]any{"rows": hardwareRows(liveOverview.Hardware)}) == nil
 	}
 	sendOverview := func() bool {

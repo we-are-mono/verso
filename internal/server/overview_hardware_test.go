@@ -4,6 +4,8 @@
 package server
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"reflect"
 	"strings"
 	"sync"
@@ -109,6 +111,19 @@ func profiledServer(t *testing.T) (*Server, *atomic.Int32) {
 	return srv, reads
 }
 
+// With Hardware hidden the page still reads the board, and its heading counts
+// the warm reading beside the board's port without link.
+func TestAHiddenHotBoardStillLeadsThePage(t *testing.T) {
+	srv, reads := profiledServer(t)
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.AddCookie(&http.Cookie{Name: overviewLayoutCookie, Value: "1.internet-ports-tunnels.traffic-resources-system..hardware"})
+	body := serve(t, srv, req).Body.String()
+	drawn, counted := strings.Contains(body, `data-overview-card="hardware"`), strings.Contains(body, "2 things need attention")
+	if drawn || reads.Load() == 0 || !counted {
+		t.Errorf("hidden Hardware: card drawn %v, reads %d, heading counts it %v", drawn, reads.Load(), counted)
+	}
+}
+
 // On a profiled board the Overview opens with the Hardware card, its rows
 // keyed for the stream and its header naming the warm reading.
 func TestOverviewRendersTheHardwareCard(t *testing.T) {
@@ -122,7 +137,8 @@ func TestOverviewRendersTheHardwareCard(t *testing.T) {
 }
 
 // The sensors frame rides the stream while Hardware is shown, open or closed;
-// hidden, the frame is not sent and the board's sensors are not read.
+// hidden, the frame is not sent. The board's sensors are read either way,
+// because the heading names a board past its limits, hidden or not.
 func TestOverviewStreamSendsSensorsWhileHardwareIsShown(t *testing.T) {
 	for _, tc := range []struct {
 		name, layout string
@@ -136,14 +152,16 @@ func TestOverviewStreamSendsSensorsWhileHardwareIsShown(t *testing.T) {
 			srv, reads := profiledServer(t)
 			frames := firstFrames(t, srv, tc.layout)
 			payload, got := frames["sensors"]
-			if got != tc.want || (reads.Load() > 0) != tc.want {
-				t.Fatalf("sensors frame sent = %v after %d reads, want %v", got, reads.Load(), tc.want)
+			if got != tc.want || reads.Load() == 0 {
+				t.Fatalf("sensors frame sent = %v after %d reads, want %v and a read", got, reads.Load(), tc.want)
 			}
 			if tc.want && (!strings.Contains(payload, "\"hw-cpu\":\"52\U0000202f°C\"") || !strings.Contains(payload, "\"hw-fan\":\"2,622\U0000202frpm\"")) {
 				t.Errorf("sensors frame = %s", payload)
 			}
-			if tc.want && !strings.Contains(frames["overview"], "cluster is hot") {
-				t.Errorf("the overview frame carries Hardware's head: %s", frames["overview"])
+			// The stream's board has a port without link too: with the hot
+			// board counted, that is two things.
+			if !strings.Contains(frames["overview"], `"lead":"2 things need attention"`) {
+				t.Errorf("the heading counts the hot board: %s", frames["overview"])
 			}
 		})
 	}

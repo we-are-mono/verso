@@ -8,7 +8,7 @@ The Overview's heading reads "Your network needs attention" whenever anything is
 
 - The verdict is one rule, with no card excepted:
   - the uplink down: "Your network is offline" (danger), whatever else is wrong;
-  - exactly one cause: that cause, as a sentence that stands on its own ("Storage is high", "1 of 2 tunnels down", "cluster is hot"), in its tone;
+  - exactly one cause: that cause, as a sentence that stands on its own ("Storage is high", "Tunnel wg0 is down", "cluster is hot"), in its tone;
   - two or more: "N things need attention" (warning, or danger when any cause is);
   - nothing wrong and the uplink up: "Your network is online" (success);
   - nothing known: "Your network at a glance" (neutral).

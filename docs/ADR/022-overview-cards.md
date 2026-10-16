@@ -39,9 +39,9 @@ layout drops the card wherever a saved value names it.
 
 The firewall has no card. A card that said "Active" and counted configured
 rules told the operator nothing they could act on, so the page keeps only the
-fact that matters: a ruleset the kernel has not fully loaded makes the verdict
-read that something needs attention. The rule count, and the UCI read behind
-it every second, are gone.
+fact that matters: a ruleset the kernel has not fully loaded is a cause the
+verdict names ("The firewall is not running"). The rule count, and the UCI read
+behind it every second, are gone.
 
 A card is built by its own functions in `internal/widget/overview_cards.go`:
 its header (`head`), its body (`body`), the page it opens, and, where a choice
@@ -79,14 +79,30 @@ tunnels down, the traffic, memory (always memory, so the line never swaps one
 reading for another as they pass), the firmware, the CPU temperature. Hardware
 grades the CPU only against its own limits (its zone's trip points or its
 chip's), never a guessed one, and names a hot CPU before a stopped fan. The tile
-strip and the verdict's kicker are gone: the page says once that something
-needs attention, and the card with the problem says which.
+strip and the verdict's kicker are gone.
 
-The verdict counts what the cards read whether or not a card is hidden, so
-hiding a card never makes the page read "online". Hardware is the exception:
-the verdict speaks for the network, and a warm board is not a network that
-needs attention, so Hardware's status never moves it. A card stays closed when
-its status turns; its header shows the change.
+### The heading names what is wrong
+
+The verdict is the most important true sentence on the page. An uplink that is
+down outranks everything: "Your network is offline". Otherwise one cause is the
+heading in its own words and tone ("Storage is high", "Tunnel wg0 is down",
+"cluster is hot"), several are counted ("2 things need attention", in danger
+when one of them is), and nothing wrong on a working uplink is "Your network is
+online". A heading that only said something needed attention made the reader
+hunt the cards for it, and named a full disk or a hot CPU a network problem.
+
+Each card that can be out of band says its cause beside its header status, as
+a sentence that stands without the card (`cardHead.Cause`). Where the header's
+words stand alone, the cause is the same; Tunnels' "1 of 2 down" names no
+tunnel, so its cause names the one down or counts several. The firewall, which
+has no card, is a cause of its own.
+
+Every card counts whether or not it is hidden, so hiding a card never quiets
+the heading, and Hardware counts like the rest: the heading names what is
+wrong, not only what is wrong with the network, and Hardware grades only
+against the board's own limits. A hidden Hardware card's sensors are still
+read for it; only its frames stop. A card stays closed when its status turns;
+its header shows the change.
 
 ### Arrange is a mode
 

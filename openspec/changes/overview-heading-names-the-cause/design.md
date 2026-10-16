@@ -18,7 +18,7 @@ See proposal.md for why. `Overview.issues()` counts what needs attention (a fire
 
 ### A card says its cause beside its status
 
-`cardHead` gains `Cause`: the sentence the heading uses when the card is the one thing wrong, set wherever the head's tone is warning or danger. Ports and Resources and Hardware already read on their own, so their cause is their status. Tunnels' status "1 of 2 down" names no tunnel without the card, so its cause is "1 of 2 tunnels down". The firewall has no card; its cause is "The firewall is not running" or "The firewall is only partly loaded".
+`cardHead` gains `Cause`: the sentence the heading uses when the card is the one thing wrong, set wherever the head's tone is warning or danger. Ports and Resources and Hardware already read on their own, so their cause is their status. Tunnels' status "1 of 2 down" names no tunnel without the card, so its cause names the tunnel when one is down ("Tunnel wg0 is down") and counts them when several are ("2 of 3 tunnels down"). The firewall has no card; its cause is "The firewall is not running" or "The firewall is only partly loaded".
 
 The alternative, the heading composing a sentence from a card's title and status, puts words together the catalog cannot translate whole.
 
