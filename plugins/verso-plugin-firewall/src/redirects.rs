@@ -14,7 +14,7 @@
 
 use verso_plugin::{
     commit, commit_delete, commit_new, ColumnWidth, Envelope, Form, HeadingAct, RowDrawer,
-    Snapshot, Table, TableColumn, TableRow, Tone, Widget,
+    Snapshot, Table, TableChip, TableColumn, TableRow, Tone, Widget,
 };
 
 use crate::counters::Counters;
@@ -207,7 +207,8 @@ fn act(blank: Option<RowDrawer>) -> HeadingAct {
 fn columns() -> Vec<TableColumn> {
     [
         ("Name", "name", ColumnWidth::Grow),
-        ("Arrives on", "mono", ColumnWidth::Address),
+        ("From", "entity", ColumnWidth::Word),
+        ("Port", "mono", ColumnWidth::Short),
         ("Sent to", "mono", ColumnWidth::Address),
         ("Proto", "keyword", ColumnWidth::Short),
         ("Hits", "num", ColumnWidth::Count),
@@ -263,7 +264,8 @@ fn row(
         tags: Vec::new(),
         cells: vec![
             page::name_cell(&redirect.name, door.clone()),
-            page::mono_cell(&arrives_on(redirect)),
+            page::chips_cell(arrives_from(redirect)),
+            page::mono_cell(&redirect.src_dport),
             page::mono_cell(&sent_to(redirect)),
             page::text_cell(&format::protocol(&redirect.proto, &redirect.family)),
             page::hits_cell(counters.packets(&redirect.chain, &redirect.identity)),
@@ -287,23 +289,20 @@ fn row(
     }
 }
 
-/// arrives_on is the door the traffic knocks on: where it arrives from and the
-/// port it arrives at, which together are what someone outside would type.
-/// A forward restricted to particular source addresses names those instead of
-/// the zone — they are what it really answers to, and a row that said only the
-/// zone would promise more than the forward allows.
-fn arrives_on(redirect: &Redirect) -> String {
-    let source = match (redirect.src_ips.is_empty(), redirect.src.as_str()) {
-        (false, _) => redirect.src_ips.join(" "),
-        (true, "" | "*") => String::new(),
-        (true, zone) => zone.to_string(),
-    };
-    match (source.as_str(), redirect.src_dport.as_str()) {
-        ("", "") => String::new(),
-        ("", port) => port.to_string(),
-        (zone, "") => zone.to_string(),
-        (zone, port) => format!("{zone} · {port}"),
+/// arrives_from is where the traffic comes from: the zone, cited as every zone
+/// is, then any source addresses the forward is restricted to — a row that said
+/// only the zone would promise more than the forward allows. The port it
+/// arrives at stands in its own column, as what someone outside types.
+fn arrives_from(redirect: &Redirect) -> Vec<TableChip> {
+    let mut chips = Vec::new();
+    if !matches!(redirect.src.as_str(), "" | "*") {
+        chips.push(TableChip::entity("zone", &redirect.src));
     }
+    chips.extend(redirect.src_ips.iter().map(|address| TableChip {
+        label: address.clone(),
+        ..TableChip::default()
+    }));
+    chips
 }
 
 /// sent_to is where the traffic ends up: the host and the port it is handed to.
@@ -402,7 +401,8 @@ mod tests {
                         "text": "Force-DNS-to-AdGuard-guest",
                         "href": "/plugins/firewall/port-forwards?open=force_dns_guest"
                     },
-                    {"text": "guest · 53", "emphasis": true},
+                    {"chips": [{"kind": "zone", "icon": "", "label": "guest"}]},
+                    {"text": "53", "emphasis": true},
                     {"text": "router", "emphasis": true},
                     {"text": "tcp/udp"},
                     {"text": "—", "muted": true},
@@ -441,7 +441,7 @@ mod tests {
         let body = body(&Counters::default());
         let table = fixture::widget(&body, "table");
         assert_eq!(
-            table["columns"][5],
+            table["columns"][6],
             serde_json::json!({"kind": "actions", "width": "short"})
         );
         for row in table["rows"].as_array().expect("rows") {
@@ -450,9 +450,9 @@ mod tests {
             // The name and the glyph at the row's trailing edge name the same
             // panel; the glyph is the way in.
             assert_eq!(row["cells"][0]["href"], href);
-            assert_eq!(row["cells"][5]["actions"][1]["href"], href);
+            assert_eq!(row["cells"][6]["actions"][1]["href"], href);
             assert_eq!(row["panel"], href);
-            assert_eq!(row["cells"][5]["actions"][0]["name"], section);
+            assert_eq!(row["cells"][6]["actions"][0]["name"], section);
         }
     }
 
@@ -460,16 +460,22 @@ mod tests {
     fn a_rewritten_port_states_both_ends() {
         let rows = rows(&body(&Counters::default()));
         let nas = &rows[1];
-        assert_eq!(nas["cells"][1]["text"], "wan · 8443");
-        assert_eq!(nas["cells"][2]["text"], "10.0.0.30:443");
-        assert_eq!(nas["cells"][3]["text"], "tcp");
+        // Where it arrives from is a zone, cited as every zone is; the port
+        // it knocks on is what someone outside types.
+        assert_eq!(
+            nas["cells"][1]["chips"],
+            serde_json::json!([{"kind": "zone", "icon": "", "label": "wan"}])
+        );
+        assert_eq!(nas["cells"][2]["text"], "8443");
+        assert_eq!(nas["cells"][3]["text"], "10.0.0.30:443");
+        assert_eq!(nas["cells"][4]["text"], "tcp");
     }
 
     #[test]
     fn hits_come_from_the_redirects_own_nat_chain_never_its_reflection() {
         let rows = rows(&body(&fixture::counters()));
-        assert_eq!(rows[1]["cells"][4], serde_json::json!({"text": "1.2k"}));
-        assert_eq!(rows[0]["cells"][4], serde_json::json!({"text": "60.6k"}));
+        assert_eq!(rows[1]["cells"][5], serde_json::json!({"text": "1.2k"}));
+        assert_eq!(rows[0]["cells"][5], serde_json::json!({"text": "60.6k"}));
     }
 
     // A forward that does not move the port says only where it lands: the port
@@ -484,11 +490,12 @@ mod tests {
             redirect.dest_ip = "10.0.0.30".into();
         }
         let body = serde_json::to_value(page(&model, &Counters::default())).expect("serialize");
-        assert_eq!(rows(&body)[0]["cells"][2]["text"], "10.0.0.30");
+        assert_eq!(rows(&body)[0]["cells"][3]["text"], "10.0.0.30");
     }
 
-    // A forward restricted to particular source addresses names those rather
-    // than the zone: they are what it really answers to.
+    // A forward restricted to particular source addresses names them after the
+    // zone: a row that said only the zone would promise more than the forward
+    // allows.
     #[test]
     fn a_source_restricted_forward_names_the_addresses_it_answers() {
         let mut model = fixture::firewall();
@@ -496,6 +503,10 @@ mod tests {
             redirect.src_ips = vec!["203.0.113.7".into()];
         }
         let body = serde_json::to_value(page(&model, &Counters::default())).expect("serialize");
-        assert_eq!(rows(&body)[0]["cells"][1]["text"], "203.0.113.7 · 53");
+        let from = &rows(&body)[0]["cells"][1]["chips"];
+        assert_eq!(from[0]["kind"], "zone");
+        assert_eq!(from[1]["label"], "203.0.113.7");
+        assert!(from[1].get("kind").is_none(), "an address is not an entity");
+        assert_eq!(rows(&body)[0]["cells"][2]["text"], "53");
     }
 }

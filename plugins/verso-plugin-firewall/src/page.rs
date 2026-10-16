@@ -9,7 +9,7 @@
 //! hit count, and a switch mean the same thing on every page, and a listing that
 //! spelled one of them differently would read as a different kind of thing.
 
-use verso_plugin::{Envelope, PageTab, TableCell, TableEndpoint, TableRowAct, Widget};
+use verso_plugin::{Envelope, PageTab, TableCell, TableChip, TableEndpoint, TableRowAct, Widget};
 
 use crate::format;
 use crate::format::EM_DASH;
@@ -127,6 +127,15 @@ pub fn hits_cell(packets: Option<u64>) -> TableCell {
             ..TableCell::default()
         },
         None => muted(EM_DASH),
+    }
+}
+
+/// chips_cell cites other entities — networks, zones — as the shell's entity
+/// chips, in an `entity` column; none reads as the quiet dash.
+pub fn chips_cell(chips: Vec<TableChip>) -> TableCell {
+    TableCell {
+        chips,
+        ..TableCell::default()
     }
 }
 
