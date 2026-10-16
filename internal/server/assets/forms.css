@@ -41,7 +41,6 @@
   .verso-field-row {
     /* Each measure is on the grid and a pixel more, as a column is, so a
        field at its measure ends with its right border on a line. */
-    --verso-field-width-host: calc(round(down, 50% - 1px, 0.5rem) + 1px);
     --verso-field-width-secret: calc(var(--spacing) * 96 + 1px);
     --verso-field-width-prefix: calc(var(--spacing) * 56 + 1px);
     --verso-field-width-endpoint: calc(var(--spacing) * 128 + 1px);

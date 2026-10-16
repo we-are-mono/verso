@@ -24,7 +24,7 @@ Every task ends green under `make lint` and `make test`; a task that touches a t
 
 ## 4. The answer column
 
-- [ ] 4.1 Write the tests first: in the answer a select and a free-text field fill the column; number, short, prefix, unit-box and time fields keep their measure at the column's left edge; `host` and `secret` cap at the column; the `choice` measure applies only to a wide or stacked row; then implement in `forms.css` and verify `field_test.go`'s measure tests
+- [x] 4.1 Write the tests first: in the answer a select and a free-text field fill the column; number, short, prefix, unit-box and time fields keep their measure at the column's left edge; `host` and `secret` cap at the column; the `choice` measure applies only to a wide or stacked row; then implement in `forms.css` and verify `field_test.go`'s measure tests
 - [ ] 4.2 Write the test first: a radio set's choices stand side by side, 16px apart, wrapping onto further 32px lines; then change `field.control`'s radiogroup and verify `field_test.go`'s radio tests
 - [ ] 4.3 Write the tests first: a form row's switch renders its box with "On" and "Off" inside one label, `label:has(input:checked)` showing one; a table toggle cell renders the bare box with no word; both words are in the Slovenian catalog and the i18n audit stays at zero; then implement `switch.row` and verify
 - [ ] 4.4 Write the tests first, one per row of design.md §3's table: a code field, a textarea, an `endpoint` field, a segmented checks field and every list are wide; "Connection rate" (96 + "per" + 96) is not; an IPv4 address with its netmask (176 + 176) is; a joined group with an unmeasured part is; then add `Wide` to the frame, decide it in each widget, and render a wide answer across both columns; verify

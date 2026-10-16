@@ -218,6 +218,31 @@ func TestAFieldsHelpIsItsDescription(t *testing.T) {
 	}
 }
 
+// TestAnAnswerFillsItsColumnOrKeepsItsMeasure: in the answer column a field
+// whose value has a measure of its own (a number, a port range, an address)
+// keeps it, and one without fills the column; a secret is capped by the
+// column rather than standing at its own 256px (form-fields). Its 384px
+// measure belongs to a row that stacks, and the shell sets it there.
+func TestAnAnswerFillsItsColumnOrKeepsItsMeasure(t *testing.T) {
+	r := newRenderer(t)
+	for name, c := range map[string]struct {
+		f    *Field
+		want string
+	}{
+		"number":  {&Field{Name: "mtu", Label: "MTU", Key: "mtu"}, "w-measure-24!"},
+		"range":   {&Field{Name: "dest_port", Label: "Port", Key: "dest_port"}, "w-measure-32!"},
+		"address": {&Field{Name: "ipaddr", Label: "Address", Key: "ipaddr"}, "w-measure-44!"},
+	} {
+		if got := render(t, r, c.f); !strings.Contains(got, c.want) {
+			t.Errorf("%s keeps its measure (%s):\n%s", name, c.want, got)
+		}
+	}
+	got := render(t, r, &Field{Name: "key", Label: "Password", Kind: "password"})
+	if strings.Contains(got, "w-measure-64") || !strings.Contains(got, `data-verso-control-measure="secret"`) {
+		t.Errorf("a secret fills the answer column and keeps its measure for a stacked row:\n%s", got)
+	}
+}
+
 // TestAHelpOnlyFieldIsDescribed: a plugin that only wrote Help gets the same
 // description, without having to rename the field it already fills in.
 func TestAHelpOnlyFieldIsDescribed(t *testing.T) {

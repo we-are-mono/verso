@@ -425,6 +425,38 @@ func TestAFieldRowIsALedger(t *testing.T) {
 	}
 }
 
+// TestAMeasureIsAStackedRows: a control's own measure (a secret's 384px, an
+// endpoint's 512px, a prefix's, a dropdown sized to its longest option) holds
+// only where a row stacks and the control has the row to itself; in the
+// answer column every control is the column's (form-fields). Nothing measures
+// a field as half its row any more.
+func TestAMeasureIsAStackedRows(t *testing.T) {
+	raw, err := os.ReadFile("assets/forms.css")
+	if err != nil {
+		t.Fatal(err)
+	}
+	css := string(raw)
+	stacked := strings.Index(css, "@container verso-field (width < 36rem)")
+	if stacked < 0 {
+		t.Fatal("forms.css has no stacked row")
+	}
+	for _, measure := range []string{`"secret"`, `"prefix"`, `"endpoint"`, `"choice"`} {
+		for at := strings.Index(css, "[data-verso-control-measure="+measure+"]"); at >= 0; {
+			if at < stacked {
+				t.Errorf("the %s measure applies outside a stacked row", measure)
+			}
+			next := strings.Index(css[at+1:], "[data-verso-control-measure="+measure+"]")
+			if next < 0 {
+				break
+			}
+			at += next + 1
+		}
+	}
+	if strings.Contains(css, "--verso-field-width-host") || strings.Contains(css, `[data-verso-control-measure="host"]`) {
+		t.Error("a field is still measured as half its row")
+	}
+}
+
 // TestFieldRowsRunToACardsBorders: in a page card a field row runs from the
 // card's left border to its right, its words still the card's 23px in, so the
 // hairlines between rows touch both borders (form-fields). A row inside
