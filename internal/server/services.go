@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
+	"net/url"
 	"regexp"
 	"slices"
 	"sort"
@@ -427,7 +428,7 @@ func serviceRow(name string, st openwrt.RCState, owners map[string]string) widge
 		if st.Running {
 			pill = runningStateCell(st.Uptime)
 		} else if st.Failed {
-			pill = failedStateCell()
+			pill = failedStateCell(name)
 		}
 	case openwrt.ServiceSubsystem:
 		pill = subsystemStateCell(st.Running, st.Enabled)
@@ -477,7 +478,7 @@ func pluginServiceRow(st pluginState, owners map[string]string) widget.TableRow 
 	case st.Running:
 		pill = widget.TableCell{Text: "not responding", Variant: "danger"}
 	case st.Failed:
-		pill = failedStateCell()
+		pill = failedStateCell(st.Service)
 	default:
 		pill = widget.TableCell{Text: "stopped", Variant: "neutral"}
 	}
@@ -486,8 +487,9 @@ func pluginServiceRow(st pluginState, owners map[string]string) widget.TableRow 
 
 // failedStateCell is a daemon procd stopped restarting (RCState.Failed): it
 // exited on its own, with an error, and stays down until someone starts it.
-func failedStateCell() widget.TableCell {
-	return widget.TableCell{Text: "Failed", Variant: "danger"}
+// Why is in its log, so the state leads to the log's lines about it.
+func failedStateCell(service string) widget.TableCell {
+	return widget.TableCell{Text: "Failed", Variant: "danger", Href: logsPath + "?q=" + url.QueryEscape(service)}
 }
 
 func serviceKind(kind openwrt.ServiceKind) openwrt.ServiceKind {

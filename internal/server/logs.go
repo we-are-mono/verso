@@ -45,6 +45,10 @@ func systemLogRow(entry openwrt.LogEntry) systemLogEvent {
 	return row
 }
 
+// logsPath is the system log's page; ?q= opens it narrowed to those words, as
+// a failed service's state does to its own lines.
+const logsPath = "/system/logs"
+
 func (s *Server) handleLogs(w http.ResponseWriter, r *http.Request) {
 	lang, t := s.localize(r)
 	var body, acts strings.Builder
@@ -53,8 +57,10 @@ func (s *Server) handleLogs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// What narrows the log and what acts on it — its search, its live control,
-	// the download, the settings — sit on the heading line.
-	if err := s.pageSet(lang).ExecuteTemplate(&acts, "logs.acts", widget.ActionBar{Filter: translatorOrIdentity(t)("Find a message or source")}); err != nil {
+	// the download, the settings — sit on the heading line. The search stands
+	// with what the address asked for in it.
+	bar := widget.ActionBar{Filter: translatorOrIdentity(t)("Find a message or source"), Query: strings.TrimSpace(r.URL.Query().Get("q"))}
+	if err := s.pageSet(lang).ExecuteTemplate(&acts, "logs.acts", bar); err != nil {
 		http.Error(w, "render error", http.StatusInternalServerError)
 		return
 	}

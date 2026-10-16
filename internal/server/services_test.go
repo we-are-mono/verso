@@ -257,6 +257,11 @@ func TestServicesFailedDaemonReadsFailed(t *testing.T) {
 		if state := row.Cells[5]; state.Text != "Failed" || state.Variant != "danger" {
 			t.Errorf("%s state = %q/%q, want Failed/danger", row.ID, state.Text, state.Variant)
 		}
+		// Why it failed is in its log, so the state leads to the log's lines
+		// about it.
+		if state := row.Cells[5]; state.Href != "/system/logs?q="+row.ID {
+			t.Errorf("%s state leads to %q, want its log", row.ID, state.Href)
+		}
 		if acts := row.Cells[6].Actions; len(acts) == 0 || acts[len(acts)-1].Title != "Start" {
 			t.Errorf("%s acts = %+v, want Start last", row.ID, acts)
 		}

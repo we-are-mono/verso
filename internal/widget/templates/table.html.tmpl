@@ -309,7 +309,10 @@
         <td class="border-b border-rule {{template "table.cellpad" .}} whitespace-nowrap"{{if .Key}} data-verso-cell="{{.Key}}"{{end}}>
           <span class="flex items-center gap-2">
             <span class="size-1.5 shrink-0 rounded-[1px] {{if eq .Variant "success"}}bg-green{{else if eq .Variant "warning"}}bg-marigold{{else if eq .Variant "danger"}}bg-crimson{{else if eq .Variant "info"}}bg-denim{{else}}border border-faint{{end}}"{{if .Key}} data-verso-dot{{end}}></span>
-            <span class="{{if .Variant}}text-ink{{else}}text-meta{{end}}{{if .Verbatim}} font-mono text-base font-medium{{end}}"{{if .Key}} data-verso-value{{end}}>{{.Text}}</span>{{if .Sub}}<span class="text-meta">{{.Sub}}</span>{{end}}
+            {{/* a state with somewhere to read about it (a failed service's
+                 log) leads there, in its own ink, underlined as a lane's
+                 closing words are */}}
+            {{if .Href}}<a href="{{.Href}}" class="{{if .Variant}}text-ink{{else}}text-meta{{end}} underline underline-offset-2 hover:decoration-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim"{{if .Key}} data-verso-value{{end}}>{{.Text}}</a>{{else}}<span class="{{if .Variant}}text-ink{{else}}text-meta{{end}}{{if .Verbatim}} font-mono text-base font-medium{{end}}"{{if .Key}} data-verso-value{{end}}>{{.Text}}</span>{{end}}{{if .Sub}}<span class="text-meta">{{.Sub}}</span>{{end}}
             {{if .Tag}}{{template "table.tag" .}}{{end}}
           </span>
         </td>

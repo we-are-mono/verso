@@ -209,3 +209,12 @@ func TestRebootRefusesUnresolvedOrUnreadableStage(t *testing.T) {
 		}
 	}
 }
+
+// An address naming a search opens the log already narrowed to it — how a
+// failed service's state leads to its own lines.
+func TestTheLogOpensOnTheSearchItsAddressNames(t *testing.T) {
+	body := get(t, newServer(t, fakeBackend{access: true}), "/system/logs?q=sysntpd").Body.String()
+	if !strings.Contains(body, `data-verso-listing-filter value="sysntpd"`) {
+		t.Errorf("the log's search should stand with the address's words in it:\n%s", body)
+	}
+}

@@ -1896,3 +1896,19 @@ func TestAnEntityChipIsDrawnByItsKind(t *testing.T) {
 		t.Errorf("EntityChip = %+v", chip)
 	}
 }
+
+// A state that has somewhere to be read about — a failed service's log —
+// is a link in its own ink, underlined as a lane's closing words are; its row
+// and its column say what it is about.
+func TestAStateWithSomewhereToReadIsALink(t *testing.T) {
+	got := render(t, newRenderer(t), &Table{Columns: []TableColumn{{Label: "Service", Kind: "reference"}, {Label: "State", Kind: "status"}},
+		Rows: []TableRow{{ID: "sysntpd", Cells: []TableCell{{Text: "sysntpd"}, {Text: "Failed", Variant: "danger", Href: "/system/logs?q=sysntpd"}}}}})
+	for _, want := range []string{
+		`<a href="/system/logs?q=sysntpd" class="text-ink underline underline-offset-2`,
+		`>Failed</a>`,
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("want %s in:\n%s", want, got)
+		}
+	}
+}
