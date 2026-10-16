@@ -43,7 +43,7 @@ func TestRenderOverviewCards(t *testing.T) {
 	got := render(t, newRenderer(t), fullOverview())
 	for _, want := range []string{
 		`data-overview`, `data-overview-tone="success"`, "Your network is", `data-overview-accent class="text-green-deep">online`, "14:52:07", "CEST",
-		"Arrange", "Done", "Reset layout",
+		`aria-label="Arrange cards"`, ">Arrange cards<", ">Done<", "Reset layout",
 		// Internet
 		"Connected", "IPv4", "dhcp", "172.30.1.171/24", "IPv6", "dhcpv6", "fd42:7ea:aa00::/56", `x-data="copy"`, written("8", "min"),
 		// Ports and Tunnels

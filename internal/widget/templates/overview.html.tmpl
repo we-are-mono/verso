@@ -13,13 +13,18 @@
        it, 24px under the top bar and 24px over the cards. The
        heading and the shelf span the cards' own columns, which round their
        widths down to the grid, so Arrange and the shelf end where the cards
-       do at any window width. */}}
+       do at any window width. Arrange is seldom wanted, so it is a glyph that
+       leaves the line to the verdict, named by its tip; while arranging the
+       same square fills in denim and holds a check, its tip saying Done, so
+       the way out of the mode is the one filled thing on the line. It keeps
+       one name and says pressed, as a toggle does. */}}
   <div class="verso-overview-cols"><div class="col-span-full min-w-0">
   <div class="flex min-h-8 flex-wrap items-center gap-x-6 gap-y-2">
     <h1 class="verso-page-heading text-balance"><span data-overview-lead>{{.Verdict.Lead}}</span><span data-overview-accent class="text-green-deep">{{.Verdict.Accent}}</span><span data-overview-tail>{{.Verdict.Tail}}</span></h1>
     <div class="ml-auto flex items-center">
-      <button type="button" data-overview-arrange aria-pressed="false" class="{{template "verso-btn-box"}} border {{template "verso-btn-secondary"}} focus-visible:outline-denim group-data-arranging/overview:border-denim group-data-arranging/overview:bg-denim group-data-arranging/overview:text-on-fill group-data-arranging/overview:hover:border-denim-deep group-data-arranging/overview:hover:bg-denim-deep group-data-arranging/overview:hover:text-on-fill">
-        <span class="group-data-arranging/overview:hidden">{{ t "Arrange" }}</span><span class="hidden group-data-arranging/overview:inline">{{ t "Done" }}</span>
+      <button type="button" data-overview-arrange aria-pressed="false" aria-label="{{ t "Arrange cards" }}" class="group/arrange relative grid {{template "verso-btn-icon"}} group-data-arranging/overview:border-denim group-data-arranging/overview:bg-denim group-data-arranging/overview:text-on-fill group-data-arranging/overview:hover:border-denim-deep group-data-arranging/overview:hover:bg-denim-deep group-data-arranging/overview:hover:text-on-fill">
+        <span class="flex group-data-arranging/overview:hidden">{{icon "arrange" "size-4"}}</span><span class="hidden group-data-arranging/overview:flex">{{icon "check" "size-4"}}</span>
+        <span aria-hidden="true" class="{{template "verso-tip-below-class"}} group-hover/arrange:opacity-100 group-focus-visible/arrange:opacity-100"><span class="group-data-arranging/overview:hidden">{{ t "Arrange cards" }}</span><span class="hidden group-data-arranging/overview:inline">{{ t "Done" }}</span></span>
       </button>
     </div>
   </div>

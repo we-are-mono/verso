@@ -109,7 +109,7 @@ The Overview SHALL offer an Arrange act on its heading line. In Arrange mode eve
 #### Scenario: Entering and leaving Arrange
 - **WHEN** the operator presses Arrange
 - **THEN** each card shows a drag handle and a hide control, and the shelf of hidden cards appears
-- **AND** the act reads Done until pressed again
+- **AND** the act, a glyph named "Arrange cards", is a filled check whose tip says Done until pressed again, and reports itself pressed
 
 ### Requirement: Cards move by pointer or keyboard
 In Arrange mode the operator SHALL move a card by dragging it to any place in either column, or by focusing its drag handle and pressing an arrow key. Up and Down move it within its column; Left and Right move it to the same position in the other column. Each move is announced to assistive technology with the card's column and position.

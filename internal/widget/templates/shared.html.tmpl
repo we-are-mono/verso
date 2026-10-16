@@ -388,8 +388,12 @@
      rather than an inverted bubble, because nothing else in Verso is inverted.
      It rests above whatever raises it and flush to that thing's right edge, so a
      tip on the last column stays inside the table. Hidden until its named group
-     is hovered or focused; the caller supplies those variants. */}}
-{{define "verso-tip-class"}}pointer-events-none absolute right-0 bottom-full z-30 mb-2 rounded-xs border border-rule-strong bg-ground px-3 py-2 text-sm leading-tight font-normal whitespace-nowrap text-ink opacity-0 shadow-(--shadow-float) transition-opacity{{end}}
+     is hovered or focused; the caller supplies those variants. An act on the
+     heading line, under the sticky top bar, raises its tip below it instead
+     (verso-tip-below-class), where the bar cannot cover it. */}}
+{{define "verso-tip-class"}}pointer-events-none absolute right-0 bottom-full z-30 mb-2 {{template "verso-tip-look"}}{{end}}
+{{define "verso-tip-below-class"}}pointer-events-none absolute right-0 top-full z-30 mt-2 {{template "verso-tip-look"}}{{end}}
+{{define "verso-tip-look"}}rounded-xs border border-rule-strong bg-ground px-3 py-2 text-sm leading-tight font-normal whitespace-nowrap text-ink opacity-0 shadow-(--shadow-float) transition-opacity{{end}}
 
 {{/* Copy feedback is prose, even beside a machine value. A refused copy keeps
      its explanation visible briefly, including after a touch activation. */}}

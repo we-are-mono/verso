@@ -37,6 +37,7 @@ func TestEveryIconActLooksAlike(t *testing.T) {
 		"list remove": buttonClass(t, render(t, r, &List{Name: "server", Label: "Time servers", Style: "rows", Items: []string{"0.pool.ntp.org"}}), "data-verso-list-remove"),
 		"fact copy":   buttonClass(t, render(t, r, &Properties{Items: []Property{{Label: "Fingerprint", Value: "AB:CD", Mono: true, Copy: true}}}), `x-data="copy"`),
 		"code copy":   buttonClass(t, render(t, r, &Code{Value: "ssh-ed25519 AAAA", Copy: true}), `x-data="copy"`),
+		"arrange":     buttonClass(t, render(t, r, fullOverview()), "data-overview-arrange"),
 	} {
 		if !strings.Contains(tag, iconButton) {
 			t.Errorf("%s is not the icon act: %s", name, tag)
