@@ -129,7 +129,7 @@ Every task ends green under `make lint` and `make test`. A task that touches a t
 
 ## 10. Catalog, backlog and integration
 
-- [ ] 10.1 Add every new string to `i18n/sl/base.json` and retire the chip's and drawer's strings. Verify the i18n audit reports zero.
+- [x] 10.1 Add every new string to `i18n/sl/base.json` and retire the chip's and drawer's strings. Verify the i18n audit reports zero for this change's strings (its four other misses — Cilj, Jedro, WAN and the Tctl chart's title, each a Slovenian string looked up again — were there before this change).
 - [ ] 10.2 Update `docs/BACKLOG.md`:
   - the change as landed;
   - the release-notes line (the chip is gone; pending changes live at the top of the sidebar).
