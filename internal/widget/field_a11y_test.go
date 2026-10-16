@@ -287,3 +287,18 @@ func TestRefusedFieldStaysCrimsonWhileFocused(t *testing.T) {
 		}
 	}
 }
+
+// A copy control is named with what it copies, as a row's act is named with
+// its row ("Edit lan"): a screen reader hearing "Copy" four times in a list
+// of addresses cannot tell which one each takes. A code block's says the file.
+func TestACopyControlNamesWhatItCopies(t *testing.T) {
+	r := newRenderer(t)
+	props := render(t, r, &Properties{Items: []Property{{Label: "MAC address", Value: "aa:bb:cc:dd:ee:ff", Mono: true, Copy: true}}})
+	if !strings.Contains(props, `aria-label="Copy aa:bb:cc:dd:ee:ff"`) {
+		t.Errorf("a copied value should name itself:\n%s", props)
+	}
+	code := render(t, r, &Code{Label: "/etc/config/firewall", Value: "config zone", Copy: true})
+	if !strings.Contains(code, `aria-label="Copy /etc/config/firewall"`) {
+		t.Errorf("a code block's copy should name its file:\n%s", code)
+	}
+}
