@@ -332,21 +332,35 @@ pub fn valid_query(query: &str) -> bool {
             .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'.' | b'_' | b'+' | b'-'))
 }
 
+/// protected names a package the router cannot lose and still boot, keep its
+/// config, reach its network, install packages or serve this interface. Its
+/// removal is refused, not warned about: nothing is gained by it but a broken
+/// router. The package manager and procd's helpers ship under a family of
+/// names (`apk-mbedtls`, `apk-openssl`; `procd-ujail`, `procd-seccomp`).
 pub fn protected(name: &str) -> bool {
     matches!(
         name,
         "busybox"
             | "apk"
+            | "base-files"
+            | "kernel"
+            | "libc"
+            | "musl"
+            | "uci"
+            | "fstools"
+            | "mtd"
             | "procd"
+            | "ubox"
             | "ubusd"
             | "ubus"
+            | "logd"
             | "rpcd"
             | "uhttpd"
             | "netifd"
-            | "libc"
-            | "musl"
+            | "openwrt-keyring"
             | "verso"
-    )
+    ) || name.starts_with("apk-")
+        || name.starts_with("procd-")
 }
 
 fn dependency_graph(packages: &[Value]) -> HashMap<String, Vec<String>> {
@@ -706,5 +720,31 @@ mod tests {
             assert!(protected(package));
         }
         assert!(!protected("htop"));
+    }
+
+    // Removing any of these leaves a router that no longer boots, keeps its
+    // config, reaches its network or installs packages: there is nothing to
+    // gain from it, so the router refuses rather than warns.
+    #[test]
+    fn keeps_what_the_router_boots_and_installs_with() {
+        for package in [
+            "base-files",
+            "kernel",
+            "uci",
+            "fstools",
+            "mtd",
+            "ubox",
+            "logd",
+            "procd-ujail",
+            "procd-seccomp",
+            "apk-mbedtls",
+            "apk-openssl",
+            "openwrt-keyring",
+        ] {
+            assert!(protected(package), "{package}");
+        }
+        for package in ["apkx", "procdump", "kernel-headers", "urngd", "dropbear", "nlbwmon"] {
+            assert!(!protected(package), "{package}");
+        }
     }
 }
