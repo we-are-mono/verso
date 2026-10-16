@@ -362,23 +362,85 @@ func TestBuildSidebarHasNoPlaceholderRows(t *testing.T) {
 	}
 }
 
-// Only the row you are in opens its subpages: the shell learns a plugin's pages
-// from the envelope it just rendered, so it can speak for that page and no other.
-func TestBuildSidebarOpensOnlyTheActiveRow(t *testing.T) {
-	firewall := manifest("firewall", nav("Security", "Firewall", "/"))
+// A plugin whose manifest says only "pages": true opens on its own page alone,
+// with the subpages its envelope names: the shell knows them for that page and
+// no other, so its row stays a link and is no group.
+func TestAnEntryWithoutAListOpensOnlyOnItsPage(t *testing.T) {
+	firewall := manifest("firewall", plugin.NavEntry{Section: "Security", Label: "Firewall", Path: "/", Pages: plugin.NavPages{Opens: true}})
 	firewall.Socket = "/firewall.sock"
 	s := navServer(firewall)
 	pages := []pageTab{{Label: "Rules", Href: "/plugins/firewall/", Active: true}, {Label: "Zones", Href: "/plugins/firewall/zones"}}
 
-	model := s.buildSidebar("/plugins/firewall/", identityTranslator,
-		func(string) func(string) string { return identityTranslator }, pages)
-	for _, row := range model.Rows {
-		switch {
-		case row.Label == "Firewall" && len(row.Children) != 2:
-			t.Fatalf("the active row should open its subpages, got %+v", row.Children)
-		case row.Label != "Firewall" && len(row.Children) != 0:
-			t.Fatalf("row %q opened subpages that are not its own: %+v", row.Label, row.Children)
+	here := railRow(t, s.buildSidebar("/plugins/firewall/", identityTranslator,
+		func(string) func(string) string { return identityTranslator }, pages), "Firewall")
+	if len(here.Children) != 2 || here.Group || here.Open {
+		t.Errorf("on its page, the row carries the envelope's subpages as a link: %+v", here)
+	}
+	if away := railRow(t, sidebar(s, "/"), "Firewall"); len(away.Children) != 0 || away.Group {
+		t.Errorf("away from its page, the row knows no subpages: %+v", away)
+	}
+}
+
+// firewallWithPages is a firewall whose manifest lists its subpages.
+func firewallWithPages() plugin.Manifest {
+	m := manifest("firewall", plugin.NavEntry{Section: "Security", Label: "Firewall", Path: "/", Pages: plugin.NavPages{Opens: true,
+		List: []plugin.PageTab{{Label: "Rules", Path: "/"}, {Label: "Zones", Path: "zones"}}}})
+	m.Socket = "/firewall.sock"
+	return m
+}
+
+// Every group carries its subpages on every page, so it opens in place: a
+// plugin's from its manifest, Network's and System's from the shell. Only the
+// group holding the page you are on is open.
+func TestEveryGroupCarriesItsSubpagesEverywhere(t *testing.T) {
+	net := manifest("net", nav("Network", "Interfaces", "/"))
+	net.Socket = "/net.sock"
+	s := navServer(firewallWithPages(), net)
+
+	model := sidebar(s, "/")
+	fw := railRow(t, model, "Firewall")
+	if want := []string{"/plugins/firewall/", "/plugins/firewall/zones"}; !fw.Group || fw.Open || len(fw.Children) != 2 ||
+		fw.Children[0].Href != want[0] || fw.Children[1].Href != want[1] {
+		t.Errorf("Firewall on the Overview = %+v, want a closed group of %v", fw, want)
+	}
+	for _, label := range []string{"Network", "System"} {
+		if row := railRow(t, model, label); !row.Group || row.Open || len(row.Children) == 0 {
+			t.Errorf("%s on the Overview = %+v, want a closed group with its pages", label, row)
 		}
+	}
+	if row := railRow(t, model, "Devices"); row.Group {
+		t.Errorf("Devices has no subpages and is no group: %+v", row)
+	}
+
+	model = sidebar(s, "/system/hardware")
+	if !railRow(t, model, "System").Open || railRow(t, model, "Firewall").Open || railRow(t, model, "Network").Open {
+		t.Errorf("only System's group is open on a System page")
+	}
+}
+
+// A declared subpage's label is the plugin's catalog's translation.
+func TestADeclaredSubpageSpeaksThePluginsLanguage(t *testing.T) {
+	s := navServer(firewallWithPages())
+	sl := func(id string) func(string) string {
+		return func(s string) string {
+			if id == "firewall" && s == "Zones" {
+				return "Območja"
+			}
+			return s
+		}
+	}
+	fw := railRow(t, s.buildSidebar("/", identityTranslator, sl, nil), "Firewall")
+	if fw.Children[1].Label != "Območja" {
+		t.Errorf("Zones = %q, want the plugin's translation", fw.Children[1].Label)
+	}
+}
+
+// A manifest's list is the plugin's subpages wherever they are read, whatever
+// its page's envelope names.
+func TestTheManifestsListWinsOverTheEnvelope(t *testing.T) {
+	got := subpageTabsAt(firewallWithPages(), "zones", []plugin.PageTab{{Label: "Rules", Path: "/"}})
+	if len(got) != 2 || got[1].Label != "Zones" || !got[1].Active {
+		t.Errorf("subpages = %+v, want the manifest's two, Zones active", got)
 	}
 }
 

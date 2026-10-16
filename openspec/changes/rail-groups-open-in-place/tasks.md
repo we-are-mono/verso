@@ -7,7 +7,7 @@
 
 ## 2. Every group carries its subpages
 
-- [ ] 2.1 Test first in `internal/server/nav_test.go`:
+- [x] 2.1 Test first in `internal/server/nav_test.go`:
   - Network, System and a plugin declaring a list carry their subpages on every page.
   - Only the group holding the current page is `Open`.
   - A plugin's declared labels come from its catalog, and their hrefs sit under its mount.

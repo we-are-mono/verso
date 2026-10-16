@@ -587,6 +587,10 @@ func (s *Server) pluginBodyAt(r *http.Request, m plugin.Manifest, pluginPath str
 // builds every href and marks the active tab from the request, so the bar can
 // never point outside the plugin.
 func subpageTabsAt(m plugin.Manifest, pluginPath string, declared []plugin.PageTab) []pageTab {
+	// The manifest's list, where the entry has one, is the one source.
+	if entry, ok := navEntryAt(m, pluginPath); ok && entry.Pages.List != nil {
+		declared = entry.Pages.List
+	}
 	if len(declared) == 0 {
 		return nil
 	}

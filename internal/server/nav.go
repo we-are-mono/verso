@@ -89,13 +89,15 @@ type navRow struct {
 	Href   string
 	Icon   string
 	Active bool
-	// Children are the active row's subpages, already localized. Only the active
-	// row has them: a plugin declares its pages in the envelope it answers with,
-	// so the shell knows them for the page in hand and for no other.
-	Children []pageTab
+	// Children are the row's subpages, already localized. A Group carries them
+	// on every page (Network's and System's, or a plugin's manifest list) and
+	// opens in place; Open is the group holding the page you are on. A plugin
+	// that says only "pages": true has them on its own page alone, from the
+	// envelope, and stays a link.
+	Children    []pageTab
+	Group, Open bool
 	// Opens says the row leads into subpages at all, known on every page, so a
-	// closed row can say it opens: System's are the shell's own, and a plugin's
-	// destination declares it in its manifest.
+	// closed row can say it opens.
 	Opens bool
 	// Detail rides hard right: what waits for you there, in a word or two
 	// ("15 updates"), never a reading of how things are. Dot leads it with the
@@ -198,7 +200,11 @@ func (s *Server) buildSidebar(active string, tr func(string) string, pluginTr fu
 			if icon == "" {
 				icon = navIcon(entry.Label, entry.Section)
 			}
-			places = append(places, filed{entry.Section, navRow{Label: entry.Label, Href: href, Icon: icon, PluginID: m.ID, Opens: entry.Pages.Opens}})
+			row := navRow{Label: entry.Label, Href: href, Icon: icon, PluginID: m.ID, Opens: entry.Pages.Opens, Group: entry.Pages.List != nil}
+			for _, p := range entry.Pages.List {
+				row.Children = append(row.Children, pageTab{Label: p.Label, Href: pluginHref(m.ID, p.Path), PluginID: m.ID})
+			}
+			places = append(places, filed{entry.Section, row})
 		}
 	}
 	here := s.sectionAt(active)
@@ -207,7 +213,7 @@ func (s *Server) buildSidebar(active string, tr func(string) string, pluginTr fu
 		if len(pages) == 0 {
 			continue
 		}
-		row := navRow{Label: c.Section, Href: pages[0].Href, Icon: navIcon(c.Section, c.Section), Active: here == c.Section, Opens: true}
+		row := navRow{Label: c.Section, Href: pages[0].Href, Icon: navIcon(c.Section, c.Section), Active: here == c.Section, Opens: true, Group: true, Children: pages}
 		// What System has waiting for you is what it has to install.
 		if c.Section == "System" {
 			if truth, ok := s.updateTruth(); ok {
@@ -252,19 +258,26 @@ func (s *Server) buildSidebar(active string, tr func(string) string, pluginTr fu
 		return ra >= 0 && ra < rb
 	})
 
-	// The one open row carries the subpages, and it is the only row that can:
-	// the shell learns a plugin's pages from the envelope it has just rendered.
-	for i := range rows {
-		if rows[i].Active {
-			rows[i].Children = pages
-			break
-		}
-	}
 	for i := range rows {
 		if rows[i].PluginID == "" {
 			rows[i].Label = tr(rows[i].Label)
 		} else {
 			rows[i].Label = pluginTr(rows[i].PluginID)(rows[i].Label)
+		}
+		for j, p := range rows[i].Children {
+			rows[i].Children[j].Label = localizeLabel(p.PluginID, p.Label, tr, pluginTr)
+		}
+	}
+	// The row you are in takes the page's own subpages, already localized and
+	// with the one you are on marked; a plugin without a manifest list has
+	// them here alone.
+	for i := range rows {
+		if rows[i].Active {
+			if len(pages) > 0 {
+				rows[i].Children = pages
+			}
+			rows[i].Open = rows[i].Group
+			break
 		}
 	}
 	return navModel{Rows: rows}
