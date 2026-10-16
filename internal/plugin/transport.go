@@ -221,6 +221,22 @@ type Description struct {
 	Plain   string   `json:"plain"`
 	Covers  []int    `json:"covers"`
 	Subject *Subject `json:"subject,omitempty"`
+	// Setting says the change as the settings row it was made on: the row's
+	// label and the value it now holds, in words. Plain stays the sentence
+	// for a reader that draws only sentences (config history's note).
+	Setting *Setting `json:"setting,omitempty"`
+}
+
+// Setting is one settings row's change as the row says it: "Log every lease",
+// "on". Verbatim marks a value the machine wrote (a name, an address), set in
+// mono as every verbatim string is. Key is the row's option, its key chip,
+// where the changes it covers write more than that one option (a time zone
+// written with its rule).
+type Setting struct {
+	Label    string `json:"label"`
+	Value    string `json:"value"`
+	Verbatim bool   `json:"verbatim,omitempty"`
+	Key      string `json:"key,omitempty"`
 }
 
 // Subject is what a sentence is about: its kind, one of SubjectKinds, and the

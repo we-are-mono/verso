@@ -538,6 +538,25 @@ kind drawn as its own chip:
 A sentence that names no subject, or about several objects at once, leaves the
 change to be named by its config and section, as a raw line is.
 
+A change made on a page of settings is said as its row says it: the row's label,
+the value it now holds, and the option as its key chip. Build it with
+`Description::setting(label, value, key, covers)`, adding `.verbatim()` when
+the value is a string the machine wrote (a name, an address) rather than words.
+To keep those words the page's own, render the page from the snapshot and read
+the control: `page.reading("drop_invalid")` gives its label and what it now
+shows, `on`/`off` for a switch and the option's label for a pick.
+
+```rust
+let page = settings::page(&Firewall::read(snapshot)).widget;
+if let Some(read) = page.reading(&change.option) {
+    let said = Description::setting(&read.label, &read.value, &change.option, vec![i]);
+    out.push(if read.words { said } else { said.verbatim() });
+}
+```
+
+A sentence that stands for one option, with or without `setting`, carries that
+option's key chip in the review.
+
 Each `Change` is one net change with a normalized `op`, so you never reason about a
 raw tuple's length:
 
@@ -552,7 +571,8 @@ raw tuple's length:
 A removed section is already gone from the injected snapshot (which reflects the
 staged config), so a `remove-section` can be named only as far as its handle
 allows — leave it to the raw line otherwise. The describe hook never writes and
-never renders a page; it only turns changes into words.
+never answers with a page; it only turns changes into words, though it may build
+one of its own pages to read a control's words from it.
 
 ### Privileged post-apply actions
 

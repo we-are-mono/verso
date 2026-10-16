@@ -91,7 +91,14 @@ type stagedItem struct {
 	Word  string
 	Label string
 	Mono  bool
-	Lines []stagedLine
+	// Setting is the row said as the settings row it was made on — its label
+	// and new value — when the plugin described it so; Label stays the
+	// sentence underneath. Key is the one option a described row stands for,
+	// drawn as the row's key chip; empty where it stands for several or for
+	// a whole section.
+	Setting *plugin.Setting
+	Key     string
+	Lines   []stagedLine
 	// plugin is the plugin whose page the row was made on, empty for the
 	// shell's own; changes is what the row stands for. Config history keeps
 	// both (ADR-021), and subject, what its plugin said the row is about.
@@ -233,6 +240,17 @@ func (s *Server) describedGroups(ctx context.Context, src changeSource, flat []s
 		}
 		if row.authored && !row.author.Shell {
 			row.item.plugin = row.author.Plugin
+			// A setting says its row's label and value in the plugin's
+			// words, so its catalog reads them; a verbatim value is the
+			// machine's and stays.
+			if set := row.item.Setting; set != nil {
+				t := pluginTr(row.author.Plugin)
+				said := plugin.Setting{Label: t(set.Label), Value: set.Value, Verbatim: set.Verbatim}
+				if !set.Verbatim {
+					said.Value = t(set.Value)
+				}
+				row.item.Setting = &said
+			}
 		}
 		groups[i].Items = append(groups[i].Items, row.item)
 	}
@@ -320,6 +338,7 @@ func (s *Server) describeStaged(ctx context.Context, src changeSource, flat []st
 	type run struct {
 		plain   string
 		subject *plugin.Subject
+		setting *plugin.Setting
 		indices []int
 	}
 	covered := map[int]*run{}
@@ -339,7 +358,7 @@ func (s *Server) describeStaged(ctx context.Context, src changeSource, flat []st
 			if d.Plain == "" || len(d.Covers) == 0 {
 				continue
 			}
-			r := &run{plain: d.Plain, subject: d.Subject}
+			r := &run{plain: d.Plain, subject: d.Subject, setting: d.Setting}
 			for _, local := range d.Covers {
 				if local < 0 || local >= len(positions) {
 					continue // a plugin cannot cover a change the shell never sent
@@ -372,6 +391,11 @@ func (s *Server) describeStaged(ctx context.Context, src changeSource, flat []st
 			}
 			item := stagedItemOf(r.plain, false, changes, tr)
 			item.subject = subjectOf(r.subject, changes[0])
+			item.Setting = r.setting
+			item.Key = soleOption(changes)
+			if r.setting != nil && r.setting.Key != "" {
+				item.Key = r.setting.Key
+			}
 			rows = append(rows, stagedRow{config: c.config, item: item, author: authors[i], authored: authored[i]})
 			continue
 		}
@@ -415,6 +439,26 @@ func stagedItemOf(label string, mono bool, changes []stagedChange, tr func(strin
 		item.Lines = append(item.Lines, stagedLine{Op: op, Text: c.raw})
 	}
 	return item
+}
+
+// soleOption is the option a run of changes writes when it writes exactly
+// one: every change sets, clears or edits the list of that one option. A run
+// writing several options, or adding or removing a whole section, names none.
+func soleOption(changes []stagedChange) string {
+	option := ""
+	for _, change := range changes {
+		c := describeChange(change)
+		switch c.Op {
+		case "set", "remove-option", "list-add", "list-del":
+		default:
+			return ""
+		}
+		if option != "" && c.Option != option {
+			return ""
+		}
+		option = c.Option
+	}
+	return option
 }
 
 func hasOp(ops []string, op string) bool {

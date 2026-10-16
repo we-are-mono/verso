@@ -60,7 +60,13 @@
       <summary class="flex cursor-pointer list-none items-center gap-3 {{template "verso-drawer-inset"}} py-2 leading-6 transition-colors select-none hover:bg-quiet/60 [&::-webkit-details-marker]:hidden">
         <span aria-hidden="true" class="size-1.5 shrink-0 rounded-[1px] {{if eq .Verb "added"}}bg-green{{else if eq .Verb "removed"}}bg-crimson{{else if eq .Verb "reordered"}}bg-amethyst{{else}}bg-marigold{{end}}"></span>
         <span class="w-18 shrink-0 text-sm text-meta">{{.Word}}</span>
-        <span class="min-w-0 flex-1 truncate {{if .Mono}}font-mono text-base font-medium{{else}}text-sm font-semibold{{end}} text-ink">{{.Label}}</span>
+        {{/* A setting reads as its settings row did: the row's name, then the
+             value it now holds — the machine's in mono, words in the sans —
+             then, as every described row standing for one option, that
+             option's key chip. */}}
+        {{if .Setting}}<span class="flex min-w-0 flex-1 items-center gap-2"><span class="truncate text-sm font-semibold text-ink">{{.Setting.Label}}</span><span class="truncate {{if .Setting.Verbatim}}font-mono text-base font-medium{{else}}text-sm{{end}} text-body" data-verso-staged-value>{{.Setting.Value}}</span></span>
+        {{else}}<span class="min-w-0 flex-1 truncate {{if .Mono}}font-mono text-base font-medium{{else}}text-sm font-semibold{{end}} text-ink">{{.Label}}</span>{{end}}
+        {{with .Key}}<span class="{{template "verso-chip-class"}} shrink-0" data-verso-staged-key>{{.}}</span>{{end}}
         <span class="grid size-7 shrink-0 place-items-center text-glyph transition-transform group-open/change:rotate-180">{{icon "chevron-down" "size-4"}}</span>
       </summary>
       {{/* the lines, indented to the row's words: what the file will hold, each

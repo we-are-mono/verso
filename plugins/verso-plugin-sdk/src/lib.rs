@@ -273,6 +273,33 @@ pub struct Description {
     pub covers: Vec<usize>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub subject: Option<Subject>,
+    /// The change said as the settings row it was made on: its label and the
+    /// value it now holds. Set it through [`Description::setting`].
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub setting: Option<Setting>,
+}
+
+/// Reading is what one control of a rendered page shows: its label, its value,
+/// and whether that value is words (a switch's on/off, a pick's label) rather
+/// than a typed string. See [`Widget::reading`].
+#[derive(Debug, Clone, PartialEq)]
+pub struct Reading {
+    pub label: String,
+    pub value: String,
+    pub words: bool,
+}
+
+/// Setting is one settings row's change as the row says it. `verbatim` marks a
+/// value the machine wrote (a name, an address), which the shell sets in mono
+/// and never translates.
+#[derive(Serialize, Debug, Clone, PartialEq)]
+pub struct Setting {
+    pub label: String,
+    pub value: String,
+    #[serde(skip_serializing_if = "is_false")]
+    pub verbatim: bool,
+    /// The row's option, drawn as its key chip beside the value.
+    pub key: String,
 }
 
 impl Description {
@@ -282,7 +309,33 @@ impl Description {
             plain: plain.into(),
             covers,
             subject: None,
+            setting: None,
         }
+    }
+
+    /// setting describes the changes to one settings row as the row says them
+    /// — its label and the value it now holds, in words ("Log every lease",
+    /// "on") — beside `key`, the option the row writes, as its chip. `covers`
+    /// is every change the row took (a section made for it, a list's entries).
+    /// The sentence a reader of sentences gets is "label: value".
+    pub fn setting(label: &str, value: &str, key: &str, covers: Vec<usize>) -> Description {
+        let mut d = Description::new(format!("{label}: {value}"), covers);
+        d.setting = Some(Setting {
+            label: label.into(),
+            value: value.into(),
+            verbatim: false,
+            key: key.into(),
+        });
+        d
+    }
+
+    /// verbatim marks a setting's value as the machine wrote it — a name, an
+    /// address — set in mono and never translated.
+    pub fn verbatim(mut self) -> Description {
+        if let Some(setting) = self.setting.as_mut() {
+            setting.verbatim = true;
+        }
+        self
     }
 
     /// one is the common case: a sentence covering a single change by index.
@@ -1301,6 +1354,61 @@ impl Widget {
             _ => false,
         }
     }
+    /// reading is what the control posting under `name` now shows, wherever in
+    /// this tree it stands: its label and its value, in words for a switch
+    /// ("on"/"off") or a pick (its option's label), as typed for a value — or
+    /// the default it shows while unset. A describer reads a settings page it
+    /// renders from the staged config, so a change is said in the page's own
+    /// words and can never drift from them. None where nothing posts under it.
+    pub fn reading(&self, key: &str) -> Option<Reading> {
+        match self {
+            Widget::Switch(Switch {
+                name, label, on, ..
+            })
+            | Widget::Conditional {
+                name,
+                label,
+                checked: on,
+                ..
+            } if name == key => Some(Reading {
+                label: label.clone(),
+                value: if *on { "on" } else { "off" }.into(),
+                words: true,
+            }),
+            Widget::Field(Field {
+                name,
+                label,
+                value,
+                options,
+                placeholder,
+                ..
+            }) if name == key => Some(match options.iter().find(|o| &o.value == value) {
+                Some(option) => Reading {
+                    label: label.clone(),
+                    value: option.label.clone(),
+                    words: true,
+                },
+                None => Reading {
+                    label: label.clone(),
+                    value: if value.is_empty() { placeholder } else { value }.clone(),
+                    words: false,
+                },
+            }),
+            Widget::Conditional {
+                fields, otherwise, ..
+            } => fields.iter().chain(otherwise).find_map(|w| w.reading(key)),
+            Widget::Form { fields, .. } => fields.iter().find_map(|w| w.reading(key)),
+            Widget::When { children, .. }
+            | Widget::Card { children, .. }
+            | Widget::Section(SectionWidget { children, .. })
+            | Widget::Stack { children, .. }
+            | Widget::Grid(Grid { children, .. })
+            | Widget::Disclosure { children, .. }
+            | Widget::Empty { children, .. } => children.iter().find_map(|w| w.reading(key)),
+            _ => None,
+        }
+    }
+
     /// card is a container of child widgets, optionally titled.
     pub fn card(title: &str, children: Vec<Widget>) -> Widget {
         Widget::Card {
@@ -3004,6 +3112,55 @@ mod tests {
         Widget,
     };
     use super::{json, uci_text, Map, Value};
+
+    // A page says what each of its controls now holds, by the name it posts
+    // under, however deep it stands: a switch on or off, a pick by its words,
+    // a typed value as typed (or the default it shows while unset).
+    #[test]
+    fn a_page_reads_out_each_control_by_its_name() {
+        let mut rate = Widget::field("rate", "Connections", "", "", "");
+        if let Widget::Field(Field { placeholder, .. }) = &mut rate {
+            *placeholder = "25".into();
+        }
+        let page = Widget::stack(vec![Widget::section(
+            "Protection",
+            "",
+            vec![
+                Widget::switch_keyed("drop_invalid", "Drop strays", "drop_invalid", "", true),
+                Widget::select(
+                    "ecn",
+                    "Congestion notification",
+                    "2",
+                    vec![SelectOption::new("0", "Off"), SelectOption::new("2", "Incoming only")],
+                    "",
+                ),
+                rate,
+            ],
+        )]);
+        let said = |name: &str| page.reading(name).map(|r| (r.label, r.value, r.words));
+        assert_eq!(said("drop_invalid"), Some(("Drop strays".into(), "on".into(), true)));
+        assert_eq!(said("ecn"), Some(("Congestion notification".into(), "Incoming only".into(), true)));
+        assert_eq!(said("rate"), Some(("Connections".into(), "25".into(), false)));
+        assert_eq!(said("missing"), None);
+    }
+
+    // A setting's change goes as the row says it, its key beside, and as the
+    // sentence "label: value" for whoever reads only sentences.
+    #[test]
+    fn a_setting_is_said_as_its_row_and_as_a_sentence() {
+        let wire = serde_json::to_value(
+            super::Description::setting("Router name", "edge", "hostname", vec![2]).verbatim(),
+        )
+        .unwrap();
+        assert_eq!(
+            wire,
+            json!({
+                "plain": "Router name: edge",
+                "covers": [2],
+                "setting": {"label": "Router name", "value": "edge", "verbatim": true, "key": "hostname"}
+            })
+        );
+    }
 
     // A lane closes on a phrase, and a door in it is words with where they lead,
     // on the wire as the shell reads any part: flat, not wrapped in a tag.

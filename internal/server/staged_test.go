@@ -216,6 +216,78 @@ func TestReviewDrawerPlainOverRaw(t *testing.T) {
 	}
 }
 
+// TestReviewDrawerSaysASettingByItsLabel: a change a plugin describes as one
+// of its settings reads the way the settings row did — the setting's name,
+// its new value, the option's key chip — never the section's handle. A
+// sentence that stands for one option carries that option's chip too; a
+// sentence folding several changes names no single option.
+func TestReviewDrawerSaysASettingByItsLabel(t *testing.T) {
+	tr := &fakeTransport{descriptions: []plugin.Description{
+		{Plain: "Log every lease: on", Covers: []int{0}, Setting: &plugin.Setting{Label: "Log every lease", Value: "on"}},
+		{Plain: "Renamed the router.", Covers: []int{1}},
+		{Plain: "Added the rule “Allow DNS”.", Covers: []int{2, 3}},
+	}}
+	s := newServerWith(t, fakeBackend{
+		access: true,
+		changes: map[string][][]string{
+			"system": {
+				{"set", "cfg01411c", "logdhcp", "1"},
+				{"set", "@system[0]", "hostname", "verso-lab"},
+				{"set", "cfg99", "rule"},
+				{"set", "cfg99", "name", "Allow DNS"},
+			},
+		},
+	}, tr, []plugin.Manifest{demoACLManifest()})
+
+	body := getPanel(t, s, "/uci/review").Body.String()
+	summary := func(text string) string {
+		at := strings.Index(body, text)
+		if at < 0 {
+			t.Fatalf("no row says %q:\n%s", text, body)
+		}
+		start := strings.LastIndex(body[:at], "<summary")
+		end := strings.Index(body[at:], "</summary>")
+		return body[start : at+end]
+	}
+	setting := summary(">Log every lease<")
+	for _, want := range []string{`data-verso-staged-value>on<`, `data-verso-staged-key>logdhcp<`} {
+		if !strings.Contains(setting, want) {
+			t.Errorf("the setting's row is missing %q:\n%s", want, setting)
+		}
+	}
+	if strings.Contains(setting, "cfg01411c") {
+		t.Errorf("the setting's row names the section's handle:\n%s", setting)
+	}
+	if renamed := summary("Renamed the router."); !strings.Contains(renamed, `data-verso-staged-key>hostname<`) {
+		t.Errorf("a sentence standing for one option carries its chip:\n%s", renamed)
+	}
+	if added := summary("Allow DNS"); strings.Contains(added, "data-verso-staged-key") {
+		t.Errorf("a sentence folding several changes names no single option:\n%s", added)
+	}
+}
+
+// TestASettingNamesItsOwnKey: a setting whose writes fold another option in
+// (a time zone written with its rule) names its own option for its chip.
+func TestASettingNamesItsOwnKey(t *testing.T) {
+	tr := &fakeTransport{descriptions: []plugin.Description{
+		{Plain: "Time zone: Europe/Ljubljana", Covers: []int{0, 1},
+			Setting: &plugin.Setting{Label: "Time zone", Value: "Europe/Ljubljana", Verbatim: true, Key: "zonename"}},
+	}}
+	s := newServerWith(t, fakeBackend{
+		access: true,
+		changes: map[string][][]string{"system": {
+			{"set", "@system[0]", "zonename", "Europe/Ljubljana"},
+			{"set", "@system[0]", "timezone", "CET-1CEST,M3.5.0,M10.5.0/3"},
+		}},
+	}, tr, []plugin.Manifest{demoACLManifest()})
+	body := getPanel(t, s, "/uci/review").Body.String()
+	for _, want := range []string{`data-verso-staged-key>zonename<`, `font-mono text-base font-medium text-body" data-verso-staged-value>Europe/Ljubljana<`} {
+		if !strings.Contains(body, want) {
+			t.Errorf("the time zone's row is missing %q:\n%s", want, body)
+		}
+	}
+}
+
 // TestReviewDrawerGroupsByPage: rows gather under the page they belong to — a
 // plugin's config under that plugin's name, the shell's own under System —
 // each group a band with its tally, and a change's verb reads from what its
