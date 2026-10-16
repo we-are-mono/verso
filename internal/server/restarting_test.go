@@ -84,6 +84,11 @@ func TestFactoryResetAsksForTheHostnameOnly(t *testing.T) {
 	if field < 0 || button < field || !strings.Contains(form, `placeholder="verso-lab"`) || !strings.Contains(form, "bg-crimson") {
 		t.Errorf("the hostname field should show the hostname, and the danger act stand under it:\n%s", form)
 	}
+	// What the box shows is said to be the hostname, under it, so it never
+	// reads as a value already in it.
+	if !strings.Contains(form, "The box shows this router’s hostname.") {
+		t.Errorf("the page does not say the box shows the hostname:\n%s", form)
+	}
 }
 
 // TestRebootLandsOnTheRestartingTakeover: the reboot answers with a surface that

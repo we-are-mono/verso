@@ -4,6 +4,7 @@
 package widget
 
 import (
+	"fmt"
 	"io"
 	"strings"
 )
@@ -28,9 +29,16 @@ type Field struct {
 	// that style the browser reads the chosen file and posts what it says as
 	// the field's value, and its name as <name>_name, so a form drawn again
 	// around it still says which file it holds.
-	Chosen       string   `json:"chosen,omitempty"`
-	Placeholder  string   `json:"placeholder,omitempty"` // text input hint; never substitutes for a visible label where one is required
-	Autofocus    bool     `json:"autofocus,omitempty"`   // focus this field when its task-specific page opens
+	Chosen      string `json:"chosen,omitempty"`
+	Placeholder string `json:"placeholder,omitempty"` // text input hint; never substitutes for a visible label where one is required
+	// Default is the value the daemon falls back to while the box is empty,
+	// and Example a value of the kind the box takes. The shell words either
+	// in the empty box ("default 150", "e.g. 1.1.1.1"), so the hint can never
+	// pass for a value the field holds. A Placeholder of the plugin's own
+	// stands as given.
+	Default      string   `json:"default,omitempty"`
+	Example      string   `json:"example,omitempty"`
+	Autofocus    bool     `json:"autofocus,omitempty"` // focus this field when its task-specific page opens
 	Required     bool     `json:"required,omitempty"`
 	Value        string   `json:"value"`    // current/submitted value
 	Values       []string `json:"values"`   // kind "checks": the checked option values
@@ -268,10 +276,27 @@ func (f *Field) Checked(v string) bool {
 }
 
 func (f *Field) renderInto(r *Renderer, out io.Writer, _ string) error {
+	if f.Placeholder == "" && (f.Default != "" || f.Example != "") {
+		hinted := *f
+		hinted.Placeholder = emptyHint(r, f.Default, f.Example)
+		f = &hinted
+	}
 	if !f.framed() {
 		return r.execute(out, "field.html.tmpl", f)
 	}
 	return r.renderFrame(out, "field.control", f, f.frame())
+}
+
+// emptyHint words what an empty box says in place of a value: the daemon's
+// fallback as a default, else a value of its kind as an example.
+func emptyHint(r *Renderer, def, example string) string {
+	if def != "" {
+		return fmt.Sprintf(r.tr("default %s"), def)
+	}
+	if example != "" {
+		return fmt.Sprintf(r.tr("e.g. %s"), example)
+	}
+	return ""
 }
 
 // framed reports whether this field is one setting's row. A hidden carrier is

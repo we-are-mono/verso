@@ -16,11 +16,15 @@ import "io"
 // item's index (as a string), which is how a repeating widget reports *which*
 // row failed.
 type List struct {
-	Name     string            `json:"name"`
-	Label    string            `json:"label"`
-	Kind     string            `json:"kind"`     // item kind; "text" for now
-	Style    string            `json:"style"`    // "" repeated inputs | "tokens" compact removable values
-	Prompt   string            `json:"prompt"`   // token input placeholder
+	Name   string `json:"name"`
+	Label  string `json:"label"`
+	Kind   string `json:"kind"`   // item kind; "text" for now
+	Style  string `json:"style"`  // "" repeated inputs | "tokens" compact removable values
+	Prompt string `json:"prompt"` // token input placeholder
+	// Example is a value of the kind the list holds, worded by the shell in
+	// its empty add box ("e.g. 1.1.1.1") where no Prompt is given, so it never
+	// passes for a value the list holds.
+	Example  string            `json:"example,omitempty"`
 	Datatype string            `json:"datatype"` // tier-1 datatype for each item
 	Items    []string          `json:"items"`
 	Errors   map[string]string `json:"errors"` // index (string) -> error
@@ -76,6 +80,11 @@ func (*List) isWidget() {}
 func (*List) children() []Widget { return nil }
 
 func (l *List) renderInto(r *Renderer, out io.Writer, _ string) error {
+	if l.Prompt == "" && l.Example != "" {
+		hinted := *l
+		hinted.Prompt = emptyHint(r, "", l.Example)
+		l = &hinted
+	}
 	return r.renderFrame(out, "list.control", l, fieldFrame{
 		Label:   l.LabelView(),
 		Change:  fieldChange{Track: true, Name: l.Name, Label: l.Label, Kind: "list"},

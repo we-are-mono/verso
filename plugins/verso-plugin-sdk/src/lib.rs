@@ -1065,6 +1065,14 @@ pub struct Field {
     pub values: Vec<String>,
     #[serde(skip_serializing_if = "String::is_empty")]
     pub placeholder: String,
+    /// The value the daemon falls back to while the box is empty; the shell
+    /// words it there ("default 150"). Set it through [`Widget::by_default`].
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub default: String,
+    /// A value of the kind the box takes; the shell words it there ("e.g.
+    /// lan"). Set it through [`Widget::for_example`].
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub example: String,
     #[serde(skip_serializing_if = "String::is_empty")]
     pub datatype: String,
     #[serde(skip_serializing_if = "Vec::is_empty")]
@@ -1192,6 +1200,10 @@ pub struct List {
     pub style: String,
     #[serde(skip_serializing_if = "String::is_empty")]
     pub prompt: String,
+    /// A value of the kind the list holds; the shell words it in the empty
+    /// add box ("e.g. 1.1.1.1"). Set it through [`Widget::for_example`].
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub example: String,
     pub datatype: String,
     pub items: Vec<String>,
     #[serde(skip_serializing_if = "std::collections::BTreeMap::is_empty")]
@@ -1395,6 +1407,7 @@ impl Widget {
                 value,
                 options,
                 placeholder,
+                default,
                 ..
             }) if name == key => Some(match options.iter().find(|o| &o.value == value) {
                 Some(option) => Reading {
@@ -1402,9 +1415,15 @@ impl Widget {
                     value: option.label.clone(),
                     words: true,
                 },
+                // Empty, the field reads as what is in force: the default.
                 None => Reading {
                     label: label.clone(),
-                    value: if value.is_empty() { placeholder } else { value }.clone(),
+                    value: match (value.is_empty(), default.is_empty()) {
+                        (false, _) => value,
+                        (true, false) => default,
+                        (true, true) => placeholder,
+                    }
+                    .clone(),
                     words: false,
                 },
             }),
@@ -1511,6 +1530,28 @@ impl Widget {
         if let Widget::Field(Field { tip, source: s, .. }) = &mut self {
             *tip = what.into();
             *s = source.into();
+        }
+        self
+    }
+
+    /// by_default gives a field the value the daemon falls back to while it
+    /// is empty, which the shell words in the empty box ("default 150"), so
+    /// it never passes for a value the field holds.
+    pub fn by_default(mut self, value: &str) -> Widget {
+        if let Widget::Field(Field { default, .. }) = &mut self {
+            *default = value.into();
+        }
+        self
+    }
+
+    /// for_example gives a field or a list a value of the kind it takes,
+    /// which the shell words in the empty box ("e.g. 1.1.1.1").
+    pub fn for_example(mut self, value: &str) -> Widget {
+        match &mut self {
+            Widget::Field(Field { example, .. }) | Widget::List(List { example, .. }) => {
+                *example = value.into();
+            }
+            _ => {}
         }
         self
     }
@@ -2599,7 +2640,10 @@ pub enum TablePart {
     /// words to the policy that closes it. Drawn in the line's own ink,
     /// underlined.
     #[serde(untagged)]
-    Door { words: String, href: String },
+    Door {
+        words: String,
+        href: String,
+    },
 }
 
 /// An entity reference beside a row's identity. Its label is always verbatim.
@@ -3163,6 +3207,24 @@ fn hex(c: u8) -> Option<u8> {
 
 #[cfg(test)]
 mod tests {
+    // An empty box's hint is typed: a default or an example, never a bare
+    // value; and an empty field with a default reads as that default, the
+    // value in force.
+    #[test]
+    fn an_empty_box_says_whether_its_hint_is_a_default_or_an_example() {
+        let cache = super::Widget::field("cachesize", "Cache size", "", "", "").by_default("150");
+        let wire = serde_json::to_value(&cache).unwrap();
+        assert_eq!(wire["default"], "150");
+        assert!(wire.get("placeholder").is_none());
+        assert_eq!(cache.reading("cachesize").unwrap().value, "150");
+        let upstream = super::Widget::list("upstream", "Upstream servers", "dnsserver", &[], "")
+            .for_example("1.1.1.1");
+        assert_eq!(
+            serde_json::to_value(&upstream).unwrap()["example"],
+            "1.1.1.1"
+        );
+    }
+
     use super::{
         commit, commit_delete, commit_new, header, parse_head, request_path, request_query, Change,
         ConditionItem, DescribeRequestBody, DescribeResponseBody, Description, Envelope, Field,
@@ -3202,16 +3264,32 @@ mod tests {
                     "ecn",
                     "Congestion notification",
                     "2",
-                    vec![SelectOption::new("0", "Off"), SelectOption::new("2", "Incoming only")],
+                    vec![
+                        SelectOption::new("0", "Off"),
+                        SelectOption::new("2", "Incoming only"),
+                    ],
                     "",
                 ),
                 rate,
             ],
         )]);
         let said = |name: &str| page.reading(name).map(|r| (r.label, r.value, r.words));
-        assert_eq!(said("drop_invalid"), Some(("Drop strays".into(), "on".into(), true)));
-        assert_eq!(said("ecn"), Some(("Congestion notification".into(), "Incoming only".into(), true)));
-        assert_eq!(said("rate"), Some(("Connections".into(), "25".into(), false)));
+        assert_eq!(
+            said("drop_invalid"),
+            Some(("Drop strays".into(), "on".into(), true))
+        );
+        assert_eq!(
+            said("ecn"),
+            Some((
+                "Congestion notification".into(),
+                "Incoming only".into(),
+                true
+            ))
+        );
+        assert_eq!(
+            said("rate"),
+            Some(("Connections".into(), "25".into(), false))
+        );
         assert_eq!(said("missing"), None);
     }
 

@@ -277,3 +277,24 @@ func TestRenderFieldCurrentPasswordAutocomplete(t *testing.T) {
 		t.Errorf("current password autocomplete missing:\n%s", got)
 	}
 }
+
+// An empty box never shows what could pass for a value it holds: the value
+// the daemon falls back to reads "default 150", a value of the field's kind
+// reads "e.g. 1.1.1.1", worded by the shell in the reader's language. A
+// plugin's own placeholder still stands as given.
+func TestAnEmptyBoxSaysWhatItsHintIs(t *testing.T) {
+	r := newRenderer(t)
+	for _, tc := range []struct {
+		w    Widget
+		want string
+	}{
+		{&Field{Name: "cachesize", Label: "Cache size", Kind: "text", Default: "150"}, `placeholder="default 150"`},
+		{&Field{Name: "domain", Label: "Local domain", Kind: "text", Example: "lan"}, `placeholder="e.g. lan"`},
+		{&Field{Name: "q", Kind: "text", Placeholder: "Package name", Example: "htop"}, `placeholder="Package name"`},
+		{&List{Name: "upstream", Label: "Upstream servers", Kind: "text", Style: "rows", Example: "1.1.1.1"}, `placeholder="e.g. 1.1.1.1"`},
+	} {
+		if got := render(t, r, tc.w); !strings.Contains(got, tc.want) {
+			t.Errorf("missing %s in: %s", tc.want, got)
+		}
+	}
+}
