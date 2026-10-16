@@ -779,7 +779,8 @@ html {
      state of every panel. A CSS property beats the SVG's own presentation
      attribute, so art ships its LEDs drawn dark and the shell paints the lit
      ones. Connector art has no utility equivalent, so it lives here. */
-  .verso-ports-name { margin-bottom: 0.5rem; font-size: 0.8125rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--color-meta); }
+  /* The panel's name is a label, on the type ramp's label step. */
+  .verso-ports-name { margin-bottom: 0.5rem; font-size: 0.75rem; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-meta); }
 
   /* The panel stands at the content's left edge and is drawn at its own size
      wherever it fits, where every edge it draws is on the 8px grid; where it
@@ -838,7 +839,7 @@ html {
      places it). */
   .verso-port-tip {
     position: absolute; z-index: 5; pointer-events: none; white-space: nowrap; text-align: left;
-    padding: 0.5rem 0.75rem; border-radius: 0.5rem; font-size: 0.75rem;
+    padding: 0.5rem 0.75rem; border-radius: var(--radius-xs); font-size: 0.75rem;
     background: var(--color-hw-tip); color: var(--color-hw-tip-text); border: 1px solid var(--color-hw-tip-edge);
     box-shadow: var(--shadow-port-tip);
     transform: translateX(-50%);
@@ -856,7 +857,8 @@ html {
   .verso-ports--violet .verso-ports-name  { color: var(--color-amethyst-line); }
   .verso-ports--amber .verso-ports-name   { color: var(--color-marigold-line); }
 
-  .verso-ports-legend { display: flex; flex-wrap: wrap; gap: 0.5rem 1.25rem; margin-top: 1rem; font-size: 0.8125rem; color: var(--color-meta); }
+  /* The legend reads at the 14px a listing's legend does. */
+  .verso-ports-legend { display: flex; flex-wrap: wrap; gap: 0.5rem 1.25rem; margin-top: 1rem; font-size: 0.875rem; color: var(--color-meta); }
   .verso-ports-key { display: inline-flex; align-items: center; gap: 0.5rem; }
   .verso-ports-dot { width: 0.375rem; height: 0.375rem; border-radius: 1px; background: var(--color-inert); }
   .verso-ports-dot.on { background: var(--color-green); }
