@@ -48,7 +48,9 @@ func maintenanceBody(v maintenanceView) widget.Widget {
 		&widget.Section{Title: "Back up and restore", Anchor: "back-up-and-restore", Hairline: true,
 			Sub: "Restoring replaces the saved files and reboots the router.",
 			Children: []widget.Widget{&widget.Stack{Inline: true, Children: []widget.Widget{
-				&widget.Link{Style: "button", Label: "Download backup", Icon: "download", Href: backupPath},
+				// The card's two acts are equals in one dress; the page's one
+				// denim act, where it has one, stands on the heading line.
+				&widget.Link{Style: "secondary", Label: "Download backup", Icon: "download", Href: backupPath},
 				&widget.Text{Markdown: "or"},
 				v.Restore,
 			}}}},

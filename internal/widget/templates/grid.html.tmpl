@@ -27,9 +27,11 @@
      width after the page's 40px gutter. Columns only split when their own
      container has room for both, and then the rail stays in view as the form
      scrolls, 32px under the top bar's 56px. At narrower widths the rail
-     follows the form, whose measure stays the same. */}}
+     leads the form, whose measure stays the same: its jump list and its
+     advice ("Before you flash") are read before the cards they are about,
+     not after the last of them. */}}
 <div class="@container">
-  <div class="grid grid-cols-1 gap-10 @form-split:grid-cols-form [&>:first-child]:max-w-form [&>div:last-child]:self-start @form-split:[&>div:last-child]:sticky @form-split:[&>div:last-child]:top-22">{{range $i, $child := .Children}}<div{{if eq $i 0}} data-verso-form-column{{end}} class="min-w-0">{{$child}}</div>{{end}}</div>
+  <div class="grid grid-cols-1 gap-10 @form-split:grid-cols-form [&>:first-child]:max-w-form [&>div:last-child]:self-start [&>div:last-child]:order-first @form-split:[&>div:last-child]:order-none @form-split:[&>div:last-child]:sticky @form-split:[&>div:last-child]:top-22">{{range $i, $child := .Children}}<div{{if eq $i 0}} data-verso-form-column{{end}} class="min-w-0">{{$child}}</div>{{end}}</div>
 </div>
 {{else if eq .Style "form"}}
 {{/* Related fields share a row only when their own container has room. The

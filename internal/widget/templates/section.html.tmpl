@@ -67,7 +67,7 @@
       {{/* the meta value carries a stable hook: a section whose content is live
            (a streaming listing) has the shell rewrite this one string — how
            many events are shown, how fast they arrive — and nothing else. */}}
-      {{if and .Meta .MetaInline}}<span class="text-inert" aria-hidden="true">·</span><span class="inline-flex items-center gap-1.5 text-sm leading-6 text-meta">{{if .MetaIcon}}{{icon .MetaIcon "size-4 shrink-0 text-faint"}}{{end}}{{if .MetaLabel}}<span>{{.MetaLabel}}</span>{{end}}<span data-verso-section-meta class="font-medium">{{.Meta}}</span></span>{{end}}
+      {{if and .Meta .MetaInline}}<span class="text-inert max-sm:hidden" aria-hidden="true">·</span><span class="inline-flex items-center gap-1.5 text-sm leading-6 text-meta">{{if .MetaIcon}}{{icon .MetaIcon "size-4 shrink-0 text-faint"}}{{end}}{{if .MetaLabel}}<span>{{.MetaLabel}}</span>{{end}}<span data-verso-section-meta class="font-medium">{{.Meta}}</span></span>{{end}}
     </div>
     {{if and .Meta (not .MetaInline)}}<span class="{{template "verso-section-meta-class"}}">{{if .MetaIcon}}{{icon .MetaIcon "size-4 shrink-0 text-faint"}}{{end}}{{if .MetaLabel}}<span class="{{template "verso-section-meta-label-class"}}">{{.MetaLabel}}</span>{{end}}<span data-verso-section-meta class="{{template "verso-section-meta-value-class"}}">{{.Meta}}</span></span>{{end}}
     {{/* Heading actions finish at the content's right edge, including when
