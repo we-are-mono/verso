@@ -246,6 +246,9 @@ struct Line<'a> {
     v6: bool,
     network: Option<(IpAddr, u32)>,
     target: String,
+    /// The source prefix a source-specific route answers only ("default from
+    /// 2001:db8:aa00::/56"); empty answers every source.
+    from: String,
     gateway: String,
     kind: String,
     interface: String,
@@ -272,6 +275,7 @@ impl<'a> Line<'a> {
             v6: route.v6,
             network,
             target: route.get("target").into(),
+            from: route.get("source").into(),
             gateway: route.get("gateway").into(),
             kind: route.get("type").into(),
             interface: route.get("interface").into(),
@@ -315,6 +319,7 @@ fn kernel(m: &Model) -> Option<Vec<Line<'static>>> {
                     v6,
                     network: Some(network(text("target"), v6)?),
                     target: text("target").into(),
+                    from: text("from").into(),
                     gateway: text("gateway").into(),
                     kind: text("type").into(),
                     interface: owner(text("device")),
@@ -405,6 +410,12 @@ fn row(line: &Line, drawer: Option<RowDrawer>) -> TableRow {
         },
         href: door.clone(),
         copy: true,
+        // A source-specific route says the source it answers, so two
+        // defaults through one gateway never read as one route twice.
+        sub: match line.from.as_str() {
+            "" => String::new(),
+            from => format!("from {from}"),
+        },
         ..Default::default()
     };
     if !line.state.is_empty() {
@@ -779,7 +790,9 @@ mod tests {
                     {"family": 4, "target": "10.0.0.0/24", "device": "br-lan", "metric": 0, "proto": "kernel", "source": "10.0.0.1"},
                     {"family": 4, "target": "10.20.0.0/16", "gateway": "192.168.1.2", "device": "br-lan", "metric": 10, "proto": "static"},
                     {"family": 4, "target": "172.17.0.0/16", "device": "docker0", "metric": 0, "proto": "kernel"},
-                    {"family": 6, "target": "2001:db8:5::/64", "device": "br-lan", "metric": 1024, "proto": "ra"}
+                    {"family": 6, "target": "2001:db8:5::/64", "device": "br-lan", "metric": 1024, "proto": "ra"},
+                    {"family": 6, "target": "::/0", "gateway": "fe80::1", "device": "eth1", "metric": 512, "proto": "static", "from": "2001:db8:aa00::/56"},
+                    {"family": 6, "target": "::/0", "gateway": "fe80::1", "device": "eth1", "metric": 512, "proto": "static", "from": "2001:db8:1::10/128"}
                 ]
             }})),
         })
@@ -824,6 +837,8 @@ mod tests {
                 "default",
                 "2001:db8:5::/64",
                 "2001:db8::/32",
+                "default",
+                "default",
             ]
         );
         assert_eq!(rows[0]["group"]["label"], "IPv4");
@@ -839,6 +854,30 @@ mod tests {
         assert_eq!(rows[5]["group"]["label"], "IPv6");
         assert_eq!(rows[5]["group"]["add_label"], "Add IPv6 route");
         assert!(rows.iter().filter(|r| r.get("group").is_some()).count() == 2);
+    }
+
+    /// Two IPv6 defaults through one gateway are not the same route: each
+    /// answers only traffic from its own source prefix, and its target says
+    /// which, as `ip route` shows "default from …".
+    #[test]
+    fn a_source_specific_route_says_the_source_it_answers() {
+        let view = serde_json::to_value(listing(&model(), "", None)).unwrap();
+        let rows = tables(&view)[0]["rows"].as_array().unwrap().clone();
+        let subs: Vec<String> = rows
+            .iter()
+            .filter(|r| r["cells"][0]["text"] == "default" && r["cells"][1]["text"] == "fe80::1")
+            .map(|r| {
+                r["cells"][0]["sub"]
+                    .as_str()
+                    .unwrap_or_default()
+                    .to_string()
+            })
+            .collect();
+        assert_eq!(
+            subs,
+            ["from 2001:db8:aa00::/56", "from 2001:db8:1::10/128"],
+            "{rows:?}"
+        );
     }
 
     #[test]
