@@ -181,7 +181,7 @@ func (f *Field) DescribedBy() string {
 		ids = append(ids, f.Name+"-error")
 	}
 	if f.Note != "" {
-		ids = append(ids, f.Name+"-desc")
+		ids = append(ids, f.Name+"-note")
 	}
 	if f.Unit != "" {
 		ids = append(ids, f.Name+"-unit")
@@ -329,7 +329,7 @@ func (f *Field) frame() fieldFrame {
 	}
 	frame := fieldFrame{
 		Label: f.LabelView(), Change: change, Measure: f.ControlMeasure(),
-		Lane: f.Lane(), Removable: f.Removable(), Desc: f.Note,
+		Lane: f.Lane(), Removable: f.Removable(), Note: f.Note,
 	}
 	if f.Error != "" {
 		frame.Errors = []fieldError{{ID: f.Name + "-error", Text: f.Error}}

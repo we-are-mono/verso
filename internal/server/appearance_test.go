@@ -63,8 +63,10 @@ func TestTheAppearanceCardOffersEveryTheme(t *testing.T) {
 		}
 	}
 	// Saying it takes effect at once is the pick's own note, kept under the
-	// select and read with it, not a paragraph standing on its own.
-	if !strings.Contains(body, `id="theme-desc"`) || !strings.Contains(body, `aria-describedby="theme-desc"`) {
+	// select in its answer and read with it, not a paragraph standing on its
+	// own.
+	answer := strings.Index(body, "verso-field-answer")
+	if note := strings.Index(body, `id="theme-note" data-verso-field-note`); note < 0 || note < answer || !strings.Contains(body, `aria-describedby="theme-note"`) {
 		t.Error("the Appearance card's sentence is not the theme pick's note")
 	}
 	// Sand dark is offered once, as Sand's own, not again as a theme.

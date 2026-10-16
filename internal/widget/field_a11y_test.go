@@ -41,8 +41,8 @@ func TestFieldHelpDescribesTheControl(t *testing.T) {
 }
 
 // TestFieldNoteStandsUnderTheControl: a note is what changing the field does,
-// kept in view under its control where a refusal stands, after the refusal,
-// and the control is described by it — for every kind a row frames.
+// kept in view under its control in the answer, after the refusal, and the
+// control is described by it — for every kind a row frames.
 func TestFieldNoteStandsUnderTheControl(t *testing.T) {
 	for _, kind := range []string{"", "select", "password", "textarea", "time", "datetime-local"} {
 		f := &Field{Name: "theme", Label: "Theme", Kind: kind, Note: "Takes effect immediately.", Error: "Pick one."}
@@ -50,20 +50,21 @@ func TestFieldNoteStandsUnderTheControl(t *testing.T) {
 			f.Options = choiceOptions(RadioOptionLimit + 1)
 		}
 		got := render(t, newRenderer(t), f)
-		note := strings.Index(got, `id="theme-desc"`)
+		answer := strings.Index(got, "verso-field-answer")
+		note := strings.Index(got, `id="theme-note" data-verso-field-note`)
 		refusal := strings.Index(got, `id="theme-error"`)
-		if note < 0 || !strings.Contains(got, "Takes effect immediately.") {
-			t.Fatalf("kind %q: the note is not under the control:\n%s", kind, got)
+		if note < 0 || note < answer || !strings.Contains(got, "Takes effect immediately.") {
+			t.Fatalf("kind %q: the note is not under the control in the answer:\n%s", kind, got)
 		}
 		if refusal < 0 || refusal > note {
 			t.Errorf("kind %q: the refusal must stand before the note:\n%s", kind, got)
 		}
-		if !strings.Contains(got, `aria-describedby="theme-error theme-desc"`) {
+		if !strings.Contains(got, `aria-describedby="theme-error theme-note"`) {
 			t.Errorf("kind %q: the control must be described by its refusal and its note:\n%s", kind, got)
 		}
 	}
 	clean := render(t, newRenderer(t), &Field{Name: "theme", Label: "Theme"})
-	if strings.Contains(clean, "theme-desc") {
+	if strings.Contains(clean, "theme-note") {
 		t.Errorf("a field with no note points at none:\n%s", clean)
 	}
 }

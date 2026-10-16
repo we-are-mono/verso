@@ -173,7 +173,6 @@ func (it *SettingsItem) frame() fieldFrame {
 	}
 	f.Label.For, f.Label.Group = it.Toggle.Name, it.Toggle.Name == ""
 	f.Change = fieldChange{Track: it.Toggle.Name != "", Name: it.Toggle.Name, Label: it.Title, Kind: "toggle"}
-	f.Toggle = true
 	return f
 }
 

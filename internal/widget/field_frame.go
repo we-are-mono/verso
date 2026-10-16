@@ -10,17 +10,16 @@ import (
 )
 
 // fieldFrame is one setting's row as every form surface draws it (the
-// verso-field partial): the label — the setting's name, the option it writes
-// as a key chip, the stage's mark while its change waits, the explanation the
-// label raises — then the control, a description kept in view, the refusal
-// band and the remove lane. A widget that is one setting draws only its
-// control and hands it over whole, so a value to type, a list to edit and a
-// state to flip cannot come to disagree about the rest of the row.
+// verso-field partial), a ledger of its question and its answer: the label —
+// the setting's name, the option it writes as a key chip, the stage's mark
+// while its change waits — and the description under it, then the control in
+// the answer column with its refusal band, and the remove lane. A widget that
+// is one setting draws only its control and hands it over whole, so a value to
+// type, a list to edit and a state to flip cannot come to disagree about the
+// rest of the row.
 type fieldFrame struct {
 	Label  fieldLabel
 	Change fieldChange
-	// Toggle puts a checkbox before its label rather than under it.
-	Toggle bool
 	// Class adds a surface's own hooks to the row (a settings block's last row,
 	// a conditional's gate); the row's geometry is the frame's.
 	Class   string
@@ -29,9 +28,12 @@ type fieldFrame struct {
 	// under it, empty, for the value's own check to fill.
 	Inline  bool
 	Control template.HTML
-	// Desc is a sentence kept in view under the row. A field raises its help
-	// onto the label instead; a settings row's description is its point.
+	// Desc is the row's description, under its name in the question; a
+	// settings row's description is its point.
 	Desc string
+	// Note is what the value does now, kept in view under the control in the
+	// answer, after its refusal.
+	Note string
 	// Errors are the refusals under the control, one band each, each named by
 	// the id its own input points at.
 	Errors []fieldError
@@ -65,6 +67,15 @@ func (f fieldFrame) DescID() string {
 		return ""
 	}
 	return f.Label.For + "-desc"
+}
+
+// NoteID is the id the control points at for the note under it, and none
+// where the control has no id to point from.
+func (f fieldFrame) NoteID() string {
+	if f.Label.For == "" {
+		return ""
+	}
+	return f.Label.For + "-note"
 }
 
 // ShowsLabel reports whether the row has a label column at all. A bare

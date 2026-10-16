@@ -114,13 +114,12 @@ func (s *Switch) renderInto(r *Renderer, out io.Writer, _ string) error {
 	return r.renderFrame(out, "switch.row", s.Control(), s.frame())
 }
 
-// frame is this switch's row: the checkbox before its label. A locked switch
-// posts nothing, so it tracks no change.
+// frame is this switch's row: its name the question, its checkbox the
+// answer. A locked switch posts nothing, so it tracks no change.
 func (s *Switch) frame() fieldFrame {
 	frame := fieldFrame{
 		Label:  s.LabelView(),
 		Change: fieldChange{Track: !s.locked() && (s.Name != "" || s.Style == "checkbox"), Name: s.Name, Label: s.Label, Kind: "toggle"},
-		Toggle: true,
 	}
 	if s.Error != "" {
 		frame.Errors = []fieldError{{ID: s.Name + "-error", Text: s.Error}}

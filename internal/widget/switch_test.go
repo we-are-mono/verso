@@ -17,10 +17,11 @@ func TestDecodeAndRenderSwitch(t *testing.T) {
 	for _, want := range []string{
 		`type="checkbox"`, `data-verso-switch`, `value="1"`, `name="enabled"`, " checked",
 		"Enabled", "peer-checked:bg-choice",
-		// Checkbox rows share the form measure and keep their text beside them.
-		"verso-field-row max-w-form verso-field-toggle",
+		// A switch row is a field row like any other: its name is the
+		// question and its box the answer.
+		`class="verso-field-row max-w-form"`,
 		`<label for="enabled" id="enabled-label" class="text-sm font-medium text-ink`,
-		"verso-field-control",
+		"verso-field-control verso-field-answer",
 		// The input is screen-reader-only, so the visible box has to be inside
 		// a label: without one, pressing the control does nothing at all.
 		`<label class="flex w-fit cursor-pointer items-center"><span class="relative inline-flex size-4`,
@@ -35,9 +36,9 @@ func TestDecodeAndRenderSwitch(t *testing.T) {
 	if strings.Contains(got, "pl-12 text-sm leading-snug text-body") {
 		t.Errorf("help must not take a paragraph under the control:\n%s", got)
 	}
-	// DOM and visual order agree, including for a focusable explanation label.
-	if label, control := strings.Index(got, ">Enabled"), strings.Index(got, "data-verso-switch"); label < 0 || control < 0 || label < control {
-		t.Errorf("the checkbox leads its label in DOM order: %s", got)
+	// DOM and visual order agree: the question, then the answer.
+	if label, control := strings.Index(got, ">Enabled"), strings.Index(got, "data-verso-switch"); label < 0 || control < 0 || label > control {
+		t.Errorf("the switch's name comes before its box in DOM order: %s", got)
 	}
 	inline := render(t, newRenderer(t), &Switch{Name: "enabled", Label: "Enabled", OffLabel: "Disabled", Style: "inline", On: true})
 	for _, want := range []string{"verso-inline-switch inline-flex cursor-pointer", "size-1 rounded-full bg-inert", "ml-3 inline-flex translate-y-px", "verso-inline-switch-on", "Enabled", "verso-inline-switch-off", "Disabled", "text-ink"} {

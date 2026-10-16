@@ -4,6 +4,7 @@
 package widget
 
 import (
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -36,6 +37,53 @@ func TestEveryLabelledRowIsOneFrame(t *testing.T) {
 		if n := strings.Count(got, "verso-field-row"); n != 1 {
 			t.Errorf("%s: one setting is one row, got %d:\n%s", name, n, got)
 		}
+	}
+}
+
+// answerIsTheControl finds the answer column's element, the one the stage and
+// the reshape wait read as the row's control.
+var answerIsTheControl = regexp.MustCompile(`<div data-verso-control[^>]*class="[^"]*verso-field-answer`)
+
+// TestEveryRowIsAQuestionAndAnAnswer: a field row is one shape whatever it
+// holds (form-fields): its question (the name, its chip, the stage's mark) on
+// the left of the ledger and its answer, the control, in the answer column. A
+// switch is an answer like any other, so no row puts its box before its name,
+// and a removable row keeps its glyph in a lane after the answer.
+func TestEveryRowIsAQuestionAndAnAnswer(t *testing.T) {
+	r := newRenderer(t)
+	for name, w := range map[string]Widget{
+		"field":     &Field{Name: "opt", Label: "Option", Key: "opt", Staged: true},
+		"code":      &Field{Name: "opt", Label: "Option", Key: "opt", Style: "code"},
+		"locked":    &Field{Name: "opt", Label: "Option", Key: "opt", Style: "locked", Value: "ap"},
+		"list":      &List{Name: "opt", Label: "Option", Key: "opt"},
+		"switch":    &Switch{Name: "opt", Label: "Option", Key: "opt"},
+		"checkbox":  &Switch{Name: "opt", Label: "Option", Key: "opt", Style: "checkbox"},
+		"value":     &Settings{Items: []SettingsItem{{Title: "Option", Code: "opt", Name: "opt", Value: "1"}}},
+		"inline":    &Settings{Items: []SettingsItem{{Title: "Option", Code: "opt", Name: "opt", Value: "1", Inline: true}}},
+		"toggle":    &Settings{Items: []SettingsItem{{Title: "Option", Code: "opt", Toggle: &SettingsToggle{Name: "opt"}}}},
+		"gate":      &Conditional{Name: "opt", Label: "Option", Key: "opt"},
+		"removable": &Field{Name: "opt", Label: "Option", Key: "opt", Remove: "yes"},
+	} {
+		got := render(t, r, w)
+		ledger := strings.Index(got, `class="verso-field-ledger`)
+		question := strings.Index(got, `class="verso-field-question`)
+		label := strings.Index(got, `class="verso-field-label`)
+		answer := strings.Index(got, `verso-field-answer`)
+		if ledger < 0 || question < ledger || label < question || answer < label {
+			t.Errorf("%s: the row is not its question, then its answer, in one ledger:\n%s", name, got)
+		}
+		if !answerIsTheControl.MatchString(got) {
+			t.Errorf("%s: the answer is not the row's control:\n%s", name, got)
+		}
+		for _, gone := range []string{"verso-field-toggle", "verso-field-with-remove"} {
+			if strings.Contains(got, gone) {
+				t.Errorf("%s: the row still draws %s:\n%s", name, gone, got)
+			}
+		}
+	}
+	got := render(t, r, &Field{Name: "opt", Label: "Option", Remove: "yes"})
+	if remove := strings.Index(got, "data-verso-remove-field"); remove < strings.Index(got, "verso-field-answer") {
+		t.Errorf("a removable row's glyph stands in the lane after its answer:\n%s", got)
 	}
 }
 
