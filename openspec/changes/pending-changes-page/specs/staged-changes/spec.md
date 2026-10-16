@@ -33,7 +33,7 @@ An edit that is not saved SHALL NOT change the Pending changes row or the menu b
 - **THEN** the row reads 13, with nothing shown before the press
 
 ### Requirement: The Pending changes page lists the stage by page
-The Pending changes page SHALL head "N pending changes" with **Discard all** and **Apply N changes** on the heading line and no lede under the heading. It SHALL list the pending changes in one card per page they were made on, titled by that page's heading, each card offering to open that page and to undo its changes.
+The Pending changes page SHALL head "N pending changes" with no acts on the heading line and no lede under the heading. It SHALL list the pending changes in one card per page they were made on, titled by that page's heading, each card offering to open that page and to undo its changes. **Apply N changes** and **Discard all** SHALL stand under the last card, where a page form's Save stands.
 
 #### Scenario: Changes from three pages
 - **WHEN** changes were saved on Firewall rules, DHCP and General
@@ -138,11 +138,11 @@ When the router puts its previous settings back because this page did not check 
 - **WHEN** an apply of 12 changes is not confirmed within the rollback window
 - **THEN** the router runs its previous settings, the 12 changes are pending again, and the Pending changes page explains the apply was put back
 
-### Requirement: Discard all asks first
-Pressing Discard all SHALL ask in place, in the danger colour, before dropping every pending change. Answering yes SHALL empty the stage; the page SHALL read "Nothing pending" and the rail's row SHALL leave.
+### Requirement: Discard all is a secondary act
+Discard all SHALL be drawn as a secondary act, not in the danger colour, because nothing was applied and the router runs as it is either way. Pressing it SHALL empty the stage without asking first; the page SHALL read "Nothing pending" and the rail's row SHALL leave.
 
 #### Scenario: Discarding
-- **WHEN** the operator presses Discard all and answers "Discard all"
+- **WHEN** the operator presses Discard all
 - **THEN** no change is pending and the router keeps running what it ran
 
 ### Requirement: The page works without scripting

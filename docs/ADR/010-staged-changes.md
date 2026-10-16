@@ -81,7 +81,9 @@ rollback.**
    lines it stands for. Above them a **When you apply** card numbers what an
    apply does, in the order it does it (§5), opening with a warning where a
    pending change touches the interface this browser reaches the router
-   through. **Discard all** and **Apply N** stand on the page's heading line.
+   through. **Apply N** and **Discard all** stand under the changes, read
+   before either; Discard all is a secondary act that asks nothing, since the
+   router runs as it is either way.
    A page whose own act stages something (a row's switch, an inline field, a
    dropped row) brings the row in step in place; everything else re-renders on
    page load and does not poll. Because the stage outlives the page, leaving

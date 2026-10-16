@@ -18,7 +18,7 @@ Operators find the staging flow confusing. The marigold chip next to the router'
 
 **The Pending changes page**
 - A page at `/pending` replaces the review drawer and `/uci/review`.
-- The heading line holds "N pending changes", **Discard all** and **Apply N changes**. There is no lede.
+- The heading line holds "N pending changes" alone. There is no lede. **Apply N changes** and **Discard all** (a secondary act that asks nothing) stand under the changes.
 - The first card, **When you apply**, holds:
   - a marigold "May disconnect you" callout when a change touches the interface this browser reaches the router through;
   - the apply's own steps, numbered because they happen in that order, one line each: "Saves N changes.", "Reloads <services>." (named together from procd's own triggers), "Keeps them if this page checks in within 30 s.";

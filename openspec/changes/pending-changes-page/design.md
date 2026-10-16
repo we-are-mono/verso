@@ -59,9 +59,10 @@ On a phone, the hamburger at `page.html.tmpl:43` gains a count span. The same da
 ### 2. `/pending` is a page built from `stagedView`; the drawer template is retired
 
 `handlePending` renders a page:
-- the heading line with Discard all and Apply N;
+- the heading line, the count alone;
 - the When you apply card;
-- one card per `stagedGroup`.
+- one card per `stagedGroup`;
+- Apply N and Discard all under the last card, where a page form's Save stands.
 
 `stagedGroup` gains the group's page heading and its href. The href comes from `stageAuthor`, which already knows the plugin and path, so it records that path too.
 

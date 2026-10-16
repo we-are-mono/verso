@@ -65,7 +65,7 @@ Every task ends green under `make lint` and `make test`. A task that touches a t
 ## 6. The Pending changes page
 
 - [x] 6.1 Write the tests first, then add `handlePending` and the route and verify. The tests:
-  - `GET /pending` renders "N pending changes" with Discard all and Apply N on the heading line and no lede;
+  - `GET /pending` renders "N pending changes" with no acts on the heading line and no lede, and Apply N and Discard all under the last card, 24px under it as cards stand;
   - When you apply comes first, with the disconnect callout (a packet, no buttons) when flagged, then the numbered steps, then the note;
   - a trigger read that fails (no ACL) leaves the card without a reload step and the page renders;
   - one card per group titled by its page heading, with Open page and (for more than one row) Undo these;
@@ -106,7 +106,7 @@ Every task ends green under `make lint` and `make test`. A task that touches a t
   - a timeout sets the check-in to Put back in crimson and reads the page again once the router has staged the changes anew, which opens with the rollback callout.
 - [x] 8.2 Write the tests first, then implement and verify:
   - Apply starts at once, with no confirmation, even with a flagged change;
-  - Discard all leads to its crimson question under the heading line (`/pending?confirm=discard`), with or without a script;
+  - Discard all is a secondary act that lets the stage go without asking, with or without a script;
   - an undo's notification offers "Put it back".
 - [x] 8.3 Delete `versoStaged.fly`, the flight CSS, the chip verdict states and their callers in `verso-forms.js`, `verso-tables.js` and `verso-system.js`; the save's note keeps only where Save stood, as `verso-staged-landing`, and `verso-boot.js` goes with the count it held back. Verify with grep that none remain and that the reboot path still reads the stage.
 
