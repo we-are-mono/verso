@@ -125,13 +125,15 @@ func (s *Switch) frame() fieldFrame {
 
 // grouped is this switch as one row of a labelled group (a switch group):
 // the group's label names the option, so the row names only its own thing,
-// and its help is its description, kept in view beside its siblings'.
+// and its help says which thing that is: its detail, kept in view beside its
+// siblings' even when descriptions fold.
 func (s *Switch) grouped() (switchControl, fieldFrame) {
 	control := switchControl{Name: s.Name, On: s.On, Disabled: s.locked()}
 	frame := s.frame()
 	frame.Label.Key = ""
-	if frame.Desc != "" {
-		control.Described = frame.DescID()
+	frame.Detail, frame.Desc = frame.Desc, ""
+	if frame.Detail != "" {
+		control.Described = frame.DetailID()
 	}
 	control.refused(s)
 	return control, frame

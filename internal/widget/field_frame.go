@@ -31,6 +31,9 @@ type fieldFrame struct {
 	// Desc is the row's description, under its name in the question; a
 	// settings row's description is its point.
 	Desc string
+	// Detail says which thing an item of a group is (an included file's kind),
+	// under its name; unlike a description it never folds away.
+	Detail string
 	// Note is what the value does now, kept in view under the control in the
 	// answer, after its refusal.
 	Note string
@@ -67,6 +70,15 @@ func (f fieldFrame) DescID() string {
 		return ""
 	}
 	return f.Label.For + "-desc"
+}
+
+// DetailID is the id the control points at for its detail, and none where
+// the control has no id to point from.
+func (f fieldFrame) DetailID() string {
+	if f.Label.For == "" {
+		return ""
+	}
+	return f.Label.For + "-detail"
 }
 
 // NoteID is the id the control points at for the note under it, and none

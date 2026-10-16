@@ -240,6 +240,7 @@
   <div class="verso-field-ledger">
     <div class="verso-field-question">
       {{if .ShowsLabel}}{{template "verso-field-label" .Label}}{{end}}
+      {{with .Detail}}<p{{with $.DetailID}} id="{{.}}"{{end}} data-verso-field-detail class="{{template "verso-field-desc-class"}}">{{.}}</p>{{end}}
       {{with .Desc}}<p{{with $.DescID}} id="{{.}}"{{end}} data-verso-field-desc class="{{template "verso-field-desc-class"}}">{{.}}</p>{{end}}
     </div>
     <div data-verso-control{{with .Measure}} data-verso-control-measure="{{.}}"{{end}}{{if .Inline}} data-verso-inline-field{{end}} class="{{template "verso-field-control-class"}} verso-field-answer relative">

@@ -39,12 +39,17 @@ func TestSwitchesUnderOneLabelAreOneSetting(t *testing.T) {
 	for _, want := range []string{
 		`role="group" aria-labelledby="include_a-group-label"`,
 		`<label for="include_a" id="include_a-label" class="font-mono text-base leading-6 font-medium text-ink">/etc/nftables.d/10-custom.nft</label>`,
-		`<p id="include_a-desc" data-verso-field-desc class="text-sm leading-6 text-pretty text-body">nftables · chain-pre</p>`,
-		`aria-describedby="include_a-desc"`,
+		// An item's help says which thing it is, so it is the item's detail,
+		// which stays when descriptions fold.
+		`<p id="include_a-detail" data-verso-field-detail class="text-sm leading-6 text-pretty text-body">nftables · chain-pre</p>`,
+		`aria-describedby="include_a-detail"`,
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("switch group missing %q:\n%s", want, got)
 		}
+	}
+	if strings.Contains(got, "include_a-desc") {
+		t.Errorf("an item's detail is not a description that folds:\n%s", got)
 	}
 }
 
