@@ -134,7 +134,7 @@ Every task ends green under `make lint` and `make test`. A task that touches a t
   - the change as landed;
   - the release-notes line (the chip is gone; pending changes live at the top of the sidebar).
   Verify the entries read as what is.
-- [ ] 10.3 End-to-end in the dev container (`make dev`), and verify each step in the browser as root:
+- [x] 10.3 End-to-end in the dev container (`make dev`), and verify each step in the browser as root:
   - edit a rule, see the ghost, save and see the line settle;
   - undo one of two DHCP changes;
   - apply and see Saved, Started, Kept and "Changes applied";

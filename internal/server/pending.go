@@ -57,7 +57,8 @@ func (s *Server) handlePending(w http.ResponseWriter, r *http.Request) {
 	s.withWas(ctx, sid, &view, tr)
 	hdr := pageHeader{Heading: pendingCount(view.Count, tr), Tone: "neutral"}
 	if told, ok := s.stageEnds.tell(sid); ok && told.Kind == stageRolledBack {
-		hdr.Notice = &plugin.Notice{Level: "danger", Text: "This page could not check in, so the router put its previous settings back. Your changes are still pending."}
+		// The outcome, once; the callout under the heading says why and when.
+		hdr.Notice = &plugin.Notice{Level: "danger", Text: "The apply was put back. Your changes are still pending."}
 	}
 	if record, ok := s.undos.announce(sid); ok {
 		hdr.Arrival = s.pendingTemplate(lang, "verso-pending-putback", struct {

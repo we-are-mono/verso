@@ -316,7 +316,7 @@
   // words, a secret never.
   function said(control) {
     var type = (control.type || "").toLowerCase();
-    if (type === "checkbox") return control.checked ? T("On") : T("Off");
+    if (type === "checkbox") return control.checked ? T("on") : T("off");
     if (type === "password") return T("changed");
     if (control.tagName === "SELECT") {
       var option = control.options[control.selectedIndex];

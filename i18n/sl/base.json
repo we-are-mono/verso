@@ -1053,7 +1053,7 @@
   "%d changes applied. (few)": "%d spremembe uveljavljene.",
   "%d changes applied.": "%d sprememb uveljavljenih.",
   "The last apply was put back at %s.": "Zadnja uveljavitev je bila ob %s povrnjena.",
-  "This page could not check in, so the router put its previous settings back. Your changes are still pending.": "Ta stran se ni mogla oglasiti, zato je usmerjevalnik povrnil prejšnje nastavitve. Vaše spremembe še čakajo.",
+  "The apply was put back. Your changes are still pending.": "Uveljavitev je bila povrnjena. Vaše spremembe še čakajo.",
   "This page could not check in with the router within the rollback window, so the router returned to its previous settings. Your changes are still here, as you left them.": "Ta stran se usmerjevalniku ni oglasila v času za povrnitev, zato se je vrnil na prejšnje nastavitve. Vaše spremembe so še tukaj, kot ste jih pustili.",
   "May disconnect you.": "Lahko vas odklopi.",
   "A pending change to %s may cut off this browser, which reaches the router at %s.": "Čakajoča sprememba vmesnika %s lahko odreže ta brskalnik, ki usmerjevalnik dosega na %s.",

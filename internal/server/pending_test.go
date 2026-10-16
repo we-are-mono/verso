@@ -161,11 +161,19 @@ func TestPendingPageAfterTheStageEnded(t *testing.T) {
 }
 
 // TestPendingPageAfterARollback: changes pending again after the router put
-// its settings back open with the callout saying when.
+// its settings back open with the callout saying when and why; the
+// notification says the outcome once, in words of its own.
 func TestPendingPageAfterARollback(t *testing.T) {
 	s := pendingServer(t, fakeBackend{})
 	s.stageEnds.set("test-sid", stageEnd{Kind: stageRolledBack, At: time.Date(2026, 10, 17, 15, 42, 0, 0, time.Local), Count: 3})
-	mustContain(t, get(t, s, pendingPath).Body.String(), "The last apply was put back at 15:42.", "This page could not check in")
+	body := get(t, s, pendingPath).Body.String()
+	mustContain(t, body, "The last apply was put back at 15:42.", "This page could not check in", "The apply was put back. Your changes are still pending.")
+	if strings.Count(body, "could not check in") != 1 {
+		t.Error("the notification repeats the callout's reason")
+	}
+	if strings.Contains(get(t, s, pendingPath).Body.String(), "The apply was put back.") {
+		t.Error("the notification says the outcome more than once")
+	}
 }
 
 // TestPendingPageWithoutScripting: undo and discard work without a script,

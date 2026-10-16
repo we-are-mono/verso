@@ -168,6 +168,14 @@ test('two edits say the first and how many more, each new setting counted', () =
   assert.equal(page.ids.get('verso-pending-line').textContent, '+2Lease time → 6h +1 more');
 });
 
+test('a switch reads as its saved change will say it', () => {
+  const page = railPage(0);
+  const control = {type: 'checkbox', name: 'logdhcp', checked: true, defaultChecked: false};
+  pageForm({label: 'Log every lease', control});
+  page.document.emit('change', {target: control});
+  assert.equal(page.ids.get('verso-pending-line').textContent, '+1Log every lease → on');
+});
+
 test('Cancel or closing the drawer lets the line go; hover and focus change nothing', () => {
   const page = railPage(1);
   const control = {type: 'text', name: 'leasetime', value: '6h', defaultValue: '12h'};

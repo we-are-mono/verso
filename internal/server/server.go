@@ -868,9 +868,10 @@ func jsCatalog(tr func(string) string) template.JS {
 		// What staying signed in says once the session has been extended.
 		"You’re still signed in.",
 		// The rail's Pending changes row: what an edit not yet saved would
-		// stage, how a value reads in it, and what a screen reader hears of a
-		// change the stage took.
-		"On", "Off", "not set", "changed", "+%d more", "Pending: %s",
+		// stage, how a value reads in it (a switch in the words its saved
+		// change says), and what a screen reader hears of a change the stage
+		// took.
+		"on", "off", "not set", "changed", "+%d more", "Pending: %s",
 		// The Pending changes page's apply: each step's state as the router
 		// reports it, and what the page says when the router turns it away.
 		"Saving", "Saved", "Started", "Kept", "Put back", "%d\U0000202fs left",
