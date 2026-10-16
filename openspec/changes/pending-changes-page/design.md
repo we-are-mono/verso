@@ -144,7 +144,11 @@ The callout names the interface's current address and the pending one. It is the
 
 ### 8. A rollback stages its snapshot again
 
-`watchApply`'s rollback callback calls `stagePlan(sid, forwardOf(change))` after recording `ChangeRolledBack`. That is the mechanism "Stage this change again" already uses (ADR-021). It also stores the rollback time per sid, so `/pending` can draw its callout.
+`handleUCIApply` reads the stage once, before the apply empties it, for two uses: config history's change, and what a rollback would stage again. The second is the stage's coalesced changes as rpcd journals them, each with who staged it, plus each reordered config's staged order.
+
+`watchApply`'s rollback callback records `ChangeRolledBack`, then stages those changes again through the same replay an undo uses (decision 5). It also stores the rollback time per sid, so `/pending` can draw its callout.
+
+This does not use `stagePlan(forwardOf(change))`, the path "Stage this change again" takes (ADR-021). Config history keeps no secret's value, so forwardOf leaves a secret unset, and a rolled-back Wi-Fi password would be lost. The replay's copy of a secret is held in memory for the rollback window only and is never written to history.
 
 The snapshot is taken whether or not the history store exists. Re-stage does not depend on history.
 

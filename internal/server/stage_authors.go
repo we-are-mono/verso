@@ -125,6 +125,13 @@ func (a *stageAuthors) of(sid, address string) (stageAuthor, bool) {
 	return who, ok
 }
 
+// drop forgets one change's record: it is no longer staged.
+func (a *stageAuthors) drop(sid, address string) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	delete(a.by[sid], address)
+}
+
 // forget drops sid's record: its stage has been applied or discarded.
 func (a *stageAuthors) forget(sid string) {
 	a.mu.Lock()

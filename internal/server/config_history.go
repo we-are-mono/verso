@@ -54,14 +54,19 @@ func pluginSecrets(m plugin.Manifest) []string {
 	return names
 }
 
-// stagedChange is sid's stage as config history keeps it once applied: the
-// review drawer's rows, under the page each was made on in English, each with
-// the uci changes it stands for and what each replaced, and who applied it
-// from where. It is read before the apply, while the configs still hold what
-// the stage replaces.
-func (s *Server) stagedChange(ctx context.Context, sid, user, address string) history.Change {
+// stagedPlain is sid's stage read in the words config history keeps, the
+// pages' own, untranslated.
+func (s *Server) stagedPlain(ctx context.Context, sid string) stagedView {
 	identity := func(s string) string { return s }
-	view := s.staged(ctx, sid, identity, func(string) func(string) string { return identity })
+	return s.staged(ctx, sid, identity, func(string) func(string) string { return identity })
+}
+
+// stagedChangeOf is sid's stage, as view read it, as config history keeps it
+// once applied: the Pending changes page's rows, under the page each was made
+// on, each with the uci changes it stands for and what each replaced, and who
+// applied it from where. It is read before the apply, while the configs still
+// hold what the stage replaces.
+func (s *Server) stagedChangeOf(ctx context.Context, sid string, view stagedView, user, address string) history.Change {
 	secrets := s.secretOptions()
 	change := history.Change{User: user, Address: address, Items: stagedItems(view, secrets)}
 	var configs []string

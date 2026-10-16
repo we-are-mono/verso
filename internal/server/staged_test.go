@@ -162,11 +162,11 @@ func TestTheStageStandsWithTheRouter(t *testing.T) {
 	}
 }
 
-// TestReviewDrawerPlainOverRaw: the owning plugin describes its changes in
-// plain words and the drawer renders each sentence as a row that opens on the
-// raw uci line(s) it covers; a change no sentence covers keeps its raw line as
-// its row.
-func TestReviewDrawerPlainOverRaw(t *testing.T) {
+// TestPendingPagePlainOverRaw: the owning plugin describes its changes in
+// plain words and the Pending changes page renders each sentence as a row
+// whose config lines are the raw uci line(s) it covers; a change no sentence
+// covers keeps its raw line as its row.
+func TestPendingPagePlainOverRaw(t *testing.T) {
 	tr := &fakeTransport{descriptions: []plugin.Description{
 		{Plain: "Renamed the router.", Covers: []int{0}}, // covers only the first change
 	}}
@@ -180,31 +180,27 @@ func TestReviewDrawerPlainOverRaw(t *testing.T) {
 		},
 	}, tr, []plugin.Manifest{demoACLManifest()})
 
-	rec := getPanel(t, s, "/uci/review")
+	rec := get(t, s, pendingPath)
 	if rec.Code != http.StatusOK {
-		t.Fatalf("review status = %d, want 200", rec.Code)
+		t.Fatalf("page status = %d, want 200", rec.Code)
 	}
 	body := rec.Body.String()
 	for _, want := range []string{
-		`id="verso-staged-review" data-count="2"`, ">2 staged changes</h2>",
-		// The review opens on the band every drawer opens with.
-		`<header class="flex flex-none items-center gap-4 bg-quiet pl-10 pr-(--verso-drawer-end) py-3.5 shadow-[inset_0_-1px_0_var(--color-rule)]">`,
-		// The sentence is the row, at the words' weight; its verb leads it.
-		`text-sm font-semibold text-ink">Renamed the router.</span>`, ">changed</span>",
-		// Its raw line waits under the row, led by the glyph of a change.
-		`text-marigold-deep"><span class="w-2.5 shrink-0">~</span><span>system: @system[0].hostname = verso-lab</span>`,
-		// The undescribed change is its raw line, in mono.
-		`font-mono text-base font-medium text-ink">system: @system[0].timezone = UTC</span>`,
-		// The two acts that end the stage, and the promise that makes the first
-		// safe to press — stating the window the apply actually arms.
-		`id="verso-staged-apply"`, ">Apply 2 changes</button>", `id="verso-staged-discard"`, ">Discard all</button>",
-		// Letting the stage go asks first, in place, in crimson, its question
-		// dropping under the line of acts.
-		`class="verso-confirm contents"`, `data-verso-confirm-tone="danger"`, "Discard all staged changes?", ">Not now</button>",
-		"Usually takes a couple of seconds, longer if many services are affected. If the router stops answering within 30 seconds, the changes are rolled back.",
+		">2 pending changes<",
+		// The sentence is the row; its verb is its status.
+		"Renamed the router.", ">Changed<",
+		// Its raw line waits in the row's config lines, led by the glyph of a
+		// change.
+		"~ system: @system[0].hostname = verso-lab",
+		// The undescribed change is its raw line.
+		"system: @system[0].timezone = UTC",
+		// The two acts that end the stage.
+		"Apply 2 changes", ">Discard all</button>",
+		// Letting the stage go asks first, in place, in crimson.
+		`data-verso-confirm-tone="danger"`, "Discard all staged changes?", ">Not now</button>",
 	} {
 		if !strings.Contains(body, want) {
-			t.Errorf("drawer missing %q:\n%s", want, body)
+			t.Errorf("page missing %q", want)
 		}
 	}
 	// The question's answer repeats the act it confirms: the trigger and the
@@ -216,22 +212,16 @@ func TestReviewDrawerPlainOverRaw(t *testing.T) {
 	if i, j := strings.Index(body, "Renamed the router."), strings.Index(body, "hostname = verso-lab"); i < 0 || j < 0 || i > j {
 		t.Errorf("plain sentence should precede its raw line (plain=%d raw=%d)", i, j)
 	}
-	// A frame's request gets the contents alone.
-	if strings.Contains(body, "<html") {
-		t.Error("the drawer's contents must not come wrapped in a page")
-	}
 	// Describe fired, with the normalized op vocabulary.
 	if len(tr.lastDescribe) != 2 || tr.lastDescribe[0].Op != "set" || tr.lastDescribe[0].Option != "hostname" {
 		t.Errorf("describe received = %+v", tr.lastDescribe)
 	}
 }
 
-// TestReviewDrawerSaysASettingByItsLabel: a change a plugin describes as one
+// TestPendingPageSaysASettingByItsLabel: a change a plugin describes as one
 // of its settings reads the way the settings row did — the setting's name,
-// its new value, the option's key chip — never the section's handle. A
-// sentence that stands for one option carries that option's chip too; a
-// sentence folding several changes names no single option.
-func TestReviewDrawerSaysASettingByItsLabel(t *testing.T) {
+// the option's key chip, its new value — never the section's handle.
+func TestPendingPageSaysASettingByItsLabel(t *testing.T) {
 	tr := &fakeTransport{descriptions: []plugin.Description{
 		{Plain: "Log every lease: on", Covers: []int{0}, Setting: &plugin.Setting{Label: "Log every lease", Value: "on"}},
 		{Plain: "Renamed the router.", Covers: []int{1}},
@@ -249,18 +239,20 @@ func TestReviewDrawerSaysASettingByItsLabel(t *testing.T) {
 		},
 	}, tr, []plugin.Manifest{demoACLManifest()})
 
-	body := getPanel(t, s, "/uci/review").Body.String()
-	summary := func(text string) string {
+	body := get(t, s, pendingPath).Body.String()
+	// The rows, past the note whose placeholder names them too.
+	body = body[strings.Index(body, "<tbody"):]
+	cell := func(text string) string {
 		at := strings.Index(body, text)
 		if at < 0 {
-			t.Fatalf("no row says %q:\n%s", text, body)
+			t.Fatalf("no row says %q", text)
 		}
-		start := strings.LastIndex(body[:at], "<summary")
-		end := strings.Index(body[at:], "</summary>")
+		start := strings.LastIndex(body[:at], "<td")
+		end := strings.Index(body[at:], "</td>")
 		return body[start : at+end]
 	}
-	setting := summary(">Log every lease<")
-	for _, want := range []string{`data-verso-staged-value>on<`, `data-verso-staged-key>logdhcp<`} {
+	setting := cell("Log every lease")
+	for _, want := range []string{">logdhcp<", ">on<"} {
 		if !strings.Contains(setting, want) {
 			t.Errorf("the setting's row is missing %q:\n%s", want, setting)
 		}
@@ -268,11 +260,10 @@ func TestReviewDrawerSaysASettingByItsLabel(t *testing.T) {
 	if strings.Contains(setting, "cfg01411c") {
 		t.Errorf("the setting's row names the section's handle:\n%s", setting)
 	}
-	if renamed := summary("Renamed the router."); !strings.Contains(renamed, `data-verso-staged-key>hostname<`) {
-		t.Errorf("a sentence standing for one option carries its chip:\n%s", renamed)
-	}
-	if added := summary("Allow DNS"); strings.Contains(added, "data-verso-staged-key") {
-		t.Errorf("a sentence folding several changes names no single option:\n%s", added)
+	for _, sentence := range []string{"Renamed the router.", "Allow DNS"} {
+		if !strings.Contains(body, sentence) {
+			t.Errorf("no row says %q", sentence)
+		}
 	}
 }
 
@@ -290,19 +281,26 @@ func TestASettingNamesItsOwnKey(t *testing.T) {
 			{"set", "@system[0]", "timezone", "CET-1CEST,M3.5.0,M10.5.0/3"},
 		}},
 	}, tr, []plugin.Manifest{demoACLManifest()})
-	body := getPanel(t, s, "/uci/review").Body.String()
-	for _, want := range []string{`data-verso-staged-key>zonename<`, `font-mono text-base font-medium text-body" data-verso-staged-value>Europe/Ljubljana<`} {
-		if !strings.Contains(body, want) {
-			t.Errorf("the time zone's row is missing %q:\n%s", want, body)
+	body := get(t, s, pendingPath).Body.String()
+	at := strings.Index(body, "Time zone")
+	if at < 0 {
+		t.Fatal("no row says Time zone")
+	}
+	row := body[at : at+strings.Index(body[at:], "</td>")]
+	for _, want := range []string{">zonename<", "Europe/Ljubljana"} {
+		if !strings.Contains(row, want) {
+			t.Errorf("the time zone's row is missing %q:\n%s", want, row)
 		}
+	}
+	if strings.Contains(row, ">timezone<") {
+		t.Errorf("the time zone's row names the option folded into it:\n%s", row)
 	}
 }
 
-// TestReviewDrawerGroupsByPage: rows gather under the page they belong to — a
+// TestPendingPageGroupsByPage: rows gather under the page they belong to — a
 // plugin's config under that plugin's name, the shell's own under System —
-// each group a band with its tally, and a change's verb reads from what its
-// writes amount to.
-func TestReviewDrawerGroupsByPage(t *testing.T) {
+// each a card, and a change's verb reads from what its writes amount to.
+func TestPendingPageGroupsByPage(t *testing.T) {
 	s := newServerWith(t, fakeBackend{
 		access: true,
 		changes: map[string][][]string{
@@ -313,35 +311,32 @@ func TestReviewDrawerGroupsByPage(t *testing.T) {
 		{Plain: "Added the rule “Allow DNS”.", Covers: []int{0, 1}},
 	}}, []plugin.Manifest{demoACLManifest()})
 
-	body := getPanel(t, s, "/uci/review").Body.String()
+	body := get(t, s, pendingPath).Body.String()
 	for _, want := range []string{
-		// The plugin's page, then the shell's, each band with its tally.
-		`text-body">Demo Plugin</span>`, `text-body">System</span>`, ">1 change</span>",
-		// A new section is added, and every one of its lines is new with it
-		// (the plus reaches the page as its entity, which html/template writes
-		// for text it cannot know is safe).
-		">added</span>", `class="size-1.5 shrink-0 rounded-[1px] bg-green"`,
-		`text-green-deep"><span class="w-2.5 shrink-0">&#43;</span><span>system: new rule section cfg99</span>`,
-		`text-green-deep"><span class="w-2.5 shrink-0">&#43;</span><span>system: cfg99.name = Allow DNS</span>`,
-		// A section going is removed, its line going with it.
-		">removed</span>", `class="size-1.5 shrink-0 rounded-[1px] bg-crimson"`,
-		`text-crimson-deep"><span class="w-2.5 shrink-0">-</span><span>verso: remove updates</span>`,
+		// The plugin's page, then the shell's, each a card.
+		`text-ink">Demo Plugin</h2>`, `text-ink">System</h2>`,
+		// A new section is added, and every one of its lines is new with it;
+		// a section going is removed, its line going with it.
+		// (The plus reaches the page as its entity, which html/template writes
+		// for text it cannot know is safe.)
+		">Added<", "bg-green", "&#43; system: new rule section cfg99", "&#43; system: cfg99.name = Allow DNS",
+		">Removed<", "bg-crimson", "- verso: remove updates",
 	} {
 		if !strings.Contains(body, want) {
-			t.Errorf("drawer missing %q:\n%s", want, body)
+			t.Errorf("page missing %q", want)
 		}
 	}
-	if i, j := strings.Index(body, ">Demo Plugin<"), strings.Index(body, ">System<"); i < 0 || j < 0 || i > j {
+	if i, j := strings.Index(body, `text-ink">Demo Plugin</h2>`), strings.Index(body, `text-ink">System</h2>`); i < 0 || j < 0 || i > j {
 		t.Errorf("pages follow the order their changes first appear in (plugin=%d shell=%d)", i, j)
 	}
 }
 
-// TestReviewDrawerFilesAChangeUnderThePageThatMadeIt: a config is often
+// TestPendingPageFilesAChangeUnderThePageThatMadeIt: a config is often
 // shared — network is written by Interfaces and by General alike — so a change
 // is filed under the plugin that staged it, not the first to declare its
 // config. What the shell staged itself it remembers until the stage is applied
 // or discarded.
-func TestReviewDrawerFilesAChangeUnderThePageThatMadeIt(t *testing.T) {
+func TestPendingPageFilesAChangeUnderThePageThatMadeIt(t *testing.T) {
 	first := demoManifest()
 	first.ID, first.Name, first.Socket = "interfaces", "Interfaces", "/run/verso/interfaces.sock"
 	first.ACL = plugin.ACL{Write: []plugin.ACLScope{{Scope: "uci", Object: "network", Function: "write"}}}
@@ -364,14 +359,14 @@ func TestReviewDrawerFilesAChangeUnderThePageThatMadeIt(t *testing.T) {
 	if rec := postPlugin(t, s, "/plugins/general/", url.Values{"packet_steering": {""}}); rec.Code != http.StatusSeeOther {
 		t.Fatalf("stage answered %d", rec.Code)
 	}
-	body := getPanel(t, s, "/uci/review").Body.String()
-	for _, unwanted := range []string{`text-body">Interfaces</span>`, `text-body">System</span>`} {
+	body := get(t, s, pendingPath).Body.String()
+	for _, unwanted := range []string{`text-ink">Interfaces</h2>`, `text-ink">System</h2>`} {
 		if strings.Contains(body, unwanted) {
-			t.Errorf("filed under %s, not the page that made it:\n%s", unwanted, body)
+			t.Errorf("filed under %s, not the page that made it", unwanted)
 		}
 	}
-	if !strings.Contains(body, `text-body">General</span>`) {
-		t.Errorf("the change is filed under the page that made it, General:\n%s", body)
+	if !strings.Contains(body, `text-ink">General</h2>`) {
+		t.Error("the change is filed under the page that made it, General")
 	}
 	if got := pageLabel(general, "/"); got != "General" {
 		t.Errorf("the plugin's root page is %q, want General", got)
@@ -387,37 +382,17 @@ func TestReviewDrawerFilesAChangeUnderThePageThatMadeIt(t *testing.T) {
 	}
 }
 
-// TestReviewDrawerEmpty: a clean stage still answers the drawer, saying so, with
-// nothing to apply and only the way out.
-func TestReviewDrawerEmpty(t *testing.T) {
+// TestPendingPageEmpty: a clean stage still answers the page, saying so, with
+// nothing to apply or discard.
+func TestPendingPageEmpty(t *testing.T) {
 	s := newServer(t, fakeBackend{access: true})
-	body := getPanel(t, s, "/uci/review").Body.String()
-	for _, want := range []string{
-		`id="verso-staged-review" data-count="0"`, ">No staged changes</h2>",
-		"Nothing staged. Every save lands here until you apply.", ">Close</button>",
-	} {
-		if !strings.Contains(body, want) {
-			t.Errorf("empty drawer missing %q:\n%s", want, body)
-		}
+	body := get(t, s, pendingPath).Body.String()
+	if !strings.Contains(body, ">Nothing pending<") {
+		t.Error("a clean stage's page does not say Nothing pending")
 	}
-	for _, absent := range []string{`id="verso-staged-apply"`, `id="verso-staged-discard"`, "Takes effect"} {
+	for _, absent := range []string{"data-verso-pending-apply", `action="/pending/discard"`} {
 		if strings.Contains(body, absent) {
-			t.Errorf("an empty drawer has nothing to act on; found %q", absent)
-		}
-	}
-}
-
-// TestReviewPageForABrowserWithNoScript: the chip is a link, and a browser that
-// cannot open the drawer follows it to the same contents on a page of their own.
-func TestReviewPageForABrowserWithNoScript(t *testing.T) {
-	s := newServerWith(t, fakeBackend{
-		access:  true,
-		changes: map[string][][]string{"system": {{"set", "@system[0]", "hostname", "verso-lab"}}},
-	}, &fakeTransport{}, []plugin.Manifest{demoACLManifest()})
-	body := get(t, s, "/uci/review").Body.String()
-	for _, want := range []string{"<html", ">Staged changes<", `id="verso-staged-review" data-count="1"`, ">Apply 1 change</button>"} {
-		if !strings.Contains(body, want) {
-			t.Errorf("review page missing %q", want)
+			t.Errorf("an empty page has nothing to act on; found %q", absent)
 		}
 	}
 }

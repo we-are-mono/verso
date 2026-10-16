@@ -1,0 +1,39 @@
+<!-- SPDX-License-Identifier: GPL-2.0-only -->
+<!-- SPDX-FileCopyrightText: 2026 Mono Technologies Inc. -->
+{{/* The Pending changes page's own parts (ADR-010), set into its cards as
+     the shell's blocks (widget.Embed): the steps an apply takes, the acts on
+     its heading line, and the notification that offers an undo back. */}}
+
+{{/* verso-pending-steps: what an apply does, numbered because it happens in
+     that order, one line each. Each step names its part in the apply, so the
+     page's script says each one's state as the router reports it: Saving
+     then Saved, the reloads Started, the check-in counting the window down
+     then Kept. A step that shortens its line carries the whole as its title. */}}
+{{define "verso-pending-steps"}}<ol data-verso-apply-steps class="m-0 flex list-none flex-col gap-2 p-0">
+  {{range .}}<li data-verso-apply-step="{{.Kind}}"{{with .Title}} title="{{.}}"{{end}} class="grid grid-cols-[1.25rem_minmax(0,1fr)_auto] items-start gap-x-2 text-sm leading-6 text-body max-sm:grid-cols-[1.25rem_minmax(0,1fr)]">
+    <span class="text-meta tabular-nums">{{.Number}}.</span>
+    <span class="min-w-0">{{.Text}}</span>
+    <span data-verso-apply-state aria-live="polite" class="flex items-center gap-1.5 whitespace-nowrap text-meta empty:hidden max-sm:col-start-2"></span>
+  </li>{{end}}
+</ol>{{end}}
+
+{{/* verso-pending-acts: the heading line's two acts. Discard all asks first,
+     in place (the confirm), and posts the page's discard; a browser with no
+     script reaches the same question on a page of its own. Apply posts the
+     When you apply card's form, which carries the note; it stands hidden
+     until the page's script is there to see the apply through, since the
+     router keeps an apply only when the page checks in. */}}
+{{define "verso-pending-acts"}}<div data-verso-pending-acts class="flex flex-wrap items-center gap-2">
+  <form method="post" action="/pending/discard" data-verso-pending-discard class="contents">{{template "verso-csrf" .CSRF}}{{.Discard}}</form>
+  <noscript><a href="/pending?confirm=discard" class="{{template "verso-btn-box"}} {{template "verso-btn-secondary"}}">{{t "Discard all"}}</a></noscript>
+  <button type="submit" form="verso-pending-apply" data-verso-pending-apply hidden class="{{template "verso-btn-box"}} border-denim bg-denim text-on-fill hover:border-denim-deep hover:bg-denim-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim-deep">{{.Apply}}</button>
+  <noscript><span class="text-sm text-meta">{{t "Applying needs scripting: the router keeps an apply only when this page answers it."}}</span></noscript>
+</div>{{end}}
+
+{{/* verso-pending-putback: an undo's outcome, offering what it took back
+     once, in the notification's own dress. */}}
+{{define "verso-pending-putback"}}<div class="{{template "verso-flash-class" "info"}}" data-verso-flash-variant="info">
+  {{template "verso-message-mark" "info"}}
+  <span class="min-w-0 flex-1">{{.Words}}</span>
+  {{if .Restorable}}<form method="post" action="/pending/restore" class="contents">{{template "verso-csrf" .CSRF}}<input type="hidden" name="undo" value="{{.Token}}"><button type="submit" class="-my-0.5 shrink-0 cursor-pointer font-semibold text-denim-deep underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-denim">{{t "Put it back"}}</button></form>{{end}}
+</div>{{end}}

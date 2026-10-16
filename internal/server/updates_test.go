@@ -930,10 +930,10 @@ func TestStagedVersoSettingReachesTheChip(t *testing.T) {
 	if body := get(t, s, "/system/maintenance").Body.String(); !strings.Contains(body, ">1 staged change</span>") {
 		t.Errorf("the chip is missing the staged setting:\n%s", body)
 	}
-	drawer := getPanel(t, s, "/uci/review").Body.String()
-	for _, want := range []string{`text-body">System</span>`, "verso: updates.autocheck = 0"} {
-		if !strings.Contains(drawer, want) {
-			t.Errorf("the drawer is missing %q:\n%s", want, drawer)
+	pending := get(t, s, pendingPath).Body.String()
+	for _, want := range []string{`text-ink">System</h2>`, "verso: updates.autocheck = 0"} {
+		if !strings.Contains(pending, want) {
+			t.Errorf("the Pending changes page is missing %q", want)
 		}
 	}
 	if rec := postPlugin(t, s, "/uci/discard", url.Values{}); rec.Code != 200 {

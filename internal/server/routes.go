@@ -136,6 +136,12 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("POST /uci/apply", s.handleUCIApply)
 	s.mux.HandleFunc("POST /uci/confirm", s.handleUCIConfirm)
 	s.mux.HandleFunc("POST /uci/discard", s.handleUCIDiscard)
+	// The Pending changes page, its Discard all, its undo of a row or a
+	// card's rows, and the put-back its notification offers.
+	s.mux.HandleFunc("GET "+pendingPath, s.handlePending)
+	s.mux.HandleFunc("POST "+pendingPath+"/discard", s.handlePendingDiscard)
+	s.mux.HandleFunc("POST "+pendingPath+"/undo", s.handlePendingUndo)
+	s.mux.HandleFunc("POST "+pendingPath+"/restore", s.handlePendingRestore)
 
 	// Schema gateway: every plugin page and form post funnels through here and
 	// is rendered via the shell's own widget renderer (ADR-006).

@@ -35,25 +35,27 @@ type pendingApply struct {
 	change   history.Change
 	reverses []int64
 	started  time.Time
+	restage  applyRestage
 }
 
 // watchApply waits for sid's apply of change to be confirmed, and records it
-// rolled back if its window passes first. Kept, it undoes reverses.
-func (s *Server) watchApply(sid string, change history.Change, reverses []int64) {
-	if s.historyStore == nil && s.changeLog == nil {
-		return
-	}
+// rolled back if its window passes first: the router has put its settings
+// back, so what the apply carried is staged again as it was (restage). Kept,
+// it undoes reverses.
+func (s *Server) watchApply(sid string, change history.Change, reverses []int64, restage applyRestage) {
 	s.applies.mu.Lock()
 	s.applies.seq++
 	seq := s.applies.seq
 	if s.applies.by == nil {
 		s.applies.by = map[string]pendingApply{}
 	}
-	s.applies.by[sid] = pendingApply{seq: seq, change: change, reverses: reverses, started: time.Now()}
+	s.applies.by[sid] = pendingApply{seq: seq, change: change, reverses: reverses, started: time.Now(), restage: restage}
 	s.applies.mu.Unlock()
 	s.afterRollback(time.Duration(uciRollbackTimeout)*time.Second+rollbackGrace, func() {
 		if pending, ok := s.takeApply(sid, seq); ok {
 			s.recordApply(history.ChangeRolledBack, pending)
+			s.stageAgain(sid, pending.restage)
+			s.stageEnds.set(sid, stageEnd{Kind: stageRolledBack, At: time.Now(), Count: pending.restage.count, Back: pending.restage.back})
 		}
 	})
 }
@@ -66,6 +68,7 @@ func (s *Server) confirmedApply(sid string) {
 	if ok {
 		if pending, taken := s.takeApply(sid, pending.seq); taken {
 			s.recordApply(history.ChangeApplied, pending)
+			s.stageEnds.set(sid, stageEnd{Kind: stageApplied, At: time.Now(), Count: pending.restage.count, Back: pending.restage.back})
 		}
 	}
 }

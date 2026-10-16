@@ -216,7 +216,7 @@
      flash template below, and the layer says it as the page loads
      (verso-page.js). The sentence is read aloud through the page's announcer
      as it arrives, since this layer is hidden until then. */}}
-{{if .Flash.Message}}<template data-verso-arrival>{{template "verso-flash" .Flash}}</template>{{end}}
+{{if .Arrival}}<template data-verso-arrival>{{.Arrival}}</template>{{else if .Flash.Message}}<template data-verso-arrival>{{template "verso-flash" .Flash}}</template>{{end}}
 <div id="verso-outcome" hidden class="verso-outcome fixed top-[4.5rem] right-4 left-4 z-40 sm:right-6 sm:left-auto sm:w-full sm:max-w-md">
   <div data-verso-outcome-slot class="[&>.verso-flash]:mb-0 [&>.verso-flash]:pr-12 [&>.verso-flash]:shadow-(--shadow-float)"></div>
   <button type="button" data-verso-outcome-close aria-label="{{ t "Close" }}" class="absolute top-2 right-2 grid size-7 cursor-pointer place-items-center rounded-xs text-meta transition-colors hover:bg-mid/50 hover:text-ink focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-denim">{{icon "x" "size-4"}}</button>

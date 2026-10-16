@@ -17,11 +17,11 @@ Every task ends green under `make lint` and `make test`. A task that touches a t
 
 ## 2. What applying will do
 
-- [ ] 2.1 Add `service list {"verbose": true}` fixtures from OpenWrt 24.10 and 25.12 under `internal/openwrt/testdata`. Write the tests first, then implement the read and verify. The tests:
-  - the parse maps package → services from `config.change` triggers;
+- [x] 2.1 Add a `service list {"verbose": true}` fixture captured from the OpenWrt 25.12 lab under `internal/openwrt/testdata`, beside synthetic shapes in the test (no 24.10 router was at hand; procd's trigger shape is the same). Write the tests first, then implement the read and verify. The tests:
+  - the parse maps package → init scripts from `config.change` triggers, a script named by its own path, a non-init-script action naming nothing;
   - an unknown trigger shape yields nothing;
-  - a missing ACL yields nothing and no error reaches the page.
-- [ ] 2.2 Write the tests first, then implement the card's steps and verify the i18n audit stays at zero:
+  - a missing ACL is an error from the read, which the page turns into no reload step (task 6.1).
+- [x] 2.2 Write the tests first, then implement the card's steps and verify the i18n audit stays at zero:
   - 3 pending dhcp + firewall changes give 1 "Saves 3 changes.", 2 "Reloads DNS & DHCP and Firewall.", 3 "Keeps them if this page checks in within 30 s.", one line each;
   - Network leads the reload sentence;
   - a stage whose configs have no trigger has no reload step and numbers the check-in 2;
@@ -30,32 +30,32 @@ Every task ends green under `make lint` and `make test`. A task that touches a t
 
 ## 3. May disconnect you
 
-- [ ] 3.1 Write the tests first, then implement the check from `http.LocalAddrContextKey` and `network.interface dump` and verify. With a fake request whose local address is 192.168.1.1 on `lan`:
+- [x] 3.1 Write the tests first, then implement the check from `http.LocalAddrContextKey` and `network.interface dump` and verify. With a fake request whose local address is 192.168.1.1 on `lan`:
   - a pending `network.lan.ipaddr` is flagged with both addresses;
   - removing the `lan` section is flagged;
   - `network.wan.mtu` is not flagged.
 
 ## 4. Undo and put back
 
-- [ ] 4.1 Write the tests first against the fake backend, then implement revert-and-replay and verify:
+- [x] 4.1 Write the tests first against the fake backend, then implement revert-and-replay and verify:
   - undoing one of two dhcp changes leaves the other staged with its value and author time;
   - an added anonymous section that survives a replay keeps every later op on it;
   - a list-add and an order op replay in order;
   - a file-family config is discarded and replayed.
-- [ ] 4.2 Write the test first, then implement the recovery path and verify: a replay op that fails mid-way restores the original stage and answers with the danger notification.
-- [ ] 4.3 Write the tests first, then add the routes and verify:
+- [x] 4.2 Write the test first, then implement the recovery path and verify: a replay op that fails mid-way restores the original stage and answers with the danger notification.
+- [x] 4.3 Write the tests first, then add the routes and verify:
   - `POST /pending/undo` (a row or a group) requires CSRF and redirects to `/pending` without scripting;
   - its notification carries a "Put it back" form;
   - `POST /pending/restore` restages the undone ops.
 
 ## 5. A rollback keeps the changes
 
-- [ ] 5.1 Write the tests first in `apply_events_test.go`, then implement in `watchApply` through `stagePlan(forwardOf(change))` and verify:
+- [x] 5.1 Write the tests first (`rollback_restage_test.go`), then implement in `watchApply` through the undo's replay of the stage read at apply time (not `stagePlan(forwardOf(change))`, which leaves a secret unset: config history keeps no secret's value) and verify:
   - after the rollback window, the apply's snapshot is staged again under the same sid;
   - the rollback time is recorded for the sid;
   - the re-stage runs without a history store;
   - an expired sid records the rollback and stages nothing.
-- [ ] 5.2 Amend ADR-010 in place, then verify the ADR's headings are intact and nothing cites a removed section. The amendments:
+- [x] 5.2 Amend ADR-010 in place, then verify the ADR's headings are intact and nothing cites a removed section. The amendments:
   - §3: the one surface is the rail row and the Pending changes page;
   - Discard gains per-change undo;
   - Apply re-stages on rollback;
@@ -64,17 +64,18 @@ Every task ends green under `make lint` and `make test`. A task that touches a t
 
 ## 6. The Pending changes page
 
-- [ ] 6.1 Write the tests first, then add `handlePending` and the route and verify. The tests:
+- [x] 6.1 Write the tests first, then add `handlePending` and the route and verify. The tests:
   - `GET /pending` renders "N pending changes" with Discard all and Apply N on the heading line and no lede;
-  - When you apply comes first, with the disconnect callout (a packet, no buttons) when flagged, then the numbered effects, then the note;
+  - When you apply comes first, with the disconnect callout (a packet, no buttons) when flagged, then the numbered steps, then the note;
+  - a trigger read that fails (no ACL) leaves the card without a reload step and the page renders;
   - one card per group titled by its page heading, with Open page and (for more than one row) Undo these;
   - the rows carry their mark, verb, sentence, from → to, age and the three acts.
-- [ ] 6.2 Write the tests first, then implement and verify:
+- [x] 6.2 Write the tests first, then implement and verify:
   - "1 pending change" / "Apply 1 change";
   - after an apply or a Discard all, the empty page offers "Back to <page>", the page of the most recent applied or discarded change, whatever the referrer (a bookmark, an undo's redirect, a rollback reload);
   - opened clean with nothing on record, it reads "Nothing pending" and offers no way back;
   - after a rollback, the callout names the rollback's time.
-- [ ] 6.3 Write the tests first, then implement and verify:
+- [x] 6.3 Write the tests first, then implement and verify:
   - with scripting off, Undo, Undo these and Discard all are forms;
   - Apply is replaced by the sentence that it needs scripting;
   - `GET /uci/review` answers 308 to `/pending`;

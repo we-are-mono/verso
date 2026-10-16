@@ -329,12 +329,12 @@ func TestAnApplyKeepsItsNote(t *testing.T) {
 	}
 }
 
-// TestTheReviewDrawerAsksForANote: an optional box whose placeholder is what
-// the entry's row will say.
-func TestTheReviewDrawerAsksForANote(t *testing.T) {
+// TestThePendingPageAsksForANote: an optional box whose placeholder is what
+// the entry's row will say, in the form Apply posts.
+func TestThePendingPageAsksForANote(t *testing.T) {
 	s, _, _ := changeServer(t, map[string][][]string{"system": {{"set", "@system[0]", "hostname", "pending"}}})
-	body := getPanel(t, s, "/uci/review").Body.String()
-	if !strings.Contains(body, `name="note"`) || !strings.Contains(body, `placeholder="system.@system[0] changed"`) {
-		t.Errorf("review drawer:\n%s", body)
+	body := get(t, s, pendingPath).Body.String()
+	if !strings.Contains(body, `name="note"`) || !strings.Contains(body, `placeholder="system.@system[0] changed"`) || !strings.Contains(body, `id="verso-pending-apply"`) {
+		t.Error("the Pending changes page asks for no note in Apply's form")
 	}
 }

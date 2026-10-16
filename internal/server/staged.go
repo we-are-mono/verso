@@ -4,7 +4,6 @@
 package server
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"hash/fnv"
@@ -129,8 +128,11 @@ type stagedItem struct {
 	Age    string
 	Anchor string
 	ID     string
-	// at is when the row was staged, zero where it is not known.
-	at time.Time
+	// at is when the row was staged, zero where it is not known; author is
+	// who staged it, where authored.
+	at       time.Time
+	author   stageAuthor
+	authored bool
 	// plugin is the plugin whose page the row was made on, empty for the
 	// shell's own; changes is what the row stands for. Config history keeps
 	// both (ADR-021), and subject, what its plugin said the row is about.
@@ -382,6 +384,7 @@ func (s *Server) describedGroups(ctx context.Context, src changeSource, flat []s
 		}
 		row.item.ID = rowID(row.item.changes)
 		row.item.Anchor = rowAnchor(row.item.changes)
+		row.item.author, row.item.authored = row.author, row.authored
 		if row.authored && !row.author.At.IsZero() {
 			row.item.at = row.author.At
 			row.item.Age = units.For(tr).Ago(int64(now.Sub(row.author.At) / time.Second))
@@ -848,50 +851,16 @@ func changeTarget(ch []string) (key string, present, ok bool) {
 	}
 }
 
-// handleUCIReview renders the review drawer's contents from the stage: the
-// panel alone for the frame that asked for it, and the same contents on a page
-// of their own for a browser with no script, which follows the chip's link.
-func (s *Server) handleUCIReview(w http.ResponseWriter, r *http.Request) {
-	lang, t := s.localize(r)
-	tr := translatorOrIdentity(t)
-	sid := s.sessionSID(r)
-	view := s.staged(r.Context(), sid, tr, s.pluginTranslators(r))
-	s.withWas(r.Context(), sid, &view, tr)
-	if view.Count > 0 {
-		// Letting the stage go throws away what was saved on every page, so
-		// it asks first, in place, as every act that erases does.
-		var discard strings.Builder
-		if err := s.widgets.RenderWithToken(&discard, discardConfirm(), s.sessionCSRF(r), lang, t); err != nil {
-			log.Printf("verso: staged review render failed: %v", err)
-			http.Error(w, "review unavailable", http.StatusInternalServerError)
-			return
-		}
-		view.Discard = template.HTML(discard.String()) //nolint:gosec // the shell's own rendered widget
-	}
-	var buf bytes.Buffer
-	if err := s.pageSet(lang).ExecuteTemplate(&buf, "verso-staged-review", view); err != nil {
-		log.Printf("verso: staged review render failed: %v", err)
-		http.Error(w, "review unavailable", http.StatusInternalServerError)
-		return
-	}
-	if panelRequest(r) {
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		_, _ = w.Write(buf.Bytes())
-		return
-	}
-	// On a page of its own the contents keep the scope their close controls
-	// speak to, so a browser with script still finds nothing to trip over.
-	body := `<span x-data="modal" class="contents">` + buf.String() + `</span>`
-	s.renderPage(w, r, http.StatusOK, pageHeader{Heading: "Staged changes"}, "narrow", nil, template.HTML(body)) //nolint:gosec // the shell's own rendered template
-}
-
 // handleUCIApply commits every dirty config through rpcd's `uci apply` with the
 // device-side rollback armed (ADR-010). The drawer then confirms from the
 // browser; no confirm within the window and the router reverts itself.
 func (s *Server) handleUCIApply(w http.ResponseWriter, r *http.Request) {
 	sid := s.sessionSID(r)
-	// What the stage holds is read before the apply empties it.
-	change := s.stagedChange(r.Context(), sid, s.sessionUser(r), clientIP(r))
+	// What the stage holds is read before the apply empties it: as config
+	// history keeps it, and as a rollback would stage it again.
+	view := s.stagedPlain(r.Context(), sid)
+	change := s.stagedChangeOf(r.Context(), sid, view, s.sessionUser(r), clientIP(r))
+	restage := s.restageOf(r.Context(), sid, view)
 	if err := s.backend.UCIApply(r.Context(), sid, uciRollbackTimeout); err != nil {
 		log.Printf("verso: uci apply failed: %v", err)
 		http.Error(w, "apply failed", http.StatusBadGateway)
@@ -901,8 +870,10 @@ func (s *Server) handleUCIApply(w http.ResponseWriter, r *http.Request) {
 	// and the review drawer's note goes with it.
 	rel, _ := s.relations.take(sid)
 	change.Relation, change.Related = rel.relation, rel.related
+	// What an undo took out is not put back into a stage that is gone.
+	s.undos.forget(sid)
 	change.Note = applyNote(r.FormValue("note"))
-	s.watchApply(sid, change, rel.reverses)
+	s.watchApply(sid, change, rel.reverses, restage)
 	writeOK(w)
 }
 
@@ -927,27 +898,38 @@ func (s *Server) handleUCIConfirm(w http.ResponseWriter, r *http.Request) {
 // handleUCIDiscard reverts every declared config with pending changes (ADR-010:
 // the stage is one unit).
 func (s *Server) handleUCIDiscard(w http.ResponseWriter, r *http.Request) {
-	sid := s.sessionSID(r)
-	changes, err := s.backend.UCIChanges(r.Context(), sid)
-	if err != nil {
-		log.Printf("verso: uci changes unavailable: %v", err)
+	if _, err := s.discardStage(r.Context(), s.sessionSID(r)); err != nil {
+		log.Printf("verso: discard failed: %v", err)
 		http.Error(w, "discard failed", http.StatusBadGateway)
 		return
+	}
+	writeOK(w)
+}
+
+// discardStage lets go of every declared config's staged changes and says
+// how many changes it let go of. What is let go of is read first: how many,
+// and the page the most recent was made on, the Pending changes page's way
+// back.
+func (s *Server) discardStage(ctx context.Context, sid string) (int, error) {
+	view := s.stagedPlain(ctx, sid)
+	changes, err := s.backend.UCIChanges(ctx, sid)
+	if err != nil {
+		return 0, err
 	}
 	declared := s.declaredConfigsUnion()
 	for cfg := range changes {
 		if !declared[cfg] {
 			continue
 		}
-		if err := s.backend.UCIRevert(r.Context(), sid, cfg); err != nil {
-			log.Printf("verso: uci revert of %q failed: %v", cfg, err)
-			http.Error(w, "discard failed", http.StatusBadGateway)
-			return
+		if err := s.backend.UCIRevert(ctx, sid, cfg); err != nil {
+			return 0, fmt.Errorf("uci revert of %q: %w", cfg, err)
 		}
 	}
 	s.authors.forget(sid)
 	s.relations.forget(sid)
-	writeOK(w)
+	s.undos.forget(sid)
+	s.stageEnds.set(sid, stageEnd{Kind: stageDiscarded, At: time.Now(), Count: view.Count, Back: latestAuthor(view)})
+	return view.Count, nil
 }
 
 func writeOK(w http.ResponseWriter) {

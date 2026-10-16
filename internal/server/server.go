@@ -140,6 +140,12 @@ type Server struct {
 	// relations is what each session's stage is to config history when it
 	// came from an Undo, a Return or a Stage again (ADR-021).
 	relations stageRelations
+	// undos is what each session's last undo on the Pending changes page
+	// took out of its stage, so the page can offer to put it back.
+	undos undoRecords
+	// stageEnds is how each session's stage last ended, which the Pending
+	// changes page says once it holds nothing more.
+	stageEnds stageEnds
 	// expected is when each config's writes are an apply's own, so config
 	// history does not take them for edits made outside Verso (ADR-021).
 	expected expectedWrites
@@ -752,6 +758,9 @@ type pageData struct {
 	// envelope's notice.
 	FlashVariant string // the tone vocabulary: "success" | "warning" | "danger" | "info" | "" (no flash)
 	FlashMessage string
+	// Arrival is an outcome the shell drew itself, with an act in it (an
+	// undo's put-back); it is said in the flash's place.
+	Arrival template.HTML
 }
 
 // Flash is the page's one-shot outcome as the shared flash partial draws it
@@ -825,6 +834,9 @@ type pageHeader struct {
 	// it is synced in place instead of redirected.
 	CommandDone  bool
 	StagedCommit bool
+	// Arrival is an outcome the shell drew itself, with an act in it, said
+	// by the notification in the flash's place (pageData.Arrival).
+	Arrival template.HTML
 }
 
 // renderPage wraps a rendered body in the shell chrome — the <title>, the
@@ -1002,6 +1014,7 @@ func (s *Server) renderPage(w http.ResponseWriter, r *http.Request, status int, 
 		Pages:         localizedPages,
 		FlashVariant:  flashVariant,
 		FlashMessage:  tr(flashMessage),
+		Arrival:       hdr.Arrival,
 	}); err != nil {
 		http.Error(w, "page error", http.StatusInternalServerError)
 		return
