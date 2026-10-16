@@ -6,24 +6,6 @@ use verso_plugin::{
     ApplyAction, CollectionAdd, CollectionItem, CollectionRemove, Envelope, Field, Form,
     HeadingAct, Property, RemoveConfirm, Request, RowDrawer, Tone, Widget,
 };
-// An artifact is a document the router holds — a certificate — and reads like
-// one: named, with what it is for, then each fact's value beside its label,
-// read line by line.
-fn artifact(title: &str, purpose: &str, items: Vec<Property>) -> Widget {
-    let mut facts = Widget::properties(items);
-    if let Widget::Properties { align, .. } = &mut facts {
-        *align = "left".into();
-    }
-    let mut card = Widget::card(title, vec![facts]);
-    if let Widget::Card {
-        style, subtitle, ..
-    } = &mut card
-    {
-        *style = "artifact".into();
-        *subtitle = purpose.into();
-    }
-    card
-}
 fn property(label: &str, value: &str, copy: bool) -> Property {
     Property {
         label: label.into(),
@@ -194,11 +176,11 @@ pub fn certificate(r: &Request) -> Widget {
         .and_then(|v| v.get("certificate"))
     {
         if !value(cert, "fingerprint").is_empty() {
-            children.push(artifact(
-                "HTTPS certificate",
-                "What this router shows browsers that connect over HTTPS.",
-                certificate_facts(cert),
-            ));
+            let mut facts = Widget::properties(certificate_facts(cert));
+            if let Widget::Properties { align, .. } = &mut facts {
+                *align = "left".into();
+            }
+            children.push(facts);
         } else {
             children.push(Widget::text("No readable web certificate was found."));
         }
@@ -236,7 +218,13 @@ pub fn certificate(r: &Request) -> Widget {
         *inline = true;
     }
     children.push(actions);
-    Widget::section("Certificate", "", vec![Widget::stack(children)]).ruled()
+    // The card's header says what it holds, once; the facts stand under it.
+    Widget::section(
+        "HTTPS certificate",
+        "What this router shows browsers that connect over HTTPS.",
+        vec![Widget::stack(children)],
+    )
+    .ruled()
 }
 // A PEM block is text the machine wrote, so it is typed in the code box.
 fn textarea(name: &str, label: &str, value: &str) -> Widget {
