@@ -186,7 +186,7 @@
        in an ellipsis rather than wrapping, since the copy carries them all
        whole. */}}
   {{if ne .Width "full"}}{{with .Colophon}}
-  <footer data-verso-colophon x-data="copy" :data-copied="done" class="bg-quiet shadow-[inset_0_1px_0_var(--color-rule)]">
+  <footer data-verso-colophon x-data="copy" :data-copied="done" class="bg-mid shadow-[inset_0_1px_0_var(--color-rule)]">
     <div class="flex max-w-[calc(var(--container-6xl)+5rem)] items-center gap-4 px-4 py-3.5 font-mono text-base leading-6 text-meta md:px-10">
       <p class="flex min-w-0 flex-auto items-center gap-x-3 whitespace-nowrap">
         <span class="verso-colophon-fact min-w-0 truncate font-medium">{{.Release}}</span>

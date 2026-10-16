@@ -73,7 +73,7 @@ func TestColophonClosesEveryPageButALog(t *testing.T) {
 func TestColophonIsItsLineAndItsAir(t *testing.T) {
 	body := get(t, newServer(t, fakeBackend{}), "/").Body.String()
 	for _, want := range []string{
-		`data-verso-colophon x-data="copy" :data-copied="done" class="bg-quiet shadow-[inset_0_1px_0_var(--color-rule)]"`,
+		`data-verso-colophon x-data="copy" :data-copied="done" class="bg-mid shadow-[inset_0_1px_0_var(--color-rule)]"`,
 		`items-center gap-4 px-4 py-3.5 font-mono text-base leading-6 text-meta md:px-10`,
 		`<p class="flex min-w-0 flex-auto items-center gap-x-3 whitespace-nowrap">`,
 		`<span class="verso-colophon-fact min-w-0 truncate font-medium">`,

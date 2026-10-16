@@ -1086,7 +1086,7 @@ html {
   [data-verso-section-lede] p:not(:last-child) { margin-bottom: 1rem; }
   [data-verso-section-lede] p:last-child { margin-bottom: 0; }
 
-  /* A page's masthead is a Quiet Sand bar, the colophon's ground, on a
+  /* A page's masthead is a Quiet Sand bar, the page's ground, on a
      hairline that runs from the rail to the window's right edge, while its
      title keeps to the page's column and its
      acts end where Log out does, whatever measure the column below keeps:
