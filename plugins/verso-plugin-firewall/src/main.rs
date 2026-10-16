@@ -66,6 +66,7 @@ fn get(request: &Request) -> Envelope {
     let model = Firewall::read(&request.snapshot).with_rule_files(&request.ubus);
     let counters = Counters::read(&request.ubus);
     match Route::of(&request.path) {
+        Route::NotFound => Envelope::not_found(),
         Route::RuleFile(name) => settings::open_file(&model, &name),
         // Rules, port forwards and zones read their own query: each carries which
         // of its objects is open beside it (and, for rules and zones, on which
@@ -87,6 +88,7 @@ fn post(request: &Request, form: &Form) -> Envelope {
     let mut model = Firewall::read(&request.snapshot).with_rule_files(&request.ubus);
     let counters = Counters::read(&request.ubus);
     match Route::of(&request.path) {
+        Route::NotFound => Envelope::not_found(),
         Route::RuleFile(name) => settings::save_file(&model, &name, form),
         // The settings are one form, submitted whole, so they are saved whole
         // rather than read as a single flip.
@@ -141,15 +143,16 @@ fn flip(
     render(listing, snapshot, model, counters).with_commit(vec![operation])
 }
 
-/// Route is what a request's sub-path asks for. A sub-path the plugin does not
-/// publish answers with the listing it leads with, so a stale link lands
-/// somewhere real; a sub-path below a listing that names no section there is
-/// that editor's to answer, because only it knows what it can edit.
+/// Route is what a request's sub-path asks for, by its first segment. A path
+/// below a listing that names no section there is a stale link from when a
+/// section had a page, and lands on the listing; a path that names no listing
+/// at all has nothing at it, and says so rather than passing for Rules.
 enum Route {
     Listing(Listing),
     /// A rule file's editor, open over the settings: the name after
     /// `settings/files/`, "new" for one not yet made.
     RuleFile(String),
+    NotFound,
 }
 
 /// Listing is which of this plugin's pages a request is for. Three are the
@@ -166,32 +169,24 @@ enum Listing {
 impl Route {
     fn of(path: &str) -> Route {
         let path = path.trim_matches('/');
-        // A port forward and a zone are read and edited in the panel beside their
-        // listing, at the listing's own address, so there is nothing below either
-        // prefix: a path that names a section there is a stale link from when there
-        // was a page, and the listing is where it should land.
-        if path.starts_with(page::PORT_FORWARDS) {
-            return Route::Listing(Listing::PortForwards);
+        let (first, rest) = path.split_once('/').unwrap_or((path, ""));
+        match first {
+            "" => Route::Listing(Listing::Rules),
+            // A port forward and a zone are read and edited in the panel beside
+            // their listing, at the listing's own address, so a path below either
+            // is a stale link from when there was a page, and lands on the listing.
+            page::PORT_FORWARDS => Route::Listing(Listing::PortForwards),
+            page::ZONES => Route::Listing(Listing::Zones),
+            // Settings and Activity have nothing below them but the rule files:
+            // the settings are one form, and a verdict's only useful door is the
+            // rule that decided it, which is a rule editor's address.
+            page::SETTINGS => match rest.strip_prefix("files/") {
+                Some(name) => Route::RuleFile(name.to_string()),
+                None => Route::Listing(Listing::Settings),
+            },
+            page::ACTIVITY => Route::Listing(Listing::Activity),
+            _ => Route::NotFound,
         }
-        if path.starts_with(page::ZONES) {
-            return Route::Listing(Listing::Zones);
-        }
-        // Activity is read-only and has nothing below it: there is no one
-        // verdict to open, only the rule that decided it, which is a rule
-        // editor's address.
-        // Settings and Activity have nothing below them: the settings are one
-        // form, and a verdict's only useful door is the rule that decided it,
-        // which is a rule editor's address.
-        if let Some(rest) = path.strip_prefix(page::SETTINGS) {
-            if let Some(name) = rest.trim_start_matches('/').strip_prefix("files/") {
-                return Route::RuleFile(name.to_string());
-            }
-            return Route::Listing(Listing::Settings);
-        }
-        if path.starts_with(page::ACTIVITY) {
-            return Route::Listing(Listing::Activity);
-        }
-        Route::Listing(Listing::Rules)
     }
 }
 
@@ -406,8 +401,8 @@ mod tests {
     }
 
     #[test]
-    fn an_unpublished_sub_path_answers_with_the_rules_listing() {
-        for path in ["/nowhere", ""] {
+    fn the_plugins_own_address_is_the_rules_listing() {
+        for path in ["", "/"] {
             let body = serde_json::to_value(get(&request(path))).expect("serialize");
             assert_eq!(body["title"], crate::rules::HEADING, "{path}");
             assert_eq!(
@@ -672,6 +667,24 @@ mod tests {
         open.query = Form::parse("open=new");
         let body = serde_json::to_value(get(&open)).expect("serialize");
         assert_eq!(body["act"]["drawer"]["title"], "New port forward");
+    }
+
+    /// A path that names nothing the firewall publishes — not a listing, not a
+    /// stale link below one — has nothing at it, and says so rather than
+    /// passing for the Rules page; a read or a post alike. The plugin's own
+    /// address is still Rules.
+    #[test]
+    fn a_path_that_names_nothing_has_nothing_at_it() {
+        for path in ["/nope", "/rule", "/zone-list/lan"] {
+            let body = serde_json::to_value(get(&request(path))).expect("serialize");
+            assert_eq!(body["not_found"], true, "{path}");
+            assert_eq!(answer(path, "allow_ping=off")["not_found"], true, "{path}");
+        }
+        for path in ["", "/"] {
+            let body = serde_json::to_value(get(&request(path))).expect("serialize");
+            assert!(body.get("not_found").is_none(), "{path}");
+            assert_eq!(body["title"], crate::rules::HEADING, "{path}");
+        }
     }
 
     /// There is nothing below the listing's address any more: a path that names a
