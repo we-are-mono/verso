@@ -314,7 +314,8 @@ mod tests {
     // every page's envelope names, in the same order.
     #[test]
     fn the_manifest_lists_the_pages_every_page_names() {
-        let manifest: Value = serde_json::from_str(include_str!("../manifest.json")).expect("manifest");
+        let manifest: Value =
+            serde_json::from_str(include_str!("../manifest.json")).expect("manifest");
         let tabs: Vec<Value> = page::tabs()
             .into_iter()
             .map(|t| serde_json::json!({"label": t.label, "path": t.path}))
@@ -610,7 +611,11 @@ mod tests {
     // them, posted to the Zones listing, is not something that page drew.
     #[test]
     fn the_zones_listing_stages_no_global_default() {
-        for body in ["drop_invalid=on", "flow_offloading=on", "synflood_protect=off"] {
+        for body in [
+            "drop_invalid=on",
+            "flow_offloading=on",
+            "synflood_protect=off",
+        ] {
             let answer = answer("/zones", body);
             assert!(
                 answer["commit"].as_array().is_none_or(Vec::is_empty),

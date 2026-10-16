@@ -17,8 +17,8 @@
 //! an empty table that reads like calm.
 
 use verso_plugin::{
-    ActionBar, ColumnWidth, Envelope, HeadingAct, Section, Snapshot, Table,
-    TableColumn, TableStream, Widget, STREAM_FIREWALL_LOG,
+    ActionBar, ColumnWidth, Envelope, HeadingAct, Section, Snapshot, Table, TableColumn,
+    TableStream, Widget, STREAM_FIREWALL_LOG,
 };
 
 use crate::model;

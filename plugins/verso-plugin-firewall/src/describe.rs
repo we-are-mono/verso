@@ -62,7 +62,10 @@ fn is_defaults(section: &str, idxs: &[usize], changes: &[Change], snapshot: &Sna
 /// the first row; an option the page does not draw keeps its raw line.
 fn describe_defaults(idxs: &[usize], changes: &[Change], snapshot: &Snapshot) -> Vec<Description> {
     let page = settings::page(&Firewall::read(snapshot)).widget;
-    let made = idxs.iter().copied().find(|&i| changes[i].op == "add-section");
+    let made = idxs
+        .iter()
+        .copied()
+        .find(|&i| changes[i].op == "add-section");
     let mut out: Vec<Description> = Vec::new();
     for &i in idxs {
         let option = &changes[i].option;
@@ -215,12 +218,22 @@ mod tests {
             })
             .collect();
         let row = |label: &str, value: &str, key: &str, at: usize| {
-            (label.to_string(), value.to_string(), key.to_string(), vec![at])
+            (
+                label.to_string(),
+                value.to_string(),
+                key.to_string(),
+                vec![at],
+            )
         };
         assert_eq!(
             rows,
             vec![
-                row("Drop packets that belong to no connection", "on", "drop_invalid", 0),
+                row(
+                    "Drop packets that belong to no connection",
+                    "on",
+                    "drop_invalid",
+                    0
+                ),
                 row("Traffic to this router", "drop", "input", 1),
                 row("Congestion notification", "Incoming only", "tcp_ecn", 2),
                 row("Slow down SYN floods", "off", "synflood_protect", 3),

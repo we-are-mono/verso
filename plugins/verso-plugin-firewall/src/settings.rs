@@ -147,7 +147,11 @@ pub fn save(model: &mut Firewall, form: &Form) -> (Envelope, Vec<CommitOp>) {
         // change to it is what makes the section exist on disk.
         ops.push(match model.defaults.section.is_empty() {
             true => commit_new(model::CONFIG, "defaults", Value::Object(values)),
-            false => commit(model::CONFIG, &model.defaults.section, Value::Object(values)),
+            false => commit(
+                model::CONFIG,
+                &model.defaults.section,
+                Value::Object(values),
+            ),
         });
     }
     for include in &mut model.includes {
@@ -1007,7 +1011,10 @@ mod tests {
             .map(|option| option["value"].as_str().unwrap())
             .collect();
         assert_eq!(periods, ["second", "minute", "hour", "day"]);
-        assert_eq!(fixture::control(&body, "synflood_rate")["key"], "synflood_rate");
+        assert_eq!(
+            fixture::control(&body, "synflood_rate")["key"],
+            "synflood_rate"
+        );
         assert_eq!(fixture::control(&body, "synflood_burst")["unit"], "packets");
     }
 
@@ -1022,7 +1029,10 @@ mod tests {
         let rate = fixture::control(&body, "synflood_rate");
         assert_eq!(rate["value"], "");
         assert_eq!(rate["placeholder"], "25");
-        assert_eq!(fixture::control(&body, "synflood_rate_unit")["value"], "second");
+        assert_eq!(
+            fixture::control(&body, "synflood_rate_unit")["value"],
+            "second"
+        );
         let burst = fixture::control(&body, "synflood_burst");
         assert_eq!(burst["value"], "");
         assert_eq!(burst["placeholder"], "50");
@@ -1036,7 +1046,10 @@ mod tests {
         model.defaults.synflood_rate = "123/min".into();
         let body = serde_json::to_value(page(&model)).expect("serialize");
         assert_eq!(fixture::control(&body, "synflood_rate")["value"], "123");
-        assert_eq!(fixture::control(&body, "synflood_rate_unit")["value"], "minute");
+        assert_eq!(
+            fixture::control(&body, "synflood_rate_unit")["value"],
+            "minute"
+        );
     }
 
     /// A save writes the rate as firewall4 reads it and leaves fw4's own pace
@@ -1048,7 +1061,10 @@ mod tests {
             let mut model = fixture::firewall();
             let (_, ops) = save(&mut model, &Form::parse(body));
             let values = ops[0].values.clone();
-            (values["synflood_rate"].clone(), values["synflood_burst"].clone())
+            (
+                values["synflood_rate"].clone(),
+                values["synflood_burst"].clone(),
+            )
         };
         assert_eq!(
             written("synflood_rate=123&synflood_rate_unit=minute&synflood_burst=80"),
@@ -1262,7 +1278,10 @@ mod tests {
             &synflood_rate=25&synflood_rate_unit=second&synflood_burst=50\
             &tcp_syncookies=1&tcp_window_scaling=1&auto_helper=1&auto_includes=1\
             &tcp_ecn=2&tcp_reject_code=tcp-reset&any_reject_code=port-unreachable";
-        let (_, ops) = save(&mut model, &Form::parse(&format!("{drawn}&accept_redirects=1")));
+        let (_, ops) = save(
+            &mut model,
+            &Form::parse(&format!("{drawn}&accept_redirects=1")),
+        );
         assert_eq!(ops.len(), 1, "{ops:?}");
         assert_eq!(ops[0].values, json!({"accept_redirects": "1"}));
         // Nothing changed at all: nothing to stage.
@@ -1331,7 +1350,10 @@ mod tests {
         assert_eq!(toggle("include_enabled_legacy_sh")["on"], true);
         assert!(written(&model).contains("config include 'custom_nft'\n\toption enabled '0'"));
         let (_, repeated) = save(&mut model, &Form::parse("include_enabled_legacy_sh=1"));
-        assert!(repeated.is_empty(), "unchanged includes must not stage again: {repeated:?}");
+        assert!(
+            repeated.is_empty(),
+            "unchanged includes must not stage again: {repeated:?}"
+        );
     }
 
     #[test]
