@@ -441,11 +441,18 @@ func changeDay(at, now time.Time, tr func(string) string) string {
 // the name, or no kind and the config and section it changed.
 type subject struct{ kind, name string }
 
+// said is the kind of subject a row's own sentence is: a plugin that named no
+// subject still said what the change did, and those words are what it reads
+// as — never the anonymous section uci calls it by.
+const said = "said"
+
 func itemSubject(item history.ChangeItem) subject {
-	if item.SubjectKind != "" {
+	switch {
+	case item.SubjectKind != "":
 		return subject{item.SubjectKind, item.SubjectName}
-	}
-	if len(item.Ops) > 0 {
+	case item.Words != "" && !item.Verbatim:
+		return subject{said, item.Words}
+	case len(item.Ops) > 0:
 		return subject{"", item.Ops[0].Config + "." + item.Ops[0].Section}
 	}
 	return subject{}
@@ -490,19 +497,25 @@ func phrase(c history.Change, tr func(string) string, edit bool) ([]widget.Table
 		all[i].ops = append(all[i].ops, item.Ops...)
 	}
 	var parts []widget.TablePart
-	if edit && len(all) == 1 && len(all[0].ops) == 1 {
-		if edited, ok := editParts(all[0].ops[0], tr); ok {
+	if edit && len(all) == 1 && len(all[0].ops) == 1 && all[0].kind != said {
+		if edited, ok := editParts(all[0].ops[0], c.OldRead, tr); ok {
 			parts = append([]widget.TablePart{{Chip: all[0].chip()}}, edited...)
 		}
 	}
 	if parts == nil {
 		shown := all[:min(2, len(all))]
 		for i, t := range shown {
-			word := tr(verbOf(t.verbs))
+			comma := ""
 			if i == 0 && len(shown) > 1 {
-				word += ","
+				comma = ","
 			}
-			parts = append(parts, widget.TablePart{Chip: t.chip()}, widget.TablePart{Words: word})
+			// A sentence already says what happened; a subject is followed
+			// by what happened to it.
+			if t.kind == said {
+				parts = append(parts, widget.TablePart{Words: t.name + comma})
+				continue
+			}
+			parts = append(parts, widget.TablePart{Chip: t.chip()}, widget.TablePart{Words: tr(verbOf(t.verbs)) + comma})
 		}
 		if more := len(all) - len(shown); more > 0 {
 			parts = append(parts, widget.TablePart{Words: fmt.Sprintf(tr("and %d more"), more)})
@@ -538,8 +551,10 @@ func verbOf(verbs []string) string {
 
 // editParts reads one change of one option as its key's chip and the value
 // it held and holds; a list's as the value it gained or lost; a secret's as
-// changed. A change to a whole section is no edit.
-func editParts(op history.ChangeOp, tr func(string) string) ([]widget.TablePart, bool) {
+// changed. A change to a whole section is no edit. An entry kept before config
+// history read what an option held (oldRead unset) says no old value it never
+// knew, only what the option became.
+func editParts(op history.ChangeOp, oldRead bool, tr func(string) string) ([]widget.TablePart, bool) {
 	key := widget.TablePart{Chip: &widget.TableChip{Label: op.Option}}
 	switch op.Op {
 	case "set", "remove-option", "list-add", "list-del":
@@ -564,12 +579,16 @@ func editParts(op history.ChangeOp, tr func(string) string) ([]widget.TablePart,
 		return []widget.TablePart{key, {Words: tr("added")}, value(op.Value, true)}, true
 	case "list-del":
 		return []widget.TablePart{key, {Words: tr("removed")}, value(op.Value, true)}, true
-	case "remove-option":
-		old, ok := oldValue(op.Old)
-		return []widget.TablePart{key, value(&old, ok), arrow, {Words: tr("not set")}}, true
+	}
+	now := value(op.Value, true)
+	if op.Op == "remove-option" {
+		now = widget.TablePart{Words: tr("not set")}
 	}
 	old, ok := oldValue(op.Old)
-	return []widget.TablePart{key, value(&old, ok), arrow, value(op.Value, true)}, true
+	if !ok && !oldRead {
+		return []widget.TablePart{key, arrow, now}, true
+	}
+	return []widget.TablePart{key, value(&old, ok), arrow, now}, true
 }
 
 // oldValue is what an option held, as one line: a value, or a list's values

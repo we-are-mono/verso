@@ -62,7 +62,7 @@ func TestAChangeOfOneOptionReadsAsTheEdit(t *testing.T) {
 // says so; an empty value is uci's ”; a list gains or loses one value.
 func TestAnEditReadsWhatWasNotThere(t *testing.T) {
 	edit := func(op history.ChangeOp) []string {
-		c := history.Change{Items: []history.ChangeItem{{Verb: "changed", SubjectKind: "network", SubjectName: "lan", Ops: []history.ChangeOp{op}}}}
+		c := history.Change{OldRead: true, Items: []history.ChangeItem{{Verb: "changed", SubjectKind: "network", SubjectName: "lan", Ops: []history.ChangeOp{op}}}}
 		parts, _ := changePhrase(c, identity)
 		return phraseOf(parts)
 	}
@@ -122,6 +122,39 @@ func TestAnUndescribedChangeIsNamedByItsSection(t *testing.T) {
 	parts, _ := changePhrase(c, identity)
 	want := []string{"[ system.main]", "[ hostname]", "`OpenWrt`", "→", "`edge`"}
 	if got := phraseOf(parts); !reflect.DeepEqual(got, want) {
+		t.Fatalf("phrase = %q, want %q", got, want)
+	}
+}
+
+// TestADescribedChangeWithNoSubjectReadsAsItsSentence: a plugin that said
+// what a change did but named no subject has still said it in words, so the
+// entry and the review's note read those words — never the anonymous section
+// uci calls it by (firewall.cfg0792bd).
+func TestADescribedChangeWithNoSubjectReadsAsItsSentence(t *testing.T) {
+	items := []history.ChangeItem{{Page: "Firewall", Plugin: "firewall", Verb: "changed", Words: "Turned off the rule “Allow-Ping”.",
+		Ops: []history.ChangeOp{{Config: "firewall", Section: "cfg0792bd", Op: "set", Option: "enabled", Value: text("0")}}}}
+	parts, plain := changePhrase(history.Change{OldRead: true, Items: items}, identity)
+	if got := phraseOf(parts); !reflect.DeepEqual(got, []string{"Turned off the rule “Allow-Ping”."}) {
+		t.Fatalf("phrase = %q", got)
+	}
+	if plain != "Turned off the rule “Allow-Ping”." {
+		t.Errorf("plain = %q", plain)
+	}
+	setting := []history.ChangeItem{{Page: "DNS", Plugin: "dnsdhcp", Verb: "changed", Words: "Log every query: on",
+		Ops: []history.ChangeOp{{Config: "dhcp", Section: "cfg01411c", Op: "set", Option: "logqueries", Value: text("1")}}}}
+	if got := changeSummary(setting, identity); got != "Log every query: on" {
+		t.Errorf("the review's note = %q, want the setting's own words", got)
+	}
+}
+
+// TestAnEditWhoseOldValueWasNeverReadClaimsNone: an entry kept before
+// config history read what an option held does not know it, so it says only
+// what the option became — never "not set → not set".
+func TestAnEditWhoseOldValueWasNeverReadClaimsNone(t *testing.T) {
+	c := history.Change{Items: []history.ChangeItem{{Verb: "changed", SubjectKind: "rule", SubjectName: "Allow-Ping",
+		Ops: []history.ChangeOp{{Config: "firewall", Section: "cfg0792bd", Op: "remove-option", Option: "enabled"}}}}}
+	parts, _ := changePhrase(c, identity)
+	if got, want := phraseOf(parts), []string{"[shield Allow-Ping]", "[ enabled]", "→", "not set"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("phrase = %q, want %q", got, want)
 	}
 }
