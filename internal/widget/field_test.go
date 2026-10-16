@@ -298,3 +298,15 @@ func TestAnEmptyBoxSaysWhatItsHintIs(t *testing.T) {
 		}
 	}
 }
+
+// A forward's address and ports are typed back verbatim, so their boxes are
+// mono at a machine measure: the address's, and a short one for a port that
+// may be a range (8000-8010), which a numeric keypad could not type.
+func TestAForwardsAddressAndPortsAreMachineStrings(t *testing.T) {
+	for key, want := range map[string]string{"dest_ip": "address", "dest_port": "short", "src_dport": "short"} {
+		f := &Field{Name: key, Kind: "text", Key: key}
+		if got := f.Measure(); got != want || f.Words() {
+			t.Errorf("%s measure = %q words = %v, want %q in mono", key, got, f.Words(), want)
+		}
+	}
+}

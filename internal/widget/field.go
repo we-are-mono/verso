@@ -394,8 +394,12 @@ func (f *Field) Measure() string {
 	switch f.Key {
 	case "mtu", "metric", "vid", "start", "limit", "ip6assign", "Port", "port", "listen_http", "listen_https", "maxassoc", "cachesize", "dhcpleasemax", "synflood_rate", "synflood_burst", "limit_burst":
 		return "number"
-	case "ipaddr", "ip6addr", "peeraddr", "peer6addr", "netmask", "gateway", "macaddr", "ula_prefix", "leasetime":
+	case "ipaddr", "ip6addr", "peeraddr", "peer6addr", "netmask", "gateway", "macaddr", "ula_prefix", "leasetime", "dest_ip":
 		return "address"
+	case "dest_port", "src_dport":
+		// A forward's port may be a range (8000-8010): short, and typed on a
+		// keyboard with a hyphen rather than a numeric pad.
+		return "short"
 	}
 	return "full"
 }

@@ -168,7 +168,8 @@ fn incoming(model: &Firewall, redirect: &RedirectForm, errors: &Errors) -> Widge
                     &redirect.src_dport,
                     "The port the traffic is addressed to, such as 8443.",
                     errors,
-                ),
+                )
+                .writes("src_dport"),
             ]),
             fields::select_field("proto", "Protocol", &redirect.proto, protocols, errors),
             // Everything else a forward can be narrowed by. The catalogue is the
@@ -180,13 +181,6 @@ fn incoming(model: &Firewall, redirect: &RedirectForm, errors: &Errors) -> Widge
     )
 }
 
-/// destination is where the caught traffic goes. A blank address keeps it on the
-/// router, which is how a redirect that captures DNS is written.
-///
-/// The zone is the one thing here that is not an address: firewall4 works out
-/// which zone the destination is in and says so in its own log, but a forward it
-/// cannot place is a forward that quietly does not reflect. Naming it settles
-/// that, and leaving it blank keeps firewall4's own answer.
 /// off_network is the warning for a forward whose address lies outside every
 /// network the router has a fixed address on: traffic sent there may have
 /// nowhere to go. It warns and never refuses — an address reached through a
@@ -221,6 +215,13 @@ pub fn off_network(model: &Firewall, dest_ip: &str) -> Option<String> {
     ))
 }
 
+/// destination is where the caught traffic goes. A blank address keeps it on the
+/// router, which is how a redirect that captures DNS is written.
+///
+/// The zone is the one thing here that is not an address: firewall4 works out
+/// which zone the destination is in and says so in its own log, but a forward it
+/// cannot place is a forward that quietly does not reflect. Naming it settles
+/// that, and leaving it blank keeps firewall4's own answer.
 fn destination(model: &Firewall, redirect: &RedirectForm, errors: &Errors) -> Widget {
     let mut children = vec![fields::row_group(vec![
         fields::text_field(
@@ -229,14 +230,16 @@ fn destination(model: &Firewall, redirect: &RedirectForm, errors: &Errors) -> Wi
             &redirect.dest_ip,
             "The device that answers, such as 10.0.0.30. Blank targets this router.",
             errors,
-        ),
+        )
+        .writes("dest_ip"),
         fields::text_field(
             "dest_port",
             "Destination port",
             &redirect.dest_port,
             "Blank keeps the incoming port.",
             errors,
-        ),
+        )
+        .writes("dest_port"),
     ])];
     // The warning stands under the address it is about.
     if let Some(warning) = off_network(model, &redirect.dest_ip) {
