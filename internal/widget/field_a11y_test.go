@@ -30,12 +30,12 @@ func TestFieldErrorIsTiedToItsControl(t *testing.T) {
 	}
 }
 
-// TestFieldHelpDescribesTheControl: the explanation raised onto the label is
-// also what the control is described by, so it is read when the field takes
-// focus, not only when the label is hovered. With an error, both are read.
+// TestFieldHelpDescribesTheControl: the description under the name is what
+// the control is described by, so it is read when the field takes focus,
+// whether or not it is folded. With an error, both are read.
 func TestFieldHelpDescribesTheControl(t *testing.T) {
 	got := render(t, newRenderer(t), &Field{Name: "mtu", Label: "MTU", Help: "Largest packet size.", Error: "Too small."})
-	if !strings.Contains(got, `id="mtu" name="mtu"`) || !strings.Contains(got, `aria-describedby="mtu-tip mtu-error"`) {
+	if !strings.Contains(got, `id="mtu" name="mtu"`) || !strings.Contains(got, `aria-describedby="mtu-desc mtu-error"`) {
 		t.Errorf("the control must be described by its help and its error:\n%s", got)
 	}
 }
@@ -100,14 +100,14 @@ func TestOptionSetsAreNamedGroups(t *testing.T) {
 			t.Errorf("%s: option set must be a group named by its label (%s %s):\n%s", name, c.role, c.label, c.got)
 		}
 	}
-	for _, want := range []string{`for="family"`, `<select id="family" name="family"`, `aria-invalid="true"`, `aria-describedby="family-tip family-error"`} {
+	for _, want := range []string{`for="family"`, `<select id="family" name="family"`, `aria-invalid="true"`, `aria-describedby="family-desc family-error"`} {
 		if !strings.Contains(dropdown, want) {
 			t.Errorf("dropdown must keep its label, help and error association (%s):\n%s", want, dropdown)
 		}
 	}
 	if RadioOptionLimit > 0 {
 		for _, want := range []string{`<span id="family-label"`, `role="radiogroup" aria-labelledby="family-label"`,
-			`aria-required="true"`, `aria-describedby="family-tip family-error"`, `aria-invalid="true"`, "focus-visible:outline-2"} {
+			`aria-required="true"`, `aria-describedby="family-desc family-error"`, `aria-invalid="true"`, "focus-visible:outline-2"} {
 			if !strings.Contains(choice, want) {
 				t.Errorf("radios must keep group naming, validation and visible focus (%s):\n%s", want, choice)
 			}
@@ -175,7 +175,9 @@ func TestExplainedControlsAreDescribed(t *testing.T) {
 // travel from the label onto the sentence without it vanishing (WCAG 1.4.13);
 // the stylesheet decides when it takes the pointer.
 func TestTipCanBeReached(t *testing.T) {
-	got := render(t, newRenderer(t), &Field{Name: "mtu", Label: "MTU", Help: "Largest packet size."})
+	got := render(t, newRenderer(t), &Conditions{Label: "Conditions", Items: []ConditionItem{
+		{Key: "mtu", Label: "MTU", Help: "Largest packet size.", Active: true},
+	}})
 	start := strings.Index(got, `role="tooltip"`)
 	if start < 0 {
 		t.Fatalf("no tip:\n%s", got)

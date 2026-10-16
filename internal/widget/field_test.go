@@ -193,52 +193,40 @@ func TestRenderFieldDateTimeLocal(t *testing.T) {
 	}
 }
 
-// TestRenderFieldTip: a label carrying an explanation becomes the thing you
-// hover — help cursor, its own tab stop, and the control pointed at it — and the
-// tooltip ends on the option and what reads it.
-func TestRenderFieldTip(t *testing.T) {
+// TestAFieldsHelpIsItsDescription: what a setting does is written under its
+// name, in the question, not raised onto the name as a tooltip (form-fields):
+// the help, then the tip where a plugin wrote both, so neither is dropped. The
+// control is described by it, so a screen reader reads it on focus.
+func TestAFieldsHelpIsItsDescription(t *testing.T) {
 	got := render(t, newRenderer(t), &Field{
 		Name: "duid", Label: "DUID", Value: "", Key: "duid", Source: "dhcp host",
 		Tip:  "A DHCPv6 client identifies itself by a DUID, not by its MAC.",
 		Help: "Match a DHCPv6 client by DUID instead of MAC.",
 	})
-	for _, want := range []string{
-		"cursor-help", `tabindex="0"`, `aria-describedby="duid-tip"`,
-		`id="duid-tip"`, `role="tooltip"`,
-		// The hook the stylesheet reveals the tip from and verso-page.js
-		// places it by.
-		"data-verso-tip",
-		"A DHCPv6 client identifies itself by a DUID, not by its MAC.",
-		"duid · dhcp host",
-	} {
-		if !strings.Contains(got, want) {
-			t.Errorf("explained field missing %q:\n%s", want, got)
-		}
+	desc := `<p id="duid-desc" data-verso-field-desc class="text-sm leading-6 text-pretty text-body">Match a DHCPv6 client by DUID instead of MAC. A DHCPv6 client identifies itself by a DUID, not by its MAC.</p>`
+	at := strings.Index(got, desc)
+	if at < 0 || at > strings.Index(got, "verso-field-answer") {
+		t.Errorf("the help and the tip are not the description under the name:\n%s", got)
 	}
-	// The row is one line and its control. An explanation lives on the label
-	// that raises it, never as a second line under the control: a sentence
-	// per field pushes the rows apart until a form of eight settings reads as
-	// a page of prose. Tip is the deliberate sentence, so it wins over Help.
-	if strings.Contains(got, "Match a DHCPv6 client by DUID instead of MAC.") {
-		t.Errorf("help must not take a line of its own beside a tip:\n%s", got)
+	if !strings.Contains(got, `aria-describedby="duid-desc"`) {
+		t.Errorf("the control is not described by its description:\n%s", got)
+	}
+	for _, gone := range []string{"data-verso-tip", "cursor-help", `tabindex="0"`, `role="tooltip"`, "duid-tip"} {
+		if strings.Contains(got, gone) {
+			t.Errorf("the name still raises a tooltip (%s):\n%s", gone, got)
+		}
 	}
 }
 
-// TestRenderFieldHelpRaised: a plugin that only wrote Help still gets the
-// explanation raised onto the label — the same sentence, said where it belongs,
-// without every plugin having to rename the field it already fills in.
-func TestRenderFieldHelpRaised(t *testing.T) {
+// TestAHelpOnlyFieldIsDescribed: a plugin that only wrote Help gets the same
+// description, without having to rename the field it already fills in.
+func TestAHelpOnlyFieldIsDescribed(t *testing.T) {
 	got := render(t, newRenderer(t), &Field{
 		Name: "leasetime", Label: "Lease time", Key: "leasetime",
 		Help: "How long a client may keep an address before it asks again.",
 	})
-	for _, want := range []string{
-		"data-verso-tip", `id="leasetime-tip"`, `role="tooltip"`,
-		"How long a client may keep an address before it asks again.",
-	} {
-		if !strings.Contains(got, want) {
-			t.Errorf("help-only field missing %q:\n%s", want, got)
-		}
+	if !strings.Contains(got, `<p id="leasetime-desc" data-verso-field-desc class="text-sm leading-6 text-pretty text-body">How long a client may keep an address before it asks again.</p>`) {
+		t.Errorf("a help-only field is not described under its name:\n%s", got)
 	}
 }
 
@@ -246,7 +234,7 @@ func TestRenderFieldHelpRaised(t *testing.T) {
 // hover affordance, no tab stop of its own, no tooltip.
 func TestRenderFieldWithoutTip(t *testing.T) {
 	got := render(t, newRenderer(t), &Field{Name: "name", Label: "Name", Key: "name"})
-	for _, unwanted := range []string{"data-verso-tip", "cursor-help", `tabindex="0"`, "role=\"tooltip\""} {
+	for _, unwanted := range []string{"data-verso-tip", "cursor-help", `tabindex="0"`, "role=\"tooltip\"", "data-verso-field-desc"} {
 		if strings.Contains(got, unwanted) {
 			t.Errorf("plain field should not carry %q:\n%s", unwanted, got)
 		}

@@ -169,13 +169,13 @@ func (f *Field) Lane() bool      { return f.Remove != "" }
 // a plugin already wrote.
 func (f *Field) Explained() bool { return f.Tip != "" || f.Help != "" }
 
-// DescribedBy is what the control is described by: the explanation raised onto
-// its label, then the refusal under it. A screen reader reads both when the
-// field takes focus, so the help is not only for someone who hovers.
+// DescribedBy is what the control is described by: the description under its
+// name, then the refusal under it, its note and its unit. A screen reader reads
+// them when the field takes focus, folded or not.
 func (f *Field) DescribedBy() string {
 	ids := make([]string, 0, 2)
-	if f.Explained() {
-		ids = append(ids, f.TipView().ID)
+	if f.description() != "" {
+		ids = append(ids, f.Name+"-desc")
 	}
 	if f.Error != "" {
 		ids = append(ids, f.Name+"-error")
@@ -196,6 +196,21 @@ func (f *Field) explanation() string {
 		return f.Tip
 	}
 	return f.Help
+}
+
+// description is what the field is for, written under its name: the help,
+// then the tip where a plugin wrote both, so neither is dropped.
+func (f *Field) description() string { return sentences(f.Help, f.Tip) }
+
+// sentences joins what a row says about itself, skipping what is empty.
+func sentences(parts ...string) string {
+	said := make([]string, 0, len(parts))
+	for _, part := range parts {
+		if part = strings.TrimSpace(part); part != "" {
+			said = append(said, part)
+		}
+	}
+	return strings.Join(said, " ")
 }
 
 // fieldLabel is a form row's left column: what the setting is called, the option
@@ -219,11 +234,12 @@ type fieldLabel struct {
 	Staged bool
 }
 
-// LabelView is this field's left column.
+// LabelView is this field's question: its name, its key and its mark. What
+// the field is for stands under it as the row's description, not on it.
 func (f *Field) LabelView() fieldLabel {
 	return fieldLabel{
 		For: f.Name, Group: f.UseRadios() && f.Style != "locked", Label: f.Label, Key: f.Key,
-		Explained: f.Explained(), Tip: f.TipView(), Staged: f.Staged,
+		Staged: f.Staged,
 	}
 }
 
@@ -329,7 +345,7 @@ func (f *Field) frame() fieldFrame {
 	}
 	frame := fieldFrame{
 		Label: f.LabelView(), Change: change, Measure: f.ControlMeasure(),
-		Lane: f.Lane(), Removable: f.Removable(), Note: f.Note,
+		Lane: f.Lane(), Removable: f.Removable(), Desc: f.description(), Note: f.Note,
 	}
 	if f.Error != "" {
 		frame.Errors = []fieldError{{ID: f.Name + "-error", Text: f.Error}}
