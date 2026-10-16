@@ -55,26 +55,26 @@
      15px after it, a band of the grid. A gate's row is the first of its
      block, and the row after a gate follows whatever the gate last shows. */
   .verso-field-row + .verso-field-row,
-  :is(.verso-conditional, .verso-switch-group) + .verso-field-row,
-  :is(.verso-field-row, .verso-conditional, .verso-switch-group) + .verso-conditional > .verso-conditional-gate,
-  :is(.verso-field-row, .verso-conditional, .verso-switch-group) + .verso-switch-group > .verso-field-row:first-child {
+  :is(.verso-conditional, .verso-field-set) + .verso-field-row,
+  :is(.verso-field-row, .verso-conditional, .verso-field-set) + .verso-conditional > .verso-conditional-gate,
+  :is(.verso-field-row, .verso-conditional, .verso-field-set) + .verso-field-set > .verso-field-row:first-child {
     border-top: 1px solid var(--color-rule);
     padding-top: calc(var(--spacing) * 3.75);
   }
-  .verso-field-row:has(+ :is(.verso-field-row, .verso-conditional, .verso-switch-group)) {
+  .verso-field-row:has(+ :is(.verso-field-row, .verso-conditional, .verso-field-set)) {
     padding-bottom: calc(var(--spacing) * 4);
   }
-  .verso-conditional:has(+ :is(.verso-field-row, .verso-conditional, .verso-switch-group)) > .verso-conditional-gate,
-  .verso-conditional:has(+ :is(.verso-field-row, .verso-conditional, .verso-switch-group)) > .verso-conditional-body > .verso-field-row:last-child,
+  .verso-conditional:has(+ :is(.verso-field-row, .verso-conditional, .verso-field-set)) > .verso-conditional-gate,
+  .verso-conditional:has(+ :is(.verso-field-row, .verso-conditional, .verso-field-set)) > .verso-conditional-body > .verso-field-row:last-child,
   .verso-conditional:has(> .verso-conditional-gate input[data-verso-switch]:checked) > .verso-conditional-gate,
-  .verso-switch-group:has(+ :is(.verso-field-row, .verso-conditional, .verso-switch-group)) > .verso-field-row:last-child {
+  .verso-field-set:has(+ :is(.verso-field-row, .verso-conditional, .verso-field-set)) > .verso-field-row:last-child {
     padding-bottom: calc(var(--spacing) * 4);
   }
-  /* A group of switches is its head, then a row per thing under it: no
-     hairline among them, the first thing 8px after the head's last line and
-     each 24px after the one before. */
-  .verso-switch-group > .verso-field-row:first-child { padding-bottom: 0; }
-  .verso-switch-group > .verso-field-row + .verso-field-row {
+  /* A field set is its head, then a row per setting under it: no hairline
+     among them, the first row 8px after the head's last line and each 24px
+     after the one before. */
+  .verso-field-set > .verso-field-row:first-child { padding-bottom: 0; }
+  .verso-field-set > .verso-field-row + .verso-field-row {
     border-top: 0;
     padding-top: calc(var(--spacing) * 2);
   }
@@ -252,13 +252,42 @@
   }
   .verso-box-input::placeholder { color: var(--color-meta); font-weight: var(--font-weight-normal); }
   .verso-box-part:has(.verso-box-unit) .verso-box-input { padding-right: calc(var(--spacing) * 1.5); }
+  /* A unit, or a part's own name, is words read after the value: the sans,
+     in the quiet ink, so the value stays what the eye lands on. */
   .verso-box-unit {
     padding-right: calc(var(--spacing) * 3);
-    font-family: var(--font-mono);
-    font-size: var(--text-base);
-    font-weight: var(--font-weight-medium);
+    font-family: var(--font-sans);
+    font-size: var(--text-sm);
+    font-weight: var(--font-weight-normal);
+    line-height: calc(var(--spacing) * 6);
     color: var(--color-meta);
     white-space: nowrap;
+  }
+  /* The unit dropdown inside a box: bare like the typed parts, as wide as its
+     longest option, the app's chevron inset right-3 where the native arrow
+     would stand. */
+  .verso-box-part:has(> .verso-box-select) { position: relative; cursor: pointer; }
+  .verso-box-select {
+    height: 100%;
+    min-width: 0;
+    padding-inline: calc(var(--spacing) * 3) calc(var(--spacing) * 9);
+    border: 0;
+    background: transparent;
+    font-family: var(--font-sans);
+    font-size: var(--text-sm);
+    color: var(--color-ink);
+    appearance: none;
+    cursor: pointer;
+    outline: none;
+  }
+  .verso-box-chevron {
+    position: absolute;
+    inset-block: 0;
+    right: calc(var(--spacing) * 3);
+    display: flex;
+    align-items: center;
+    color: var(--color-meta);
+    pointer-events: none;
   }
 
   /* Compound searches and inline actions already own their outer spacing,

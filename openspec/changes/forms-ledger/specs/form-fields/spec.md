@@ -128,14 +128,28 @@ A labelled set of related fields that cannot fuse into one box (one holding a dr
 - **WHEN** a plugin sends a labelled set of a dropdown and two typed fields
 - **THEN** each of the three stands on its own row under the set's name, with no hairline between them, its answer in the answer column
 
+### Requirement: An unnamed set joins the form's rows
+A set of related fields with neither a name nor a description that cannot fuse SHALL stand as its fields' rows in the form's own run, each under a hairline as any row is. A set holding something that is not a setting (words, a table) SHALL keep its columns.
+
+#### Scenario: An unlabelled set
+- **WHEN** a plugin sends an unlabelled set of a typed field and a list
+- **THEN** each stands as a row of the form, a hairline between them, with no head over them
+
 ### Requirement: A fused value names its parts inside the box
-Each part of a fused box SHALL show its name inside its own trailing edge, as a unit stands after its value, and the field's description SHALL be the set's help followed by each part's help led by the part's name. The box SHALL stand in the answer column when its parts fit it, and under its question at the row's full width when they do not. A part's name and a unit inside a box are words, set in the sans face.
+Each typed part of a labelled set fused into one box SHALL show its name inside its own trailing edge, as a unit stands after its value, since the row's name is the set's; a part with a unit SHALL show its unit instead. The field's description SHALL be the set's help followed by each part's help led by the part's name.
 
 #### Scenario: A record's port and ranking
 - **WHEN** an operator opens a DNS service record with port 5060, priority 10 and weight 5
 - **THEN** "Port and ranking" and the chip `port · priority · weight` stand in the question
-- **AND** one box in the answer column reads 5060 "port", 10 "priority" and 5 "weight", its parts split by inner hairlines
+- **AND** one box reads 5060 "Port", 10 "Priority" and 5 "Weight", its parts split by inner hairlines
 - **AND** the description reads "Port: SRV only. Priority: SRV and MX. Lower wins. Weight: SRV only."
+
+### Requirement: A fused box stands where its parts fit
+A fused box SHALL stand in the answer column when its parts fit it, and under its question at the row's full width when they do not. A part's name and a unit inside a box are words, set in the sans face.
+
+#### Scenario: Three numbers and their names
+- **WHEN** an operator opens a DNS service record's port and ranking
+- **THEN** the box of three numbers with their names, wider than the answer column, stands under the description at the row's full width
 
 #### Scenario: A unit
 - **WHEN** an operator opens the Protection card

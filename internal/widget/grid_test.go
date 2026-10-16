@@ -40,14 +40,35 @@ func TestGridColumnsResponsive(t *testing.T) {
 	}
 }
 
-func TestRenderFormGrid(t *testing.T) {
-	got := render(t, newRenderer(t), &Grid{Style: "form", Columns: 3, Children: []Widget{
+// TestRelatedFieldsStandAsRows: a set of related fields that cannot fuse
+// stands as a row per field, never side by side in columns (form-fields):
+// unlabelled, the rows join the form's run; labelled, the set's name and
+// description head them, as a switch group's do. A set holding something
+// that is not a field keeps its columns.
+func TestRelatedFieldsStandAsRows(t *testing.T) {
+	r := newRenderer(t)
+	unlabelled := render(t, r, &Grid{Style: "form", Columns: 3, Children: []Widget{
 		&Field{Name: "port", Label: "Port"},
 		&List{Name: "servers", Label: "Servers"},
 	}})
-	for _, want := range []string{`class="verso-form-grid"`, `data-verso-columns="3"`, "Port", "Servers"} {
-		if !strings.Contains(got, want) {
-			t.Errorf("form grid missing %q:\n%s", want, got)
+	if strings.Contains(unlabelled, "verso-form-grid") || strings.Count(unlabelled, `class="verso-field-row`) != 2 {
+		t.Errorf("an unlabelled set is a row per field:\n%s", unlabelled)
+	}
+	labelled := render(t, r, &Grid{Style: "form", Columns: 2, Label: "Timing", Help: "How often it runs.", Children: []Widget{
+		&Field{Name: "port", Label: "Port"},
+		&List{Name: "servers", Label: "Servers"},
+	}})
+	set, head, port := strings.Index(labelled, `class="verso-field-set"`), strings.Index(labelled, ">Timing<"), strings.Index(labelled, ">Port<")
+	if set < 0 || head < set || port < head || strings.Count(labelled, `class="verso-field-row`) != 3 || strings.Contains(labelled, "verso-form-grid") {
+		t.Errorf("a labelled set is its head, then a row per field:\n%s", labelled)
+	}
+	mixed := render(t, r, &Grid{Style: "form", Columns: 3, Children: []Widget{
+		&Field{Name: "port", Label: "Port"},
+		&Text{Markdown: "Ports below 1024 need root."},
+	}})
+	for _, want := range []string{`class="verso-form-grid"`, `data-verso-columns="3"`} {
+		if !strings.Contains(mixed, want) {
+			t.Errorf("a set holding more than fields keeps its columns, missing %q:\n%s", want, mixed)
 		}
 	}
 }

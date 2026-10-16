@@ -155,14 +155,61 @@ func TestAFusedControlNamesTheRefusedPart(t *testing.T) {
 // columns.
 func TestOnlyTypedValuesFuse(t *testing.T) {
 	for name, other := range map[string]Widget{
-		"select": &Field{Name: "b", Label: "B", Kind: "select", Options: []Option{{Value: "x"}, {Value: "y"}, {Value: "z"}, {Value: "w"}}},
 		"reveal": &Field{Name: "b", Label: "B", Kind: "password", Style: "reveal"},
 		"list":   &List{Name: "b", Label: "B"},
 	} {
 		got := render(t, newRenderer(t), &Grid{Style: "form", Columns: 2, Children: []Widget{&Field{Name: "a", Label: "A"}, other}})
-		if !strings.Contains(got, "verso-form-grid") || strings.Contains(got, `role="group"`) {
-			t.Errorf("%s: a group holding one keeps its columns:\n%s", name, got)
+		if strings.Contains(got, "verso-box") || strings.Contains(got, "verso-form-grid") || strings.Count(got, `class="verso-field-row`) != 2 {
+			t.Errorf("%s: a set holding one stands as a row per field, never fused, never columns:\n%s", name, got)
 		}
+	}
+}
+
+// TestAValueAndItsUnitFuse: a value and a dropdown of the units it is counted
+// in are one value (form-fields): one row, the value's name as the question,
+// one chip naming both options, and one box holding the value and the unit
+// dropdown, which stands in the answer column.
+func TestAValueAndItsUnitFuse(t *testing.T) {
+	units := []Option{{Value: "seconds", Label: "seconds"}, {Value: "minutes", Label: "minutes"}, {Value: "hours", Label: "hours"}, {Value: "days", Label: "days"}}
+	got := render(t, newRenderer(t), &Grid{Style: "form", Columns: 2, Children: []Widget{
+		&Field{Name: "check_interval", Label: "Check every", Key: "check_interval", Value: "10"},
+		&Field{Name: "check_unit", Label: "Unit", Kind: "select", Key: "check_unit", Value: "minutes", Options: units},
+	}})
+	for want, n := range map[string]int{
+		`class="verso-field-row`: 1, `class="verso-box"`: 1, `class="verso-box-part"`: 2,
+		`>Check every</span>`: 1, `>check_interval · check_unit</span>`: 1,
+	} {
+		if c := strings.Count(got, want); c != n {
+			t.Errorf("want %d of %q, got %d:\n%s", n, want, c, got)
+		}
+	}
+	if !strings.Contains(got, `<select id="check_unit" name="check_unit" aria-label="Unit"`) || !strings.Contains(got, "verso-box-select") {
+		t.Errorf("the unit dropdown is not a part of the box:\n%s", got)
+	}
+	if strings.Contains(got, "verso-field-wide") || strings.Contains(got, ">Check every · Unit<") {
+		t.Errorf("a value and its unit stand in the answer column under the value's own name:\n%s", got)
+	}
+}
+
+// TestAFusedSetNamesItsParts: in a labelled set fused into one box each part
+// shows its name inside its own trailing edge, where a unit stands, since the
+// row's name is the set's (form-fields); a part with a unit shows the unit.
+func TestAFusedSetNamesItsParts(t *testing.T) {
+	got := render(t, newRenderer(t), &Grid{Style: "form", Columns: 3, Label: "Port and ranking", Children: []Widget{
+		&Field{Name: "port", Label: "Port", Key: "port", Value: "5060"},
+		&Field{Name: "priority", Label: "Priority", Key: "priority", Value: "10"},
+		&Field{Name: "weight", Label: "Weight", Key: "weight", Value: "5"},
+	}})
+	for _, name := range []string{"Port", "Priority", "Weight"} {
+		if !strings.Contains(got, `<span aria-hidden="true" class="verso-box-unit">`+name+`</span>`) {
+			t.Errorf("the %s part does not name itself inside the box:\n%s", name, got)
+		}
+	}
+	if !strings.Contains(got, `>port · priority · weight</span>`) {
+		t.Errorf("the chip does not name every option:\n%s", got)
+	}
+	if burst := render(t, newRenderer(t), synflood()); strings.Contains(burst, `class="verso-box-unit">Burst<`) {
+		t.Errorf("a part with a unit shows its unit, not its name:\n%s", burst)
 	}
 }
 

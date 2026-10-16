@@ -49,14 +49,34 @@ func (g *Grid) prune(keep func(Widget) bool) { g.Children = pruneList(g.Children
 
 // fusable reports whether a group of related fields is values typed into
 // boxes, which the shell joins into one control (verso-box) — a secret and
-// its repeat among them. A group joined by a word is never fused: the word
-// splits it. A choice, a list, a secret with its own reveal or a removable
-// row is not one bare box, so a group holding one keeps its columns.
+// its repeat among them, or a value and the unit it is counted in. A group
+// joined by a word is never fused: the word splits it. A list, a secret with
+// its own reveal or a removable row is not one bare box, so a group holding
+// one stands as a row per field.
 func (g *Grid) fusable() ([]*Field, bool) {
 	if g.Join != "" {
 		return nil, false
 	}
-	return g.bareFields(func(f *Field) bool { return f.Kind == "" || f.Kind == "text" || f.Kind == "password" })
+	if fields, ok := g.bareFields(func(f *Field) bool { return f.Kind == "" || f.Kind == "text" || f.Kind == "password" }); ok {
+		return fields, true
+	}
+	return g.valueAndUnit()
+}
+
+// valueAndUnit reports whether the group is a typed value and a dropdown of
+// the units it is counted in ("10", "minutes"): one value said in two
+// options, which fuses into one box under the value's own name.
+func (g *Grid) valueAndUnit() ([]*Field, bool) {
+	fields, ok := g.bareFields(func(f *Field) bool { return f.Kind == "" || f.Kind == "text" || f.Kind == "select" })
+	if !ok || !isValueAndUnit(fields) {
+		return nil, false
+	}
+	return fields, true
+}
+
+// isValueAndUnit reports whether fields are a typed value, then its unit.
+func isValueAndUnit(fields []*Field) bool {
+	return len(fields) == 2 && fields[0].Kind != "select" && fields[1].Kind == "select"
 }
 
 // joined reports whether a group of related fields reads as one sentence
@@ -106,10 +126,19 @@ func groupParts(g *Grid, fields []*Field) boxView {
 	return parts
 }
 
-// renderFused draws related values as one row holding one box.
+// renderFused draws related values as one row holding one box. In a labelled
+// set each typed part names itself inside the box, where a unit stands, since
+// the row's name is the set's; a value fused with its unit is named by the
+// value's own name, and its parts need none.
 func (r *Renderer) renderFused(out io.Writer, g *Grid, fields []*Field) error {
-	box, frame := groupRow(g, fields, groupParts(g, fields))
-	frame.Wide = partsWidth(fields, 1) > answerColumn
+	parts := groupParts(g, fields)
+	if g.Label != "" && !isValueAndUnit(fields) {
+		for i := range parts.Parts {
+			parts.Parts[i].Shown = parts.Parts[i].Kind != "select" && parts.Parts[i].Unit == ""
+		}
+	}
+	box, frame := groupRow(g, fields, parts)
+	frame.Wide = partsWidth(box.Parts, 1) > answerColumn
 	return r.renderFrame(out, "verso-box", box, frame)
 }
 
@@ -117,7 +146,7 @@ func (r *Renderer) renderFused(out io.Writer, g *Grid, fields []*Field) error {
 // own control, side by side, the group's word between them.
 func (r *Renderer) renderJoined(out io.Writer, g *Grid, fields []*Field) error {
 	parts, frame := groupRow(g, fields, groupParts(g, fields))
-	frame.Wide = partsWidth(fields, joinerWidth(g.Join)) > answerColumn
+	frame.Wide = partsWidth(parts.Parts, joinerWidth(g.Join)) > answerColumn
 	return r.renderFrame(out, "verso-joined", parts, frame)
 }
 
@@ -131,13 +160,16 @@ const (
 
 // partsWidth is roughly how wide a group's parts stand side by side, between
 // stands the gap (a fused box's inner hairline, a joined row's word).
-func partsWidth(fields []*Field, between int) int {
+func partsWidth(parts []boxPart, between int) int {
 	width := 0
-	for i, f := range fields {
+	for i, p := range parts {
 		if i > 0 {
 			width += between
 		}
-		width += partWidth(f)
+		width += partWidth(p.Field)
+		if p.Shown {
+			width += utf8.RuneCountInString(p.Label)*sansRune + 12
+		}
 	}
 	return width
 }
@@ -198,7 +230,12 @@ func groupRow(g *Grid, fields []*Field, parts boxView) (boxView, fieldFrame) {
 			frame.Errors = append(frame.Errors, fieldError{ID: f.Name + "-error", Text: f.Label + ": " + f.Error})
 		}
 	}
-	if label.Label == "" {
+	switch {
+	case label.Label != "":
+	case isValueAndUnit(fields):
+		// A value and its unit are named by the value.
+		label.Label = fields[0].Label
+	default:
 		label.Label = strings.Join(names, " · ")
 	}
 	label.Key = strings.Join(keys, " · ")
@@ -234,9 +271,38 @@ func (g *Grid) switchGroup() ([]*Switch, bool) {
 	return switches, true
 }
 
-// switchGroupView is a switch group: the id of the label that names it, its
-// head row (the label, the chip and the description) and a row per switch.
-type switchGroupView struct {
+// rows reports whether a "form" group is settings only — fields, switches,
+// lists, gates — each of which stands as a row of its own, and the name of
+// the first, which names the group.
+func (g *Grid) rows() (string, bool) {
+	if g.Style != "form" || len(g.Children) == 0 {
+		return "", false
+	}
+	first := ""
+	for i, child := range g.Children {
+		var name string
+		switch w := child.(type) {
+		case *Field:
+			name = w.Name
+		case *Switch:
+			name = w.Name
+		case *List:
+			name = w.Name
+		case *Conditional:
+			name = w.Name
+		default:
+			return "", false
+		}
+		if i == 0 {
+			first = name
+		}
+	}
+	return first, true
+}
+
+// fieldSetView is a field set: the id of the label that names it, its head
+// row (the label, the chip and the description) and its rows under it.
+type fieldSetView struct {
 	Group string
 	Head  template.HTML
 	Rows  []template.HTML
@@ -247,9 +313,8 @@ type switchGroupView struct {
 // the group's description, and under it one row per switch, each with its own
 // name, detail, change and mark, its box in the answer column.
 func (r *Renderer) renderSwitchGroup(out io.Writer, g *Grid, switches []*Switch) error {
-	id := switches[0].Name + "-group"
-	view := switchGroupView{Group: id + "-label"}
 	var keys []string
+	var rows []template.HTML
 	seen := map[string]bool{}
 	for _, s := range switches {
 		if s.Key != "" && !seen[s.Key] {
@@ -261,15 +326,46 @@ func (r *Renderer) renderSwitchGroup(out io.Writer, g *Grid, switches []*Switch)
 		if err := r.renderFrame(&row, "switch.row", control, frame); err != nil {
 			return err
 		}
-		view.Rows = append(view.Rows, template.HTML(row.String()))
+		rows = append(rows, template.HTML(row.String()))
 	}
-	label := fieldLabel{For: id, Group: true, Label: g.Label, Key: strings.Join(keys, " · ")}
+	return r.renderFieldSet(out, g, switches[0].Name+"-group", strings.Join(keys, " · "), rows)
+}
+
+// renderRows draws a group of settings that cannot fuse as a row per
+// setting, one under another, never side by side: a set the group's label or
+// help heads is a field set, its rows under the head; a set with neither
+// joins the form's own run of rows.
+func (r *Renderer) renderRows(out io.Writer, g *Grid, first, csrf string) error {
+	rows, err := r.renderChildren(g.Children, csrf)
+	if err != nil {
+		return err
+	}
+	if g.Label != "" || g.Help != "" {
+		return r.renderFieldSet(out, g, first+"-group", "", rows)
+	}
+	for _, row := range rows {
+		if _, err := io.WriteString(out, string(row)); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// renderFieldSet draws rows under one head: the set's label (which names the
+// set for a screen reader too), the chip naming the option its rows write
+// once, and the set's description.
+func (r *Renderer) renderFieldSet(out io.Writer, g *Grid, id, key string, rows []template.HTML) error {
+	view := fieldSetView{Rows: rows}
+	if g.Label != "" {
+		view.Group = id + "-label"
+	}
+	label := fieldLabel{For: id, Group: true, Label: g.Label, Key: key}
 	var head strings.Builder
 	if err := r.renderFrame(&head, "verso-nothing", nil, fieldFrame{Label: label, Desc: g.Help}); err != nil {
 		return err
 	}
 	view.Head = template.HTML(head.String())
-	return r.execute(out, "verso-switch-group", view)
+	return r.execute(out, "verso-field-set", view)
 }
 
 // gridView is the template model: the style and the declared count, which the
@@ -291,6 +387,9 @@ func (g *Grid) renderInto(r *Renderer, out io.Writer, csrf string) error {
 	}
 	if switches, ok := g.switchGroup(); ok {
 		return r.renderSwitchGroup(out, g, switches)
+	}
+	if first, ok := g.rows(); ok {
+		return r.renderRows(out, g, first, csrf)
 	}
 	children, err := r.renderChildren(g.Children, csrf)
 	if err != nil {

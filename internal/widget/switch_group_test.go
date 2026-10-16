@@ -27,10 +27,10 @@ func TestSwitchesUnderOneLabelAreOneSetting(t *testing.T) {
 	}
 	for want, n := range map[string]int{
 		`<span id="include_a-group-label" class="text-sm font-medium text-ink">Files the config includes</span>`: 1,
-		`>enabled</span>`:            1, // the option, named once for the group
-		`class="verso-switch-group"`: 1,
-		`data-verso-switch`:          2,
-		"data-verso-change-field":    2, // each file is its own change
+		`>enabled</span>`:         1, // the option, named once for the group
+		`class="verso-field-set"`: 1,
+		`data-verso-switch`:       2,
+		"data-verso-change-field": 2, // each file is its own change
 	} {
 		if c := strings.Count(got, want); c != n {
 			t.Errorf("want %d of %q, got %d:\n%s", n, want, c, got)
@@ -56,7 +56,7 @@ func TestSwitchesUnderOneLabelAreOneSetting(t *testing.T) {
 	if n := strings.Count(got, `class="verso-field-row`); n != 3 {
 		t.Errorf("a head and two item rows, got %d rows:\n%s", n, got)
 	}
-	group, head := strings.Index(got, `class="verso-switch-group"`), strings.Index(got, ">Files the config includes<")
+	group, head := strings.Index(got, `class="verso-field-set"`), strings.Index(got, ">Files the config includes<")
 	headAnswer := strings.Index(got, "verso-field-answer")
 	firstItem := strings.Index(got[headAnswer:], `class="verso-field-row`)
 	if group < 0 || head < group || firstItem < 0 || strings.Contains(got[headAnswer:headAnswer+firstItem], "data-verso-switch") {

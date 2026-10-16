@@ -421,7 +421,7 @@ func (f *Field) grammarMeasure() string {
 		return "short"
 	}
 	switch f.Key {
-	case "mtu", "metric", "vid", "start", "limit", "ip6assign", "Port", "port", "listen_http", "listen_https", "maxassoc", "cachesize", "dhcpleasemax", "synflood_rate", "synflood_burst", "limit_burst":
+	case "mtu", "metric", "vid", "start", "limit", "ip6assign", "Port", "port", "listen_http", "listen_https", "maxassoc", "cachesize", "dhcpleasemax", "synflood_rate", "synflood_burst", "limit_burst", "check_interval", "force_interval", "retry_interval", "priority", "weight":
 		return "number"
 	case "ipaddr", "ip6addr", "peeraddr", "peer6addr", "netmask", "gateway", "macaddr", "ula_prefix", "leasetime", "dest_ip":
 		return "address"

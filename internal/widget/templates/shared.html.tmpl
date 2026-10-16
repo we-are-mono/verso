@@ -255,11 +255,13 @@
 </div>{{end}}
 {{define "verso-field-desc-class"}}text-sm leading-6 text-pretty text-body{{end}}
 
-{{/* verso-switch-group: one setting asked of several things (switchGroupView)
-     — which files load: its head row (the group's label, which names the group
-     for a screen reader too, its chip and its description), then a row per
-     thing under it, each a question and its box in the answer column. */}}
-{{define "verso-switch-group"}}<div role="group" aria-labelledby="{{.Group}}" class="verso-switch-group">{{.Head}}{{range .Rows}}{{.}}{{end}}</div>{{end}}
+{{/* verso-field-set: related settings under one head (fieldSetView) — one
+     setting asked of several things (which files load), or settings that
+     belong together but cannot fuse into one box: its head row (the set's
+     label, which names the set for a screen reader too, its chip and its
+     description), then a row per setting under it, each a question and its
+     answer in the column. */}}
+{{define "verso-field-set"}}<div{{with .Group}} role="group" aria-labelledby="{{.}}"{{end}} class="verso-field-set">{{.Head}}{{range .Rows}}{{.}}{{end}}</div>{{end}}
 {{/* verso-nothing: the control of a row that is all question (a group's
      head). */}}
 {{define "verso-nothing"}}{{end}}
@@ -346,7 +348,15 @@
      is read by sight; each part's own name says it to a screen reader. */}}
 {{define "verso-joined"}}<div class="verso-joined" role="group" aria-labelledby="{{.Group}}"{{with .Described}} aria-describedby="{{.}}"{{end}}>{{range .Parts}}{{template "verso-joined-part" .}}{{end}}</div>{{end}}
 {{define "verso-joined-part"}}{{with .Join}}<span id="{{$.JoinID}}" aria-hidden="true" class="verso-joined-word">{{.}}</span>{{end}}<div class="verso-joined-part"{{if .Track}} data-verso-change-field data-verso-change-name="{{.Name}}" data-verso-change-label="{{.Label}}" data-verso-change-kind="{{.ChangeKind}}"{{with .Key}} data-verso-writes="{{.}}"{{end}}{{end}}>{{if eq .Kind "select"}}{{template "verso-select" .}}{{else if eq .Kind "time"}}{{template "verso-time-input" .}}{{else}}{{template "verso-text-input" .}}{{end}}</div>{{end}}
-{{define "verso-box-part"}}<span class="verso-box-part" data-verso-measure="{{.Measure}}"{{if .Track}} data-verso-change-field data-verso-change-name="{{.Name}}" data-verso-change-label="{{.Label}}" data-verso-change-kind="{{.ChangeKind}}"{{with .Key}} data-verso-writes="{{.}}"{{end}}{{end}}><input id="{{.Name}}" name="{{.Name}}"{{if eq .Kind "password"}} type="password" autocomplete="{{if .Autocomplete}}{{.Autocomplete}}{{else}}new-password{{end}}"{{else}} value="{{.Value}}" type="text"{{end}}{{if .Named}} aria-label="{{.Label}}"{{end}}{{if eq .Measure "number"}} inputmode="numeric"{{end}}{{with .Placeholder}} placeholder="{{.}}"{{end}}{{if .Autofocus}} autofocus{{end}}{{with .Datatype}} data-datatype="{{.}}"{{end}}{{template "verso-field-aria" .}} class="verso-box-input {{if .Words}}font-sans text-sm{{else}}font-mono text-base{{end}} font-normal">{{with .Unit}}<span id="{{$.Name}}-unit" class="verso-box-unit">{{.}}</span>{{end}}</span>{{end}}
+{{/* verso-box-part: one value in a box (a boxPart) — a typed value, or the
+     dropdown of units a value is counted in, bare inside the box's frame with
+     the app's chevron where the native arrow would stand. After a typed value
+     stands its unit, or in a labelled set its own name, so the set reads
+     without a tooltip; a screen reader hears the name from the input's own
+     label, so the shown name is for sight alone. */}}
+{{define "verso-box-part"}}<span class="verso-box-part" data-verso-measure="{{.Measure}}"{{if .Track}} data-verso-change-field data-verso-change-name="{{.Name}}" data-verso-change-label="{{.Label}}" data-verso-change-kind="{{.ChangeKind}}"{{with .Key}} data-verso-writes="{{.}}"{{end}}{{end}}>{{if eq .Kind "select"}}<select id="{{.Name}}" name="{{.Name}}"{{if .Named}} aria-label="{{.Label}}"{{end}}{{template "verso-field-aria" .}} class="verso-box-select">
+      {{range .Options}}<option value="{{.Value}}"{{if eq .Value $.Value}} selected{{end}}>{{.Label}}</option>{{end}}
+    </select><span aria-hidden="true" class="verso-box-chevron">{{icon "chevron-down" "size-4"}}</span>{{else}}<input id="{{.Name}}" name="{{.Name}}"{{if eq .Kind "password"}} type="password" autocomplete="{{if .Autocomplete}}{{.Autocomplete}}{{else}}new-password{{end}}"{{else}} value="{{.Value}}" type="text"{{end}}{{if .Named}} aria-label="{{.Label}}"{{end}}{{if eq .Measure "number"}} inputmode="numeric"{{end}}{{with .Placeholder}} placeholder="{{.}}"{{end}}{{if .Autofocus}} autofocus{{end}}{{with .Datatype}} data-datatype="{{.}}"{{end}}{{template "verso-field-aria" .}} class="verso-box-input {{if .Words}}font-sans text-sm{{else}}font-mono text-base{{end}} font-normal">{{with .Unit}}<span id="{{$.Name}}-unit" class="verso-box-unit">{{.}}</span>{{else}}{{if .Shown}}<span aria-hidden="true" class="verso-box-unit">{{.Label}}</span>{{end}}{{end}}{{end}}</span>{{end}}
 {{/* A chip's word is set at the regular weight. The box already separates it
      from the prose around it, so weight on top of a border and a fill is one
      emphasis too many — and a page of bolded chips reads as a page of shouting.
