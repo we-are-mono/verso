@@ -127,14 +127,14 @@ func TestOverviewStreamSendsWhatTheShownCardsRead(t *testing.T) {
 }
 
 // A hidden card's reading still reaches the verdict, so hiding a card never
-// makes the page read "online".
+// makes the page read "online": the heading names the hidden card's cause.
 func TestOverviewStreamVerdictCountsHiddenCards(t *testing.T) {
 	frames := firstFrames(t, streamServer(t), "1.internet-firewall.traffic-resources-system..ports-tunnels")
 	var status widget.OverviewStatus
 	if err := json.Unmarshal([]byte(frames["overview"]), &status); err != nil {
 		t.Fatal(err)
 	}
-	if status.Tone != "warning" || status.Lead != "Your network needs attention" {
+	if status.Tone != "warning" || status.Lead != "1 port without link" {
 		t.Fatalf("verdict = %+v, want the hidden Ports card's lost link counted", status)
 	}
 	for _, card := range status.Cards {

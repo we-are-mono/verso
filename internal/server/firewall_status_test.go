@@ -47,7 +47,7 @@ func TestOverviewFirewallRefreshesAndClearsStaleState(t *testing.T) {
 	// verdict weighs.
 	srv.stats = fakeStats{cpu: 5, root: sysstat.Storage{Used: 10, Free: 90}}
 	srv.telemetry = fakeTelemetry{}
-	if body := get(t, srv, "/").Body.String(); !strings.Contains(body, "Your network needs attention") {
+	if body := get(t, srv, "/").Body.String(); !strings.Contains(body, "The firewall is not running") {
 		t.Fatal("first paint did not count the inactive firewall")
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -69,7 +69,7 @@ func TestOverviewFirewallRefreshesAndClearsStaleState(t *testing.T) {
 		err         error
 	}{
 		{"active", "success", nil},
-		{"inactive", "warning", nil},
+		{"inactive", "danger", nil},
 		{"partial", "warning", nil},
 		{"inactive", "success", errors.New("read failed")},
 	} {

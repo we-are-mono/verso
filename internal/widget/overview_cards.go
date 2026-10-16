@@ -22,6 +22,11 @@ type cardHead struct {
 	Tone    string `json:"tone"` // "neutral" | "success" | "warning" | "danger"
 	Status  string `json:"status"`
 	Summary string `json:"summary"`
+	// Cause is what the card says is wrong, as a sentence that stands without
+	// the card, for the page's heading to quote when it is the one thing
+	// wrong (verdict). Status keeps the words that read in the card's header;
+	// where those stand alone, the cause is the same. Empty while in band.
+	Cause string `json:"-"`
 }
 
 // overviewCardSpec is one card the Overview has: its identity, its header, its
@@ -146,6 +151,7 @@ func (o *Overview) portsHead(tr func(string) string) cardHead {
 	case down > 0:
 		h.Tone = "warning"
 		h.Status = overviewCount(tr, down, "%d port without link", "%d ports without link (two)", "%d ports without link (few)", "%d ports without link")
+		h.Cause = h.Status
 	case unknown > 0:
 		h.Status = tr("State unknown")
 	case ports > 0:
@@ -298,6 +304,12 @@ func (o *Overview) tunnelsHead(tr func(string) string) cardHead {
 	case len(downNames) > 0:
 		h.Tone, h.Status = "danger", fmt.Sprintf(tr("%d of %d down"), len(downNames), tunnels)
 		h.Summary = strings.Join(downNames, ", ")
+		// Out of the card the count names no tunnel: one down is named, several
+		// are counted as tunnels.
+		h.Cause = fmt.Sprintf(tr("%d of %d tunnels down"), len(downNames), tunnels)
+		if len(downNames) == 1 {
+			h.Cause = fmt.Sprintf(tr("Tunnel %s is down"), downNames[0])
+		}
 	case up == tunnels:
 		h.Tone, h.Status = "success", tr("All up")
 	default:
@@ -380,6 +392,7 @@ func (o *Overview) resourcesHead(tr func(string) string) cardHead {
 		}
 		if rank[m.Band] > rank[h.Tone] {
 			h.Tone, h.Status = m.Band, fmt.Sprintf(tr("%s is high"), m.Label)
+			h.Cause = h.Status
 		}
 	}
 	return h
@@ -472,7 +485,7 @@ func (o *Overview) hardwareHead(tr func(string) string) cardHead {
 	}
 	h := cardHead{Tone: "neutral"}
 	if tone, words := hw.Verdict(tr); tone != "" {
-		h.Tone, h.Status = tone, words
+		h.Tone, h.Status, h.Cause = tone, words, words
 	}
 	if hw.CPU != nil {
 		h.Summary = hw.CPU.Value

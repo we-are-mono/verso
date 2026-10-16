@@ -41,37 +41,53 @@ func deviceCount(tr func(string) string, n int) string {
 	return overviewCount(tr, n, "%d device connected", "%d devices connected (two)", "%d devices connected (few)", "%d devices connected")
 }
 
-// issues counts what needs attention: a firewall not fully loaded, a port or
-// tunnel someone asked for without its link, a resource out of band. Hidden
-// cards count, so hiding one never makes the verdict read "online".
-func (o *Overview) issues() int {
-	n := 0
-	if o.FirewallState == "inactive" || o.FirewallState == "partial" {
-		n++
-	}
-	for _, i := range o.Interfaces {
-		if ((i.port() && i.inUse()) || i.tunnel()) && (i.State == "down" || i.State == "lowerlayerdown") {
-			n++
-		}
-	}
-	for _, meter := range o.SysMetrics {
-		if meter.Band == "warning" || meter.Band == "danger" {
-			n++
-		}
-	}
-	return n
+// cause is one thing wrong, as the heading would say it alone, in its tone.
+type cause struct {
+	Text, Tone string
 }
 
-// verdict is the page's one sentence, tinted by tone: online, needs
-// attention, offline, or unknown.
+// causes is everything that needs attention: a firewall not fully loaded,
+// which no card shows, then each card's own cause — a port or tunnel someone
+// asked for without its link, a reading out of band, a board past its own
+// limits. Every card counts, hidden or not, so hiding one never quiets the
+// heading. The uplink is the verdict's own first question, not a cause.
+func (o *Overview) causes(tr func(string) string) []cause {
+	var out []cause
+	switch o.FirewallState {
+	case "inactive":
+		out = append(out, cause{tr("The firewall is not running"), "danger"})
+	case "partial":
+		out = append(out, cause{tr("The firewall is only partly loaded"), "warning"})
+	}
+	for _, spec := range overviewCardSpecs() {
+		if h := spec.head(o, tr); h.Cause != "" {
+			out = append(out, cause{h.Cause, h.Tone})
+		}
+	}
+	return out
+}
+
+// verdict is the page's one sentence, tinted by tone: the most important
+// true sentence on the page. Offline outranks everything; one cause is said
+// in its own words; several are counted, in danger when any of them is;
+// nothing wrong on a working uplink is online; nothing known says so.
 func (o *Overview) verdict(tr func(string) string) overviewVerdictView {
 	v := overviewVerdictView{Tone: "neutral", Lead: tr("Your network at a glance")}
+	causes := o.causes(tr)
 	switch {
-	case !o.WANKnown:
-	case !o.WANUp:
+	case o.WANKnown && !o.WANUp:
 		v.Tone, v.Lead = "danger", tr("Your network is offline")
-	case o.issues() > 0:
-		v.Tone, v.Lead = "warning", tr("Your network needs attention")
+	case len(causes) == 1:
+		v.Tone, v.Lead = causes[0].Tone, causes[0].Text
+	case len(causes) > 1:
+		v.Tone = "warning"
+		for _, c := range causes {
+			if c.Tone == "danger" {
+				v.Tone = "danger"
+			}
+		}
+		v.Lead = overviewCount(tr, len(causes), "%d thing needs attention", "%d things need attention (two)", "%d things need attention (few)", "%d things need attention")
+	case !o.WANKnown:
 	default:
 		v.Tone = "success"
 		// Keep a full sentence so translations can move the accent with grammar.

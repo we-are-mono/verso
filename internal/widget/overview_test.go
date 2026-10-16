@@ -167,27 +167,52 @@ func TestRenderOverviewTrafficAutoScale(t *testing.T) {
 	}
 }
 
-func TestOverviewVerdictFollowsReadings(t *testing.T) {
-	o := &Overview{WANKnown: true, WANUp: true, InterfacesKnown: true, Interfaces: []OverviewInterface{{Name: "eth0", Physical: true, State: "up", Networks: []string{"wan"}}, {Name: "wg0", Kind: "tunnel", State: "up", Networks: []string{"vpn"}}}}
+// TestTheHeadingNamesTheCause: the heading is the most important true
+// sentence on the page — offline over everything, the one thing wrong in its
+// own words and tone, the count of several, online when nothing is.
+func TestTheHeadingNamesTheCause(t *testing.T) {
+	o := &Overview{WANKnown: true, WANUp: true, InterfacesKnown: true, Interfaces: []OverviewInterface{
+		{Name: "eth0", Physical: true, State: "up", Networks: []string{"wan"}},
+		{Name: "lan1", Physical: true, State: "up", Networks: []string{"lan"}},
+		{Name: "wg0", Kind: "tunnel", State: "up", Networks: []string{"vpn"}},
+	}}
+	said := func() (string, string) { s := o.LiveStatus(plain); return s.Lead, s.Tone }
 	if s := o.LiveStatus(plain); s.Tone != "success" || s.Accent != "online" {
 		t.Fatalf("up = %+v", s)
 	}
-	o.Interfaces[1].State = "down"
-	if s := o.LiveStatus(plain); s.Tone != "warning" || s.Lead != "Your network needs attention" {
-		t.Fatalf("tunnel down = %+v", s)
+	o.Interfaces[2].State = "down"
+	if lead, tone := said(); lead != "Tunnel wg0 is down" || tone != "danger" {
+		t.Errorf("one tunnel down = %q %s", lead, tone)
 	}
-	o.Interfaces[1].State = "up"
-	o.SysMetrics = []OverviewMeter{{Label: "Memory", Band: "danger"}}
-	if s := o.LiveStatus(plain); s.Tone != "warning" {
-		t.Fatalf("resource at critical = %+v", s)
+	o.Interfaces[2].State = "up"
+	o.SysMetrics = []OverviewMeter{{Label: "Storage", Band: "warning"}}
+	if lead, tone := said(); lead != "Storage is high" || tone != "warning" {
+		t.Errorf("storage high = %q %s", lead, tone)
+	}
+	o.Interfaces[1].State = "down"
+	if lead, tone := said(); lead != "2 things need attention" || tone != "warning" {
+		t.Errorf("two causes = %q %s", lead, tone)
+	}
+	o.Interfaces[2].State = "down"
+	if lead, tone := said(); lead != "3 things need attention" || tone != "danger" {
+		t.Errorf("a danger among three = %q %s", lead, tone)
 	}
 	o.WANUp = false
-	if s := o.LiveStatus(plain); s.Tone != "danger" || s.Lead != "Your network is offline" {
-		t.Fatalf("WAN down = %+v", s)
+	if lead, tone := said(); lead != "Your network is offline" || tone != "danger" {
+		t.Errorf("WAN down = %q %s", lead, tone)
 	}
-	o.WANKnown = false
-	if s := o.LiveStatus(plain); s.Tone != "neutral" || s.Lead != "Your network at a glance" {
-		t.Fatalf("read failed = %+v", s)
+	o.WANKnown, o.Interfaces, o.SysMetrics = false, nil, nil
+	if lead, tone := said(); lead != "Your network at a glance" || tone != "neutral" {
+		t.Errorf("nothing known = %q %s", lead, tone)
+	}
+}
+
+// TestAHiddenCardsCauseStillLeads: hiding a card never hides its cause.
+func TestAHiddenCardsCauseStillLeads(t *testing.T) {
+	o := &Overview{WANKnown: true, WANUp: true, SysMetrics: []OverviewMeter{{Label: "Memory", Band: "warning"}}}
+	o.Layout = ParseOverviewLayout("1.internet-ports-tunnels.traffic-system..resources")
+	if s := o.LiveStatus(plain); s.Lead != "Memory is high" {
+		t.Errorf("hidden Resources = %+v", s)
 	}
 }
 

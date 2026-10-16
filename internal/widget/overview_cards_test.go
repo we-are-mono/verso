@@ -56,10 +56,48 @@ func TestInternetCardHead(t *testing.T) {
 // still makes the verdict read that something needs attention; an unread one
 // claims nothing.
 func TestFirewallStateReachesTheVerdict(t *testing.T) {
-	for state, tone := range map[string]string{"": "success", "active": "success", "inactive": "warning", "partial": "warning"} {
+	for state, want := range map[string][2]string{
+		"":         {"success", "Your network is "},
+		"active":   {"success", "Your network is "},
+		"inactive": {"danger", "The firewall is not running"},
+		"partial":  {"warning", "The firewall is only partly loaded"},
+	} {
 		o := &Overview{WANKnown: true, WANUp: true, FirewallState: state}
-		if v := o.LiveStatus(plain); v.Tone != tone {
-			t.Errorf("firewall %q: verdict %s, want %s", state, v.Tone, tone)
+		if v := o.LiveStatus(plain); v.Tone != want[0] || v.Lead != want[1] {
+			t.Errorf("firewall %q: verdict %s %q, want %s %q", state, v.Tone, v.Lead, want[0], want[1])
+		}
+	}
+}
+
+// TestEachCardSaysItsCause: a card out of band says what is wrong in a
+// sentence that stands without the card, for the heading to quote; in band it
+// says nothing.
+func TestEachCardSaysItsCause(t *testing.T) {
+	o := &Overview{InterfacesKnown: true, Interfaces: []OverviewInterface{
+		{Name: "lan1", Physical: true, State: "down", Networks: []string{"lan"}},
+		{Name: "wg0", Kind: "tunnel", State: "down"},
+		{Name: "wg1", Kind: "tunnel", State: "up"},
+	}, SysMetrics: []OverviewMeter{{Label: "Storage", Band: "warning"}}, Hardware: dkHardware()}
+	o.Hardware.CPU.Tone = "warning"
+	for card, cause := range map[string]string{
+		"ports": "1 port without link", "tunnels": "Tunnel wg0 is down", "resources": "Storage is high", "hardware": "cluster is hot",
+	} {
+		if h := head(t, o, card); h.Cause != cause {
+			t.Errorf("%s cause = %q, want %q (status %q)", card, h.Cause, cause, h.Status)
+		}
+	}
+	if h := head(t, o, "tunnels"); h.Status != "1 of 2 down" {
+		t.Errorf("the Tunnels header keeps its words in context: %q", h.Status)
+	}
+	o.Interfaces[2].State = "down"
+	o.Interfaces = append(o.Interfaces, OverviewInterface{Name: "wg2", Kind: "tunnel", State: "up"})
+	if h := head(t, o, "tunnels"); h.Cause != "2 of 3 tunnels down" {
+		t.Errorf("several tunnels down = %q", h.Cause)
+	}
+	calm := &Overview{InterfacesKnown: true, SysMetrics: []OverviewMeter{{Label: "Storage"}}, Hardware: dkHardware()}
+	for _, card := range []string{"ports", "tunnels", "resources", "hardware"} {
+		if h := head(t, calm, card); h.Cause != "" {
+			t.Errorf("%s in band says %q", card, h.Cause)
 		}
 	}
 }
@@ -369,11 +407,12 @@ func TestHardwareCardBody(t *testing.T) {
 	}
 }
 
-// A hot board is not a network problem: the verdict speaks for the network.
-func TestHardwareStaysOutOfTheVerdict(t *testing.T) {
+// A board past its own limits is a cause like any other: the heading names
+// what is wrong, not only what is wrong with the network.
+func TestAHotBoardLeadsTheHeading(t *testing.T) {
 	hw := dkHardware()
-	hw.CPU.Tone, hw.Fan.Tone = "danger", "warning"
-	if v := (&Overview{WANKnown: true, WANUp: true, Hardware: hw}).verdict(plain); v.Tone != "success" {
-		t.Errorf("verdict = %+v, want online", v)
+	hw.CPU.Tone = "danger"
+	if v := (&Overview{WANKnown: true, WANUp: true, Hardware: hw}).verdict(plain); v.Tone != "danger" || v.Lead != "cluster is hot" {
+		t.Errorf("verdict = %+v, want the hot CPU", v)
 	}
 }
