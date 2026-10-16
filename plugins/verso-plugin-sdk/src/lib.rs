@@ -402,6 +402,9 @@ struct DescribeResponseBody {
 // ---- the read snapshot (docs/plugins.md) ----
 
 /// Snapshot is the brokered UCI read the shell injects: config → section → table.
+/// It clones, so a describe hook can render one of its pages from the staged
+/// read (see [`Widget::reading`]).
+#[derive(Clone)]
 pub struct Snapshot(Value);
 
 impl Snapshot {
