@@ -153,7 +153,12 @@ own and points at the decision that governs it; the rationale lives there, not h
 - **Release note: forms are ledgers.** Every form reads as its questions on
   the left and its answers on one edge, with what each setting does written
   under its name; "Hide descriptions" on the heading line folds them away and
-  the browser keeps the choice. Installed plugins need no upgrade.
+  the browser keeps the choice. A setting whose change waits to be applied
+  is marked by a marigold bar down its row's left edge. Installed plugins
+  need no upgrade.
+- **Maintenance's Firmware header on a phone.** At 390px the Firmware card's
+  header wraps to 108px, half a line over the grid, so every card under it
+  on Maintenance stands 4px off its lines.
 - **Help written for a tooltip.** The plugins in their own repos (ddns,
   dnsdhcp, qos, vpn, wireless) wrote `help` and `tip` to be read on hover; on
   the page some read long (dnsdhcp's DUID tip runs past 300 characters). Read
