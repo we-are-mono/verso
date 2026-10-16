@@ -36,7 +36,7 @@
   - Pressing System closes Firewall.
   - Enter and Space toggle a focused group.
   - A page change still glides the marker.
-- [ ] 3.3 DESIGN.md's Rail and Rows-that-open entries say a group opens in place, one at a time, its chevron turning as it opens, and that a plugin declares its subpages in its manifest. Verify: the entries match what 3.2 shows.
+- [x] 3.3 DESIGN.md's Rail and Rows-that-open entries say a group opens in place, one at a time, its chevron turning as it opens, and that a plugin declares its subpages in its manifest. Verify: the entries match what 3.2 shows.
 
 ## 4. Firewall declares its subpages
 
