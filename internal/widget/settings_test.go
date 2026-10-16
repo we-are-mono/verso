@@ -8,14 +8,40 @@ import (
 	"testing"
 )
 
-// TestTheLastSettingsRowEndsAtItsWords: rows are divided by hairlines, each
-// with its air above and below; the last has no hairline under it, so it has
-// no air under it either — the list ends at its last words, and the section's
-// own air is all that stands between them and the next rule.
-func TestTheLastSettingsRowEndsAtItsWords(t *testing.T) {
-	got := render(t, newRenderer(t), &Settings{Items: []SettingsItem{{Title: "Check for updates automatically", Desc: "Once a day."}, {Title: "Keep logs", Value: "7 days"}}})
-	if n := strings.Count(got, "border-b border-rule last:border-b-0 last:pb-0"); n != 2 {
-		t.Errorf("every row drops its air with its hairline when it is last, got %d:\n%s", n, got)
+// TestAFactIsALedgerRow: a fact that only reads is a row of the ledger as a
+// setting is (form-fields): its title and description in the question, its
+// value or its pills in the answer column, where a setting's control stands,
+// with the run's hairlines and air rather than its own.
+func TestAFactIsALedgerRow(t *testing.T) {
+	got := render(t, newRenderer(t), &Settings{Items: []SettingsItem{
+		{Title: "Local domain", Desc: "Names here resolve locally.", Code: "domain", Value: "lan"},
+		{Title: "Default policies", Pills: []Badge{{Variant: "warning", Text: "in: reject"}}},
+		{Title: "Check for updates automatically", Desc: "Once a day."},
+	}})
+	if n := strings.Count(got, `class="verso-field-row`); n != 3 {
+		t.Fatalf("every fact is a row of the ledger, got %d:\n%s", n, got)
+	}
+	question, answer := strings.Index(got, "verso-field-question"), strings.Index(got, "verso-field-answer")
+	title, desc, value := strings.Index(got, ">Local domain<"), strings.Index(got, `data-verso-field-desc`), strings.Index(got, ">lan</span>")
+	if question < 0 || title < question || desc < title || answer < desc || value < answer {
+		t.Errorf("a fact's title and description are its question, its value its answer:\n%s", got)
+	}
+	if pills := strings.Index(got, ">in: reject<"); pills < strings.LastIndex(got[:pills], "verso-field-answer") || strings.LastIndex(got[:pills], "verso-field-answer") < strings.Index(got, ">Default policies<") {
+		t.Errorf("a fact's pills are its answer:\n%s", got)
+	}
+	for _, bad := range []string{"data-verso-settings-row", "border-b border-rule", "data-verso-change-field"} {
+		if strings.Contains(got, bad) {
+			t.Errorf("a fact draws the ledger's rows, not its own (%q), and tracks no change:\n%s", bad, got)
+		}
+	}
+}
+
+// TestCondensedFactsStandCloser: a condensed list of many short facts keeps
+// the ledger's anatomy, its rows tighter.
+func TestCondensedFactsStandCloser(t *testing.T) {
+	got := render(t, newRenderer(t), &Settings{Condensed: true, Items: []SettingsItem{{Title: "Uptime", Value: "3 days"}, {Title: "Load", Value: "0.12"}}})
+	if n := strings.Count(got, "verso-field-condensed"); n != 2 {
+		t.Errorf("every condensed row is marked, got %d:\n%s", n, got)
 	}
 }
 
@@ -108,11 +134,12 @@ func TestRenderSettings(t *testing.T) {
 	for _, want := range []string{
 		"Default policies", "What happens to traffic no zone claims.",
 		"in: reject", "out: accept", // policy pills render through the badge
-		"bg-marigold-soft",     // reject carries the warning palette
-		"synflood_protect",     // the underlying option is on the row
-		"font-mono",            // …as a mono code chip
-		`type="checkbox"`,      // toggle rows carry the shared switch
-		"border-b border-rule", // bare rows divide with hairlines (stripes retired)
+		"bg-marigold-soft",            // reject carries the warning palette
+		"synflood_protect",            // the underlying option is on the row
+		"font-mono",                   // …as a mono code chip
+		`type="checkbox"`,             // toggle rows carry the shared switch
+		`class="verso-field-row`,      // every row is a row of the ledger
+		`class="verso-field-question`, // …its title the question
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("settings missing %q:\n%s", want, got)

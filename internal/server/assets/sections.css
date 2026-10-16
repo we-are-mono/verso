@@ -244,6 +244,12 @@
   margin-inline: calc(var(--verso-side) * -1);
   padding-inline: var(--verso-side);
 }
+/* A settings list's fold draws a line between its rows as a row does, so it
+ * runs to the borders with them. */
+.verso-page-body section[data-verso-section]:not(section section, dialog *) [data-verso-settings] > details {
+  margin-inline: calc(var(--verso-side) * -1);
+  padding-inline: var(--verso-side);
+}
 /* A field brings its own 24px of air, so after any block in a card it takes
  * no margin: the step is its air, and its label stands 24px under the block
  * as anything else would. */

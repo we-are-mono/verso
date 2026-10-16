@@ -111,25 +111,21 @@ func (s *Settings) children() []Widget {
 	return out
 }
 
-// settingsView carries the presentation and the rows; each item's pills are
-// pre-rendered to trusted HTML, the rest is plain text the template escapes.
+// settingsView carries the presentation and the rows, each pre-rendered
+// through the field frame; the rest is plain text the template escapes.
 type settingsView struct {
 	Card        bool
 	Title       string
 	Meta        string
-	Items       []settingsItemView
+	Items       []template.HTML
 	SeamSummary string
-	SeamItems   []settingsItemView
+	SeamItems   []template.HTML
 }
 
-// settingsItemView is one row as the template draws it: an editing row is a
-// setting's row (Frame, drawn by verso-field); a row that reads keeps the
-// listing's compact geometry and its pills.
-type settingsItemView struct {
-	SettingsItem
-	Frame     template.HTML
-	PillsHTML []template.HTML
-	Condensed bool
+// readoutView is a fact's answer: its value, or its pills pre-rendered.
+type readoutView struct {
+	Value string
+	Pills []template.HTML
 }
 
 // control is the row's checkbox. A switch with no posted name has no id for
@@ -157,50 +153,61 @@ func (it *SettingsItem) DescribedBy() string {
 	return strings.Join(ids, " ")
 }
 
-// frame is an editing row as one setting's row: its title is the label, its
-// option the key chip, and its description stays in view under it. A value
-// that stages itself tracks no form change; its own commit does the staging.
+// frame is the row as one setting's row: its title is the label, its option
+// the key chip, and its description stays in view under it. A value that
+// stages itself tracks no form change; its own commit does the staging. A
+// fact that only reads is a row too, its title naming no control and its
+// value or pills standing in the answer where a control would.
 func (it *SettingsItem) frame() fieldFrame {
 	f := fieldFrame{
 		Label: fieldLabel{For: it.Name, Label: it.Title, Key: it.Code, Staged: it.Staged},
 		Desc:  it.Desc, Class: "last:pb-0",
 	}
-	if it.Name != "" {
+	switch {
+	case it.Name != "":
 		f.Change = fieldChange{Track: !it.Inline, Name: it.Name, Label: it.Title, Kind: "text"}
 		f.Measure = (&Field{Key: it.Code, Datatype: it.Datatype}).ControlMeasure()
 		f.Inline = it.Inline
-		return f
+	case it.Toggle != nil:
+		f.Label.For, f.Label.Group = it.Toggle.Name, it.Toggle.Name == ""
+		f.Change = fieldChange{Track: it.Toggle.Name != "", Name: it.Toggle.Name, Label: it.Title, Kind: "toggle"}
+	default:
+		f.Label.Group = true
 	}
-	f.Label.For, f.Label.Group = it.Toggle.Name, it.Toggle.Name == ""
-	f.Change = fieldChange{Track: it.Toggle.Name != "", Name: it.Toggle.Name, Label: it.Title, Kind: "toggle"}
 	return f
 }
 
-func (s *Settings) itemViews(r *Renderer, items []SettingsItem) ([]settingsItemView, error) {
-	out := make([]settingsItemView, 0, len(items))
+// itemViews draws each row through the field frame: an in-place value, a
+// switch, or a fact's read-out. A condensed list's rows stand closer.
+func (s *Settings) itemViews(r *Renderer, items []SettingsItem) ([]template.HTML, error) {
+	out := make([]template.HTML, 0, len(items))
 	for _, it := range items {
-		iv := settingsItemView{SettingsItem: it, Condensed: s.Condensed}
-		if it.edits() {
-			var b strings.Builder
-			var err error
-			if it.Name != "" {
-				err = r.renderFrame(&b, "settings.value", &it, it.frame())
-			} else {
-				err = r.renderFrame(&b, "switch.row", it.control(), it.frame())
-			}
-			if err != nil {
-				return nil, err
-			}
-			iv.Frame = template.HTML(b.String())
+		frame := it.frame()
+		if s.Condensed {
+			frame.Class += " verso-field-condensed"
 		}
-		for p := range it.Pills {
-			var b strings.Builder
-			if err := r.execute(&b, "badge.html.tmpl", &it.Pills[p]); err != nil {
-				return nil, err
+		var b strings.Builder
+		var err error
+		switch {
+		case it.Name != "":
+			err = r.renderFrame(&b, "settings.value", &it, frame)
+		case it.Toggle != nil:
+			err = r.renderFrame(&b, "switch.row", it.control(), frame)
+		default:
+			readout := readoutView{Value: it.Value}
+			for p := range it.Pills {
+				var pill strings.Builder
+				if err := r.execute(&pill, "badge.html.tmpl", &it.Pills[p]); err != nil {
+					return nil, err
+				}
+				readout.Pills = append(readout.Pills, template.HTML(pill.String()))
 			}
-			iv.PillsHTML = append(iv.PillsHTML, template.HTML(b.String()))
+			err = r.renderFrame(&b, "settings.readout", readout, frame)
 		}
-		out = append(out, iv)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, template.HTML(b.String()))
 	}
 	return out, nil
 }

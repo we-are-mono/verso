@@ -10,26 +10,15 @@
      description kept in view under it. An in-place value stages itself on
      blur or Enter and says its own refusal in the frame's band. */}}
 {{define "settings.value"}}<input id="{{.Name}}" type="text" name="{{.Name}}" value="{{.Value}}"{{with .DescribedBy}} aria-describedby="{{.}}"{{end}}{{if .Inline}} data-verso-inline-input{{with .Datatype}} data-verso-datatype="{{.}}"{{end}}{{end}}{{if eq .Measure "number"}} inputmode="numeric"{{end}} class="{{template "verso-input-class"}} {{template "verso-input-border" .Inline}} tabular-nums{{if eq .Measure "number"}} w-24! max-w-full{{end}}">{{end}}
-{{define "settings.row"}}
-  {{if .Frame}}{{.Frame}}{{else}}
-  {{/* Read-only facts and policy pills are fields on the grid: 23px after the
-       hairline above (a row's 7px, condensed; the first, with no hairline
-       over it, the full 24px or 8px), the name's 24px line and the
-       description's, filling whole bands, and the full 24px (8px) under them
-       to the hairline, which lands on a line. The pills ride the name's
-       line. */}}
-  <div data-verso-settings-row class="flex items-start gap-3 {{if .Condensed}}py-row first:pt-2{{else}}pt-5.75 pb-6 first:pt-6{{end}} border-b border-rule last:border-b-0 last:pb-0 [&:has(+details)]:border-b-0">
-    <div class="min-w-0 flex-1">
-      <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
-        <div class="text-base leading-6 font-semibold text-ink">{{.Title}}</div>
-      </div>
-      {{if .Desc}}<div class="text-sm leading-6 text-pretty text-body">{{.Desc}}</div>{{end}}
-    </div>
-    {{range .PillsHTML}}{{.}}{{end}}
-    {{if .Value}}<span class="shrink-0 font-mono text-base leading-6 font-medium tabular-nums text-ink">{{.Value}}</span>{{end}}
-  </div>
-  {{end}}
-{{end}}
+{{/* settings.readout: a fact's answer (readoutView) — its value or its pills,
+     standing in the answer column where a setting's control stands. They
+     read on 24px lines, the first on the name's band (the 4px over it gives
+     back the answer's pull over the band), pills wrapping onto lines of their
+     own. */}}
+{{define "settings.readout"}}{{if or .Value .Pills}}<div class="flex flex-wrap gap-x-2 py-1">
+    {{range .Pills}}<span class="flex h-6 items-center">{{.}}</span>{{end}}
+    {{with .Value}}<span class="font-mono text-base leading-6 font-medium tabular-nums text-ink">{{.}}</span>{{end}}
+  </div>{{end}}{{end}}
 {{/* bare: rows sit straight on the page, hairlines doing the separating.
      Each row brings its own air, so a section adds none above the set
      (data-verso-settings). */}}
@@ -42,18 +31,20 @@
     <span>{{.Title}}</span>
     {{if .Meta}}<span class="min-w-0 truncate text-xs font-normal normal-case text-faint">{{.Meta}}</span>{{end}}
   </div>{{end}}
-  {{range .Items}}{{template "settings.row" .}}{{end}}
+  {{range .Items}}{{.}}{{end}}
   {{if .SeamSummary}}
   <details class="border-t border-rule">
     {{/* the chevron sits with the label (an orphaned right-edge chevron fades)
          and the pair wears the action colour, so the fold reads as a place to
-         go without button chrome. */}}
-    <summary class="flex cursor-pointer items-center gap-1.5 px-3 py-3 text-sm font-semibold text-denim-deep transition-colors select-none hover:bg-quiet hover:text-denim [&::-webkit-details-marker]:hidden">
+         go without button chrome. Its air over the line is a pixel short, as
+         all air after a drawn edge is, so the fold is 48px tall with its
+         hairline and what follows stays on the grid. */}}
+    <summary class="flex cursor-pointer items-center gap-1.5 px-3 pt-2.75 pb-3 leading-6 text-sm font-semibold text-denim-deep transition-colors select-none hover:bg-quiet hover:text-denim [&::-webkit-details-marker]:hidden">
       {{icon "chevron-right" "verso-chevron size-4"}}
       {{.SeamSummary}}
     </summary>
     <div class="pb-1">
-      {{range .SeamItems}}{{template "settings.row" .}}{{end}}
+      {{range .SeamItems}}{{.}}{{end}}
     </div>
   </details>
   {{end}}
