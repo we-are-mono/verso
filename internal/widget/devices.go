@@ -3,6 +3,8 @@
 
 package widget
 
+import "slices"
+
 // The Devices roster: one row per device the box has seen, and behind each row
 // the whole story the row has no space for. It is the shell's own page content
 // — like the overview, outside the plugin vocabulary and never decoded — built
@@ -54,6 +56,9 @@ type Device struct {
 	Limit        string // configured policy, supplied by the plugin claiming the shape slot
 	LimitDetails string // configured days, times and rates for the limits tooltip
 	LimitTip     *DeviceLimitTip
+	// Engaged is the row's toggles that are on for this device, as the plugin
+	// claiming them says — "pause" while its internet is paused.
+	Engaged []string
 }
 
 // DeviceUsage is a device's usage as the roster says it: its rate now, written
@@ -131,8 +136,13 @@ type DeviceAddr struct {
 // DeviceActTitles names the actions available for this device. Reserve and
 // remove reservation are mutually exclusive. The shell supplies glyphs and order.
 func DeviceActTitles(d Device) map[string]string {
+	// The power glyph says what pressing it does.
 	titles := map[string]string{
+		"pause": "Pause internet",
 		"shape": "Edit limits",
+	}
+	if slices.Contains(d.Engaged, "pause") {
+		titles["pause"] = "Resume internet"
 	}
 	if d.Reserved {
 		titles["unreserve"] = "Remove reservation"

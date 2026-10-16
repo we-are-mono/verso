@@ -51,7 +51,7 @@ func (s *Server) handleDevices(w http.ResponseWriter, r *http.Request) {
 		return widget.EntityPath("device", mac)
 	})
 	table := widget.DevicesTable(roster, func(d widget.Device) []widget.TableRowAct {
-		return s.EntityRowActs("device", d.MAC, d.Name, widget.DeviceActTitles(d))
+		return s.EntityRowActs("device", d.MAC, d.Name, widget.DeviceActTitles(d), d.Engaged)
 	}, used.on)
 	// Empty because rpcd refuses the reader the lease read, or did not answer
 	// it, not because nothing is here.

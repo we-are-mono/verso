@@ -45,7 +45,7 @@ func (s *Server) deviceLimits(r *http.Request) (devices []widget.Device, offered
 					name = id
 				}
 				devices = append(devices, widget.Device{
-					MAC: id, Name: name, Limit: tr(summary.State), LimitDetails: entitySummaryDetails(summary.Details, tr), LimitTip: deviceLimitTip(summary.Details, tr), Presence: "offline",
+					MAC: id, Name: name, Limit: tr(summary.State), LimitDetails: entitySummaryDetails(summary.Details, tr), LimitTip: deviceLimitTip(summary.Details, tr), Engaged: summary.Engaged, Presence: "offline",
 					Maker: deviceicon.Maker(id), Icon: deviceicon.Resolve(id, name),
 					Lease: "No DHCP lease",
 				})
@@ -80,6 +80,7 @@ func mergeDeviceLimits(roster, configured []widget.Device) []widget.Device {
 			roster[i].Limit = d.Limit
 			roster[i].LimitDetails = d.LimitDetails
 			roster[i].LimitTip = d.LimitTip
+			roster[i].Engaged = d.Engaged
 		} else {
 			index[d.MAC] = len(roster)
 			roster = append(roster, d)

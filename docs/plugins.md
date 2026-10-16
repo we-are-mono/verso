@@ -181,11 +181,24 @@ GET to render and POST to save — the same request shape as a page, brokered re
 included. `{id}` in an act's path is the subject's own identity (a MAC, a uci
 section name), substituted by the shell.
 
+An act that changes the subject in place — the device row's `pause` toggle, its
+power glyph — declares `"post": true` and no path. Pressing it posts to that same
+`entity/<kind>/<id>` with `_act` set to the slot and `to` set to `on` or `off`;
+answer with the commit it stages and a notice, and the shell returns to the
+listing with your notice. Say which subjects have it on by listing the slot in
+the summary's `engaged`, so the glyph's title says what pressing it does:
+
+```json
+"entity_acts": [
+  { "entity": "device", "slot": "pause", "post": true }
+]
+```
+
 A plugin that only contributes entity controls may leave `nav` empty. To keep
 configured subjects visible after they disappear from live discovery, declare
 `summaries: true` on its tab. The shell then requests `GET /entity/<kind>/` once
 for the roster, with the same scoped reads as the editor. Return an `entities`
-array of `{id, name, state, details}` in the envelope. Optional `details` is a list
+array of `{id, name, state, details, engaged}` in the envelope. Optional `details` is a list
 of `{kind, label, values}` facts for the tooltip, with each label and value translated
 separately. Optional `kind` identifies the fact independently of its wording:
 `weekdays`, `hours`, `from`, `until`, `block`, `download`, or `upload`. This lets

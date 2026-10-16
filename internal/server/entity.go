@@ -12,6 +12,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"slices"
 	"sort"
 	"strings"
 
@@ -56,6 +57,11 @@ type entitySlot struct {
 	// its rows: the doorway that makes a new subject of this kind. It draws as
 	// the action bar's one forward act, never as a row icon.
 	Listing bool
+	// Toggle marks an act that turns something on or off for the subject in
+	// place — a device's internet paused — posted to the plugin that claims it
+	// (EntityAct.Post). It stands first among a row's acts, as a rule's power
+	// glyph does.
+	Toggle bool
 }
 
 // entitySlots is the closed vocabulary, by subject kind. A slot no plugin claims
@@ -64,6 +70,7 @@ type entitySlot struct {
 var entitySlots = map[string][]entitySlot{
 	"device": {
 		{Name: "add", Icon: "plus", Act: true, Listing: true},
+		{Name: "pause", Icon: "power", Act: true, Toggle: true},
 		{Name: "reserve", Icon: "pin"},
 		{Name: "unreserve", Icon: "pin-off", Act: true},
 		{Name: "shape", Icon: "sliders-horizontal"},
@@ -120,13 +127,35 @@ func (s *Server) entityActs(kind, id string) map[string]string {
 			continue
 		}
 		for _, a := range m.EntityActs {
-			if a.Entity != kind || a.Slot == "" || a.Path == "" {
+			if a.Entity != kind || a.Slot == "" || a.Path == "" || a.Post {
 				continue
 			}
 			acts[a.Slot] = pluginHref(m.ID, strings.ReplaceAll(a.Path, "{id}", url.PathEscape(id)))
 		}
 	}
 	return acts
+}
+
+// entityToggle is the live plugin claiming a toggle slot of this kind with a
+// posting act (EntityAct.Post), if one does.
+func (s *Server) entityToggle(kind, slot string) (plugin.Manifest, bool) {
+	for _, m := range s.manifestList() {
+		if !s.probe(m.Endpoint()) {
+			continue
+		}
+		for _, a := range m.EntityActs {
+			if a.Entity == kind && a.Slot == slot && a.Post {
+				return m, true
+			}
+		}
+	}
+	return plugin.Manifest{}, false
+}
+
+// entityActHref is where a row's toggle posts: the subject's own entity route,
+// naming the slot.
+func entityActHref(kind, id, slot string) string {
+	return widget.EntityPath(kind, id) + "?act=" + url.QueryEscape(slot)
 }
 
 // slotOrder maps a kind's slot names to their designed position, so a tab strip
@@ -144,7 +173,9 @@ func slotOrder(kind string) map[string]int {
 // tab), doing its thing (a claimed act), or standing empty. An unclaimed slot
 // still holds its place — the column must not change width because a plugin is
 // missing. Slots omitted from titles do not apply to this subject and are hidden.
-func (s *Server) EntityRowActs(kind, id, subject string, titles map[string]string) []widget.TableRowAct {
+// A toggle posts what pressing it does — "on" while it is off for the subject,
+// "off" while engaged names it — and its title is the caller's for that state.
+func (s *Server) EntityRowActs(kind, id, subject string, titles map[string]string, engaged []string) []widget.TableRowAct {
 	tabs := map[string]bool{}
 	for _, t := range s.entityContributors(kind) {
 		tabs[t.Slot] = true
@@ -160,7 +191,13 @@ func (s *Server) EntityRowActs(kind, id, subject string, titles map[string]strin
 			continue
 		}
 		act := widget.TableRowAct{Icon: slot.Icon, Title: title}
+		_, toggled := s.entityToggle(kind, slot.Name)
 		switch {
+		case slot.Toggle && toggled:
+			act.Post, act.Name, act.Value = entityActHref(kind, id, slot.Name), "to", "on"
+			if slices.Contains(engaged, slot.Name) {
+				act.Value = "off"
+			}
 		case slot.Act && acts[slot.Name] != "":
 			act.Href = acts[slot.Name]
 		case !slot.Act && tabs[slot.Name]:
@@ -463,6 +500,10 @@ func (s *Server) handleEntitySave(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	r = withGrants(r, s.grantsFor(s.sessionSID(r)))
+	if slot := r.URL.Query().Get("act"); slot != "" {
+		s.handleEntityAct(w, r, kind, id, slot)
+		return
+	}
 	claim, ok := s.entityContributor(kind, r.URL.Query().Get("tab"))
 	if !ok {
 		http.NotFound(w, r)
@@ -546,6 +587,73 @@ func (s *Server) handleEntitySave(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("HX-Trigger", "verso-entity-saved")
 	}
 	_, _ = w.Write(buf.Bytes())
+}
+
+// entityListings is the listing each kind of subject is pressed from, which a
+// row's act returns to.
+var entityListings = map[string]string{"device": devicesPath}
+
+// handleEntityAct answers a row's toggle — a device's internet paused from the
+// roster. The act is the plugin's that claims the slot with a posting act, so
+// it passes the same write gate a tab's save does (ADR-007): the shell forwards
+// the slot and the state wanted, brokers what the plugin asks for into the
+// stage (ADR-010), and returns to the listing with the plugin's outcome waiting
+// there as every outcome does.
+func (s *Server) handleEntityAct(w http.ResponseWriter, r *http.Request, kind, id, slot string) {
+	m, ok := s.entityToggle(kind, slot)
+	if !ok {
+		http.NotFound(w, r)
+		return
+	}
+	ptr := s.pluginTranslators(r)(m.ID)
+	back := func(variant, message string) {
+		if message != "" {
+			s.flash(r, variant, message)
+		}
+		http.Redirect(w, r, entityListings[kind], http.StatusSeeOther)
+	}
+	switch allowed, err := s.authorizePluginWrite(r.Context(), m, s.sessionSID(r)); {
+	case err != nil:
+		log.Printf("verso: plugin %q permission check failed: %v", m.ID, err)
+		back("danger", ptr("Your permissions couldn’t be checked just now. Try again in a moment."))
+		return
+	case !allowed:
+		back("danger", fmt.Sprintf(ptr("Your account isn’t permitted to change %s."), m.Name))
+		return
+	}
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "bad form", http.StatusBadRequest)
+		return
+	}
+	to := r.PostForm.Get("to")
+	if to != "on" && to != "off" {
+		http.Error(w, "an act is turned on or off", http.StatusBadRequest)
+		return
+	}
+	sid := s.sessionSID(r)
+	env, err := s.transport.Fetch(r.Context(), m.Endpoint(), plugin.Request{
+		Method: http.MethodPost,
+		Path:   entityPath + kind + "/" + id,
+		Query:  map[string][]string{},
+		Form:   map[string][]string{"_act": {slot}, "to": {to}},
+		UCI:    s.readSnapshot(r.Context(), m, sid),
+		Ubus:   s.readUbus(r.Context(), m, sid),
+	})
+	if err != nil || env == nil {
+		log.Printf("verso: plugin %q unavailable: %v", m.ID, err)
+		back("danger", fmt.Sprintf(ptr("%s isn’t answering just now, so nothing was changed."), m.Name))
+		return
+	}
+	if env.Status != http.StatusUnprocessableEntity && len(env.Commit) > 0 {
+		if body, status, ok := s.brokerStage(r.Context(), m, authorAt(m, "/"), sid, env.Commit, ptr); !ok {
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			w.WriteHeader(status)
+			_, _ = w.Write([]byte(body))
+			return
+		}
+	}
+	flash := panelFlash(env.Notice)
+	back(flash.Variant, ptr(flash.Message))
 }
 
 // entityNotice answers a submission the panel could not carry out with the

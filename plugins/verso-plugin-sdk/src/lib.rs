@@ -2925,6 +2925,11 @@ pub struct EntitySummary {
     /// Configuration label, not a claim about live enforcement.
     pub state: String,
     pub details: Vec<EntitySummaryDetail>,
+    /// The plugin's posting acts (manifest `entity_acts` with `post`) that are
+    /// on for this subject — "pause" for a device whose internet is paused — so
+    /// the row's glyph names what pressing it does.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub engaged: Vec<String>,
 }
 
 /// A tooltip fact. The shell translates the label and each value separately.

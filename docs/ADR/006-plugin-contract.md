@@ -84,6 +84,15 @@ over a local socket**, exchanging *data*, not markup.
      `state` describes configuration, not live enforcement. An empty array means
      no configured subjects; an omitted/null array means the read was unavailable.
      The shell owns how summaries appear and where their editors open.
+   - `entity_acts` — optional `{entity, slot, path, post}` acts on such a subject
+     that open nothing, each in one of the shell's closed slots. One with a
+     `path` leads there (`{id}` standing for the subject). One with `post: true`
+     changes the subject in place — a device's internet paused from its row —
+     and carries no path: the shell posts `_act=<slot>` and `to=on|off` to the
+     plugin's `/entity/<kind>/<id>`, passes the plugin's write gate, stages the
+     commit it answers with, and returns to the listing with its notice. A
+     summary names the posting acts that are on for its subject in `engaged`,
+     so the row's glyph says what pressing it does.
    - `acl` — the rpcd access scopes the plugin's writes need, as a `write` list of
      `{scope, object, function}` triples mirroring `session.access` (added for
      ADR-007, see Neutral below). Optional; a display-only plugin declares none.

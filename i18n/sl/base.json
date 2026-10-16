@@ -862,6 +862,8 @@
   "Firewall logs unavailable": "Dnevniki požarnega zidu niso na voljo",
   "Some firewall events were lost.": "Nekateri dogodki požarnega zidu so bili izgubljeni.",
   "Edit limits": "Uredi omejitve",
+  "Pause internet": "Začasno ustavi internet",
+  "Resume internet": "Nadaljuj internet",
   "limits": "omejitve",
   "Configured limits": "Nastavljene omejitve",
   "Devices with saved limits stay listed when offline. Open a device to edit its limits.": "Naprave s shranjenimi omejitvami ostanejo na seznamu tudi brez povezave. Za urejanje omejitev odprite napravo.",

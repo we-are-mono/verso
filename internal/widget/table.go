@@ -576,6 +576,10 @@ type TableRowAct struct {
 	// both — one glyph cannot mean two things.
 	Name  string `json:"name,omitempty"`
 	Value string `json:"value,omitempty"`
+	// Post is where a submission posts when that is not the page it sits on:
+	// a subject's own route, for an act a plugin answers about it (a device's
+	// internet paused from the roster). The shell's to set, never a plugin's.
+	Post string `json:"-"`
 	// Confirm guards only this action. ConfirmTitle may use %s for the row's
 	// name, substituted after localization so machine identities stay verbatim.
 	ConfirmTitle string `json:"confirm_title,omitempty"`

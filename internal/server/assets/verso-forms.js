@@ -746,12 +746,19 @@
       var table = form.closest("table");
       if (table) table.parentNode.insertBefore(notice, table);
     };
-    versoPost(window.location.pathname, new URLSearchParams(new FormData(form)), "act").then(function (res) {
+    // An act names where it posts when that is not the page it stands on — a
+    // subject's own route, for an act a plugin answers (a device paused).
+    versoPost(form.getAttribute("action") || window.location.pathname, new URLSearchParams(new FormData(form)), "act").then(function (res) {
       if (res.redirected && new URL(res.url).pathname === "/login") return failure();
       if (!res.ok) return res.text().then(function (message) { failure(message); });
       return res.text().then(function (html) {
-        reconcile(versoParse(html));
+        var doc = versoParse(html);
+        reconcile(doc);
         if (button) button.disabled = false;
+        // What the act did is said where every outcome is.
+        var carried = doc.querySelector("template[data-verso-arrival]");
+        var outcome = carried && carried.content.firstElementChild;
+        if (outcome && window.versoOutcome) window.versoOutcome.show(document.importNode(outcome, true));
       });
     }).catch(function () { failure(); });
   }, true);

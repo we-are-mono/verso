@@ -6,6 +6,7 @@ package server
 import (
 	"context"
 	"net/http"
+	"net/url"
 	"strings"
 	"testing"
 
@@ -120,5 +121,67 @@ func TestALimitReadsInMegabitsWhicheverSpellingThePluginWrites(t *testing.T) {
 		if tip == nil || len(tip.Rates) != 1 || tip.Rates[0].Value != "25" || tip.Rates[0].Unit != "Mb/s" {
 			t.Errorf("%q = %+v", value, tip)
 		}
+	}
+}
+
+// pausingServer is the roster with the limits plugin also claiming the row's
+// pause toggle, as qos ships it.
+func pausingServer(t *testing.T, tr *limitSummaryTransport) *Server {
+	t.Helper()
+	m := shapingManifest()
+	m.Nav = nil
+	m.EntityTabs[0].Summaries = true
+	m.EntityActs = []plugin.EntityAct{{Entity: "device", Slot: "pause", Post: true}}
+	backend := rosterBackend()
+	backend.access = true
+	s := newServerWith(t, backend, tr, []plugin.Manifest{m})
+	s.readLeases = func() ([]byte, error) { return []byte(testLeases), nil }
+	s.neighbors = testNeighbors
+	return s
+}
+
+// TestADeviceIsPausedAndResumedFromItsRow: a device's row carries the power
+// glyph the plugin claiming the pause toggle answers. It says what pressing it
+// does — resume, for a device whose internet the plugin says is paused — and
+// posts that to the device's own route, which forwards the slot and the state
+// wanted to the plugin, stages what it asks for, and returns to the roster with
+// the plugin's outcome waiting there.
+func TestADeviceIsPausedAndResumedFromItsRow(t *testing.T) {
+	entries := []plugin.EntitySummary{{ID: "02:11:22:33:44:55", Name: "Old tablet", State: "Internet block", Engaged: []string{"pause"}}}
+	tr := &limitSummaryTransport{tabTransport: twoTabs(), summaries: &entries}
+	qos := tr.bySocket["/run/verso/qos.sock"]
+	qos.Commit = []plugin.CommitOp{{Config: "firewall", Section: "old_limit", Delete: true}}
+	qos.Notice = &plugin.Notice{Level: "success", Text: "Internet resumed for Old tablet."}
+	s := pausingServer(t, tr)
+
+	body := get(t, s, "/devices").Body.String()
+	for _, want := range []string{
+		`<form method="post" action="/entity/device/02:11:22:33:44:55?act=pause" data-verso-act`,
+		`name="to" value="off"`,
+		`aria-label="Resume internet Old tablet"`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("roster missing %q", want)
+		}
+	}
+
+	rec, token := postPluginRequest(t, s, "/entity/device/02:11:22:33:44:55?act=pause", url.Values{"to": {"off"}}, nil)
+	if rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != "/devices" {
+		t.Fatalf("the act should return to the roster: %d %q %s", rec.Code, rec.Header().Get("Location"), rec.Body.String())
+	}
+	posted := tr.lastPost
+	form := url.Values(posted.Form)
+	if posted.Path != "/entity/device/02:11:22:33:44:55" || form.Get("_act") != "pause" || form.Get("to") != "off" || form.Has("_csrf") {
+		t.Errorf("the plugin was asked %+v", posted)
+	}
+	if variant, message := s.sessions.TakeFlash(token); variant != "success" || message != "Internet resumed for Old tablet." {
+		t.Errorf("the outcome waiting on the roster is %q %q", variant, message)
+	}
+
+	if rec := postPlugin(t, s, "/entity/device/02:11:22:33:44:55?act=pause", url.Values{"to": {"sideways"}}); rec.Code != http.StatusBadRequest {
+		t.Errorf("a state that is neither on nor off should be refused: %d", rec.Code)
+	}
+	if rec := postPlugin(t, s, "/entity/device/02:11:22:33:44:55?act=reboot", url.Values{"to": {"on"}}); rec.Code != http.StatusNotFound {
+		t.Errorf("an act no plugin claims should not be found: %d", rec.Code)
 	}
 }

@@ -370,13 +370,13 @@ func TestDevicesReservationActionsFollowConfiguredState(t *testing.T) {
 // order. A slot no live plugin claims is inert rather than absent.
 func TestDeviceActsFollowTheSlotVocabulary(t *testing.T) {
 	s := rosterServer(t)
-	acts := s.EntityRowActs("device", "06:11:22:33:44:55", "old-printer", widget.DeviceActTitles(widget.Device{Reserved: true}))
-	if len(acts) != 2 {
-		t.Fatalf("a reserved device row draws %d acts, want removal and limits", len(acts))
+	acts := s.EntityRowActs("device", "06:11:22:33:44:55", "old-printer", widget.DeviceActTitles(widget.Device{Reserved: true}), nil)
+	if len(acts) != 3 || acts[0].Icon != "power" {
+		t.Fatalf("a reserved device row draws %+v, want pause, removal and limits", acts)
 	}
 	// No plugin answers in this fixture, so nothing is claimed.
 	for _, act := range acts {
-		if act.Href != "" || act.Opens {
+		if act.Href != "" || act.Opens || act.Post != "" {
 			t.Errorf("act %+v should be inert while no plugin claims its slot", act)
 		}
 	}

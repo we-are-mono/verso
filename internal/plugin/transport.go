@@ -123,6 +123,10 @@ type EntitySummary struct {
 	Name    string                `json:"name,omitempty"`
 	State   string                `json:"state"`
 	Details []EntitySummaryDetail `json:"details,omitempty"`
+	// Engaged names the plugin's posting acts (EntityAct.Post) that are on for
+	// this subject — "pause" for a device whose internet is paused — so the
+	// row's glyph says what pressing it does.
+	Engaged []string `json:"engaged,omitempty"`
 }
 
 // EntitySummaryDetail is a configured fact shown in the subject's tooltip.

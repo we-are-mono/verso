@@ -352,7 +352,7 @@
             {{/* an act that posts is a form of its own, marked so the shell's
                  script can post it where it stands and reconcile the row from
                  the answer; with no script it is simply submitted. */}}
-            {{else if .Name}}<form method="post" data-verso-act class="contents">
+            {{else if .Name}}<form method="post"{{with .Post}} action="{{.}}"{{end}} data-verso-act class="contents">
               {{template "verso-csrf" $csrf}}
               <input type="hidden" name="{{.Name}}" value="{{.Value}}">
               <button type="submit" aria-label="{{.Title}}{{if $row}} {{$row}}{{end}}" class="{{template "table.actbtn-class"}}">

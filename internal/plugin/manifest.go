@@ -135,10 +135,18 @@ type EntityTab struct {
 // Path is a route into the plugin, with {id} standing for the subject's own
 // identity (a MAC, a UCI section name). The shell substitutes it and applies the
 // same URL policy every plugin link passes.
+//
+// Post makes the act a change to the subject in place — pausing a device's
+// internet — rather than a destination, so it carries no Path: the shell posts
+// to the plugin's entity route with `_act` set to the slot and `to` to "on" or
+// "off", stages what the plugin answers, and returns to the listing. Whether
+// the act is on for a subject is the plugin's summary to say (EntitySummary's
+// Engaged), so the row's glyph names what pressing it does.
 type EntityAct struct {
 	Entity string `json:"entity"`
 	Slot   string `json:"slot"`
-	Path   string `json:"path"`
+	Path   string `json:"path,omitempty"`
+	Post   bool   `json:"post,omitempty"`
 }
 
 // validate enforces the required fields and a URL-safe id. A manifest that fails
