@@ -243,6 +243,7 @@
   "disk": "disk",
   "Temperatures": "Temperature",
   "Each bar runs to the point where the hardware would protect itself.": "Vsak stolpec teče do točke, kjer bi se strojna oprema zaščitila.",
+  "A bar runs to the point where the hardware would protect itself; a reading that reports no limit has none.": "Stolpec teče do točke, kjer bi se strojna oprema zaščitila; odčitek, ki meje ne sporoča, ga nima.",
   "warns %s · protects %s": "opozori pri %s · zaščiti pri %s",
   "warns %s": "opozori pri %s",
   "protects %s": "zaščiti pri %s",

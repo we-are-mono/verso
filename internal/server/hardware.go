@@ -230,7 +230,7 @@ func temperaturesCard(tr func(string) string, in hardwareInput) widget.Widget {
 	}
 	return &widget.Section{
 		Title: "Temperatures", Hairline: true,
-		Sub: "Each bar runs to the point where the hardware would protect itself.",
+		Sub: temperaturesLede(temps),
 		Children: append(children, &widget.Table{
 			Columns: []widget.TableColumn{
 				{Label: "Reading", Kind: "name", Width: widget.MeasureName},
@@ -241,6 +241,31 @@ func temperaturesCard(tr func(string) string, in hardwareInput) widget.Widget {
 			Rows: rows,
 		}),
 	}
+}
+
+// temperaturesLede says what the card's bars are, only as far as it is true:
+// every reading a bar when every one reports a limit, a bar for those that do
+// when some do not, and nothing of bars when none do.
+func temperaturesLede(temps []sensors.TempReading) string {
+	barred := 0
+	for i := range temps {
+		if hasBar(&temps[i]) {
+			barred++
+		}
+	}
+	switch {
+	case barred == 0:
+		return ""
+	case barred == len(temps):
+		return "Each bar runs to the point where the hardware would protect itself."
+	}
+	return "A bar runs to the point where the hardware would protect itself; a reading that reports no limit has none."
+}
+
+// hasBar reports whether a reading draws a bar: it reads, and it reports a
+// limit to run the bar to.
+func hasBar(t *sensors.TempReading) bool {
+	return !t.Fault && (t.Crit > 0 || t.Warn > 0)
 }
 
 // tempSource is where a temperature is read: a zone's type, or a chip and the

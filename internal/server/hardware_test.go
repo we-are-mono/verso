@@ -265,7 +265,7 @@ func TestTemperaturesChartOneReadingAtATime(t *testing.T) {
 	if field < 0 || graph < field || table < graph {
 		t.Errorf("not field, graph, table: field=%d graph=%d table=%d", field, graph, table)
 	}
-	if strings.Index(temps, "<select") < strings.Index(temps, "Each bar runs") {
+	if strings.Index(temps, "<select") < strings.Index(temps, "bar runs") {
 		t.Error("the card's heading carries a control")
 	}
 }
@@ -528,4 +528,24 @@ func firstLines(s string, _ int) string {
 		return s[:400]
 	}
 	return s
+}
+
+// The Temperatures lede says what its bars are only as far as it is true: every
+// reading a bar when every one reports a limit, a bar for those that do when
+// some do not, and no word of bars when none do.
+func TestTheTemperaturesLedeSaysOnlyWhatItsBarsAre(t *testing.T) {
+	limited := sensors.TempReading{Name: "cpu", MilliC: 50000, Crit: 95000, HasLimits: true}
+	bare := sensors.TempReading{Name: "edge", MilliC: 40000}
+	for _, tc := range []struct {
+		temps []sensors.TempReading
+		want  string
+	}{
+		{[]sensors.TempReading{limited, limited}, "Each bar runs to the point where the hardware would protect itself."},
+		{[]sensors.TempReading{limited, bare}, "A bar runs to the point where the hardware would protect itself; a reading that reports no limit has none."},
+		{[]sensors.TempReading{bare, bare}, ""},
+	} {
+		if got := temperaturesLede(tc.temps); got != tc.want {
+			t.Errorf("lede = %q, want %q", got, tc.want)
+		}
+	}
 }
