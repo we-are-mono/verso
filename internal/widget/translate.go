@@ -44,6 +44,9 @@ func translateFields(w Widget, t func(string) string) {
 			n.Subtitle = t(n.Subtitle)
 		}
 	case *Chart:
+		if n.Verbatim {
+			break
+		}
 		n.Label = t(n.Label)
 		for i := range n.Series {
 			n.Series[i].Label = t(n.Series[i].Label)

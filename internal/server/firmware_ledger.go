@@ -33,7 +33,9 @@ type ledgerRow struct {
 	Change                                    ledgerChange // empty while nothing is offered
 }
 
-// firmwareLedger is the section's model. Every string is already localized.
+// firmwareLedger is the section's model. What the page's widgets translate (a
+// part's name, the warning's title and sentence) it holds in English; what it
+// composes around data (the server note, the package count) is localized.
 type firmwareLedger struct {
 	// Title and Lede explain a warning — a check that could not answer — and
 	// are empty otherwise: a section with nothing wrong explains nothing.
@@ -66,9 +68,9 @@ func firmwareLedgerView(tr func(string) string, truth updatecheck.Truth, known b
 	version, rev := splitBuild(running)
 	l := firmwareLedger{Rows: []ledgerRow{
 		{Label: "OpenWrt", Current: version, CurrentRev: rev},
-		{Label: tr("Kernel"), Current: kernel},
+		{Label: "Kernel", Current: kernel},
 		{Label: "Verso", Current: verso},
-		{Label: tr("Target"), Current: board.Target},
+		{Label: "Target", Current: board.Target},
 	}}
 
 	if !known {
@@ -92,20 +94,20 @@ func firmwareLedgerView(tr func(string) string, truth updatecheck.Truth, known b
 			l.Server = fmt.Sprintf(tr("Checked against %s"), markdownCode(firmware.Server))
 		}
 	case openwrt.FirmwareNoOwut:
-		l.Title = tr("Firmware checks need owut")
-		l.Lede = tr("The upgrade tool this router needs to check for firmware builds, owut, is not installed.")
+		l.Title = "Firmware checks need owut"
+		l.Lede = "The upgrade tool this router needs to check for firmware builds, owut, is not installed."
 		l.NeedsOwut = true
 	case openwrt.FirmwareNoServer:
-		l.Title = tr("The update server didn't answer")
-		l.Lede = tr("No update server answered, so this router could not find out whether a newer build exists.")
+		l.Title = "The update server didn't answer"
+		l.Lede = "No update server answered, so this router could not find out whether a newer build exists."
 		l.Complaint = firmwareComplaint(firmware)
 	case openwrt.FirmwareUnsupported:
-		l.Title = tr("No firmware updates for this router")
-		l.Lede = tr("The update server cannot build an image for this router, so there is no firmware update to offer.")
+		l.Title = "No firmware updates for this router"
+		l.Lede = "The update server cannot build an image for this router, so there is no firmware update to offer."
 		l.Complaint = firmwareComplaint(firmware)
 	default:
-		l.Title = tr("The firmware check could not run")
-		l.Lede = tr("Check again in a moment, or upload an image yourself.")
+		l.Title = "The firmware check could not run"
+		l.Lede = "Check again in a moment, or upload an image yourself."
 	}
 	return l
 }

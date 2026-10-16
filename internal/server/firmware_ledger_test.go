@@ -5,6 +5,7 @@ package server
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -38,6 +39,27 @@ func TestFirmwareLedgerStatesOnlyWhatTheServerReported(t *testing.T) {
 	}
 	if l.Changes != "1 package changes" {
 		t.Errorf("changes = %q, want the singular", l.Changes)
+	}
+}
+
+// TestFirmwareLedgerLeavesTheWidgetsTheirWords: what the page's widgets
+// translate (a part's name, the warning's title and sentence) the ledger hands
+// over in English, so it is looked up once; only what it composes around data
+// (which server answered) it translates itself.
+func TestFirmwareLedgerLeavesTheWidgetsTheirWords(t *testing.T) {
+	loud := func(s string) string { return "«" + s + "»" }
+	failed := firmwareLedgerView(loud, updatecheck.Truth{Firmware: openwrt.FirmwareUpdate{State: openwrt.FirmwareNoServer}}, true, openwrt.Board{}, "0.0.36")
+	for _, row := range failed.Rows {
+		if strings.Contains(row.Label, "«") {
+			t.Errorf("part %q reaches its widget translated", row.Label)
+		}
+	}
+	if failed.Title != "The update server didn't answer" || strings.Contains(failed.Lede, "«") {
+		t.Errorf("warning %q / %q reaches its callout translated", failed.Title, failed.Lede)
+	}
+	offered := firmwareLedgerView(loud, updatecheck.Truth{Firmware: openwrt.FirmwareUpdate{State: openwrt.FirmwareCurrent, Server: "sysupgrade.openwrt.org"}}, true, openwrt.Board{}, "0.0.36")
+	if !strings.HasPrefix(offered.Server, "«") {
+		t.Errorf("server note %q is composed, so translated where it is made", offered.Server)
 	}
 }
 

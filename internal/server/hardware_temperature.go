@@ -92,8 +92,9 @@ func temperatureField(choices []temperatureChoice, series, window string) widget
 func (s *Server) temperatureGraph(ctx context.Context, tr func(string) string, c temperatureChoice, w historyWindow) *widget.Chart {
 	chart := &widget.Chart{
 		ID: temperatureGraphID, Unit: units.UnitCelsius, Place: widget.PlacePage, Span: w.Span(),
-		Label: fmt.Sprintf(tr("%s temperature, %s"), c.Name, strings.ToLower(tr(w.Label))),
-		Empty: fmt.Sprintf(tr("Nothing was recorded for %s over this window."), c.Name),
+		Label:    fmt.Sprintf(tr("%s temperature, %s"), c.Name, strings.ToLower(tr(w.Label))),
+		Verbatim: true,
+		Empty:    fmt.Sprintf(tr("Nothing was recorded for %s over this window."), c.Name),
 	}
 	if s.historyStore == nil {
 		chart.Empty = tr("This router keeps no history.")

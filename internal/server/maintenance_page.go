@@ -88,7 +88,7 @@ func firmwareSection(v maintenanceView) *widget.Section {
 	}
 	s.Children = append(s.Children, ledgerFacts(v.Ledger))
 	if note := ledgerNote(v.Ledger); note != "" {
-		s.Children = append(s.Children, &widget.Text{Markdown: note})
+		s.Children = append(s.Children, &widget.Text{Markdown: note, Translated: true})
 	}
 	acts := &widget.Stack{Inline: true}
 	for _, act := range []widget.Widget{v.Install, v.Owut, v.Manual} {

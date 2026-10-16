@@ -17,6 +17,31 @@ import (
 	"github.com/we-are-mono/verso/internal/i18n"
 )
 
+// TestShellProseIsLookedUpOnce: prose the shell translates as it composes it
+// reaches the widgets' own pass as words, not as a key — the firmware ledger's
+// parts, the temperature graph's description, the Ports card's WAN tag — so a
+// Slovenian render of their pages falls back on nothing.
+func TestShellProseIsLookedUpOnce(t *testing.T) {
+	bundle, problems := i18n.Load(os.DirFS("../../i18n"), "*/*.json")
+	if len(problems) > 0 {
+		t.Fatal(problems)
+	}
+	var missing []string
+	path := ""
+	srv := newServer(t, fakeBackend{access: true})
+	srv.SetBundle(bundle.Recorded(func(code, component, key string, translated bool) {
+		if code == "sl" && !translated {
+			missing = append(missing, path+": "+component+": "+key)
+		}
+	}))
+	for _, path = range []string{"/", "/system/maintenance", "/system/hardware"} {
+		getLang(t, srv, path, "sl-SI")
+	}
+	for _, m := range missing {
+		t.Errorf("fell back to English: %s", m)
+	}
+}
+
 // TestI18nAudit is the deterministic untranslated-string report (`make
 // i18n-audit`): missing translations fail the opt-in audit. It loads the real catalogs,
 // installs a recording bundle (the translators are the one seam that knows a

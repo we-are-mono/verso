@@ -53,6 +53,10 @@ type Chart struct {
 	// Marks are what happened over the window (ADR-019), drawn behind the
 	// curves.
 	Marks []ChartMark
+	// Verbatim marks a Label and series names the shell composed in the
+	// reader's words (a sensor's name in its sentence), which a second pass
+	// would look up as a key it never was.
+	Verbatim bool
 }
 
 // ChartPlace is where a chart stands: on a page's card, its cells 32px, or in

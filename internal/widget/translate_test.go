@@ -245,6 +245,19 @@ func TestTranslateHonorsVerbatimDeclarations(t *testing.T) {
 	if idle.BusyBody != "Povezano" {
 		t.Errorf("prose busy body = %q, want translated", idle.BusyBody)
 	}
+
+	// And a chart whose description and series the shell composed (a
+	// sensor's name in its sentence).
+	described := &Chart{Label: "Online", Series: []ChartSeries{{Label: "Online"}}, Verbatim: true}
+	charted := &Chart{Label: "Online", Series: []ChartSeries{{Label: "Online"}}}
+	translateSchema(described, tr)
+	translateSchema(charted, tr)
+	if described.Label != "Online" || described.Series[0].Label != "Online" {
+		t.Errorf("verbatim chart = %q / %q, must stay verbatim", described.Label, described.Series[0].Label)
+	}
+	if charted.Label != "Povezano" || charted.Series[0].Label != "Povezano" {
+		t.Errorf("prose chart = %q / %q, want translated", charted.Label, charted.Series[0].Label)
+	}
 }
 
 // TestTranslateSchemaFallsBackToSource pins the guarantee that an untranslated key

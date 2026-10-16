@@ -1027,6 +1027,7 @@
   "Undone: %d changes. (few)": "Razveljavljene: %d spremembe.",
   "Undone: %d changes.": "Razveljavljenih: %d sprememb.",
   "GPIO switches": "Stikala GPIO",
+  "WAN": "WAN",
   "Pending changes": "Čakajoče spremembe",
   "Pending: %s": "Čaka: %s",
   "%d pending change": "%d čakajoča sprememba",
