@@ -70,6 +70,10 @@ type liveRoute struct {
 	Proto   string `json:"proto"`
 	Type    string `json:"type,omitempty"`
 	Source  string `json:"source,omitempty"`
+	// From is the source prefix a source-specific route answers only (ip
+	// route's "from"): an IPv6 default per delegated prefix. Empty answers
+	// every source.
+	From string `json:"from,omitempty"`
 }
 
 func kernelNetworkAddresses(devices map[string]any) {

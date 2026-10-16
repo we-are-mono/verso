@@ -15,9 +15,15 @@ import (
 
 // routeMessage spells one RTM_NEWROUTE as the kernel sends it in a dump.
 func routeMessage(af, dstLen, table, proto, typ byte, flags uint32, attrs map[uint16][]byte) []byte {
-	body := []byte{af, dstLen, 0, 0, table, proto, 0, typ, 0, 0, 0, 0}
+	return sourceRouteMessage(af, dstLen, 0, table, proto, typ, flags, attrs)
+}
+
+// sourceRouteMessage is a route that answers only traffic from srcLen bits
+// of RTA_SRC (attrs[2]), as `ip route` shows "default from …".
+func sourceRouteMessage(af, dstLen, srcLen, table, proto, typ byte, flags uint32, attrs map[uint16][]byte) []byte {
+	body := []byte{af, dstLen, srcLen, 0, table, proto, 0, typ, 0, 0, 0, 0}
 	binary.NativeEndian.PutUint32(body[8:], flags)
-	for _, id := range []uint16{1, 4, 5, 6, 7} {
+	for _, id := range []uint16{1, 2, 4, 5, 6, 7} {
 		value, ok := attrs[id]
 		if !ok {
 			continue
@@ -93,5 +99,22 @@ func TestLiveRoutesReadIPv6AndNameUnknownProtocolsByNumber(t *testing.T) {
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("routes = %+v\nwant %+v", got, want)
+	}
+}
+
+// A source-specific route answers only traffic from its source prefix — two
+// IPv6 defaults through one gateway, one per delegated prefix — so it reads
+// that prefix, as `ip route` shows "default from …"; a route for every source
+// reads none.
+func TestALiveRouteReadsTheSourceItAnswers(t *testing.T) {
+	rib := sourceRouteMessage(syscall.AF_INET6, 0, 56, 254, 4, syscall.RTN_UNICAST, 0, map[uint16][]byte{
+		2: net.ParseIP("fd42:7ea:aa00::"), 4: u32(2), 5: net.ParseIP("fe80::1"), 6: u32(512),
+	})
+	rib = append(rib, sourceRouteMessage(syscall.AF_INET6, 0, 128, 254, 4, syscall.RTN_UNICAST, 0, map[uint16][]byte{
+		2: net.ParseIP("fd42:7ea:1::10"), 4: u32(2), 5: net.ParseIP("fe80::1"), 6: u32(512),
+	})...)
+	got := liveRoutesFrom(rib, syscall.AF_INET6, map[int]string{2: "wan0"})
+	if len(got) != 2 || got[0].From != "fd42:7ea:aa00::/56" || got[1].From != "fd42:7ea:1::10/128" {
+		t.Fatalf("routes = %+v, want each one's source prefix", got)
 	}
 }

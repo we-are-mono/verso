@@ -262,8 +262,8 @@ var routeTypes = map[byte]string{
 // lists it. A cached clone (RTM_F_CLONED) is not a route anyone set.
 func liveRoutesFrom(rib []byte, af int, nameByIndex map[int]string) []liveRoute {
 	const (
-		rtaDst, rtaGateway, rtaPrefSrc = 1, 5, 7
-		rtmFCloned                     = 0x200
+		rtaDst, rtaSrc, rtaGateway, rtaPrefSrc = 1, 2, 5, 7
+		rtmFCloned                             = 0x200
 	)
 	messages, err := syscall.ParseNetlinkMessage(rib)
 	if err != nil {
@@ -305,6 +305,10 @@ func liveRoutesFrom(rib []byte, af int, nameByIndex map[int]string) []liveRoute 
 				}
 			case rtaDst:
 				dst = net.IP(attr.value)
+			case rtaSrc:
+				// The source prefix the route answers only; its length is
+				// the message's own (rtm_src_len).
+				route.From = fmt.Sprintf("%s/%d", net.IP(attr.value), data[2])
 			case rtaGateway:
 				route.Gateway = net.IP(attr.value).String()
 			case rtaPrefSrc:
