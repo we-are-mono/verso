@@ -102,6 +102,20 @@ func TestPackagesInventory(t *testing.T) {
 	}
 }
 
+// A package's name is a verbatim machine string (`apk add htop`), so it is
+// written in mono wherever it stands, as the Services page writes it.
+func TestPackageNamesAreWrittenAsServicesWritesThem(t *testing.T) {
+	pkgs := []openwrt.Package{{Name: "htop", Version: "3.5.1-r1", Installed: true}}
+	for name, table := range map[string]*widget.Table{
+		"installed": packageListingTable(pkgs),
+		"discover":  discoverTable(pkgs, "htop").(*widget.Table),
+	} {
+		if kind := table.Columns[0].Kind; kind != "reference" {
+			t.Errorf("%s Package column kind = %q, want reference", name, kind)
+		}
+	}
+}
+
 func TestPackageDependencyHasNoRemoveAction(t *testing.T) {
 	b := fakeBackend{access: true, pkgInstalledList: []openwrt.Package{
 		{Name: "ca-bundle", Version: "20260601-r1", Feed: "base", Installed: true,
@@ -417,7 +431,7 @@ func TestDiscoverResultsFitTheDrawer(t *testing.T) {
 	for _, c := range table.Columns {
 		labels = append(labels, c.Label+":"+c.Kind)
 	}
-	if got, want := strings.Join(labels, " "), "Package:name Version:mono State:pill :actions"; got != want {
+	if got, want := strings.Join(labels, " "), "Package:reference Version:mono State:pill :actions"; got != want {
 		t.Errorf("columns = %q, want %q", got, want)
 	}
 	var html strings.Builder

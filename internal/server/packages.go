@@ -236,7 +236,8 @@ func packagesTable(pkgs []openwrt.Package) widget.Widget {
 
 func packageListingTable(pkgs []openwrt.Package) *widget.Table {
 	cols := []widget.TableColumn{
-		{Label: "Package", Kind: "name", Width: widget.MeasureLong},
+		// A package's name is verbatim (`apk add htop`): mono, as Services writes it.
+		{Label: "Package", Kind: "reference", Width: widget.MeasureLong},
 		{Label: "Version", Kind: "mono", Width: widget.MeasureWord},
 		{Label: "What it is", Kind: "comment"},
 		{Label: "Size", Kind: "runtime", Width: widget.MeasureShort},
@@ -721,7 +722,7 @@ func packageIndexNote(checkedAt int64, err error, tr func(string) string) string
 // drawer carries what it does, where it is from, and the act.
 func discoverTable(pkgs []openwrt.Package, q string) widget.Widget {
 	cols := []widget.TableColumn{
-		{Label: "Package", Kind: "name"},
+		{Label: "Package", Kind: "reference"},
 		{Label: "Version", Kind: "mono", Width: widget.MeasureWord},
 		{Label: "State", Kind: "pill", Width: widget.MeasureShort},
 		{Kind: "actions", Width: widget.MeasureShort},

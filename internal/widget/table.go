@@ -26,7 +26,8 @@ import (
 //
 //	"text"     — plain ink text (the default)
 //	"name"     — the row's identity (a zone, an interface): bold ink
-//	"reference"— name-cell anatomy with regular-weight text (an interface cited elsewhere)
+//	"reference"— name-cell anatomy in mono: a verbatim identity (a service, a
+//	             package, a route's target) or an interface cited elsewhere
 //	"mono"     — verbatim machine strings: addresses, ports, device names
 //	"keyword"  — a closed vocabulary the device itself speaks (tcp, udp,
 //	             icmpv6, A, CNAME): mono, because they are strings someone
@@ -947,9 +948,10 @@ func (t *Table) suffixColumns(rows []TableRow) map[int]bool {
 	return out
 }
 
-// rowName is what a row is called: its name column, else its comment (a rule
-// with no name is known by its comment), else the first cell with words in it,
-// else the path its endpoints draw.
+// rowName is what a row is called: its name column, else its verbatim identity
+// (a package, a service), else its comment (a rule with no name is known by its
+// comment), else the first cell with words in it, else the path its endpoints
+// draw.
 func (t *Table) rowName(row TableRow) string {
 	// A placeholder dash says a value is absent; it never names a row.
 	text := func(i int) string {
@@ -960,7 +962,7 @@ func (t *Table) rowName(row TableRow) string {
 		}
 		return ""
 	}
-	for _, kind := range []string{"name", "phrase", "comment", "reference"} {
+	for _, kind := range []string{"name", "phrase", "reference", "comment"} {
 		for i, col := range t.Columns {
 			if col.Kind == kind && text(i) != "" {
 				return text(i)

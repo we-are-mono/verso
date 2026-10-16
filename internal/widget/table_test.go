@@ -1857,3 +1857,17 @@ func TestPhraseWordsAreTranslatedAndValuesAreNot(t *testing.T) {
 		t.Fatalf("parts = %+v %+v %+v", *parts[0].Chip, parts[1], parts[2])
 	}
 }
+
+// A verbatim identity (a package, a service) names its row ahead of the words
+// that describe it, so a confirm asks about htop, not about a process viewer;
+// a row with no name and no identity is still known by its comment.
+func TestARowIsNamedByItsIdentityBeforeItsComment(t *testing.T) {
+	packages := &Table{Columns: []TableColumn{{Kind: "reference"}, {Kind: "comment"}}}
+	if got := packages.rowName(TableRow{Cells: []TableCell{{Text: "htop"}, {Text: "Process viewer"}}}); got != "htop" {
+		t.Errorf("package row named %q, want htop", got)
+	}
+	rules := &Table{Columns: []TableColumn{{Kind: "name"}, {Kind: "comment"}}}
+	if got := rules.rowName(TableRow{Cells: []TableCell{{Text: "—"}, {Text: "Allow SSH"}}}); got != "Allow SSH" {
+		t.Errorf("nameless rule named %q, want its comment", got)
+	}
+}
