@@ -49,8 +49,15 @@ governs the whole card, the control its header carries (`control`): the Traffic
 card's window, the compact dropdown before the open-close act, which fetches the
 window into the graph's place and never opens or closes the card. A choice that
 governs one graph within a card stands over that graph as a form field instead.
-The registry is the shell's. A plugin contributes no card: a plugin card would need a contract
-of its own, as the entity panel's tabs have, and is a decision of its own.
+The registry is the shell's. A plugin may opt into one read-only card with the
+optional manifest field `overview: {"path":"/overview","icon":"radio"}`.
+The shell supplies its title from the manifest name, calls visible cards with
+GET and the operator-scoped UCI snapshot, and renders only schema-v1 `stack`,
+`properties`, or `callout` bodies. Links and actions are forbidden in the body;
+the card's outer door opens `/plugins/<id>/`. A bounded timeout and per-card
+containment keep a failed plugin from taking down the page. Plugin cards follow
+the normal per-browser arrange, hide, and close layout. They refresh on page
+reload and do not join the Overview event stream.
 
 Bodies compose the existing widgets (`Properties`, `Meter`, `Traffic`,
 `Table`, `Ports`). The Ports and Tunnels listings key their rows `interface:<name>` with

@@ -110,8 +110,6 @@ own and points at the decision that governs it; the rationale lives there, not h
 - **Layout on the router, per user.** Keep the card layout next to
   `history.db` per signed-in user, so it follows the operator to another
   browser; a store-backed `layoutSource` replaces `cookieLayout`.
-- **Plugin-contributed cards.** A contract for a plugin to add a card to the
-  Overview (WireGuard peers, QoS), as the entity panel's tabs have one.
 
 ## Router's panel (ADR-005, ADR-022)
 

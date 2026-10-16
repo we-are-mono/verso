@@ -26,9 +26,13 @@ type cookieLayout struct{ hardware bool }
 // Layout reads the request's layout cookie as untrusted input; with none, or
 // one it cannot read, the request gets the default layout.
 func (c cookieLayout) Layout(r *http.Request) widget.OverviewLayout {
-	l := widget.DefaultOverviewLayout()
+	return c.LayoutWithPlugins(r, nil)
+}
+
+func (c cookieLayout) LayoutWithPlugins(r *http.Request, pluginIDs []string) widget.OverviewLayout {
+	l := widget.DefaultOverviewLayoutWithPlugins(pluginIDs)
 	if cookie, err := r.Cookie(overviewLayoutCookie); err == nil {
-		l = widget.ParseOverviewLayout(cookie.Value)
+		l = widget.ParseOverviewLayoutWithPlugins(cookie.Value, pluginIDs)
 	}
 	if !c.hardware {
 		l = l.Without("hardware")

@@ -34,6 +34,7 @@ type cardHead struct {
 // status and summary change in its own functions and nowhere else.
 type overviewCardSpec struct {
 	ID, Title, Icon string
+	translate       func(string) string
 	// Opens names the page the card's Go link leads to; href resolves it from
 	// the live registry, empty when no running plugin serves it.
 	Opens string

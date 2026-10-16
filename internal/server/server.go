@@ -1035,7 +1035,32 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	zone, _ := now.Zone()
 	// The browser's card layout is read before anything renders, so the page
 	// arrives arranged (ADR-022).
-	ov := &widget.Overview{Clock: now.Format("15:04:05"), Zone: zone, Layout: s.layouts.Layout(r)}
+	var overviewManifests []plugin.Manifest
+	var overviewPluginIDs []string
+	for _, m := range s.manifestList() {
+		if m.Overview != nil {
+			overviewManifests = append(overviewManifests, m)
+			overviewPluginIDs = append(overviewPluginIDs, m.ID)
+		}
+	}
+	layout := s.layouts.Layout(r)
+	if source, ok := s.layouts.(interface {
+		LayoutWithPlugins(*http.Request, []string) widget.OverviewLayout
+	}); ok {
+		layout = source.LayoutWithPlugins(r, overviewPluginIDs)
+	}
+	ov := &widget.Overview{Clock: now.Format("15:04:05"), Zone: zone, Layout: layout}
+	for _, m := range overviewManifests {
+		card := widget.OverviewPluginCard{
+			ID: widget.PluginOverviewCardID(m.ID), PluginID: m.ID, Title: m.Name,
+			Icon: m.Overview.Icon, Href: "/plugins/" + m.ID + "/",
+			Translate: s.pluginTranslators(r)(m.ID),
+		}
+		if ov.Layout.Shows(card.ID) {
+			card.Body = s.fetchOverviewCard(r, m)
+		}
+		ov.PluginCards = append(ov.PluginCards, card)
+	}
 	board, boardErr := s.backend.Board(r.Context(), sid)
 	if boardErr == nil {
 		ov.Firmware, ov.Kernel, ov.Model = board.Firmware, board.Kernel, board.Model
@@ -1108,6 +1133,31 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.renderPage(w, r, http.StatusOK, pageHeader{}, "wide", nil, template.HTML(body.String()))
+}
+
+// fetchOverviewCard requests one bounded, read-only plugin snapshot. Invalid or
+// failed responses degrade to a callout inside that card alone.
+func (s *Server) fetchOverviewCard(r *http.Request, m plugin.Manifest) widget.Widget {
+	unavailable := func() widget.Widget {
+		return &widget.Callout{Variant: "warning", Title: "Unavailable", Body: "This plugin’s Overview reading is unavailable."}
+	}
+	if s.transport == nil {
+		return unavailable()
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+	defer cancel()
+	env, err := s.transport.Fetch(ctx, m.Endpoint(), plugin.Request{
+		Method: http.MethodGet, Path: m.Overview.Path,
+		UCI: s.readSnapshot(ctx, m, s.sessionSID(r)),
+	})
+	if err != nil || env == nil || env.Status != http.StatusOK || env.SchemaVersion != 1 || env.NotFound || env.Immediate || env.CTA != "" || len(env.Commands) != 0 || len(env.Commit) != 0 || env.Entities != nil || len(env.Act) != 0 || env.Back != nil || env.Banner != nil || env.Notice != nil || len(env.Pages) != 0 {
+		return unavailable()
+	}
+	body, err := widget.DecodeOverviewBody(env.Widget)
+	if err != nil {
+		return unavailable()
+	}
+	return body
 }
 
 // sysMetricsToWidget maps the System readings onto the overview's gauge fields,
