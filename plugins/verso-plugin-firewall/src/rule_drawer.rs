@@ -21,6 +21,7 @@ use verso_plugin::{uci_text, DrawerTab, Map, RowDrawer, SelectOption, Tone, Widg
 
 use crate::conditions;
 use crate::fields;
+use crate::format;
 use crate::model::{Firewall, Rule};
 use crate::page;
 use crate::rule_form::{Errors, RuleForm, DSCP_CLASSES, HELPERS};
@@ -84,7 +85,7 @@ pub fn blank(model: &Firewall, form: &RuleForm, errors: &Errors, tab: &str) -> R
     // A rule that does not exist yet has no config to preview and no hits to
     // count: the panel states what it will be, not what it is.
     fields.extend(carried(form, tab));
-    fields.push(Widget::config_preview(CONFIG_PATH, &uci_block(NEW, form)));
+    fields.push(Widget::config_preview(CONFIG_PATH, &uci_block(NEW, form)).saying(&says(form)));
     RowDrawer {
         title: "New rule".into(),
         tabs: new_tabs(form, tab),
@@ -182,10 +183,9 @@ fn tabs(rule: &Rule, active: &str) -> Vec<DrawerTab> {
 fn body(model: &Firewall, rule: &Rule, form: &RuleForm, errors: &Errors, tab: &str) -> Vec<Widget> {
     let (title, mut fields) = tab_body(model, form, errors, tab);
     fields.extend(carried(form, tab));
-    fields.push(Widget::config_preview(
-        CONFIG_PATH,
-        &uci_block(&rule.section, form),
-    ));
+    fields.push(
+        Widget::config_preview(CONFIG_PATH, &uci_block(&rule.section, form)).saying(&says(form)),
+    );
     // The panel saves for itself rather than through the page's staging bar:
     // the bar belongs to the listing behind it, and a Save that is down there
     // while the form is up here is a Save nobody finds. Save puts the rule in
@@ -632,6 +632,64 @@ fn when_fields(form: &RuleForm, errors: &Errors) -> Vec<Widget> {
     conditions::schedule_fields(&form.schedule, errors)
 }
 
+/// CONDITIONS are the matches beyond the path and protocol a rule may carry;
+/// any one of them narrows what its sentence says it acts on.
+const CONDITIONS: [&str; 13] = [
+    "device",
+    "src_ip",
+    "src_mac",
+    "src_port",
+    "dest_ip",
+    "dest_port",
+    "icmp_type",
+    "ipset",
+    "helper",
+    "mark",
+    "dscp",
+    "rate",
+    "schedule",
+];
+
+/// says is the rule in one sentence, verdict first, for the preview to carry
+/// over the commit: what it does to which traffic, from where to where,
+/// whether conditions narrow it, and whether it is on at all. A verdict sits
+/// on its own reading, so this is where it is never missed.
+fn says(form: &RuleForm) -> String {
+    let end = |zone: &str| match zone {
+        "" => "the router itself".to_string(),
+        "*" => "anywhere".to_string(),
+        zone => format::zone_label(zone),
+    };
+    let family = match format::family(&form.family) {
+        format::Family::V4 => "IPv4 ",
+        format::Family::V6 => "IPv6 ",
+        format::Family::Any => "",
+    };
+    let traffic = match format::protocol(&form.proto, "").as_str() {
+        "any" => format!("all {family}traffic"),
+        protocols => format!("{family}{protocols} traffic"),
+    };
+    let path = format!("{traffic} from {} to {}", end(&form.src), end(&form.dest));
+    let mut sentence = match form.target.as_str() {
+        "ACCEPT" => format!("Accepts {path}"),
+        "REJECT" => format!("Rejects {path}"),
+        "DROP" => format!("Drops {path}"),
+        "NOTRACK" => format!("Leaves {path} untracked"),
+        "HELPER" => format!("Hands {path} to a connection helper"),
+        "MARK" => format!("Marks {path}"),
+        "DSCP" => format!("Sets the DSCP class of {path}"),
+        other => format!("Applies {other} to {path}"),
+    };
+    if CONDITIONS.iter().any(|key| form.active(key)) {
+        sentence.push_str(", where its conditions match");
+    }
+    sentence.push('.');
+    if !form.enabled {
+        sentence.push_str(" The rule is off, so it does nothing yet.");
+    }
+    sentence
+}
+
 /// uci_block renders the rule as the config file will hold it.
 fn uci_block(section: &str, form: &RuleForm) -> String {
     uci_text(
@@ -645,8 +703,72 @@ mod tests {
     use super::*;
     use crate::counters::Counters;
     use crate::fixture;
+    use crate::rule_form::Tokens;
     use serde_json::Value;
     use verso_plugin::Form;
+
+    /// The preview says in words what the rule will do, verdict first, so the
+    /// verdict on the Action reading is never written blind: what, from where,
+    /// to where, whether its conditions narrow it, and whether it is on.
+    #[test]
+    fn the_preview_says_what_the_rule_does() {
+        let from_wan = RuleForm {
+            src: "wan".into(),
+            ..RuleForm::default()
+        };
+        assert_eq!(
+            says(&from_wan),
+            "Accepts tcp/udp traffic from WAN to the router itself."
+        );
+        assert_eq!(
+            says(&RuleForm::default()),
+            "Accepts tcp/udp traffic from the router itself to the router itself."
+        );
+        let narrowed = RuleForm {
+            src: "*".into(),
+            dest: "lan".into(),
+            proto: vec!["tcp".into()],
+            family: "ipv4".into(),
+            target: "DROP".into(),
+            dest_port: Tokens {
+                include: vec!["22".into()],
+                exclude: vec![],
+            },
+            ..RuleForm::default()
+        };
+        assert_eq!(
+            says(&narrowed),
+            "Drops IPv4 tcp traffic from anywhere to LAN, where its conditions match."
+        );
+        let off = RuleForm {
+            enabled: false,
+            target: "NOTRACK".into(),
+            proto: vec!["all".into()],
+            ..from_wan
+        };
+        assert_eq!(
+            says(&off),
+            "Leaves all traffic from WAN to the router itself untracked. The rule is off, so it does nothing yet."
+        );
+    }
+
+    /// The sentence rides in the preview of both panels, so it is answered with
+    /// the lines as the form is edited.
+    #[test]
+    fn both_panels_preview_carries_the_sentence() {
+        let form = RuleForm {
+            src: "wan".into(),
+            ..RuleForm::default()
+        };
+        for tab in [MATCH, ACTION, WHEN] {
+            let panel =
+                serde_json::to_value(blank(&fixture::firewall(), &form, &Errors::default(), tab))
+                    .expect("serialize");
+            let preview = fixture::find_with(&panel, &|w| w["type"] == "code" && w["live"] == true)
+                .expect("a live preview");
+            assert_eq!(preview["says"], says(&form), "{tab}");
+        }
+    }
 
     /// Saving from one reading writes the whole rule, not the third of it that
     /// reading shows.

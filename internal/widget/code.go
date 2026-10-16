@@ -32,6 +32,12 @@ type Code struct {
 	// after it. Empty is an opaque value — a key, a token — shown as one
 	// string.
 	Grammar string `json:"grammar,omitempty"`
+	// Says is what a live block's lines do, in one plain sentence ("Accepts
+	// tcp/udp traffic from WAN to the router itself."), set under the lines
+	// inside the preview, so it is answered with them as the form is edited
+	// and is the last thing read before the form's act. The plugin composes it
+	// from the values, so it stands as written.
+	Says string `json:"says,omitempty"`
 }
 
 // CodeLine is one line of a Code block read in its grammar: the indent it

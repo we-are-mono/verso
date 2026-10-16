@@ -1066,6 +1066,26 @@ func TestUciLine(t *testing.T) {
 // TestRenderLivePreview: a code block declared live is the same block plus the
 // marker the form watcher finds — and the renderer can answer with that one
 // block alone, which is what a preview request gets back.
+// A live preview may say in words what its lines do. The sentence stands
+// inside the block, under the lines, so it is answered and replaced with them
+// as the form is edited, and it is the last thing over the form's act.
+func TestALivePreviewSaysWhatItDoes(t *testing.T) {
+	r := newRenderer(t)
+	says := "Accepts tcp/udp traffic from WAN to the router itself."
+	got := render(t, r, &Code{Label: "/etc/config/firewall", Value: "config rule 'new'\n", Grammar: "uci", Live: true, Says: says})
+	preview := got[strings.Index(got, "data-verso-preview"):]
+	at := strings.Index(preview, says)
+	if at < 0 || !strings.Contains(preview[:at], "config") {
+		t.Fatalf("the sentence does not stand in the preview under its lines: %s", got)
+	}
+	if !strings.Contains(got, `data-verso-preview-says`) {
+		t.Errorf("the sentence carries no hook: %s", got)
+	}
+	if plain := render(t, r, &Code{Value: "abc"}); strings.Contains(plain, "data-verso-preview-says") {
+		t.Errorf("a block with nothing to say draws a sentence: %s", plain)
+	}
+}
+
 func TestRenderLivePreview(t *testing.T) {
 	r := newRenderer(t)
 	block := &Code{Label: "/etc/config/firewall", Value: "config zone 'lan'\n", Copy: true, Live: true}

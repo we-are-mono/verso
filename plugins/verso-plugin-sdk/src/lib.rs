@@ -848,6 +848,11 @@ pub enum Widget {
         /// whole.
         #[serde(skip_serializing_if = "String::is_empty")]
         grammar: String,
+        /// What a live block's lines do, in one plain sentence, set under the
+        /// lines inside the preview so it is answered with them as the form is
+        /// edited. Set it through [`Widget::saying`].
+        #[serde(skip_serializing_if = "String::is_empty")]
+        says: String,
     },
     /// A whole-page state that is not a listing — a page waiting on a
     /// precondition: icon, headline, reassurance, and the call(s) to action as
@@ -1870,6 +1875,7 @@ impl Widget {
             copy: true,
             live: false,
             grammar: String::new(),
+            says: String::new(),
         }
     }
 
@@ -1882,6 +1888,7 @@ impl Widget {
             copy: true,
             live: false,
             grammar: "uci".into(),
+            says: String::new(),
         }
     }
 
@@ -1898,7 +1905,18 @@ impl Widget {
             copy: true,
             live: true,
             grammar: "uci".into(),
+            says: String::new(),
         }
+    }
+
+    /// saying gives a live code block the sentence that says what its lines
+    /// do ("Accepts tcp/udp traffic from WAN to the router itself."), kept
+    /// current with them. Composed from the values, it stands as written.
+    pub fn saying(mut self, sentence: &str) -> Widget {
+        if let Widget::Code { says, .. } = &mut self {
+            *says = sentence.into();
+        }
+        self
     }
 
     /// empty is a whole-page state that is not a listing (see [`Widget::Empty`]).

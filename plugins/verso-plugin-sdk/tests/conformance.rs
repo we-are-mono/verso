@@ -367,6 +367,7 @@ fn write_widget_fixtures() {
                         copy: true,
                         live: true,
                         grammar: String::new(),
+                        says: String::new(),
                     })),
                     ..CollectionAdd::default()
                 }),

@@ -108,6 +108,7 @@ pub fn keys(r: &Request, posted: Option<&Form>, refused: &str) -> Widget {
                         copy: false,
                         live: true,
                         grammar: String::new(),
+                        says: String::new(),
                     })),
                 }),
             }
