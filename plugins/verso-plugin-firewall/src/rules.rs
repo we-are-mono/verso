@@ -16,8 +16,8 @@
 
 use verso_plugin::{
     commit, commit_delete, commit_new, ColumnWidth, Envelope, Form, HeadingAct,
-    RowDrawer, Snapshot, Table, TableCell, TableColumn, TableGroup, TableRow, Tone,
-    Widget,
+    RowDrawer, Snapshot, Table, TableCell, TableChip, TableColumn, TableGroup, TablePart,
+    TableRow, Tone, Widget,
 };
 
 use crate::counters::Counters;
@@ -27,6 +27,7 @@ use crate::model::{Firewall, Rule, CONFIG};
 use crate::page;
 use crate::rule_drawer;
 use crate::rule_form::{Errors, RuleForm};
+use crate::zone_drawer;
 
 /// HEADING is what this page is about, in the words the canvas uses: each of
 /// this plugin's pages names its own subject rather than wearing the plugin's
@@ -275,6 +276,7 @@ fn table(model: &Firewall, counters: &Counters, open: Option<&Open>) -> Widget {
                     add_text: "Add rule".into(),
                     add_href: add_href(&lane),
                     add_panel: true,
+                    close: close(model, &lane),
                 });
             }
             rows.push(row);
@@ -401,6 +403,92 @@ fn add_href(lane: &Lane) -> String {
     rule_drawer::new_href("", "")
 }
 
+/// close is a lane's last word: what firewall4 does with traffic none of the
+/// lane's rules caught, as it ends the chain. A zone's input and output chains
+/// end on that zone's policy for the direction. Its forward chain accepts into
+/// the zones it forwards to, and ends on its forward policy only for traffic
+/// leaving into the zone itself (`jump reject_to_wan` matches the zone's own
+/// devices); traffic into any other zone falls back to the forward hook,
+/// which ends on the global forward policy. A rule for any zone runs in every
+/// zone's chain, so each zone's own policy follows it. A lane that decides
+/// nothing (marking, helpers, untracked traffic) and a zone the config does
+/// not have close on nothing.
+fn close(model: &Firewall, lane: &Lane) -> Vec<TablePart> {
+    let otherwise = TablePart::Words("Otherwise".into());
+    if matches!(lane.chain.as_str(), "input" | "output" | "forward") {
+        return vec![
+            otherwise,
+            TablePart::Door {
+                words: "each zone’s own policy".into(),
+                href: page::zones_href(),
+            },
+        ];
+    }
+    let Some((direction, name)) = lane.chain.split_once('_') else {
+        return Vec::new();
+    };
+    let Some(zone) = model.zones.iter().find(|zone| zone.name == name) else {
+        return Vec::new();
+    };
+    let door = |verdict: &str, words: &str, href: String| {
+        [
+            verdict_chip(verdict),
+            TablePart::Door {
+                words: words.into(),
+                href,
+            },
+        ]
+    };
+    let zone_href = || zone_drawer::href(&zone.section, zone_drawer::TRAFFIC);
+    let global = &model.defaults.forward;
+    let crossings: Vec<&str> = model
+        .forwardings
+        .iter()
+        .filter(|f| f.enabled && f.src == zone.name)
+        .map(|f| f.dest.as_str())
+        .collect();
+    let mut parts = vec![otherwise];
+    match direction {
+        "input" => parts.extend(door(&zone.input, "the zone’s input policy", zone_href())),
+        "output" => parts.extend(door(&zone.output, "the zone’s output policy", zone_href())),
+        "forward" => match lane.shared_dest.as_deref() {
+            Some(dest) if dest == zone.name => {
+                parts.extend(door(&zone.forward, "the zone’s forward policy", zone_href()));
+            }
+            Some(dest) if crossings.contains(&dest) => parts.extend(door(
+                "accept",
+                "the zone’s forwarding",
+                zone_drawer::href(&zone.section, zone_drawer::REACHES),
+            )),
+            Some(_) => parts.extend(door(global, "the global forward policy", page::settings_href())),
+            None => {
+                if !crossings.is_empty() {
+                    parts.extend([
+                        verdict_chip("accept"),
+                        TablePart::Words("where the zone forwards".into()),
+                    ]);
+                }
+                parts.extend(door(&zone.forward, "within the zone", zone_href()));
+                parts.extend(door(global, "anywhere else", page::settings_href()));
+            }
+        },
+        _ => return Vec::new(),
+    }
+    parts
+}
+
+/// verdict_chip is a verdict as every rule's Action column states it: the
+/// word, lowercase as firewall4's targets read, in its tone, led by its square.
+fn verdict_chip(verdict: &str) -> TablePart {
+    let verdict = verdict.to_lowercase();
+    TablePart::Chip(TableChip {
+        tone: format::target_tone(&verdict).into(),
+        label: verdict,
+        dot: true,
+        ..TableChip::default()
+    })
+}
+
 fn shared_dest(rules: &[&Rule]) -> Option<String> {
     let first = rules.first()?;
     if first.dest.is_empty() || first.dest == "*" {
@@ -425,6 +513,137 @@ mod tests {
 
     fn table_of(body: &Value) -> Value {
         fixture::listing(body)
+    }
+
+    fn lane(chain: &str, shared_dest: Option<&str>) -> Lane<'static> {
+        Lane {
+            chain: chain.into(),
+            shared_dest: shared_dest.map(str::to_string),
+            rules: Vec::new(),
+        }
+    }
+
+    fn closing(model: &Firewall, chain: &str, shared_dest: Option<&str>) -> Value {
+        serde_json::to_value(close(model, &lane(chain, shared_dest))).expect("serialize")
+    }
+
+    fn verdict(label: &str, tone: &str) -> Value {
+        serde_json::json!({"chip": {"icon": "", "label": label, "tone": tone, "dot": true}})
+    }
+
+    // A lane ends where firewall4 ends the chain: traffic none of its rules
+    // caught meets the zone's own policy for that direction, and the line says
+    // which and leads to where it is set.
+    #[test]
+    fn a_zone_lane_closes_on_the_zones_policy() {
+        let model = fixture::firewall();
+        assert_eq!(
+            closing(&model, "input_wan", None),
+            serde_json::json!([
+                {"words": "Otherwise"},
+                verdict("reject", "danger"),
+                {"words": "the zone’s input policy", "href": "/plugins/firewall/zones?open=cfg03dc81"}
+            ])
+        );
+        assert_eq!(
+            closing(&model, "output_lan", None),
+            serde_json::json!([
+                {"words": "Otherwise"},
+                verdict("accept", "success"),
+                {"words": "the zone’s output policy", "href": "/plugins/firewall/zones?open=cfg02dc81"}
+            ])
+        );
+    }
+
+    // firewall4 ends a zone's forward chain on its forward policy only for
+    // traffic leaving into the same zone (`jump reject_to_wan` matches the
+    // zone's own devices). Traffic into a zone the zone forwards to is
+    // accepted by the forwarding; into any other zone it falls back to the
+    // forward hook, which ends on the global forward policy. A forwarding that
+    // is switched off crosses nothing, so guest → wan (off) does not count.
+    #[test]
+    fn a_forward_lane_closes_on_where_its_traffic_goes() {
+        let model = fixture::firewall();
+        assert_eq!(
+            closing(&model, "forward_wan", Some("wan")),
+            serde_json::json!([
+                {"words": "Otherwise"},
+                verdict("reject", "danger"),
+                {"words": "the zone’s forward policy", "href": "/plugins/firewall/zones?open=cfg03dc81"}
+            ])
+        );
+        assert_eq!(
+            closing(&model, "forward_lan", Some("wan")),
+            serde_json::json!([
+                {"words": "Otherwise"},
+                verdict("accept", "success"),
+                {"words": "the zone’s forwarding", "href": "/plugins/firewall/zones?open=cfg02dc81&tab=reaches"}
+            ])
+        );
+        for dest in ["lan", "wan"] {
+            assert_eq!(
+                closing(&model, "forward_guest", Some(dest)),
+                serde_json::json!([
+                    {"words": "Otherwise"},
+                    verdict("reject", "danger"),
+                    {"words": "the global forward policy", "href": "/plugins/firewall/settings"}
+                ]),
+                "guest → {dest}"
+            );
+        }
+        // A lane going several places says each: where the zone forwards,
+        // within the zone, and anywhere else.
+        assert_eq!(
+            closing(&model, "forward_lan", None),
+            serde_json::json!([
+                {"words": "Otherwise"},
+                verdict("accept", "success"),
+                {"words": "where the zone forwards"},
+                verdict("accept", "success"),
+                {"words": "within the zone", "href": "/plugins/firewall/zones?open=cfg02dc81"},
+                verdict("reject", "danger"),
+                {"words": "anywhere else", "href": "/plugins/firewall/settings"}
+            ])
+        );
+        assert_eq!(
+            closing(&model, "forward_wan", None),
+            serde_json::json!([
+                {"words": "Otherwise"},
+                verdict("reject", "danger"),
+                {"words": "within the zone", "href": "/plugins/firewall/zones?open=cfg03dc81"},
+                verdict("reject", "danger"),
+                {"words": "anywhere else", "href": "/plugins/firewall/settings"}
+            ])
+        );
+    }
+
+    // A rule for any zone runs in every zone's chain, so what follows it is
+    // each zone's own policy; a lane that decides nothing (marking, helpers,
+    // untracked) and a zone the config does not have close on nothing.
+    #[test]
+    fn other_lanes_close_on_what_is_true_of_them() {
+        let model = fixture::firewall();
+        assert_eq!(
+            closing(&model, "input", None),
+            serde_json::json!([
+                {"words": "Otherwise"},
+                {"words": "each zone’s own policy", "href": "/plugins/firewall/zones"}
+            ])
+        );
+        for chain in ["mangle_prerouting", "notrack_wan", "helper_lan", "input_nowhere"] {
+            assert_eq!(closing(&model, chain, None), serde_json::json!([]), "{chain}");
+        }
+    }
+
+    #[test]
+    fn every_lane_on_the_page_closes() {
+        let body = body(&Counters::default());
+        let rows = table_of(&body)["rows"].as_array().expect("rows").clone();
+        let wan = rows
+            .iter()
+            .find(|row| row["group"]["key"] == "input_wan")
+            .expect("the wan → router lane");
+        assert_eq!(wan["group"]["close"][0]["words"], "Otherwise");
     }
 
     #[test]

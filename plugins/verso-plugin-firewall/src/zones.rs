@@ -21,8 +21,7 @@
 
 use verso_plugin::{
     commit, commit_delete, commit_new, ColumnWidth, Envelope, Form, HeadingAct, RowDrawer,
-    Settings, SettingsItem, SettingsPill, SettingsToggle, Snapshot, Table, TableCell, TableColumn,
-    TableRow, Tone, Widget,
+    Snapshot, Table, TableCell, TableColumn, TableRow, Tone, Widget,
 };
 
 use crate::crossings::Crossings;
@@ -44,55 +43,26 @@ const NOTE: &str = "Input decides traffic to the router itself, Output what the 
 into the zone, and Forward traffic between the zone's own networks. Reaching another zone is \
 decided by the forwardings under Reaches.";
 
-const EMPTY: &str = "No zones yet — every network is governed by the defaults below.";
+const EMPTY: &str = "No zones yet — every network is governed by the global defaults in Settings.";
 
 const REFUSED: &str =
     "Some values aren’t ones the firewall accepts, so nothing was saved. They’re marked below.";
 
 const GONE: &str = "That zone is no longer in the config, so there was nothing to save.";
 
-/// TOGGLE_ROWS name the defaults options plainly and say what each one does.
-/// The order is the order they render; the uci name is the switch's form name.
-const TOGGLE_ROWS: [(&str, &str, &str); 3] = [
-    (
-        "drop_invalid",
-        "Drop invalid packets",
-        "Discard packets that don't match any known connection.",
-    ),
-    (
-        "synflood_protect",
-        "SYN-flood protection",
-        "Rate-limit half-open connections to blunt basic floods.",
-    ),
-    (
-        "flow_offloading",
-        "Software flow offloading",
-        "Fast-path established connections for higher throughput.",
-    ),
-];
-
-/// options names the defaults switches this page renders — the closed set a post
-/// to it may name, so the page and its POST handler cannot drift apart.
-pub fn options() -> impl Iterator<Item = &'static str> {
-    TOGGLE_ROWS.iter().map(|(option, _, _)| *option)
-}
-
-/// page renders the Zones listing and the global defaults. Everything both are
-/// built from is already in the model — a zone's subnets included, which come
-/// from the network config the firewall config only names.
+/// page renders the Zones listing. Everything it is built from is already in
+/// the model — a zone's subnets included, which come from the network config
+/// the firewall config only names. The global defaults are Settings' alone:
+/// what they decide is said where it happens, at the end of each Rules lane.
 pub fn page(model: &Firewall) -> Envelope {
     frame(model, None, None)
 }
 
 /// frame is the Zones page: the listing with the zone `open` names in front of
-/// it, the global defaults under it, and the act that adds a zone on the
-/// heading line, carrying the blank zone's panel when an address asks for one.
+/// it, and the act that adds a zone on the heading line, carrying the blank
+/// zone's panel when an address asks for one.
 fn frame(model: &Firewall, open: Option<&Open>, blank: Option<RowDrawer>) -> Envelope {
-    let children = vec![
-        table(model, open),
-        Widget::section("Global defaults", "", vec![defaults(model)]),
-    ];
-    page::envelope(HEADING, Widget::stack(children)).with_act(act(blank))
+    page::envelope(HEADING, table(model, open)).with_act(act(blank))
 }
 
 /// page_open is the listing with one zone's panel already in front of the
@@ -381,44 +351,6 @@ fn membership(zone: &Zone) -> String {
     parts.join(", ")
 }
 
-fn defaults(model: &Firewall) -> Widget {
-    let defaults = &model.defaults;
-    let mut items = vec![SettingsItem {
-        title: "Default policies".into(),
-        desc: "What happens to traffic no zone claims.".into(),
-        pills: [
-            ("in", &defaults.input),
-            ("out", &defaults.output),
-            ("fwd", &defaults.forward),
-        ]
-        .into_iter()
-        .map(|(direction, policy)| SettingsPill {
-            variant: format::tone(format::target_tone(policy)),
-            text: format!("{direction}: {policy}"),
-        })
-        .collect(),
-        ..SettingsItem::default()
-    }];
-    items.extend(
-        TOGGLE_ROWS
-            .iter()
-            .map(|(option, title, desc)| SettingsItem {
-                title: (*title).into(),
-                desc: (*desc).into(),
-                code: (*option).into(),
-                toggle: Some(SettingsToggle {
-                    name: (*option).into(),
-                    on: defaults.state(option),
-                }),
-                ..SettingsItem::default()
-            }),
-    );
-    Widget::Settings(Settings {
-        items,
-        ..Default::default()
-    })
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -621,11 +553,10 @@ mod tests {
         assert_eq!(body["act"]["label"], "Add zone");
         assert_eq!(body["act"]["href"], "/plugins/firewall/zones?open=new");
         assert_eq!(body["act"]["opens_panel"], true);
-        // The grid, then the baseline the grid falls back to — which is a
-        // region of its own because it is a second subject, not a second view
-        // of this one.
-        assert_eq!(body["widget"]["children"][0]["type"], "table");
-        assert_eq!(body["widget"]["children"][1]["title"], "Global defaults");
+        // The grid alone: the global defaults are Settings' to edit and the
+        // Rules lanes' to state, never a second copy here.
+        assert_eq!(body["widget"]["type"], "table");
+        assert!(!body.to_string().contains("Global defaults"), "{body}");
     }
 
     // A firewall that groups nothing still has a baseline, and the listing says
@@ -1112,41 +1043,5 @@ mod tests {
         }
         assert_eq!(panel["tabs"].as_array().expect("tabs").len(), 3);
         assert!(!panel["children"].as_array().expect("body").is_empty());
-    }
-
-    #[test]
-    fn the_defaults_card_reads_the_real_baseline() {
-        let body = body();
-        let settings = &fixture::section(&body, "Global defaults")["children"][0];
-        assert_eq!(settings["type"], "settings");
-        assert_eq!(
-            settings["items"][0],
-            serde_json::json!({
-                "title": "Default policies",
-                "desc": "What happens to traffic no zone claims.",
-                "pills": [
-                    {"variant": "danger", "text": "in: reject"},
-                    {"variant": "success", "text": "out: accept"},
-                    {"variant": "danger", "text": "fwd: reject"}
-                ]
-            })
-        );
-        assert_eq!(
-            settings["items"][1],
-            serde_json::json!({
-                "title": "Drop invalid packets",
-                "desc": "Discard packets that don't match any known connection.",
-                "code": "drop_invalid",
-                "toggle": {"name": "drop_invalid"}
-            })
-        );
-        assert_eq!(
-            settings["items"][2]["toggle"],
-            serde_json::json!({"name": "synflood_protect", "on": true})
-        );
-        assert_eq!(
-            settings["items"][3]["toggle"],
-            serde_json::json!({"name": "flow_offloading"})
-        );
     }
 }

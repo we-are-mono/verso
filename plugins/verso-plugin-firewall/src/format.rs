@@ -9,8 +9,6 @@
 //! reads "WAN → Router" and shows `input_wan`; a protocol reads `tcp/udp` and a
 //! v4-only rule says so. Nothing here invents a value the config does not carry.
 
-use verso_plugin::Tone;
-
 /// EM_DASH stands for a value the config does not state.
 pub const EM_DASH: &str = "—";
 
@@ -261,19 +259,6 @@ pub fn target_tone(target: &str) -> &'static str {
         "reject" => "danger",
         "drop" => "neutral",
         _ => "info",
-    }
-}
-
-/// tone maps a badge tone's name onto the enum the settings vocabulary takes. A
-/// table cell names its tone as a string and a settings pill as this enum, so
-/// both read the same verdict from one place.
-pub fn tone(name: &str) -> Tone {
-    match name {
-        "success" => Tone::Success,
-        "warning" => Tone::Warning,
-        "danger" => Tone::Danger,
-        "info" => Tone::Info,
-        _ => Tone::Neutral,
     }
 }
 

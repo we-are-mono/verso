@@ -49,6 +49,11 @@ pub fn zones_href() -> String {
     format!("{MOUNT}/{ZONES}")
 }
 
+/// settings_href is where the global defaults are set.
+pub fn settings_href() -> String {
+    format!("{MOUNT}/{SETTINGS}")
+}
+
 // A port forward and a zone have no address of their own: each is read and
 // edited in the panel beside its listing, so its door is a query on the
 // listing's own address (redirect_drawer::href, zone_drawer::href) rather than a

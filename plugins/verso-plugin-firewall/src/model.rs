@@ -510,16 +510,6 @@ impl Defaults {
             _ => "",
         }
     }
-
-    /// set writes one of the switchable options by its uci name.
-    pub fn set(&mut self, option: &str, on: bool) {
-        match option {
-            "drop_invalid" => self.drop_invalid = on,
-            "synflood_protect" => self.synflood_protect = on,
-            "flow_offloading" => self.flow_offloading = on,
-            _ => {}
-        }
-    }
 }
 
 impl Zone {

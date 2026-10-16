@@ -200,17 +200,6 @@ fn rate_parts(written: &str, unit: &str) -> (String, String) {
     }
 }
 
-/// switch_value is what a defaults switch writes, by its uci name, wherever it
-/// is flipped: the state firewall4 reads, or a clear where that state is the
-/// one it assumes (SWITCHES).
-pub fn switch_value(option: &str, on: bool) -> Value {
-    let default_on = SWITCHES
-        .iter()
-        .find(|(name, _)| *name == option)
-        .is_some_and(|(_, default_on)| *default_on);
-    flag_value(on, default_on)
-}
-
 /// flag_value states a switch the way firewall4 reads it, and clears it where
 /// the state asked for is the one the daemon would assume: a stage that wrote
 /// the default back would count as a change nobody made.
@@ -1235,6 +1224,19 @@ mod tests {
         for name in VALUES {
             named(name);
         }
+    }
+
+    // A router with no defaults section runs firewall4's built-in baseline;
+    // saving the page creates the section rather than writing into nothing.
+    #[test]
+    fn a_config_without_defaults_gets_the_section_on_save() {
+        let mut model = fixture::firewall();
+        model.defaults.section.clear();
+        let (_, ops) = save(&mut model, &Form::parse("input=drop&drop_invalid=1"));
+        assert_eq!(ops[0].section, "");
+        assert_eq!(ops[0].values["drop_invalid"], "1");
+        let wire = serde_json::to_value(&ops[0]).expect("serialize");
+        assert_eq!(wire["type"], "defaults");
     }
 
     // A switch that is off is absent from a submission, so the save walks the

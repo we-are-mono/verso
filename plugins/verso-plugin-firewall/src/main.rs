@@ -17,7 +17,7 @@
 //! answers its own submissions the same way, from the values it was sent.
 
 use verso_plugin::{
-    commit, commit_new, json, serve_described, CommitOp, Envelope, Form, Request, Snapshot, Tone,
+    commit, json, serve_described, CommitOp, Envelope, Form, Request, Snapshot, Tone,
 };
 
 mod activity;
@@ -221,7 +221,6 @@ struct Switch {
 enum Subject {
     Rule(usize),
     Redirect(usize),
-    Default(String),
 }
 
 impl Switch {
@@ -268,20 +267,6 @@ impl Switch {
                 redirect.enabled = self.on;
                 commit(CONFIG, &redirect.section, json!({ "enabled": enabled }))
             }
-            Subject::Default(option) => {
-                // A firewall default writes as it does on the settings page:
-                // the state firewall4 reads, or a clear where that state is the
-                // one it assumes, so on then off coalesces to clean.
-                model.defaults.set(option, self.on);
-                let values = json!({ option.as_str(): settings::switch_value(option, self.on) });
-                // A device with no defaults section runs firewall4's built-in
-                // baseline; writing one of its options means creating it.
-                if model.defaults.section.is_empty() {
-                    commit_new(CONFIG, "defaults", values)
-                } else {
-                    commit(CONFIG, &model.defaults.section, values)
-                }
-            }
         }
     }
 }
@@ -302,9 +287,9 @@ fn switches(model: &Firewall, listing: Listing) -> Vec<(String, Subject)> {
             .filter(|(_, redirect)| redirect.is_port_forward())
             .map(|(index, redirect)| (redirect.section.clone(), Subject::Redirect(index)))
             .collect(),
-        Listing::Zones => zones::options()
-            .map(|option| (option.to_string(), Subject::Default(option.to_string())))
-            .collect(),
+        // A zone is switched in its own panel; the listing carries no switch,
+        // and the global defaults are Settings' alone.
+        Listing::Zones => Vec::new(),
         // The settings page is one form, submitted whole, so it carries no
         // free-standing switch of the kind a listing posts one at a time.
         Listing::Settings => Vec::new(),
@@ -319,7 +304,7 @@ mod tests {
     use super::*;
     use crate::rule_form::RuleForm;
     use serde_json::Value;
-    use verso_plugin::{Snapshot, Ubus};
+    use verso_plugin::Ubus;
 
     fn request(path: &str) -> Request {
         Request {
@@ -522,17 +507,6 @@ mod tests {
                 "values": {"enabled": null}
             }])
         );
-        // The zones listing's default switches, flipped with a zone open beside
-        // them.
-        let body = answer_asking("/zones", "open=guest_zone", "flow_offloading=on");
-        assert_eq!(
-            body["commit"],
-            serde_json::json!([{
-                "config": "firewall",
-                "section": "cfg01e63d",
-                "values": {"flow_offloading": "1"}
-            }])
-        );
     }
 
     /// The panel's own form posts its marker with its fields, and the marker is
@@ -637,58 +611,17 @@ mod tests {
     /// A defaults switch flipped back to what firewall4 assumes clears the
     /// option rather than writing that assumption out, so on then off returns
     /// the section to its committed state and the stage coalesces to clean.
+    // The global defaults are Settings' alone: a switch named after one of
+    // them, posted to the Zones listing, is not something that page drew.
     #[test]
-    fn a_defaults_option_flipped_to_firewall4s_default_clears_it() {
-        let off = answer("/zones", "drop_invalid=off");
-        assert_eq!(
-            off["commit"],
-            serde_json::json!([{
-                "config": "firewall",
-                "section": "cfg01e63d",
-                "values": {"drop_invalid": null}
-            }])
-        );
-        let on = answer("/zones", "drop_invalid=on");
-        assert_eq!(on["commit"][0]["values"], json!({"drop_invalid": "1"}));
-    }
-
-    #[test]
-    fn flipping_a_defaults_option_writes_the_defaults_section() {
-        let body = answer("/zones", "flow_offloading=on");
-        assert_eq!(
-            body["commit"],
-            serde_json::json!([{
-                "config": "firewall",
-                "section": "cfg01e63d",
-                "values": {"flow_offloading": "1"}
-            }])
-        );
-        let settings = &fixture::section(&body, "Global defaults")["children"][0];
-        assert_eq!(
-            settings["items"][3]["toggle"],
-            serde_json::json!({"name": "flow_offloading", "on": true})
-        );
-    }
-
-    #[test]
-    fn a_defaults_option_on_a_config_without_one_creates_the_section() {
-        let request = Request {
-            path: "/zones".into(),
-            query: Form::default(),
-            snapshot: Snapshot::from_value(json!({"firewall": {}, "network": {}})),
-            ubus: Ubus::from_value(Value::Null),
-        };
-        let body = serde_json::to_value(post(&request, &Form::parse("drop_invalid=on")))
-            .expect("serialize");
-        assert_eq!(
-            body["commit"],
-            serde_json::json!([{
-                "config": "firewall",
-                "section": "",
-                "type": "defaults",
-                "values": {"drop_invalid": "1"}
-            }])
-        );
+    fn the_zones_listing_stages_no_global_default() {
+        for body in ["drop_invalid=on", "flow_offloading=on", "synflood_protect=off"] {
+            let answer = answer("/zones", body);
+            assert!(
+                answer["commit"].as_array().is_none_or(Vec::is_empty),
+                "{body}: {answer}"
+            );
+        }
     }
 
     #[test]
