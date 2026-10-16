@@ -744,9 +744,10 @@ control: one box split by hairlines, each part as wide as its value and its
 rate and a burst), one key chip naming every option (`synflood_rate ·
 synflood_burst`), and one `staged` mark. Each field's own `label` becomes its
 part's name for a screen reader and for its refusal ("Burst: Enter a whole
-number."). `help` is what the group is; without it the label's tip explains
-each part under its name. Without a `label`, the parts' labels joined by `·`
-name the row. A new password and its repeat fuse as two secret parts. A group
+number."). The row's description under its label is the group's `help`, then
+each part's own `help` led by the part's name ("Burst: …"), and each part
+names itself inside the box after its value, where a unit stands. Without a
+`label`, the parts' labels joined by `·` name the row. A new password and its repeat fuse as two secret parts. A group
 holding a choice, a list or a revealable secret keeps its columns.
 In Rust: `Widget::form_grid(2, fields).labelled("Connection rate", "")`.
 
@@ -1320,9 +1321,9 @@ any form that posts it itself.
 - `error`: an inline error to show under the field (you set this on a 422).
 - `note`: what changing the field does, where that is worth knowing before it
   is changed — `"Takes effect immediately, for everyone who signs in to this
-  router."`. It stays in view under the control, after any `error`, and the
-  control is described by it. What the field *is* belongs on the label (`help`,
-  `tip`); a note is its consequence.
+  router."`. It stays in view under the control, after any `error`, never
+  folds, and the control is described by it. What the field *is* belongs in
+  its description (`help`, `tip`); a note is its consequence.
 - `key`: the option this field writes, verbatim — `"ipaddr"`, `"leasetime"`. It
   rides beside the label as a mono chip, so someone who knows the config sees
   which line they are editing and someone who does not can ignore it.
@@ -1354,12 +1355,14 @@ any form that posts it itself.
   back, and returns focus to the choice. While the form is on its way the
   shell's waiting mark turns beside the choice. A choice that only shows or hides
   fields inside one shape is a `when`, which needs no round trip.
-- `tip` and `source`: what the field *is*, raised from the label on hover or
-  focus, closed by a mono line pairing `key` with what reads it. Use it where
-  the label is a term of art the operator did not choose — a DUID, an interface
-  identifier — and leave it off where the label is already the plain word for
-  the thing. `help` still says what to put in the control and stays on screen;
-  `tip` answers "what even is this", which would shout beside every row:
+- `help`, `tip` and `source`: a field's description, written under its label,
+  is its `help` and then its `tip`; the operator can fold every description on
+  the page away at once, and a screen reader reads it either way. `help` says
+  what to put in the control; `tip` answers "what even is this", for a label
+  that is a term of art the operator did not choose — a DUID, an interface
+  identifier — and is left off where the label is already the plain word for
+  the thing. `source` names what reads the option and joins `key` in the chip
+  beside the label (`duid · dhcp host`):
 
 ```json
 { "type": "field", "name": "duid", "label": "DUID", "key": "duid",

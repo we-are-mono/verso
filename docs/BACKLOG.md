@@ -154,6 +154,10 @@ own and points at the decision that governs it; the rationale lives there, not h
   the left and its answers on one edge, with what each setting does written
   under its name; "Hide descriptions" on the heading line folds them away and
   the browser keeps the choice. Installed plugins need no upgrade.
+- **Help written for a tooltip.** The plugins in their own repos (ddns,
+  dnsdhcp, qos, vpn, wireless) wrote `help` and `tip` to be read on hover; on
+  the page some read long (dnsdhcp's DUID tip runs past 300 characters). Read
+  each plugin's forms with descriptions shown and tighten what reads as prose.
 
 ## Themes (ADR-024)
 

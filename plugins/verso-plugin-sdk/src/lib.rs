@@ -799,8 +799,8 @@ pub enum Widget {
         /// wears — the gate is a form row like the ones it gates.
         #[serde(skip_serializing_if = "String::is_empty")]
         key: String,
-        /// The line under the toggle: what turning it on means, in the place a
-        /// field's helper line sits.
+        /// What turning the toggle on means, written under its label as the
+        /// row's description, as a field's `help` is.
         #[serde(skip_serializing_if = "String::is_empty")]
         help: String,
         fields: Vec<Widget>,
@@ -1047,6 +1047,9 @@ pub struct Grid {
     pub children: Vec<Widget>,
     #[serde(skip_serializing_if = "String::is_empty")]
     pub label: String,
+    /// What the set is for, written under its label as the row's description.
+    /// A fused set's description goes on with each part's own `help`, led by
+    /// the part's label.
     #[serde(skip_serializing_if = "String::is_empty")]
     pub help: String,
     #[serde(skip_serializing_if = "String::is_empty")]
@@ -1079,11 +1082,15 @@ pub struct Field {
     pub options: Vec<SelectOption>,
     #[serde(skip_serializing_if = "String::is_empty")]
     pub error: String,
+    /// What the field is for, written under its label as the row's
+    /// description. One act on the page folds every description away for
+    /// someone who knows the settings; a screen reader reads it either way.
     #[serde(skip_serializing_if = "String::is_empty")]
     pub help: String,
     /// What changing the field does, where that is worth knowing before it is
     /// changed — "Takes effect immediately". The shell keeps it in view under
-    /// the control, after any `error`. Set it through `noted`.
+    /// the control, after any `error`, and never folds it. Set it through
+    /// `noted`.
     #[serde(skip_serializing_if = "String::is_empty")]
     pub note: String,
     /// The option this field writes, verbatim — "ipaddr", "leasetime". The
@@ -1098,15 +1105,14 @@ pub struct Field {
     /// the stage, on every visit. Set it through `at`.
     #[serde(skip_serializing_if = "String::is_empty")]
     pub target: String,
-    /// What the field is, for someone meeting it for the first time — raised
-    /// from the label rather than kept on screen, because `help` already
-    /// says what to put in the control and a paragraph beside every row
-    /// would drown it. Set both through `explained`.
+    /// What the field is, for someone meeting it for the first time. The
+    /// shell writes it after `help` in the field's description, under its
+    /// label. Set both through `explained`.
     #[serde(skip_serializing_if = "String::is_empty")]
     pub tip: String,
-    /// What reads the option — "dhcp host", "ip route". The shell pairs it
-    /// with `key` to close the tip, placing the setting in the config it
-    /// belongs to.
+    /// What reads the option — "dhcp host", "ip route". The shell joins it
+    /// to `key` in the chip beside the label (`mac · dhcp host`), placing the
+    /// setting in the config it belongs to.
     #[serde(skip_serializing_if = "String::is_empty")]
     pub source: String,
     /// What the number in the box is counted in — "Mb/s", "seconds". The
@@ -1157,6 +1163,9 @@ pub struct Switch {
     pub label: String,
     #[serde(skip_serializing_if = "String::is_empty")]
     pub off_label: String,
+    /// What the switch is for, written under its label as the row's
+    /// description, as a field's `help` is. In a labelled group of switches
+    /// it says which thing the row is, and stays when descriptions fold.
     #[serde(skip_serializing_if = "String::is_empty")]
     pub help: String,
     #[serde(skip_serializing_if = "String::is_empty")]
@@ -1169,13 +1178,13 @@ pub struct Switch {
     /// Where `key` lives, as a field's `target`. Set it through `at`.
     #[serde(skip_serializing_if = "String::is_empty")]
     pub target: String,
-    /// The longer answer to "what even is this", raised onto the label. Help
-    /// is the same sentence said as a plugin already wrote it; where both
-    /// are set the label raises this one.
+    /// The longer answer to "what even is this", written after `help` in the
+    /// switch's description.
     #[serde(skip_serializing_if = "String::is_empty")]
     pub tip: String,
-    /// What reads the option — "firewall defaults". With `key` it makes the
-    /// tip's footer, placing the option in the config it belongs to.
+    /// What reads the option — "firewall defaults". The shell joins it to
+    /// `key` in the chip beside the label, placing the option in the config
+    /// it belongs to.
     #[serde(skip_serializing_if = "String::is_empty")]
     pub source: String,
     /// The label is a machine string — a path — rather than words: set in
@@ -1208,6 +1217,8 @@ pub struct List {
     pub items: Vec<String>,
     #[serde(skip_serializing_if = "std::collections::BTreeMap::is_empty")]
     pub errors: std::collections::BTreeMap<String, String>,
+    /// What the list is for, written under its label as the row's
+    /// description, as a field's `help` is.
     #[serde(skip_serializing_if = "String::is_empty")]
     pub help: String,
     /// The option this list writes, verbatim, for the mono chip beside the
@@ -1217,7 +1228,8 @@ pub struct List {
     /// Where `key` lives, as a field's `target`. Set it through `at`.
     #[serde(skip_serializing_if = "String::is_empty")]
     pub target: String,
-    /// The longer explanation, raised onto the label as a field's is.
+    /// The longer explanation, written after `help` in the list's
+    /// description, as a field's is.
     #[serde(skip_serializing_if = "String::is_empty")]
     pub tip: String,
     /// The values worth offering. The control suggests them as it is typed in
