@@ -380,12 +380,7 @@ fn interface_cell(name: &str) -> TableCell {
         return quiet("—");
     }
     TableCell {
-        chips: vec![TableChip {
-            icon: "network".into(),
-            label: name.into(),
-            tone: "accent".into(),
-            ..Default::default()
-        }],
+        chips: vec![TableChip::entity("network", name)],
         ..Default::default()
     }
 }

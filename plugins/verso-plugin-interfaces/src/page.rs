@@ -677,12 +677,7 @@ fn inventory(m: &Model, drawer: Option<RowDrawer>) -> Envelope {
                     chips: nets
                         .iter()
                         .flat_map(|n| {
-                            let mut chips = vec![TableChip {
-                                icon: "network".into(),
-                                label: n.clone(),
-                                tone: "accent".into(),
-                                ..Default::default()
-                            }];
+                            let mut chips = vec![TableChip::entity("network", n)];
                             if let Some(server) = m
                                 .dhcp_servers
                                 .iter()
