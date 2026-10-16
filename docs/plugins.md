@@ -270,6 +270,12 @@ envelope** back — `Content-Type: application/json`:
   than staged configuration: nothing on it stages, though the staged-changes
   chip still shows pending changes from elsewhere. It does not make a returned
   `commit` immediate—commit intents always stage.
+- `not_found` — optional boolean: the plugin has nothing at the path it was
+  asked for (a typo, a stale link). The shell answers with its own page for an
+  address with nothing at it, with a 404, rather than a page of the plugin that
+  was not asked for. The SDK's `Envelope::not_found()` sets it and carries a
+  plain page a shell from before this field shows instead. Answer it for any
+  path you do not publish, rather than falling back to your first page.
 - `commit` — optional; on a successful write, the uci changes for the shell to
   apply on your behalf (see [Writing config](#writing-config-the-commit-intent)).
   You never write config yourself.

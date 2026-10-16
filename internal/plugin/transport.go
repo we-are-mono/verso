@@ -110,6 +110,10 @@ type Envelope struct {
 	CTA    string     `json:"cta,omitempty"`
 	Commit []CommitOp `json:"commit"`
 	Status int        `json:"-"`
+	// NotFound says the plugin has nothing at the path it was asked for: the
+	// shell answers with its own page for an address with nothing at it, and
+	// the widget beside it is what a shell that does not read this field shows.
+	NotFound bool `json:"not_found,omitempty"`
 }
 
 // EntitySummary keeps configured subjects findable in the shell's roster.

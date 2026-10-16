@@ -64,6 +64,10 @@ func (s *Server) handlePlugin(w http.ResponseWriter, r *http.Request) {
 	width := ""
 	var pages []pageTab
 	body, status := s.pluginBodyAt(r, m, r.PathValue("path"), &hdr, &width, &pages)
+	if status == http.StatusNotFound {
+		s.notFound(w, r)
+		return
+	}
 	// The panel is closing on its own outcome: the frame is told to swap
 	// nothing, and what it is handed instead is the outcome, to say where the
 	// panel was.
@@ -308,6 +312,11 @@ func (s *Server) pluginBodyAt(r *http.Request, m plugin.Manifest, pluginPath str
 	if err != nil {
 		log.Printf("verso: plugin %q unavailable: %v", m.ID, err)
 		return s.unavailable(m, tr), http.StatusOK
+	}
+	// The plugin has nothing at this path: the caller answers with the shell's
+	// own page for an address with nothing at it (notFound).
+	if env.NotFound {
+		return "", http.StatusNotFound
 	}
 
 	wdg, err := widget.Decode(env.Widget)

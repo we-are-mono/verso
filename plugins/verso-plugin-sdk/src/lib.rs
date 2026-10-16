@@ -2896,9 +2896,26 @@ pub struct Envelope {
     /// Immediate, explicitly brokered commands; never arbitrary shell code.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub commands: Vec<ApplyAction>,
+    /// The plugin has nothing at the path it was asked for. Set it through
+    /// [`Envelope::not_found`].
+    #[serde(skip_serializing_if = "is_false")]
+    pub not_found: bool,
 }
 
 impl Envelope {
+    /// not_found answers a path this plugin has nothing at — a typo, a stale
+    /// link — so the shell shows its own page for an address with nothing at
+    /// it rather than a page of the plugin that was not asked for. The page it
+    /// carries is what a shell that does not read the flag shows.
+    pub fn not_found() -> Envelope {
+        let mut envelope = Envelope::page(
+            "Page not found",
+            Widget::text("There is nothing at this address."),
+        );
+        envelope.not_found = true;
+        envelope
+    }
+
     /// with_commit_row states the verb this envelope's commit row carries when
     /// the shell frames it as one tab of an entity panel. An envelope that sets
     /// none gets no commit row.
@@ -2924,6 +2941,7 @@ impl Envelope {
             act: None,
             commit: Vec::new(),
             commands: Vec::new(),
+            not_found: false,
         }
     }
 
@@ -3112,6 +3130,18 @@ mod tests {
         Widget,
     };
     use super::{json, uci_text, Map, Value};
+
+    // A plugin with nothing at a path says so, and still sends a page a shell
+    // that does not read the flag can show.
+    #[test]
+    fn a_path_with_nothing_at_it_is_said_and_still_drawable() {
+        let wire = serde_json::to_value(super::Envelope::not_found()).unwrap();
+        assert_eq!(wire["not_found"], true);
+        assert_eq!(wire["title"], "Page not found");
+        assert_eq!(wire["widget"]["type"], "text");
+        let page = serde_json::to_value(super::Envelope::page("Rules", Widget::text("x"))).unwrap();
+        assert!(page.get("not_found").is_none());
+    }
 
     // A page says what each of its controls now holds, by the name it posts
     // under, however deep it stands: a switch on or off, a pick by its words,

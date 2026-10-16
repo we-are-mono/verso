@@ -4,10 +4,13 @@
 package server
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/we-are-mono/verso/internal/plugin"
 )
 
 // TestAnAddressWithNothingAtItIsAPage: a page someone navigated to that is not
@@ -31,6 +34,17 @@ func TestAnAddressWithNothingAtItIsAPage(t *testing.T) {
 			}
 		}
 	}
+	// A plugin that has nothing at a path of its own says so in its envelope,
+	// and the page is the shell's, as for any address with nothing at it.
+	tr := &fakeTransport{env: &plugin.Envelope{SchemaVersion: 1, Status: http.StatusOK, NotFound: true,
+		Widget: json.RawMessage(`{"type":"text","markdown":"There is nothing here."}`)}}
+	ps := newServerWith(t, fakeBackend{}, tr, []plugin.Manifest{demoManifest()})
+	req := httptest.NewRequest(http.MethodGet, "/plugins/demo/nope", nil)
+	req.Header.Set("Accept", "text/html")
+	if rec := serve(t, ps, req); rec.Code != http.StatusNotFound || !strings.Contains(rec.Body.String(), ">Page not found<") {
+		t.Errorf("a plugin's own not-found: %d\n%s", rec.Code, rec.Body.String())
+	}
+
 	fetch := httptest.NewRequest(http.MethodGet, "/nope", nil)
 	fetch.Header.Set("HX-Request", "true")
 	fetch.Header.Set("Accept", "text/html")
