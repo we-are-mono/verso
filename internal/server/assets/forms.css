@@ -55,18 +55,28 @@
      15px after it, a band of the grid. A gate's row is the first of its
      block, and the row after a gate follows whatever the gate last shows. */
   .verso-field-row + .verso-field-row,
-  .verso-conditional + .verso-field-row,
-  :is(.verso-field-row, .verso-conditional) + .verso-conditional > .verso-conditional-gate {
+  :is(.verso-conditional, .verso-switch-group) + .verso-field-row,
+  :is(.verso-field-row, .verso-conditional, .verso-switch-group) + .verso-conditional > .verso-conditional-gate,
+  :is(.verso-field-row, .verso-conditional, .verso-switch-group) + .verso-switch-group > .verso-field-row:first-child {
     border-top: 1px solid var(--color-rule);
     padding-top: calc(var(--spacing) * 3.75);
   }
-  .verso-field-row:has(+ :is(.verso-field-row, .verso-conditional)) {
+  .verso-field-row:has(+ :is(.verso-field-row, .verso-conditional, .verso-switch-group)) {
     padding-bottom: calc(var(--spacing) * 4);
   }
-  .verso-conditional:has(+ :is(.verso-field-row, .verso-conditional)) > .verso-conditional-gate,
-  .verso-conditional:has(+ :is(.verso-field-row, .verso-conditional)) > .verso-conditional-body > .verso-field-row:last-child,
-  .verso-conditional:has(> .verso-conditional-gate input[data-verso-switch]:checked) > .verso-conditional-gate {
+  .verso-conditional:has(+ :is(.verso-field-row, .verso-conditional, .verso-switch-group)) > .verso-conditional-gate,
+  .verso-conditional:has(+ :is(.verso-field-row, .verso-conditional, .verso-switch-group)) > .verso-conditional-body > .verso-field-row:last-child,
+  .verso-conditional:has(> .verso-conditional-gate input[data-verso-switch]:checked) > .verso-conditional-gate,
+  .verso-switch-group:has(+ :is(.verso-field-row, .verso-conditional, .verso-switch-group)) > .verso-field-row:last-child {
     padding-bottom: calc(var(--spacing) * 4);
+  }
+  /* A group of switches is its head, then a row per thing under it: no
+     hairline among them, the first thing 8px after the head's last line and
+     each 24px after the one before. */
+  .verso-switch-group > .verso-field-row:first-child { padding-bottom: 0; }
+  .verso-switch-group > .verso-field-row + .verso-field-row {
+    border-top: 0;
+    padding-top: calc(var(--spacing) * 2);
   }
   /* What a gate reveals is the gate's own group: its rows stand under it
      with no hairline and no air of their own over them. */
@@ -250,16 +260,6 @@
     color: var(--color-meta);
     white-space: nowrap;
   }
-
-  /* A switch group's rows stand under the group's label as its control: each
-     is a checkbox row of its own, spaced as a list's rows are rather than as
-     the settings around them. */
-  .verso-switch-group {
-    display: flex;
-    flex-direction: column;
-    gap: calc(var(--spacing) * 3);
-  }
-  .verso-switch-group > .verso-field-row { padding-block: 0; }
 
   /* Compound searches and inline actions already own their outer spacing,
      and their fields stand as they always have, a label over its box: they

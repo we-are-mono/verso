@@ -234,17 +234,18 @@ func (g *Grid) switchGroup() ([]*Switch, bool) {
 	return switches, true
 }
 
-// switchGroupView is a switch group's checkbox rows and the id of the label
-// that names them.
+// switchGroupView is a switch group: the id of the label that names it, its
+// head row (the label, the chip and the description) and a row per switch.
 type switchGroupView struct {
 	Group string
+	Head  template.HTML
 	Rows  []template.HTML
 }
 
-// renderSwitchGroup draws a labelled group of switches as one setting's row:
-// the group's label on top with the options its switches write named once,
-// and under it one checkbox row per switch, each with its own words, its own
-// change and its own mark.
+// renderSwitchGroup draws a labelled group of switches as one setting: a head
+// row, the group's label with the options its switches write named once and
+// the group's description, and under it one row per switch, each with its own
+// name, detail, change and mark, its box in the answer column.
 func (r *Renderer) renderSwitchGroup(out io.Writer, g *Grid, switches []*Switch) error {
 	id := switches[0].Name + "-group"
 	view := switchGroupView{Group: id + "-label"}
@@ -263,7 +264,12 @@ func (r *Renderer) renderSwitchGroup(out io.Writer, g *Grid, switches []*Switch)
 		view.Rows = append(view.Rows, template.HTML(row.String()))
 	}
 	label := fieldLabel{For: id, Group: true, Label: g.Label, Key: strings.Join(keys, " · ")}
-	return r.renderFrame(out, "verso-switch-group", view, fieldFrame{Label: label, Desc: g.Help})
+	var head strings.Builder
+	if err := r.renderFrame(&head, "verso-nothing", nil, fieldFrame{Label: label, Desc: g.Help}); err != nil {
+		return err
+	}
+	view.Head = template.HTML(head.String())
+	return r.execute(out, "verso-switch-group", view)
 }
 
 // gridView is the template model: the style and the declared count, which the

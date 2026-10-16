@@ -408,7 +408,7 @@ func TestAFieldRowIsALedger(t *testing.T) {
 			t.Errorf("rows do not meet on a hairline 15px over the name: missing %s in %s", want, between)
 		}
 	}
-	before := cssBlock(t, css, ".verso-field-row:has(+ :is(.verso-field-row, .verso-conditional)) {")
+	before := cssBlock(t, css, ".verso-field-row:has(+ :is(.verso-field-row, .verso-conditional, .verso-switch-group)) {")
 	if !strings.Contains(before, "padding-bottom: calc(var(--spacing) * 4);") {
 		t.Errorf("a row followed by a row keeps 16px under its last line: %s", before)
 	}

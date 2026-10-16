@@ -51,6 +51,17 @@ func TestSwitchesUnderOneLabelAreOneSetting(t *testing.T) {
 	if strings.Contains(got, "include_a-desc") {
 		t.Errorf("an item's detail is not a description that folds:\n%s", got)
 	}
+	// The group is its head, then a row per item under it (form-fields): the
+	// items are rows of the form, not controls inside the head's answer.
+	if n := strings.Count(got, `class="verso-field-row`); n != 3 {
+		t.Errorf("a head and two item rows, got %d rows:\n%s", n, got)
+	}
+	group, head := strings.Index(got, `class="verso-switch-group"`), strings.Index(got, ">Files the config includes<")
+	headAnswer := strings.Index(got, "verso-field-answer")
+	firstItem := strings.Index(got[headAnswer:], `class="verso-field-row`)
+	if group < 0 || head < group || firstItem < 0 || strings.Contains(got[headAnswer:headAnswer+firstItem], "data-verso-switch") {
+		t.Errorf("an item stands inside the head's answer rather than as a row under it:\n%s", got)
+	}
 }
 
 // TestAGroupedSwitchWearsItsOwnMark: the rows are different things, so the one

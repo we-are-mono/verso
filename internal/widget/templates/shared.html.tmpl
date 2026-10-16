@@ -255,10 +255,14 @@
 </div>{{end}}
 {{define "verso-field-desc-class"}}text-sm leading-6 text-pretty text-body{{end}}
 
-{{/* verso-switch-group: the checkbox rows of one setting asked of several
-     things (switchGroupView) — which files load — under the row's one label,
-     which names the group for a screen reader too. */}}
-{{define "verso-switch-group"}}<div role="group" aria-labelledby="{{.Group}}" class="verso-switch-group">{{range .Rows}}{{.}}{{end}}</div>{{end}}
+{{/* verso-switch-group: one setting asked of several things (switchGroupView)
+     — which files load: its head row (the group's label, which names the group
+     for a screen reader too, its chip and its description), then a row per
+     thing under it, each a question and its box in the answer column. */}}
+{{define "verso-switch-group"}}<div role="group" aria-labelledby="{{.Group}}" class="verso-switch-group">{{.Head}}{{range .Rows}}{{.}}{{end}}</div>{{end}}
+{{/* verso-nothing: the control of a row that is all question (a group's
+     head). */}}
+{{define "verso-nothing"}}{{end}}
 
 {{/* verso-box: one frame holding typed values (boxView). A value counted in
      a unit is a box of one part, its unit words inside the frame after it, so
