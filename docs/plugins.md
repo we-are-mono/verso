@@ -1262,6 +1262,11 @@ any form that posts it itself.
 - `autocomplete`: optional browser autofill purpose. Password fields default to
   `new-password`; use `current-password` only for the existing credential.
 - `error`: an inline error to show under the field (you set this on a 422).
+- `note`: what changing the field does, where that is worth knowing before it
+  is changed — `"Takes effect immediately, for everyone who signs in to this
+  router."`. It stays in view under the control, after any `error`, and the
+  control is described by it. What the field *is* belongs on the label (`help`,
+  `tip`); a note is its consequence.
 - `key`: the option this field writes, verbatim — `"ipaddr"`, `"leasetime"`. It
   rides beside the label as a mono chip, so someone who knows the config sees
   which line they are editing and someone who does not can ignore it.

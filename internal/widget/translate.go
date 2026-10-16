@@ -90,6 +90,7 @@ func translateFields(w Widget, t func(string) string) {
 		// Key and Source are the config as it is written — machine strings, not
 		// words — so they travel verbatim and only the sentence is looked up.
 		n.Tip = t(n.Tip)
+		n.Note = t(n.Note)
 		// A shell- or plugin-authored inline error is prose; a datatype-validation
 		// message (set by validateSchema, from the datatype package) simply misses
 		// the catalog and stays English.

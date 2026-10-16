@@ -1012,6 +1012,11 @@ pub struct Field {
     pub error: String,
     #[serde(skip_serializing_if = "String::is_empty")]
     pub help: String,
+    /// What changing the field does, where that is worth knowing before it is
+    /// changed — "Takes effect immediately". The shell keeps it in view under
+    /// the control, after any `error`. Set it through `noted`.
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub note: String,
     /// The option this field writes, verbatim — "ipaddr", "leasetime". The
     /// shell sets it as a mono chip beside the label, so someone who knows
     /// the config can see which line they are editing without leaving the
@@ -1358,6 +1363,17 @@ impl Widget {
                 *flush = true
             }
             _ => {}
+        }
+        self
+    }
+
+    /// noted keeps what changing a field does in view under its control — "Takes
+    /// effect immediately, for everyone who signs in". It is the field's
+    /// consequence, not its explanation, which belongs on the label. Only a
+    /// field carries one; anything else comes back as it was.
+    pub fn noted(mut self, consequence: &str) -> Widget {
+        if let Widget::Field(Field { note, .. }) = &mut self {
+            *note = consequence.into();
         }
         self
     }
@@ -2973,6 +2989,18 @@ mod tests {
         Widget,
     };
     use super::{json, uci_text, Map, Value};
+
+    // A note says what changing a field does; only a field carries one, and
+    // a field without one sends none.
+    #[test]
+    fn a_note_rides_its_field_and_nothing_else() {
+        let wire = |w: Widget| serde_json::to_value(w).unwrap();
+        let noted = wire(Widget::field("theme", "Theme", "", "", "").noted("Takes effect immediately."));
+        assert_eq!(noted["note"], "Takes effect immediately.");
+        assert!(wire(Widget::field("theme", "Theme", "", "", "")).get("note").is_none());
+        let text = wire(Widget::text("Words.").noted("Takes effect immediately."));
+        assert!(text.get("note").is_none());
+    }
 
     // A form's refusal is only what no control of it says: a field's refusal
     // rides the field, however deep in the form it stands, and is never said
