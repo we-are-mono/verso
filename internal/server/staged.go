@@ -280,7 +280,8 @@ func discardConfirm() *widget.Confirm {
 	return &widget.Confirm{
 		Trigger: "Discard all", Title: "Discard all staged changes?",
 		Message: "Nothing was applied, so the router keeps running as it is. What you saved on each page is lost.",
-		Confirm: "Discard", Cancel: "Not now", InRow: true,
+		// The answer repeats the act it confirms (DESIGN.md, Labels).
+		Confirm: "Discard all", Cancel: "Not now", InRow: true,
 	}
 }
 
