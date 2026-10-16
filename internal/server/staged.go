@@ -67,9 +67,6 @@ const uciRollbackTimeout = 30
 type stagedView struct {
 	Count  int
 	Groups []stagedGroup // the page's rows, under the page each change was made on
-	// Summary is what the entry's row in config history will say, offered
-	// where the page asks for a note (ADR-021).
-	Summary string
 	// Latest is the most recently staged row in its own words ("Input →
 	// REJECT"), what the rail's row says just after a save; empty where no
 	// row's time is on record.
@@ -290,7 +287,6 @@ func (s *Server) staged(ctx context.Context, sid string, tr func(string) string,
 			}
 		}
 	}
-	v.Summary = changeSummary(stagedItems(v, secrets), tr)
 	return v
 }
 

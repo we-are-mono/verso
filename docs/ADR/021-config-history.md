@@ -72,9 +72,11 @@ A row in the listing reads from its subjects:
 - a relation follows in Meta: "undo of 14:02", "back to 9 Oct, 16:40",
   "again, from 11:47".
 
-The review drawer's Apply has an optional **Note** field. Its placeholder is
-the summary the row will show. A note appears in the entry's drawer, never in
-place of the row's subjects.
+The Pending changes page's Apply carries an optional **Note** field. It says
+what it is for (why the changes are made, kept with them here) and its hint
+says only that it is optional, never words that read as a note already
+written. A note appears in the entry's drawer, never in place of the row's
+subjects.
 
 ### Changes made outside Verso
 

@@ -128,7 +128,7 @@ func TestAnUndescribedChangeIsNamedByItsSection(t *testing.T) {
 
 // TestADescribedChangeWithNoSubjectReadsAsItsSentence: a plugin that said
 // what a change did but named no subject has still said it in words, so the
-// entry and the review's note read those words — never the anonymous section
+// entry and the Pending changes row read those words — never the anonymous section
 // uci calls it by (firewall.cfg0792bd).
 func TestADescribedChangeWithNoSubjectReadsAsItsSentence(t *testing.T) {
 	items := []history.ChangeItem{{Page: "Firewall", Plugin: "firewall", Verb: "changed", Words: "Turned off the rule “Allow-Ping”.",
@@ -142,8 +142,8 @@ func TestADescribedChangeWithNoSubjectReadsAsItsSentence(t *testing.T) {
 	}
 	setting := []history.ChangeItem{{Page: "DNS", Plugin: "dnsdhcp", Verb: "changed", Words: "Log every query: on",
 		Ops: []history.ChangeOp{{Config: "dhcp", Section: "cfg01411c", Op: "set", Option: "logqueries", Value: text("1")}}}}
-	if got := changeSummary(setting, identity); got != "Log every query: on" {
-		t.Errorf("the review's note = %q, want the setting's own words", got)
+	if _, got := phrase(history.Change{Items: setting}, identity, false); got != "Log every query: on" {
+		t.Errorf("the Pending changes row's words = %q, want the setting's own words", got)
 	}
 }
 

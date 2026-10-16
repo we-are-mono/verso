@@ -162,15 +162,15 @@ func TestAnUndescribedSecretKeepsNoValueInItsWords(t *testing.T) {
 	}
 }
 
-// TestTheReviewMasksEverySecretItKnows: the review drawer's raw line and the
-// note it offers mask a listed secret, as well as what a name says is one.
+// TestTheReviewMasksEverySecretItKnows: the Pending changes page's rows and
+// raw lines mask a listed secret, as well as what a name says is one.
 func TestTheReviewMasksEverySecretItKnows(t *testing.T) {
 	const radius = "RADIUS-NEVER-SHOWN-0042"
 	s, _, _, _, _ := wifiServer(t, fakeBackend{
 		changes: map[string][][]string{"wireless": {{"set", "corp", "auth_secret", radius}}},
 	})
 	view := s.staged(t.Context(), "test-sid", func(s string) string { return s }, func(string) func(string) string { return func(s string) string { return s } })
-	shown := []string{view.Summary}
+	var shown []string
 	for _, g := range view.Groups {
 		for _, item := range g.Items {
 			shown = append(shown, item.Label)
@@ -179,7 +179,7 @@ func TestTheReviewMasksEverySecretItKnows(t *testing.T) {
 			}
 		}
 	}
-	if len(shown) < 3 || strings.Contains(strings.Join(shown, "\n"), radius) {
+	if len(shown) < 2 || strings.Contains(strings.Join(shown, "\n"), radius) {
 		t.Fatalf("the review shows %q", shown)
 	}
 }

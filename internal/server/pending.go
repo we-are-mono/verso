@@ -122,7 +122,10 @@ func (s *Server) whenYouApply(r *http.Request, sid string, view stagedView, lang
 		&widget.Form{ID: "verso-pending-apply", Action: "/uci/apply", NoSubmit: true, Fields: widget.Widgets{
 			// The note is a sentence for config history, so its label stands
 			// over a box the card's width, as the Hardware graph's choice does.
-			&widget.Field{Name: "note", Label: "Note", Placeholder: view.Summary, Wide: true},
+			// It says what it is for and where it goes; its hint says only that
+			// it may be left empty.
+			&widget.Field{Name: "note", Label: "Note", Placeholder: "Optional", Wide: true, HelpMarkdown: true,
+				Help: "Say why you’re making these changes. It’s kept with them in **System › Changes**."},
 		}},
 	)
 	return &widget.Section{Title: "When you apply", Children: children}
