@@ -156,6 +156,29 @@ func TestAWideAnswerStandsUnderItsQuestion(t *testing.T) {
 // w is a widget as a Widget, so a table of mixed widgets reads plainly.
 func w(widget Widget) Widget { return widget }
 
+// TestARefusalStandsUnderItsControl: a refusal is part of the answer, after
+// the control and before the note, so it stands straight under the control
+// whatever the description beside it says; it was once a grid row of its own,
+// which a long description pushed down, opening a gap under the field.
+func TestARefusalStandsUnderItsControl(t *testing.T) {
+	got := render(t, newRenderer(t), &Field{
+		Name: "synflood_burst", Label: "Burst", Key: "synflood_burst",
+		Help:  "How many may arrive at once before the rate limit applies. Absorbs ordinary bursts, like a page opening 40 sockets.",
+		Error: "Enter a whole number.", Note: "Counted in packets.",
+	})
+	question, answer := strings.Index(got, "verso-field-question"), strings.Index(got, "verso-field-answer")
+	desc := strings.Index(got, "data-verso-field-desc")
+	control := strings.Index(got, `id="synflood_burst" name="synflood_burst"`)
+	refusal := strings.Index(got, `id="synflood_burst-error" data-verso-error`)
+	note := strings.Index(got, `id="synflood_burst-note" data-verso-field-note`)
+	if !(question < desc && desc < answer && answer < control && control < refusal && refusal < note) {
+		t.Errorf("the refusal is not the answer's, between its control and its note:\n%s", got)
+	}
+	if strings.Count(got[answer:], "</div>") < 2 || strings.Index(got[answer:], "</div>") < strings.Index(got[answer:], "data-verso-error") {
+		t.Errorf("the refusal stands outside the answer:\n%s", got)
+	}
+}
+
 // TestAFieldsRefusalIsTheBand: wherever a value is refused, the refusal is the
 // crimson band under the box — named by the box, so a screen reader reads it —
 // including the code editor, which drew a bare red line of its own.
