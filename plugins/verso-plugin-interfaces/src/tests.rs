@@ -68,7 +68,11 @@ fn saving_a_network_writes_nothing_to_its_dhcp_server() {
         &Form::parse("name=lan&device=br-lan&proto=static&ipaddr=192.168.1.1&netmask=255.255.255.0&zone=lan&auto=1&mtu=1400"),
     );
     assert!(!e.commit.is_empty());
-    assert!(e.commit.iter().all(|o| o.config != "dhcp"), "{:?}", e.commit);
+    assert!(
+        e.commit.iter().all(|o| o.config != "dhcp"),
+        "{:?}",
+        e.commit
+    );
 }
 // A network that hands out addresses keeps a static one to hand out from.
 #[test]
@@ -78,11 +82,27 @@ fn a_serving_network_keeps_its_static_address() {
         &Form::parse("name=lan&device=br-lan&proto=dhcp&zone=lan&auto=1"),
     );
     assert!(e.commit.is_empty());
-    assert!(serde_json::to_string(&e).unwrap().contains("Turn its DHCP server off"));
+    assert!(serde_json::to_string(&e)
+        .unwrap()
+        .contains("Turn its DHCP server off"));
 }
 #[test]
 fn invalid_posts_never_stage() {
-    for body in ["name=lan&device=eth2&proto=dhcp","name=guest&device=missing&proto=dhcp","name=../bad&proto=dhcp","name=guest&device=eth2&proto=static&ipaddr=invalid&netmask=255.255.255.0","name=guest&device=eth2&proto=static&ipaddr=192.168.3.1&netmask=255.0.255.0","name=wan2&device=eth2&proto=pppoe&username=account"]{let e=post(&request("/new","kind=network"),&Form::parse(body));assert!(e.commit.is_empty(),"accepted {body}");assert!(serde_json::to_string(&e).unwrap().contains("\"error\":\""),"no refusal for {body}");}
+    for body in [
+        "name=lan&device=eth2&proto=dhcp",
+        "name=guest&device=missing&proto=dhcp",
+        "name=../bad&proto=dhcp",
+        "name=guest&device=eth2&proto=static&ipaddr=invalid&netmask=255.255.255.0",
+        "name=guest&device=eth2&proto=static&ipaddr=192.168.3.1&netmask=255.0.255.0",
+        "name=wan2&device=eth2&proto=pppoe&username=account",
+    ] {
+        let e = post(&request("/new", "kind=network"), &Form::parse(body));
+        assert!(e.commit.is_empty(), "accepted {body}");
+        assert!(
+            serde_json::to_string(&e).unwrap().contains("\"error\":\""),
+            "no refusal for {body}"
+        );
+    }
 }
 #[test]
 fn device_kinds_write_device_sections() {
@@ -135,8 +155,7 @@ fn network_rename_updates_all_owners() {
         .as_array()
         .unwrap()
         .iter()
-        .any(|o| o["config"] == "dhcp"
-            && o["values"] == json!({"interface": "home"})));
+        .any(|o| o["config"] == "dhcp" && o["values"] == json!({"interface": "home"})));
     assert!(ops
         .as_array()
         .unwrap()
@@ -186,17 +205,33 @@ fn adding_an_interface_opens_a_new_network_with_its_type_to_change() {
         .collect();
     assert_eq!(values, ["network", "wan", "bridge", "vlan", "tunnel"]);
     // A VPN is made on the tunnels' own page, and the drawer says where.
-    assert!(drawer.to_string().contains(&format!("{ROOT}vpn")), "{drawer}");
+    assert!(
+        drawer.to_string().contains(&format!("{ROOT}vpn")),
+        "{drawer}"
+    );
     // Editing an interface is not choosing one: an existing object's kind is
     // what it is.
     let lan = open_drawer(&get(&request("/edit", "network=lan")));
     assert_ne!(the_type(&lan)["name"], "kind", "{lan}");
     // The drawer's title already names what it is; its opening fields stand
     // under it without a heading or a lede of their own.
-    for d in [&drawer, &lan, &open_drawer(&get(&request("/edit", "network=&device=br-lan")))] {
+    for d in [
+        &drawer,
+        &lan,
+        &open_drawer(&get(&request("/edit", "network=&device=br-lan"))),
+    ] {
         let opening = &d["children"][0]["fields"][0];
-        let said = |k: &str| opening.get(k).and_then(|v| v.as_str()).unwrap_or_default().to_string();
-        assert!(said("title").is_empty() && said("sub").is_empty(), "{opening}");
+        let said = |k: &str| {
+            opening
+                .get(k)
+                .and_then(|v| v.as_str())
+                .unwrap_or_default()
+                .to_string()
+        };
+        assert!(
+            said("title").is_empty() && said("sub").is_empty(),
+            "{opening}"
+        );
         // It is one of the drawer's subjects like the rest: ruled, so it keeps
         // its air before the next section's rule (the first one draws none
         // above itself), never a bare block that adds none.
@@ -208,17 +243,31 @@ fn adding_an_interface_opens_a_new_network_with_its_type_to_change() {
 fn changing_the_type_reshapes_the_drawer_and_keeps_what_still_applies() {
     let e = post(
         &request("/new", ""),
-        &Form::parse("_action=reshape&kind=bridge&name=guest&device=eth2&mtu=1400&proto=static&ipaddr=10.0."),
+        &Form::parse(
+            "_action=reshape&kind=bridge&name=guest&device=eth2&mtu=1400&proto=static&ipaddr=10.0.",
+        ),
     );
     assert!(e.commit.is_empty(), "a reshape stages nothing: {e:?}");
     let drawer = open_drawer(&e);
     assert_eq!(drawer["title"], "New bridge");
     assert_eq!(the_type(&drawer)["value"], "bridge");
     let j = drawer.to_string();
-    assert!(!j.contains("\"error\":\""), "a reshape refuses nothing: {j}");
-    assert!(j.contains("\"value\":\"guest\""), "the name carries over: {j}");
-    assert!(j.contains("\"value\":\"1400\""), "the MTU carries over: {j}");
-    assert!(!j.contains("\"value\":\"10.0.\""), "a network's address is no bridge's: {j}");
+    assert!(
+        !j.contains("\"error\":\""),
+        "a reshape refuses nothing: {j}"
+    );
+    assert!(
+        j.contains("\"value\":\"guest\""),
+        "the name carries over: {j}"
+    );
+    assert!(
+        j.contains("\"value\":\"1400\""),
+        "the MTU carries over: {j}"
+    );
+    assert!(
+        !j.contains("\"value\":\"10.0.\""),
+        "a network's address is no bridge's: {j}"
+    );
     // A line to the internet starts as one, whatever the network was set to.
     let wan = open_drawer(&post(
         &request("/new", ""),
@@ -227,16 +276,30 @@ fn changing_the_type_reshapes_the_drawer_and_keeps_what_still_applies() {
     assert_eq!(wan["title"], "New internet connection");
     assert_eq!(value_of(&wan, "proto"), "dhcp", "{wan}");
     assert_eq!(value_of(&wan, "zone"), "wan", "{wan}");
-    assert_eq!(value_of(&wan, "device"), "eth2", "the device it runs on carries over: {wan}");
+    assert_eq!(
+        value_of(&wan, "device"),
+        "eth2",
+        "the device it runs on carries over: {wan}"
+    );
 }
 // value_of is the value of the first control named name anywhere in v.
 fn value_of(v: &serde_json::Value, name: &str) -> String {
     match v {
-        serde_json::Value::Object(o) if o.get("name").and_then(|n| n.as_str()) == Some(name) => {
-            o.get("value").and_then(|x| x.as_str()).unwrap_or_default().into()
-        }
-        serde_json::Value::Object(o) => o.values().map(|x| value_of(x, name)).find(|s| !s.is_empty()).unwrap_or_default(),
-        serde_json::Value::Array(a) => a.iter().map(|x| value_of(x, name)).find(|s| !s.is_empty()).unwrap_or_default(),
+        serde_json::Value::Object(o) if o.get("name").and_then(|n| n.as_str()) == Some(name) => o
+            .get("value")
+            .and_then(|x| x.as_str())
+            .unwrap_or_default()
+            .into(),
+        serde_json::Value::Object(o) => o
+            .values()
+            .map(|x| value_of(x, name))
+            .find(|s| !s.is_empty())
+            .unwrap_or_default(),
+        serde_json::Value::Array(a) => a
+            .iter()
+            .map(|x| value_of(x, name))
+            .find(|s| !s.is_empty())
+            .unwrap_or_default(),
         _ => String::new(),
     }
 }
@@ -249,7 +312,9 @@ fn a_new_interface_saves_as_the_type_chosen() {
     let j = serde_json::to_value(&e).unwrap();
     assert_eq!(j["commit"][0]["type"], "device", "{j}");
     assert_eq!(j["commit"][0]["values"]["type"], "bridge");
-    assert!(post(&request("/new", ""), &Form::parse("kind=vpn&name=x")).commit.is_empty());
+    assert!(post(&request("/new", ""), &Form::parse("kind=vpn&name=x"))
+        .commit
+        .is_empty());
 }
 #[test]
 fn listing_uses_live_addresses_and_expandable_details() {
@@ -357,7 +422,15 @@ fn runtime_flags_win_over_staged_autostart_and_device_state() {
     m.live["devices"]["br-lan"]["carrier"] = json!(true);
     let row = inventory_row(&m, "br-lan");
     assert_eq!(row["cells"][4]["text"], "up");
-    assert_eq!(row["cells"][5]["actions"][1]["name"], "down");
+    // The state's act leads the row's acts, as a rule's power glyph does.
+    assert_eq!(row["cells"][5]["actions"][0]["name"], "down");
+    let icons: Vec<&str> = row["cells"][5]["actions"]
+        .as_array()
+        .expect("acts")
+        .iter()
+        .map(|a| a["icon"].as_str().unwrap_or_default())
+        .collect();
+    assert_eq!(icons, ["power", "refresh-cw", "square-pen", "trash-2"]);
     m.live["interfaces"][0]["up"] = json!(false);
     assert_eq!(inventory_row(&m, "br-lan")["cells"][4]["text"], "down");
     m.live["interfaces"][0]["pending"] = json!(true);
@@ -576,11 +649,7 @@ fn an_expanded_row_reads_as_the_uci_sections_behind_it() {
     // is the row's pencil, so its line carries none.
     assert!(parts[0].get("control").is_none(), "{}", parts[0]);
     for (part, label, href) in [
-        (
-            &parts[1],
-            "Configure DHCP",
-            "/plugins/dnsdhcp/?open=lan",
-        ),
+        (&parts[1], "Configure DHCP", "/plugins/dnsdhcp/?open=lan"),
         (
             &parts[2],
             "Edit device",
@@ -687,7 +756,7 @@ fn every_way_into_the_editor_opens_it_in_place() {
     ] {
         let row = inventory_row(&m, id);
         assert_eq!(row["panel"], href, "{row}");
-        let pencil = row["cells"][5]["actions"][3].clone();
+        let pencil = row["cells"][5]["actions"][2].clone();
         assert_eq!(pencil["href"], href, "{row}");
     }
     // The acts on an expanded row's parts open the same drawer.

@@ -6,7 +6,8 @@ use serde_json::Value;
 use std::collections::{BTreeMap, BTreeSet};
 use std::net::Ipv6Addr;
 use verso_plugin::{
-    uci_text, Envelope, Grid, HeadingAct, Property, RowDrawer, SectionWidget, Table, TableCell, TableChip, TableColumn, TableRow, TableRowAct, Tone, Widget,
+    uci_text, Envelope, Grid, HeadingAct, Property, RowDrawer, SectionWidget, Table, TableCell,
+    TableChip, TableColumn, TableRow, TableRowAct, Tone, Widget,
 };
 
 fn text(v: Option<&Value>) -> String {
@@ -510,6 +511,15 @@ pub fn listing(m: &Model) -> Envelope {
 pub fn with_drawer(m: &Model, drawer: RowDrawer) -> Envelope {
     inventory(m, Some(drawer))
 }
+
+/// A row's four act slots, in the order every listing's acts stand: the state
+/// first, then what acts on it, then the way in, and the removal last. A slot
+/// a row has no act for holds its place.
+const POWER: usize = 0;
+const RESTART: usize = 1;
+const EDIT: usize = 2;
+const DELETE: usize = 3;
+
 fn inventory(m: &Model, drawer: Option<RowDrawer>) -> Envelope {
     let parents = m.parents();
     let mut names = m.names();
@@ -603,51 +613,53 @@ fn inventory(m: &Model, drawer: Option<RowDrawer>) -> Envelope {
         // Only observed addresses belong in this column. Configured overrides
         // remain visible in the UCI block until Apply makes them real.
         let mac = text(runtime.and_then(|v| v.get("macaddr")));
+        // The acts stand in the order every listing's do: the state first, then
+        // what acts on it, then the way in, and the removal last.
         let mut actions = (0..4).map(|_| TableRowAct::default()).collect::<Vec<_>>();
         if let Some(net) = nets.iter().find(|n| m.network(n).is_some()) {
             if m.live_network(net).is_some() {
-                actions[0] = TableRowAct {
-                    icon: "refresh-cw".into(),
-                    title: "Restart".into(),
-                    name: "restart".into(),
-                    value: net.clone(),
-                    ..Default::default()
-                };
                 let up = flag(m.live_network(net).and_then(|v| v.get("up"))) == Some(true);
-                actions[1] = TableRowAct {
+                actions[POWER] = TableRowAct {
                     icon: "power".into(),
                     title: if up { "Bring down" } else { "Bring up" }.into(),
                     name: if up { "down" } else { "up" }.into(),
                     value: net.clone(),
                     ..Default::default()
                 };
+                actions[RESTART] = TableRowAct {
+                    icon: "refresh-cw".into(),
+                    title: "Restart".into(),
+                    name: "restart".into(),
+                    value: net.clone(),
+                    ..Default::default()
+                };
             }
-            actions[2] = TableRowAct {
-                icon: "trash-2".into(),
-                title: "Delete".into(),
-                href: url(net, "", "delete"),
-                ..Default::default()
-            };
-            actions[3] = TableRowAct {
+            actions[EDIT] = TableRowAct {
                 icon: "square-pen".into(),
                 title: "Edit".into(),
                 href: url(net, "", "edit"),
                 ..Default::default()
             };
+            actions[DELETE] = TableRowAct {
+                icon: "trash-2".into(),
+                title: "Delete".into(),
+                href: url(net, "", "delete"),
+                ..Default::default()
+            };
         } else {
-            if configured.is_some() && !used {
-                actions[2] = TableRowAct {
-                    icon: "trash-2".into(),
-                    title: "Delete".into(),
-                    href: url("", &name, "delete"),
-                    ..Default::default()
-                };
-            }
             if runtime.is_some() || configured.is_some() {
-                actions[3] = TableRowAct {
+                actions[EDIT] = TableRowAct {
                     icon: "square-pen".into(),
                     title: "Edit".into(),
                     href: url("", &name, "edit"),
+                    ..Default::default()
+                };
+            }
+            if configured.is_some() && !used {
+                actions[DELETE] = TableRowAct {
+                    icon: "trash-2".into(),
+                    title: "Delete".into(),
+                    href: url("", &name, "delete"),
                     ..Default::default()
                 };
             }
@@ -657,7 +669,7 @@ fn inventory(m: &Model, drawer: Option<RowDrawer>) -> Envelope {
             depth,
             // The row's editor is its panel: the pencil, whose address this
             // is, opens it in place rather than leaving the listing.
-            panel: actions[3].href.clone(),
+            panel: actions[EDIT].href.clone(),
             expanded: details(m, &name, &nets, runtime, &kind),
             cells: vec![
                 TableCell {
