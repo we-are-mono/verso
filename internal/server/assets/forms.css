@@ -191,6 +191,48 @@
      is in. */
   label:not(:has(input:checked)) > .verso-switch-word > .verso-switch-on,
   label:has(input:checked) > .verso-switch-word > .verso-switch-off { display: none; }
+  /* Descriptions fold away, every one on the page at once, for someone who
+     knows the settings (form-fields): under a folded root each closes its
+     one track from its words' height to none as it fades, so the rows close
+     up by whole lines and stay on the grid. A folded description is hidden
+     from sight only; a control it describes is still described by it. An
+     item's detail and a value's note never fold. */
+  [data-verso-field-desc] {
+    display: grid;
+    grid-template-rows: 1fr;
+    transition: grid-template-rows 200ms ease, opacity 200ms ease, visibility 200ms;
+  }
+  [data-verso-field-desc] > span {
+    min-height: 0;
+    overflow: hidden;
+  }
+  [data-verso-descriptions="folded"] [data-verso-field-desc] {
+    grid-template-rows: 0fr;
+    opacity: 0;
+    visibility: hidden;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    [data-verso-field-desc] { transition: none; }
+  }
+  /* The fold's act says what pressing it does: the one word the root's state
+     calls for. It stands only where there is a description to fold, in its
+     page's body (not a drawer's, which carries its own) or its drawer. */
+  .verso-fold {
+    display: none;
+  }
+  .verso-fold-hide,
+  [data-verso-descriptions="folded"] .verso-fold-show {
+    display: inline-flex;
+    align-items: center;
+    gap: calc(var(--spacing) * 1.5);
+  }
+  .verso-fold-show, [data-verso-descriptions="folded"] .verso-fold-hide {
+    display: none;
+  }
+  [data-verso-column]:has(> .verso-page-body [data-verso-field-desc]) > [data-verso-masthead] .verso-fold,
+  dialog:has([data-verso-field-desc]) .verso-fold {
+    display: flex;
+  }
   /* A choice of what a page shows (a chooser: "Show chart for") is no
      setting: it keeps its own layout, its name over its controls at every
      width, as a control band's controls stand. */

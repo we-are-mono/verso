@@ -241,7 +241,10 @@
     <div class="verso-field-question">
       {{if .ShowsLabel}}{{template "verso-field-label" .Label}}{{end}}
       {{with .Detail}}<p{{with $.DetailID}} id="{{.}}"{{end}} data-verso-field-detail class="{{template "verso-field-desc-class"}}">{{.}}</p>{{end}}
-      {{with .Desc}}<p{{with $.DescID}} id="{{.}}"{{end}} data-verso-field-desc class="{{template "verso-field-desc-class"}}">{{.}}</p>{{end}}
+      {{/* A description folds away with every other on the page (forms.css):
+           its words stand in a span of their own, the one track that
+           closes. */}}
+      {{with .Desc}}<p{{with $.DescID}} id="{{.}}"{{end}} data-verso-field-desc class="{{template "verso-field-desc-class"}}"><span>{{.}}</span></p>{{end}}
     </div>
     {{/* An act on the whole answer (a set's add) stands on the question's
          line at the row's end, at every width. */}}
@@ -606,9 +609,10 @@
      away and brings them back (form-fields), on the page's heading line and
      in every drawer's header, given its place's own classes. It holds both
      words; the stylesheet shows the one the page's state calls for, and
-     shows the act only where there is a description to fold
-     (verso-page.js keeps the state). */}}
-{{define "verso-fold-act"}}<button type="button" data-verso-fold class="verso-fold-act {{template "verso-act-quiet"}} {{.}}"><span class="verso-fold-hide inline-flex items-center gap-1.5">{{icon "fold-vertical" "size-4"}}<span>{{t "Hide descriptions"}}</span></span><span class="verso-fold-show inline-flex items-center gap-1.5">{{icon "unfold-vertical" "size-4"}}<span>{{t "Show descriptions"}}</span></span></button>{{end}}
+     shows the act only where there is a description to fold, through a
+     wrapper whose display no utility sets (verso-page.js keeps the
+     state). */}}
+{{define "verso-fold-act"}}<span class="verso-fold {{.}}"><button type="button" data-verso-fold class="{{template "verso-act-quiet"}}"><span class="verso-fold-hide">{{icon "fold-vertical" "size-4"}}<span>{{t "Hide descriptions"}}</span></span><span class="verso-fold-show">{{icon "unfold-vertical" "size-4"}}<span>{{t "Show descriptions"}}</span></span></button></span>{{end}}
 
 {{/* The band is 56px as the top bar is, and built the same way: its 28px
      line and 14px of air either side, the hairline drawn inside it. */}}

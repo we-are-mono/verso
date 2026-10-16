@@ -27,7 +27,7 @@ func TestDecodeAndRenderSwitch(t *testing.T) {
 		`<label class="flex w-fit cursor-pointer items-center"><span class="relative inline-flex size-4`,
 		// And its help is its description under its name, as a field's is,
 		// and the box is read with it.
-		`<p id="enabled-desc" data-verso-field-desc class="text-sm leading-6 text-pretty text-body">Applies immediately.</p>`,
+		`<p id="enabled-desc" data-verso-field-desc class="text-sm leading-6 text-pretty text-body"><span>Applies immediately.</span></p>`,
 		`aria-describedby="enabled-desc"`,
 	} {
 		if !strings.Contains(got, want) {

@@ -73,7 +73,7 @@ func TestAFusedLabelExplainsItsParts(t *testing.T) {
 	g.Children[1].(*Field).Help = "Extra connections allowed at once."
 	got := render(t, newRenderer(t), g)
 	for _, want := range []string{
-		`<p id="synflood_rate-group-desc" data-verso-field-desc class="text-sm leading-6 text-pretty text-body">Connections per second: New connections allowed each second. Burst: Extra connections allowed at once.</p>`,
+		`<p id="synflood_rate-group-desc" data-verso-field-desc class="text-sm leading-6 text-pretty text-body"><span>Connections per second: New connections allowed each second. Burst: Extra connections allowed at once.</span></p>`,
 		`role="group" aria-labelledby="synflood_rate-group-label" aria-describedby="synflood_rate-group-desc"`,
 		`synflood_rate · synflood_burst</span>`, // the chip names both options
 	} {
@@ -89,14 +89,14 @@ func TestAFusedLabelExplainsItsParts(t *testing.T) {
 	// name in front would only repeat the label over it.
 	g.Children[1].(*Field).Help = ""
 	got = render(t, newRenderer(t), g)
-	if !strings.Contains(got, `data-verso-field-desc class="text-sm leading-6 text-pretty text-body">New connections allowed each second.</p>`) {
+	if !strings.Contains(got, `data-verso-field-desc class="text-sm leading-6 text-pretty text-body"><span>New connections allowed each second.</span></p>`) {
 		t.Errorf("a lone part's help is the row's description as it stands:\n%s", got)
 	}
 	g.Children[1].(*Field).Help = "Extra connections allowed at once."
 
 	g.Help = "How fast new connections may arrive."
 	got = render(t, newRenderer(t), g)
-	if !strings.Contains(got, ">How fast new connections may arrive. Connections per second: New connections allowed each second. Burst: Extra connections allowed at once.</p>") {
+	if !strings.Contains(got, "><span>How fast new connections may arrive. Connections per second: New connections allowed each second. Burst: Extra connections allowed at once.</span></p>") {
 		t.Errorf("the group's own help leads its description:\n%s", got)
 	}
 }

@@ -202,7 +202,7 @@ func TestAFieldsHelpIsItsDescription(t *testing.T) {
 		Tip:  "A DHCPv6 client identifies itself by a DUID, not by its MAC.",
 		Help: "Match a DHCPv6 client by DUID instead of MAC.",
 	})
-	desc := `<p id="duid-desc" data-verso-field-desc class="text-sm leading-6 text-pretty text-body">Match a DHCPv6 client by DUID instead of MAC. A DHCPv6 client identifies itself by a DUID, not by its MAC.</p>`
+	desc := `<p id="duid-desc" data-verso-field-desc class="text-sm leading-6 text-pretty text-body"><span>Match a DHCPv6 client by DUID instead of MAC. A DHCPv6 client identifies itself by a DUID, not by its MAC.</span></p>`
 	at := strings.Index(got, desc)
 	if at < 0 || at > strings.Index(got, "verso-field-answer") {
 		t.Errorf("the help and the tip are not the description under the name:\n%s", got)
@@ -270,7 +270,7 @@ func TestAHelpOnlyFieldIsDescribed(t *testing.T) {
 		Name: "leasetime", Label: "Lease time", Key: "leasetime",
 		Help: "How long a client may keep an address before it asks again.",
 	})
-	if !strings.Contains(got, `<p id="leasetime-desc" data-verso-field-desc class="text-sm leading-6 text-pretty text-body">How long a client may keep an address before it asks again.</p>`) {
+	if !strings.Contains(got, `<p id="leasetime-desc" data-verso-field-desc class="text-sm leading-6 text-pretty text-body"><span>How long a client may keep an address before it asks again.</span></p>`) {
 		t.Errorf("a help-only field is not described under its name:\n%s", got)
 	}
 }

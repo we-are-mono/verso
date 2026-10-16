@@ -586,6 +586,40 @@ func TestAChooserKeepsItsOwnLayout(t *testing.T) {
 	}
 }
 
+// TestDescriptionsFoldAway: under a folded root every description folds to
+// nothing over 200ms, its one grid track going from its words' height to none
+// as it fades, and at once where motion is reduced; the fold's act says the
+// word for what pressing it does, and stands only where there is a
+// description to fold, in its page's body or its drawer (form-fields).
+func TestDescriptionsFoldAway(t *testing.T) {
+	raw, err := os.ReadFile("assets/forms.css")
+	if err != nil {
+		t.Fatal(err)
+	}
+	css := string(raw)
+	for head, wants := range map[string][]string{
+		"[data-verso-field-desc] {":                                    {"display: grid;", "grid-template-rows: 1fr;", "200ms"},
+		"[data-verso-field-desc] > span {":                             {"min-height: 0;", "overflow: hidden;"},
+		`[data-verso-descriptions="folded"] [data-verso-field-desc] {`: {"grid-template-rows: 0fr;", "opacity: 0;", "visibility: hidden;"},
+		".verso-fold {": {"display: none;"},
+		`.verso-fold-show, [data-verso-descriptions="folded"] .verso-fold-hide {`:                                  {"display: none;"},
+		`[data-verso-descriptions="folded"] .verso-fold-show {`:                                                    {"display: inline-flex;"},
+		"[data-verso-column]:has(> .verso-page-body [data-verso-field-desc]) > [data-verso-masthead] .verso-fold,": {},
+		"dialog:has([data-verso-field-desc]) .verso-fold {":                                                        {"display: flex;"},
+	} {
+		block := cssBlock(t, css, head)
+		for _, want := range wants {
+			if !strings.Contains(block, want) {
+				t.Errorf("%s lacks %s: %s", head, want, block)
+			}
+		}
+	}
+	motion := strings.Index(css, "@media (prefers-reduced-motion: reduce)")
+	if motion < 0 || !strings.Contains(css[motion:], "[data-verso-field-desc] { transition: none; }") {
+		t.Error("descriptions still glide where motion is reduced")
+	}
+}
+
 // TestASwitchShowsTheWordForItsState: a form switch holds both words and the
 // stylesheet shows the one its box is in, with no script (form-fields).
 func TestASwitchShowsTheWordForItsState(t *testing.T) {

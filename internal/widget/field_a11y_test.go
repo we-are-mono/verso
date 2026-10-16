@@ -162,13 +162,13 @@ func TestDescribedControlsAreDescribed(t *testing.T) {
 		desc, read string
 	}{
 		"switch": {&Switch{Name: "wmm", Label: "WMM", Help: "Prioritise voice.", Tip: "Voice goes first."},
-			`<p id="wmm-desc" data-verso-field-desc class="text-sm leading-6 text-pretty text-body">Prioritise voice. Voice goes first.</p>`,
+			`<p id="wmm-desc" data-verso-field-desc class="text-sm leading-6 text-pretty text-body"><span>Prioritise voice. Voice goes first.</span></p>`,
 			`id="wmm" name="wmm" aria-describedby="wmm-desc"`},
 		"gate": {&Conditional{Name: "psk", Label: "Use a key", Help: "A shared secret."},
-			`<p id="psk-desc" data-verso-field-desc class="text-sm leading-6 text-pretty text-body">A shared secret.</p>`,
+			`<p id="psk-desc" data-verso-field-desc class="text-sm leading-6 text-pretty text-body"><span>A shared secret.</span></p>`,
 			`id="psk" name="psk" aria-describedby="psk-desc"`},
 		"list": {&List{Name: "ntp", Label: "Servers", Help: "Tried in order."},
-			`<p id="ntp-desc" data-verso-field-desc class="text-sm leading-6 text-pretty text-body">Tried in order.</p>`,
+			`<p id="ntp-desc" data-verso-field-desc class="text-sm leading-6 text-pretty text-body"><span>Tried in order.</span></p>`,
 			`aria-labelledby="ntp-label" aria-describedby="ntp-desc"`},
 	} {
 		got := render(t, newRenderer(t), c.w)

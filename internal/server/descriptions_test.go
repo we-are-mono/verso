@@ -24,14 +24,24 @@ func TestFoldedDescriptionsArriveFolded(t *testing.T) {
 		if value != "" {
 			req.AddCookie(&http.Cookie{Name: descriptionsCookie, Value: value})
 		}
-		body := serve(t, s, req).Body.String()
-		if got := strings.Contains(body, `<html lang="en" data-verso-descriptions="folded">`); got != folded {
-			t.Errorf("cookie %q: folded root %v, want %v", value, got, folded)
+		root := rootTag(serve(t, s, req).Body.String())
+		if got := root == `<html lang="en" data-verso-descriptions="folded">`; got != folded {
+			t.Errorf("cookie %q: folded root %v, want %v: %s", value, got, folded, root)
 		}
-		if !folded && strings.Contains(body, "data-verso-descriptions=") {
-			t.Errorf("cookie %q: the root carries a fold it was not asked for", value)
+		if !folded && strings.Contains(root, "data-verso-descriptions") {
+			t.Errorf("cookie %q: the root carries a fold it was not asked for: %s", value, root)
 		}
 	}
+}
+
+// rootTag is a page's <html> tag: the page's own state, apart from the
+// stylesheet inlined under it, which names every state it styles.
+func rootTag(body string) string {
+	at := strings.Index(body, "<html")
+	if at < 0 {
+		return ""
+	}
+	return body[at : at+strings.Index(body[at:], ">")+1]
 }
 
 // TestTheHeadingLineOffersTheFold: every page's heading line carries the act
@@ -73,7 +83,7 @@ func TestTheSignInPageIgnoresTheFold(t *testing.T) {
 	req.AddCookie(&http.Cookie{Name: descriptionsCookie, Value: "folded"})
 	rec := httptest.NewRecorder()
 	s.Handler().ServeHTTP(rec, req)
-	if strings.Contains(rec.Body.String(), "data-verso-descriptions") {
-		t.Errorf("the sign-in page takes the fold:\n%s", rec.Body.String())
+	if root := rootTag(rec.Body.String()); root == "" || strings.Contains(root, "data-verso-descriptions") {
+		t.Errorf("the sign-in page takes the fold: %q", root)
 	}
 }
