@@ -246,11 +246,14 @@
     {{/* An act on the whole answer (a set's add) stands on the question's
          line at the row's end, at every width. */}}
     {{with .Act}}<div class="verso-field-act">{{.}}</div>{{end}}
-    <div data-verso-control{{with .Measure}} data-verso-control-measure="{{.}}"{{end}}{{if .Inline}} data-verso-inline-field{{end}} class="{{template "verso-field-control-class"}} verso-field-answer relative">
+    {{/* A row that is all question (a set's head, a fact with nothing to
+         read out) draws no answer, so a stacked row leaves no empty
+         control's height under it. */}}
+    {{if or .Control .Errors .Note .Inline}}<div data-verso-control{{with .Measure}} data-verso-control-measure="{{.}}"{{end}}{{if .Inline}} data-verso-inline-field{{end}} class="{{template "verso-field-control-class"}} verso-field-answer relative">
       {{.Control}}
       {{range .Errors}}<span id="{{.ID}}" data-verso-error class="{{template "verso-refusal-band"}}">{{template "verso-error-words" .Text}}</span>{{else}}{{if .Inline}}<span id="{{.ErrorID}}" data-verso-inline-error hidden class="{{template "verso-refusal-band"}}"></span>{{end}}{{end}}
       {{with .Note}}<p{{with $.NoteID}} id="{{.}}"{{end}} data-verso-field-note class="{{template "verso-field-desc-class"}}">{{.}}</p>{{end}}
-    </div>
+    </div>{{end}}
     {{/* A row that cannot be taken out of the set still reserves the glyph's
          width, so every control in the group begins and ends in one place. */}}
     {{if .Lane}}{{if .Removable}}{{template "verso-row-remove" .Change}}{{else}}<span data-verso-remove-lane class="size-7 flex-none" aria-hidden="true"></span>{{end}}{{end}}

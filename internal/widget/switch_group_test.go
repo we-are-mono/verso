@@ -57,10 +57,14 @@ func TestSwitchesUnderOneLabelAreOneSetting(t *testing.T) {
 		t.Errorf("a head and two item rows, got %d rows:\n%s", n, got)
 	}
 	group, head := strings.Index(got, `class="verso-field-set"`), strings.Index(got, ">Files the config includes<")
-	headAnswer := strings.Index(got, "verso-field-answer")
-	firstItem := strings.Index(got[headAnswer:], `class="verso-field-row`)
-	if group < 0 || head < group || firstItem < 0 || strings.Contains(got[headAnswer:headAnswer+firstItem], "data-verso-switch") {
-		t.Errorf("an item stands inside the head's answer rather than as a row under it:\n%s", got)
+	firstItem := head + strings.Index(got[head:], `class="verso-field-row`)
+	if group < 0 || head < group || firstItem < head {
+		t.Fatalf("the set is not its head, then its items:\n%s", got)
+	}
+	// The head is all question: it draws no answer, so a stacked row leaves
+	// no empty control's height under it.
+	if headRow := got[group:firstItem]; strings.Contains(headRow, "verso-field-answer") || strings.Contains(headRow, "data-verso-switch") {
+		t.Errorf("the head draws an answer of its own:\n%s", got)
 	}
 }
 

@@ -412,10 +412,22 @@ func TestAFieldRowIsALedger(t *testing.T) {
 	if !strings.Contains(before, "padding-bottom: calc(var(--spacing) * 4);") {
 		t.Errorf("a row followed by a row keeps 16px under its last line: %s", before)
 	}
-	answer := cssBlock(t, css, ".verso-field-answer {")
-	for _, want := range []string{"grid-column: 2;", "margin-top: calc(var(--spacing) * -1);"} {
-		if !strings.Contains(answer, want) {
-			t.Errorf("the answer does not centre on the name's band: missing %s in %s", want, answer)
+	if answer := cssBlock(t, css, ".verso-field-answer {"); !strings.Contains(answer, "grid-column: 2;") {
+		t.Errorf("the answer is not the ledger's second column: %s", answer)
+	}
+	// The answer reaches 4px past the name's band only beside it; stacked,
+	// it stands straight under the question with nothing pulled.
+	beside := strings.Index(css, "@container verso-field (width >= 36rem) {")
+	stacked := strings.Index(css, "@container verso-field (width < 36rem) {")
+	if beside < 0 || stacked < beside {
+		t.Fatal("the answer's pull over the name's band is not kept to a row standing side by side")
+	}
+	for _, want := range []string{"margin-top: calc(var(--spacing) * -1);", "margin-bottom: calc(var(--spacing) * -1);"} {
+		if !strings.Contains(css[beside:stacked], want) {
+			t.Errorf("the answer does not centre on the name's band beside it: missing %s", want)
+		}
+		if strings.Contains(css[:beside], ".verso-field-answer") && strings.Contains(cssBlock(t, css, ".verso-field-answer {"), want) {
+			t.Errorf("a stacked answer is still pulled (%s)", want)
 		}
 	}
 	for _, gone := range []string{".verso-field-toggle", ".verso-field-with-remove"} {
