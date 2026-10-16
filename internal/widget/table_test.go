@@ -629,6 +629,31 @@ func TestRenderTableRowDrawerTitleBand(t *testing.T) {
 	}
 }
 
+// TestEveryDrawerOffersTheFold: a drawer's header carries the one act that
+// folds every description away and back (form-fields), before its close: both
+// words with their Lucide glyphs, the stylesheet showing the one the page's
+// state calls for.
+func TestEveryDrawerOffersTheFold(t *testing.T) {
+	tbl := redirectsTable()
+	tbl.Rows[0].Drawer = &RowDrawer{Title: "Edit redirect"}
+	got := render(t, newRenderer(t), tbl)
+	header := strings.Index(got, "<header")
+	end := header + strings.Index(got[header:], "</header>")
+	if header < 0 || end < header {
+		t.Fatalf("no drawer header:\n%s", got)
+	}
+	band := got[header:end]
+	fold, closer := strings.Index(band, "data-verso-fold"), strings.Index(band, `aria-label="Close"`)
+	if fold < 0 || closer < fold {
+		t.Errorf("the fold does not stand before the drawer's close:\n%s", band)
+	}
+	for _, want := range []string{">Hide descriptions<", ">Show descriptions<", `<path d="m15 19-3-3-3 3"`, `<path d="m15 19-3 3-3-3"`} {
+		if !strings.Contains(band, want) {
+			t.Errorf("the fold lacks %q:\n%s", want, band)
+		}
+	}
+}
+
 // TestRenderTableRowDrawerOpen: a drawer the plugin sent back open renders its
 // row's modal scope with data-open, which the shell's modal component reads on
 // init — how a refused submission comes back with the failed drawer in front of

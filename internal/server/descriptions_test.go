@@ -4,8 +4,11 @@
 package server
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -27,6 +30,37 @@ func TestFoldedDescriptionsArriveFolded(t *testing.T) {
 		}
 		if !folded && strings.Contains(body, "data-verso-descriptions=") {
 			t.Errorf("cookie %q: the root carries a fold it was not asked for", value)
+		}
+	}
+}
+
+// TestTheHeadingLineOffersTheFold: every page's heading line carries the act
+// that folds the descriptions away and back, with both its words and glyphs,
+// and both its words are in the Slovenian catalog.
+func TestTheHeadingLineOffersTheFold(t *testing.T) {
+	body := get(t, newServer(t, fakeBackend{}), "/system/maintenance").Body.String()
+	masthead := strings.Index(body, "data-verso-masthead")
+	page := strings.Index(body, `class="verso-page-body"`)
+	if masthead < 0 || page < masthead {
+		t.Fatalf("no masthead before the page body:\n%s", body)
+	}
+	line := body[masthead:page]
+	for _, want := range []string{"data-verso-fold", ">Hide descriptions<", ">Show descriptions<", `<path d="m15 5-3 3-3-3"`, `<path d="m15 5-3-3-3 3"`} {
+		if !strings.Contains(line, want) {
+			t.Errorf("the heading line lacks %q:\n%s", want, line)
+		}
+	}
+	raw, err := os.ReadFile(filepath.Join("..", "..", "i18n", "sl", "base.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var catalog map[string]string
+	if err := json.Unmarshal(raw, &catalog); err != nil {
+		t.Fatal(err)
+	}
+	for en, sl := range map[string]string{"Hide descriptions": "Skrij opise", "Show descriptions": "Prikaži opise"} {
+		if catalog[en] != sl {
+			t.Errorf("the Slovenian catalog says %q for %q, want %q", catalog[en], en, sl)
 		}
 	}
 }

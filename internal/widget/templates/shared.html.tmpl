@@ -598,11 +598,24 @@
 {{define "verso-drawer-inset"}}pl-10 pr-(--verso-drawer-end){{end}}
 {{define "verso-drawer-bleed"}}-ml-10 mr-[calc(var(--verso-drawer-end)*-1)]{{end}}
 
+{{/* verso-act-quiet: the quiet act with its words (a set's "+ Add file",
+     the descriptions' fold): meta ink at rest (the glyph step is never
+     text), ink and the sand wash under the pointer, a 28px box. */}}
+{{define "verso-act-quiet"}}group/act relative inline-flex h-7 shrink-0 cursor-pointer items-center gap-1.5 rounded-xs border border-transparent pr-2.5 pl-2 text-sm font-medium whitespace-nowrap text-meta transition-colors hover:border-sand-5 hover:bg-rule hover:text-ink focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-denim {{template "verso-press"}}{{end}}
+{{/* verso-fold-act: the one act that folds every description on the page
+     away and brings them back (form-fields), on the page's heading line and
+     in every drawer's header, given its place's own classes. It holds both
+     words; the stylesheet shows the one the page's state calls for, and
+     shows the act only where there is a description to fold
+     (verso-page.js keeps the state). */}}
+{{define "verso-fold-act"}}<button type="button" data-verso-fold class="verso-fold-act {{template "verso-act-quiet"}} {{.}}"><span class="verso-fold-hide inline-flex items-center gap-1.5">{{icon "fold-vertical" "size-4"}}<span>{{t "Hide descriptions"}}</span></span><span class="verso-fold-show inline-flex items-center gap-1.5">{{icon "unfold-vertical" "size-4"}}<span>{{t "Show descriptions"}}</span></span></button>{{end}}
+
 {{/* The band is 56px as the top bar is, and built the same way: its 28px
      line and 14px of air either side, the hairline drawn inside it. */}}
 {{define "verso-drawer-header"}}
 <header class="flex flex-none items-center gap-4 bg-quiet {{template "verso-drawer-inset"}} py-3.5 shadow-[inset_0_-1px_0_var(--color-rule)]">
   <h2 class="min-w-0 truncate text-lg font-semibold tracking-tight text-body">{{.}}</h2>
+  {{template "verso-fold-act" "ml-auto"}}
   <button type="button" @click="hide" aria-label="{{ t "Close" }}" class="ml-auto grid size-7 flex-none cursor-pointer place-items-center rounded-xs border border-transparent text-glyph transition-colors hover:border-sand-5 hover:bg-rule hover:text-ink focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-denim">{{icon "x" "size-4"}}</button>
 </header>
 {{end}}

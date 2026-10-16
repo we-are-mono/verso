@@ -30,9 +30,8 @@
      rather than drifting into two shapes. Its words are a tip that hangs above
      its right edge, so a tip on the last column stays inside the table. */}}
 {{define "table.actbtn-class"}}group/act relative grid {{template "verso-btn-icon"}}{{end}}
-{{/* the same quiet act with its words: meta ink at rest (the glyph step is
-     never text), ink and the sand wash under the pointer. */}}
-{{define "table.laneadd-class"}}group/act relative inline-flex h-7 shrink-0 cursor-pointer items-center gap-1.5 rounded-xs border border-transparent pr-2.5 pl-2 text-sm font-medium whitespace-nowrap text-meta transition-colors hover:border-sand-5 hover:bg-rule hover:text-ink focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-denim {{template "verso-press"}}{{end}}
+{{/* the same quiet act with its words (verso-act-quiet). */}}
+{{define "table.laneadd-class"}}{{template "verso-act-quiet"}}{{end}}
 {{/* table.laneadd-look / -body: a lane's add, given its TableGroup. With
      words it is the labelled act, and its tooltip still names the lane unless
      the words already say it all; without them it is the glyph alone. */}}
