@@ -164,6 +164,19 @@ own and points at the decision that governs it; the rationale lives there, not h
   the page some read long (dnsdhcp's DUID tip runs past 300 characters). Read
   each plugin's forms with descriptions shown and tighten what reads as prose.
 
+## Pending changes (ADR-010, pending-changes-page)
+
+- **Release note: pending changes live at the top of the sidebar.** The chip
+  beside the router's name is gone. While changes wait, a Pending changes row
+  stands first in the sidebar and opens a page listing them by the page each
+  was made on: open its page, undo one or a page's worth, or apply them all
+  and watch each step as the router reports it. An edit shows in the row
+  before it is saved, and an apply the router puts back keeps the changes
+  pending. Installed plugins need no upgrade.
+- **The reload step on the DUT.** The When you apply card names what procd's
+  own triggers reload. Read it against what procd reloads for a dhcp +
+  firewall + network apply on the DUT (task 10.4), then archive the change.
+
 ## Themes (ADR-024)
 
 - **Release note: Sand dark by default.** The release that carries themes
