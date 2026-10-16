@@ -81,9 +81,9 @@ pub const OWNED: [&str; 18] = [
 /// global defaults, which is how most zones on a stock install are written.
 pub const POLICIES: [(&str, &str); 4] = [
     ("", "Use the global default"),
-    ("ACCEPT", "Accept"),
-    ("REJECT", "Reject"),
-    ("DROP", "Drop"),
+    ("ACCEPT", "accept"),
+    ("REJECT", "reject"),
+    ("DROP", "drop"),
 ];
 
 /// FAMILIES are the address families a zone may narrow itself to, spelled the
@@ -574,6 +574,15 @@ mod tests {
     use crate::fixture;
     use crate::model::CONFIG;
     use verso_plugin::Snapshot;
+
+    /// A zone's verdicts are offered in the words the router speaks, as its
+    /// pills, the global defaults and a rule's verdict write them — one
+    /// vocabulary, "accept", never "Accept" in one place and "accept" in the next.
+    #[test]
+    fn a_zones_verdicts_are_the_routers_own_words() {
+        let labels: Vec<&str> = POLICIES[1..].iter().map(|(_, label)| *label).collect();
+        assert_eq!(labels, ["accept", "reject", "drop"]);
+    }
 
     fn read(section: &str) -> ZoneForm {
         let snapshot = fixture::snapshot();

@@ -85,9 +85,9 @@ pub const UNCHOSEN: &str = "?";
 /// different parameter, so they are one choice here and a switch in the
 /// advanced parameters, not two verdicts.
 pub const TARGETS: [(&str, &str); 7] = [
-    ("ACCEPT", "Accept"),
-    ("REJECT", "Reject"),
-    ("DROP", "Drop"),
+    ("ACCEPT", "accept"),
+    ("REJECT", "reject"),
+    ("DROP", "drop"),
     ("NOTRACK", "Do not track"),
     ("HELPER", "Assign a connection helper"),
     ("MARK", "Set a firewall mark"),
