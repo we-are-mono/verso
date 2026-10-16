@@ -1,8 +1,8 @@
 <!-- SPDX-License-Identifier: GPL-2.0-only -->
 <!-- SPDX-FileCopyrightText: 2026 Mono Technologies Inc. -->
 {{/* The Pending changes page's own parts (ADR-010), set into its cards as
-     the shell's blocks (widget.Embed): the steps an apply takes, the acts on
-     its heading line, and the notification that offers an undo back. */}}
+     the shell's blocks (widget.Embed): the steps an apply takes, the acts
+     under the changes, and the notification that offers an undo back. */}}
 
 {{/* verso-pending-steps: what an apply does, numbered because it happens in
      that order, one line each. Each step names its part in the apply, so the
@@ -17,35 +17,22 @@
   </li>{{end}}
 </ol>{{end}}
 
-{{/* verso-pending-acts: the heading line's two acts. Discard all asks first,
-     in place: it leads to the page holding its question under the heading
-     line (verso-pending-discard), the same with or without a script. Apply
-     posts the When you apply card's form, which carries the note; it stands
-     hidden until the page's script is there to see the apply through, since
-     the router keeps an apply only when the page checks in. */}}
-{{define "verso-pending-acts"}}<div data-verso-pending-acts class="flex flex-wrap items-center gap-2">
-  <a href="/pending?confirm=discard" data-verso-pending-discard-ask class="{{template "verso-btn-box"}} border border-crimson-line bg-crimson-soft text-crimson-deep transition-colors hover:border-crimson focus-visible:outline-crimson-deep">{{t "Discard all"}}</a>
-  <button type="submit" form="verso-pending-apply" data-verso-pending-apply hidden class="{{template "verso-btn-box"}} border border-denim bg-denim text-on-fill hover:border-denim-deep hover:bg-denim-deep focus-visible:outline-denim-deep">{{.Apply}}</button>
+{{/* verso-pending-acts: the page's two acts, under the changes, so they are
+     read before either is pressed. Apply posts the When you apply card's
+     form, which carries the note; it stands hidden until the page's script is
+     there to see the apply through, since the router keeps an apply only when
+     the page checks in. Discard all is the secondary act, as a Cancel is:
+     nothing was applied, so the router runs as it is either way, and it lets
+     the stage go without asking. They are the apply form's acts, so they
+     stand where a page form's Save does: on the sand 24px under the last
+     card, as one card stands under another (sections.css). */}}
+{{define "verso-pending-acts"}}<div data-verso-pending-acts data-verso-form-actions data-verso-rule class="flex flex-wrap items-center gap-4">
+  <button type="submit" form="verso-pending-apply" data-verso-pending-apply hidden class="{{template "verso-btn-box"}} {{template "verso-btn-primary"}} focus-visible:outline-denim-deep">{{.Apply}}</button>
+  <form method="post" action="/pending/discard" class="contents">{{template "verso-csrf" .CSRF}}<button type="submit" class="{{template "verso-btn-box"}} border {{template "verso-btn-secondary"}} focus-visible:outline-denim-deep">{{t "Discard all"}}</button></form>
   <noscript><span class="text-sm text-meta">{{t "Applying needs scripting: the router keeps an apply only when this page answers it."}}</span></noscript>
   {{/* What the page says when the router turns an apply away. */}}
   <template data-verso-apply-refused>{{template "verso-flash" .Refused}}</template>
 </div>{{end}}
-
-{{/* verso-pending-discard: Discard all's question, under the heading line,
-     in crimson as every act that erases asks: the act's own name as the
-     answer, posting the discard, and the way back in bare words. */}}
-{{define "verso-pending-discard"}}<form method="post" action="/pending/discard" data-verso-pending-discard class="mb-6 flex items-start gap-2 rounded-xs border border-crimson-line bg-crimson-soft px-6 py-4 text-sm leading-6 text-crimson-deep">
-  {{template "verso-csrf" .CSRF}}
-  {{template "verso-message-mark" "danger"}}
-  <div class="flex min-w-0 flex-1 flex-col">
-    <p class="m-0 font-semibold">{{.Title}}</p>
-    <p class="m-0">{{.Message}}</p>
-    <div class="mt-4 flex flex-wrap items-center gap-2">
-      <button type="submit" autofocus class="{{template "verso-btn-box"}} shrink-0 {{template "verso-btn-danger"}} focus-visible:outline-crimson-deep">{{t "Discard all"}}</button>
-      <a href="/pending" class="flex h-control shrink-0 items-center rounded-xs px-3 text-sm font-semibold text-crimson-deep transition-colors hover:bg-crimson-line/50 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-crimson-deep">{{t "Not now"}}</a>
-    </div>
-  </div>
-</form>{{end}}
 
 {{/* verso-pending-putback: an undo's outcome, offering what it took back
      once, in the notification's own dress. */}}

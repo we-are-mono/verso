@@ -198,16 +198,16 @@ func TestPendingPagePlainOverRaw(t *testing.T) {
 		// The undescribed change is its raw line.
 		"system: @system[0].timezone = UTC",
 		// The two acts that end the stage.
-		"Apply 2 changes", `href="/pending?confirm=discard"`,
+		"Apply 2 changes", `action="/pending/discard"`, ">Discard all</button>",
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("page missing %q", want)
 		}
 	}
-	// Letting the stage go asks first, under the heading line, in crimson; its
-	// answer repeats the act it confirms.
-	ask := get(t, s, pendingPath+"?confirm=discard").Body.String()
-	mustContain(t, ask, "Discard all pending changes?", ">Discard all</button>", ">Not now</a>", `href="/pending"`)
+	// Discard all asks nothing first: the router runs as it is either way.
+	if strings.Contains(body, "Discard all pending changes?") {
+		t.Error("Discard all asks before letting the stage go")
+	}
 	// The plain sentence renders before the raw line it covers.
 	if i, j := strings.Index(body, "Renamed the router."), strings.Index(body, "hostname = verso-lab"); i < 0 || j < 0 || i > j {
 		t.Errorf("plain sentence should precede its raw line (plain=%d raw=%d)", i, j)

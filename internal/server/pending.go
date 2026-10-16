@@ -36,10 +36,10 @@ type pendingStep struct {
 	Number int
 }
 
-// handlePending renders the Pending changes page: "N pending changes" with
-// Discard all and Apply on its heading line; the When you apply card, opened
-// by the warning where a change may cut this browser off, then the apply's
-// steps and the note; then a card per page the changes were made on. With
+// handlePending renders the Pending changes page: "N pending changes"; the
+// When you apply card, opened by the warning where a change may cut this
+// browser off, then the apply's steps and the note; then a card per page the
+// changes were made on; then Apply and Discard all, under what they act on. With
 // nothing pending it says how the stage last ended and leads back to the page
 // of its latest change.
 func (s *Server) handlePending(w http.ResponseWriter, r *http.Request) {
@@ -66,18 +66,7 @@ func (s *Server) handlePending(w http.ResponseWriter, r *http.Request) {
 			Restorable         bool
 		}{record.words, record.token, csrf, record.restorable})
 	}
-	hdr.HeadingAct = s.pendingTemplate(lang, "verso-pending-acts", struct {
-		Apply   string
-		Refused widget.Flash
-	}{stagedApplyLabel(view.Count, tr), widget.Flash{Variant: "danger", Message: tr("The router did not take the apply. Nothing changed.")}})
-
 	var blocks widget.Widgets
-	if r.URL.Query().Get("confirm") == "discard" {
-		blocks = append(blocks, &widget.Embed{HTML: s.pendingTemplate(lang, "verso-pending-discard", struct{ CSRF, Title, Message string }{
-			csrf, tr("Discard all pending changes?"),
-			tr("Nothing was applied, so the router keeps running as it is. What you saved on each page is lost."),
-		})})
-	}
 	if ended && end.Kind == stageRolledBack {
 		blocks = append(blocks, &widget.Callout{Variant: "danger",
 			Title: fmt.Sprintf(tr("The last apply was put back at %s."), clock.Local(end.At).Format("15:04")),
@@ -93,6 +82,11 @@ func (s *Server) handlePending(w http.ResponseWriter, r *http.Request) {
 		next += len(g.Items)
 		blocks = append(blocks, pendingCard(g, items, kept.OldRead, tr))
 	}
+	// Apply and Discard all stand under the changes, read before either.
+	blocks = append(blocks, &widget.Embed{HTML: s.pendingTemplate(lang, "verso-pending-acts", struct {
+		Apply, CSRF string
+		Refused     widget.Flash
+	}{stagedApplyLabel(view.Count, tr), csrf, widget.Flash{Variant: "danger", Message: tr("The router did not take the apply. Nothing changed.")}})})
 	var body strings.Builder
 	if err := s.widgets.RenderWithToken(&body, &widget.Stack{Children: blocks}, csrf, lang, t); err != nil {
 		http.Error(w, "render error", http.StatusInternalServerError)

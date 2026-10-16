@@ -84,6 +84,21 @@ func TestPendingPageHeadsTheStage(t *testing.T) {
 	if apply < 0 || dhcp < apply || rules < apply {
 		t.Errorf("When you apply stands at %d, the cards at %d and %d: it comes first", apply, dhcp, rules)
 	}
+	// Apply and Discard all stand under the changes, read before them, where
+	// a page form's Save stands (24px under the last card, as cards stand);
+	// the heading line holds none.
+	mustContain(t, body, "data-verso-pending-acts data-verso-form-actions data-verso-rule")
+	acts := strings.Index(body, "data-verso-pending-acts")
+	if acts < rules || acts < dhcp {
+		t.Errorf("the acts stand at %d, before the last card at %d", acts, max(dhcp, rules))
+	}
+	// Discard all lets the stage go as a Cancel does: a secondary act, no
+	// crimson, and nothing to answer first.
+	block := body[acts:]
+	block = block[:strings.Index(block, "<noscript>")]
+	if !strings.Contains(block, `action="/pending/discard"`) || strings.Contains(block, "crimson") {
+		t.Errorf("Discard all is not a plain secondary act:\n%s", block)
+	}
 	// Firewall rules has one row, so no Undo these of its own.
 	if strings.Count(body, "Undo these") != 1 {
 		t.Errorf("Undo these appears %d times, want once, on the card of two rows", strings.Count(body, "Undo these"))
@@ -181,20 +196,15 @@ func TestPendingPageAfterARollback(t *testing.T) {
 }
 
 // TestPendingPageWithoutScripting: undo and discard work without a script,
-// as forms and a link to Discard all's question; Apply waits for one, and
-// says so where there is none.
+// as forms; Apply waits for one, and says so where there is none.
 func TestPendingPageWithoutScripting(t *testing.T) {
 	s := pendingServer(t, fakeBackend{})
 	body := get(t, s, pendingPath).Body.String()
 	mustContain(t, body,
-		`action="/pending/undo"`, `href="/pending?confirm=discard"`,
+		`action="/pending/undo"`, `action="/pending/discard"`,
 		`<noscript>`, "Applying needs scripting",
 		`data-verso-pending-apply hidden`,
 	)
-	if strings.Contains(body, `action="/pending/discard"`) {
-		t.Error("the page holds Discard all's answer before it was asked")
-	}
-	mustContain(t, get(t, s, pendingPath+"?confirm=discard").Body.String(), "Discard all pending changes?", `action="/pending/discard"`)
 }
 
 // TestPendingDiscardRoute: the page's Discard all lets the stage go and
