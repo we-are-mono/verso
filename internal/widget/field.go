@@ -43,7 +43,7 @@ type Field struct {
 	Value        string   `json:"value"`    // current/submitted value
 	Values       []string `json:"values"`   // kind "checks": the checked option values
 	Datatype     string   `json:"datatype"` // tier-1 datatype name, e.g. "hostname"
-	Options      []Option `json:"options"`  // choices when kind is "select" or "checks"
+	Options      []Option `json:"options"`  // choices when kind is "select" or "checks"; on a text field, values it suggests (see Suggests)
 	Error        string   `json:"error"`    // inline validation error (set on 422)
 	Help         string   `json:"help"`     // the sentence explaining the field; raised onto the label, see Tip
 	HelpVerbatim bool     `json:"-"`        // shell-composed help already localized (a sentence filled with data)
@@ -122,6 +122,15 @@ type Field struct {
 
 // UseRadios applies the shell's option-count policy, regardless of style hints
 // in older plugin schemas. An empty option set stays an empty dropdown.
+// Suggests reports whether a text field offers values as it is typed into: its
+// Options, each a value and what it is (a device's address and its name). They
+// are a reminder rather than a menu — the box still takes whatever is typed —
+// so a field that knows likely values need not make the operator fetch one
+// from another page.
+func (f *Field) Suggests() bool {
+	return (f.Kind == "" || f.Kind == "text") && len(f.Options) > 0
+}
+
 func (f *Field) UseRadios() bool {
 	return f.Kind == "select" && len(f.Options) > 0 && len(f.Options) <= RadioOptionLimit
 }

@@ -302,7 +302,24 @@
      address, a number, a clock time or a date its own measure, anything else
      the column. A part of a joined row is named on its own; a lone field is
      named by its row's label. */}}
-{{define "verso-text-input"}}<input id="{{.Name}}" name="{{.Name}}" value="{{.Value}}" type="text"{{if .Named}} aria-label="{{.Label}}"{{end}}{{if eq .Measure "number"}} inputmode="numeric"{{end}}{{if .Placeholder}} placeholder="{{.Placeholder}}"{{end}}{{if .Autofocus}} autofocus{{end}}{{if .Datatype}} data-datatype="{{.Datatype}}"{{end}}{{template "verso-field-aria" .}} class="{{if .Words}}{{template "verso-input-words"}}{{else}}{{template "verso-input-class"}}{{end}} {{if and (eq .Measure "address") (ne .ControlMeasure "prefix")}}w-measure-44! max-w-full{{else if eq .Measure "number"}}w-measure-24! max-w-full{{else if eq .Measure "short"}}w-measure-32! max-w-full{{else if eq .ControlMeasure "secret"}}w-measure-64! max-w-full{{end}} {{template "verso-input-border" .Error}}">{{end}}
+{{define "verso-text-input"}}<input id="{{.Name}}" name="{{.Name}}" value="{{.Value}}" type="text"{{if .Named}} aria-label="{{.Label}}"{{end}}{{if eq .Measure "number"}} inputmode="numeric"{{end}}{{if .Placeholder}} placeholder="{{.Placeholder}}"{{end}}{{if .Autofocus}} autofocus{{end}}{{if .Datatype}} data-datatype="{{.Datatype}}"{{end}}{{if .Suggests}} data-verso-suggest-input role="combobox" aria-expanded="false" aria-autocomplete="list" aria-controls="{{.Name}}-options" autocomplete="off"{{end}}{{template "verso-field-aria" .}} class="{{if .Words}}{{template "verso-input-words"}}{{else}}{{template "verso-input-class"}}{{end}} {{if and (eq .Measure "address") (ne .ControlMeasure "prefix")}}w-measure-44! max-w-full{{else if eq .Measure "number"}}w-measure-24! max-w-full{{else if eq .Measure "short"}}w-measure-32! max-w-full{{else if eq .ControlMeasure "secret"}}w-measure-64! max-w-full{{end}} {{template "verso-input-border" .Error}}">{{end}}
+
+{{/* verso-suggest-input: a typed value (a boxPart) with the values worth
+     offering under its box — a device's address and its name. They are a
+     reminder, not a menu: the box takes whatever is typed, the list narrows as
+     it is typed into and goes when nothing matches, and taking one fills the
+     box and closes the list (verso-forms.js). The arrow keys move through what
+     is showing and Enter takes it, while focus stays in the box; the options
+     are out of the tab order for the same reason. A box at a measure holds the
+     list to its own edge; the list grows past it for a long name. */}}
+{{define "verso-suggest-input"}}<div class="relative{{if or (eq .Measure "address") (eq .Measure "number") (eq .Measure "short")}} w-fit max-w-full{{end}}">
+  {{template "verso-text-input" .}}
+  <div id="{{.Name}}-options" data-verso-suggest-menu role="listbox"{{if .Label}} aria-labelledby="{{.Name}}-label"{{end}} hidden class="verso-drawer-scrollbar absolute top-full left-0 z-20 mt-1 max-h-56 w-max min-w-full max-w-[min(32rem,calc(100vw-2rem))] overflow-y-auto rounded-xs border border-rule-strong bg-ground py-1 shadow-(--shadow-float)">
+    {{range $i, $o := .Options}}
+    <button type="button" id="{{$.Name}}-option-{{$i}}" role="option" aria-selected="false" tabindex="-1" data-verso-suggest-option="{{$o.Value}}" data-verso-suggest-label="{{$o.Label}}" class="flex w-full cursor-pointer items-baseline gap-3 px-3 py-1.5 text-left text-ink transition-colors hover:bg-denim-soft hover:text-denim-deep aria-selected:bg-denim-soft aria-selected:text-denim-deep"><span class="font-mono text-base font-medium">{{$o.Value}}</span>{{if ne $o.Label $o.Value}}<span class="text-sm text-meta">{{$o.Label}}</span>{{end}}</button>
+    {{end}}
+  </div>
+</div>{{end}}
 
 {{/* verso-time-input: a clock time (a boxPart) — a curfew's edge. The native
      control keeps the platform's own 12/24-hour habit and its picker; the box

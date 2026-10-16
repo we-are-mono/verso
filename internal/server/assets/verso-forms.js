@@ -303,6 +303,134 @@
   });
 })();
 
+// One typed value with the values worth offering under its box (a device's
+// address and its name). They are a reminder, never a restriction: the list
+// narrows as the box is typed into — by the value's start or anywhere in its
+// name — and goes when nothing matches; taking one fills the box and closes the
+// list. Focus stays in the box: the arrow keys point at an option and Enter
+// takes it.
+(function () {
+  function menuOf(input) {
+    return document.getElementById(input.getAttribute("aria-controls"));
+  }
+
+  function options(menu) {
+    return menu.querySelectorAll("[data-verso-suggest-option]");
+  }
+
+  function activate(input, option) {
+    var menu = menuOf(input);
+    if (!menu) return;
+    [].forEach.call(options(menu), function (each) {
+      each.setAttribute("aria-selected", each === option ? "true" : "false");
+    });
+    if (option) {
+      input.setAttribute("aria-activedescendant", option.id);
+      option.scrollIntoView({ block: "nearest" });
+    } else {
+      input.removeAttribute("aria-activedescendant");
+    }
+  }
+
+  function show(input) {
+    var menu = menuOf(input);
+    if (!menu) return;
+    var typed = input.value.trim().toLowerCase();
+    var left = 0;
+    [].forEach.call(options(menu), function (option) {
+      var value = option.dataset.versoSuggestOption;
+      // The one already in the box is not a suggestion any more.
+      var fits = value.toLowerCase() !== typed &&
+        (value.toLowerCase().indexOf(typed) === 0 || option.dataset.versoSuggestLabel.toLowerCase().indexOf(typed) >= 0);
+      option.hidden = !fits;
+      if (fits) left += 1;
+    });
+    menu.hidden = left === 0;
+    input.setAttribute("aria-expanded", String(!menu.hidden));
+    activate(input, null);
+  }
+
+  function hide(input) {
+    var menu = menuOf(input);
+    if (!menu) return;
+    menu.hidden = true;
+    input.setAttribute("aria-expanded", "false");
+    activate(input, null);
+  }
+
+  function step(input, by) {
+    var menu = menuOf(input);
+    if (!menu || menu.hidden) return;
+    var showing = [].filter.call(options(menu), function (option) { return !option.hidden; });
+    if (!showing.length) return;
+    var current = showing.indexOf(menu.querySelector('[aria-selected="true"]'));
+    var next = current < 0 ? (by > 0 ? 0 : showing.length - 1) : (current + by + showing.length) % showing.length;
+    activate(input, showing[next]);
+  }
+
+  // Taking one is typing it: the box says so to whatever listens for input —
+  // the form's staged state, the config preview.
+  function take(input, option) {
+    input.value = option.dataset.versoSuggestOption;
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    input.focus();
+    hide(input);
+  }
+
+  function inputOf(event) {
+    return event.target.closest && event.target.closest("[data-verso-suggest-input]");
+  }
+
+  document.addEventListener("input", function (event) {
+    var input = inputOf(event);
+    if (input && document.activeElement === input) show(input);
+  });
+  document.addEventListener("focusin", function (event) {
+    var input = inputOf(event);
+    if (input) show(input);
+  });
+  document.addEventListener("keydown", function (event) {
+    var input = inputOf(event);
+    if (!input) return;
+    var menu = menuOf(input);
+    if (!menu || menu.hidden) return;
+    if (event.key === "Escape") {
+      // The list closes; the panel it stands in stays open.
+      event.preventDefault();
+      event.stopPropagation();
+      hide(input);
+      return;
+    }
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault();
+      step(input, event.key === "ArrowDown" ? 1 : -1);
+      return;
+    }
+    var active = input.getAttribute("aria-activedescendant");
+    var picked = active && document.getElementById(active);
+    if (event.key === "Enter" && picked) {
+      event.preventDefault();
+      take(input, picked);
+    }
+  });
+  document.addEventListener("focusout", function (event) {
+    var input = inputOf(event);
+    if (!input) return;
+    // A press on a suggestion moves focus out of the box; closing the list here
+    // would take the suggestion away before it could be pressed.
+    var going = event.relatedTarget;
+    if (going && going.closest && going.closest("[data-verso-suggest-menu]")) return;
+    hide(input);
+  });
+  document.addEventListener("click", function (event) {
+    var option = event.target.closest && event.target.closest("[data-verso-suggest-option]");
+    if (!option) return;
+    var menu = option.closest("[data-verso-suggest-menu]");
+    var input = menu && document.querySelector('[aria-controls="' + menu.id + '"]');
+    if (input) take(input, option);
+  });
+})();
+
 // Typed optional-condition builders. Plugins declare the full catalogue in
 // schema; the shell owns adding/removing the ordinary form widgets on demand.
 (function () {

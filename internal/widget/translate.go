@@ -100,7 +100,9 @@ func translateFields(w Widget, t func(string) string) {
 		if n.Style == "locked" {
 			n.Value = t(n.Value)
 		}
-		if !n.OptionsVerbatim {
+		// A text field's suggestions are data — a device's own name — and stay
+		// as the router holds them.
+		if !n.OptionsVerbatim && !n.Suggests() {
 			for i := range n.Options {
 				n.Options[i].Label = t(n.Options[i].Label)
 			}

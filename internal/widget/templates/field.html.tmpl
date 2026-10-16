@@ -144,6 +144,8 @@
   {{/* A unit rides inside the frame after the value: the value and what it
        counts read as one thing (verso-box). */}}
   {{template "verso-box" .Box}}
+  {{else if .Suggests}}
+  {{template "verso-suggest-input" .Part}}
   {{else}}
   {{template "verso-text-input" .Part}}
   {{end}}

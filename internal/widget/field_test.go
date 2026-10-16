@@ -310,3 +310,29 @@ func TestAForwardsAddressAndPortsAreMachineStrings(t *testing.T) {
 		}
 	}
 }
+
+// A text field that carries options suggests them as it is typed into: the box
+// is a combobox driving a listbox of the values, each with what it is, and it
+// still takes whatever is typed — a suggestion, never a restriction. An option
+// whose label is its value says it once.
+func TestATextFieldWithOptionsSuggestsThem(t *testing.T) {
+	got := render(t, newRenderer(t), &Field{Name: "dest_ip", Label: "Destination address", Kind: "text",
+		Options: []Option{{Value: "10.0.0.30", Label: "nas"}, {Value: "10.0.0.31", Label: "10.0.0.31"}}})
+	for _, want := range []string{
+		`name="dest_ip"`,
+		`data-verso-suggest-input role="combobox" aria-expanded="false" aria-autocomplete="list" aria-controls="dest_ip-options" autocomplete="off"`,
+		`<div id="dest_ip-options" data-verso-suggest-menu role="listbox" aria-labelledby="dest_ip-label" hidden`,
+		`id="dest_ip-option-0" role="option" aria-selected="false" tabindex="-1" data-verso-suggest-option="10.0.0.30" data-verso-suggest-label="nas"`,
+		`<span class="font-mono text-base font-medium">10.0.0.30</span><span class="text-sm text-meta">nas</span>`,
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("want %s in:\n%s", want, got)
+		}
+	}
+	if strings.Contains(got, `<span class="text-sm text-meta">10.0.0.31</span>`) {
+		t.Errorf("an option whose label is its value should say it once:\n%s", got)
+	}
+	if plain := render(t, newRenderer(t), &Field{Name: "name", Label: "Name", Kind: "text"}); strings.Contains(plain, "combobox") {
+		t.Errorf("a text field with nothing to suggest is a plain box:\n%s", plain)
+	}
+}

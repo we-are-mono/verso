@@ -1662,12 +1662,15 @@ impl Widget {
         self
     }
 
-    /// suggesting offers the values worth offering on a list, shown as it is
-    /// typed in. It is a suggestion and not a restriction: whatever the config
-    /// accepts can still be typed.
+    /// suggesting offers the values worth offering on a list or a text field,
+    /// shown as it is typed in — each option a value and what it is (a device's
+    /// address and its name). It is a suggestion and not a restriction:
+    /// whatever the config accepts can still be typed.
     pub fn suggesting(mut self, options: Vec<SelectOption>) -> Widget {
-        if let Widget::List(List { options: o, .. }) = &mut self {
-            *o = options;
+        match &mut self {
+            Widget::List(List { options: o, .. }) => *o = options,
+            Widget::Field(Field { kind, options: o, .. }) if kind == "text" => *o = options,
+            _ => {}
         }
         self
     }
