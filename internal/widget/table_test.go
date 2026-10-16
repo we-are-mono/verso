@@ -4,6 +4,7 @@
 package widget
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -1870,5 +1871,28 @@ func TestARowIsNamedByItsIdentityBeforeItsComment(t *testing.T) {
 	rules := &Table{Columns: []TableColumn{{Kind: "name"}, {Kind: "comment"}}}
 	if got := rules.rowName(TableRow{Cells: []TableCell{{Text: "—"}, {Text: "Allow SSH"}}}); got != "Allow SSH" {
 		t.Errorf("nameless rule named %q, want its comment", got)
+	}
+}
+
+// A chip that names the kind of thing it cites — a zone, a network, a port —
+// takes that kind's glyph and tone from the shell, whatever else it says, so
+// two plugins citing the same zone draw the same chip (DESIGN.md, Entity chips).
+func TestAnEntityChipIsDrawnByItsKind(t *testing.T) {
+	for _, tc := range []struct{ json, icon, tone string }{
+		{`{"kind":"zone","label":"wan","icon":"globe","tone":"danger"}`, "zone", "accent"},
+		{`{"kind":"network","label":"lan"}`, "network", "accent"},
+		{`{"kind":"port","label":"lan1","tone":"accent"}`, "ethernet-port", ""},
+		{`{"label":"DHCP","tone":"success"}`, "", "success"},
+	} {
+		var chip TableChip
+		if err := json.Unmarshal([]byte(tc.json), &chip); err != nil {
+			t.Fatal(err)
+		}
+		if chip.Icon != tc.icon || chip.Tone != tc.tone {
+			t.Errorf("%s drew icon %q tone %q, want %q %q", tc.json, chip.Icon, chip.Tone, tc.icon, tc.tone)
+		}
+	}
+	if chip := EntityChip("zone", "lan"); chip.Icon != "zone" || chip.Tone != "accent" || chip.Label != "lan" {
+		t.Errorf("EntityChip = %+v", chip)
 	}
 }

@@ -618,6 +618,42 @@ type TableChip struct {
 	// Dot leads the chip with the packet square in its tone instead of an
 	// icon; a chip carries one mark or none, and an icon wins.
 	Dot bool `json:"dot,omitempty"`
+	// Kind names what the chip cites — "zone", "network", "port" — and the
+	// shell draws that kind's glyph and tone over whatever Icon and Tone say,
+	// so every citation of a zone is the same chip whoever writes it (DESIGN.md,
+	// Entity chips: network and zone references in denim).
+	Kind string `json:"kind,omitempty"`
+}
+
+// entityChipLooks is each citable kind's glyph and tone.
+var entityChipLooks = map[string]struct{ icon, tone string }{
+	"zone":    {"zone", "accent"},
+	"network": {"network", "accent"},
+	"port":    {"ethernet-port", ""},
+}
+
+// EntityChip is the chip citing one zone, network or port by its name.
+func EntityChip(kind, label string) TableChip {
+	chip := TableChip{Kind: kind, Label: label}
+	chip.drawnByKind()
+	return chip
+}
+
+// drawnByKind gives a chip that names its kind that kind's look.
+func (c *TableChip) drawnByKind() {
+	if look, ok := entityChipLooks[c.Kind]; ok {
+		c.Icon, c.Tone = look.icon, look.tone
+	}
+}
+
+// UnmarshalJSON decodes a plugin's chip and draws a cited kind the shell's way.
+func (c *TableChip) UnmarshalJSON(data []byte) error {
+	type plain TableChip
+	if err := json.Unmarshal(data, (*plain)(c)); err != nil {
+		return err
+	}
+	c.drawnByKind()
+	return nil
 }
 
 // TableLegend is one entry in a listing's legend: the same mark a row wears,

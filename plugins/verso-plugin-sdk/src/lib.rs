@@ -2664,6 +2664,23 @@ pub struct TableChip {
     /// A chip carries one mark or none; an icon wins.
     #[serde(skip_serializing_if = "is_false")]
     pub dot: bool,
+    /// What the chip cites — "zone", "network", "port". The shell draws that
+    /// kind's glyph and tone over icon and tone, so a zone cited by any plugin
+    /// is the same chip.
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub kind: String,
+}
+
+impl TableChip {
+    /// entity cites one zone, network or port by its name, drawn as the shell
+    /// draws that kind.
+    pub fn entity(kind: &str, label: &str) -> TableChip {
+        TableChip {
+            kind: kind.into(),
+            label: label.into(),
+            ..Default::default()
+        }
+    }
 }
 
 /// TableRowAct is one act on a row: a Lucide glyph, the sentence a pointer rests

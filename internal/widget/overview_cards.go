@@ -212,11 +212,11 @@ func (o *Overview) portsBody(r *Renderer, csrf string) (template.HTML, error) {
 		}
 		chips := make([]TableChip, 0, len(n.Networks))
 		for _, network := range n.Networks {
-			chips = append(chips, TableChip{Label: network, Icon: "network"})
+			chips = append(chips, EntityChip("network", network))
 		}
 		for _, rel := range n.Relations {
 			if len(n.Networks) == 0 {
-				chips = append(chips, TableChip{Label: rel.Name, Icon: "network"})
+				chips = append(chips, EntityChip("network", rel.Name))
 			}
 		}
 		t.Rows = append(t.Rows, interfaceRow(r.numbers(), n, TableCell{Chips: chips}))
