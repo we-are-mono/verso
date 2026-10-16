@@ -116,7 +116,7 @@ func TestPrimaryActsWearThePlus(t *testing.T) {
 	glyph := plus[strings.Index(plus, "<svg"):strings.Index(plus, "</svg>")]
 	for name, bar := range map[string]*ActionBar{
 		"panel":  {Heading: true, OpensPanel: true, Action: &TableAction{Label: "Add rule", Href: "/r?open=new"}},
-		"entity": {Heading: true, Entity: "/entity/device/new", Action: &TableAction{Label: "Reserve an address", Href: "/d"}},
+		"entity": {Heading: true, Entity: "/entity/device/new", Action: &TableAction{Label: "Reserve address", Href: "/d"}},
 		"page":   {Heading: true, Action: &TableAction{Label: "Install", Href: "/i"}},
 	} {
 		if got := render(t, newRenderer(t), bar); !strings.Contains(got, glyph) {

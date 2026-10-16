@@ -346,7 +346,7 @@ func TestDevicesReservationActionsFollowConfiguredState(t *testing.T) {
 				if got := strings.Contains(row, "Remove reservation"); got != reserved {
 					t.Errorf("device %s: remove action = %v, want %v", mac, got, reserved)
 				}
-				if got := strings.Contains(row, "Reserve an address"); got == reserved {
+				if got := strings.Contains(row, "Reserve address"); got == reserved {
 					t.Errorf("device %s: reserve action = %v, want %v", mac, got, !reserved)
 				}
 				if reserved && !strings.Contains(row, "/config/reservations/"+mac+"/delete") {
@@ -570,7 +570,7 @@ func TestReserveSitsOnTheHeadingLine(t *testing.T) {
 	s.neighbors = testNeighbors
 	whole := get(t, s, "/devices").Body.String()
 	body := whole[strings.LastIndex(whole, "</style>"):]
-	heading, act := strings.Index(body, `verso-page-heading">Devices`), strings.Index(body, "Reserve an address")
+	heading, act := strings.Index(body, `verso-page-heading">Devices`), strings.Index(body, "Reserve address")
 	roster := strings.Index(body, "<table")
 	if heading < 0 || act < 0 || roster < 0 {
 		t.Fatalf("roster is missing its heading, act or table:\n%s", body)

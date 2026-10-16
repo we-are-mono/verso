@@ -23,7 +23,6 @@
   "The router is serving the installed certificate.": "Usmerjevalnik uporablja nameščeno potrdilo.",
   "Replace certificate": "Zamenjaj potrdilo",
   "Access settings saved.": "Nastavitve dostopa so shranjene.",
-  "Add a key": "Dodaj ključ",
   "Add key": "Dodaj ključ",
   "Add a server": "Dodaj strežnik",
   "Add at least one time server, or turn off internet time synchronization.": "Dodajte vsaj en časovni strežnik ali izključite sinhronizacijo časa prek interneta.",

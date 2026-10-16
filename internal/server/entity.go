@@ -392,7 +392,7 @@ const entityNew = "new"
 // newSubjectTitle names the panel for a subject about to be made.
 func newSubjectTitle(kind string, tr func(string) string) string {
 	if kind == "device" {
-		return tr("Reserve an address")
+		return tr("Reserve address")
 	}
 	return tr("New")
 }

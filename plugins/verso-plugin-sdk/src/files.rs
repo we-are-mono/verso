@@ -134,8 +134,8 @@ impl FileSet {
             label: "Files".into(),
             to: String::new(),
             chain: String::new(),
-            add_label: "New file".into(),
-            add_text: "New file".into(),
+            add_label: "Add file".into(),
+            add_text: "Add file".into(),
             add_href: format!("{}new", self.editors),
             add_panel: true,
         });

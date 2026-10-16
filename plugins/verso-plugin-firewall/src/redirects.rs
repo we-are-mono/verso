@@ -169,7 +169,7 @@ fn listing(
 /// does not exist yet, so it opens the same panel a row's edit glyph opens.
 fn act(blank: Option<RowDrawer>) -> HeadingAct {
     HeadingAct {
-        label: "Add forward".into(),
+        label: "Add port forward".into(),
         href: redirect_drawer::new_href(),
         opens_panel: true,
         drawer: blank,
@@ -324,7 +324,7 @@ mod tests {
         assert_eq!(
             body["act"],
             serde_json::json!({
-                "label": "Add forward",
+                "label": "Add port forward",
                 "href": "/plugins/firewall/port-forwards?open=new",
                 "opens_panel": true
             })
@@ -345,7 +345,7 @@ mod tests {
             .retain(|redirect| !redirect.is_port_forward());
         let body = serde_json::to_value(page(&model, &Counters::default())).expect("serialize");
 
-        assert_eq!(body["act"]["label"], "Add forward");
+        assert_eq!(body["act"]["label"], "Add port forward");
         let table = &body["widget"];
         assert_eq!(table["type"], "table");
         assert_eq!(table["rows"].as_array().map(Vec::len).unwrap_or(0), 0);

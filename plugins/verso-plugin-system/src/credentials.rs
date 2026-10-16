@@ -89,7 +89,7 @@ pub fn keys(r: &Request, posted: Option<&Form>, refused: &str) -> Widget {
                 items: keys.iter().map(key_item).collect(),
                 empty: "No keys are authorized.".into(),
                 add: Some(CollectionAdd {
-                    label: "Add a key".into(),
+                    label: "Add key".into(),
                     name: ADD_KEY.into(),
                     value: if refused.is_empty() {
                         String::new()

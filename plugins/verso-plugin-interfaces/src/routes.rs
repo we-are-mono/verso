@@ -200,7 +200,7 @@ fn listing(m: &Model, open: &str, drawer: Option<RowDrawer>) -> Envelope {
     // panel. The lanes and the origin chips already say what each route is,
     // and a still listing is narrowed with the browser's own find.
     let act = HeadingAct {
-        label: "New route".into(),
+        label: "Add route".into(),
         href: open_href(NEW),
         icon: "plus".into(),
         opens_panel: true,
@@ -894,7 +894,7 @@ mod tests {
         // A still listing is scrolled and searched with the browser's own
         // find; the lanes and the origin chips already say what is custom.
         let view = json_of(page(&model(), "", ""));
-        assert_eq!(view["act"]["label"], "New route");
+        assert_eq!(view["act"]["label"], "Add route");
         assert_eq!(view["act"]["href"], "/plugins/interfaces/routes?open=new");
         assert!(
             find(&view, &|v| v["type"] == "actionbar").is_none(),

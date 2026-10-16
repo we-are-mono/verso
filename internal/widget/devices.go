@@ -137,7 +137,7 @@ func DeviceActTitles(d Device) map[string]string {
 	if d.Reserved {
 		titles["unreserve"] = "Remove reservation"
 	} else {
-		titles["reserve"] = "Reserve an address"
+		titles["reserve"] = "Reserve address"
 	}
 	return titles
 }
@@ -252,7 +252,7 @@ func DevicesAct(devices []Device, reserveHref string, panelHref func(mac string)
 	}
 	return &ActionBar{
 		Heading: true,
-		Action:  &TableAction{Label: "Reserve an address", Href: reserveHref},
+		Action:  &TableAction{Label: "Reserve address", Href: reserveHref},
 		Entity:  panelHref(reservableDevice(devices)),
 	}
 }
