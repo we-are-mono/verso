@@ -415,19 +415,21 @@ func fibreFacts(f *sensors.FiberModule) widget.Widget {
 	if !f.RxHasLight {
 		link = widget.Property{Label: "Link", Value: "No signal", Dot: "warning"}
 	}
+	// The readings are figures with their units, so they are data in the sans,
+	// as every other figure is; mono is for strings someone could type back in.
 	items := []widget.Property{link}
 	if f.HasTx {
-		items = append(items, widget.Property{Label: "Transmit", Value: opticalPair(f.TxMicroW, true), Mono: true})
+		items = append(items, widget.Property{Label: "Transmit", Value: opticalPair(f.TxMicroW, true), Verbatim: true})
 	}
 	if f.HasRx {
-		items = append(items, widget.Property{Label: "Receive", Value: opticalPair(f.RxMicroW, f.RxHasLight), Mono: true})
+		items = append(items, widget.Property{Label: "Receive", Value: opticalPair(f.RxMicroW, f.RxHasLight), Verbatim: true})
 	}
-	items = append(items, widget.Property{Label: "Temperature", Value: celsiusOne(f.TempMilliC) + units.Space + "°C", Mono: true})
+	items = append(items, widget.Property{Label: "Temperature", Value: celsiusOne(f.TempMilliC) + units.Space + "°C", Verbatim: true})
 	if f.HasVcc {
-		items = append(items, widget.Property{Label: "Supply", Value: fmt.Sprintf("%.2f"+units.Space+"V", float64(f.VccMilliV)/1000), Mono: true})
+		items = append(items, widget.Property{Label: "Supply", Value: fmt.Sprintf("%.2f"+units.Space+"V", float64(f.VccMilliV)/1000), Verbatim: true})
 	}
 	if f.HasBias {
-		items = append(items, widget.Property{Label: "Laser bias", Value: fmt.Sprintf("%d"+units.Space+"mA", f.BiasMilliA), Mono: true})
+		items = append(items, widget.Property{Label: "Laser bias", Value: fmt.Sprintf("%d"+units.Space+"mA", f.BiasMilliA), Verbatim: true})
 	}
 	return &widget.Properties{
 		Align: "left",

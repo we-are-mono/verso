@@ -357,6 +357,17 @@ func TestEachModuleIsAHeadedList(t *testing.T) {
 	}
 }
 
+// A module's readings are figures with their units, set in the sans as every
+// other figure is; mono is for strings someone could type back in.
+func TestAModulesReadingsAreFigures(t *testing.T) {
+	facts := fibreFacts(&dkInventory().Fibers[0])
+	for _, item := range facts.(*widget.Properties).Items {
+		if item.Mono {
+			t.Errorf("%s is a figure, not a machine string: %+v", item.Label, item)
+		}
+	}
+}
+
 // The heading reads "Hardware" while all is well, and says what needs
 // attention in its tone, in the Overview card's words.
 func TestTheHeadingSaysWhatNeedsAttention(t *testing.T) {
