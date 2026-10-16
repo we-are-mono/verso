@@ -148,6 +148,13 @@ own and points at the decision that governs it; the rationale lives there, not h
 - **An empty page listing.** VPN and Dynamic DNS with nothing in them stand
   their empty slot loose on the sand rather than in a card.
 
+## Forms as ledgers (forms-ledger)
+
+- **Release note: forms are ledgers.** Every form reads as its questions on
+  the left and its answers on one edge, with what each setting does written
+  under its name; "Hide descriptions" on the heading line folds them away and
+  the browser keeps the choice. Installed plugins need no upgrade.
+
 ## Themes (ADR-024)
 
 - **Release note: Sand dark by default.** The release that carries themes
