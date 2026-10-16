@@ -63,7 +63,7 @@ func TestPackagesInventory(t *testing.T) {
 		"font-mono text-base font-medium", // package versions use the fixed 16px/500 mono treatment
 		"Process viewer",                  // what it is, in its column
 		">Remove</button>",                // removal is the row's act, asked on the row
-		"max-w-6xl",                       // package management uses the focused content width
+		"max-w-column-6xl",                // package management uses the wide content width
 		`data-verso-panel-url="/system/packages/package?name=htop"`, // the drawer is fetched as it opens
 	} {
 		if !strings.Contains(body, want) {
@@ -381,8 +381,8 @@ func TestDiscoverSearchRenders(t *testing.T) {
 	}, true, mgmtManifest())
 
 	body := get(t, s, "/system/packages/discover?q=htop").Body.String()
-	if !strings.Contains(body, "max-w-6xl") {
-		t.Error("Available must use the narrow package-management width")
+	if !strings.Contains(body, "max-w-column-6xl") {
+		t.Error("Available must use the wide package-management width")
 	}
 	// bg-denim, not a stock ramp: the page inlines the whole stylesheet, so asking
 	// for a colour the app does not use still found it — Tailwind had compiled the

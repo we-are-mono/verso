@@ -835,7 +835,7 @@ func TestTopBarCarriesTheNameplateAndTheWayOut(t *testing.T) {
 		`href="/"`, ">gdk-edge-01</a>",
 		`aria-label="Open menu"`,
 		`action="/logout"`, ">root<", ">Log out<",
-		"md:left-72", "max-w-6xl",
+		"md:left-72", "data-verso-session",
 	} {
 		if !strings.Contains(header, want) {
 			t.Errorf("top bar missing %q:\n%s", want, header)
@@ -2825,7 +2825,7 @@ func TestAPageStandsOnSandUnderItsHeadingLine(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, want := range []string{
-		"main [data-verso-masthead] {\n    margin-inline: calc(var(--spacing) * -10) calc(100% - 100cqw + var(--spacing) * 10);\n    padding-inline: calc(var(--spacing) * 10) calc(100cqw - var(--spacing) * 10 - var(--verso-measure));\n  }",
+		"main [data-verso-masthead] {\n    margin-inline: calc(var(--verso-gutter) * -1) calc(100% - round(100cqw, 1px) + var(--verso-gutter));\n    padding-inline: var(--verso-gutter) calc(round(100cqw, 1px) - var(--verso-gutter) - var(--verso-measure));\n  }",
 		"main [data-verso-masthead=\"light\"] {\n    margin-bottom: 0;\n    border-bottom: 1px solid var(--color-rule);\n    background-color: var(--color-ground);",
 	} {
 		if !strings.Contains(string(css), want) {

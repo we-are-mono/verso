@@ -1079,32 +1079,31 @@ html {
      the page's gutter in from the window, and never past the top bar's
      wide measure, rounded down to the 8px grid and a pixel more, as a page's
      column is (w-column), so the acts' right border lands on a line
-     (--verso-measure). The page (main) is the size container;
-     the margins pull the masthead out past the frame's 2.5rem and the
+     (--verso-measure). The page (main) is the size container, read in
+     whole pixels so a width a hair under its pixel never rounds a step
+     short; the margins pull the masthead out past the page's gutter and the
      column's end to the rail and the window's edge, and the padding brings
-     its content back. */
-  main { --verso-measure: calc(round(down, min(100cqw - var(--spacing) * 20, var(--container-6xl)) - 1px, 0.5rem) + 1px); }
-  /* Log out ends on the same line: the top bar's session group measures
-     itself the way the masthead does, against the same width beside the
-     rail. */
+     its content back. The gutter is the page's: 16px on a phone, 40px past
+     it. */
+  :root { --verso-gutter: calc(var(--spacing) * 4); }
   @media (width >= 48rem) {
-    [data-verso-session] { container-type: inline-size; }
-    [data-verso-session] > div {
-      flex: none;
-      width: calc(round(down, min(100cqw - var(--spacing) * 20, var(--container-6xl)) - 1px, 0.5rem) + 1px);
-    }
+    :root { --verso-gutter: calc(var(--spacing) * 10); }
+  }
+  main { --verso-measure: calc(round(down, min(round(100cqw, 1px) - var(--verso-gutter) * 2 - 1px, var(--container-6xl)), 0.5rem) + 1px); }
+  /* Log out ends on the same line: the top bar's session group measures
+     itself the way the column does, against the same width beside the
+     rail. */
+  [data-verso-session] > div {
+    flex: none;
+    margin-inline: var(--verso-gutter);
+    width: calc(round(down, min(100% - var(--verso-gutter) * 2 - 1px, var(--container-6xl)), 0.5rem) + 1px);
   }
   /* The colophon's words end on the same line too: measured the same way,
-     against the same width beside the rail, the page's gutters (16px on a
-     phone, 40px past it) outside the rounded measure. */
-  [data-verso-colophon] { container-type: inline-size; }
+     against the same width beside the rail, the page's gutters outside the
+     rounded measure. */
   [data-verso-colophon] > div {
-    --verso-gutter: calc(var(--spacing) * 4);
     max-width: none;
-    width: calc(round(down, min(100cqw - var(--verso-gutter) * 2, var(--container-6xl)) - 1px, 0.5rem) + 1px + var(--verso-gutter) * 2);
-  }
-  @media (width >= 48rem) {
-    [data-verso-colophon] > div { --verso-gutter: calc(var(--spacing) * 10); }
+    width: calc(round(down, min(100% - var(--verso-gutter) * 2 - 1px, var(--container-6xl)), 0.5rem) + 1px + var(--verso-gutter) * 2);
   }
   /* A short page's ground fills the window down to the colophon, rounded
      down to the grid, and the colophon takes the few pixels left at the
@@ -1117,8 +1116,8 @@ html {
   }
   main > [data-verso-colophon] { flex: 1 0 auto; }
   main [data-verso-masthead] {
-    margin-inline: calc(var(--spacing) * -10) calc(100% - 100cqw + var(--spacing) * 10);
-    padding-inline: calc(var(--spacing) * 10) calc(100cqw - var(--spacing) * 10 - var(--verso-measure));
+    margin-inline: calc(var(--verso-gutter) * -1) calc(100% - round(100cqw, 1px) + var(--verso-gutter));
+    padding-inline: var(--verso-gutter) calc(round(100cqw, 1px) - var(--verso-gutter) - var(--verso-measure));
   }
   /* The light masthead stands on the page's own ground, as the rail does, for
      a page whose body is itself the darker surface (a live log, a run's

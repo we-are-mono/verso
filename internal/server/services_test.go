@@ -88,7 +88,7 @@ func TestServicesTable(t *testing.T) {
 		"text-sm font-medium font-mono border-rule bg-quiet", // type reuses the mono chip treatment
 		">verso</span>",                   // APK ownership joins verso-rpcd to the verso package
 		"font-mono text-base font-medium", // package ownership uses fixed 16px/500 mono type
-		"max-w-6xl",                       // runtime fits without forcing a horizontal scroller
+		"max-w-column-6xl",                // runtime fits without forcing a horizontal scroller
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("services missing %q", want)
