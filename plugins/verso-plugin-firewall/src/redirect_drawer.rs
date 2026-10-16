@@ -163,7 +163,8 @@ fn incoming(model: &Firewall, redirect: &RedirectForm, errors: &Errors) -> Widge
         "",
         vec![
             fields::row_group(vec![
-                fields::select_field("src", "Arrives from", &redirect.src, zones, errors),
+                fields::select_field("src", "Arrives from", &redirect.src, zones, errors)
+                    .writes("src"),
                 fields::text_field(
                     "src_dport",
                     "Incoming port",
@@ -173,7 +174,8 @@ fn incoming(model: &Firewall, redirect: &RedirectForm, errors: &Errors) -> Widge
                 )
                 .writes("src_dport"),
             ]),
-            fields::select_field("proto", "Protocol", &redirect.proto, protocols, errors),
+            fields::select_field("proto", "Protocol", &redirect.proto, protocols, errors)
+                .writes("proto"),
             // Everything else a forward can be narrowed by. The catalogue is the
             // shell's: it renders the conditions this forward carries as rows and
             // keeps the rest behind its own picker. A row apiece would have been
@@ -381,7 +383,8 @@ fn reach(model: &Firewall, redirect: &RedirectForm, errors: &Errors) -> Widget {
                     ("external", "This router's public address"),
                 ]),
                 errors,
-            ),
+            )
+            .writes("reflection_src"),
             // Which inside networks get the hairpin rules. firewall4 writes
             // them for the zone the traffic is forwarded into unless this
             // names others, which is what a router with a second inside
@@ -1043,6 +1046,16 @@ mod tests {
                 {"value": "10.0.0.41", "label": "aa:bb:cc:00:00:41"},
             ])
         );
+    }
+
+    /// Every field a forward's panel writes says which option it writes, as the
+    /// rule panel's do — where the traffic arrives from and its protocol too.
+    #[test]
+    fn where_it_arrives_from_and_its_protocol_name_the_options_they_write() {
+        let body = blank();
+        assert_eq!(control(&body, "src")["key"], "src");
+        assert_eq!(control(&body, "proto")["key"], "proto");
+        assert_eq!(control(&body, "reflection_src")["key"], "reflection_src");
     }
 
     #[test]
