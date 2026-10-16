@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -151,8 +152,13 @@ func TestServicesTable(t *testing.T) {
 	if got := strings.Count(firewallRow, `font-sans text-sm whitespace-nowrap text-faint"><span aria-hidden="true">—</span><span class="sr-only">None</span></td>`); got < 3 {
 		t.Errorf("an indeterminate State, PID and Memory must each be the absence mark (got %d): %s", got, firewallRow)
 	}
-	if strings.Contains(firewallRow, "border border-faint") {
-		t.Errorf("an indeterminate State must not wear a hollow packet: %s", firewallRow)
+	// The state it does state, applied at boot, is no live state: the empty
+	// ring, which never stands before a dash.
+	if !regexp.MustCompile(`border border-faint"></span>\s*<span class="text-meta">applied at boot<`).MatchString(firewallRow) {
+		t.Errorf("applied at boot should wear the empty ring: %s", firewallRow)
+	}
+	if regexp.MustCompile(`border border-faint"></span>\s*<span[^>]*>—`).MatchString(firewallRow) {
+		t.Errorf("a hollow packet stands before an absence: %s", firewallRow)
 	}
 	if strings.Contains(firewallRow, `name="svc:firewall"`) {
 		t.Errorf("firewall must not offer an enabled toggle: %s", firewallRow)
@@ -219,6 +225,23 @@ func TestServicesStatePills(t *testing.T) {
 		s := pluginsServer(t, fakeBackend{access: true, rcStates: tc.rc}, tc.alive, mgmtManifest())
 		if body := get(t, s, "/system/services").Body.String(); !strings.Contains(body, tc.want) {
 			t.Errorf("%s: missing %q", tc.name, tc.want)
+		}
+	}
+}
+
+// Only a state asserted now fills its packet. What a task or a subsystem is set
+// to do at boot, or that it is off, is no live state: the empty ring and the
+// word at the secondary step, as Stopped reads, never Denim, the hue of acts.
+func TestServicesBootStatesWearTheRing(t *testing.T) {
+	for _, row := range []widget.TableRow{
+		serviceRow("boot", openwrt.RCState{Kind: openwrt.ServiceTask, Enabled: true}, nil),
+		serviceRow("umount", openwrt.RCState{Kind: openwrt.ServiceTask}, nil),
+		serviceRow("system", openwrt.RCState{Kind: openwrt.ServiceSubsystem, Enabled: true}, nil),
+		serviceRow("gpio_switch", openwrt.RCState{Kind: openwrt.ServiceSubsystem}, nil),
+		pluginServiceRow(pluginState{Service: "verso-plugin-demo", Known: true, Enabled: true, Kind: openwrt.ServiceTask}, nil),
+	} {
+		if state := row.Cells[5]; state.Variant != "" {
+			t.Errorf("%s %q wears %q, want the ring", row.ID, state.Text, state.Variant)
 		}
 	}
 }

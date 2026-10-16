@@ -421,11 +421,7 @@ func serviceRow(name string, st openwrt.RCState, owners map[string]string) widge
 	pill := widget.TableCell{Muted: true}
 	switch kind {
 	case openwrt.ServiceTask:
-		pill.Text = "disabled"
-		pill.Variant = "neutral"
-		if st.Enabled {
-			pill = widget.TableCell{Text: "runs at boot", Variant: "info"}
-		}
+		pill = taskStateCell(st.Enabled)
 	case openwrt.ServiceDaemon:
 		pill = widget.TableCell{Text: "stopped", Variant: "neutral"}
 		if st.Running {
@@ -439,18 +435,28 @@ func serviceRow(name string, st openwrt.RCState, owners map[string]string) widge
 	return serviceListingRow(name, st, pill, owners, true)
 }
 
+// taskStateCell is a boot task's state: what it is set to do, which is no
+// live state, so it wears the empty ring as Stopped does.
+func taskStateCell(enabled bool) widget.TableCell {
+	if enabled {
+		return widget.TableCell{Text: "runs at boot"}
+	}
+	return widget.TableCell{Text: "disabled"}
+}
+
 // subsystemStateCell is a subsystem's state. A subsystem such as firewall4
 // applies persistent kernel state and exits, so a false generic `running`
 // proves nothing: it is active only where the init script positively says so,
-// and otherwise what it did, applied at boot, or that it does not run.
+// and otherwise what it did, applied at boot, or that it does not run — no
+// live state, so the empty ring.
 func subsystemStateCell(running, enabled bool) widget.TableCell {
 	switch {
 	case running:
 		return widget.TableCell{Text: "active", Variant: "success"}
 	case enabled:
-		return widget.TableCell{Text: "applied at boot", Variant: "info"}
+		return widget.TableCell{Text: "applied at boot"}
 	default:
-		return widget.TableCell{Text: "disabled", Variant: "neutral"}
+		return widget.TableCell{Text: "disabled"}
 	}
 }
 
@@ -463,10 +469,7 @@ func pluginServiceRow(st pluginState, owners map[string]string) widget.TableRow 
 	case !st.Known:
 		pill = widget.TableCell{Text: "not managed", Variant: "warning"}
 	case kind == openwrt.ServiceTask:
-		pill = widget.TableCell{Text: "disabled", Variant: "neutral"}
-		if st.Enabled {
-			pill = widget.TableCell{Text: "runs at boot", Variant: "info"}
-		}
+		pill = taskStateCell(st.Enabled)
 	case kind == openwrt.ServiceSubsystem:
 		pill = subsystemStateCell(st.Running, st.Enabled)
 	case st.Running && st.Alive:
