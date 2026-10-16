@@ -55,8 +55,8 @@ func (s *Server) appearanceCard(tr func(string) string) widget.Widget {
 		Title:    tr("Appearance"),
 		Hairline: true,
 		Children: widget.Widgets{
-			&widget.Field{Name: "theme", Label: tr("Theme"), Kind: "select", Options: options, Value: choice, Key: "theme", Theme: true},
-			&widget.Text{Markdown: tr("Takes effect immediately, for everyone who signs in to this router."), Translated: true},
+			&widget.Field{Name: "theme", Label: tr("Theme"), Kind: "select", Options: options, Value: choice, Key: "theme", Theme: true,
+				Note: tr("Takes effect immediately, for everyone who signs in to this router.")},
 		},
 	}
 }
