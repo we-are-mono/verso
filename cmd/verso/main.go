@@ -92,10 +92,18 @@ func updateCheck() error {
 // procd records the command line, so a listener applied from `verso.web`,
 // which the running shell takes on by itself (ADR-017 §1), is where its next
 // start answers too.
+// procdLoggers sets the shell's loggers for procd, which records stdout as info
+// and stderr as err and hands both to logd. logd stamps every line, so neither
+// logger stamps its own: the error lines (the log package's) lose their date
+// and time, and the info logger, for normal lifecycle messages kept off the
+// error stream, never had one.
+func procdLoggers() *log.Logger {
+	log.SetFlags(0)
+	return log.New(os.Stdout, "", 0)
+}
+
 func serve(args []string) {
-	// procd records stdout as info and stderr as err. Keep normal lifecycle
-	// messages off the error stream; logd already supplies their timestamp.
-	info := log.New(os.Stdout, "", 0)
+	info := procdLoggers()
 	// verso-rpcd reads -history-dir from a running shell's command line as
 	// this set parses it, every flag taking a value (reset.rs, history_flag).
 	flags := flag.NewFlagSet("verso", flag.ContinueOnError)
