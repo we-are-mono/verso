@@ -196,6 +196,9 @@ func TestReviewDrawerPlainOverRaw(t *testing.T) {
 		// The two acts that end the stage, and the promise that makes the first
 		// safe to press — stating the window the apply actually arms.
 		`id="verso-staged-apply"`, ">Apply 2 changes</button>", `id="verso-staged-discard"`, ">Discard all</button>",
+		// Letting the stage go asks first, in place, in crimson, its question
+		// dropping under the line of acts.
+		`class="verso-confirm contents"`, `data-verso-confirm-tone="danger"`, "Discard all staged changes?", ">Discard</button>", ">Not now</button>",
 		"Usually takes a couple of seconds, longer if many services are affected. If the router stops answering within 30 seconds, the changes are rolled back.",
 	} {
 		if !strings.Contains(body, want) {

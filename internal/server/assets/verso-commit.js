@@ -336,10 +336,17 @@
     dot.className = "mt-2.25 size-1.5 shrink-0 rounded-[1px] " + (tone === "crimson" ? "bg-crimson" : "bg-denim");
   }
 
+  // discardAnswer is the button that answers Discard all's question: the
+  // confirm's own act, inside the drawer's discard slot, which carries the
+  // busy words the act wears while it runs.
+  function discardAnswer() {
+    return document.querySelector("#verso-staged-discard button[type=submit]");
+  }
+
   // Lock both acts, with the waiting mark on the one that was requested.
   function waiting(on, activeID) {
     var apply = document.getElementById("verso-staged-apply");
-    var discard = document.getElementById("verso-staged-discard");
+    var discard = discardAnswer();
     [apply, discard].forEach(function (button) {
       if (!button) return;
       if (on) {
@@ -348,7 +355,8 @@
           var dialog = button.closest("dialog");
           if (dialog) dialog.focus();
         }
-        var label = button.id === activeID ? button.getAttribute("data-busy-label") : "";
+        var slot = button === discard ? document.getElementById("verso-staged-discard") : button;
+        var label = slot.id === activeID ? slot.getAttribute("data-busy-label") : "";
         versoButtons.start(button, label);
         if (label) versoAnnounce(label);
       } else versoButtons.finish(button);
@@ -503,8 +511,10 @@
 
   // The drawer's contents arrive by fetch each time it opens, so its acts are
   // heard from the document rather than bound to nodes that will be replaced.
+  // Discard all asks first: only the answer to its question lets the stage
+  // go; the trigger and the way back are the confirm's own.
   document.addEventListener("click", function (e) {
-    var target = e.target && e.target.closest ? e.target.closest("#verso-staged-apply, #verso-staged-discard") : null;
+    var target = e.target && e.target.closest ? e.target.closest("#verso-staged-apply, #verso-staged-discard button[type=submit]") : null;
     if (!target || target.disabled) return;
     e.preventDefault();
     if (target.id === "verso-staged-apply") apply();

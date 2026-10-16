@@ -100,10 +100,12 @@
       <span id="verso-staged-note">{{ printf (t "Usually takes a couple of seconds, longer if many services are affected. If the router stops answering within %d seconds, the changes are rolled back.") .Rollback }}</span>
     </div>
     {{end}}
-    <div class="mt-6 flex items-center gap-2">
+    {{/* The two acts on one line; Discard all asks first, and its question
+         drops full-width under the line (an InRow confirm). */}}
+    <div class="mt-6 flex flex-wrap items-center gap-2">
       {{if .Count}}
       <button type="button" id="verso-staged-apply" data-busy-label="{{ t "Applying…" }}" class="flex h-control cursor-pointer items-center gap-2 rounded-xs border border-denim bg-denim px-4 text-sm font-semibold whitespace-nowrap text-on-fill transition-colors hover:border-denim-deep hover:bg-denim-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim-deep disabled:pointer-events-none disabled:border-rule-strong disabled:bg-quiet disabled:text-glyph">{{.Apply}}</button>
-      <button type="button" id="verso-staged-discard" data-busy-label="{{ t "Discarding…" }}" class="flex h-control cursor-pointer items-center rounded-xs border px-4 text-sm font-semibold whitespace-nowrap {{template "verso-btn-secondary"}} focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim disabled:pointer-events-none disabled:opacity-50">{{ t "Discard all" }}</button>
+      <div id="verso-staged-discard" data-busy-label="{{ t "Discarding…" }}" class="contents">{{.Discard}}</div>
       {{else}}
       <button type="button" @click="hide" class="flex h-control cursor-pointer items-center rounded-xs border px-4 text-sm font-semibold whitespace-nowrap {{template "verso-btn-secondary"}} focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim">{{ t "Close" }}</button>
       {{end}}

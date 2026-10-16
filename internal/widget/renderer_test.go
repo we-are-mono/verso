@@ -585,6 +585,22 @@ func TestRenderConfirmCaution(t *testing.T) {
 	}
 }
 
+// A named confirm standing in a row of acts lays itself into that row, as an
+// icon act does, so its question drops full-width under the row rather than
+// squeezing in beside the acts it shares the line with.
+func TestRenderConfirmInARowOfActs(t *testing.T) {
+	r := newRenderer(t)
+	got := render(t, r, &Confirm{Trigger: "Discard all", Message: "Discard 3 staged changes?", Confirm: "Discard", Cancel: "Keep them", InRow: true})
+	for _, want := range []string{`class="verso-confirm contents"`, `x-cloak class="mt-3 basis-full"`, ">Discard all</button>"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("in-row confirm missing %q in: %s", want, got)
+		}
+	}
+	if alone := render(t, r, &Confirm{Trigger: "Reboot now", Message: "Reboot?"}); strings.Contains(alone, "basis-full") || !strings.Contains(alone, "verso-confirm flow-root") {
+		t.Errorf("a confirm standing alone keeps its own block: %s", alone)
+	}
+}
+
 func TestRenderConfirm(t *testing.T) {
 	r := newRenderer(t)
 	got := render(t, r, &Confirm{Trigger: "Remove device", Message: "Remove this device?", Confirm: "Remove", Cancel: "Keep it"})

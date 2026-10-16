@@ -15,6 +15,7 @@ import (
 
 	"github.com/we-are-mono/verso/internal/i18n"
 	"github.com/we-are-mono/verso/internal/plugin"
+	"github.com/we-are-mono/verso/internal/widget"
 )
 
 // waitingOptions is the set of options that wait on the stage, by their full
@@ -63,10 +64,13 @@ const uciRollbackTimeout = 30
 // (ADR-010): the pending uci changes across the configs plugins declare, read
 // from UCI's own stage — the browser holds nothing.
 type stagedView struct {
-	Count  int
-	Label  string        // "3 staged changes", worded here so the chip prints it raw
-	Apply  string        // the drawer's act, "Apply 3 changes"
-	Groups []stagedGroup // the drawer's rows, under the page each change belongs to
+	Count int
+	Label string // "3 staged changes", worded here so the chip prints it raw
+	Apply string // the drawer's act, "Apply 3 changes"
+	// Discard is the drawer's other act, rendered: Discard all and the
+	// question it asks first. Empty outside the drawer and on a clean stage.
+	Discard template.HTML
+	Groups  []stagedGroup // the drawer's rows, under the page each change belongs to
 	// Rollback is the window the drawer promises, in seconds. It is the same
 	// constant the apply actually arms rpcd with, carried into the sentence so
 	// the promise on screen cannot drift from the one the device keeps.
@@ -267,6 +271,17 @@ func (s *Server) staged(ctx context.Context, sid string, tr func(string) string,
 	v.Apply = stagedApplyLabel(v.Count, tr)
 	v.Summary = changeSummary(stagedItems(v, secrets), tr)
 	return v
+}
+
+// discardConfirm is the drawer's second act: Discard all, laid into the row
+// beside Apply, asking before it lets the stage go (verso-commit.js answers
+// it without leaving the drawer).
+func discardConfirm() *widget.Confirm {
+	return &widget.Confirm{
+		Trigger: "Discard all", Title: "Discard all staged changes?",
+		Message: "Nothing was applied, so the router keeps running as it is. What you saved on each page is lost.",
+		Confirm: "Discard", Cancel: "Not now", InRow: true,
+	}
 }
 
 // stagedApplyLabel is the drawer's act, naming what it applies in the count's
@@ -744,6 +759,17 @@ func (s *Server) handleUCIReview(w http.ResponseWriter, r *http.Request) {
 	sid := s.sessionSID(r)
 	view := s.staged(r.Context(), sid, tr, s.pluginTranslators(r))
 	s.withWas(r.Context(), sid, &view, tr)
+	if view.Count > 0 {
+		// Letting the stage go throws away what was saved on every page, so
+		// it asks first, in place, as every act that erases does.
+		var discard strings.Builder
+		if err := s.widgets.RenderWithToken(&discard, discardConfirm(), s.sessionCSRF(r), lang, t); err != nil {
+			log.Printf("verso: staged review render failed: %v", err)
+			http.Error(w, "review unavailable", http.StatusInternalServerError)
+			return
+		}
+		view.Discard = template.HTML(discard.String()) //nolint:gosec // the shell's own rendered widget
+	}
 	var buf bytes.Buffer
 	if err := s.pageSet(lang).ExecuteTemplate(&buf, "verso-staged-review", view); err != nil {
 		log.Printf("verso: staged review render failed: %v", err)
