@@ -619,8 +619,11 @@
 {{define "verso-drawer-header"}}
 <header class="flex flex-none items-center gap-4 bg-quiet {{template "verso-drawer-inset"}} py-3.5 shadow-[inset_0_-1px_0_var(--color-rule)]">
   <h2 class="min-w-0 truncate text-lg font-semibold tracking-tight text-body">{{.}}</h2>
-  {{template "verso-fold-act" "ml-auto"}}
-  <button type="button" @click="hide" aria-label="{{ t "Close" }}" class="ml-auto grid size-7 flex-none cursor-pointer place-items-center rounded-xs border border-transparent text-glyph transition-colors hover:border-sand-5 hover:bg-rule hover:text-ink focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-denim">{{icon "x" "size-4"}}</button>
+  {{/* The fold stands with the close, before it, at the band's end. */}}
+  <div class="ml-auto flex flex-none items-center gap-4">
+    {{template "verso-fold-act" ""}}
+    <button type="button" @click="hide" aria-label="{{ t "Close" }}" class="grid size-7 flex-none cursor-pointer place-items-center rounded-xs border border-transparent text-glyph transition-colors hover:border-sand-5 hover:bg-rule hover:text-ink focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-denim">{{icon "x" "size-4"}}</button>
+  </div>
 </header>
 {{end}}
 
