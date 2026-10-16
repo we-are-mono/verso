@@ -417,6 +417,15 @@ mod tests {
     use serde_json::Value;
     use verso_plugin::{Form, Snapshot};
 
+    // A forward exists to let the internet in, so a new one arrives from the
+    // zone that faces it — the one that masquerades — rather than from
+    // whichever zone the config names first.
+    #[test]
+    fn a_new_forward_arrives_from_the_uplink() {
+        let src = control(&blank(), "src");
+        assert_eq!(src["value"], "wan");
+    }
+
     /// with_lan is the fixture's firewall on a router whose LAN is
     /// 192.168.77.1/24, whose uplink learns its address, and which has the
     /// loopback every router has.
@@ -693,7 +702,8 @@ mod tests {
         assert_eq!(drawer["children"][0]["submit"], "Add port forward");
         assert_eq!(control(&drawer, "enabled")["on"], true);
         assert_eq!(control(&drawer, "proto")["value"], "tcp udp");
-        assert_eq!(control(&drawer, "src")["value"], "");
+        // It arrives from the uplink (a_new_forward_arrives_from_the_uplink).
+        assert_eq!(control(&drawer, "src")["value"], "wan");
         assert_eq!(
             body["act"]["href"],
             new_href(),

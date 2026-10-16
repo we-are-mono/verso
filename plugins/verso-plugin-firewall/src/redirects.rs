@@ -61,12 +61,7 @@ pub fn page_open(
 ) -> Envelope {
     let section = query.get(OPEN).trim().to_string();
     if section == NEW {
-        return blank(
-            model,
-            counters,
-            &RedirectForm::default(),
-            &Errors::default(),
-        );
+        return blank(model, counters, &seeded(model), &Errors::default());
     }
     let open = forward(model, &section)
         .and_then(|_| snapshot.section(CONFIG, &section))
@@ -162,6 +157,22 @@ fn forward<'a>(model: &'a Firewall, section: &str) -> Option<&'a Redirect> {
 }
 
 /// blank is the listing with the panel for a forward not made yet.
+/// seeded is a new forward as it opens. A forward exists to let the internet
+/// in, so it arrives from the zone that faces it — the one that masquerades —
+/// rather than from whichever zone the config names first; with no such zone
+/// it asks as it always has.
+fn seeded(model: &Firewall) -> RedirectForm {
+    RedirectForm {
+        src: model
+            .zones
+            .iter()
+            .find(|zone| zone.masq)
+            .map(|zone| zone.name.clone())
+            .unwrap_or_default(),
+        ..RedirectForm::default()
+    }
+}
+
 fn blank(model: &Firewall, counters: &Counters, form: &RedirectForm, errors: &Errors) -> Envelope {
     let drawer = redirect_drawer::drawer(model, None, form, errors);
     listing(model, counters, Some(drawer), None)
