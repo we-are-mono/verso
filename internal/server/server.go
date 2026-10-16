@@ -711,6 +711,7 @@ type pageData struct {
 	Overview      bool
 	UpdateNotice  string
 	Lang          string // negotiated language for <html lang>, "en" when English
+	Folded        bool   // this browser folded the settings' descriptions away (descriptionsCookie)
 	Title         string
 	Heading       string
 	HeadingDetail string        // the active subpage's name, muted beside the heading
@@ -974,6 +975,7 @@ func (s *Server) renderPage(w http.ResponseWriter, r *http.Request, status int, 
 		Overview:      r.URL.Path == "/",
 		UpdateNotice:  s.homeUpdateNotice(r, tr),
 		Lang:          langAttr(lang),
+		Folded:        descriptionsFolded(r),
 		Title:         documentTitle(r.URL.Path == "/", tr(hdr.Heading), headingDetail, tr),
 		Heading:       tr(hdr.Heading),
 		HeadingDetail: headingDetail,
