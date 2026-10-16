@@ -177,32 +177,33 @@ func TestTheHeadingNamesTheCause(t *testing.T) {
 		{Name: "wg0", Kind: "tunnel", State: "up", Networks: []string{"vpn"}},
 	}}
 	said := func() (string, string) { s := o.LiveStatus(plain); return s.Lead, s.Tone }
-	if s := o.LiveStatus(plain); s.Tone != "success" || s.Accent != "online" {
+	// The verdict is a sentence, ending after its accent.
+	if s := o.LiveStatus(plain); s.Tone != "success" || s.Accent != "online" || s.Tail != "." {
 		t.Fatalf("up = %+v", s)
 	}
 	o.Interfaces[2].State = "down"
-	if lead, tone := said(); lead != "Tunnel wg0 is down" || tone != "danger" {
+	if lead, tone := said(); lead != "Tunnel wg0 is down!" || tone != "danger" {
 		t.Errorf("one tunnel down = %q %s", lead, tone)
 	}
 	o.Interfaces[2].State = "up"
 	o.SysMetrics = []OverviewMeter{{Label: "Storage", Band: "warning"}}
-	if lead, tone := said(); lead != "Storage is high" || tone != "warning" {
+	if lead, tone := said(); lead != "Storage is high." || tone != "warning" {
 		t.Errorf("storage high = %q %s", lead, tone)
 	}
 	o.Interfaces[1].State = "down"
-	if lead, tone := said(); lead != "2 things need attention" || tone != "warning" {
+	if lead, tone := said(); lead != "2 things need attention." || tone != "warning" {
 		t.Errorf("two causes = %q %s", lead, tone)
 	}
 	o.Interfaces[2].State = "down"
-	if lead, tone := said(); lead != "3 things need attention" || tone != "danger" {
+	if lead, tone := said(); lead != "3 things need attention!" || tone != "danger" {
 		t.Errorf("a danger among three = %q %s", lead, tone)
 	}
 	o.WANUp = false
-	if lead, tone := said(); lead != "Your network is offline" || tone != "danger" {
+	if lead, tone := said(); lead != "Your network is offline!" || tone != "danger" {
 		t.Errorf("WAN down = %q %s", lead, tone)
 	}
 	o.WANKnown, o.Interfaces, o.SysMetrics = false, nil, nil
-	if lead, tone := said(); lead != "Your network at a glance" || tone != "neutral" {
+	if lead, tone := said(); lead != "Your network at a glance." || tone != "neutral" {
 		t.Errorf("nothing known = %q %s", lead, tone)
 	}
 }
@@ -211,7 +212,7 @@ func TestTheHeadingNamesTheCause(t *testing.T) {
 func TestAHiddenCardsCauseStillLeads(t *testing.T) {
 	o := &Overview{WANKnown: true, WANUp: true, SysMetrics: []OverviewMeter{{Label: "Memory", Band: "warning"}}}
 	o.Layout = ParseOverviewLayout("1.internet-ports-tunnels.traffic-system..resources")
-	if s := o.LiveStatus(plain); s.Lead != "Memory is high" {
+	if s := o.LiveStatus(plain); s.Lead != "Memory is high." {
 		t.Errorf("hidden Resources = %+v", s)
 	}
 }

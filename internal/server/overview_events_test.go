@@ -134,7 +134,7 @@ func TestOverviewStreamVerdictCountsHiddenCards(t *testing.T) {
 	if err := json.Unmarshal([]byte(frames["overview"]), &status); err != nil {
 		t.Fatal(err)
 	}
-	if status.Tone != "warning" || status.Lead != "1 port without link" {
+	if status.Tone != "warning" || status.Lead != "1 port without link." {
 		t.Fatalf("verdict = %+v, want the hidden Ports card's lost link counted", status)
 	}
 	for _, card := range status.Cards {

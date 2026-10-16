@@ -76,7 +76,7 @@ func TestOverviewFailedServicesRefreshAndClear(t *testing.T) {
 		lead   string
 	}{
 		{nil, nil, ""},
-		{[]string{"odhcpd", "sysntpd"}, nil, "2 services failed"},
+		{[]string{"odhcpd", "sysntpd"}, nil, "2 services failed!"},
 		{[]string{"sysntpd"}, errors.New("read failed"), ""},
 	} {
 		backend.set(want.failed, want.err)

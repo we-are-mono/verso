@@ -1095,9 +1095,10 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	}
 	// Devices remain their own page; the Ports card carries their count.
 	ov.DevicesOnline, ov.DevicesKnown = s.onlineDevices()
-	// The verdict counts a firewall that is not fully loaded, and a service
-	// procd stopped restarting.
+	// The verdict counts a firewall that is not fully loaded, a web interface
+	// the internet can reach, and a service procd stopped restarting.
 	s.applyFirewallStatus(r.Context(), sid, ov)
+	s.applyExposure(r, ov)
 	s.applyFailedServices(r.Context(), sid, ov)
 	// Resolve each card's door by its registered navigation entry, leaving it
 	// unlinked while no running plugin serves its destination.

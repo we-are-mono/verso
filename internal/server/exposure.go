@@ -158,9 +158,9 @@ func reaches(match string, ports []string) (string, bool) {
 	return "", false
 }
 
-// exposureCallout says, on Access, that the internet can reach the shell and
-// why, or nothing when the firewall keeps it off the WAN or cannot be read.
-func (s *Server) exposureCallout(r *http.Request, tr func(string) string) widget.Widget {
+// shellExposure is every reason the internet reaches the shell's own ports, as
+// the firewall's config says it, or nothing when the config cannot be read.
+func (s *Server) shellExposure(r *http.Request) []exposed {
 	if s.listeners == nil {
 		return nil
 	}
@@ -181,7 +181,19 @@ func (s *Server) exposureCallout(r *http.Request, tr func(string) string) widget
 			networks = append(networks, d.Networks...)
 		}
 	}
-	found := exposure(fw, networks, ports)
+	return exposure(fw, networks, ports)
+}
+
+// applyExposure tells the Overview whether the internet can reach the shell:
+// no card shows it, and the verdict counts it.
+func (s *Server) applyExposure(r *http.Request, ov *widget.Overview) {
+	ov.Exposed = len(s.shellExposure(r)) > 0
+}
+
+// exposureCallout says, on Access, that the internet can reach the shell and
+// why, or nothing when the firewall keeps it off the WAN or cannot be read.
+func (s *Server) exposureCallout(r *http.Request, tr func(string) string) widget.Widget {
+	found := s.shellExposure(r)
 	if len(found) == 0 {
 		return nil
 	}

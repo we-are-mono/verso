@@ -83,6 +83,11 @@ type Overview struct {
 	// a firewall that is not fully loaded.
 	FirewallState string
 
+	// Exposed is that the firewall's config lets the internet reach this web
+	// interface (System › Access says why). No card shows it; the verdict
+	// counts it.
+	Exposed bool
+
 	// FailedServices names, sorted, the services procd stopped restarting.
 	// The System card owns them: its header names them, its facts list them,
 	// and it opens the Services page while there are any.

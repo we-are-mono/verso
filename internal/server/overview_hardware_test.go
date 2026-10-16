@@ -160,7 +160,7 @@ func TestOverviewStreamSendsSensorsWhileHardwareIsShown(t *testing.T) {
 			}
 			// The stream's board has a port without link too: with the hot
 			// board counted, that is two things.
-			if !strings.Contains(frames["overview"], `"lead":"2 things need attention"`) {
+			if !strings.Contains(frames["overview"], `"lead":"2 things need attention`) {
 				t.Errorf("the heading counts the hot board: %s", frames["overview"])
 			}
 		})

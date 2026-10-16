@@ -29,8 +29,9 @@ type cause struct {
 	Text, Tone string
 }
 
-// causes is everything that needs attention: a firewall not fully loaded,
-// which no card shows, then each card's own cause — a port or tunnel someone
+// causes is everything that needs attention: a firewall not fully loaded and
+// a web interface the internet can reach, which no card shows, then each
+// card's own cause — a port or tunnel someone
 // asked for without its link, a reading out of band, a board past its own
 // limits. Every card counts, hidden or not, so hiding one never quiets the
 // heading. The uplink is the verdict's own first question, not a cause.
@@ -41,6 +42,9 @@ func (o *Overview) causes(tr func(string) string) []cause {
 		out = append(out, cause{tr("The firewall is not running"), "danger"})
 	case "partial":
 		out = append(out, cause{tr("The firewall is only partly loaded"), "warning"})
+	}
+	if o.Exposed {
+		out = append(out, cause{tr("The internet can reach this web interface"), "warning"})
 	}
 	for _, spec := range overviewCardSpecs() {
 		if h := spec.head(o, tr); h.Cause != "" {
@@ -79,6 +83,17 @@ func (o *Overview) verdict(tr func(string) string) overviewVerdictView {
 		if found {
 			v.Accent, v.Tail = tr("online"), after
 		}
+	}
+	// The verdict is a sentence, and ends as one: a full stop, or an
+	// exclamation where it is in danger.
+	mark := "."
+	if v.Tone == "danger" {
+		mark = "!"
+	}
+	if v.Accent != "" {
+		v.Tail += mark
+	} else {
+		v.Lead += mark
 	}
 	return v
 }

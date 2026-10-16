@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"strings"
 	"syscall"
@@ -16,6 +17,7 @@ import (
 	"time"
 
 	"github.com/we-are-mono/verso/internal/listen"
+	"github.com/we-are-mono/verso/internal/widget"
 )
 
 // webForm is Access on a router whose verso config holds web and whose shell
@@ -206,3 +208,24 @@ type osSyscallError struct{ errno syscall.Errno }
 
 func (e *osSyscallError) Error() string { return "bind: " + e.errno.Error() }
 func (e *osSyscallError) Unwrap() error { return e.errno }
+
+// TestTheOverviewsVerdictCountsTheExposure: the internet reaching the web
+// interface is said where everyone reads first, the Overview's heading, not
+// only at the foot of Access — the Overview is told it from the same reading.
+func TestTheOverviewsVerdictCountsTheExposure(t *testing.T) {
+	exposedTo := func(fw map[string]any) bool {
+		s := newServer(t, fakeBackend{uci: map[string]map[string]any{"verso": {}, "firewall": fw}})
+		s.SetListeners(listenersHolding(listen.PortsOwn))
+		var ov widget.Overview
+		s.applyExposure(httptest.NewRequest(http.MethodGet, "/", nil), &ov)
+		return ov.Exposed
+	}
+	fw := stockFirewall()
+	fw["wanz"].(map[string]any)["input"] = "ACCEPT"
+	if !exposedTo(fw) {
+		t.Error("a WAN zone that accepts input should reach the Overview's verdict")
+	}
+	if exposedTo(stockFirewall()) {
+		t.Error("a firewall that keeps the shell off the internet should not alarm the heading")
+	}
+}

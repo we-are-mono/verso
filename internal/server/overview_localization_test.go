@@ -98,7 +98,7 @@ func TestOverviewSlovenianPageAndStream(t *testing.T) {
 				t.Fatal(err)
 			}
 			// The one thing wrong is the CPU, in its card's words and tone.
-			if status.Lead != "CPU: visoka vrednost" || status.Tone != "danger" {
+			if status.Lead != "CPU: visoka vrednost!" || status.Tone != "danger" {
 				t.Errorf("stream verdict=%+v", status)
 			}
 			if len(status.Cards) != 6 || status.Cards[4].ID != "resources" || status.Cards[4].Status != "CPU: visoka vrednost" {

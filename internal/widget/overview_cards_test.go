@@ -59,13 +59,27 @@ func TestFirewallStateReachesTheVerdict(t *testing.T) {
 	for state, want := range map[string][2]string{
 		"":         {"success", "Your network is "},
 		"active":   {"success", "Your network is "},
-		"inactive": {"danger", "The firewall is not running"},
-		"partial":  {"warning", "The firewall is only partly loaded"},
+		"inactive": {"danger", "The firewall is not running!"},
+		"partial":  {"warning", "The firewall is only partly loaded."},
 	} {
 		o := &Overview{WANKnown: true, WANUp: true, FirewallState: state}
 		if v := o.LiveStatus(plain); v.Tone != want[0] || v.Lead != want[1] {
 			t.Errorf("firewall %q: verdict %s %q, want %s %q", state, v.Tone, v.Lead, want[0], want[1])
 		}
+	}
+}
+
+// The internet reaching the web interface is a cause no card shows, and it
+// outranks most that one does: alone it is the verdict in its own words, and
+// beside another it is counted.
+func TestAnExposedWebInterfaceReachesTheVerdict(t *testing.T) {
+	o := &Overview{WANKnown: true, WANUp: true, Exposed: true}
+	if v := o.LiveStatus(plain); v.Tone != "warning" || v.Lead != "The internet can reach this web interface." {
+		t.Errorf("verdict %s %q, want the exposure in its own words", v.Tone, v.Lead)
+	}
+	o.SysMetrics = []OverviewMeter{{Label: "Storage", Band: "warning"}}
+	if v := o.LiveStatus(plain); v.Lead != "2 things need attention." {
+		t.Errorf("verdict %q, want the exposure counted beside the storage", v.Lead)
 	}
 }
 
@@ -412,7 +426,7 @@ func TestHardwareCardBody(t *testing.T) {
 func TestAHotBoardLeadsTheHeading(t *testing.T) {
 	hw := dkHardware()
 	hw.CPU.Tone = "danger"
-	if v := (&Overview{WANKnown: true, WANUp: true, Hardware: hw}).verdict(plain); v.Tone != "danger" || v.Lead != "cluster is hot" {
+	if v := (&Overview{WANKnown: true, WANUp: true, Hardware: hw}).verdict(plain); v.Tone != "danger" || v.Lead != "cluster is hot!" {
 		t.Errorf("verdict = %+v, want the hot CPU", v)
 	}
 }
@@ -435,7 +449,7 @@ func TestAFailedServiceIsTheSystemCardsCause(t *testing.T) {
 	if h := system.head(o, plain); h.Tone != "danger" || h.Status != "sysntpd failed" || h.Cause != h.Status || h.Summary != "OpenWrt 25.12.4" {
 		t.Errorf("one failed = %+v", h)
 	}
-	if v := o.verdict(plain); v.Tone != "danger" || v.Lead != "sysntpd failed" {
+	if v := o.verdict(plain); v.Tone != "danger" || v.Lead != "sysntpd failed!" {
 		t.Errorf("verdict = %+v, want the failed service", v)
 	}
 	if got := system.href(o); got != "/system/services" {

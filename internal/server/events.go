@@ -157,8 +157,11 @@ func (s *Server) handleOverviewEvents(w http.ResponseWriter, r *http.Request) {
 	frames := 0
 	sendOverview := func() bool {
 		s.applyFirewallStatus(r.Context(), sid, liveOverview)
+		// Neither changes but on an apply, so they are read at the slower
+		// pace, never every frame.
 		if frames%serviceStatusEvery == 0 {
 			s.applyFailedServices(r.Context(), sid, liveOverview)
+			s.applyExposure(r, liveOverview)
 		}
 		frames++
 		return writeEvent(w, "", "overview", liveOverview.LiveStatus(tr)) == nil
