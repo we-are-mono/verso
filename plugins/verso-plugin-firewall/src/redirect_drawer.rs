@@ -9,8 +9,11 @@
 //! other firewall objects do, in the panel its row opens, and a new one is the
 //! same panel opened blank: making one and editing one are the same job. It is
 //! one reading rather than tabs, because the parts are one thought read in
-//! order — what arrives, where it goes, who else reaches it — and the whole of
-//! it should be visible while it is written.
+//! order — what arrives, where it goes — and the whole of it should be visible
+//! while it is written. What a forward does besides — whether it also works from
+//! inside, whether it is counted and logged, which family it covers — folds
+//! under it in the same form, arriving unfolded once the forward says anything
+//! there firewall4 would not assume.
 //!
 //! Only the dnat direction is edited here. firewall4's redirect spec covers both
 //! directions with one section type, but a snat redirect answers a different
@@ -31,7 +34,7 @@ use crate::fields;
 use crate::format;
 use crate::model::{Firewall, Redirect};
 use crate::page;
-use crate::redirect_form::{RedirectForm, PROTOCOLS};
+use crate::redirect_form::{RedirectForm, DEFAULT_REFLECTION_SRC, PROTOCOLS};
 use crate::rule_form::Errors;
 
 /// OPEN names the forward whose panel is open in the listing's query, and NEW
@@ -86,8 +89,7 @@ pub fn drawer(
         identity(form, errors),
         incoming(model, form, errors).ruled(),
         destination(model, form, errors).ruled(),
-        reach(model, form, errors).ruled(),
-        handling(form, errors).ruled(),
+        advanced(model, form, errors).ruled(),
         // What the panel will write, as the file spells it — the same footnote
         // the rule and zone panels carry, and the same reason: the form asks its
         // questions in plain words, and someone who knows the config reads this
@@ -292,6 +294,55 @@ fn zone_options(model: &Firewall, current: &str, blank: &str) -> Vec<SelectOptio
     choices
 }
 
+/// ADVANCED is the folded block's line: how much it holds, not a list of what.
+const ADVANCED: &str = "Advanced — 4 more options";
+
+/// ADVANCED_FIELDS are the fields the folded block holds, so a refusal of any of
+/// them unfolds it.
+const ADVANCED_FIELDS: [&str; 7] = [
+    "reflection",
+    "reflection_src",
+    "reflection_zone",
+    "counter",
+    "log_prefix",
+    "log_limit",
+    "family",
+];
+
+/// advanced is what the forward does besides catching and sending: whether it
+/// also works from inside, then whether it is counted and logged and which
+/// family it covers. Folded, it is still the same form — every control posts
+/// whether it shows or not — so folding hides nothing from a save.
+fn advanced(model: &Firewall, redirect: &RedirectForm, errors: &Errors) -> Widget {
+    let mut children = vec![reach(model, redirect, errors)];
+    children.extend(handling(redirect, errors));
+    Widget::section(
+        "",
+        "",
+        vec![Widget::Disclosure {
+            style: String::new(),
+            summary: ADVANCED.into(),
+            open: departs(redirect, errors),
+            children,
+        }],
+    )
+}
+
+/// departs reports whether the forward says something in the folded block that
+/// firewall4 would not assume, or has a refused value there — either way the
+/// block is part of what the forward is, so it arrives unfolded.
+fn departs(redirect: &RedirectForm, errors: &Errors) -> bool {
+    !redirect.reflection
+        || redirect.reflection_src != DEFAULT_REFLECTION_SRC
+        || !redirect.reflection_zones.is_empty()
+        || !redirect.counter
+        || redirect.log.on
+        || !redirect.family.is_empty()
+        || ADVANCED_FIELDS
+            .iter()
+            .any(|field| !errors.get(field).is_empty() || !errors.list(field).is_empty())
+}
+
 /// reach is whether the forward also works from inside the network, and what the
 /// device sees when it does.
 ///
@@ -304,43 +355,39 @@ fn zone_options(model: &Firewall, current: &str, blank: &str) -> Vec<SelectOptio
 /// It reads as on by default because firewall4 behaves that way, which is the whole
 /// reason it is here: the behaviour existed before the control did.
 fn reach(model: &Firewall, redirect: &RedirectForm, errors: &Errors) -> Widget {
-    Widget::section(
-        "Reaching it from home",
-        "",
-        vec![Widget::gate(
-            "reflection",
-            "Also works from inside your network",
-            "reflection",
-            REFLECTION_HELP,
-            redirect.reflection,
-            vec![
-                fields::select_field(
-                    "reflection_src",
-                    "Connections appear to come from",
-                    &redirect.reflection_src,
-                    conditions::options(&[
-                        ("internal", "This router, on your network"),
-                        ("external", "This router's public address"),
-                    ]),
-                    errors,
-                ),
-                // Which inside networks get the hairpin rules. firewall4 writes
-                // them for the zone the traffic is forwarded into unless this
-                // names others, which is what a router with a second inside
-                // network needs and what nothing here could say before.
-                fields::token_list(
-                    "reflection_zone",
-                    "Which of your networks",
-                    "Zone name",
-                    WHICH_NETWORKS_HELP,
-                    &redirect.reflection_zones,
-                    errors,
-                )
-                .writes("reflection_zone")
-                .suggesting(conditions::named(&model.zone_names())),
-            ],
-            Vec::new(),
-        )],
+    Widget::gate(
+        "reflection",
+        "Also works from inside your network",
+        "reflection",
+        REFLECTION_HELP,
+        redirect.reflection,
+        vec![
+            fields::select_field(
+                "reflection_src",
+                "Connections appear to come from",
+                &redirect.reflection_src,
+                conditions::options(&[
+                    ("internal", "This router, on your network"),
+                    ("external", "This router's public address"),
+                ]),
+                errors,
+            ),
+            // Which inside networks get the hairpin rules. firewall4 writes
+            // them for the zone the traffic is forwarded into unless this
+            // names others, which is what a router with a second inside
+            // network needs and what nothing here could say before.
+            fields::token_list(
+                "reflection_zone",
+                "Which of your networks",
+                "Zone name",
+                WHICH_NETWORKS_HELP,
+                &redirect.reflection_zones,
+                errors,
+            )
+            .writes("reflection_zone")
+            .suggesting(conditions::named(&model.zone_names())),
+        ],
+        Vec::new(),
     )
 }
 
@@ -353,56 +400,52 @@ routers need. Name zones to cover others as well.";
 /// Counting is on unless a forward says otherwise — it is what the listing's hit
 /// column reads — so the switch states firewall4's own behaviour rather than
 /// leaving it to be discovered.
-fn handling(redirect: &RedirectForm, errors: &Errors) -> Widget {
-    Widget::section(
-        "Counting and logging",
-        "",
-        vec![
-            Widget::switch_keyed(
-                "counter",
-                "Count what this forward matches",
-                "counter",
-                COUNTER_HELP,
-                redirect.counter,
-            ),
-            Widget::gate(
-                "log",
-                "Log every match",
-                "log",
-                LOG_HELP,
-                redirect.log.on,
-                vec![
-                    fields::text_field(
-                        "log_prefix",
-                        "Log prefix",
-                        &redirect.log.prefix,
-                        "Blank logs under the forward's own name.",
-                        errors,
-                    ),
-                    fields::text_field(
-                        "log_limit",
-                        "At most",
-                        &redirect.log.limit,
-                        "How often a line may be written, such as 10/minute.",
-                        errors,
-                    ),
-                ],
-                Vec::new(),
-            ),
-            fields::select_field(
-                "family",
-                "Address family",
-                &redirect.family,
-                conditions::options(&[
-                    ("", "IPv4 and IPv6"),
-                    ("ipv4", "IPv4 only"),
-                    ("ipv6", "IPv6 only"),
-                ]),
-                errors,
-            )
-            .writes("family"),
-        ],
-    )
+fn handling(redirect: &RedirectForm, errors: &Errors) -> Vec<Widget> {
+    vec![
+        Widget::switch_keyed(
+            "counter",
+            "Count what this forward matches",
+            "counter",
+            COUNTER_HELP,
+            redirect.counter,
+        ),
+        Widget::gate(
+            "log",
+            "Log every match",
+            "log",
+            LOG_HELP,
+            redirect.log.on,
+            vec![
+                fields::text_field(
+                    "log_prefix",
+                    "Log prefix",
+                    &redirect.log.prefix,
+                    "Blank logs under the forward's own name.",
+                    errors,
+                ),
+                fields::text_field(
+                    "log_limit",
+                    "At most",
+                    &redirect.log.limit,
+                    "How often a line may be written, such as 10/minute.",
+                    errors,
+                ),
+            ],
+            Vec::new(),
+        ),
+        fields::select_field(
+            "family",
+            "Address family",
+            &redirect.family,
+            conditions::options(&[
+                ("", "IPv4 and IPv6"),
+                ("ipv4", "IPv4 only"),
+                ("ipv6", "IPv6 only"),
+            ]),
+            errors,
+        )
+        .writes("family"),
+    ]
 }
 
 const COUNTER_HELP: &str = "Keeps a packet and byte count on this forward, which is what the \
@@ -641,7 +684,7 @@ mod tests {
             .filter(|w| w["type"] == "section")
             .cloned()
             .collect();
-        assert_eq!(parts.len(), 5);
+        assert_eq!(parts.len(), 4);
         assert_eq!(parts[0]["flush"], true);
         assert!(parts[1..].iter().all(|part| part["hairline"] == true));
         // Its row's doors both lead here.
@@ -881,6 +924,45 @@ mod tests {
             ],
         );
         assert!(values(&plain)["reflection_src"].is_null());
+    }
+
+    /// What a forward does besides catching traffic and sending it on — whether
+    /// it also works from inside, whether it is counted and logged, which family
+    /// it covers — folds behind one line under the forward, in the same form, so
+    /// the four-line question reads whole. It arrives unfolded whenever the
+    /// forward says something there firewall4 would not assume, so nothing the
+    /// forward states is hidden.
+    #[test]
+    fn a_forwards_advanced_options_fold_until_it_departs_from_firewall4s_defaults() {
+        let fold = |body: &Value| {
+            fixture::find_with(&panel(body), &|v| v["summary"] == ADVANCED)
+                .expect("the advanced options fold under the forward")
+        };
+        let folded = fold(&blank());
+        assert_eq!(folded["type"], "disclosure");
+        assert!(folded.get("open").is_none_or(|o| o == false), "{folded}");
+        for name in ["reflection", "counter", "log", "family"] {
+            assert!(
+                fixture::find_with(&folded, &|v| v["name"] == name).is_some(),
+                "{name} folds with the rest: {folded}"
+            );
+        }
+
+        let plain = [
+            ("src", "wan"),
+            ("src_dport", "8443"),
+            ("reflection", "1"),
+            ("counter", "1"),
+        ];
+        let defaults = fold(&submit("https_to_nas", &plain));
+        assert!(
+            defaults.get("open").is_none_or(|o| o == false),
+            "{defaults}"
+        );
+
+        let logged = [plain.as_slice(), &[("log", "1")]].concat();
+        let departs = fold(&submit("https_to_nas", &logged));
+        assert_eq!(departs["open"], true, "a logged forward shows that it logs");
     }
 
     #[test]
