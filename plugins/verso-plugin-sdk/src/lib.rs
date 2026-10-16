@@ -1961,8 +1961,8 @@ pub struct Property {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub rate: Option<f64>,
     /// Makes the value a stretch of time, in seconds: the shell writes it in
-    /// the value's place as every duration is written ("52 d 8 h"), its
-    /// figures apart from their units. Hand over the number, never the text.
+    /// the value's place as every duration is written ("52 d 8 h"). Hand over
+    /// the number, never the text.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub duration: Option<u64>,
 }
@@ -2410,8 +2410,8 @@ pub struct TableCell {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub rate: Option<f64>,
     /// A stretch of time in seconds, which the shell writes in the cell's
-    /// place as every duration is written ("52 d 8 h"), its figures apart
-    /// from their units. Hand over the number, never the text.
+    /// place as every duration is written ("52 d 8 h"). Hand over the number,
+    /// never the text.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub duration: Option<u64>,
 }

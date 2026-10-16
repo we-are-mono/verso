@@ -153,15 +153,14 @@ fn certificate_facts(cert: &serde_json::Value) -> Vec<Property> {
     } else {
         property("Signed by", value(cert, "issuer"), false).marked(Tone::Success)
     };
-    let remaining = Property {
-        label: "Time left".into(),
-        value: if expired {
-            "Expired".into()
-        } else {
-            format!("{left} d")
-        },
-        verbatim: !expired,
-        ..Default::default()
+    let remaining = if expired {
+        Property {
+            label: "Time left".into(),
+            value: "Expired".into(),
+            ..Default::default()
+        }
+    } else {
+        Property::duration("Time left", u64::from(left) * 86400)
     };
     vec![
         property("Issued to", value(cert, "subject"), true),

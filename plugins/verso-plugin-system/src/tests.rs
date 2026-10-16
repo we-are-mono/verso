@@ -324,8 +324,8 @@ fn certificate_reads_as_a_document_the_browser_can_be_checked_against() {
     );
     let left = property(&page, "Time left");
     assert_eq!(
-        (left["value"].as_str(), left["dot"].as_str()),
-        (Some("376 d"), Some("success"))
+        (left["duration"].as_u64(), left["dot"].as_str()),
+        (Some(376 * 86400), Some("success"))
     );
     let print = property(&page, "Fingerprint");
     assert_eq!(print["value"], "9D 4C 7A");
@@ -380,10 +380,10 @@ fn sections_commit_their_settings_before_what_they_hold() {
 }
 #[test]
 fn certificate_life_turns_as_it_runs_out() {
-    for (left, tone, value) in [
-        ("30", "warning", "30 d"),
-        ("7", "danger", "7 d"),
-        ("0", "danger", "Expired"),
+    for (left, tone, duration, value) in [
+        ("30", "warning", Some(30 * 86400), ""),
+        ("7", "danger", Some(7 * 86400), ""),
+        ("0", "danger", None, "Expired"),
     ] {
         let mut cert = self_signed();
         cert["days_left"] = json!(left);
@@ -393,8 +393,8 @@ fn certificate_life_turns_as_it_runs_out() {
         let page: serde_json::Value = serde_json::from_str(&access_with(json!([]), cert)).unwrap();
         let row = property(&page, "Time left");
         assert_eq!(
-            (row["value"].as_str(), row["dot"].as_str()),
-            (Some(value), Some(tone)),
+            (row["duration"].as_u64(), row["value"].as_str(), row["dot"].as_str()),
+            (duration, Some(value), Some(tone)),
             "{left}"
         );
         assert_eq!(property(&page, "Valid")["span"]["tone"], tone);
