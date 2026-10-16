@@ -500,8 +500,8 @@ existed before the submission and does not apply. A `commit` on a GET is ignored
 
 ### Describing your changes (the `describe` hook)
 
-The shell's staged-changes chip opens a review drawer that lists what is waiting
-to be applied, by the page it belongs to. By default each pending change reads as its raw uci
+The shell's Pending changes page lists what is waiting to be applied, one card
+per page it belongs to. By default each pending change reads as its raw uci
 line — `firewall: cfg0abc.enabled = 0` — which is honest but not plain. You can do
 better for your own config: give `serve` a fourth argument, a **describe** hook,
 and the shell will ask you to put your pending changes in words.
@@ -977,14 +977,14 @@ In the Rust SDK it is the `ColumnWidth` enum.
 adds a leading `{ "kind": "reorder" }` column and names the uci config its rows
 are sections of in `reorder_config`. The shell owns the interaction end to end:
 it draws the handles, drags the row, and — the moment the row lands — stages a
-`uci order` on that config, like every other write, so the review drawer's
-apply is what makes it live. Your plugin ships no drag logic and never sees the
+`uci order` on that config, like every other write, so the Pending changes
+page's apply is what makes it live. Your plugin ships no drag logic and never sees the
 reorder POST; it renders the page again from the fresh snapshot.
 
 A drop is a save. The reorderable table renders **the page's form** beside
 itself, carrying the config and the row sequence as hidden fields, and the shell
 posts it where it stands when a row lands, so the new order counts in the
-staged-changes chip like any other change and shows in the review drawer.
+rail's Pending changes row like any other change and shows on its page.
 `reorder_label` names the order in the operator's words there ("Rule order");
 left empty it reads as the shell's generic "Order".
 
@@ -1267,7 +1267,7 @@ starts folding on its own.
 On a standalone plugin page, renders its `fields` inside a `POST` form that submits
 **back to the same page** (you don't set an action — the shell owns the URL). A
 configurable page has one form and one Save action, which stages what the form
-holds; the operator applies from the staged-changes chip (ADR-010):
+holds; the operator applies from the Pending changes page (ADR-010):
 
 ```json
 { "type": "form", "submit": "Save", "success": "",

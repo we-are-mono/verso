@@ -81,7 +81,7 @@ Every task ends green under `make lint` and `make test`. A task that touches a t
   - `GET /uci/review` answers 308 to `/pending`;
   - the page composes existing widgets only (no new widget kind in the render).
 - [x] 6.4 Delete the `verso-staged-review` and `verso-drawer-review` templates. Rewrite `TestReviewDrawer*` and `TestReviewPageForABrowserWithNoScript` to the page. Verify every test that named the drawer now names the page.
-- [ ] 6.5 Rewrite DESIGN.md's Staging and Drawers entries for the page, its cards and the When you apply card, with the reasons (one surface, the outcome before the act, no lede, card titles are page headings and carry no icon). Verify DESIGN.md's front matter is intact and the tests that read it pass.
+- [x] 6.5 Rewrite DESIGN.md's Staging and Drawers entries for the page, its cards and the When you apply card, with the reasons (one surface, the outcome before the act, no lede, card titles are page headings and carry no icon). Verify DESIGN.md's front matter is intact and the tests that read it pass.
 
 ## 7. The rail row and the phone
 
@@ -95,7 +95,7 @@ Every task ends green under `make lint` and `make test`. A task that touches a t
   - the menu button carries the count span and a hidden dashed preview span;
   - the `TestStagedChip*` tests are rewritten to the rail row and the menu button.
 - [x] 7.3 Add the row's CSS (Marigold Wash, Deep Marigold words and icon, the plain marigold marker bar, the dashed ghost row and line, the second line's fold). Verify in a rendered preview, in Sand light and dark, that the row's words clear the 4.5 floor on the wash (the pair is gated for every shipped theme by `internal/theme`'s contrast floors).
-- [ ] 7.4 Record the rail's second status exception in DESIGN.md's Navigation (the row shows only while something waits, as the System updates dot does). Verify the sidebar direction entry and the Navigation section agree.
+- [x] 7.4 Record the rail's second status exception in DESIGN.md's Navigation (the row shows only while something waits, as the System updates dot does). Verify the sidebar direction entry and the Navigation section agree.
 
 ## 8. Apply, discard and undo in the browser
 

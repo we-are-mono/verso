@@ -71,7 +71,7 @@ Picking a theme SHALL write it to the router at once, outside the staged changes
 
 #### Scenario: Picking Mocha with a change staged
 - **WHEN** an operator with an alerts change staged picks Catppuccin Mocha on System › General
-- **THEN** the page turns to Mocha, `uci show verso` holds the theme, and the alerts change still waits in the staged-changes chip
+- **THEN** the page turns to Mocha, `uci show verso` holds the theme, and the alerts change still waits in the rail's Pending changes row
 
 #### Scenario: Picking a theme with the router name half typed
 - **WHEN** an operator types a new router name, does not save, and picks a theme

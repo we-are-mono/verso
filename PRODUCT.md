@@ -45,7 +45,7 @@ like part of the shell.
 - Served from the router itself, reached from a browser on the LAN. Sign-in
   goes through rpcd sessions. Before sign-in the page shows only what the LAN
   already broadcasts.
-- Every change is staged into UCI and applied together from a top-bar chip.
+- Every change is staged into UCI and applied together from the Pending changes page, which a row at the top of the sidebar opens.
   The router rolls the changes back itself if it stops answering within 30
   seconds (ADR-010).
 - Firmware upgrades go through owut and a self-hosted ASU server. Verso ships
