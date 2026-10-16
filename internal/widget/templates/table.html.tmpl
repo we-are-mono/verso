@@ -639,7 +639,7 @@
        shell's stream client draws arriving rows as a console (style
        "console", above); a grid carries the declaration and stays as it was
        rendered. */}}
-  <table{{if .Reorderable}} data-verso-reorder-table data-verso-reorder-config="{{.ReorderConfig}}"{{end}}{{if .Stream}} data-verso-stream="{{.StreamSource}}" data-verso-stream-ring="{{.StreamRing}}"{{end}} class="verso-table w-full text-sm leading-6">
+  <table{{if .Reorderable}} data-verso-reorder-table data-verso-reorder-config="{{.ReorderConfig}}"{{end}}{{if .Stream}} data-verso-stream="{{.StreamSource}}" data-verso-stream-ring="{{.StreamRing}}"{{end}} class="verso-table{{with .Narrow}} {{.}}{{end}} w-full text-sm leading-6">
     {{/* fit columns squeeze to their content through a colgroup width; the
          table's slack collects in the growing columns, so a huddle of fit
          columns sits together at the edge instead of drifting apart. */}}

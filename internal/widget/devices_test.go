@@ -217,3 +217,22 @@ func TestRenderDevicesTableEmpty(t *testing.T) {
 		t.Errorf("empty roster should draw no column headings:\n%s", got)
 	}
 }
+
+// On a phone the roster keeps what says who is here — the device, its state
+// and its acts — and leaves the port, the address, the MAC and the usage
+// figures to the device's panel.
+func TestDevicesOnAPhoneKeepTheirState(t *testing.T) {
+	for usage, want := range map[bool][]string{
+		false: {"Port", "Address", "MAC address"},
+		true:  {"Port", "Address", "Now", "This month"},
+	} {
+		tbl := DevicesTable(nil, func(Device) []TableRowAct { return nil }, usage)
+		var left []string
+		for _, i := range tbl.Secondary {
+			left = append(left, tbl.Columns[i].Label)
+		}
+		if strings.Join(left, ",") != strings.Join(want, ",") {
+			t.Errorf("usage=%v leaves out %v, want %v", usage, left, want)
+		}
+	}
+}

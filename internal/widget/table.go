@@ -67,12 +67,17 @@ import (
 //	             renders a faint dash — pills stay meaningful because most
 //	             cells in such a column are empty or quiet
 type Table struct {
-	Style       string        `json:"style,omitempty"` // "" / "flat" (default) — bare hairline rows, non-clickable (values stay selectable); "more" opens from a trailing link, never the whole row | "card" — the framed box
-	Columns     []TableColumn `json:"columns"`
-	Rows        []TableRow    `json:"rows"`
-	Seam        *TableSeam    `json:"seam,omitempty"`
-	DrawerLabel string        `json:"drawer_label,omitempty"` // trailing drawer action; defaults to "Details"
-	DrawerIcon  string        `json:"drawer_icon,omitempty"`
+	Style   string        `json:"style,omitempty"` // "" / "flat" (default) — bare hairline rows, non-clickable (values stay selectable); "more" opens from a trailing link, never the whole row | "card" — the framed box
+	Columns []TableColumn `json:"columns"`
+	// Secondary names, by position from 0, the columns a phone's width leaves
+	// out: facts the row's panel still holds, so the narrow listing keeps the
+	// columns that decide — the row's name, its state, its acts. The first
+	// column, a name column and the acts are never left out.
+	Secondary   []int      `json:"secondary,omitempty"`
+	Rows        []TableRow `json:"rows"`
+	Seam        *TableSeam `json:"seam,omitempty"`
+	DrawerLabel string     `json:"drawer_label,omitempty"` // trailing drawer action; defaults to "Details"
+	DrawerIcon  string     `json:"drawer_icon,omitempty"`
 
 	// The flat style's optional header band — a top row aligned to the table's
 	// own edges: the listing's name, a quiet detail beside it (a count/summary),
@@ -713,9 +718,12 @@ type tableView struct {
 	ReorderLabel  string
 	// ReorderIDs is every draggable row's id in the sequence the table renders
 	// them: the order form's baseline, and what a drag rewrites.
-	ReorderIDs  []string
-	CSRFToken   string
-	ColumnSpan  int
+	ReorderIDs []string
+	CSRFToken  string
+	ColumnSpan int
+	// Narrow names the secondary columns a phone leaves out, as the classes
+	// the sheet hides by position ("verso-narrow-2 verso-narrow-5").
+	Narrow      string
 	Rows        []tableRowView
 	SeamSummary string
 	SeamRows    []tableRowView
@@ -1100,6 +1108,27 @@ func (t *Table) bandsOnly() bool {
 	return true
 }
 
+// narrowMax is how many leading columns the sheet can leave out by position
+// (verso-narrow-1 … in input.css); a listing wider than this keeps the rest.
+const narrowMax = 16
+
+// narrow is the classes that leave a phone without the secondary columns,
+// one per column by its position from 1. A position the table lacks, the
+// first column, a name column and the acts are never among them.
+func (t *Table) narrow() string {
+	var classes []string
+	for _, i := range t.Secondary {
+		if i <= 0 || i >= len(t.Columns) || i >= narrowMax {
+			continue
+		}
+		if kind := t.Columns[i].Kind; kind == "name" || kind == "actions" {
+			continue
+		}
+		classes = append(classes, fmt.Sprintf("verso-narrow-%d", i+1))
+	}
+	return strings.Join(classes, " ")
+}
+
 // reorderable reports whether these rows really drag. The leading "reorder"
 // column asks for the handle and ReorderConfig names the config the new order is
 // staged against; only both together make the interaction persist, so only both
@@ -1161,6 +1190,7 @@ func (t *Table) view(r *Renderer, csrf string) (tableView, error) {
 	v.ReorderConfig = t.ReorderConfig
 	v.ReorderLabel = t.ReorderLabel
 	v.CSRFToken = csrf
+	v.Narrow = t.narrow()
 	v.ColumnSpan = len(v.Columns)
 	if v.HasDetail {
 		v.ColumnSpan++

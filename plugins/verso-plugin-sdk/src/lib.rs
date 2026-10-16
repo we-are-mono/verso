@@ -1225,6 +1225,12 @@ pub struct List {
 pub struct Table {
     #[serde(skip_serializing_if = "String::is_empty")]
     pub style: String,
+    /// The columns, by position from 0, a phone's width leaves out: facts the
+    /// row's panel still holds, so the narrow listing keeps the columns that
+    /// decide — the row's name, its state, its acts. The first column, a name
+    /// column and the acts are never left out.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub secondary: Vec<usize>,
     #[serde(skip_serializing_if = "String::is_empty")]
     pub title: String,
     #[serde(skip_serializing_if = "String::is_empty")]

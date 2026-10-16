@@ -90,3 +90,24 @@ func TestRuledSectionStandsFortyAboveAndBelowItsRule(t *testing.T) {
 		t.Errorf("ruled section should carry %q:\n%s", want, got)
 	}
 }
+
+// A phone's width leaves out the columns a listing names secondary — facts
+// the row's panel still holds — so the ones that decide (the name, the state,
+// the acts) stay on screen. The table names them by position; the sheet hides
+// each one's head, cells and width under the phone's breakpoint.
+func TestANarrowListingLeavesOutItsSecondaryColumns(t *testing.T) {
+	r := newRenderer(t)
+	tbl := &Table{
+		Columns:   []TableColumn{{Label: "Device", Kind: "name"}, {Label: "Port", Kind: "mono"}, {Label: "MAC", Kind: "mono"}, {Label: "Status", Kind: "status"}},
+		Rows:      []TableRow{{ID: "a", Cells: []TableCell{{Text: "laptop"}, {Text: "lan1"}, {Text: "aa:bb"}, {Text: "Online", Variant: "success"}}}},
+		Secondary: []int{1, 2},
+	}
+	got := render(t, r, tbl)
+	if !strings.Contains(got, `class="verso-table verso-narrow-2 verso-narrow-3 w-full`) {
+		t.Errorf("the table does not name its secondary columns: %s", got)
+	}
+	tbl.Secondary = []int{0, 9, -1}
+	if got := render(t, r, tbl); strings.Contains(got, "verso-narrow-1 ") || strings.Contains(got, "verso-narrow-10") || strings.Contains(got, "verso-narrow-0") {
+		t.Errorf("the identity column or a column the table lacks is left out: %s", got)
+	}
+}

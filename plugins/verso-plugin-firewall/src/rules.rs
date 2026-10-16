@@ -253,6 +253,10 @@ fn act(blank: Option<RowDrawer>) -> HeadingAct {
     }
 }
 
+/// SECONDARY are the columns a phone leaves out: From, To, Proto, Match and
+/// Hits.
+const SECONDARY: [usize; 5] = [3, 4, 5, 6, 8];
+
 fn columns() -> Vec<TableColumn> {
     [
         ("", "reorder", ColumnWidth::Grow),
@@ -313,6 +317,10 @@ fn table(model: &Firewall, counters: &Counters, open: Option<&Open>) -> Widget {
         reorder_config: "firewall".into(),
         reorder_label: "Rule order".into(),
         columns: columns(),
+        // A phone keeps the order, the name, the verdict and the acts; the
+        // lane's band already says where the traffic comes from, and the rest
+        // is the rule's panel's to tell.
+        secondary: SECONDARY.to_vec(),
         rows,
         empty_text: EMPTY.into(),
         note: NOTE.into(),
@@ -925,6 +933,26 @@ mod tests {
         assert!(drawer.get("verdict").is_none());
         assert!(drawer.get("lede").is_none());
         assert_eq!(drawer["children"][0]["submit"], "Add rule");
+    }
+
+    // On a phone the listing keeps the order, the name, the verdict and the
+    // acts; the path and the match are the band's and the panel's to tell.
+    #[test]
+    fn a_phone_keeps_the_verdict() {
+        let body = serde_json::to_value(page(&fixture::firewall(), &Counters::default()))
+            .expect("serialize");
+        let table = table_of(&body);
+        let left: Vec<&str> = table["secondary"]
+            .as_array()
+            .expect("secondary columns")
+            .iter()
+            .map(|i| {
+                table["columns"][i.as_u64().unwrap() as usize]["label"]
+                    .as_str()
+                    .unwrap()
+            })
+            .collect();
+        assert_eq!(left, ["From", "To", "Proto", "Match", "Hits"]);
     }
 
     // A tab press posts what is on screen as a reshape: the panel comes back on

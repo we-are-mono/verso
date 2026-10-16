@@ -1007,6 +1007,50 @@ html {
     mask-image: none;
     animation: none;
   }
+  /* A phone leaves out the columns a listing names secondary (Table.Secondary,
+     by position): the head, every cell under it and the width it held, so the
+     columns that decide — the name, the state, the acts — stay on screen. A
+     spanning row (a lane's band, its closing line) is one cell and keeps it. */
+  @media (width < 40rem) {
+    /* The measures that hold a desktop grid steady are wider together than a
+       phone: there a column takes what its content needs. */
+    .verso-table > colgroup > col {
+      width: auto !important;
+    }
+    /* The row's name takes what the rest leave and truncates in it, rather
+       than holding its whole length and pushing the state off the screen. */
+    .verso-table > tbody > tr > td:has(.verso-row-name) {
+      max-width: 0;
+      width: 100%;
+    }
+    /* In that cell the name is what is read first: a tag beside it gives way
+       before the name does. */
+    .verso-table td .truncate:has(> .verso-row-name) {
+      flex-shrink: 0;
+      max-width: 100%;
+    }
+    .verso-table td .truncate:has(> .verso-row-name) ~ * {
+      min-width: 0;
+      overflow: hidden;
+    }
+    .verso-narrow-2 > :is(thead, tbody) > tr > :nth-child(2), .verso-narrow-2 > colgroup > col:nth-child(2),
+    .verso-narrow-3 > :is(thead, tbody) > tr > :nth-child(3), .verso-narrow-3 > colgroup > col:nth-child(3),
+    .verso-narrow-4 > :is(thead, tbody) > tr > :nth-child(4), .verso-narrow-4 > colgroup > col:nth-child(4),
+    .verso-narrow-5 > :is(thead, tbody) > tr > :nth-child(5), .verso-narrow-5 > colgroup > col:nth-child(5),
+    .verso-narrow-6 > :is(thead, tbody) > tr > :nth-child(6), .verso-narrow-6 > colgroup > col:nth-child(6),
+    .verso-narrow-7 > :is(thead, tbody) > tr > :nth-child(7), .verso-narrow-7 > colgroup > col:nth-child(7),
+    .verso-narrow-8 > :is(thead, tbody) > tr > :nth-child(8), .verso-narrow-8 > colgroup > col:nth-child(8),
+    .verso-narrow-9 > :is(thead, tbody) > tr > :nth-child(9), .verso-narrow-9 > colgroup > col:nth-child(9),
+    .verso-narrow-10 > :is(thead, tbody) > tr > :nth-child(10), .verso-narrow-10 > colgroup > col:nth-child(10),
+    .verso-narrow-11 > :is(thead, tbody) > tr > :nth-child(11), .verso-narrow-11 > colgroup > col:nth-child(11),
+    .verso-narrow-12 > :is(thead, tbody) > tr > :nth-child(12), .verso-narrow-12 > colgroup > col:nth-child(12),
+    .verso-narrow-13 > :is(thead, tbody) > tr > :nth-child(13), .verso-narrow-13 > colgroup > col:nth-child(13),
+    .verso-narrow-14 > :is(thead, tbody) > tr > :nth-child(14), .verso-narrow-14 > colgroup > col:nth-child(14),
+    .verso-narrow-15 > :is(thead, tbody) > tr > :nth-child(15), .verso-narrow-15 > colgroup > col:nth-child(15),
+    .verso-narrow-16 > :is(thead, tbody) > tr > :nth-child(16), .verso-narrow-16 > colgroup > col:nth-child(16) {
+      display: none;
+    }
+  }
   [data-verso-scroller]:not([data-verso-fits]) .verso-table > tbody > tr:first-child .group\/act > span.bottom-full {
     top: 100%;
     bottom: auto;
