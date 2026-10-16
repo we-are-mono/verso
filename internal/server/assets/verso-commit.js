@@ -2,10 +2,11 @@
 // SPDX-FileCopyrightText: 2026 Mono Technologies Inc.
 
 // verso-commit.js — the stage (ADR-004, ADR-010). What is waiting to be written
-// and what happens when someone writes it: the chip in the top bar that says
-// how much waits, the drawer's two posts, the device-side rollback and the
-// confirm poll inside its window, and the page following its own session out
-// when that session ends.
+// and what happens when someone writes it: the rail's Pending changes row that
+// says how much waits and what an edit not yet saved would add, the Pending
+// changes page's apply with the device-side rollback and the confirm poll
+// inside its window, and the page following its own session out when that
+// session ends.
 //
 // It publishes window.versoStaged (take this render of the stage as the new
 // truth) and reads window.versoDirtyState from verso-forms.js, inside a
@@ -155,384 +156,135 @@
   arm(first);
 })();
 
-// The staged-changes chip and its drawer (ADR-010). Both are server-rendered
-// from UCI's own stage: the chip with the page, the drawer when it opens. This
-// client keeps the chip in step when an act on the page stages something
-// without a reload, and drives the drawer's two posts. Discard reverts, the
-// drawer shows the empty stage, and the page under it shows the settings as
-// they are at once (read whole on close only where rows came or went). Apply
-// commits with the device-side rollback
-// armed, then polls confirm inside the window (the LuCI cadence); confirmed,
-// the drawer closes, the chip says so in green and fades, and the page reloads
-// clean behind it. If confirm never lands the router reverts itself, and the
-// chip says that instead.
+// The rail's Pending changes row (ADR-010), server-rendered from UCI's own
+// stage with every page and always there, hidden while the stage is clean.
+// This client keeps it in step when an act on the page stages something
+// without a reload, and says in its second line, for a moment, what the stage
+// just took — the change's own words from the Pending changes page — while its
+// count turns over to the new one. An edit not yet saved shows there before
+// the save, dashed, with what it would add; with nothing staged yet the whole
+// row stands dashed. Nothing travels across the screen. On a phone the menu
+// button carries the same count, and the dashed "+1".
 (function () {
-  var chip = document.getElementById("verso-staged");
-  if (!chip) return;
-  var label = document.getElementById("verso-staged-label");
-  var mark = document.getElementById("verso-staged-mark");
-  var word = document.getElementById("verso-staged-word");
-  // A phone's bar says the count alone; the words say it from sm.
-  var tally = document.getElementById("verso-staged-count");
-  var resting = chip.className;
-  var settle = null;
+  var row = document.getElementById("verso-pending-row");
+  if (!row) return;
+  var tally = document.getElementById("verso-pending-count");
+  var line = document.getElementById("verso-pending-line");
+  var menu = document.querySelector(".verso-menu-button");
+  var menuCount = document.getElementById("verso-menu-count");
+  var menuGhost = document.getElementById("verso-menu-ghost");
+  var told = null;
+  var TOLD = 3200;
 
   function count() {
-    return parseInt(chip.getAttribute("data-count") || "0", 10);
+    return parseInt(row.getAttribute("data-count") || "0", 10);
   }
 
-  function stagedLabel(n) {
-    return n === 1 ? T("1 staged change") : T("%d staged changes").replace("%d", n);
-  }
-
-  // say puts a count on the chip, in words and as the bare figure. Rolled, the
-  // old count rises out of the chip's line as the new one rises into it — a
-  // tally turning over (versoTurn), not a label swapped — clipped by the chip
-  // itself.
-  function say(n, rolled) {
-    var text = stagedLabel(n);
-    [[label, text], [tally, String(n)]].forEach(function (pair) {
-      var el = pair[0], next = pair[1];
-      if (!el || el.textContent === next) return;
-      if (rolled) versoTurn(el, next);
-      else el.textContent = next;
+  // shown puts the count on the row and the menu button: turned over, the old
+  // count rising out of its line as the new one rises in (versoTurn).
+  function shown(n, turned) {
+    row.setAttribute("data-count", String(n));
+    if (menu) menu.setAttribute("data-count", String(n));
+    if (menuCount) menuCount.hidden = n === 0;
+    [tally, menuCount].forEach(function (el) {
+      if (!el) return;
+      if (turned) versoTurn(el, String(n));
+      else el.textContent = String(n);
     });
+    if (row.getAttribute("data-state") !== "ghost") row.hidden = n === 0;
   }
 
-  // The chip in its resting state: the caveat colour, the count, the way in.
-  function rest(n, rolled) {
-    if (settle) clearTimeout(settle);
-    settle = null;
-    chip.className = resting;
-    chip.setAttribute("data-count", String(n));
-    chip.hidden = n === 0;
-    if (label) label.classList.add("hidden");
-    if (tally) tally.hidden = false;
-    say(n, rolled && !chip.hidden);
-    if (mark) mark.className = "size-1.5 shrink-0 rounded-[1px] bg-marigold";
-    if (word) word.hidden = false;
-  }
-
-  // The chip as a verdict on an apply: green for what took effect, crimson for
-  // what the router took back. Neither is a way in — green has nothing left to
-  // open, and crimson opens the drawer again to show what stands.
-  function verdict(tone, text, opensDrawer) {
-    chip.hidden = false;
-    chip.className = resting
-      .replace("bg-marigold-soft", "bg-transparent")
-      .replace("text-marigold-deep", tone === "green" ? "text-green-deep" : "text-crimson-deep")
-      .replace("hover:border-marigold hover:bg-marigold-line", tone === "green" ? "pointer-events-none" : "hover:border-crimson hover:bg-crimson-soft");
-    if (mark) mark.className = "size-1.5 shrink-0 rounded-[1px] " + (tone === "green" ? "bg-green" : "bg-crimson");
-    // A verdict is words on every screen: a bare figure would say nothing.
-    if (label) { label.textContent = text; label.classList.remove("hidden"); }
-    if (tally) tally.hidden = true;
-    if (word) word.hidden = !opensDrawer;
-    // The chip changes out of sight of anyone not looking at it; how an apply
-    // went is said as well as shown.
-    versoAnnounce(text);
-  }
-
-  // arrive: the chip takes the change that just reached it — its mark pops
-  // from twice its size and its ground warms to the marigold line and settles,
-  // once. Colour and scale only; nothing around it moves.
-  function arrive() {
-    if (typeof chip.animate !== "function") return;
-    var line = getComputedStyle(chip).getPropertyValue("--color-marigold-line").trim();
-    if (line) chip.animate([{ backgroundColor: line }, {}], { duration: 900, easing: "ease-out" });
-    if (mark && !still()) mark.animate([{ transform: "scale(2.4)" }, { transform: "scale(1)" }], { duration: 420, easing: "cubic-bezier(0.22, 1, 0.36, 1)" });
-  }
-
-  function still() {
-    return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  }
-
-  // release lets go of a chip the page held back for a landing (verso-boot.js):
-  // from here it shows whatever the flight has set it to say.
-  function release() {
-    document.documentElement.removeAttribute("data-verso-landing");
-  }
-
-  // Take a fresh render of the page as the stage's truth: the count it carries
-  // is the count, and the chip shows it. No node is replaced, so the chip's
-  // own scope stays bound.
-  //
-  // fly shows where a change that was just staged went. Nothing on the page
-  // says a staged save happened, because it has not: the chip says a change
-  // waits. So the change is seen going there, once — a marigold square, the
-  // chip's own mark, lifts off the row that changed and travels in an arc to
-  // the chip, which shows the count it had until the square lands and then
-  // takes the new one. A chip that was empty appears as the square arrives.
-  // It flies only when the stage grew since `before`; under reduced motion
-  // the chip only warms.
-  window.versoStaged = {
-    sync: function (doc) {
-      var fresh = doc && doc.getElementById("verso-staged");
-      rest(fresh ? parseInt(fresh.getAttribute("data-count") || "0", 10) : 0, true);
-    },
-    count: count,
-    fly: function (from, before) {
-      var now = count();
-      if (!(now > before)) { release(); return; }
-      versoAnnounce(T("Staged — %s. Review and apply from the top bar.").replace("%s", stagedLabel(now)));
-      var a = from && from.getBoundingClientRect();
-      if (still() || !a || !a.width || typeof chip.animate !== "function") { release(); arrive(); return; }
-      // Measured while still held out of sight: visibility keeps its box.
-      var target = (mark || chip).getBoundingClientRect();
-      // A chip the layout does not show (a narrow top bar) has nowhere to be
-      // flown to; it only warms.
-      if (!target.width) { release(); arrive(); return; }
-      var x0 = a.left + a.width / 2, y0 = a.top + a.height / 2;
-      var dx = target.left + target.width / 2 - x0, dy = target.top + target.height / 2 - y0;
-      var square = document.createElement("span");
-      square.setAttribute("aria-hidden", "true");
-      square.className = "pointer-events-none fixed z-[60] m-0 size-1.5 rounded-[1px] bg-marigold";
-      square.style.left = (x0 - 3) + "px";
-      square.style.top = (y0 - 3) + "px";
-      document.body.appendChild(square);
-      // It flies in the top layer, over a drawer still on its way out.
-      if (typeof square.showPopover === "function") {
-        square.popover = "manual";
-        square.showPopover();
+  // say writes the row's second line: "ghost", dashed, what a save would add;
+  // "told", plain words, what the stage just took; nothing, folded away.
+  function say(state, words, delta) {
+    clearTimeout(told);
+    if (!state) {
+      row.removeAttribute("data-state");
+      row.removeAttribute("data-clean");
+      row.hidden = count() === 0;
+      if (menu) menu.removeAttribute("data-ghost");
+      if (menuGhost) menuGhost.hidden = true;
+      return;
+    }
+    line.textContent = "";
+    if (delta) line.appendChild(versoEl("span", "verso-pending-delta", delta));
+    line.appendChild(document.createTextNode(words));
+    row.setAttribute("data-state", state);
+    if (state === "ghost") {
+      row.hidden = false;
+      if (count() === 0) row.setAttribute("data-clean", "");
+      if (menu) menu.setAttribute("data-ghost", "");
+      if (menuGhost) {
+        menuGhost.hidden = !delta;
+        menuGhost.textContent = delta || "";
       }
-      // Until the square lands the chip says what it said before the save: the
-      // old count, or nothing at all.
-      if (before > 0) say(before, false);
-      else chip.style.opacity = "0";
-      release();
-      // The arc: the square lifts off the row first, then crosses to the chip.
-      var lift = Math.min(64, Math.abs(dy) * 0.25 + 24);
-      square.animate([
-        { transform: "translate(0, 0) scale(1)" },
-        { transform: "translate(" + dx * 0.3 + "px, " + (dy * 0.2 - lift) + "px) scale(1.8)", offset: 0.35 },
-        { transform: "translate(" + dx + "px, " + dy + "px) scale(1)" },
-      ], { duration: 680, easing: "cubic-bezier(0.45, 0, 0.2, 1)" }).finished.then(land, land);
-      function land() {
-        square.remove();
-        // The square lands and the tally turns over to take it.
-        say(now, before > 0);
-        if (before <= 0) {
-          chip.style.opacity = "";
-          chip.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 180, easing: "ease-out" });
-        }
-        arrive();
-      }
-    },
-  };
-
-  function post(path) {
-    return versoPost(path, versoBody());
+      return;
+    }
+    row.removeAttribute("data-clean");
+    if (menu) menu.removeAttribute("data-ghost");
+    if (menuGhost) menuGhost.hidden = true;
+    versoAnnounce(T("Pending: %s").replace("%s", words));
+    told = setTimeout(function () { say(null); }, TOLD);
   }
 
-  function drawer() {
-    return document.getElementById("verso-staged-review");
+  // warm: the row takes what just reached it — its wash warms toward the
+  // stage's marigold and settles, once.
+  function warm() {
+    row.removeAttribute("data-warm");
+    void row.offsetWidth;
+    row.setAttribute("data-warm", "");
   }
 
-  function note(text, tone) {
-    var el = document.getElementById("verso-staged-note");
-    var dot = document.getElementById("verso-staged-note-mark");
-    if (el) el.textContent = text;
-    if (text) versoAnnounce(text);
-    if (!dot) return;
-    dot.className = "mt-2.25 size-1.5 shrink-0 rounded-[1px] " + (tone === "crimson" ? "bg-crimson" : "bg-denim");
-  }
-
-  // discardAnswer is the button that answers Discard all's question: the
-  // confirm's own act, inside the drawer's discard slot, which carries the
-  // busy words the act wears while it runs.
-  function discardAnswer() {
-    return document.querySelector("#verso-staged-discard button[type=submit]");
-  }
-
-  // Lock both acts, with the waiting mark on the one that was requested.
-  function waiting(on, activeID) {
-    var apply = document.getElementById("verso-staged-apply");
-    var discard = discardAnswer();
-    [apply, discard].forEach(function (button) {
-      if (!button) return;
-      if (on) {
-        // Keep focus in the drawer when its active button becomes disabled.
-        if (document.activeElement === button) {
-          var dialog = button.closest("dialog");
-          if (dialog) dialog.focus();
-        }
-        var slot = button === discard ? document.getElementById("verso-staged-discard") : button;
-        var label = slot.id === activeID ? slot.getAttribute("data-busy-label") : "";
-        versoButtons.start(button, label);
-        if (label) versoAnnounce(label);
-      } else versoButtons.finish(button);
-    });
-  }
-
-  function close() {
-    var panel = drawer();
-    if (panel) panel.dispatchEvent(new CustomEvent("verso-panel-done", { bubbles: true }));
-  }
-
-  // behind brings the page under the drawer up to date the moment the stage
-  // changes under it — discarded or applied — rather than when the drawer
-  // closes. Each form that shows settings is read again and replaced by its
-  // fresh self: the staged marks go, the controls show what is on the router,
-  // and the replacement is taken as the form's new baseline, so nothing reads
-  // as unsaved. A listing's rows are reconciled. It answers whether the page
-  // is whole again: a change to which forms or rows there are is not
-  // something to patch, and waits for the page to be read whole, on close.
-  function behind() {
-    return fetch(window.location.pathname + window.location.search, { headers: { Accept: "text/html" }, credentials: "same-origin" })
-      .then(function (res) { return res.ok && !res.redirected ? res.text() : ""; })
-      .then(function (html) {
-        if (!html) return false;
-        var doc = versoParse(html);
-        var mine = document.querySelectorAll("main form");
-        var fresh = doc.querySelectorAll("main form");
-        var rows = function (d) { return [].map.call(d.querySelectorAll("tr[data-verso-row-id]"), function (r) { return r.getAttribute("data-verso-row-id"); }).join(" "); };
-        var whole = mine.length === fresh.length && rows(document) === rows(doc);
-        if (mine.length === fresh.length) {
-          [].forEach.call(mine, function (form, i) {
-            if (!form.querySelector("[data-verso-change-field]")) return;
-            var next = document.importNode(fresh[i], true);
-            form.replaceWith(next);
-            if (window.htmx) window.htmx.process(next);
-          });
-        }
-        if (window.versoReconcile) window.versoReconcile(doc);
-        return whole;
-      })
-      .catch(function () {
-        // The page keeps what it shows; closing the drawer reads it whole.
-        return false;
-      });
-  }
-
-  // reload reads the page again — a fresh GET of its address, never a reload,
-  // which on a page drawn as the answer to a post (a refusal) would post it
-  // again and could stage what was just discarded. The fragment is left off:
-  // an address that differs from this one only by it is a jump within the
-  // page, not a read of it.
-  function reload() {
-    if (window.versoDirtyState) window.versoDirtyState.suppress();
-    window.location.replace(window.location.pathname + window.location.search);
-  }
-
-  function apply() {
+  // tell says what the stage just took, its count turning over from before.
+  function tell(before) {
     var n = count();
-    waiting(true, "verso-staged-apply");
-    var since = Date.now();
-
-    function applied() {
-      close();
-      verdict("green", n === 1 ? T("1 change applied") : T("%d changes applied").replace("%d", n), false);
-      behind();
-      // The word fades once it has been read, and the page comes back clean
-      // behind it: what it shows was rendered against a stage that is now
-      // empty, and a corner of it — the hostname, say — may have just changed.
-      settle = setTimeout(function () {
-        chip.classList.add("opacity-0");
-        settle = setTimeout(reload, 600);
-      }, 4000);
+    var latest = row.getAttribute("data-latest") || "";
+    if (typeof before === "number" && before !== n) {
+      shown(before, false);
+      shown(n, true);
     }
-
-    function rolledBack(text) {
-      waiting(false);
-      note(text, "crimson");
-      verdict("crimson", T("Apply rolled back"), true);
+    if (n > 0 && latest) {
+      say("told", latest);
+      warm();
+    } else {
+      say(null);
     }
-
-    function confirmLoop() {
-      versoConfirmApply(function () {
-        return post("/uci/confirm").then(function (res) {
-          if (!res.ok) throw new Error("not confirmed");
-        });
-      }, since).then(applied, function () {
-        rolledBack(T("Couldn’t confirm — the router may have rolled back"));
-      });
-    }
-
-    // The note, if one was written, goes into config history with the apply.
-    var typed = document.getElementById("verso-staged-apply-note");
-    versoPost("/uci/apply", versoBody([["note", typed ? typed.value : ""]]))
-      .then(function (res) {
-        if (!res.ok) {
-          waiting(false);
-          note(T("Couldn’t apply — check the settings and try again"), "crimson");
-          return;
-        }
-        setTimeout(confirmLoop, 1000);
-      })
-      .catch(function () {
-        // The apply itself may have severed our path (a network change); keep
-        // trying to confirm — reaching the router again is the success signal.
-        setTimeout(confirmLoop, 1000);
-      });
   }
 
-  // The frame the drawer's contents were fetched into — where a fresh reading
-  // of the stage goes.
-  function frame() {
-    var panel = drawer();
-    return panel ? panel.closest("[data-verso-panel]") : null;
-  }
-
-  // After a discard the page under the drawer still shows what was staged, so
-  // it reloads once the drawer is closed — behind the person's own act, never
-  // while they are still reading what the drawer says.
-  var stale = false;
-
-  function discard() {
-    waiting(true, "verso-staged-discard");
-    post("/uci/discard")
-      .then(function (res) {
-        if (!res.ok) throw new Error("discard failed");
-        rest(0);
-        var panel = frame();
-        if (!panel || !window.htmx) {
-          reload();
-          return;
-        }
-        // The stage is empty. The drawer stays open and reads it again — its
-        // empty state, with a Close — so what just happened is on screen
-        // rather than swept away by a reload, and the page under it shows
-        // the settings as they are again at once.
-        stale = true;
-        behind().then(function (whole) { if (whole) stale = false; });
-        window.htmx.ajax("GET", panel.getAttribute("data-verso-panel-loaded") || "/uci/review", { target: panel, swap: "innerHTML" });
-      })
-      .catch(function () {
-        waiting(false);
-        note(T("Couldn’t discard — try again"), "crimson");
-      });
-  }
-
-  document.addEventListener("verso-panel-hidden", function (e) {
-    if (!stale || !e.target || !e.target.contains(chip)) return;
-    stale = false;
-    // Behind the drawer's leave transition, so it is seen sliding out.
-    setTimeout(reload, 250);
-  });
-
-  // The drawer's contents arrive by fetch each time it opens, so its acts are
-  // heard from the document rather than bound to nodes that will be replaced.
-  // Discard all asks first: only the answer to its question lets the stage
-  // go; the trigger and the way back are the confirm's own.
-  document.addEventListener("click", function (e) {
-    var target = e.target && e.target.closest ? e.target.closest("#verso-staged-apply, #verso-staged-discard button[type=submit]") : null;
-    if (!target || target.disabled) return;
-    e.preventDefault();
-    if (target.id === "verso-staged-apply") apply();
-    else discard();
-  });
+  window.versoStaged = {
+    count: count,
+    // sync takes a fresh render of a page as the stage's truth: the count it
+    // carries is the count, and where the stage holds a change it did not a
+    // moment ago, or one it took anew, the row says so.
+    sync: function (doc) {
+      var fresh = doc && doc.getElementById("verso-pending-row");
+      var n = fresh ? parseInt(fresh.getAttribute("data-count") || "0", 10) : 0;
+      var latest = fresh ? fresh.getAttribute("data-latest") || "" : "";
+      var before = count();
+      var was = row.getAttribute("data-latest") || "";
+      if (latest) row.setAttribute("data-latest", latest);
+      else row.removeAttribute("data-latest");
+      shown(n, false);
+      if (n !== before || latest !== was) tell(before);
+      else if (row.getAttribute("data-state") === "ghost") say(null);
+    },
+    // preview shows an edit not yet saved, dashed; clear lets it go.
+    preview: function (words, delta) { say("ghost", words, delta); },
+    clear: function () { if (row.getAttribute("data-state") === "ghost") say(null); },
+    // landed is the page a save lands on: its count turns over from before
+    // and the row says what the save staged.
+    landed: function (before) { tell(before); },
+  };
 })();
 
-// A page form's save reloads the page, so where its change went is noted as it
-// is submitted and shown when the page comes back: which rows differ from what
-// the page was drawn with, where its Save stood on screen, and the count the
-// chip had. On landing the page opens where the person was (the Save back at
-// the same height), each row that changed takes the marigold "staged" mark,
-// and the change flies from the first of them to the chip (versoStaged.fly).
-// A refusal lands differently — at the refused box (verso-forms.js) — and
-// nothing is marked. A note older than a few seconds, or from another page,
-// is not this save's.
+// An edit not yet saved, in a form whose save stages (data-verso-stages, on a
+// page or in a drawer), shows in the Pending changes row as it is made: what
+// the save would stage, dashed, led by "+1" for each setting or item not
+// already pending. A drawer's edit is said as the row it opened from. Putting
+// the edit back, or closing the drawer, lets the line go. Hover changes
+// nothing.
 (function () {
-  var KEY = "verso-staged-origin";
+  if (!window.versoStaged) return;
 
   function differs(control) {
     var type = (control.type || "").toLowerCase();
@@ -542,21 +294,104 @@
     return control.value !== control.defaultValue;
   }
 
-  function changedRows(form) {
-    return [].filter.call(form.querySelectorAll("[data-verso-change-field][data-verso-change-name]"), function (row) {
-      return [].some.call(row.querySelectorAll("input, select, textarea"), differs);
+  // edited is each of the form's settings an edit has changed, with the
+  // control that differs.
+  function edited(form) {
+    var out = [];
+    [].forEach.call(form.querySelectorAll("[data-verso-change-field]"), function (row) {
+      var control = [].filter.call(row.querySelectorAll("input, select, textarea"), differs)[0];
+      if (control) out.push({ row: row, control: control });
     });
+    return out;
   }
+
+  function named(row, control) {
+    var label = row.getAttribute("data-verso-change-label");
+    if (label) return label;
+    var el = row.querySelector("label");
+    return el ? el.textContent.trim() : control.name;
+  }
+
+  // said is a value as the line says it: a switch's word, a choice's own
+  // words, a secret never.
+  function said(control) {
+    var type = (control.type || "").toLowerCase();
+    if (type === "checkbox") return control.checked ? T("On") : T("Off");
+    if (type === "password") return T("changed");
+    if (control.tagName === "SELECT") {
+      var option = control.options[control.selectedIndex];
+      return option ? option.textContent.trim() : "";
+    }
+    if (type === "radio") {
+      var picked = control.form && control.form.querySelector('input[type="radio"][name="' + CSS.escape(control.name) + '"]:checked');
+      var label = picked && picked.closest("label");
+      return label ? label.textContent.trim() : picked ? picked.value : "";
+    }
+    return control.value === "" ? T("not set") : control.value;
+  }
+
+  // subject is the row a drawer opened from, by its name, where the form
+  // stands in one.
+  function subject(form) {
+    var frame = form.closest("[data-verso-panel]");
+    if (!frame || !window.Alpine) return "";
+    var scope = window.Alpine.$data(frame);
+    var opener = scope && scope._root;
+    var tr = opener && opener.closest ? opener.closest("tr[data-verso-row-name]") : null;
+    return tr ? tr.getAttribute("data-verso-row-name") : "";
+  }
+
+  function preview(form) {
+    var edits = edited(form);
+    if (!edits.length) {
+      window.versoStaged.clear();
+      return;
+    }
+    var first = edits[0];
+    var name = subject(form);
+    var words = (name ? name + " · " : "") + named(first.row, first.control) + " → " + said(first.control);
+    if (edits.length > 1) words += " " + T("+%d more").replace("%d", edits.length - 1);
+    // A drawer's edit is one item: new to the stage unless any of its
+    // settings already waits. A page's settings each count on their own.
+    var fresh = form.closest("[data-verso-panel]")
+      ? (form.querySelector("[data-verso-staged-row]") ? 0 : 1)
+      : edits.filter(function (e) { return !e.row.querySelector("[data-verso-staged-row]"); }).length;
+    window.versoStaged.preview(words, fresh ? "+" + fresh : "");
+  }
+
+  function staging(target) {
+    return target && target.closest ? target.closest("form[data-verso-stages]") : null;
+  }
+
+  ["input", "change"].forEach(function (kind) {
+    document.addEventListener(kind, function (e) {
+      var form = staging(e.target);
+      if (form) preview(form);
+    });
+  });
+  document.addEventListener("reset", function (e) {
+    if (staging(e.target)) window.versoStaged.clear();
+  });
+  document.addEventListener("verso-panel-hidden", function () { window.versoStaged.clear(); });
+})();
+
+// A page form's save reloads the page, so what it left is noted as it is
+// submitted and read when the page comes back: where its Save stood on
+// screen, and the count the row had. On landing the page opens where the
+// person was (the Save back at the same height) and the row says what the
+// save staged, its count turning over from the one it had. A refusal lands
+// differently — at the refused box (verso-forms.js). A note older than a few
+// seconds, or from another page, is not this save's.
+(function () {
+  var KEY = "verso-staged-landing";
 
   document.addEventListener("submit", function (e) {
     var form = e.target;
-    if (!form || !form.matches || !form.matches("main form") || form.hasAttribute("hx-post") || form.hasAttribute("data-verso-act")) return;
-    var rows = changedRows(form);
-    if (!rows.length || !window.versoStaged) return;
+    if (!form || !form.matches || !form.matches("main form[data-verso-stages]") || form.hasAttribute("hx-post")) return;
+    if (!window.versoStaged) return;
     var save = e.submitter || form.querySelector('[type="submit"]');
     var note = {
       path: window.location.pathname,
-      names: rows.map(function (row) { return row.getAttribute("data-verso-change-name"); }),
       at: save ? save.getBoundingClientRect().top : null,
       count: window.versoStaged.count(),
       time: Date.now(),
@@ -564,31 +399,8 @@
     try { window.sessionStorage.setItem(KEY, JSON.stringify(note)); } catch (err) { /* the save lands at the top, as a plain reload */ }
   }, true);
 
-  // mark: the row's change waits on the stage — the chip's own mark and word
-  // beside the row's name. The server draws it wherever a control says where
-  // its option lives (verso-staged-row); a row that does not say is marked
-  // here, the same way. It returns the square, which the flight leaves from.
-  // A part of a fused box is a change of its own inside a row that holds
-  // several; the row's one label line carries the one mark for them all.
-  function mark(row) {
-    row = row.closest(".verso-field-row") || row;
-    var drawn = row.querySelector("[data-verso-staged-row] [aria-hidden]");
-    if (drawn) return drawn;
-    var label = row.querySelector("label");
-    var host = row.querySelector(".verso-field-label") || (label ? label.parentElement : row.firstElementChild || row);
-    var tag = document.createElement("span");
-    tag.setAttribute("data-verso-staged-row", "");
-    tag.className = "inline-flex items-center gap-1.5 text-sm font-medium text-marigold-deep";
-    var square = document.createElement("span");
-    square.setAttribute("aria-hidden", "true");
-    square.className = "size-1.5 shrink-0 rounded-[1px] bg-marigold";
-    tag.append(square, document.createTextNode(T("staged")));
-    host.appendChild(tag);
-    return square;
-  }
-
-  // letGo shows the chip the page held back for this landing (verso-boot.js)
-  // when there is no flight to wait for after all.
+  // letGo shows the count the page held back for this landing
+  // (verso-boot.js).
   function letGo() {
     document.documentElement.removeAttribute("data-verso-landing");
   }
@@ -600,16 +412,125 @@
   } catch (err) { note = null; }
   if (!note || note.path !== window.location.pathname || Date.now() - note.time > 15000) return letGo();
   if (document.querySelector('main [aria-invalid="true"]') || !window.versoStaged) return letGo();
-  var rows = (note.names || []).map(function (name) {
-    return document.querySelector('main [data-verso-change-field][data-verso-change-name="' + CSS.escape(name) + '"]');
-  }).filter(Boolean);
-  if (!rows.length) return letGo();
-  var form = rows[0].closest("form");
+  var form = document.querySelector("main form[data-verso-stages]");
   var save = form && form.querySelector('[type="submit"]');
   if (save && typeof note.at === "number") window.scrollBy(0, save.getBoundingClientRect().top - note.at);
-  if (!(window.versoStaged.count() > note.count)) return letGo();
-  var squares = rows.map(mark);
-  // A beat after the page is drawn, so the eye has found the row before the
-  // change leaves it.
-  window.setTimeout(function () { window.versoStaged.fly(squares[0], note.count); }, 240);
+  letGo();
+  window.versoStaged.landed(note.count);
+})();
+
+// The Pending changes page's apply (ADR-010). Apply posts the When you apply
+// card's form, which carries the note; rpcd commits with its device-side
+// rollback armed, and the page polls confirm inside the window (the LuCI
+// cadence). Each step says only what the router reports: the save is done
+// when the apply returns, the reloads are then started (procd reports no
+// finish), the check-in counts the window down and is kept when a confirm
+// lands. Kept, the page reads again and says the changes were applied; put
+// back, it reads again once the router has staged them anew. Apply stands
+// hidden until this script is here to see it through.
+(function () {
+  var form = document.getElementById("verso-pending-apply");
+  var button = document.querySelector("[data-verso-pending-apply]");
+  if (!form || !button) return;
+  button.hidden = false;
+  var ROLLBACK = 30;
+  var GRACE = 6000;
+
+  function step(kind) {
+    return document.querySelector('[data-verso-apply-step="' + kind + '"] [data-verso-apply-state]');
+  }
+
+  // mark sets a step's state: waiting, done, or a word alone.
+  function mark(kind, word, how) {
+    var slot = step(kind);
+    if (!slot) return;
+    slot.hidden = false;
+    slot.querySelector("[data-verso-apply-wait]").hidden = how !== "wait";
+    slot.querySelector("[data-verso-apply-done]").hidden = how !== "done";
+    slot.querySelector("[data-verso-apply-word]").textContent = word;
+    slot.classList.toggle("text-green-deep", how === "done");
+    slot.classList.toggle("text-crimson-deep", how === "failed");
+  }
+
+  function acts(locked) {
+    [].forEach.call(document.querySelectorAll("[data-verso-pending-acts] button, #verso-pending-apply input, main form[action^='/pending/'] button"), function (el) {
+      el.disabled = locked;
+    });
+    if (locked) versoButtons.start(button, T("Applying…"));
+    else versoButtons.finish(button);
+  }
+
+  // read reads the page again: a fresh GET, never a reload, which on a page
+  // drawn as the answer to a post would post it again.
+  function read() {
+    if (window.versoDirtyState) window.versoDirtyState.suppress();
+    window.location.replace(window.location.pathname);
+  }
+
+  function apply() {
+    var since = Date.now();
+    var ticker = null;
+    acts(true);
+    mark("save", T("Saving"), "wait");
+
+    function count() {
+      var left = Math.max(0, ROLLBACK - Math.floor((Date.now() - since) / 1000));
+      mark("check", T("%d s left").replace("%d", left), "wait");
+    }
+
+    function kept() {
+      clearInterval(ticker);
+      mark("check", T("Kept"), "done");
+      setTimeout(read, 600);
+    }
+
+    // The router puts its settings back at the window's end and the shell
+    // stages the changes again just after; the page reads again once it has.
+    function putBack() {
+      clearInterval(ticker);
+      mark("check", T("Put back"), "failed");
+      setTimeout(read, Math.max(0, since + ROLLBACK * 1000 + GRACE - Date.now()));
+    }
+
+    function checkIn() {
+      count();
+      ticker = setInterval(count, 1000);
+      versoConfirmApply(function () {
+        return versoPost("/uci/confirm", versoBody()).then(function (res) {
+          if (!res.ok) throw new Error("not confirmed");
+        });
+      }, since).then(kept, putBack);
+    }
+
+    function saved() {
+      mark("save", T("Saved"), "done");
+      mark("reload", T("Started"));
+      setTimeout(checkIn, 1000);
+    }
+
+    var note = form.querySelector('[name="note"]');
+    versoPost("/uci/apply", versoBody([["note", note ? note.value : ""]]))
+      .then(function (res) {
+        if (!res.ok) {
+          acts(false);
+          mark("save", "", "");
+          step("save").hidden = true;
+          var refused = document.querySelector("template[data-verso-apply-refused]");
+          if (refused && window.versoOutcome) window.versoOutcome.show(document.importNode(refused.content.firstElementChild, true));
+          return;
+        }
+        saved();
+      })
+      .catch(function () {
+        // The apply itself may have severed this page's path (a network
+        // change); it keeps checking in, since reaching the router again is
+        // what keeps the changes.
+        saved();
+      });
+  }
+
+  form.addEventListener("submit", function (e) {
+    e.preventDefault();
+    if (!button.disabled) apply();
+  });
 })();

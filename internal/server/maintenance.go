@@ -142,7 +142,7 @@ func (s *Server) renderMaintenancePage(w http.ResponseWriter, r *http.Request, s
 	}
 	v.Unchecked = !known
 	if stage := s.staged(r.Context(), sid, tr, s.pluginTranslators(r)); stage.Count > 0 {
-		v.Staged = stage.Label
+		v.Staged = pendingCount(stage.Count, tr)
 	}
 	var body strings.Builder
 	if err := s.widgets.RenderWithToken(&body, maintenanceBody(v), s.sessionCSRF(r), lang, t); err != nil {

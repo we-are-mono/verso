@@ -1,114 +1,30 @@
 <!-- SPDX-License-Identifier: GPL-2.0-only -->
 <!-- SPDX-FileCopyrightText: 2026 Mono Technologies Inc. -->
-{{/* The stage's one surface in the chrome (ADR-010): a chip in the top bar,
-     left of Log out, on screen only while a change is staged. It says how many
-     wait and that nothing is live yet, in the caveat colour — a fact about the
-     device, not an alarm — and it opens the review drawer, the one place the
-     stage is applied or let go from. It stays on every page for as long as the
-     stage holds something, which is what makes leaving a page safe without a
-     word of warning.
+{{/* The stage's one surface in the chrome (ADR-010): the Pending changes row,
+     first in the rail, standing above every destination while a change
+     waits, in the caveat colour — a fact about the device, not an alarm. It
+     leads to the Pending changes page. It stays on every page for as long as
+     the stage holds something, which is what makes leaving a page safe
+     without a word of warning.
 
-     The element is always rendered, hidden while the stage is clean, so the
-     client can turn it on in place the moment an act on the page stages
-     something and never has to build one (verso-commit.js). */}}
-{{define "verso-staged-chip"}}<span x-data="modal" class="contents">
-  <a id="verso-staged" href="/uci/review" @click.prevent="showPanel" data-count="{{.Count}}" title="{{ t "Nothing is live yet — review, then apply" }}"{{if not .Count}} hidden{{end}}
-    class="pointer-events-auto flex h-8 shrink-0 items-center gap-2 overflow-hidden rounded-xs border border-transparent bg-marigold-soft px-3 text-sm font-semibold whitespace-nowrap text-marigold-deep transition-colors hover:border-marigold hover:bg-marigold-line focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-marigold-deep">
-    <span id="verso-staged-mark" aria-hidden="true" class="size-1.5 shrink-0 rounded-[1px] bg-marigold"></span>
-    {{/* A phone's bar has room for the count alone; the words say it from sm. */}}
-    <span id="verso-staged-count" class="inline-block tabular-nums sm:hidden">{{.Count}}</span>
-    <span id="verso-staged-label" class="hidden sm:inline-block">{{.Label}}</span><span id="verso-staged-word" class="hidden font-normal sm:inline">· {{ t "review" }}</span>
+     The row is always rendered, hidden while the stage is clean, so the page's
+     script can show it in place: as a dashed ghost while an edit is not yet
+     saved, then, once saved, saying in a second line what the stage took —
+     the change's own words from the page (Latest) — while its count rolls to
+     the new one (verso-commit.js). Nothing travels across the screen. */}}
+{{define "verso-nav-pending"}}<li id="verso-pending-row" data-count="{{.Staged.Count}}"{{with .Staged.Latest}} data-latest="{{.}}"{{end}}{{if not .Staged.Count}} hidden{{end}} class="verso-pending-row mb-4">
+  <a href="/pending"{{if .Nav.PendingActive}} aria-current="page"{{end}} class="verso-pending-link relative flex items-start gap-4 bg-marigold-soft py-2 pr-6 pl-6 leading-6 font-semibold text-marigold-deep focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-marigold-deep">
+    <span class="grid h-6 w-4 shrink-0 place-items-center">{{icon "list-todo" "size-4"}}</span>
+    <span class="verso-pending-text grid min-w-0 flex-1">
+      <span class="flex min-w-0 gap-4"><span class="min-w-0 truncate">{{t "Pending changes"}}</span><span id="verso-pending-count" class="ml-auto tabular-nums">{{.Staged.Count}}</span></span>
+      {{/* What the last save staged, or what Save would stage: hidden but for
+           those moments, one line, cut where the rail ends. */}}
+      <span class="verso-pending-line-wrap -ml-1 min-h-0 overflow-hidden"><span id="verso-pending-line" aria-live="polite" class="verso-pending-line mt-1 block truncate rounded-xs border border-dashed border-transparent px-1 text-sm leading-5.5 font-normal"></span></span>
+    </span>
   </a>
-  {{template "verso-drawer-review"}}
-</span>{{end}}
+</li>{{end}}
 
-{{/* The review drawer's frame: the drawer language every panel speaks, at the
-     standard drawer measure. The link on the chip names what it fetches. It is
-     chrome, not a place on the page under it (verso.js): the browser's address
-     stays the page's while it is open, and every open fetches the stage afresh,
-     so a drawer closed and reopened after another save reads the new count. */}}
-{{define "verso-drawer-review"}}<template x-teleport="body">
-  <dialog x-ref="dialog" tabindex="-1" aria-label="{{ t "Staged changes" }}" {{template "verso-dialog-on"}} @verso-panel-done="finish" class="{{template "verso-drawer-box"}} overflow-hidden">
-    <div data-verso-panel data-verso-panel-chrome class="contents"></div>
-  </dialog>
-</template>{{end}}
-
-{{/* The drawer's contents: the stage read back in plain words, by the page each
-     change belongs to, and the two acts that end it. Rendered from UCI's own
-     stage on every open, so it is never a moment old. A change's row is the
-     owning plugin's sentence for it, led by what happened in a word and the
-     mark for it — added green, changed marigold, removed red, reordered
-     amethyst — and opens on the uci lines it stands for; a change no plugin
-     described keeps its raw line as the row. */}}
-{{define "verso-staged-review"}}<div id="verso-staged-review" data-count="{{.Count}}" class="contents">
-  {{/* The header is the band every drawer opens with: the title in the
-       band's voice, and the way out. */}}
-  {{template "verso-drawer-header" .Label}}
-  <div class="verso-drawer-scrollbar min-h-0 flex-1 overflow-y-auto {{template "verso-drawer-inset"}} pb-8">
-    {{range .Groups}}
-    {{/* the page's band, running edge to edge inside the inset: a 28px line
-         inset 12px, the page it names in the band's voice, its tally beside. */}}
-    <div class="{{template "verso-drawer-bleed"}} flex min-h-13 items-center gap-3 border-b border-rule bg-quiet {{template "verso-drawer-inset"}}">
-      <span class="text-base leading-7 font-semibold tracking-tight text-body">{{.Page}}</span>
-      <span class="text-sm leading-7 text-meta">{{.Tally}}</span>
-    </div>
-    {{range .Items}}
-    {{/* the row: 44px by its inset, the whole of it the handle that opens the
-         lines beneath. Its tallest thing is the 28px chevron, so the row insets
-         it by 8px, as a table cell insets an act. */}}
-    <details class="group/change {{template "verso-drawer-bleed"}} border-b border-mid">
-      <summary class="flex cursor-pointer list-none items-center gap-3 {{template "verso-drawer-inset"}} py-2 leading-6 transition-colors select-none hover:bg-quiet/60 [&::-webkit-details-marker]:hidden">
-        <span aria-hidden="true" class="size-1.5 shrink-0 rounded-[1px] {{if eq .Verb "added"}}bg-green{{else if eq .Verb "removed"}}bg-crimson{{else if eq .Verb "reordered"}}bg-amethyst{{else}}bg-marigold{{end}}"></span>
-        <span class="w-18 shrink-0 text-sm text-meta">{{.Word}}</span>
-        {{/* A setting reads as its settings row did: the row's name, then
-             what it held receding to Meta, the Denim arrow, and the value it
-             now holds — the machine's in mono, words in the sans — then, as
-             every described row standing for one option, that option's key
-             chip. */}}
-        {{if .Setting}}<span class="flex min-w-0 flex-1 items-center gap-2"><span class="truncate text-sm font-semibold text-ink">{{.Setting.Label}}</span>{{with .Was}}<span class="truncate {{if .Verbatim}}font-mono text-base font-medium{{else}}text-sm{{end}} text-meta" data-verso-staged-was>{{.Text}}</span><span role="img" aria-label="{{ t "becomes" }}" class="flex shrink-0 text-denim">{{icon "arrow-right" "size-4"}}</span>{{end}}<span class="truncate {{if .Setting.Verbatim}}font-mono text-base font-medium{{else}}text-sm{{end}} text-body" data-verso-staged-value>{{.Setting.Value}}</span></span>
-        {{else}}<span class="min-w-0 flex-1 truncate {{if .Mono}}font-mono text-base font-medium{{else}}text-sm font-semibold{{end}} text-ink">{{.Label}}</span>{{end}}
-        {{with .Key}}<span class="{{template "verso-chip-class"}} shrink-0" data-verso-staged-key>{{.}}</span>{{end}}
-        <span class="grid size-7 shrink-0 place-items-center text-glyph transition-transform group-open/change:rotate-180">{{icon "chevron-down" "size-4"}}</span>
-      </summary>
-      {{/* the lines, indented to the row's words: what the file will hold, each
-           led by the glyph of what happens to it. */}}
-      {{/* 70px: the drawer's 40px inset, the 6px mark and its 12px gap, and
-           the 12px the row's glyph column adds — the words' own edge. */}}
-      <div class="pr-10 pb-3 pl-[4.375rem]">
-        <div class="verso-drawer-scrollbar overflow-x-auto rounded-xs border border-rule bg-quiet px-3 py-2 font-mono text-sm leading-relaxed font-medium">
-          {{range .Lines}}<div class="flex gap-2 whitespace-pre {{if eq .Op "+"}}text-green-deep{{else if eq .Op "-"}}text-crimson-deep{{else}}text-marigold-deep{{end}}"><span class="w-2.5 shrink-0">{{.Op}}</span><span>{{.Text}}</span></div>{{end}}
-        </div>
-      </div>
-    </details>
-    {{end}}
-    {{end}}
-    {{if not .Count}}<p class="py-8 text-sm text-body">{{ t "Nothing staged. Every save lands here until you apply." }}</p>{{end}}
-    {{if .Count}}
-    {{/* Why, in the operator's words, for config history (ADR-021): never
-         asked for, so an apply is one press as it always was. Its
-         placeholder is what the entry's row will say without it. */}}
-    <div class="mt-6 flex flex-col gap-2">
-      <label for="verso-staged-apply-note" class="{{template "verso-field-label-class"}}">{{ t "Note" }} <span class="font-normal text-meta">{{ t "optional" }}</span></label>
-      <input id="verso-staged-apply-note" name="note" type="text" maxlength="200" autocomplete="off" placeholder="{{.Summary}}"
-        class="{{template "verso-input-words"}} {{template "verso-input-border" ""}}">
-    </div>
-    {{/* The promise that makes applying safe to press, stating the window the
-         apply actually arms rather than a number typed into the markup. The
-         same line carries how the apply went, once it has. */}}
-    <div class="mt-6 flex items-start gap-2 rounded-xs bg-denim-soft px-3 py-2 text-sm leading-[1.45] text-denim-deep">
-      <span id="verso-staged-note-mark" aria-hidden="true" class="mt-1.75 size-1.5 shrink-0 rounded-[1px] bg-denim"></span>
-      <span id="verso-staged-note">{{ printf (t "Usually takes a couple of seconds, longer if many services are affected. If the router stops answering within %d seconds, the changes are rolled back.") .Rollback }}</span>
-    </div>
-    {{end}}
-    {{/* The two acts on one line; Discard all asks first, and its question
-         drops full-width under the line (an InRow confirm). */}}
-    <div class="mt-6 flex flex-wrap items-center gap-2">
-      {{if .Count}}
-      <button type="button" id="verso-staged-apply" data-busy-label="{{ t "Applying…" }}" class="flex h-control cursor-pointer items-center gap-2 rounded-xs border border-denim bg-denim px-4 text-sm font-semibold whitespace-nowrap text-on-fill transition-colors hover:border-denim-deep hover:bg-denim-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim-deep disabled:pointer-events-none disabled:border-rule-strong disabled:bg-quiet disabled:text-glyph">{{.Apply}}</button>
-      <div id="verso-staged-discard" data-busy-label="{{ t "Discarding…" }}" class="contents">{{.Discard}}</div>
-      {{else}}
-      <button type="button" @click="hide" class="flex h-control cursor-pointer items-center rounded-xs border px-4 text-sm font-semibold whitespace-nowrap {{template "verso-btn-secondary"}} focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim">{{ t "Close" }}</button>
-      {{end}}
-    </div>
-  </div>
-</div>{{end}}
+{{/* verso-menu-pending: on a phone the rail sits behind the menu button, so
+     the button carries the stage's count on the caveat's wash, and an unsaved
+     edit's "+1" beside it, dashed (verso-commit.js). */}}
+{{define "verso-menu-pending"}}<span id="verso-menu-count" class="text-sm font-semibold tabular-nums"{{if not .Count}} hidden{{end}}>{{.Count}}</span><span id="verso-menu-ghost" hidden class="rounded-xs border border-dashed border-marigold px-1 text-xs leading-4 font-semibold tabular-nums"></span>{{end}}

@@ -7,17 +7,16 @@ import (
 	"context"
 	"fmt"
 	"hash/fnv"
-	"html/template"
 	"log"
 	"net/http"
 	"sort"
 	"strings"
 	"time"
 
+	"github.com/we-are-mono/verso/internal/history"
 	"github.com/we-are-mono/verso/internal/i18n"
 	"github.com/we-are-mono/verso/internal/plugin"
 	"github.com/we-are-mono/verso/internal/units"
-	"github.com/we-are-mono/verso/internal/widget"
 )
 
 // waitingOptions is the set of options that wait on the stage, by their full
@@ -62,23 +61,14 @@ func changedOption(ch []string) (section, option string, ok bool) {
 // reverting it on the device, unless the browser confirms (ADR-010).
 const uciRollbackTimeout = 30
 
-// stagedView is what the staged-changes chip and its review drawer render
-// (ADR-010): the pending uci changes across the configs plugins declare, read
-// from UCI's own stage — the browser holds nothing.
+// stagedView is what the rail's Pending changes row and the Pending changes
+// page render (ADR-010): the pending uci changes across the configs plugins
+// declare, read from UCI's own stage — the browser holds nothing.
 type stagedView struct {
-	Count int
-	Label string // "3 staged changes", worded here so the chip prints it raw
-	Apply string // the drawer's act, "Apply 3 changes"
-	// Discard is the drawer's other act, rendered: Discard all and the
-	// question it asks first. Empty outside the drawer and on a clean stage.
-	Discard template.HTML
-	Groups  []stagedGroup // the drawer's rows, under the page each change belongs to
-	// Rollback is the window the drawer promises, in seconds. It is the same
-	// constant the apply actually arms rpcd with, carried into the sentence so
-	// the promise on screen cannot drift from the one the device keeps.
-	Rollback int
+	Count  int
+	Groups []stagedGroup // the page's rows, under the page each change was made on
 	// Summary is what the entry's row in config history will say, offered
-	// where the drawer asks for a note (ADR-021).
+	// where the page asks for a note (ADR-021).
 	Summary string
 	// Latest is the most recently staged row in its own words ("Input →
 	// REJECT"), what the rail's row says just after a save; empty where no
@@ -259,11 +249,11 @@ func (s *Server) declaredConfigsUnion() map[string]bool {
 }
 
 // staged reads the pending changes for the session. A read failure logs and
-// yields an empty stage — the page renders; the chip simply stays hidden.
-// pluginTr names each page in the reader's language from its plugin's own
-// catalog (ADR-012).
+// yields an empty stage — the page renders; the rail's row simply stays
+// hidden. pluginTr names each page in the reader's language from its
+// plugin's own catalog (ADR-012).
 func (s *Server) staged(ctx context.Context, sid string, tr func(string) string, pluginTr func(string) func(string) string) stagedView {
-	v := stagedView{Rollback: uciRollbackTimeout, Label: stagedLabel(0, tr)}
+	var v stagedView
 	if sid == "" {
 		return v
 	}
@@ -296,30 +286,16 @@ func (s *Server) staged(ctx context.Context, sid string, tr func(string) string,
 	for _, g := range v.Groups {
 		for _, item := range g.Items {
 			if !item.at.IsZero() && item.at.After(latest) {
-				latest, v.Latest = item.at, rowWords(item)
+				latest, v.Latest = item.at, rowWords(g.Page, item, secrets, tr)
 			}
 		}
 	}
-	v.Label = stagedLabel(v.Count, tr)
-	v.Apply = stagedApplyLabel(v.Count, tr)
 	v.Summary = changeSummary(stagedItems(v, secrets), tr)
 	return v
 }
 
-// discardConfirm is the drawer's second act: Discard all, laid into the row
-// beside Apply, asking before it lets the stage go (verso-commit.js answers
-// it without leaving the drawer).
-func discardConfirm() *widget.Confirm {
-	return &widget.Confirm{
-		Trigger: "Discard all", Title: "Discard all staged changes?",
-		Message: "Nothing was applied, so the router keeps running as it is. What you saved on each page is lost.",
-		// The answer repeats the act it confirms (DESIGN.md, Labels).
-		Confirm: "Discard all", Cancel: "Not now", InRow: true,
-	}
-}
-
-// stagedApplyLabel is the drawer's act, naming what it applies in the count's
-// own form ("Apply 1 change", "Apply 3 changes").
+// stagedApplyLabel is the Pending changes page's act, naming what it applies
+// in the count's own form ("Apply 1 change", "Apply 3 changes").
 func stagedApplyLabel(n int, tr func(string) string) string {
 	return i18n.Count(tr, n, "Apply %d change", "Apply %d changes (two)", "Apply %d changes (few)", "Apply %d changes")
 }
@@ -454,28 +430,15 @@ func rowAnchor(changes []stagedChange) string {
 	return anchor
 }
 
-// rowWords is a row in its own words, as the rail says it just after a save:
-// a setting's name and what it now holds, else the row's sentence.
-func rowWords(item stagedItem) string {
+// rowWords is a row in the Pending changes page's own words, as the rail
+// says it just after a save: a setting's name and what it now holds, else
+// what the row is about and what happened to it, as config history says it.
+func rowWords(page string, item stagedItem, secrets map[string]bool, tr func(string) string) string {
 	if item.Setting != nil {
 		return item.Setting.Label + " → " + item.Setting.Value
 	}
-	return item.Label
-}
-
-// stagedLabel is what the chip and the drawer's title say the stage holds,
-// localized at composition — the template prints it raw, and the client
-// rewrites it from the same catalog (verso.js T), so the two speak one
-// vocabulary.
-func stagedLabel(n int, tr func(string) string) string {
-	switch n {
-	case 0:
-		return tr("No staged changes")
-	case 1:
-		return tr("1 staged change")
-	default:
-		return fmt.Sprintf(tr("%d staged changes"), n)
-	}
+	_, plain := phrase(history.Change{Items: []history.ChangeItem{historyItem(page, item, secrets)}}, tr, false)
+	return plain
 }
 
 // stagedTally is what a page's band says its run amounts to.
@@ -889,6 +852,11 @@ func (s *Server) handleUCIConfirm(w http.ResponseWriter, r *http.Request) {
 	// The stage is applied and kept: who staged what no longer describes it.
 	s.authors.forget(s.sessionSID(r))
 	s.confirmedApply(s.sessionSID(r))
+	// The page the apply was made on reads again and says so.
+	if end, ok := s.stageEnds.of(s.sessionSID(r)); ok && end.Kind == stageApplied {
+		_, t := s.localize(r)
+		s.flash(r, "success", i18n.Count(translatorOrIdentity(t), end.Count, "%d change applied.", "%d changes applied. (two)", "%d changes applied. (few)", "%d changes applied."))
+	}
 	// The running alerter takes up verso.alerts as the apply left it
 	// (ADR-020); procd records the command line only for the next start.
 	s.refreshAlerts(r.Context(), s.sessionSID(r))

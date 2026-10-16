@@ -482,6 +482,11 @@ func (s *Server) pluginBodyAt(r *http.Request, m plugin.Manifest, pluginPath str
 	// marked on every visit — after this request's own change is written, and
 	// until the change is applied or discarded.
 	widget.MarkStaged(wdg, s.waitingOptions(r.Context(), s.sessionSID(r)))
+	// Its saves stage, unless the page acts at once, so an edit not yet saved
+	// shows in the rail's Pending changes row.
+	if !env.Immediate {
+		widget.MarkStaging(wdg)
+	}
 
 	// The page-wide lens is the shell's call, not each plugin's constant: a
 	// plugin declares the filter it would like and the shell keeps it only over

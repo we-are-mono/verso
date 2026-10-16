@@ -51,6 +51,10 @@ type Form struct {
 	// ID names the form so an act standing outside it — the act on the
 	// heading of the section it saves — still posts with it. Shell only.
 	ID string `json:"-"`
+	// Stages says the form's save stages (ADR-010), so the page's script
+	// shows an edit not yet saved in the rail's Pending changes row
+	// (MarkStaging). Shell only.
+	Stages bool `json:"-"`
 }
 
 // FormAction is a secondary submit button: it submits the form — all its fields —
@@ -121,6 +125,7 @@ type formView struct {
 	Search     bool
 	Page       bool
 	Dirty      bool
+	Stages     bool
 	// Sectioned is a form that commits one section of a page rather than the
 	// page: its Save stands under its fields with no rule, because the next
 	// section's rule is the line that closes it.
@@ -183,7 +188,7 @@ func (f *Form) renderInto(r *Renderer, out io.Writer, csrf string) error {
 	page := f.Style == "page" || f.Style == "settings"
 	return r.execute(out, "form.html.tmpl", formView{
 		ID: f.ID, CancelHref: f.CancelHref, Action: f.Action, Frame: f.Frame, Panel: f.Panel, Multipart: f.Multipart, AutoSubmit: f.AutoSubmit,
-		Inline: f.Style == "inline" || f.Style == "inline-compact", Compact: f.Style == "inline-compact", Search: f.Style == "search", Page: page, Dirty: f.Style == "settings",
+		Inline: f.Style == "inline" || f.Style == "inline-compact", Compact: f.Style == "inline-compact", Search: f.Style == "search", Page: page, Dirty: f.Style == "settings", Stages: f.Stages,
 		Sectioned: r.depth > 0 && f.Frame == "", ClosesPage: page && r.depth == 0 && f.Frame == "", Icon: f.Icon, Note: note,
 		JoinsCode: EndsWithCode(f), LoneAct: loneAct(f),
 		Submit: submit, Tone: f.Tone, Error: f.Error, CSRFToken: csrf,

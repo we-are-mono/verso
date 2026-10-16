@@ -596,6 +596,10 @@ type TableRowAct struct {
 	// this icon is about one of them. Without it the panel opens on the tab its
 	// design orders first.
 	Tab string `json:"tab,omitempty"`
+	// Whole makes a submission's answer the page read whole rather than its
+	// rows reconciled in place: an act that changes what the page is made of
+	// (the Pending changes page's undo). The shell's to set.
+	Whole bool `json:"-"`
 }
 
 // TableChip is one entity-reference chip: a Lucide type icon (naming the kind —
@@ -795,6 +799,9 @@ type tableRowView struct {
 	ID    string
 	Key   string
 	Group *TableGroup
+	// Name is what the row is called (rowName): the subject an edit in its
+	// drawer is said as in the rail's Pending changes row.
+	Name string
 	// InForm is a row of a table among a form's fields: it takes no tint
 	// under the pointer, as no row of the form does.
 	InForm bool
@@ -1473,6 +1480,7 @@ func (t *Table) rowViews(r *Renderer, csrf string, rows []TableRow, hasDetail bo
 			rv.BandOnly = len(row.Cells) == 0
 			lanes++
 		}
+		rv.Name = t.rowName(row)
 		var expandErr error
 		rv.Expanded, expandErr = r.renderChildren(row.Expanded, csrf)
 		if expandErr != nil {

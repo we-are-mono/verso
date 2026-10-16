@@ -80,52 +80,52 @@ Every task ends green under `make lint` and `make test`. A task that touches a t
   - Apply is replaced by the sentence that it needs scripting;
   - `GET /uci/review` answers 308 to `/pending`;
   - the page composes existing widgets only (no new widget kind in the render).
-- [ ] 6.4 Delete the `verso-staged-review` and `verso-drawer-review` templates. Rewrite `TestReviewDrawer*` and `TestReviewPageForABrowserWithNoScript` to the page. Verify every test that named the drawer now names the page.
+- [x] 6.4 Delete the `verso-staged-review` and `verso-drawer-review` templates. Rewrite `TestReviewDrawer*` and `TestReviewPageForABrowserWithNoScript` to the page. Verify every test that named the drawer now names the page.
 - [ ] 6.5 Rewrite DESIGN.md's Staging and Drawers entries for the page, its cards and the When you apply card, with the reasons (one surface, the outcome before the act, no lede, card titles are page headings and carry no icon). Verify DESIGN.md's front matter is intact and the tests that read it pass.
 
 ## 7. The rail row and the phone
 
-- [ ] 7.1 Write the tests first in `nav_test.go`, then implement in `buildSidebar` and `nav-row.html.tmpl` and verify:
+- [x] 7.1 Write the tests first in `staged_test.go`, then implement as the `verso-nav-pending` row in `staged.html.tmpl`, first in the rail's list, with `navModel.PendingActive`, and verify:
   - with a non-empty stage, the first rail row is Pending changes with the `list-todo` icon, the count and the "pending" variant, outside every group;
   - it carries the marker on `/pending`;
   - with a clean stage it renders hidden;
   - groups open and close exactly as the rail spec requires.
-- [ ] 7.2 Write the tests first, then implement and verify:
+- [x] 7.2 Write the tests first, then implement and verify:
   - `page.html.tmpl` no longer renders `#verso-staged`;
   - the menu button carries the count span and a hidden dashed preview span;
   - the `TestStagedChip*` tests are rewritten to the rail row and the menu button.
-- [ ] 7.3 Add the row's CSS (Marigold Wash, Deep Marigold words and icon, the plain marigold marker bar, the dashed ghost row and line, the second line's fold). Verify in a rendered preview, in Sand light and dark, that the row's words clear the 4.5 floor on the wash.
+- [x] 7.3 Add the row's CSS (Marigold Wash, Deep Marigold words and icon, the plain marigold marker bar, the dashed ghost row and line, the second line's fold). Verify in a rendered preview, in Sand light and dark, that the row's words clear the 4.5 floor on the wash (the pair is gated for every shipped theme by `internal/theme`'s contrast floors).
 - [ ] 7.4 Record the rail's second status exception in DESIGN.md's Navigation (the row shows only while something waits, as the System updates dot does). Verify the sidebar direction entry and the Navigation section agree.
 
 ## 8. Apply, discard and undo in the browser
 
-- [ ] 8.1 Write the tests first in `scripts/`, then implement in `verso-commit.js` and verify:
+- [x] 8.1 Write the tests first in `scripts/`, then implement in `verso-commit.js` and verify:
   - Apply disables both acts and the save step reads Saving;
   - when the apply POST returns, the save step reads Saved, the reload step reads Started (and never a finish), and the check-in counts the rollback window down;
-  - a confirm sets the check-in to Kept, shows "Changes applied", posts "N changes applied." through `versoOutcome` and hides the rail row;
-  - a timeout sets the check-in to Put back, posts the crimson notification and reloads `/pending`.
-- [ ] 8.2 Write the tests first, then implement and verify:
+  - a confirm sets the check-in to Kept and reads the page again, which shows "Changes applied" with the "N changes applied." notification and no rail row;
+  - a timeout sets the check-in to Put back in crimson and reads the page again once the router has staged the changes anew, which opens with the rollback callout.
+- [x] 8.2 Write the tests first, then implement and verify:
   - Apply starts at once, with no confirmation, even with a flagged change;
-  - Discard all opens the danger confirm;
+  - Discard all leads to its crimson question under the heading line (`/pending?confirm=discard`), with or without a script;
   - an undo's notification offers "Put it back".
-- [ ] 8.3 Delete `versoStaged.fly`, the flight CSS, the chip verdict states, the `verso-staged-origin` key and their callers in `verso-forms.js`, `verso-tables.js` and `verso-system.js`. Verify with grep that none remain and that the reboot path still reads the stage.
+- [x] 8.3 Delete `versoStaged.fly`, the flight CSS, the chip verdict states and their callers in `verso-forms.js`, `verso-tables.js` and `verso-system.js`; the save's note keeps only the landing (where Save stood, the count before), as `verso-staged-landing`. Verify with grep that none remain and that the reboot path still reads the stage.
 
 ## 9. The row previews an edit, and settles on Save
 
-- [ ] 9.1 Write the tests first, then add the attributes in the widget templates and verify: staging forms carry `data-verso-stages`, and an item drawer's form carries `data-verso-subject` with the item's name.
-- [ ] 9.2 Write the tests first in `scripts/`, then implement the preview in `verso-commit.js` on top of `versoDirtyState` and verify:
+- [x] 9.1 Write the tests first, then add the attributes in the widget templates and verify: staging forms carry `data-verso-stages`, and a table row carries `data-verso-row-name` with the item's name, which a drawer opened from it says.
+- [x] 9.2 Write the tests first in `scripts/`, then implement the preview in `verso-commit.js` on top of `versoDirtyState` and verify:
   - an edited unstaged rule shows "+1 <name> · <label> → <value>";
   - an edited staged setting shows no "+1";
   - two dirty fields add "+1 more";
   - restoring the baseline, Cancel or closing the drawer clears the line;
   - hover and focus change nothing;
   - with a clean stage the whole row stands dashed.
-- [ ] 9.3 Write the tests first, then implement and verify on the phone layout: the menu button shows the count and a dashed "+1" beside it while an unstaged edit is open.
-- [ ] 9.4 Write the tests first, then implement and verify:
+- [x] 9.3 Write the tests first, then implement and verify on the phone layout: the menu button shows the count and a dashed "+1" beside it while an unstaged edit is open.
+- [x] 9.4 Write the tests first, then implement and verify:
   - before a staging submit or a one-press stage, the count is stored;
   - on landing, or after `versoStaged.sync`, the row shows `Latest` in plain words, rolls the count from the stored value and folds after 3 s;
   - with no stored save, nothing animates.
-- [ ] 9.5 Make the drawer scrim spare the rail at desktop widths, so the preview stays visible while a drawer is open. Verify in a rendered preview with a rule drawer open.
+- [x] 9.5 Make the drawer scrim spare the rail at desktop widths, so the preview stays visible while a drawer is open. Verify in a rendered preview with a rule drawer open.
 
 ## 10. Catalog, backlog and integration
 

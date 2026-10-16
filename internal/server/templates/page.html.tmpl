@@ -40,19 +40,12 @@
      10px above and below: 56px, the hairline drawn inside it so the rail and
      every sticky offset under it can count on the 56. */}}
 <header class="sticky top-0 z-30 flex shrink-0 items-center gap-4 bg-canvas px-6 py-2.5 shadow-[inset_0_-1px_0_var(--color-rule)]">
-  <button type="button" @click="toggle" x-ref="menuButton" :aria-expanded="expanded" aria-controls="verso-rail" aria-label="{{ t "Open menu" }}" class="grid size-9 shrink-0 place-items-center rounded-xs text-body transition-colors hover:bg-mid hover:text-ink md:hidden">{{icon "menu" "size-5"}}</button>
+  <button type="button" @click="toggle" x-ref="menuButton" :aria-expanded="expanded" aria-controls="verso-rail" aria-label="{{ t "Open menu" }}" data-count="{{.Staged.Count}}" class="verso-menu-button flex h-9 min-w-9 shrink-0 items-center justify-center gap-1.5 rounded-xs px-2 text-body transition-colors hover:bg-mid hover:text-ink md:hidden">{{icon "menu" "size-5"}}{{template "verso-menu-pending" .Staged}}</button>
   {{/* One line whatever the name's length; where the bar has to cut it, the
        whole name is a hover away. */}}
   <a href="/" data-verso-nameplate{{if .Nameplate}} title="{{.Nameplate}}"{{end}} class="min-w-0 truncate font-mono text-xl leading-9 font-bold tracking-tight text-ink">{{if .Nameplate}}{{.Nameplate}}{{else}}{{ t "This device" }}{{end}}</a>
   {{if .Maker}}<span class="hidden h-5 w-px shrink-0 bg-rule-strong sm:block"></span>
   <span class="hidden min-w-0 truncate text-sm font-normal text-body sm:block"><span class="font-semibold text-ink">{{.Maker}}</span>{{if .Model}} · {{.Model}}{{end}}</span>{{end}}
-  {{/* The stage's chip: how many changes wait on the router and that nothing
-       is live yet, opening the review drawer — the one place the stage is
-       applied or let go from (ADR-010). The stage is the router's, held and
-       rolled back on the device, so it stands with the router's nameplate
-       rather than with the session's way out; it never gives way, the name
-       does. It shows for as long as the stage holds something. */}}
-  {{template "verso-staged-chip" .Staged}}
   <div data-verso-session class="pointer-events-none absolute inset-y-0 right-0 left-0 flex items-center md:left-72">
     <div class="flex min-w-0 items-center justify-end gap-2 md:gap-4">
       {{/* Security state is the router's, not one page's: with no root
@@ -97,6 +90,7 @@
        stand on the grid, the first beside the page's heading line. */}}
   <nav class="min-h-0 flex-1 overflow-y-auto pt-6 pb-4">
     <ul data-verso-nav-rows class="flex flex-col">
+      {{template "verso-nav-pending" .}}
       {{range .Nav.Rows}}{{template "verso-nav-row" .}}{{end}}
     </ul>
   </nav>

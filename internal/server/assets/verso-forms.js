@@ -593,10 +593,10 @@
       if (res.ok || res.redirected) {
         el.disabled = false;
         // The flip is staged. Rather than reload the whole page (a jarring
-        // reflow), bring the staged-changes chip in step from the re-rendered
-        // response: the switch already shows the new state and the row is
-        // otherwise unchanged, so only the staged count moves. Fall back to a
-        // reload only when there is no chip to sync.
+        // reflow), bring the rail's Pending changes row in step from the
+        // re-rendered response: the switch already shows the new state and
+        // the row is otherwise unchanged, so only the staged count moves.
+        // Fall back to a reload only when there is no row to sync.
         return res.text().then(function (html) {
           var doc = versoParse(html);
           if (window.versoStaged && window.versoStaged.sync) {
@@ -859,7 +859,6 @@
     var response = versoParse(xhr.responseText);
     var outcome = response.querySelector(".verso-flash");
     var row = rowOf(frame);
-    var before = window.versoStaged ? window.versoStaged.count() : 0;
     frame.dispatchEvent(new CustomEvent("verso-panel-done", { bubbles: true }));
     if (outcome && window.versoOutcome) window.versoOutcome.show(document.importNode(outcome, true));
     if (xhr.getResponseHeader("X-Verso-Packages") === "changed") {
@@ -888,13 +887,10 @@
         if (html) reconcile(versoParse(html));
       })
       .catch(function () {
-        // The chip keeps its last count; the next page says the rest.
+        // The rail's row keeps its last count; the next page says the rest.
       })
       .then(function () {
-        if (!row) return;
-        landed(row);
-        // The change the panel staged leaves its row for the chip.
-        if (window.versoStaged) window.versoStaged.fly(row.querySelector("td") || row, before);
+        if (row) landed(row);
       });
   });
 

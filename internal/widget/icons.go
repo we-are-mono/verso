@@ -94,7 +94,10 @@ var lucideIcons = map[string]string{
 	"arrow-right":    `<path d="M5 12h14" /><path d="m12 5 7 7-7 7" />`,
 	// The Overview's cards (ADR-022): a card's door to its page, and the
 	// Resources and Firmware cards' glyphs.
-	"arrow-up-right":    `<path d="M7 7h10v10" /><path d="M7 17 17 7" />`,
+	"arrow-up-right": `<path d="M7 7h10v10" /><path d="M7 17 17 7" />`,
+	// What waits to be applied, and taking one change of it back.
+	"list-todo":         `<rect x="3" y="5" width="6" height="6" rx="1" /><path d="m3 17 2 2 4-4" /><path d="M13 6h8" /><path d="M13 12h8" /><path d="M13 18h8" />`,
+	"undo-2":            `<path d="M9 14 4 9l5-5" /><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11" />`,
 	"gauge":             `<path d="m12 14 4-4" /><path d="M3.34 19a10 10 0 1 1 17.32 0" />`,
 	"package":           `<path d="M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73z" /><path d="M12 22V12" /><polyline points="3.29 7 12 12 20.71 7" /><path d="m7.5 4.27 9 5.15" />`,
 	"corner-down-right": `<path d="m15 10 5 5-5 5" /><path d="M4 4v7a4 4 0 0 0 4 4h12" />`,

@@ -274,15 +274,21 @@ func stagedItems(view stagedView, secrets map[string]bool) []history.ChangeItem 
 	var items []history.ChangeItem
 	for _, g := range view.Groups {
 		for _, item := range g.Items {
-			kept := history.ChangeItem{Page: g.Page, Plugin: item.plugin, Verb: item.Verb, Words: item.Label, Verbatim: item.Mono,
-				SubjectKind: item.subject.Kind, SubjectName: item.subject.Name}
-			for _, c := range item.changes {
-				kept.Ops = append(kept.Ops, changeOp(c, secrets))
-			}
-			items = append(items, kept)
+			items = append(items, historyItem(g.Page, item, secrets))
 		}
 	}
 	return items
+}
+
+// historyItem is one row of the stage as config history keeps it, under the
+// page it was made on.
+func historyItem(page string, item stagedItem, secrets map[string]bool) history.ChangeItem {
+	kept := history.ChangeItem{Page: page, Plugin: item.plugin, Verb: item.Verb, Words: item.Label, Verbatim: item.Mono,
+		SubjectKind: item.subject.Kind, SubjectName: item.subject.Name}
+	for _, c := range item.changes {
+		kept.Ops = append(kept.Ops, changeOp(c, secrets))
+	}
+	return kept
 }
 
 // applyNoteLimit is how long a note on an apply may be, in characters: a

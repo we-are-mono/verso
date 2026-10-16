@@ -335,9 +335,11 @@ func TestMaintenanceUpdatesEverythingCurrent(t *testing.T) {
 	}
 	// The resting rung states one build, so the version pair's comparison tone
 	// has nothing to compare: a lone tinted version would warn about nothing.
+	// (The page's own content, not the rail's rows.)
+	content := body[strings.Index(body, `<main id="main"`):]
 	for _, unwanted := range []string{"font-semibold text-marigold-deep", "font-semibold text-green-deep", "Download and install"} {
-		if strings.Contains(body, unwanted) {
-			t.Errorf("the resting firmware rung should not carry %q:\n%s", unwanted, body)
+		if strings.Contains(content, unwanted) {
+			t.Errorf("the resting firmware rung should not carry %q:\n%s", unwanted, content)
 		}
 	}
 	// At rest the masthead is the ordinary place-label, suffix and all.
@@ -913,10 +915,10 @@ func sameSession(t *testing.T, s *Server) func(method, path string, form url.Val
 	}
 }
 
-// TestStagedVersoSettingReachesTheChip: Verso's own config is declared by the
-// shell, so a staged setting counts, reads, and discards like a firewall rule
-// (ADR-013 §3).
-func TestStagedVersoSettingReachesTheChip(t *testing.T) {
+// TestStagedVersoSettingReachesThePendingRow: Verso's own config is declared
+// by the shell, so a staged setting counts, reads, and discards like a
+// firewall rule (ADR-013 §3).
+func TestStagedVersoSettingReachesThePendingRow(t *testing.T) {
 	idleUpdates(t)
 	var reverts []string
 	s := newServer(t, fakeBackend{
@@ -925,11 +927,14 @@ func TestStagedVersoSettingReachesTheChip(t *testing.T) {
 		changes: map[string][][]string{"verso": {{"set", "updates", "autocheck", "0"}}},
 	})
 
-	// The chip counts it on the page; the humanized line waits in the drawer,
-	// under System, since the config is the shell's own.
-	if body := get(t, s, "/system/maintenance").Body.String(); !strings.Contains(body, ">1 staged change</span>") {
-		t.Errorf("the chip is missing the staged setting:\n%s", body)
+	// The rail's row counts it on the page; the humanized line waits on the
+	// Pending changes page, under System, since the config is the shell's own.
+	maintenance := get(t, s, "/system/maintenance").Body.String()
+	if !strings.Contains(maintenance, pendingRowSays(1)) {
+		t.Error("the Pending changes row is missing the staged setting")
 	}
+	// Reboot reads the same stage and asks for it to be ended first.
+	mustContain(t, maintenance, "1 pending change", "Apply changes, then reboot", "Discard and reboot")
 	pending := get(t, s, pendingPath).Body.String()
 	for _, want := range []string{`text-ink">System</h2>`, "verso: updates.autocheck = 0"} {
 		if !strings.Contains(pending, want) {

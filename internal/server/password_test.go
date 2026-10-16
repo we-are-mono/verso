@@ -54,7 +54,7 @@ func TestAccessPasswordFormWaitsAndNamesItsAccount(t *testing.T) {
 	}
 }
 
-func TestPasswordlessAccessOmitsCurrentPasswordAndShowsNoStagedChip(t *testing.T) {
+func TestPasswordlessAccessOmitsCurrentPasswordAndShowsNoPendingRow(t *testing.T) {
 	body := get(t, passwordServer(t, fakeBackend{rootNoPassword: true}), "/system/access").Body.String()
 	for _, want := range []string{"No administrator password is set.", "Set password", "New password", "Repeat new password"} {
 		if !strings.Contains(body, want) {
@@ -64,8 +64,8 @@ func TestPasswordlessAccessOmitsCurrentPasswordAndShowsNoStagedChip(t *testing.T
 	if strings.Contains(body, `name="current_password"`) {
 		t.Error("passwordless Access must not ask for a current password")
 	}
-	if !strings.Contains(body, stagedChipHidden) {
-		t.Error("the immediate Access form stages nothing, so the chip stays hidden")
+	if !strings.Contains(body, pendingRowHidden) {
+		t.Error("the immediate Access form stages nothing, so the Pending changes row stays hidden")
 	}
 }
 

@@ -186,7 +186,7 @@
       {{/* A row that carries only its group is the band alone. */}}
       {{if not .BandOnly}}
       {{if .Drawer}}
-      <tr x-data="modal"{{if .Open}} data-open="true"{{end}}{{if .Panel.Closed}} data-closed-href="{{.Panel.Closed}}"{{end}} class="group transition-colors{{if not .InForm}} hover:bg-quiet/50{{end}}{{if .Seam}} verso-table-seam-row{{end}}"{{if .ID}} data-verso-row-id="{{.ID}}"{{end}}{{if .Off}} data-verso-off{{end}}{{if .Reorder}} data-verso-reorder-row data-verso-reorder-id="{{.ID}}" data-verso-reorder-group="{{.ReorderGroup}}"{{end}}{{if .Key}} data-verso-row="{{.Key}}"{{end}}{{if .Tags}} data-verso-tags="{{.Tags}}"{{end}}{{range .Facets}} data-verso-facet-{{.Key}}="{{.Value}}"{{end}}>
+      <tr x-data="modal"{{if .Open}} data-open="true"{{end}}{{if .Panel.Closed}} data-closed-href="{{.Panel.Closed}}"{{end}} class="group transition-colors{{if not .InForm}} hover:bg-quiet/50{{end}}{{if .Seam}} verso-table-seam-row{{end}}"{{if .ID}} data-verso-row-id="{{.ID}}"{{end}}{{if .Off}} data-verso-off{{end}}{{if .Reorder}} data-verso-reorder-row data-verso-reorder-id="{{.ID}}" data-verso-reorder-group="{{.ReorderGroup}}"{{end}}{{if .Key}} data-verso-row="{{.Key}}"{{end}}{{if .Tags}} data-verso-tags="{{.Tags}}"{{end}}{{range .Facets}} data-verso-facet-{{.Key}}="{{.Value}}"{{end}}{{with .Name}} data-verso-row-name="{{.}}"{{end}}>
       {{else}}
       <tr class="group transition-colors{{if not .InForm}} hover:bg-quiet/50{{end}}{{if .Seam}} verso-table-seam-row{{end}}"{{if .ID}} data-verso-row-id="{{.ID}}"{{end}}{{if .Off}} data-verso-off{{end}}{{if .Reorder}} data-verso-reorder-row data-verso-reorder-id="{{.ID}}" data-verso-reorder-group="{{.ReorderGroup}}"{{end}}{{if .Key}} data-verso-row="{{.Key}}"{{end}}{{if .Tags}} data-verso-tags="{{.Tags}}"{{end}}{{range .Facets}} data-verso-facet-{{.Key}}="{{.Value}}"{{end}}>
       {{end}}
@@ -353,8 +353,9 @@
             </button>
             {{/* an act that posts is a form of its own, marked so the shell's
                  script can post it where it stands and reconcile the row from
-                 the answer; with no script it is simply submitted. */}}
-            {{else if .Name}}<form method="post"{{with .Post}} action="{{.}}"{{end}} data-verso-act class="contents">
+                 the answer; with no script it is simply submitted. One whose
+                 answer is the page read whole is submitted always. */}}
+            {{else if .Name}}<form method="post"{{with .Post}} action="{{.}}"{{end}}{{if not .Whole}} data-verso-act{{end}} class="contents">
               {{template "verso-csrf" $csrf}}
               <input type="hidden" name="{{.Name}}" value="{{.Value}}">
               <button type="submit" aria-label="{{.Title}}{{if $row}} {{$row}}{{end}}" class="{{template "table.actbtn-class"}}">

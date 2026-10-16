@@ -42,6 +42,7 @@ var serviceWords = map[string]string{
 	"log":             "System log",
 	"sysntpd":         "Time sync",
 	"led":             "LEDs",
+	"gpio_switch":     "GPIO switches",
 	"nlbwmon":         "Bandwidth monitor",
 	"packet_steering": "Packet steering",
 	"verso":           "Web interface",

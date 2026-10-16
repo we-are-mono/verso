@@ -195,34 +195,88 @@ test('maintenance checking locks immediately and restores on browser history', (
   assert.equal(button.textContent, 'Check again');
 });
 
-for (const verb of ['apply', 'discard']) {
-  test(`${verb} locks both staged actions, marks the requested action, and recovers on refusal`, async () => {
-    const env = environment();
-    const chip = new Element(); chip.setAttribute('data-count', '1');
-    env.ids.set('verso-staged', chip);
-    const apply = new Element('Apply 1'), discard = new Element('Discard all');
-    for (const [name, button, label] of [['apply', apply, 'Applying…'], ['discard', discard, 'Discarding…']]) {
-      button.id = 'verso-staged-' + name;
-      button.closest = () => button;
-      button.setAttribute('data-busy-label', label);
-      env.ids.set(button.id, button);
-    }
-    let resolve, requests = 0;
-    env.context.fetch = () => { requests++; return new Promise(done => { resolve = done; }); };
-    env.load('verso-commit.js');
-    const active = verb === 'apply' ? apply : discard;
-    env.document.emit('click', {target: active});
-    busy(active, verb === 'apply' ? 'Applying…' : 'Discarding…');
-    assert.equal(apply.disabled && discard.disabled, true);
-    env.document.emit('click', {target: active});
-    assert.equal(requests, 1);
-    resolve({ok: false});
-    await new Promise(setImmediate);
-    assert.equal(apply.disabled || discard.disabled, false);
-    assert.equal(apply.textContent, 'Apply 1');
-    assert.equal(discard.textContent, 'Discard all');
-  });
+// pendingPage is the Pending changes page's apply: its form, the heading's
+// Apply, hidden until the script is there, and each step's state slot.
+function pendingPage(env) {
+  const form = new Element();
+  env.ids.set('verso-pending-apply', form);
+  const button = new Element('Apply 2 changes');
+  button.hidden = true;
+  env.selectors.set('[data-verso-pending-apply]', button);
+  const steps = {};
+  for (const kind of ['save', 'reload', 'check']) {
+    const slot = new Element();
+    slot.hidden = true;
+    const parts = {wait: new Element(), done: new Element(), word: new Element()};
+    slot.querySelector = selector => ({'[data-verso-apply-wait]': parts.wait, '[data-verso-apply-done]': parts.done, '[data-verso-apply-word]': parts.word})[selector];
+    slot.classList.toggle = (name, on) => (on ? slot.classes.add(name) : slot.classes.delete(name));
+    steps[kind] = {slot, ...parts};
+    env.selectors.set(`[data-verso-apply-step="${kind}"] [data-verso-apply-state]`, slot);
+  }
+  return {form, button, steps};
 }
+
+test('apply locks the page, says the save is running, and recovers when the router refuses it', async () => {
+  const env = environment();
+  const {form, button, steps} = pendingPage(env);
+  let resolve, requests = 0;
+  env.context.fetch = () => { requests++; return new Promise(done => { resolve = done; }); };
+  env.load('verso-commit.js');
+  assert.equal(button.hidden, false, 'Apply shows once the script is there to see it through');
+  form.emit('submit', {});
+  busy(button, 'Applying…');
+  assert.equal(steps.save.word.textContent, 'Saving');
+  assert.equal(steps.save.wait.hidden, false);
+  form.emit('submit', {});
+  assert.equal(requests, 1, 'a second press posts nothing');
+  resolve({ok: false});
+  await new Promise(setImmediate);
+  assert.equal(button.disabled, false);
+  assert.equal(button.textContent, 'Apply 2 changes');
+  assert.equal(steps.save.slot.hidden, true, 'a refused apply leaves the steps as they were');
+});
+
+test('apply says each step only as the router reports it, and reads the page again once kept', async () => {
+  const env = environment();
+  const {form, steps} = pendingPage(env);
+  let replaced = null;
+  env.window.location = {pathname: '/pending', replace: url => { replaced = url; }};
+  env.context.fetch = url => Promise.resolve({ok: true, url});
+  env.context.versoConfirmApply = confirm => confirm();
+  env.load('verso-commit.js');
+  form.emit('submit', {});
+  await new Promise(setImmediate);
+  assert.equal(steps.save.word.textContent, 'Saved');
+  assert.equal(steps.save.done.hidden, false);
+  assert.equal(steps.reload.word.textContent, 'Started', 'the reloads are started, never done: procd reports no finish');
+  assert.equal(steps.reload.done.hidden, true);
+  env.timers.shift()(); // the check-in, a moment after the save
+  await new Promise(setImmediate);
+  assert.equal(steps.check.word.textContent, 'Kept');
+  assert.equal(steps.check.done.hidden, false);
+  env.timers.shift()(); // the page reads again
+  assert.equal(replaced, '/pending');
+});
+
+test('a check-in the router never answers says Put back and reads the page once the changes are staged again', async () => {
+  const env = environment();
+  const {form, steps} = pendingPage(env);
+  let replaced = null;
+  env.window.location = {pathname: '/pending', replace: url => { replaced = url; }};
+  env.context.fetch = url => Promise.resolve({ok: true, url});
+  env.context.versoConfirmApply = () => Promise.reject(new Error('rolled back'));
+  env.load('verso-commit.js');
+  form.emit('submit', {});
+  await new Promise(setImmediate);
+  env.timers.shift()(); // the check-in
+  await new Promise(setImmediate);
+  assert.equal(steps.check.word.textContent, 'Put back');
+  assert.equal(steps.check.slot.classes.has('text-crimson-deep'), true);
+  assert.equal(steps.check.done.hidden, true);
+  assert.equal(replaced, null, 'the page waits for the router to stage them again');
+  env.timers.shift()();
+  assert.equal(replaced, '/pending');
+});
 
 for (const reducedMotion of [false, true]) {
   test(`login rejects duplicate submits and restores after history (reduced motion: ${reducedMotion})`, () => {

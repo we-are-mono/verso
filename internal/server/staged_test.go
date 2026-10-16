@@ -6,6 +6,7 @@ package server
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -80,9 +81,15 @@ func TestPluginSaveStagesWithoutCommit(t *testing.T) {
 	}
 }
 
-// stagedChipHidden is the chip as a clean stage renders it: present, so the
-// client can turn it on in place, and hidden.
-const stagedChipHidden = `data-count="0" title="Nothing is live yet — review, then apply" hidden`
+// pendingRowHidden is the rail's Pending changes row as a clean stage draws
+// it: there, hidden, for an act that stages something to turn on in place.
+const pendingRowHidden = `id="verso-pending-row" data-count="0" hidden`
+
+// pendingRowSays is the rail's Pending changes row's count as a page draws
+// it with n changes waiting.
+func pendingRowSays(n int) string {
+	return fmt.Sprintf(`id="verso-pending-count" class="ml-auto tabular-nums">%d</span>`, n)
+}
 
 // getPanel reads a page the way an open drawer frame asks for its contents —
 // the same authenticated visit as get, marked as htmx's own request.
@@ -97,11 +104,11 @@ func getPanel(t *testing.T, srv *Server, path string) *httptest.ResponseRecorder
 	return rec
 }
 
-// TestStagedChipRendersPendingCount: the chip is server-rendered from UCI's
-// stage on every page — on screen when changes are pending, scoped to the
-// configs plugins declare, counting what a person did — and it is the way into
-// the review drawer.
-func TestStagedChipRendersPendingCount(t *testing.T) {
+// TestThePendingRowCountsTheStage: the rail's row is server-rendered from
+// UCI's stage on every page — on screen when changes are pending, scoped to
+// the configs plugins declare, counting what a person did — and it leads to
+// the Pending changes page.
+func TestThePendingRowCountsTheStage(t *testing.T) {
 	s := newServerWith(t, fakeBackend{
 		access: true,
 		changes: map[string][][]string{
@@ -112,53 +119,49 @@ func TestStagedChipRendersPendingCount(t *testing.T) {
 
 	body := get(t, s, "/").Body.String()
 	for _, want := range []string{
-		`<a id="verso-staged" href="/uci/review" @click.prevent="showPanel" data-count="1"`,
-		">1 staged change</span>", // the undeclared config is filtered out
-		// The caveat colour: a fact about the device, not an alarm; the mark
-		// and the way in beside the count.
-		"bg-marigold-soft px-3 text-sm font-semibold whitespace-nowrap text-marigold-deep",
-		`class="size-1.5 shrink-0 rounded-[1px] bg-marigold"`, "· review</span>",
-		// The drawer's frame is chrome: the browser's address stays the page's
-		// while it is open, and every open fetches the stage afresh (verso.js).
-		`<div data-verso-panel data-verso-panel-chrome class="contents"></div>`,
+		`id="verso-pending-row" data-count="1"`,
+		pendingRowSays(1), // the undeclared config is filtered out
+		`<a href="/pending"`, ">Pending changes</span>",
+		// The caveat colour: a fact about the device, not an alarm.
+		"bg-marigold-soft", "text-marigold-deep",
 	} {
 		if !strings.Contains(body, want) {
-			t.Errorf("staged chip missing %q", want)
+			t.Errorf("the Pending changes row is missing %q", want)
 		}
 	}
-	if strings.Contains(body, stagedChipHidden) {
-		t.Error("a dirty stage must show the chip")
+	if strings.Contains(body, pendingRowHidden) {
+		t.Error("a dirty stage must show the row")
 	}
-	// The raw line belongs to the drawer, not the page.
+	// The raw line belongs to the Pending changes page, not every page.
 	if strings.Contains(body, "system: @system[0].hostname = verso-lab") {
-		t.Error("the page carries the count; the lines wait in the drawer")
+		t.Error("the page carries the count; the lines wait on the Pending changes page")
 	}
 }
 
-// TestTheStageStandsWithTheRouter: what waits on the stage is the router's,
-// not the session's — the chip stands beside the router's nameplate, apart
-// from the way out, and on a phone says only its count.
-func TestTheStageStandsWithTheRouter(t *testing.T) {
+// TestThePendingRowStandsFirstInTheRail: what waits on the stage stands
+// above every destination, in no group; the top bar holds no chip, and on a
+// phone the menu button says the count.
+func TestThePendingRowStandsFirstInTheRail(t *testing.T) {
 	s := newServerWith(t, fakeBackend{
 		access:  true,
 		changes: map[string][][]string{"system": {{"set", "@system[0]", "hostname", "verso-lab"}}},
 	}, &fakeTransport{}, []plugin.Manifest{demoACLManifest()})
 	body := get(t, s, "/").Body.String()
-	// The inlined stylesheet names the session's group in its selectors; only
-	// the rendered markup says where the parts stand.
 	body = body[strings.LastIndex(body, "</style>")+len("</style>"):]
-	nameplate := strings.Index(body, `data-verso-nameplate`)
-	chip := strings.Index(body, `id="verso-staged"`)
-	session := strings.Index(body, `data-verso-session`)
-	logout := strings.Index(body, `action="/logout"`)
-	if nameplate < 0 || chip < 0 || session < 0 || logout < 0 {
-		t.Fatalf("top bar is missing its parts (nameplate %d, chip %d, session %d, logout %d)", nameplate, chip, session, logout)
+	rail := strings.Index(body, "data-verso-nav-rows")
+	row := strings.Index(body, `id="verso-pending-row"`)
+	overview := strings.Index(body, `<a href="/" aria-current="page"`)
+	if rail < 0 || row < rail || overview < row {
+		t.Errorf("the row stands first in the rail (rail %d, row %d, Overview %d)", rail, row, overview)
 	}
-	if !(nameplate < chip && chip < session && session < logout) {
-		t.Errorf("the chip stands after the nameplate and before the session's group (nameplate %d, chip %d, session %d)", nameplate, chip, session)
+	if strings.Contains(body, `id="verso-staged"`) {
+		t.Error("the top bar still holds the chip")
 	}
-	if !strings.Contains(body, `<span id="verso-staged-count" class="inline-block tabular-nums sm:hidden">1</span>`) {
-		t.Error("on a phone the chip says its count")
+	if !strings.Contains(body, `id="verso-menu-count" class="text-sm font-semibold tabular-nums">1</span>`) {
+		t.Error("on a phone the menu button says the count")
+	}
+	if !strings.Contains(get(t, s, pendingPath).Body.String(), `<a href="/pending" aria-current="page"`) {
+		t.Error("on the Pending changes page the row carries the marker")
 	}
 }
 
@@ -195,19 +198,16 @@ func TestPendingPagePlainOverRaw(t *testing.T) {
 		// The undescribed change is its raw line.
 		"system: @system[0].timezone = UTC",
 		// The two acts that end the stage.
-		"Apply 2 changes", ">Discard all</button>",
-		// Letting the stage go asks first, in place, in crimson.
-		`data-verso-confirm-tone="danger"`, "Discard all staged changes?", ">Not now</button>",
+		"Apply 2 changes", `href="/pending?confirm=discard"`,
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("page missing %q", want)
 		}
 	}
-	// The question's answer repeats the act it confirms: the trigger and the
-	// answer both read Discard all.
-	if n := strings.Count(body, ">Discard all</button>"); n != 2 {
-		t.Errorf("Discard all should ask and answer, found it %d times", n)
-	}
+	// Letting the stage go asks first, under the heading line, in crimson; its
+	// answer repeats the act it confirms.
+	ask := get(t, s, pendingPath+"?confirm=discard").Body.String()
+	mustContain(t, ask, "Discard all pending changes?", ">Discard all</button>", ">Not now</a>", `href="/pending"`)
 	// The plain sentence renders before the raw line it covers.
 	if i, j := strings.Index(body, "Renamed the router."), strings.Index(body, "hostname = verso-lab"); i < 0 || j < 0 || i > j {
 		t.Errorf("plain sentence should precede its raw line (plain=%d raw=%d)", i, j)
@@ -240,8 +240,9 @@ func TestPendingPageSaysASettingByItsLabel(t *testing.T) {
 	}, tr, []plugin.Manifest{demoACLManifest()})
 
 	body := get(t, s, pendingPath).Body.String()
-	// The rows, past the note whose placeholder names them too.
-	body = body[strings.Index(body, "<tbody"):]
+	// The rows' cells, past the note whose placeholder names them too and the
+	// row that carries its name.
+	body = body[strings.Index(body, "<td"):]
 	cell := func(text string) string {
 		at := strings.Index(body, text)
 		if at < 0 {
@@ -414,8 +415,8 @@ func TestStagedCountsItemsNotWrites(t *testing.T) {
 			{"set", "cfg99", "dest_port", "53"},
 		}},
 	}, item, []plugin.Manifest{demoACLManifest()})
-	if body := get(t, s, "/").Body.String(); !strings.Contains(body, ">1 staged change</span>") {
-		t.Error("three writes folded into one item must read as 1 staged change")
+	if body := get(t, s, "/").Body.String(); !strings.Contains(body, pendingRowSays(1)) {
+		t.Error("three writes folded into one item must count as 1 change")
 	}
 
 	// Settings: three option writes the plugin does not group → three changes.
@@ -428,7 +429,7 @@ func TestStagedCountsItemsNotWrites(t *testing.T) {
 			{"set", "@system[0]", "log_size", "128"},
 		}},
 	}, settings, []plugin.Manifest{demoACLManifest()})
-	if body := get(t, s2, "/").Body.String(); !strings.Contains(body, ">3 staged changes</span>") {
+	if body := get(t, s2, "/").Body.String(); !strings.Contains(body, pendingRowSays(3)) {
 		t.Error("three ungrouped settings must each count")
 	}
 }
@@ -446,8 +447,8 @@ func TestStagedCountIsTheDescribedCount(t *testing.T) {
 		}},
 	}, tr, []plugin.Manifest{demoACLManifest()})
 
-	if body := get(t, s, "/").Body.String(); !strings.Contains(body, ">1 staged change</span>") {
-		t.Error("the chip counts what a person did, not the writes it took")
+	if body := get(t, s, "/").Body.String(); !strings.Contains(body, pendingRowSays(1)) {
+		t.Error("the row counts what a person did, not the writes it took")
 	}
 	if len(tr.lastDescribe) != 2 {
 		t.Errorf("the page must describe the stage; got %+v", tr.lastDescribe)
@@ -485,10 +486,11 @@ func TestRecordEditorSubmitReturnsToListing(t *testing.T) {
 	}
 }
 
-// TestRecordEditorKeepsItsSubmitAndTheChip: a page carrying a Back link (a
-// record editor) has its own submit, and the chip stays in the chrome above it
-// like on any page — the stage is the whole device's, not the page's.
-func TestRecordEditorKeepsItsSubmitAndTheChip(t *testing.T) {
+// TestRecordEditorKeepsItsSubmitAndTheRow: a page carrying a Back link (a
+// record editor) has its own submit, and the rail's Pending changes row
+// stays beside it like on any page — the stage is the whole device's, not
+// the page's.
+func TestRecordEditorKeepsItsSubmitAndTheRow(t *testing.T) {
 	tr := &fakeTransport{env: &plugin.Envelope{
 		SchemaVersion: 1, Title: "Edit rule", Status: http.StatusOK,
 		Back:   &plugin.PageAction{Label: "Cancel", Href: "/plugins/demo/"},
@@ -500,8 +502,8 @@ func TestRecordEditorKeepsItsSubmitAndTheChip(t *testing.T) {
 	}, tr, []plugin.Manifest{demoACLManifest()})
 
 	body := get(t, s, "/plugins/demo/rules/edit").Body.String()
-	if !strings.Contains(body, ">1 staged change</span>") {
-		t.Error("the chip is on every page the stage is dirty behind")
+	if !strings.Contains(body, pendingRowSays(1)) {
+		t.Error("the row is on every page the stage is dirty behind")
 	}
 	if !strings.Contains(body, "Save changes") {
 		t.Error("the editor must carry its own submit button")
@@ -522,10 +524,11 @@ func TestPageFormGetsTheShellsSubmit(t *testing.T) {
 	}
 }
 
-// TestStagedChipHiddenWhenClean: every page carries the chip, hidden while the
-// stage is clean — so an act that stages something can turn it on in place —
-// and nothing of the bar that once sat at the foot of the page remains.
-func TestStagedChipHiddenWhenClean(t *testing.T) {
+// TestThePendingRowHiddenWhenClean: every page carries the row, hidden while
+// the stage is clean — so an act that stages something can turn it on in
+// place — and nothing of the bar that once sat at the foot of the page
+// remains.
+func TestThePendingRowHiddenWhenClean(t *testing.T) {
 	tr := &fakeTransport{env: &plugin.Envelope{
 		SchemaVersion: 1, Title: "Demo", Status: http.StatusOK,
 		Widget: json.RawMessage(`{"type":"card","children":[]}`),
@@ -534,8 +537,8 @@ func TestStagedChipHiddenWhenClean(t *testing.T) {
 
 	for _, path := range []string{"/plugins/demo/", "/"} {
 		body := get(t, s, path).Body.String()
-		if !strings.Contains(body, stagedChipHidden) {
-			t.Errorf("%s: a clean stage renders the chip hidden:\n%s", path, body)
+		if !strings.Contains(body, pendingRowHidden) {
+			t.Errorf("%s: a clean stage renders the row hidden", path)
 		}
 		for _, absent := range []string{"verso-capsule", "Save & Apply", "No unsaved changes", "Applies with a"} {
 			if strings.Contains(body, absent) {
@@ -545,10 +548,11 @@ func TestStagedChipHiddenWhenClean(t *testing.T) {
 	}
 }
 
-// TestStagedChipShowsWhenTheStageHoldsChanges: a page that arrives with changes
-// already staged renders the chip on, whatever the page is — an immediate-command
-// page included, since the stage is shared state that follows the operator.
-func TestStagedChipShowsWhenTheStageHoldsChanges(t *testing.T) {
+// TestThePendingRowShowsWhenTheStageHoldsChanges: a page that arrives with
+// changes already staged renders the row on, whatever the page is — an
+// immediate-command page included, since the stage is shared state that
+// follows the operator.
+func TestThePendingRowShowsWhenTheStageHoldsChanges(t *testing.T) {
 	env := &plugin.Envelope{
 		SchemaVersion: 1, Title: "Access", Immediate: true, Status: http.StatusOK,
 		Widget: json.RawMessage(`{"type":"card","children":[]}`),
@@ -558,7 +562,7 @@ func TestStagedChipShowsWhenTheStageHoldsChanges(t *testing.T) {
 	}}, &fakeTransport{env: env}, []plugin.Manifest{demoACLManifest()})
 
 	body := get(t, s, "/plugins/demo/").Body.String()
-	if strings.Contains(body, stagedChipHidden) || !strings.Contains(body, ">1 staged change</span>") {
+	if strings.Contains(body, pendingRowHidden) || !strings.Contains(body, pendingRowSays(1)) {
 		t.Error("an immediate-command page must still reveal pending changes from elsewhere")
 	}
 }

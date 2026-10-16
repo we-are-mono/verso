@@ -867,16 +867,13 @@ func jsCatalog(tr func(string) string) template.JS {
 		"Uploading…", "%s of %s\U0000202fMiB", "The upload stopped. Check the connection, then choose the file again.",
 		// What staying signed in says once the session has been extended.
 		"You’re still signed in.",
-		// The staged-changes chip, kept in step after an act on the page
-		// stages something, and how an apply went.
-		"1 staged change", "%d staged changes",
-		// The mark a row takes when its change has gone to the stage, and what
-		// the page says of it to a screen reader.
-		"staged", "Staged — %s. Review and apply from the top bar.",
-		"1 change applied", "%d changes applied", "Apply rolled back",
-		"Couldn’t apply — check the settings and try again",
-		"Couldn’t confirm — the router may have rolled back",
-		"Couldn’t discard — try again",
+		// The rail's Pending changes row: what an edit not yet saved would
+		// stage, how a value reads in it, and what a screen reader hears of a
+		// change the stage took.
+		"On", "Off", "not set", "changed", "+%d more", "Pending: %s",
+		// The Pending changes page's apply: each step's state as the router
+		// reports it, and what the page says when the router turns it away.
+		"Saving", "Saved", "Started", "Kept", "Put back", "%d\U0000202fs left",
 		// The refusal navigator: how many settings stand refused, and what it
 		// says once the last is corrected.
 		"1 setting refused", "%d settings refused", "Ready to save",

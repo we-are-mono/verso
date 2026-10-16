@@ -16,12 +16,19 @@ import (
 	"github.com/we-are-mono/verso/internal/clock"
 	"github.com/we-are-mono/verso/internal/history"
 	"github.com/we-are-mono/verso/internal/i18n"
+	"github.com/we-are-mono/verso/internal/plugin"
 	"github.com/we-are-mono/verso/internal/widget"
 )
 
 // pendingPath is the Pending changes page: the stage read back by the page
 // each change was made on, what applying it does, and its acts (ADR-010).
 const pendingPath = "/pending"
+
+// pendingCount is how many changes wait, in the count's own form ("1 pending
+// change", "3 pending changes").
+func pendingCount(n int, tr func(string) string) string {
+	return i18n.Count(tr, n, "%d pending change", "%d pending changes (two)", "%d pending changes (few)", "%d pending changes")
+}
 
 // pendingStep is one of the When you apply card's steps, with its number.
 type pendingStep struct {
@@ -48,9 +55,9 @@ func (s *Server) handlePending(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.withWas(ctx, sid, &view, tr)
-	hdr := pageHeader{
-		Heading: i18n.Count(tr, view.Count, "%d pending change", "%d pending changes (two)", "%d pending changes (few)", "%d pending changes"),
-		Tone:    "neutral",
+	hdr := pageHeader{Heading: pendingCount(view.Count, tr), Tone: "neutral"}
+	if told, ok := s.stageEnds.tell(sid); ok && told.Kind == stageRolledBack {
+		hdr.Notice = &plugin.Notice{Level: "danger", Text: "This page could not check in, so the router put its previous settings back. Your changes are still pending."}
 	}
 	if record, ok := s.undos.announce(sid); ok {
 		hdr.Arrival = s.pendingTemplate(lang, "verso-pending-putback", struct {
@@ -58,23 +65,17 @@ func (s *Server) handlePending(w http.ResponseWriter, r *http.Request) {
 			Restorable         bool
 		}{record.words, record.token, csrf, record.restorable})
 	}
-	var discard strings.Builder
-	if err := s.widgets.RenderWithToken(&discard, discardConfirm(), csrf, lang, t); err != nil {
-		http.Error(w, "render error", http.StatusInternalServerError)
-		return
-	}
 	hdr.HeadingAct = s.pendingTemplate(lang, "verso-pending-acts", struct {
-		CSRF, Apply string
-		Discard     template.HTML
-	}{csrf, stagedApplyLabel(view.Count, tr), template.HTML(discard.String())}) //nolint:gosec // the shell's own rendered widget
+		Apply   string
+		Refused widget.Flash
+	}{stagedApplyLabel(view.Count, tr), widget.Flash{Variant: "danger", Message: tr("The router did not take the apply. Nothing changed.")}})
 
 	var blocks widget.Widgets
 	if r.URL.Query().Get("confirm") == "discard" {
-		blocks = append(blocks, &widget.Form{Action: pendingPath + "/discard", NoSubmit: true, Fields: widget.Widgets{
-			&widget.Callout{Variant: "danger", Title: "Discard all pending changes?", Body: discardConfirm().Message,
-				Acts: []widget.Link{{Label: "Not now", Href: pendingPath}}},
-			&widget.Button{Label: "Discard all", Name: "discard", Value: "1", Style: "danger"},
-		}})
+		blocks = append(blocks, &widget.Embed{HTML: s.pendingTemplate(lang, "verso-pending-discard", struct{ CSRF, Title, Message string }{
+			csrf, tr("Discard all pending changes?"),
+			tr("Nothing was applied, so the router keeps running as it is. What you saved on each page is lost."),
+		})})
 	}
 	if ended && end.Kind == stageRolledBack {
 		blocks = append(blocks, &widget.Callout{Variant: "danger",
@@ -123,7 +124,7 @@ func (s *Server) whenYouApply(r *http.Request, sid string, view stagedView, lang
 	children = append(children,
 		&widget.Embed{HTML: s.pendingTemplate(lang, "verso-pending-steps", steps)},
 		&widget.Form{ID: "verso-pending-apply", Action: "/uci/apply", NoSubmit: true, Fields: widget.Widgets{
-			&widget.Field{Name: "note", Label: "Note", Help: "Optional. Config history keeps it with the apply.", Placeholder: view.Summary},
+			&widget.Field{Name: "note", Label: "Note", Placeholder: view.Summary},
 		}},
 	)
 	return &widget.Section{Title: "When you apply", Children: children}
@@ -190,7 +191,7 @@ func pendingRow(item stagedItem, kept history.ChangeItem, oldRead bool, href str
 		acts = append(acts, widget.TableRowAct{Icon: "arrow-up-right", Title: "Go to it on its page", Href: goTo})
 	}
 	acts = append(acts,
-		widget.TableRowAct{Icon: "undo-2", Title: "Undo this change", Name: "row", Value: item.ID, Post: pendingPath + "/undo"},
+		widget.TableRowAct{Icon: "undo-2", Title: "Undo this change", Name: "row", Value: item.ID, Post: pendingPath + "/undo", Whole: true},
 		widget.TableRowAct{Icon: "info", Title: "Show the config lines", Opens: true},
 	)
 	var lines []string
@@ -360,11 +361,12 @@ func (s *Server) rowWordsOf(r *http.Request, sid string, ids []string) string {
 	_, t := s.localize(r)
 	tr := translatorOrIdentity(t)
 	view := s.staged(r.Context(), sid, tr, s.pluginTranslators(r))
+	secrets := s.secretOptions()
 	var found []string
 	for _, g := range view.Groups {
 		for _, item := range g.Items {
 			if slices.Contains(ids, item.ID) {
-				found = append(found, rowWords(item))
+				found = append(found, rowWords(g.Page, item, secrets, tr))
 			}
 		}
 	}

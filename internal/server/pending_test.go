@@ -97,6 +97,9 @@ func TestPendingRowsSayWhatAndWhen(t *testing.T) {
 		`href="/plugins/dnsdhcp/#staged-dhcp.lan.leasetime"`,
 		`action="/pending/undo"`, `name="row"`,
 		"~ dhcp: lan.leasetime = 6h",
+		// An undo changes what the page is made of, so its answer is the page
+		// read whole, not its rows reconciled in place.
+		`<form method="post" action="/pending/undo" class="contents">`,
 	)
 }
 
@@ -165,17 +168,20 @@ func TestPendingPageAfterARollback(t *testing.T) {
 	mustContain(t, get(t, s, pendingPath).Body.String(), "The last apply was put back at 15:42.", "This page could not check in")
 }
 
-// TestPendingPageWithoutScripting: undo and discard are forms that work
-// without a script; Apply waits for one, and says so where there is none.
+// TestPendingPageWithoutScripting: undo and discard work without a script,
+// as forms and a link to Discard all's question; Apply waits for one, and
+// says so where there is none.
 func TestPendingPageWithoutScripting(t *testing.T) {
 	s := pendingServer(t, fakeBackend{})
 	body := get(t, s, pendingPath).Body.String()
 	mustContain(t, body,
-		`action="/pending/undo"`, `action="/pending/discard"`,
+		`action="/pending/undo"`, `href="/pending?confirm=discard"`,
 		`<noscript>`, "Applying needs scripting",
 		`data-verso-pending-apply hidden`,
 	)
-	// Without a script, Discard all asks on a page of its own.
+	if strings.Contains(body, `action="/pending/discard"`) {
+		t.Error("the page holds Discard all's answer before it was asked")
+	}
 	mustContain(t, get(t, s, pendingPath+"?confirm=discard").Body.String(), "Discard all pending changes?", `action="/pending/discard"`)
 }
 

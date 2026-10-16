@@ -79,6 +79,9 @@ func (p pageTab) Transition() string { return railTransition("sub", p.Href) }
 // the active row.
 type navModel struct {
 	Rows []navRow
+	// PendingActive is the Pending changes page being the one open: the
+	// stage's row, first in the rail and in no group, carries the marker.
+	PendingActive bool
 }
 
 // navRow is one destination in the rail. The row you are in opens its subpages
@@ -280,7 +283,7 @@ func (s *Server) buildSidebar(active string, tr func(string) string, pluginTr fu
 			break
 		}
 	}
-	return navModel{Rows: rows}
+	return navModel{Rows: rows, PendingActive: active == pendingPath}
 }
 
 // pluginHref is the shell-side URL for a plugin page: the /plugins/<id>/ mount

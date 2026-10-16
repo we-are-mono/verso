@@ -30,6 +30,9 @@ type stageEnd struct {
 	// Back is who staged the most recent change, where the page leads back
 	// to; its Href is empty where no page is on record.
 	Back stageAuthor
+	// Told is a rollback the page has already said, by the notification, so
+	// it says it once.
+	Told bool
 }
 
 // stageEnds is each session's last stage end.
@@ -52,6 +55,19 @@ func (e *stageEnds) of(sid string) (stageEnd, bool) {
 	defer e.mu.Unlock()
 	end, ok := e.by[sid]
 	return end, ok
+}
+
+// tell is sid's last stage end the first time a page asks to say it.
+func (e *stageEnds) tell(sid string) (stageEnd, bool) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	end, ok := e.by[sid]
+	if !ok || end.Told {
+		return stageEnd{}, false
+	}
+	end.Told = true
+	e.by[sid] = end
+	return end, true
 }
 
 // latestAuthor is who staged the most recent row of view, where any row's
