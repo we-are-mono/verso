@@ -40,7 +40,7 @@
 
 ## 4. Firewall declares its subpages
 
-- [ ] 4.1 Test first in the Firewall plugin's tests: its `manifest.json` `pages` list equals `tabs()` in labels, paths and order. Then the manifest declares Rules, Port forwards, Zones, Settings and Activity. Verify: `cargo test` in `plugins/verso-plugin-firewall`, `go test ./internal/plugin/` (the shipped manifests load), and in `make dev`, Firewall's group lists the five from the Overview. `make dev` deploys the manifest.
+- [x] 4.1 Test first in the Firewall plugin's tests: its `manifest.json` `pages` list equals `tabs()` in labels, paths and order. Then the manifest declares Rules, Port forwards, Zones, Settings and Activity. Verify: `cargo test` in `plugins/verso-plugin-firewall`, `go test ./internal/plugin/` (the shipped manifests load), and in `make dev`, Firewall's group lists the five from the Overview. `make dev` deploys the manifest.
 - [ ] 4.2 `docs/BACKLOG.md`: the plugin repos (wireless, vpn, ddns, qos, dnsdhcp) declare their subpages in their manifests if they have any, needing this shell. Verify: the entry is present and states what is.
 
 ## 5. Integration

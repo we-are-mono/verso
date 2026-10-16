@@ -330,6 +330,18 @@ mod tests {
         }
     }
 
+    // The rail lists the manifest's subpages on every page; they are the ones
+    // every page's envelope names, in the same order.
+    #[test]
+    fn the_manifest_lists_the_pages_every_page_names() {
+        let manifest: Value = serde_json::from_str(include_str!("../manifest.json")).expect("manifest");
+        let tabs: Vec<Value> = page::tabs()
+            .into_iter()
+            .map(|t| serde_json::json!({"label": t.label, "path": t.path}))
+            .collect();
+        assert_eq!(manifest["nav"][0]["pages"], Value::Array(tabs));
+    }
+
     fn answer(path: &str, body: &str) -> Value {
         let envelope = post(&request(path), &Form::parse(body));
         serde_json::to_value(&envelope).expect("serialize")
