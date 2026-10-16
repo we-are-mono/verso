@@ -692,3 +692,38 @@ func TestCustomFileReviewShowsThePathAndProposedContents(t *testing.T) {
 		t.Fatalf("%+v", row)
 	}
 }
+
+// A setting's row says what the option held before the stage, where the two
+// values are said the same way: the committed value when the row shows the
+// value as written, "not set" when there was none, and nothing at all for a
+// secret or for a value the plugin put in words ("on") the old one is not in.
+func TestASettingRowSaysWhatItReplaces(t *testing.T) {
+	tr := func(s string) string { return s }
+	setting := func(option, value, shown string, verbatim bool) stagedItem {
+		return stagedItem{
+			Setting: &plugin.Setting{Label: option, Value: shown, Verbatim: verbatim},
+			Key:     option,
+			changes: []stagedChange{{config: "dhcp", tuple: []string{"set", "cfg01411c", option, value}}},
+		}
+	}
+	committed := map[string]map[string]any{"dhcp": {"cfg01411c": map[string]any{"cachesize": "150", "logdhcp": "0"}}}
+	secrets := map[string]bool{"dhcp.key": true}
+	for _, tc := range []struct {
+		name      string
+		item      stagedItem
+		committed map[string]map[string]any
+		want      *stagedWas
+	}{
+		{"a value as written", setting("cachesize", "151", "151", true), committed, &stagedWas{Text: "150", Verbatim: true}},
+		{"nothing before", setting("cachesize", "151", "151", true), map[string]map[string]any{"dhcp": {"cfg01411c": map[string]any{}}}, &stagedWas{Text: "not set"}},
+		{"words for a flag", setting("logdhcp", "1", "on", false), committed, nil},
+		{"words, nothing before", setting("logdhcp", "1", "on", false), map[string]map[string]any{"dhcp": {"cfg01411c": map[string]any{}}}, &stagedWas{Text: "not set"}},
+		{"a secret", setting("key", "hunter2", "••••", false), committed, nil},
+		{"no setting", stagedItem{Label: "Added a host"}, committed, nil},
+	} {
+		got := settingWas(tc.item, tc.committed, secrets, tr)
+		if (got == nil) != (tc.want == nil) || (got != nil && *got != *tc.want) {
+			t.Errorf("%s: was = %+v, want %+v", tc.name, got, tc.want)
+		}
+	}
+}

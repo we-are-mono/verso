@@ -98,13 +98,89 @@ type stagedItem struct {
 	// a whole section.
 	Setting *plugin.Setting
 	Key     string
-	Lines   []stagedLine
+	// Was is what the setting's option held before the stage, said the way
+	// its new value is (settingWas); nil where the two cannot be said alike.
+	Was   *stagedWas
+	Lines []stagedLine
 	// plugin is the plugin whose page the row was made on, empty for the
 	// shell's own; changes is what the row stands for. Config history keeps
 	// both (ADR-021), and subject, what its plugin said the row is about.
 	plugin  string
 	changes []stagedChange
 	subject plugin.Subject
+}
+
+// stagedWas is a setting's value before the stage: the committed value, in
+// mono where the new one is, or "not set" in words.
+type stagedWas struct {
+	Text     string
+	Verbatim bool
+}
+
+// settingWas is what a setting's row replaces, read from the committed
+// configs, when it can be said the way the row says the new value: the old
+// value where the row shows the new one as written, "not set" where the
+// option held nothing. A secret's never shows, and a value the plugin put in
+// words ("on" for 1) leaves an old raw value unsaid rather than set beside
+// words it is not in.
+func settingWas(item stagedItem, committed map[string]map[string]any, secrets map[string]bool, tr func(string) string) *stagedWas {
+	if item.Setting == nil || item.Key == "" {
+		return nil
+	}
+	for _, c := range item.changes {
+		op := changeOp(c, secrets)
+		if op.Option != item.Key || (op.Op != "set" && op.Op != "remove-option") {
+			continue
+		}
+		if op.Secret {
+			return nil
+		}
+		old, held := oldValue(replaced(committed, op, secrets))
+		switch {
+		case !held:
+			return &stagedWas{Text: tr("not set")}
+		case op.Op == "set" && *op.Value == item.Setting.Value:
+			if old == "" {
+				old = "''"
+			}
+			return &stagedWas{Text: old, Verbatim: item.Setting.Verbatim}
+		}
+		return nil
+	}
+	return nil
+}
+
+// withWas fills each setting row's Was from the committed configs: one read,
+// for the drawer only. A read that fails leaves the rows saying the new value
+// alone, as they always could.
+func (s *Server) withWas(ctx context.Context, sid string, view *stagedView, tr func(string) string) {
+	var configs []string
+	seen := map[string]bool{}
+	for _, g := range view.Groups {
+		for _, item := range g.Items {
+			for _, c := range item.changes {
+				if item.Setting != nil && !seen[c.config] {
+					seen[c.config] = true
+					configs = append(configs, c.config)
+				}
+			}
+		}
+	}
+	if len(configs) == 0 {
+		return
+	}
+	committed, err := s.backend.UCICommitted(ctx, sid, configs)
+	if err != nil {
+		log.Printf("verso: what the stage replaces could not be read: %v", err)
+		return
+	}
+	secrets := s.secretOptions()
+	for gi := range view.Groups {
+		for ii := range view.Groups[gi].Items {
+			item := &view.Groups[gi].Items[ii]
+			item.Was = settingWas(*item, committed, secrets, tr)
+		}
+	}
 }
 
 // stagedLine is one uci line under an opened row, led by the glyph of what
@@ -656,7 +732,9 @@ func changeTarget(ch []string) (key string, present, ok bool) {
 func (s *Server) handleUCIReview(w http.ResponseWriter, r *http.Request) {
 	lang, t := s.localize(r)
 	tr := translatorOrIdentity(t)
-	view := s.staged(r.Context(), s.sessionSID(r), tr, s.pluginTranslators(r))
+	sid := s.sessionSID(r)
+	view := s.staged(r.Context(), sid, tr, s.pluginTranslators(r))
+	s.withWas(r.Context(), sid, &view, tr)
 	var buf bytes.Buffer
 	if err := s.pageSet(lang).ExecuteTemplate(&buf, "verso-staged-review", view); err != nil {
 		log.Printf("verso: staged review render failed: %v", err)
