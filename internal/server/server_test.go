@@ -83,6 +83,10 @@ type fakeBackend struct {
 	rcInits  *[]string // records "service action" per RCInit
 	failed   []string  // the services procd stopped restarting
 	failErr  error
+	// triggers is procd's config → init scripts it reloads; triggersErr
+	// answers the read in its place.
+	triggers    map[string][]string
+	triggersErr error
 	// The helper's package verbs (ADR-011 §4): canned search results and
 	// records of what the shell installed, removed, or refreshed.
 	pkgCheckedAt      int64
@@ -341,6 +345,20 @@ func (f fakeBackend) UCIRevert(_ context.Context, _, config string) error {
 	return f.uciErr
 }
 
+func (f fakeBackend) UCIUnstage(_ context.Context, _, config string) error {
+	if f.reverts != nil {
+		*f.reverts = append(*f.reverts, "uci:"+config)
+	}
+	return f.uciErr
+}
+
+func (f fakeBackend) UnstageFiles(_ context.Context, _, config string) error {
+	if f.reverts != nil {
+		*f.reverts = append(*f.reverts, "files:"+config)
+	}
+	return f.uciErr
+}
+
 func (f fakeBackend) UCIApply(_ context.Context, _ string, timeout int) error {
 	if f.applies != nil {
 		*f.applies = append(*f.applies, timeout)
@@ -361,6 +379,10 @@ func (f fakeBackend) RCList(context.Context, string) (map[string]openwrt.RCState
 
 func (f fakeBackend) FailedServices(context.Context, string) ([]string, error) {
 	return f.failed, f.failErr
+}
+
+func (f fakeBackend) ReloadTriggers(context.Context, string) (map[string][]string, error) {
+	return f.triggers, f.triggersErr
 }
 
 func (f fakeBackend) RCInit(_ context.Context, _ string, name, action string) error {

@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"reflect"
 	"slices"
 	"strings"
 	"testing"
@@ -693,7 +694,7 @@ func TestNetworkInterfacesPairsLogicalNamesWithDevices(t *testing.T) {
 		t.Fatalf("got %d interfaces, want %d: %+v", len(got), len(want), got)
 	}
 	for i := range want {
-		if got[i] != want[i] {
+		if !reflect.DeepEqual(got[i], want[i]) {
 			t.Errorf("interface %d = %+v, want %+v", i, got[i], want[i])
 		}
 	}

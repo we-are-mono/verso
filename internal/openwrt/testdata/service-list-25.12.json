@@ -1,0 +1,1390 @@
+{
+	"cron": {
+		"instances": {
+			"instance1": {
+				"command": [
+					"/usr/sbin/crond",
+					"-f",
+					"-c",
+					"/etc/crontabs",
+					"-l",
+					"7"
+				],
+				"pid": 1051,
+				"respawn": {
+					"retry": 5,
+					"threshold": 3600,
+					"timeout": 5
+				},
+				"running": true,
+				"term_timeout": 5
+			}
+		},
+		"triggers": [],
+		"validate": [
+			{
+				"package": "system",
+				"rules": {
+					"cronloglevel": "uinteger"
+				},
+				"type": "system"
+			}
+		]
+	},
+	"ddns": {
+		"triggers": [
+			[
+				"config.change",
+				[
+					"if",
+					[
+						"eq",
+						"package",
+						"ddns"
+					],
+					[
+						"run_script",
+						"/etc/init.d/ddns",
+						"reload"
+					]
+				],
+				1000
+			]
+		]
+	},
+	"dnsmasq": {
+		"instances": {
+			"cfg01411c": {
+				"command": [
+					"/usr/sbin/dnsmasq",
+					"-C",
+					"/var/etc/dnsmasq.conf.cfg01411c",
+					"-k",
+					"-x",
+					"/var/run/dnsmasq/dnsmasq.cfg01411c.pid"
+				],
+				"pid": 3322,
+				"respawn": {
+					"retry": 5,
+					"threshold": 3600,
+					"timeout": 5
+				},
+				"running": true,
+				"term_timeout": 5
+			}
+		},
+		"triggers": [
+			[
+				"config.change",
+				[
+					"if",
+					[
+						"eq",
+						"package",
+						"dhcp"
+					],
+					[
+						"run_script",
+						"/etc/init.d/dnsmasq",
+						"reload"
+					]
+				],
+				1000
+			],
+			[
+				"config.change",
+				[
+					"if",
+					[
+						"eq",
+						"package",
+						"system"
+					],
+					[
+						"run_script",
+						"/etc/init.d/dnsmasq",
+						"reload"
+					]
+				],
+				1000
+			],
+			[
+				"interface.*",
+				[
+					"if",
+					[
+						"eq",
+						"interface",
+						"lan"
+					],
+					[
+						"run_script",
+						"/etc/init.d/dnsmasq",
+						"reload"
+					]
+				],
+				1000
+			]
+		]
+	},
+	"dropbear": {
+		"instances": {
+			"instance1": {
+				"command": [
+					"/usr/sbin/dropbear",
+					"-F",
+					"-P",
+					"/var/run/dropbear.main.pid",
+					"-p",
+					"22",
+					"-K",
+					"300",
+					"-T",
+					"3"
+				],
+				"data": {
+					"mdns": {
+						"ssh_22": {
+							"port": 22,
+							"service": "_ssh._tcp.local",
+							"txt": [
+								"daemon=dropbear"
+							]
+						}
+					}
+				},
+				"pid": 716,
+				"respawn": {
+					"retry": 5,
+					"threshold": 3600,
+					"timeout": 5
+				},
+				"running": true,
+				"term_timeout": 5
+			}
+		},
+		"triggers": [
+			[
+				"config.change",
+				[
+					"if",
+					[
+						"eq",
+						"package",
+						"dropbear"
+					],
+					[
+						"run_script",
+						"/etc/init.d/dropbear",
+						"reload"
+					]
+				],
+				1000
+			]
+		],
+		"validate": [
+			{
+				"package": "dropbear",
+				"rules": {
+					"BannerFile": "file",
+					"DirectInterface": "string",
+					"ForceCommand": "string",
+					"GatewayPorts": "bool",
+					"IdleTimeout": "uinteger",
+					"Interface": "string",
+					"LocalPortForward": "bool",
+					"MaxAuthTries": "uinteger",
+					"PasswordAuth": "bool",
+					"Port": "port",
+					"RecvWindowSize": "uinteger",
+					"RemotePortForward": "bool",
+					"RootLogin": "bool",
+					"RootPasswordAuth": "bool",
+					"SSHKeepAlive": "uinteger",
+					"enable": "bool",
+					"keyfile": "list(file)",
+					"mdns": "bool",
+					"rsakeyfile": "file"
+				},
+				"type": "dropbear"
+			}
+		]
+	},
+	"firewall": {
+		"triggers": [
+			[
+				"config.change",
+				[
+					"if",
+					[
+						"eq",
+						"package",
+						"firewall"
+					],
+					[
+						"run_script",
+						"/etc/init.d/firewall",
+						"reload"
+					]
+				],
+				1000
+			],
+			[
+				"service.data.update",
+				[
+					"if",
+					[
+						"eq",
+						"name",
+						"firewall"
+					],
+					[
+						"run_script",
+						"/etc/init.d/firewall",
+						"reload"
+					]
+				],
+				1000
+			]
+		]
+	},
+	"gpio_switch": {
+		"triggers": [
+			[
+				"config.change",
+				[
+					"if",
+					[
+						"eq",
+						"package",
+						"system"
+					],
+					[
+						"run_script",
+						"/etc/init.d/gpio_switch",
+						"reload"
+					]
+				],
+				1000
+			]
+		]
+	},
+	"log": {
+		"instances": {
+			"logd": {
+				"command": [
+					"/sbin/logd",
+					"-S",
+					"64"
+				],
+				"pid": 305,
+				"respawn": {
+					"retry": -1,
+					"threshold": 5,
+					"timeout": 1
+				},
+				"running": true,
+				"term_timeout": 5
+			}
+		},
+		"triggers": [
+			[
+				"config.change",
+				[
+					"if",
+					[
+						"eq",
+						"package",
+						"system"
+					],
+					[
+						"run_script",
+						"/etc/init.d/log",
+						"reload"
+					]
+				],
+				1000
+			]
+		],
+		"validate": [
+			{
+				"package": "system",
+				"rules": {
+					"log_file": "string",
+					"log_hostname": "string",
+					"log_ip": "host",
+					"log_port": "port",
+					"log_prefix": "string",
+					"log_proto": "or(tcp, udp)",
+					"log_remote": "bool",
+					"log_size": "uinteger",
+					"log_trailer_null": "bool"
+				},
+				"type": "system"
+			}
+		]
+	},
+	"network": {
+		"instances": {
+			"instance1": {
+				"command": [
+					"/sbin/netifd"
+				],
+				"limits": {
+					"core": "unlimited"
+				},
+				"pid": 846,
+				"respawn": {
+					"retry": 5,
+					"threshold": 3600,
+					"timeout": 5
+				},
+				"running": true,
+				"term_timeout": 5
+			}
+		},
+		"triggers": [
+			[
+				"config.change",
+				[
+					"if",
+					[
+						"eq",
+						"package",
+						"network"
+					],
+					[
+						"run_script",
+						"/etc/init.d/network",
+						"reload"
+					]
+				],
+				1000
+			],
+			[
+				"config.change",
+				[
+					"if",
+					[
+						"eq",
+						"package",
+						"wireless"
+					],
+					[
+						"run_script",
+						"/etc/init.d/network",
+						"reload"
+					]
+				],
+				1000
+			]
+		],
+		"validate": [
+			{
+				"package": "network",
+				"rules": {
+					"device": "string",
+					"ports": "list(ports)",
+					"vlan": "uinteger"
+				},
+				"type": "switch_vlan"
+			},
+			{
+				"package": "network",
+				"rules": {
+					"ar8xxx_mib_poll_interval": "uinteger",
+					"ar8xxx_mib_type": "range(0,1)",
+					"enable": "bool",
+					"enable_vlan": "bool",
+					"name": "string",
+					"reset": "bool"
+				},
+				"type": "switch"
+			},
+			{
+				"package": "network",
+				"rules": {
+					"action": "or(prohibit, unreachable, blackhole, throw)",
+					"dest": "cidr6",
+					"goto": "range(0,65535)",
+					"in": "string",
+					"invert": "bool",
+					"lookup": "or(range(0,65535),string)",
+					"mark": "string",
+					"out": "string",
+					"src": "cidr6",
+					"tos": "range(0,31)"
+				},
+				"type": "rule6"
+			},
+			{
+				"package": "network",
+				"rules": {
+					"action": "or(prohibit, unreachable, blackhole, throw)",
+					"dest": "cidr4",
+					"goto": "range(0,65535)",
+					"in": "string",
+					"invert": "bool",
+					"lookup": "or(range(0,65535),string)",
+					"mark": "string",
+					"out": "string",
+					"src": "cidr4",
+					"tos": "range(0,31)"
+				},
+				"type": "rule"
+			},
+			{
+				"package": "network",
+				"rules": {
+					"gateway": "ip6addr",
+					"interface": "string",
+					"metric": "uinteger",
+					"mtu": "uinteger",
+					"table": "or(range(0,65535),string)",
+					"target": "cidr6"
+				},
+				"type": "route6"
+			},
+			{
+				"package": "network",
+				"rules": {
+					"gateway": "ip4addr",
+					"interface": "string",
+					"metric": "uinteger",
+					"mtu": "uinteger",
+					"netmask": "netmask4",
+					"table": "or(range(0,65535),string)",
+					"target": "cidr4"
+				},
+				"type": "route"
+			},
+			{
+				"package": "network",
+				"rules": {
+					"atmdev": "uinteger",
+					"encaps": "or(llc, vc)",
+					"payload": "or(bridged, routed)",
+					"unit": "uinteger",
+					"vci": "range(32, 65535)",
+					"vpi": "range(0, 255)"
+				},
+				"type": "atm-bridge"
+			}
+		]
+	},
+	"nlbwmon": {
+		"instances": {
+			"instance1": {
+				"command": [
+					"/usr/sbin/nlbwmon",
+					"-o",
+					"/usr/share/nlbwmon/db",
+					"-b",
+					"524288",
+					"-i",
+					"24h",
+					"-r",
+					"30s",
+					"-p",
+					"/usr/share/nlbwmon/protocols",
+					"-G",
+					"400",
+					"-I",
+					"2026-01-01/1",
+					"-L",
+					"10000",
+					"-Z",
+					"-s",
+					"192.168.0.0/16",
+					"-s",
+					"172.16.0.0/12",
+					"-s",
+					"10.0.0.0/8",
+					"-s",
+					"192.168.77.1/24",
+					"-s",
+					"fd42:7ea:aa00::1/60"
+				],
+				"pid": 3031,
+				"running": true,
+				"term_timeout": 5
+			}
+		},
+		"triggers": [
+			[
+				"config.change",
+				[
+					"if",
+					[
+						"eq",
+						"package",
+						"dhcp"
+					],
+					[
+						"run_script",
+						"/etc/init.d/nlbwmon",
+						"reload"
+					]
+				],
+				1000
+			],
+			[
+				"config.change",
+				[
+					"if",
+					[
+						"eq",
+						"package",
+						"system"
+					],
+					[
+						"run_script",
+						"/etc/init.d/nlbwmon",
+						"reload"
+					]
+				],
+				1000
+			],
+			[
+				"config.change",
+				[
+					"if",
+					[
+						"eq",
+						"package",
+						"nlbwmon"
+					],
+					[
+						"run_script",
+						"/etc/init.d/nlbwmon",
+						"reload"
+					]
+				],
+				1000
+			],
+			[
+				"interface.*",
+				[
+					"if",
+					[
+						"eq",
+						"interface",
+						"lan"
+					],
+					[
+						"run_script",
+						"/etc/init.d/nlbwmon",
+						"reload"
+					]
+				],
+				1000
+			]
+		]
+	},
+	"odhcpd": {
+		"instances": {
+			"instance1": {
+				"command": [
+					"/usr/sbin/odhcpd"
+				],
+				"pid": 963,
+				"respawn": {
+					"retry": 5,
+					"threshold": 3600,
+					"timeout": 5
+				},
+				"running": true,
+				"term_timeout": 5
+			}
+		},
+		"triggers": [
+			[
+				"config.change",
+				[
+					"if",
+					[
+						"eq",
+						"package",
+						"dhcp"
+					],
+					[
+						"run_script",
+						"/etc/init.d/odhcpd",
+						"reload"
+					]
+				],
+				1000
+			],
+			[
+				"config.change",
+				[
+					"if",
+					[
+						"eq",
+						"package",
+						"network"
+					],
+					[
+						"run_script",
+						"/etc/init.d/odhcpd",
+						"reload"
+					]
+				],
+				1000
+			],
+			[
+				"config.change",
+				[
+					"if",
+					[
+						"eq",
+						"package",
+						"system"
+					],
+					[
+						"run_script",
+						"/etc/init.d/odhcpd",
+						"reload"
+					]
+				],
+				1000
+			]
+		]
+	},
+	"packet_steering": {
+		"triggers": [
+			[
+				"config.change",
+				[
+					"if",
+					[
+						"eq",
+						"package",
+						"network"
+					],
+					[
+						"run_script",
+						"/etc/init.d/packet_steering",
+						"reload"
+					]
+				],
+				1000
+			],
+			[
+				"config.change",
+				[
+					"if",
+					[
+						"eq",
+						"package",
+						"firewall"
+					],
+					[
+						"run_script",
+						"/etc/init.d/packet_steering",
+						"reload"
+					]
+				],
+				1000
+			],
+			[
+				"interface.*",
+				[
+					[
+						"run_script",
+						"/etc/init.d/packet_steering",
+						"reload"
+					]
+				],
+				1000
+			]
+		]
+	},
+	"rpcd": {
+		"instances": {
+			"instance1": {
+				"command": [
+					"/sbin/rpcd",
+					"-s",
+					"/var/run/ubus/ubus.sock",
+					"-t",
+					"30"
+				],
+				"pid": 359,
+				"respawn": {
+					"retry": 5,
+					"threshold": 3600,
+					"timeout": 5
+				},
+				"running": true,
+				"term_timeout": 5
+			}
+		},
+		"triggers": []
+	},
+	"sysntpd": {
+		"instances": {
+			"instance1": {
+				"command": [
+					"/usr/sbin/ntpd",
+					"-n",
+					"-N",
+					"-S",
+					"/usr/sbin/ntpd-hotplug",
+					"-p",
+					"0.openwrt.pool.ntp.org",
+					"-p",
+					"1.openwrt.pool.ntp.org"
+				],
+				"exit_code": 1,
+				"running": false,
+				"term_timeout": 5
+			}
+		},
+		"triggers": [
+			[
+				"config.change",
+				[
+					"if",
+					[
+						"eq",
+						"package",
+						"system"
+					],
+					[
+						"run_script",
+						"/etc/init.d/sysntpd",
+						"reload"
+					]
+				],
+				1000
+			],
+			[
+				"interface.*",
+				[
+					[
+						"run_script",
+						"/etc/init.d/sysntpd",
+						"reload"
+					]
+				],
+				1000
+			]
+		],
+		"validate": [
+			{
+				"package": "system",
+				"rules": {
+					"dhcp_interface": "list(string)",
+					"enable_server": "bool",
+					"enabled": "bool",
+					"interface": "string",
+					"server": "list(host)",
+					"use_dhcp": "bool"
+				},
+				"type": "timeserver"
+			}
+		]
+	},
+	"system": {
+		"triggers": [
+			[
+				"config.change",
+				[
+					"if",
+					[
+						"eq",
+						"package",
+						"system"
+					],
+					[
+						"run_script",
+						"/etc/init.d/system",
+						"reload"
+					]
+				],
+				1000
+			]
+		],
+		"validate": [
+			{
+				"package": "system",
+				"rules": {
+					"buffersize": "uinteger",
+					"conloglevel": "uinteger",
+					"hostname": "string",
+					"timezone": "string",
+					"zonename": "string"
+				},
+				"type": "system"
+			}
+		]
+	},
+	"ubus": {
+		"instances": {
+			"instance1": {
+				"command": [
+					"/sbin/ubusd"
+				],
+				"group": "ubus",
+				"pid": 91,
+				"respawn": {
+					"retry": 0,
+					"threshold": 3600,
+					"timeout": 1
+				},
+				"running": true,
+				"term_timeout": 5,
+				"user": "ubus"
+			}
+		}
+	},
+	"ucitrack": {
+		"triggers": [
+			[
+				"config.change",
+				[
+					"if",
+					[
+						"eq",
+						"package",
+						"firewall"
+					],
+					[
+						"run_script",
+						"ubus",
+						"call",
+						"service",
+						"event",
+						"{\"type\":\"config.change\",\"data\":{\"package\":\"luci-splash\"}}"
+					]
+				],
+				1000
+			],
+			[
+				"config.change",
+				[
+					"if",
+					[
+						"eq",
+						"package",
+						"firewall"
+					],
+					[
+						"run_script",
+						"ubus",
+						"call",
+						"service",
+						"event",
+						"{\"type\":\"config.change\",\"data\":{\"package\":\"qos\"}}"
+					]
+				],
+				1000
+			],
+			[
+				"config.change",
+				[
+					"if",
+					[
+						"eq",
+						"package",
+						"firewall"
+					],
+					[
+						"run_script",
+						"ubus",
+						"call",
+						"service",
+						"event",
+						"{\"type\":\"config.change\",\"data\":{\"package\":\"miniupnpd\"}}"
+					]
+				],
+				1000
+			],
+			[
+				"config.change",
+				[
+					"if",
+					[
+						"eq",
+						"package",
+						"dhcp"
+					],
+					[
+						"run_script",
+						"ubus",
+						"call",
+						"service",
+						"event",
+						"{\"type\":\"config.change\",\"data\":{\"package\":\"odhcpd\"}}"
+					]
+				],
+				1000
+			],
+			[
+				"config.change",
+				[
+					"if",
+					[
+						"eq",
+						"package",
+						"network"
+					],
+					[
+						"run_script",
+						"ubus",
+						"call",
+						"service",
+						"event",
+						"{\"type\":\"config.change\",\"data\":{\"package\":\"dhcp\"}}"
+					]
+				],
+				1000
+			],
+			[
+				"config.change",
+				[
+					"if",
+					[
+						"eq",
+						"package",
+						"wireless"
+					],
+					[
+						"run_script",
+						"ubus",
+						"call",
+						"service",
+						"event",
+						"{\"type\":\"config.change\",\"data\":{\"package\":\"network\"}}"
+					]
+				],
+				1000
+			],
+			[
+				"config.change",
+				[
+					"if",
+					[
+						"eq",
+						"package",
+						"fstab"
+					],
+					[
+						"run_script",
+						"/sbin/block",
+						"mount"
+					]
+				],
+				1000
+			],
+			[
+				"config.change",
+				[
+					"if",
+					[
+						"eq",
+						"package",
+						"system"
+					],
+					[
+						"run_script",
+						"/etc/init.d/led",
+						"reload"
+					]
+				],
+				1000
+			],
+			[
+				"config.change",
+				[
+					"if",
+					[
+						"eq",
+						"package",
+						"system"
+					],
+					[
+						"run_script",
+						"ubus",
+						"call",
+						"service",
+						"event",
+						"{\"type\":\"config.change\",\"data\":{\"package\":\"luci_statistics\"}}"
+					]
+				],
+				1000
+			],
+			[
+				"config.change",
+				[
+					"if",
+					[
+						"eq",
+						"package",
+						"system"
+					],
+					[
+						"run_script",
+						"ubus",
+						"call",
+						"service",
+						"event",
+						"{\"type\":\"config.change\",\"data\":{\"package\":\"dhcp\"}}"
+					]
+				],
+				1000
+			]
+		]
+	},
+	"uhttpd": {
+		"instances": {
+			"instance1": {
+				"command": [
+					"/usr/sbin/uhttpd",
+					"-f",
+					"-h",
+					"/www",
+					"-r",
+					"verso-lab",
+					"-x",
+					"/cgi-bin",
+					"-u",
+					"/ubus",
+					"-t",
+					"60",
+					"-T",
+					"30",
+					"-k",
+					"20",
+					"-A",
+					"1",
+					"-n",
+					"3",
+					"-N",
+					"100",
+					"-R",
+					"-p",
+					"0.0.0.0:80",
+					"-p",
+					"[::]:80",
+					"-C",
+					"/etc/uhttpd.crt",
+					"-K",
+					"/etc/uhttpd.key",
+					"-s",
+					"0.0.0.0:443",
+					"-s",
+					"[::]:443"
+				],
+				"pid": 1174,
+				"respawn": {
+					"retry": 5,
+					"threshold": 3600,
+					"timeout": 5
+				},
+				"running": true,
+				"term_timeout": 5
+			}
+		},
+		"triggers": [
+			[
+				"config.change",
+				[
+					"if",
+					[
+						"eq",
+						"package",
+						"uhttpd"
+					],
+					[
+						"run_script",
+						"/etc/init.d/uhttpd",
+						"reload"
+					]
+				],
+				1000
+			],
+			[
+				"acme.renew",
+				[
+					[
+						"run_script",
+						"/etc/init.d/uhttpd",
+						"reload"
+					]
+				],
+				5000
+			]
+		]
+	},
+	"urandom_seed": {
+		"instances": {
+			"urandom_seed": {
+				"command": [
+					"/sbin/urandom_seed"
+				],
+				"exit_code": 0,
+				"running": false,
+				"term_timeout": 5
+			}
+		},
+		"triggers": []
+	},
+	"urngd": {
+		"instances": {
+			"instance1": {
+				"command": [
+					"/sbin/urngd"
+				],
+				"pid": 125,
+				"running": true,
+				"term_timeout": 5
+			}
+		},
+		"triggers": []
+	},
+	"verso": {
+		"instances": {
+			"verso": {
+				"capabilities": "/etc/capabilities/verso.json",
+				"command": [
+					"/usr/bin/verso",
+					"-listen-https",
+					"0.0.0.0:8443",
+					"-listen-http",
+					"0.0.0.0:8080",
+					"-redirect-https",
+					"0",
+					"-history-dir",
+					"/usr/share/verso/history"
+				],
+				"env": {
+					"TMPDIR": "/var/run/verso",
+					"VERSO_TLS_DIR": "/etc/verso"
+				},
+				"group": "verso",
+				"no_new_privs": true,
+				"pid": 432744,
+				"reload_signal": 1,
+				"respawn": {
+					"retry": 5,
+					"threshold": 3600,
+					"timeout": 5
+				},
+				"running": true,
+				"term_timeout": 5,
+				"user": "verso"
+			}
+		},
+		"triggers": [
+			[
+				"config.change",
+				[
+					"if",
+					[
+						"eq",
+						"package",
+						"verso"
+					],
+					[
+						"run_script",
+						"/etc/init.d/verso",
+						"reload"
+					]
+				],
+				1000
+			]
+		]
+	},
+	"verso-plugin-ddns": {
+		"instances": {
+			"ddns": {
+				"command": [
+					"/usr/bin/verso-plugin-ddns"
+				],
+				"group": "verso",
+				"pid": 417480,
+				"respawn": {
+					"retry": 5,
+					"threshold": 3600,
+					"timeout": 5
+				},
+				"running": true,
+				"term_timeout": 5,
+				"user": "verso-plugin-ddns"
+			}
+		},
+		"triggers": []
+	},
+	"verso-plugin-dnsdhcp": {
+		"instances": {
+			"dnsdhcp": {
+				"command": [
+					"/usr/bin/verso-plugin-dnsdhcp"
+				],
+				"group": "verso",
+				"pid": 417613,
+				"respawn": {
+					"retry": 5,
+					"threshold": 3600,
+					"timeout": 5
+				},
+				"running": true,
+				"term_timeout": 5,
+				"user": "verso-plugin-dnsdhcp"
+			}
+		},
+		"triggers": [
+			[
+				"config.change",
+				[
+					"if",
+					[
+						"eq",
+						"package",
+						"adblock"
+					],
+					[
+						"run_script",
+						"/etc/init.d/adblock",
+						"reload"
+					]
+				],
+				1000
+			]
+		]
+	},
+	"verso-plugin-firewall": {
+		"instances": {
+			"firewall": {
+				"command": [
+					"/usr/bin/verso-plugin-firewall"
+				],
+				"env": {
+					"VERSO_FIREWALL_SOCKET": "/var/run/verso-plugin-firewall/firewall.sock"
+				},
+				"group": "verso",
+				"pid": 429254,
+				"respawn": {
+					"retry": 5,
+					"threshold": 3600,
+					"timeout": 5
+				},
+				"running": true,
+				"term_timeout": 5,
+				"user": "verso-plugin-firewall"
+			}
+		},
+		"triggers": []
+	},
+	"verso-plugin-interfaces": {
+		"instances": {
+			"interfaces": {
+				"command": [
+					"/usr/bin/verso-plugin-interfaces"
+				],
+				"env": {
+					"VERSO_INTERFACES_SOCKET": "/var/run/verso-plugin-interfaces/interfaces.sock"
+				},
+				"group": "verso",
+				"pid": 429389,
+				"respawn": {
+					"retry": 5,
+					"threshold": 3600,
+					"timeout": 5
+				},
+				"running": true,
+				"term_timeout": 5,
+				"user": "verso-plugin-interfaces"
+			}
+		},
+		"triggers": []
+	},
+	"verso-plugin-qos": {
+		"instances": {
+			"qos": {
+				"command": [
+					"/usr/bin/verso-plugin-qos"
+				],
+				"group": "verso",
+				"pid": 418005,
+				"respawn": {
+					"retry": 5,
+					"threshold": 3600,
+					"timeout": 5
+				},
+				"running": true,
+				"term_timeout": 5,
+				"user": "verso-plugin-qos"
+			}
+		},
+		"triggers": []
+	},
+	"verso-plugin-system": {
+		"instances": {
+			"system": {
+				"command": [
+					"/usr/bin/verso-plugin-system"
+				],
+				"env": {
+					"VERSO_SYSTEM_SOCKET": "/var/run/verso-plugin-system/system.sock"
+				},
+				"group": "verso",
+				"pid": 429580,
+				"respawn": {
+					"retry": 5,
+					"threshold": 3600,
+					"timeout": 5
+				},
+				"running": true,
+				"term_timeout": 5,
+				"user": "verso-plugin-system"
+			}
+		},
+		"triggers": []
+	},
+	"verso-plugin-vpn": {
+		"instances": {
+			"vpn": {
+				"command": [
+					"/usr/bin/verso-plugin-vpn"
+				],
+				"group": "verso",
+				"pid": 418271,
+				"respawn": {
+					"retry": 5,
+					"threshold": 3600,
+					"timeout": 5
+				},
+				"running": true,
+				"term_timeout": 5,
+				"user": "verso-plugin-vpn"
+			}
+		},
+		"triggers": []
+	},
+	"verso-rpcd": {
+		"instances": {
+			"verso-rpcd": {
+				"command": [
+					"/usr/sbin/verso-rpcd",
+					"--socket",
+					"/var/run/verso-rpcd/verso-rpcd.sock"
+				],
+				"group": "verso",
+				"no_new_privs": true,
+				"pid": 428967,
+				"respawn": {
+					"retry": 5,
+					"threshold": 3600,
+					"timeout": 5
+				},
+				"running": true,
+				"term_timeout": 5,
+				"user": "root"
+			}
+		},
+		"triggers": []
+	}
+}

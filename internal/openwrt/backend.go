@@ -133,6 +133,12 @@ type Backend interface {
 	UCIChanges(ctx context.Context, sid string) (map[string][][]string, error)
 	// UCIRevert discards a config's staged changes.
 	UCIRevert(ctx context.Context, sid, config string) error
+	// UCIUnstage discards a config's staged uci changes alone, leaving the
+	// staged files of the family its daemon reads; UnstageFiles discards
+	// those files alone. Together they are UCIRevert, apart they let one
+	// change be taken out of a stage that holds others.
+	UCIUnstage(ctx context.Context, sid, config string) error
+	UnstageFiles(ctx context.Context, sid, config string) error
 	// UCIApply commits every dirty config, lets procd's config triggers reload the
 	// affected services, and arms rpcd's rollback: unless UCIConfirm lands within
 	// timeout seconds, the device reverts itself.
@@ -153,6 +159,10 @@ type Backend interface {
 	// (RCState.Failed), from one read of procd's service table gated on the
 	// session's ubus/service/list access: the cheap read a live page polls.
 	FailedServices(ctx context.Context, sid string) ([]string, error)
+	// ReloadTriggers names, for each config, the init scripts procd reloads
+	// when a change to it is applied, read from procd's own trigger table and
+	// gated on the session's ubus/service/list access.
+	ReloadTriggers(ctx context.Context, sid string) (map[string][]string, error)
 	// RCInit drives one lifecycle action (start, stop, restart, enable,
 	// disable) on a named init script through procd's rc object, gated on the
 	// session's ubus/rc/init access. Callers constrain the name to services
@@ -314,6 +324,9 @@ type NetIface struct {
 	Name   string
 	Device string
 	Up     bool
+	// Addresses are the interface's own IPv4 and IPv6 addresses, without
+	// their prefix length, as netifd reports them now.
+	Addresses []string
 }
 
 // WANState is the set of live L3 devices that own an active default route.
@@ -622,6 +635,7 @@ type NativeBackend struct {
 	uciConfirm     uciConfirmFn
 	rcList         rcListFn
 	failedSvc      failedSvcFn
+	reloadTriggers reloadTriggersFn
 	rcInit         rcInitFn
 	pkgStatus      pkgStatusFn
 	pkgUpdate      pkgUpdateFn
@@ -696,6 +710,7 @@ func NewNativeBackend() *NativeBackend {
 		uciConfirm:     dialUCIConfirm(""),
 		rcList:         dialRCList(""),
 		failedSvc:      dialFailedServices(""),
+		reloadTriggers: dialReloadTriggers(""),
 		rcInit:         dialRCInit(""),
 		pkgStatus:      dialPkgStatus(""),
 		pkgUpdate:      dialPkgUpdate(""),
@@ -916,6 +931,18 @@ func (b *NativeBackend) UCIRevert(ctx context.Context, sid, config string) error
 	if err := b.uciRevert(ctx, sid, config); err != nil {
 		return err
 	}
+	return b.UnstageFiles(ctx, sid, config)
+}
+
+// UCIUnstage discards a config's staged uci changes through rpcd, gated by
+// the sid, leaving the config's staged files.
+func (b *NativeBackend) UCIUnstage(ctx context.Context, sid, config string) error {
+	return b.uciRevert(ctx, sid, config)
+}
+
+// UnstageFiles discards the staged files of the family config's daemon
+// reads, leaving its uci changes; a config no family is read for has none.
+func (b *NativeBackend) UnstageFiles(ctx context.Context, sid, config string) error {
 	if family, ok := familyOf(config); ok {
 		return b.discardFiles(ctx, sid, family)
 	}
@@ -1110,7 +1137,17 @@ func parseNetIfaces(dump map[string]any) []NetIface {
 		case int64:
 			up = v != 0
 		}
-		out = append(out, NetIface{Name: name, Device: device, Up: up})
+		iface := NetIface{Name: name, Device: device, Up: up}
+		for _, family := range []string{"ipv4-address", "ipv6-address"} {
+			list, _ := rec[family].([]any)
+			for _, a := range list {
+				entry, _ := a.(map[string]any)
+				if address, _ := entry["address"].(string); address != "" {
+					iface.Addresses = append(iface.Addresses, address)
+				}
+			}
+		}
+		out = append(out, iface)
 	}
 	return out
 }
