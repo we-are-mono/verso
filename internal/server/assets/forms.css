@@ -2,10 +2,14 @@
 /* SPDX-FileCopyrightText: 2026 Mono Technologies Inc. */
 
 /* Shared form geometry for pages, drawers and nested settings, on the 8px
- * grid: a field is 24px of air, its label's 24px line, then its control — a
- * 32px box straight under the label, so a field is 80px, or a choice's options a
- * row each — and its description's lines. The shell assigns content
- * measures; plugins never declare presentation widths. */
+ * grid: a field is a ledger row (form-fields), its question on the left (the
+ * name's 24px line, its description's lines under it) and its answer in the
+ * form's one answer column, a 32px control centred on the name's line. Rows
+ * that follow each other meet on a hairline: 16px under the one's last line,
+ * the line, 15px over the next one's name, so a row of one line is 56px. The
+ * first row of a run keeps a block's 24px over it and the last keeps none
+ * under it, as a field always has. The shell assigns content measures;
+ * plugins never declare presentation widths. */
 @layer components {
   /* Opt-in groups of related fields, in the same DOM and keyboard order at
      every size. The group owns the row's air; wrapped rows keep it. */
@@ -42,14 +46,53 @@
     --verso-field-width-prefix: calc(var(--spacing) * 56 + 1px);
     --verso-field-width-endpoint: calc(var(--spacing) * 128 + 1px);
     container: verso-field / inline-size;
-    display: flex;
-    flex-direction: column;
-    gap: 0 calc(var(--spacing) * 2);
     padding-block: var(--spacing-inset) 0;
   }
   /* After a fact's hairline a field's air is a pixel short, as all air after
      a drawn edge is, so its label still fills a band of the grid. */
   [data-verso-settings-row]:not(:last-child) + .verso-field-row { padding-top: calc(var(--spacing-inset) - 1px); }
+  /* Rows that follow each other meet on a hairline: the one keeps 16px under
+     its last line, the line lands on the grid, and the next one's name stands
+     15px after it, a band of the grid. A gate's row is the first of its
+     block, and the row after a gate follows whatever the gate last shows. */
+  .verso-field-row + .verso-field-row,
+  .verso-conditional + .verso-field-row,
+  :is(.verso-field-row, .verso-conditional) + .verso-conditional > .verso-conditional-gate {
+    border-top: 1px solid var(--color-rule);
+    padding-top: calc(var(--spacing) * 3.75);
+  }
+  .verso-field-row:has(+ :is(.verso-field-row, .verso-conditional)) {
+    padding-bottom: calc(var(--spacing) * 4);
+  }
+  .verso-conditional:has(+ :is(.verso-field-row, .verso-conditional)) > .verso-conditional-gate,
+  .verso-conditional:has(+ :is(.verso-field-row, .verso-conditional)) > .verso-conditional-body > .verso-field-row:last-child,
+  .verso-conditional:has(> .verso-conditional-gate input[data-verso-switch]:checked) > .verso-conditional-gate {
+    padding-bottom: calc(var(--spacing) * 4);
+  }
+  /* What a gate reveals is the gate's own group: its rows stand under it
+     with no hairline and no air of their own over them. */
+  .verso-conditional-body > .verso-field-row,
+  .verso-conditional-otherwise > .verso-field-row {
+    border-top: 0;
+    padding-top: 0;
+  }
+  .verso-conditional-body > .verso-field-row:has(+ .verso-field-row),
+  .verso-conditional-otherwise > .verso-field-row:has(+ .verso-field-row) {
+    padding-bottom: calc(var(--spacing) * 4);
+  }
+
+  /* The ledger: the question on the left, the answer in the form's one
+     answer column, and a lane after it where a row can be taken out. */
+  .verso-field-ledger {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) var(--spacing-answer);
+    column-gap: var(--spacing-inset);
+    align-items: start;
+  }
+  .verso-field-ledger:has(> :is([data-verso-remove-field], [data-verso-remove-lane])) {
+    grid-template-columns: minmax(0, 1fr) var(--spacing-answer) var(--spacing-act);
+  }
+  .verso-field-question { grid-column: 1; min-width: 0; }
 
   .verso-field-control {
     display: flex;
@@ -59,48 +102,45 @@
     max-width: 100%;
     min-width: 0;
   }
-  /* A control-height box stands straight under its label's 24px line, so
-     the label and the box are 56px and a field with its air 80px; what
-     follows the box inside the control — a description's lines, a refusal
-     band — is whole lines. A list of values draws its own rows. */
-
-  /* Each half needs at least 20rem. Narrow drawers and zoomed pages retain
-     the full measure, independently of the viewport's width. */
-  @container verso-field (min-width: 40rem) {
-    [data-verso-control-measure="host"] { width: var(--verso-field-width-host); }
-  }
-  [data-verso-control-measure="secret"] { width: var(--verso-field-width-secret); }
-  [data-verso-control-measure="prefix"] { width: var(--verso-field-width-prefix); }
-  /* Domain/address pairs, resolver URLs and listeners need a longer measure.
-     The shared control's max-width caps it to the available space. */
-  [data-verso-control-measure="endpoint"] { width: var(--verso-field-width-endpoint); }
-
-  /* Native selects measure their longest option. Keep the chevron with the
-     select and keep error messages from determining that intrinsic width. */
-  [data-verso-control-measure="choice"] > :has(> select) {
-    width: fit-content;
-    max-width: 100%;
-  }
-  /* Checkbox first in both DOM and visual order; align with the label's first
-     line when its words or technical key wrap. */
-  .verso-field-toggle {
-    display: grid;
-    grid-template-columns: calc(var(--spacing) * 4) minmax(0, 1fr);
-    align-items: start;
-  }
-  /* The 16px box stands centred on its label's 24px line. */
-  .verso-field-toggle > [data-verso-control] {
-    width: auto;
-    padding-top: var(--spacing);
-  }
-  /* A description kept in view hangs under the label it explains, the next
-     24px line, rather than a row gap away. */
-  .verso-field-toggle > [data-verso-field-desc] {
+  /* The answer centres a 32px control on the name's 24px line, reaching 4px
+     past it either side; what follows the control (its refusal, its note)
+     starts on the line 8px under the name's band. */
+  .verso-field-answer {
     grid-column: 2;
+    min-height: calc(var(--spacing) * 8);
+    margin-top: calc(var(--spacing) * -1);
   }
-  /* A refused checkbox's band stands under its label, as a field's stands
-     under its box. */
-  .verso-field-toggle > [data-verso-error] { grid-column: 2; }
+  .verso-field-answer:not(:has(> :is([data-verso-error], [data-verso-field-note], [data-verso-inline-error]:not([hidden])))) {
+    margin-bottom: calc(var(--spacing) * -1);
+  }
+  .verso-field-answer > :is([data-verso-error], [data-verso-field-note], [data-verso-inline-error]) {
+    margin-top: var(--spacing);
+  }
+  /* A row with no question of its own (a bare control) is all answer. */
+  .verso-field-ledger:not(:has(> .verso-field-question > *)) > .verso-field-answer {
+    grid-column: 1 / -1;
+    margin-block: 0;
+  }
+
+  /* A row narrower than a question and an answer side by side stacks: the
+     question, then the answer straight under it, at the row's width. Each
+     measure applies there, where a control has the row to itself. */
+  @container verso-field (width < 36rem) {
+    .verso-field-ledger { grid-template-columns: minmax(0, 1fr); }
+    .verso-field-ledger:has(> :is([data-verso-remove-field], [data-verso-remove-lane])) {
+      grid-template-columns: minmax(0, 1fr) var(--spacing-act);
+    }
+    .verso-field-answer { grid-column: 1; margin-block: 0; }
+    [data-verso-control-measure="secret"] { width: var(--verso-field-width-secret); }
+    [data-verso-control-measure="prefix"] { width: var(--verso-field-width-prefix); }
+    [data-verso-control-measure="endpoint"] { width: var(--verso-field-width-endpoint); }
+    /* Native selects measure their longest option. Keep the chevron with the
+       select and keep error messages from determining that intrinsic width. */
+    [data-verso-control-measure="choice"] > :has(> select) {
+      width: fit-content;
+      max-width: 100%;
+    }
+  }
 
   /* verso-box: one frame holding typed values — a value and its unit, or
      related values fused into one control. The frame wears the field's
@@ -127,16 +167,6 @@
     border-color: var(--color-crimson-deep);
     box-shadow: inset 0 0 0 1px var(--color-crimson-deep), var(--shadow-field);
   }
-  /* What stands under a box — its refusals, its description — is as wide as
-     the box, never the column: the words wrap inside the box's own measure
-     (contain keeps them from widening it), with 20rem as the floor so a
-     one-number box still gives its refusal a readable line. */
-  [data-verso-control]:has(> .verso-box) {
-    width: fit-content;
-    min-width: min(100%, 20rem);
-    max-width: 100%;
-  }
-  [data-verso-control]:has(> .verso-box) > :not(.verso-box) { contain: inline-size; }
   .verso-box-part {
     --verso-part-width: calc(var(--spacing) * 44);
     display: flex;
@@ -213,28 +243,22 @@
   }
   .verso-switch-group > .verso-field-row { padding-block: 0; }
 
-  /* A removable row still reads label → input → remove. Reserve the same
-     trailing lane on fixed rows belonging to that editable set. */
-  .verso-field-with-remove {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) calc(var(--spacing) * 7);
-    align-items: start;
-  }
-  .verso-field-with-remove > .verso-field-label { grid-column: 1 / -1; }
-  .verso-field-with-remove > [data-verso-control] { grid-column: 1; }
-  .verso-field-with-remove > :is([data-verso-remove-field], [data-verso-remove-lane]) { grid-column: 2; }
-
-  /* Compound searches and inline actions already own their outer spacing.
-     Everywhere else a field brings its own 24px of air, the first in a form
-     or a revealed group too: it is the air under the title it follows. */
-  [data-verso-compact-form] .verso-field-row { padding-block: 0; }
+  /* Compound searches and inline actions already own their outer spacing,
+     and their fields stand as they always have, a label over its box: they
+     are a toolbar, not a list of settings. */
+  [data-verso-compact-form] .verso-field-row { padding-block: 0; border-top: 0; }
+  [data-verso-compact-form] .verso-field-ledger { display: block; }
+  [data-verso-compact-form] .verso-field-answer { margin-block: 0; }
 }
 
-/* Override the shared input box's w-full utility for native selects. */
+/* Override the shared input box's w-full utility for native selects, where a
+   control has the row to itself; in the answer column a select fills it. */
 @layer utilities {
-  [data-verso-control-measure="choice"] > :has(> select) > select {
-    width: auto;
-    max-width: 100%;
+  @container verso-field (width < 36rem) {
+    [data-verso-control-measure="choice"] > :has(> select) > select {
+      width: auto;
+      max-width: 100%;
+    }
   }
 
   /* An added condition (conditions.item) stands as one setting's row on the

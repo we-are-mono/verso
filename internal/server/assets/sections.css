@@ -235,6 +235,15 @@
      as the first stands under the title, rather than a page's 40px. */
   --verso-rhythm: var(--spacing-inset);
 }
+/* A field row in a card runs from the card's left border to its right, its
+ * words still the card's 23px in, so the hairline between two rows touches
+ * both borders: a line that touches a card's borders separates questions
+ * (form-fields). A row inside a row, or in a field set's cell, stays in its
+ * column; a drawer's rows run its content column. */
+.verso-page-body section[data-verso-section]:not(section section, dialog *) .verso-field-row:not(.verso-field-row .verso-field-row, .verso-form-grid .verso-field-row) {
+  margin-inline: calc(var(--verso-side) * -1);
+  padding-inline: var(--verso-side);
+}
 /* A field brings its own 24px of air, so after any block in a card it takes
  * no margin: the step is its air, and its label stands 24px under the block
  * as anything else would. */

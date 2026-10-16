@@ -377,6 +377,74 @@ func TestAFieldRowMeasuresOnTheEightPixelGrid(t *testing.T) {
 	}
 }
 
+// TestAFieldRowIsALedger: a row is its question and its answer side by side,
+// the answer in the form's one column, a lane after it where a row can be
+// taken out (form-fields). Rows that follow each other meet on a hairline, 16px
+// under the one's last line and 15px over the next one's name, and the answer
+// centres a 32px control on the name's band, reaching 4px past it either side.
+func TestAFieldRowIsALedger(t *testing.T) {
+	raw, err := os.ReadFile("assets/forms.css")
+	if err != nil {
+		t.Fatal(err)
+	}
+	css := string(raw)
+	ledger := cssBlock(t, css, ".verso-field-ledger {")
+	for _, want := range []string{
+		"display: grid;",
+		"grid-template-columns: minmax(0, 1fr) var(--spacing-answer);",
+		"column-gap: var(--spacing-inset);",
+	} {
+		if !strings.Contains(ledger, want) {
+			t.Errorf("the ledger lacks %s: %s", want, ledger)
+		}
+	}
+	lane := cssBlock(t, css, ".verso-field-ledger:has(> :is([data-verso-remove-field], [data-verso-remove-lane])) {")
+	if !strings.Contains(lane, "grid-template-columns: minmax(0, 1fr) var(--spacing-answer) var(--spacing-act);") {
+		t.Errorf("a removable row's lane is not the ledger's third column: %s", lane)
+	}
+	between := cssBlock(t, css, ".verso-field-row + .verso-field-row,")
+	for _, want := range []string{"border-top: 1px solid var(--color-rule);", "padding-top: calc(var(--spacing) * 3.75);"} {
+		if !strings.Contains(between, want) {
+			t.Errorf("rows do not meet on a hairline 15px over the name: missing %s in %s", want, between)
+		}
+	}
+	before := cssBlock(t, css, ".verso-field-row:has(+ :is(.verso-field-row, .verso-conditional)) {")
+	if !strings.Contains(before, "padding-bottom: calc(var(--spacing) * 4);") {
+		t.Errorf("a row followed by a row keeps 16px under its last line: %s", before)
+	}
+	answer := cssBlock(t, css, ".verso-field-answer {")
+	for _, want := range []string{"grid-column: 2;", "margin-top: calc(var(--spacing) * -1);"} {
+		if !strings.Contains(answer, want) {
+			t.Errorf("the answer does not centre on the name's band: missing %s in %s", want, answer)
+		}
+	}
+	for _, gone := range []string{".verso-field-toggle", ".verso-field-with-remove"} {
+		if strings.Contains(css, gone) {
+			t.Errorf("forms.css still lays out %s", gone)
+		}
+	}
+}
+
+// TestFieldRowsRunToACardsBorders: in a page card a field row runs from the
+// card's left border to its right, its words still the card's 23px in, so the
+// hairlines between rows touch both borders (form-fields). A row inside
+// another row, a field set's cell, or a drawer's row stays in its column.
+func TestFieldRowsRunToACardsBorders(t *testing.T) {
+	raw, err := os.ReadFile("assets/sections.css")
+	if err != nil {
+		t.Fatal(err)
+	}
+	block := cssBlock(t, string(raw), ".verso-page-body section[data-verso-section]:not(section section, dialog *) .verso-field-row:not(.verso-field-row .verso-field-row, .verso-form-grid .verso-field-row) {")
+	for _, want := range []string{
+		"margin-inline: calc(var(--verso-side) * -1);",
+		"padding-inline: var(--verso-side);",
+	} {
+		if !strings.Contains(block, want) {
+			t.Errorf("a card's field row does not run to its borders: missing %s in %s", want, block)
+		}
+	}
+}
+
 // cssBlock is the body of the first rule that opens with head, up to its
 // first closing brace: enough for a rule that nests nothing.
 func cssBlock(t *testing.T, css, head string) string {
