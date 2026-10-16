@@ -303,6 +303,30 @@ func TestUCIDeleteAbsentOptionIsNamed(t *testing.T) {
 	}
 }
 
+// TestUCIConfigAbsentIsNamed: rpcd answers a read of a config no installed
+// package ships (wireless on a wired router, adblock before it is installed)
+// with UBUS_STATUS_NOT_FOUND from the invoke. That is a fact about the router,
+// not a failure, so the backend names it — ErrConfigNotFound. The same status
+// from the lookup is rpcd off the bus, and stays a failure.
+func TestUCIConfigAbsentIsNamed(t *testing.T) {
+	for name, c := range map[string]struct {
+		cause  error
+		absent bool
+	}{
+		"no such config":        {&ubus.StatusError{Code: ubus.StatusNotFound, Phase: ubus.PhaseInvoke, Call: "get"}, true},
+		"the uci object is off": {&ubus.StatusError{Code: ubus.StatusNotFound, Phase: ubus.PhaseLookup, Call: "uci"}, false},
+		"a transport failure":   {errors.New("dial: connection refused"), false},
+	} {
+		b := &NativeBackend{uciConfig: func(context.Context, string, string) (map[string]any, error) {
+			return nil, fmt.Errorf("openwrt: %w", c.cause)
+		}}
+		_, err := b.UCIConfig(context.Background(), "s1", "wireless")
+		if errors.Is(err, ErrConfigNotFound) != c.absent || err == nil {
+			t.Errorf("%s: UCIConfig = %v, want absent %v", name, err, c.absent)
+		}
+	}
+}
+
 // TestUCIDeleteOtherFailuresPassThrough: only NOT_FOUND from the invoke means
 // "already clear". Any other ubus status, and any transport failure, reaches the
 // caller as it came.

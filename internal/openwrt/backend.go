@@ -31,6 +31,11 @@ var ErrAccessDenied = errors.New("openwrt: access denied by rpcd ACL")
 // section that is not there is a different question, and one this never answers.
 var ErrOptionNotFound = errors.New("openwrt: uci option not set")
 
+// ErrConfigNotFound reports that a uci config is not on the router: no
+// installed package ships it (wireless on a wired router). A reader takes it as
+// an empty config rather than a failure.
+var ErrConfigNotFound = errors.New("openwrt: uci config not present")
+
 // ZeroSID is rpcd's local-root convention: an all-zero session id, presented by
 // automation that runs as root on the device itself and therefore has no
 // operator session to borrow (ADR-014 §3). It authorizes nothing on its own —
@@ -784,8 +789,17 @@ func (b *NativeBackend) UCISet(ctx context.Context, sid, config, section string,
 }
 
 // UCIConfig reads a whole uci config through rpcd, gated by the sid.
+// A config no installed package ships is reported as ErrConfigNotFound: rpcd
+// answers its read with UBUS_STATUS_NOT_FOUND from the invoke, a fact about
+// the router rather than a failure. The same status from the `uci` object's
+// lookup is rpcd off the bus, and passes through as the failure it is.
 func (b *NativeBackend) UCIConfig(ctx context.Context, sid, config string) (map[string]any, error) {
-	return b.uciConfig(ctx, sid, config)
+	values, err := b.uciConfig(ctx, sid, config)
+	var status *ubus.StatusError
+	if errors.As(err, &status) && status.Code == ubus.StatusNotFound && status.Phase == ubus.PhaseInvoke {
+		return nil, fmt.Errorf("openwrt: read %s: %w", config, ErrConfigNotFound)
+	}
+	return values, err
 }
 
 // UCIAdd creates a new section of secType through rpcd, gated by the sid, and

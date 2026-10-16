@@ -1108,7 +1108,11 @@ func (s *Server) readSnapshot(ctx context.Context, m plugin.Manifest, sid string
 	for _, config := range configs {
 		values, err := s.backend.UCIConfig(ctx, sid, config)
 		if err != nil {
-			log.Printf("verso: plugin %q read of uci %q failed: %v", m.ID, config, err)
+			// A config no installed package ships is a fact about the router,
+			// read on every page; only a read that failed is worth a line.
+			if !errors.Is(err, openwrt.ErrConfigNotFound) {
+				log.Printf("verso: plugin %q read of uci %q failed: %v", m.ID, config, err)
+			}
 			continue
 		}
 		snapshot[config] = values
