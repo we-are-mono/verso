@@ -304,6 +304,24 @@ fn ipv4_network(ipaddr: &str, netmask: &str) -> Option<String> {
     ))
 }
 
+/// subnet_holds says whether an interface's configured IPv4 network holds an
+/// address: Some(true) or Some(false) when the config states a network, None
+/// when it states none (an interface that learns its address) or the address
+/// is not IPv4, so a caller never judges what the config does not say.
+pub fn subnet_holds(ipaddr: &str, netmask: &str, address: &str) -> Option<bool> {
+    let network = ipv4_network(ipaddr, netmask)?;
+    let (base, prefix) = network.split_once('/')?;
+    let prefix: u32 = prefix.parse().ok()?;
+    let mask = if prefix == 0 {
+        0
+    } else {
+        u32::MAX << (32 - prefix)
+    };
+    let base = u32::from_be_bytes(ipv4_octets(base)?);
+    let address = u32::from_be_bytes(ipv4_octets(address.trim())?);
+    Some(address & mask == base)
+}
+
 /// prefix_of counts the leading ones of a dotted-quad netmask. A mask with a gap
 /// in it is not a prefix and is refused rather than guessed at.
 fn prefix_of(netmask: &str) -> Option<u32> {

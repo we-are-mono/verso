@@ -24,10 +24,11 @@
 //! carries them (`conditions::for_redirect`), and the few that say what happens
 //! rather than what matches sit beside the thing they govern.
 
-use verso_plugin::{uci_text, Map, RowDrawer, SectionWidget, SelectOption, Widget};
+use verso_plugin::{uci_text, Map, RowDrawer, SectionWidget, SelectOption, Tone, Widget};
 
 use crate::conditions;
 use crate::fields;
+use crate::format;
 use crate::model::{Firewall, Redirect};
 use crate::page;
 use crate::redirect_form::{RedirectForm, PROTOCOLS};
@@ -186,37 +187,72 @@ fn incoming(model: &Firewall, redirect: &RedirectForm, errors: &Errors) -> Widge
 /// which zone the destination is in and says so in its own log, but a forward it
 /// cannot place is a forward that quietly does not reflect. Naming it settles
 /// that, and leaving it blank keeps firewall4's own answer.
+/// off_network is the warning for a forward whose address lies outside every
+/// network the router has a fixed address on: traffic sent there may have
+/// nowhere to go. It warns and never refuses — an address reached through a
+/// route the config does not show is still the operator's call — and it says
+/// nothing where the config states no network to judge by.
+pub fn off_network(model: &Firewall, dest_ip: &str) -> Option<String> {
+    let mut networks = Vec::new();
+    // The loopback is no place a forward goes, so it is neither a network to
+    // land in nor one to name.
+    for interface in model
+        .interfaces
+        .iter()
+        .filter(|i| !i.ipaddr.starts_with("127."))
+    {
+        match format::subnet_holds(&interface.ipaddr, &interface.netmask, dest_ip) {
+            Some(true) => return None,
+            Some(false) => networks.push(format!(
+                "{} {}",
+                format::zone_label(&interface.name),
+                format::subnet_label(&interface.ipaddr, &interface.netmask, "").unwrap_or_default()
+            )),
+            None => {}
+        }
+    }
+    if networks.is_empty() {
+        return None;
+    }
+    Some(format!(
+        "{} is outside every network the router has an address on ({}), so forwarded traffic may have nowhere to go.",
+        dest_ip.trim(),
+        networks.join(", ")
+    ))
+}
+
 fn destination(model: &Firewall, redirect: &RedirectForm, errors: &Errors) -> Widget {
-    Widget::section(
-        "Send it to",
-        "",
-        vec![
-            fields::row_group(vec![
-                fields::text_field(
-                    "dest_ip",
-                    "Destination address",
-                    &redirect.dest_ip,
-                    "The device that answers, such as 10.0.0.30. Blank targets this router.",
-                    errors,
-                ),
-                fields::text_field(
-                    "dest_port",
-                    "Destination port",
-                    &redirect.dest_port,
-                    "Blank keeps the incoming port.",
-                    errors,
-                ),
-            ]),
-            fields::select_field(
-                "dest",
-                "The device is in",
-                &redirect.dest,
-                zone_options(model, &redirect.dest, "Work it out from the address"),
-                errors,
-            )
-            .writes("dest"),
-        ],
-    )
+    let mut children = vec![fields::row_group(vec![
+        fields::text_field(
+            "dest_ip",
+            "Destination address",
+            &redirect.dest_ip,
+            "The device that answers, such as 10.0.0.30. Blank targets this router.",
+            errors,
+        ),
+        fields::text_field(
+            "dest_port",
+            "Destination port",
+            &redirect.dest_port,
+            "Blank keeps the incoming port.",
+            errors,
+        ),
+    ])];
+    // The warning stands under the address it is about.
+    if let Some(warning) = off_network(model, &redirect.dest_ip) {
+        children.push(Widget::callout(Tone::Warning, "", &warning));
+    }
+    children.push(
+        fields::select_field(
+            "dest",
+            "The device is in",
+            &redirect.dest,
+            zone_options(model, &redirect.dest, "Work it out from the address"),
+            errors,
+        )
+        .writes("dest"),
+    );
+    Widget::section("Send it to", "", children)
 }
 
 /// CONFIG_PATH is the file this page previews, named as the operator would type
@@ -380,6 +416,79 @@ mod tests {
     use crate::redirects;
     use serde_json::Value;
     use verso_plugin::{Form, Snapshot};
+
+    /// with_lan is the fixture's firewall on a router whose LAN is
+    /// 192.168.77.1/24, whose uplink learns its address, and which has the
+    /// loopback every router has.
+    fn with_lan() -> Firewall {
+        let mut model = fixture::firewall();
+        model.interfaces.clear();
+        for (name, ipaddr, netmask) in [
+            ("loopback", "127.0.0.1", "255.0.0.0"),
+            ("lan", "192.168.77.1", "255.255.255.0"),
+            ("wan", "", ""),
+        ] {
+            model.interfaces.push(crate::model::Interface {
+                name: name.into(),
+                device: String::new(),
+                ipaddr: ipaddr.into(),
+                netmask: netmask.into(),
+                ip6assign: String::new(),
+            });
+        }
+        model
+    }
+
+    // A forward to an address outside every network the router has a fixed
+    // address on is warned of, never refused: the drawer says so where the
+    // address is written, and a save says so instead of "saved".
+    #[test]
+    fn a_forward_to_an_address_on_no_network_is_warned_of() {
+        let lan = with_lan();
+        let warned = off_network(&lan, "10.0.0.30").expect("an address outside the LAN");
+        assert_eq!(
+            warned,
+            "10.0.0.30 is outside every network the router has an address on (LAN 192.168.77.0/24), so forwarded traffic may have nowhere to go."
+        );
+        for quiet in ["192.168.77.20", "", "fd00::20", "not an address"] {
+            assert_eq!(off_network(&lan, quiet), None, "{quiet}");
+        }
+        let mut unstated = with_lan();
+        unstated.interfaces.retain(|i| i.ipaddr.is_empty());
+        assert_eq!(
+            off_network(&unstated, "10.0.0.30"),
+            None,
+            "a router stating no subnet cannot be judged"
+        );
+
+        let form = RedirectForm {
+            dest_ip: "10.0.0.30".into(),
+            ..RedirectForm::default()
+        };
+        let panel =
+            serde_json::to_value(drawer(&lan, None, &form, &Errors::default())).expect("serialize");
+        let callout =
+            fixture::find_with(&panel, &|w| w["type"] == "callout" && w["body"] == warned);
+        assert!(callout.is_some(), "the drawer does not say so: {panel}");
+
+        let mut model = with_lan();
+        let body = serde_json::to_value(redirects::save(
+            &mut model,
+            &Counters::default(),
+            &Form::parse(&format!("{OPEN}={NEW}")),
+            &Form::parse(&format!(
+                "name=Minecraft&src=wan&src_dport=25565&dest_ip=10.0.0.30&proto=tcp&{}=1",
+                fields::PANEL_FIELD
+            )),
+        ))
+        .expect("serialize");
+        assert!(body["commit"].is_array(), "a warning refused the save");
+        assert_eq!(body["notice"]["level"], "warning");
+        assert_eq!(
+            body["notice"]["text"],
+            format!("Port forward added. {warned}")
+        );
+    }
 
     /// visit is the listing at an address that names a panel.
     fn visit(snapshot: &Snapshot, model: &Firewall, query: &str) -> Value {

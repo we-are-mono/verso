@@ -94,9 +94,12 @@ pub fn save(model: &mut Firewall, counters: &Counters, query: &Form, form: &Form
         if !errors.is_empty() {
             return answer.with_notice(Tone::Danger, REFUSED);
         }
-        return answer
-            .with_notice(Tone::Success, "Port forward added.")
-            .with_commit(vec![commit_new(CONFIG, "redirect", redirect.values(false))]);
+        let (tone, said) = outcome(model, &redirect, "Port forward added.");
+        return answer.with_notice(tone, &said).with_commit(vec![commit_new(
+            CONFIG,
+            "redirect",
+            redirect.values(false),
+        )]);
     }
 
     let Some(index) = model
@@ -124,9 +127,22 @@ pub fn save(model: &mut Firewall, counters: &Counters, query: &Form, form: &Form
     if !open.errors.is_empty() {
         return answer.with_notice(Tone::Danger, REFUSED);
     }
-    answer
-        .with_notice(Tone::Success, "Port forward saved.")
-        .with_commit(vec![commit(CONFIG, &section, open.form.values(true))])
+    let (tone, said) = outcome(model, &open.form, "Port forward saved.");
+    answer.with_notice(tone, &said).with_commit(vec![commit(
+        CONFIG,
+        &section,
+        open.form.values(true),
+    )])
+}
+
+/// outcome is what a save says: that it was done, and, where the forward's
+/// address lies outside every network the router has an address on, that too,
+/// as a warning rather than a refusal.
+fn outcome(model: &Firewall, redirect: &RedirectForm, done: &str) -> (Tone, String) {
+    match redirect_drawer::off_network(model, &redirect.dest_ip) {
+        Some(warning) => (Tone::Warning, format!("{done} {warning}")),
+        None => (Tone::Success, done.to_string()),
+    }
 }
 
 /// Open is the forward whose panel is in front of the listing: which one, the
