@@ -100,9 +100,9 @@ func TestTheExposureWarningStandsInTheWebInterfacesCard(t *testing.T) {
 	}
 }
 
-func TestAccessShowsWhereTheWebInterfaceAnswersInAFormToApply(t *testing.T) {
+func TestAccessShowsWhereTheWebInterfaceAnswersInAFormToSwitchNow(t *testing.T) {
 	body := get(t, newWebForm(t, listenersHolding(listen.PortsOwn), nil).s, "/system/access").Body.String()
-	for _, want := range []string{"HTTPS port", `name="web_https"`, `value="443"`, "HTTP port", `value="80"`, "Redirect HTTP to HTTPS", ">Apply<"} {
+	for _, want := range []string{"HTTPS port", `name="web_https"`, `value="443"`, "HTTP port", `value="80"`, "Redirect HTTP to HTTPS", ">Switch now<"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("the web interface's form is missing %q", want)
 		}

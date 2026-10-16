@@ -23,7 +23,8 @@ import (
 
 // The web interface's settings on Access (ADR-017 §1): the ports the shell
 // answers on and whether HTTP is sent to HTTPS, in verso.web. They apply at
-// once with the section's Apply rather than staging: the new listeners are
+// once with the section's Switch now rather than staging — named apart from the
+// staged changes' Apply, which they never join: the new listeners are
 // bound beside the open ones first, so a port that cannot be opened is said
 // under its field and nothing changes; the page is then sent to where the shell
 // answers. Only once the browser arrives there are the settings written and
@@ -105,10 +106,10 @@ func webPort(addrs []string) string {
 }
 
 // webSettingsSection is the web interface's part of Access: its ports and the
-// redirect, in one form whose Apply moves them. Beside LuCI the ports are
+// redirect, in one form whose Switch now moves them. Beside LuCI the ports are
 // where LuCI leaves them, and its own section says where; there is nothing
 // here to set. Refused the router's ports, the shell says why it answers on
-// 8443, which no setting here changes. A refused Apply comes back with what
+// 8443, which no setting here changes. A refused switch comes back with what
 // was typed.
 func (s *Server) webSettingsSection(r *http.Request, errs map[string]string) widget.Widget {
 	section := &widget.Section{Title: "Web interface", Hairline: true}
@@ -132,7 +133,7 @@ func (s *Server) webSettingsSection(r *http.Request, errs map[string]string) wid
 		https, plain, redirect = r.PostForm.Get(webHTTPSField), r.PostForm.Get(webHTTPField), r.PostForm.Get(webRedirectField) == "1"
 	}
 	section.Children = []widget.Widget{&widget.Form{
-		Style: "settings", Action: "/system/access", Submit: "Apply", Target: versoConfig + "." + webSection,
+		Style: "settings", Action: "/system/access", Submit: "Switch now", Target: versoConfig + "." + webSection,
 		Error: errs["web"],
 		Fields: []widget.Widget{
 			&widget.Field{Name: webHTTPSField, Label: "HTTPS port", Key: webHTTPSOption, Datatype: "port", Value: https, Error: errs[webHTTPSField]},

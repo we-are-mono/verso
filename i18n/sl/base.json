@@ -180,7 +180,7 @@
   "Redirect HTTP to HTTPS": "Preusmeri HTTP na HTTPS",
   "HTTP and HTTPS need ports of their own.": "HTTP in HTTPS potrebujeta vsak svoja vrata.",
   "Redirecting…": "Preusmerjanje…",
-  "Apply": "Uveljavi",
+  "Switch now": "Preklopi zdaj",
   "Port %s is in use on this router.": "Vrata %s na tem usmerjevalniku so že v uporabi.",
   "Port %s can’t be opened on this router.": "Vrat %s na tem usmerjevalniku ni mogoče odpreti.",
   "The web interface can’t be changed here now. Reload the page.": "Spletnega vmesnika zdaj tukaj ni mogoče spremeniti. Znova naložite stran.",

@@ -53,9 +53,11 @@ defaults an absent option means. The Web interface section on Access edits these
 options and is rendered by the shell, which owns the `verso` config (ADR-013).
 
 **Listeners change at once, in the running shell.** The Web interface section
-is a form with its own **Apply**, not a staged setting: moving the address the
-page is on is an act whose outcome the person must see as it happens, and
-restarting the shell on new listeners would end every session with it. Apply:
+is a form with its own **Switch now**, not a staged setting: moving the address
+the page is on is an act whose outcome the person must see as it happens, and
+restarting the shell on new listeners would end every session with it. Its
+button is named apart from the staged changes' **Apply**, which it never joins.
+Switch now:
 
 1. Checks the ports — numbers from 1 to 65535, HTTP and HTTPS apart — and binds
    the listeners the shell lacks, alongside the ones it has. A port that cannot
