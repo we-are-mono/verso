@@ -159,11 +159,6 @@ own and points at the decision that governs it; the rationale lives there, not h
   lifted off it. Try it on the device and settle the step it stands on.
 
 ## Per-device usage (ADR-018)
-- **Rail subpages in the plugin repos.** A plugin with subpages (wireless, vpn,
-  ddns, qos, dnsdhcp, if any of them has some) lists them in its manifest's
-  `pages` so its rail group opens in place from any page, which needs a shell
-  that reads the list (ADR-006). A plugin that lists none keeps a row that
-  leads to its page.
 
 - **First Devices visit on the router.** The first history read after the
   shell starts runs `nlbw` once per day of the last 62; time it on the DK.
