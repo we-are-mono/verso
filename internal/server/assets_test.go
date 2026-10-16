@@ -353,6 +353,45 @@ func TestTheThemeMeasuresOnTheEightPixelGrid(t *testing.T) {
 	}
 }
 
+// TestAFieldRowMeasuresOnTheEightPixelGrid: a form's answers stand in one
+// 272px column (form-fields), and a field row writes its name on a 24px band
+// 15px after the hairline above it and 16px before the next edge, so a row of
+// one line is 56px with its hairline (layout-grid).
+func TestAFieldRowMeasuresOnTheEightPixelGrid(t *testing.T) {
+	raw, err := os.ReadFile("assets/input.css")
+	if err != nil {
+		t.Fatal(err)
+	}
+	css := string(raw)
+	if !strings.Contains(css, "--spacing-answer: 17rem;") {
+		t.Error("the theme does not name the answer column: missing --spacing-answer: 17rem;")
+	}
+	block := cssBlock(t, css, "@utility py-field")
+	for _, want := range []string{
+		"padding-top: calc(var(--spacing) * 3.75);",
+		"padding-bottom: calc(var(--spacing) * 4);",
+	} {
+		if !strings.Contains(block, want) {
+			t.Errorf("py-field does not put the name on its band: missing %s in %s", want, block)
+		}
+	}
+}
+
+// cssBlock is the body of the first rule that opens with head, up to its
+// first closing brace: enough for a rule that nests nothing.
+func cssBlock(t *testing.T, css, head string) string {
+	t.Helper()
+	at := strings.Index(css, head)
+	if at < 0 {
+		t.Fatalf("no rule %q", head)
+	}
+	end := strings.Index(css[at:], "}")
+	if end < 0 {
+		t.Fatalf("rule %q does not close", head)
+	}
+	return css[at : at+end]
+}
+
 // TestAPanelMeasuresOnTheEightPixelGrid: a router's panel is drawn at its own
 // size where it fits, so every edge it draws stands on a line, and where it
 // does not it shrinks to a whole number of 8px steps tall, its width following

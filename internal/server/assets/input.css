@@ -107,6 +107,9 @@
   --spacing-frame: 2.5rem;
   /* A row's act and a subsection's act, riding a 24px line. */
   --spacing-act: 1.75rem;
+  /* A form's answer column: every field row puts its control here, so a
+     form's answers read down one edge (form-fields). */
+  --spacing-answer: 17rem;
   /* Text writes on 24px lines (layout-grid), so a box that grows with its
      text grows by a multiple of 8px and stays on the grid. */
   --text-sm--line-height: calc(1.5 / 0.875);
@@ -160,6 +163,14 @@
 @utility py-row {
   padding-top: calc(var(--spacing) * 1.75);
   padding-bottom: calc(var(--spacing) * 2);
+}
+
+/* A field row's air: 15px after the hairline over it and 16px before the
+   next edge, so its name fills a whole band and a row of one line is 56px
+   with its hairline. A 32px control centres on that band. */
+@utility py-field {
+  padding-top: calc(var(--spacing) * 3.75);
+  padding-bottom: calc(var(--spacing) * 4);
 }
 
 /* Native buttons inherit the press treatment, including controls inserted by

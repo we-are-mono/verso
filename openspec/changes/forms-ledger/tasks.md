@@ -4,7 +4,7 @@ Every task ends green under `make lint` and `make test`; a task that touches a t
 
 ## 1. Geometry tokens
 
-- [ ] 1.1 Write the tests first in `internal/server/assets_test.go`: `input.css` declares `--spacing-answer: 17rem` in `@theme`, and a `py-field` utility gives 15px over and 16px under; `grid_guard_test.go` names `py-field` among its exceptions as it names `py-row`; then add both and verify the tests pass
+- [x] 1.1 Write the tests first in `internal/server/assets_test.go`: `input.css` declares `--spacing-answer: 17rem` in `@theme`, and a `py-field` utility gives 15px over and 16px under (padding is free under `grid_guard_test.go`, as `py-row`'s is, so no exception is named); then add both and verify the tests pass
 
 ## 2. One frame: a question and an answer
 
