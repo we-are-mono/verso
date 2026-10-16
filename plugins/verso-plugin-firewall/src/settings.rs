@@ -118,32 +118,38 @@ const VALUES: [&str; 8] = [
 /// set is walked rather than the body: the difference between "turned off" and
 /// "not on this page" is the difference between a write and a lie.
 pub fn save(model: &mut Firewall, form: &Form) -> (Envelope, Vec<CommitOp>) {
+    // Only what differs from what the router does is written. The page shows
+    // every control at the state firewall4 reads, so posting it back unchanged
+    // is not a change: a policy the config spells "REJECT" is the "reject" the
+    // page shows, and a value left to firewall4 is the default the page shows.
     let mut values = Map::new();
     for (option, default_on) in SWITCHES {
         let on = !form.get(option).is_empty();
+        if on != model.defaults.state(option) {
+            values.insert(option.to_string(), flag_value(on, default_on));
+        }
         set_switch(model, option, on);
-        values.insert(option.to_string(), flag_value(on, default_on));
     }
     for option in VALUES {
         let value = submitted(form, option);
+        if !value.eq_ignore_ascii_case(model.defaults.value(option)) {
+            let written = match value.is_empty() {
+                true => json!(null),
+                false => json!(value),
+            };
+            values.insert(option.to_string(), written);
+        }
         set_value(model, option, &value);
-        let written = match value.is_empty() {
-            true => json!(null),
-            false => json!(value),
-        };
-        values.insert(option.to_string(), written);
     }
-    // A config with no defaults section runs firewall4's own; the first change
-    // to it is what makes the section exist on disk.
-    let op = match model.defaults.section.is_empty() {
-        true => commit_new(model::CONFIG, "defaults", Value::Object(values)),
-        false => commit(
-            model::CONFIG,
-            &model.defaults.section,
-            Value::Object(values),
-        ),
-    };
-    let mut ops = vec![op];
+    let mut ops = Vec::new();
+    if !values.is_empty() {
+        // A config with no defaults section runs firewall4's own; the first
+        // change to it is what makes the section exist on disk.
+        ops.push(match model.defaults.section.is_empty() {
+            true => commit_new(model::CONFIG, "defaults", Value::Object(values)),
+            false => commit(model::CONFIG, &model.defaults.section, Value::Object(values)),
+        });
+    }
     for include in &mut model.includes {
         let enabled = !form.get(&include_field(include)).is_empty();
         if enabled != include.enabled {
@@ -774,49 +780,64 @@ mod tests {
             .next()
             .expect("defaults preview");
 
-        // What a save writes, for a submission that asks for the state the page is
-        // currently showing.
-        let mut asked = Vec::new();
-        for (option, _) in SWITCHES {
-            if model.defaults.state(option) {
-                asked.push(format!("{option}=1"));
+        // The submission that asks for the state the page is currently showing.
+        let asked = |flip: Option<&str>| {
+            let mut asked = Vec::new();
+            for (option, _) in SWITCHES {
+                if model.defaults.state(option) != (flip == Some(option)) {
+                    asked.push(format!("{option}=1"));
+                }
             }
-        }
-        for option in VALUES {
-            asked.push(format!("{option}={}", model.defaults.value(option)));
-        }
-        for include in &model.includes {
-            if include.enabled {
-                asked.push(format!("{}=1", include_field(include)));
+            for option in VALUES {
+                asked.push(format!("{option}={}", model.defaults.value(option)));
             }
-        }
-        let mut after = fixture::firewall();
-        let (_, ops) = save(&mut after, &Form::parse(&asked.join("&")));
-        let written = ops[0].values.as_object().expect("an object of options");
-
-        for (option, value) in written {
-            match value.as_str() {
-                // An option the save states must appear in the block, with that value.
-                Some(value) => assert!(
-                    shown.contains(&format!("\toption {option} '{value}'\n")),
-                    "the save writes {option} '{value}' and the preview does not show it:\n{shown}"
-                ),
-                // One the save clears must not: firewall4 assumes it, so the file is
-                // quiet about it and so is the block.
-                None => assert!(
-                    !shown.contains(&format!("\toption {option} ")),
-                    "the preview shows {option}, which the save leaves to firewall4:\n{shown}"
-                ),
+            for include in &model.includes {
+                if include.enabled {
+                    asked.push(format!("{}=1", include_field(include)));
+                }
             }
-        }
-        // And nothing appears in the block that the save would not write at all.
+            asked.join("&")
+        };
+        // Asking for what the page shows writes nothing: the block already is
+        // the file.
+        let (_, ops) = save(&mut fixture::firewall(), &Form::parse(&asked(None)));
+        assert!(ops.is_empty(), "the page as shown stages {ops:?}");
+        // Every option the block states is one a save of this page writes.
         for line in shown.lines().filter(|line| line.starts_with('\t')) {
             let option = line.split_whitespace().nth(1).expect("an option name");
             assert!(
-                written.contains_key(option),
+                SWITCHES.iter().any(|(name, _)| *name == option) || VALUES.contains(&option),
                 "the preview shows {option}, which no save writes:\n{shown}"
             );
         }
+        // Each switch flipped writes that option alone, and the block for the
+        // config it leaves says the same: the value the save wrote, or nothing
+        // where the save left it to firewall4.
+        for (option, _) in SWITCHES {
+            let mut after = fixture::firewall();
+            let (_, ops) = save(&mut after, &Form::parse(&asked(Some(option))));
+            let written = ops[0].values.as_object().expect("an object of options");
+            assert_eq!(written.len(), 1, "{option}: {written:?}");
+            let after_shown = written_block(&after);
+            match written[option].as_str() {
+                Some(value) => assert!(
+                    after_shown.contains(&format!("\toption {option} '{value}'\n")),
+                    "the save writes {option} '{value}' and the preview does not show it:\n{after_shown}"
+                ),
+                None => assert!(
+                    !after_shown.contains(&format!("\toption {option} ")),
+                    "the preview shows {option}, which the save leaves to firewall4:\n{after_shown}"
+                ),
+            }
+        }
+    }
+
+    fn written_block(model: &Firewall) -> String {
+        written(model)
+            .split("\nconfig include")
+            .next()
+            .expect("defaults preview")
+            .to_string()
     }
 
     #[test]
@@ -1226,6 +1247,29 @@ mod tests {
         }
     }
 
+    // The page posted back as drawn, one switch flipped, stages that switch
+    // alone: a policy the config spells in capitals is the same verdict the
+    // page shows in lowercase, and a value the config leaves to firewall4 is
+    // not written out because the page showed firewall4's own.
+    #[test]
+    fn saving_the_page_as_drawn_stages_only_what_changed() {
+        let snapshot = verso_plugin::Snapshot::from_value(json!({"firewall": {"d": {
+            ".type": "defaults", ".name": "d",
+            "input": "REJECT", "output": "ACCEPT", "forward": "REJECT", "synflood_protect": "1"
+        }}}));
+        let mut model = Firewall::read(&snapshot);
+        let drawn = "input=reject&output=accept&forward=reject&synflood_protect=1\
+            &synflood_rate=25&synflood_rate_unit=second&synflood_burst=50\
+            &tcp_syncookies=1&tcp_window_scaling=1&auto_helper=1&auto_includes=1\
+            &tcp_ecn=2&tcp_reject_code=tcp-reset&any_reject_code=port-unreachable";
+        let (_, ops) = save(&mut model, &Form::parse(&format!("{drawn}&accept_redirects=1")));
+        assert_eq!(ops.len(), 1, "{ops:?}");
+        assert_eq!(ops[0].values, json!({"accept_redirects": "1"}));
+        // Nothing changed at all: nothing to stage.
+        let (_, ops) = save(&mut Firewall::read(&snapshot), &Form::parse(drawn));
+        assert!(ops.is_empty(), "{ops:?}");
+    }
+
     // A router with no defaults section runs firewall4's built-in baseline;
     // saving the page creates the section rather than writing into nothing.
     #[test]
@@ -1287,7 +1331,7 @@ mod tests {
         assert_eq!(toggle("include_enabled_legacy_sh")["on"], true);
         assert!(written(&model).contains("config include 'custom_nft'\n\toption enabled '0'"));
         let (_, repeated) = save(&mut model, &Form::parse("include_enabled_legacy_sh=1"));
-        assert_eq!(repeated.len(), 1, "unchanged includes must not stage again");
+        assert!(repeated.is_empty(), "unchanged includes must not stage again: {repeated:?}");
     }
 
     #[test]
