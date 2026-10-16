@@ -26,10 +26,11 @@ func TestAButtonSaysWhatItDoesWhilePressed(t *testing.T) {
 // TestACalloutCarriesTheActsThatResolveIt: a notice that something is missing
 // carries the act that resolves it, inside the band: a row of buttons 24px
 // under the words, so the buttons stand on the band's lines, in the band's own
-// ink. Under a compact band's buttons the row keeps 8px more of its own, so
-// they stand 16px over the frame rather than the words' 8px.
+// ink. Under the band's buttons the row keeps 8px more of its own, so they
+// stand 16px over the frame rather than the words' 8px, at either width.
 func TestACalloutCarriesTheActsThatResolveIt(t *testing.T) {
-	for compact, class := range map[bool]string{true: "mt-6 pb-2 flex", false: "mt-6 flex"} {
+	for _, compact := range []bool{true, false} {
+		class := "mt-6 pb-2 flex"
 		got := render(t, newRenderer(t), &Callout{Variant: "info", Compact: compact, Title: "Nothing is blocked", Body: "Installing adds a blocklist.",
 			Acts: []Link{{Style: "secondary", Label: "Install adblock", Icon: "download", Href: "/system/packages/package?name=adblock", Panel: true}}})
 		row := strings.Index(got, `<div data-verso-callout-acts class="`+class+` flex-wrap items-center gap-x-3 gap-y-2">`)
@@ -48,6 +49,11 @@ func TestACalloutCarriesTheActsThatResolveIt(t *testing.T) {
 	}
 	if !strings.Contains(string(css), "[data-verso-callout-acts] a {") {
 		t.Error("an act inside a band is not coloured from it")
+	}
+	// A door in the band's words is the words' own ink, told apart only by its
+	// underline: denim inside a marigold band would be a second voice.
+	if !strings.Contains(string(css), "[data-verso-callout] p a {\n    color: inherit;\n    font-weight: inherit;") {
+		t.Error("a link in a band's words does not take the band's ink")
 	}
 }
 

@@ -969,6 +969,18 @@ html {
     background-color: transparent;
   }
   [data-verso-callout-acts] a svg { color: inherit; }
+  /* A door in the band's words is the words' own ink and weight, told apart
+     only by its underline, which thickens under the pointer: a denim link
+     inside a marigold band would be a second voice in a one-hue exchange. */
+  [data-verso-callout] p a {
+    color: inherit;
+    font-weight: inherit;
+    text-decoration-color: currentColor;
+  }
+  [data-verso-callout] p a:hover {
+    color: inherit;
+    text-decoration-thickness: 2px;
+  }
   /* A table's box scrolls only while its table is wider than it, and a box
      that scrolls clips both ways. One whose table fits (data-verso-fits, set
      by verso-tables.js as the box and the table change size) neither scrolls

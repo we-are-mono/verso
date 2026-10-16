@@ -5,19 +5,19 @@
 
      A tone at full chroma is a mark and never sets type, so a band is built the
      way the palette says: the tone's soft ground, its deep step carrying the
-     words, and — compact — a small square of the tone itself as the mark. No
-     glyph: the colour and the mark already say what kind of thing this is, and a
-     triangle beside three words of prose only crowds them.
+     words, and a small square of the tone itself as the mark. No glyph: the
+     colour and the mark already say what kind of thing this is, and a triangle
+     beside three words of prose only crowds them.
 
-     Compact is the contextual note that sits under a control and explains what
-     it just did; the full form is the standing block a page leads with, where
-     the tone's hairline frames it instead of a mark.
+     Every notice is this one band, whether it explains the control it sits
+     under or leads a page or a card. Compact says only where it stands: under
+     a control it keeps that control's measure — the form's — rather than
+     running past it; otherwise it reaches its container's width.
 
-     Both write on 24px lines and are framed as a card is: the frame's top
-     border on a line, the words 7px after it and 8px over the bottom border
-     (the full block 23 and 24), so they fill whole bands of the grid and both
-     borders land on lines; the bottom border's pixel is given back, so a
-     line of them is a row's 40px. */}}
+     It writes on 24px lines and is framed as a card is: the frame's top border
+     on a line, the words 7px after it and 8px over the bottom border, so they
+     fill whole bands of the grid and both borders land on lines; the bottom
+     border's pixel is given back, so a line of it is a row's 40px. */}}
 {{/* callout.verbatim: what a tool reported, in its own words, under a hairline
      of the band's tone 8px down, on a line, its words 7px after it so they
      fill bands of the grid: mono, wrapping rather than scrolling, the copy
@@ -31,9 +31,6 @@
     <span class="{{template "verso-copy-tip-class"}}">{{template "verso-copy-label" "Copy"}}</span>
   </button>
 </div>{{end}}
-{{if .Compact}}
-{{/* It explains the control it sits under, so it keeps that control's
-     measure — the form's — rather than running past it. */}}
 {{/* Framed as every band is, in its tone one step darker than its ground.
      Its words stand 7px after the frame's top border and 8px over its
      bottom one, so a line of them fills a band of the grid and is a row's
@@ -42,7 +39,7 @@
      the middle of the 8px cell in the middle of that 24px: the cell's lines
      are the frame's 8th and 16th pixels, so its 6px stand 10px from the
      frame's edge. */}}
-<div data-verso-callout class="relative flex w-full max-w-(--container-3xl) items-start rounded-xs border pt-1.75 pr-3 pb-2 pl-5.75 text-left text-sm leading-6
+<div data-verso-callout class="relative flex w-full{{if .Compact}} max-w-(--container-3xl){{end}} items-start rounded-xs border pt-1.75 pr-3 pb-2 pl-5.75 text-left text-sm leading-6
   {{if eq .Variant "success"}}border-green-line bg-green-soft text-green-deep
   {{else if eq .Variant "warning"}}border-marigold-line bg-marigold-soft text-marigold-deep
   {{else if eq .Variant "danger"}}border-crimson-line bg-crimson-soft text-crimson-deep
@@ -67,22 +64,8 @@
     {{template "callout.acts" .}}
   </div>
 </div>
-{{else}}
-<div data-verso-callout class="flex w-full flex-col rounded-xs border px-5.75 pt-5.75 pb-6 text-left text-sm leading-6
-  {{if eq .Variant "success"}}border-green-line bg-green-soft text-green-deep
-  {{else if eq .Variant "warning"}}border-marigold-line bg-marigold-soft text-marigold-deep
-  {{else if eq .Variant "danger"}}border-crimson-line bg-crimson-soft text-crimson-deep
-  {{else if eq .Variant "neutral"}}border-rule bg-quiet text-body
-  {{else}}border-denim-line bg-denim-soft text-denim-deep{{end}}">
-  {{if .Title}}<p class="font-semibold">{{.Title}}</p>{{end}}
-  {{if .Body}}<p>{{.Body}}</p>{{end}}
-  {{if .Verbatim}}{{template "callout.verbatim" .}}{{end}}
-  {{template "callout.acts" .}}
-  {{if .RenderedLink}}<div>{{.RenderedLink}}</div>{{end}}
-</div>
-{{end}}
 {{/* callout.acts: what resolves the notice, inside the band — a row of
      32px buttons 24px under its words, so the buttons stand on the band's
      lines and the band stays on the grid. The buttons keep their own shape
      and take the band's ink (input.css, data-verso-callout-acts). */}}
-{{define "callout.acts"}}{{if .RenderedActs}}<div data-verso-callout-acts class="mt-6 {{if .Compact}}pb-2 {{end}}flex flex-wrap items-center gap-x-3 gap-y-2">{{range .RenderedActs}}{{.}}{{end}}</div>{{end}}{{end}}
+{{define "callout.acts"}}{{if .RenderedActs}}<div data-verso-callout-acts class="mt-6 pb-2 flex flex-wrap items-center gap-x-3 gap-y-2">{{range .RenderedActs}}{{.}}{{end}}</div>{{end}}{{end}}

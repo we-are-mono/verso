@@ -281,6 +281,28 @@ func TestACompactNoteKeepsItsControlsMeasure(t *testing.T) {
 	}
 }
 
+// TestEveryNoticeIsOneBand: a notice that leads a page or a card is the band a
+// compact note is — the tone's square on the first line, the same air, the
+// door closing the words' line — and differs only in reaching its container's
+// width instead of keeping a control's measure.
+func TestEveryNoticeIsOneBand(t *testing.T) {
+	standing := render(t, newRenderer(t), &Callout{Variant: "warning", Title: "The internet can reach this web interface",
+		Body: "The firewall zone “mgmt” accepts every connection from the internet.", Link: &Link{Label: "Open Firewall", Href: "/plugins/firewall/"}})
+	for _, want := range []string{"absolute top-4 left-2.25 size-1.5", "bg-marigold", "pt-1.75 pr-3 pb-2 pl-5.75", "border-marigold-line bg-marigold-soft text-marigold-deep"} {
+		if !strings.Contains(standing, want) {
+			t.Errorf("a standing notice is not the one band, missing %q:\n%s", want, standing)
+		}
+	}
+	if strings.Contains(standing, "max-w-(--container-3xl)") {
+		t.Errorf("a standing notice reaches its container's width:\n%s", standing)
+	}
+	body := strings.Index(standing, "accepts every connection")
+	closes := strings.Index(standing[body:], "</p>")
+	if link := strings.Index(standing, "Open Firewall"); body < 0 || link < 0 || closes < 0 || link > body+closes {
+		t.Errorf("the door closes the notice's own line:\n%s", standing)
+	}
+}
+
 // TestACompactNoteKeepsItsLinkOnItsLine: a compact note is one line of words,
 // and its door is part of that line — the sentence, then where to go about it —
 // not a second line under it.
@@ -638,8 +660,8 @@ func TestRenderConfirm(t *testing.T) {
 func TestRenderCallout(t *testing.T) {
 	r := newRenderer(t)
 	// A tone at full chroma is a mark and never sets type: the band is the tone's
-	// soft ground with its deep step carrying the words, and the standing form is
-	// framed by the tone's own hairline rather than marked.
+	// soft ground with its deep step carrying the words, framed by the tone's
+	// own hairline and marked by its square.
 	ok := render(t, r, &Callout{Variant: "success", Title: "Reachable", Body: "Verified from the internet."})
 	for _, want := range []string{
 		"border-green-line bg-green-soft text-green-deep",
