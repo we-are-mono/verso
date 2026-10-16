@@ -32,7 +32,7 @@ A page's heading line (its h1 and page acts) SHALL stand directly on the sand wi
 - **THEN** they stand on the heading line at its right end, the primary act last
 
 ### Requirement: Each ruled section of a page is a card
-Every top-level section of a page that has a title SHALL render as a card: Paper, a single Strong Hairline frame with 2px corners, a header holding the section's glyph when it has one, its title and its lede, and its content behind a hairline. Cards stand 24px apart in one column at the page's measure, and the blocks inside a card stand 24px apart; a titled part inside a card starts 40px on.
+Every top-level section of a page that has a title SHALL render as a card: Paper, a single Strong Hairline frame with 2px corners, a header holding the section's glyph when it has one, its title and its lede, and its content behind a Strong Hairline, the frame's own ink. Cards stand 24px apart in one column at the page's measure, and the blocks inside a card stand 24px apart; a titled part inside a card starts 40px on.
 
 #### Scenario: Firewall settings
 - **WHEN** an operator opens Firewall settings
@@ -42,6 +42,11 @@ Every top-level section of a page that has a title SHALL render as a card: Paper
 - **WHEN** a section carries a lede ("Restoring replaces the saved files and reboots the router.")
 - **THEN** the lede stands in the card's header on the line under the title, at weight 400
 - **AND** the header's hairline stands under the lede
+
+#### Scenario: The header's hairline
+- **WHEN** an operator opens the Protection card on Firewall settings
+- **THEN** the hairline under "Protection" is the frame's ink
+- **AND** the hairlines between the card's fields are the lighter Hairline
 
 #### Scenario: Blocks in a card
 - **WHEN** an operator opens Maintenance

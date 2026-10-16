@@ -46,11 +46,15 @@ Every border, hairline and frame the layout draws SHALL stand on a grid line, to
 - **THEN** the colophon stands at the window's foot with its hairline on a grid line
 
 ### Requirement: Inside a component a measure steps by 4px
-A component's own box (a chip, a checkbox, a radio row, a row act) SHALL measure a multiple of 4px. Inside that box, padding SHALL centre the component's text on its line, and the 6px between a glyph and its words is the component's own. Marks and glyphs keep their own sizes: the 6px state square, a 14px or 16px icon, a 1px hairline.
+A component's own box (a chip, a checkbox, a radio row, a row act) SHALL measure a multiple of 4px. Inside that box, padding SHALL centre the component's text on its line, and the 6px between a glyph and its words is the component's own. Marks and glyphs keep their own sizes: the 6px state square, a 14px or 16px icon, a 1px hairline. The option chip beside a setting's name is the one box measured by eye, so its word reads centred.
 
 #### Scenario: A chip in a row
 - **WHEN** a device row cites its interface as a chip
 - **THEN** the chip is 18px tall and stands 3px inside the row's 24px line at either end
+
+#### Scenario: The option chip beside a name
+- **WHEN** a form shows "Traffic to this router" with its `input` chip
+- **THEN** the chip is 21px tall, 2px under the top of the name's 24px line and 1px over its bottom
 
 #### Scenario: A checkbox
 - **WHEN** a form shows a checkbox

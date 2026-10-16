@@ -206,12 +206,13 @@ A field's refusal SHALL stand as its band under the control in the answer column
 - **WHEN** the Burst field is refused with its two-line description shown
 - **THEN** the refusal band stands straight under the Burst field, beside the description, with no gap opened between the field and the band
 
-### Requirement: A staged field says so on its name's line
-A field whose change waits on the stage SHALL show the staged mark on its name's line, after its chip.
+### Requirement: A staged field is marked down its row's edge
+A field whose change waits on the stage SHALL wear a bar in the stage's marigold down its row's left edge, from the line above the row to the line below it, on the card's border or a drawer's edge, and SHALL say "staged" to a screen reader beside its name.
 
 #### Scenario: A staged switch
 - **WHEN** an operator checks "Drop packets that belong to no connection" and saves
-- **THEN** the staged mark stands after the `drop_invalid` chip on the field's name line
+- **THEN** a marigold bar runs down the left edge of that field's row, inside the card's border
+- **AND** a screen reader hears "staged" beside the field's name
 
 ### Requirement: Descriptions fold with one act
 Every page and drawer that shows at least one description SHALL carry one act, "Hide descriptions", on a page's heading line or in a drawer's header. Pressing it SHALL fold every description on the page and in its drawers together, and the act SHALL then read "Show descriptions" and bring them back. A page or drawer with no description SHALL carry no such act.
