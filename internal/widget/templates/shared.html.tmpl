@@ -236,7 +236,7 @@
      own check also writes into; then the remove lane. A switch is an answer
      like any other. The row carries the change hooks the stage reads unless
      it posts nothing. No widget draws this row by hand. */}}
-{{define "verso-field"}}<div class="{{template "verso-field-row-class"}}{{with .Class}} {{.}}{{end}}"{{with .Change}}{{if .Track}} data-verso-change-field data-verso-change-name="{{.Name}}" data-verso-change-label="{{.Label}}" data-verso-change-kind="{{.Kind}}"{{with .Writes}} data-verso-writes="{{.}}"{{end}}{{end}}{{end}}>
+{{define "verso-field"}}<div class="{{template "verso-field-row-class"}}{{if .Wide}} verso-field-wide{{end}}{{with .Class}} {{.}}{{end}}"{{with .Change}}{{if .Track}} data-verso-change-field data-verso-change-name="{{.Name}}" data-verso-change-label="{{.Label}}" data-verso-change-kind="{{.Kind}}"{{with .Writes}} data-verso-writes="{{.}}"{{end}}{{end}}{{end}}>
   <div class="verso-field-ledger">
     <div class="verso-field-question">
       {{if .ShowsLabel}}{{template "verso-field-label" .Label}}{{end}}

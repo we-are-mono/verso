@@ -194,6 +194,12 @@ func chip(key, source string) string {
 	return strings.Join(halves, " · ")
 }
 
+// wide reports whether the field's control cannot stand in the answer column:
+// a code or text area, an address of the endpoint measure, a weekday strip.
+func (f *Field) wide() bool {
+	return f.Style == "code" || f.Kind == "textarea" || f.ControlMeasure() == "endpoint" || f.Segmented()
+}
+
 // description is what the field is for, written under its name: the help,
 // then the tip where a plugin wrote both, so neither is dropped.
 func (f *Field) description() string { return sentences(f.Help, f.Tip) }
@@ -320,7 +326,7 @@ func (f *Field) frame() fieldFrame {
 	}
 	frame := fieldFrame{
 		Label: f.LabelView(), Change: change, Measure: f.ControlMeasure(),
-		Lane: f.Lane(), Removable: f.Removable(), Desc: f.description(), Note: f.Note,
+		Lane: f.Lane(), Removable: f.Removable(), Desc: f.description(), Note: f.Note, Wide: f.wide(),
 	}
 	if f.Error != "" {
 		frame.Errors = []fieldError{{ID: f.Name + "-error", Text: f.Error}}

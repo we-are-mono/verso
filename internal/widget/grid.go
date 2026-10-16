@@ -8,6 +8,7 @@ import (
 	"io"
 	"slices"
 	"strings"
+	"unicode/utf8"
 )
 
 // Grid arranges its children across columns — the side-by-side counterpart to stack
@@ -108,6 +109,7 @@ func groupParts(g *Grid, fields []*Field) boxView {
 // renderFused draws related values as one row holding one box.
 func (r *Renderer) renderFused(out io.Writer, g *Grid, fields []*Field) error {
 	box, frame := groupRow(g, fields, groupParts(g, fields))
+	frame.Wide = partsWidth(fields, 1) > answerColumn
 	return r.renderFrame(out, "verso-box", box, frame)
 }
 
@@ -115,8 +117,58 @@ func (r *Renderer) renderFused(out io.Writer, g *Grid, fields []*Field) error {
 // own control, side by side, the group's word between them.
 func (r *Renderer) renderJoined(out io.Writer, g *Grid, fields []*Field) error {
 	parts, frame := groupRow(g, fields, groupParts(g, fields))
+	frame.Wide = partsWidth(fields, joinerWidth(g.Join)) > answerColumn
 	return r.renderFrame(out, "verso-joined", parts, frame)
 }
+
+// sansRune is roughly how wide a character of the 14px sans stands, and
+// monoRune one of the 16px mono, in pixels: enough to tell a group that fits
+// the answer column from one that does not.
+const (
+	sansRune = 7
+	monoRune = 8
+)
+
+// partsWidth is roughly how wide a group's parts stand side by side, between
+// stands the gap (a fused box's inner hairline, a joined row's word).
+func partsWidth(fields []*Field, between int) int {
+	width := 0
+	for i, f := range fields {
+		if i > 0 {
+			width += between
+		}
+		width += partWidth(f)
+	}
+	return width
+}
+
+// partWidth is roughly how wide one part stands: a dropdown its longest
+// option and its chevron, a clock its own box, a typed value its measure, and
+// a unit's word after its value.
+func partWidth(f *Field) int {
+	if f.Kind == "select" {
+		longest := 0
+		for _, o := range f.Options {
+			longest = max(longest, utf8.RuneCountInString(o.Label))
+		}
+		return 12 + longest*sansRune + 36
+	}
+	width := map[string]int{"number": 96, "short": 128, "secret": 256}[boxPart{Field: f}.Measure()]
+	switch {
+	case f.Kind == "time":
+		width = 128
+	case width == 0:
+		width = 176
+	}
+	if f.Unit != "" {
+		width += utf8.RuneCountInString(f.Unit)*sansRune + 12
+	}
+	return width
+}
+
+// joinerWidth is how wide a joined row's word stands with its 12px either
+// side.
+func joinerWidth(word string) int { return 24 + utf8.RuneCountInString(word)*sansRune }
 
 // groupRow is the row a group of related fields stands in. The row is one
 // setting: one label covering every part, one chip naming every option, one

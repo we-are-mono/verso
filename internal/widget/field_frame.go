@@ -42,7 +42,15 @@ type fieldFrame struct {
 	Errors []fieldError
 	// Lane reserves the trailing remove glyph's width; Removable draws it.
 	Lane, Removable bool
+	// Wide stands the answer under its question at the row's full width, for
+	// a control the answer column cannot hold. Each widget decides it, since
+	// each knows its control.
+	Wide bool
 }
+
+// answerColumn is the answer column's width in pixels (--spacing-answer,
+// input.css): what a control must fit to stand beside its question.
+const answerColumn = 272
 
 // fieldError is one refusal under a control and the id its input points at.
 type fieldError struct {

@@ -55,7 +55,7 @@ A frame carries `Wide bool`, and each widget decides it, because each knows its 
 |---|---|
 | `Field` | style `code`, kind `textarea`, measure `endpoint`, `checks` segmented |
 | `List` | always (rows, tokens) |
-| fused / joined `Grid` | the parts' fixed measures plus 40px per joiner exceed 272px, or a part has no fixed measure |
+| fused / joined `Grid` | the parts' widths plus the joiner (its word and 12px either side) exceed 272px: a typed part its measure and its unit's word, a clock 128px, a dropdown its longest option and its chevron |
 | everything else | never |
 
 A wide row puts its answer under the question across both columns (`grid-column: 1 / -1`). Below 36rem of row width (`@container verso-field (width < 36rem)`), every row stacks the same way, the answer straight under the question with no gap, and selects and free-text fields fill the row. In the answer column a select and a free-text field fill the column; a field with its own measure (number, short, prefix, unit box, time) keeps it; `host` and `secret` cap at the column.

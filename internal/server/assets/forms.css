@@ -115,6 +115,13 @@
   .verso-field-answer > :is([data-verso-error], [data-verso-field-note], [data-verso-inline-error]) {
     margin-top: var(--spacing);
   }
+  /* An answer the column cannot hold (rows of values, a code area, a value
+     wider than the column) stands under its question at the row's full
+     width, straight under it as a stacked row's does. */
+  .verso-field-wide > .verso-field-ledger > .verso-field-answer {
+    grid-column: 1 / -1;
+    margin-block: 0;
+  }
   /* A switch says its state beside its box: the word for the state the box
      is in. */
   label:not(:has(input:checked)) > .verso-switch-word > .verso-switch-on,
