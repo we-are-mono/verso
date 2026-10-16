@@ -49,6 +49,10 @@ type fieldFrame struct {
 	// Act is an act on the whole answer (a set's add), standing on the
 	// question's line at the row's end, at every width.
 	Act template.HTML
+	// Plain is a row that is no setting — a choice of what a page shows —
+	// which keeps its own layout, its name over its controls, rather than
+	// standing as a question and an answer.
+	Plain bool
 }
 
 // answerColumn is the answer column's width in pixels (--spacing-answer,

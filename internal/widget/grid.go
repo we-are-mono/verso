@@ -212,8 +212,13 @@ func groupRow(g *Grid, fields []*Field, parts boxView) (boxView, fieldFrame) {
 	id := fields[0].Name + "-group"
 	label := fieldLabel{For: id, Group: true, Label: g.Label}
 	var names, keys, said, alone []string
-	var frame fieldFrame
+	// A group of choices of what to look at is no setting; one setting among
+	// its parts makes it one.
+	frame := fieldFrame{Plain: true}
 	for _, f := range fields {
+		if f.Fetch == nil {
+			frame.Plain = false
+		}
 		names = append(names, f.Label)
 		// Parts that write one option between them (a rate's count and its
 		// unit) name it once.

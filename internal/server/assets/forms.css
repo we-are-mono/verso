@@ -191,6 +191,15 @@
      is in. */
   label:not(:has(input:checked)) > .verso-switch-word > .verso-switch-on,
   label:has(input:checked) > .verso-switch-word > .verso-switch-off { display: none; }
+  /* A choice of what a page shows (a chooser: "Show chart for") is no
+     setting: it keeps its own layout, its name over its controls at every
+     width, as a control band's controls stand. */
+  .verso-field-plain > .verso-field-ledger {
+    display: block;
+  }
+  .verso-field-plain > .verso-field-ledger > .verso-field-answer {
+    margin-block: 0;
+  }
   /* A row with no question of its own (a bare control) is all answer. */
   .verso-field-ledger:not(:has(> .verso-field-question > *)) > .verso-field-answer {
     grid-column: 1 / -1;

@@ -558,6 +558,34 @@ func TestATableAmongFieldsKeepsItsActOnTheLine(t *testing.T) {
 	}
 }
 
+// TestAChooserKeepsItsOwnLayout: a choice of what a page shows stands as its
+// name over its controls, not a question and an answer, at every width.
+func TestAChooserKeepsItsOwnLayout(t *testing.T) {
+	raw, err := os.ReadFile("assets/forms.css")
+	if err != nil {
+		t.Fatal(err)
+	}
+	css := string(raw)
+	if !strings.Contains(cssBlock(t, css, ".verso-field-plain > .verso-field-ledger {"), "display: block;") {
+		t.Error("a chooser is laid out as a ledger")
+	}
+	if !strings.Contains(cssBlock(t, css, ".verso-field-plain > .verso-field-ledger > .verso-field-answer {"), "margin-block: 0;") {
+		t.Error("a chooser's controls are pulled over its name's band")
+	}
+	// An inline or search form is a toolbar, not a list of settings: its
+	// fields stand as they always have, a label over its box, with no row's
+	// air or hairline.
+	for head, want := range map[string]string{
+		"[data-verso-compact-form] .verso-field-row {":    "border-top: 0;",
+		"[data-verso-compact-form] .verso-field-ledger {": "display: block;",
+		"[data-verso-compact-form] .verso-field-answer {": "margin-block: 0;",
+	} {
+		if !strings.Contains(cssBlock(t, css, head), want) {
+			t.Errorf("a compact form's field is a ledger row: %s lacks %s", head, want)
+		}
+	}
+}
+
 // TestASwitchShowsTheWordForItsState: a form switch holds both words and the
 // stylesheet shows the one its box is in, with no script (form-fields).
 func TestASwitchShowsTheWordForItsState(t *testing.T) {

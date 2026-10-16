@@ -61,6 +61,26 @@ func TestAFetchingChoiceFetchesAViewAndStagesNothing(t *testing.T) {
 	}
 }
 
+// TestAChooserIsNotALedgerRow: a choice of what a page shows is not a setting
+// (form-fields): it keeps its own layout, its name over its controls, whatever
+// its options measure, and a lone fetching choice does too. A setting's row
+// stays a row of the ledger.
+func TestAChooserIsNotALedgerRow(t *testing.T) {
+	short := chartChoice()
+	short.Children[0].(*Field).Options = []Option{{Value: "cpu", Label: "CPU"}}
+	short.Children[1].(*Field).Options = []Option{{Value: "day", Label: "Day"}}
+	lone := &Field{Name: "sensor", Label: "Show chart for", Kind: "select", Value: "cpu",
+		Options: []Option{{Value: "cpu", Label: "CPU"}}, Fetch: &FieldFetch{URL: "/x", Target: "#y"}}
+	for name, w := range map[string]Widget{"joined": chartChoice(), "short": short, "lone": lone} {
+		if got := render(t, newRenderer(t), w); !strings.Contains(got, "verso-field-plain") {
+			t.Errorf("%s: a chooser is drawn as a setting's row:\n%s", name, got)
+		}
+	}
+	if setting := render(t, newRenderer(t), path()); strings.Contains(setting, "verso-field-plain") {
+		t.Errorf("a setting's row is drawn as a chooser:\n%s", setting)
+	}
+}
+
 // TestAFetchIsTheShellsOwn: a plugin cannot ask a field to fetch: Fetch never
 // travels in the widget schema.
 func TestAFetchIsTheShellsOwn(t *testing.T) {

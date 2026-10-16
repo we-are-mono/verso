@@ -313,11 +313,12 @@ func (f *Field) framed() bool {
 	return f.Style == "code" || (f.Kind != "hidden" && f.Kind != "file")
 }
 
-// frame is this field's row. A locked value posts nothing, so it tracks no
-// change; the code editor's value is a whole file, which no preview patches
-// line by line.
+// frame is this field's row. A locked value posts nothing, and a choice of
+// what to look at stages nothing, so neither tracks a change; the code
+// editor's value is a whole file, which no preview patches line by line. A
+// choice of what to look at is no setting, so its row is plain.
 func (f *Field) frame() fieldFrame {
-	change := fieldChange{Track: f.Style != "locked", Name: f.Name, Label: f.Label, Kind: f.Kind, Writes: f.Key}
+	change := fieldChange{Track: f.Style != "locked" && f.Fetch == nil, Name: f.Name, Label: f.Label, Kind: f.Kind, Writes: f.Key}
 	switch {
 	case f.Style == "code":
 		change.Kind, change.Writes = "textarea", ""
@@ -327,6 +328,7 @@ func (f *Field) frame() fieldFrame {
 	frame := fieldFrame{
 		Label: f.LabelView(), Change: change, Measure: f.ControlMeasure(),
 		Lane: f.Lane(), Removable: f.Removable(), Desc: f.description(), Note: f.Note, Wide: f.wide(),
+		Plain: f.Fetch != nil,
 	}
 	if f.Error != "" {
 		frame.Errors = []fieldError{{ID: f.Name + "-error", Text: f.Error}}
