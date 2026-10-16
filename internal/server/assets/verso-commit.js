@@ -157,134 +157,51 @@
 })();
 
 // The rail's Pending changes row (ADR-010), server-rendered from UCI's own
-// stage with every page and always there, hidden while the stage is clean.
-// This client keeps it in step when an act on the page stages something
-// without a reload, and says in its second line, for a moment, what the stage
-// just took — the change's own words from the Pending changes page — while its
-// count turns over to the new one. An edit not yet saved shows there before
-// the save, dashed, with what it would add; with nothing staged yet the whole
-// row stands dashed. Nothing travels across the screen. On a phone the menu
-// button carries the same count, and the dashed "+1".
+// stage with every page and always there, hidden while the stage is clean. A
+// page form's Save reloads the page, which draws the row anew. An act that
+// stages without a reload (a drawer's save, a row's one-press act) hands this
+// client the page it read, and the row takes that page's count as it stands:
+// nothing previews an edit before Save, and nothing animates. On a phone the
+// menu button carries the same count. A screen reader hears what the stage
+// took.
 (function () {
   var row = document.getElementById("verso-pending-row");
   if (!row) return;
   var tally = document.getElementById("verso-pending-count");
-  var line = document.getElementById("verso-pending-line");
   var menu = document.querySelector(".verso-menu-button");
   var menuCount = document.getElementById("verso-menu-count");
-  var menuGhost = document.getElementById("verso-menu-ghost");
-  var told = null;
-  var TOLD = 3200;
-
-  function count() {
-    return parseInt(row.getAttribute("data-count") || "0", 10);
-  }
-
-  // shown puts the count on the row and the menu button: turned over, the old
-  // count rising out of its line as the new one rises in (versoTurn).
-  function shown(n, turned) {
-    row.setAttribute("data-count", String(n));
-    if (menu) menu.setAttribute("data-count", String(n));
-    if (menuCount) menuCount.hidden = n === 0;
-    [tally, menuCount].forEach(function (el) {
-      if (!el) return;
-      if (turned) versoTurn(el, String(n));
-      else el.textContent = String(n);
-    });
-    if (row.getAttribute("data-state") !== "ghost") row.hidden = n === 0;
-  }
-
-  // say writes the row's second line: "ghost", dashed, what a save would add;
-  // "told", plain words, what the stage just took; nothing, folded away.
-  function say(state, words, delta) {
-    clearTimeout(told);
-    if (!state) {
-      row.removeAttribute("data-state");
-      row.removeAttribute("data-clean");
-      row.hidden = count() === 0;
-      if (menu) menu.removeAttribute("data-ghost");
-      if (menuGhost) menuGhost.hidden = true;
-      return;
-    }
-    line.textContent = "";
-    if (delta) line.appendChild(versoEl("span", "verso-pending-delta", delta));
-    line.appendChild(document.createTextNode(words));
-    row.setAttribute("data-state", state);
-    if (state === "ghost") {
-      row.hidden = false;
-      if (count() === 0) row.setAttribute("data-clean", "");
-      if (menu) menu.setAttribute("data-ghost", "");
-      if (menuGhost) {
-        menuGhost.hidden = !delta;
-        menuGhost.textContent = delta || "";
-      }
-      return;
-    }
-    row.removeAttribute("data-clean");
-    if (menu) menu.removeAttribute("data-ghost");
-    if (menuGhost) menuGhost.hidden = true;
-    versoAnnounce(T("Pending: %s").replace("%s", words));
-    told = setTimeout(function () { say(null); }, TOLD);
-  }
-
-  // warm: the row takes what just reached it — its wash warms toward the
-  // stage's marigold and settles, once.
-  function warm() {
-    row.removeAttribute("data-warm");
-    void row.offsetWidth;
-    row.setAttribute("data-warm", "");
-  }
-
-  // tell says what the stage just took, its count turning over from before.
-  function tell(before) {
-    var n = count();
-    var latest = row.getAttribute("data-latest") || "";
-    if (typeof before === "number" && before !== n) {
-      shown(before, false);
-      shown(n, true);
-    }
-    if (n > 0 && latest) {
-      say("told", latest);
-      warm();
-    } else {
-      say(null);
-    }
-  }
 
   window.versoStaged = {
-    count: count,
     // sync takes a fresh render of a page as the stage's truth: the count it
-    // carries is the count, and where the stage holds a change it did not a
-    // moment ago, or one it took anew, the row says so.
+    // carries is the count.
     sync: function (doc) {
       var fresh = doc && doc.getElementById("verso-pending-row");
       var n = fresh ? parseInt(fresh.getAttribute("data-count") || "0", 10) : 0;
       var latest = fresh ? fresh.getAttribute("data-latest") || "" : "";
-      var before = count();
-      var was = row.getAttribute("data-latest") || "";
+      var before = parseInt(row.getAttribute("data-count") || "0", 10);
+      var took = n > 0 && latest !== "" && (n > before || latest !== (row.getAttribute("data-latest") || ""));
       if (latest) row.setAttribute("data-latest", latest);
       else row.removeAttribute("data-latest");
-      shown(n, false);
-      if (n !== before || latest !== was) tell(before);
-      else if (row.getAttribute("data-state") === "ghost") say(null);
+      row.setAttribute("data-count", String(n));
+      row.hidden = n === 0;
+      if (tally) tally.textContent = String(n);
+      if (menu) menu.setAttribute("data-count", String(n));
+      if (menuCount) {
+        menuCount.textContent = String(n);
+        menuCount.hidden = n === 0;
+      }
+      if (took) versoAnnounce(T("Pending: %s").replace("%s", latest));
     },
-    // preview shows an edit not yet saved, dashed; clear lets it go.
-    preview: function (words, delta) { say("ghost", words, delta); },
-    clear: function () { if (row.getAttribute("data-state") === "ghost") say(null); },
-    // landed is the page a save lands on: its count turns over from before
-    // and the row says what the save staged.
-    landed: function (before) { tell(before); },
   };
 })();
 
-// An edit not yet saved, in a form whose save stages (data-verso-stages, on a
-// page or in a drawer), shows in the Pending changes row as it is made: what
-// the save would stage, dashed, led by "+1" for each setting or item not
-// already pending. A drawer's edit is said as the row it opened from. Putting
-// the edit back, or closing the drawer, lets the line go. Hover changes
-// nothing.
+// A page form's save reloads the page, so where its Save stood on screen is
+// noted as it is submitted and read when the page comes back: the page opens
+// where the person was, the Save back at the same height. A refusal lands
+// differently — at the refused box (verso-forms.js). A note older than a few
+// seconds, or from another page, is not this save's.
 (function () {
-  if (!window.versoStaged) return;
+  var KEY = "verso-staged-landing";
 
   function differs(control) {
     var type = (control.type || "").toLowerCase();
@@ -294,129 +211,40 @@
     return control.value !== control.defaultValue;
   }
 
-  // edited is each of the form's settings an edit has changed, with the
-  // control that differs.
+  // edited is the first of the form's settings an edit has changed, by the
+  // option it writes.
   function edited(form) {
-    var out = [];
-    [].forEach.call(form.querySelectorAll("[data-verso-change-field]"), function (row) {
-      var control = [].filter.call(row.querySelectorAll("input, select, textarea"), differs)[0];
-      if (control) out.push({ row: row, control: control });
-    });
-    return out;
+    return [].filter.call(form.querySelectorAll("[data-verso-change-field][data-verso-change-name]"), function (row) {
+      return [].some.call(row.querySelectorAll("input, select, textarea"), differs);
+    })[0];
   }
-
-  function named(row, control) {
-    var label = row.getAttribute("data-verso-change-label");
-    if (label) return label;
-    var el = row.querySelector("label");
-    return el ? el.textContent.trim() : control.name;
-  }
-
-  // said is a value as the line says it: a switch's word, a choice's own
-  // words, a secret never.
-  function said(control) {
-    var type = (control.type || "").toLowerCase();
-    if (type === "checkbox") return control.checked ? T("on") : T("off");
-    if (type === "password") return T("changed");
-    if (control.tagName === "SELECT") {
-      var option = control.options[control.selectedIndex];
-      return option ? option.textContent.trim() : "";
-    }
-    if (type === "radio") {
-      var picked = control.form && control.form.querySelector('input[type="radio"][name="' + CSS.escape(control.name) + '"]:checked');
-      var label = picked && picked.closest("label");
-      return label ? label.textContent.trim() : picked ? picked.value : "";
-    }
-    return control.value === "" ? T("not set") : control.value;
-  }
-
-  // subject is the row a drawer opened from, by its name, where the form
-  // stands in one.
-  function subject(form) {
-    var frame = form.closest("[data-verso-panel]");
-    if (!frame || !window.Alpine) return "";
-    var scope = window.Alpine.$data(frame);
-    var opener = scope && scope._root;
-    var tr = opener && opener.closest ? opener.closest("tr[data-verso-row-name]") : null;
-    return tr ? tr.getAttribute("data-verso-row-name") : "";
-  }
-
-  function preview(form) {
-    var edits = edited(form);
-    if (!edits.length) {
-      window.versoStaged.clear();
-      return;
-    }
-    var first = edits[0];
-    var name = subject(form);
-    var words = (name ? name + " · " : "") + named(first.row, first.control) + " → " + said(first.control);
-    if (edits.length > 1) words += " " + T("+%d more").replace("%d", edits.length - 1);
-    // A drawer's edit is one item: new to the stage unless any of its
-    // settings already waits. A page's settings each count on their own.
-    var fresh = form.closest("[data-verso-panel]")
-      ? (form.querySelector("[data-verso-staged-row]") ? 0 : 1)
-      : edits.filter(function (e) { return !e.row.querySelector("[data-verso-staged-row]"); }).length;
-    window.versoStaged.preview(words, fresh ? "+" + fresh : "");
-  }
-
-  function staging(target) {
-    return target && target.closest ? target.closest("form[data-verso-stages]") : null;
-  }
-
-  ["input", "change"].forEach(function (kind) {
-    document.addEventListener(kind, function (e) {
-      var form = staging(e.target);
-      if (form) preview(form);
-    });
-  });
-  document.addEventListener("reset", function (e) {
-    if (staging(e.target)) window.versoStaged.clear();
-  });
-  document.addEventListener("verso-panel-hidden", function () { window.versoStaged.clear(); });
-})();
-
-// A page form's save reloads the page, so what it left is noted as it is
-// submitted and read when the page comes back: where its Save stood on
-// screen, and the count the row had. On landing the page opens where the
-// person was (the Save back at the same height) and the row says what the
-// save staged, its count turning over from the one it had. A refusal lands
-// differently — at the refused box (verso-forms.js). A note older than a few
-// seconds, or from another page, is not this save's.
-(function () {
-  var KEY = "verso-staged-landing";
 
   document.addEventListener("submit", function (e) {
     var form = e.target;
-    if (!form || !form.matches || !form.matches("main form[data-verso-stages]") || form.hasAttribute("hx-post")) return;
-    if (!window.versoStaged) return;
+    if (!form || !form.matches || !form.matches("main form") || form.hasAttribute("hx-post") || form.hasAttribute("data-verso-act")) return;
+    var row = edited(form);
+    if (!row) return;
     var save = e.submitter || form.querySelector('[type="submit"]');
     var note = {
       path: window.location.pathname,
+      name: row.getAttribute("data-verso-change-name"),
       at: save ? save.getBoundingClientRect().top : null,
-      count: window.versoStaged.count(),
       time: Date.now(),
     };
     try { window.sessionStorage.setItem(KEY, JSON.stringify(note)); } catch (err) { /* the save lands at the top, as a plain reload */ }
   }, true);
-
-  // letGo shows the count the page held back for this landing
-  // (verso-boot.js).
-  function letGo() {
-    document.documentElement.removeAttribute("data-verso-landing");
-  }
 
   var note = null;
   try {
     note = JSON.parse(window.sessionStorage.getItem(KEY) || "null");
     window.sessionStorage.removeItem(KEY);
   } catch (err) { note = null; }
-  if (!note || note.path !== window.location.pathname || Date.now() - note.time > 15000) return letGo();
-  if (document.querySelector('main [aria-invalid="true"]') || !window.versoStaged) return letGo();
-  var form = document.querySelector("main form[data-verso-stages]");
+  if (!note || note.path !== window.location.pathname || Date.now() - note.time > 15000) return;
+  if (document.querySelector('main [aria-invalid="true"]')) return;
+  var row = document.querySelector('main [data-verso-change-field][data-verso-change-name="' + CSS.escape(note.name || "") + '"]');
+  var form = row && row.closest("form");
   var save = form && form.querySelector('[type="submit"]');
   if (save && typeof note.at === "number") window.scrollBy(0, save.getBoundingClientRect().top - note.at);
-  letGo();
-  window.versoStaged.landed(note.count);
 })();
 
 // The Pending changes page's apply (ADR-010). Apply posts the When you apply

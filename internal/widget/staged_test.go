@@ -43,32 +43,6 @@ func TestMarkStagedFindsWhatWaits(t *testing.T) {
 	}
 }
 
-// TestFormsThatStageSaySo: on a page whose saves stage, every form says so —
-// one in a row's drawer included — so the page's script can show an unsaved
-// edit where the save will go; a row says its name for the same line.
-func TestFormsThatStageSaySo(t *testing.T) {
-	r := newRenderer(t)
-	page := &Form{Fields: []Widget{&Field{Name: "port", Label: "Port"}}}
-	inDrawer := &Form{Fields: []Widget{&Field{Name: "target", Label: "Action"}}}
-	table := &Table{Columns: []TableColumn{{Label: "Name"}}, Rows: []TableRow{{
-		ID: "cfg01", Cells: []TableCell{{Text: "Allow-Ping"}},
-		Drawer: &RowDrawer{Title: "Edit rule", Children: Widgets{inDrawer}},
-	}}}
-	MarkStaging(&Stack{Children: []Widget{page, table}})
-	if !page.Stages || !inDrawer.Stages {
-		t.Fatalf("forms that stage: page %v, drawer %v", page.Stages, inDrawer.Stages)
-	}
-	if got := render(t, r, page); !strings.Contains(got, "data-verso-stages") {
-		t.Errorf("a form that stages does not say so:\n%s", got)
-	}
-	if got := render(t, r, table); !strings.Contains(got, `data-verso-row-name="Allow-Ping"`) {
-		t.Errorf("a row does not say its name:\n%s", got)
-	}
-	if got := render(t, r, &Form{Fields: []Widget{&Field{Name: "x", Label: "X"}}}); strings.Contains(got, "data-verso-stages") {
-		t.Error("a form nobody marked says it stages")
-	}
-}
-
 // TestAMarkedRowCarriesItsAddress: a marked row's mark is named by the
 // option's address, so the Pending changes page can lead to it on its page;
 // a row marked by its own target and one by its form's are named alike.

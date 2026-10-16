@@ -70,7 +70,7 @@ const speculationRulesPath = "/assets/speculation-rules.json"
 // served under /assets. The page chrome loads the scripts (ADR-004); CSS loads
 // the embedded font subsets without a third-party request.
 //
-//go:embed assets/htmx.min.js assets/alpine.csp.min.js assets/verso-dev.js assets/verso-boot.js
+//go:embed assets/htmx.min.js assets/alpine.csp.min.js assets/verso-dev.js
 //go:embed assets/verso.js assets/verso-forms.js assets/verso-tables.js assets/verso-commit.js
 //go:embed assets/verso-packages.js assets/verso-buttons.js assets/verso-usage.js
 //go:embed assets/verso-system.js assets/verso-diagnostics.js
@@ -867,11 +867,9 @@ func jsCatalog(tr func(string) string) template.JS {
 		"Uploading…", "%s of %s\U0000202fMiB", "The upload stopped. Check the connection, then choose the file again.",
 		// What staying signed in says once the session has been extended.
 		"You’re still signed in.",
-		// The rail's Pending changes row: what an edit not yet saved would
-		// stage, how a value reads in it (a switch in the words its saved
-		// change says), and what a screen reader hears of a change the stage
-		// took.
-		"on", "off", "not set", "changed", "+%d more", "Pending: %s",
+		// The rail's Pending changes row: what a screen reader hears of a
+		// change the stage took.
+		"Pending: %s",
 		// The Pending changes page's apply: each step's state as the router
 		// reports it, and what the page says when the router turns it away.
 		"Saving", "Saved", "Started", "Kept", "Put back", "%d\U0000202fs left",

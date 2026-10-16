@@ -19,10 +19,6 @@
 <link rel="preload" href="/assets/fonts/inconsolata-latin.woff2" as="font" type="font/woff2" crossorigin>
 <style id="verso-css">{{.CSS}}</style>
 <style id="verso-theme">{{.Theme}}</style>
-{{/* Synchronous, pre-paint: a page a staged save lands on holds the chip back
-     from its first paint, until the change flies to it (CSP-safe,
-     first-party). */}}
-<script src="/assets/verso-boot.js"></script>
 </head>
 <body x-data="sidebar" class="min-h-screen m-0 flex flex-col bg-ground font-sans text-sm leading-normal text-ink">
 <a href="#main" class="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus:rounded-xs focus:bg-canvas focus:px-4 focus:py-2 focus:font-semibold focus:outline-2 focus:outline-denim">{{ t "Skip to content" }}</a>

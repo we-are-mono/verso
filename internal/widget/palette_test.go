@@ -54,14 +54,14 @@ func TestNothingWearsAStockTailwindRamp(t *testing.T) {
 
 	// The shell's client builds markup of its own, in the same treatments; a ramp
 	// there is a row that looks different from the rows the server rendered beside
-	// it. verso-dev.js and verso-boot.js paint nothing.
+	// it. verso-dev.js paints nothing.
 	scripts, err := filepath.Glob(filepath.Join("..", "server", "assets", "verso*.js"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	for _, script := range scripts {
 		base := filepath.Base(script)
-		if base == "verso-dev.js" || base == "verso-boot.js" {
+		if base == "verso-dev.js" {
 			continue
 		}
 		body, err := os.ReadFile(script)
@@ -155,7 +155,7 @@ func paintedSources(t *testing.T) []string {
 		}
 		for _, m := range matches {
 			base := filepath.Base(m)
-			if strings.HasSuffix(base, "_test.go") || base == "verso-dev.js" || base == "verso-boot.js" {
+			if strings.HasSuffix(base, "_test.go") || base == "verso-dev.js" {
 				continue
 			}
 			files = append(files, m)

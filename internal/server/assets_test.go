@@ -58,9 +58,6 @@ func TestEveryScriptThePageAsksForIsServed(t *testing.T) {
 	// things depend on that: verso.js defines the T() every behaviour file calls,
 	// and Alpine boots on load and fires alpine:init exactly once, so a component
 	// registered after Alpine is never registered at all.
-	//
-	// verso-boot.js is not in this reckoning: it runs in the head, before the page
-	// paints, because what it does has to happen before anything is drawn.
 	order := make([]string, 0, len(matches))
 	for _, m := range matches {
 		order = append(order, m[1])
@@ -87,8 +84,7 @@ func TestEveryScriptThePageAsksForIsServed(t *testing.T) {
 		}
 	}
 	behaviour := func(src string) bool {
-		return strings.HasPrefix(src, "/assets/verso-") &&
-			src != "/assets/verso-boot.js" && src != "/assets/verso-dev.js"
+		return strings.HasPrefix(src, "/assets/verso-") && src != "/assets/verso-dev.js"
 	}
 	for i, src := range order {
 		if behaviour(src) && i < core {

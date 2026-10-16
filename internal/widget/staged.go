@@ -36,21 +36,6 @@ func MarkStaged(w Widget, waits func(address string) bool) {
 	markStaged(w, "", waits)
 }
 
-// MarkStaging marks every form in w as one whose save stages (ADR-010), so
-// the page's script shows an edit not yet saved in the rail's Pending changes
-// row. The shell calls it on a page whose saves stage — not an immediate one.
-func MarkStaging(w Widget) {
-	if w == nil {
-		return
-	}
-	if form, ok := w.(*Form); ok {
-		form.Stages = true
-	}
-	for _, child := range w.children() {
-		MarkStaging(child)
-	}
-}
-
 func markStaged(w Widget, at string, waits func(string) bool) {
 	if w == nil {
 		return
