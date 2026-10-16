@@ -422,8 +422,9 @@
   font-weight: 400;
 }
 /* A listing that opens a titled card's body stands straight under the
- * header's hairline, which is its top edge on the line. */
-.verso-page-body section[data-verso-section]:not(section section, dialog *) > [data-verso-section-band] + .verso-rhythm > [data-verso-listing]:first-child {
+ * header's hairline, which is its top edge on the line. A list stands in the
+ * card's inset instead, under the same 24px of air as any first block. */
+.verso-page-body section[data-verso-section]:not(section section, dialog *) > [data-verso-section-band] + .verso-rhythm > [data-verso-listing]:not([data-verso-list]):first-child {
   --verso-head-top: 0px;
   margin-top: 0;
 }
