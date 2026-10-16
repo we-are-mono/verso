@@ -561,7 +561,8 @@ func TestARuledSectionStandsByItsRulesAir(t *testing.T) {
 // TestASectionKeepsTheMastheadsAirAndNoMore: an untitled section holds the
 // cell of air under its rule itself, so the row it starts with gives its own
 // padding back — its first visible row starts where the section's air ends,
-// inside a run of rows too. Every row ends on a line of its own, so a
+// inside a run of rows too, and inside the form a card saves itself with when
+// that form is the card's body. Every row ends on a line of its own, so a
 // section's last row keeps its padding: no section gives its last row's air
 // back. Hidden carriers ahead of the first row are not a block: the first row
 // after them takes no block gap.
@@ -573,7 +574,8 @@ func TestASectionKeepsTheMastheadsAirAndNoMore(t *testing.T) {
 	css := string(raw)
 	for _, want := range []string{
 		`[data-verso-headless]>.verso-rhythm>:not(input[type=hidden],[hidden]):not(:not(input[type=hidden],[hidden])~*),` +
-			`[data-verso-headless]>.verso-rhythm>[data-verso-rows]:not(input[type=hidden],[hidden]):not(:not(input[type=hidden],[hidden])~*)>:not(input[type=hidden],[hidden]):not(:not(input[type=hidden],[hidden])~*){padding-top:0}`,
+			`[data-verso-headless]>.verso-rhythm>[data-verso-rows]:not(input[type=hidden],[hidden]):not(:not(input[type=hidden],[hidden])~*)>:not(input[type=hidden],[hidden]):not(:not(input[type=hidden],[hidden])~*),` +
+			`[data-verso-headless]>.verso-rhythm>form.verso-form:not(:not(input[type=hidden],[hidden])~*)>:not(input[type=hidden],[hidden]):not(:not(input[type=hidden],[hidden])~*){padding-top:0}`,
 		`.verso-rhythm>:not(input[type=hidden]):not(:not(input[type=hidden])~*){margin-top:0}`,
 	} {
 		if !strings.Contains(css, want) {
