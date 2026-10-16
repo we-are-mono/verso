@@ -284,8 +284,9 @@ func TestACardMeasuresOnTheEightPixelGrid(t *testing.T) {
 		"padding-top: calc(var(--spacing-inset) - 1px);",
 		"+ .verso-rhythm:not(:has(> [data-verso-listing]:not([data-verso-list]):first-child)) {\n  margin-top: -1px;\n}",
 		// the header: 11px after the frame, its 24px line, 12px under, then its
-		// hairline, the title centred on the header's middle line
-		"padding-block: calc(var(--spacing) * 2.75) calc(var(--spacing) * 3);\n  border-top-width: 0;\n  border-bottom: 1px solid var(--color-rule);",
+		// seam in the frame's own ink, the title centred on the header's
+		// middle line
+		"padding-block: calc(var(--spacing) * 2.75) calc(var(--spacing) * 3);\n  border-top-width: 0;\n  border-bottom: 1px solid var(--color-rule-strong);",
 		// the column-head row: its 16px line 15px after the edge over it, 16px
 		// over its own hairline
 		"padding-block: calc(var(--spacing) * 4 - 1px) calc(var(--spacing) * 4);",

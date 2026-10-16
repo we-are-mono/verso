@@ -287,11 +287,13 @@
 }
 /* The header is 48px from the frame's line to its hairline's: 11px after the
  * frame, the title's 24px line, 12px under it, then its hairline, so the
- * title stands centred on the header's middle line. */
+ * title stands centred on the header's middle line. The hairline is the
+ * frame's own ink, so the header reads as the card's, and the fainter lines
+ * under it (between questions) as what the card holds. */
 .verso-page-body section[data-verso-section]:not(section section, dialog *) > [data-verso-section-band] {
   padding-block: calc(var(--spacing) * 2.75) calc(var(--spacing) * 3);
   border-top-width: 0;
-  border-bottom: 1px solid var(--color-rule);
+  border-bottom: 1px solid var(--color-rule-strong);
 }
 .verso-page-body section[data-verso-section]:not(section section, dialog *) > [data-verso-section-band] h2 {
   font-size: var(--text-base);

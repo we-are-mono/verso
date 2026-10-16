@@ -89,7 +89,7 @@
     <button type="button" data-overview-toggle aria-expanded="{{if .Closed}}false{{else}}true{{end}}" aria-controls="overview-card-body-{{.ID}}" aria-label="{{if .Closed}}{{printf (t "Open %s") .Title}}{{else}}{{printf (t "Close %s") .Title}}{{end}}" data-open-label="{{printf (t "Open %s") .Title}}" data-close-label="{{printf (t "Close %s") .Title}}" class="grid -my-1 {{template "verso-btn-icon"}} group-data-arranging/overview:hidden"><span class="verso-overview-chevron flex">{{icon "chevron-down" "size-4"}}</span></button>
     <button type="button" data-overview-hide aria-label="{{printf (t "Hide %s") .Title}}" title="{{t "Hide"}}" class="hidden -my-1 {{template "verso-btn-icon"}} hover:border-crimson-line hover:bg-crimson-soft hover:text-crimson-deep group-data-arranging/overview:grid">{{icon "x" "size-4"}}</button>
   </header>
-  <div id="overview-card-body-{{.ID}}" class="verso-overview-body"><div class="min-h-0 overflow-hidden"><div class="verso-overview-content border-t border-rule px-5.75 pt-5.75 pb-6">{{.Body}}</div></div></div>
+  <div id="overview-card-body-{{.ID}}" class="verso-overview-body"><div class="min-h-0 overflow-hidden"><div class="verso-overview-content border-t border-rule-strong px-5.75 pt-5.75 pb-6">{{.Body}}</div></div></div>
 </article>
 {{end}}
 

@@ -39,6 +39,16 @@ func cardOrder(page string) []string {
 	return ids
 }
 
+// TestAnOverviewCardsSeamIsItsFramesInk: the line between a card's header
+// and its body is drawn in the frame's own ink, as a page card's is, so the
+// header reads as the card's and the lines inside it as its contents'.
+func TestAnOverviewCardsSeamIsItsFramesInk(t *testing.T) {
+	got := render(t, newRenderer(t), fullOverview())
+	if n := strings.Count(got, `class="verso-overview-content border-t border-rule-strong`); n == 0 || n != strings.Count(got, "verso-overview-content") {
+		t.Errorf("an Overview card's seam is not its frame's ink in %d of its cards:\n%s", strings.Count(got, "verso-overview-content")-n, got)
+	}
+}
+
 func TestRenderOverviewCards(t *testing.T) {
 	got := render(t, newRenderer(t), fullOverview())
 	for _, want := range []string{
