@@ -40,6 +40,7 @@ type fakeBackend struct {
 	uciErr         error                     // returned by UCISet
 	uciReadErr     error                     // returned by UCIConfig (a read the shell brokers)
 	uciReads       *int                      // counts UCIConfig calls (pointer: fakeBackend is by value)
+	uciReadSIDs    *[]string                 // records the operator session for each brokered read
 	writes         *[]uciWrite               // records UCISet calls (pointer: fakeBackend is used by value)
 	uci            map[string]map[string]any // per-config read snapshots UCIConfig returns
 	committed      map[string]map[string]any // per-config committed sections UCICommitted returns
@@ -260,9 +261,12 @@ func (f fakeBackend) UCISet(_ context.Context, sid, config, section string, valu
 // UCIConfig returns the canned read snapshot for a config (the shell brokers
 // plugin reads through rpcd, ADR-007). An absent config yields an empty snapshot,
 // mirroring an operator who may not read it.
-func (f fakeBackend) UCIConfig(_ context.Context, _, config string) (map[string]any, error) {
+func (f fakeBackend) UCIConfig(_ context.Context, sid, config string) (map[string]any, error) {
 	if f.uciReads != nil {
 		*f.uciReads++
+	}
+	if f.uciReadSIDs != nil {
+		*f.uciReadSIDs = append(*f.uciReadSIDs, sid)
 	}
 	if f.uciReadErr != nil {
 		return nil, f.uciReadErr
@@ -648,14 +652,16 @@ type fakeTransport struct {
 	err          error
 	lastSocket   string
 	lastReq      plugin.Request
+	hasDeadline  bool
 	descriptions []plugin.Description // what Describe returns
 	describeErr  error
 	lastDescribe []plugin.DescribeChange
 }
 
-func (f *fakeTransport) Fetch(_ context.Context, target plugin.Endpoint, req plugin.Request) (*plugin.Envelope, error) {
+func (f *fakeTransport) Fetch(ctx context.Context, target plugin.Endpoint, req plugin.Request) (*plugin.Envelope, error) {
 	f.lastSocket = target.Socket
 	f.lastReq = req
+	_, f.hasDeadline = ctx.Deadline()
 	return f.env, f.err
 }
 

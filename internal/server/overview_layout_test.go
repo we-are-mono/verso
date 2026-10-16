@@ -42,3 +42,18 @@ func TestCookieLayout(t *testing.T) {
 		t.Errorf("no profile, saved = %q, want Hardware dropped and the rest in place", got)
 	}
 }
+
+func TestCookieLayoutAcceptsOnlyInstalledPluginCards(t *testing.T) {
+	id := widget.PluginOverviewCardID("jodu-5174x")
+	value := "1.internet-" + id + ".traffic-ports-tunnels-resources-system-hardware.."
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.AddCookie(&http.Cookie{Name: overviewLayoutCookie, Value: value})
+	got := (cookieLayout{hardware: true}).LayoutWithPlugins(req, []string{"jodu-5174x"})
+	if got.Encode() != value {
+		t.Fatalf("installed card layout = %q, want %q", got.Encode(), value)
+	}
+	unknown := (cookieLayout{hardware: true}).LayoutWithPlugins(req, nil)
+	if slices.Contains(slices.Concat(unknown.Cols[0], unknown.Cols[1]), id) {
+		t.Fatalf("unknown plugin card survived: %+v", unknown)
+	}
+}
