@@ -36,6 +36,9 @@ type List struct {
 	// the shell's word that the list's option waits to be applied.
 	Target string `json:"target,omitempty"`
 	Staged bool   `json:"-"`
+	// StagedAt is the option's address the list was marked by, which its
+	// mark is named by.
+	StagedAt string `json:"-"`
 	// Tip is the longer explanation, raised onto the label as a field's is.
 	Tip string `json:"tip,omitempty"`
 	// Options are the values worth offering: the control suggests them as you
@@ -72,7 +75,7 @@ func (l *List) Described() bool { return l.description() != "" }
 
 // LabelView is this list's question — the same shape every other row's is.
 func (l *List) LabelView() fieldLabel {
-	return fieldLabel{For: l.Name, Label: l.Label, Key: l.Key, Staged: l.Staged}
+	return fieldLabel{For: l.Name, Label: l.Label, Key: l.Key, Staged: l.Staged, StagedAt: l.StagedAt}
 }
 
 func (*List) isWidget() {}

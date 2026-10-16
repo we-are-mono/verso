@@ -216,7 +216,7 @@
 <div class="verso-field-label flex min-w-0 flex-wrap items-center gap-2">
   {{if .Label}}{{if .Group}}<span{{template "verso-field-label-attrs" .}}>{{template "verso-field-label-text" .}}</span>{{else}}<label for="{{.For}}"{{template "verso-field-label-attrs" .}}>{{template "verso-field-label-text" .}}</label>{{end}}{{end}}
   {{if .Key}}<span class="{{template "verso-key-chip-class"}}">{{.Key}}</span>{{end}}
-  {{if .Staged}}{{template "verso-staged-row"}}{{end}}
+  {{if .Staged}}{{template "verso-staged-row" .StagedAt}}{{end}}
 </div>
 {{end}}
 {{/* verso-field-label-class: a setting's name, wherever a box is labelled —
@@ -230,8 +230,9 @@
 {{/* verso-staged-row: this setting's change waits on the stage — a bar in
      the stage's marigold down the row's left edge (forms.css), the word said
      to a screen reader beside the setting's name. The shell marks it on every
-     visit until the change is applied or discarded (MarkStaged). */}}
-{{define "verso-staged-row"}}<span data-verso-staged-row class="verso-staged-bar"><span aria-hidden="true"></span><span class="sr-only">{{t "staged"}}</span></span>{{end}}
+     visit until the change is applied or discarded (MarkStaged), named by the
+     option's address so the Pending changes page can lead to it. */}}
+{{define "verso-staged-row"}}<span{{with .}} id="staged-{{.}}"{{end}} data-verso-staged-row class="verso-staged-bar"><span aria-hidden="true"></span><span class="sr-only">{{t "staged"}}</span></span>{{end}}
 
 {{/* verso-field: one setting's row, the same on a page, in a drawer and in a
      settings block (fieldFrame), and one shape whatever it holds: a ledger of

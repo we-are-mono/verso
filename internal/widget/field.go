@@ -64,8 +64,11 @@ type Field struct {
 	// option's full address, which is how the shell finds a field whose change
 	// waits on the stage (MarkStaged) and marks it on every visit.
 	Target string `json:"target,omitempty"`
-	// Staged is the shell's word that this field's option waits to be applied.
-	Staged bool `json:"-"`
+	// Staged is the shell's word that this field's option waits to be applied;
+	// StagedAt is the option's address it was marked by, which its mark is
+	// named by.
+	Staged   bool   `json:"-"`
+	StagedAt string `json:"-"`
 	// Theme makes a select the Appearance card's theme pick (ADR-024): it
 	// carries no name, so the form around it neither submits it nor counts it,
 	// and the page posts a pick on its own (verso-forms.js). Shell only.
@@ -232,8 +235,9 @@ type fieldLabel struct {
 	Explained bool
 	Tip       TipView
 	// Staged draws the stage's mark beside the key: this setting's change
-	// waits to be applied.
-	Staged bool
+	// waits to be applied. StagedAt names the mark by the option's address.
+	Staged   bool
+	StagedAt string
 }
 
 // LabelView is this field's question: its name, its key and its mark. What
@@ -241,7 +245,7 @@ type fieldLabel struct {
 func (f *Field) LabelView() fieldLabel {
 	return fieldLabel{
 		For: f.Name, Group: f.UseRadios() && f.Style != "locked", Label: f.Label, Key: chip(f.Key, f.Source),
-		Staged: f.Staged,
+		Staged: f.Staged, StagedAt: f.StagedAt,
 	}
 }
 

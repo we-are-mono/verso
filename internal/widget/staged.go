@@ -8,7 +8,9 @@ package widget
 // It takes the stage's word on whether that option waits to be applied.
 type optionWriter interface {
 	writes() (target, key string)
-	markStaged()
+	// markStaged marks the control as waiting, by the option's full address,
+	// which its mark is then named by.
+	markStaged(address string)
 }
 
 // optionRows is a widget whose rows write options without being widgets of
@@ -59,19 +61,19 @@ func markWriter(writer optionWriter, at string, waits func(string) bool) {
 	if target == "" {
 		target = at
 	}
-	if target != "" && key != "" && waits(target+"."+key) {
-		writer.markStaged()
+	if address := target + "." + key; target != "" && key != "" && waits(address) {
+		writer.markStaged(address)
 	}
 }
 
 func (f *Field) writes() (string, string)       { return f.Target, f.Key }
-func (f *Field) markStaged()                    { f.Staged = true }
+func (f *Field) markStaged(at string)           { f.Staged, f.StagedAt = true, at }
 func (l *List) writes() (string, string)        { return l.Target, l.Key }
-func (l *List) markStaged()                     { l.Staged = true }
+func (l *List) markStaged(at string)            { l.Staged, l.StagedAt = true, at }
 func (s *Switch) writes() (string, string)      { return s.Target, s.Key }
-func (s *Switch) markStaged()                   { s.Staged = true }
+func (s *Switch) markStaged(at string)          { s.Staged, s.StagedAt = true, at }
 func (c *Conditional) writes() (string, string) { return "", c.Key }
-func (c *Conditional) markStaged()              { c.Staged = true }
+func (c *Conditional) markStaged(at string)     { c.Staged, c.StagedAt = true, at }
 
 // writes is the option an editing row writes; a row that only reads writes
 // none, whatever its chip says.
@@ -81,7 +83,7 @@ func (it *SettingsItem) writes() (string, string) {
 	}
 	return "", ""
 }
-func (it *SettingsItem) markStaged() { it.Staged = true }
+func (it *SettingsItem) markStaged(at string) { it.Staged, it.StagedAt = true, at }
 
 func (s *Settings) optionWriters() []optionWriter {
 	var out []optionWriter

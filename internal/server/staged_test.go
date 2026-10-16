@@ -4,12 +4,14 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/we-are-mono/verso/internal/plugin"
 )
@@ -760,5 +762,100 @@ func TestTheApplyActNamesWhatItApplies(t *testing.T) {
 		if got := stagedApplyLabel(n, slTr); got != want[1] {
 			t.Errorf("sl %d = %q, want %q", n, got, want[1])
 		}
+	}
+}
+
+// TestStagedViewSaysWhereAndWhen: each page's run of changes names the page
+// by the heading its plugin gave it and leads back to it; each row says how
+// long ago it was staged and carries the anchor its page marks it by; and the
+// view says which change was staged last, in the row's own words.
+func TestStagedViewSaysWhereAndWhen(t *testing.T) {
+	m := demoACLManifest()
+	m.Nav = []plugin.NavEntry{{Section: "Apps", Label: "Demo", Path: "/", Pages: plugin.NavPages{List: []plugin.PageTab{
+		{Label: "Rules", Path: ""}, {Label: "Zones", Path: "zones"},
+	}}}}
+	s := newServerWith(t, fakeBackend{access: true, changes: map[string][][]string{
+		"system": {
+			{"set", "cfg99", "rule"}, {"set", "cfg99", "name", "Allow DNS"},
+			{"set", "lan", "input", "REJECT"},
+		},
+	}}, &fakeTransport{descriptions: []plugin.Description{
+		{Plain: "Added the rule “Allow DNS”.", Covers: []int{0, 1}},
+		{Plain: "LAN input is reject", Covers: []int{2}, Setting: &plugin.Setting{Label: "Input", Value: "REJECT", Verbatim: true, Key: "input"}},
+	}}, []plugin.Manifest{m})
+	start := time.Now()
+	clock := start
+	s.authors.now = func() time.Time { return clock }
+
+	rules := authorAt(m, "/")
+	rules.Heading = "Demo rules"
+	clock = start.Add(-10 * time.Minute)
+	s.authors.note("test-sid", sectionAddress("system", "cfg99"), rules)
+	zones := authorAt(m, "/zones/lan")
+	clock = start.Add(-4 * time.Minute)
+	s.authors.note("test-sid", optionAddress("system", "lan", "input"), zones)
+	clock = start
+
+	identity := func(s string) string { return s }
+	view := s.staged(context.Background(), "test-sid", identity, func(string) func(string) string { return identity })
+	if len(view.Groups) != 2 {
+		t.Fatalf("groups = %+v, want one per page the changes were made on", view.Groups)
+	}
+	first, second := view.Groups[0], view.Groups[1]
+	if first.Heading != "Demo rules" || first.Href != "/plugins/demo/" {
+		t.Errorf("first card = %q at %q, want the page's heading, Demo rules, at /plugins/demo/", first.Heading, first.Href)
+	}
+	if second.Heading != "Demo" || second.Href != "/plugins/demo/zones" {
+		t.Errorf("second card = %q at %q, want the page named as its entry, Demo, at /plugins/demo/zones", second.Heading, second.Href)
+	}
+	rule, input := first.Items[0], second.Items[0]
+	if rule.Age != "10 min ago" || input.Age != "4 min ago" {
+		t.Errorf("ages = %q, %q, want 10 min ago and 4 min ago", rule.Age, input.Age)
+	}
+	if rule.Anchor != "staged-system.cfg99" || input.Anchor != "staged-system.lan.input" {
+		t.Errorf("anchors = %q, %q, want the section's and the option's", rule.Anchor, input.Anchor)
+	}
+	if rule.ID == "" || rule.ID == input.ID {
+		t.Errorf("row ids = %q, %q, want each row its own", rule.ID, input.ID)
+	}
+	if view.Latest != "Input → REJECT" {
+		t.Errorf("Latest = %q, want the last staged row's words, Input → REJECT", view.Latest)
+	}
+	if view.Count != 2 {
+		t.Errorf("Count = %d, want rows, not writes: 2", view.Count)
+	}
+}
+
+// TestASavedPageNamesItsCardByItsHeading: a save renders its page again, and
+// the title that render carries is what the page's card is named by.
+func TestASavedPageNamesItsCardByItsHeading(t *testing.T) {
+	tr := &fakeTransport{env: &plugin.Envelope{
+		SchemaVersion: 1, Title: "Demo rules", Status: http.StatusOK,
+		Widget: json.RawMessage(`{"type":"text","markdown":"body"}`),
+		Commit: []plugin.CommitOp{{Config: "system", Section: "lan", Values: map[string]any{"input": "REJECT"}}},
+	}}
+	s := newServerWith(t, fakeBackend{access: true, writes: &[]uciWrite{}, changes: map[string][][]string{
+		"system": {{"set", "lan", "input", "REJECT"}},
+	}}, tr, []plugin.Manifest{demoACLManifest()})
+	if rec := postPlugin(t, s, "/plugins/demo/", url.Values{"input": {"REJECT"}}); rec.Code != http.StatusSeeOther {
+		t.Fatalf("stage answered %d", rec.Code)
+	}
+	identity := func(s string) string { return s }
+	view := s.staged(context.Background(), "test-sid", identity, func(string) func(string) string { return identity })
+	if len(view.Groups) != 1 || view.Groups[0].Heading != "Demo rules" || view.Groups[0].Href != "/plugins/demo/" {
+		t.Errorf("groups = %+v, want one card, Demo rules, at /plugins/demo/", view.Groups)
+	}
+}
+
+// TestStagedRowWithNoTimeOnRecordSaysNoAge: a change staged before the shell
+// last started has no time on record, and its row says no age.
+func TestStagedRowWithNoTimeOnRecordSaysNoAge(t *testing.T) {
+	s := newServerWith(t, fakeBackend{access: true, changes: map[string][][]string{
+		"system": {{"set", "lan", "input", "REJECT"}},
+	}}, &fakeTransport{}, []plugin.Manifest{demoACLManifest()})
+	identity := func(s string) string { return s }
+	view := s.staged(context.Background(), "test-sid", identity, func(string) func(string) string { return identity })
+	if age := view.Groups[0].Items[0].Age; age != "" {
+		t.Errorf("Age = %q, want none", age)
 	}
 }

@@ -227,6 +227,9 @@ func groupRow(g *Grid, fields []*Field, parts boxView) (boxView, fieldFrame) {
 		}
 		if f.Staged {
 			label.Staged = true
+			if label.StagedAt == "" {
+				label.StagedAt = f.StagedAt
+			}
 		}
 		if d := f.description(); d != "" {
 			said, alone = append(said, f.Label+": "+d), append(alone, d)

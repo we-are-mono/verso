@@ -43,6 +43,33 @@ func TestMarkStagedFindsWhatWaits(t *testing.T) {
 	}
 }
 
+// TestAMarkedRowCarriesItsAddress: a marked row's mark is named by the
+// option's address, so the Pending changes page can lead to it on its page;
+// a row marked by its own target and one by its form's are named alike.
+func TestAMarkedRowCarriesItsAddress(t *testing.T) {
+	r := newRenderer(t)
+	port := &Field{Name: "Port", Label: "Port", Key: "Port"}
+	redirect := &Switch{Name: "redirect_https", Label: "Redirect", Key: "redirect_https", Target: "uhttpd.main"}
+	servers := &List{Name: "server", Label: "Time servers", Key: "server"}
+	tree := &Stack{Children: []Widget{
+		&Form{Target: "dropbear.cfg01", Fields: []Widget{port, redirect}},
+		&Section{Target: "system.ntp", Children: []Widget{servers}},
+	}}
+	MarkStaged(tree, func(string) bool { return true })
+	for name, c := range map[string]struct {
+		w    Widget
+		want string
+	}{
+		"field":  {port, `id="staged-dropbear.cfg01.Port"`},
+		"switch": {redirect, `id="staged-uhttpd.main.redirect_https"`},
+		"list":   {servers, `id="staged-system.ntp.server"`},
+	} {
+		if got := render(t, r, c.w); !strings.Contains(got, c.want+` data-verso-staged-row`) {
+			t.Errorf("%s: the mark is named %s:\n%s", name, c.want, got)
+		}
+	}
+}
+
 // TestAStagedRowWearsTheStagesMark: the mark is a bar in the stage's
 // marigold down the row's left edge, its word said to a screen reader only,
 // drawn by the server so it stands on every visit until the change is

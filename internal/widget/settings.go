@@ -69,6 +69,9 @@ type SettingsItem struct {
 	// Staged is the shell's word that this row's option (Code, in the form or
 	// section around the block) waits to be applied.
 	Staged bool `json:"-"`
+	// StagedAt is the option's address the row was marked by, which its mark
+	// is named by.
+	StagedAt string `json:"-"`
 }
 
 // Measure is the in-place value's own measure, as its field's would be in a
@@ -160,7 +163,7 @@ func (it *SettingsItem) DescribedBy() string {
 // value or pills standing in the answer where a control would.
 func (it *SettingsItem) frame() fieldFrame {
 	f := fieldFrame{
-		Label: fieldLabel{For: it.Name, Label: it.Title, Key: it.Code, Staged: it.Staged},
+		Label: fieldLabel{For: it.Name, Label: it.Title, Key: it.Code, Staged: it.Staged, StagedAt: it.StagedAt},
 		Desc:  it.Desc, Class: "last:pb-0",
 	}
 	switch {

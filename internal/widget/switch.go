@@ -42,6 +42,9 @@ type Switch struct {
 	// the shell's word that the switch's option waits to be applied.
 	Target string `json:"target,omitempty"`
 	Staged bool   `json:"-"`
+	// StagedAt is the option's address the switch was marked by, which its
+	// mark is named by.
+	StagedAt string `json:"-"`
 }
 
 func (*Switch) isWidget() {}
@@ -55,7 +58,7 @@ func (s *Switch) description() string { return sentences(s.Help, s.Tip) }
 // LabelView is this switch's question: the same shape a field's is, because
 // it is the same row.
 func (s *Switch) LabelView() fieldLabel {
-	return fieldLabel{For: s.Name, Label: s.Label, Key: chip(s.Key, s.Source), Mono: s.Verbatim, Staged: s.Staged}
+	return fieldLabel{For: s.Name, Label: s.Label, Key: chip(s.Key, s.Source), Mono: s.Verbatim, Staged: s.Staged, StagedAt: s.StagedAt}
 }
 
 // locked reports whether the switch states a state nothing here changes.

@@ -121,9 +121,9 @@ func conditionName(item ConditionItem, single bool) fieldLabel {
 	if single {
 		switch child := item.Children[0].(type) {
 		case *Field:
-			name.Staged = child.Staged
+			name.Staged, name.StagedAt = child.Staged, child.StagedAt
 		case *List:
-			name.Staged = child.Staged
+			name.Staged, name.StagedAt = child.Staged, child.StagedAt
 		}
 	}
 	return name

@@ -465,7 +465,11 @@ func (s *Server) pluginBodyAt(r *http.Request, m plugin.Manifest, pluginPath str
 			// too: a section pointing at a file that never arrived is no change
 			// anybody asked for.
 			if len(env.Commit) > 0 && status != http.StatusUnprocessableEntity {
-				if body, st, ok := s.brokerStage(r.Context(), m, authorAt(m, pluginPath), s.sessionSID(r), env.Commit, tr); !ok {
+				// The save renders the page again, so its title is the page's
+				// heading, what the Pending changes page names its card by.
+				who := authorAt(m, pluginPath)
+				who.Heading = env.Title
+				if body, st, ok := s.brokerStage(r.Context(), m, who, s.sessionSID(r), env.Commit, tr); !ok {
 					return body, st
 				}
 				hdr.StagedCommit = true

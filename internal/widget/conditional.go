@@ -30,6 +30,9 @@ type Conditional struct {
 	// Staged is the shell's word that the toggle's option waits to be applied.
 	// The gate names only its key; the form or section around it says where.
 	Staged bool `json:"-"`
+	// StagedAt is the option's address the toggle was marked by, which its
+	// mark is named by.
+	StagedAt string `json:"-"`
 }
 
 func (*Conditional) isWidget() {}
@@ -38,7 +41,7 @@ func (*Conditional) isWidget() {}
 // is. A gate that looked unlike the fields it gates would read as a different
 // kind of thing, and it is not: it is the setting the rest depend on.
 func (c *Conditional) LabelView() fieldLabel {
-	return fieldLabel{For: c.Name, Label: c.Label, Key: c.Key, Staged: c.Staged}
+	return fieldLabel{For: c.Name, Label: c.Label, Key: c.Key, Staged: c.Staged, StagedAt: c.StagedAt}
 }
 
 func (c *Conditional) children() []Widget {

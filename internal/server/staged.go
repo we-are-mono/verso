@@ -7,14 +7,17 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"hash/fnv"
 	"html/template"
 	"log"
 	"net/http"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/we-are-mono/verso/internal/i18n"
 	"github.com/we-are-mono/verso/internal/plugin"
+	"github.com/we-are-mono/verso/internal/units"
 	"github.com/we-are-mono/verso/internal/widget"
 )
 
@@ -78,12 +81,23 @@ type stagedView struct {
 	// Summary is what the entry's row in config history will say, offered
 	// where the drawer asks for a note (ADR-021).
 	Summary string
+	// Latest is the most recently staged row in its own words ("Input →
+	// REJECT"), what the rail's row says just after a save; empty where no
+	// row's time is on record.
+	Latest string
 }
 
-// stagedGroup is one page's run of changes in the drawer: a band naming the
-// page and what its changes amount to, then the rows.
+// stagedGroup is one page's run of changes: the page it was made on, named
+// by its heading, and where it is, then the rows.
 type stagedGroup struct {
-	Page  string
+	// Page is the page's name as the rail has it, what config history files
+	// the rows under; Heading is what the Pending changes page titles the
+	// card, the page's own heading where its save rendered it, else Page.
+	Page    string
+	Heading string
+	// Href is where the page is, empty where no change in the run has it on
+	// record.
+	Href  string
 	Tally string // "3 changes"
 	Items []stagedItem
 }
@@ -108,6 +122,15 @@ type stagedItem struct {
 	// its new value is (settingWas); nil where the two cannot be said alike.
 	Was   *stagedWas
 	Lines []stagedLine
+	// Age is how long ago the row was staged ("4 min ago"), empty where its
+	// time is not on record. Anchor is the id its page marks it by
+	// ("staged-config.section[.option]"), what going to it lands on. ID names
+	// the row among the stage's rows, what an undo names it by.
+	Age    string
+	Anchor string
+	ID     string
+	// at is when the row was staged, zero where it is not known.
+	at time.Time
 	// plugin is the plugin whose page the row was made on, empty for the
 	// shell's own; changes is what the row stands for. Config history keeps
 	// both (ADR-021), and subject, what its plugin said the row is about.
@@ -267,6 +290,14 @@ func (s *Server) staged(ctx context.Context, sid string, tr func(string) string,
 		return v
 	}
 	v.Groups, v.Count = s.describedGroups(ctx, sessionStage{s, sid}, flat, tr, pluginTr)
+	var latest time.Time
+	for _, g := range v.Groups {
+		for _, item := range g.Items {
+			if !item.at.IsZero() && item.at.After(latest) {
+				latest, v.Latest = item.at, rowWords(item)
+			}
+		}
+	}
 	v.Label = stagedLabel(v.Count, tr)
 	v.Apply = stagedApplyLabel(v.Count, tr)
 	v.Summary = changeSummary(stagedItems(v, secrets), tr)
@@ -325,6 +356,7 @@ func (s *Server) describedGroups(ctx context.Context, src changeSource, flat []s
 	var groups []stagedGroup
 	count := 0
 	index := map[string]int{}
+	now := s.stageNow()
 	for _, row := range s.describeStaged(ctx, src, flat, tr) {
 		page := tr("System")
 		switch {
@@ -333,11 +365,26 @@ func (s *Server) describedGroups(ctx context.Context, src changeSource, flat []s
 		case row.authored:
 			page = pluginTr(row.author.Plugin)(row.author.Page)
 		}
-		i, ok := index[page]
+		// A run is a page: where the page is on record it is the page's
+		// address, so two subpages under one rail entry are two runs.
+		key, href := page, ""
+		if row.authored && row.author.Href != "" {
+			key, href = row.author.Href, row.author.Href
+		}
+		i, ok := index[key]
 		if !ok {
 			i = len(groups)
-			index[page] = i
-			groups = append(groups, stagedGroup{Page: page})
+			index[key] = i
+			groups = append(groups, stagedGroup{Page: page, Heading: page, Href: href})
+		}
+		if row.authored && row.author.Heading != "" && !row.author.Shell {
+			groups[i].Heading = pluginTr(row.author.Plugin)(row.author.Heading)
+		}
+		row.item.ID = rowID(row.item.changes)
+		row.item.Anchor = rowAnchor(row.item.changes)
+		if row.authored && !row.author.At.IsZero() {
+			row.item.at = row.author.At
+			row.item.Age = units.For(tr).Ago(int64(now.Sub(row.author.At) / time.Second))
 		}
 		if row.authored && !row.author.Shell {
 			row.item.plugin = row.author.Plugin
@@ -361,6 +408,56 @@ func (s *Server) describedGroups(ctx context.Context, src changeSource, flat []s
 		count += n
 	}
 	return groups, count
+}
+
+// stageNow is the clock a row's age is told by: the one its record was
+// stamped by.
+func (s *Server) stageNow() time.Time {
+	if s.authors.now != nil {
+		return s.authors.now()
+	}
+	return time.Now()
+}
+
+// rowID names a row by what it changes: each change's config and the target
+// it writes, not the value, so a row keeps its name while the value it holds
+// is edited again. Rows never share a change, so they never share a name.
+func rowID(changes []stagedChange) string {
+	h := fnv.New64a()
+	for _, c := range changes {
+		key, _, ok := changeTarget(c.tuple)
+		if !ok {
+			key = strings.Join(c.tuple, "\x00")
+		}
+		_, _ = fmt.Fprintf(h, "%s\x00%s\x01", c.config, key)
+	}
+	return fmt.Sprintf("%016x", h.Sum64())
+}
+
+// rowAnchor is the id a row's page marks what it changes by: the option's
+// address where the row writes one option, else its first section's.
+func rowAnchor(changes []stagedChange) string {
+	if len(changes) == 0 {
+		return ""
+	}
+	first := describeChange(changes[0])
+	if first.Section == "" || first.Op == "file" {
+		return ""
+	}
+	anchor := "staged-" + sectionAddress(first.Config, first.Section)
+	if option := soleOption(changes); option != "" {
+		anchor = "staged-" + optionAddress(first.Config, first.Section, option)
+	}
+	return anchor
+}
+
+// rowWords is a row in its own words, as the rail says it just after a save:
+// a setting's name and what it now holds, else the row's sentence.
+func rowWords(item stagedItem) string {
+	if item.Setting != nil {
+		return item.Setting.Label + " → " + item.Setting.Value
+	}
+	return item.Label
 }
 
 // stagedLabel is what the chip and the drawer's title say the stage holds,
