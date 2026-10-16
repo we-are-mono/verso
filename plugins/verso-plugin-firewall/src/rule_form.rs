@@ -123,12 +123,13 @@ pub const DSCP_CLASSES: [&str; 23] = [
 /// them; firewall4 matches a day name by its prefix.
 pub const WEEKDAYS: [&str; 7] = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
-/// RATE_UNITS are the periods a rate limit may be expressed over.
+/// RATE_UNITS are the periods a rate limit may be expressed over, in the words
+/// that finish the row's sentence ("10 per second").
 pub const RATE_UNITS: [(&str, &str); 4] = [
-    ("second", "Second"),
-    ("minute", "Minute"),
-    ("hour", "Hour"),
-    ("day", "Day"),
+    ("second", "second"),
+    ("minute", "minute"),
+    ("hour", "hour"),
+    ("day", "day"),
 ];
 
 /// SET_FIELDS are the packet fields a named-set match maps its dimensions onto.
