@@ -249,6 +249,7 @@ fn row(
                     redirect_drawer::DELETE_TRIGGER,
                     redirect_drawer::DELETE_QUESTION,
                     redirect_drawer::DELETE_MESSAGE,
+                    "Keep port forward",
                 ),
             ),
         ],
@@ -398,7 +399,8 @@ mod tests {
                             "name": "_remove",
                             "value": "force_dns_guest",
                             "confirm_title": "Delete port forward “%s”?",
-                            "confirm": crate::redirect_drawer::DELETE_MESSAGE
+                            "confirm": crate::redirect_drawer::DELETE_MESSAGE,
+                            "confirm_cancel": "Keep port forward"
                         }
                     ]}
                 ],

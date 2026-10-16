@@ -262,8 +262,9 @@ func packageRow(p openwrt.Package) widget.TableRow {
 		acts = []widget.TableRowAct{{Icon: "download", Title: "Install", Opens: true}}
 	} else if p.Removable {
 		acts = []widget.TableRowAct{{Icon: "trash-2", Title: "Remove", Name: "remove", Value: p.Name,
-			ConfirmTitle: "Remove %s?",
-			Confirm:      "Everything it installed is taken off the router, and whatever needs it may stop working."}}
+			ConfirmTitle:  "Remove %s?",
+			Confirm:       "Everything it installed is taken off the router, and whatever needs it may stop working.",
+			ConfirmCancel: "Keep package"}}
 	}
 	// The row ships its drawer's address, not its drawer: a router holds
 	// hundreds of packages, and rendering every drawer for the one anybody

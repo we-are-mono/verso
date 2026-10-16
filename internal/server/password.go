@@ -77,9 +77,10 @@ func accessSessionsTable(sessions []accessSession, tr func(string) string) *widg
 		source := widget.TableCell{Text: session.Address, Detail: session.Browser}
 		// The act's words are the walk's to translate, like any table act's.
 		action := widget.TableCell{
-			Actions:      []widget.TableRowAct{{Icon: "log-out", Title: "Revoke session", Name: "_action", Value: "end-session:" + session.ID}},
-			ConfirmTitle: "Revoke this session?",
-			Confirm:      "That browser is signed out at once and has to sign in again.",
+			Actions:       []widget.TableRowAct{{Icon: "log-out", Title: "Revoke session", Name: "_action", Value: "end-session:" + session.ID}},
+			ConfirmTitle:  "Revoke this session?",
+			Confirm:       "That browser is signed out at once and has to sign in again.",
+			ConfirmCancel: "Keep session",
 		}
 		if session.Current {
 			source.Tag = tr("this browser")

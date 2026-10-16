@@ -54,32 +54,27 @@
      cells, its first line level with every one-line cell's. */}}
 {{define "table.cellpad-stack"}}{{if .Dense}}py-row{{else}}px-3.5 py-row{{end}}{{end}}
 {{/* table.confirm-dialog: the alert a row act that ends something asks in,
-     inside the act's own x-data="modal": the question, what is at stake, and
-     the act named again on the danger button, which posts the one pair. A
-     native <dialog>, as the modal widget's is; on a phone it stands at the
-     foot of the window, under the thumb. */}}
+     inside the act's own x-data="modal". Its face is the inline confirm's
+     own band (confirmDialog: the compact danger callout) — the question, what
+     is at stake, the act named again on the danger button, which posts the
+     one pair, and the way back in the band's deep step — so asking in place
+     and asking over the page are one anatomy. The band is the frame; the
+     dialog adds only the lift a floating layer has. A native <dialog>, as the
+     modal widget's is; on a phone it stands at the foot of the window, under
+     the thumb. */}}
 {{define "table.confirm-dialog"}}
 <template x-teleport="body">
   <dialog x-ref="dialog" tabindex="-1" role="alertdialog" aria-labelledby="{{.ID}}-title" aria-describedby="{{.ID}}-body" {{template "verso-dialog-on"}}
-    class="verso-modal verso-modal-motion mx-auto mt-auto mb-4 sm:mb-auto {{template "verso-dialog-box"}} {{template "modal.frame"}} p-6 text-left whitespace-normal focus:outline-none">
-    {{/* the danger square hangs on the title's 24px line, as on every
-         message; the words say what is at stake */}}
-    <div class="flex items-start gap-2">
-      <span class="flex shrink-0 pt-0.5">{{template "verso-message-mark" "danger"}}</span>
-      <div class="min-w-0">
-        <h2 id="{{.ID}}-title" class="text-base leading-6 font-semibold text-ink">{{.Title}}</h2>
-        <p id="{{.ID}}-body" class="mt-2 whitespace-normal text-sm leading-[1.45] text-body">{{.Body}}</p>
-      </div>
-    </div>
-    <div class="mt-6 flex flex-col gap-3 sm:flex-row">
-      <form method="post">
-        {{template "verso-csrf" .CSRFToken}}
-        <button type="submit" name="{{.Name}}" value="{{.Value}}" class="inline-flex h-control w-full items-center justify-center rounded-xs px-4 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-crimson-deep {{template "verso-btn-danger"}} sm:w-auto">{{.Act}}</button>
-      </form>
-      <button type="button" @click="hide" class="inline-flex h-control w-full items-center justify-center rounded-xs border px-4 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim {{template "verso-btn-secondary"}} sm:w-auto">{{ t "Cancel" }}</button>
-    </div>
+    class="verso-modal verso-modal-motion mx-auto mt-auto mb-4 sm:mb-auto {{template "verso-dialog-box"}} rounded-xs bg-transparent shadow-(--shadow-dialog) text-left whitespace-normal focus:outline-none">
+    {{.Question}}
   </dialog>
 </template>
+{{end}}
+{{/* table.confirm-answers: the band's acts — the act, posting the one pair,
+     then the way back, bare words in the deep step that close the alert, as
+     the inline confirm's answers are (confirm.answers). */}}
+{{define "table.confirm-answers"}}<form method="post" class="contents">{{template "verso-csrf" .CSRFToken}}<button type="submit" name="{{.Name}}" value="{{.Value}}" class="{{template "verso-btn-box"}} shrink-0 {{template "verso-btn-danger"}} focus-visible:outline-crimson-deep">{{.Act}}</button></form>
+<button type="button" @click="hide" class="flex h-control shrink-0 cursor-pointer items-center rounded-xs px-3 text-sm font-semibold text-crimson-deep transition-colors hover:bg-crimson-line/50 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-crimson-deep">{{.Keep}}</button>
 {{end}}
 {{/* table.cellpad-detail: a value over its detail line, a 20px line each —
      a row of three cells, its first line level with every one-line cell's. */}}
@@ -397,7 +392,7 @@
             {{else if .Confirm}}
               <span x-data="modal" class="inline">
                 <button type="button" @click="show"{{template "table.rowbtn-name" .}} class="{{template "table.rowbtn-class" .}}">{{.Button}}</button>
-                {{template "table.confirm-dialog" (.ConfirmDialog "_action" (or .Action .RowID) .Button)}}
+                {{template "table.confirm-dialog" .Dialog}}
               </span>
             {{else}}
               <form method="post" class="inline">

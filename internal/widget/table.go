@@ -4,6 +4,7 @@
 package widget
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"html/template"
@@ -456,41 +457,44 @@ type DrawerTab struct {
 // the column's kind (Text for text/name/mono/keyword/comment/num, Text+Variant
 // for pill, On/Name for toggle, Endpoints for endpoint).
 type TableCell struct {
-	Text         string          `json:"text,omitempty"`
-	Variant      string          `json:"variant,omitempty"`       // pill cells: the badge vocabulary ("success" | "warning" | "danger" | "info" | "neutral"); meter cells: the fill's band
-	Fill         int             `json:"fill,omitempty"`          // meter cells: the share filled, 0–100; Text is the figure beside it
-	WarnMark     int             `json:"warn_mark,omitempty"`     // meter cells: a tick at this percent of the track (a warn limit); 0 draws none
-	CritMark     int             `json:"crit_mark,omitempty"`     // meter cells: a tick at this percent of the track (a protect limit), its right edge on the point; 0 draws none
-	NoTrack      bool            `json:"no_track,omitempty"`      // meter cells: the figure alone, for a reading with no ceiling to measure against
-	Dot          bool            `json:"dot,omitempty"`           // pill cells: leading status dot — the same cue the badge carries elsewhere
-	Icon         string          `json:"icon,omitempty"`          // pill cells: a leading Lucide icon on the badge (e.g. a firewall verdict's check/ban)
-	Copy         bool            `json:"copy,omitempty"`          // mono cells: offer the inline copy button beside the value
-	Emphasis     bool            `json:"emphasis,omitempty"`      // mono cells: promote an important value one size and weight step
-	Chip         string          `json:"chip,omitempty"`          // name cells: a small category chip inline after the name (e.g. its zone)
-	ChipIcon     string          `json:"chip_icon,omitempty"`     // name cells: optional Lucide icon inside the category chip
-	LeadIcon     string          `json:"lead_icon,omitempty"`     // name cells: a device-type Lucide glyph before the name, plain slate ink (not a badge)
-	Key          string          `json:"key,omitempty"`           // optional stable live-update hook; not displayed
-	Muted        bool            `json:"muted,omitempty"`         // text/mono and empty pill cells: render the value as secondary ink
-	Sub          string          `json:"sub,omitempty"`           // addr cells: a second line under the primary (e.g. the IPv6 under the IPv4), muted and copyable
-	Detail       string          `json:"detail,omitempty"`        // name/reference/text cells: a line of words under the value saying what it is or since when (the browser behind an address); the tag rides it
-	Verbatim     bool            `json:"-"`                       // Text and Sub were composed and localized where they were made (a relative time); the walk leaves them
-	Tag          string          `json:"tag,omitempty"`           // name/status cells: a small coloured label after the value (e.g. "new", "WAN")
-	TagVariant   string          `json:"tag_variant,omitempty"`   // the tag's palette (badge vocabulary): "" neutral | "info" | "warning" | "success" | "danger"
-	TagIcon      string          `json:"tag_icon,omitempty"`      // name/status cells: a Lucide icon leading the tag (e.g. WAN's globe)
-	TagDot       bool            `json:"tag_dot,omitempty"`       // name/status cells: the packet square leading the tag, in its variant; an icon wins
-	Href         string          `json:"href,omitempty"`          // link cells: the destination of the row's action link; name cells: where the row is edited, reached by the edit pencil the shell draws if the row lacks one
-	Button       string          `json:"button,omitempty"`        // an in-cell row action or drawer trigger; replaces the auto trailing "Details" link for that row
-	Disabled     bool            `json:"disabled,omitempty"`      // the cell's button is unavailable: rendered natively disabled and muted
-	Action       string          `json:"action,omitempty"`        // _action value posted by a direct row action (defaults to the row id)
-	ConfirmTitle string          `json:"confirm_title,omitempty"` // direct-action confirmation heading (default "Are you sure?")
-	Confirm      string          `json:"confirm,omitempty"`       // direct-action consequence copy; enables the confirmation dialog
-	On           bool            `json:"on,omitempty"`
-	Name         string          `json:"name,omitempty"` // form name the toggle posts under
-	Endpoints    []TableEndpoint `json:"endpoints,omitempty"`
-	Chips        []TableChip     `json:"chips,omitempty"`   // entity/name/reference cells: one or more icon+label reference chips
-	Parts        []TablePart     `json:"parts,omitempty"`   // phrase cells: the line's parts, in order; Text is the line read plain, which names the row
-	Figures      []TableFigure   `json:"figures,omitempty"` // figures cells: the figures, in their slots
-	Ink          bool            `json:"ink,omitempty"`     // figures cells: the figures are written in Variant's Deep step, a tone a live listing may change
+	Text         string `json:"text,omitempty"`
+	Variant      string `json:"variant,omitempty"`       // pill cells: the badge vocabulary ("success" | "warning" | "danger" | "info" | "neutral"); meter cells: the fill's band
+	Fill         int    `json:"fill,omitempty"`          // meter cells: the share filled, 0–100; Text is the figure beside it
+	WarnMark     int    `json:"warn_mark,omitempty"`     // meter cells: a tick at this percent of the track (a warn limit); 0 draws none
+	CritMark     int    `json:"crit_mark,omitempty"`     // meter cells: a tick at this percent of the track (a protect limit), its right edge on the point; 0 draws none
+	NoTrack      bool   `json:"no_track,omitempty"`      // meter cells: the figure alone, for a reading with no ceiling to measure against
+	Dot          bool   `json:"dot,omitempty"`           // pill cells: leading status dot — the same cue the badge carries elsewhere
+	Icon         string `json:"icon,omitempty"`          // pill cells: a leading Lucide icon on the badge (e.g. a firewall verdict's check/ban)
+	Copy         bool   `json:"copy,omitempty"`          // mono cells: offer the inline copy button beside the value
+	Emphasis     bool   `json:"emphasis,omitempty"`      // mono cells: promote an important value one size and weight step
+	Chip         string `json:"chip,omitempty"`          // name cells: a small category chip inline after the name (e.g. its zone)
+	ChipIcon     string `json:"chip_icon,omitempty"`     // name cells: optional Lucide icon inside the category chip
+	LeadIcon     string `json:"lead_icon,omitempty"`     // name cells: a device-type Lucide glyph before the name, plain slate ink (not a badge)
+	Key          string `json:"key,omitempty"`           // optional stable live-update hook; not displayed
+	Muted        bool   `json:"muted,omitempty"`         // text/mono and empty pill cells: render the value as secondary ink
+	Sub          string `json:"sub,omitempty"`           // addr cells: a second line under the primary (e.g. the IPv6 under the IPv4), muted and copyable
+	Detail       string `json:"detail,omitempty"`        // name/reference/text cells: a line of words under the value saying what it is or since when (the browser behind an address); the tag rides it
+	Verbatim     bool   `json:"-"`                       // Text and Sub were composed and localized where they were made (a relative time); the walk leaves them
+	Tag          string `json:"tag,omitempty"`           // name/status cells: a small coloured label after the value (e.g. "new", "WAN")
+	TagVariant   string `json:"tag_variant,omitempty"`   // the tag's palette (badge vocabulary): "" neutral | "info" | "warning" | "success" | "danger"
+	TagIcon      string `json:"tag_icon,omitempty"`      // name/status cells: a Lucide icon leading the tag (e.g. WAN's globe)
+	TagDot       bool   `json:"tag_dot,omitempty"`       // name/status cells: the packet square leading the tag, in its variant; an icon wins
+	Href         string `json:"href,omitempty"`          // link cells: the destination of the row's action link; name cells: where the row is edited, reached by the edit pencil the shell draws if the row lacks one
+	Button       string `json:"button,omitempty"`        // an in-cell row action or drawer trigger; replaces the auto trailing "Details" link for that row
+	Disabled     bool   `json:"disabled,omitempty"`      // the cell's button is unavailable: rendered natively disabled and muted
+	Action       string `json:"action,omitempty"`        // _action value posted by a direct row action (defaults to the row id)
+	ConfirmTitle string `json:"confirm_title,omitempty"` // direct-action confirmation heading (default "Are you sure?")
+	Confirm      string `json:"confirm,omitempty"`       // direct-action consequence copy; enables the confirmation dialog
+	// ConfirmCancel is the confirmation's way back, named for what it keeps —
+	// "Keep session" (default "Keep it"). Never "Cancel".
+	ConfirmCancel string          `json:"confirm_cancel,omitempty"`
+	On            bool            `json:"on,omitempty"`
+	Name          string          `json:"name,omitempty"` // form name the toggle posts under
+	Endpoints     []TableEndpoint `json:"endpoints,omitempty"`
+	Chips         []TableChip     `json:"chips,omitempty"`   // entity/name/reference cells: one or more icon+label reference chips
+	Parts         []TablePart     `json:"parts,omitempty"`   // phrase cells: the line's parts, in order; Text is the line read plain, which names the row
+	Figures       []TableFigure   `json:"figures,omitempty"` // figures cells: the figures, in their slots
+	Ink           bool            `json:"ink,omitempty"`     // figures cells: the figures are written in Variant's Deep step, a tone a live listing may change
 	// Rate is a rate in bits per second, which the shell writes as every rate
 	// is written (internal/units), in the reader's language: after Text with a
 	// middle dot between them ("port · 2.5 Gb/s"), or alone. A plugin hands
@@ -552,6 +556,9 @@ type TableRowAct struct {
 	// name, substituted after localization so machine identities stay verbatim.
 	ConfirmTitle string `json:"confirm_title,omitempty"`
 	Confirm      string `json:"confirm,omitempty"`
+	// ConfirmCancel is the way back, named for what it keeps — "Keep rule"
+	// (default "Keep it"). Never "Cancel".
+	ConfirmCancel string `json:"confirm_cancel,omitempty"`
 	// Opens makes the act open the row's own drawer instead of leading anywhere.
 	// An act on a row's subject usually belongs in the panel that already holds
 	// that subject, not on a page of its own — the icon is the shortcut, the
@@ -759,7 +766,11 @@ type tableRowView struct {
 // the name of the act.
 type confirmDialogView struct {
 	ID, Title, Body, CSRFToken string
-	Name, Value, Act           string
+	Name, Value, Act, Keep     string
+	// Question is the alert's whole face: the confirm's own compact danger
+	// band (Confirm.question), its answers the act and the way back, so a
+	// row's alert and an inline confirmation are one anatomy.
+	Question template.HTML
 }
 
 type tableRowActView struct {
@@ -767,13 +778,25 @@ type tableRowActView struct {
 	Dialog *confirmDialogView
 }
 
-// ConfirmDialog is the cell's alert for one of its acts: a labelled row act
-// passes its button's pair and words, an icon act its own.
-func (c tableCellView) ConfirmDialog(name, value, act string) confirmDialogView {
-	return confirmDialogView{
-		ID: c.ConfirmID, Title: c.ConfirmTitle, Body: c.Confirm, CSRFToken: c.CSRFToken,
-		Name: name, Value: value, Act: act,
+// confirmDialog draws a row act's alert: the question band in crimson, named
+// by its title for the dialog, the act repeated on the danger button that
+// posts the one pair, and the way back in the band's deep step, named for
+// what it keeps.
+func confirmDialog(r *Renderer, v confirmDialogView) (*confirmDialogView, error) {
+	if v.Keep == "" {
+		v.Keep = r.tr("Keep it")
 	}
+	var answers bytes.Buffer
+	if err := r.execute(&answers, "table.confirm-answers", v); err != nil {
+		return nil, err
+	}
+	band := &Callout{Variant: "danger", Compact: true, Title: v.Title, Body: v.Body}
+	var out bytes.Buffer
+	if err := band.executeNamed(r, &out, v.ID, []template.HTML{template.HTML(answers.String())}); err != nil { //nolint:gosec // rendered by the shell's own templates
+		return nil, err
+	}
+	v.Question = template.HTML(out.String()) //nolint:gosec // rendered by the shell's own templates
+	return &v, nil
 }
 
 type tableCellView struct {
@@ -792,7 +815,10 @@ type tableCellView struct {
 	// ordinary link and still leaves the page.
 	Panel     string
 	ConfirmID string
-	Dense     bool // the listing's geometry: no inset of the cell's own, the columns' widths space them
+	// Dialog is the alert the cell's labelled row button asks in, drawn once
+	// the cell is known (confirmDialog).
+	Dialog *confirmDialogView
+	Dense  bool // the listing's geometry: no inset of the cell's own, the columns' widths space them
 	// RowName is what the row is called, for the controls in it that have no
 	// visible label of their own: a switch, a drag handle.
 	RowName string
@@ -1356,19 +1382,23 @@ func (t *Table) rowViews(r *Renderer, csrf string, rows []TableRow, hasDetail bo
 							a.Href = SafeHref(a.Href)
 						}
 						acts[j].TableRowAct = a
-						body, title := a.Confirm, a.ConfirmTitle
+						body, title, keep := a.Confirm, a.ConfirmTitle, a.ConfirmCancel
 						if body == "" {
-							body, title = cv.Confirm, cv.ConfirmTitle
+							body, title, keep = cv.Confirm, cv.ConfirmTitle, cv.ConfirmCancel
 						}
 						if a.Name != "" && body != "" {
 							if title == "" {
 								title = r.tr("Are you sure?")
 							}
-							acts[j].Dialog = &confirmDialogView{
+							dialog, err := confirmDialog(r, confirmDialogView{
 								ID:    fmt.Sprintf("verso-action-confirm-%d", r.seq.cfm.Add(1)),
 								Title: strings.ReplaceAll(title, "%s", rowName), Body: body, CSRFToken: csrf,
-								Name: a.Name, Value: a.Value, Act: a.Title,
+								Name: a.Name, Value: a.Value, Act: a.Title, Keep: keep,
+							})
+							if err != nil {
+								return nil, err
 							}
+							acts[j].Dialog = dialog
 						}
 					}
 					cv.Actions = acts
@@ -1380,6 +1410,20 @@ func (t *Table) rowViews(r *Renderer, csrf string, rows []TableRow, hasDetail bo
 					cv.ConfirmID = fmt.Sprintf("verso-action-confirm-%d", r.seq.cfm.Add(1))
 					if cv.ConfirmTitle == "" {
 						cv.ConfirmTitle = r.tr("Are you sure?")
+					}
+					if cv.Button != "" {
+						value := cv.Action
+						if value == "" {
+							value = cv.RowID
+						}
+						dialog, err := confirmDialog(r, confirmDialogView{
+							ID: cv.ConfirmID, Title: cv.ConfirmTitle, Body: cv.Confirm, CSRFToken: csrf,
+							Name: "_action", Value: value, Act: cv.Button, Keep: cv.ConfirmCancel,
+						})
+						if err != nil {
+							return nil, err
+						}
+						cv.Dialog = dialog
 					}
 				}
 				for _, ep := range row.Cells[i].Endpoints {

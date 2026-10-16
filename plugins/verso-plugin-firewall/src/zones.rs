@@ -356,6 +356,7 @@ fn row(model: &Firewall, zone: &Zone, open: Option<&Open>) -> TableRow {
                     zone_drawer::DELETE_TRIGGER,
                     "Delete zone “%s”?",
                     zone_drawer::DELETE_MESSAGE,
+                    "Keep zone",
                 ),
             ),
         ],
@@ -669,7 +670,8 @@ mod tests {
                     "name": "_remove",
                     "value": "cfg02dc81",
                     "confirm_title": "Delete zone “%s”?",
-                    "confirm": zone_drawer::DELETE_MESSAGE
+                    "confirm": zone_drawer::DELETE_MESSAGE,
+                    "confirm_cancel": "Keep zone"
                 }]}
             ])
         );

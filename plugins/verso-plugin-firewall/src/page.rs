@@ -214,8 +214,15 @@ pub fn edit_act_cell(href: String, removal: TableRowAct) -> TableCell {
     }
 }
 
-/// remove_act asks about exactly this row, independently of its edit and power acts.
-pub fn remove_act(section: &str, title: &str, question: &str, consequence: &str) -> TableRowAct {
+/// remove_act asks about exactly this row, independently of its edit and power
+/// acts; its way back is named for what it keeps ("Keep rule").
+pub fn remove_act(
+    section: &str,
+    title: &str,
+    question: &str,
+    consequence: &str,
+    keep: &str,
+) -> TableRowAct {
     TableRowAct {
         icon: "trash-2".into(),
         title: title.into(),
@@ -223,6 +230,7 @@ pub fn remove_act(section: &str, title: &str, question: &str, consequence: &str)
         value: section.into(),
         confirm_title: question.into(),
         confirm: consequence.into(),
+        confirm_cancel: keep.into(),
         ..TableRowAct::default()
     }
 }

@@ -990,14 +990,24 @@ func TestRenderTableDirectAction(t *testing.T) {
 	for _, want := range []string{
 		`method="post"`, `name="_action"`, `value="end-session:iphone"`,
 		`role="alertdialog"`, `>End this session?<`, "Anyone using it will be signed out.",
-		"size-1.5 shrink-0 rounded-[1px] bg-crimson", `>End session<`, `>Cancel<`, // the alarm's mark: the square at full chroma
-		"border-crimson bg-crimson text-on-fill transition-colors", // the destructive act
-		"border-rule-strong bg-transparent text-meta",              // Cancel is the ordinary quiet button
+		// the question is the confirm's own band: crimson wash in its hairline,
+		// the square at full chroma, the words in the deep step
+		"border-crimson-line bg-crimson-soft text-crimson-deep", "size-1.5", "bg-crimson",
+		`>End session<`, "border-crimson bg-crimson text-on-fill transition-colors", // the destructive act
+		// the way back speaks the question's hue, bare, never a sand Cancel
+		`>Keep it<`, "text-crimson-deep transition-colors hover:bg-crimson-line/50",
 		"verso-press",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("direct table action missing %q:\n%s", want, got)
 		}
+	}
+	if strings.Contains(got, `>Cancel<`) {
+		t.Errorf("the way back is never a Cancel:\n%s", got)
+	}
+	id := tagAttr(got, `<dialog`, `aria-labelledby="`, `"`)
+	if id == "" || !strings.Contains(got, `id="`+id+`"`) {
+		t.Errorf("the alert is not named by its question (%q):\n%s", id, got)
 	}
 	if strings.Contains(got, `<aside`) {
 		t.Errorf("direct table action must not create a drawer:\n%s", got)
@@ -1485,7 +1495,7 @@ func TestPostingActAsksFirstWhenItsCellDoes(t *testing.T) {
 		}}},
 	})
 	for _, want := range []string{
-		`x-data="modal"`, `role="alertdialog"`, ">Revoke this session?</h2>",
+		`x-data="modal"`, `role="alertdialog"`, ">Revoke this session?</p>",
 		`name="_action" value="end-session:s2"`,
 		`aria-label="Revoke session 10.0.10.117"`,
 		">Revoke session</button>",
@@ -1496,6 +1506,28 @@ func TestPostingActAsksFirstWhenItsCellDoes(t *testing.T) {
 	}
 	if strings.Contains(got, "data-verso-act") {
 		t.Errorf("an act that asks first must not post where it stands:\n%s", got)
+	}
+}
+
+// TestAWayBackNamesWhatItKeeps: a plugin names the way back after what it
+// keeps ("Keep rule"), for an act and for a labelled row button alike.
+func TestAWayBackNamesWhatItKeeps(t *testing.T) {
+	got := render(t, newRenderer(t), &Table{
+		Columns: []TableColumn{{Label: "Rule", Kind: "name"}, {Label: "Session", Kind: "pill"}, {Kind: "actions"}},
+		Rows: []TableRow{{ID: "r1", Cells: []TableCell{
+			{Text: "Allow-Ping"},
+			{Button: "End session", Action: "end:r1", Confirm: "Signed out.", ConfirmCancel: "Keep session"},
+			{Actions: []TableRowAct{{Icon: "trash-2", Title: "Delete rule", Name: "_delete", Value: "r1",
+				ConfirmTitle: "Delete rule “%s”?", Confirm: "It stops matching.", ConfirmCancel: "Keep rule"}}},
+		}}},
+	})
+	for _, want := range []string{`>Keep session<`, `>Keep rule<`} {
+		if !strings.Contains(got, want) {
+			t.Errorf("the way back is not named %q:\n%s", want, got)
+		}
+	}
+	if strings.Contains(got, `>Keep it<`) {
+		t.Errorf("a named way back fell back to the default:\n%s", got)
 	}
 }
 

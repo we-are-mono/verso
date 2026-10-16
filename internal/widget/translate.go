@@ -311,6 +311,7 @@ func translateRows(rows []TableRow, columns []TableColumn, t func(string) string
 			c.Button = t(c.Button)
 			c.Confirm = t(c.Confirm)
 			c.ConfirmTitle = t(c.ConfirmTitle)
+			c.ConfirmCancel = t(c.ConfirmCancel)
 			for k := range c.Chips {
 				translateChip(&c.Chips[k], t)
 			}
@@ -328,6 +329,7 @@ func translateRows(rows []TableRow, columns []TableColumn, t func(string) string
 				c.Actions[k].Title = t(c.Actions[k].Title)
 				c.Actions[k].ConfirmTitle = t(c.Actions[k].ConfirmTitle)
 				c.Actions[k].Confirm = t(c.Actions[k].Confirm)
+				c.Actions[k].ConfirmCancel = t(c.Actions[k].ConfirmCancel)
 			}
 		}
 		translateDrawer(rows[i].Drawer, t)

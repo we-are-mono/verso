@@ -57,10 +57,12 @@
     {{else if eq .Variant "neutral"}}bg-glyph
     {{else}}bg-denim{{end}}"></span>
   <div class="min-w-0">
-    {{if .Title}}<p class="font-semibold">{{.Title}}</p>{{end}}
+    {{/* As a dialog's face (Named), the title and words carry the ids the
+         dialog is labelled and described by. */}}
+    {{if .Title}}<p{{with .Named}} id="{{.}}-title"{{end}} class="font-semibold">{{.Title}}</p>{{end}}
     {{/* One line of words, and its door closes that line — the sentence, then
          where to go about it — rather than standing on a line of its own. */}}
-    {{if .Body}}<p>{{.Body}}{{if .RenderedLink}} {{.RenderedLink}}{{end}}</p>{{else if .RenderedLink}}<p>{{.RenderedLink}}</p>{{end}}
+    {{if .Body}}<p{{with .Named}} id="{{.}}-body"{{end}}>{{.Body}}{{if .RenderedLink}} {{.RenderedLink}}{{end}}</p>{{else if .RenderedLink}}<p>{{.RenderedLink}}</p>{{end}}
     {{if .Verbatim}}{{template "callout.verbatim" .}}{{end}}
     {{template "callout.acts" .}}
   </div>

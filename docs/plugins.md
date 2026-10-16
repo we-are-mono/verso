@@ -998,8 +998,12 @@ a login session.
   "confirm": "Anyone using this session will be signed out of Verso immediately." }
 ```
 
-An individual icon in an `actions` cell can also carry `confirm_title` and
-`confirm`. Only that action opens the dialog; its neighboring toggle or edit
+`confirm_cancel` names the way back after what it keeps — `"Keep session"`,
+`"Keep rule"`. Left out, the shell says "Keep it". It is never "Cancel": the
+alert speaks one hue, its question and both answers in crimson.
+
+An individual icon in an `actions` cell can also carry `confirm_title`,
+`confirm` and `confirm_cancel`. Only that action opens the dialog; its neighboring toggle or edit
 action keeps its usual behavior. The shell substitutes the row's name for `%s`
 in the title after translation. On confirmation it posts the action's `name`
 and `value` to the listing. Identify the removal target in that value rather
@@ -1010,7 +1014,8 @@ than the `open` query parameter, which may still name a different editor.
   { "icon": "trash-2", "title": "Remove network",
     "name": "_remove", "value": "guest",
     "confirm_title": "Remove network “%s”?",
-    "confirm": "Devices using this network will disconnect when the change is applied." }
+    "confirm": "Devices using this network will disconnect when the change is applied.",
+    "confirm_cancel": "Keep network" }
 ] }
 ```
 

@@ -2482,6 +2482,10 @@ pub struct TableRowAct {
     pub confirm_title: String,
     #[serde(skip_serializing_if = "String::is_empty")]
     pub confirm: String,
+    /// The confirmation's way back, named for what it keeps — "Keep rule".
+    /// Left empty the shell says "Keep it"; it is never "Cancel".
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub confirm_cancel: String,
 }
 
 impl TableCell {
@@ -2995,9 +2999,12 @@ mod tests {
     #[test]
     fn a_note_rides_its_field_and_nothing_else() {
         let wire = |w: Widget| serde_json::to_value(w).unwrap();
-        let noted = wire(Widget::field("theme", "Theme", "", "", "").noted("Takes effect immediately."));
+        let noted =
+            wire(Widget::field("theme", "Theme", "", "", "").noted("Takes effect immediately."));
         assert_eq!(noted["note"], "Takes effect immediately.");
-        assert!(wire(Widget::field("theme", "Theme", "", "", "")).get("note").is_none());
+        assert!(wire(Widget::field("theme", "Theme", "", "", ""))
+            .get("note")
+            .is_none());
         let text = wire(Widget::text("Words.").noted("Takes effect immediately."));
         assert!(text.get("note").is_none());
     }

@@ -73,9 +73,21 @@ func (c *Callout) renderInto(r *Renderer, out io.Writer, _ string) error {
 // that closes its words and the acts in its row. A confirmation asks its
 // question through it, its answers as the acts.
 func (c *Callout) execute(r *Renderer, out io.Writer, link template.HTML, acts []template.HTML) error {
+	return c.draw(r, out, "", link, acts)
+}
+
+// executeNamed draws the band as the face of a dialog it names: its title and
+// words carry id-title and id-body, for the dialog to be labelled and
+// described by.
+func (c *Callout) executeNamed(r *Renderer, out io.Writer, id string, acts []template.HTML) error {
+	return c.draw(r, out, id, "", acts)
+}
+
+func (c *Callout) draw(r *Renderer, out io.Writer, id string, link template.HTML, acts []template.HTML) error {
 	return r.execute(out, "callout.html.tmpl", struct {
 		*Callout
+		Named        string
 		RenderedLink template.HTML
 		RenderedActs []template.HTML
-	}{Callout: c, RenderedLink: link, RenderedActs: acts})
+	}{Callout: c, Named: id, RenderedLink: link, RenderedActs: acts})
 }

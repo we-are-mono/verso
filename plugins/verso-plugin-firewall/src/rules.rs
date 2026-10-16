@@ -339,6 +339,7 @@ fn row(
                 page::remove_act(
                     &rule.section, "Delete rule", "Delete rule “%s”?",
                     "When applied, traffic it allowed will be decided by whatever rule or zone policy comes next.",
+                    "Keep rule",
                 ),
             ),
         ],
@@ -786,7 +787,8 @@ mod tests {
                             "name": "_remove",
                             "value": "allow_ping",
                             "confirm_title": "Delete rule “%s”?",
-                            "confirm": "When applied, traffic it allowed will be decided by whatever rule or zone policy comes next."
+                            "confirm": "When applied, traffic it allowed will be decided by whatever rule or zone policy comes next.",
+                            "confirm_cancel": "Keep rule"
                         }
                     ]}
                 ]
