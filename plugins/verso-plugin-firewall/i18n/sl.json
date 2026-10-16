@@ -71,6 +71,8 @@
   "NAT": "NAT",
   "Anywhere": "Kjerkoli",
   "The router itself": "Sam usmerjevalnik",
+  "Choose…": "Izberite …",
+  "Choose one first.": "Najprej izberite eno.",
   "WAN → Router": "WAN → Usmerjevalnik",
   "WAN → Forwarded traffic": "WAN → Posredovani promet",
   "Accept": "Sprejmi",

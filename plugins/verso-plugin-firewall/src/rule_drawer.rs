@@ -24,7 +24,7 @@ use crate::fields;
 use crate::format;
 use crate::model::{Firewall, Rule};
 use crate::page;
-use crate::rule_form::{Errors, RuleForm, DSCP_CLASSES, HELPERS};
+use crate::rule_form::{Errors, RuleForm, DSCP_CLASSES, HELPERS, UNCHOSEN};
 
 /// MATCH, ACTION and WHEN are the three readings of a rule, as they appear in
 /// the address. MATCH is what a panel opens on: the first question about a rule
@@ -209,10 +209,18 @@ fn match_fields(model: &Firewall, form: &RuleForm, errors: &Errors) -> Vec<Widge
             SelectOption::new("", router),
             SelectOption::new("*", "Anywhere"),
         ];
+        // A rule made from nowhere has not said where its traffic comes from;
+        // the pick says so until someone does.
+        if current == UNCHOSEN {
+            choices.insert(0, SelectOption::new(UNCHOSEN, "Choose…"));
+        }
         choices.extend(conditions::named(&model.zone_names()));
         // A zone the config no longer names is still what this rule says, so it
         // stays in the list rather than being silently retargeted.
-        if !current.is_empty() && current != "*" && !model.zone_names().iter().any(|z| z == current)
+        if !current.is_empty()
+            && current != "*"
+            && current != UNCHOSEN
+            && !model.zone_names().iter().any(|z| z == current)
         {
             choices.push(SelectOption::new(current, current));
         }
@@ -669,7 +677,10 @@ fn says(form: &RuleForm) -> String {
         "any" => format!("all {family}traffic"),
         protocols => format!("{family}{protocols} traffic"),
     };
-    let path = format!("{traffic} from {} to {}", end(&form.src), end(&form.dest));
+    let path = match form.src.as_str() {
+        UNCHOSEN => format!("{traffic} to {}", end(&form.dest)),
+        src => format!("{traffic} from {} to {}", end(src), end(&form.dest)),
+    };
     let mut sentence = match form.target.as_str() {
         "ACCEPT" => format!("Accepts {path}"),
         "REJECT" => format!("Rejects {path}"),
@@ -684,6 +695,9 @@ fn says(form: &RuleForm) -> String {
         sentence.push_str(", where its conditions match");
     }
     sentence.push('.');
+    if form.src == UNCHOSEN {
+        sentence.push_str(" Choose where it comes from to add it.");
+    }
     if !form.enabled {
         sentence.push_str(" The rule is off, so it does nothing yet.");
     }
@@ -723,6 +737,18 @@ mod tests {
         assert_eq!(
             says(&RuleForm::default()),
             "Accepts tcp/udp traffic from the router itself to the router itself."
+        );
+        let unchosen = RuleForm {
+            src: UNCHOSEN.into(),
+            ..RuleForm::default()
+        };
+        assert_eq!(
+            says(&unchosen),
+            "Accepts tcp/udp traffic to the router itself. Choose where it comes from to add it."
+        );
+        assert!(
+            !uci_block(NEW, &unchosen).contains("src"),
+            "an unchosen source is written"
         );
         let narrowed = RuleForm {
             src: "*".into(),

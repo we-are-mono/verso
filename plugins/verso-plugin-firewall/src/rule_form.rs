@@ -74,6 +74,12 @@ pub const OWNED: [&str; 34] = [
     "log_limit",
 ];
 
+/// UNCHOSEN is a new rule's Coming from before anyone picked it. The empty
+/// value already means the router itself, so a rule made from nowhere would
+/// otherwise start as the router's own traffic. It is the form's, never
+/// written, and Add rule refuses it.
+pub const UNCHOSEN: &str = "?";
+
 /// TARGETS are the verdicts firewall4 accepts on a rule, in the order the editor
 /// offers them. Setting a mark and XOR-ing one are the same target with a
 /// different parameter, so they are one choice here and a switch in the
@@ -569,7 +575,8 @@ impl RuleForm {
             ("dest", &self.dest),
             ("family", &self.family),
         ] {
-            if !value.is_empty() {
+            // A source not chosen yet is the form's own, never the file's.
+            if !value.is_empty() && value != UNCHOSEN {
                 set(option, json!(value.clone()));
             }
         }
@@ -728,8 +735,15 @@ impl RuleForm {
     }
 
     fn validate_path(&self, zones: &[String], errors: &mut Errors) {
+        if self.src == UNCHOSEN {
+            errors.field("src", "Choose one first.");
+        }
         for (field, value) in [("src", &self.src), ("dest", &self.dest)] {
-            if !value.is_empty() && value != "*" && !zones.iter().any(|zone| zone == value) {
+            if !value.is_empty()
+                && value != "*"
+                && value != UNCHOSEN
+                && !zones.iter().any(|zone| zone == value)
+            {
                 errors.field(field, &format!("There is no zone called “{value}”."));
             }
         }

@@ -26,7 +26,7 @@ use crate::format;
 use crate::model::{Firewall, Rule, CONFIG};
 use crate::page;
 use crate::rule_drawer;
-use crate::rule_form::{Errors, RuleForm};
+use crate::rule_form::{Errors, RuleForm, UNCHOSEN};
 use crate::zone_drawer;
 
 /// HEADING is what this page is about, in the words the canvas uses: each of
@@ -105,9 +105,16 @@ fn seeded(model: &Firewall, query: &Form) -> RuleForm {
     let zones = model.zone_names();
     for (field, value) in [("src", &mut form.src), ("dest", &mut form.dest)] {
         let asked = query.get(field).trim().to_string();
-        if zones.contains(&asked) {
+        if asked == "*" || zones.contains(&asked) {
             *value = asked;
         }
+    }
+    // Nothing said where the traffic comes from: the page's own act, which
+    // knows no lane. It asks rather than starting on the router. A lane that
+    // names only where traffic goes is the router's own output, so it keeps
+    // the router as its source.
+    if form.src.is_empty() && form.dest.is_empty() {
+        form.src = UNCHOSEN.to_string();
     }
     form
 }
@@ -418,7 +425,13 @@ fn add_href(lane: &Lane) -> String {
     if let Some(zone) = lane.chain.strip_prefix("output_") {
         return rule_drawer::new_href("", zone);
     }
-    rule_drawer::new_href("", "")
+    // The zone-less lanes are traffic from or to any zone.
+    match lane.chain.as_str() {
+        "input" => rule_drawer::new_href("*", ""),
+        "forward" => rule_drawer::new_href("*", lane.shared_dest.as_deref().unwrap_or("")),
+        "output" => rule_drawer::new_href("", "*"),
+        _ => rule_drawer::new_href("", ""),
+    }
 }
 
 /// close is a lane's last word: what firewall4 does with traffic none of the
@@ -955,6 +968,43 @@ mod tests {
                 "{query}: the typed name was dropped"
             );
         }
+    }
+
+    // A rule made from the page's own act knows nothing of where its traffic
+    // comes from, so it asks rather than starting on the router: Add rule is
+    // refused, with the reason on the pick, until one is chosen. A lane that
+    // knows its path seeds it, the router included.
+    #[test]
+    fn a_rule_from_nowhere_asks_where_its_traffic_comes_from() {
+        let seeded_src = |query: &str| seeded(&fixture::firewall(), &Form::parse(query)).src;
+        assert_eq!(seeded_src("open=new"), UNCHOSEN);
+        assert_eq!(seeded_src("open=new&src=wan"), "wan");
+        assert_eq!(seeded_src("open=new&src=*"), "*");
+        assert_eq!(
+            seeded_src("open=new&dest=wan"),
+            "",
+            "an output lane starts at the router"
+        );
+
+        let mut model = fixture::firewall();
+        let body = serde_json::to_value(save(
+            &fixture::snapshot(),
+            &mut model,
+            &Counters::default(),
+            &Form::parse("open=new"),
+            &Form::parse("name=Open-SSH&src=%3F&proto=tcp&target=ACCEPT&enabled=1"),
+        ))
+        .expect("serialize");
+        assert!(
+            body.get("commit").is_none(),
+            "a rule from nowhere was staged"
+        );
+        let src = fixture::find_with(&body["act"]["drawer"], &|w| {
+            w["type"] == "field" && w["name"] == "src"
+        })
+        .expect("the source pick");
+        // The shell sets the pick's label before it: "Coming from: Choose one first."
+        assert_eq!(src["error"], "Choose one first.");
     }
 
     // The lane's own New rule button knows the chain it adds to, so the blank
