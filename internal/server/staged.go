@@ -13,6 +13,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/we-are-mono/verso/internal/i18n"
 	"github.com/we-are-mono/verso/internal/plugin"
 )
 
@@ -64,6 +65,7 @@ const uciRollbackTimeout = 30
 type stagedView struct {
 	Count  int
 	Label  string        // "3 staged changes", worded here so the chip prints it raw
+	Apply  string        // the drawer's act, "Apply 3 changes"
 	Groups []stagedGroup // the drawer's rows, under the page each change belongs to
 	// Rollback is the window the drawer promises, in seconds. It is the same
 	// constant the apply actually arms rpcd with, carried into the sentence so
@@ -262,8 +264,15 @@ func (s *Server) staged(ctx context.Context, sid string, tr func(string) string,
 	}
 	v.Groups, v.Count = s.describedGroups(ctx, sessionStage{s, sid}, flat, tr, pluginTr)
 	v.Label = stagedLabel(v.Count, tr)
+	v.Apply = stagedApplyLabel(v.Count, tr)
 	v.Summary = changeSummary(stagedItems(v, secrets), tr)
 	return v
+}
+
+// stagedApplyLabel is the drawer's act, naming what it applies in the count's
+// own form ("Apply 1 change", "Apply 3 changes").
+func stagedApplyLabel(n int, tr func(string) string) string {
+	return i18n.Count(tr, n, "Apply %d change", "Apply %d changes (two)", "Apply %d changes (few)", "Apply %d changes")
 }
 
 // changeSource is where a run of changes came from: who made each, on which

@@ -195,7 +195,7 @@ func TestReviewDrawerPlainOverRaw(t *testing.T) {
 		`font-mono text-base font-medium text-ink">system: @system[0].timezone = UTC</span>`,
 		// The two acts that end the stage, and the promise that makes the first
 		// safe to press — stating the window the apply actually arms.
-		`id="verso-staged-apply"`, ">Apply 2</button>", `id="verso-staged-discard"`, ">Discard all</button>",
+		`id="verso-staged-apply"`, ">Apply 2 changes</button>", `id="verso-staged-discard"`, ">Discard all</button>",
 		"Usually takes a couple of seconds, longer if many services are affected. If the router stops answering within 30 seconds, the changes are rolled back.",
 	} {
 		if !strings.Contains(body, want) {
@@ -405,7 +405,7 @@ func TestReviewPageForABrowserWithNoScript(t *testing.T) {
 		changes: map[string][][]string{"system": {{"set", "@system[0]", "hostname", "verso-lab"}}},
 	}, &fakeTransport{}, []plugin.Manifest{demoACLManifest()})
 	body := get(t, s, "/uci/review").Body.String()
-	for _, want := range []string{"<html", ">Staged changes<", `id="verso-staged-review" data-count="1"`, ">Apply 1</button>"} {
+	for _, want := range []string{"<html", ">Staged changes<", `id="verso-staged-review" data-count="1"`, ">Apply 1 change</button>"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("review page missing %q", want)
 		}
@@ -724,6 +724,33 @@ func TestASettingRowSaysWhatItReplaces(t *testing.T) {
 		got := settingWas(tc.item, tc.committed, secrets, tr)
 		if (got == nil) != (tc.want == nil) || (got != nil && *got != *tc.want) {
 			t.Errorf("%s: was = %+v, want %+v", tc.name, got, tc.want)
+		}
+	}
+}
+
+// The drawer's act names what it applies, in the count's own form: "Apply 1
+// change", never a bare "Apply 1"; Slovenian's dual and paucal come from the
+// catalog.
+func TestTheApplyActNamesWhatItApplies(t *testing.T) {
+	plain := func(s string) string { return s }
+	sl := map[string]string{"Apply %d change": "Uveljavi %d spremembo", "Apply %d changes (two)": "Uveljavi %d spremembi", "Apply %d changes (few)": "Uveljavi %d spremembe", "Apply %d changes": "Uveljavi %d sprememb"}
+	slTr := func(s string) string {
+		if v, ok := sl[s]; ok {
+			return v
+		}
+		return s
+	}
+	for n, want := range map[int][2]string{
+		1: {"Apply 1 change", "Uveljavi 1 spremembo"},
+		2: {"Apply 2 changes", "Uveljavi 2 spremembi"},
+		3: {"Apply 3 changes", "Uveljavi 3 spremembe"},
+		7: {"Apply 7 changes", "Uveljavi 7 sprememb"},
+	} {
+		if got := stagedApplyLabel(n, plain); got != want[0] {
+			t.Errorf("en %d = %q, want %q", n, got, want[0])
+		}
+		if got := stagedApplyLabel(n, slTr); got != want[1] {
+			t.Errorf("sl %d = %q, want %q", n, got, want[1])
 		}
 	}
 }

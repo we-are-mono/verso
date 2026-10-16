@@ -4,33 +4,16 @@
 package widget
 
 import (
-	"fmt"
 	"slices"
 	"strings"
+
+	"github.com/we-are-mono/verso/internal/i18n"
 )
 
 // overviewCount translates the entire phrase, including Slovenian's dual and
-// paucal forms. Values remain arguments; no sentence is assembled from suffixes.
+// paucal forms (i18n.Count).
 func overviewCount(tr func(string) string, n int, one, two, few, many string) string {
-	key := many
-	switch n % 100 {
-	case 1:
-		key = one
-	case 2:
-		key = two
-	case 3, 4:
-		key = few
-	}
-	pattern := tr(key)
-	// Contextual plural keys have an ordinary English fallback; their context
-	// markers are never displayed when a catalog is missing.
-	if pattern == key {
-		pattern = many
-		if n == 1 {
-			pattern = one
-		}
-	}
-	return fmt.Sprintf(pattern, n)
+	return i18n.Count(tr, n, one, two, few, many)
 }
 
 func tunnelCount(tr func(string) string, n int) string {
