@@ -168,7 +168,7 @@ func TestDescribedControlsAreDescribed(t *testing.T) {
 			`<p id="psk-desc" data-verso-field-desc class="text-sm leading-6 text-pretty text-body"><span>A shared secret.</span></p>`,
 			`id="psk" name="psk" aria-describedby="psk-desc"`},
 		"list": {&List{Name: "ntp", Label: "Servers", Help: "Tried in order."},
-			`<p id="ntp-desc" data-verso-field-desc class="text-sm leading-6 text-pretty text-body"><span>Tried in order.</span></p>`,
+			`<p id="ntp-desc" data-verso-field-note class="text-sm leading-6 text-pretty text-body">Tried in order.</p>`,
 			`aria-labelledby="ntp-label" aria-describedby="ntp-desc"`},
 	} {
 		got := render(t, newRenderer(t), c.w)

@@ -31,6 +31,9 @@ type fieldFrame struct {
 	// Desc is the row's description, under its name in the question; a
 	// settings row's description is its point.
 	Desc string
+	// DescHTML is the description as the shell's Markdown rendered it, written
+	// in its place where set (Field.HelpMarkdown).
+	DescHTML template.HTML
 	// Detail says which thing an item of a group is (an included file's kind),
 	// under its name; unlike a description it never folds away.
 	Detail string
@@ -168,6 +171,18 @@ func (p boxPart) DescribedBy() string {
 
 // renderFrame draws a control through its own template and the row around it
 // through the frame.
+// inlineMarkdown renders one sentence of the shell's Markdown as the words of
+// the element it stands in: the sanitizing renderer's paragraph, unwrapped.
+func (r *Renderer) inlineMarkdown(src string) (template.HTML, error) {
+	var buf strings.Builder
+	if err := r.md.Convert([]byte(src), &buf); err != nil {
+		return "", err
+	}
+	html := strings.TrimSpace(buf.String())
+	html = strings.TrimSuffix(strings.TrimPrefix(html, "<p>"), "</p>")
+	return template.HTML(html), nil //nolint:gosec // the shell's sanitizing Markdown renderer
+}
+
 func (r *Renderer) renderFrame(out io.Writer, control string, data any, frame fieldFrame) error {
 	var b strings.Builder
 	if err := r.execute(&b, control, data); err != nil {

@@ -82,6 +82,11 @@ type Field struct {
 	// a fused answer too wide for the column does: free text read as a
 	// sentence (the Pending changes page's note). Shell only.
 	Wide bool `json:"-"`
+	// HelpMarkdown reads the description as the shell's own Markdown, so a
+	// page it names can stand in bold ("kept in **System › Changes**"),
+	// through the same sanitizing renderer as every shell sentence. A
+	// plugin's help stays the plain words it wrote. Shell only.
+	HelpMarkdown bool `json:"-"`
 	// OptionsVerbatim declares the options' labels names the machine or a
 	// profile gave (a reading's "Memory", an SFP module's cage), which the
 	// localization walk leaves as they are. Shell only.
@@ -300,7 +305,15 @@ func (f *Field) renderInto(r *Renderer, out io.Writer, _ string) error {
 	if !f.framed() {
 		return r.execute(out, "field.html.tmpl", f)
 	}
-	return r.renderFrame(out, "field.control", f, f.frame())
+	frame := f.frame()
+	if f.HelpMarkdown && frame.Desc != "" {
+		said, err := r.inlineMarkdown(frame.Desc)
+		if err != nil {
+			return err
+		}
+		frame.DescHTML = said
+	}
+	return r.renderFrame(out, "field.control", f, frame)
 }
 
 // emptyHint words what an empty box says in place of a value: the daemon's

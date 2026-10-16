@@ -296,6 +296,22 @@ func TestACardMeasuresOnTheEightPixelGrid(t *testing.T) {
 	}
 }
 
+// TestACardEndingOnAStackedRowsSentenceKeepsItsAir: a card whose last row is
+// stacked (its answer under its label) and ends on the sentence under that
+// answer closes the card's own 24px under the words, as the card opens; only
+// a row ending on a control or a hairline's rhythm takes the 16px pull.
+func TestACardEndingOnAStackedRowsSentenceKeepsItsAir(t *testing.T) {
+	raw, err := os.ReadFile("assets/sections.css")
+	if err != nil {
+		t.Fatal(err)
+	}
+	const spared = `:is(.verso-field-row):not(.verso-field-wide:has(> .verso-field-ledger > .verso-field-answer > [data-verso-field-note]:last-child))`
+	pull := strings.Index(string(raw), "margin-bottom: calc(var(--spacing) * -2);")
+	if pull < 0 || strings.Count(string(raw)[:pull], spared) != 2 {
+		t.Errorf("the card's closing pull does not spare a stacked row ending on its sentence")
+	}
+}
+
 // TestAPagesPanelStandsCentred: a panel in a page's card (the Hardware page's
 // board card) is centred across it, and the rule reaches no further: the
 // Overview's Ports card is an article, not a page section, and a drawer is a
@@ -632,7 +648,7 @@ func TestACardsRowsKeepARowsAirAtItsEdges(t *testing.T) {
 		// under a header, the pull counts in the seam's pixel the body took back
 		"> .verso-rhythm > :not(input[type=\"hidden\"], [hidden], template):not(:not(input[type=\"hidden\"], [hidden], template) ~ *):is(.verso-field-row) {\n  margin-top: calc(var(--spacing) * -2 - 1px);",
 		"> .verso-rhythm > :not(input[type=\"hidden\"], [hidden], template):not(:not(input[type=\"hidden\"], [hidden], template) ~ *):is(.verso-field-row) {\n  margin-top: calc(var(--spacing) * -2);",
-		"> .verso-rhythm > :not(input[type=\"hidden\"], [hidden], template):not(:has(~ :not(input[type=\"hidden\"], [hidden], template))):is(.verso-field-row) {\n  margin-bottom: calc(var(--spacing) * -2);",
+		"> .verso-rhythm > :not(input[type=\"hidden\"], [hidden], template):not(:has(~ :not(input[type=\"hidden\"], [hidden], template))):is(.verso-field-row):not(.verso-field-wide:has(> .verso-field-ledger > .verso-field-answer > [data-verso-field-note]:last-child)) {\n  margin-bottom: calc(var(--spacing) * -2);",
 	} {
 		if !strings.Contains(css, want) {
 			t.Errorf("sections.css lacks %q", want)

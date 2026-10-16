@@ -250,8 +250,8 @@
       {{with .Detail}}<p{{with $.DetailID}} id="{{.}}"{{end}} data-verso-field-detail class="{{template "verso-field-desc-class"}}">{{.}}</p>{{end}}
       {{/* A description folds away with every other on the page (forms.css):
            its words stand in a span of their own, the one track that
-           closes. */}}
-      {{with .Desc}}<p{{with $.DescID}} id="{{.}}"{{end}} data-verso-field-desc class="{{template "verso-field-desc-class"}}"><span>{{.}}</span></p>{{end}}
+           closes. A wide row says it under its answer instead. */}}
+      {{if not .Wide}}{{with .Desc}}<p{{with $.DescID}} id="{{.}}"{{end}} data-verso-field-desc class="{{template "verso-field-desc-class"}}"><span>{{with $.DescHTML}}{{.}}{{else}}{{.}}{{end}}</span></p>{{end}}{{end}}
     </div>
     {{/* An act on the whole answer (a set's add) stands on the question's
          line at the row's end, at every width. */}}
@@ -262,6 +262,11 @@
     {{if or .Control .Errors .Note .Inline}}<div data-verso-control{{with .Measure}} data-verso-control-measure="{{.}}"{{end}}{{if .Inline}} data-verso-inline-field{{end}} class="{{template "verso-field-control-class"}} verso-field-answer relative">
       {{.Control}}
       {{range .Errors}}<span id="{{.ID}}" data-verso-error class="{{template "verso-refusal-band"}}">{{template "verso-error-words" .Text}}</span>{{else}}{{if .Inline}}<span id="{{.ErrorID}}" data-verso-inline-error hidden class="{{template "verso-refusal-band"}}"></span>{{end}}{{end}}
+      {{/* A wide row's answer stands under its label, so what the row is for
+           stands under the answer, after its refusal, as a note does: a
+           sentence between a name and its box would part them. Such rows are
+           rare, so it stays in view when the page's descriptions fold. */}}
+      {{if .Wide}}{{with .Desc}}<p{{with $.DescID}} id="{{.}}"{{end}} data-verso-field-note class="{{template "verso-field-desc-class"}}">{{with $.DescHTML}}{{.}}{{else}}{{.}}{{end}}</p>{{end}}{{end}}
       {{with .Note}}<p{{with $.NoteID}} id="{{.}}"{{end}} data-verso-field-note class="{{template "verso-field-desc-class"}}">{{.}}</p>{{end}}
     </div>{{end}}
     {{/* A row that cannot be taken out of the set still reserves the glyph's

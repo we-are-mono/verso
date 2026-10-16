@@ -248,7 +248,8 @@
  * header's seam (or the headless frame), as a name stands after the hairline
  * between rows; a card whose body ends on a row closes 16px under its last
  * words, as a row stands over the next one's hairline. The card's own 24px
- * is a block's. The row is reached through what holds it (a form, a field
+ * is a block's, and a stacked row that ends on the sentence under its answer
+ * (what it is for, or its note) closes on it, as words do, not on a hairline. The row is reached through what holds it (a form, a field
  * set, a gate, a settings list); hidden carriers are not what a body opens or
  * ends on. Under a header the body has already taken the seam's pixel back,
  * and the row's pull collapses with that margin rather than adding to it, so
@@ -261,11 +262,11 @@
 .verso-page-body section[data-verso-section][data-verso-headless][data-verso-ruled]:not(section section, dialog *) > .verso-rhythm > :not(input[type="hidden"], [hidden], template):not(:not(input[type="hidden"], [hidden], template) ~ *):is(.verso-field-row) {
   margin-top: calc(var(--spacing) * -2);
 }
-.verso-page-body section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]):not(section section, dialog *) > .verso-rhythm > :not(input[type="hidden"], [hidden], template):not(:has(~ :not(input[type="hidden"], [hidden], template))):is(.verso-field-set, [data-verso-settings], form:not([data-verso-compact-form])) > :not(input[type="hidden"], [hidden], template):not(:has(~ :not(input[type="hidden"], [hidden], template))):is(.verso-field-row),
+.verso-page-body section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]):not(section section, dialog *) > .verso-rhythm > :not(input[type="hidden"], [hidden], template):not(:has(~ :not(input[type="hidden"], [hidden], template))):is(.verso-field-set, [data-verso-settings], form:not([data-verso-compact-form])) > :not(input[type="hidden"], [hidden], template):not(:has(~ :not(input[type="hidden"], [hidden], template))):is(.verso-field-row):not(.verso-field-wide:has(> .verso-field-ledger > .verso-field-answer > [data-verso-field-note]:last-child)),
 .verso-page-body section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]):not(section section, dialog *) > .verso-rhythm > .verso-conditional:last-child:has(> .verso-conditional-gate input[data-verso-switch]:checked) > .verso-conditional-body > .verso-field-row:last-child,
 .verso-page-body section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]):not(section section, dialog *) > .verso-rhythm > .verso-conditional:last-child:not(:has(> .verso-conditional-gate input[data-verso-switch]:checked)) > .verso-conditional-otherwise > .verso-field-row:last-child,
 .verso-page-body section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]):not(section section, dialog *) > .verso-rhythm > .verso-conditional:last-child:not(:has(> .verso-conditional-gate input[data-verso-switch]:checked)):not(:has(> .verso-conditional-otherwise)) > .verso-conditional-gate,
-.verso-page-body section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]):not(section section, dialog *) > .verso-rhythm > :not(input[type="hidden"], [hidden], template):not(:has(~ :not(input[type="hidden"], [hidden], template))):is(.verso-field-row) {
+.verso-page-body section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]):not(section section, dialog *) > .verso-rhythm > :not(input[type="hidden"], [hidden], template):not(:has(~ :not(input[type="hidden"], [hidden], template))):is(.verso-field-row):not(.verso-field-wide:has(> .verso-field-ledger > .verso-field-answer > [data-verso-field-note]:last-child)) {
   margin-bottom: calc(var(--spacing) * -2);
 }
 /* A settings list's fold draws a line between its rows as a row does, so it

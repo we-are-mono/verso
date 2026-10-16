@@ -160,6 +160,45 @@ func TestAWideAnswerStandsUnderItsQuestion(t *testing.T) {
 // w is a widget as a Widget, so a table of mixed widgets reads plainly.
 func w(widget Widget) Widget { return widget }
 
+// TestAStackedRowSaysWhatItIsForUnderItsAnswer: a row whose answer stands
+// under its label says what it is for under the answer, after its refusal and
+// before its note, and keeps it in view when the page's descriptions fold:
+// such rows are rare, and a sentence between a name and its box parts them.
+// A row whose answer stands beside its question keeps its description under
+// the name, where it folds.
+func TestAStackedRowSaysWhatItIsForUnderItsAnswer(t *testing.T) {
+	r := newRenderer(t)
+	got := render(t, r, &Field{Name: "note", Label: "Note", Wide: true, Help: "Why these changes are made.", Error: "Too long.", Note: "Kept for a year."})
+	control := strings.Index(got, `id="note" name="note"`)
+	refusal := strings.Index(got, `id="note-error" data-verso-error`)
+	desc := strings.Index(got, `<p id="note-desc" data-verso-field-note class="text-sm leading-6 text-pretty text-body">Why these changes are made.</p>`)
+	note := strings.Index(got, `id="note-note" data-verso-field-note`)
+	if !(control >= 0 && control < refusal && refusal < desc && desc < note) {
+		t.Errorf("a stacked row's description is not under its answer, after the refusal and before the note:\n%s", got)
+	}
+	if strings.Contains(got, "data-verso-field-desc") {
+		t.Errorf("a stacked row's description folds with the page's:\n%s", got)
+	}
+	if !strings.Contains(got, `aria-describedby="note-desc`) {
+		t.Errorf("the box is not described by its description:\n%s", got)
+	}
+	// The shell's own description may set a page it names in bold; a
+	// plugin's stays the plain words it wrote.
+	marked := render(t, r, &Field{Name: "note", Label: "Note", Wide: true, HelpMarkdown: true, Help: "Kept in **System › Changes**."})
+	// (render normalizes the space before a tag away.)
+	if !strings.Contains(marked, `data-verso-field-note class="text-sm leading-6 text-pretty text-body">Kept in<strong>System › Changes</strong>.</p>`) {
+		t.Errorf("the shell's description does not set its page in bold:\n%s", marked)
+	}
+	plain := render(t, r, &Field{Name: "note", Label: "Note", Wide: true, Help: "Kept in **System › Changes**."})
+	if strings.Contains(plain, "<strong>") || !strings.Contains(plain, "Kept in **System › Changes**.") {
+		t.Errorf("a plugin's description is read as Markdown:\n%s", plain)
+	}
+	beside := render(t, r, &Field{Name: "name", Label: "Name", Help: "What the router is called."})
+	if !strings.Contains(beside, `<p id="name-desc" data-verso-field-desc`) || strings.Index(beside, "data-verso-field-desc") > strings.Index(beside, "verso-field-answer") {
+		t.Errorf("a row beside its question loses its description under the name:\n%s", beside)
+	}
+}
+
 // TestARefusalStandsUnderItsControl: a refusal is part of the answer, after
 // the control and before the note, so it stands straight under the control
 // whatever the description beside it says; it was once a grid row of its own,
