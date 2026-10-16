@@ -145,6 +145,13 @@
 @utility grid-cols-form {
   grid-template-columns: var(--verso-form-width, 40rem) minmax(0, 1fr);
 }
+/* A colour change eases, but a focus ring arrives at once: easing the
+   outline's colour faded every ring in from the control's own ink — white on
+   a filled button, Inert on a grip — so for its first moments it was a ring
+   no one could see. The outline is left out of what eases. */
+@utility transition-colors {
+  transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, --tw-gradient-from, --tw-gradient-via, --tw-gradient-to;
+}
 
 /* A row's own air around its 24px lines: 7px over the first, after the
    hairline it stands under, and 8px under the last, so its lines fill whole
