@@ -26,6 +26,9 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("GET /session", s.handleSessionState)
 	s.mux.HandleFunc("POST /session", s.handleSessionState)
 	s.mux.HandleFunc("GET /{$}", s.handleIndex)
+	// Every address no other route claims: a page with nothing at it is still
+	// a page of the shell (notFound).
+	s.mux.HandleFunc("GET /", s.notFound)
 	// The roster is a page of its own, the overview's peer: shell-owned content
 	// read from the kernel and the lease file, with no configuration to stage.
 	s.mux.HandleFunc("GET "+devicesPath, s.handleDevices)

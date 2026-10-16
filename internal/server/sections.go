@@ -118,7 +118,7 @@ func (s *Server) handleSectionRoot(section string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		pages := s.sectionPages(section, "")
 		if len(pages) == 0 {
-			http.NotFound(w, r)
+			s.notFound(w, r)
 			return
 		}
 		http.Redirect(w, r, pages[0].Href, http.StatusSeeOther)

@@ -40,7 +40,7 @@ func (s *Server) handlePlugin(w http.ResponseWriter, r *http.Request) {
 	r = withStageMemo(r)
 	m, ok := s.manifestByID(r.PathValue("id"))
 	if !ok {
-		http.NotFound(w, r)
+		s.notFound(w, r)
 		return
 	}
 	// An entity-only plugin has no standalone landing page. Old links and
