@@ -55,15 +55,25 @@ type Renderer struct {
 	// handle keeps minting ids that never collide with any other render's.
 	seq *renderSeqs
 	// depth is how many sections enclose what this handle renders, so a
-	// section inside another is titled as its part (h3), not as the page's.
+	// section inside another is drawn as its part (a ledger line), not as the
+	// page's.
 	depth int
+	// headed is how many of those sections carry a title: the headings
+	// standing over what this handle renders, so a part's heading is the
+	// next level down from the nearest one and never skips a level.
+	headed int
 }
 
 // nested is the handle a section renders its contents with: the same pass,
-// one section deeper. Built field by field, as RenderWithToken's is — the root
-// renderer's template cache is never copied.
-func (r *Renderer) nested() *Renderer {
-	return &Renderer{tmpl: r.tmpl, t: r.t, md: r.md, seq: r.seq, depth: r.depth + 1}
+// one section deeper, one heading deeper when the section is titled. Built
+// field by field, as RenderWithToken's is — the root renderer's template cache
+// is never copied.
+func (r *Renderer) nested(titled bool) *Renderer {
+	headed := r.headed
+	if titled {
+		headed++
+	}
+	return &Renderer{tmpl: r.tmpl, t: r.t, md: r.md, seq: r.seq, depth: r.depth + 1, headed: headed}
 }
 
 // renderSeqs are the monotonic id counters that keep generated element ids

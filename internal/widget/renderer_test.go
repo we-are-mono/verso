@@ -1429,3 +1429,20 @@ func TestRenderWithTokenInjectsCSRF(t *testing.T) {
 // polymorphic (each widget implements renderInto), so an unhandled type can't be
 // constructed — the compiler enforces it. The failure mode the old switch's default
 // branch guarded no longer exists.
+
+// A part's heading is one level under the nearest titled section over it, so
+// the page's outline never skips: a part under a titled section is h3, and a
+// part whose section carries no title (an expanded row's, under the page's h1)
+// is h2.
+func TestAPartsHeadingNeverSkipsALevel(t *testing.T) {
+	r := newRenderer(t)
+	part := &Section{Title: "Network", Children: []Widget{&Text{Markdown: "lan"}}}
+	under := render(t, r, &Section{Title: "Interfaces", Children: []Widget{part}})
+	if !strings.Contains(under, `font-semibold text-ink">Network</h3>`) {
+		t.Errorf("a part under a titled section is not h3: %s", under)
+	}
+	bare := render(t, r, &Section{Children: []Widget{part}})
+	if !strings.Contains(bare, `font-semibold text-ink">Network</h2>`) {
+		t.Errorf("a part under an untitled section skips to h3: %s", bare)
+	}
+}

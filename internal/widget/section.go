@@ -117,6 +117,9 @@ func SectionID(anchor string) string {
 }
 
 type sectionView struct {
+	// Level is a nested part's heading level: one under the nearest titled
+	// section above it, h2 where none stands over it (Renderer.headed).
+	Level      int
 	Title      string
 	Icon       string
 	Anchor     string
@@ -187,12 +190,13 @@ func (s *Section) postsWithForm(r *Renderer) Widget {
 
 func (s *Section) renderInto(r *Renderer, out io.Writer, csrf string) error {
 	control := s.postsWithForm(r)
-	children, err := r.nested().renderChildren(s.Children, csrf)
+	children, err := r.nested(s.Title != "").renderChildren(s.Children, csrf)
 	if err != nil {
 		return err
 	}
 	v := sectionView{
 		Nested:     r.depth > 0,
+		Level:      min(2+r.headed, 4),
 		Title:      s.Title,
 		Icon:       s.Icon,
 		Anchor:     SectionID(s.Anchor),
