@@ -45,7 +45,7 @@
 
 ## 5. Integration
 
-- [ ] 5.1 Full check: `make lint` and `make test` green; `graphify update .`. In `make dev`:
+- [x] 5.1 Full check: `make lint` and `make test` green; `graphify update .`. In `make dev`:
   - With scripting disabled, groups open and close.
   - In Slovenian, Firewall's subpages are translated.
   - On a phone width, the drawer's groups behave the same.
