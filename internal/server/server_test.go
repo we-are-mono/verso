@@ -81,6 +81,8 @@ type fakeBackend struct {
 	rcStates map[string]openwrt.RCState
 	rcErr    error
 	rcInits  *[]string // records "service action" per RCInit
+	failed   []string  // the services procd stopped restarting
+	failErr  error
 	// The helper's package verbs (ADR-011 §4): canned search results and
 	// records of what the shell installed, removed, or refreshed.
 	pkgCheckedAt      int64
@@ -355,6 +357,10 @@ func (f fakeBackend) UCIConfirm(context.Context, string) error {
 
 func (f fakeBackend) RCList(context.Context, string) (map[string]openwrt.RCState, error) {
 	return f.rcStates, f.rcErr
+}
+
+func (f fakeBackend) FailedServices(context.Context, string) ([]string, error) {
+	return f.failed, f.failErr
 }
 
 func (f fakeBackend) RCInit(_ context.Context, _ string, name, action string) error {

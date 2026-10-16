@@ -82,6 +82,11 @@ type Overview struct {
 	// Empty means the runtime read failed. No card shows it; the verdict counts
 	// a firewall that is not fully loaded.
 	FirewallState string
+
+	// FailedServices names, sorted, the services procd stopped restarting.
+	// The System card owns them: its header names them, its facts list them,
+	// and it opens the Services page while there are any.
+	FailedServices []string
 }
 
 // OverviewInterface is one kernel interface enriched with runtime topology and

@@ -149,6 +149,10 @@ type Backend interface {
 	// ubus/rc/list access. The plugin-management surface (ADR-011) reads plugin
 	// service state through it.
 	RCList(ctx context.Context, sid string) (map[string]RCState, error)
+	// FailedServices names, sorted, the services procd stopped restarting
+	// (RCState.Failed), from one read of procd's service table gated on the
+	// session's ubus/service/list access: the cheap read a live page polls.
+	FailedServices(ctx context.Context, sid string) ([]string, error)
 	// RCInit drives one lifecycle action (start, stop, restart, enable,
 	// disable) on a named init script through procd's rc object, gated on the
 	// session's ubus/rc/init access. Callers constrain the name to services
@@ -477,6 +481,7 @@ type RCState struct {
 	Order       *int // init script START priority; nil when rc does not report it
 	Enabled     bool
 	Running     bool
+	Failed      bool // not running because procd stopped restarting it (procdInstanceFailed)
 	Kind        ServiceKind
 	PIDs        []int
 	MemoryBytes int64
@@ -561,6 +566,7 @@ type (
 	uciApplyFn     func(ctx context.Context, sid string, timeout int) error
 	uciConfirmFn   func(ctx context.Context, sid string) error
 	rcListFn       func(ctx context.Context, sid string) (map[string]RCState, error)
+	failedSvcFn    func(ctx context.Context, sid string) ([]string, error)
 	rcInitFn       func(ctx context.Context, sid, name, action string) error
 	pkgStatusFn    func(ctx context.Context, sid string) (int64, error)
 	pkgUpdateFn    func(ctx context.Context, sid string) error
@@ -615,6 +621,7 @@ type NativeBackend struct {
 	uciApply       uciApplyFn
 	uciConfirm     uciConfirmFn
 	rcList         rcListFn
+	failedSvc      failedSvcFn
 	rcInit         rcInitFn
 	pkgStatus      pkgStatusFn
 	pkgUpdate      pkgUpdateFn
@@ -688,6 +695,7 @@ func NewNativeBackend() *NativeBackend {
 		uciApply:       dialUCIApply(""),
 		uciConfirm:     dialUCIConfirm(""),
 		rcList:         dialRCList(""),
+		failedSvc:      dialFailedServices(""),
 		rcInit:         dialRCInit(""),
 		pkgStatus:      dialPkgStatus(""),
 		pkgUpdate:      dialPkgUpdate(""),
@@ -934,6 +942,10 @@ func (*NativeBackend) UCICommitted(ctx context.Context, sid string, configs []st
 
 func (b *NativeBackend) RCList(ctx context.Context, sid string) (map[string]RCState, error) {
 	return b.rcList(ctx, sid)
+}
+
+func (b *NativeBackend) FailedServices(ctx context.Context, sid string) ([]string, error) {
+	return b.failedSvc(ctx, sid)
 }
 
 func (b *NativeBackend) RCInit(ctx context.Context, sid, name, action string) error {
@@ -1623,10 +1635,43 @@ type serviceInstance struct {
 	Respawn     bool
 	HasExitCode bool
 	ExitCode    int64
+	Failed      bool
 }
 
 type serviceDetail struct {
 	Instances []serviceInstance
+}
+
+// procdInstanceFailed reads one instance of procd's service table as failed:
+// procd stopped restarting it. A stop drops a daemon's instance, so one that
+// is still listed, not running and has no respawn left exited on its own, with
+// an error (a crash loop clears the respawn). An instance waiting out its
+// respawn delay has not failed yet, and a one-shot that exited 0 completed.
+func procdInstanceFailed(instance map[string]any) bool {
+	if asBool(instance["running"]) {
+		return false
+	}
+	if asBool(instance["respawn_failed"]) {
+		return true
+	}
+	_, respawn := instance["respawn"]
+	return !respawn && asInt64(instance["exit_code"]) != 0
+}
+
+// failedServices names, sorted, the services with an instance procd stopped
+// restarting: one read of procd's service table, cheap enough for a live page.
+func failedServices(raw map[string]any) []string {
+	var out []string
+	for name, detail := range parseServiceDetails(raw) {
+		for _, instance := range detail.Instances {
+			if instance.Failed {
+				out = append(out, name)
+				break
+			}
+		}
+	}
+	sort.Strings(out)
+	return out
 }
 
 // dialRCList reads the cheap rc inventory first, then enriches it from procd's
@@ -1684,6 +1729,16 @@ func dialRCList(socket string) rcListFn {
 	}
 }
 
+func dialFailedServices(socket string) failedSvcFn {
+	return func(_ context.Context, sid string) ([]string, error) {
+		raw, err := callChecked(socket, sid, "service", "list", nil)
+		if err != nil {
+			return nil, err
+		}
+		return failedServices(raw), nil
+	}
+}
+
 func parseServiceDetails(raw map[string]any) map[string]serviceDetail {
 	out := make(map[string]serviceDetail, len(raw))
 	for name, value := range raw {
@@ -1706,6 +1761,7 @@ func parseServiceDetails(raw map[string]any) map[string]serviceDetail {
 			detail.Instances = append(detail.Instances, serviceInstance{
 				PID: pid, Running: asBool(instance["running"]), HasCommand: hasCommand,
 				Respawn: respawn, HasExitCode: hasExitCode, ExitCode: asInt64(exitCode),
+				Failed: procdInstanceFailed(instance),
 			})
 		}
 		out[name] = detail
@@ -1729,10 +1785,14 @@ func enrichRCStates(
 		for _, instance := range detail.Instances {
 			// rc's own check asks the same table: running is any live instance.
 			state.Running = state.Running || instance.Running
+			state.Failed = state.Failed || instance.Failed
 			if instance.Running && instance.PID > 0 {
 				state.PIDs = append(state.PIDs, instance.PID)
 			}
 		}
+		// A service with a live instance runs; a failed one beside it is the
+		// running service's own business.
+		state.Failed = state.Failed && !state.Running
 		sort.Ints(state.PIDs)
 		state.MemoryBytes, state.Uptime = readProcessRuntime(state.PIDs, systemUptime, readFile)
 		states[name] = state

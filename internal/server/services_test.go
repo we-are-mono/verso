@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/we-are-mono/verso/internal/openwrt"
+	"github.com/we-are-mono/verso/internal/widget"
 )
 
 type serviceRuntimeBackend struct {
@@ -218,6 +219,23 @@ func TestServicesStatePills(t *testing.T) {
 		s := pluginsServer(t, fakeBackend{access: true, rcStates: tc.rc}, tc.alive, mgmtManifest())
 		if body := get(t, s, "/system/services").Body.String(); !strings.Contains(body, tc.want) {
 			t.Errorf("%s: missing %q", tc.name, tc.want)
+		}
+	}
+}
+
+// A daemon procd stopped restarting reads failed, in danger, never the calm
+// "Stopped" an operator's stop leaves; its row still offers Start.
+func TestServicesFailedDaemonReadsFailed(t *testing.T) {
+	failed := openwrt.RCState{Enabled: true, Failed: true, Kind: openwrt.ServiceDaemon}
+	for _, row := range []widget.TableRow{
+		serviceRow("sysntpd", failed, nil),
+		pluginServiceRow(pluginState{Service: "verso-plugin-demo", Known: true, Enabled: true, Failed: true, Kind: openwrt.ServiceDaemon}, nil),
+	} {
+		if state := row.Cells[5]; state.Text != "Failed" || state.Variant != "danger" {
+			t.Errorf("%s state = %q/%q, want Failed/danger", row.ID, state.Text, state.Variant)
+		}
+		if acts := row.Cells[6].Actions; len(acts) == 0 || acts[len(acts)-1].Title != "Start" {
+			t.Errorf("%s acts = %+v, want Start last", row.ID, acts)
 		}
 	}
 }

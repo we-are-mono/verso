@@ -71,6 +71,7 @@ type pluginState struct {
 	Known    bool   // procd's rc table lists the service
 	Enabled  bool   // starts at boot
 	Running  bool   // procd's live view
+	Failed   bool   // procd stopped restarting it (RCState.Failed)
 	Alive    bool   // the socket accepted a connection just now
 	Kind     openwrt.ServiceKind
 	PIDs     []int
@@ -90,7 +91,7 @@ func (s *Server) pluginStates(rc map[string]openwrt.RCState) []pluginState {
 		svc := pluginServicePrefix + m.ID
 		st := pluginState{Manifest: m, Service: svc}
 		if r, ok := rc[svc]; ok {
-			st.Known, st.Enabled, st.Running = true, r.Enabled, r.Running
+			st.Known, st.Enabled, st.Running, st.Failed = true, r.Enabled, r.Running, r.Failed
 			st.Kind, st.PIDs, st.Memory, st.Uptime, st.Order = r.Kind, r.PIDs, r.MemoryBytes, r.Uptime, r.Order
 		}
 		if st.Running {
@@ -429,6 +430,8 @@ func serviceRow(name string, st openwrt.RCState, owners map[string]string) widge
 		pill = widget.TableCell{Text: "stopped", Variant: "neutral"}
 		if st.Running {
 			pill = runningStateCell(st.Uptime)
+		} else if st.Failed {
+			pill = failedStateCell()
 		}
 	case openwrt.ServiceSubsystem:
 		pill = subsystemStateCell(st.Running, st.Enabled)
@@ -470,10 +473,18 @@ func pluginServiceRow(st pluginState, owners map[string]string) widget.TableRow 
 		pill = runningStateCell(st.Uptime)
 	case st.Running:
 		pill = widget.TableCell{Text: "not responding", Variant: "danger"}
+	case st.Failed:
+		pill = failedStateCell()
 	default:
 		pill = widget.TableCell{Text: "stopped", Variant: "neutral"}
 	}
-	return serviceListingRow(st.Service, openwrt.RCState{Kind: kind, Enabled: st.Enabled, Running: st.Running, PIDs: st.PIDs, MemoryBytes: st.Memory, Uptime: st.Uptime, Order: st.Order}, pill, owners, st.Known)
+	return serviceListingRow(st.Service, openwrt.RCState{Kind: kind, Enabled: st.Enabled, Running: st.Running, Failed: st.Failed, PIDs: st.PIDs, MemoryBytes: st.Memory, Uptime: st.Uptime, Order: st.Order}, pill, owners, st.Known)
+}
+
+// failedStateCell is a daemon procd stopped restarting (RCState.Failed): it
+// exited on its own, with an error, and stays down until someone starts it.
+func failedStateCell() widget.TableCell {
+	return widget.TableCell{Text: "Failed", Variant: "danger"}
 }
 
 func serviceKind(kind openwrt.ServiceKind) openwrt.ServiceKind {

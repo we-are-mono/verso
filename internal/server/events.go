@@ -154,8 +154,13 @@ func (s *Server) handleOverviewEvents(w http.ResponseWriter, r *http.Request) {
 		}
 		return writeEvent(w, "", "sensors", map[string]any{"rows": hardwareRows(liveOverview.Hardware)}) == nil
 	}
+	frames := 0
 	sendOverview := func() bool {
 		s.applyFirewallStatus(r.Context(), sid, liveOverview)
+		if frames%serviceStatusEvery == 0 {
+			s.applyFailedServices(r.Context(), sid, liveOverview)
+		}
+		frames++
 		return writeEvent(w, "", "overview", liveOverview.LiveStatus(tr)) == nil
 	}
 	s.serveSSE(w, r, func() bool {

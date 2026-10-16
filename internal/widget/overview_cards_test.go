@@ -416,3 +416,36 @@ func TestAHotBoardLeadsTheHeading(t *testing.T) {
 		t.Errorf("verdict = %+v, want the hot CPU", v)
 	}
 }
+
+// A service procd stopped restarting is a cause the System card owns: its
+// header names it (one by name, several counted), the heading may quote it,
+// its facts list it, and only then does the card open the Services page.
+func TestAFailedServiceIsTheSystemCardsCause(t *testing.T) {
+	var system overviewCardSpec
+	for _, spec := range overviewCardSpecs() {
+		if spec.ID == "system" {
+			system = spec
+		}
+	}
+	o := &Overview{WANKnown: true, WANUp: true, Firmware: "OpenWrt 25.12.4"}
+	if h := system.head(o, plain); h.Tone != "neutral" || h.Cause != "" || system.href(o) != "" {
+		t.Fatalf("calm System card = %+v, door %q", h, system.href(o))
+	}
+	o.FailedServices = []string{"sysntpd"}
+	if h := system.head(o, plain); h.Tone != "danger" || h.Status != "sysntpd failed" || h.Cause != h.Status || h.Summary != "OpenWrt 25.12.4" {
+		t.Errorf("one failed = %+v", h)
+	}
+	if v := o.verdict(plain); v.Tone != "danger" || v.Lead != "sysntpd failed" {
+		t.Errorf("verdict = %+v, want the failed service", v)
+	}
+	if got := system.href(o); got != "/system/services" {
+		t.Errorf("door = %q, want the Services page", got)
+	}
+	if body := cardBody(t, o, "system"); !strings.Contains(body, "Failed services") || !strings.Contains(body, "sysntpd") {
+		t.Errorf("the facts list the failed service:\n%s", body)
+	}
+	o.FailedServices = []string{"odhcpd", "sysntpd"}
+	if h := system.head(o, plain); h.Status != "2 services failed" {
+		t.Errorf("two failed = %+v", h)
+	}
+}

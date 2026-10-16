@@ -53,7 +53,7 @@ func overviewCardSpecs() []overviewCardSpec {
 		{ID: "tunnels", Title: "Tunnels", Icon: "lock", Opens: "VPN", href: (*Overview).tunnelsHref, head: (*Overview).tunnelsHead, body: (*Overview).tunnelsBody},
 		{ID: "traffic", Title: "Traffic", Icon: "activity", head: (*Overview).trafficHead, body: (*Overview).trafficBody, control: (*Overview).trafficWindow},
 		{ID: "resources", Title: "Resources", Icon: "gauge", head: (*Overview).resourcesHead, body: (*Overview).resourcesBody},
-		{ID: "system", Title: "System", Icon: "router", head: (*Overview).systemHead, body: (*Overview).systemBody},
+		{ID: "system", Title: "System", Icon: "router", Opens: "Services", href: (*Overview).systemHref, head: (*Overview).systemHead, body: (*Overview).systemBody},
 		{ID: "hardware", Title: "Hardware", Icon: "cpu", Opens: "Hardware", href: func(*Overview) string { return "/system/hardware" }, head: (*Overview).hardwareHead, body: (*Overview).hardwareBody},
 	}
 }
@@ -413,9 +413,26 @@ func (o *Overview) resourcesBody(r *Renderer, csrf string) (template.HTML, error
 // ── System ──
 
 // systemHead's line is the firmware the router runs; the board, what it was
-// built for and how long it has been up are in the open card.
-func (o *Overview) systemHead(func(string) string) cardHead {
-	return cardHead{Tone: "neutral", Summary: o.Firmware}
+// built for and how long it has been up are in the open card. A service procd
+// stopped restarting is the card's cause, by name while it is the only one.
+func (o *Overview) systemHead(tr func(string) string) cardHead {
+	h := cardHead{Tone: "neutral", Summary: o.Firmware}
+	switch n := len(o.FailedServices); {
+	case n == 1:
+		h.Tone, h.Status = "danger", fmt.Sprintf(tr("%s failed"), o.FailedServices[0])
+	case n > 1:
+		h.Tone, h.Status = "danger", overviewCount(tr, n, "%d service failed", "%d services failed (two)", "%d services failed (few)", "%d services failed")
+	}
+	h.Cause = h.Status
+	return h
+}
+
+// systemHref opens the Services page while a service there has failed.
+func (o *Overview) systemHref() string {
+	if len(o.FailedServices) == 0 {
+		return ""
+	}
+	return "/system/services"
 }
 
 func (o *Overview) systemBody(r *Renderer, csrf string) (template.HTML, error) {
@@ -428,7 +445,11 @@ func (o *Overview) systemBody(r *Renderer, csrf string) (template.HTML, error) {
 	if o.Clock != "" {
 		clock = Property{Label: "Local time", Value: localTime(o.Clock, o.Zone), Mono: true, Verbatim: true, Key: "local-time"}
 	}
-	return o.renderWidget(r, &Properties{Items: []Property{
+	var failed []Property
+	if len(o.FailedServices) > 0 {
+		failed = []Property{{Label: "Failed services", Value: strings.Join(o.FailedServices, ", "), Mono: true, Verbatim: true}}
+	}
+	return o.renderWidget(r, &Properties{Items: append(failed,
 		sysProp("Board", o.Model, false),
 		sysProp("Architecture", o.Arch, true),
 		sysProp("Target platform", o.Target, true),
@@ -436,7 +457,7 @@ func (o *Overview) systemBody(r *Renderer, csrf string) (template.HTML, error) {
 		sysProp("Kernel", o.Kernel, true),
 		uptime,
 		clock,
-	}}, csrf)
+	)}, csrf)
 }
 
 // ── Hardware ──

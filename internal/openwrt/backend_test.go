@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"slices"
 	"strings"
 	"testing"
 
@@ -563,6 +564,31 @@ func TestEnrichRCStatesClassifiesServicesAndAggregatesRuntime(t *testing.T) {
 	dns := states["dnsmasq"]
 	if len(dns.PIDs) != 1 || dns.PIDs[0] != 42 || dns.MemoryBytes != 2*1024*1024 || dns.Uptime != 75 {
 		t.Errorf("dnsmasq runtime = %+v", dns)
+	}
+}
+
+// TestProcdFailedIsAnInstanceProcdStoppedRestarting: procd keeps a daemon's
+// instance after it gives up on it (a crash loop clears its respawn), while a
+// stop drops the instance. Not running, an error exit and no respawn left is
+// failed; an instance waiting out its respawn delay is not failed yet, and a
+// one-shot that exited 0 completed.
+func TestProcdFailedIsAnInstanceProcdStoppedRestarting(t *testing.T) {
+	raw := map[string]any{
+		"sysntpd":      map[string]any{"instances": map[string]any{"instance1": map[string]any{"running": false, "command": []any{"/usr/sbin/ntpd"}, "exit_code": int64(1)}}},
+		"odhcpd":       map[string]any{"instances": map[string]any{"instance1": map[string]any{"running": false, "command": []any{"/usr/sbin/odhcpd"}, "exit_code": int64(1), "respawn": map[string]any{"retry": int64(5)}}}},
+		"urandom_seed": map[string]any{"instances": map[string]any{"instance1": map[string]any{"running": false, "command": []any{"/sbin/urandom_seed"}, "exit_code": int64(0)}}},
+		"dnsmasq":      map[string]any{"instances": map[string]any{"cfg01411c": map[string]any{"running": true, "pid": int64(42), "command": []any{"/usr/sbin/dnsmasq"}}}},
+		"gave-up":      map[string]any{"instances": map[string]any{"instance1": map[string]any{"running": false, "respawn_failed": true}}},
+	}
+	if got := failedServices(raw); !slices.Equal(got, []string{"gave-up", "sysntpd"}) {
+		t.Errorf("failedServices = %v, want [gave-up sysntpd]", got)
+	}
+	states := map[string]RCState{"sysntpd": {Enabled: true}, "odhcpd": {Enabled: true}, "dnsmasq": {Enabled: true}}
+	enrichRCStates(states, parseServiceDetails(raw), func(string) ([]byte, error) { return nil, fmt.Errorf("missing") })
+	for name, want := range map[string]bool{"sysntpd": true, "odhcpd": false, "dnsmasq": false} {
+		if states[name].Failed != want {
+			t.Errorf("%s failed = %v, want %v", name, states[name].Failed, want)
+		}
 	}
 }
 

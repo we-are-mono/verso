@@ -221,7 +221,7 @@ func readDHCPInstances(services map[string]any, read func(string) ([]byte, error
 	for id, raw := range instances {
 		v, _ := raw.(map[string]any)
 		running := asBool(v["running"])
-		instance := dhcpInstance{id: id, running: running, failed: !running && (asBool(v["respawn_failed"]) || asInt64(v["exit_code"]) != 0), leaseFile: "/tmp/dhcp.leases"}
+		instance := dhcpInstance{id: id, running: running, failed: procdInstanceFailed(v), leaseFile: "/tmp/dhcp.leases"}
 		args, _ := v["command"].([]any)
 		path := ""
 		for i, rawArg := range args {
