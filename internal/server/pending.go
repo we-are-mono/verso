@@ -125,7 +125,9 @@ func (s *Server) whenYouApply(r *http.Request, sid string, view stagedView, lang
 	children = append(children,
 		&widget.Embed{HTML: s.pendingTemplate(lang, "verso-pending-steps", steps)},
 		&widget.Form{ID: "verso-pending-apply", Action: "/uci/apply", NoSubmit: true, Fields: widget.Widgets{
-			&widget.Field{Name: "note", Label: "Note", Placeholder: view.Summary},
+			// The note is a sentence for config history, so its label stands
+			// over a box the card's width, as the Hardware graph's choice does.
+			&widget.Field{Name: "note", Label: "Note", Placeholder: view.Summary, Wide: true},
 		}},
 	)
 	return &widget.Section{Title: "When you apply", Children: children}

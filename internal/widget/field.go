@@ -78,6 +78,10 @@ type Field struct {
 	// nothing (the Temperatures graph's reading and window). Shell only, as
 	// Theme is.
 	Fetch *FieldFetch `json:"-"`
+	// Wide stands the answer under its question at the row's full width, as
+	// a fused answer too wide for the column does: free text read as a
+	// sentence (the Pending changes page's note). Shell only.
+	Wide bool `json:"-"`
 	// OptionsVerbatim declares the options' labels names the machine or a
 	// profile gave (a reading's "Memory", an SFP module's cage), which the
 	// localization walk leaves as they are. Shell only.
@@ -198,9 +202,10 @@ func chip(key, source string) string {
 }
 
 // wide reports whether the field's control cannot stand in the answer column:
-// a code or text area, an address of the endpoint measure, a weekday strip.
+// a code or text area, an address of the endpoint measure, a weekday strip,
+// or one the shell stands under its question (Wide).
 func (f *Field) wide() bool {
-	return f.Style == "code" || f.Kind == "textarea" || f.ControlMeasure() == "endpoint" || f.Segmented()
+	return f.Wide || f.Style == "code" || f.Kind == "textarea" || f.ControlMeasure() == "endpoint" || f.Segmented()
 }
 
 // description is what the field is for, written under its name: the help,

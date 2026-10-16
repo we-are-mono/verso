@@ -135,6 +135,7 @@ func TestAWideAnswerStandsUnderItsQuestion(t *testing.T) {
 		"weekdays": {&Field{Name: "days", Label: "Days", Kind: "checks", Style: "segmented", Options: days}, true},
 		"list":     {&List{Name: "proto", Label: "Protocol"}, true},
 		"text":     {&Field{Name: "name", Label: "Name"}, false},
+		"stacked":  {&Field{Name: "note", Label: "Note", Wide: true}, true},
 		"switch":   {&Switch{Name: "on", Label: "On"}, false},
 		"rate": {&Grid{Style: "form", Label: "Connection rate", Join: "per", Children: []Widget{
 			&Field{Name: "synflood_rate", Label: "Connections", Key: "synflood_rate"},
