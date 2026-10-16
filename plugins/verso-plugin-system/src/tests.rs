@@ -115,19 +115,73 @@ fn computer_time_is_an_immediate_command() {
     assert_eq!(e.commands.len(), 1);
     assert_eq!(e.commands[0].args["timezone"], "UTC");
 }
+// The card a General form saves, by the form's own name for it.
+fn card_form<'a>(page: &'a serde_json::Value, card: &str) -> &'a serde_json::Value {
+    page["widget"]["children"]
+        .as_array()
+        .expect("cards")
+        .iter()
+        .filter_map(|c| c["children"].as_array().and_then(|k| k.first()))
+        .find(|f| {
+            f["type"] == "form"
+                && f["fields"][0]["name"] == "_general_card"
+                && f["fields"][0]["value"] == card
+        })
+        .unwrap_or_else(|| panic!("no {card} form: {page}"))
+}
 #[test]
-fn general_names_what_it_saves() {
+fn each_general_card_saves_itself_and_names_what_it_saves() {
     let page = serde_json::to_value(get(&request())).unwrap();
-    assert_eq!(page["widget"]["submit"], "Save settings", "{page}");
-    // A settings form's Save rests until something in it changes.
-    assert_eq!(page["widget"]["style"], "settings", "{page}");
+    for (card, submit) in [
+        ("router", "Save router settings"),
+        ("time", "Save time settings"),
+    ] {
+        let form = card_form(&page, card);
+        assert_eq!(form["submit"], submit, "{page}");
+        // A settings form's Save rests until something in it changes.
+        assert_eq!(form["style"], "settings", "{page}");
+    }
+}
+#[test]
+fn a_card_stages_only_its_own_options() {
+    // The router card posts its own fields; nothing about time is touched.
+    let e = post(
+        &request(),
+        &Form::parse("_general_card=router&hostname=router2&ula_prefix=fd42%3A1%3A1%3A%3A%2F48&packet_steering=1"),
+    );
+    let j = serde_json::to_value(&e).unwrap();
+    assert_eq!(e.commit.len(), 1, "{:?}", e.commit);
+    assert_eq!(j["commit"][0]["values"], json!({"hostname": "router2"}));
+    // The time card posts its own; the router's name and prefix stay as they are.
+    let e = post(
+        &request(),
+        &Form::parse(
+            "_general_card=time&zonename=UTC&ntp_enabled=1&server=time.example.org&enable_server=1",
+        ),
+    );
+    let j = serde_json::to_value(&e).unwrap();
+    assert_eq!(e.commit.len(), 1, "{:?}", e.commit);
+    assert_eq!(j["commit"][0]["values"], json!({"enable_server": "1"}));
+}
+#[test]
+fn a_cards_refusal_stays_on_its_card() {
+    let e = post(
+        &request(),
+        &Form::parse("_general_card=time&zonename=UTC&ntp_enabled=1"),
+    );
+    assert!(e.commit.is_empty());
+    let page = serde_json::to_value(&e).unwrap();
+    let router = card_form(&page, "router").to_string();
+    assert!(!router.contains("time server"), "{router}");
+    let time = card_form(&page, "time").to_string();
+    assert!(time.contains("Add at least one time server"), "{time}");
 }
 #[test]
 fn general_leaves_the_appearance_card_above_time() {
     // The theme is the shell's to pick and answer for (ADR-024); General only
     // says where its card stands: after the router's settings, before Time.
     let page = serde_json::to_value(get(&request())).unwrap();
-    let fields = page["widget"]["fields"].as_array().expect("fields");
+    let fields = page["widget"]["children"].as_array().expect("cards");
     let kinds: Vec<String> = fields
         .iter()
         .map(|f| match f["type"].as_str() {
@@ -136,7 +190,11 @@ fn general_leaves_the_appearance_card_above_time() {
             None => String::new(),
         })
         .collect();
-    assert_eq!(kinds, ["section ", "slot appearance", "section Time"], "{page}");
+    assert_eq!(
+        kinds,
+        ["section ", "slot appearance", "section Time"],
+        "{page}"
+    );
 }
 
 #[test]
@@ -393,7 +451,11 @@ fn certificate_life_turns_as_it_runs_out() {
         let page: serde_json::Value = serde_json::from_str(&access_with(json!([]), cert)).unwrap();
         let row = property(&page, "Time left");
         assert_eq!(
-            (row["duration"].as_u64(), row["value"].as_str(), row["dot"].as_str()),
+            (
+                row["duration"].as_u64(),
+                row["value"].as_str(),
+                row["dot"].as_str()
+            ),
             (duration, Some(value), Some(tone)),
             "{left}"
         );

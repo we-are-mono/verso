@@ -38,27 +38,45 @@ fn get(r: &Request) -> Envelope {
     }
     page(facts(&r.snapshot), &BTreeMap::new())
 }
+// Each General card saves itself: its form names the card, so a post says which
+// card's options it holds and nothing of the other card is read from it. A post
+// naming no card is the whole page, as a page drawn before the cards had forms
+// of their own still posts it.
+const CARD: &str = "_general_card";
+const ROUTER: &str = "router";
+const TIME: &str = "time";
+// The router card's controls; every other refusal is the time card's.
+const ROUTER_FIELDS: [&str; 4] = ["hostname", "ula_prefix", "packet_steering", ROUTER];
 fn post(r: &Request, f: &Form) -> Envelope {
     if r.path.starts_with("/access") {
         return access::post(r, f);
     }
+    let (router, time) = match f.get(CARD).as_str() {
+        ROUTER => (true, false),
+        TIME => (false, true),
+        _ => (true, true),
+    };
     let before = facts(&r.snapshot);
     let mut values = facts(&r.snapshot);
     let mut errors = BTreeMap::new();
-    values.hostname = f.get("hostname").trim().into();
-    values.ula = f.get("ula_prefix").trim().into();
-    values.steering = f.get("packet_steering") == "1";
-    values.zonename = f.get("zonename");
-    values.ntp_enabled = f.get("ntp_enabled") == "1";
-    values.serve = f.get("enable_server") == "1";
-    let mut seen = std::collections::BTreeSet::new();
-    values.servers = f
-        .all("server")
-        .into_iter()
-        .map(|s| s.trim().to_string())
-        .filter(|s| !s.is_empty() && seen.insert(s.clone()))
-        .collect();
-    if f.get("_action") == "clock" {
+    if router {
+        values.hostname = f.get("hostname").trim().into();
+        values.ula = f.get("ula_prefix").trim().into();
+        values.steering = f.get("packet_steering") == "1";
+    }
+    if time {
+        values.zonename = f.get("zonename");
+        values.ntp_enabled = f.get("ntp_enabled") == "1";
+        values.serve = f.get("enable_server") == "1";
+        let mut seen = std::collections::BTreeSet::new();
+        values.servers = f
+            .all("server")
+            .into_iter()
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty() && seen.insert(s.clone()))
+            .collect();
+    }
+    if time && f.get("_action") == "clock" {
         let datetime = f.get("_client_time");
         if !valid_local_datetime(&datetime) {
             errors.insert(
@@ -77,45 +95,50 @@ fn post(r: &Request, f: &Form) -> Envelope {
         }];
         return result;
     }
-    if !valid_hostname(&values.hostname) {
-        errors.insert(
-            "hostname".into(),
-            "Use 1–63 letters, numbers or hyphens, without a leading or trailing hyphen.".into(),
-        );
+    if router {
+        if !valid_hostname(&values.hostname) {
+            errors.insert(
+                "hostname".into(),
+                "Use 1–63 letters, numbers or hyphens, without a leading or trailing hyphen."
+                    .into(),
+            );
+        }
+        if !values.ula.is_empty() && !valid_ula(&values.ula) {
+            errors.insert(
+                "ula_prefix".into(),
+                "Enter a private IPv6 prefix, such as fd42:1:1::/48, or leave it empty.".into(),
+            );
+        }
     }
-    if !values.ula.is_empty() && !valid_ula(&values.ula) {
-        errors.insert(
-            "ula_prefix".into(),
-            "Enter a private IPv6 prefix, such as fd42:1:1::/48, or leave it empty.".into(),
-        );
-    }
-    let timezone = ZONES
-        .iter()
-        .find(|(name, _)| *name == values.zonename)
-        .map(|(_, tz)| tz.to_string())
-        .or_else(|| {
-            (values.zonename == before.zonename && valid_posix_tz(&before.timezone))
-                .then_some(before.timezone)
-        });
-    if let Some(tz) = timezone {
-        values.timezone = tz;
-    } else {
-        errors.insert(
-            "zonename".into(),
-            "Choose one of the available timezones.".into(),
-        );
-    }
-    if values.servers.iter().any(|s| !valid_server(s)) {
-        errors.insert(
-            "server".into(),
-            "Enter valid hostnames or IP addresses for time servers.".into(),
-        );
-    }
-    if values.ntp_enabled && values.servers.is_empty() {
-        errors.insert(
-            "server".into(),
-            "Add at least one time server, or turn off internet time synchronization.".into(),
-        );
+    if time {
+        let timezone = ZONES
+            .iter()
+            .find(|(name, _)| *name == values.zonename)
+            .map(|(_, tz)| tz.to_string())
+            .or_else(|| {
+                (values.zonename == before.zonename && valid_posix_tz(&before.timezone))
+                    .then_some(before.timezone.clone())
+            });
+        if let Some(tz) = timezone {
+            values.timezone = tz;
+        } else {
+            errors.insert(
+                "zonename".into(),
+                "Choose one of the available timezones.".into(),
+            );
+        }
+        if values.servers.iter().any(|s| !valid_server(s)) {
+            errors.insert(
+                "server".into(),
+                "Enter valid hostnames or IP addresses for time servers.".into(),
+            );
+        }
+        if values.ntp_enabled && values.servers.is_empty() {
+            errors.insert(
+                "server".into(),
+                "Add at least one time server, or turn off internet time synchronization.".into(),
+            );
+        }
     }
     if !errors.is_empty() {
         return page(values, &errors);
@@ -126,13 +149,13 @@ fn post(r: &Request, f: &Form) -> Envelope {
         .into_iter()
         .next()
     else {
-        return page(
-            values,
-            &BTreeMap::from([(
-                "form".into(),
-                "The router's system configuration could not be read.".into(),
-            )]),
-        );
+        let unread = "The router's system configuration could not be read.";
+        let errors = [(router, ROUTER), (time, TIME)]
+            .into_iter()
+            .filter(|(posted, _)| *posted)
+            .map(|(_, card)| (card.to_string(), unread.to_string()))
+            .collect();
+        return page(values, &errors);
     };
     // Only what differs from what the router has is staged. An option written
     // with the value it already holds still counts as a change waiting to be
@@ -196,9 +219,14 @@ fn post(r: &Request, f: &Form) -> Envelope {
     if operations.is_empty() {
         return result;
     }
+    let saved = match (router, time) {
+        (true, false) => "Router settings saved.",
+        (false, true) => "Time settings saved.",
+        _ => "General settings saved.",
+    };
     result
         .with_commit(operations)
-        .with_notice(Tone::Success, "General settings saved.")
+        .with_notice(Tone::Success, saved)
 }
 fn facts(s: &Snapshot) -> Facts {
     let system = s.sections_of_type("system", "system");
@@ -271,36 +299,43 @@ fn page(v: Facts, e: &BTreeMap<String, String>) -> Envelope {
         *name = "_action".into();
         *value = "clock".into();
     }
+    // Each card holds the form that saves it; the clock act on Time's heading
+    // stands outside that form and the shell has it post with it.
     let mut time = Widget::section(
         "Time",
         "",
-        vec![
-            Widget::hidden("_client_time", ""),
-            Widget::select(
-                "zonename",
-                "Time zone",
-                &v.zonename,
-                zones,
-                e.get("zonename").map(String::as_str).unwrap_or(""),
-            )
-            .writes("zonename")
-            .at("system", &v.system_section),
-            Widget::switch_keyed(
-                "ntp_enabled",
-                "Keep the clock synced over the internet",
-                "enabled",
-                "",
-                v.ntp_enabled,
-            ),
-            servers,
-            Widget::switch_keyed(
-                "enable_server",
-                "Provide time to devices on this network",
-                "enable_server",
-                "",
-                v.serve,
-            ),
-        ],
+        vec![card_form(
+            TIME,
+            "Save time settings",
+            vec![
+                Widget::hidden("_client_time", ""),
+                Widget::select(
+                    "zonename",
+                    "Time zone",
+                    &v.zonename,
+                    zones,
+                    e.get("zonename").map(String::as_str).unwrap_or(""),
+                )
+                .writes("zonename")
+                .at("system", &v.system_section),
+                Widget::switch_keyed(
+                    "ntp_enabled",
+                    "Keep the clock synced over the internet",
+                    "enabled",
+                    "",
+                    v.ntp_enabled,
+                ),
+                servers,
+                Widget::switch_keyed(
+                    "enable_server",
+                    "Provide time to devices on this network",
+                    "enable_server",
+                    "",
+                    v.serve,
+                ),
+            ],
+            e,
+        )],
     )
     .ruled()
     .at("system", &v.ntp_section);
@@ -315,46 +350,69 @@ fn page(v: Facts, e: &BTreeMap<String, String>) -> Envelope {
         *meta_position = "inline".into();
         *control = Some(Box::new(clock_button));
     }
-    let mut form = Widget::Form {
-        style: "settings".into(),
-        submit: "Save settings".into(),
-        note: String::new(),
-        target: String::new(),
-        error: String::new(),
-        fields: vec![
-            Widget::section(
-                "",
-                "",
-                vec![
-                    keyed("hostname", "Router name", "hostname", &v.hostname, e)
-                        .at("system", &v.system_section),
-                    keyed("ula_prefix", "Private IPv6 prefix", "ula_prefix", &v.ula, e)
-                        .explained(
-                            "Devices get a stable local address even without an ISP prefix.",
-                            "network globals",
-                        )
-                        .at("network", &v.globals_section),
-                    Widget::switch_keyed(
-                        "packet_steering",
-                        "Spread packet handling over all cores",
-                        "packet_steering",
-                        "",
-                        v.steering,
+    let router = Widget::section(
+        "",
+        "",
+        vec![card_form(
+            ROUTER,
+            "Save router settings",
+            vec![
+                keyed("hostname", "Router name", "hostname", &v.hostname, e)
+                    .at("system", &v.system_section),
+                keyed("ula_prefix", "Private IPv6 prefix", "ula_prefix", &v.ula, e)
+                    .explained(
+                        "Devices get a stable local address even without an ISP prefix.",
+                        "network globals",
                     )
                     .at("network", &v.globals_section),
-                ],
-            )
-            .ruled(),
-            // The Appearance card is the shell's (ADR-024): the theme is its to
-            // pick and answer for, and it stands here, before Time.
-            Widget::slot("appearance"),
-            time,
-        ],
-    };
-    if let Widget::Form { error, fields, .. } = &mut form {
-        *error = Widget::refusal(fields, e);
+                Widget::switch_keyed(
+                    "packet_steering",
+                    "Spread packet handling over all cores",
+                    "packet_steering",
+                    "",
+                    v.steering,
+                )
+                .at("network", &v.globals_section),
+            ],
+            e,
+        )],
+    )
+    .ruled();
+    let cards = vec![
+        router,
+        // The Appearance card is the shell's (ADR-024): the theme is its to
+        // pick and answer for, and it stands here, before Time. It saves
+        // itself the moment a theme is picked, so it holds no Save.
+        Widget::slot("appearance"),
+        time,
+    ];
+    Envelope::page("General", Widget::stack(cards)).with_width("form")
+}
+// card_form is the form a General card saves itself with: the card's name
+// first, so a post says whose options it holds, then its controls, its Save
+// resting until one of them changes. Its refusal is only what the card's own
+// controls do not draw, of the refusals that are the card's.
+fn card_form(
+    card: &str,
+    submit: &str,
+    controls: Vec<Widget>,
+    e: &BTreeMap<String, String>,
+) -> Widget {
+    let mut fields = vec![Widget::hidden(CARD, card)];
+    fields.extend(controls);
+    let ours: BTreeMap<String, String> = e
+        .iter()
+        .filter(|(name, _)| ROUTER_FIELDS.contains(&name.as_str()) == (card == ROUTER))
+        .map(|(name, error)| (name.clone(), error.clone()))
+        .collect();
+    Widget::Form {
+        style: "settings".into(),
+        submit: submit.into(),
+        note: String::new(),
+        target: String::new(),
+        error: Widget::refusal(&fields, &ours),
+        fields,
     }
-    Envelope::page("General", form).with_width("form")
 }
 fn valid_ula(value: &str) -> bool {
     let Some((address, prefix)) = value.split_once('/') else {
