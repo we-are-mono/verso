@@ -111,3 +111,53 @@ func TestANarrowListingLeavesOutItsSecondaryColumns(t *testing.T) {
 		t.Errorf("the identity column or a column the table lacks is left out: %s", got)
 	}
 }
+
+// A listing whose every row opens a panel needs no word from its plugin to
+// fit a phone: the shell keeps the columns that decide — the first, the
+// row's name, its state and its acts — and leaves out the facts the panel
+// restates. A later identity column (a network a lease cites) is one of
+// those facts.
+func TestAPanelListingOnAPhoneKeepsItsNameStateAndActs(t *testing.T) {
+	r := newRenderer(t)
+	tbl := &Table{
+		Columns: []TableColumn{{Label: "Device", Kind: "name"}, {Label: "Network", Kind: "reference"}, {Label: "Address", Kind: "mono"}, {Label: "Proto", Kind: "keyword"}, {Label: "State", Kind: "status"}, {Kind: "actions"}},
+		Rows: []TableRow{
+			{ID: "a", Panel: "/devices/a", Cells: []TableCell{{Text: "laptop"}, {Text: "lan"}, {Text: "192.0.2.4"}, {Text: "tcp"}, {Text: "Online", Variant: "success"}, {}}},
+			{ID: "b", Entity: &EntityRef{Kind: "device", ID: "b"}, Cells: []TableCell{{Text: "phone"}, {Text: "lan"}, {Text: "192.0.2.5"}, {Text: "udp"}, {Text: "Offline"}, {}}},
+		},
+	}
+	if got := render(t, r, tbl); !strings.Contains(got, `class="verso-table verso-narrow-2 verso-narrow-3 verso-narrow-4 w-full`) {
+		t.Errorf("a phone should keep the name, the state and the acts: %s", got)
+	}
+}
+
+// A row with no panel has nowhere else to say its facts, so a listing
+// holding one keeps every column on a phone and scrolls instead.
+func TestAListingWithARowThatOpensNothingKeepsEveryColumn(t *testing.T) {
+	r := newRenderer(t)
+	tbl := &Table{
+		Columns: []TableColumn{{Label: "Target", Kind: "reference"}, {Label: "Gateway", Kind: "mono"}},
+		Rows: []TableRow{
+			{ID: "a", Panel: "/routes/a", Cells: []TableCell{{Text: "default"}, {Text: "192.0.2.1"}}},
+			{ID: "b", Cells: []TableCell{{Text: "192.0.2.0/24"}, {Text: "—"}}},
+		},
+	}
+	if got := render(t, r, tbl); strings.Contains(got, "verso-narrow") {
+		t.Errorf("a row with no panel should keep its every column: %s", got)
+	}
+}
+
+// What a listing names secondary itself is what a phone leaves out, even
+// where the shell would have kept a column the listing knows to be
+// secondary, or left out one it knows decides.
+func TestAListingsOwnSecondaryColumnsOutrankTheShells(t *testing.T) {
+	r := newRenderer(t)
+	tbl := &Table{
+		Columns:   []TableColumn{{Label: "Name", Kind: "name"}, {Label: "Action", Kind: "pill"}, {Label: "Hits", Kind: "num"}},
+		Rows:      []TableRow{{ID: "a", Panel: "/rules/a", Cells: []TableCell{{Text: "Allow-Ping"}, {Text: "accept"}, {Text: "4"}}}},
+		Secondary: []int{2},
+	}
+	if got := render(t, r, tbl); !strings.Contains(got, `class="verso-table verso-narrow-3 w-full`) {
+		t.Errorf("the listing's own secondary columns should stand: %s", got)
+	}
+}

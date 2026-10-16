@@ -82,7 +82,9 @@
 {{/* table.detail: the line of words under a cell's value — what it is, or
      since when — in the secondary step, on one 20px line with the cell's tag
      riding it (the tag keeps to the line). */}}
-{{define "table.detail"}}<span class="flex items-center gap-x-2 text-sm leading-6 whitespace-nowrap text-meta"><span>{{.Detail}}</span>{{if .Tag}}{{template "table.tag" .}}{{end}}</span>{{end}}
+{{/* table.detail: the quiet line under a cell's value. On a phone it wraps
+     between its words rather than pushing the row's acts off the screen. */}}
+{{define "table.detail"}}<span class="flex items-center gap-x-2 text-sm leading-6 whitespace-nowrap max-sm:flex-wrap max-sm:whitespace-normal text-meta"><span>{{.Detail}}</span>{{if .Tag}}{{template "table.tag" .}}{{end}}</span>{{end}}
 {{define "table.cellpad-act"}}{{if .Dense}}pt-1.5 pb-1.25{{else}}px-3.5 pt-1.5 pb-1.25{{end}}{{end}}
 {{define "table.rowbtn-class"}}inline-flex h-7 items-center gap-1.5 rounded-xs border px-3 text-sm font-semibold whitespace-nowrap transition-colors {{if .Disabled}}cursor-not-allowed border-rule bg-ground text-faint opacity-70{{else}}{{template "verso-btn-secondary"}} focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim{{end}}{{end}}
 {{/* table.rowbtn-name: a row's labelled act names the row it acts on, the

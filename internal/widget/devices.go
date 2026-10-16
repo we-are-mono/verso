@@ -209,25 +209,12 @@ func DevicesTable(devices []Device, acts func(d Device) []TableRowAct, usage boo
 		// Every column but the device's own is fixed, so the grid holds its shape
 		// whatever this particular network happens to be named and however short
 		// one device's address is.
-		Columns: devicesColumns(usage),
-		// A phone keeps who is here and in what state; the port, the address,
-		// the MAC and the usage figures are the device's panel's to tell.
-		Secondary: devicesSecondary(usage),
+		Columns:   devicesColumns(usage),
 		Rows:      rows,
 		Legend:    legend,
 		Note:      "Devices with saved limits stay listed when offline. Open a device to edit its limits.",
 		EmptyText: "Nothing has joined this network yet.",
 	}
-}
-
-// devicesSecondary is the columns of devicesColumns a phone leaves out: the
-// port, the address, then the MAC or the two usage figures. The device's
-// panel holds every one of them.
-func devicesSecondary(usage bool) []int {
-	if usage {
-		return []int{1, 2, 3, 4}
-	}
-	return []int{1, 2, 3}
 }
 
 // devicesColumns is the roster's grid. Every column but the device's own is

@@ -72,7 +72,10 @@ type Table struct {
 	// Secondary names, by position from 0, the columns a phone's width leaves
 	// out: facts the row's panel still holds, so the narrow listing keeps the
 	// columns that decide — the row's name, its state, its acts. The first
-	// column, a name column and the acts are never left out.
+	// column, a name column and the acts are never left out. Left empty, a
+	// listing whose every row opens a panel leaves out every column but those
+	// (Table.secondary); name it only where the listing knows better — a
+	// verdict a phone should keep, a column a phone can spare.
 	Secondary   []int      `json:"secondary,omitempty"`
 	Rows        []TableRow `json:"rows"`
 	Seam        *TableSeam `json:"seam,omitempty"`
@@ -1117,7 +1120,7 @@ const narrowMax = 16
 // first column, a name column and the acts are never among them.
 func (t *Table) narrow() string {
 	var classes []string
-	for _, i := range t.Secondary {
+	for _, i := range t.secondary() {
 		if i <= 0 || i >= len(t.Columns) || i >= narrowMax {
 			continue
 		}
@@ -1127,6 +1130,60 @@ func (t *Table) narrow() string {
 		classes = append(classes, fmt.Sprintf("verso-narrow-%d", i+1))
 	}
 	return strings.Join(classes, " ")
+}
+
+// secondary is the columns a phone leaves out: the listing's own Secondary
+// when it names any, else — for a listing whose every row opens a panel, so
+// every fact left out is one tap away — every column but the first, the
+// row's name, its state and its acts. A listing with a row that opens
+// nothing keeps every column, and scrolls.
+func (t *Table) secondary() []int {
+	if len(t.Secondary) > 0 {
+		return t.Secondary
+	}
+	if !t.panelsHoldEveryRow() {
+		return nil
+	}
+	identity := slices.IndexFunc(t.Columns, func(c TableColumn) bool { return isName(c.Kind) })
+	var out []int
+	for i, c := range t.Columns {
+		if i == 0 || i == identity || decides(c.Kind) {
+			continue
+		}
+		out = append(out, i)
+	}
+	return out
+}
+
+// decides reports whether a column of this kind is one a row is read by on
+// any width: its state or the acts on it.
+func decides(kind string) bool {
+	switch kind {
+	case "status", "toggle", "actions", "action", "reorder", "link":
+		return true
+	}
+	return false
+}
+
+// panelsHoldEveryRow reports whether every row with cells opens a panel — its
+// own drawer, a panel fetched on opening, or the shell's panel for the
+// subject it names. A lane's band carries no cells and asks nothing.
+func (t *Table) panelsHoldEveryRow() bool {
+	rows := t.Rows
+	if t.Seam != nil {
+		rows = append(slices.Clip(rows), t.Seam.Rows...)
+	}
+	some := false
+	for _, row := range rows {
+		if len(row.Cells) == 0 {
+			continue
+		}
+		if row.Drawer == nil && row.Panel == "" && row.Entity == nil {
+			return false
+		}
+		some = true
+	}
+	return some
 }
 
 // reorderable reports whether these rows really drag. The leading "reorder"

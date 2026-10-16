@@ -90,3 +90,28 @@ func TestInterfaceRowOpensItsEditorInPlace(t *testing.T) {
 		t.Errorf("only the panel's own address opens in place:\n%s", got)
 	}
 }
+
+// On a phone the inventory keeps what says which interface and whether it is
+// up: the tree, the name with its networks, the state, the acts. The type,
+// the address and the MAC are the interface's panel's to tell; the state,
+// whose column a phone has no room for, rides on the name's line. A name is
+// never broken inside a word ("br-la|n").
+func TestInterfaceInventoryOnAPhoneKeepsTheNameStateAndActs(t *testing.T) {
+	table := &Table{Style: "interfaces", Columns: []TableColumn{{Label: "Device · network"}, {Label: "Type"}, {Label: "Address"}, {Label: "MAC address"}, {Label: "State"}, {Kind: "actions"}}, Rows: []TableRow{
+		{ID: "br-lan", Panel: "/plugins/interfaces/br-lan/edit", Cells: []TableCell{{Text: "br-lan"}, {Text: "bridge"}, {Text: "192.0.2.1/24"}, {Text: "aa:bb:cc:dd:ee:ff"}, {Text: "Up", Variant: "success"}, {}}},
+	}}
+	got := render(t, newRenderer(t), table)
+	for _, want := range []string{
+		`sm:min-w-[66rem]`,
+		`<col class="w-30 max-sm:hidden">`, `<col class="w-44 max-sm:hidden">`, `<col class="w-50 max-sm:hidden">`, `<col class="w-32 max-sm:hidden">`,
+		`max-sm:hidden">Type</th>`, `max-sm:hidden">State</th>`,
+		`<span data-verso-inventory-state class="flex items-center gap-2 text-sm leading-6 text-ink sm:hidden">`,
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("want %s in:\n%s", want, got)
+		}
+	}
+	if strings.Contains(got, "break-all") {
+		t.Errorf("an interface's name should break only where its words part:\n%s", got)
+	}
+}

@@ -1449,7 +1449,8 @@ func TestAGroupWithNothingInItSaysSo(t *testing.T) {
 // TestCellDetailStandsUnderItsValue: a value that needs a line of words to say
 // what it is (the browser behind an address) or since when (a session's
 // start) carries them on a second line under it, in the secondary step, and the
-// cell takes the stacked row's padding. A tag rides the detail line.
+// cell takes the stacked row's padding. A tag rides the detail line, and on a
+// phone the line wraps between its words.
 func TestCellDetailStandsUnderItsValue(t *testing.T) {
 	got := render(t, newRenderer(t), &Table{
 		Columns: []TableColumn{{Label: "Source", Kind: "reference"}, {Label: "Last seen"}},
@@ -1459,8 +1460,8 @@ func TestCellDetailStandsUnderItsValue(t *testing.T) {
 		}}},
 	})
 	for _, want := range []string{
-		`<span class="flex items-center gap-x-2 text-sm leading-6 whitespace-nowrap text-meta"><span>Safari · iPhone</span>`,
-		`<span class="flex items-center gap-x-2 text-sm leading-6 whitespace-nowrap text-meta"><span>since today, 16:43</span>`,
+		`<span class="flex items-center gap-x-2 text-sm leading-6 whitespace-nowrap max-sm:flex-wrap max-sm:whitespace-normal text-meta"><span>Safari · iPhone</span>`,
+		`<span class="flex items-center gap-x-2 text-sm leading-6 whitespace-nowrap max-sm:flex-wrap max-sm:whitespace-normal text-meta"><span>since today, 16:43</span>`,
 		`>fd42:7ea:aa00::1a2b:3c4d:5e6f:7a8b</span>`,
 		">this browser</span>",
 		// the 20px chip fills the 20px detail line rather than making the line

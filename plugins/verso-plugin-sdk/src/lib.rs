@@ -1240,7 +1240,9 @@ pub struct Table {
     /// The columns, by position from 0, a phone's width leaves out: facts the
     /// row's panel still holds, so the narrow listing keeps the columns that
     /// decide — the row's name, its state, its acts. The first column, a name
-    /// column and the acts are never left out.
+    /// column and the acts are never left out. Left empty, a listing whose
+    /// every row opens a panel leaves out every column but those; name it
+    /// only where the listing knows better — a verdict a phone should keep.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub secondary: Vec<usize>,
     #[serde(skip_serializing_if = "String::is_empty")]

@@ -226,9 +226,9 @@ func TestDevicesOnAPhoneKeepTheirState(t *testing.T) {
 		false: {"Port", "Address", "MAC address"},
 		true:  {"Port", "Address", "Now", "This month"},
 	} {
-		tbl := DevicesTable(nil, func(Device) []TableRowAct { return nil }, usage)
+		tbl := DevicesTable([]Device{{MAC: "aa:bb:cc:dd:ee:ff", Name: "laptop"}}, func(Device) []TableRowAct { return nil }, usage)
 		var left []string
-		for _, i := range tbl.Secondary {
+		for _, i := range tbl.secondary() {
 			left = append(left, tbl.Columns[i].Label)
 		}
 		if strings.Join(left, ",") != strings.Join(want, ",") {

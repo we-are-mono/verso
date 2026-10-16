@@ -1007,8 +1007,8 @@ html {
     mask-image: none;
     animation: none;
   }
-  /* A phone leaves out the columns a listing names secondary (Table.Secondary,
-     by position): the head, every cell under it and the width it held, so the
+  /* A phone leaves out a listing's secondary columns (Table.secondary, by
+     position): the head, every cell under it and the width it held, so the
      columns that decide — the name, the state, the acts — stay on screen. A
      spanning row (a lane's band, its closing line) is one cell and keeps it. */
   @media (width < 40rem) {
@@ -1017,20 +1017,39 @@ html {
     .verso-table > colgroup > col {
       width: auto !important;
     }
-    /* The row's name takes what the rest leave and truncates in it, rather
-       than holding its whole length and pushing the state off the screen. */
+    /* The row's name takes what the rest leave, rather than holding its whole
+       length and pushing the state off the screen. */
     .verso-table > tbody > tr > td:has(.verso-row-name) {
-      max-width: 0;
       width: 100%;
     }
-    /* In that cell the name is what is read first: a tag beside it gives way
-       before the name does. */
+    /* In that cell the name is what is read first, so it is read whole: it
+       wraps where its words and hyphens part ("Allow-DHCP-|Renew"), never
+       inside one ("sysfixti|me"), rather than cutting two rules down to the
+       same "Allow-DHC…". Its longest word is the column's least width, so a
+       listing too wide for a phone even so scrolls, its names still whole. */
     .verso-table td .truncate:has(> .verso-row-name) {
       flex-shrink: 0;
       max-width: 100%;
+      min-width: min-content;
+      overflow: visible;
+      white-space: normal;
     }
-    .verso-table td .truncate:has(> .verso-row-name) ~ * {
-      min-width: 0;
+    /* A tag beside the name gives way before the name does: it wraps under
+       it, whole, on the listing's 24px lines. */
+    .verso-table td :has(> .truncate > .verso-row-name) {
+      flex-wrap: wrap;
+      row-gap: 0;
+    }
+    /* A name written as a phrase (a change's subject, its option, its
+       values) wraps between its parts, on the listing's 24px lines. */
+    .verso-table td .verso-row-name.flex {
+      flex-wrap: wrap;
+      row-gap: 0;
+    }
+    /* A part longer than the whole line is clipped at the cell's edge rather
+       than drawn over the next column. */
+    .verso-table td .verso-row-name.flex > * {
+      max-width: 100%;
       overflow: hidden;
     }
     .verso-narrow-2 > :is(thead, tbody) > tr > :nth-child(2), .verso-narrow-2 > colgroup > col:nth-child(2),
