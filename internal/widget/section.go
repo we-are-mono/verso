@@ -154,7 +154,39 @@ func (v sectionView) Kind() string {
 	return "plain"
 }
 
+// postsWithForm is the heading's act as drawn. A section that saves itself
+// holds its one form, and the act on its heading stands outside that form; a
+// named act — one that posts — posts with it all the same, its value with the
+// form's fields, so an act on a part of a card that saves itself reads what the
+// card holds. The form is named for it here; the act is a copy, so the schema
+// says what the plugin sent.
+func (s *Section) postsWithForm(r *Renderer) Widget {
+	act, ok := s.Control.(*Button)
+	if !ok || act.Name == "" {
+		return s.Control
+	}
+	var form *Form
+	for _, child := range s.Children {
+		if f, ok := child.(*Form); ok {
+			if form != nil {
+				return s.Control
+			}
+			form = f
+		}
+	}
+	if form == nil {
+		return s.Control
+	}
+	if form.ID == "" {
+		form.ID = fmt.Sprintf("verso-form-%d", r.seq.form.Add(1))
+	}
+	posting := *act
+	posting.Form = form.ID
+	return &posting
+}
+
 func (s *Section) renderInto(r *Renderer, out io.Writer, csrf string) error {
+	control := s.postsWithForm(r)
 	children, err := r.nested().renderChildren(s.Children, csrf)
 	if err != nil {
 		return err
@@ -173,9 +205,9 @@ func (s *Section) renderInto(r *Renderer, out io.Writer, csrf string) error {
 		Flush:      s.Flush,
 		Children:   children,
 	}
-	if s.Control != nil {
+	if control != nil {
 		var buf bytes.Buffer
-		if err := r.render(&buf, s.Control, csrf); err != nil {
+		if err := r.render(&buf, control, csrf); err != nil {
 			return fmt.Errorf("widget: render section control: %w", err)
 		}
 		v.Control = template.HTML(buf.String())

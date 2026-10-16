@@ -48,6 +48,9 @@ type Form struct {
 	Error   string       `json:"error"`
 	Actions []FormAction `json:"actions"` // secondary submit buttons besides Save (below)
 	Fields  Widgets      `json:"fields"`  // form contents
+	// ID names the form so an act standing outside it — the act on the
+	// heading of the section it saves — still posts with it. Shell only.
+	ID string `json:"-"`
 }
 
 // FormAction is a secondary submit button: it submits the form — all its fields —
@@ -106,6 +109,7 @@ func (f *Form) ConfirmDriven() bool {
 // formView is the form template's model: its fields pre-rendered to trusted HTML,
 // plus the resolved submit label and the CSRF token threaded in by the renderer.
 type formView struct {
+	ID         string
 	CancelHref string
 	Action     string
 	Frame      string
@@ -177,7 +181,7 @@ func (f *Form) renderInto(r *Renderer, out io.Writer, csrf string) error {
 	}
 	page := f.Style == "page" || f.Style == "settings"
 	return r.execute(out, "form.html.tmpl", formView{
-		CancelHref: f.CancelHref, Action: f.Action, Frame: f.Frame, Panel: f.Panel, Multipart: f.Multipart, AutoSubmit: f.AutoSubmit,
+		ID: f.ID, CancelHref: f.CancelHref, Action: f.Action, Frame: f.Frame, Panel: f.Panel, Multipart: f.Multipart, AutoSubmit: f.AutoSubmit,
 		Inline: f.Style == "inline" || f.Style == "inline-compact", Compact: f.Style == "inline-compact", Search: f.Style == "search", Page: page, Dirty: f.Style == "settings",
 		Sectioned: r.depth > 0 && f.Frame == "", ClosesPage: page && r.depth == 0 && f.Frame == "", Icon: f.Icon, Note: note,
 		JoinsCode: EndsWithCode(f), LoneAct: loneAct(f),

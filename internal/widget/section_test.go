@@ -32,6 +32,61 @@ func TestSectionControlAlignsToContentEdge(t *testing.T) {
 	}
 }
 
+// TestSectionActPostsWithTheSectionsForm: a card that saves itself holds its
+// form, and the act on its heading stands outside it; the act still posts
+// with that form — its fields and its value — through the form's id. A
+// section with no form, or with two, leaves its act as it was.
+func TestSectionActPostsWithTheSectionsForm(t *testing.T) {
+	act := func() Widget {
+		return &Button{Label: "Use my computer's time", Style: "act", Name: "_action", Value: "clock"}
+	}
+	got := render(t, newRenderer(t), &Section{
+		Title: "Time", Control: act(),
+		Children: []Widget{&Form{Submit: "Save time settings", Fields: []Widget{&Field{Name: "zonename", Label: "Time zone"}}}},
+	})
+	id := tagAttr(got, `<form`, `id="`, `"`)
+	if id == "" {
+		t.Fatalf("the section's form carries no id:\n%s", got)
+	}
+	if !strings.Contains(got, `name="_action" value="clock" form="`+id+`"`) {
+		t.Errorf("the heading's act does not post with the form %q:\n%s", id, got)
+	}
+	for name, s := range map[string]*Section{
+		"no form": {Title: "Time", Control: act(), Children: []Widget{&Field{Name: "zonename", Label: "Time zone"}}},
+		"two forms": {Title: "Time", Control: act(), Children: []Widget{
+			&Form{Submit: "Save one", Fields: []Widget{&Field{Name: "a", Label: "A"}}},
+			&Form{Submit: "Save two", Fields: []Widget{&Field{Name: "b", Label: "B"}}},
+		}},
+	} {
+		if got := render(t, newRenderer(t), s); strings.Contains(got, `form="`) {
+			t.Errorf("%s: the act is tied to a form it cannot tell apart:\n%s", name, got)
+		}
+	}
+}
+
+// tagAttr is the text after open, then after start, up to end: an attribute
+// of the first element open begins.
+func tagAttr(s, open, start, end string) string {
+	at := strings.Index(s, open)
+	if at < 0 {
+		return ""
+	}
+	tag := s[at:]
+	if close := strings.Index(tag, ">"); close >= 0 {
+		tag = tag[:close]
+	}
+	from := strings.Index(tag, start)
+	if from < 0 {
+		return ""
+	}
+	rest := tag[from+len(start):]
+	to := strings.Index(rest, end)
+	if to < 0 {
+		return ""
+	}
+	return rest[:to]
+}
+
 // TestHeadlessSectionStartsAtItsFirstBox: a section with no heading has
 // nothing for its first row's top padding to stand off from, so it is marked
 // headless and the stylesheet takes that padding back — the first box starts

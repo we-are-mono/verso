@@ -73,6 +73,7 @@ type renderSeqs struct {
 	cfm   atomic.Int64
 	chart atomic.Int64
 	tip   atomic.Int64
+	form  atomic.Int64
 }
 
 // NewRenderer parses the embedded widget templates and builds the sanitising

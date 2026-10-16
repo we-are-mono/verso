@@ -26,6 +26,10 @@ type Button struct {
 	// pointer, and is meant to be pressed (that is how the running thing
 	// stops). Loading is the in-flight submit; Live is the live indicator.
 	Live bool `json:"live,omitempty"`
+	// Form is the id of the form a named button posts with when it stands
+	// outside it: the act on a section's heading, posting with the form the
+	// section saves itself with. Shell only.
+	Form string `json:"-"`
 }
 
 func (*Button) isWidget() {}
