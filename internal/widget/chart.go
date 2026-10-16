@@ -354,7 +354,7 @@ func (c *Chart) axis(r *Renderer, n int) chartAxis {
 		if k == 0 {
 			align = "start"
 		}
-		out.Ticks = append(out.Ticks, chartTick{units.DurationWithin(step*(int64(n)-k), step).String(), float64(k) * 100 / float64(n), align})
+		out.Ticks = append(out.Ticks, chartTick{units.DurationWithin(step*(int64(n)-k), step), float64(k) * 100 / float64(n), align})
 	}
 	out.Ticks = append(out.Ticks, chartTick{r.tr("now"), 100, "end"})
 	return out

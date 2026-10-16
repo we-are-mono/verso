@@ -802,8 +802,6 @@ type tableCellView struct {
 	// has none. SuffixSlot is set for every cell of such a column.
 	Figure, Suffix string
 	SuffixSlot     bool
-	// Lasting is the cell's Duration written.
-	Lasting units.Span
 	// Clip is a meter cell's fill, the meter widget's own clip (MeterClip);
 	// empty when the cell has no reading to draw or no track to draw it on.
 	Clip template.CSS
@@ -1325,8 +1323,7 @@ func (t *Table) rowViews(r *Renderer, csrf string, rows []TableRow, hasDetail bo
 					cv.Text = strings.TrimPrefix(cv.Text+" · "+r.numbers().Rate(*rate).String(), " · ")
 				}
 				if d := cv.TableCell.Duration; d != nil {
-					cv.Lasting = units.Duration(*d)
-					cv.Text = cv.Lasting.String()
+					cv.Text = units.Duration(*d)
 				}
 				chipView := func(chip TableChip) tableChipView {
 					view := tableChipView{TableChip: chip}

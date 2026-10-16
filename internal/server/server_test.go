@@ -1160,7 +1160,7 @@ func TestIndexRendersOverview(t *testing.T) {
 	body := rec.Body.String()
 	for _, want := range []string{
 		"online", "Internet traffic", "Resources", "Ports",
-		"OpenWrt 25.12.4", "Linux 6.12.101", `>1</span>&nbsp;<span class="verso-duration-unit">h</span> <span class="verso-duration-figure">1</span>&nbsp;<span class="verso-duration-unit">min<`, // live System facts, uptime in figures and units
+		"OpenWrt 25.12.4", "Linux 6.12.101", `>1 h 1 min<`, // live System facts, uptime written
 		"Connected", ">203.0.113.7<", // live WAN state, and the address its line names
 		`data-verso-row="interface:eth4"`, // the Ports card lists the physical port
 	} {

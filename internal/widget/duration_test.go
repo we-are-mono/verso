@@ -8,28 +8,26 @@ import (
 	"testing"
 )
 
-// writtenSpan is 52 d 8 h as the shell draws it: each figure at 500 in its
-// context's ink, each unit receding to Meta at 400. The space between two
-// parts is there; render() folds whitespace between tags away.
+// writtenSpan is 52 d 8 h as the shell draws it: one phrase in the ink of
+// where it stands, its units the figures' font.
 var writtenSpan = written("52", "d", "8", "h")
 
 // written is how render() shows a span of the given figures and units, in
 // pairs: written("2", "h", "14", "min").
 func written(pairs ...string) string {
-	var b strings.Builder
+	words := make([]string, 0, len(pairs)/2)
 	for i := 0; i+1 < len(pairs); i += 2 {
-		b.WriteString(`<span class="verso-duration-figure">` + pairs[i] + `</span>&nbsp;<span class="verso-duration-unit">` + pairs[i+1] + `</span>`)
+		words = append(words, pairs[i]+" "+pairs[i+1])
 	}
-	return b.String()
+	return ">" + strings.Join(words, " ") + "<"
 }
 
 // secs is a duration the Overview holds, in seconds.
 func secs(n int64) *int64 { return &n }
 
 // TestAPluginDurationIsWrittenByTheShell: a plugin hands over a stretch of
-// time in seconds and the shell writes it as every duration is written, its
-// figures apart from their units, in sans whatever the plugin asked of the
-// value's type.
+// time in seconds and the shell writes it as every duration is written, in
+// sans whatever the plugin asked of the value's type.
 func TestAPluginDurationIsWrittenByTheShell(t *testing.T) {
 	up := int64(4523580)
 	got := render(t, newRenderer(t), &Properties{Items: []Property{{Label: "Uptime", Mono: true, Key: "uptime", Duration: &up}}})

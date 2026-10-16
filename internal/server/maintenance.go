@@ -134,7 +134,7 @@ func (s *Server) renderMaintenancePage(w http.ResponseWriter, r *http.Request, s
 		v.Packages = packagesBand(truth)
 	}
 	if systemErr == nil {
-		v.Uptime = units.Duration(si.Uptime).String()
+		v.Uptime = units.Duration(si.Uptime)
 	}
 	// While a check runs, Check again says so itself; the line beside it waits.
 	if !checking {

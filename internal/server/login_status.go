@@ -30,7 +30,7 @@ func (s *Server) readLoginStatus(tr func(string) string) loginStatus {
 	now := clock.Now()
 	zone, offset := now.Zone()
 	status := loginStatus{
-		Uptime: units.Duration(loginUptime()).String(),
+		Uptime: units.Duration(loginUptime()),
 		Clock:  now.Format("15:04:05"), Zone: zone, Unix: now.Unix(), Offset: offset,
 	}
 	if up, err := s.loginInternet(); err == nil {

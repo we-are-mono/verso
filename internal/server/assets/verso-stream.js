@@ -149,25 +149,11 @@
   });
   if (!document.hidden) connect();
 
-  // A stretch of time the stream sends as its parts, [{figure, unit}], drawn
-  // as verso-duration draws it: each figure and its unit held together by a
-  // no-break space, the unit receding. It is redrawn only when it reads
-  // differently, so a minute's uptime is one change, not sixty.
-  function writeSpan(el, parts) {
-    if (!el || !parts || !parts.length) return;
-    var words = parts.map(function (p) { return p.figure + "\u00a0" + p.unit; }).join(" ");
-    if (el.textContent === words) return;
-    el.textContent = "";
-    parts.forEach(function (p, i) {
-      if (i) el.appendChild(document.createTextNode(" "));
-      var figure = document.createElement("span");
-      figure.className = "verso-duration-figure";
-      figure.textContent = p.figure;
-      var unit = document.createElement("span");
-      unit.className = "verso-duration-unit";
-      unit.textContent = p.unit;
-      el.append(figure, "\u00a0", unit);
-    });
+  // A stretch of time the stream sends written (internal/units). It is
+  // redrawn only when it reads differently, so a minute's uptime is one
+  // change, not sixty.
+  function writeSpan(el, words) {
+    if (el && words && el.textContent !== words) el.textContent = words;
   }
 
   function wire(es) {

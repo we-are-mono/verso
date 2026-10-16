@@ -496,7 +496,7 @@ func serviceNameCell(name string, kind openwrt.ServiceKind) widget.TableCell {
 func runningStateCell(uptime int64) widget.TableCell {
 	cell := widget.TableCell{Text: "Running", Variant: "success"}
 	if uptime > 0 {
-		cell.Sub = units.Duration(uptime).String()
+		cell.Sub = units.Duration(uptime)
 	}
 	return cell
 }

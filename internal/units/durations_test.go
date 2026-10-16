@@ -32,22 +32,12 @@ func readDurations(t *testing.T) []durationCase {
 
 func TestDurationsReadInTheirTwoLargestUnits(t *testing.T) {
 	for _, tc := range readDurations(t) {
-		if got := Duration(tc.Seconds).String(); got != tc.Duration {
+		if got := Duration(tc.Seconds); got != tc.Duration {
 			t.Errorf("Duration(%d) = %q, want %q", tc.Seconds, got, tc.Duration)
 		}
-		if got := Since(tc.Seconds).String(); got != tc.Since {
+		if got := Since(tc.Seconds); got != tc.Since {
 			t.Errorf("Since(%d) = %q, want %q", tc.Seconds, got, tc.Since)
 		}
-	}
-}
-
-// A duration's parts are its figures and their units apart, so a figure can
-// stand in ink beside its unit.
-func TestADurationKeepsItsFiguresApartFromItsUnits(t *testing.T) {
-	got := Duration(4523580)
-	want := Span{{Figure: "52", Unit: "d"}, {Figure: "8", Unit: "h"}}
-	if len(got) != len(want) || got[0] != want[0] || got[1] != want[1] {
-		t.Fatalf("parts = %+v, want %+v", got, want)
 	}
 }
 
@@ -66,7 +56,7 @@ func TestAnAxisCountsInItsStepsUnit(t *testing.T) {
 		{2592000, 648000, "30 d"},   // a month
 		{1944000, 648000, "22 d 12 h"},
 	} {
-		if got := DurationWithin(tc.seconds, tc.step).String(); got != tc.want {
+		if got := DurationWithin(tc.seconds, tc.step); got != tc.want {
 			t.Errorf("DurationWithin(%d, %d) = %q, want %q", tc.seconds, tc.step, got, tc.want)
 		}
 	}

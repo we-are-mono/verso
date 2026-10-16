@@ -99,12 +99,10 @@ type Property struct {
 	// language and in sans: a plugin hands over the number, never the text.
 	Rate *float64 `json:"rate,omitempty"`
 	// Duration makes the value a stretch of time, in seconds, which the shell
-	// writes in its place as every duration is written (internal/units): its
-	// figures in the value's ink, its units receding, in sans. A plugin hands
-	// over the number, never the text.
+	// writes in its place as every duration is written (internal/units), in
+	// the value's ink and in sans. A plugin hands over the number, never the
+	// text.
 	Duration *int64 `json:"duration,omitempty"`
-	// Lasting is Duration written, for the template.
-	Lasting units.Span `json:"-"`
 }
 
 // PropertySpan is a stretch between From and To, filled At a share of it
@@ -145,8 +143,7 @@ func (p *Properties) renderInto(r *Renderer, out io.Writer, _ string) error {
 			view.Items[i].Mono, view.Items[i].Verbatim = false, true
 		}
 		if item.Duration != nil {
-			view.Items[i].Lasting = units.Duration(*item.Duration)
-			view.Items[i].Value = view.Items[i].Lasting.String()
+			view.Items[i].Value = units.Duration(*item.Duration)
 			view.Items[i].Mono, view.Items[i].Verbatim = false, true
 		}
 	}

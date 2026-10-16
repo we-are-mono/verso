@@ -175,13 +175,6 @@
      a field at the measure ends on a line too. */
   main { --verso-form-width: calc(var(--container-3xl) + 1px); }
   dialog { --verso-form-width: calc(40rem + 1px); }
-
-  /* A stretch of time (verso-duration): each figure at 500 in the ink of
-     where it stands, each unit receding to Meta at 400, so the figures are
-     read first. In a muted cell the figure is already Meta and the weight
-     alone tells them apart, since no ink lighter than Meta carries words. */
-  .verso-duration-figure { font-weight: 500; font-variant-numeric: tabular-nums; }
-  .verso-duration-unit { font-weight: 400; color: var(--color-meta); }
 }
 
 html {

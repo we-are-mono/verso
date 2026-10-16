@@ -116,8 +116,8 @@ func (s *Server) handleOverviewEvents(w http.ResponseWriter, r *http.Request) {
 		}
 		write := func(down, up float64) bool {
 			liveOverview.DownNow, liveOverview.UpNow = down, up
-			// connected is how long the uplink has held, in figures and units
-			// for the Internet card's row.
+			// connected is how long the uplink has held, written for the
+			// Internet card's row.
 			return writeEvent(w, "", "wan", map[string]any{"down": down, "up": up, "uptime": primary.Uptime, "connected": units.Duration(primary.Uptime)}) == nil
 		}
 		if !found || primary.Device == "" {

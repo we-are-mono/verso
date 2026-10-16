@@ -349,4 +349,4 @@ func (a *Alerter) Run(ctx context.Context) {
 func clockTime(t time.Time) string { return clock.Local(t).Format("15:04") }
 
 // duration says how long, as every duration is said (internal/units).
-func duration(d time.Duration) string { return units.Duration(int64(d.Seconds())).String() }
+func duration(d time.Duration) string { return units.Duration(int64(d.Seconds())) }
