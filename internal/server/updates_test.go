@@ -182,11 +182,15 @@ func TestMaintenanceUpdatesNeverChecked(t *testing.T) {
 	body := get(t, s, "/system/maintenance").Body.String()
 	for _, want := range []string{
 		"Firmware", "Not checked since the router started",
-		"Check again", `action="/system/maintenance/updates/check"`,
+		"Check now", `action="/system/maintenance/updates/check"`,
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("the never-checked Updates section is missing %q:\n%s", want, body)
 		}
+	}
+	// "again" would claim a check this router has no record of.
+	if strings.Contains(body, "Check again") {
+		t.Error("a router with no check on record offers Check again")
 	}
 	if strings.Contains(body, "Update now") {
 		t.Error("a router that has not checked has nothing to offer installing")

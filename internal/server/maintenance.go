@@ -140,6 +140,7 @@ func (s *Server) renderMaintenancePage(w http.ResponseWriter, r *http.Request, s
 	if !checking {
 		v.Checked = checkedAt(tr, truth.CheckedAt, known, clock.Now())
 	}
+	v.Unchecked = !known
 	if stage := s.staged(r.Context(), sid, tr, s.pluginTranslators(r)); stage.Count > 0 {
 		v.Staged = stage.Label
 	}

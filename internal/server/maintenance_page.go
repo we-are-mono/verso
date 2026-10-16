@@ -13,6 +13,7 @@ type maintenanceView struct {
 	Ledger    firmwareLedger
 	Checking  bool
 	Checked   string        // when the firmware was last checked, beside Check again
+	Unchecked bool          // no check on record since the router started: the act reads Check now
 	Notice    widget.Widget // a failed check, said above Firmware; nil when nothing failed
 	Install   widget.Widget // the offered build's act; nil when nothing is offered
 	Owut      widget.Widget // the way to the update tool; nil when it is installed
@@ -65,8 +66,11 @@ func maintenanceBody(v maintenanceView) widget.Widget {
 // with the ledger's own.
 func firmwareSection(v maintenanceView) *widget.Section {
 	label := "Check again"
-	if v.Checking {
+	switch {
+	case v.Checking:
 		label = "Checking…"
+	case v.Unchecked:
+		label = "Check now"
 	}
 	check := &widget.Form{Action: updatesCheckPath, NoSubmit: true, Fields: []widget.Widget{
 		&widget.Button{Label: label, Busy: "Checking…", Style: "act", Icon: "refresh-cw", Name: "action", Value: "check", Loading: v.Checking},

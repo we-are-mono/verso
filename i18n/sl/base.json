@@ -726,6 +726,7 @@
   "Update check failed: %v": "Preverjanje posodobitev ni uspelo: %v",
   "Package update failed: %v": "Posodobitev paketov ni uspela: %v",
   "Check again": "Preveri znova",
+  "Check now": "Preveri zdaj",
   "Back up and restore": "Varnostno kopiranje in obnovitev",
   "Restoring replaces the saved files and reboots the router.": "Obnovitev zamenja shranjene datoteke in znova zažene usmerjevalnik.",
   "Reboot": "Ponovni zagon",
