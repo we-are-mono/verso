@@ -85,6 +85,15 @@ func TestAFusedLabelExplainsItsParts(t *testing.T) {
 		t.Errorf("a fused row raises no tooltip:\n%s", got)
 	}
 
+	// A part that is the only one saying anything speaks for the row: its
+	// name in front would only repeat the label over it.
+	g.Children[1].(*Field).Help = ""
+	got = render(t, newRenderer(t), g)
+	if !strings.Contains(got, `data-verso-field-desc class="text-sm leading-6 text-pretty text-body">New connections allowed each second.</p>`) {
+		t.Errorf("a lone part's help is the row's description as it stands:\n%s", got)
+	}
+	g.Children[1].(*Field).Help = "Extra connections allowed at once."
+
 	g.Help = "How fast new connections may arrive."
 	got = render(t, newRenderer(t), g)
 	if !strings.Contains(got, ">How fast new connections may arrive. Connections per second: New connections allowed each second. Burst: Extra connections allowed at once.</p>") {

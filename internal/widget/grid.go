@@ -127,8 +127,7 @@ func (r *Renderer) renderJoined(out io.Writer, g *Grid, fields []*Field) error {
 func groupRow(g *Grid, fields []*Field, parts boxView) (boxView, fieldFrame) {
 	id := fields[0].Name + "-group"
 	label := fieldLabel{For: id, Group: true, Label: g.Label}
-	var names, keys []string
-	said := []string{g.Help}
+	var names, keys, said, alone []string
 	var frame fieldFrame
 	for _, f := range fields {
 		names = append(names, f.Label)
@@ -141,7 +140,7 @@ func groupRow(g *Grid, fields []*Field, parts boxView) (boxView, fieldFrame) {
 			label.Staged = true
 		}
 		if d := f.description(); d != "" {
-			said = append(said, f.Label+": "+d)
+			said, alone = append(said, f.Label+": "+d), append(alone, d)
 		}
 		if f.Error != "" {
 			frame.Errors = append(frame.Errors, fieldError{ID: f.Name + "-error", Text: f.Label + ": " + f.Error})
@@ -152,7 +151,12 @@ func groupRow(g *Grid, fields []*Field, parts boxView) (boxView, fieldFrame) {
 	}
 	label.Key = strings.Join(keys, " · ")
 	frame.Label = label
-	frame.Desc = sentences(said...)
+	// A part that is the only one saying anything speaks for the row, so its
+	// name in front would only repeat the label over it.
+	if g.Help == "" && len(alone) == 1 {
+		said = alone
+	}
+	frame.Desc = sentences(append([]string{g.Help}, said...)...)
 	parts.Group = id + "-label"
 	if frame.Desc != "" {
 		parts.Described = frame.DescID()
