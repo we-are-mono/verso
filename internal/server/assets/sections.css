@@ -251,7 +251,7 @@
 /* Under the header's hairline the body takes its pixel back, so what stands
  * first (a field's air, a block's 24px) starts its lines on the grid. A
  * listing that opens the body stands straight on the hairline instead. */
-.verso-page-body section[data-verso-section]:not(section section, dialog *) > [data-verso-section-band] + .verso-rhythm:not(:has(> [data-verso-listing]:first-child)) {
+.verso-page-body section[data-verso-section]:not(section section, dialog *) > [data-verso-section-band] + .verso-rhythm:not(:has(> [data-verso-listing]:not([data-verso-list]):first-child)) {
   margin-top: -1px;
 }
 .verso-page-body :not(input[type="hidden"], template, script, [hidden]) ~ section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]):not(section section, dialog *),
@@ -296,7 +296,7 @@
 .verso-page-body .verso-table:not(:has(> thead)):not(dialog *) {
   padding-top: 1px;
 }
-.verso-page-body section[data-verso-section] > [data-verso-section-band] + .verso-rhythm > [data-verso-listing]:first-child .verso-table {
+.verso-page-body section[data-verso-section] > [data-verso-section-band] + .verso-rhythm > [data-verso-listing]:not([data-verso-list]):first-child .verso-table {
   padding-top: 0;
 }
 /* A listing in a card's flow closes on its last row's hairline, on a line,
@@ -307,22 +307,37 @@
 }
 /* A listing in a card runs to the card's edges, its words in line with the
  * card's, and one that ends the card closes on the frame. */
-.verso-page-body section[data-verso-section]:not(section section, dialog *) > .verso-rhythm > [data-verso-listing] {
+.verso-page-body section[data-verso-section]:not(section section, dialog *) > .verso-rhythm > [data-verso-listing]:not([data-verso-list]) {
   margin-inline: calc(var(--verso-side) * -1);
 }
-.verso-page-body section[data-verso-section]:not(section section, dialog *) > .verso-rhythm > [data-verso-listing] :is(td, th):first-child {
+.verso-page-body section[data-verso-section]:not(section section, dialog *) > .verso-rhythm > [data-verso-listing]:not([data-verso-list]) :is(td, th):first-child {
   padding-left: var(--verso-side);
 }
-.verso-page-body section[data-verso-section]:not(section section, dialog *) > .verso-rhythm > [data-verso-listing] :is(td, th):last-of-type {
+.verso-page-body section[data-verso-section]:not(section section, dialog *) > .verso-rhythm > [data-verso-listing]:not([data-verso-list]) :is(td, th):last-of-type {
   padding-right: var(--verso-side);
 }
-.verso-page-body section[data-verso-section]:has(> .verso-rhythm > [data-verso-listing]:last-child):not(section section, dialog *) {
+.verso-page-body section[data-verso-section]:has(> .verso-rhythm > [data-verso-listing]:not([data-verso-list]):last-child):not(section section, dialog *) {
   padding-bottom: 0;
 }
 /* The frame's bottom border takes the last row's hairline pixel, so the
- * border is the row's next line. */
+ * border is the row's next line. A list's last row draws none either: its
+ * hairlines stand between its rows, as a fact list's do. */
 .verso-page-body section[data-verso-section]:not(section section, dialog *) > .verso-rhythm > [data-verso-listing]:last-child .verso-table > tbody > tr:not([hidden]):not(:has(~ tr:not([hidden]))) > td {
   border-bottom-width: 0;
+}
+/* A list — a few facts about the page's subject — stands in the card's inset
+ * as a fact list does: its first and last columns take no indent of their
+ * own, so its words stand in line with the card's, and its hairlines stop at
+ * them. A row's tint would run past its words to the inset's edge, so a list's
+ * rows keep none. */
+.verso-page-body [data-verso-list] :is(td, th):first-of-type {
+  padding-left: 0;
+}
+.verso-page-body [data-verso-list] :is(td, th):last-of-type {
+  padding-right: 0;
+}
+.verso-page-body [data-verso-list] .verso-table > tbody > tr:hover {
+  background-color: transparent;
 }
 /* A page that is one listing is one card with no header: the page's heading
  * names it. Its control band is the card's top strip (actionbar.html.tmpl),

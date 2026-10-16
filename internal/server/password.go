@@ -92,7 +92,9 @@ func accessSessionsTable(sessions []accessSession, tr func(string) string) *widg
 		seen := widget.TableCell{Text: session.LastActive, Detail: session.Since, Verbatim: true}
 		rows = append(rows, widget.TableRow{ID: session.ID, Cells: []widget.TableCell{source, seen, action}})
 	}
-	return &widget.Table{Columns: []widget.TableColumn{{Label: "Source", Kind: "reference"}, {Label: "Last seen", Kind: "text"}, {Kind: "actions"}}, Rows: rows}
+	// Who is signed in is a few facts about this router, not a listing of its
+	// config, so it stands in the card's inset as a list.
+	return &widget.Table{Style: "list", Columns: []widget.TableColumn{{Label: "Source", Kind: "reference"}, {Label: "Last seen", Kind: "text"}, {Kind: "actions"}}, Rows: rows}
 }
 
 // accessSessions is the sessions signed in now that g lets the request's

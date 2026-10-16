@@ -67,7 +67,7 @@ import (
 //	             renders a faint dash — pills stay meaningful because most
 //	             cells in such a column are empty or quiet
 type Table struct {
-	Style   string        `json:"style,omitempty"` // "" / "flat" (default) — bare hairline rows, non-clickable (values stay selectable); "more" opens from a trailing link, never the whole row | "card" — the framed box
+	Style   string        `json:"style,omitempty"` // "" / "flat" (default) — bare hairline rows, non-clickable (values stay selectable); "more" opens from a trailing link, never the whole row | "card" — the framed box | "list" — a few facts about the page's subject (who is signed in), standing in a card's inset as a fact list does rather than running to its frame
 	Columns []TableColumn `json:"columns"`
 	// Secondary names, by position from 0, the columns a phone's width leaves
 	// out: facts the row's panel still holds, so the narrow listing keeps the
@@ -730,6 +730,7 @@ var endpointIcons = map[string]string{
 type tableView struct {
 	Live bool
 	Card bool
+	List bool
 	// Style is the listing's shape where it is not a grid. "console" is the one
 	// such shape: a live log drawn as a terminal writes one — no grid, no
 	// hairlines, filling the frame and running to its edges.
@@ -1252,7 +1253,7 @@ func (t *Table) view(r *Renderer, csrf string) (tableView, error) {
 	empty := t.empty()
 	stream := t.streaming()
 	v := tableView{
-		Live: t.Style == "live", Card: t.Style == "card", Style: t.consoleStyle(), Dense: t.Dense,
+		Live: t.Style == "live", Card: t.Style == "card", List: t.Style == "list", Style: t.consoleStyle(), Dense: t.Dense,
 		Title: t.Title, Detail: t.Detail, Action: t.Action, PageBlock: t.pageBlock,
 		// A live listing keeps its heads while it waits: they name what is
 		// about to arrive, and the first event must not shift the layout.

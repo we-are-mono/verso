@@ -161,3 +161,19 @@ func TestAListingsOwnSecondaryColumnsOutrankTheShells(t *testing.T) {
 		t.Errorf("the listing's own secondary columns should stand: %s", got)
 	}
 }
+
+// A list — a few facts about the page's subject, such as who is signed in —
+// stands in its card's inset as a fact list does, its hairlines stopping at
+// the card's words rather than running to the frame. The listing says so, and
+// the sheet holds it there (sections.css).
+func TestAListStandsInItsCardsInset(t *testing.T) {
+	r := newRenderer(t)
+	tbl := &Table{Style: "list", Columns: []TableColumn{{Label: "Source", Kind: "reference"}}, Rows: []TableRow{{ID: "a", Cells: []TableCell{{Text: "10.0.0.2"}}}}}
+	if got := render(t, r, tbl); !strings.Contains(got, `<div data-verso-listing data-verso-list>`) {
+		t.Errorf("a list should say it is one: %s", got)
+	}
+	tbl.Style = ""
+	if got := render(t, r, tbl); strings.Contains(got, "data-verso-list>") {
+		t.Errorf("a listing is not a list: %s", got)
+	}
+}

@@ -622,8 +622,9 @@
   </div>
 {{else}}
 {{/* The listing's frame stands outside its scroller, so the fading edge
-     never fades a card's border (sections.css). */}}
-<div data-verso-listing>
+     never fades a card's border (sections.css). A list stands in its card's
+     inset instead of running to the frame (data-verso-list). */}}
+<div data-verso-listing{{if .List}} data-verso-list{{end}}>
 <div{{if .Live}} data-verso-live-table{{end}} data-verso-scroller class="relative overflow-x-auto overflow-y-hidden [&_td:first-of-type]:pl-2.75 [&_th:first-of-type]:pl-2.75 [&_td:last-of-type]:pr-4 [&_th:last-of-type]:pr-4 verso-scroll-edge">
   {{if .Live}}<p data-verso-inventory-stale role="status" hidden class="mb-4 text-sm text-marigold-deep">{{t "Live status could not be refreshed. Retrying…"}}</p>{{end}}
   {{if .Title}}
