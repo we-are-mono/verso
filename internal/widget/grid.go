@@ -120,13 +120,15 @@ func (r *Renderer) renderJoined(out io.Writer, g *Grid, fields []*Field) error {
 
 // groupRow is the row a group of related fields stands in. The row is one
 // setting: one label covering every part, one chip naming every option, one
-// mark however many parts wait. Each part is still its own control, named by
-// its own label for a screen reader, and a refused part's band says which
+// mark however many parts wait, and one description: the group's help, then
+// each part's own led by its name. Each part is still its own control, named
+// by its own label for a screen reader, and a refused part's band says which
 // part it is about.
 func groupRow(g *Grid, fields []*Field, parts boxView) (boxView, fieldFrame) {
 	id := fields[0].Name + "-group"
 	label := fieldLabel{For: id, Group: true, Label: g.Label}
 	var names, keys []string
+	said := []string{g.Help}
 	var frame fieldFrame
 	for _, f := range fields {
 		names = append(names, f.Label)
@@ -138,8 +140,8 @@ func groupRow(g *Grid, fields []*Field, parts boxView) (boxView, fieldFrame) {
 		if f.Staged {
 			label.Staged = true
 		}
-		if g.Help == "" && f.Explained() {
-			label.Tip.Parts = append(label.Tip.Parts, TipPart{Label: f.Label, Tip: f.explanation()})
+		if d := f.description(); d != "" {
+			said = append(said, f.Label+": "+d)
 		}
 		if f.Error != "" {
 			frame.Errors = append(frame.Errors, fieldError{ID: f.Name + "-error", Text: f.Label + ": " + f.Error})
@@ -149,13 +151,12 @@ func groupRow(g *Grid, fields []*Field, parts boxView) (boxView, fieldFrame) {
 		label.Label = strings.Join(names, " · ")
 	}
 	label.Key = strings.Join(keys, " · ")
-	label.Tip.ID, label.Tip.Tip, label.Tip.Footer = id+"-tip", g.Help, label.Key
-	label.Explained = g.Help != "" || len(label.Tip.Parts) > 0
-	parts.Group = id + "-label"
-	if label.Explained {
-		parts.Described = label.Tip.ID
-	}
 	frame.Label = label
+	frame.Desc = sentences(said...)
+	parts.Group = id + "-label"
+	if frame.Desc != "" {
+		parts.Described = frame.DescID()
+	}
 	return parts, frame
 }
 
@@ -205,12 +206,8 @@ func (r *Renderer) renderSwitchGroup(out io.Writer, g *Grid, switches []*Switch)
 		}
 		view.Rows = append(view.Rows, template.HTML(row.String()))
 	}
-	key := strings.Join(keys, " · ")
-	label := fieldLabel{
-		For: id, Group: true, Label: g.Label, Key: key, Explained: g.Help != "",
-		Tip: TipView{ID: id + "-tip", Tip: g.Help, Footer: key},
-	}
-	return r.renderFrame(out, "verso-switch-group", view, fieldFrame{Label: label})
+	label := fieldLabel{For: id, Group: true, Label: g.Label, Key: strings.Join(keys, " · ")}
+	return r.renderFrame(out, "verso-switch-group", view, fieldFrame{Label: label, Desc: g.Help})
 }
 
 // gridView is the template model: the style and the declared count, which the

@@ -153,21 +153,34 @@ func TestListValuesAreNamed(t *testing.T) {
 	}
 }
 
-// TestExplainedControlsAreDescribed: whatever row raises an explanation onto
-// its label, the control the label names is described by it, so the sentence
-// is read when the control takes focus, not only when the label is hovered.
-func TestExplainedControlsAreDescribed(t *testing.T) {
-	sw := render(t, newRenderer(t), &Switch{Name: "wmm", Label: "WMM", Help: "Prioritise voice."})
-	if !strings.Contains(sw, `id="wmm" name="wmm" aria-describedby="wmm-tip"`) {
-		t.Errorf("an explained switch must be described by its tip:\n%s", sw)
-	}
-	gate := render(t, newRenderer(t), &Conditional{Name: "psk", Label: "Use a key", Help: "A shared secret."})
-	if !strings.Contains(gate, `id="psk" name="psk" aria-describedby="psk-tip"`) {
-		t.Errorf("an explained gate must be described by its tip:\n%s", gate)
-	}
-	list := render(t, newRenderer(t), &List{Name: "ntp", Label: "Servers", Help: "Tried in order."})
-	if !strings.Contains(list, `aria-labelledby="ntp-label" aria-describedby="ntp-tip"`) {
-		t.Errorf("an explained list must be described by its tip:\n%s", list)
+// TestDescribedControlsAreDescribed: whatever row says what it is for, under
+// its name, the control the name labels is described by it, so the sentence
+// is read when the control takes focus, and no name raises a tooltip.
+func TestDescribedControlsAreDescribed(t *testing.T) {
+	for name, c := range map[string]struct {
+		w          Widget
+		desc, read string
+	}{
+		"switch": {&Switch{Name: "wmm", Label: "WMM", Help: "Prioritise voice.", Tip: "Voice goes first."},
+			`<p id="wmm-desc" data-verso-field-desc class="text-sm leading-6 text-pretty text-body">Prioritise voice. Voice goes first.</p>`,
+			`id="wmm" name="wmm" aria-describedby="wmm-desc"`},
+		"gate": {&Conditional{Name: "psk", Label: "Use a key", Help: "A shared secret."},
+			`<p id="psk-desc" data-verso-field-desc class="text-sm leading-6 text-pretty text-body">A shared secret.</p>`,
+			`id="psk" name="psk" aria-describedby="psk-desc"`},
+		"list": {&List{Name: "ntp", Label: "Servers", Help: "Tried in order."},
+			`<p id="ntp-desc" data-verso-field-desc class="text-sm leading-6 text-pretty text-body">Tried in order.</p>`,
+			`aria-labelledby="ntp-label" aria-describedby="ntp-desc"`},
+	} {
+		got := render(t, newRenderer(t), c.w)
+		if !strings.Contains(got, c.desc) {
+			t.Errorf("%s: its help is not its description:\n%s", name, got)
+		}
+		if !strings.Contains(got, c.read) {
+			t.Errorf("%s: its control is not described by its description:\n%s", name, got)
+		}
+		if strings.Contains(got, "data-verso-tip") || strings.Contains(got, "-tip") {
+			t.Errorf("%s: its name still raises a tooltip:\n%s", name, got)
+		}
 	}
 }
 

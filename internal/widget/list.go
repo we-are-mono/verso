@@ -63,16 +63,16 @@ func (l *List) ControlMeasure() string {
 	return networkControlMeasure(l.Datatype)
 }
 
-// Explained reports whether the label carries an explanation to raise.
-func (l *List) Explained() bool { return l.Tip != "" || l.Help != "" }
+// description is what the list is for, under its name: the help, then the
+// tip.
+func (l *List) description() string { return sentences(l.Help, l.Tip) }
 
-// LabelView is this list's left column — the same shape every other row's is.
+// Described reports whether the list's inputs are read with a description.
+func (l *List) Described() bool { return l.description() != "" }
+
+// LabelView is this list's question — the same shape every other row's is.
 func (l *List) LabelView() fieldLabel {
-	tip := (&Field{Name: l.Name, Key: l.Key, Tip: l.Tip, Help: l.Help}).TipView()
-	return fieldLabel{
-		For: l.Name, Label: l.Label, Key: l.Key,
-		Explained: l.Explained(), Tip: tip, Staged: l.Staged,
-	}
+	return fieldLabel{For: l.Name, Label: l.Label, Key: l.Key, Staged: l.Staged}
 }
 
 func (*List) isWidget() {}
@@ -89,5 +89,6 @@ func (l *List) renderInto(r *Renderer, out io.Writer, _ string) error {
 		Label:   l.LabelView(),
 		Change:  fieldChange{Track: true, Name: l.Name, Label: l.Label, Kind: "list"},
 		Measure: l.ControlMeasure(), Lane: l.Lane(), Removable: l.Removable(),
+		Desc: l.description(),
 	})
 }

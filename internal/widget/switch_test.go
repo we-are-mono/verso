@@ -25,16 +25,17 @@ func TestDecodeAndRenderSwitch(t *testing.T) {
 		// The input is screen-reader-only, so the visible box has to be inside
 		// a label: without one, pressing the control does nothing at all.
 		`<label class="flex w-fit cursor-pointer items-center"><span class="relative inline-flex size-4`,
-		// And its explanation is raised onto the label, as a field's is, rather
-		// than taking a paragraph indented under the control.
-		"data-verso-tip", `aria-describedby="enabled-tip"`, "Applies immediately.",
+		// And its help is its description under its name, as a field's is,
+		// and the box is read with it.
+		`<p id="enabled-desc" data-verso-field-desc class="text-sm leading-6 text-pretty text-body">Applies immediately.</p>`,
+		`aria-describedby="enabled-desc"`,
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("switch missing %q:\n%s", want, got)
 		}
 	}
-	if strings.Contains(got, "pl-12 text-sm leading-snug text-body") {
-		t.Errorf("help must not take a paragraph under the control:\n%s", got)
+	if strings.Contains(got, "data-verso-tip") || strings.Contains(got, "enabled-tip") {
+		t.Errorf("a switch's name raises no tooltip:\n%s", got)
 	}
 	// DOM and visual order agree: the question, then the answer.
 	if label, control := strings.Index(got, ">Enabled"), strings.Index(got, "data-verso-switch"); label < 0 || control < 0 || label > control {

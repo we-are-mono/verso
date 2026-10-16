@@ -48,19 +48,14 @@ func (*Switch) isWidget() {}
 
 func (*Switch) children() []Widget { return nil }
 
-// Explained reports whether the label carries an explanation to raise — the same
-// test a field applies, so the two rows agree about when a label becomes the
-// thing you hover.
-func (s *Switch) Explained() bool { return s.Tip != "" || s.Help != "" }
+// description is what the switch is for, under its name, as a field's is:
+// the help, then the tip.
+func (s *Switch) description() string { return sentences(s.Help, s.Tip) }
 
-// LabelView is this switch's left column: the same shape a field's is, because
+// LabelView is this switch's question: the same shape a field's is, because
 // it is the same row.
 func (s *Switch) LabelView() fieldLabel {
-	tip := (&Field{Name: s.Name, Key: s.Key, Source: s.Source, Tip: s.Tip, Help: s.Help}).TipView()
-	return fieldLabel{
-		For: s.Name, Label: s.Label, Key: s.Key, Mono: s.Verbatim,
-		Explained: s.Explained(), Tip: tip, Staged: s.Staged,
-	}
+	return fieldLabel{For: s.Name, Label: s.Label, Key: s.Key, Mono: s.Verbatim, Staged: s.Staged}
 }
 
 // locked reports whether the switch states a state nothing here changes.
@@ -76,8 +71,8 @@ type switchControl struct {
 	Name  string
 	On    bool
 	Label string
-	// Described is the id of the explanation raised onto the row's label, so
-	// the checkbox is read with it when it takes focus.
+	// Described is the id of the row's description, so the checkbox is read
+	// with it when it takes focus.
 	Described string
 	// Disabled draws the state inert: it is shown, never changed, never posted.
 	Disabled bool
@@ -87,11 +82,11 @@ type switchControl struct {
 
 // Control is this switch's checkbox. Every style labels it (the form row's label
 // points at it by id, the inline style wraps it with its words), so it carries
-// no name of its own; an explained switch is described by its tip.
+// no name of its own; a described switch is read with its description.
 func (s *Switch) Control() switchControl {
 	c := switchControl{Name: s.Name, On: s.On, Disabled: s.locked()}
-	if s.Explained() {
-		c.Described = s.Name + "-tip"
+	if s.description() != "" {
+		c.Described = s.Name + "-desc"
 	}
 	c.refused(s)
 	return c
@@ -120,6 +115,7 @@ func (s *Switch) frame() fieldFrame {
 	frame := fieldFrame{
 		Label:  s.LabelView(),
 		Change: fieldChange{Track: !s.locked() && (s.Name != "" || s.Style == "checkbox"), Name: s.Name, Label: s.Label, Kind: "toggle"},
+		Desc:   s.description(),
 	}
 	if s.Error != "" {
 		frame.Errors = []fieldError{{ID: s.Name + "-error", Text: s.Error}}
@@ -134,14 +130,8 @@ func (s *Switch) grouped() (switchControl, fieldFrame) {
 	control := switchControl{Name: s.Name, On: s.On, Disabled: s.locked()}
 	frame := s.frame()
 	frame.Label.Key = ""
-	frame.Label.Explained = s.Tip != ""
-	frame.Label.Tip.Tip = s.Tip
-	if s.Tip != "" {
-		control.Described = frame.Label.Tip.ID
-	}
-	if s.Help != "" {
-		frame.Desc = s.Help
-		control.Described = strings.TrimSpace(control.Described + " " + frame.DescID())
+	if frame.Desc != "" {
+		control.Described = frame.DescID()
 	}
 	control.refused(s)
 	return control, frame

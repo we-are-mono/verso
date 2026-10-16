@@ -64,32 +64,31 @@ func TestAFusedLabelFallsBackToItsParts(t *testing.T) {
 	}
 }
 
-// TestAFusedLabelExplainsItsParts: the group's help is what its label raises;
-// without it, each part's own explanation stands under the part's name, so
-// nothing a plugin wrote about a part goes missing, and the box is read with it.
+// TestAFusedLabelExplainsItsParts: a fused row's description is the group's
+// help, then each part's own help led by the part's name, so nothing a plugin
+// wrote about a part goes missing, and the box is read with it.
 func TestAFusedLabelExplainsItsParts(t *testing.T) {
 	g := synflood()
 	g.Children[0].(*Field).Help = "New connections allowed each second."
 	g.Children[1].(*Field).Help = "Extra connections allowed at once."
 	got := render(t, newRenderer(t), g)
 	for _, want := range []string{
-		`data-verso-tip tabindex="0" aria-describedby="synflood_rate-group-tip"`,
-		`role="group" aria-labelledby="synflood_rate-group-label" aria-describedby="synflood_rate-group-tip"`,
-		`<span class="font-semibold">Burst</span><span>Extra connections allowed at once.</span>`,
-		`synflood_rate · synflood_burst</span>`, // the footer places the options
+		`<p id="synflood_rate-group-desc" data-verso-field-desc class="text-sm leading-6 text-pretty text-body">Connections per second: New connections allowed each second. Burst: Extra connections allowed at once.</p>`,
+		`role="group" aria-labelledby="synflood_rate-group-label" aria-describedby="synflood_rate-group-desc"`,
+		`synflood_rate · synflood_burst</span>`, // the chip names both options
 	} {
 		if !strings.Contains(got, want) {
-			t.Errorf("fused tip missing %q:\n%s", want, got)
+			t.Errorf("fused description missing %q:\n%s", want, got)
 		}
 	}
-	if strings.Contains(got, `synflood_rate-tip`) {
-		t.Errorf("a part points at no tip of its own:\n%s", got)
+	if strings.Contains(got, "-tip") || strings.Contains(got, "data-verso-tip") {
+		t.Errorf("a fused row raises no tooltip:\n%s", got)
 	}
 
 	g.Help = "How fast new connections may arrive."
 	got = render(t, newRenderer(t), g)
-	if !strings.Contains(got, "How fast new connections may arrive.") || strings.Contains(got, `<span class="font-semibold">Burst</span>`) {
-		t.Errorf("the group's own help is what its label raises:\n%s", got)
+	if !strings.Contains(got, ">How fast new connections may arrive. Connections per second: New connections allowed each second. Burst: Extra connections allowed at once.</p>") {
+		t.Errorf("the group's own help leads its description:\n%s", got)
 	}
 }
 

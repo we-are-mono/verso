@@ -34,15 +34,11 @@ type Conditional struct {
 
 func (*Conditional) isWidget() {}
 
-// LabelView is the gate's left column — the same shape a field's and a switch's
+// LabelView is the gate's question — the same shape a field's and a switch's
 // is. A gate that looked unlike the fields it gates would read as a different
 // kind of thing, and it is not: it is the setting the rest depend on.
 func (c *Conditional) LabelView() fieldLabel {
-	tip := (&Field{Name: c.Name, Key: c.Key, Help: c.Help}).TipView()
-	return fieldLabel{
-		For: c.Name, Label: c.Label, Key: c.Key,
-		Explained: c.Help != "", Tip: tip, Staged: c.Staged,
-	}
+	return fieldLabel{For: c.Name, Label: c.Label, Key: c.Key, Staged: c.Staged}
 }
 
 func (c *Conditional) children() []Widget {
@@ -64,11 +60,11 @@ type conditionalView struct {
 }
 
 // control is the gate's checkbox. The gate's label points at it by id, so it
-// carries no name of its own; an explained gate is described by its tip.
+// carries no name of its own; a described gate is read with its description.
 func (c *Conditional) control() switchControl {
 	ctl := switchControl{Name: c.Name, On: c.Checked}
 	if c.Help != "" {
-		ctl.Described = c.Name + "-tip"
+		ctl.Described = c.Name + "-desc"
 	}
 	return ctl
 }
@@ -80,7 +76,7 @@ func (c *Conditional) control() switchControl {
 func (c *Conditional) renderInto(r *Renderer, out io.Writer, csrf string) error {
 	var gate strings.Builder
 	if err := r.renderFrame(&gate, "switch.row", c.control(), fieldFrame{
-		Label: c.LabelView(), Class: "verso-conditional-gate",
+		Label: c.LabelView(), Class: "verso-conditional-gate", Desc: c.Help,
 	}); err != nil {
 		return err
 	}
