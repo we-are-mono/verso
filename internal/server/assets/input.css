@@ -1157,6 +1157,11 @@ html {
    over the page with the dialog's shadow and leaves a slot where it stood. */
 @layer components {
   .verso-overview { container: overview / inline-size; }
+  /* A heading that names what is wrong is a message about now, so it reads in
+     its tone's deep step, never the full chroma; the stream retones it by the
+     attribute alone. */
+  [data-overview-tone="warning"] [data-overview-lead] { color: var(--color-marigold-deep); }
+  [data-overview-tone="danger"] [data-overview-lead] { color: var(--color-crimson-deep); }
   /* On the grid: each column is its share rounded down to 8px and a pixel
      more, so a card's left and right borders are both lines, and the next
      column stands 24px on less that pixel. A card's top

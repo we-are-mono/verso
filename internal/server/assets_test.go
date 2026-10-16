@@ -558,6 +558,24 @@ func TestARuledSectionStandsByItsRulesAir(t *testing.T) {
 	}
 }
 
+// TestTheOverviewHeadingSpeaksInItsTone: a heading that names what is wrong
+// is a message about now, so it reads in its tone's deep step (the masthead
+// tone contract); the live stream retones it by its attribute alone.
+func TestTheOverviewHeadingSpeaksInItsTone(t *testing.T) {
+	raw, err := os.ReadFile("assets/input.css")
+	if err != nil {
+		t.Fatalf("read stylesheet: %v", err)
+	}
+	for _, want := range []string{
+		`[data-overview-tone="warning"] [data-overview-lead] { color: var(--color-marigold-deep); }`,
+		`[data-overview-tone="danger"] [data-overview-lead] { color: var(--color-crimson-deep); }`,
+	} {
+		if !strings.Contains(string(raw), want) {
+			t.Errorf("stylesheet is missing %s", want)
+		}
+	}
+}
+
 // TestASectionKeepsTheMastheadsAirAndNoMore: an untitled section holds the
 // cell of air under its rule itself, so the row it starts with gives its own
 // padding back — its first visible row starts where the section's air ends,
