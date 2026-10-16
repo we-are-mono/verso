@@ -87,6 +87,32 @@ func TestEveryRowIsAQuestionAndAnAnswer(t *testing.T) {
 	}
 }
 
+// TestNoRowsNameRaisesATooltip: what a setting does is written under its
+// name, so no row's name raises a tooltip, whatever widget draws the row and
+// whatever it was told (form-fields). A condition's name is not a field's and
+// keeps its own.
+func TestNoRowsNameRaisesATooltip(t *testing.T) {
+	r := newRenderer(t)
+	help, tip := "What it does.", "What else to know."
+	for name, w := range map[string]Widget{
+		"field":    &Field{Name: "opt", Label: "Option", Key: "opt", Help: help, Tip: tip},
+		"radios":   &Field{Name: "opt", Label: "Option", Key: "opt", Kind: "select", Options: choiceOptions(2), Help: help, Tip: tip},
+		"list":     &List{Name: "opt", Label: "Option", Key: "opt", Help: help, Tip: tip},
+		"switch":   &Switch{Name: "opt", Label: "Option", Key: "opt", Help: help, Tip: tip},
+		"gate":     &Conditional{Name: "opt", Label: "Option", Key: "opt", Help: help},
+		"settings": &Settings{Items: []SettingsItem{{Title: "Option", Code: "opt", Name: "opt", Value: "1", Desc: help}}},
+		"fused":    synflood(),
+		"group":    includes(),
+	} {
+		got := render(t, r, w)
+		for _, gone := range []string{"data-verso-tip", `role="tooltip"`, "cursor-help", "-tip\""} {
+			if strings.Contains(got, gone) {
+				t.Errorf("%s: a row's name raises a tooltip (%s):\n%s", name, gone, got)
+			}
+		}
+	}
+}
+
 // TestAFieldsRefusalIsTheBand: wherever a value is refused, the refusal is the
 // crimson band under the box — named by the box, so a screen reader reads it —
 // including the code editor, which drew a bare red line of its own.
