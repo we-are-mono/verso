@@ -412,6 +412,11 @@ type TableGroup struct {
 	// listing stays put behind it. Without it the add is an ordinary link and
 	// leads away, which is right for a lane whose new object needs a page.
 	AddPanel bool `json:"add_panel,omitempty"`
+	// Close is the lane's last word, said after its last row: what happens to
+	// what none of its rows caught ("Otherwise · reject · the zone's input
+	// policy"), as a phrase. It is no row of the listing — nothing drags it and
+	// it has no place in the order. A lane without it ends on its last row.
+	Close []TablePart `json:"close,omitempty"`
 }
 
 // RowDrawer is the row's object, opened beside the listing: a right slide-in
@@ -521,6 +526,10 @@ type TablePart struct {
 	Chip  *TableChip `json:"chip,omitempty"`
 	Words string     `json:"words,omitempty"`
 	Value string     `json:"value,omitempty"`
+	// Href makes the words a door to where what they name is decided — a
+	// lane's closing words lead to the policy that closes it. The words keep
+	// the line's ink, told apart by their underline.
+	Href string `json:"href,omitempty"`
 }
 
 // TableFigure is one figure in a figures cell: the number and the glyph that
@@ -723,6 +732,9 @@ type tableRowView struct {
 	ID    string
 	Key   string
 	Group *TableGroup
+	// Close is the lane's last word, drawn after this row because it is the
+	// lane's last (TableGroup.Close).
+	Close []tablePartView
 	// BandOnly marks a row that carries its group and nothing else: the band
 	// is drawn, and no row of cells under it.
 	BandOnly bool
@@ -853,6 +865,25 @@ type tableChipView struct {
 type tablePartView struct {
 	Chip         *tableChipView
 	Words, Value string
+	Href         string
+}
+
+// partViews is a phrase as drawn: each part's chip with its tip (chip), a
+// door's address made safe.
+func partViews(parts []TablePart, chip func(TableChip) tableChipView) []tablePartView {
+	var views []tablePartView
+	for _, part := range parts {
+		view := tablePartView{Words: part.Words, Value: part.Value}
+		if part.Href != "" {
+			view.Href = SafeHref(part.Href)
+		}
+		if part.Chip != nil {
+			c := chip(*part.Chip)
+			view.Chip = &c
+		}
+		views = append(views, view)
+	}
+	return views
 }
 
 // Absent reports whether the cell has nothing to state: no value, or only the
@@ -1215,6 +1246,13 @@ func (t *Table) rowViews(r *Renderer, csrf string, rows []TableRow, hasDetail bo
 	var band *TableGroup
 	lanes := 0
 	suffixed := t.suffixColumns(rows)
+	chipView := func(chip TableChip) tableChipView {
+		view := tableChipView{TableChip: chip}
+		if chip.Title != "" {
+			view.TipID = fmt.Sprintf("verso-chip-tip-%d", r.seq.tip.Add(1))
+		}
+		return view
+	}
 	for rowIndex, row := range rows {
 		if row.Group != nil {
 			lane := *row.Group
@@ -1298,6 +1336,10 @@ func (t *Table) rowViews(r *Renderer, csrf string, rows []TableRow, hasDetail bo
 			return nil, expandErr
 		}
 		rv.Tags = strings.Join(row.Tags, " ")
+		// The lane's last row carries the lane's last word.
+		if band != nil && (rowIndex == len(rows)-1 || rows[rowIndex+1].Group != nil) {
+			rv.Close = partViews(band.Close, chipView)
+		}
 		// Keys in a fixed order, so the same row renders the same attributes
 		// every time — a page that differs run to run is a page no test can pin.
 		for _, key := range slices.Sorted(maps.Keys(row.Facet)) {
@@ -1351,24 +1393,10 @@ func (t *Table) rowViews(r *Renderer, csrf string, rows []TableRow, hasDetail bo
 				if d := cv.TableCell.Duration; d != nil {
 					cv.Text = units.Duration(*d)
 				}
-				chipView := func(chip TableChip) tableChipView {
-					view := tableChipView{TableChip: chip}
-					if chip.Title != "" {
-						view.TipID = fmt.Sprintf("verso-chip-tip-%d", r.seq.tip.Add(1))
-					}
-					return view
-				}
 				for _, chip := range cv.TableCell.Chips {
 					cv.Chips = append(cv.Chips, chipView(chip))
 				}
-				for _, part := range cv.TableCell.Parts {
-					view := tablePartView{Words: part.Words, Value: part.Value}
-					if part.Chip != nil {
-						chip := chipView(*part.Chip)
-						view.Chip = &chip
-					}
-					cv.Phrase = append(cv.Phrase, view)
-				}
+				cv.Phrase = partViews(cv.TableCell.Parts, chipView)
 				// A muted row mutes every cell in it: the secondary step is a
 				// statement about the row's subject, so no cell in that row can
 				// disagree with the rest.

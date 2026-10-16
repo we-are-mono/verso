@@ -297,6 +297,15 @@ func translateRows(rows []TableRow, columns []TableColumn, t func(string) string
 				rows[i].Group.Label = t(rows[i].Group.Label)
 			}
 			rows[i].Group.AddLabel = t(rows[i].Group.AddLabel)
+			// The lane's last word is prose; its chips cite what the machine
+			// wrote, as a phrase's do.
+			for k := range rows[i].Group.Close {
+				part := &rows[i].Group.Close[k]
+				part.Words = t(part.Words)
+				if part.Chip != nil {
+					translateChip(part.Chip, t)
+				}
+			}
 		}
 		for j := range rows[i].Cells {
 			c := &rows[i].Cells[j]

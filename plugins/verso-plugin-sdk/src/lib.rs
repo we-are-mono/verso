@@ -2264,7 +2264,7 @@ pub struct DrawerTab {
 
 /// TableGroup heads a run of rows that share one evaluation lane. Label is
 /// human-facing; Chain keeps the packet filter's exact name visible to experts.
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Debug, Default)]
 pub struct TableGroup {
     /// The group's own handle — the config's name for it — which a dragged
     /// listing posts its order by. Not drawn.
@@ -2300,6 +2300,12 @@ pub struct TableGroup {
     /// put behind it.
     #[serde(skip_serializing_if = "is_false")]
     pub add_panel: bool,
+    /// The lane's last word, drawn after its last row: what happens to what
+    /// none of its rows caught ("Otherwise", a verdict chip, a door to the
+    /// policy). Not a row: nothing drags it. Empty ends the lane on its last
+    /// row.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub close: Vec<TablePart>,
 }
 
 /// ActionTab is one coarse cut of a listing, and what taking it would leave.
@@ -2440,6 +2446,11 @@ pub enum TablePart {
     Chip(TableChip),
     Words(String),
     Value(String),
+    /// Words that lead to where what they name is decided — a lane's closing
+    /// words to the policy that closes it. Drawn in the line's own ink,
+    /// underlined.
+    #[serde(untagged)]
+    Door { words: String, href: String },
 }
 
 /// An entity reference beside a row's identity. Its label is always verbatim.
@@ -2993,6 +3004,31 @@ mod tests {
         Widget,
     };
     use super::{json, uci_text, Map, Value};
+
+    // A lane closes on a phrase, and a door in it is words with where they lead,
+    // on the wire as the shell reads any part: flat, not wrapped in a tag.
+    #[test]
+    fn a_lane_closes_on_a_phrase_whose_door_is_flat_words() {
+        let lane = super::TableGroup {
+            label: "WAN".into(),
+            close: vec![
+                super::TablePart::Words("Otherwise".into()),
+                super::TablePart::Door {
+                    words: "the zone’s input policy".into(),
+                    href: "/plugins/firewall/zones?open=wan".into(),
+                },
+            ],
+            ..Default::default()
+        };
+        let wire = serde_json::to_value(&lane).unwrap();
+        assert_eq!(wire["close"][0], json!({"words": "Otherwise"}));
+        assert_eq!(
+            wire["close"][1],
+            json!({"words": "the zone’s input policy", "href": "/plugins/firewall/zones?open=wan"})
+        );
+        let bare = serde_json::to_value(super::TableGroup::default()).unwrap();
+        assert!(bare.get("close").is_none());
+    }
 
     // A note says what changing a field does; only a field carries one, and
     // a field without one sends none.

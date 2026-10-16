@@ -969,11 +969,23 @@ unfilled, over a strong hairline, with `label` (→ `to`), an optional mono
 one before, so each reads as its own small table. `add_href` puts the lane's add
 hard right: `add_text` is its words ("Add rule"), `add_label` its tooltip naming
 the lane ("Add rule to WAN → Router"), and `add_panel: true` opens the listing's
-panel in place, seeded by the href.
+panel in place, seeded by the href. `close` is the lane's last word, a line of
+phrase parts drawn after its last row in the meta step: what happens to what
+none of its rows caught. It is no row of the listing, so nothing drags it and it
+holds no place in the order.
+
+```json
+{ "group": { "key": "input_wan", "label": "WAN", "to": "Router", "close": [
+  { "words": "Otherwise" },
+  { "chip": { "label": "reject", "tone": "danger", "dot": true } },
+  { "words": "the zone’s input policy", "href": "/plugins/firewall/zones?open=wan" } ] } }
+```
 
 **Phrase.** A `phrase` column names its rows with one line of parts, in order:
 a `chip` (an entity reference), `words` (prose the shell translates) or a
-`value` (a machine string, verbatim in mono). It reads the way a person would
+`value` (a machine string, verbatim in mono). Words with an `href` lead to where
+what they name is decided, in the line's own ink, underlined (the SDK's
+`TablePart::Door`). It reads the way a person would
 say the row and the way the device holds it at once: `[Allow-Ping] [target]
 ACCEPT → DROP`. The cell's `text` is the line read plain. It is not drawn, and
 it names the row to the controls in it. A `detail` line sits beneath, as a

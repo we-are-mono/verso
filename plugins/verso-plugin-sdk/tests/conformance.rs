@@ -612,6 +612,7 @@ fn listing() -> Widget {
                     add_text: "Add rule".into(),
                     add_href: "/firewall/rules?open=new&src=lan".into(),
                     add_panel: true,
+                    ..TableGroup::default()
                 }),
                 cells: vec![
                     TableCell::default(),

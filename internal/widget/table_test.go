@@ -324,6 +324,44 @@ func TestDecodeTableReorderConfig(t *testing.T) {
 	}
 }
 
+// TestALaneClosesOnWhatItsRowsLeave: a lane's last word, after its last row,
+// is what happens to what none of its rows caught — words, a chip, and a door
+// to where that is decided. It is not a row of the listing: it carries no drag
+// and no place in the order, and the next lane's band still follows it.
+func TestALaneClosesOnWhatItsRowsLeave(t *testing.T) {
+	close := []TablePart{
+		{Words: "Otherwise"},
+		{Chip: &TableChip{Label: "reject", Tone: "danger", Dot: true}},
+		{Words: "the zone’s input policy", Href: "/plugins/firewall/zones?open=wan"},
+	}
+	got := render(t, newRenderer(t), inSection(&Table{
+		ReorderConfig: "firewall",
+		Columns:       []TableColumn{{Kind: "reorder"}, {Label: "Name", Kind: "name"}},
+		Rows: []TableRow{
+			{ID: "a", Group: &TableGroup{Key: "input_wan", Label: "WAN", To: "Router", Close: close}, Cells: []TableCell{{}, {Text: "Allow-Ping"}}},
+			{ID: "b", Cells: []TableCell{{}, {Text: "Allow-DHCP"}}},
+			{ID: "c", Group: &TableGroup{Key: "output_wan", Label: "Router", To: "WAN"}, Cells: []TableCell{{}, {Text: "Allow-NTP"}}},
+		},
+	}))
+	last, closing, next := strings.Index(got, "Allow-DHCP"), strings.Index(got, "data-verso-lane-close"), strings.Index(got, "Allow-NTP")
+	if closing < 0 || !(last < closing && closing < next) {
+		t.Fatalf("the lane does not close after its last row (%d, %d, %d):\n%s", last, closing, next, got)
+	}
+	line := got[closing:next]
+	line = line[:strings.Index(line, "</tr>")]
+	for _, want := range []string{`colspan="2"`, ">Otherwise<", ">reject<", `href="/plugins/firewall/zones?open=wan"`, ">the zone’s input policy</a>"} {
+		if !strings.Contains(line, want) {
+			t.Errorf("the closing line is missing %q:\n%s", want, line)
+		}
+	}
+	if strings.Contains(line, "data-verso-reorder") {
+		t.Errorf("the closing line is dragged with the rows:\n%s", line)
+	}
+	if strings.Count(got, "data-verso-lane-close") != 1 {
+		t.Errorf("a lane with nothing to close on draws a closing line:\n%s", got)
+	}
+}
+
 func TestRenderTableGroupHeader(t *testing.T) {
 	r := newRenderer(t)
 	// In a section, where a lane stays a row (a page's own lanes are cards).

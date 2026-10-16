@@ -351,6 +351,7 @@ fn lane(v6: bool) -> TableGroup {
         add_text: "Add route".into(),
         add_href: format!("{}&family={}", open_href(NEW), family.to_lowercase()),
         add_panel: true,
+        ..TableGroup::default()
     }
 }
 

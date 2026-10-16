@@ -138,6 +138,7 @@ impl FileSet {
             add_text: "Add file".into(),
             add_href: format!("{}new", self.editors),
             add_panel: true,
+            ..TableGroup::default()
         });
         table(
             ["path", "count", "actions"]

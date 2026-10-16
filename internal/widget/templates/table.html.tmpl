@@ -292,7 +292,7 @@
                  chevron that says so, as an expandable name is. */}}
             {{if .Expandable}}<button type="button" data-verso-expand-row aria-expanded="false" class="flex min-w-0 cursor-pointer items-center gap-2 text-left hover:text-denim focus-visible:outline-denim">{{icon "chevron-right" "size-3.5 shrink-0"}}{{end}}
             <span class="{{if .Identity}}verso-row-name {{end}}flex min-w-0 items-center gap-2 whitespace-nowrap {{template "table.name-ink" .}}">
-              {{range .Phrase}}{{if .Chip}}{{template "verso-chip" .Chip}}{{else if .Value}}<span class="truncate font-mono text-base font-medium">{{.Value}}</span>{{else}}<span class="shrink-0">{{.Words}}</span>{{end}}{{end}}
+              {{template "table.phrase-parts" .Phrase}}
             </span>
             {{if .Expandable}}</button>{{end}}
             {{if .Off}}<span class="sr-only">{{t "off"}}</span>{{end}}
@@ -509,9 +509,17 @@
       </tr>
       {{if .Expanded}}<tr data-verso-expanded-row hidden><td colspan="{{.ColumnSpan}}" class="border-b border-rule bg-quiet px-6 py-6">{{range .Expanded}}{{.}}{{end}}</td></tr>{{end}}
       {{end}}
+      {{/* The lane's last word, after its last row: what happens to what none
+           of its rows caught. A line across the listing in the meta step, at a
+           row's inset and pitch, with no drag and no place in the order. */}}
+      {{if .Close}}<tr data-verso-lane-close{{if .Seam}} class="verso-table-seam-row"{{end}}><td colspan="{{.ColumnSpan}}" class="border-b border-rule {{if .Dense}}py-row{{else}}px-3.5 py-row{{end}} text-sm leading-6 text-meta"><span class="flex flex-wrap items-center gap-x-2">{{template "table.phrase-parts" .Close}}</span></td></tr>{{end}}
       {{end}}
       {{end}}
 {{end}}
+{{/* table.phrase-parts: a phrase's parts in order — a chip for what it cites,
+     a value in mono as the device wrote it, words in the sans, and words that
+     lead to where they are decided in the line's own ink, underlined. */}}
+{{define "table.phrase-parts"}}{{range .}}{{if .Chip}}{{template "verso-chip" .Chip}}{{else if .Value}}<span class="truncate font-mono text-base font-medium">{{.Value}}</span>{{else if .Href}}<a href="{{.Href}}" class="shrink-0 underline underline-offset-2 hover:decoration-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim">{{.Words}}</a>{{else}}<span class="shrink-0">{{.Words}}</span>{{end}}{{end}}{{end}}
 {{/* table.empty-row: a listing's nothing, said where its first row would be —
      one row across every column, the listing's inset, meta words. It gives up
      its hairline to whatever closes the table (the table's own, or the
