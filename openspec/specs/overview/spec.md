@@ -93,15 +93,39 @@ A card's open or closed state SHALL change only by the operator's action. A clos
 - **AND** its header reads "Not connected" in the danger tone
 
 ### Requirement: One verdict heads the page
-The Overview SHALL open with one verdict sentence tinted by tone: "Your network is online" (success), "Your network needs attention" (warning) or "Your network is offline" (danger). The router's live clock and time zone stand in the System card as Local time, not beside the verdict. The page shows no kicker over the verdict and no status-tile strip.
+The Overview SHALL open with one verdict sentence tinted by tone, the most important true sentence on the page. With the uplink known and down it SHALL read "Your network is offline" (danger), whatever else is wrong. Otherwise, with exactly one cause it SHALL read that cause as a sentence that stands on its own, in the cause's tone; with two or more it SHALL read "N things need attention", in danger when any cause is danger and warning otherwise; with none and the uplink up it SHALL read "Your network is online" (success); and with nothing known it SHALL read "Your network at a glance" (neutral). A cause is a firewall not fully loaded, a port a network uses or a tunnel without link, a Resources reading out of its normal band, or a Hardware reading past the board's own limit; every card counts, hidden or not. The router's live clock and time zone stand in the System card as Local time, not beside the verdict. The page shows no kicker over the verdict and no status-tile strip.
 
 #### Scenario: The firewall is not running
-- **WHEN** the uplink is up and fw4's ruleset is not loaded in the kernel
-- **THEN** the verdict reads "Your network needs attention", though no card shows the firewall
+- **WHEN** the uplink is up, fw4's ruleset is not loaded in the kernel, and nothing else is wrong
+- **THEN** the verdict reads "The firewall is not running" in the danger tone, though no card shows the firewall
 
 #### Scenario: A problem anywhere
-- **WHEN** the uplink is up and one port has lost link
-- **THEN** the verdict reads "Your network needs attention" in the warning tone
+- **WHEN** the uplink is up, one port a network uses has lost link, and nothing else is wrong
+- **THEN** the verdict reads "1 port without link" in the warning tone
+
+#### Scenario: One problem names itself
+- **WHEN** the uplink is up and storage enters its warning band, and nothing else is wrong
+- **THEN** the verdict reads "Storage is high" in the warning tone
+
+#### Scenario: A tunnel down reads without its card
+- **WHEN** the uplink is up, one of two tunnels, wg0, has lost link, and nothing else is wrong
+- **THEN** the verdict reads "Tunnel wg0 is down" in the danger tone, while the Tunnels header reads "1 of 2 down"
+
+#### Scenario: Several tunnels down
+- **WHEN** the uplink is up, two of three tunnels have lost link, and nothing else is wrong
+- **THEN** the verdict reads "2 of 3 tunnels down" in the danger tone
+
+#### Scenario: Several problems are counted
+- **WHEN** the uplink is up, one port a network uses has lost link, and storage enters its warning band
+- **THEN** the verdict reads "2 things need attention" in the warning tone
+
+#### Scenario: Offline outranks every cause
+- **WHEN** the uplink is down and storage is high
+- **THEN** the verdict reads "Your network is offline"
+
+#### Scenario: A hot board on a healthy network
+- **WHEN** the uplink is up, nothing else needs attention, and the Hardware header reads "cluster is hot"
+- **THEN** the verdict reads "cluster is hot" in the warning tone
 
 ### Requirement: Arrange mode moves and hides cards
 The Overview SHALL offer an Arrange act on its heading line. In Arrange mode every card shows a drag handle and a hide control, and a shelf lists the hidden cards. Outside Arrange mode no card can be moved or hidden. Done ends Arrange mode.
@@ -168,8 +192,8 @@ The shell SHALL NOT render a hidden card, and the Overview's live stream SHALL N
 - **THEN** the live stream sends no system-meter frames
 
 #### Scenario: A hidden card's problem still reaches the verdict
-- **WHEN** Resources is hidden and memory enters its warning band
-- **THEN** the verdict reads "Your network needs attention"
+- **WHEN** Resources is hidden and memory enters its warning band, and nothing else is wrong
+- **THEN** the verdict reads "Memory is high"
 - **AND** in Arrange mode the shelf shows Resources with the warning packet
 
 #### Scenario: Resources closed
@@ -178,8 +202,8 @@ The shell SHALL NOT render a hidden card, and the Overview's live stream SHALL N
 
 #### Scenario: Hardware hidden
 - **WHEN** Hardware is hidden
-- **THEN** the live stream sends no sensor frames and the shell reads no sensor for the Overview
-- **AND** in Arrange mode the shelf shows Hardware in the neutral tone
+- **THEN** the live stream sends no sensor frames, and the shell still reads the sensors for the verdict
+- **AND** in Arrange mode the shelf shows Hardware in its header's tone
 
 ### Requirement: Cards carry the Overview's readings
 Every reading the Overview takes SHALL appear in exactly one card, and each card SHALL hold only its own kind of reading. Each address in the Internet card has a copy control.
@@ -291,13 +315,6 @@ While the Hardware card is shown, open or closed, the Overview SHALL refresh its
 #### Scenario: Two browsers
 - **WHEN** two browsers show the Overview with Hardware open
 - **THEN** the router reads its sensors at most once every five seconds for both
-
-### Requirement: The Hardware card stays out of the verdict
-The Hardware card's status SHALL NOT change the page's verdict, which speaks for the network.
-
-#### Scenario: A hot board on a healthy network
-- **WHEN** the uplink is up, nothing else needs attention, and the Hardware header reads "cluster is hot"
-- **THEN** the verdict reads "Your network is online"
 
 ### Requirement: The Hardware card opens the Hardware page
 The Hardware card SHALL link to the Hardware page, which shows every reading the board exposes, those the profile lists and those it does not.
