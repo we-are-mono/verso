@@ -287,6 +287,42 @@
       "enabled": "0"
     }
   },
+  "dhcp": {
+    "nas": {
+      ".anonymous": false,
+      ".type": "host",
+      ".name": "nas",
+      ".index": 0,
+      "name": "nas",
+      "mac": "aa:bb:cc:00:00:30",
+      "ip": "10.0.0.30"
+    },
+    "cfg02f37d": {
+      ".anonymous": true,
+      ".type": "host",
+      ".name": "cfg02f37d",
+      ".index": 1,
+      "mac": "aa:bb:cc:00:00:41",
+      "ip": "10.0.0.41"
+    },
+    "phone": {
+      ".anonymous": false,
+      ".type": "host",
+      ".name": "phone",
+      ".index": 2,
+      "name": "phone",
+      "mac": "aa:bb:cc:00:00:50"
+    },
+    "lan": {
+      ".anonymous": false,
+      ".type": "dhcp",
+      ".name": "lan",
+      ".index": 3,
+      "interface": "lan",
+      "start": "100",
+      "limit": "150"
+    }
+  },
   "network": {
     "loopback": {
       ".anonymous": false,

@@ -226,14 +226,24 @@ pub fn off_network(model: &Firewall, dest_ip: &str) -> Option<String> {
 /// that, and leaving it blank keeps firewall4's own answer.
 fn destination(model: &Firewall, redirect: &RedirectForm, errors: &Errors) -> Widget {
     let mut children = vec![fields::row_group(vec![
+        // The devices worth forwarding to are the ones with a reserved address:
+        // a leased address moves, and the forward would follow nothing. They
+        // are offered, never imposed — any address can still be typed.
         fields::text_field(
             "dest_ip",
             "Destination address",
             &redirect.dest_ip,
-            "The device that answers, such as 10.0.0.30. Blank targets this router.",
+            "The device that answers: one with a reserved address, or any address typed. Blank targets this router.",
             errors,
         )
-        .writes("dest_ip"),
+        .writes("dest_ip")
+        .suggesting(
+            model
+                .hosts
+                .iter()
+                .map(|host| SelectOption::new(&host.ip, &host.name))
+                .collect(),
+        ),
         fields::text_field(
             "dest_port",
             "Destination port",
@@ -1015,6 +1025,24 @@ mod tests {
         let mut want = fixture::firewall().zone_names();
         want.push("gone".into());
         assert_eq!(offered, want);
+    }
+
+    /// Where a forward sends its traffic is a device, and the devices worth
+    /// forwarding to are the ones with a reserved address — an address a lease
+    /// hands out moves, and the forward would follow nothing. The box suggests
+    /// each by its address and its name (its MAC when it has none), and still
+    /// takes any address typed.
+    #[test]
+    fn the_destination_suggests_the_devices_with_a_reserved_address() {
+        let address = control(&blank(), "dest_ip");
+        assert_eq!(address["kind"], "text");
+        assert_eq!(
+            address["options"],
+            serde_json::json!([
+                {"value": "10.0.0.30", "label": "nas"},
+                {"value": "10.0.0.41", "label": "aa:bb:cc:00:00:41"},
+            ])
+        );
     }
 
     #[test]

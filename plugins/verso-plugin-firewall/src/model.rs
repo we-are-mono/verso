@@ -28,6 +28,10 @@ pub const CONFIG: &str = "firewall";
 /// from it, never from the firewall config, which names interfaces only.
 pub const NETWORK_CONFIG: &str = "network";
 
+/// DHCP_CONFIG holds the devices with a reserved address — the ones a port
+/// forward can name and keep reaching, since a leased address moves.
+pub const DHCP_CONFIG: &str = "dhcp";
+
 /// Firewall is the whole readable state of one render: the firewall config's
 /// sections in config order, plus the network interfaces a zone's subnets come
 /// from.
@@ -40,6 +44,8 @@ pub struct Firewall {
     pub nats: Vec<Nat>,
     pub includes: Vec<Include>,
     pub interfaces: Vec<Interface>,
+    /// The dhcp config's reservations that pin an address, in config order.
+    pub hosts: Vec<Host>,
     pub ipsets: Vec<String>,
     /// The network config's own `config device` sections — bridges and the like,
     /// which no interface names as its device but a rule may still match on.
@@ -216,6 +222,30 @@ pub struct Interface {
     pub ip6assign: String,
 }
 
+/// Host is one `config host` of the dhcp config that reserves an address: what
+/// it is called and the address it keeps. A reservation with no name is known
+/// by its MAC, as the router's own lease list knows it.
+pub struct Host {
+    pub name: String,
+    pub ip: String,
+}
+
+impl Host {
+    /// read is the reservation, or nothing for one that pins no address — its
+    /// device takes whatever a lease hands it, which no forward can follow.
+    fn read(section: &Section) -> Option<Host> {
+        let ip = section.scalar("ip");
+        if ip.is_empty() || ip == "ignore" {
+            return None;
+        }
+        let name = match section.scalar("name") {
+            name if !name.is_empty() => name,
+            _ => first_value(section, "mac"),
+        };
+        Some(Host { name, ip })
+    }
+}
+
 impl Firewall {
     /// read maps the brokered snapshot onto the model. Every list keeps config
     /// order, which for rules and redirects is evaluation order.
@@ -252,6 +282,11 @@ impl Firewall {
                 .sections_of_type(NETWORK_CONFIG, "interface")
                 .iter()
                 .map(Interface::read)
+                .collect(),
+            hosts: snapshot
+                .sections_of_type(DHCP_CONFIG, "host")
+                .iter()
+                .filter_map(Host::read)
                 .collect(),
             ipsets: snapshot
                 .sections_of_type(CONFIG, "ipset")

@@ -130,7 +130,7 @@
   "The port the traffic is addressed to, such as 8443.": "Vrata, na katera je promet naslovljen, na primer 8443.",
   "Blank keeps the incoming port.": "Prazno ohrani vhodna vrata.",
   "Send it to": "Pošlji na",
-  "The device that answers, such as 10.0.0.30. Blank targets this router.": "Naprava, ki odgovarja, na primer 10.0.0.30. Prazno cilja na ta usmerjevalnik.",
+  "The device that answers: one with a reserved address, or any address typed. Blank targets this router.": "Naprava, ki odgovarja: ena z rezerviranim naslovom ali katerikoli vpisan naslov. Prazno cilja na ta usmerjevalnik.",
   "Arrives from": "Prihaja iz",
   "Protocols": "Protokoli",
   "Protocol name or number": "Ime ali številka protokola",
