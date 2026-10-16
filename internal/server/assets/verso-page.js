@@ -47,6 +47,9 @@
     // Measure from the default placement, so a tip that has been dropped once
     // can rise again when the panel is scrolled and the room returns.
     label.removeAttribute("data-verso-tip-below");
+    // A waiting tip is out of the page and has no size; lay it out while it
+    // is measured, still unseen.
+    tip.style.display = "block";
     tip.style.left = "0px";
     tip.style.maxWidth = "";
     var box = clipper(label);
@@ -61,6 +64,7 @@
     var tipRect = tip.getBoundingClientRect();
     tip.style.left = at + Math.max(left - tipRect.left, Math.min(0, right - tipRect.right)) + "px";
     var height = tip.offsetHeight + GAP;
+    tip.style.display = "";
     var above = rect.top - Math.max(0, box.top);
     var below = Math.min(window.innerHeight, box.bottom) - rect.bottom;
     if (above < height && below > above) label.setAttribute("data-verso-tip-below", "");

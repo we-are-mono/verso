@@ -2825,7 +2825,7 @@ func TestAPageStandsOnSandUnderItsHeadingLine(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, want := range []string{
-		"main [data-verso-masthead] {\n    margin-inline: calc(var(--verso-gutter) * -1) calc(100% - round(100cqw, 1px) + var(--verso-gutter));\n    padding-inline: var(--verso-gutter) calc(round(100cqw, 1px) - var(--verso-gutter) - var(--verso-measure));\n  }",
+		"main [data-verso-masthead] {\n    --verso-measure: calc(round(down, min(round(100cqw, 1px) - var(--verso-gutter) * 2 - 1px, var(--container-6xl)), 0.5rem) + 1px);\n    margin-inline: calc(var(--verso-gutter) * -1) calc(100% - round(100cqw, 1px) + var(--verso-gutter));\n    padding-inline: var(--verso-gutter) calc(round(100cqw, 1px) - var(--verso-gutter) - var(--verso-measure));\n  }",
 		"main [data-verso-masthead=\"light\"] {\n    margin-bottom: 0;\n    border-bottom: 1px solid var(--color-rule);\n    background-color: var(--color-ground);",
 	} {
 		if !strings.Contains(string(css), want) {

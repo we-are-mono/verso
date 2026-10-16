@@ -656,8 +656,7 @@ func TestMastheadEndsUnderLogOut(t *testing.T) {
 	for _, want := range []string{
 		":root{--verso-gutter:calc(var(--spacing) * 4)}",
 		":root{--verso-gutter:calc(var(--spacing) * 10)}",
-		"main{--verso-measure:calc(round(down, min(round(100cqw, 1px) - var(--verso-gutter) * 2 - 1px, var(--container-6xl)), .5rem) + 1px)}",
-		"main [data-verso-masthead]{margin-inline:calc(var(--verso-gutter) * -1) calc(100% - round(100cqw, 1px) + var(--verso-gutter));padding-inline:var(--verso-gutter) calc(round(100cqw, 1px) - var(--verso-gutter) - var(--verso-measure))}",
+		"main [data-verso-masthead]{--verso-measure:calc(round(down, min(round(100cqw, 1px) - var(--verso-gutter) * 2 - 1px, var(--container-6xl)), .5rem) + 1px);margin-inline:calc(var(--verso-gutter) * -1) calc(100% - round(100cqw, 1px) + var(--verso-gutter));padding-inline:var(--verso-gutter) calc(round(100cqw, 1px) - var(--verso-gutter) - var(--verso-measure))}",
 		"[data-verso-session]>div{margin-inline:var(--verso-gutter);width:calc(round(down, min(100% - var(--verso-gutter) * 2 - 1px, var(--container-6xl)), .5rem) + 1px);flex:none}",
 		"[data-verso-colophon]>div{max-width:none;width:calc(round(down, min(100% - var(--verso-gutter) * 2 - 1px, var(--container-6xl)), .5rem) + 1px + var(--verso-gutter) * 2)}",
 		".w-column{width:calc(round(down,100% - 1px,.5rem) + 1px)}",
@@ -823,17 +822,21 @@ func TestAFittingTableClipsNoTip(t *testing.T) {
 // raises it, so the pointer on its way down to the control never meets it; a
 // pointer passing over the label raises nothing, because the tip waits for it
 // to settle, while keyboard focus raises it at once. Until it shows it takes no
-// pointer, and below is only where there is no room above.
+// pointer and no room: a waiting tip by a chip near the window's edge would
+// otherwise widen the page past the window, and a phone would scroll sideways.
+// It still fades in and out. Below is only where there is no room above.
 func TestTipsRiseAboveTheirLabel(t *testing.T) {
 	css, err := os.ReadFile("assets/input.css")
 	if err != nil {
 		t.Fatal(err)
 	}
 	for _, want := range []string{
-		"[data-verso-tip] > [role=\"tooltip\"] {\n    bottom: 100%;\n    margin-bottom: 0.5rem;\n    visibility: hidden;\n    opacity: 0;\n    pointer-events: none;",
-		"[data-verso-tip]:hover > [role=\"tooltip\"] {\n    visibility: visible;\n    opacity: 1;\n    pointer-events: auto;\n    transition-delay: 200ms;",
-		"[data-verso-tip]:focus-visible > [role=\"tooltip\"] {\n    visibility: visible;\n    opacity: 1;\n    pointer-events: auto;\n    transition-delay: 0ms;",
+		"[data-verso-tip] > [role=\"tooltip\"] {\n    display: none;\n    bottom: 100%;\n    margin-bottom: 0.5rem;\n    visibility: hidden;\n    opacity: 0;\n    pointer-events: none;\n    transition: opacity 150ms ease-out, visibility 0s linear 150ms, display 0s linear 150ms;\n    transition-behavior: allow-discrete;",
+		"[data-verso-tip]:hover > [role=\"tooltip\"] {\n    display: block;\n    visibility: visible;\n    opacity: 1;\n    pointer-events: auto;\n    transition-delay: 200ms;",
+		"[data-verso-tip]:focus-visible > [role=\"tooltip\"] {\n    display: block;\n    visibility: visible;\n    opacity: 1;\n    pointer-events: auto;\n    transition-delay: 0ms;",
+		"@starting-style {\n    [data-verso-tip]:is(:hover, :focus-visible) > [role=\"tooltip\"] {\n      visibility: hidden;\n      opacity: 0;\n    }\n  }",
 		"[data-verso-tip-below] > [role=\"tooltip\"] {\n    top: 100%;\n    bottom: auto;",
+		"[data-verso-tip-dismissed] > [role=\"tooltip\"] {\n    display: none !important;",
 	} {
 		if !strings.Contains(string(css), want) {
 			t.Errorf("stylesheet is missing %s", want)
@@ -849,6 +852,15 @@ func TestTipsRiseAboveTheirLabel(t *testing.T) {
 		}
 		if strings.Contains(string(src), "group-hover/tip:opacity-100") {
 			t.Errorf("%s reveals a tip itself; the stylesheet owns the reveal and its pause", tmpl)
+		}
+		// A display utility on the tip outranks the stylesheet's display: none,
+		// and the waiting tip would take its room again.
+		for _, tip := range regexp.MustCompile(`<span role="tooltip"[^>]*class="([^"]*)"`).FindAllStringSubmatch(string(src), -1) {
+			for _, class := range strings.Fields(tip[1]) {
+				if class == "flex" || class == "block" || class == "grid" || class == "inline-flex" {
+					t.Errorf("%s sets a tip's display (%s); the stylesheet owns it", tmpl, class)
+				}
+			}
 		}
 	}
 }

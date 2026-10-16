@@ -262,30 +262,43 @@ html {
 
      A pointer passing over the label raises nothing: the tip waits 200ms for
      the pointer to settle. Focus from the keyboard raises it at once. Until it
-     shows it is hidden outright, so a waiting tip never catches the pointer.
+     shows it is out of the page outright, so a waiting tip never catches the
+     pointer, nor takes room: one by a chip near the window's edge would
+     widen the page past it, and a phone would scroll sideways. It leaves
+     after its fade and arrives before it.
 
      The states live here rather than in the template's utilities: a utility
-     outranks anything this layer says, so a half-stated position or reveal
-     would fight the other half. */
+     outranks anything this layer says, so a half-stated position, display or
+     reveal would fight the other half. */
   [data-verso-tip] > [role="tooltip"] {
+    display: none;
     bottom: 100%;
     margin-bottom: 0.5rem;
     visibility: hidden;
     opacity: 0;
     pointer-events: none;
-    transition: opacity 150ms ease-out, visibility 0s linear 150ms;
+    transition: opacity 150ms ease-out, visibility 0s linear 150ms, display 0s linear 150ms;
+    transition-behavior: allow-discrete;
   }
   [data-verso-tip]:hover > [role="tooltip"] {
+    display: block;
     visibility: visible;
     opacity: 1;
     pointer-events: auto;
     transition-delay: 200ms;
   }
   [data-verso-tip]:focus-visible > [role="tooltip"] {
+    display: block;
     visibility: visible;
     opacity: 1;
     pointer-events: auto;
     transition-delay: 0ms;
+  }
+  @starting-style {
+    [data-verso-tip]:is(:hover, :focus-visible) > [role="tooltip"] {
+      visibility: hidden;
+      opacity: 0;
+    }
   }
   [data-verso-tip-below] > [role="tooltip"] {
     top: 100%;
@@ -309,6 +322,7 @@ html {
   }
   /* Escape put it away: it stays away until the pointer or focus leaves. */
   [data-verso-tip-dismissed] > [role="tooltip"] {
+    display: none !important;
     visibility: hidden !important;
     opacity: 0 !important;
     pointer-events: none !important;
@@ -1084,12 +1098,12 @@ html {
      short; the margins pull the masthead out past the page's gutter and the
      column's end to the rail and the window's edge, and the padding brings
      its content back. The gutter is the page's: 16px on a phone, 40px past
-     it. */
+     it, and 40px on a phone too for a page whose body runs to the window's
+     edges (a live log, a run's output), which sets its own. */
   :root { --verso-gutter: calc(var(--spacing) * 4); }
   @media (width >= 48rem) {
     :root { --verso-gutter: calc(var(--spacing) * 10); }
   }
-  main { --verso-measure: calc(round(down, min(round(100cqw, 1px) - var(--verso-gutter) * 2 - 1px, var(--container-6xl)), 0.5rem) + 1px); }
   /* Log out ends on the same line: the top bar's session group measures
      itself the way the column does, against the same width beside the
      rail. */
@@ -1116,6 +1130,7 @@ html {
   }
   main > [data-verso-colophon] { flex: 1 0 auto; }
   main [data-verso-masthead] {
+    --verso-measure: calc(round(down, min(round(100cqw, 1px) - var(--verso-gutter) * 2 - 1px, var(--container-6xl)), 0.5rem) + 1px);
     margin-inline: calc(var(--verso-gutter) * -1) calc(100% - round(100cqw, 1px) + var(--verso-gutter));
     padding-inline: var(--verso-gutter) calc(round(100cqw, 1px) - var(--verso-gutter) - var(--verso-measure));
   }
