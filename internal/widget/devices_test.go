@@ -68,9 +68,9 @@ func TestRenderDevicesTable(t *testing.T) {
 		"Intel",                    // the maker, beside the name it qualifies
 		"reserved", "this browser", // the chips that qualify a name
 		"Online", "Offline",
-		"Reserve address",                           // the act that leads somewhere
-		"Edit limits",                               // one that is drawn and inert
-		"holding a lease now", "known, not present", // the legend for the marks
+		"Reserve address",                               // the act that leads somewhere
+		"Edit limits",                                   // one that is drawn and inert
+		"seen on the network now", "known, not present", // the legend for the marks
 		"Devices with saved limits stay listed when offline. Open a device to edit its limits.",
 		`data-verso-entity-url="/entity/device/a4:83:e7:2b:19:0c"`, // the row points at the shell's panel
 	} {

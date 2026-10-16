@@ -195,8 +195,10 @@ func DevicesTable(devices []Device, acts func(d Device) []TableRowAct, usage boo
 		}
 		rows = append(rows, row)
 	}
+	// The filled mark is the kernel's word, as presenceCell reads it: a lease
+	// outlives a device that left, so it never stands for being here.
 	legend := []TableLegend{
-		{Variant: "success", Label: "holding a lease now"},
+		{Variant: "success", Label: "seen on the network now"},
 		{Label: "known, not present"},
 	}
 	if usage {
