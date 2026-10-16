@@ -438,9 +438,6 @@
 {{define "verso-tip-wide"}}
 <span role="tooltip" id="{{.ID}}" class="absolute left-0 z-30 w-80 rounded-xs border border-rule-strong bg-ground p-3 text-left font-normal whitespace-normal shadow-(--shadow-float)"><span class="flex flex-col gap-2">
   {{with .Tip}}<span class="text-sm leading-[1.45] text-ink">{{.}}</span>{{end}}
-  {{/* A fused control with no one sentence of its own explains each part
-       under that part's name. */}}
-  {{range .Parts}}<span class="flex flex-col text-sm leading-[1.45] text-ink"><span class="font-semibold">{{.Label}}</span><span>{{.Tip}}</span></span>{{end}}
   {{if .Footer}}<span class="flex items-center gap-2 border-t border-rule pt-2 font-mono text-sm font-medium text-meta">{{.Footer}}</span>{{end}}
 </span></span>
 {{end}}

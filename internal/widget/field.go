@@ -161,14 +161,6 @@ func (f *Field) Segmented() bool { return f.Kind == "checks" && f.Style == "segm
 func (f *Field) Removable() bool { return f.Remove == "yes" }
 func (f *Field) Lane() bool      { return f.Remove != "" }
 
-// Explained reports whether the label carries an explanation to raise. A field
-// that only has Help carries one too: the sentence explaining a setting belongs
-// on the thing it explains rather than in a line under the control, where it
-// pushes every row apart and turns a form of eight settings into a page of
-// prose. Tip is the same sentence said deliberately; Help is the same sentence
-// a plugin already wrote.
-func (f *Field) Explained() bool { return f.Tip != "" || f.Help != "" }
-
 // DescribedBy is what the control is described by: the description under its
 // name, then the refusal under it, its note and its unit. A screen reader reads
 // them when the field takes focus, folded or not.
@@ -189,13 +181,17 @@ func (f *Field) DescribedBy() string {
 	return strings.Join(ids, " ")
 }
 
-// explanation is the sentence the label raises: the explicit tip where there is
-// one, and the help line otherwise.
-func (f *Field) explanation() string {
-	if f.Tip != "" {
-		return f.Tip
+// chip is the option the row writes and what reads it, joined the way Verso
+// joins a pair of machine words everywhere else; an option named without a
+// reader, or a reader without an option, says whichever half it has.
+func chip(key, source string) string {
+	halves := make([]string, 0, 2)
+	for _, half := range []string{key, source} {
+		if half != "" {
+			halves = append(halves, half)
+		}
 	}
-	return f.Help
+	return strings.Join(halves, " · ")
 }
 
 // description is what the field is for, written under its name: the help,
@@ -238,39 +234,18 @@ type fieldLabel struct {
 // the field is for stands under it as the row's description, not on it.
 func (f *Field) LabelView() fieldLabel {
 	return fieldLabel{
-		For: f.Name, Group: f.UseRadios() && f.Style != "locked", Label: f.Label, Key: f.Key,
+		For: f.Name, Group: f.UseRadios() && f.Style != "locked", Label: f.Label, Key: chip(f.Key, f.Source),
 		Staged: f.Staged,
 	}
 }
 
 // TipView is one wide tooltip's model — the sentence, the line that places it in
-// the config, and the id the thing it explains points at.
+// the config, and the id the thing it explains points at. A condition's name
+// raises one; a field's name raises none.
 type TipView struct {
 	ID     string
 	Tip    string
 	Footer string
-	// Parts explain a fused control one part at a time, each under its name,
-	// where the group has no one sentence of its own.
-	Parts []TipPart
-}
-
-// TipPart is one part's explanation in a fused control's tip.
-type TipPart struct {
-	Label, Tip string
-}
-
-// TipView is the label's explanation as the shared tooltip renders it. The
-// footer is the option and what reads it, joined the way Verso joins a pair of
-// machine words everywhere else; an option named without a reader, or a reader
-// without an option, says whichever half it has.
-func (f *Field) TipView() TipView {
-	parts := make([]string, 0, 2)
-	for _, part := range []string{f.Key, f.Source} {
-		if part != "" {
-			parts = append(parts, part)
-		}
-	}
-	return TipView{ID: f.Name + "-tip", Tip: f.explanation(), Footer: strings.Join(parts, " · ")}
 }
 
 // FieldFetch is where a fetching choice gets its view: URL answers it for the

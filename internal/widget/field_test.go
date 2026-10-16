@@ -241,19 +241,26 @@ func TestRenderFieldWithoutTip(t *testing.T) {
 	}
 }
 
-// TestFieldTipFooterHalves: the footer is whichever halves it has, so an option
-// named without a reader still places itself and neither renders a bare dot.
-func TestFieldTipFooterHalves(t *testing.T) {
+// TestAFieldsChipNamesWhatReadsIt: what reads an option joins the key chip
+// after a middot (form-fields), and the chip is whichever halves it has, so an
+// option named without a reader still places itself and neither shows a bare
+// dot. A switch names its reader the same way.
+func TestAFieldsChipNamesWhatReadsIt(t *testing.T) {
 	for _, tc := range []struct{ key, source, want string }{
-		{"duid", "dhcp host", "duid · dhcp host"},
-		{"duid", "", "duid"},
-		{"", "dhcp host", "dhcp host"},
-		{"", "", ""},
+		{"mac", "dhcp host", ">mac · dhcp host</span>"},
+		{"mac", "", ">mac</span>"},
+		{"", "dhcp host", ">dhcp host</span>"},
 	} {
-		f := &Field{Name: "duid", Tip: "…", Key: tc.key, Source: tc.source}
-		if got := f.TipView().Footer; got != tc.want {
-			t.Errorf("footer for key %q source %q = %q, want %q", tc.key, tc.source, got, tc.want)
+		got := render(t, newRenderer(t), &Field{Name: "mac", Label: "MAC", Key: tc.key, Source: tc.source})
+		if !strings.Contains(got, "verso-chip") || !strings.Contains(got, tc.want) {
+			t.Errorf("chip for key %q source %q is not %s:\n%s", tc.key, tc.source, tc.want, got)
 		}
+	}
+	if got := render(t, newRenderer(t), &Field{Name: "mac", Label: "MAC"}); strings.Contains(got, "verso-chip") {
+		t.Errorf("a field naming neither shows no chip:\n%s", got)
+	}
+	if got := render(t, newRenderer(t), &Switch{Name: "wmm", Label: "WMM", Key: "wmm", Source: "hostapd"}); !strings.Contains(got, ">wmm · hostapd</span>") {
+		t.Errorf("a switch's chip names what reads it:\n%s", got)
 	}
 }
 
