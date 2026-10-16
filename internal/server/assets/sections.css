@@ -402,6 +402,14 @@
   text-transform: none;
   color: var(--color-ink);
 }
+/* A list's heads are a fact list's heading, not a band across the card: 40px
+ * as the Overview's IPv4 and IPv6 heads stand, the 24px line 8px under the
+ * air over it and 8px over its hairline, with no rule of its own above. */
+.verso-page-body section[data-verso-section]:not(section section) > .verso-rhythm > [data-verso-listing][data-verso-list] > [data-verso-scroller] > table > thead > tr > th:not(dialog *) {
+  border-top-width: 0;
+  padding-block: calc(var(--spacing) * 2);
+  line-height: calc(var(--spacing) * 6);
+}
 /* A card's rows sit a step lighter than a drawer's: the row's name 500, every
  * other value 400. Links and buttons keep their weight; they are acts. A
  * grouped listing's lanes are Quiet Sand bands among the rows, each straight
