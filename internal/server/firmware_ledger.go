@@ -112,10 +112,12 @@ func firmwareLedgerView(tr func(string) string, truth updatecheck.Truth, known b
 
 // checkedAt says when the firmware was last checked, for the heading line beside
 // Check again: the clock alone on the same day, the date with it on an earlier
-// one, in the router's own time — or that it has not checked yet.
+// one, in the router's own time — or that it has not checked since the router
+// started. The record lives in memory, so a reboot forgets yesterday's check,
+// and "not checked yet" would claim it never ran.
 func checkedAt(tr func(string) string, at time.Time, known bool, now time.Time) string {
 	if !known {
-		return tr("Not checked yet")
+		return tr("Not checked since the router started")
 	}
 	at = at.In(now.Location())
 	ay, am, ad := at.Date()

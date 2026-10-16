@@ -703,7 +703,7 @@
   "Install packages": "Namesti pakete",
   "Nothing matches.": "Ni zadetkov.",
   "just now": "pravkar",
-  "Not checked yet": "Še ni preverjeno",
+  "Not checked since the router started": "Od zagona usmerjevalnika še ni preverjeno",
   "Checked at %s": "Preverjeno ob %s",
   "Checked %s": "Preverjeno %s",
   "Upload a custom image…": "Naloži lastno sliko …",

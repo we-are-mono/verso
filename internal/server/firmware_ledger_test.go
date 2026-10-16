@@ -69,7 +69,8 @@ func TestFirmwareLedgerExplainsOnlyAWarning(t *testing.T) {
 
 // TestCheckedSaysWhen: beside Check again, the section says when it last
 // checked — the clock alone the same day, the date with it otherwise — or that
-// it has not checked yet.
+// it has not checked since the router started: the record lives in memory, so
+// a reboot forgets yesterday's check, and "yet" would claim it never ran.
 func TestCheckedSaysWhen(t *testing.T) {
 	now := time.Date(2026, 9, 27, 18, 5, 0, 0, time.Local)
 	for _, tc := range []struct {
@@ -78,7 +79,7 @@ func TestCheckedSaysWhen(t *testing.T) {
 		known bool
 		want  string
 	}{
-		{"never", time.Time{}, false, "Not checked yet"},
+		{"never", time.Time{}, false, "Not checked since the router started"},
 		{"today", time.Date(2026, 9, 27, 14, 32, 0, 0, time.Local), true, "Checked at 14:32"},
 		{"earlier", time.Date(2026, 9, 26, 9, 7, 0, 0, time.Local), true, "Checked 26 Sep, 09:07"},
 	} {

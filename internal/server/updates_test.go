@@ -181,7 +181,7 @@ func TestMaintenanceUpdatesNeverChecked(t *testing.T) {
 	s := newServer(t, fakeBackend{access: true})
 	body := get(t, s, "/system/maintenance").Body.String()
 	for _, want := range []string{
-		"Firmware", "Not checked yet",
+		"Firmware", "Not checked since the router started",
 		"Check again", `action="/system/maintenance/updates/check"`,
 	} {
 		if !strings.Contains(body, want) {
