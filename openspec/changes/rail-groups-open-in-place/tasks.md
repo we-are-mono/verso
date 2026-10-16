@@ -18,14 +18,14 @@
 
 ## 3. A group is a disclosure
 
-- [ ] 3.1 Test first in `internal/server/nav_test.go` (rendered page):
+- [x] 3.1 Test first in `internal/server/nav_test.go` (rendered page):
   - A group renders as `<details name="verso-nav">` with its row as the `<summary>` and its subpages inside.
   - Only the current page's group carries `open`.
   - A row without subpages, and a `pages: true` row, stays an `<a href>`.
   - The summary carries no `href`, and the active subpage keeps `aria-current="page"` and the marker.
 
   Then split `nav-row.html.tmpl` into one row-face template rendered by both the link and the summary, and the `<details>` group. Verify: `go test ./internal/server/`.
-- [ ] 3.2 The rail's stylesheet in `input.css`:
+- [x] 3.2 The rail's stylesheet in `input.css`:
   - The summary loses the browser's marker.
   - The chevron turns with `details[open]`.
   - The branch unfolds in place through `::details-content` on the rail's easing, at once under reduced motion.

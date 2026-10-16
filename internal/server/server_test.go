@@ -928,6 +928,44 @@ func TestPluginSubpagesOpenInTheRail(t *testing.T) {
 	}
 }
 
+// A row with subpages the shell knows on every page is a group: a disclosure
+// named with every other, so the browser keeps one open, the group holding the
+// page open as it loads, its row a summary that leads nowhere. A row without
+// subpages stays a link.
+func TestARailGroupOpensInPlace(t *testing.T) {
+	s := newServer(t, fakeBackend{})
+	railOf := func(path string) string {
+		body := get(t, s, path).Body.String()
+		return body[strings.Index(body, "<nav "):strings.Index(body, "</nav>")]
+	}
+	groupOf := func(nav, label string) string {
+		at := strings.Index(nav, ">"+label+"</span>")
+		if at < 0 {
+			t.Fatalf("no %s row:\n%s", label, nav)
+		}
+		open := strings.LastIndex(nav[:at], "<details")
+		return nav[open : at+strings.Index(nav[at:], "</details>")]
+	}
+
+	home := railOf("/")
+	system := groupOf(home, "System")
+	if !strings.HasPrefix(system, `<details name="verso-nav" class=`) || !strings.Contains(system, "<summary") ||
+		!strings.Contains(system, `href="/system/hardware"`) {
+		t.Errorf("System on the Overview must be a closed group holding its pages:\n%s", system)
+	}
+	if summary := system[strings.Index(system, "<summary"):strings.Index(system, "</summary>")]; strings.Contains(summary, "href=") {
+		t.Errorf("a group's row leads nowhere:\n%s", summary)
+	}
+	if !strings.Contains(home, `<a href="/devices"`) {
+		t.Errorf("a row without subpages stays a link:\n%s", home)
+	}
+
+	system = groupOf(railOf("/system/hardware"), "System")
+	if !strings.HasPrefix(system, `<details name="verso-nav" open`) || !strings.Contains(system, `href="/system/hardware" aria-current="page"`) {
+		t.Errorf("the page's group opens with it, the page marked:\n%s", system)
+	}
+}
+
 // What waits on a rail row is said at its end in the action colour, led by the
 // rail's square, with the whole sentence on the row for a pointer to rest on
 // and a screen reader to read.
