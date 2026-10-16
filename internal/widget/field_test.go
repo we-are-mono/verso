@@ -43,21 +43,20 @@ func TestSingleChoiceCutoff(t *testing.T) {
 	}
 }
 
-// TestRadiosStandACellAndAHalfApart: a line is too tight for a run of
-// choices and a field's height too loose, so each is 28px: its 20px line and
-// 4px over and under. The run starts straight under the field's label, so a
-// run of any count is a multiple of 4px.
-func TestRadiosStandACellAndAHalfApart(t *testing.T) {
+// TestRadiosStandAControlTall: each choice is 32px, its 24px line and 4px
+// over and under, so a run centres on the name's line as a control does, and
+// a run that wraps grows by whole 32px lines.
+func TestRadiosStandAControlTall(t *testing.T) {
 	if RadioOptionLimit < 2 {
 		t.Skip("radios disabled by the shared policy")
 	}
 	got := render(t, newRenderer(t), &Field{Name: "policy", Label: "Policy", Kind: "select", Value: "0", Options: choiceOptions(2)})
-	if !strings.Contains(got, `class="flex min-w-0 flex-col items-start">`) {
-		t.Errorf("the run stands straight under the label:\n%s", got)
+	if !strings.Contains(got, `class="flex min-w-0 flex-wrap items-start gap-x-4">`) {
+		t.Errorf("the run stands across the answer:\n%s", got)
 	}
 	want := `<label class="flex max-w-full cursor-pointer items-center gap-2 py-1 `
 	if strings.Count(got, want) != 2 {
-		t.Errorf("each radio is 28px, its 20px line and 4px over and under, want %q:\n%s", want, got)
+		t.Errorf("each radio is 32px, its 24px line and 4px over and under, want %q:\n%s", want, got)
 	}
 }
 
@@ -240,6 +239,27 @@ func TestAnAnswerFillsItsColumnOrKeepsItsMeasure(t *testing.T) {
 	got := render(t, r, &Field{Name: "key", Label: "Password", Kind: "password"})
 	if strings.Contains(got, "w-measure-64") || !strings.Contains(got, `data-verso-control-measure="secret"`) {
 		t.Errorf("a secret fills the answer column and keeps its measure for a stacked row:\n%s", got)
+	}
+}
+
+// TestRadioChoicesRunAcrossTheirRow: a field's radio choices are its answer,
+// read across one line in order, 16px apart, each a 32px row of its own that
+// wraps onto the next line when the column runs out (form-fields); drawn down
+// the column they looked like settings of their own.
+func TestRadioChoicesRunAcrossTheirRow(t *testing.T) {
+	got := render(t, newRenderer(t), &Field{
+		Name: "input", Label: "Traffic to this router", Kind: "select", Value: "reject",
+		Options: []Option{{Value: "accept", Label: "accept"}, {Value: "reject", Label: "reject"}, {Value: "drop", Label: "drop"}},
+	})
+	if !strings.Contains(got, `aria-labelledby="input-label" class="flex min-w-0 flex-wrap items-start gap-x-4"`) {
+		t.Errorf("the choices do not run across their row:\n%s", got)
+	}
+	if strings.Contains(got, "flex-col items-start") {
+		t.Errorf("the choices still run down the column:\n%s", got)
+	}
+	accept, reject, drop := strings.Index(got, ">accept<"), strings.Index(got, ">reject<"), strings.Index(got, ">drop<")
+	if accept < 0 || accept > reject || reject > drop {
+		t.Errorf("the choices are not in their order:\n%s", got)
 	}
 }
 

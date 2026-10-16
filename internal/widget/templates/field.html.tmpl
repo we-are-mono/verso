@@ -67,13 +67,13 @@
   <output id="{{.Name}}"{{if .Help}} title="{{.Help}}"{{end}} class="flex h-control w-full cursor-help items-center gap-2 rounded-xs border border-rule bg-quiet text-body px-3 text-sm">{{.Value}}<span class="ml-auto flex text-faint">{{icon "lock" "size-3.5"}}</span></output>
   {{else if .UseRadios}}
   {{/* Small single-choice sets stay visible. Native radios retain arrow-key
-       navigation, mutual exclusion and the same submitted name/value. A
-       choice is 28px, its 20px line and 4px over and under: one line is too
-       tight for a run of them and a field's height too loose. The run starts
-       straight under the field's label, so a run of any count is a multiple
-       of 4px. */}}
+       navigation, mutual exclusion and the same submitted name/value. The
+       choices are the row's answer, read across in order, 16px apart: each
+       is 32px, its 24px line and 4px over and under, so it centres on the
+       name's line as a control does, and a choice that does not fit wraps
+       onto the next 32px line. */}}
   {{$selected := .SelectedIndex}}
-  <div role="radiogroup"{{if .Reshapes}} data-verso-reshape{{end}}{{if .Label}} aria-labelledby="{{.Name}}-label"{{end}}{{template "verso-field-aria" .}} class="flex min-w-0 flex-col items-start">
+  <div role="radiogroup"{{if .Reshapes}} data-verso-reshape{{end}}{{if .Label}} aria-labelledby="{{.Name}}-label"{{end}}{{template "verso-field-aria" .}} class="flex min-w-0 flex-wrap items-start gap-x-4">
     {{range $index, $option := .Options}}
     <label class="flex max-w-full cursor-pointer items-center gap-2 py-1 {{if $.Words}}font-sans text-sm font-normal{{else}}font-mono text-base font-normal{{end}} leading-6 text-body">
       <input id="{{$.Name}}{{if $index}}-option-{{$index}}{{end}}" type="radio" name="{{$.Name}}" value="{{.Value}}"{{if eq $index $selected}} checked{{end}}{{with $.DescribedBy}} aria-describedby="{{.}}"{{end}}{{if $.Error}} aria-invalid="true"{{end}} class="size-4 shrink-0 cursor-pointer accent-choice focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim-deep">
