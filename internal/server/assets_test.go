@@ -457,6 +457,19 @@ func TestAMeasureIsAStackedRows(t *testing.T) {
 	}
 }
 
+// TestASwitchShowsTheWordForItsState: a form switch holds both words and the
+// stylesheet shows the one its box is in, with no script (form-fields).
+func TestASwitchShowsTheWordForItsState(t *testing.T) {
+	raw, err := os.ReadFile("assets/forms.css")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "label:not(:has(input:checked)) > .verso-switch-word > .verso-switch-on,\n  label:has(input:checked) > .verso-switch-word > .verso-switch-off { display: none; }"
+	if !strings.Contains(string(raw), want) {
+		t.Errorf("forms.css does not show a switch's word for its state:\n%s", want)
+	}
+}
+
 // TestFieldRowsRunToACardsBorders: in a page card a field row runs from the
 // card's left border to its right, its words still the card's 23px in, so the
 // hairlines between rows touch both borders (form-fields). A row inside

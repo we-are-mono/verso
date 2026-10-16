@@ -14,9 +14,13 @@
 </label>
 {{end}}
 
-{{/* switch.row: a row's checkbox. The input the switch is made of is
-     screen-reader-only: the drawn box and its check are what a person sees, so
-     the control has to sit inside a label or pressing the thing itself does
-     nothing. The row's text label points at the same input by id, which is what
-     makes the setting's name clickable too. */}}
-{{define "switch.row"}}<label class="flex w-fit cursor-pointer items-center">{{template "switch.control" .}}</label>{{end}}
+{{/* switch.row: a row's answer, its checkbox and the word for its state. The
+     input the switch is made of is screen-reader-only: the drawn box and its
+     check are what a person sees, so the control has to sit inside a label or
+     pressing the thing itself does nothing, and the word beside it sits in the
+     same label, so pressing the word flips it too. The stylesheet shows the
+     word the box is in (forms.css); the checkbox already says its state to a
+     screen reader, so the words are hidden from it. The row's name points at
+     the same input by id, which is what makes the setting's name clickable
+     too. */}}
+{{define "switch.row"}}<label class="flex w-fit cursor-pointer items-center">{{template "switch.control" .}}<span aria-hidden="true" class="verso-switch-word ml-2 text-sm leading-6 text-body"><span class="verso-switch-on">{{t "On"}}</span><span class="verso-switch-off">{{t "Off"}}</span></span></label>{{end}}

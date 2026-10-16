@@ -49,6 +49,30 @@ func TestDecodeAndRenderSwitch(t *testing.T) {
 	}
 }
 
+// TestAFormSwitchSaysOnOrOff: in a form row a switch is its box and the word
+// for its state beside it, inside one label, so the name, the box and the word
+// all flip it (form-fields). The stylesheet shows the word the box is in; the
+// checkbox already says its state to a screen reader, so the words are hidden
+// from it. A table's toggle cell stays a bare box.
+func TestAFormSwitchSaysOnOrOff(t *testing.T) {
+	r := newRenderer(t)
+	got := render(t, r, &Switch{Name: "wmm", Label: "WMM", On: true})
+	word := `<span aria-hidden="true" class="verso-switch-word ml-2 text-sm leading-6 text-body"><span class="verso-switch-on">On</span><span class="verso-switch-off">Off</span></span></label>`
+	if !strings.Contains(got, word) {
+		t.Errorf("a form switch does not say its state beside its box:\n%s", got)
+	}
+	if box := strings.Index(got, "data-verso-switch"); box < 0 || box > strings.Index(got, "verso-switch-word") {
+		t.Errorf("the word follows the box:\n%s", got)
+	}
+	cell := render(t, r, &Table{
+		Columns: []TableColumn{{Kind: "toggle"}, {Label: "Name", Kind: "name"}},
+		Rows:    []TableRow{{ID: "r1", Cells: []TableCell{{Name: "r1_enabled", On: true}, {Text: "Allow-SSH"}}}},
+	})
+	if !strings.Contains(cell, "data-verso-switch") || strings.Contains(cell, "verso-switch-word") {
+		t.Errorf("a table's toggle cell is a bare box:\n%s", cell)
+	}
+}
+
 // TestSwitchControlIsACheckbox: the on/off control is a checkbox, never a
 // toggle — nothing in the app flips live, every state is staged for the
 // commit, and a knob would promise otherwise. The box uses the shared choice

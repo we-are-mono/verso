@@ -1008,5 +1008,7 @@
   "Sand, always dark": "Sand, vedno temna",
   "Takes effect immediately, for everyone who signs in to this router.": "Velja takoj, za vse, ki se prijavijo v ta usmerjevalnik.",
   "That theme isn't installed.": "Ta tema ni nameščena.",
-  "The theme wasn't changed.": "Tema ni bila spremenjena."
+  "The theme wasn't changed.": "Tema ni bila spremenjena.",
+  "On": "Vklopljeno",
+  "Off": "Izklopljeno"
 }
