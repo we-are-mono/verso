@@ -62,6 +62,10 @@ type Renderer struct {
 	// standing over what this handle renders, so a part's heading is the
 	// next level down from the nearest one and never skips a level.
 	headed int
+	// inForm says what this handle renders stands among a form's fields, so
+	// a widget that is also drawn on its own (a table) takes its place as a
+	// row of the form's ledger.
+	inForm bool
 }
 
 // nested is the handle a section renders its contents with: the same pass,
@@ -73,7 +77,13 @@ func (r *Renderer) nested(titled bool) *Renderer {
 	if titled {
 		headed++
 	}
-	return &Renderer{tmpl: r.tmpl, t: r.t, md: r.md, seq: r.seq, depth: r.depth + 1, headed: headed}
+	return &Renderer{tmpl: r.tmpl, t: r.t, md: r.md, seq: r.seq, depth: r.depth + 1, headed: headed, inForm: r.inForm}
+}
+
+// amongFields is the handle a form renders its fields with: the same pass,
+// what it draws standing among the form's fields.
+func (r *Renderer) amongFields() *Renderer {
+	return &Renderer{tmpl: r.tmpl, t: r.t, md: r.md, seq: r.seq, depth: r.depth, headed: r.headed, inForm: true}
 }
 
 // renderSeqs are the monotonic id counters that keep generated element ids

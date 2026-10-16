@@ -731,6 +731,10 @@ type tableView struct {
 	Live bool
 	Card bool
 	List bool
+	// InForm is a table among a form's fields, drawn as a row of its ledger
+	// (renderAmongFields): its cells keep to the row's gutters and it draws no
+	// fill of its own.
+	InForm bool
 	// Style is the listing's shape where it is not a grid. "console" is the one
 	// such shape: a live log drawn as a terminal writes one — no grid, no
 	// hairlines, filling the frame and running to its edges.
@@ -791,6 +795,9 @@ type tableRowView struct {
 	ID    string
 	Key   string
 	Group *TableGroup
+	// InForm is a row of a table among a form's fields: it takes no tint
+	// under the pointer, as no row of the form does.
+	InForm bool
 	// Close is the lane's last word, drawn after this row because it is the
 	// lane's last (TableGroup.Close).
 	Close []tablePartView
@@ -1623,9 +1630,66 @@ func (t *Table) rowViews(r *Renderer, csrf string, rows []TableRow, hasDetail bo
 }
 
 func (t *Table) renderInto(r *Renderer, out io.Writer, csrf string) error {
+	if lead, ok := t.lead(); ok && r.inForm {
+		return t.renderAmongFields(r, out, csrf, lead)
+	}
 	v, err := t.view(r, csrf)
 	if err != nil {
 		return err
 	}
 	return r.execute(out, "table.html.tmpl", v)
+}
+
+// lead is the one group a set of rows stands under — a set of files under
+// "Files" — when it heads the first row and no other group follows: a set
+// that among a form's fields is one question of the form. A listing with a
+// title, a shape of its own, or lanes of its own is a listing wherever it
+// stands.
+func (t *Table) lead() (*TableGroup, bool) {
+	if t.Style != "" || t.Title != "" || len(t.Rows) == 0 {
+		return nil, false
+	}
+	g := t.Rows[0].Group
+	if g == nil || g.To != "" || g.Chain != "" || len(g.Close) > 0 {
+		return nil, false
+	}
+	for _, row := range t.Rows[1:] {
+		if row.Group != nil {
+			return nil, false
+		}
+	}
+	return g, true
+}
+
+// renderAmongFields draws a set among a form's fields as one row of the
+// form's ledger: the set's name is the question, its add stands on the
+// question's line at the row's end, and its rows are the answer at the row's
+// width, with no band over them.
+func (t *Table) renderAmongFields(r *Renderer, out io.Writer, csrf string, lead *TableGroup) error {
+	rows := slices.Clone(t.Rows)
+	rows[0].Group = nil
+	if len(rows[0].Cells) == 0 {
+		rows = rows[1:]
+	}
+	set := *t
+	set.Rows = rows
+	v, err := set.view(r, csrf)
+	if err != nil {
+		return err
+	}
+	v.InForm = true
+	for i := range v.Rows {
+		v.Rows[i].InForm = true
+	}
+	var act strings.Builder
+	add := *lead
+	add.AddHref = SafeHref(add.AddHref)
+	if err := r.execute(&act, "table.lane-add", &add); err != nil {
+		return err
+	}
+	return r.renderFrame(out, "table.html.tmpl", v, fieldFrame{
+		Label: fieldLabel{Group: true, Label: lead.Label},
+		Act:   template.HTML(act.String()), //nolint:gosec // rendered by the shell's own templates
+		Wide:  true,
+	})
 }

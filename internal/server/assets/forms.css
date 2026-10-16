@@ -154,6 +154,34 @@
     grid-column: 1 / -1;
     margin-block: 0;
   }
+  /* An act on the whole answer (a set's add) stands on the question's line
+     at the row's end, at every width, its 28px box centred on the name's
+     band; the answer stands under both. */
+  .verso-field-ledger:has(> .verso-field-act) {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .verso-field-act {
+    grid-column: 2;
+    grid-row: 1;
+    display: flex;
+    margin-block: calc(var(--spacing) * -0.5);
+  }
+  /* A set among the fields is the row's answer: its first line stands 8px
+     under the question's words and its rows' lines between them stay inside
+     the row's gutters. Its last row draws no line (the utilities below) and
+     gives back the 9px under its words, so the row's own 16px is all that
+     stands between them and the next question's hairline, as between its
+     rows. With nothing in it, the set's empty slot stands 8px under the
+     question, its frame's pixel out on the lines. */
+  .verso-field-answer > [data-verso-in-form] {
+    margin-top: calc(var(--spacing) * 1.75);
+    margin-bottom: calc(var(--spacing) * -2.25);
+    border-top: 1px solid var(--color-rule);
+  }
+  .verso-field-act ~ .verso-field-answer > [data-verso-slot] {
+    margin-top: calc(var(--spacing) * 2);
+    margin-bottom: -1px;
+  }
   /* A switch says its state beside its box: the word for the state the box
      is in. */
   label:not(:has(input:checked)) > .verso-switch-word > .verso-switch-on,
@@ -171,6 +199,9 @@
     .verso-field-ledger { grid-template-columns: minmax(0, 1fr); }
     .verso-field-ledger:has(> :is([data-verso-remove-field], [data-verso-remove-lane])) {
       grid-template-columns: minmax(0, 1fr) var(--spacing-act);
+    }
+    .verso-field-ledger:has(> .verso-field-act) {
+      grid-template-columns: minmax(0, 1fr) auto;
     }
     .verso-field-answer { grid-column: 1; margin-block: 0; }
     [data-verso-control-measure="secret"] { width: var(--verso-field-width-secret); }
@@ -320,6 +351,12 @@
       width: auto;
       max-width: 100%;
     }
+  }
+  /* A set among the fields: its last row draws no line, so only the
+     hairline between questions follows it. Here, past its cells' own
+     border utility. */
+  [data-verso-in-form] tbody > tr:last-child > td {
+    border-bottom-color: transparent;
   }
 
   /* An added condition (conditions.item) stands as one setting's row on the

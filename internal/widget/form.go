@@ -155,9 +155,10 @@ func loneAct(f *Form) bool {
 }
 
 // renderInto renders each field through the renderer, keeping composition in Go and
-// the template a dumb shell (as card does).
+// the template a dumb shell (as card does). What it holds stands among its
+// fields, so a table in it takes its place as a row of the ledger.
 func (f *Form) renderInto(r *Renderer, out io.Writer, csrf string) error {
-	fields, err := r.renderChildren(f.Fields, csrf)
+	fields, err := r.amongFields().renderChildren(f.Fields, csrf)
 	if err != nil {
 		return err
 	}

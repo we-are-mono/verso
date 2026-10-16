@@ -187,9 +187,9 @@
       {{/* A row that carries only its group is the band alone. */}}
       {{if not .BandOnly}}
       {{if .Drawer}}
-      <tr x-data="modal"{{if .Open}} data-open="true"{{end}}{{if .Panel.Closed}} data-closed-href="{{.Panel.Closed}}"{{end}} class="group transition-colors hover:bg-quiet/50{{if .Seam}} verso-table-seam-row{{end}}"{{if .ID}} data-verso-row-id="{{.ID}}"{{end}}{{if .Off}} data-verso-off{{end}}{{if .Reorder}} data-verso-reorder-row data-verso-reorder-id="{{.ID}}" data-verso-reorder-group="{{.ReorderGroup}}"{{end}}{{if .Key}} data-verso-row="{{.Key}}"{{end}}{{if .Tags}} data-verso-tags="{{.Tags}}"{{end}}{{range .Facets}} data-verso-facet-{{.Key}}="{{.Value}}"{{end}}>
+      <tr x-data="modal"{{if .Open}} data-open="true"{{end}}{{if .Panel.Closed}} data-closed-href="{{.Panel.Closed}}"{{end}} class="group transition-colors{{if not .InForm}} hover:bg-quiet/50{{end}}{{if .Seam}} verso-table-seam-row{{end}}"{{if .ID}} data-verso-row-id="{{.ID}}"{{end}}{{if .Off}} data-verso-off{{end}}{{if .Reorder}} data-verso-reorder-row data-verso-reorder-id="{{.ID}}" data-verso-reorder-group="{{.ReorderGroup}}"{{end}}{{if .Key}} data-verso-row="{{.Key}}"{{end}}{{if .Tags}} data-verso-tags="{{.Tags}}"{{end}}{{range .Facets}} data-verso-facet-{{.Key}}="{{.Value}}"{{end}}>
       {{else}}
-      <tr class="group transition-colors hover:bg-quiet/50{{if .Seam}} verso-table-seam-row{{end}}"{{if .ID}} data-verso-row-id="{{.ID}}"{{end}}{{if .Off}} data-verso-off{{end}}{{if .Reorder}} data-verso-reorder-row data-verso-reorder-id="{{.ID}}" data-verso-reorder-group="{{.ReorderGroup}}"{{end}}{{if .Key}} data-verso-row="{{.Key}}"{{end}}{{if .Tags}} data-verso-tags="{{.Tags}}"{{end}}{{range .Facets}} data-verso-facet-{{.Key}}="{{.Value}}"{{end}}>
+      <tr class="group transition-colors{{if not .InForm}} hover:bg-quiet/50{{end}}{{if .Seam}} verso-table-seam-row{{end}}"{{if .ID}} data-verso-row-id="{{.ID}}"{{end}}{{if .Off}} data-verso-off{{end}}{{if .Reorder}} data-verso-reorder-row data-verso-reorder-id="{{.ID}}" data-verso-reorder-group="{{.ReorderGroup}}"{{end}}{{if .Key}} data-verso-row="{{.Key}}"{{end}}{{if .Tags}} data-verso-tags="{{.Tags}}"{{end}}{{range .Facets}} data-verso-facet-{{.Key}}="{{.Value}}"{{end}}>
       {{end}}
         {{range .Cells}}
         {{if .Absent}}
@@ -627,8 +627,12 @@
 {{/* The listing's frame stands outside its scroller, so the fading edge
      never fades a card's border (sections.css). A list stands in its card's
      inset instead of running to the frame (data-verso-list). */}}
-<div data-verso-listing{{if .List}} data-verso-list{{end}}>
-<div{{if .Live}} data-verso-live-table{{end}} data-verso-scroller class="relative overflow-x-auto overflow-y-hidden [&_td:first-of-type]:pl-2.75 [&_th:first-of-type]:pl-2.75 [&_td:last-of-type]:pr-4 [&_th:last-of-type]:pr-4 verso-scroll-edge">
+{{/* Among a form's fields (InForm) a set is a row's answer: its first and
+     last words keep to the row's gutters, where the question and the set's
+     add stand, since it draws no tint under the pointer for words to sit
+     off. */}}
+<div data-verso-listing{{if .List}} data-verso-list{{end}}{{if .InForm}} data-verso-in-form{{end}}>
+<div{{if .Live}} data-verso-live-table{{end}} data-verso-scroller class="relative overflow-x-auto overflow-y-hidden {{if .InForm}}[&_td:first-of-type]:pl-0 [&_td:last-of-type]:pr-0{{else}}[&_td:first-of-type]:pl-2.75 [&_th:first-of-type]:pl-2.75 [&_td:last-of-type]:pr-4 [&_th:last-of-type]:pr-4{{end}} verso-scroll-edge">
   {{if .Live}}<p data-verso-inventory-stale role="status" hidden class="mb-4 text-sm text-marigold-deep">{{t "Live status could not be refreshed. Retrying…"}}</p>{{end}}
   {{if .Title}}
   {{/* the header band: a top row aligned to the table's own edges (flush

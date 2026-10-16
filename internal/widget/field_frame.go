@@ -46,6 +46,9 @@ type fieldFrame struct {
 	// a control the answer column cannot hold. Each widget decides it, since
 	// each knows its control.
 	Wide bool
+	// Act is an act on the whole answer (a set's add), standing on the
+	// question's line at the row's end, at every width.
+	Act template.HTML
 }
 
 // answerColumn is the answer column's width in pixels (--spacing-answer,

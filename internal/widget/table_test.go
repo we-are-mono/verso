@@ -1912,3 +1912,90 @@ func TestAStateWithSomewhereToReadIsALink(t *testing.T) {
 		}
 	}
 }
+
+// ruleFiles is a set of files as the SDK lists them: the Files band heading
+// the first file, its add opening the editor in a panel, a row per file.
+func ruleFiles(paths ...string) *Table {
+	t := &Table{Columns: []TableColumn{{Kind: "path"}, {Kind: "count"}, {Kind: "actions"}}, EmptyText: "No rule files"}
+	for _, p := range paths {
+		t.Rows = append(t.Rows, TableRow{ID: p, Cells: []TableCell{
+			{Text: p, Sub: "/etc/nftables.d/"}, {Text: "2", Sub: "lines"},
+			{Actions: []TableRowAct{{Icon: "square-pen", Title: "Edit", Href: "/plugins/firewall/settings/files/" + p}}},
+		}})
+	}
+	if len(t.Rows) == 0 {
+		t.Rows = []TableRow{{}}
+	}
+	t.Rows[0].Group = &TableGroup{Label: "Files", AddLabel: "Add file", AddText: "Add file", AddHref: "/plugins/firewall/settings/files/new", AddPanel: true}
+	return t
+}
+
+// TestATableAmongFieldsIsALedgerRow: a table standing among a form's fields
+// is one row of the ledger (form-fields): its group's name is the question,
+// its add stands on the question's line at the row's end, and its rows are a
+// wide answer under them, a line under the head and between rows, with no
+// band and no fill. A section inside the form keeps the form's word.
+func TestATableAmongFieldsIsALedgerRow(t *testing.T) {
+	for name, form := range map[string]*Form{
+		"form":    {Fields: Widgets{&Field{Name: "a", Label: "A"}, ruleFiles("10-a.nft", "20-b.nft")}},
+		"section": {Fields: Widgets{&Section{Title: "Custom rules", Children: Widgets{ruleFiles("10-a.nft", "20-b.nft")}}}},
+	} {
+		got := render(t, newRenderer(t), form)
+		table := strings.Index(got, "data-verso-listing")
+		if table < 0 {
+			t.Fatalf("%s: no listing:\n%s", name, got)
+		}
+		row := strings.LastIndex(got[:table], `class="verso-field-row`)
+		if row < 0 {
+			t.Fatalf("%s: the table is not a row of the ledger:\n%s", name, got)
+		}
+		question, act, answer := strings.Index(got[row:], "verso-field-question"), strings.Index(got[row:], "verso-field-act"), strings.Index(got[row:], "verso-field-answer")
+		files := strings.Index(got[row:], ">Files<")
+		if question < 0 || files < question || act < files || answer < act || row+answer > table {
+			t.Errorf("%s: the table is not its group's question, its act and its answer:\n%s", name, got)
+		}
+		if act > 0 && answer > act && !strings.Contains(got[row+act:row+answer], `href="/plugins/firewall/settings/files/new"`) {
+			t.Errorf("%s: the add does not stand on the question's line:\n%s", name, got)
+		}
+		for _, want := range []string{"verso-field-wide", "data-verso-in-form", ">10-a.nft<", ">20-b.nft<"} {
+			if !strings.Contains(got, want) {
+				t.Errorf("%s: missing %q:\n%s", name, want, got)
+			}
+		}
+		for _, bad := range []string{"verso-table-group", "bg-quiet", "[&_td:first-of-type]:pl-2.75"} {
+			if strings.Contains(got[table:], bad) {
+				t.Errorf("%s: a table among fields draws %q:\n%s", name, bad, got)
+			}
+		}
+	}
+}
+
+// TestATableOutsideAFormKeepsItsBand: the same table on a page is a listing
+// as it always was, its group a band over its rows.
+func TestATableOutsideAFormKeepsItsBand(t *testing.T) {
+	got := render(t, newRenderer(t), &Section{Title: "Custom rules", Children: Widgets{ruleFiles("10-a.nft")}})
+	for _, want := range []string{"verso-table-group", ">Files<", "bg-quiet"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("a listing outside a form lost %q:\n%s", want, got)
+		}
+	}
+	for _, bad := range []string{"data-verso-in-form", "verso-field-row"} {
+		if strings.Contains(got, bad) {
+			t.Errorf("a listing outside a form is not a ledger row (%q):\n%s", bad, got)
+		}
+	}
+}
+
+// TestATableAmongFieldsWithNothingInIt: with no files the question and its
+// add still stand, and the set says it is empty where its rows would be.
+func TestATableAmongFieldsWithNothingInIt(t *testing.T) {
+	got := render(t, newRenderer(t), &Form{Fields: Widgets{ruleFiles()}})
+	for _, want := range []string{"verso-field-act", ">Files<", "No rule files"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("an empty table among fields lost %q:\n%s", want, got)
+		}
+	}
+	if strings.Contains(got, "verso-table-group") {
+		t.Errorf("an empty table among fields still draws its band:\n%s", got)
+	}
+}

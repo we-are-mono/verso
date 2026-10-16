@@ -507,6 +507,45 @@ func TestAFactsRowsKeepTheLedgersStep(t *testing.T) {
 	}
 }
 
+// TestATableAmongFieldsKeepsItsActOnTheLine: a set among a form's fields is a
+// row whose act stands on the question's line at the row's end at every
+// width, the row's two columns the question and the act; its rows start on a
+// line 8px under the question's words, and the last draws no line of its own
+// over the hairline between questions (form-fields).
+func TestATableAmongFieldsKeepsItsActOnTheLine(t *testing.T) {
+	raw, err := os.ReadFile("assets/forms.css")
+	if err != nil {
+		t.Fatal(err)
+	}
+	css := string(raw)
+	ledger := ".verso-field-ledger:has(> .verso-field-act) {"
+	if n := strings.Count(css, ledger); n != 2 {
+		t.Errorf("an act's ledger must hold its columns wide and stacked, got %d rules", n)
+	}
+	if !strings.Contains(cssBlock(t, css, ledger), "grid-template-columns: minmax(0, 1fr) auto;") {
+		t.Error("an act's ledger is not the question and the act")
+	}
+	for head, want := range map[string]string{
+		".verso-field-act {":                                "grid-row: 1;",
+		".verso-field-answer > [data-verso-in-form] {":      "border-top: 1px solid var(--color-rule);",
+		"[data-verso-in-form] tbody > tr:last-child > td {": "border-bottom-color: transparent;",
+	} {
+		if !strings.Contains(cssBlock(t, css, head), want) {
+			t.Errorf("%s wants %s", head, want)
+		}
+	}
+	set := cssBlock(t, css, ".verso-field-answer > [data-verso-in-form] {")
+	if !strings.Contains(set, "margin-top: calc(var(--spacing) * 1.75);") {
+		t.Error("a set's first line does not stand 8px under its question's words")
+	}
+	if !strings.Contains(set, "margin-bottom: calc(var(--spacing) * -2.25);") {
+		t.Error("a set's last row keeps the 9px under its words, so the next question leaves the grid")
+	}
+	if !strings.Contains(cssBlock(t, css, ".verso-field-act ~ .verso-field-answer > [data-verso-slot] {"), "margin-top: calc(var(--spacing) * 2);") {
+		t.Error("an empty set's slot does not stand 8px under its question")
+	}
+}
+
 // TestASwitchShowsTheWordForItsState: a form switch holds both words and the
 // stylesheet shows the one its box is in, with no script (form-fields).
 func TestASwitchShowsTheWordForItsState(t *testing.T) {
