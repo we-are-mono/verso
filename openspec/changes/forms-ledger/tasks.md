@@ -53,7 +53,7 @@ Every task ends green under `make lint` and `make test`; a task that touches a t
 ## 7. The card header's seam
 
 - [x] 7.1 Write the tests first: a page card's header and an Overview card's header draw their bottom hairline in `--color-rule-strong`, and field rows in `--color-rule`; then change `sections.css` and the Overview card template and verify on Firewall settings and the Overview in the dev container
-- [ ] 7.2 Update DESIGN.md's card anatomy for the seam in the frame's ink; verify `impeccable context` loads it
+- [x] 7.2 Update DESIGN.md's card anatomy for the seam in the frame's ink; verify `impeccable context` loads it
 
 ## 8. Integration
 
