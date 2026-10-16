@@ -92,7 +92,8 @@ func (s *Server) handlePending(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "render error", http.StatusInternalServerError)
 		return
 	}
-	s.renderPage(w, r, http.StatusOK, hdr, "", nil, template.HTML(body.String())) //nolint:gosec // rendered by the shell's own templates
+	// A page of listings, as System › Changes is: the wide column.
+	s.renderPage(w, r, http.StatusOK, hdr, "wide", nil, template.HTML(body.String())) //nolint:gosec // rendered by the shell's own templates
 }
 
 // whenYouApply is the card that says what an apply does: the warning where a
@@ -261,7 +262,7 @@ func (s *Server) renderPendingEmpty(w http.ResponseWriter, r *http.Request, end 
 		http.Error(w, "render error", http.StatusInternalServerError)
 		return
 	}
-	s.renderPage(w, r, http.StatusOK, pageHeader{Heading: heading, Tone: "neutral"}, "", nil, template.HTML(body.String())) //nolint:gosec // rendered by the shell's own templates
+	s.renderPage(w, r, http.StatusOK, pageHeader{Heading: heading, Tone: "neutral"}, "wide", nil, template.HTML(body.String())) //nolint:gosec // rendered by the shell's own templates
 }
 
 // pendingTemplate executes one of the page's own parts.

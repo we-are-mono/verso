@@ -105,6 +105,20 @@ func TestPendingPageHeadsTheStage(t *testing.T) {
 	}
 }
 
+// TestPendingPageTakesTheListingsColumn: the page lists changes as System ›
+// Changes does, so its cards stand on the wide column every page of listings
+// takes, with or without changes, never a width of their own.
+func TestPendingPageTakesTheListingsColumn(t *testing.T) {
+	for name, s := range map[string]*Server{
+		"pending": pendingServer(t, fakeBackend{}),
+		"clean":   pendingServer(t, fakeBackend{changes: map[string][][]string{}}),
+	} {
+		if body := get(t, s, pendingPath).Body.String(); !strings.Contains(body, `data-verso-column class="max-w-column-6xl`) {
+			t.Errorf("%s: the page does not stand on the listings' wide column", name)
+		}
+	}
+}
+
 // TestPendingRowsSayWhatAndWhen: each row reads as the Changes page's rows
 // do, says how long ago it was staged, and offers its three acts: its page at
 // its anchor, its undo, and its config lines.
