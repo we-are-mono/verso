@@ -45,12 +45,16 @@
         step = roundStep(need / per / 4);
       }
       var figures = AXIS.map(function (f) { return figure(4 * step * f); });
-      var labels = figures.map(function (f, i) { return f + (i === 0 ? " " + unit : ""); });
+      var labels = figures.map(function (f, i) { return f + (i === 0 ? SPACE + unit : ""); });
       // A chart writes its figures bare and its unit once over its scale.
       return { top: 4 * step * per, labels: labels, figures: figures, unit: unit };
     }
     return { figure: figure, rate: rate, chartScale: chartScale };
   }
+
+  // What stands between a figure and its unit: a narrow no-break space, as
+  // the shell writes it (units.Space).
+  var SPACE = "\u{202f}";
 
   // The steps a scale counts in, times a power of ten; a step must be whole
   // tenths, since a figure keeps one decimal.
@@ -66,5 +70,5 @@
     }
   }
 
-  root.versoUnits = { numbers: numbers };
+  root.versoUnits = { numbers: numbers, space: SPACE };
 })(window);

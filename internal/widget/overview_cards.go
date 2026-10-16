@@ -372,7 +372,11 @@ func (o *Overview) resourcesHead(tr func(string) string) cardHead {
 	rank := map[string]int{"warning": 1, "danger": 2}
 	for _, m := range o.SysMetrics {
 		if m.Name == "sys-memory" {
-			h.Summary = strings.TrimSpace(m.Label + " " + m.Value + " " + m.Unit)
+			h.Summary = m.Label + " " + m.Value
+			if m.Unit != "" {
+				h.Summary += units.Space + m.Unit
+			}
+			h.Summary = strings.TrimSpace(h.Summary)
 		}
 		if rank[m.Band] > rank[h.Tone] {
 			h.Tone, h.Status = m.Band, fmt.Sprintf(tr("%s is high"), m.Label)

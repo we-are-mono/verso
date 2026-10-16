@@ -330,11 +330,11 @@ func packageWebsite(href string) *widget.Link {
 func humanSize(b int64) string {
 	switch {
 	case b >= 1<<20:
-		return fmt.Sprintf("%.1f MiB", float64(b)/(1<<20))
+		return fmt.Sprintf("%.1f"+units.Space+"MiB", float64(b)/(1<<20))
 	case b >= 1<<10:
-		return fmt.Sprintf("%.0f KiB", float64(b)/(1<<10))
+		return fmt.Sprintf("%.0f"+units.Space+"KiB", float64(b)/(1<<10))
 	default:
-		return fmt.Sprintf("%d B", b)
+		return fmt.Sprintf("%d"+units.Space+"B", b)
 	}
 }
 

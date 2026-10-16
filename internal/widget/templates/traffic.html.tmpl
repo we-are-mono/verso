@@ -10,7 +10,7 @@
 <section aria-label="{{.Label}}" class="verso-traffic"{{if .ID}} id="{{.ID}}"{{end}}{{if .Live}} data-verso-live-chart="{{.Live}}" data-verso-live-seed="{{.Seed}}"{{end}}>
   <div data-verso-live-lane="down">{{.Down}}</div>
   <div class="mt-6" data-verso-live-lane="up">{{.Up}}</div>
-  {{if .Latency}}<p class="mt-2 flex items-baseline gap-2 text-sm leading-6"><span class="text-meta">{{ t "Gateway" }}</span><span class="font-medium text-ink tabular-nums">{{.Latency}} ms</span><span class="text-meta">{{ t "on average" }}</span></p>{{end}}
+  {{if .Latency}}<p class="mt-2 flex items-baseline gap-2 text-sm leading-6"><span class="text-meta">{{ t "Gateway" }}</span><span class="font-medium text-ink tabular-nums">{{.Latency}}&#x202F;ms</span><span class="text-meta">{{ t "on average" }}</span></p>{{end}}
 </section>
 
 {{/* traffic.window: a traffic graph's window, the compact dropdown that

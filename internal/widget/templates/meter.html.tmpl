@@ -42,7 +42,7 @@
   {{end}}
   <span class="flex items-center justify-end gap-2 tabular-nums">
     <span class="size-1.5 shrink-0 rounded-[1px] {{if .NoTrack}}bg-glyph{{else if eq .Tone "danger"}}bg-crimson{{else if eq .Tone "warning"}}bg-marigold{{else}}bg-green{{end}}"></span>
-    <span class="text-base leading-6 font-semibold text-ink"><span data-verso-meter-value>{{.Value}}</span>{{if .Unit}} <span class="font-medium text-meta" data-verso-meter-unit>{{.Unit}}</span>{{end}}</span>
+    <span class="text-base leading-6 font-semibold text-ink"><span data-verso-meter-value>{{.Value}}</span>{{if .Unit}}&#x202F;<span class="font-medium text-meta" data-verso-meter-unit>{{.Unit}}</span>{{end}}</span>
   </span>
 </div>
 {{else}}

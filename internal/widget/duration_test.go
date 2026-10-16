@@ -13,11 +13,12 @@ import (
 var writtenSpan = written("52", "d", "8", "h")
 
 // written is how render() shows a span of the given figures and units, in
-// pairs: written("2", "h", "14", "min").
+// pairs: written("2", "h", "14", "min"). Each figure meets its unit across a
+// narrow no-break space; the parts stand a normal space apart.
 func written(pairs ...string) string {
 	words := make([]string, 0, len(pairs)/2)
 	for i := 0; i+1 < len(pairs); i += 2 {
-		words = append(words, pairs[i]+" "+pairs[i+1])
+		words = append(words, pairs[i]+"\U0000202f"+pairs[i+1])
 	}
 	return ">" + strings.Join(words, " ") + "<"
 }

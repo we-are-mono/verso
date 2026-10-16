@@ -138,7 +138,7 @@ func TestRenderDevicesUsage(t *testing.T) {
 		">38 Mb/s<", ">1.1 Mb/s<", ">212 GiB<", ">41 GiB<",
 		`data-verso-ink="danger"`,
 		// The legend says what each ink stands for, in the ink itself.
-		">light<", ">under 10 Mb/s<", ">medium<", ">10 to 100 Mb/s<", ">heavy<", ">100 Mb/s and over<",
+		">light<", ">under 10\U0000202fMb/s<", ">medium<", ">10 to 100\U0000202fMb/s<", ">heavy<", ">100\U0000202fMb/s and over<",
 		"text-green-deep", "text-marigold-deep", "text-crimson-deep",
 	} {
 		if !strings.Contains(got, want) {

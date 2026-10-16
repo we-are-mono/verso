@@ -92,9 +92,9 @@ func UsageNowCell(u DeviceUsage) TableCell {
 // the rates that bound it: the reader learns the scale where the colours are.
 func usageLegend() []TableLegend {
 	return []TableLegend{
-		{Variant: "success", Ink: true, Label: "light", Detail: "under 10 Mb/s"},
-		{Variant: "warning", Ink: true, Label: "medium", Detail: "10 to 100 Mb/s"},
-		{Variant: "danger", Ink: true, Label: "heavy", Detail: "100 Mb/s and over"},
+		{Variant: "success", Ink: true, Label: "light", Detail: "under 10\U0000202fMb/s"},
+		{Variant: "warning", Ink: true, Label: "medium", Detail: "10 to 100\U0000202fMb/s"},
+		{Variant: "danger", Ink: true, Label: "heavy", Detail: "100\U0000202fMb/s and over"},
 	}
 }
 

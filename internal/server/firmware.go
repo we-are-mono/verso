@@ -105,8 +105,8 @@ func (s *Server) firmwareModal(tr func(string) string, state firmwareState, boar
 			Name: "firmware_image", Kind: "file", Accept: ".bin,application/octet-stream",
 			Prompt: "Drop a sysupgrade image here", Required: true,
 			Help: boardSentence(tr,
-				"A sysupgrade image built for this device · .bin, up to 128 MiB",
-				"A sysupgrade image built for %s · .bin, up to 128 MiB", board.Model),
+				"A sysupgrade image built for this device · .bin, up to 128\U0000202fMiB",
+				"A sysupgrade image built for %s · .bin, up to 128\U0000202fMiB", board.Model),
 			HelpVerbatim: true,
 		}},
 	})

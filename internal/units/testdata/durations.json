@@ -1,21 +1,21 @@
 {
-  "_": "How every stretch of time the shell shows is written, in seconds. A duration is its two largest units, the second left out when it is nothing; since is the one largest, for a time ago. units_test.go reads this file.",
+  "_": "How every stretch of time the shell shows is written, in seconds. A duration is its two largest units, the second left out when it is nothing; since is the one largest, for a time ago. Each figure stands a narrow no-break space (U+202F) before its unit. units_test.go reads this file.",
   "durations": [
-    {"seconds": -5, "duration": "0 s", "since": "0 s"},
-    {"seconds": 0, "duration": "0 s", "since": "0 s"},
-    {"seconds": 45, "duration": "45 s", "since": "45 s"},
-    {"seconds": 59, "duration": "59 s", "since": "59 s"},
-    {"seconds": 60, "duration": "1 min", "since": "1 min"},
-    {"seconds": 119, "duration": "1 min", "since": "1 min"},
-    {"seconds": 754, "duration": "12 min", "since": "12 min"},
-    {"seconds": 3599, "duration": "59 min", "since": "59 min"},
-    {"seconds": 3600, "duration": "1 h", "since": "1 h"},
-    {"seconds": 3659, "duration": "1 h", "since": "1 h"},
-    {"seconds": 8040, "duration": "2 h 14 min", "since": "2 h"},
-    {"seconds": 86399, "duration": "23 h 59 min", "since": "23 h"},
-    {"seconds": 86400, "duration": "1 d", "since": "1 d"},
-    {"seconds": 90000, "duration": "1 d 1 h", "since": "1 d"},
-    {"seconds": 4523580, "duration": "52 d 8 h", "since": "52 d"},
-    {"seconds": 31536000, "duration": "365 d", "since": "365 d"}
+    {"seconds": -5, "duration": "0 s", "since": "0 s"},
+    {"seconds": 0, "duration": "0 s", "since": "0 s"},
+    {"seconds": 45, "duration": "45 s", "since": "45 s"},
+    {"seconds": 59, "duration": "59 s", "since": "59 s"},
+    {"seconds": 60, "duration": "1 min", "since": "1 min"},
+    {"seconds": 119, "duration": "1 min", "since": "1 min"},
+    {"seconds": 754, "duration": "12 min", "since": "12 min"},
+    {"seconds": 3599, "duration": "59 min", "since": "59 min"},
+    {"seconds": 3600, "duration": "1 h", "since": "1 h"},
+    {"seconds": 3659, "duration": "1 h", "since": "1 h"},
+    {"seconds": 8040, "duration": "2 h 14 min", "since": "2 h"},
+    {"seconds": 86399, "duration": "23 h 59 min", "since": "23 h"},
+    {"seconds": 86400, "duration": "1 d", "since": "1 d"},
+    {"seconds": 90000, "duration": "1 d 1 h", "since": "1 d"},
+    {"seconds": 4523580, "duration": "52 d 8 h", "since": "52 d"},
+    {"seconds": 31536000, "duration": "365 d", "since": "365 d"}
   ]
 }

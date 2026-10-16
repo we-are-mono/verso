@@ -25,7 +25,7 @@ func TestMaintenanceFirmwarePickerMatchesSysupgradeImages(t *testing.T) {
 		// the dialog says the trigger's words, where it is, and what fits
 		"Upload a custom image…", ">Upload a custom image</h2>", "Drop a sysupgrade image here",
 		`data-state="current" aria-current="step"`, ">Choose</span>", ">Verify</span>", ">Install</span>",
-		"A sysupgrade image built for Mono Gateway DK · .bin, up to 128 MiB",
+		"A sysupgrade image built for Mono Gateway DK · .bin, up to 128\U0000202fMiB",
 		`accept=".bin,application/octet-stream"`, `action="/system/maintenance/firmware"`,
 		`data-verso-autosubmit`,
 	} {

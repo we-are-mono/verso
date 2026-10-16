@@ -74,9 +74,9 @@ func TestServicesTable(t *testing.T) {
 		`value="stop:dnsmasq"`,           // live stop leaves boot policy alone
 		">dnsmasq</span>",                // …and its providing package in the Package column
 		`value="stop:verso-plugin-demo"`, // the plugin's live action
-		"6 h 14 min",                     // process age belongs with live state
+		"6\U0000202fh 14\U0000202fmin",   // process age belongs with live state
 		">PID</th>",                      // process facts share one compact column
-		"2.3 MiB",                        // runtime keeps process identity and aggregate RSS
+		"2.3\U0000202fMiB",               // runtime keeps process identity and aggregate RSS
 		"tabular-nums text-meta",         // runtime matches the landing-page RX/TX ink
 		">Memory</th>",                   // immediate restart sits before the switch
 		`aria-label="Restart dnsmasq"`,   // the icon-only action names the service it restarts

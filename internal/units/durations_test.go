@@ -48,13 +48,13 @@ func TestAnAxisCountsInItsStepsUnit(t *testing.T) {
 		seconds, step int64
 		want          string
 	}{
-		{86400, 21600, "24 h"},      // a day in quarters of 6 h
-		{64800, 21600, "18 h"},      // its first inner quarter
-		{604800, 151200, "7 d"},     // a week in quarters of 1 d 18 h
-		{453600, 151200, "5 d 6 h"}, // its first inner quarter
-		{60, 15, "60 s"},            // a minute in quarters of 15 s
-		{2592000, 648000, "30 d"},   // a month
-		{1944000, 648000, "22 d 12 h"},
+		{86400, 21600, "24\U0000202fh"},               // a day in quarters of 6 h
+		{64800, 21600, "18\U0000202fh"},               // its first inner quarter
+		{604800, 151200, "7\U0000202fd"},              // a week in quarters of 1 d 18 h
+		{453600, 151200, "5\U0000202fd 6\U0000202fh"}, // its first inner quarter
+		{60, 15, "60\U0000202fs"},                     // a minute in quarters of 15 s
+		{2592000, 648000, "30\U0000202fd"},            // a month
+		{1944000, 648000, "22\U0000202fd 12\U0000202fh"},
 	} {
 		if got := DurationWithin(tc.seconds, tc.step); got != tc.want {
 			t.Errorf("DurationWithin(%d, %d) = %q, want %q", tc.seconds, tc.step, got, tc.want)
@@ -65,7 +65,7 @@ func TestAnAxisCountsInItsStepsUnit(t *testing.T) {
 // A time ago is translated as a whole pattern, so a language puts its word for
 // ago where it belongs.
 func TestAgoIsTheLanguagesPattern(t *testing.T) {
-	if got := For(nil).Ago(8040); got != "2 h ago" {
+	if got := For(nil).Ago(8040); got != "2\U0000202fh ago" {
 		t.Errorf("English ago = %q", got)
 	}
 	slovenian := func(s string) string {
@@ -74,7 +74,7 @@ func TestAgoIsTheLanguagesPattern(t *testing.T) {
 		}
 		return s
 	}
-	if got := For(slovenian).Ago(754); got != "pred 12 min" {
+	if got := For(slovenian).Ago(754); got != "pred 12\U0000202fmin" {
 		t.Errorf("Slovenian ago = %q", got)
 	}
 	for _, seconds := range []int64{-3, 0, 59} {

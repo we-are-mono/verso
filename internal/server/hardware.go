@@ -199,7 +199,7 @@ func processorFact(tr func(string) string, nums units.Numbers, in hardwareInput)
 		parts = append(parts, fmt.Sprintf(tr("%d cores"), n))
 	}
 	if khz := in.facts.MaxKHz; khz > 0 {
-		parts = append(parts, nums.Figure(float64(khz)/1e6)+" GHz")
+		parts = append(parts, nums.Figure(float64(khz)/1e6)+units.Space+"GHz")
 	}
 	return strings.Join(parts, " · ")
 }
@@ -263,7 +263,7 @@ func tempMeter(t *sensors.TempReading) widget.TableCell {
 	if t.Fault {
 		return widget.TableCell{Text: "—", Muted: true}
 	}
-	cell := widget.TableCell{Text: celsiusOne(t.MilliC) + " °C", Verbatim: true}
+	cell := widget.TableCell{Text: celsiusOne(t.MilliC) + units.Space + "°C", Verbatim: true}
 	ceiling := t.Crit
 	if ceiling == 0 {
 		ceiling = t.Warn
@@ -352,9 +352,9 @@ func coolingCard(fans []sensors.FanReading) widget.Widget {
 		f := &fans[i]
 		speed, duty := "—", ""
 		if f.State == "running" {
-			speed = rpmGroup(f.RPM) + " rpm"
+			speed = rpmGroup(f.RPM) + units.Space + "rpm"
 			if f.HasDuty {
-				duty = fmt.Sprintf("%d%%", f.Duty)
+				duty = fmt.Sprintf("%d"+units.Space+"%%", f.Duty)
 			}
 		}
 		rows = append(rows, widget.TableRow{Cells: []widget.TableCell{
@@ -422,12 +422,12 @@ func fibreFacts(f *sensors.FiberModule) widget.Widget {
 	if f.HasRx {
 		items = append(items, widget.Property{Label: "Receive", Value: opticalPair(f.RxMicroW, f.RxHasLight), Mono: true})
 	}
-	items = append(items, widget.Property{Label: "Temperature", Value: celsiusOne(f.TempMilliC) + " °C", Mono: true})
+	items = append(items, widget.Property{Label: "Temperature", Value: celsiusOne(f.TempMilliC) + units.Space + "°C", Mono: true})
 	if f.HasVcc {
-		items = append(items, widget.Property{Label: "Supply", Value: fmt.Sprintf("%.2f V", float64(f.VccMilliV)/1000), Mono: true})
+		items = append(items, widget.Property{Label: "Supply", Value: fmt.Sprintf("%.2f"+units.Space+"V", float64(f.VccMilliV)/1000), Mono: true})
 	}
 	if f.HasBias {
-		items = append(items, widget.Property{Label: "Laser bias", Value: fmt.Sprintf("%d mA", f.BiasMilliA), Mono: true})
+		items = append(items, widget.Property{Label: "Laser bias", Value: fmt.Sprintf("%d"+units.Space+"mA", f.BiasMilliA), Mono: true})
 	}
 	return &widget.Properties{
 		Align: "left",
@@ -442,19 +442,19 @@ func voltage(p sensors.PowerReading) string {
 	if !p.HasV {
 		return ""
 	}
-	return fmt.Sprintf("%.2f V", float64(p.MilliV)/1000)
+	return fmt.Sprintf("%.2f"+units.Space+"V", float64(p.MilliV)/1000)
 }
 
 func current(p sensors.PowerReading) string {
 	if !p.HasA {
 		return ""
 	}
-	return fmt.Sprintf("%.2f A", float64(p.MilliA)/1000)
+	return fmt.Sprintf("%.2f"+units.Space+"A", float64(p.MilliA)/1000)
 }
 
 // celsiusRound renders a milli-°C as a whole degree ("85 °C"); celsiusOne keeps
 // one decimal ("47.0").
-func celsiusRound(milliC int) string { return fmt.Sprintf("%d °C", (milliC+500)/1000) }
+func celsiusRound(milliC int) string { return fmt.Sprintf("%d"+units.Space+"°C", (milliC+500)/1000) }
 
 // celsiusWhole is the rounded degrees with no unit, for a figure that carries
 // its "°C" beside it.
@@ -466,18 +466,18 @@ func celsiusOne(milliC int) string { return fmt.Sprintf("%.1f", float64(milliC)/
 // milliwatts for the sub-watt channels a GPU reports, watts for a rail.
 func powerText(microW int64) string {
 	if microW != 0 && microW > -1_000_000 && microW < 1_000_000 {
-		return fmt.Sprintf("%d mW", microW/1000)
+		return fmt.Sprintf("%d"+units.Space+"mW", microW/1000)
 	}
-	return fmt.Sprintf("%.1f W", float64(microW)/1e6)
+	return fmt.Sprintf("%.1f"+units.Space+"W", float64(microW)/1e6)
 }
 
 // optical renders a microwatt reading the way a module reports it — plain
 // microwatts under a milliwatt, milliwatts above.
 func optical(microW int64) string {
 	if microW >= 1000 {
-		return fmt.Sprintf("%.2f mW", float64(microW)/1000)
+		return fmt.Sprintf("%.2f"+units.Space+"mW", float64(microW)/1000)
 	}
-	return fmt.Sprintf("%d µW", microW)
+	return fmt.Sprintf("%d"+units.Space+"µW", microW)
 }
 
 // opticalPair renders an optical power as dBm (the reading engineers read) with the
@@ -493,9 +493,9 @@ func opticalPair(microW int64, hasLight bool) string {
 // reported as a floor, not −∞.
 func dbm(microW int64) string {
 	if microW <= 0 {
-		return "< −40 dBm"
+		return "< −40" + units.Space + "dBm"
 	}
-	return fmt.Sprintf("%.1f dBm", 10*math.Log10(float64(microW)/1000))
+	return fmt.Sprintf("%.1f"+units.Space+"dBm", 10*math.Log10(float64(microW)/1000))
 }
 
 func rpmGroup(rpm int) string {

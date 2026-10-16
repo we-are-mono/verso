@@ -79,7 +79,7 @@ func (s *Server) systemMeters(ctx context.Context, sid string, tr func(string) s
 		pct := int(used * 100 / si.Memory.Total)
 		out = append(out, meterReading{
 			Name: "sys-memory", Label: tr("Memory"), Value: strconv.Itoa(pct), Unit: "%",
-			Fill: clampPct(pct), Detail: fmt.Sprintf(tr("%s of %s GiB"), gb(used), gb(si.Memory.Total)), Band: systemMeterBand(pct, 75, 90),
+			Fill: clampPct(pct), Detail: fmt.Sprintf(tr("%s of %s\U0000202fGiB"), gb(used), gb(si.Memory.Total)), Band: systemMeterBand(pct, 75, 90),
 		})
 	}
 
@@ -89,7 +89,7 @@ func (s *Server) systemMeters(ctx context.Context, sid string, tr func(string) s
 		pct := int(st.Used * 100 / total)
 		out = append(out, meterReading{
 			Name: "sys-storage", Label: tr("Storage"), Value: strconv.Itoa(pct), Unit: "%",
-			Fill: clampPct(pct), Detail: fmt.Sprintf(tr("%s of %s GiB"), gb(st.Used), gb(total)), Band: systemMeterBand(pct, 80, 90),
+			Fill: clampPct(pct), Detail: fmt.Sprintf(tr("%s of %s\U0000202fGiB"), gb(st.Used), gb(total)), Band: systemMeterBand(pct, 80, 90),
 		})
 	}
 	return out

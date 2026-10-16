@@ -51,7 +51,7 @@ func TestDevicesRosterSaysWhatEachDeviceMoves(t *testing.T) {
 	s, clock := usageServer(t, &received)
 
 	body := get(t, s, "/devices").Body.String()
-	for _, want := range []string{">Now<", ">This month<", ">3.5 GiB<", ">512 MiB<"} {
+	for _, want := range []string{">Now<", ">This month<", ">3.5\U0000202fGiB<", ">512\U0000202fMiB<"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("usage roster missing %q", want)
 		}
@@ -59,14 +59,14 @@ func TestDevicesRosterSaysWhatEachDeviceMoves(t *testing.T) {
 	if strings.Contains(body, ">MAC address<") {
 		t.Error("with usage on, the MAC gives its column to usage")
 	}
-	if strings.Contains(body, "data-verso-figure-text>8 Mb/s<") {
+	if strings.Contains(body, "data-verso-figure-text>8\U0000202fMb/s<") {
 		t.Error("one reading is no rate")
 	}
 
 	*clock = clock.Add(2 * time.Second)
 	received += 2_000_000 // 16 Mbit over two seconds
 	body = get(t, s, "/devices").Body.String()
-	if !strings.Contains(body, "data-verso-figure-text>8 Mb/s</span>") {
+	if !strings.Contains(body, "data-verso-figure-text>8\U0000202fMb/s</span>") {
 		t.Errorf("the second reading states the rate: 8 Mb/s down\n%s", body[strings.Index(body, "usage-now"):][:600])
 	}
 	// 8.8 Mbit/s both ways is an HD film or a call: light, inked green.
@@ -97,9 +97,9 @@ func TestDevicePanelDetailsSayWhatTheDeviceMoves(t *testing.T) {
 		">Download<", ">Upload<", `data-chart-place="compact"`, `<svg class="verso-chart`,
 		">Downloaded<", ">Uploaded<",
 		">Today<", ">Last 7 days<", ">This month<", ">Last month<",
-		">2 GiB<", ">512 MiB<", // today down and up
-		">3 GiB<", // this month's download: today and the 1st
-		">9 GiB<", // last month's download
+		">2\U0000202fGiB<", ">512\U0000202fMiB<", // today down and up
+		">3\U0000202fGiB<", // this month's download: today and the 1st
+		">9\U0000202fGiB<", // last month's download
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("Usage tab missing %q", want)
@@ -117,12 +117,12 @@ func TestDevicePanelDetailsSayWhatTheDeviceMoves(t *testing.T) {
 func TestAReadWithoutTodayKeepsTheDaysHeld(t *testing.T) {
 	var received uint64
 	s, _ := usageServer(t, &received)
-	if body := get(t, s, "/devices").Body.String(); !strings.Contains(body, ">3.5 GiB<") {
+	if body := get(t, s, "/devices").Body.String(); !strings.Contains(body, ">3.5\U0000202fGiB<") {
 		t.Fatal("the first read should give the month")
 	}
 	days := s.backend.(fakeBackend).usageDays
 	days.Today, days.Days = "", nil
-	if body := get(t, s, "/devices").Body.String(); !strings.Contains(body, ">3.5 GiB<") {
+	if body := get(t, s, "/devices").Body.String(); !strings.Contains(body, ">3.5\U0000202fGiB<") {
 		t.Error("a read with no today must not blank the month already held")
 	}
 }
@@ -143,7 +143,7 @@ func TestUsageIsShownOnlyUnderTheReadersGrant(t *testing.T) {
 	*clock = clock.Add(2 * time.Second)
 	received += 2_000_000
 	body := get(t, s, "/devices").Body.String()
-	for _, want := range []string{">This month<", ">3.5 GiB<", ">512 MiB<", "data-verso-figure-text>8 Mb/s<"} {
+	for _, want := range []string{">This month<", ">3.5\U0000202fGiB<", ">512\U0000202fMiB<", "data-verso-figure-text>8\U0000202fMb/s<"} {
 		if !strings.Contains(body, want) {
 			t.Fatalf("root's roster missing %q", want)
 		}
@@ -161,13 +161,13 @@ func TestUsageIsShownOnlyUnderTheReadersGrant(t *testing.T) {
 	s.backend = refused
 	*clock = clock.Add(100 * time.Millisecond) // inside the sampler's gap
 	body = get(t, s, "/devices").Body.String()
-	for _, leaked := range []string{">This month<", ">3.5 GiB<", ">512 MiB<", "8 Mb/s"} {
+	for _, leaked := range []string{">This month<", ">3.5\U0000202fGiB<", ">512\U0000202fMiB<", "8\U0000202fMb/s"} {
 		if strings.Contains(body, leaked) {
 			t.Errorf("a refused session's roster shows %q", leaked)
 		}
 	}
 	panel := get(t, s, "/entity/device/42:e6:ad:ff:b7:af").Body.String()
-	for _, leaked := range []string{">Usage<", ">2 GiB<", ">3 GiB<", ">9 GiB<", "data-verso-live-chart"} {
+	for _, leaked := range []string{">Usage<", ">2\U0000202fGiB<", ">3\U0000202fGiB<", ">9\U0000202fGiB<", "data-verso-live-chart"} {
 		if strings.Contains(panel, leaked) {
 			t.Errorf("a refused session's device panel shows %q", leaked)
 		}
@@ -190,7 +190,7 @@ func TestUsageIsShownOnlyUnderTheReadersGrant(t *testing.T) {
 		t.Errorf("a session granted only the days: periods = %v, graph = %v",
 			strings.Contains(panel, ">This month<"), strings.Contains(panel, "data-verso-live-chart"))
 	}
-	if body = get(t, s, "/devices").Body.String(); strings.Contains(body, "8 Mb/s") {
+	if body = get(t, s, "/devices").Body.String(); strings.Contains(body, "8\U0000202fMb/s") {
 		t.Error("a session refused the live read is shown no rate")
 	}
 }
@@ -201,18 +201,18 @@ func TestUsageIsShownOnlyUnderTheReadersGrant(t *testing.T) {
 func TestUsageHeldStandsOnlyForAGrantedReader(t *testing.T) {
 	var received uint64
 	s, _ := usageServer(t, &received)
-	if body := get(t, s, "/devices").Body.String(); !strings.Contains(body, ">3.5 GiB<") {
+	if body := get(t, s, "/devices").Body.String(); !strings.Contains(body, ">3.5\U0000202fGiB<") {
 		t.Fatal("the first read should give the month")
 	}
 	failing := s.backend.(fakeBackend)
 	failing.usageErr = errors.New("helper unreachable")
 	s.backend = failing
-	if body := get(t, s, "/devices").Body.String(); !strings.Contains(body, ">3.5 GiB<") {
+	if body := get(t, s, "/devices").Body.String(); !strings.Contains(body, ">3.5\U0000202fGiB<") {
 		t.Error("a failed read must not blank the month already held")
 	}
 	failing.usageErr = openwrt.ErrAccessDenied
 	s.backend = failing
-	if body := get(t, s, "/devices").Body.String(); strings.Contains(body, ">3.5 GiB<") {
+	if body := get(t, s, "/devices").Body.String(); strings.Contains(body, ">3.5\U0000202fGiB<") {
 		t.Error("a read the helper refuses must not fall back to the month held")
 	}
 }
@@ -227,7 +227,7 @@ func TestUsageStreamStaysOffBetweenItsMonths(t *testing.T) {
 	get(t, s, "/devices")
 	*clock = clock.Add(2 * time.Second)
 	received += 2_000_000
-	if body := get(t, s, "/devices").Body.String(); !strings.Contains(body, "data-verso-figure-text>8 Mb/s<") {
+	if body := get(t, s, "/devices").Body.String(); !strings.Contains(body, "data-verso-figure-text>8\U0000202fMb/s<") {
 		t.Fatal("root's second page should state a rate")
 	}
 	liveOnly := s.backend.(fakeBackend)
@@ -257,8 +257,8 @@ func TestUsageSpeaksSlovenian(t *testing.T) {
 	}
 	s.SetBundle(bundle)
 	roster := getLang(t, s, "/devices", "sl")
-	for _, want := range []string{">Zdaj<", ">Ta mesec<", ">prenos<", ">nalaganje<", ">3,5 GiB<",
-		">majhna<", ">pod 10 Mb/s<", ">srednja<", ">10 do 100 Mb/s<", ">velika<", ">100 Mb/s in več<"} {
+	for _, want := range []string{">Zdaj<", ">Ta mesec<", ">prenos<", ">nalaganje<", ">3,5\U0000202fGiB<",
+		">majhna<", ">pod 10\U0000202fMb/s<", ">srednja<", ">10 do 100\U0000202fMb/s<", ">velika<", ">100\U0000202fMb/s in več<"} {
 		if !strings.Contains(roster, want) {
 			t.Errorf("Slovenian roster missing %q", want)
 		}

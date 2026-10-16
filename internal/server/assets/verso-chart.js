@@ -62,7 +62,7 @@
 
   function rateText(mbps) {
     var rate = nums.rate(mbps * 1e6);
-    return rate.value + " " + rate.unit;
+    return rate.value + window.versoUnits.space + rate.unit;
   }
 
   // lane is one plot's live state: its series (the visible minute and one

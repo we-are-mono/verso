@@ -68,7 +68,7 @@ func TestAnOutageThatEndsBeforeItIsSentIsOneMessage(t *testing.T) {
 	}
 	a.Observe(ctx, []history.Event{up("03:20:00")})
 	queued = waiting(t, store)
-	if len(queued) != 1 || queued[0].Title != "home-router: the internet was down" || queued[0].Body != "From 03:12 to 03:20 (8 min)." {
+	if len(queued) != 1 || queued[0].Title != "home-router: the internet was down" || queued[0].Body != "From 03:12 to 03:20 (8\U0000202fmin)." {
 		t.Fatalf("on coming back = %+v, want the one message rewritten", queued)
 	}
 }
@@ -83,7 +83,7 @@ func TestAnOutageAlreadyReportedIsClosedByASecondMessage(t *testing.T) {
 	}
 	a.Observe(ctx, []history.Event{up("04:17:30")})
 	queued := waiting(t, store)
-	if len(queued) != 1 || queued[0].Title != "home-router: the internet is back" || queued[0].Body != "After 1 h 5 min, down since 03:12." || queued[0].Priority != "default" {
+	if len(queued) != 1 || queued[0].Title != "home-router: the internet is back" || queued[0].Body != "After 1\U0000202fh 5\U0000202fmin, down since 03:12." || queued[0].Priority != "default" {
 		t.Fatalf("recovery = %+v", queued)
 	}
 }
@@ -104,7 +104,7 @@ func TestAFlappingLineIsOneIncident(t *testing.T) {
 	}
 	a.Observe(ctx, []history.Event{up("03:30:00")})
 	queued := waiting(t, store)
-	if len(queued) != 1 || queued[0].Body != "After 30 min, down since 03:00." {
+	if len(queued) != 1 || queued[0].Body != "After 30\U0000202fmin, down since 03:00." {
 		t.Fatalf("recovery after flapping = %+v", queued)
 	}
 	a.Observe(ctx, []history.Event{down("03:40:00")})

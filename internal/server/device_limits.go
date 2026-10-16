@@ -11,6 +11,7 @@ import (
 
 	"github.com/we-are-mono/verso/internal/deviceicon"
 	"github.com/we-are-mono/verso/internal/plugin"
+	"github.com/we-are-mono/verso/internal/units"
 	"github.com/we-are-mono/verso/internal/widget"
 )
 
@@ -123,8 +124,9 @@ func deviceLimitTip(details []plugin.EntitySummaryDetail, tr func(string) string
 		case "download", "upload":
 			rate := widget.DeviceLimitRate{Label: tr(detail.Label), Value: tr(value), Icon: detail.Kind}
 			// The device-limits plugin ships on its own, and its releases
-			// before the shell's rate spelling write "Mbit/s".
-			for _, suffix := range []string{" Mb/s", " Mbit/s"} {
+			// before the shell's rate spelling write "Mbit/s", and a full space
+			// before the unit.
+			for _, suffix := range []string{units.Space + "Mb/s", " Mb/s", " Mbit/s"} {
 				if number, ok := strings.CutSuffix(value, suffix); ok {
 					rate.Value, rate.Unit = number, "Mb/s"
 				}

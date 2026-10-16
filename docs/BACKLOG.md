@@ -71,10 +71,11 @@ own and points at the decision that governs it; the rationale lives there, not h
   (`docs/plugins.md` carries the checklist).
 - **Dashboard card order.** A reorderable set of dashboard cards, kept in the
   `verso` config (ADR-013).
-- **Narrow unit spaces.** The shell and `verso-units.js` still write a full
-  space before a unit, and none before `%`; DESIGN.md's Narrow Space Rule sets
-  U+202F after every figure (`internal/units` rates, sizes and `Span.String`,
-  the Hardware page's °C/V/A/W/rpm/dBm, the duty `%`, `testdata/durations.json`).
+- **Narrow unit spaces in the plugin repos.** wireless (MHz, dBm, `%`), vpn and
+  ddns (durations), qos (Mb/s) and dnsdhcp (lease expiry as "11h 32m") write
+  their own figures with a full space or none. A duration or rate goes to the
+  shell as `duration` or `rate`; any other unit takes U+202F (DESIGN.md's
+  Narrow Space Rule).
 
 ## Simplification
 

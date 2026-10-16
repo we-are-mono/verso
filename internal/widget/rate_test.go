@@ -33,10 +33,10 @@ func TestAPluginRateIsWrittenByTheShell(t *testing.T) {
 	props := func() Widget {
 		return &Properties{Items: []Property{{Label: "Link", Mono: true, Rate: &link}}}
 	}
-	if got := render(t, newRenderer(t), props()); !strings.Contains(got, ">2.5 Gb/s<") || strings.Contains(got, "font-mono") {
+	if got := render(t, newRenderer(t), props()); !strings.Contains(got, ">2.5\U0000202fGb/s<") || strings.Contains(got, "font-mono") {
 		t.Errorf("a property's rate = %s", got)
 	}
-	if got := renderIn(t, props(), decimalComma); !strings.Contains(got, ">2,5 Gb/s<") {
+	if got := renderIn(t, props(), decimalComma); !strings.Contains(got, ">2,5\U0000202fGb/s<") {
 		t.Errorf("a property's rate in a decimal-comma language = %s", got)
 	}
 
@@ -50,10 +50,10 @@ func TestAPluginRateIsWrittenByTheShell(t *testing.T) {
 		}
 	}
 	got := render(t, newRenderer(t), table())
-	if !strings.Contains(got, ">port · 2.5 Gb/s<") || !strings.Contains(got, ">port<") {
+	if !strings.Contains(got, ">port · 2.5\U0000202fGb/s<") || !strings.Contains(got, ">port<") {
 		t.Errorf("a cell's rate rides after its text: %s", got)
 	}
-	if got := renderIn(t, table(), decimalComma); !strings.Contains(got, ">port · 2,5 Gb/s<") {
+	if got := renderIn(t, table(), decimalComma); !strings.Contains(got, ">port · 2,5\U0000202fGb/s<") {
 		t.Errorf("a cell's rate in a decimal-comma language = %s", got)
 	}
 }
@@ -65,7 +65,7 @@ func TestADecodedRateIsBitsPerSecond(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := render(t, newRenderer(t), w); !strings.Contains(got, ">1 Gb/s<") {
+	if got := render(t, newRenderer(t), w); !strings.Contains(got, ">1\U0000202fGb/s<") {
 		t.Errorf("a decoded rate = %s", got)
 	}
 }

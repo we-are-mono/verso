@@ -347,7 +347,7 @@ func lossMarks(loss []float64, start time.Time, step time.Duration, outages []wi
 		from, to := start.Add(time.Duration(i)*step), start.Add(time.Duration(j+1)*step)
 		marks = append(marks, widget.ChartMark{
 			Kind: "loss", From: float64(i) / n, To: float64(j+1) / n,
-			Label: fmt.Sprintf(tr("Packet loss up to %d %% %s–%s"), int(math.Round(worst)), eventTime(from, now), eventTime(to, now)),
+			Label: fmt.Sprintf(tr("Packet loss up to %d\U0000202f%% %s–%s"), int(math.Round(worst)), eventTime(from, now), eventTime(to, now)),
 		})
 		i = j
 	}

@@ -117,7 +117,7 @@ func TestEventsPageListsWhatHappenedNewestFirst(t *testing.T) {
 	if status != http.StatusOK {
 		t.Fatalf("status = %d", status)
 	}
-	back := strings.Index(body, "Internet came back after 8 min")
+	back := strings.Index(body, "Internet came back after 8\U0000202fmin")
 	down := strings.Index(body, "Internet went down")
 	boot := strings.Index(body, "Router started after losing power or crashing")
 	if back < 0 || down < 0 || boot < 0 || !(back < down && down < boot) {
@@ -143,7 +143,7 @@ func TestAnEventIsSaidInWords(t *testing.T) {
 // "0 min".
 func TestAShortOutageSaysItsSeconds(t *testing.T) {
 	row := eventRow(history.Event{Kind: "wan.up", Subject: "wan0", Detail: `{"after":25}`}, time.Now(), func(s string) string { return s })
-	if got := row.Cells[2].Text; got != "Internet came back after 25 s" {
+	if got := row.Cells[2].Text; got != "Internet came back after 25\U0000202fs" {
 		t.Fatalf("event = %q", got)
 	}
 }
@@ -198,7 +198,7 @@ func TestLossMarksAreRunsOfLossyPeriods(t *testing.T) {
 	if len(got) != 2 {
 		t.Fatalf("marks = %+v, want the 11:51–11:53 run and the 11:55–11:56 run", got)
 	}
-	if want := (widget.ChartMark{Kind: "loss", From: 0.1, To: 0.3, Label: "Packet loss up to 23 % 11:51–11:53"}); got[0] != want {
+	if want := (widget.ChartMark{Kind: "loss", From: 0.1, To: 0.3, Label: "Packet loss up to 23\U0000202f% 11:51–11:53"}); got[0] != want {
 		t.Errorf("first = %+v, want %+v", got[0], want)
 	}
 	if got[1].From != 0.5 || got[1].To != 0.6 {

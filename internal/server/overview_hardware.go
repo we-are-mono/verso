@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/we-are-mono/verso/internal/sensors"
+	"github.com/we-are-mono/verso/internal/units"
 	"github.com/we-are-mono/verso/internal/widget"
 	"github.com/we-are-mono/verso/profiles"
 )
@@ -65,7 +66,7 @@ func hardwareView(inv sensors.Inventory) *widget.OverviewSensors {
 	if t := inv.CPUTemp(); t != nil {
 		v.CPU = &widget.OverviewSensor{Key: "hw-cpu", Name: t.Name, Value: "—"}
 		if !t.Fault {
-			v.CPU.Value = celsiusWhole(t.MilliC) + " °C"
+			v.CPU.Value = celsiusWhole(t.MilliC) + units.Space + "°C"
 		}
 		if tone := tempVariant(t.Level); tone == "warning" || tone == "danger" {
 			v.CPU.Tone = tone
@@ -84,7 +85,7 @@ func hardwareView(inv sensors.Inventory) *widget.OverviewSensors {
 		v.Fan = &widget.OverviewSensor{Key: "hw-fan", Name: f.Name, Value: "—"}
 		switch f.State {
 		case "running":
-			v.Fan.Value = rpmGroup(f.RPM) + " rpm"
+			v.Fan.Value = rpmGroup(f.RPM) + units.Space + "rpm"
 		case "fault":
 			v.Fan.Tone = "warning"
 		}

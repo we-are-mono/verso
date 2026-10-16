@@ -53,10 +53,10 @@ func TestTelemetryInterfaceReadings(t *testing.T) {
 		{Name: "tun0", Operstate: "unknown", History: []telemetry.Point{{}}},
 	}}, units.For(slovenian))
 	if len(readings) != 2 || readings[0].Name != "eth4" || readings[0].State != "Up" ||
-		readings[0].Variant != "success" || readings[0].RxRate != "14 Mb/s" || readings[0].TxRate != "0,1 Mb/s" {
+		readings[0].Variant != "success" || readings[0].RxRate != "14\U0000202fMb/s" || readings[0].TxRate != "0,1\U0000202fMb/s" {
 		t.Fatalf("eth4 reading = %+v", readings)
 	}
-	if readings[1].State != "Unknown" || readings[1].Variant != "neutral" || readings[1].RxRate != "0 Mb/s" {
+	if readings[1].State != "Unknown" || readings[1].Variant != "neutral" || readings[1].RxRate != "0\U0000202fMb/s" {
 		t.Fatalf("tun0 reading = %+v", readings[1])
 	}
 }

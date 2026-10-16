@@ -42,8 +42,8 @@ func TestTrafficStandsInTwoLanes(t *testing.T) {
 	}
 	down, up := trafficLanes(t, got)
 	for lane, wants := range map[string][]string{
-		down: {"verso-chart--denim", "bg-denim", ">Download<", ">38 Mb/s<", ">now<", `data-chart-place="compact"`},
-		up:   {"verso-chart--amethyst", "bg-amethyst", ">Upload<", ">1.1 Mb/s<", ">now<", "data-verso-chart-window", ">60 s<", ">15 s<"},
+		down: {"verso-chart--denim", "bg-denim", ">Download<", ">38\U0000202fMb/s<", ">now<", `data-chart-place="compact"`},
+		up:   {"verso-chart--amethyst", "bg-amethyst", ">Upload<", ">1.1\U0000202fMb/s<", ">now<", "data-verso-chart-window", ">60\U0000202fs<", ">15\U0000202fs<"},
 	} {
 		for _, want := range wants {
 			if !strings.Contains(lane, want) {
@@ -82,8 +82,8 @@ func TestAPastWindowSaysItsAveragesAndPeaks(t *testing.T) {
 		Down: []float64{0, 20}, Up: []float64{0, 1500},
 	}))
 	for lane, wants := range map[string][]string{
-		down: {">12 Mb/s<", ">on average<", ">peak<", ">57 Mb/s<"},
-		up:   {">1.2 Gb/s<", ">on average<", ">1.5 Gb/s<", ">24 h<", ">now<"},
+		down: {">12\U0000202fMb/s<", ">on average<", ">peak<", ">57\U0000202fMb/s<"},
+		up:   {">1.2\U0000202fGb/s<", ">on average<", ">1.5\U0000202fGb/s<", ">24\U0000202fh<", ">now<"},
 	} {
 		for _, want := range wants {
 			if !strings.Contains(lane, want) {
@@ -102,7 +102,7 @@ func TestAPastWindowIsNotLive(t *testing.T) {
 		t.Errorf("the live graph is not fed or not addressable:\n%s", live)
 	}
 	day := render(t, newRenderer(t), &Traffic{Live: "wan", Range: "day", Down: []float64{0, 1}, Up: []float64{0, 1}})
-	for _, unwanted := range []string{"data-verso-live-chart", "data-verso-live-seed", ">60 s<", "<select"} {
+	for _, unwanted := range []string{"data-verso-live-chart", "data-verso-live-seed", ">60\U0000202fs<", "<select"} {
 		if strings.Contains(day, unwanted) {
 			t.Errorf("a day's graph carries %q", unwanted)
 		}
@@ -113,7 +113,7 @@ func TestAPastWindowIsNotLive(t *testing.T) {
 // window stands under the lanes as a fact of its own, and only when recorded.
 func TestAWindowStatesTheGatewaysLatency(t *testing.T) {
 	probed := render(t, newRenderer(t), &Traffic{Range: "day", Latency: "12", Down: []float64{0, 1}, Up: []float64{0, 1}})
-	for _, want := range []string{">Gateway<", ">12 ms<", ">on average<"} {
+	for _, want := range []string{">Gateway<", ">12&#x202F;ms<", ">on average<"} {
 		if !strings.Contains(probed, want) {
 			t.Errorf("a probed window missing %q", want)
 		}

@@ -180,11 +180,11 @@ func TestTheBoardCardsTitle(t *testing.T) {
 func TestTheBoardCardsFacts(t *testing.T) {
 	board := card(t, renderCards(t, dkInput()), "Mono Gateway Development Kit")
 	for _, want := range []string{
-		"verso-ports",                       // the panel
-		`data-verso-facts`,                  // two columns where the card is wide
-		">NXP LS1046A · 4 cores · 1.6 GHz<", // the profile's chip, the kernel's cores and clock
-		">7.7 GiB<",
-		">29 GiB eMMC<", // whole GiB from ten up, as every size in the shell
+		"verso-ports",      // the panel
+		`data-verso-facts`, // two columns where the card is wide
+		">NXP LS1046A · 4 cores · 1.6\U0000202fGHz<", // the profile's chip, the kernel's cores and clock
+		">7.7\U0000202fGiB<",
+		">29\U0000202fGiB eMMC<", // whole GiB from ten up, as every size in the shell
 		">mono,gateway-dk<",
 	} {
 		if !strings.Contains(board, want) {
@@ -278,8 +278,8 @@ func TestATemperatureShowsItsHeadroom(t *testing.T) {
 		`bg-marigold-deep" style="left: 89%"`,             // warns at 85 of 95
 		`bg-crimson" style="left: calc(100% - 0.125rem)"`, // protects at the bar's end
 		`clip-path: inset(0 50% 0 0 round 9999px)`,        // 48 of 95
-		">48.0 °C<",
-		">warns 85 °C · protects 95 °C<",
+		">48.0\U0000202f°C<",
+		">warns 85\U0000202f°C · protects 95\U0000202f°C<",
 	} {
 		if !strings.Contains(temps, want) {
 			t.Errorf("Temperatures missing %q", want)
@@ -291,7 +291,7 @@ func TestATemperatureShowsItsHeadroom(t *testing.T) {
 // with no limits has no bar, and a faulted one reads "—".
 func TestAnUnprofiledBoxListsEveryTemperature(t *testing.T) {
 	temps := card(t, renderCards(t, unprofiledInput()), "Temperatures")
-	for _, want := range []string{">Tctl<", ">edge<", ">Sensor 1<", ">temp3<", ">no limits reported<", ">sensor fault<", ">71.0 °C<"} {
+	for _, want := range []string{">Tctl<", ">edge<", ">Sensor 1<", ">temp3<", ">no limits reported<", ">sensor fault<", ">71.0\U0000202f°C<"} {
 		if !strings.Contains(temps, want) {
 			t.Errorf("Temperatures missing %q", want)
 		}
@@ -313,7 +313,7 @@ func TestPowerLeadsWithTheInput(t *testing.T) {
 	if i < 0 || j < i || k < j {
 		t.Errorf("rails out of order: input=%d 5V=%d DDR=%d", i, j, k)
 	}
-	for _, want := range []string{">input<", ">20.10 V<", ">0.49 A<", ">9.8 W<", ">852 mW<", ">ina234 · 12-40<"} {
+	for _, want := range []string{">input<", ">20.10\U0000202fV<", ">0.49\U0000202fA<", ">9.8\U0000202fW<", ">852\U0000202fmW<", ">ina234 · 12-40<"} {
 		if !strings.Contains(power, want) {
 			t.Errorf("Power missing %q", want)
 		}
@@ -329,7 +329,7 @@ func TestPowerLeadsWithTheInput(t *testing.T) {
 // Cooling stands for one fan as for several, each fan's state last.
 func TestCoolingListsEveryFan(t *testing.T) {
 	cooling := card(t, renderCards(t, dkInput()), "Cooling")
-	for _, want := range []string{">System Fan 1<", ">2,622 rpm<", ">30%<", ">Running<", ">System Fan 2<", ">Not connected<", ">emc2305 · 15-2e fan1<"} {
+	for _, want := range []string{">System Fan 1<", ">2,622\U0000202frpm<", ">30\U0000202f%<", ">Running<", ">System Fan 2<", ">Not connected<", ">emc2305 · 15-2e fan1<"} {
 		if !strings.Contains(cooling, want) {
 			t.Errorf("Cooling missing %q", want)
 		}

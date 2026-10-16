@@ -38,13 +38,13 @@ func span(seconds int64, units int, step int64) string {
 		if (seconds < u.seconds || u.seconds > step) && i < len(durationUnits)-1 {
 			continue
 		}
-		out := strconv.FormatInt(seconds/u.seconds, 10) + " " + u.symbol
+		out := strconv.FormatInt(seconds/u.seconds, 10) + Space + u.symbol
 		// Seconds never trail minutes: a span under an hour reads in minutes,
 		// so a live one does not change every second.
 		if units > 1 && i < len(durationUnits)-2 {
 			next := durationUnits[i+1]
 			if rest := seconds % u.seconds / next.seconds; rest > 0 {
-				out += " " + strconv.FormatInt(rest, 10) + " " + next.symbol
+				out += " " + strconv.FormatInt(rest, 10) + Space + next.symbol
 			}
 		}
 		return out

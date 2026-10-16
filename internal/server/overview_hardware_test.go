@@ -70,21 +70,21 @@ func TestHardwareView(t *testing.T) {
 	}
 	got := hardwareView(inv)
 	want := &widget.OverviewSensors{
-		CPU:   &widget.OverviewSensor{Key: "hw-cpu", Name: "cluster", Value: "48 °C"},
-		Power: &widget.OverviewSensor{Key: "hw-power", Name: "USB Power Delivery", Value: "9.8 W · 20.10 V · 0.49 A"},
-		Fan:   &widget.OverviewSensor{Key: "hw-fan", Name: "System Fan 1", Value: "2,622 rpm"},
+		CPU:   &widget.OverviewSensor{Key: "hw-cpu", Name: "cluster", Value: "48\U0000202f°C"},
+		Power: &widget.OverviewSensor{Key: "hw-power", Name: "USB Power Delivery", Value: "9.8\U0000202fW · 20.10\U0000202fV · 0.49\U0000202fA"},
+		Fan:   &widget.OverviewSensor{Key: "hw-fan", Name: "System Fan 1", Value: "2,622\U0000202frpm"},
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("view = %+v\nwant %+v", got, want)
 	}
-	if rows := hardwareRows(got); rows["hw-power"] != "9.8 W · 20.10 V · 0.49 A" || len(rows) != 3 {
+	if rows := hardwareRows(got); rows["hw-power"] != "9.8\U0000202fW · 20.10\U0000202fV · 0.49\U0000202fA" || len(rows) != 3 {
 		t.Errorf("rows = %v", rows)
 	}
 
 	inv.Temps[1].Level, inv.Fans[0].State, inv.Fans[0].RPM = "critical", "fault", 0
 	inv.Powers[1].HasA = false
 	hot := hardwareView(inv)
-	if hot.CPU.Tone != "danger" || hot.Fan.Tone != "warning" || hot.Fan.Value != "—" || hot.Power.Value != "9.8 W · 20.10 V" {
+	if hot.CPU.Tone != "danger" || hot.Fan.Tone != "warning" || hot.Fan.Value != "—" || hot.Power.Value != "9.8\U0000202fW · 20.10\U0000202fV" {
 		t.Errorf("out of band = %+v %+v %+v", hot.CPU, hot.Fan, hot.Power)
 	}
 	if hardwareView(sensors.Inventory{Powers: []sensors.PowerReading{{Name: "1V Core PSU"}}}) != nil {
@@ -114,7 +114,7 @@ func profiledServer(t *testing.T) (*Server, *atomic.Int32) {
 func TestOverviewRendersTheHardwareCard(t *testing.T) {
 	srv, _ := profiledServer(t)
 	body := get(t, srv, "/").Body.String()
-	for _, want := range []string{`data-overview-card="hardware"`, `data-verso-prop="hw-cpu"`, "52 °C", "cluster is hot", `href="/system/hardware"`} {
+	for _, want := range []string{`data-overview-card="hardware"`, `data-verso-prop="hw-cpu"`, "52\U0000202f°C", "cluster is hot", `href="/system/hardware"`} {
 		if !strings.Contains(body, want) {
 			t.Errorf("overview missing %q", want)
 		}
@@ -139,7 +139,7 @@ func TestOverviewStreamSendsSensorsWhileHardwareIsShown(t *testing.T) {
 			if got != tc.want || (reads.Load() > 0) != tc.want {
 				t.Fatalf("sensors frame sent = %v after %d reads, want %v", got, reads.Load(), tc.want)
 			}
-			if tc.want && (!strings.Contains(payload, `"hw-cpu":"52 °C"`) || !strings.Contains(payload, `"hw-fan":"2,622 rpm"`)) {
+			if tc.want && (!strings.Contains(payload, "\"hw-cpu\":\"52\U0000202f°C\"") || !strings.Contains(payload, "\"hw-fan\":\"2,622\U0000202frpm\"")) {
 				t.Errorf("sensors frame = %s", payload)
 			}
 			if tc.want && !strings.Contains(frames["overview"], "cluster is hot") {

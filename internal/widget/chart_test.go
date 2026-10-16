@@ -62,10 +62,10 @@ func TestAWindowOffersTheStepsItCutsInto(t *testing.T) {
 		axes  map[string]string
 	}{
 		{24 * time.Hour, "4,6,3", map[string]string{
-			"4": "24 h|18 h|12 h|6 h|now", "6": "24 h|20 h|16 h|12 h|8 h|4 h|now", "3": "24 h|16 h|8 h|now",
+			"4": "24\U0000202fh|18\U0000202fh|12\U0000202fh|6\U0000202fh|now", "6": "24\U0000202fh|20\U0000202fh|16\U0000202fh|12\U0000202fh|8\U0000202fh|4\U0000202fh|now", "3": "24\U0000202fh|16\U0000202fh|8\U0000202fh|now",
 		}},
-		{30 * 24 * time.Hour, "6,3", map[string]string{"6": "30 d|25 d|20 d|15 d|10 d|5 d|now", "3": "30 d|20 d|10 d|now"}},
-		{7 * 24 * time.Hour, "4", map[string]string{"4": "7 d|5 d 6 h|3 d 12 h|1 d 18 h|now"}},
+		{30 * 24 * time.Hour, "6,3", map[string]string{"6": "30\U0000202fd|25\U0000202fd|20\U0000202fd|15\U0000202fd|10\U0000202fd|5\U0000202fd|now", "3": "30\U0000202fd|20\U0000202fd|10\U0000202fd|now"}},
+		{7 * 24 * time.Hour, "4", map[string]string{"4": "7\U0000202fd|5\U0000202fd 6\U0000202fh|3\U0000202fd 12\U0000202fh|1\U0000202fd 18\U0000202fh|now"}},
 	} {
 		got := render(t, newRenderer(t), &Chart{Span: tc.span, Series: series})
 		if !strings.Contains(got, `data-chart-steps="`+tc.steps+`"`) {
@@ -92,7 +92,7 @@ func TestAChartsLegendSaysItsSeriesFigureAndPeak(t *testing.T) {
 		}},
 	})
 	for _, want := range []string{
-		"data-verso-chart-legend", `bg-denim`, ">CPU<", ">48.7 °C<", ">on average<", ">peak<", ">59.0 °C<",
+		"data-verso-chart-legend", `bg-denim`, ">CPU<", ">48.7\U0000202f°C<", ">on average<", ">peak<", ">59.0\U0000202f°C<",
 		">80<", ">60<", "data-verso-chart-unit>°C<",
 		// 59 °C under a top of 80 lands at 128 - 59/80·128 on a page's 128px plot.
 		`<line class="verso-chart-peak verso-chart-peak--denim" x1="0" x2="620" y1="33.6" y2="33.6"`,
@@ -140,7 +140,7 @@ func TestAQuietLineRidesOverTheBottomBorder(t *testing.T) {
 // or 20 s.
 func TestTheLiveMinuteIsLabelledAtItsSteps(t *testing.T) {
 	got := render(t, newRenderer(t), &Chart{Span: time.Minute, Series: []ChartSeries{{Values: []float64{1, 2}}}})
-	for steps, want := range map[string]string{"4": "60 s|45 s|30 s|15 s|now", "6": "60 s|50 s|40 s|30 s|20 s|10 s|now", "3": "60 s|40 s|20 s|now"} {
+	for steps, want := range map[string]string{"4": "60\U0000202fs|45\U0000202fs|30\U0000202fs|15\U0000202fs|now", "6": "60\U0000202fs|50\U0000202fs|40\U0000202fs|30\U0000202fs|20\U0000202fs|10\U0000202fs|now", "3": "60\U0000202fs|40\U0000202fs|20\U0000202fs|now"} {
 		if axis := strings.Join(ticks(got, steps), "|"); axis != want {
 			t.Errorf("the minute in %s steps: %q, want %q", steps, axis, want)
 		}
@@ -165,7 +165,7 @@ func TestRenderChart(t *testing.T) {
 		"620.0 21.3", // 100 under a top of 120 lands at 128 - 100/120·128
 		">120<", ">90<", ">60<", ">30<", `style="top:0.0%"`, `style="top:75.0%"`,
 		`style="top:100%" data-verso-chart-unit>Mb/s<`,
-		">60 s<", ">30 s<", ">now<",
+		">60\U0000202fs<", ">30\U0000202fs<", ">now<",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("chart missing %q:\n%s", want, got)

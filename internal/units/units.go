@@ -12,11 +12,15 @@
 package units
 
 import (
-	"fmt"
 	"math"
 	"strconv"
 	"strings"
 )
+
+// Space is what stands between a figure and its unit, every unit, the percent
+// and the degree included: a narrow no-break space, so "8 min" reads as one
+// word and never breaks at a line's end (DESIGN.md, the Narrow Space Rule).
+const Space = "\U0000202f"
 
 // Numbers writes numbers the way one language does.
 type Numbers struct {
@@ -45,7 +49,7 @@ type Rate struct {
 }
 
 // String is the rate as one phrase, "4.3 Mb/s".
-func (r Rate) String() string { return r.Value + " " + r.Unit }
+func (r Rate) String() string { return r.Value + Space + r.Unit }
 
 // AxisFractions are where a chart's value labels stand, top first: the top
 // and its three quarter lines, so a round top of four steps labels each step.
@@ -80,7 +84,7 @@ func (n Numbers) Rate(bps float64) Rate {
 // second's peak.
 func (n Numbers) RateScale(peak float64) (top float64, labels []string) {
 	top, unit, labels := n.rateScale(peak)
-	labels[0] += " " + unit
+	labels[0] += Space + unit
 	return top, labels
 }
 
@@ -142,7 +146,7 @@ func (n Numbers) Reading(unit Unit, v float64) string {
 	if unit == UnitRate {
 		return n.Rate(v * 1e6).String()
 	}
-	return strings.Replace(strconv.FormatFloat(v, 'f', 1, 64), ".", n.decimal, 1) + " °C"
+	return strings.Replace(strconv.FormatFloat(v, 'f', 1, 64), ".", n.decimal, 1) + Space + "°C"
 }
 
 // roundSteps are the steps a scale counts in, times a power of ten: close
@@ -183,10 +187,10 @@ func (n Numbers) Bytes(b uint64) string {
 	case b == 0:
 		return ""
 	case b < gib:
-		return fmt.Sprintf("%d MiB", max(1, int(math.Ceil(float64(b)/mib))))
+		return strconv.Itoa(max(1, int(math.Ceil(float64(b)/mib)))) + Space + "MiB"
 	case b < tib:
-		return n.Figure(float64(b)/gib) + " GiB"
+		return n.Figure(float64(b)/gib) + Space + "GiB"
 	default:
-		return n.Figure(float64(b)/tib) + " TiB"
+		return n.Figure(float64(b)/tib) + Space + "TiB"
 	}
 }

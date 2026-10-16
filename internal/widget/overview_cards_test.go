@@ -119,8 +119,8 @@ func TestReadingCardsShowAStatusOnlyOutOfBand(t *testing.T) {
 	// Resources always says memory, so its line never swaps one reading for
 	// another as they pass each other.
 	for id, summary := range map[string]string{
-		"traffic":   "84 Mb/s down · 1.3 Gb/s up",
-		"resources": "Memory 16 %",
+		"traffic":   "84\U0000202fMb/s down · 1.3\U0000202fGb/s up",
+		"resources": "Memory 16\U0000202f%",
 		"system":    "OpenWrt 25.12.4",
 	} {
 		if h := head(t, o, id); h.Status != "" || h.Summary != summary {
@@ -175,7 +175,7 @@ func TestPortsAndTunnelsCardBodies(t *testing.T) {
 		{Name: "br-lan", Kind: "bridge", State: "up"},
 	}}
 	ports := cardBody(t, o, "ports")
-	if up := row(t, ports, "interface:eth0"); !strings.Contains(up, "wan") || !strings.Contains(up, "18 Mb/s") || !strings.Contains(up, "2.1 Mb/s") || !strings.Contains(up, "bg-green") || !strings.Contains(up, ">Up<") {
+	if up := row(t, ports, "interface:eth0"); !strings.Contains(up, "wan") || !strings.Contains(up, "18\U0000202fMb/s") || !strings.Contains(up, "2.1\U0000202fMb/s") || !strings.Contains(up, "bg-green") || !strings.Contains(up, ">Up<") {
 		t.Errorf("an up port = %s", up)
 	}
 	if lost := row(t, ports, "interface:eth2"); !strings.Contains(lost, ">Down<") || !strings.Contains(lost, "lan") {

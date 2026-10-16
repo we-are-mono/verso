@@ -52,7 +52,7 @@ func TestRatesReadAtTheirScale(t *testing.T) {
 		if got := For(nil).Rate(tc.BPS); got != (Rate{tc.Value, tc.Unit}) {
 			t.Errorf("Rate(%v) = %+v, want %s %s", tc.BPS, got, tc.Value, tc.Unit)
 		}
-		want := strings.ReplaceAll(tc.Value, ".", ",") + " " + tc.Unit
+		want := strings.ReplaceAll(tc.Value, ".", ",") + "\U0000202f" + tc.Unit
 		if got := For(comma).Rate(tc.BPS).String(); got != want {
 			t.Errorf("Rate(%v) with a decimal comma = %q, want %q", tc.BPS, got, want)
 		}
@@ -92,12 +92,12 @@ func TestFiguresDropTheirDecimalFromTen(t *testing.T) {
 }
 
 func TestBytesReadAtTheirScale(t *testing.T) {
-	for b, want := range map[uint64]string{0: "", 512: "1 MiB", 300 << 20: "300 MiB", 3 << 29: "1.5 GiB", 212 << 30: "212 GiB", 3 << 39: "1.5 TiB"} {
+	for b, want := range map[uint64]string{0: "", 512: "1\U0000202fMiB", 300 << 20: "300\U0000202fMiB", 3 << 29: "1.5\U0000202fGiB", 212 << 30: "212\U0000202fGiB", 3 << 39: "1.5\U0000202fTiB"} {
 		if got := For(nil).Bytes(b); got != want {
 			t.Errorf("Bytes(%d) = %q, want %q", b, got, want)
 		}
 	}
-	if got := For(comma).Bytes(3 << 29); got != "1,5 GiB" {
+	if got := For(comma).Bytes(3 << 29); got != "1,5\U0000202fGiB" {
 		t.Errorf("Bytes(1.5 GiB) with a decimal comma = %q, want 1,5 GiB", got)
 	}
 }
@@ -134,7 +134,7 @@ func TestATemperatureScaleIsRound(t *testing.T) {
 func TestARateScaleIsInTheChartsUnit(t *testing.T) {
 	for _, tc := range readFixtures(t).Scales {
 		top, word, got := For(nil).Scale(UnitRate, tc.PeakBPS/1e6)
-		composed := append([]string{got[0] + " " + word}, got[1:]...)
+		composed := append([]string{got[0] + "\U0000202f" + word}, got[1:]...)
 		if math.Abs(top-tc.TopBPS/1e6) > 1e-6 || strings.Join(composed, "|") != strings.Join(tc.Labels, "|") {
 			t.Errorf("Scale(rate, %v) = %v %q %q, want %v %q", tc.PeakBPS/1e6, top, word, got, tc.TopBPS/1e6, tc.Labels)
 		}
@@ -147,16 +147,16 @@ func TestAReadingIsWrittenInItsUnit(t *testing.T) {
 		v    float64
 		want string
 	}{
-		{UnitCelsius, 48.66, "48.7 °C"},
-		{UnitCelsius, 59, "59.0 °C"},
-		{UnitRate, 7.6, "7.6 Mb/s"},
-		{UnitRate, 57.4, "57 Mb/s"},
+		{UnitCelsius, 48.66, "48.7\U0000202f°C"},
+		{UnitCelsius, 59, "59.0\U0000202f°C"},
+		{UnitRate, 7.6, "7.6\U0000202fMb/s"},
+		{UnitRate, 57.4, "57\U0000202fMb/s"},
 	} {
 		if got := For(nil).Reading(tc.unit, tc.v); got != tc.want {
 			t.Errorf("Reading(%v, %v) = %q, want %q", tc.unit, tc.v, got, tc.want)
 		}
 	}
-	if got := For(comma).Reading(UnitCelsius, 48.66); got != "48,7 °C" {
-		t.Errorf("Reading(°C, 48.66) with a decimal comma = %q, want %q", got, "48,7 °C")
+	if got := For(comma).Reading(UnitCelsius, 48.66); got != "48,7\U0000202f°C" {
+		t.Errorf("Reading(°C, 48.66) with a decimal comma = %q, want %q", got, "48,7\U0000202f°C")
 	}
 }
