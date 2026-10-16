@@ -70,10 +70,9 @@ rollback.**
    and the page it leads to.** The row stands above every destination only
    while a change is staged, in the caveat colour — a fact about the device,
    not an alarm — and says how many changes wait; on a phone the menu button
-   carries the count. While a form or drawer holds an edit not yet saved, the
-   row already shows it as a dashed line, so the place a Save goes is seen
-   before the Save; the Save turns the line into the page's own words for the
-   change where it stands. Nothing travels across the screen. The page is
+   carries the count. An edit not yet saved changes nothing outside its form:
+   the Save is the act, and the row answers only once it has staged
+   something, with the new count. Nothing travels across the screen. The page is
    rendered server-side from truth: the shell asks rpcd for the pending
    changes across the configs plugins have declared and lists them in one card
    per page they were made on — each change as its owning plugin's sentence

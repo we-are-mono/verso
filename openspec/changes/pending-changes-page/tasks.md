@@ -92,9 +92,9 @@ Every task ends green under `make lint` and `make test`. A task that touches a t
   - groups open and close exactly as the rail spec requires.
 - [x] 7.2 Write the tests first, then implement and verify:
   - `page.html.tmpl` no longer renders `#verso-staged`;
-  - the menu button carries the count span and a hidden dashed preview span;
+  - the menu button carries the count span;
   - the `TestStagedChip*` tests are rewritten to the rail row and the menu button.
-- [x] 7.3 Add the row's CSS (Marigold Wash, Deep Marigold words and icon, the plain marigold marker bar, the dashed ghost row and line, the second line's fold). Verify in a rendered preview, in Sand light and dark, that the row's words clear the 4.5 floor on the wash (the pair is gated for every shipped theme by `internal/theme`'s contrast floors).
+- [x] 7.3 Add the row's CSS (Marigold Wash, Deep Marigold words and icon, the plain marigold marker bar). Verify in a rendered preview, in Sand light and dark, that the row's words clear the 4.5 floor on the wash (the pair is gated for every shipped theme by `internal/theme`'s contrast floors).
 - [x] 7.4 Record the rail's second status exception in DESIGN.md's Navigation (the row shows only while something waits, as the System updates dot does). Verify the sidebar direction entry and the Navigation section agree.
 
 ## 8. Apply, discard and undo in the browser
@@ -108,24 +108,17 @@ Every task ends green under `make lint` and `make test`. A task that touches a t
   - Apply starts at once, with no confirmation, even with a flagged change;
   - Discard all leads to its crimson question under the heading line (`/pending?confirm=discard`), with or without a script;
   - an undo's notification offers "Put it back".
-- [x] 8.3 Delete `versoStaged.fly`, the flight CSS, the chip verdict states and their callers in `verso-forms.js`, `verso-tables.js` and `verso-system.js`; the save's note keeps only the landing (where Save stood, the count before), as `verso-staged-landing`. Verify with grep that none remain and that the reboot path still reads the stage.
+- [x] 8.3 Delete `versoStaged.fly`, the flight CSS, the chip verdict states and their callers in `verso-forms.js`, `verso-tables.js` and `verso-system.js`; the save's note keeps only where Save stood, as `verso-staged-landing`, and `verso-boot.js` goes with the count it held back. Verify with grep that none remain and that the reboot path still reads the stage.
 
-## 9. The row previews an edit, and settles on Save
+## 9. Save puts the change in the row
 
-- [x] 9.1 Write the tests first, then add the attributes in the widget templates and verify: staging forms carry `data-verso-stages`, and a table row carries `data-verso-row-name` with the item's name, which a drawer opened from it says.
-- [x] 9.2 Write the tests first in `scripts/`, then implement the preview in `verso-commit.js` on top of `versoDirtyState` and verify:
-  - an edited unstaged rule shows "+1 <name> · <label> → <value>";
-  - an edited staged setting shows no "+1";
-  - two dirty fields add "+1 more";
-  - restoring the baseline, Cancel or closing the drawer clears the line;
-  - hover and focus change nothing;
-  - with a clean stage the whole row stands dashed.
-- [x] 9.3 Write the tests first, then implement and verify on the phone layout: the menu button shows the count and a dashed "+1" beside it while an unstaged edit is open.
-- [x] 9.4 Write the tests first, then implement and verify:
-  - before a staging submit or a one-press stage, the count is stored;
-  - on landing, or after `versoStaged.sync`, the row shows `Latest` in plain words, rolls the count from the stored value and folds after 3 s;
-  - with no stored save, nothing animates.
-- [x] 9.5 Make the drawer scrim spare the rail at desktop widths, so the preview stays visible while a drawer is open. Verify in a rendered preview with a rule drawer open.
+- [x] 9.1 Write the tests first in `scripts/`, then implement `versoStaged.sync` in `verso-commit.js` and verify:
+  - an act that stages in place sets the row's and the menu button's count, with nothing animated;
+  - the first change brings the row and the last one gone takes it away;
+  - a screen reader hears what the stage took;
+  - an unsaved edit leaves the rail and the menu button as they are.
+- [x] 9.2 Write the tests first, then implement and verify: a page form's save lands with its Save where it stood; a save that changed nothing leaves no note.
+- [x] 9.3 Make the row a rail row like the rest: 40px, flush with Overview, no space of its own, sliding under the pointer as every rail row does but on its own page. Verify in the browser beside Overview.
 
 ## 10. Catalog, backlog and integration
 
@@ -135,7 +128,7 @@ Every task ends green under `make lint` and `make test`. A task that touches a t
   - the release-notes line (the chip is gone; pending changes live at the top of the sidebar).
   Verify the entries read as what is.
 - [x] 10.3 End-to-end in the dev container (`make dev`), and verify each step in the browser as root:
-  - edit a rule, see the ghost, save and see the line settle;
+  - edit a field with nothing pending and see the rail unchanged; save and see the row arrive reading 1;
   - undo one of two DHCP changes;
   - apply and see Saved, Started, Kept and "Changes applied";
   - force a rollback by blocking the confirm, and see the changes pending again with the callout.

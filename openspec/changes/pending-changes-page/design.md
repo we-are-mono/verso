@@ -34,7 +34,7 @@ See proposal.md (Why) and the two delta specs for behaviour. The clickable proto
 
 **Goals:**
 - One surface for the stage, the rail row and its page, built from the existing `stagedView` pipeline. There is no second describe path.
-- The preview of an unsaved edit runs entirely in the browser. It costs the router nothing per keystroke.
+- Save is the feedback: the row answers a staged change, never an unsaved edit.
 - Undo and the rollback re-stage use only rpcd's public `uci` methods.
 - Effects come from the router's own reload triggers.
 
@@ -50,9 +50,9 @@ See proposal.md (Why) and the two delta specs for behaviour. The clickable proto
 
 `buildSidebar` prepends a pending row while `stagedView.Count > 0`. It uses the existing `navRow` fields: the label "Pending changes", the `list-todo` icon, the count in `Detail`, and a new `Variant` "pending" that draws Marigold Wash with Deep Marigold words.
 
-The row always renders, hidden when the stage is clean, the way the chip did today. That lets the client show it as a ghost or turn it on after a one-press stage without building one. Group logic (`railOrder`, open/closed state) never sees it.
+The row always renders, hidden when the stage is clean, the way the chip did. That lets the client turn it on after a one-press stage without building one. Group logic (`railOrder`, open/closed state) never sees it.
 
-On a phone, the hamburger at `page.html.tmpl:43` gains a count span and a dashed preview span. The same data comes from `pageData.Staged`.
+On a phone, the hamburger at `page.html.tmpl:43` gains a count span. The same data comes from `pageData.Staged`.
 
 *Alternative considered:* a separate rail section template. Rejected because `navRow` already models a row with a status detail, and a second row type would drift from it.
 
@@ -75,31 +75,15 @@ When nothing is pending after an apply or a Discard all, the page's way back is 
 
 *Alternative considered:* keep the drawer and add a page. Rejected because two surfaces for one stage was the original confusion.
 
-### 3. The unsaved-edit preview is computed in the browser from the form
+### 3. Save puts the change in the row; nothing previews or animates
 
-A staging form carries `data-verso-stages` and, where it edits one item, `data-verso-subject` (the item's name, for example "Allow-DHCPv6"). Each ledger row already carries its label. A staged row carries `verso-staged-row`.
+An unsaved edit changes nothing outside its form: the Save under it is the act. A page form's Save reloads the page, so the row is drawn anew with the stage's count. An act that stages in place (a drawer's Save, a row's one-press act) hands `versoStaged.sync` the page it read, and the row takes that count as it stands: it appears with the first change and leaves with the last.
 
-On `input` and `change` inside such a form, `verso-commit.js`:
-- asks `versoDirtyState` for the fields that differ from the form's baseline;
-- builds the line: subject, then the first dirty field's label, "→" and its shown value, then "+N more" when more fields are dirty;
-- adds "+1" when the subject's item, or a dirty setting, is not already pending.
+`stagedView` gains `Latest`: the sentence of the most recently staged row, using the staging time from decision 2. The row carries it, and an in-place stage announces it to a screen reader.
 
-It sets the rail row's ghost state. Cancel, closing the drawer or restoring the baseline clears it. Hover and focus do nothing.
+The save's sessionStorage note keeps only where its Save stood, so the page comes back at the same height. `fly`, the flight CSS, the chip verdicts and `verso-boot.js`, which held the count back for the flight, are deleted.
 
-*Alternative considered:* a server dry-run that asks the owning plugin to describe the unsaved form. Rejected because it needs a contract change in every plugin and a round-trip per keystroke, against the router CPU budget.
-
-### 4. After a save, the line shows the page's own sentence
-
-`stagedView` gains `Latest`: the sentence of the most recently staged row, using the staging time from decision 2. The rail row renders it into its hidden second line.
-
-Before a staging submit, or a one-press stage, the client stores the current count and a "just saved" flag. This replaces `verso-staged-origin`.
-
-On the landing page, or after an in-place `versoStaged.sync`, the row:
-- shows `Latest` in plain words;
-- rolls the count from the stored value to the rendered one;
-- folds the line after 3 s.
-
-The words after a save are therefore the Pending page's own sentence, not the client's guess. `fly`, the flight CSS, the chip verdicts and their sessionStorage key are deleted.
+*Alternative considered:* a dashed line in the row previewing an unsaved edit, settling into the page's words on Save. Built and dropped: a row that appears before Save reads as if the edit already waited, and Save already reloads the page, so a settling animation repeats what the reload shows.
 
 ### 5. Undo reverts the config and replays the rest
 

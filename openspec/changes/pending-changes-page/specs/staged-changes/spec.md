@@ -2,7 +2,7 @@
 
 ## Purpose
 
-How changes saved on the router but not yet live are shown, previewed, reviewed, undone, applied and kept: the rail's Pending changes row, its in-place preview of an unsaved edit, the Pending changes page, and what an apply and a rollback leave behind.
+How changes saved on the router but not yet live are shown, reviewed, undone, applied and kept: the rail's Pending changes row, the Pending changes page, and what an apply and a rollback leave behind.
 
 ## ADDED Requirements
 
@@ -17,46 +17,20 @@ While the stage holds at least one change, the rail's Pending changes row SHALL 
 - **WHEN** the stage is empty
 - **THEN** the rail has no Pending changes row
 
-### Requirement: An unsaved edit shows in the row before Save
-While a form or drawer holds an edit that is not saved, the Pending changes row SHALL show a dashed line naming what Save would stage. The line SHALL lead with "+1" when the edited item or setting is not already pending. Hovering or focusing a control SHALL NOT change the row.
-
-#### Scenario: Editing a rule
-- **WHEN** the operator opens Allow-DHCPv6's drawer and changes its Action to DROP without saving
-- **THEN** the Pending changes row shows a dashed line "+1 Allow-DHCPv6 · Action → DROP" and the count is unchanged
-
-#### Scenario: Editing something already pending
-- **WHEN** Lease time is already pending and the operator changes it again without saving
-- **THEN** the dashed line names Lease time and its new value without "+1"
-
-#### Scenario: Pointing at Save
-- **WHEN** the operator moves the pointer over Save
-- **THEN** the row does not change
-
-### Requirement: With nothing pending, the first edit shows the row as a ghost
-While the stage is empty and a form or drawer holds an unsaved edit, the Pending changes row SHALL stand in the rail drawn as a dashed outline, without a count, holding the dashed line for that edit.
+### Requirement: Save puts the change in the row
+An edit that is not saved SHALL NOT change the Pending changes row or the menu button. Once Save stages a change, the row SHALL show the new count: a page form's Save reloads the page, which draws the row; an act that stages in place (a drawer's Save, a row's one-press act) SHALL set the count where it stands. With nothing pending before, the row SHALL appear only then. Nothing about the row SHALL animate, and no change SHALL be shown travelling across the screen.
 
 #### Scenario: First edit on a clean router
 - **WHEN** nothing is pending and the operator changes a field without saving
-- **THEN** a dashed Pending changes row appears at the top of the rail with the edit's dashed line under its name
+- **THEN** the rail starts with Overview, as before the edit
 
-#### Scenario: Leaving the edit
-- **WHEN** the operator cancels that drawer or puts the field back
-- **THEN** the dashed row leaves the rail
-
-### Requirement: Save settles the line in place
-Saving an edit SHALL turn its dashed line, in the same place, into the plain words the Pending changes page uses for that change; the count SHALL change to the new count, and the line SHALL fold away after about three seconds. The change SHALL NOT be shown travelling across the screen. A press that stages at once, with no form to edit (a rule's on/off or remove act), SHALL show its line in plain words the same way.
-
-#### Scenario: Saving the rule
-- **WHEN** the operator saves Allow-DHCPv6 with Action DROP while 12 changes are pending
-- **THEN** the line reads the Pending changes page's sentence for that change in plain words, the count reads 13, and the line folds away about three seconds later
+#### Scenario: Saving it
+- **WHEN** the operator then saves the form
+- **THEN** the page reads again with the Pending changes row first in the rail, reading 1
 
 #### Scenario: A one-press act
-- **WHEN** the operator turns Allow-Ping off from its row
-- **THEN** the row shows "Allow-Ping turned off" in plain words and the count rises by one, with nothing shown before the press
-
-#### Scenario: Cancelling
-- **WHEN** the operator cancels a drawer that held an unsaved edit
-- **THEN** the dashed line leaves and the count does not change
+- **WHEN** the operator turns Allow-Ping off from its row while 12 changes are pending
+- **THEN** the row reads 13, with nothing shown before the press
 
 ### Requirement: The Pending changes page lists the stage by page
 The Pending changes page SHALL head "N pending changes" with **Discard all** and **Apply N changes** on the heading line and no lede under the heading. It SHALL list the pending changes in one card per page they were made on, titled by that page's heading, each card offering to open that page and to undo its changes.

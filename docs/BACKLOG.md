@@ -170,9 +170,8 @@ own and points at the decision that governs it; the rationale lives there, not h
   beside the router's name is gone. While changes wait, a Pending changes row
   stands first in the sidebar and opens a page listing them by the page each
   was made on: open its page, undo one or a page's worth, or apply them all
-  and watch each step as the router reports it. An edit shows in the row
-  before it is saved, and an apply the router puts back keeps the changes
-  pending. Installed plugins need no upgrade.
+  and watch each step as the router reports it. An apply the router puts
+  back keeps the changes pending. Installed plugins need no upgrade.
 - **The reload step on the DUT.** The When you apply card names what procd's
   own triggers reload. Read it against what procd reloads for a dhcp +
   firewall + network apply on the DUT (task 10.4), then archive the change.

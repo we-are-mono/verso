@@ -10,11 +10,10 @@ Operators find the staging flow confusing. The marigold chip next to the router'
 - A **Pending changes** row stands at the top of the sidebar, above Overview, only while the stage holds a change. It shows the count, and a `list-todo` icon with its words in Deep Marigold on Marigold Wash. It leads to the Pending changes page.
 - On a phone, the menu button carries the same count on Marigold Wash.
 
-**Save feedback, in place**
-- While a form or drawer holds an unsaved edit, the row shows a dashed line naming it ("+1 Allow-DHCPv6 · Action → DROP").
-- Save turns that line into plain words where it stands, the count rolls, and the line folds away after about three seconds. Cancel lets the line go.
-- With nothing pending, the first edit makes the whole row stand as a dashed outline.
-- Hover changes nothing.
+**Save is the feedback**
+- An unsaved edit changes nothing outside its form; the Save under it is the act.
+- A Save reloads the page, so the row arrives with the new count. An act that stages in place (a drawer's Save, a row's one-press act) sets the count where it stands. Nothing animates.
+- Under the pointer the row slides as every rail row does.
 - The 6px square that flies to the chip is removed.
 
 **The Pending changes page**
@@ -78,9 +77,9 @@ Operators find the staging flow confusing. The marigold chip next to the router'
   - `nav.go` and `nav-row.html.tmpl`: the pending row.
   - `page.html.tmpl`: the chip removed; the menu-button count added.
 - Assets:
-  - `verso-commit.js`: the fly and chip-verdict code removed; the preview, commit and apply-page logic added.
-  - `verso-forms.js`: exposes edits for the preview.
-  - CSS for the row states.
+  - `verso-commit.js`: the fly and chip-verdict code removed; the row's count and the apply-page logic added.
+  - `verso-boot.js`: removed with the count it held back for the fly.
+  - CSS for the row.
 
 **Docs and catalog**
 - DESIGN.md: Navigation, Staging and Drawers.
