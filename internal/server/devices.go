@@ -5,7 +5,6 @@ package server
 
 import (
 	"bytes"
-	"fmt"
 	"html/template"
 	"net"
 	"net/http"
@@ -143,16 +142,14 @@ func bestPresence(entries []sysstat.Neighbor) presence {
 	return best
 }
 
-// leaseIn says when the lease runs out the way a person would.
+// leaseIn says when the lease runs out the way a person would, the time left
+// written as every duration is.
 func leaseIn(expiry int64, now time.Time) string {
 	d := time.Unix(expiry, 0).Sub(now)
-	switch {
-	case d <= 0:
+	if d <= 0 {
 		return "expired"
-	case d < time.Hour:
-		return fmt.Sprintf("in %d min", int(d.Minutes()))
 	}
-	return fmt.Sprintf("in %dh %02dm", int(d.Hours()), int(d.Minutes())%60)
+	return "in " + units.Duration(int64(d.Seconds()))
 }
 
 // lease is one dnsmasq lease-file line: expiry, MAC, address, hostname,

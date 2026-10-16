@@ -416,12 +416,13 @@ func TestNeighboursSkipAddressesThatAreNoDevice(t *testing.T) {
 	}
 }
 
-// TestLeaseIn: lease expiry reads the way a person says it.
+// TestLeaseIn: lease expiry reads the way a person says it, the time left
+// written as every duration is.
 func TestLeaseIn(t *testing.T) {
 	now := time.Unix(1000, 0)
 	cases := map[int64]string{
-		1000 + 11*3600 + 32*60: "in 11h 32m",
-		1000 + 40*60:           "in 40 min",
+		1000 + 11*3600 + 32*60: "in 11\U0000202fh 32\U0000202fmin",
+		1000 + 40*60:           "in 40\U0000202fmin",
 		900:                    "expired",
 	}
 	for expiry, want := range cases {
