@@ -7,7 +7,9 @@
 package plugin
 
 import (
+	"encoding/json"
 	"fmt"
+	"path"
 	"path/filepath"
 	"strings"
 )
@@ -71,15 +73,33 @@ type ACLScope struct {
 //
 // Icon names a Lucide glyph the shell owns (ADR-005): a plugin references an icon
 // by name and never ships one. An entry naming none takes its section's glyph.
-// Pages says the destination opens into subpages, so its row
-// can say so on every page; which subpages they are is still the envelope's to
-// say, on the page itself.
+// Pages are the destination's subpages, which the rail lists under its row on
+// every page (NavPages).
 type NavEntry struct {
-	Section string `json:"section"`
-	Label   string `json:"label"`
-	Path    string `json:"path"`
-	Icon    string `json:"icon,omitempty"`
-	Pages   bool   `json:"pages,omitempty"`
+	Section string   `json:"section"`
+	Label   string   `json:"label"`
+	Path    string   `json:"path"`
+	Icon    string   `json:"icon,omitempty"`
+	Pages   NavPages `json:"pages"`
+}
+
+// NavPages is a nav entry's "pages": a list of {label, path}, each path
+// relative to the plugin's mount, or true for an entry that says only that it
+// opens, whose subpages its page's envelope names.
+type NavPages struct {
+	Opens bool
+	List  []PageTab
+}
+
+func (p *NavPages) UnmarshalJSON(b []byte) error {
+	if json.Unmarshal(b, &p.Opens) == nil {
+		return nil
+	}
+	if err := json.Unmarshal(b, &p.List); err != nil {
+		return fmt.Errorf("pages must be true or a list of {label, path}")
+	}
+	p.Opens = len(p.List) > 0
+	return nil
 }
 
 // EntityTab is a plugin's contribution to one kind of subject's panel: the
@@ -151,6 +171,14 @@ func (m Manifest) validate() error {
 		}
 		if n.Label == "" {
 			return fmt.Errorf("plugin %q nav[%d] missing label", m.ID, i)
+		}
+		for j, p := range n.Pages.List {
+			// The shell builds the address under the plugin's mount, so the path
+			// must stay a clean one inside it.
+			rel := strings.Trim(p.Path, "/")
+			if p.Label == "" || strings.ContainsAny(p.Path, `?#\`) || path.Clean("/"+rel) != "/"+rel {
+				return fmt.Errorf("plugin %q nav[%d] pages[%d] needs a label and a clean path under the plugin", m.ID, i, j)
+			}
 		}
 	}
 	for i, a := range m.ACL.Read {

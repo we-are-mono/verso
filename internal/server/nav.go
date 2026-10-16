@@ -198,7 +198,7 @@ func (s *Server) buildSidebar(active string, tr func(string) string, pluginTr fu
 			if icon == "" {
 				icon = navIcon(entry.Label, entry.Section)
 			}
-			places = append(places, filed{entry.Section, navRow{Label: entry.Label, Href: href, Icon: icon, PluginID: m.ID, Opens: entry.Pages}})
+			places = append(places, filed{entry.Section, navRow{Label: entry.Label, Href: href, Icon: icon, PluginID: m.ID, Opens: entry.Pages.Opens}})
 		}
 	}
 	here := s.sectionAt(active)

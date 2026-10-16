@@ -960,7 +960,7 @@ func TestARailRowSaysWhatWaitsThere(t *testing.T) {
 func TestARowThatOpensPointsTheWay(t *testing.T) {
 	m := demoManifest()
 	for i := range m.Nav {
-		m.Nav[i].Pages = true
+		m.Nav[i].Pages.Opens = true
 	}
 	tr := &fakeTransport{env: &plugin.Envelope{
 		SchemaVersion: 1, Title: "DNS & DHCP", Status: http.StatusOK,

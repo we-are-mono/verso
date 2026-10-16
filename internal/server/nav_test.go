@@ -198,7 +198,7 @@ func TestARailRowIsTheSamePlaceOnEveryPage(t *testing.T) {
 // destination that declares its pages in its manifest. A row with none says
 // nothing.
 func TestARowThatOpensSaysSoEverywhere(t *testing.T) {
-	firewall := manifest("firewall", plugin.NavEntry{Section: "Security", Label: "Firewall", Path: "/", Pages: true})
+	firewall := manifest("firewall", plugin.NavEntry{Section: "Security", Label: "Firewall", Path: "/", Pages: plugin.NavPages{Opens: true}})
 	firewall.Socket = "/firewall.sock"
 	interfaces := manifest("net", nav("Network", "Interfaces", "/"))
 	interfaces.Socket = "/net.sock"

@@ -65,7 +65,12 @@ over a local socket**, exchanging *data*, not markup.
      pages in the shell's navigation; `path` is relative to the plugin mount. A
      plugin may contribute several entries (each auto-grouped under its section),
      and the shell builds the nav tree from manifests, so a plugin appears in the
-     chrome without touching shell code.
+     chrome without touching shell code. An entry's optional `pages` is the list
+     of its subpages, `{label, path}` relative to the mount: the rail draws them
+     from the manifest on every page, so a group opens in place without asking
+     the plugin. `"pages": true` says only that the entry opens; its subpages are
+     then the envelope's `pages` (below), shown on its own pages. A shell older
+     than the list form reads only `true`.
    - `entity_tabs` — optional `{entity, slot, label, summaries}` contributions to
      shell-owned entity drawers. A plugin may omit navigation when it contributes
      entity tabs, entity actions, or System Access content. A tab with `summaries:
@@ -115,10 +120,11 @@ over a local socket**, exchanging *data*, not markup.
    the plugin only requests: `kicker` (an eyebrow above the heading) with
    `kicker_status` and `live` (a state label and a pulsing dot beside it),
    `width` (`narrow` | `normal` | `wide`), and `immediate` (the page's actions apply at once; nothing on it stages —
-   ADR-010). `pages` is the **third navigation tier**: a domain's subpages
-   rendered as the shell's top bar (sidebar → domain, top bar → kind of visit). Each
-   entry is `{label, path}` relative to the plugin's mount; the shell builds the href
-   and marks the active tab, so a plugin cannot aim the bar outside itself. `banner`
+   ADR-010). `pages` names a domain's subpages for a nav entry whose manifest
+   declares none (`"pages": true`); an entry that lists them in its manifest has
+   its envelope's `pages` ignored. Each entry is `{label, path}` relative to the
+   plugin's mount; the shell builds the href and marks the active subpage, so a
+   plugin cannot aim the rail outside itself. `banner`
    is a full-width `{variant, title, body}` notice the shell renders at the navigation
    seam — standing page state, visible above the heading. `notice` is the *outcome*
    of the action this render answers — `{level, text}`, level in the tone vocabulary

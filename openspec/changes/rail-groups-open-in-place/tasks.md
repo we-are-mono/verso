@@ -2,8 +2,8 @@
 
 ## 1. The manifest declares subpages
 
-- [ ] 1.1 Test first in `internal/plugin/discovery_test.go`: a nav entry's `pages` parses as `true`, `false`, absent, or a list of `{label, path}`; a subpage with no label, or with a path that is absolute or holds `..`, `?`, `#` or `\`, or differs from its cleaned form, rejects the manifest, and the error names the plugin and the entry. Then the `NavPages` type with its own `UnmarshalJSON`, `Opens()` and `List()`, and one clean-relative-path helper shared with the `system_access` check. Verify: `go test ./internal/plugin/`.
-- [ ] 1.2 Rewrite the `NavEntry` doc comment and ADR-006's nav and `pages` paragraphs to state what is: the manifest's list is the rail's source, and the envelope's `pages` is read for an entry that declares none. Verify: `make lint`.
+- [x] 1.1 Test first in `internal/plugin/discovery_test.go`: a nav entry's `pages` parses as `true`, `false`, absent, or a list of `{label, path}`; a subpage with no label, or with a path that is absolute or holds `..`, `?`, `#` or `\`, or differs from its cleaned form, rejects the manifest, and the error names the plugin and the entry. Then the `NavPages` type with its own `UnmarshalJSON`, `Opens()` and `List()`, and one clean-relative-path helper shared with the `system_access` check. Verify: `go test ./internal/plugin/`.
+- [x] 1.2 Rewrite the `NavEntry` doc comment and ADR-006's nav and `pages` paragraphs to state what is: the manifest's list is the rail's source, and the envelope's `pages` is read for an entry that declares none. Verify: `make lint`.
 
 ## 2. Every group carries its subpages
 

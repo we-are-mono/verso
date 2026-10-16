@@ -4,6 +4,7 @@
 package plugin
 
 import (
+	"slices"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -328,7 +329,8 @@ func TestDiscoverParsesNavIconAndPages(t *testing.T) {
 		"plugins/n/manifest.json": `{"id":"n","name":"N","socket":"/run/verso/n.sock",` +
 			`"schema_version":1,"nav":[` +
 			`{"section":"Network","label":"DNS","path":"/dns","icon":"globe","pages":true},` +
-			`{"section":"Network","label":"DHCP","path":"/"}]}`,
+			`{"section":"Network","label":"DHCP","path":"/"},` +
+			`{"section":"Security","label":"Firewall","path":"/","pages":[{"label":"Rules","path":"/"},{"label":"Zones","path":"zones"}]}]}`,
 	})
 
 	got, problems := Discover(fsys, testGlob)
@@ -336,11 +338,36 @@ func TestDiscoverParsesNavIconAndPages(t *testing.T) {
 		t.Fatalf("want one clean manifest, got=%d problems=%v", len(got), problems)
 	}
 	nav := got[0].Nav
-	if nav[0].Icon != "globe" || !nav[0].Pages {
+	if nav[0].Icon != "globe" || !nav[0].Pages.Opens || nav[0].Pages.List != nil {
 		t.Errorf("nav[0] icon/pages not parsed: %+v", nav[0])
 	}
-	if nav[1].Icon != "" || nav[1].Pages {
+	if nav[1].Icon != "" || nav[1].Pages.Opens {
 		t.Errorf("nav[1] should declare none of them: %+v", nav[1])
+	}
+	if want := []PageTab{{Label: "Rules", Path: "/"}, {Label: "Zones", Path: "zones"}}; !nav[2].Pages.Opens || !slices.Equal(nav[2].Pages.List, want) {
+		t.Errorf("nav[2] subpages = %+v, want %+v", nav[2].Pages, want)
+	}
+}
+
+// TestDiscoverRejectsASubpageOutsideTheMount: a declared subpage needs a label
+// and a clean path under the plugin's mount, so the rail cannot be aimed
+// elsewhere.
+func TestDiscoverRejectsASubpageOutsideTheMount(t *testing.T) {
+	for name, page := range map[string]string{
+		"no label":  `{"label":"","path":"zones"}`,
+		"traversal": `{"label":"L","path":"../system"}`,
+		"query":     `{"label":"L","path":"zones?x=1"}`,
+		"double":    `{"label":"L","path":"a//b"}`,
+		"backslash": `{"label":"L","path":"a\\b"}`,
+	} {
+		fsys := mapFS(map[string]string{
+			"plugins/f/manifest.json": `{"id":"f","name":"F","socket":"/run/verso/f.sock","schema_version":1,` +
+				`"nav":[{"section":"Security","label":"Firewall","path":"/","pages":[` + page + `]}]}`,
+		})
+		got, problems := Discover(fsys, testGlob)
+		if len(got) != 0 || len(problems) != 1 || !strings.Contains(problems[0].Error(), `"f" nav[0]`) {
+			t.Errorf("%s: got=%d problems=%v", name, len(got), problems)
+		}
 	}
 }
 
