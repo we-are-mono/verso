@@ -1119,16 +1119,12 @@ html {
     max-width: none;
     width: calc(round(down, min(100% - var(--verso-gutter) * 2 - 1px, var(--container-6xl)), 0.5rem) + 1px + var(--verso-gutter) * 2);
   }
-  /* A short page's ground fills the window down to the colophon, rounded
-     down to the grid, and the colophon takes the few pixels left at the
-     window's foot on its own sand, so its hairline lands on a line whatever
-     the window's height. The colophon is one 56px line, as the top bar is. */
+  /* A short page's ground fills the window down to the colophon, every pixel
+     of it, so the colophon stands at the window's foot exactly as it stands at
+     the foot of a long page scrolled to its end: one 56px line, as the top bar
+     is, that never moves between pages. */
   .verso-page-ground { flex: 1 0 auto; }
-  .verso-page-ground:has(+ [data-verso-colophon]) {
-    flex: none;
-    min-height: round(down, 100vh - var(--spacing) * 28, 0.5rem);
-  }
-  main > [data-verso-colophon] { flex: 1 0 auto; }
+  main > [data-verso-colophon] { flex: none; }
   main [data-verso-masthead] {
     --verso-measure: calc(round(down, min(round(100cqw, 1px) - var(--verso-gutter) * 2 - 1px, var(--container-6xl)), 0.5rem) + 1px);
     margin-inline: calc(var(--verso-gutter) * -1) calc(100% - round(100cqw, 1px) + var(--verso-gutter));

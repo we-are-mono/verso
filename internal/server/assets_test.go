@@ -668,6 +668,28 @@ func TestMastheadEndsUnderLogOut(t *testing.T) {
 	}
 }
 
+// TestColophonHoldsStillBetweenPages: the colophon is one 56px line on every
+// page, short or long, so moving between pages never moves it. A short page's
+// ground takes every pixel down to it rather than rounding to the grid and
+// handing the colophon the remainder, which would stand its words a few
+// pixels higher on a short page than at the foot of a long one.
+func TestColophonHoldsStillBetweenPages(t *testing.T) {
+	raw, err := os.ReadFile("assets/verso.css")
+	if err != nil {
+		t.Fatalf("read stylesheet: %v", err)
+	}
+	css := string(raw)
+	if !strings.Contains(css, ".verso-page-ground{flex:1 0 auto}") {
+		t.Error("a short page's ground fills the window down to the colophon")
+	}
+	if !strings.Contains(css, "main>[data-verso-colophon]{flex:none}") {
+		t.Error("the colophon keeps its own 56px whatever the window's height")
+	}
+	if strings.Contains(css, "100vh - var(--spacing) * 28") {
+		t.Error("the ground is not rounded to the grid, leaving the colophon the remainder")
+	}
+}
+
 // TestStylesheetKeepsFocusAndStillness: two things no utility on any one
 // element can promise, so the stylesheet states them once for all. In forced
 // colours (Windows high contrast) a border's colour is overridden, so a control
