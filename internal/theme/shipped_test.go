@@ -23,7 +23,7 @@ func TestTheShippedThemesKeepEveryFloor(t *testing.T) {
 	for _, p := range problems {
 		t.Error(p)
 	}
-	for _, want := range []string{SandDark, "catppuccin-mocha"} {
+	for _, want := range []string{SandDark, "catppuccin-mocha", "tokyo-night-storm"} {
 		if _, ok := set[want]; !ok {
 			t.Errorf("the shipped themes lack %s", want)
 		}

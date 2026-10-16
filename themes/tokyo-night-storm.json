@@ -1,0 +1,62 @@
+{
+  "name": "Storm",
+  "family": "Tokyo Night",
+  "scheme": "dark",
+  "colors": {
+    "canvas": "#1b1e2d",
+    "ground": "#24283b",
+    "quiet": "#1f2335",
+    "mid": "#292e42",
+    "rule": "#2f3449",
+    "rule-strong": "#3b4261",
+    "inert": "#414868",
+    "sand-5": "#545c7e",
+    "faint": "#565f89",
+    "glyph": "#737aa2",
+    "meta": "#9aa5ce",
+    "body": "#a9b1d6",
+    "ink": "#c0caf5",
+    "on-fill": "#1b1e2d",
+
+    "denim": "#7aa2f7",
+    "denim-deep": "#7dcfff",
+    "denim-line": "#3e4d73",
+    "denim-soft": "#2e3752",
+
+    "green": "#9ece6a",
+    "green-deep": "#9ece6a",
+    "green-line": "#495a49",
+    "green-soft": "#333c41",
+
+    "marigold": "#e0af68",
+    "marigold-deep": "#e0af68",
+    "marigold-line": "#5c5048",
+    "marigold-soft": "#3b3840",
+
+    "crimson": "#f7768e",
+    "crimson-deep": "#f7768e",
+    "crimson-line": "#633f54",
+    "crimson-soft": "#3d3145",
+
+    "amethyst": "#bb9af7",
+    "amethyst-deep": "#bb9af7",
+    "amethyst-line": "#514a73",
+    "amethyst-soft": "#363652",
+
+    "shadow-field": "#1b1e2d59",
+    "shadow-float": "#1b1e2d73",
+    "shadow-menu": "#1b1e2d73",
+    "shadow-dialog": "#1b1e2d80",
+    "shadow-drawer": "#1b1e2d73",
+    "shadow-edge": "#1b1e2d66",
+    "shadow-lifted": "#1b1e2d8c",
+    "shadow-lifted-near": "#1b1e2d66",
+
+    "chart-denim-from": "#7aa2f740",
+    "chart-denim-to": "#7aa2f700",
+    "chart-amethyst-from": "#bb9af740",
+    "chart-amethyst-to": "#bb9af700",
+    "chart-violet-from": "#bb9af74d",
+    "chart-emerald-from": "#9ece6a4d"
+  }
+}

@@ -40,7 +40,8 @@ pick takes effect at once.**
    one. Type, measure, geometry and the grid are never a theme's.
 
 3. **Sand is built in.** Sand light is `palette.css` itself; Sand dark ships
-   as `sand-dark.json` inside the `verso` package, as does Catppuccin Mocha.
+   as `sand-dark.json` inside the `verso` package, as do Catppuccin Mocha and
+   Tokyo Night Storm.
    `verso.ui.theme` unset, or `sand`, follows the browser's preference through
    a `prefers-color-scheme` block; `sand-light` and `sand-dark` force one; any
    other id is that theme, whatever the browser prefers, with its scheme
