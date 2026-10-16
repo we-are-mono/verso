@@ -396,3 +396,29 @@ window.versoRoll = function (value, from, to, frame, warm) {
   var ink = getComputedStyle(warm).getPropertyValue("--color-ink").trim();
   if (ink) warm.animate([{ color: ink }, { color: ink, offset: 0.35 }, {}], { duration: 1600, easing: "ease-out" });
 };
+
+// The descriptions' fold (form-fields): the act on a page's heading line and
+// in every drawer's header folds every description on the page away, for
+// someone who knows the settings, and brings them back. The root carries the
+// state, so the stylesheet folds them all at once and shows the act's other
+// word; a cookie keeps it for this browser, which the shell reads back so the
+// next page arrives as this one was left.
+(function () {
+  var COOKIE = "verso_descriptions";
+  var MAX_AGE = 31536000; // a year
+
+  function cookie(folded, protocol) {
+    var secure = protocol === "https:" ? "; Secure" : "";
+    return COOKIE + "=" + (folded ? "folded; Path=/; Max-Age=" + MAX_AGE : "; Path=/; Max-Age=0") + "; SameSite=Strict" + secure;
+  }
+
+  document.addEventListener("click", function (event) {
+    var act = event.target && event.target.closest && event.target.closest("[data-verso-fold]");
+    if (!act) return;
+    var root = document.documentElement;
+    var folded = root.getAttribute("data-verso-descriptions") !== "folded";
+    if (folded) root.setAttribute("data-verso-descriptions", "folded");
+    else root.removeAttribute("data-verso-descriptions");
+    document.cookie = cookie(folded, window.location.protocol);
+  });
+})();
