@@ -48,7 +48,7 @@ Every task ends green under `make lint` and `make test`; a task that touches a t
 - [x] 6.2 Write the tests first: every page heading line and every drawer header carries the act, a quiet button holding `fold-vertical` with "Hide descriptions" and `unfold-vertical` with "Show descriptions", both phrases in the Slovenian catalog and both glyphs registered from Lucide in the shell's icon source; then add it to `page.html.tmpl` and the drawer header partial and verify
 - [x] 6.3 Write the tests first (`assets_test.go`): `[data-verso-field-desc]` is a one-track grid that goes from `1fr` to `0fr` with `opacity: 0` under `[data-verso-descriptions="folded"]` on a 200ms transition, with none under `prefers-reduced-motion`; the root attribute shows one of the act's two words; the act shows only where `:has([data-verso-field-desc])` holds in its page body or drawer; then implement and verify Devices shows no act and Firewall settings does
 - [x] 6.4 Write the test first (`scripts/*.test.cjs`): pressing the act flips `data-verso-descriptions` on the root and writes `verso_descriptions=folded; Path=/; Max-Age=31536000; SameSite=Strict`, and pressing it again clears both; then implement in `verso-page.js` and verify the fold persists across a reload and into Network › DNS in the dev container
-- [ ] 6.5 Add the descriptions and their fold to DESIGN.md (what folds, what never folds, the act's place, the cookie); verify `impeccable context` loads it
+- [x] 6.5 Add the descriptions and their fold to DESIGN.md (what folds, what never folds, the act's place, the cookie); verify `impeccable context` loads it
 
 ## 7. The card header's seam
 
