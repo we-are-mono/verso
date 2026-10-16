@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"unicode/utf8"
 )
 
 // RadioOptionLimit is the largest single-choice option set shown as radios.
@@ -387,8 +388,30 @@ func networkControlMeasure(datatype string) string {
 	return ""
 }
 
-// Measure keeps short machine values at the measure their grammar needs.
+// Measure keeps short machine values at the measure their grammar needs, wide
+// enough for the hint its empty box shows: a hint is read in place of a value,
+// so a box that cuts it ("default 1" for "default 150") misleads.
 func (f *Field) Measure() string {
+	measure := f.grammarMeasure()
+	hint := utf8.RuneCountInString(f.Placeholder)
+	if measure == "number" && hint > numberHintRunes {
+		measure = "short"
+	}
+	if measure == "short" && hint > shortHintRunes {
+		measure = "address"
+	}
+	return measure
+}
+
+// numberHintRunes and shortHintRunes are how long a hint each short measure
+// holds whole, in the hint's sans, inside the box's padding.
+const (
+	numberHintRunes = 9
+	shortHintRunes  = 13
+)
+
+// grammarMeasure is the measure a value's own grammar needs.
+func (f *Field) grammarMeasure() string {
 	if f.Kind == "select" || f.Kind == "checks" || f.Kind == "password" || f.Kind == "textarea" {
 		return "full"
 	}

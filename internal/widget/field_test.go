@@ -336,3 +336,22 @@ func TestATextFieldWithOptionsSuggestsThem(t *testing.T) {
 		t.Errorf("a text field with nothing to suggest is a plain box:\n%s", plain)
 	}
 }
+
+// An empty box's hint is read in place of a value, so a box too narrow for it
+// misleads ("default 1" for "default 150"): a number's box widens to a short
+// one to hold its hint, and a short one to an address's.
+func TestAShortBoxWidensToHoldItsHint(t *testing.T) {
+	for _, tc := range []struct {
+		field Field
+		want  string
+	}{
+		{Field{Key: "cachesize"}, "number"},
+		{Field{Key: "cachesize", Placeholder: "150"}, "number"},
+		{Field{Key: "cachesize", Placeholder: "default 150"}, "short"},
+		{Field{Key: "src_dport", Placeholder: "e.g. 8000-8010"}, "address"},
+	} {
+		if got := tc.field.Measure(); got != tc.want {
+			t.Errorf("%s with hint %q measures %q, want %q", tc.field.Key, tc.field.Placeholder, got, tc.want)
+		}
+	}
+}
