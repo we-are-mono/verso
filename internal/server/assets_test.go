@@ -457,6 +457,30 @@ func TestAMeasureIsAStackedRows(t *testing.T) {
 	}
 }
 
+// TestARevealedFieldStandsUnderItsGate: what a switch reveals is the switch's
+// own group: its rows draw no hairline and no air over them, and their
+// questions indent 24px, 48px inside a second gate, while their answers keep
+// the form's one column (form-fields).
+func TestARevealedFieldStandsUnderItsGate(t *testing.T) {
+	raw, err := os.ReadFile("assets/forms.css")
+	if err != nil {
+		t.Fatal(err)
+	}
+	css := string(raw)
+	revealed := cssBlock(t, css, ".verso-conditional-body > .verso-field-row,")
+	for _, want := range []string{"border-top: 0;", "padding-top: 0;"} {
+		if !strings.Contains(revealed, want) {
+			t.Errorf("a revealed row draws its own %s: %s", want, revealed)
+		}
+	}
+	if !strings.Contains(cssBlock(t, css, ".verso-conditional-body .verso-field-question {"), "padding-left: var(--spacing-inset);") {
+		t.Error("a revealed field's question does not indent 24px")
+	}
+	if !strings.Contains(cssBlock(t, css, ".verso-conditional-body .verso-conditional-body .verso-field-question {"), "padding-left: calc(var(--spacing-inset) * 2);") {
+		t.Error("a field revealed inside a revealed field does not indent 48px")
+	}
+}
+
 // TestASwitchShowsTheWordForItsState: a form switch holds both words and the
 // stylesheet shows the one its box is in, with no script (form-fields).
 func TestASwitchShowsTheWordForItsState(t *testing.T) {

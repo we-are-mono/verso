@@ -79,6 +79,14 @@
   .verso-conditional-otherwise > .verso-field-row:has(+ .verso-field-row) {
     padding-bottom: calc(var(--spacing) * 4);
   }
+  /* Its questions indent under the gate's, a step per gate, while their
+     answers keep the form's one column. */
+  .verso-conditional-body .verso-field-question {
+    padding-left: var(--spacing-inset);
+  }
+  .verso-conditional-body .verso-conditional-body .verso-field-question {
+    padding-left: calc(var(--spacing-inset) * 2);
+  }
 
   /* The ledger: the question on the left, the answer in the form's one
      answer column, and a lane after it where a row can be taken out. */
