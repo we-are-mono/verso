@@ -1,10 +1,10 @@
-# ADR-010 — Staged changes: stage in UCI, apply from the review drawer
+# ADR-010 — Staged changes: stage in UCI, apply from the Pending changes page
 
 - **Status:** Accepted
 - **Date:** 2026-08-26
 - **Deciders:** tomaz@zaman.io
-- **Relates to:** ADR-005 (the staged-changes chip and its drawer are shell
-  chrome, like the modal and the drawer), ADR-006 (amends the `commit` intent's
+- **Relates to:** ADR-005 (the rail's Pending changes row and its page are
+  shell chrome, like the rail itself), ADR-006 (amends the `commit` intent's
   semantics: plugins request *staging*; only the shell ever commits), ADR-007
   (staging, commit, and rollback all ride the same sid-gated rpcd `uci`
   object), ADR-008 (validation is unchanged — it happens at POST time, before
@@ -42,9 +42,10 @@ storage, the wire flow, and the surface.
 ## Decision
 
 **Staged state lives in UCI's own stage, server-side. The browser holds
-nothing. Save stages; a chip in the top bar, on screen while a change is
-pending, counts the stage from `uci changes` and opens the review drawer,
-whose Apply is rpcd's `uci apply` with its native rollback.**
+nothing. Save stages; a Pending changes row at the top of the rail, on screen
+while a change is pending, counts the stage from `uci changes` and leads to
+the Pending changes page, whose Apply is rpcd's `uci apply` with its native
+rollback.**
 
 1. **The broker stages; it no longer commits.** On a successful plugin POST the
    shell still executes the declared operations through rpcd (`UCISet`, adds,
@@ -52,39 +53,47 @@ whose Apply is rpcd's `uci apply` with its native rollback.**
    stops there. `uci changes` becomes the single source of truth for "what is
    pending". Staged edits survive navigation, shell restarts, and browser
    crashes; they are visible to `uci changes` on the CLI and to every other
-   admin's chip — a shared stage is UCI's model, and showing it is honesty,
-   not a leak.
+   admin's Pending changes row — a shared stage is UCI's model, and showing it
+   is honesty, not a leak.
 
 2. **Interactions that read as instant also stage.** A listing row's enable
    switch posts a minimal form to its plugin page like any other edit; the
-   plugin answers with a stage intent for `enabled`, and the chip's count goes
-   up. A dropped row posts its listing's order the moment it lands. No
+   plugin answers with a stage intent for `enabled`, and the Pending changes
+   row's count goes up. A dropped row posts its listing's order the moment it lands. No
    client-side ledger, no divergence between what a control shows and what
    `uci changes` holds. The one setting outside the stage is one that changes
    only how the pages look: the theme (ADR-024) is written and committed on its
    own when it is picked, through the helper, and touches nothing the stage
    holds. Nothing on the network can break, so there is nothing to roll back.
 
-3. **The stage has one surface: a chip in the top bar, left of Log out, on
-   screen while a change is staged.** It says how many changes wait and that
-   nothing is live yet, in the caveat colour — a fact about the device, not an
-   alarm — and it opens the review drawer. It is rendered server-side from
-   truth on every page: the shell asks rpcd for the pending changes across the
-   configs plugins have declared, and the drawer lists them under the page
-   they belong to — each change as its owning plugin's sentence (the describe
-   hook, docs/plugins.md), led by what happened in a word and opening on the
-   uci lines it stands for — with **Apply N · Discard all** and the rollback
-   promise beneath. A page whose own act stages something (a row's switch, an
-   inline field, a dropped row) brings the chip in step in place; everything
-   else re-renders on page load and does not poll. Because the stage outlives
-   the page, leaving one needs no warning.
+3. **The stage has one surface: the Pending changes row, first in the rail,
+   and the page it leads to.** The row stands above every destination only
+   while a change is staged, in the caveat colour — a fact about the device,
+   not an alarm — and says how many changes wait; on a phone the menu button
+   carries the count. While a form or drawer holds an edit not yet saved, the
+   row already shows it as a dashed line, so the place a Save goes is seen
+   before the Save; the Save turns the line into the page's own words for the
+   change where it stands. Nothing travels across the screen. The page is
+   rendered server-side from truth: the shell asks rpcd for the pending
+   changes across the configs plugins have declared and lists them in one card
+   per page they were made on — each change as its owning plugin's sentence
+   (the describe hook, docs/plugins.md), led by what happened in a word, with
+   how long ago it was staged and its way to the page, its undo, and the uci
+   lines it stands for. Above them a **When you apply** card numbers what an
+   apply does, in the order it does it (§5), opening with a warning where a
+   pending change touches the interface this browser reaches the router
+   through. **Discard all** and **Apply N** stand on the page's heading line.
+   A page whose own act stages something (a row's switch, an inline field, a
+   dropped row) brings the row in step in place; everything else re-renders on
+   page load and does not poll. Because the stage outlives the page, leaving
+   one needs no warning.
 
 4. **The vocabulary is the LuCI pair.** A drawer's or form's submit says
    **Save** — true to what it does: the edit is kept (it survives navigation
-   and restarts, and appears in `uci changes`), not live. The drawer says
-   **Apply** — the contrast teaches the model without a word of explanation.
-   "Stage" is jargon and "Confirm" implies finality; both are wrong for the
-   button.
+   and restarts, and appears in `uci changes`), not live. The Pending changes
+   page says **Apply** — the contrast teaches the model without a word of
+   explanation. "Stage" is jargon and "Confirm" implies finality; both are
+   wrong for the button.
 
 5. **Apply = `uci apply` with a rollback window, then `confirm`.** It calls
    rpcd's `uci.apply` with a rollback timeout (30 s): rpcd commits every dirty
@@ -93,22 +102,38 @@ whose Apply is rpcd's `uci apply` with its native rollback.**
    us — and rpcd arms its rollback. The shell then reconfirms from the browser
    (`uci.confirm`); if the device became unreachable, no confirm arrives and
    the router reverts itself. The safety net runs **on the device**, which is
-   the only place it works in exactly the failure it exists for.
+   the only place it works in exactly the failure it exists for. The page
+   says this as the apply's own steps, one line each and in the order they
+   happen: it saves the changes; it reloads the services procd's triggers name
+   for their configs — read from procd's own table, never a copy the shell
+   keeps, and named as one step since procd runs them together; it keeps them
+   once the page checks in within the window. Each step shows only what the
+   router reports: the save is done when the apply returns, the reloads are
+   then started (procd reports no finish), the check-in is kept when the
+   confirm lands. Apply never asks first; the warning on the page is the
+   warning. When the router puts its settings back, the changes the apply
+   carried are staged again as they were, so a rolled-back apply loses no
+   work: the shell holds them, a secret's value with them, in memory for the
+   window and no longer.
 
-6. **Discard all = `uci revert` per dirty config.** The stage is one unit:
-   Apply and Discard all act on everything staged, matching UCI's semantics.
-   The drawer lists every pending change, but does not offer per-item revert —
-   `uci revert` can target a single section, so nothing here forecloses finer
-   granularity; it is simply not part of this decision.
+6. **Discard all = `uci revert` per dirty config; a change can also be undone
+   alone.** Apply and Discard all act on everything staged, matching UCI's
+   semantics. rpcd lets go of a config's stage only whole, so undoing one row,
+   or one page's rows, lets go of each config they touch and stages the rest
+   of it again through the same rpcd calls a save makes — never by writing
+   rpcd's own stage files. A config's staged files are let go of only when a
+   file is what is undone. The page offers the undone changes back once.
 
 ## Consequences
 
 - `internal/openwrt.Backend` (the ADR-003 seam) grows the rest of the uci
-  lifecycle: `UCIChanges`, `UCIRevert`, `UCIApply(timeout)`, `UCIConfirm` —
-  all thin rpcd calls carrying the sid.
-- The shell gains the drawer's route and the three the drawer posts to —
-  apply, discard, confirm — CSRF-protected like every state-changing request
-  (VS-04).
+  lifecycle: `UCIChanges`, `UCIRevert` (and its halves `UCIUnstage` and
+  `UnstageFiles`), `UCIApply(timeout)`, `UCIConfirm` — all thin rpcd calls
+  carrying the sid — and `ReloadTriggers`, procd's trigger table read through
+  `service list`.
+- The shell gains the Pending changes page's route and the posts it makes —
+  apply, confirm, discard, undo and its put-back — CSRF-protected like every
+  state-changing request (VS-04).
 - ADR-006's `commit` intent keeps its wire shape and changes meaning: it is a
   *stage* request. Plugins never observe a commit; a plugin that needs to know
   whether its config is live can only ask the device, which is the point.
@@ -117,10 +142,15 @@ whose Apply is rpcd's `uci apply` with its native rollback.**
   so it cannot get the sequence wrong.
 - Two admins share one stage: either can see, apply, or discard the other's
   pending changes. Accepted — it mirrors two people holding `uci` shells, and
-  the chip at least makes the situation visible, which the CLI never did.
+  the Pending changes row at least makes the situation visible, which the CLI
+  never did.
 - A staged-but-never-applied change persists indefinitely (also true of `uci`
-  itself). The chip, on every page for as long as the change persists, is the
-  standing reminder.
+  itself). The rail's row, on every page for as long as the change persists,
+  is the standing reminder, and each row on the page says how long ago it was
+  staged.
+- An undo is not atomic: a write refused part way through its replay would
+  leave the config short. The shell then lets go of the config again and
+  stages it as it was before the undo, and says the undo failed.
 
 ## Alternatives considered
 
@@ -142,12 +172,18 @@ whose Apply is rpcd's `uci apply` with its native rollback.**
   and replaced. It covered the foot of the content, its Save & Apply competed
   with a page form's own Save as a second save-ish control, and it treated the
   stage as the page's when the stage is the device's, shared state that
-  follows the operator everywhere. The chip lives in the chrome beside Log
-  out, where the app-wide facts already stand, and the drawer is the same
-  drawer everything else opens.
+  follows the operator everywhere.
+- **A chip in the top bar that opens a review drawer.** Built and replaced.
+  Beside the router's name the chip read as a fact about the router rather
+  than a place to go; the drawer opened from the other side of the screen and
+  looked like any object's drawer; a Save in a drawer felt finished, and the
+  one sign that it was not — a small mark flying to the chip — was easy to
+  miss and is no pattern anyone knows; and a drawer had no room to say what an
+  apply does once changes piled up across pages. The rail's row is a place,
+  shown before the Save, and the page has the room.
 - **A floating pill beside the page's own actions.** Rejected: a second
-  control that materializes is chrome. The chip is one control, in one place,
-  on screen only while there is something to act on.
+  control that materializes is chrome. The rail's row is one control, in one
+  place, on screen only while there is something to act on.
 - **Auto-apply after every save (no surface at all).** Rejected: LuCI's
   perceived frictionlessness is a one-click apply in reach, not auto-commit —
   its modal Save stages. Auto-apply would reload services on every toggle flip
@@ -164,24 +200,28 @@ whose Apply is rpcd's `uci apply` with its native rollback.**
   already the ACL-checked operation. Who staged a change is `stageAuthor`
   (`internal/server/stage_authors.go`), and the staged mark on a field is
   `MarkStaged` (`internal/widget/staged.go`).
-- The chip's count needs the set of configs to query: the union of `uci`
+- The count needs the set of configs to query: the union of `uci`
   declarations across installed plugin manifests (`declaredUCIConfigs` in
   `internal/server/gateway.go`), which the shell loads for the write gate,
-  plus the shell's own (ADR-013). The chip is `#verso-staged` in the top bar;
-  the drawer's contents render from `internal/server/templates/staged.html.tmpl`
-  at `/uci/review`, fetched when it opens. The routes — `handleUCIReview`,
-  `handleUCIApply`, `handleUCIConfirm`, `handleUCIDiscard` — live in
-  `internal/server/staged.go` and reach the device through `UCIApply` and
-  `UCIConfirm` on the Backend (`internal/openwrt/backend.go`); the client is
+  plus the shell's own (ADR-013). The rail's row is built in `buildSidebar`
+  (`internal/server/nav.go`); the page is `pendingPath` (`/pending`) in
+  `internal/server/pending.go`, and `/uci/review` redirects to it. The routes
+  — `handleUCIApply`, `handleUCIConfirm`, `handleUCIDiscard` in
+  `internal/server/staged.go`, `handlePendingUndo` and `handlePendingRestore`
+  in `internal/server/pending.go` — reach the device through the Backend
+  (`internal/openwrt/backend.go`). Undo's replay is `internal/server/undo.go`;
+  the apply's steps are `applySteps` (`internal/server/apply_steps.go`); the
+  disconnect check is `disconnectOf` (`internal/server/disconnect.go`); what a
+  rollback stages again is `restageOf` and `stageAgain`
+  (`internal/server/stage_ends.go`). The client is
   `internal/server/assets/verso-commit.js`.
 - The confirm round-trip needs the page to come back after a firewall/network
-  apply: post-apply, the drawer polls the confirm route inside the rollback
+  apply: post-apply, the page polls the confirm route inside the rollback
   window, mirroring LuCI's cadence — and keeps polling even when the apply
   response itself was lost, since reaching the router again is the success
-  signal. Confirmed, the drawer closes, the chip says so in green and fades,
-  and the page reloads clean behind it; a confirm that never lands is said in
-  crimson, and the drawer reopens. The loop is `apply`, `confirmLoop`,
-  `applied` and `rolledBack` in `internal/server/assets/verso-commit.js`.
+  signal. Confirmed, the page says the changes were applied; a confirm that
+  never lands is said in crimson, and the page reads back the changes staged
+  again.
 - Unsaved work is guarded once, shell-owned: dirty on-page form fields arm the
   browser's native leave-warning until a submit
   (`internal/server/assets/verso-forms.js`). Dirtiness is always a
@@ -190,7 +230,7 @@ whose Apply is rpcd's `uci apply` with its native rollback.**
   already staged needs no guard — the stage outlives the page. Discard all
   reverts the stage on the device and reloads the page, which reads the
   authoritative state back.
-- The drawer's plain language is the owning plugin's describe hook
+- The page's plain language is the owning plugin's describe hook
   (docs/plugins.md; `serve_described` in
   `plugins/verso-plugin-sdk/src/lib.rs`, answered by each plugin's
   `describe.rs`). Before asking, the shell collapses repeated writes to one
@@ -198,5 +238,5 @@ whose Apply is rpcd's `uci apply` with its native rollback.**
   vocabulary the hook reads (`describeChange`), both in
   `internal/server/staged.go`.
   A change no plugin describes reads as its raw uci line.
-  The count is the number of drawer rows — what a person did, not the number of
-  writes it took.
+  The count is the number of the page's rows — what a person did, not the
+  number of writes it took.
