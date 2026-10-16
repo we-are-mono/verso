@@ -153,10 +153,15 @@
     grid-column: 2;
     min-height: calc(var(--spacing) * 8);
   }
-  /* Beside its question the answer centres a 32px control on the name's
-     24px line, reaching 4px past it either side; what follows the control
-     (its refusal, its note) starts on the line 8px under the name's band.
-     Stacked, it stands straight under the question with nothing pulled. */
+  /* What follows a control (its refusal, its note) stands 8px under the
+     control's box, on a line. Beside its question the answer centres a 32px
+     control on the name's 24px line, reaching 4px past it either side, so
+     what follows a pulled control gives those 4px back and still starts on
+     the line 8px under the name's band. Stacked, wide or bare, the answer
+     stands straight under the question with nothing pulled. */
+  .verso-field-answer > :is([data-verso-error], [data-verso-field-note], [data-verso-inline-error]) {
+    margin-top: calc(var(--spacing) * 2);
+  }
   @container verso-field (width >= 36rem) {
     .verso-field-answer {
       margin-top: calc(var(--spacing) * -1);
@@ -164,9 +169,9 @@
     .verso-field-answer:not(:has(> :is([data-verso-error], [data-verso-field-note], [data-verso-inline-error]:not([hidden])))) {
       margin-bottom: calc(var(--spacing) * -1);
     }
-  }
-  .verso-field-answer > :is([data-verso-error], [data-verso-field-note], [data-verso-inline-error]) {
-    margin-top: var(--spacing);
+    .verso-field-row:not(.verso-field-wide, .verso-field-plain) > .verso-field-ledger:has(> .verso-field-question > *) > .verso-field-answer > :is([data-verso-error], [data-verso-field-note], [data-verso-inline-error]) {
+      margin-top: var(--spacing);
+    }
   }
   /* An answer the column cannot hold (rows of values, a code area, a value
      wider than the column) stands under its question at the row's full

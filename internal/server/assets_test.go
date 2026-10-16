@@ -664,6 +664,28 @@ func TestAStagedRowIsMarkedDownItsEdge(t *testing.T) {
 	}
 }
 
+// TestWhatFollowsAControlStandsOnALine: a refusal or a note stands 8px
+// under its control's box wherever the answer stands on the grid (stacked,
+// wide, a bare control), and 4px under it only beside the question, where the
+// answer is pulled 4px over the name's band, so it always starts on a line.
+func TestWhatFollowsAControlStandsOnALine(t *testing.T) {
+	raw, err := os.ReadFile("assets/forms.css")
+	if err != nil {
+		t.Fatal(err)
+	}
+	css := string(raw)
+	after := ":is([data-verso-error], [data-verso-field-note], [data-verso-inline-error]) {"
+	if !strings.Contains(cssBlock(t, css, ".verso-field-answer > "+after), "margin-top: calc(var(--spacing) * 2);") {
+		t.Error("what follows a control does not stand 8px under it")
+	}
+	beside := strings.Index(css, "@container verso-field (width >= 36rem) {")
+	pulled := ".verso-field-row:not(.verso-field-wide, .verso-field-plain) > .verso-field-ledger:has(> .verso-field-question > *) > .verso-field-answer > " + after
+	at := strings.Index(css, pulled)
+	if beside < 0 || at < beside || !strings.Contains(cssBlock(t, css, pulled), "margin-top: var(--spacing);") {
+		t.Error("beside its question, what follows a pulled control does not give the pull back")
+	}
+}
+
 // TestASwitchShowsTheWordForItsState: a form switch holds both words and the
 // stylesheet shows the one its box is in, with no script (form-fields).
 func TestASwitchShowsTheWordForItsState(t *testing.T) {
