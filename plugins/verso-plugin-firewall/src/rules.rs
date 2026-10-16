@@ -15,9 +15,9 @@
 //! between chains would change which packets it sees rather than when.
 
 use verso_plugin::{
-    commit, commit_delete, commit_new, ColumnWidth, Envelope, Form, HeadingAct,
-    RowDrawer, Snapshot, Table, TableCell, TableChip, TableColumn, TableGroup, TablePart,
-    TableRow, Tone, Widget,
+    commit, commit_delete, commit_new, ColumnWidth, Envelope, Form, HeadingAct, RowDrawer,
+    Snapshot, Table, TableCell, TableChip, TableColumn, TableGroup, TablePart, TableRow, Tone,
+    Widget, RESHAPE,
 };
 
 use crate::counters::Counters;
@@ -140,6 +140,25 @@ pub fn save(
     };
     let tab = rule_drawer::reading(query.get(rule_drawer::TAB).trim()).to_string();
     let stated = RuleForm::submitted(form);
+
+    // A tab press is the shell's reshape: the panel again, on the tab asked
+    // for, drawn from what is on screen. Nothing is saved, and nothing is
+    // refused — half a rule is still being written.
+    if form.get("_action") == RESHAPE && removal.is_empty() {
+        return match section == rule_drawer::NEW {
+            true => opened_blank(model, counters, &stated, &Errors::default(), &tab),
+            false => opened(
+                snapshot,
+                model,
+                counters,
+                &section,
+                &stated,
+                &Errors::default(),
+                &tab,
+            ),
+        };
+    }
+
     let errors = stated.validate(&model.zone_names());
 
     if section == rule_drawer::NEW && removal.is_empty() {
@@ -353,7 +372,6 @@ fn row(
     }
 }
 
-
 /// Lane is one evaluation chain's run of rules, plus the destination zone the
 /// whole run shares — the label says where forwarded traffic goes only when
 /// every rule in the lane agrees on it.
@@ -453,14 +471,22 @@ fn close(model: &Firewall, lane: &Lane) -> Vec<TablePart> {
         "output" => parts.extend(door(&zone.output, "the zone’s output policy", zone_href())),
         "forward" => match lane.shared_dest.as_deref() {
             Some(dest) if dest == zone.name => {
-                parts.extend(door(&zone.forward, "the zone’s forward policy", zone_href()));
+                parts.extend(door(
+                    &zone.forward,
+                    "the zone’s forward policy",
+                    zone_href(),
+                ));
             }
             Some(dest) if crossings.contains(&dest) => parts.extend(door(
                 "accept",
                 "the zone’s forwarding",
                 zone_drawer::href(&zone.section, zone_drawer::REACHES),
             )),
-            Some(_) => parts.extend(door(global, "the global forward policy", page::settings_href())),
+            Some(_) => parts.extend(door(
+                global,
+                "the global forward policy",
+                page::settings_href(),
+            )),
             None => {
                 if !crossings.is_empty() {
                     parts.extend([
@@ -630,8 +656,17 @@ mod tests {
                 {"words": "each zone’s own policy", "href": "/plugins/firewall/zones"}
             ])
         );
-        for chain in ["mangle_prerouting", "notrack_wan", "helper_lan", "input_nowhere"] {
-            assert_eq!(closing(&model, chain, None), serde_json::json!([]), "{chain}");
+        for chain in [
+            "mangle_prerouting",
+            "notrack_wan",
+            "helper_lan",
+            "input_nowhere",
+        ] {
+            assert_eq!(
+                closing(&model, chain, None),
+                serde_json::json!([]),
+                "{chain}"
+            );
         }
     }
 
@@ -877,6 +912,49 @@ mod tests {
         assert!(drawer.get("verdict").is_none());
         assert!(drawer.get("lede").is_none());
         assert_eq!(drawer["children"][0]["submit"], "Add rule");
+    }
+
+    // A tab press posts what is on screen as a reshape: the panel comes back on
+    // the tab asked for, drawn from those values, and nothing is saved, refused
+    // or announced — a rule is one object across its tabs, new or not.
+    #[test]
+    fn a_tab_press_carries_what_was_typed_and_saves_nothing() {
+        let typed = "_action=reshape&name=Allow-Test&src=wan&proto=tcp&target=ACCEPT&enabled=1";
+        let pressed = |query: &str| {
+            let mut model = fixture::firewall();
+            serde_json::to_value(save(
+                &fixture::snapshot(),
+                &mut model,
+                &Counters::default(),
+                &Form::parse(query),
+                &Form::parse(typed),
+            ))
+            .expect("serialize")
+        };
+        let name_in = |drawer: &Value| {
+            fixture::find_with(&drawer["children"], &|w| w["name"] == "name")
+                .map(|w| w["value"].clone())
+                .expect("the name rides along")
+        };
+        for (query, drawer_at) in [
+            ("open=new&tab=action", "act"),
+            ("open=new", "act"),
+            ("open=allow_ping&tab=when", "row"),
+        ] {
+            let body = pressed(query);
+            assert!(body.get("commit").is_none(), "{query}: a tab press staged");
+            assert!(body.get("notice").is_none(), "{query}: a tab press spoke");
+            let drawer = match drawer_at {
+                "act" => body["act"]["drawer"].clone(),
+                _ => drawer_of(&body),
+            };
+            assert_eq!(drawer["tabs_keep_edits"], true, "{query}");
+            assert_eq!(
+                name_in(&drawer),
+                "Allow-Test",
+                "{query}: the typed name was dropped"
+            );
+        }
     }
 
     // The lane's own New rule button knows the chain it adds to, so the blank

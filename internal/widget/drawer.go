@@ -26,8 +26,10 @@ type drawerPanelView struct {
 	Title   string
 	Closed  string
 	Tabs    []DrawerTab
-	Flash   Flash
-	Body    []template.HTML
+	// TabsKeepEdits marks the strip so a tab press carries the form (RowDrawer).
+	TabsKeepEdits bool
+	Flash         Flash
+	Body          []template.HTML
 }
 
 // drawer starts a panel's own section hierarchy. A drawer opened from a nested
@@ -62,6 +64,7 @@ func drawerPanel(d *RowDrawer, body []template.HTML) drawerPanelView {
 		Title:   d.Title,
 		Closed:  SafeHref(d.Closed),
 		Choices: d.Size == "choices", Body: body,
+		TabsKeepEdits: d.TabsKeepEdits,
 	}
 	panel.Tabs = make([]DrawerTab, 0, len(d.Tabs))
 	for _, tab := range d.Tabs {

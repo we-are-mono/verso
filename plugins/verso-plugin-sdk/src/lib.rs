@@ -2287,6 +2287,13 @@ pub struct TableStream {
     pub ring: u32,
 }
 
+/// RESHAPE is the `_action` the shell sets on a reshape: a choice that
+/// [reshapes](Widget::reshapes) its form, or a tab press on a panel whose tabs
+/// keep edits ([`RowDrawer::tabs_keep_edits`]). The plugin answers with the
+/// form drawn from the values posted and saves nothing; the shell stages
+/// nothing whatever it answers.
+pub const RESHAPE: &str = "reshape";
+
 /// STREAM_FIREWALL_LOG is the firewall's verdict stream: one row per logged
 /// firewall decision, resolved by the shell to its zone and its rule.
 pub const STREAM_FIREWALL_LOG: &str = "firewall-log";
@@ -2355,6 +2362,13 @@ pub struct RowDrawer {
     /// that decides nothing is chrome.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub tabs: Vec<DrawerTab>,
+    /// The panel's form stays one object across its tabs: a tab press posts
+    /// what is on screen to that tab's address with `_action=reshape` (never
+    /// staged), and the plugin draws the tab from those values, so a tab
+    /// press never drops what was typed. Set it only once the plugin answers
+    /// that reshape.
+    #[serde(skip_serializing_if = "is_false")]
+    pub tabs_keep_edits: bool,
     #[serde(skip_serializing_if = "String::is_empty")]
     pub size: String,
     #[serde(skip_serializing_if = "is_false")]

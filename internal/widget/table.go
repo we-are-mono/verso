@@ -445,10 +445,16 @@ type RowDrawer struct {
 	// rule matches, what it then does, when it applies. Each carries the state
 	// the object is in under that heading, so the strip answers before a tab is
 	// chosen. A panel with one thing to say sends none and shows its body whole.
-	Tabs     []DrawerTab `json:"tabs,omitempty"`
-	Size     string      `json:"size,omitempty"`
-	Open     bool        `json:"open,omitempty"`
-	Children Widgets     `json:"children"`
+	Tabs []DrawerTab `json:"tabs,omitempty"`
+	// TabsKeepEdits says the panel's form stays one object across its tabs:
+	// pressing a tab posts what is on screen as a reshape to that tab's
+	// address (the shell's marker, never staged), and the plugin draws the
+	// tab from those values, so a tab press never drops what was typed. A
+	// plugin declares it only once it answers that reshape.
+	TabsKeepEdits bool    `json:"tabs_keep_edits,omitempty"`
+	Size          string  `json:"size,omitempty"`
+	Open          bool    `json:"open,omitempty"`
+	Children      Widgets `json:"children"`
 }
 
 // DrawerTab is one heading in a panel's strip: what it is called and the

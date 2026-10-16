@@ -587,7 +587,10 @@
            as the header is, and its tabs are the air: each stands the full
            height, so an underline sits on the strip's own hairline. */}}
       {{if .Tabs}}
-      <nav class="flex flex-none gap-6 overflow-x-auto {{template "verso-drawer-inset"}} shadow-[inset_0_-1px_0_var(--color-rule)]" aria-label="{{ t "Sections" }}">
+      {{/* A strip that keeps edits (RowDrawer.TabsKeepEdits) is marked, so a
+           press posts the form to the tab rather than fetching it bare
+           (verso-forms.js). */}}
+      <nav{{if .TabsKeepEdits}} data-verso-tabs-keep{{end}} class="flex flex-none gap-6 overflow-x-auto {{template "verso-drawer-inset"}} shadow-[inset_0_-1px_0_var(--color-rule)]" aria-label="{{ t "Sections" }}">
         {{range .Tabs}}
         {{/* A reading is swapped into the panel that is already open, never
              navigated to: the frame stays where it is, so it does not slide in

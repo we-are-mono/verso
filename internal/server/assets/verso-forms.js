@@ -1409,6 +1409,29 @@ window.versoValidate = function (datatype, value) {
     if (!el || !el.form || !el.name || !el.closest("[data-verso-reshape]")) return;
     reshape(el.form, el);
   });
+  // A panel whose tabs keep edits (RowDrawer.TabsKeepEdits) is one object
+  // across its tabs: a tab press posts what is on screen to that tab as a
+  // reshape, which the shell never stages, and the plugin draws the tab from
+  // those values — so going to Action and back finds the name still typed.
+  // It is heard before htmx, which would otherwise fetch the tab bare. The
+  // address follows as the plain link's would.
+  document.addEventListener("click", function (e) {
+    var tab = e.target && e.target.closest ? e.target.closest("[data-verso-tabs-keep] a[href]") : null;
+    if (!tab || !window.htmx || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    var frame = tab.closest("[data-verso-panel]");
+    var form = frame && frame.querySelector("form[hx-post]");
+    if (!form) return;
+    e.preventDefault();
+    e.stopPropagation();
+    var url = tab.getAttribute("href");
+    form.setAttribute("aria-busy", "true");
+    window.htmx.ajax("POST", url, { source: form, target: frame, swap: "innerHTML", headers: { "X-Verso-Interaction": "reshape" } })
+      .then(function () {
+        history.replaceState(history.state, "", url);
+        var current = frame.querySelector('[data-verso-tabs-keep] a[aria-current="page"]');
+        if (current) current.focus();
+      }, function () { form.removeAttribute("aria-busy"); });
+  }, true);
   // versoBreakable writes a machine string into el so that it wraps where it
   // divides itself: after each of the first separator it has, "/" before "."
   // before ":", and nowhere else — widget.Breakable's rule, for a value added

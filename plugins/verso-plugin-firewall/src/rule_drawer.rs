@@ -88,6 +88,7 @@ pub fn blank(model: &Firewall, form: &RuleForm, errors: &Errors, tab: &str) -> R
     RowDrawer {
         title: "New rule".into(),
         tabs: new_tabs(form, tab),
+        tabs_keep_edits: true,
         closed: page::rules_href(),
         open: true,
         children: vec![fields::panel_form(
@@ -143,6 +144,8 @@ pub fn drawer(
     RowDrawer {
         title: title(&rule.name),
         tabs: tabs(rule, tab),
+        // A tab press carries what is typed (rules::save answers the reshape).
+        tabs_keep_edits: true,
         closed: page::rules_href(),
         open: true,
         children: body(model, rule, form, errors, tab),

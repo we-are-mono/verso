@@ -103,6 +103,31 @@ func TestDrawerTabsAreTheirNames(t *testing.T) {
 	}
 }
 
+// A panel whose tabs keep edits says so on its strip, which is how the shell
+// knows a tab press carries the form rather than dropping what was typed; a
+// panel that does not declare it keeps plain links.
+func TestDrawerTabsKeepEditsWhereTheyDeclareIt(t *testing.T) {
+	strip := func(keep bool) string {
+		tbl := &Table{Rows: []TableRow{{ID: "r", Cells: []TableCell{{Text: "rule"}}, Drawer: &RowDrawer{
+			Title: "rule", Open: true, TabsKeepEdits: keep,
+			Tabs:     []DrawerTab{{Label: "Match", Href: "/p?open=new", Active: true}, {Label: "Action", Href: "/p?open=new&tab=action"}},
+			Children: []Widget{&Callout{Body: "the reading"}},
+		}}}}
+		var b strings.Builder
+		if _, err := newRenderer(t).RenderOpenPanelWithToken(&b, tbl, "tok", "", nil, Flash{}); err != nil {
+			t.Fatal(err)
+		}
+		got := b.String()[strings.Index(b.String(), "<nav"):]
+		return got[:strings.Index(got, ">")]
+	}
+	if nav := strip(true); !strings.Contains(nav, "data-verso-tabs-keep") {
+		t.Errorf("a strip that keeps edits does not say so: %s", nav)
+	}
+	if nav := strip(false); strings.Contains(nav, "data-verso-tabs-keep") {
+		t.Errorf("a plain strip claims to keep edits: %s", nav)
+	}
+}
+
 func TestRenderOpenPanelWithToken(t *testing.T) {
 	r := newRenderer(t)
 	tbl := &Table{
