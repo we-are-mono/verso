@@ -43,14 +43,7 @@ pub fn from_panel(form: &Form) -> bool {
 /// costs is the bar's to say.
 pub fn panel_form(submit: &str, mut fields: Vec<Widget>) -> Widget {
     fields.push(Widget::hidden(PANEL_FIELD, "1"));
-    Widget::Form {
-        style: String::new(),
-        submit: submit.into(),
-        error: String::new(),
-        fields,
-        note: String::new(),
-        target: String::new(),
-    }
+    Widget::form(submit, fields)
 }
 
 /// name_field is what the rule is called — the string every listing, hit count
