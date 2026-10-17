@@ -182,6 +182,31 @@ func newClassList(file string, line int, raw string) classList {
 	return cl
 }
 
+var (
+	jsStringLiteral = regexp.MustCompile(`"([^"\\\n]*)"|'([^'\\\n]*)'`)
+	// utilityShaped is a token that can only be a class: a utility with a
+	// value or a variant (text-sm, md:px-10, [&>p]:inline) or one of the bare
+	// utilities.
+	utilityShaped = regexp.MustCompile(`^!?(?:[a-z0-9@:\[\]()./_%&>~*+=,#!-]*-[a-z0-9@:\[\]()./_%&>~*+=,#!-]*|flex|grid|block|inline|hidden|truncate|italic|uppercase|lowercase|relative|absolute|fixed|sticky|contents|invisible|underline|grow|shrink|border|rounded|shadow|outline|transition|static|isolate)!?$`)
+)
+
+// classish is a script's string literal that can only be a class list: two
+// or more tokens, every one shaped like a utility or a block class. Scripts
+// build elements through helpers (versoEl(tag, classes, text)) and keep maps of
+// class strings, which no class="…" attribute shows.
+func classish(s string) bool {
+	toks := strings.Fields(s)
+	if len(toks) < 2 {
+		return false
+	}
+	for _, t := range toks {
+		if !utilityShaped.MatchString(t) {
+			return false
+		}
+	}
+	return true
+}
+
 // classLists is every element's class list across the markup, in file order.
 func (src styleSources) classLists() []classList {
 	var out []classList
@@ -189,15 +214,31 @@ func (src styleSources) classLists() []classList {
 	for _, file := range files {
 		body := src.markup[file]
 		lineAt := func(i int) int { return strings.Count(body[:i], "\n") + 1 }
+		seen := map[int]bool{}
+		add := func(from, to int) {
+			if !seen[from] {
+				seen[from] = true
+				out = append(out, newClassList(file, lineAt(from), body[from:to]))
+			}
+		}
 		if strings.HasSuffix(file, ".go") || strings.HasSuffix(file, ".tmpl") || strings.HasSuffix(file, ".js") {
 			for _, sp := range classAttrs(body) {
-				out = append(out, newClassList(file, lineAt(sp[0]), body[sp[0]:sp[1]]))
+				add(sp[0], sp[1])
 			}
 		}
 		if strings.HasSuffix(file, ".js") {
 			for _, re := range []*regexp.Regexp{jsClassName, jsClassList} {
 				for _, m := range re.FindAllStringSubmatchIndex(body, -1) {
-					out = append(out, newClassList(file, lineAt(m[0]), body[m[4]:m[5]]))
+					add(m[4], m[5])
+				}
+			}
+			for _, m := range jsStringLiteral.FindAllStringSubmatchIndex(body, -1) {
+				from, to := m[2], m[3]
+				if from < 0 {
+					from, to = m[4], m[5]
+				}
+				if classish(body[from:to]) {
+					add(from, to)
 				}
 			}
 		}

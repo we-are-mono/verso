@@ -101,6 +101,7 @@ classes-are-blocks	verso-panel-chassis
 classes-are-blocks	verso-panel-face
 classes-are-blocks	verso-panel-generated
 classes-are-blocks	verso-pending-link
+classes-are-blocks	verso-pluck
 classes-are-blocks	verso-port-body
 classes-are-blocks	verso-port-label
 classes-are-blocks	verso-port-mouth
@@ -130,6 +131,7 @@ classes-are-blocks	verso-stack
 classes-are-blocks	verso-staged-bar
 classes-are-blocks	verso-step
 classes-are-blocks	verso-step-mark
+classes-are-blocks	verso-stream-release
 classes-are-blocks	verso-switch-off
 classes-are-blocks	verso-switch-on
 classes-are-blocks	verso-switch-word
@@ -833,13 +835,60 @@ type-comes-from-roles	sections.css	:is(.verso-page-body, [data-verso-drawer-body
 type-comes-from-roles	sections.css	:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) [data-verso-conditions] > :first-child > legend	line-height
 type-comes-from-roles	sections.css	:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section][data-verso-headless][data-verso-ruled]:not(section section) > .verso-rhythm > details.verso-disclosure:only-child > summary	font-size
 type-comes-from-roles	sections.css	:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section][data-verso-headless][data-verso-ruled]:not(section section) > .verso-rhythm > details.verso-disclosure:only-child > summary	line-height
+type-comes-from-roles	server/assets/verso-diagnostics.js	font-medium
+type-comes-from-roles	server/assets/verso-diagnostics.js	font-mono
 type-comes-from-roles	server/assets/verso-diagnostics.js	font-mono
 type-comes-from-roles	server/assets/verso-diagnostics.js	font-sans
+type-comes-from-roles	server/assets/verso-diagnostics.js	leading-6
+type-comes-from-roles	server/assets/verso-diagnostics.js	text-base
 type-comes-from-roles	server/assets/verso-diagnostics.js	text-base
 type-comes-from-roles	server/assets/verso-diagnostics.js	text-sm
+type-comes-from-roles	server/assets/verso-diagnostics.js	text-sm
+type-comes-from-roles	server/assets/verso-forms.js	font-medium
+type-comes-from-roles	server/assets/verso-forms.js	font-mono
+type-comes-from-roles	server/assets/verso-forms.js	text-base
+type-comes-from-roles	server/assets/verso-forms.js	text-sm
+type-comes-from-roles	server/assets/verso-forms.js	text-sm
+type-comes-from-roles	server/assets/verso-listing.js	font-bold
+type-comes-from-roles	server/assets/verso-listing.js	font-medium
+type-comes-from-roles	server/assets/verso-listing.js	font-medium
+type-comes-from-roles	server/assets/verso-listing.js	font-medium
+type-comes-from-roles	server/assets/verso-listing.js	font-medium
+type-comes-from-roles	server/assets/verso-listing.js	font-medium
+type-comes-from-roles	server/assets/verso-listing.js	font-medium
+type-comes-from-roles	server/assets/verso-listing.js	font-medium
+type-comes-from-roles	server/assets/verso-listing.js	font-medium
+type-comes-from-roles	server/assets/verso-listing.js	font-medium
+type-comes-from-roles	server/assets/verso-listing.js	font-medium
+type-comes-from-roles	server/assets/verso-listing.js	font-mono
+type-comes-from-roles	server/assets/verso-listing.js	font-mono
+type-comes-from-roles	server/assets/verso-listing.js	font-mono
+type-comes-from-roles	server/assets/verso-listing.js	font-mono
+type-comes-from-roles	server/assets/verso-listing.js	font-mono
+type-comes-from-roles	server/assets/verso-listing.js	font-mono
+type-comes-from-roles	server/assets/verso-listing.js	font-mono
+type-comes-from-roles	server/assets/verso-listing.js	font-mono
+type-comes-from-roles	server/assets/verso-listing.js	font-mono
+type-comes-from-roles	server/assets/verso-listing.js	text-base
+type-comes-from-roles	server/assets/verso-listing.js	text-base
+type-comes-from-roles	server/assets/verso-listing.js	text-base
+type-comes-from-roles	server/assets/verso-listing.js	text-base
+type-comes-from-roles	server/assets/verso-listing.js	text-base
+type-comes-from-roles	server/assets/verso-listing.js	text-base
+type-comes-from-roles	server/assets/verso-listing.js	text-base
+type-comes-from-roles	server/assets/verso-listing.js	text-base
+type-comes-from-roles	server/assets/verso-listing.js	text-sm
+type-comes-from-roles	server/assets/verso-listing.js	text-sm
+type-comes-from-roles	server/assets/verso-listing.js	text-sm
+type-comes-from-roles	server/assets/verso-listing.js	text-sm
+type-comes-from-roles	server/assets/verso-listing.js	text-sm
 type-comes-from-roles	server/assets/verso-system.js	leading-6
 type-comes-from-roles	server/assets/verso-system.js	text-sm
 type-comes-from-roles	server/assets/verso-tables.js	text-sm
+type-comes-from-roles	server/assets/verso.js	font-normal
+type-comes-from-roles	server/assets/verso.js	font-semibold
+type-comes-from-roles	server/assets/verso.js	leading-6
+type-comes-from-roles	server/assets/verso.js	text-sm
 type-comes-from-roles	server/entity.go	leading-snug
 type-comes-from-roles	server/entity.go	text-sm
 type-comes-from-roles	server/restarting.go	font-mono

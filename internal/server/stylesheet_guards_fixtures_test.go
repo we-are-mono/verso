@@ -93,6 +93,13 @@ func TestStylesheetGuardsCatchWhatTheyName(t *testing.T) {
 			want: "border border-faint rounded-[1px] shrink-0 size-1.5",
 		},
 		{
+			name:  "a script's helper writing a type utility",
+			guard: typeComesFromRoles,
+			bad:   styleSources{markup: map[string]string{"server/assets/verso-x.js": `var stamp = el("time", "shrink-0 font-mono text-base text-body", at); var map = { time: "font-mono text-base font-medium" };`}},
+			good:  styleSources{markup: map[string]string{"server/assets/verso-x.js": `var stamp = el("time", "verso-log__time shrink-0", at); var label = T("Uploading… done"); document.getElementById("verso-menu-count");`}},
+			want:  "font-mono",
+		},
+		{
 			name:  "a long class list",
 			guard: shortClassLists,
 			bad:   styleSources{markup: map[string]string{"widget/templates/button.html.tmpl": `<button class="flex h-control items-center gap-2 rounded-xs border px-4 text-sm font-semibold {{template "tone" .}}"></button>`}},
