@@ -22,17 +22,20 @@ func TestAChartIsSizedByItsPlace(t *testing.T) {
 		place ChartPlace
 		want  string
 	}{
-		{PlacePage, `data-chart-place="page"`},
-		{PlaceCompact, `data-chart-place="compact"`},
+		{PlacePage, `data-verso-place="page"`},
+		{PlaceCompact, `data-verso-place="compact"`},
 	} {
 		got := render(t, newRenderer(t), &Chart{Place: tc.place, Span: 24 * time.Hour, Series: series})
-		if !strings.Contains(got, tc.want) {
+		if !strings.Contains(got, `<div class="verso-chart"`) || !strings.Contains(got, tc.want) {
 			t.Errorf("place %v: missing %s:\n%s", tc.place, tc.want, got)
 		}
 		if strings.Contains(got, "-mt-px") {
 			t.Errorf("place %v: the plot is shifted a pixel up:\n%s", tc.place, got)
 		}
 	}
+	declares(t, "chart", ".verso-chart", "--verso-chart-cell: 2rem;")
+	declares(t, "chart", `.verso-chart[data-verso-place="compact"]`, "--verso-chart-cell: 1.5rem;")
+	declares(t, "chart", ".verso-chart__svg", "height: calc(var(--verso-chart-cell) * 4);")
 }
 
 var tickLabel = regexp.MustCompile(`data-verso-chart-tick[^>]*>([^<]*)<`)
@@ -40,7 +43,7 @@ var tickLabel = regexp.MustCompile(`data-verso-chart-tick[^>]*>([^<]*)<`)
 // ticks are the labels of the time axis that cuts the window into steps, left
 // to right.
 func ticks(html string, steps string) []string {
-	_, axis, _ := strings.Cut(html, `data-chart-axis="`+steps+`"`)
+	_, axis, _ := strings.Cut(html, `data-verso-axis="`+steps+`"`)
 	axis, _, _ = strings.Cut(axis, "</div>")
 	var out []string
 	for _, m := range tickLabel.FindAllStringSubmatch(axis, -1) {
@@ -68,7 +71,7 @@ func TestAWindowOffersTheStepsItCutsInto(t *testing.T) {
 		{7 * 24 * time.Hour, "4", map[string]string{"4": "7\U0000202fd|5\U0000202fd 6\U0000202fh|3\U0000202fd 12\U0000202fh|1\U0000202fd 18\U0000202fh|now"}},
 	} {
 		got := render(t, newRenderer(t), &Chart{Span: tc.span, Series: series})
-		if !strings.Contains(got, `data-chart-steps="`+tc.steps+`"`) {
+		if !strings.Contains(got, `data-verso-steps="`+tc.steps+`"`) {
 			t.Errorf("span %v does not offer %s:\n%s", tc.span, tc.steps, got)
 		}
 		for steps, want := range tc.axes {
@@ -92,10 +95,10 @@ func TestAChartsLegendSaysItsSeriesFigureAndPeak(t *testing.T) {
 		}},
 	})
 	for _, want := range []string{
-		"data-verso-chart-legend", `bg-denim`, ">CPU<", ">48.7\U0000202f°C<", ">on average<", ">peak<", ">59.0\U0000202f°C<",
+		"data-verso-chart-legend", `class="verso-chart__key" data-verso-tone="denim"`, ">CPU<", ">48.7\U0000202f°C<", ">on average<", ">peak<", ">59.0\U0000202f°C<",
 		">80<", ">60<", "data-verso-chart-unit>°C<",
 		// 59 °C under a top of 80 lands at 128 - 59/80·128 on a page's 128px plot.
-		`<line class="verso-chart-peak verso-chart-peak--denim" x1="0" x2="620" y1="33.6" y2="33.6"`,
+		`<line class="verso-chart__peak" data-verso-tone="denim" x1="0" x2="620" y1="33.6" y2="33.6"`,
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("chart missing %q:\n%s", want, got)
@@ -104,16 +107,19 @@ func TestAChartsLegendSaysItsSeriesFigureAndPeak(t *testing.T) {
 	if strings.Index(got, "data-verso-chart-legend") > strings.Index(got, "<svg") {
 		t.Error("the legend stands under the plot")
 	}
-	if strings.Index(got, "verso-chart-peak") > strings.Index(got, "verso-chart-series") {
+	if strings.Index(got, `class="verso-chart__peak"`) > strings.Index(got, `class="verso-chart__series"`) {
 		t.Error("the peak line is drawn over the curve")
 	}
+	declares(t, "chart", `.verso-chart__key[data-verso-tone="denim"]`, "background-color: var(--color-denim);")
+	declares(t, "chart", `.verso-chart__peak[data-verso-tone="denim"]`, "stroke: var(--color-denim);")
+	declares(t, "chart", ".verso-chart__peak", "stroke-dasharray: 2 3;")
 }
 
 // TestAChartWithoutALegendDrawsNone: a series with no legend has no legend
 // line and no peak mark.
 func TestAChartWithoutALegendDrawsNone(t *testing.T) {
 	got := render(t, newRenderer(t), &Chart{Span: time.Hour, Series: []ChartSeries{{Values: []float64{1, 2}}}})
-	if strings.Contains(got, "data-verso-chart-legend") || strings.Contains(got, "verso-chart-peak") {
+	if strings.Contains(got, "data-verso-chart-legend") || strings.Contains(got, "verso-chart__peak") {
 		t.Errorf("a series with no legend drew one:\n%s", got)
 	}
 }
@@ -161,7 +167,7 @@ func TestRenderChart(t *testing.T) {
 	})
 	for _, want := range []string{
 		`preserveAspectRatio="none"`, `aria-label="Traffic"`, `data-chart-padding="0"`,
-		"verso-chart--emerald", "verso-chart--violet",
+		`<g class="verso-chart__series" data-verso-tone="emerald">`, `<g class="verso-chart__series" data-verso-tone="violet">`,
 		"620.0 21.3", // 100 under a top of 120 lands at 128 - 100/120·128
 		">120<", ">90<", ">60<", ">30<", `style="top:0.0%"`, `style="top:75.0%"`,
 		`style="top:100%" data-verso-chart-unit>Mb/s<`,
@@ -171,9 +177,11 @@ func TestRenderChart(t *testing.T) {
 			t.Errorf("chart missing %q:\n%s", want, got)
 		}
 	}
-	if n := strings.Count(got, "verso-chart-area"); n != 1 {
+	if n := strings.Count(got, "verso-chart__area"); n != 1 {
 		t.Errorf("only the filled series draws an area, got %d", n)
 	}
+	declares(t, "chart", `.verso-chart__series[data-verso-tone="emerald"] .verso-chart__line`, "stroke: var(--color-green);")
+	declares(t, "chart", `.verso-chart__series[data-verso-tone="violet"] .verso-chart__line`, "stroke: var(--color-amethyst);", "stroke-width: 1.5;")
 }
 
 // TestChartGradientIdsUnique: two charts rendered by one renderer get distinct gradient
@@ -214,7 +222,7 @@ func TestChartBreaksTheLineAtAGap(t *testing.T) {
 	if strings.Contains(got, "NaN") {
 		t.Fatalf("a gap was drawn as a number:\n%s", got)
 	}
-	line := between(got, `class="verso-chart-line`, `/>`)
+	line := between(got, `class="verso-chart__line"`, `/>`)
 	if n := strings.Count(line, "M"); n != 2 {
 		t.Fatalf("line has %d runs, want 2 (the lone 5 is no line): %s", n, line)
 	}
@@ -222,7 +230,7 @@ func TestChartBreaksTheLineAtAGap(t *testing.T) {
 	if !strings.Contains(line, "M516.7 ") {
 		t.Fatalf("the second run is not at its own place on the axis: %s", line)
 	}
-	if area := between(got, `class="verso-chart-area"`, `/>`); strings.Count(area, "Z") != 2 {
+	if area := between(got, `class="verso-chart__area"`, `/>`); strings.Count(area, "Z") != 2 {
 		t.Fatalf("area does not close each run on its own: %s", area)
 	}
 }
@@ -239,22 +247,25 @@ func TestChartMarksWhatHappened(t *testing.T) {
 		},
 	})
 	for _, want := range []string{
-		`<rect class="verso-chart-mark--outage" x="155.0" y="0" width="155.0" height="128"><title>Internet down 03:12–03:20</title></rect>`,
-		`<line class="verso-chart-mark--boot" x1="465.0" x2="465.0" y1="0" y2="128" vector-effect="non-scaling-stroke"><title>Router started at 04:00</title></line>`,
+		`<rect class="verso-chart__mark" data-verso-kind="outage" x="155.0" y="0" width="155.0" height="128"><title>Internet down 03:12–03:20</title></rect>`,
+		`<line class="verso-chart__mark" data-verso-kind="boot" x1="465.0" x2="465.0" y1="0" y2="128" vector-effect="non-scaling-stroke"><title>Router started at 04:00</title></line>`,
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("chart missing %s\n%s", want, got)
 		}
 	}
-	if strings.Index(got, "verso-chart-mark--outage") > strings.Index(got, "verso-chart-series") {
+	if strings.Index(got, `data-verso-kind="outage"`) > strings.Index(got, `class="verso-chart__series"`) {
 		t.Error("marks are drawn over the curves")
 	}
+	declares(t, "chart", `.verso-chart__mark[data-verso-kind="outage"]`, "fill: var(--color-crimson);")
+	declares(t, "chart", `.verso-chart__mark[data-verso-kind="boot"]`, "stroke-dasharray: 3 3;")
 
 	// Packet loss is a band too, in its own colour.
 	lossy := render(t, newRenderer(t), &Chart{Marks: []ChartMark{{Kind: "loss", From: 0, To: 0.5, Label: "Packet loss up to 23 %"}}})
-	if !strings.Contains(lossy, `<rect class="verso-chart-mark--loss" x="0.0" y="0" width="310.0"`) {
+	if !strings.Contains(lossy, `<rect class="verso-chart__mark" data-verso-kind="loss" x="0.0" y="0" width="310.0"`) {
 		t.Errorf("a loss band is not drawn:\n%s", lossy)
 	}
+	declares(t, "chart", `.verso-chart__mark[data-verso-kind="loss"]`, "fill: var(--color-marigold);")
 
 	// A 25-second outage on a day's chart is a sliver; it keeps a width the
 	// eye can find.
@@ -278,7 +289,7 @@ func TestChartSkipsShortSeries(t *testing.T) {
 	if !strings.Contains(got, "<svg") {
 		t.Errorf("a short series should still yield an svg frame:\n%s", got)
 	}
-	if strings.Contains(got, "verso-chart-line") {
+	if strings.Contains(got, "verso-chart__line") {
 		t.Errorf("a one-point series must draw no line:\n%s", got)
 	}
 }

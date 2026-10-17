@@ -150,3 +150,16 @@ The rail's 5px square stays as it is until the rail converts.
 | an emphasised fact (the firmware and backup confirmations) | 5 | sans 16/500 | the card-title role (16/600): one step up from the value role, the role list holding no 16/500 |
 | an identity fact | none ship | label 16/400, value 16/500, an emphasised verbatim value 18/600 | the row-label and value roles; an emphasised verbatim value the title role's verbatim form (mono 20/700) |
 | a system fact's label | | could shrink beside a long value | keeps its width, as every fact's label does |
+
+### `meter`, `chart` and `traffic`
+
+| Copies | n | Difference | Became |
+|---|---|---|---|
+| the Overview gauge's track | 4 | centred in a 24px wrapper | the track alone, 9px over and under it: the same pixels, one element fewer |
+| a default meter's figure | none in the reference set | sans 36/800, −0.025em | the figure role, as the Overview's gauges: mono 36/700, −0.05em |
+| a default meter's unit and detail | none in the reference set | the unit 500, the detail 12px | the figure-unit role (400) and the body role (14px, truncated), as the Overview's |
+| a default meter's figure and unit | | 4px apart | 6px, as the Overview's |
+| a compact meter's value | none in the reference set | sans 16/600, its unit 16/500 | the card-title role with figures, the unit the value role (14/500) |
+| a band's live recolouring | | the script swapped colour classes | the script sets the band (`data-verso-tone`) the first paint carries |
+| a listing cell's meter bar | | square ends under a round clip | round ends, under the same clip: no pixel changes |
+| the traffic graph's lanes, latency line and chart parts | | hand-written spacing and `verso-chart-*` classes with `--` colour modifiers | the traffic and chart blocks; colours by `data-verso-tone`, no pixel changes |

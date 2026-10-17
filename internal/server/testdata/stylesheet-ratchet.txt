@@ -6,38 +6,7 @@ classes-are-blocks	verso-box-part
 classes-are-blocks	verso-box-select
 classes-are-blocks	verso-box-unit
 classes-are-blocks	verso-busy
-classes-are-blocks	verso-chart
-classes-are-blocks	verso-chart--
-classes-are-blocks	verso-chart--amethyst
-classes-are-blocks	verso-chart--denim
-classes-are-blocks	verso-chart--emerald
-classes-are-blocks	verso-chart--violet
-classes-are-blocks	verso-chart-area
-classes-are-blocks	verso-chart-axis
-classes-are-blocks	verso-chart-figure
-classes-are-blocks	verso-chart-fill-0
-classes-are-blocks	verso-chart-fill-1
-classes-are-blocks	verso-chart-frame
 classes-are-blocks	verso-chart-graph
-classes-are-blocks	verso-chart-head
-classes-are-blocks	verso-chart-legend
-classes-are-blocks	verso-chart-legend-peak
-classes-are-blocks	verso-chart-legend-series
-classes-are-blocks	verso-chart-line
-classes-are-blocks	verso-chart-mark--
-classes-are-blocks	verso-chart-mark--boot
-classes-are-blocks	verso-chart-mark--loss
-classes-are-blocks	verso-chart-mark--outage
-classes-are-blocks	verso-chart-peak
-classes-are-blocks	verso-chart-peak--
-classes-are-blocks	verso-chart-peak--amethyst
-classes-are-blocks	verso-chart-peak--denim
-classes-are-blocks	verso-chart-peak--emerald
-classes-are-blocks	verso-chart-peak--violet
-classes-are-blocks	verso-chart-plot
-classes-are-blocks	verso-chart-series
-classes-are-blocks	verso-chart-tick
-classes-are-blocks	verso-chart-yl
 classes-are-blocks	verso-collection
 classes-are-blocks	verso-colophon-fact
 classes-are-blocks	verso-condition
@@ -84,7 +53,6 @@ classes-are-blocks	verso-landed
 classes-are-blocks	verso-lede
 classes-are-blocks	verso-live-dot
 classes-are-blocks	verso-menu-button
-classes-are-blocks	verso-meter-bar
 classes-are-blocks	verso-modal
 classes-are-blocks	verso-modal-motion
 classes-are-blocks	verso-nav-branch
@@ -145,7 +113,6 @@ classes-are-blocks	verso-switch-off
 classes-are-blocks	verso-switch-on
 classes-are-blocks	verso-switch-word
 classes-are-blocks	verso-time-input
-classes-are-blocks	verso-traffic
 classes-are-blocks	verso-vt
 no-class-string-templates	server/templates/nav-row.html.tmpl	verso-nav-row-class
 no-class-string-templates	widget/templates/modal.html.tmpl	modal.frame
@@ -180,11 +147,7 @@ no-class-string-templates	widget/templates/shared.html.tmpl	verso-select-compact
 no-class-string-templates	widget/templates/shared.html.tmpl	verso-select-compact-chevron
 no-class-string-templates	widget/templates/shared.html.tmpl	verso-token-chip
 no-class-string-templates	widget/templates/shared.html.tmpl	verso-tone-text
-no-repeated-bundles	-bottom-1 -top-1 absolute bg-crimson rounded-[1px] w-0.5
-no-repeated-bundles	-bottom-1 -top-1 absolute bg-marigold rounded-[1px] w-0.5
 no-repeated-bundles	-mx-10 bg-quiet flex-1 min-h-0 overflow-y-auto pb-6 pt-3 shadow-(--shadow-edge)
-no-repeated-bundles	-translate-y-1/2 absolute left-3 pointer-events-none whitespace-nowrap
-no-repeated-bundles	absolute bg-crimson bg-green bg-marigold inset-0
 no-repeated-bundles	absolute cursor-pointer inset-0 opacity-0 size-full
 no-repeated-bundles	absolute flex inset-y-0 items-center left-3 pointer-events-none text-glyph
 no-repeated-bundles	absolute flex inset-y-0 items-center pointer-events-none right-3 text-meta
@@ -196,7 +159,6 @@ no-repeated-bundles	border-b border-mid flex gap-6 items-center py-2.5
 no-repeated-bundles	flex flex-1 flex-col gap-2 min-w-0
 no-repeated-bundles	flex flex-wrap gap-2 items-center min-w-0
 no-repeated-bundles	flex gap-1.5 items-center text-ink
-no-repeated-bundles	flex gap-3 items-center pr-6
 no-repeated-bundles	flex gap-3 items-start mt-11
 no-repeated-bundles	focus-visible:outline-2 focus-visible:outline-denim focus-visible:outline-offset-2 h-7 px-3.5 rounded-xs transition-colors
 no-repeated-bundles	font-medium font-mono min-w-0 text-base wrap-anywhere
@@ -208,7 +170,6 @@ no-repeated-bundles	group-data-dragging/drop:text-denim mb-2 text-glyph transiti
 no-repeated-bundles	leading-6 text-meta text-pretty text-sm
 no-repeated-bundles	opacity-0 peer-checked:opacity-100 relative text-on-fill
 no-repeated-bundles	px-10 py-6 text-meta text-sm
-no-repeated-bundles	shrink-0 tabular-nums text-ink text-meta text-right w-16 whitespace-nowrap
 no-repeated-bundles	shrink-0 text-meta truncate w-32
 no-rules-in-markup	server/assets/verso-forms.js	border-crimson!
 no-rules-in-markup	server/templates/diagnostics.html.tmpl	[&::-webkit-calendar-picker-indicator]:hidden!
@@ -217,8 +178,6 @@ no-rules-in-markup	server/templates/nav-row.html.tmpl	[&::-webkit-details-marker
 no-rules-in-markup	server/templates/page.html.tmpl	[&>.verso-flash]:mb-0
 no-rules-in-markup	server/templates/page.html.tmpl	[&>.verso-flash]:pr-12
 no-rules-in-markup	server/templates/page.html.tmpl	[&>.verso-flash]:shadow-(--shadow-float)
-no-rules-in-markup	widget/templates/chart.html.tmpl	stroke-2!
-no-rules-in-markup	widget/templates/chart.html.tmpl	stroke-[1.5]!
 no-rules-in-markup	widget/templates/conditions.html.tmpl	[&>div]:border-0
 no-rules-in-markup	widget/templates/disclosure.html.tmpl	[&::-webkit-details-marker]:hidden
 no-rules-in-markup	widget/templates/disclosure.html.tmpl	[&::-webkit-details-marker]:hidden
@@ -407,50 +366,6 @@ rules-live-in-blocks	forms.css	fieldset[data-verso-when]:has(~ :is(.verso-field-
 rules-live-in-blocks	forms.css	label:has(input:checked) > .verso-switch-word > .verso-switch-off
 rules-live-in-blocks	forms.css	label:not(:has(input:checked)) > .verso-switch-word > .verso-switch-on
 rules-live-in-blocks	input.css	.verso-arrived
-rules-live-in-blocks	input.css	.verso-chart--amethyst .verso-chart-fill-0
-rules-live-in-blocks	input.css	.verso-chart--amethyst .verso-chart-fill-1
-rules-live-in-blocks	input.css	.verso-chart--amethyst .verso-chart-line
-rules-live-in-blocks	input.css	.verso-chart--denim .verso-chart-fill-0
-rules-live-in-blocks	input.css	.verso-chart--denim .verso-chart-fill-1
-rules-live-in-blocks	input.css	.verso-chart--denim .verso-chart-line
-rules-live-in-blocks	input.css	.verso-chart--emerald .verso-chart-fill-0
-rules-live-in-blocks	input.css	.verso-chart--emerald .verso-chart-fill-1
-rules-live-in-blocks	input.css	.verso-chart--emerald .verso-chart-line
-rules-live-in-blocks	input.css	.verso-chart--violet .verso-chart-fill-0
-rules-live-in-blocks	input.css	.verso-chart--violet .verso-chart-fill-1
-rules-live-in-blocks	input.css	.verso-chart--violet .verso-chart-line
-rules-live-in-blocks	input.css	.verso-chart-area
-rules-live-in-blocks	input.css	.verso-chart-axis
-rules-live-in-blocks	input.css	.verso-chart-figure
-rules-live-in-blocks	input.css	.verso-chart-frame
-rules-live-in-blocks	input.css	.verso-chart-graph
-rules-live-in-blocks	input.css	.verso-chart-graph:not([data-chart-axis]) .verso-chart-axis[data-chart-axis-first]
-rules-live-in-blocks	input.css	.verso-chart-graph[data-chart-axis="3"] .verso-chart-axis[data-chart-axis="3"]
-rules-live-in-blocks	input.css	.verso-chart-graph[data-chart-axis="4"] .verso-chart-axis[data-chart-axis="4"]
-rules-live-in-blocks	input.css	.verso-chart-graph[data-chart-axis="6"] .verso-chart-axis[data-chart-axis="6"]
-rules-live-in-blocks	input.css	.verso-chart-graph[data-chart-axis]
-rules-live-in-blocks	input.css	.verso-chart-graph[data-chart-place="compact"]
-rules-live-in-blocks	input.css	.verso-chart-head
-rules-live-in-blocks	input.css	.verso-chart-head
-rules-live-in-blocks	input.css	.verso-chart-legend
-rules-live-in-blocks	input.css	.verso-chart-legend-peak
-rules-live-in-blocks	input.css	.verso-chart-legend-peak
-rules-live-in-blocks	input.css	.verso-chart-legend-series
-rules-live-in-blocks	input.css	.verso-chart-line
-rules-live-in-blocks	input.css	.verso-chart-mark--boot
-rules-live-in-blocks	input.css	.verso-chart-mark--loss
-rules-live-in-blocks	input.css	.verso-chart-mark--outage
-rules-live-in-blocks	input.css	.verso-chart-peak
-rules-live-in-blocks	input.css	.verso-chart-peak--amethyst
-rules-live-in-blocks	input.css	.verso-chart-peak--denim
-rules-live-in-blocks	input.css	.verso-chart-peak--emerald
-rules-live-in-blocks	input.css	.verso-chart-peak--violet
-rules-live-in-blocks	input.css	.verso-chart-plot
-rules-live-in-blocks	input.css	.verso-chart-plot > svg
-rules-live-in-blocks	input.css	.verso-chart-tick
-rules-live-in-blocks	input.css	.verso-chart-tick[data-align="center"]
-rules-live-in-blocks	input.css	.verso-chart-tick[data-align="end"]
-rules-live-in-blocks	input.css	.verso-chart-yl
 rules-live-in-blocks	input.css	.verso-colophon-fact
 rules-live-in-blocks	input.css	.verso-conditional-body
 rules-live-in-blocks	input.css	.verso-conditional-otherwise
@@ -485,8 +400,6 @@ rules-live-in-blocks	input.css	.verso-live-dot
 rules-live-in-blocks	input.css	.verso-live-dot::after
 rules-live-in-blocks	input.css	.verso-live-dot::after
 rules-live-in-blocks	input.css	.verso-menu-button:not([data-count="0"])
-rules-live-in-blocks	input.css	.verso-meter-bar
-rules-live-in-blocks	input.css	.verso-meter-bar
 rules-live-in-blocks	input.css	.verso-modal
 rules-live-in-blocks	input.css	.verso-modal-motion
 rules-live-in-blocks	input.css	.verso-modal-motion[data-closing]
@@ -866,7 +779,6 @@ short-class-lists	widget/templates/grid.html.tmpl	grid min-w-0 grid-cols-1 gap-x
 short-class-lists	widget/templates/link.html.tmpl	verso-rail-link @form-split:-ml-px flex items-center gap-1.5 border-l border-rule py-1 pl-4 text-sm leading-6 transition-colors
 short-class-lists	widget/templates/list.html.tmpl	flex min-h-control flex-wrap items-center gap-x-1 gap-y-4 rounded-xs border border-rule-strong {{template "verso-input-fill"}} p-0.75 transition-colors hover:not-focus-within:border-faint focus-within:border-denim
 short-class-lists	widget/templates/list.html.tmpl	h-6 min-w-18 flex-1 border-0 bg-transparent px-1.5 font-mono text-base font-normal text-ink outline-none placeholder:font-sans placeholder:text-sm placeholder:font-normal placeholder:text-meta
-short-class-lists	widget/templates/meter.html.tmpl	grid grid-cols-[7rem_minmax(0,1fr)_6.5rem] sm:grid-cols-[9.5rem_minmax(0,1fr)_6.5rem] items-center gap-6 border-b border-rule py-row leading-6 first:pt-2 last:border-0
 short-class-lists	widget/templates/modal.html.tmpl	inline-flex cursor-pointer items-center gap-1.5 rounded-xs text-sm font-medium text-meta transition-colors hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim
 short-class-lists	widget/templates/overview.html.tmpl	-my-1 ml-auto h-7 cursor-pointer rounded-xs px-2.5 font-medium text-denim-deep transition-colors hover:bg-denim-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim
 short-class-lists	widget/templates/overview.html.tmpl	flex min-w-0 cursor-pointer items-center gap-2 pt-2.75 pr-2.5 pb-3 pl-5.75 leading-6 select-none group-data-arranging/overview:cursor-grab group-data-arranging/overview:pl-1.5
@@ -901,12 +813,6 @@ type-comes-from-roles	forms.css	.verso-joined-word	font-family
 type-comes-from-roles	forms.css	.verso-joined-word	font-size
 type-comes-from-roles	forms.css	.verso-joined-word	line-height
 type-comes-from-roles	forms.css	.verso-reveal-act	line-height
-type-comes-from-roles	input.css	.verso-chart-figure	font-weight
-type-comes-from-roles	input.css	.verso-chart-legend	font-size
-type-comes-from-roles	input.css	.verso-chart-legend	line-height
-type-comes-from-roles	input.css	.verso-chart-yl, .verso-chart-tick	font-size
-type-comes-from-roles	input.css	.verso-chart-yl, .verso-chart-tick	font-weight
-type-comes-from-roles	input.css	.verso-chart-yl, .verso-chart-tick	line-height
 type-comes-from-roles	input.css	.verso-kicker	font-size
 type-comes-from-roles	input.css	.verso-kicker	font-weight
 type-comes-from-roles	input.css	.verso-kicker	letter-spacing
@@ -1179,8 +1085,6 @@ type-comes-from-roles	widget/templates/callout.html.tmpl	leading-6
 type-comes-from-roles	widget/templates/callout.html.tmpl	leading-6
 type-comes-from-roles	widget/templates/callout.html.tmpl	text-base
 type-comes-from-roles	widget/templates/callout.html.tmpl	text-sm
-type-comes-from-roles	widget/templates/chart.html.tmpl	leading-6
-type-comes-from-roles	widget/templates/chart.html.tmpl	text-sm
 type-comes-from-roles	widget/templates/code.html.tmpl	font-medium
 type-comes-from-roles	widget/templates/code.html.tmpl	font-medium
 type-comes-from-roles	widget/templates/code.html.tmpl	font-medium
@@ -1315,38 +1219,6 @@ type-comes-from-roles	widget/templates/list.html.tmpl	placeholder:font-normal
 type-comes-from-roles	widget/templates/list.html.tmpl	placeholder:font-sans
 type-comes-from-roles	widget/templates/list.html.tmpl	placeholder:text-sm
 type-comes-from-roles	widget/templates/list.html.tmpl	text-base
-type-comes-from-roles	widget/templates/meter.html.tmpl	font-bold
-type-comes-from-roles	widget/templates/meter.html.tmpl	font-extrabold
-type-comes-from-roles	widget/templates/meter.html.tmpl	font-medium
-type-comes-from-roles	widget/templates/meter.html.tmpl	font-medium
-type-comes-from-roles	widget/templates/meter.html.tmpl	font-medium
-type-comes-from-roles	widget/templates/meter.html.tmpl	font-medium
-type-comes-from-roles	widget/templates/meter.html.tmpl	font-mono
-type-comes-from-roles	widget/templates/meter.html.tmpl	font-semibold
-type-comes-from-roles	widget/templates/meter.html.tmpl	leading-10
-type-comes-from-roles	widget/templates/meter.html.tmpl	leading-10
-type-comes-from-roles	widget/templates/meter.html.tmpl	leading-10
-type-comes-from-roles	widget/templates/meter.html.tmpl	leading-10
-type-comes-from-roles	widget/templates/meter.html.tmpl	leading-10
-type-comes-from-roles	widget/templates/meter.html.tmpl	leading-10
-type-comes-from-roles	widget/templates/meter.html.tmpl	leading-6
-type-comes-from-roles	widget/templates/meter.html.tmpl	leading-6
-type-comes-from-roles	widget/templates/meter.html.tmpl	leading-6
-type-comes-from-roles	widget/templates/meter.html.tmpl	leading-6
-type-comes-from-roles	widget/templates/meter.html.tmpl	leading-6
-type-comes-from-roles	widget/templates/meter.html.tmpl	text-4xl
-type-comes-from-roles	widget/templates/meter.html.tmpl	text-4xl
-type-comes-from-roles	widget/templates/meter.html.tmpl	text-base
-type-comes-from-roles	widget/templates/meter.html.tmpl	text-base
-type-comes-from-roles	widget/templates/meter.html.tmpl	text-base
-type-comes-from-roles	widget/templates/meter.html.tmpl	text-sm
-type-comes-from-roles	widget/templates/meter.html.tmpl	text-sm
-type-comes-from-roles	widget/templates/meter.html.tmpl	text-sm
-type-comes-from-roles	widget/templates/meter.html.tmpl	text-xs
-type-comes-from-roles	widget/templates/meter.html.tmpl	text-xs
-type-comes-from-roles	widget/templates/meter.html.tmpl	tracking-[-.05em]
-type-comes-from-roles	widget/templates/meter.html.tmpl	tracking-[.08em]
-type-comes-from-roles	widget/templates/meter.html.tmpl	tracking-tight
 type-comes-from-roles	widget/templates/modal.html.tmpl	font-medium
 type-comes-from-roles	widget/templates/modal.html.tmpl	font-semibold
 type-comes-from-roles	widget/templates/modal.html.tmpl	font-semibold
@@ -1421,6 +1293,3 @@ type-comes-from-roles	widget/templates/table.html.tmpl	text-sm
 type-comes-from-roles	widget/templates/table.html.tmpl	text-sm
 type-comes-from-roles	widget/templates/text.html.tmpl	leading-6
 type-comes-from-roles	widget/templates/text.html.tmpl	text-sm
-type-comes-from-roles	widget/templates/traffic.html.tmpl	font-medium
-type-comes-from-roles	widget/templates/traffic.html.tmpl	leading-6
-type-comes-from-roles	widget/templates/traffic.html.tmpl	text-sm

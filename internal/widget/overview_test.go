@@ -59,7 +59,7 @@ func TestRenderOverviewCards(t *testing.T) {
 		// Ports and Tunnels
 		`data-verso-row="interface:eth0"`, "18\U0000202fMb/s", `data-verso-row="interface:eth4"`, "wg-home", "wireguard", `href="/plugins/wireguard/"`,
 		// Traffic, Resources, System
-		"Mb/s down", "verso-chart-area", `data-verso-meter="sys-cpu"`, "Mono Gateway Development Kit",
+		"Mb/s down", `class="verso-chart__area"`, `data-verso-meter="sys-cpu"`, "Mono Gateway Development Kit",
 		"OpenWrt 25.12.4", "Linux 6.12.101", `data-verso-prop="uptime"`, written("6", "d", "4", "h"),
 	} {
 		if !strings.Contains(got, want) {
@@ -167,11 +167,12 @@ func TestRenderOverviewTrafficAutoScale(t *testing.T) {
 	}
 	// In the card the plot is ruled in 24px squares, its values in a gutter on
 	// its right and its window under it, none of them laid over the curve.
-	for _, want := range []string{"data-verso-chart-gutter", `data-chart-place="compact"`, "data-verso-chart-window"} {
+	for _, want := range []string{"data-verso-chart-gutter", `data-verso-place="compact"`, "data-verso-chart-window"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("the card's chart layout missing %q", want)
 		}
 	}
+	declares(t, "chart", `.verso-chart[data-verso-place="compact"]`, "--verso-chart-cell: 1.5rem;")
 	if strings.Contains(got, "text-[2rem]") || strings.Contains(got, "bg-ground/85") {
 		t.Error("the card's figures stand at reading size and its labels lie over nothing")
 	}

@@ -20,17 +20,6 @@
   // A page whose only live part is the router's panel (System › Hardware)
   // reads the interfaces and nothing else of the Overview's stream.
   var panelOnly = !document.querySelector("[data-overview]") && !document.querySelector("[data-verso-meter]") && !document.querySelector("[data-verso-row]") && !document.querySelector('[data-verso-live-chart="wan"]') && !document.querySelector("[data-verso-prop]");
-  // The meter's bar tints by its health band (the tone vocabulary), in the classes
-  // meter.html.tmpl renders — the live layer and the first paint have to name the
-  // same colour or a reading changes shade the moment it updates, which it did:
-  // these were stock Tailwind a step darker than the template's own stock Tailwind,
-  // and neither was a colour this app's palette has.
-  var BAR_BANDS = {
-    success: "bg-green",
-    warning: "bg-marigold",
-    danger: "bg-crimson",
-    info: "bg-denim",
-  };
   function setText(root, selector, text) {
     var el = root.querySelector(selector);
     if (el) el.textContent = text;
@@ -48,11 +37,9 @@
       // track and the clip shows the reading.
       bar.style.clipPath = "inset(0 " + (100 - fill) + "% 0 0 round 9999px)";
       // A role-accented bar keeps its fixed colour (a dashboard hue, not a health
-      // band); only a band-coloured bar recolours with its reading.
-      if (!reading.role) {
-        for (var bb in BAR_BANDS) bar.classList.remove(BAR_BANDS[bb]);
-        bar.classList.add(BAR_BANDS[reading.band] || BAR_BANDS.success);
-      }
+      // band); only a band-coloured bar recolours with its reading, by the
+      // band the meter block (blocks/meter.css) draws, as the first paint does.
+      if (!reading.role) bar.setAttribute("data-verso-tone", reading.band || "success");
     }
     root.setAttribute("aria-label", (reading.label + " " + reading.value + " " + reading.unit).trim());
   }

@@ -94,7 +94,7 @@ func TestDevicePanelDetailsSayWhatTheDeviceMoves(t *testing.T) {
 	}
 	for _, want := range []string{
 		`data-verso-live-chart="usage:42:e6:ad:ff:b7:af"`, `data-verso-live-lane="down"`, `data-verso-live-lane="up"`,
-		">Download<", ">Upload<", `data-chart-place="compact"`, `<svg class="verso-chart`,
+		">Download<", ">Upload<", `data-verso-place="compact"`, `<svg class="verso-chart__svg"`,
 		">Downloaded<", ">Uploaded<",
 		">Today<", ">Last 7 days<", ">This month<", ">Last month<",
 		">2\U0000202fGiB<", ">512\U0000202fMiB<", // today down and up

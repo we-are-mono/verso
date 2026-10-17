@@ -1,0 +1,228 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/* SPDX-FileCopyrightText: 2026 Mono Technologies Inc. */
+
+/*
+ * meter — a reading against its range: a thin track filled to the reading,
+ * coloured by its band (ADR-005), never restating the fill in words. The
+ * bar spans the whole track and a clip shows the reading (widget.MeterClip);
+ * a live reading lands as a change of that clip, which the bar eases to, so
+ * the glide repaints the bar alone and never lays the page out again.
+ *
+ * A gauge (the default, and the Overview's) stands on the notebook's grid:
+ * the label's 24px line, the figure centred in two cells, the 6px track
+ * centred on a line of its own, the detail's line. A row (data-verso-place
+ * "row", a headroom listing) is one dense row: the name, a track that fills
+ * to the reading's own ceiling with its limits ticked across it, the value
+ * with its state's packet; a row of the grid, 7px after the hairline over it
+ * and 8px over its own. A cell (data-verso-place "cell") is the row's track
+ * and figure inside a listing's cell, the figure in a slot of one width so a
+ * column of bars ends together.
+ *
+ * Variants: data-verso-place  overview · row · cell; none is the gauge
+ * Elements: __head     the label's line, and the glyph naming the metric
+ *           __label    what is measured, the kicker
+ *           __glyph    the metric's glyph; data-verso-role tints it
+ *           __reading  the figure and its unit, two cells tall
+ *           __figure   the reading, in the figure role
+ *           __unit     its unit
+ *           __track    the range
+ *           __bar      the reading's fill; data-verso-tone (success,
+ *                      warning, danger, info) is its band, data-verso-role
+ *                      (sky, violet, emerald, amber) a fixed accent a
+ *                      dashboard assigns instead
+ *           __tick     a limit on a row's track (data-verso-tone warning or
+ *                      danger), reaching past the track above and below
+ *           __detail   the one fact worth acting on
+ *           __name     a row's name
+ *           __note     a row's words where it has no track: no limits
+ *           __value    a row's value and its packet
+ *           __amount   a cell's figure
+ */
+
+.verso-meter:where(:not([data-verso-place])) {
+  text-align: left;
+}
+.verso-meter[data-verso-place="overview"] {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.verso-meter[data-verso-place="row"] {
+  display: grid;
+  grid-template-columns: 7rem minmax(0, 1fr) 6.5rem;
+  align-items: center;
+  gap: calc(var(--spacing) * 6);
+  padding-block: calc(var(--spacing) * 1.75) calc(var(--spacing) * 2);
+  border: 0 solid var(--color-rule);
+  border-bottom-width: 1px;
+  @apply type-body;
+}
+@media (width >= 40rem) {
+  .verso-meter[data-verso-place="row"] {
+    grid-template-columns: 9.5rem minmax(0, 1fr) 6.5rem;
+  }
+}
+.verso-meter[data-verso-place="row"]:first-child {
+  padding-top: calc(var(--spacing) * 2);
+}
+.verso-meter[data-verso-place="row"]:last-child {
+  border-width: 0;
+}
+.verso-meter[data-verso-place="cell"] {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--spacing) * 3);
+  padding-right: calc(var(--spacing) * 6);
+}
+
+.verso-meter__head {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--spacing) * 2);
+  min-height: calc(var(--spacing) * 6);
+}
+.verso-meter__head:where(.verso-meter[data-verso-place="overview"] *) {
+  justify-content: space-between;
+}
+.verso-meter__label {
+  color: var(--color-meta);
+  @apply type-label;
+}
+.verso-meter__glyph {
+  color: var(--color-faint);
+}
+.verso-meter__glyph[data-verso-role="sky"] {
+  color: var(--color-denim);
+}
+.verso-meter__glyph[data-verso-role="violet"] {
+  color: var(--color-amethyst);
+}
+.verso-meter__glyph[data-verso-role="emerald"] {
+  color: var(--color-green);
+}
+.verso-meter__glyph[data-verso-role="amber"] {
+  color: var(--color-marigold);
+}
+
+.verso-meter__reading {
+  display: flex;
+  align-items: baseline;
+  gap: calc(var(--spacing) * 1.5);
+  height: calc(var(--spacing) * 10);
+}
+.verso-meter__figure {
+  color: var(--color-ink);
+  @apply type-figure;
+}
+.verso-meter__unit {
+  color: var(--color-meta);
+  @apply type-figure-unit;
+}
+
+.verso-meter__track {
+  height: calc(var(--spacing) * 1.5);
+  border-radius: calc(infinity * 1px);
+  background-color: var(--color-rule);
+}
+.verso-meter__track:where(.verso-meter:not([data-verso-place="row"], [data-verso-place="cell"]) *) {
+  margin-block: calc(var(--spacing) * 2.25);
+  overflow: hidden;
+}
+.verso-meter__track:where(.verso-meter:is([data-verso-place="row"], [data-verso-place="cell"]) *) {
+  position: relative;
+}
+.verso-meter__track:where(.verso-meter[data-verso-place="cell"] *) {
+  flex: 1 1 0%;
+  min-width: calc(var(--spacing) * 16);
+}
+
+.verso-meter__bar {
+  width: 100%;
+  height: 100%;
+  border-radius: calc(infinity * 1px);
+  background-color: var(--color-green);
+  transition: clip-path 600ms ease;
+}
+.verso-meter__bar:where(.verso-meter:is([data-verso-place="row"], [data-verso-place="cell"]) *) {
+  position: absolute;
+  inset: 0;
+}
+.verso-meter__bar[data-verso-tone="warning"] {
+  background-color: var(--color-marigold);
+}
+.verso-meter__bar[data-verso-tone="danger"] {
+  background-color: var(--color-crimson);
+}
+.verso-meter__bar[data-verso-tone="info"] {
+  background-color: var(--color-denim);
+}
+.verso-meter__bar[data-verso-role] {
+  background-color: var(--color-glyph);
+}
+.verso-meter__bar[data-verso-role="sky"] {
+  background-color: var(--color-denim);
+}
+.verso-meter__bar[data-verso-role="violet"] {
+  background-color: var(--color-amethyst);
+}
+.verso-meter__bar[data-verso-role="emerald"] {
+  background-color: var(--color-green);
+}
+.verso-meter__bar[data-verso-role="amber"] {
+  background-color: var(--color-marigold);
+}
+@media (prefers-reduced-motion: reduce) {
+  .verso-meter__bar {
+    transition: none;
+  }
+}
+
+.verso-meter__tick {
+  position: absolute;
+  top: calc(var(--spacing) * -1);
+  bottom: calc(var(--spacing) * -1);
+  width: calc(var(--spacing) * 0.5);
+  border-radius: 1px;
+  background-color: var(--color-marigold);
+}
+.verso-meter__tick[data-verso-tone="danger"] {
+  background-color: var(--color-crimson);
+}
+
+.verso-meter__detail {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-meta);
+  @apply type-body;
+}
+
+.verso-meter__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-ink);
+  @apply type-value;
+}
+.verso-meter__note {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--spacing) * 2);
+  min-width: 0;
+  color: var(--color-meta);
+}
+.verso-meter__value {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: calc(var(--spacing) * 2);
+}
+
+.verso-meter__amount {
+  flex-shrink: 0;
+  width: calc(var(--spacing) * 16);
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}

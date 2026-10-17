@@ -87,8 +87,8 @@ func TestOverviewTrafficDrawsAPastWindowFromHistory(t *testing.T) {
 		">24\U0000202fh<", ">18\U0000202fh<", ">30\U0000202fMb/s<", ">2\U0000202fMb/s<", ">on average<",
 		// Each lane's peak is the highest the history kept, not the averages'.
 		">50\U0000202fMb/s<", ">3\U0000202fMb/s<",
-		`class="verso-chart-line`, `class="verso-chart-mark--outage"`, "<title>Internet down ",
-		`class="verso-chart-mark--loss"`, "<title>Packet loss up to 33\U0000202f% ", ">Gateway<", ">12&#x202F;ms<",
+		`class="verso-chart__line"`, `class="verso-chart__mark" data-verso-kind="outage"`, "<title>Internet down ",
+		`class="verso-chart__mark" data-verso-kind="loss"`, "<title>Packet loss up to 33\U0000202f% ", ">Gateway<", ">12&#x202F;ms<",
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("a day's graph missing %q", want)

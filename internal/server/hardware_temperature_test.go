@@ -43,8 +43,8 @@ func TestTheTemperatureGraphAnswersAChosenReading(t *testing.T) {
 		t.Fatalf("status = %d, body:\n%s", status, body)
 	}
 	for _, want := range []string{
-		`id="hardware-temperature-graph"`, `data-chart-place="page"`, ">cluster<",
-		">48.7\U0000202f°C<", ">on average<", ">peak<", ">59.0\U0000202f°C<", `style="top:0.0%">80<`, "data-verso-chart-unit>°C<", ">24\U0000202fh<", `class="verso-chart-line`,
+		`id="hardware-temperature-graph"`, `data-verso-place="page"`, ">cluster<",
+		">48.7\U0000202f°C<", ">on average<", ">peak<", ">59.0\U0000202f°C<", `style="top:0.0%">80<`, "data-verso-chart-unit>°C<", ">24\U0000202fh<", `class="verso-chart__line"`,
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("the graph missing %q:\n%s", want, body)
@@ -96,7 +96,7 @@ func TestTheHardwarePageOpensOnTheCPUsDay(t *testing.T) {
 		t.Fatalf("status = %d", status)
 	}
 	graph := body[strings.Index(body, `id="hardware-temperature-graph"`)+1:]
-	for _, want := range []string{">48.7\U0000202f°C<", ">59.0\U0000202f°C<", `class="verso-chart-line`} {
+	for _, want := range []string{">48.7\U0000202f°C<", ">59.0\U0000202f°C<", `class="verso-chart__line"`} {
 		if !strings.Contains(graph, want) {
 			t.Errorf("the first paint's graph missing %q", want)
 		}

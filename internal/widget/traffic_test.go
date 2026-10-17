@@ -42,21 +42,30 @@ func TestTrafficStandsInTwoLanes(t *testing.T) {
 	}
 	down, up := trafficLanes(t, got)
 	for lane, wants := range map[string][]string{
-		down: {"verso-chart--denim", "bg-denim", ">Download<", ">38\U0000202fMb/s<", ">now<", `data-chart-place="compact"`},
-		up:   {"verso-chart--amethyst", "bg-amethyst", ">Upload<", ">1.1\U0000202fMb/s<", ">now<", "data-verso-chart-window", ">60\U0000202fs<", ">15\U0000202fs<"},
+		down: {`<g class="verso-chart__series" data-verso-tone="denim">`, `class="verso-chart__key" data-verso-tone="denim"`, ">Download<", ">38\U0000202fMb/s<", ">now<", `data-verso-place="compact"`},
+		up:   {`<g class="verso-chart__series" data-verso-tone="amethyst">`, `class="verso-chart__key" data-verso-tone="amethyst"`, ">Upload<", ">1.1\U0000202fMb/s<", ">now<", "data-verso-chart-window", ">60\U0000202fs<", ">15\U0000202fs<"},
 	} {
 		for _, want := range wants {
 			if !strings.Contains(lane, want) {
 				t.Errorf("lane missing %q:\n%s", want, lane)
 			}
 		}
-		if !strings.Contains(lane, "verso-chart-area") {
+		if !strings.Contains(lane, "verso-chart__area") {
 			t.Errorf("a lane's series has no wash:\n%s", lane)
 		}
 	}
 	if strings.Contains(down, "data-verso-chart-window") {
 		t.Error("the download lane draws a time axis; the upload's serves both")
 	}
+	if !strings.Contains(got, `<div class="verso-traffic__lane" data-verso-live-lane="down">`) || !strings.Contains(got, `<div class="verso-traffic__lane" data-verso-live-lane="up">`) {
+		t.Errorf("the lanes are not the traffic block's:\n%s", got)
+	}
+	// The lanes stand 24px apart.
+	declares(t, "traffic", ".verso-traffic__lane + .verso-traffic__lane", "margin-top: calc(var(--spacing) * 6);")
+	declares(t, "chart", `.verso-chart__series[data-verso-tone="denim"] .verso-chart__line`, "stroke: var(--color-denim);")
+	declares(t, "chart", `.verso-chart__series[data-verso-tone="amethyst"] .verso-chart__line`, "stroke: var(--color-amethyst);")
+	declares(t, "chart", `.verso-chart__key[data-verso-tone="denim"]`, "background-color: var(--color-denim);")
+	declares(t, "chart", ".verso-chart__key", "background-color: var(--color-amethyst);")
 }
 
 // TestEachLaneHasItsOwnScale: a lopsided line fills both lanes, each on the

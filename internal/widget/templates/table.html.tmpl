@@ -351,12 +351,12 @@
              and draws no track; a thing with no reading is the faint dash — an
              empty track would say "idle", which is a fact. */}}
         <td class="verso-table__cell">
-          {{if .Clip}}<span class="flex items-center gap-3 pr-6">
-            <span class="relative h-1.5 min-w-16 flex-1 rounded-full bg-rule"><span class="absolute inset-0 {{if eq .Variant "danger"}}bg-crimson{{else if eq .Variant "warning"}}bg-marigold{{else}}bg-green{{end}}" style="clip-path: {{.Clip}}"></span>{{if .WarnAt}}<span class="absolute -top-1 -bottom-1 w-0.5 rounded-[1px] bg-marigold" style="left: min({{.WarnAt}}, calc(100% - {{if .CritAt}}0.375rem{{else}}0.125rem{{end}}))"></span>{{end}}{{if .CritAt}}<span class="absolute -top-1 -bottom-1 w-0.5 rounded-[1px] bg-crimson" style="left: calc({{.CritAt}} - 0.125rem)"></span>{{end}}</span>
-            <span data-verso-figures class="w-16 shrink-0 text-right tabular-nums whitespace-nowrap {{if .Muted}}text-meta{{else}}text-ink{{end}}">{{.Text}}</span>
-          </span>{{else if and .NoTrack .Text (ne .Text "—")}}<span class="flex items-center gap-3 pr-6">
+          {{if .Clip}}<span class="verso-meter" data-verso-place="cell">
+            <span class="verso-meter__track"><span class="verso-meter__bar"{{if or (eq .Variant "danger") (eq .Variant "warning")}} data-verso-tone="{{.Variant}}"{{end}} style="clip-path: {{.Clip}}"></span>{{if .WarnAt}}<span class="verso-meter__tick" data-verso-tone="warning" style="left: min({{.WarnAt}}, calc(100% - {{if .CritAt}}0.375rem{{else}}0.125rem{{end}}))"></span>{{end}}{{if .CritAt}}<span class="verso-meter__tick" data-verso-tone="danger" style="left: calc({{.CritAt}} - 0.125rem)"></span>{{end}}</span>
+            <span data-verso-figures class="verso-meter__amount {{if .Muted}}text-meta{{else}}text-ink{{end}}">{{.Text}}</span>
+          </span>{{else if and .NoTrack .Text (ne .Text "—")}}<span class="verso-meter" data-verso-place="cell">
             <span class="min-w-16 flex-1"></span>
-            <span data-verso-figures class="w-16 shrink-0 text-right tabular-nums whitespace-nowrap {{if .Muted}}text-meta{{else}}text-ink{{end}}">{{.Text}}</span>
+            <span data-verso-figures class="verso-meter__amount {{if .Muted}}text-meta{{else}}text-ink{{end}}">{{.Text}}</span>
           </span>{{else}}<span class="text-inert">{{template "verso-none"}}</span>{{end}}
         </td>
         {{else if eq .Kind "figures"}}

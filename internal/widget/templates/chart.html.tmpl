@@ -1,61 +1,54 @@
 <!-- SPDX-License-Identifier: GPL-2.0-only -->
 <!-- SPDX-FileCopyrightText: 2026 Mono Technologies Inc. -->
-{{/* chart: a reading over time, drawn server-side to static SVG. Colours live in
-     the .verso-chart-* classes (input.css), never in SVG presentation
-     attributes — var() resolves in CSS properties but not inside SVG attrs.
-     Geometry (viewBox, d) stays here.
+{{/* chart: a reading over time, drawn server-side to static SVG, the chart
+     block (blocks/chart.css). Colours live in the block, never in SVG
+     presentation attributes — var() resolves in CSS properties but not
+     inside SVG attrs. Geometry (viewBox, d) stays here.
 
-     The plot stands over square cells, four tall, so each rule is a quarter
-     line; its place sets the cell (data-chart-place: 32px on a page's card,
-     24px in an Overview card or a drawer), and the CSS rounds the plot's width
-     down to whole quarters of cells, so each time label stands on its line.
      The value labels stand in a 64px gutter on the plot's right, centred on
-     their quarter lines (the top one carrying the unit), and the window's
-     quarters on the 24px line under it, so nothing is laid over the curve.
-     Labels are HTML, not SVG <text>: text inside a viewBox scales with the
-     graph. This SVG is the first paint; the live layer glides the same series
-     without touching the markup. */}}
-<div class="verso-chart-graph"{{if .ID}} id="{{.ID}}"{{end}} data-chart-place="{{.Place}}" data-chart-steps="{{.Steps}}" style="--chart-step: {{.Step}}">
+     their quarter lines, and the window's quarters on the 24px line under
+     it, so nothing is laid over the curve. Labels are HTML, not SVG <text>:
+     text inside a viewBox scales with the graph. This SVG is the first
+     paint; the live layer glides the same series without touching the
+     markup. */}}
+<div class="verso-chart"{{if .ID}} id="{{.ID}}"{{end}} data-verso-place="{{.Place}}" data-verso-steps="{{.Steps}}" style="--verso-chart-step: {{.Step}}">
   {{if .Empty}}
   {{/* Nothing to draw: the chart says so where its plot would stand. */}}
-  <p class="flex items-center gap-2 text-sm leading-6 text-meta" data-verso-chart-empty><span aria-hidden="true" class="verso-mark"></span>{{.Empty}}</p>
+  <p class="verso-chart__empty" data-verso-chart-empty><span aria-hidden="true" class="verso-mark"></span>{{.Empty}}</p>
   {{else}}
-  {{/* A legend line per series that has one, as the Overview's facts read:
-       the series' packet, its name as the term, its figure as the value and
-       what the figure is, and the window's peak at the plot's right edge. */}}
   {{range .Legends}}
-  <div class="verso-chart-head">
-    <div class="verso-chart-legend" data-verso-chart-legend>
-      <span class="verso-chart-legend-series"><span aria-hidden="true" class="size-1.5 shrink-0 self-center rounded-[1px] {{.Hue}}"></span><span class="text-meta">{{.Name}}</span><span class="verso-chart-figure" data-verso-live-figure>{{.Figure}}</span><span class="text-meta" data-verso-live-caption>{{.Caption}}</span></span>
-      <span class="verso-chart-legend-peak"><span class="text-meta">{{ t "peak" }}</span><span class="verso-chart-figure" data-verso-live-peak>{{.Peak}}</span></span>
+  <div class="verso-chart__head">
+    <div class="verso-chart__legend" data-verso-chart-legend>
+      <span class="verso-chart__series-name"><span aria-hidden="true" class="verso-chart__key" data-verso-tone="{{.Hue}}"></span><span class="text-meta">{{.Name}}</span><span class="verso-chart__figure" data-verso-figures data-verso-live-figure>{{.Figure}}</span><span class="text-meta" data-verso-live-caption>{{.Caption}}</span></span>
+      <span class="verso-chart__peak-key"><span class="text-meta">{{ t "peak" }}</span><span class="verso-chart__figure" data-verso-figures data-verso-live-peak>{{.Peak}}</span></span>
     </div>
   </div>
   {{end}}
-  <div class="verso-chart-frame">
-    <div class="verso-chart-plot">
-      <svg class="verso-chart block w-full overflow-hidden" viewBox="0 0 {{.W}} {{.H}}" preserveAspectRatio="none" role="img" aria-label="{{.Label}}" data-chart-padding="0">
-        {{range .Marks}}{{if eq .Kind "boot"}}<line class="verso-chart-mark--boot" x1="{{printf "%.1f" .X}}" x2="{{printf "%.1f" .X}}" y1="0" y2="{{$.H}}" vector-effect="non-scaling-stroke"><title>{{.Label}}</title></line>{{else}}<rect class="verso-chart-mark--{{.Kind}}" x="{{printf "%.1f" .X}}" y="0" width="{{printf "%.1f" .Width}}" height="{{$.H}}"><title>{{.Label}}</title></rect>{{end}}
+  <div class="verso-chart__frame">
+    <div class="verso-chart__plot">
+      <svg class="verso-chart__svg" viewBox="0 0 {{.W}} {{.H}}" preserveAspectRatio="none" role="img" aria-label="{{.Label}}" data-chart-padding="0">
+        {{range .Marks}}{{if eq .Kind "boot"}}<line class="verso-chart__mark" data-verso-kind="boot" x1="{{printf "%.1f" .X}}" x2="{{printf "%.1f" .X}}" y1="0" y2="{{$.H}}" vector-effect="non-scaling-stroke"><title>{{.Label}}</title></line>{{else}}<rect class="verso-chart__mark" data-verso-kind="{{.Kind}}" x="{{printf "%.1f" .X}}" y="0" width="{{printf "%.1f" .Width}}" height="{{$.H}}"><title>{{.Label}}</title></rect>{{end}}
         {{end}}
-        {{range .Peaks}}<line class="verso-chart-peak verso-chart-peak--{{.Role}}" x1="0" x2="{{$.W}}" y1="{{printf "%.1f" .Y}}" y2="{{printf "%.1f" .Y}}" vector-effect="non-scaling-stroke"/>{{end}}
+        {{range .Peaks}}<line class="verso-chart__peak" data-verso-tone="{{.Role}}" x1="0" x2="{{$.W}}" y1="{{printf "%.1f" .Y}}" y2="{{printf "%.1f" .Y}}" vector-effect="non-scaling-stroke"/>{{end}}
         {{range .Series}}
-        <g class="verso-chart-series verso-chart--{{.Role}}">
+        <g class="verso-chart__series" data-verso-tone="{{.Role}}">
           {{if .Area}}
-          <defs><linearGradient id="{{.GradID}}" x1="0" y1="0" x2="0" y2="1"><stop class="verso-chart-fill-0" offset="0"/><stop class="verso-chart-fill-1" offset="1"/></linearGradient></defs>
-          <path class="verso-chart-area" fill="url(#{{.GradID}})" d="{{.Area}}"/>
+          <defs><linearGradient id="{{.GradID}}" x1="0" y1="0" x2="0" y2="1"><stop class="verso-chart__from" offset="0"/><stop class="verso-chart__to" offset="1"/></linearGradient></defs>
+          <path class="verso-chart__area" fill="url(#{{.GradID}})" d="{{.Area}}"/>
           {{end}}
-          <path class="verso-chart-line {{if eq .Role "violet"}}stroke-[1.5]!{{else}}stroke-2!{{end}}" d="{{.Line}}" vector-effect="non-scaling-stroke"/>
+          <path class="verso-chart__line" d="{{.Line}}" vector-effect="non-scaling-stroke"/>
         </g>
         {{end}}
       </svg>
     </div>
     <div class="relative" data-verso-chart-gutter>
-      {{range .YLabels}}<span class="verso-chart-yl pointer-events-none absolute left-3 -translate-y-1/2 whitespace-nowrap" style="top:{{printf "%.1f" .TopPct}}%">{{.Text}}</span>{{end}}
+      {{range .YLabels}}<span class="verso-chart__scale" style="top:{{printf "%.1f" .TopPct}}%">{{.Text}}</span>{{end}}
       {{/* What the scale counts in, once, on its baseline: the zero line,
            where no figure stands, clear of the legend's peak. */}}
-      <span class="verso-chart-yl pointer-events-none absolute left-3 -translate-y-1/2 whitespace-nowrap" style="top:100%" data-verso-chart-unit>{{.Unit}}</span>
+      <span class="verso-chart__scale" style="top:100%" data-verso-chart-unit>{{.Unit}}</span>
     </div>
-    {{range $i, $a := .Axes}}<div class="verso-chart-axis relative h-6" data-verso-chart-window data-chart-axis="{{.Steps}}"{{if eq $i 0}} data-chart-axis-first{{end}}>
-      {{range .Ticks}}<span class="verso-chart-tick absolute top-0 whitespace-nowrap" data-verso-chart-tick data-align="{{.Align}}" style="left:{{printf "%.3f" .Pct}}%">{{.Text}}</span>{{end}}
+    {{range $i, $a := .Axes}}<div class="verso-chart__axis" data-verso-chart-window data-verso-axis="{{.Steps}}"{{if eq $i 0}} data-verso-axis-first{{end}}>
+      {{range .Ticks}}<span class="verso-chart__tick" data-verso-chart-tick data-verso-align="{{.Align}}" style="left:{{printf "%.3f" .Pct}}%">{{.Text}}</span>{{end}}
     </div>{{end}}
   </div>
   {{end}}

@@ -22,15 +22,18 @@ func meterTable(cells ...TableCell) *Table {
 func TestMeterCellDrawsTheShareAndItsFigure(t *testing.T) {
 	got := render(t, newRenderer(t), meterTable(TableCell{Text: "61 %", Fill: 61, Variant: "warning"}))
 	for _, want := range []string{
-		`h-1.5`, `rounded-full bg-rule`, // the canvas's meter track
+		`<span class="verso-meter" data-verso-place="cell">`,
+		`<span class="verso-meter__track">`,        // the canvas's meter track
 		`clip-path: inset(0 39% 0 0 round 9999px)`, // filled to 61%, the widget's own clip
-		`bg-marigold`, // the plugin's band, in the badge vocabulary
+		meterBar("warning"),                        // the plugin's band, in the badge vocabulary
 		`>61 %<`,
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("meter cell missing %q:\n%s", want, got)
 		}
 	}
+	declares(t, "meter", ".verso-meter__track", "height: calc(var(--spacing) * 1.5);", "border-radius: calc(infinity * 1px);", "background-color: var(--color-rule);")
+	declaresBandFill(t, "warning")
 }
 
 // TestMeterCellBandsFromTheVariant: the listing owns its thresholds — airtime
@@ -38,11 +41,17 @@ func TestMeterCellDrawsTheShareAndItsFigure(t *testing.T) {
 // variant it is given: ordinary is green, warning marigold, danger crimson.
 func TestMeterCellBandsFromTheVariant(t *testing.T) {
 	r := newRenderer(t)
-	for variant, want := range map[string]string{"": "bg-green", "success": "bg-green", "warning": "bg-marigold", "danger": "bg-crimson"} {
+	for variant, band := range map[string]string{"": "success", "success": "success", "warning": "warning", "danger": "danger"} {
 		got := render(t, r, meterTable(TableCell{Text: "40 %", Fill: 40, Variant: variant}))
-		if !strings.Contains(got, want+`"`) && !strings.Contains(got, want+" ") {
-			t.Errorf("variant %q: want %s:\n%s", variant, want, got)
+		// The ordinary band is the bar's own green, so it names no tone.
+		want := meterBar(band)
+		if band == "success" {
+			want = meterBar("")
 		}
+		if !strings.Contains(got, want) {
+			t.Errorf("variant %q: want the %s band:\n%s", variant, band, got)
+		}
+		declaresBandFill(t, band)
 	}
 }
 
@@ -52,7 +61,7 @@ func TestMeterCellWithNoReadingIsADash(t *testing.T) {
 	r := newRenderer(t)
 	for _, cell := range []TableCell{{}, {Text: "—"}} {
 		got := render(t, r, meterTable(cell))
-		if strings.Contains(got, "clip-path") || strings.Contains(got, "bg-rule") {
+		if strings.Contains(got, "clip-path") || strings.Contains(got, "verso-meter__track") {
 			t.Errorf("a cell with no reading drew a track:\n%s", got)
 		}
 		if !strings.Contains(got, `text-faint"><span aria-hidden="true">—</span>`) {
@@ -68,29 +77,36 @@ func TestMeterCellWithNoReadingIsADash(t *testing.T) {
 func TestMeterCellMarksItsLimits(t *testing.T) {
 	got := render(t, newRenderer(t), meterTable(TableCell{Text: "48.0 °C", Fill: 50, WarnMark: 89, CritMark: 100}))
 	for _, want := range []string{
-		`bg-marigold" style="left: min(89%, calc(100% - 0.375rem))"`, // the warn band's own hue, as its bar fills past it
-		`bg-crimson" style="left: calc(100% - 0.125rem)"`,
+		`class="verso-meter__tick" data-verso-tone="warning" style="left: min(89%, calc(100% - 0.375rem))"`, // the warn band's own hue, as its bar fills past it
+		`class="verso-meter__tick" data-verso-tone="danger" style="left: calc(100% - 0.125rem)"`,
 		`>48.0 °C<`,
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("meter cell missing %q:\n%s", want, got)
 		}
 	}
+	declares(t, "meter", ".verso-meter__tick", "top: calc(var(--spacing) * -1);", "bottom: calc(var(--spacing) * -1);", "background-color: var(--color-marigold);")
+	declares(t, "meter", `.verso-meter__tick[data-verso-tone="danger"]`, "background-color: var(--color-crimson);")
 	// The ticks stand a pixel past the track above and below, so the track no
 	// longer clips what it holds; the fill clips itself.
-	if strings.Contains(got, "overflow-hidden rounded-full bg-rule") {
-		t.Errorf("the track clips its ticks:\n%s", got)
+	css := blockCSS(t, "meter")
+	cellTrack := `.verso-meter__track:where(.verso-meter:is([data-verso-place="row"], [data-verso-place="cell"]) *)`
+	if rule := cssRule(css, cellTrack); !strings.Contains(rule, "position: relative;") || strings.Contains(rule, "overflow") {
+		t.Errorf("the track clips its ticks:\n%s", rule)
+	}
+	if !strings.Contains(cssRule(css, `.verso-meter__track:where(.verso-meter:not([data-verso-place="row"], [data-verso-place="cell"]) *)`), "overflow: hidden;") {
+		t.Error("only a gauge's track clips: the gauge's rule no longer excludes the cell")
 	}
 
 	// A warn limit at the protect limit stands just before its tick, 2px
 	// apart, so every row reads marigold, then crimson; a warn limit with no
 	// protect limit after it ends on the track's end, as a protect tick does.
 	same := render(t, newRenderer(t), meterTable(TableCell{Text: "70.0 °C", Fill: 80, WarnMark: 100, CritMark: 100}))
-	if !strings.Contains(same, `bg-marigold" style="left: min(100%, calc(100% - 0.375rem))"`) {
+	if !strings.Contains(same, `data-verso-tone="warning" style="left: min(100%, calc(100% - 0.375rem))"`) {
 		t.Errorf("a warn limit at the protect limit should stand before it:\n%s", same)
 	}
 	alone := render(t, newRenderer(t), meterTable(TableCell{Text: "70.0 °C", Fill: 80, WarnMark: 100}))
-	if !strings.Contains(alone, `bg-marigold" style="left: min(100%, calc(100% - 0.125rem))"`) {
+	if !strings.Contains(alone, `data-verso-tone="warning" style="left: min(100%, calc(100% - 0.125rem))"`) {
 		t.Errorf("a lone warn limit should end on the track's end:\n%s", alone)
 	}
 }
@@ -99,7 +115,7 @@ func TestMeterCellMarksItsLimits(t *testing.T) {
 // limits, so its cell draws no tick.
 func TestMeterCellWithoutMarksIsUnchanged(t *testing.T) {
 	got := render(t, newRenderer(t), meterTable(TableCell{Text: "61 %", Fill: 61}))
-	if strings.Contains(got, "-top-1 -bottom-1") {
+	if strings.Contains(got, "verso-meter__tick") {
 		t.Errorf("a meter cell with no marks drew a tick:\n%s", got)
 	}
 }
@@ -109,7 +125,7 @@ func TestMeterCellWithoutMarksIsUnchanged(t *testing.T) {
 // never a bar against a guessed ceiling.
 func TestMeterCellWithNoTrackKeepsItsFigure(t *testing.T) {
 	got := render(t, newRenderer(t), meterTable(TableCell{Text: "71.0 °C", NoTrack: true}))
-	if strings.Contains(got, "clip-path") || strings.Contains(got, "bg-rule") {
+	if strings.Contains(got, "clip-path") || strings.Contains(got, "verso-meter__track") {
 		t.Errorf("a no-track cell drew a track:\n%s", got)
 	}
 	if !strings.Contains(got, `>71.0 °C<`) || strings.Contains(got, `aria-hidden="true">—<`) {
@@ -122,14 +138,16 @@ func TestMeterCellWithNoTrackKeepsItsFigure(t *testing.T) {
 // unit on one line.
 func TestMeterCellFigureHoldsAReadingWithItsUnit(t *testing.T) {
 	got := render(t, newRenderer(t), meterTable(TableCell{Text: "100.0 °C", Fill: 100}))
-	if !strings.Contains(got, `w-16 shrink-0 text-right tabular-nums whitespace-nowrap`) {
+	if !strings.Contains(got, `class="verso-meter__amount `) {
 		t.Errorf("the figure's slot should be 4rem, one line:\n%s", got)
 	}
+	declares(t, "meter", ".verso-meter__amount", "flex-shrink: 0;", "width: calc(var(--spacing) * 16);", "text-align: right;", "white-space: nowrap;", "font-variant-numeric: tabular-nums;")
 	// The track keeps a floor, so a narrow window scrolls the table rather
 	// than shrinking the bar to a stub.
-	if !strings.Contains(got, `min-w-16 flex-1`) {
+	if !strings.Contains(got, `<span class="verso-meter" data-verso-place="cell">`) || !strings.Contains(got, `<span class="verso-meter__track">`) {
 		t.Errorf("the track should keep a minimum width:\n%s", got)
 	}
+	declares(t, "meter", `.verso-meter__track:where(.verso-meter[data-verso-place="cell"] *)`, "flex: 1 1 0%;", "min-width: calc(var(--spacing) * 16);")
 }
 
 // TestTextCellCarriesItsChip: a plain word can cite the config value it stands

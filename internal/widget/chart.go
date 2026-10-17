@@ -22,9 +22,9 @@ import (
 // label stands on its line. This SVG is the first paint; the live layer
 // (verso-chart.js) glides the same series without changing the markup.
 //
-// Colours are set by CSS classes, never SVG presentation attributes: var() resolves in
-// CSS properties but not inside SVG attributes, so a .verso-chart-* class carries the
-// palette while geometry (viewBox, d) stays on the element.
+// Colours are set by the chart block (blocks/chart.css), never SVG presentation
+// attributes: var() resolves in CSS properties but not inside SVG attributes, so
+// the block carries the palette while geometry (viewBox, d) stays on the element.
 //
 // The values are rates in Mbit/s, on a round scale over their tallest point
 // (units.RateScale): the topmost value label is a rate in full ("80 Mb/s"),
@@ -300,15 +300,14 @@ func (c *Chart) drawable() bool {
 	return false
 }
 
-// chartHue is the packet's colour for a series' palette slot.
+// chartHue is the packet's hue for a series' palette slot, as the chart block
+// names it (data-verso-tone on its key).
 func chartHue(role string) string {
 	switch role {
-	case "denim":
-		return "bg-denim"
-	case "emerald":
-		return "bg-green"
+	case "denim", "emerald":
+		return role
 	default:
-		return "bg-amethyst"
+		return "amethyst"
 	}
 }
 

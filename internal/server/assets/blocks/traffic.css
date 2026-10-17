@@ -1,0 +1,24 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/* SPDX-FileCopyrightText: 2026 Mono Technologies Inc. */
+
+/*
+ * traffic — a traffic graph in two lanes, download over upload, 24px apart,
+ * each a chart with its own legend, scale and peak, and one time axis under
+ * the upload; under them, a past window's gateway latency on average.
+ *
+ * Elements: __lane     one direction's chart
+ *           __latency  the gateway's latency over the window
+ */
+
+.verso-traffic__lane + .verso-traffic__lane {
+  margin-top: calc(var(--spacing) * 6);
+}
+
+.verso-traffic__latency {
+  display: flex;
+  align-items: baseline;
+  gap: calc(var(--spacing) * 2);
+  margin-top: calc(var(--spacing) * 2);
+  color: var(--color-meta);
+  @apply type-body;
+}

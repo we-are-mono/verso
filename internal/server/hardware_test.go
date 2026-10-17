@@ -7,6 +7,8 @@ import (
 	"encoding/xml"
 	"fmt"
 	"io"
+	"os"
+	"path/filepath"
 	"regexp"
 	"slices"
 	"strconv"
@@ -353,14 +355,29 @@ func TestTemperaturesChartOneReadingAtATime(t *testing.T) {
 func TestATemperatureShowsItsHeadroom(t *testing.T) {
 	temps := card(t, renderCards(t, dkInput()), "Temperatures")
 	for _, want := range []string{
-		`bg-marigold" style="left: min(89%, calc(100% - 0.375rem))"`, // warns at 85 of 95
-		`bg-crimson" style="left: calc(100% - 0.125rem)"`,            // protects at the bar's end
-		`clip-path: inset(0 50% 0 0 round 9999px)`,                   // 48 of 95
+		// warns at 85 of 95
+		`class="verso-meter__tick" data-verso-tone="warning" style="left: min(89%, calc(100% - 0.375rem))"`,
+		// protects at the bar's end
+		`class="verso-meter__tick" data-verso-tone="danger" style="left: calc(100% - 0.125rem)"`,
+		`clip-path: inset(0 50% 0 0 round 9999px)`, // 48 of 95
 		">48.0\U0000202f°C<",
 		">warns 85\U0000202f°C · protects 95\U0000202f°C<",
 	} {
 		if !strings.Contains(temps, want) {
 			t.Errorf("Temperatures missing %q", want)
+		}
+	}
+	// The ticks are drawn in the warn and protect bands' own hues.
+	css, err := os.ReadFile(filepath.Join("assets", "blocks", "meter.css"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{
+		".verso-meter__tick {\n  position: absolute;\n  top: calc(var(--spacing) * -1);\n  bottom: calc(var(--spacing) * -1);\n  width: calc(var(--spacing) * 0.5);\n  border-radius: 1px;\n  background-color: var(--color-marigold);\n}",
+		".verso-meter__tick[data-verso-tone=\"danger\"] {\n  background-color: var(--color-crimson);\n}",
+	} {
+		if !strings.Contains(string(css), want) {
+			t.Errorf("blocks/meter.css does not draw the ticks:\nwant %s", want)
 		}
 	}
 }

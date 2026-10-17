@@ -1,0 +1,254 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/* SPDX-FileCopyrightText: 2026 Mono Technologies Inc. */
+
+/*
+ * chart — a reading over time, drawn server-side to static SVG; the live
+ * layer (verso-chart.js) glides the same series without touching the markup.
+ * Colours live here, never in SVG presentation attributes: var() resolves in
+ * CSS properties but not inside SVG attributes, so stroke, fill and
+ * stop-color sit here while geometry (d, viewBox) stays on the element.
+ *
+ * The plot stands over square cells, four tall, so each rule is a quarter
+ * line: 32px on a page's card, 24px in an Overview card or a drawer. Its
+ * width is whole cells beside the 40px scale column, as many as fit in a
+ * whole number of the window's steps (verso-chart.js picks the step, among
+ * those the window offers, that gives the widest plot); before it has
+ * measured, whole cuts of the first step offered. So each time label stands
+ * on its line. The left edge is the first column's line, and the right edge
+ * and the bottom border (the zero line, on the grid line under the plot)
+ * draw their own. Every rule lands on the page's 8px grid. A zero reading
+ * rides one pixel over the bottom border (widget.plotY).
+ *
+ * Knobs: --verso-chart-step  the first step offered, in cells (inline)
+ *        --verso-chart-cols  the plot's width in cells, once measured
+ * Variants: data-verso-place  compact: 24px cells (an Overview card, a
+ *                             drawer)
+ *           data-verso-axis   the step picked; that step's time axis shows
+ * Elements: __empty    nothing to draw, said where the plot would stand
+ *           __head     a series' legend line over the plot's column
+ *           __legend   the series' packet, its name as the term, its figure
+ *                      as the value and what the figure is, and the
+ *                      window's peak at the plot's right edge, read as the
+ *                      Overview's facts are
+ *           __key      the series' packet; data-verso-tone its hue
+ *           __series-name, __peak-key   the legend's two halves
+ *           __figure   a legend figure
+ *           __frame    the plot, its scale and its time axes
+ *           __plot     the notebook's cells under the curve
+ *           __svg      the drawing
+ *           __series   one series; data-verso-tone its hue
+ *           __line, __area, __from, __to   its curve, the wash under it and
+ *                      the wash's two stops
+ *           __peak     the window's peak, a dotted line in the series' hue
+ *                      behind the curve; data-verso-tone
+ *           __mark     what happened over a past window, behind the curves:
+ *                      data-verso-kind outage (a crimson wash thin enough
+ *                      for the grid to show through), loss (the same wash in
+ *                      marigold: degraded, not down), boot (a dashed rule)
+ *           __scale    a value on the scale, centred on its quarter line
+ *           __axis     one step's time axis, on the 24px line under the plot;
+ *                      data-verso-axis its step, data-verso-axis-first the
+ *                      one shown before the plot has measured
+ *           __tick     a time on it; data-verso-align center or end
+ */
+
+.verso-chart {
+  --verso-chart-cell: 2rem;
+  --verso-chart-gutter: 2.5rem;
+  --verso-chart-plot: round(down, 100% - var(--verso-chart-gutter), calc(var(--verso-chart-cell) * var(--verso-chart-step, 4)));
+}
+.verso-chart[data-verso-place="compact"] {
+  --verso-chart-cell: 1.5rem;
+}
+.verso-chart[data-verso-axis] {
+  --verso-chart-plot: calc(var(--verso-chart-cell) * var(--verso-chart-cols));
+}
+
+.verso-chart__empty {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--spacing) * 2);
+  color: var(--color-meta);
+  @apply type-body;
+}
+
+.verso-chart__frame,
+.verso-chart__head {
+  display: grid;
+  grid-template-columns: var(--verso-chart-plot) var(--verso-chart-gutter);
+}
+.verso-chart__head {
+  margin-bottom: calc(var(--spacing) * 2);
+}
+
+.verso-chart__legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(var(--spacing) * 2) calc(var(--spacing) * 6);
+  min-width: 0;
+  @apply type-body;
+}
+.verso-chart__series-name,
+.verso-chart__peak-key {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--spacing) * 2);
+  min-width: 0;
+  white-space: nowrap;
+}
+.verso-chart__peak-key {
+  margin-left: auto;
+  gap: var(--spacing);
+}
+.verso-chart__key {
+  flex-shrink: 0;
+  align-self: center;
+  width: calc(var(--spacing) * 1.5);
+  height: calc(var(--spacing) * 1.5);
+  border-radius: 1px;
+  background-color: var(--color-amethyst);
+}
+.verso-chart__key[data-verso-tone="denim"] {
+  background-color: var(--color-denim);
+}
+.verso-chart__key[data-verso-tone="emerald"] {
+  background-color: var(--color-green);
+}
+.verso-chart__figure {
+  color: var(--color-ink);
+  white-space: nowrap;
+  @apply type-value;
+}
+
+.verso-chart__plot {
+  background-image:
+    linear-gradient(to bottom, var(--color-mid) 1px, transparent 1px),
+    linear-gradient(to right, var(--color-mid) 1px, transparent 1px);
+  background-size: var(--verso-chart-cell) var(--verso-chart-cell);
+  box-shadow: inset -1px 0 var(--color-mid), 0 1px 0 var(--color-mid);
+}
+.verso-chart__svg {
+  display: block;
+  width: 100%;
+  height: calc(var(--verso-chart-cell) * 4);
+  overflow: hidden;
+}
+
+.verso-chart__line {
+  fill: none;
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+.verso-chart__area {
+  stroke: none;
+}
+/* The series hues: denim for what comes down, amethyst for what goes up, each
+   over a soft wash of its own; an upload drawn under another series is the
+   finer line. */
+.verso-chart__series[data-verso-tone="violet"] .verso-chart__line {
+  stroke: var(--color-amethyst);
+  stroke-width: 1.5;
+}
+.verso-chart__series[data-verso-tone="violet"] .verso-chart__from {
+  stop-color: var(--color-chart-violet-from);
+}
+.verso-chart__series[data-verso-tone="violet"] .verso-chart__to {
+  stop-color: var(--color-chart-violet-to);
+}
+.verso-chart__series[data-verso-tone="emerald"] .verso-chart__line {
+  stroke: var(--color-green);
+}
+.verso-chart__series[data-verso-tone="emerald"] .verso-chart__from {
+  stop-color: var(--color-chart-emerald-from);
+}
+.verso-chart__series[data-verso-tone="emerald"] .verso-chart__to {
+  stop-color: var(--color-chart-emerald-to);
+}
+.verso-chart__series[data-verso-tone="denim"] .verso-chart__line {
+  stroke: var(--color-denim);
+}
+.verso-chart__series[data-verso-tone="denim"] .verso-chart__from {
+  stop-color: var(--color-chart-denim-from);
+}
+.verso-chart__series[data-verso-tone="denim"] .verso-chart__to {
+  stop-color: var(--color-chart-denim-to);
+}
+.verso-chart__series[data-verso-tone="amethyst"] .verso-chart__line {
+  stroke: var(--color-amethyst);
+}
+.verso-chart__series[data-verso-tone="amethyst"] .verso-chart__from {
+  stop-color: var(--color-chart-amethyst-from);
+}
+.verso-chart__series[data-verso-tone="amethyst"] .verso-chart__to {
+  stop-color: var(--color-chart-amethyst-to);
+}
+
+.verso-chart__peak {
+  stroke-width: 1;
+  stroke-dasharray: 2 3;
+}
+.verso-chart__peak[data-verso-tone="denim"] {
+  stroke: var(--color-denim);
+}
+.verso-chart__peak:is([data-verso-tone="amethyst"], [data-verso-tone="violet"]) {
+  stroke: var(--color-amethyst);
+}
+.verso-chart__peak[data-verso-tone="emerald"] {
+  stroke: var(--color-green);
+}
+
+.verso-chart__mark[data-verso-kind="outage"] {
+  fill: var(--color-crimson);
+  fill-opacity: 0.1;
+}
+.verso-chart__mark[data-verso-kind="loss"] {
+  fill: var(--color-marigold);
+  fill-opacity: 0.16;
+}
+.verso-chart__mark[data-verso-kind="boot"] {
+  stroke: var(--color-meta);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+}
+
+/* The axes' labels: HTML at a true, fixed size (SVG <text> would scale with
+   the graph), quieter than the legend over the plot. */
+.verso-chart__scale,
+.verso-chart__tick {
+  position: absolute;
+  white-space: nowrap;
+  pointer-events: none;
+  color: var(--color-meta);
+  @apply type-axis;
+}
+.verso-chart__scale {
+  left: calc(var(--spacing) * 3);
+  translate: 0 -50%;
+}
+.verso-chart__tick {
+  top: 0;
+}
+.verso-chart__tick[data-verso-align="center"] {
+  translate: -50% 0;
+}
+.verso-chart__tick[data-verso-align="end"] {
+  left: auto !important;
+  right: 0;
+}
+
+/* One time axis shows: the one for the step picked, the first before. */
+.verso-chart__axis {
+  position: relative;
+  display: none;
+  grid-column: 1;
+  height: calc(var(--spacing) * 6);
+}
+.verso-chart__axis[data-verso-axis-first]:where(.verso-chart:not([data-verso-axis]) *),
+.verso-chart__axis[data-verso-axis="3"]:where(.verso-chart[data-verso-axis="3"] *),
+.verso-chart__axis[data-verso-axis="4"]:where(.verso-chart[data-verso-axis="4"] *),
+.verso-chart__axis[data-verso-axis="6"]:where(.verso-chart[data-verso-axis="6"] *) {
+  display: block;
+}

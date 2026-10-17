@@ -69,18 +69,18 @@
   // extra point off-right until a sample lands), its scale, and the elements
   // it rewrites.
   function lane(el, vals, step) {
-    var svg = el.querySelector("svg.verso-chart");
+    var svg = el.querySelector(".verso-chart__svg");
     if (!svg) return null;
     var vb = svg.viewBox.baseVal;
     var W = vb.width, H = vb.height;
     var N = vals.length - 1;
-    var g = svg.querySelector("g.verso-chart-series");
+    var g = svg.querySelector(".verso-chart__series");
     var self = {
       W: W, H: H, svg: svg, vals: vals, max: 0,
-      line: g && g.querySelector(".verso-chart-line"),
-      area: g && g.querySelector(".verso-chart-area"),
-      peakLine: svg.querySelector(".verso-chart-peak"),
-      labels: el.querySelectorAll(".verso-chart-yl"),
+      line: g && g.querySelector(".verso-chart__line"),
+      area: g && g.querySelector(".verso-chart__area"),
+      peakLine: svg.querySelector(".verso-chart__peak"),
+      labels: el.querySelectorAll(".verso-chart__scale:not([data-verso-chart-unit])"),
       unit: el.querySelector("[data-verso-chart-unit]"),
       figure: el.querySelector("[data-verso-live-figure]"),
       peakText: el.querySelector("[data-verso-live-peak]"),
@@ -160,7 +160,7 @@
     down.push(down[N - 1]); up.push(up[N - 1]); // one extra, off-right, until a sample lands
     var downEl = host.querySelector('[data-verso-live-lane="down"]');
     var upEl = host.querySelector('[data-verso-live-lane="up"]');
-    var probe = downEl && downEl.querySelector("svg.verso-chart");
+    var probe = downEl && downEl.querySelector(".verso-chart__svg");
     if (!probe || !upEl) return null;
     var step = probe.viewBox.baseVal.width / (N - 1);
     var lanes = [lane(downEl, down, step), lane(upEl, up, step)].filter(Boolean);
@@ -212,20 +212,20 @@
     entries.forEach(function (e) { fitGraph(e.target); });
   }) : null;
   function fitGraph(g) {
-    var plot = g.querySelector(".verso-chart-plot");
+    var plot = g.querySelector(".verso-chart__plot");
     var gutter = g.querySelector("[data-verso-chart-gutter]");
     if (!plot || !gutter) return;
     var cell = parseFloat(getComputedStyle(plot).backgroundSize);
     if (!(cell > 0)) return;
-    var steps = (g.getAttribute("data-chart-steps") || "4").split(",").map(Number);
+    var steps = (g.getAttribute("data-verso-steps") || "4").split(",").map(Number);
     var best = math.fit(Math.floor((g.clientWidth - gutter.getBoundingClientRect().width) / cell), steps);
     if (!best.cols) return;
-    g.style.setProperty("--chart-cols", String(best.cols));
-    g.setAttribute("data-chart-axis", String(best.step));
+    g.style.setProperty("--verso-chart-cols", String(best.cols));
+    g.setAttribute("data-verso-axis", String(best.step));
   }
 
   function setUp(root) {
-    (root || document).querySelectorAll(".verso-chart-graph").forEach(function (g) {
+    (root || document).querySelectorAll(".verso-chart").forEach(function (g) {
       fitGraph(g);
       if (fits) fits.observe(g);
     });

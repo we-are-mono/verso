@@ -145,7 +145,7 @@ func TestRenderDevicesUsage(t *testing.T) {
 			t.Errorf("usage roster missing %q", want)
 		}
 	}
-	for _, unwanted := range []string{"data-verso-figure-meter", "clip-path", "bg-amethyst"} {
+	for _, unwanted := range []string{"data-verso-figure-meter", "clip-path", "verso-meter__bar"} {
 		if strings.Contains(got, unwanted) {
 			t.Errorf("Now draws no meter, found %q", unwanted)
 		}
