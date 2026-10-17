@@ -98,6 +98,49 @@ func TestTheDK(t *testing.T) {
 	if f.Disk == nil || f.Disk.Bytes != 61071360*512 || f.Disk.Kind != "eMMC" {
 		t.Errorf("disk %+v, want 61071360 sectors of eMMC", f.Disk)
 	}
+	if f.Disk.Wear != nil {
+		t.Errorf("an eMMC that reports no estimate has no wear: %+v", f.Disk.Wear)
+	}
+
+	write(t, filepath.Join(d, "device/life_time"), "0x01 0x02\n")
+	write(t, filepath.Join(d, "device/pre_eol_info"), "0x01\n")
+	if w := (&Reader{Root: root}).Read().Disk.Wear; w == nil || w.Band != 2 || w.PreEOL != 1 {
+		t.Errorf("wear %+v, want the worse estimate (10–20%%) and a normal reserve", w)
+	}
+}
+
+// An eMMC's wear grades by the worse of what it estimates: its life used in
+// tenths, and its reserve blocks spent.
+func TestWearLevels(t *testing.T) {
+	for _, c := range []struct {
+		wear Wear
+		want string
+	}{
+		{Wear{Band: 1, PreEOL: 1}, ""},
+		{Wear{Band: 8, PreEOL: 1}, ""},
+		{Wear{Band: 9, PreEOL: 1}, "warn"},      // 80–90% of its life used
+		{Wear{Band: 2, PreEOL: 2}, "warn"},      // 80% of its reserve spent
+		{Wear{Band: 11, PreEOL: 1}, "critical"}, // past its rated life
+		{Wear{Band: 3, PreEOL: 3}, "critical"},  // its reserve all but gone
+		{Wear{Band: 0, PreEOL: 0}, ""},          // nothing estimated
+	} {
+		if got := c.wear.Level(); got != c.want {
+			t.Errorf("%+v: level %q, want %q", c.wear, got, c.want)
+		}
+	}
+}
+
+// An estimate the device leaves undefined is no estimate.
+func TestAnUndefinedWearIsNone(t *testing.T) {
+	root := box(t, "0-3", 4, 0, "1000000")
+	d := disk(t, root, "platform/soc/1560000.mmc/mmc_host/mmc0/mmc0:0001", "mmcblk0", "mmcblk0p2", "179:2", "61071360")
+	write(t, filepath.Join(d, "device/type"), "MMC\n")
+	write(t, filepath.Join(d, "device/life_time"), "0x00 0x00\n")
+	write(t, filepath.Join(d, "device/pre_eol_info"), "0x00\n")
+	mounts(t, root, "20 1 179:2 / / rw - ext4 /dev/root rw")
+	if w := (&Reader{Root: root}).Read().Disk.Wear; w != nil {
+		t.Errorf("wear %+v, want none", w)
+	}
 }
 
 // An x86 box: sixteen CPUs with no cpufreq, the root on an NVMe partition.

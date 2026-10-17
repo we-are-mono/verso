@@ -30,6 +30,7 @@ import (
 	"github.com/we-are-mono/verso/internal/history"
 	"github.com/we-are-mono/verso/internal/i18n"
 	"github.com/we-are-mono/verso/internal/listen"
+	"github.com/we-are-mono/verso/internal/machine"
 	"github.com/we-are-mono/verso/internal/openwrt"
 	"github.com/we-are-mono/verso/internal/palette"
 	"github.com/we-are-mono/verso/internal/plugin"
@@ -1098,7 +1099,7 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	// The board's sensors fill the Hardware card and weigh in the heading, so
 	// they are read whether the card is shown or hidden.
 	if s.boardSensors != nil {
-		ov.Hardware = hardwareView(s.boardSensors.Read())
+		ov.Hardware = hardwareView(s.boardSensors.Read(), hardwareAlerts((&machine.Reader{}).Read()))
 	}
 	// The router's panel opens the Ports card, when the card is shown.
 	if ov.Layout.Shows("ports") {

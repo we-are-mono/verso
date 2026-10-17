@@ -76,7 +76,7 @@ func dkInput() hardwareInput {
 		board:   openwrt.Board{Model: "Mono Gateway DK", BoardName: "mono,gateway-dk", System: "ARMv8 Processor rev 2"},
 		profile: &sensors.Profile{Name: "Mono Gateway Development Kit", Processor: "NXP LS1046A"},
 		inv:     dkInventory(),
-		facts:   machine.Facts{Cores: 4, MaxKHz: 1600000, MemoryBytes: 8070316 * 1024, Disk: &machine.Disk{Bytes: 61071360 * 512, Kind: "eMMC"}, Flash: &machine.Flash{Part: "n25q512a", Bytes: 64 << 20}},
+		facts:   machine.Facts{Cores: 4, MaxKHz: 1600000, MemoryBytes: 8070316 * 1024, Disk: &machine.Disk{Bytes: 61071360 * 512, Kind: "eMMC", Wear: &machine.Wear{Band: 1, PreEOL: 1}}, Flash: &machine.Flash{Part: "n25q512a", Bytes: 64 << 20}},
 		panel:   &widget.Ports{Items: []widget.PortItem{{Label: "eth0", Iface: "eth0"}}},
 	}
 }
@@ -184,8 +184,8 @@ func TestTheBoardCardsFacts(t *testing.T) {
 		"verso-ports", // the panel
 		">NXP LS1046A · 4 cores · 1.6\U0000202fGHz<", // the profile's chip, the kernel's cores and clock
 		">7.7\U0000202fGiB<",
-		">29\U0000202fGiB eMMC<",       // whole GiB from ten up, as every size in the shell
-		">n25q512a · 64\U0000202fMiB<", // the part as the kernel names it, then its size
+		">29\U0000202fGiB eMMC · 0–10\U0000202f% worn<", // whole GiB from ten up, then the eMMC's own wear estimate
+		">n25q512a · 64\U0000202fMiB<",                  // the part as the kernel names it, then its size
 		">mono,gateway-dk<",
 	} {
 		if !strings.Contains(board, want) {
@@ -218,6 +218,15 @@ func TestTheBoardCardsFacts(t *testing.T) {
 	in.facts.Flash = &machine.Flash{Bytes: 8 << 20}
 	if board := card(t, renderCards(t, in), "Mono Gateway Development Kit"); !strings.Contains(board, ">8\U0000202fMiB<") {
 		t.Errorf("an unnamed NOR should read its size alone:\n%s", board)
+	}
+
+	// A worn eMMC marks its row in the tone the heading speaks it in; one
+	// past its rated life says so rather than a band.
+	in = dkInput()
+	in.facts.Disk.Wear = &machine.Wear{Band: 11, PreEOL: 3}
+	board = card(t, renderCards(t, in), "Mono Gateway Development Kit")
+	if !strings.Contains(board, ">29\U0000202fGiB eMMC · past its rated wear<") || !strings.Contains(board, "bg-crimson") {
+		t.Errorf("a worn-out eMMC should say so, marked in danger:\n%s", board)
 	}
 }
 
@@ -404,21 +413,26 @@ func TestTheHeadingSaysWhatNeedsAttention(t *testing.T) {
 	cases := []struct {
 		name          string
 		edit          func(*sensors.Inventory)
+		wear          machine.Wear
 		heading, tone string
 	}{
-		{"all well", func(*sensors.Inventory) {}, "Hardware", "neutral"},
-		{"a hot CPU", func(inv *sensors.Inventory) { inv.Temps[0].MilliC, inv.Temps[0].Level = 87000, "warn" }, "cluster is hot", "warning"},
+		{"all well", func(*sensors.Inventory) {}, machine.Wear{Band: 1, PreEOL: 1}, "Hardware", "neutral"},
+		{"a hot CPU", func(inv *sensors.Inventory) { inv.Temps[0].MilliC, inv.Temps[0].Level = 87000, "warn" }, machine.Wear{}, "cluster is hot", "warning"},
 		{"a critical CPU beside a stopped fan", func(inv *sensors.Inventory) {
 			inv.Temps[0].MilliC, inv.Temps[0].Level = 96000, "critical"
 			inv.Fans[0].State, inv.Fans[0].RPM = "fault", 0
-		}, "cluster is hot", "danger"},
-		{"a stopped fan", func(inv *sensors.Inventory) { inv.Fans[0].State, inv.Fans[0].RPM = "fault", 0 }, "System Fan 1 stopped", "warning"},
+		}, machine.Wear{}, "cluster is hot", "danger"},
+		{"a stopped fan", func(inv *sensors.Inventory) { inv.Fans[0].State, inv.Fans[0].RPM = "fault", 0 }, machine.Wear{}, "System Fan 1 stopped", "warning"},
+		{"a wearing eMMC", func(*sensors.Inventory) {}, machine.Wear{Band: 9, PreEOL: 1}, "Storage is wearing out", "warning"},
+		{"a hot CPU beside a worn-out eMMC", func(inv *sensors.Inventory) { inv.Temps[0].MilliC, inv.Temps[0].Level = 87000, "warn" },
+			machine.Wear{Band: 11, PreEOL: 3}, "Storage is worn out", "danger"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			inv := dkInventory()
 			c.edit(&inv)
-			if h := hardwareHeading(identityTranslator, inv); h.Heading != c.heading || h.Tone != c.tone {
+			facts := machine.Facts{Disk: &machine.Disk{Bytes: 1 << 30, Kind: "eMMC", Wear: &c.wear}}
+			if h := hardwareHeading(identityTranslator, inv, hardwareAlerts(facts)); h.Heading != c.heading || h.Tone != c.tone {
 				t.Errorf("heading = %q %q, want %q %q", h.Heading, h.Tone, c.heading, c.tone)
 			}
 		})

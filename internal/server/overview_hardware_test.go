@@ -70,7 +70,7 @@ func TestHardwareView(t *testing.T) {
 			{Name: "System Fan 2", State: "absent"},
 		},
 	}
-	got := hardwareView(inv)
+	got := hardwareView(inv, nil)
 	want := &widget.OverviewSensors{
 		CPU:   &widget.OverviewSensor{Key: "hw-cpu", Name: "cluster", Value: "48\U0000202f°C"},
 		Power: &widget.OverviewSensor{Key: "hw-power", Name: "USB Power Delivery", Value: "9.8\U0000202fW · 20.10\U0000202fV · 0.49\U0000202fA"},
@@ -85,12 +85,18 @@ func TestHardwareView(t *testing.T) {
 
 	inv.Temps[1].Level, inv.Fans[0].State, inv.Fans[0].RPM = "critical", "fault", 0
 	inv.Powers[1].HasA = false
-	hot := hardwareView(inv)
+	hot := hardwareView(inv, nil)
 	if hot.CPU.Tone != "danger" || hot.Fan.Tone != "warning" || hot.Fan.Value != "—" || hot.Power.Value != "9.8\U0000202fW · 20.10\U0000202fV" {
 		t.Errorf("out of band = %+v %+v %+v", hot.CPU, hot.Fan, hot.Power)
 	}
-	if hardwareView(sensors.Inventory{Powers: []sensors.PowerReading{{Name: "1V Core PSU"}}}) != nil {
+	none := sensors.Inventory{Powers: []sensors.PowerReading{{Name: "1V Core PSU"}}}
+	if hardwareView(none, nil) != nil {
 		t.Error("no headline answered: want no view")
+	}
+	// What needs attention still speaks with no reading to stand beside.
+	worn := []widget.OverviewAlert{{Tone: "warning", Words: "Storage is wearing out"}}
+	if v := hardwareView(none, worn); v == nil || !reflect.DeepEqual(v.Alerts, worn) {
+		t.Errorf("an alert with no reading: view = %+v", v)
 	}
 }
 

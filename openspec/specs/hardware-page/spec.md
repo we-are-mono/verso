@@ -31,7 +31,7 @@ The first card SHALL be titled with the board's name: the profile's `name`, else
 - **THEN** the first card is titled "Supermicro H13SAE-MF" and holds the generated panel, centred
 
 ### Requirement: The board card says what the box is made of
-Under the panel, the board card SHALL list the facts Processor, Memory, Storage, NOR flash and Board ID, in one list read down. Processor is the profile's `processor`, else the name the kernel reports, followed by the number of cores and, where the kernel reports it, the top clock. Memory is the total the kernel manages. Storage is the size and kind of the disk the firmware boots from. NOR flash is the part as the kernel's SPI NOR framework names it, followed by the chip's size, as far as its MTD devices reach; a chip the framework names none reads its size alone. Board ID is the `board_name` (from the device tree, else the firmware's DMI), in mono; it is labelled an ID because it is an identifier firmware images are matched by, not a name a person gave. A fact the board cannot answer is left out.
+Under the panel, the board card SHALL list the facts Processor, Memory, Storage, NOR flash and Board ID, in one list read down. Processor is the profile's `processor`, else the name the kernel reports, followed by the number of cores and, where the kernel reports it, the top clock. Memory is the total the kernel manages. Storage is the size and kind of the disk the firmware boots from, followed, for an eMMC that estimates its own wear, by the band of its rated life it has used ("0–10 % worn"), or "past its rated wear"; a wear the heading speaks marks the row in the heading's tone. NOR flash is the part as the kernel's SPI NOR framework names it, followed by the chip's size, as far as its MTD devices reach; a chip the framework names none reads its size alone. Board ID is the `board_name` (from the device tree, else the firmware's DMI), in mono; it is labelled an ID because it is an identifier firmware images are matched by, not a name a person gave. A fact the board cannot answer is left out.
 
 #### Scenario: The Mono Gateway DK
 - **WHEN** the board card renders on the DK, whose profile's `processor` is "NXP LS1046A", with four cores clocked up to 1.6 GHz, 7.7 GiB of memory and a 29 GiB eMMC
@@ -46,7 +46,7 @@ Under the panel, the board card SHALL list the facts Processor, Memory, Storage,
 - **THEN** the card shows no Storage fact, and the other facts keep their places
 
 ### Requirement: The heading says when the hardware needs attention
-The page heading SHALL grade the hardware as the Overview's Hardware card header does, in the same words: a CPU past its own warn limit reads "<CPU name> is hot" in the warning tone, past its protect limit in the danger tone; otherwise a stopped main fan reads "<fan name> stopped" in the warning tone. With neither, the heading reads "Hardware".
+The page heading SHALL grade the hardware as the Overview's Hardware card header does, in the same words: a CPU past its own warn limit reads "<CPU name> is hot" in the warning tone, past its protect limit in the danger tone; a stopped main fan reads "<fan name> stopped" in the warning tone; an eMMC that has used 80 % of its rated life or reports its reserve blocks in warning reads "Storage is wearing out" in the warning tone, and one past its rated life or with its reserve urgent reads "Storage is worn out" in the danger tone. The first danger speaks, else the first warning, in that order. With none, the heading reads "Hardware".
 
 #### Scenario: All well
 - **WHEN** the DK's CPU reads 48 °C and System Fan 1 runs
@@ -64,6 +64,11 @@ The page heading SHALL grade the hardware as the Overview's Hardware card header
 #### Scenario: A stopped fan
 - **WHEN** the CPU is within its limits and System Fan 1 reads zero with its alarm set
 - **THEN** the heading reads "System Fan 1 stopped" in the warning tone
+
+#### Scenario: A worn-out eMMC beside a warm CPU
+- **WHEN** the CPU is past its warn limit and the eMMC reports itself past its rated life
+- **THEN** the heading reads "Storage is worn out" in the danger tone
+- **AND** the Storage fact reads "past its rated wear", marked in the danger tone
 
 ### Requirement: A profile chooses the readings; without one, the kernel does
 On a board with a profile, each kind card SHALL list the readings the profile names, under the profile's names, and no other. On a board with no profile, each kind card SHALL list every reading of its kind the kernel exposes, under the kernel's names.

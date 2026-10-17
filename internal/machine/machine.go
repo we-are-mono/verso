@@ -30,6 +30,27 @@ type Facts struct {
 type Disk struct {
 	Bytes uint64
 	Kind  string // "eMMC" | "SD card" | "MMC" | "NVMe" | "disk"
+	Wear  *Wear  // an eMMC's own estimate of its wear; nil where it gives none
+}
+
+// Wear is an eMMC's estimate of its wear, as JEDEC has it report: the life it
+// has used in tenths, and how much of its reserve blocks it has spent.
+type Wear struct {
+	Band   int // the worse of its two life estimates: 1 is 0–10% used … 10 is 90–100%, 11 past its rated life; 0 none
+	PreEOL int // its reserve: 1 normal, 2 warning (80% spent), 3 urgent; 0 none
+}
+
+// Level grades the wear as a sensor reading is graded: "warn" from 80% of its
+// life or its reserve's warning, "critical" past its rated life or with its
+// reserve urgent, else "".
+func (w Wear) Level() string {
+	switch {
+	case w.Band >= 11 || w.PreEOL >= 3:
+		return "critical"
+	case w.Band >= 9 || w.PreEOL == 2:
+		return "warn"
+	}
+	return ""
 }
 
 // Flash is a NOR flash chip.
@@ -178,7 +199,25 @@ func (r *Reader) disk(majMin string) *Disk {
 	if err != nil || sectors == 0 {
 		return nil
 	}
-	return &Disk{Bytes: sectors * 512, Kind: kind}
+	return &Disk{Bytes: sectors * 512, Kind: kind, Wear: wear(func(p string) string { return readTrim(filepath.Join(dir, "device", p)) })}
+}
+
+// wear reads an eMMC's estimates (life_time "0x01 0x02", pre_eol_info
+// "0x01"); a device that defines neither has none.
+func wear(read func(string) string) *Wear {
+	var w Wear
+	for f := range strings.FieldsSeq(read("life_time")) {
+		if v, err := strconv.ParseUint(f, 0, 8); err == nil && v <= 11 {
+			w.Band = max(w.Band, int(v))
+		}
+	}
+	if v, err := strconv.ParseUint(read("pre_eol_info"), 0, 8); err == nil && v <= 3 {
+		w.PreEOL = int(v)
+	}
+	if w.Band == 0 && w.PreEOL == 0 {
+		return nil
+	}
+	return &w
 }
 
 // diskKind names a disk by the kernel's name for it; an MMC device says

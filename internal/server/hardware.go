@@ -58,7 +58,7 @@ func (s *Server) handleSystemHardware(w http.ResponseWriter, r *http.Request) {
 	}
 	// Wide, as every page of listings: the Temperatures table's bar takes what
 	// its name, source and limits leave.
-	s.renderPage(w, r, http.StatusOK, hardwareHeading(tr, in.inv),
+	s.renderPage(w, r, http.StatusOK, hardwareHeading(tr, in.inv, hardwareAlerts(in.facts)),
 		"wide", s.sectionPages("System", r.URL.Path), template.HTML(body.String()))
 }
 
@@ -78,8 +78,8 @@ type hardwareInput struct {
 // hardwareHeading is the page's heading: "Hardware" while all is well, else
 // what needs attention in its tone, in the words the Overview's Hardware card
 // speaks, from the same grading.
-func hardwareHeading(tr func(string) string, inv sensors.Inventory) pageHeader {
-	if tone, words := hardwareView(inv).Verdict(tr); tone != "" {
+func hardwareHeading(tr func(string) string, inv sensors.Inventory, alerts []widget.OverviewAlert) pageHeader {
+	if tone, words := hardwareView(inv, alerts).Verdict(tr); tone != "" {
 		return pageHeader{Heading: words, Tone: tone}
 	}
 	return pageHeader{Heading: "Hardware", Tone: "neutral"}
@@ -171,7 +171,7 @@ func machineFacts(tr func(string) string, nums units.Numbers, in hardwareInput) 
 		items = append(items, widget.Property{Label: "Memory", Value: nums.Bytes(in.facts.MemoryBytes), Verbatim: true})
 	}
 	if d := in.facts.Disk; d != nil {
-		items = append(items, widget.Property{Label: "Storage", Value: nums.Bytes(d.Bytes) + " " + tr(d.Kind), Verbatim: true})
+		items = append(items, storageFact(tr, nums, d))
 	}
 	if f := in.facts.Flash; f != nil {
 		items = append(items, widget.Property{Label: "NOR flash", Value: flashFact(nums, f), Verbatim: true})
@@ -205,6 +205,24 @@ func processorFact(tr func(string) string, nums units.Numbers, in hardwareInput)
 		parts = append(parts, nums.Figure(float64(khz)/1e6)+units.Space+"GHz")
 	}
 	return strings.Join(parts, " · ")
+}
+
+// storageFact is the boot disk's size and kind, then the wear an eMMC
+// estimates for itself, in tenths of its rated life; its row is marked in the
+// tone the heading speaks it in.
+func storageFact(tr func(string) string, nums units.Numbers, d *machine.Disk) widget.Property {
+	p := widget.Property{Label: "Storage", Value: nums.Bytes(d.Bytes) + " " + tr(d.Kind), Verbatim: true}
+	if w := d.Wear; w != nil && w.Band > 0 {
+		worn := tr("past its rated wear")
+		if w.Band <= 10 {
+			worn = fmt.Sprintf(tr("%s worn"), fmt.Sprintf("%d–%d", (w.Band-1)*10, w.Band*10)+units.Space+"%")
+		}
+		p.Value += " · " + worn
+		if level := w.Level(); level != "" {
+			p.Dot = tempVariant(level)
+		}
+	}
+	return p
 }
 
 // flashFact is the NOR chip as the kernel names its part, then its size; a

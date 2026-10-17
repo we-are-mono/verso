@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/we-are-mono/verso/internal/clock"
+	"github.com/we-are-mono/verso/internal/machine"
 	"github.com/we-are-mono/verso/internal/openwrt"
 	"github.com/we-are-mono/verso/internal/telemetry"
 	"github.com/we-are-mono/verso/internal/units"
@@ -144,11 +145,14 @@ func (s *Server) handleOverviewEvents(w http.ResponseWriter, r *http.Request) {
 	// heading: the sampler reads them once per five seconds for every
 	// connection, the card hidden or not, because the heading counts a board
 	// past its limits. Only the card's rows wait on it being shown.
+	// What needs attention beyond the readings changes over weeks, not
+	// seconds, so it is read once for the connection.
+	hwAlerts := hardwareAlerts((&machine.Reader{}).Read())
 	sendSensors := func() bool {
 		if s.boardSensors == nil {
 			return true
 		}
-		liveOverview.Hardware = hardwareView(s.boardSensors.Read())
+		liveOverview.Hardware = hardwareView(s.boardSensors.Read(), hwAlerts)
 		if !layout.Shows("hardware") {
 			return true
 		}

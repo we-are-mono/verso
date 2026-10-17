@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/we-are-mono/verso/internal/machine"
 	"github.com/we-are-mono/verso/internal/sensors"
 	"github.com/we-are-mono/verso/internal/units"
 	"github.com/we-are-mono/verso/internal/widget"
@@ -60,9 +61,10 @@ func (s *sensorSampler) Read() sensors.Inventory {
 
 // hardwareView is the Hardware card's readings: the CPU, the main rail's
 // draw with its voltage and current, and the main fan, written as the
-// Hardware page writes them; nil when none answered.
-func hardwareView(inv sensors.Inventory) *widget.OverviewSensors {
-	v := &widget.OverviewSensors{}
+// Hardware page writes them, with what needs attention beyond them; nil when
+// none answered and nothing does.
+func hardwareView(inv sensors.Inventory, alerts []widget.OverviewAlert) *widget.OverviewSensors {
+	v := &widget.OverviewSensors{Alerts: alerts}
 	if t := inv.CPUTemp(); t != nil {
 		v.CPU = &widget.OverviewSensor{Key: "hw-cpu", Name: t.Name, Value: "—"}
 		if !t.Fault {
@@ -90,10 +92,25 @@ func hardwareView(inv sensors.Inventory) *widget.OverviewSensors {
 			v.Fan.Tone = "warning"
 		}
 	}
-	if v.CPU == nil && v.Power == nil && v.Fan == nil {
+	if v.CPU == nil && v.Power == nil && v.Fan == nil && len(alerts) == 0 {
 		return nil
 	}
 	return v
+}
+
+// hardwareAlerts are what needs attention in the box beyond its readings: an
+// eMMC wearing out.
+func hardwareAlerts(facts machine.Facts) []widget.OverviewAlert {
+	var out []widget.OverviewAlert
+	if d := facts.Disk; d != nil && d.Wear != nil {
+		switch d.Wear.Level() {
+		case "warn":
+			out = append(out, widget.OverviewAlert{Tone: "warning", Words: "Storage is wearing out"})
+		case "critical":
+			out = append(out, widget.OverviewAlert{Tone: "danger", Words: "Storage is worn out"})
+		}
+	}
+	return out
 }
 
 // hardwareRows is the sensors frame: each row's value by its key.

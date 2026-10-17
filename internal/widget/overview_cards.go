@@ -467,6 +467,15 @@ func (o *Overview) systemBody(r *Renderer, csrf string) (template.HTML, error) {
 // The Hardware page holds the rest.
 type OverviewSensors struct {
 	CPU, Power, Fan *OverviewSensor
+	// Alerts are what needs attention in the box beyond its readings (a worn
+	// disk), in the order they speak within a tone.
+	Alerts []OverviewAlert
+}
+
+// OverviewAlert is one condition: its tone, "warning" or "danger", and its
+// words as a catalog key.
+type OverviewAlert struct {
+	Tone, Words string
 }
 
 // OverviewSensor is one reading: Key tags its row for the stream, and Tone is
@@ -483,16 +492,29 @@ func (s *OverviewSensors) rows() []*OverviewSensor {
 }
 
 // Verdict grades the hardware for whatever speaks for it (the Overview
-// card's header, the Hardware page's heading): a hot CPU in its own tone,
-// else a stopped fan, in words; none, the empty tone and words, while both
-// are in band.
+// card's header, the Hardware page's heading): the first danger, else the
+// first warning, of a hot CPU, a stopped fan, then the alerts, in words;
+// none, the empty tone and words, while all is well.
 func (s *OverviewSensors) Verdict(tr func(string) string) (tone, words string) {
-	switch {
-	case s == nil:
-	case s.CPU != nil && s.CPU.Tone != "":
-		return s.CPU.Tone, fmt.Sprintf(tr("%s is hot"), tr(s.CPU.Name))
-	case s.Fan != nil && s.Fan.Tone != "":
-		return s.Fan.Tone, fmt.Sprintf(tr("%s stopped"), tr(s.Fan.Name))
+	if s == nil {
+		return "", ""
+	}
+	var causes []OverviewAlert
+	if s.CPU != nil && s.CPU.Tone != "" {
+		causes = append(causes, OverviewAlert{s.CPU.Tone, fmt.Sprintf(tr("%s is hot"), tr(s.CPU.Name))})
+	}
+	if s.Fan != nil && s.Fan.Tone != "" {
+		causes = append(causes, OverviewAlert{s.Fan.Tone, fmt.Sprintf(tr("%s stopped"), tr(s.Fan.Name))})
+	}
+	for _, a := range s.Alerts {
+		causes = append(causes, OverviewAlert{a.Tone, tr(a.Words)})
+	}
+	for _, want := range []string{"danger", "warning"} {
+		for _, c := range causes {
+			if c.Tone == want {
+				return c.Tone, c.Words
+			}
+		}
 	}
 	return "", ""
 }
@@ -501,12 +523,11 @@ func (s *OverviewSensors) Verdict(tr func(string) string) (tone, words string) {
 // temperature.
 func (o *Overview) hardwareHead(tr func(string) string) cardHead {
 	hw := o.Hardware
-	if len(hw.rows()) == 0 {
-		return cardHead{Tone: "neutral", Status: tr("Unavailable")}
-	}
 	h := cardHead{Tone: "neutral"}
 	if tone, words := hw.Verdict(tr); tone != "" {
 		h.Tone, h.Status, h.Cause = tone, words, words
+	} else if len(hw.rows()) == 0 {
+		return cardHead{Tone: "neutral", Status: tr("Unavailable")}
 	}
 	if hw.CPU != nil {
 		h.Summary = hw.CPU.Value

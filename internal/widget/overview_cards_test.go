@@ -357,6 +357,11 @@ func TestHardwareCardHead(t *testing.T) {
 			t.Errorf("no sensor answered: head = %+v", h)
 		}
 	}
+	// A box with no reading still says what needs attention.
+	alone := &OverviewSensors{Alerts: []OverviewAlert{{Tone: "warning", Words: "Storage is wearing out"}}}
+	if h := head(t, &Overview{Hardware: alone}, "hardware"); h.Tone != "warning" || h.Status != "Storage is wearing out" {
+		t.Errorf("an alert with no reading: head = %+v", h)
+	}
 }
 
 // The hardware's verdict is one grading the Overview card's header and the
@@ -377,6 +382,19 @@ func TestHardwareVerdict(t *testing.T) {
 			s.Fan.Tone, s.CPU.Tone = "warning", "warning"
 		}, "warning", "cluster is hot"},
 		{"no CPU, a stopped fan", func(s *OverviewSensors) { s.CPU, s.Fan.Tone = nil, "warning" }, "warning", "System Fan 1 stopped"},
+		// What needs attention beyond the readings follows them in its tone,
+		// and a danger anywhere speaks before any warning.
+		{"a wearing disk", func(s *OverviewSensors) {
+			s.Alerts = []OverviewAlert{{Tone: "warning", Words: "Storage is wearing out"}}
+		}, "warning", "Storage is wearing out"},
+		{"a warm CPU beside a wearing disk", func(s *OverviewSensors) {
+			s.CPU.Tone = "warning"
+			s.Alerts = []OverviewAlert{{Tone: "warning", Words: "Storage is wearing out"}}
+		}, "warning", "cluster is hot"},
+		{"a warm CPU beside a worn-out disk", func(s *OverviewSensors) {
+			s.CPU.Tone = "warning"
+			s.Alerts = []OverviewAlert{{Tone: "danger", Words: "Storage is worn out"}}
+		}, "danger", "Storage is worn out"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
