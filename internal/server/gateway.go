@@ -679,31 +679,6 @@ func validateSchema(w widget.Widget) bool {
 	return found
 }
 
-// validateApplyActions bounds a plugin's privileged helper commands to named
-// operations and to scopes the plugin declared in its manifest. Adding a
-// helper method is not enough: a plugin must opt into its exact permission.
-func validateApplyActions(m plugin.Manifest, actions []plugin.ApplyAction) error {
-	if len(actions) > 1 {
-		return fmt.Errorf("too many apply actions")
-	}
-	for _, action := range actions {
-		var required plugin.ACLScope
-		switch action.Name {
-		case "set-system-time":
-			required = plugin.ACLScope{Scope: "ubus", Object: "verso", Function: "setSystemTime"}
-			if action.Args["datetime"] == "" || action.Args["timezone"] == "" {
-				return fmt.Errorf("set-system-time needs datetime and timezone")
-			}
-		default:
-			return fmt.Errorf("unknown action %q", action.Name)
-		}
-		if !slices.Contains(m.ACL.Write, required) {
-			return fmt.Errorf("action %q lacks declared scope", action.Name)
-		}
-	}
-	return nil
-}
-
 type noticeData struct {
 	Title, Message          string
 	ActionLabel, ActionHref string // optional door out of the dead end
@@ -1176,7 +1151,7 @@ func (s *Server) readUbus(ctx context.Context, m plugin.Manifest, sid string) pl
 }
 
 // brokeredUbusRead bounds the reads the shell will perform on a plugin's behalf to
-// a closed set of named helper functions, the way validateApplyActions bounds the
+// a closed set of named helper functions, the way runPluginCommands bounds the
 // privileged tail of a write. Declaring a scope is not enough: the shell must also
 // know the function, so a manifest cannot name its way to an arbitrary helper verb.
 // It reports whether the function is one the shell brokers at all.

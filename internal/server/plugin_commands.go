@@ -54,8 +54,13 @@ func (s *Server) runPluginCommands(ctx context.Context, m plugin.Manifest, sid s
 	case "ssh-key-add", "ssh-key-remove", "certificate-generate", "certificate-install":
 		return s.credentialCommand(ctx, m, sid, cmd)
 	case "set-system-time":
-		if err := validateApplyActions(m, commands); err != nil {
-			return err
+		// A plugin opts into the exact helper permission; a helper method
+		// existing is not enough.
+		if cmd.Args["datetime"] == "" || cmd.Args["timezone"] == "" {
+			return fmt.Errorf("set-system-time needs datetime and timezone")
+		}
+		if !slices.Contains(m.ACL.Write, plugin.ACLScope{Scope: "ubus", Object: "verso", Function: "setSystemTime"}) {
+			return fmt.Errorf("action %q lacks declared scope", cmd.Name)
 		}
 		return s.backend.SetSystemTime(ctx, sid, cmd.Args["datetime"], cmd.Args["timezone"])
 	case "interface-restart", "interface-up", "interface-down":
