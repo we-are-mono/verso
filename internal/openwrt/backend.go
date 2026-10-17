@@ -594,7 +594,6 @@ type NativeBackend struct {
 	// helperSocket is where the verso-rpcd helper listens; empty is its
 	// default path.
 	helperSocket   string
-	configFileCall configFileCall
 	hostname       hostnameFn
 	systemInfo     systemInfoFn
 	systemBoard    systemBoardFn
@@ -652,7 +651,6 @@ func NewNativeBackend() *NativeBackend {
 			return strings.TrimSpace(line)
 		},
 		uciChanges:     dialUCIChanges(""),
-		configFileCall: nativeConfigFileCall,
 		uciRevert:      dialUCIRevert(""),
 		uciApply:       dialUCIApply(""),
 		uciConfirm:     dialUCIConfirm(""),

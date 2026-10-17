@@ -38,11 +38,7 @@ type configFileState struct {
 	UCI          bool         `json:"uci"`
 	UCIConfirmed bool         `json:"uci_confirmed"`
 }
-type configFileCall func(context.Context, string, string, map[string]string, any) error
 
-func nativeConfigFileCall(ctx context.Context, sid, method string, args map[string]string, result any) error {
-	return callHelper(ctx, "", method, sid, args, result)
-}
 func (b *NativeBackend) DNSState(ctx context.Context, sid string) (json.RawMessage, error) {
 	var state json.RawMessage
 	err := callHelper(ctx, b.helperSocket, "dnsState", sid, nil, &state)
@@ -94,34 +90,22 @@ func (b *NativeBackend) FirewallFiles(ctx context.Context, sid string) (json.Raw
 }
 func (b *NativeBackend) configFileState(ctx context.Context, sid string) (configFileState, error) {
 	var state configFileState
-	if b.configFileCall == nil {
-		return state, nil
-	}
-	err := b.configFileCall(ctx, sid, "configFiles", nil, &state)
+	err := callHelper(ctx, b.helperSocket, "configFiles", sid, nil, &state)
 	return state, err
 }
 func (b *NativeBackend) fileAction(ctx context.Context, sid, action string, uci bool, timeout int) error {
-	if b.configFileCall == nil {
-		return nil
-	}
 	enabled := "0"
 	if uci {
 		enabled = "1"
 	}
-	return b.configFileCall(ctx, sid, "applyConfigFiles", map[string]string{"action": action, "uci": enabled, "timeout": fmt.Sprint(timeout)}, nil)
+	return callHelper(ctx, b.helperSocket, "applyConfigFiles", sid, map[string]string{"action": action, "uci": enabled, "timeout": fmt.Sprint(timeout)}, nil)
 }
 
 // discardFiles drops one family's staged files, leaving the others staged.
 func (b *NativeBackend) discardFiles(ctx context.Context, sid, family string) error {
-	if b.configFileCall == nil {
-		return nil
-	}
-	return b.configFileCall(ctx, sid, "applyConfigFiles", map[string]string{"action": "discard", "family": family, "uci": "0", "timeout": "30"}, nil)
+	return callHelper(ctx, b.helperSocket, "applyConfigFiles", sid, map[string]string{"action": "discard", "family": family, "uci": "0", "timeout": "30"}, nil)
 }
 func (b *NativeBackend) StageConfigFile(ctx context.Context, sid, path, expected, content string) error {
-	if b.configFileCall == nil {
-		return fmt.Errorf("file staging unavailable")
-	}
 	var directories []string
 	// dnsmasq's jail only mounts its configured include directory. Stage that
 	// setting with the first include file so it also works on bare metal.
@@ -151,7 +135,7 @@ func (b *NativeBackend) StageConfigFile(ctx context.Context, sid, path, expected
 	}
 	// Validate and stage the file before changing UCI. A stale editor, invalid
 	// filename, or dnsmasq syntax error must not leave a confdir change behind.
-	if err := b.configFileCall(ctx, sid, "stageConfigFile", map[string]string{"path": path, "expected": expected, "content": content}, nil); err != nil {
+	if err := callHelper(ctx, b.helperSocket, "stageConfigFile", sid, map[string]string{"path": path, "expected": expected, "content": content}, nil); err != nil {
 		return err
 	}
 	for _, section := range directories {

@@ -4,10 +4,44 @@ package openwrt
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"path/filepath"
 	"reflect"
 	"testing"
 )
+
+// configFileHelper answers every request at a fake helper socket through
+// call, the way the helper's file verbs answer: a configFiles read fills the
+// state call is handed, and an error call returns is the helper's refusal.
+func configFileHelper(t *testing.T, call func(ctx context.Context, sid, method string, args map[string]string, result any) error) string {
+	t.Helper()
+	socket := filepath.Join(t.TempDir(), "helper.sock")
+	listener := listenAsHelper(t, socket)
+	t.Cleanup(func() { _ = listener.Close() })
+	go func() {
+		for {
+			conn, err := listener.Accept()
+			if err != nil {
+				return
+			}
+			var request helperRequest
+			if json.NewDecoder(conn).Decode(&request) == nil {
+				var result any
+				if request.Method == "configFiles" {
+					result = &configFileState{}
+				}
+				response := map[string]any{"status": 0, "result": result}
+				if err := call(context.Background(), request.SID, request.Method, request.Args, result); err != nil {
+					response = map[string]any{"status": 2, "error": err.Error()}
+				}
+				_ = json.NewEncoder(conn).Encode(response)
+			}
+			_ = conn.Close()
+		}
+	}()
+	return socket
+}
 
 func TestConfigFilesJoinReviewDiscardAndApply(t *testing.T) {
 	for _, uci := range []bool{false, true} {
@@ -15,9 +49,9 @@ func TestConfigFilesJoinReviewDiscardAndApply(t *testing.T) {
 			ctx := context.Background()
 			var calls []string
 			state := configFileState{Files: []ConfigFile{{Path: "/etc/dnsmasq.conf", Family: "dnsmasq", Content: "log-queries\n", Pending: true}}}
-			b := &NativeBackend{configFileCall: func(_ context.Context, sid, method string, args map[string]string, result any) error {
+			b := &NativeBackend{helperSocket: configFileHelper(t, func(_ context.Context, sid, method string, args map[string]string, result any) error {
 				if sid != "sid" {
-					t.Fatalf("sid lost")
+					t.Errorf("sid lost")
 				}
 				if method == "configFiles" {
 					*result.(*configFileState) = state
@@ -34,7 +68,7 @@ func TestConfigFilesJoinReviewDiscardAndApply(t *testing.T) {
 					state = configFileState{}
 				}
 				return nil
-			}, uciChanges: func(context.Context, string) (map[string][][]string, error) {
+			}), uciChanges: func(context.Context, string) (map[string][][]string, error) {
 				if uci {
 					return map[string][][]string{"dhcp": {{"set", "main", "domain", "home"}}}, nil
 				}
@@ -77,7 +111,7 @@ func TestAFileWaitsUnderItsOwnConfig(t *testing.T) {
 		{Path: "/etc/dnsmasq.d/10-local.conf", Family: "dnsmasq", Content: "log-queries\n", Pending: true},
 		{Path: "/etc/nftables.d/10-custom.nft", Family: "fw4", Content: "chain x {}\n", Pending: true},
 	}}
-	b := &NativeBackend{configFileCall: func(_ context.Context, _, method string, args map[string]string, result any) error {
+	b := &NativeBackend{helperSocket: configFileHelper(t, func(_ context.Context, _, method string, args map[string]string, result any) error {
 		if method == "configFiles" {
 			*result.(*configFileState) = state
 			return nil
@@ -86,7 +120,7 @@ func TestAFileWaitsUnderItsOwnConfig(t *testing.T) {
 			discarded = append(discarded, args["family"])
 		}
 		return nil
-	}, uciChanges: func(context.Context, string) (map[string][][]string, error) { return nil, nil },
+	}), uciChanges: func(context.Context, string) (map[string][][]string, error) { return nil, nil },
 		uciRevert: func(context.Context, string, string) error { return nil }}
 	changes, err := b.UCIChanges(ctx, "sid")
 	if err != nil {
@@ -116,14 +150,14 @@ func TestAFileWaitsUnderItsOwnConfig(t *testing.T) {
 
 func TestFailedUCIApplyRestoresFiles(t *testing.T) {
 	var calls []string
-	b := &NativeBackend{configFileCall: func(_ context.Context, _, method string, args map[string]string, result any) error {
+	b := &NativeBackend{helperSocket: configFileHelper(t, func(_ context.Context, _, method string, args map[string]string, result any) error {
 		if method == "configFiles" {
 			*result.(*configFileState) = configFileState{Files: []ConfigFile{{Pending: true}}}
 		} else {
 			calls = append(calls, args["action"])
 		}
 		return nil
-	}, uciChanges: func(context.Context, string) (map[string][][]string, error) {
+	}), uciChanges: func(context.Context, string) (map[string][][]string, error) {
 		return map[string][][]string{"dhcp": {{"set", "main", "domain", "home"}}}, nil
 	}, uciApply: func(context.Context, string, int) error { return errors.New("failed") }}
 	if b.UCIApply(context.Background(), "sid", 30) == nil {
@@ -138,9 +172,9 @@ func TestInvalidFileDoesNotStageAnIncludeDirectory(t *testing.T) {
 	wrote := false
 	b := &NativeBackend{uciConfig: func(context.Context, string, string) (map[string]any, error) {
 		return map[string]any{"main": map[string]any{".type": "dnsmasq"}}, nil
-	}, uciSet: func(context.Context, string, string, string, map[string]any) error { wrote = true; return nil }, configFileCall: func(context.Context, string, string, map[string]string, any) error {
+	}, uciSet: func(context.Context, string, string, string, map[string]any) error { wrote = true; return nil }, helperSocket: configFileHelper(t, func(context.Context, string, string, map[string]string, any) error {
 		return errors.New("invalid or stale file")
-	}}
+	})}
 	if b.StageConfigFile(context.Background(), "sid", "/etc/dnsmasq.d/local.conf", "old", "invalid") == nil {
 		t.Fatal("accepted")
 	}
