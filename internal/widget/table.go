@@ -11,6 +11,7 @@ import (
 	"io"
 	"net/url"
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/we-are-mono/verso/internal/units"
@@ -746,8 +747,8 @@ type tableView struct {
 	ReorderIDs []string
 	CSRFToken  string
 	ColumnSpan int
-	// Narrow names the secondary columns a phone leaves out, as the classes
-	// the sheet hides by position ("verso-narrow-2 verso-narrow-5").
+	// Narrow names the secondary columns a phone leaves out, as the
+	// positions the table block hides ("2 5", data-verso-narrow).
 	Narrow      string
 	Rows        []tableRowView
 	SeamSummary string
@@ -1120,15 +1121,16 @@ func (t *Table) bandsOnly() bool {
 	return true
 }
 
-// narrowMax is how many leading columns the sheet can leave out by position
-// (verso-narrow-1 … in input.css); a listing wider than this keeps the rest.
+// narrowMax is how many leading columns the table block can leave out by
+// position (blocks/table.css, data-verso-narrow); a listing wider than this
+// keeps the rest.
 const narrowMax = 16
 
-// narrow is the classes that leave a phone without the secondary columns,
-// one per column by its position from 1. A position the table lacks, the
-// first column, a name column and the acts are never among them.
+// narrow is the positions that leave a phone without the secondary columns,
+// one per column counted from 1. A position the table lacks, the first
+// column, a name column and the acts are never among them.
 func (t *Table) narrow() string {
-	var classes []string
+	var positions []string
 	for _, i := range t.secondary() {
 		if i <= 0 || i >= len(t.Columns) || i >= narrowMax {
 			continue
@@ -1136,9 +1138,9 @@ func (t *Table) narrow() string {
 		if kind := t.Columns[i].Kind; kind == "name" || kind == "actions" {
 			continue
 		}
-		classes = append(classes, fmt.Sprintf("verso-narrow-%d", i+1))
+		positions = append(positions, strconv.Itoa(i+1))
 	}
-	return strings.Join(classes, " ")
+	return strings.Join(positions, " ")
 }
 
 // secondary is the columns a phone leaves out: the listing's own Secondary

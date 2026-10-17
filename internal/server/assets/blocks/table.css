@@ -1,0 +1,614 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/* SPDX-FileCopyrightText: 2026 Mono Technologies Inc. */
+
+/*
+ * table — config sections as identical rows under kind-typed columns, on the
+ * notebook's grid. Every cell writes on 24px lines with 7px over the first
+ * and 8px under the last (a row's own air), and its hairline is the row's
+ * last pixel, so a row of one line is 40px and every row ends on a line
+ * however its values wrap. The borders stay separate, so each row's hairline
+ * is its own, the last row's too; every cell stands at the row's top, so a
+ * row's first lines stay level.
+ *
+ * Words are the body role; a value written as the device wrote it is its
+ * verbatim form, a count its figures. A row's name is the value role, the one
+ * step heavier than the rest of the row: it names the row, the rest are
+ * facts about it.
+ *
+ * Every row is inset from the table's edges, and this is where that is said,
+ * once for the heads, the lanes and the cells alike: a row's hover tint and a
+ * lane's fill run the table's full width, so words flush to that edge would
+ * sit on the tint's own boundary. The table's first and last cells take the
+ * edges (11px leading, where a grip's glyph starts when it stands on the
+ * grid's first crossing; 16px trailing); a dense table gives up the cells'
+ * own inset, spending the measure on values. Of-type, not child: a row whose
+ * subject has an entity panel carries that panel's template after its last
+ * cell.
+ *
+ * Context: --verso-table-start, --verso-table-end   the edges' insets, which
+ *          a surface that stands the table in its own inset sets
+ * Variants: data-verso-dense      no inset of the cells' own: the columns'
+ *                                 widths space them
+ *           data-verso-in-form    a set among a form's fields: its first and
+ *                                 last words keep to the row's gutters, and
+ *                                 its rows draw no tint under the pointer
+ *           data-verso-narrow     the positions a phone leaves out ("2 5"):
+ *                                 the head, every cell under it and its width
+ *           data-verso-lifted     the copy of a row a drag lifts off the
+ *                                 listing (blocks/reorder.css): no hairline
+ * Elements: __head      a column's head, the kicker: medium, spaced, quiet
+ *           __row       a row; data-verso-off marks a switched-off one
+ *           __cell      a value's cell
+ *           __grip      the reorder column, head and cell: the grip on a
+ *                       crossing of the grid
+ *           __handle    the grip itself
+ *           __acts      the row's acts at its trailing edge, the last act's
+ *                       28px centred on the line a cell in from the edge
+ *           __title     the name's line: the name and what qualifies it
+ *           __name      the identity column's name; data-verso-muted, and
+ *                       data-verso-off on a switched-off row's name
+ *           __words     the name's words, which a switched-off row's marker
+ *                       lies under
+ *           __phrase    a name written as one line of parts, marked as a
+ *                       name is
+ *           __expand    the name of a row that unfolds, the control that
+ *                       unfolds it
+ *           __identity  an inventory row's node, unfold box and name, one
+ *                       control
+ *           __toggle    the box that unfolds an inventory row
+ *           __state     a state's packet and word; data-verso-tone
+ *           __detail    the quiet line under a cell's value
+ *           __slot      a figure's slot of one width, so a column lines up
+ *           __lane      a lane's row: a run of rows under its band
+ *           __band      the lane's head, on Quiet Sand between strong
+ *                       hairlines; data-verso-lane-gap opens a later lane
+ *                       40px under the table before it
+ *           __line      the band's line, an add's 28px tall
+ *           __tail      the cell of a lane's quiet add after its last row
+ *           __add       that add, the whole line
+ *           __seam      the cell of the fold that holds a listing's stock rows
+ *           __summary   the fold's words
+ *           __sheet     what an unfolded row shows, under it
+ *           __unfold    the track an inventory row unfolds in
+ */
+
+.verso-table {
+  --verso-table-start: calc(var(--spacing) * 2.75);
+  --verso-table-end: calc(var(--spacing) * 4);
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  @apply type-body;
+}
+.verso-table[data-verso-in-form] {
+  --verso-table-start: 0px;
+  --verso-table-end: 0px;
+}
+.verso-table :where(td, th) {
+  vertical-align: top;
+}
+
+/* The heads are 24px: the 12px caps on a 16px line, 4px over and 3px under,
+   the hairline the row's last pixel, so the rows under them start on a line. */
+.verso-table__head {
+  padding: var(--spacing) calc(var(--spacing) * 3.5) calc(var(--spacing) * 0.75);
+  border: 0 solid var(--color-rule-strong);
+  border-bottom-width: 1px;
+  color: var(--color-meta);
+  text-align: left;
+  white-space: nowrap;
+  @apply type-label;
+}
+.verso-table__head:where(.verso-table[data-verso-dense] *) {
+  padding-inline: 0;
+}
+
+.verso-table__row {
+  transition-property: background-color;
+  transition-duration: 150ms;
+}
+.verso-table__row:where(.verso-table:not([data-verso-in-form]) *):hover {
+  background-color: color-mix(in srgb, var(--color-quiet) 50%, transparent);
+}
+
+.verso-table__cell,
+.verso-table__grip:not(th),
+.verso-table__acts,
+.verso-table__tail,
+.verso-table__sheet {
+  border: 0 solid var(--color-rule);
+  border-bottom-width: 1px;
+}
+:is(.verso-table__cell, .verso-table__grip, .verso-table__acts):where(.verso-table[data-verso-lifted] *) {
+  border-bottom-color: transparent;
+}
+.verso-table__cell {
+  padding: calc(var(--spacing) * 1.75) calc(var(--spacing) * 3.5) calc(var(--spacing) * 2);
+  @apply type-body;
+}
+.verso-table__cell:where(.verso-table[data-verso-dense] *) {
+  padding-inline: 0 calc(var(--spacing) * 4);
+}
+
+/* The edges. A set among a form's fields insets its cells only; its heads
+   keep their own. */
+:is(.verso-table__cell, .verso-table__seam, .verso-table__sheet):first-of-type,
+:is(.verso-table__head, .verso-table__band):not(.verso-table__grip):where(.verso-table:not([data-verso-in-form]) *):first-of-type {
+  padding-inline-start: var(--verso-table-start);
+}
+:is(.verso-table__cell, .verso-table__seam, .verso-table__sheet):last-of-type,
+.verso-table__head:where(.verso-table:not([data-verso-in-form]) *):last-of-type {
+  padding-inline-end: var(--verso-table-end);
+}
+
+/* The table starts on a grid line, so 7px on the left centres the 24px grip
+   on the line a cell in, and 7px over it, 8px under, on the row's middle
+   line: the grip stands on a crossing of the notebook's grid. What it gives
+   up on the left it keeps on the right, so the column is as wide as ever. */
+.verso-table__grip {
+  width: calc(var(--spacing) * 10);
+  padding-inline: calc(var(--spacing) * 1.75) calc(var(--spacing) * 4.25);
+}
+.verso-table__grip:where(.verso-table[data-verso-dense] *) {
+  width: calc(var(--spacing) * 8);
+  padding-inline-end: calc(var(--spacing) * 2.25);
+}
+.verso-table__grip:not(th) {
+  padding-block: calc(var(--spacing) * 1.75) calc(var(--spacing) * 2);
+}
+/* The grip rests at the step the eye passes over and darkens with the whole
+   row, not only under its own pointer: what is draggable is the row. */
+.verso-table__handle {
+  display: grid;
+  place-items: center;
+  width: calc(var(--spacing) * 6);
+  height: calc(var(--spacing) * 6);
+  color: var(--color-inert);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  transition: color 150ms;
+}
+.verso-table__handle:is(.verso-table__row:hover *) {
+  color: var(--color-glyph);
+}
+.verso-table__handle:active {
+  cursor: grabbing;
+}
+.verso-table__handle:focus-visible {
+  outline: 2px solid var(--color-denim);
+  outline-offset: -2px;
+}
+
+/* A 12px lead-in separates the value before from the 28px acts; the last
+   act sits 5px under the hairline over it and 6px over its own. */
+.verso-table__acts {
+  padding: calc(var(--spacing) * 1.25) calc(var(--spacing) * 1.75) calc(var(--spacing) * 1.5) calc(var(--spacing) * 3);
+  white-space: nowrap;
+}
+
+/* The name's line: the name, and whatever qualifies it after it. A block
+   flex, not an inline one, so the cell is exactly as tall as the tallest
+   thing in it and a glyph's box cannot lift the line. */
+.verso-table__title {
+  display: flex;
+  align-items: center;
+  column-gap: calc(var(--spacing) * 3);
+}
+.verso-table__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-ink);
+  @apply type-value;
+}
+.verso-table__name[data-verso-verbatim] {
+  @apply type-body;
+}
+.verso-table__name[data-verso-muted] {
+  color: var(--color-meta);
+}
+/* A name not in force gives up its weight and steps back to Body, the one
+   step that holds 4.5 : 1 over the marker under it. */
+.verso-table__name[data-verso-off] {
+  color: var(--color-body);
+  @apply type-body;
+}
+
+.verso-table__phrase {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--spacing) * 2);
+  min-width: 0;
+  white-space: nowrap;
+  color: var(--color-ink);
+}
+.verso-table__phrase[data-verso-muted] {
+  color: var(--color-meta);
+}
+.verso-table__phrase[data-verso-off] {
+  color: var(--color-body);
+}
+
+.verso-table__expand {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--spacing) * 2);
+  cursor: pointer;
+  text-align: left;
+}
+.verso-table__expand:hover {
+  color: var(--color-denim);
+}
+.verso-table__expand:focus-visible {
+  outline-color: var(--color-denim);
+}
+.verso-table__expand[data-verso-verbatim] {
+  color: var(--color-ink);
+  @apply type-value;
+}
+
+/* An inventory row's identity — its node on the tree, the box that unfolds
+   it and its name — is one control, the whole width of its cell. The box
+   fills with the action colour while its row is open. */
+.verso-table__identity {
+  display: flex;
+  align-items: flex-start;
+  width: 100%;
+  cursor: pointer;
+  text-align: left;
+}
+.verso-table__identity:focus-visible {
+  outline: 2px solid var(--color-denim);
+  outline-offset: -2px;
+}
+.verso-table__toggle {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: calc(var(--spacing) * 7);
+  height: calc(var(--spacing) * 7);
+  border: 1px solid var(--color-rule-strong);
+  border-radius: var(--radius-xs);
+  color: var(--color-glyph);
+}
+.verso-table__toggle:is([aria-expanded="true"] *) {
+  border-color: var(--color-denim);
+  background-color: var(--color-denim);
+  color: var(--color-on-fill);
+}
+
+/* A state as its column writes it: the packet, then the word in the
+   state's ink: the deep step of a warning or a fault, Ink for a link that
+   is up, Meta for the rest. */
+.verso-table__state {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--spacing) * 2);
+  color: var(--color-meta);
+}
+.verso-table__state[data-verso-tone="success"] {
+  color: var(--color-ink);
+}
+.verso-table__state[data-verso-tone="warning"] {
+  color: var(--color-marigold-deep);
+}
+.verso-table__state[data-verso-tone="danger"] {
+  color: var(--color-crimson-deep);
+}
+
+/* The quiet line under a cell's value, on one line with the cell's tag
+   riding it. On a phone it wraps between its words rather than pushing the
+   row's acts off the screen. */
+.verso-table__detail {
+  display: flex;
+  align-items: center;
+  column-gap: calc(var(--spacing) * 2);
+  white-space: nowrap;
+  color: var(--color-meta);
+}
+@media (width < 40rem) {
+  .verso-table__detail {
+    flex-wrap: wrap;
+    white-space: normal;
+  }
+}
+
+/* Every slot is drawn even when it has nothing to say, unseen but keeping
+   its width, so a live listing fills it in place and the cell is as wide
+   busy as idle. */
+.verso-table__slot {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--spacing);
+  width: calc(var(--spacing) * 22);
+  margin-inline-end: calc(var(--spacing) * 4);
+  vertical-align: top;
+  font-variant-numeric: tabular-nums;
+}
+.verso-table__slot:last-child {
+  margin-inline-end: 0;
+}
+
+/* An inked figures cell: its figures written at the value role's 500 in the
+   tone's Deep step, as the legend writes the ink's words, the
+   glyphs beside them left in Glyph. A live listing changes the tone in
+   place, and the ink eases to it. The tokens are hex, and hex colours ease
+   through sRGB, where green to crimson passes through mud; each tone is
+   restated in OKLCH so the ease runs through Oklab. A browser without
+   relative colours keeps the first declaration and eases the plain way. */
+.verso-table__cell[data-verso-ink] {
+  color: var(--color-ink);
+  transition: color 300ms cubic-bezier(.16, 1, .3, 1);
+  @apply type-value;
+}
+.verso-table__cell[data-verso-ink="success"] {
+  color: var(--color-green-deep);
+  color: oklch(from var(--color-green-deep) l c h);
+}
+.verso-table__cell[data-verso-ink="warning"] {
+  color: var(--color-marigold-deep);
+  color: oklch(from var(--color-marigold-deep) l c h);
+}
+.verso-table__cell[data-verso-ink="danger"] {
+  color: var(--color-crimson-deep);
+  color: oklch(from var(--color-crimson-deep) l c h);
+}
+@media (prefers-reduced-motion: reduce) {
+  .verso-table__cell[data-verso-ink] {
+    transition: none;
+  }
+}
+
+/* A lane is a row, not a band: a row's 40px, a 28px line (the add's box)
+   centred in it, on Quiet Sand between strong hairlines. A later lane opens
+   its own small table 40px under the one before, the air its own padding,
+   so a lane the filter hides takes its gap with it. Its add sits as the
+   rows' acts do: 5px over, 6px under, 7px in from the table's edge. */
+.verso-table__band {
+  padding: calc(var(--spacing) * 1.25) calc(var(--spacing) * 1.75) calc(var(--spacing) * 1.5) 0;
+  border: 0 solid var(--color-rule-strong);
+  border-bottom-width: 1px;
+  background-color: var(--color-quiet);
+  text-align: left;
+  @apply type-body;
+}
+.verso-table__band[data-verso-lane-gap] {
+  padding-top: calc(var(--spacing) * 11.25);
+  background: linear-gradient(transparent calc(2.5rem - 1px), var(--color-rule-strong) calc(2.5rem - 1px) 2.5rem, var(--color-quiet) 2.5rem);
+}
+.verso-table__line {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--spacing) * 3);
+  min-height: calc(var(--spacing) * 7);
+}
+
+/* The lane's quiet add after its last row: the link is the whole line, so
+   the wash covers exactly what clicks, and the words lean right under the
+   pointer. */
+.verso-table__tail {
+  padding: 0;
+}
+.verso-table__add {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: calc(var(--spacing) * 1.75) calc(var(--spacing) * 3.5) calc(var(--spacing) * 2) 0;
+  color: var(--color-denim-deep);
+  transition-property: background-color;
+  transition-duration: 150ms;
+  @apply type-button;
+}
+.verso-table__add:hover {
+  background-color: var(--color-quiet);
+}
+.verso-table__add:focus-visible {
+  outline: 2px solid var(--color-denim);
+  outline-offset: -2px;
+}
+
+/* A listing's stock rows fold away behind one line. A folded row gives its
+   cells' widths to the columns without taking height, so revealing the rows
+   never reshapes the columns. */
+.verso-table__seam {
+  padding-block: 0;
+  text-align: left;
+}
+.verso-table tr[data-verso-seam] {
+  visibility: collapse;
+}
+.verso-table tbody:has(.verso-table__seam details[open]) > tr[data-verso-seam] {
+  visibility: visible;
+}
+.verso-table__summary {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--spacing) * 1.5);
+  width: 100%;
+  padding-block: calc(var(--spacing) * 2);
+  color: var(--color-denim-deep);
+  cursor: pointer;
+  user-select: none;
+  transition-property: color;
+  transition-duration: 150ms;
+  @apply type-button;
+}
+.verso-table__summary:hover {
+  color: var(--color-denim);
+}
+.verso-table__summary::-webkit-details-marker {
+  display: none;
+}
+
+.verso-table__sheet {
+  padding-block: calc(var(--spacing) * 6);
+  background-color: var(--color-quiet);
+}
+
+/* An inventory row unfolds into the sections behind it (verso-tables.js).
+   The fold is a grid track that grows from nothing to whatever the sheet
+   holds, so the row opens at the height of its own content without anyone
+   measuring it, and the sheet is clipped to the track while it grows; once
+   it has settled the clip is lifted, so a tooltip inside it can hang past
+   its edge. A re-expand after a refresh, or a reader who asked for less
+   motion, gets the row open, not opening. */
+.verso-table__unfold {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.36s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.verso-table__unfold > * {
+  min-height: 0;
+  overflow: hidden;
+}
+.verso-table__unfold:is([data-verso-expanded-row][data-verso-open] *) {
+  grid-template-rows: 1fr;
+}
+.verso-table__unfold:is([data-verso-expanded-row][data-verso-still] *) {
+  transition: none;
+}
+.verso-table__unfold:is([data-verso-expanded-row][data-verso-settled] *) > * {
+  overflow: visible;
+}
+@media (prefers-reduced-motion: reduce) {
+  .verso-table__unfold {
+    transition: none;
+  }
+}
+
+/* A switched-off row's name is marked over with a sand marker, the way an
+   operator runs a highlighter through an entry in the notebook that no
+   longer holds: Strong Hairline ink, laid under the words, its edges frayed
+   and streaked along the stroke, its chisel ends pooled a little darker
+   where the tip landed and lifted. The ink never passes 80%, so the name's
+   Body words keep 4.9 : 1 over it (4.87 on a hovered row); the rest of the
+   row's hues fall to sand (palette.css). The mask is the stroke's shape and
+   texture only; its colour is the palette's. When the row's power act turns
+   it off in place the marker is drawn left to right, and when it turns it
+   back on the marker lifts, once each (verso-forms.js marks the turn).
+   The stroke overshoots the words by 10px each side, as a hand does. It is
+   absolute, sized to the words; the box the name truncates in clips what
+   overflows it (that is its ellipsis), and only a containing block outside
+   that box would escape it, which could not then size to the words. So in
+   a marked row the box is given 12px of room each side, taken back by an
+   equal negative margin so nothing moves: a cell's 14px inset holds it, and
+   in a dense table the index column's slack does, to two digits. */
+.verso-table__words {
+  --verso-marker-inset: 0.25rem -0.625rem 0.1875rem;
+  --verso-marker: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 20' preserveAspectRatio='none'%3E%3Cfilter id='f' x='-5%25' y='-30%25' width='110%25' height='160%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.015 .45' numOctaves='3' seed='7'/%3E%3CfeDisplacementMap in='SourceGraphic' scale='3.5'/%3E%3C/filter%3E%3ClinearGradient id='g'%3E%3Cstop offset='0' stop-opacity='.8'/%3E%3Cstop offset='.12' stop-opacity='.66'/%3E%3Cstop offset='.55' stop-opacity='.72'/%3E%3Cstop offset='.9' stop-opacity='.62'/%3E%3Cstop offset='1' stop-opacity='.78'/%3E%3C/linearGradient%3E%3Cpath d='M4 4.5 120 2.5 116.5 17 0 18.5Z' fill='url(%23g)' filter='url(%23f)'/%3E%3C/svg%3E");
+}
+.verso-table__words:is(.verso-table__row[data-verso-off] *) {
+  position: relative;
+  isolation: isolate;
+}
+.verso-table__cell :has(> .verso-table__words):is(.verso-table__row[data-verso-off] *) {
+  padding-inline: 0.75rem;
+  margin-inline: -0.75rem;
+}
+.verso-table__words:is(.verso-table__row[data-verso-off] *)::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: var(--verso-marker-inset);
+  background-color: var(--color-rule-strong);
+  -webkit-mask: var(--verso-marker) no-repeat 0 0 / 100% 100%;
+  mask: var(--verso-marker) no-repeat 0 0 / 100% 100%;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .verso-table__words:is(.verso-table__row[data-verso-turning="off"] *)::after {
+    animation: verso-marker-draw 520ms cubic-bezier(.3, .7, .2, 1) 40ms both;
+  }
+  /* A row turned back on has no marker of its own; the turn holds one up
+     just long enough to lift it. */
+  .verso-table__words:is(.verso-table__row[data-verso-turning="on"] *) {
+    position: relative;
+    isolation: isolate;
+  }
+  .verso-table__cell :has(> .verso-table__words):is(.verso-table__row[data-verso-turning="on"] *) {
+    padding-inline: 0.75rem;
+    margin-inline: -0.75rem;
+  }
+  .verso-table__words:is(.verso-table__row[data-verso-turning="on"] *)::after {
+    content: "";
+    position: absolute;
+    z-index: -1;
+    inset: var(--verso-marker-inset);
+    background-color: var(--color-rule-strong);
+    -webkit-mask: var(--verso-marker) no-repeat 0 0 / 100% 100%;
+    mask: var(--verso-marker) no-repeat 0 0 / 100% 100%;
+    animation: verso-marker-lift 280ms ease-out both;
+  }
+}
+@keyframes verso-marker-draw {
+  from { clip-path: inset(0 100% 0 0); }
+  to { clip-path: inset(0 0 0 0); }
+}
+@keyframes verso-marker-lift {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+/* A phone leaves out a listing's secondary columns (Table.secondary, by
+   position): the head, every cell under it and the width it held, so the
+   columns that decide — the name, the state, the acts — stay on screen. A
+   spanning row (a lane's band, its closing line) is one cell and keeps it. */
+@media (width < 40rem) {
+  /* The measures that hold a desktop grid steady are wider together than a
+     phone: there a column takes what its content needs. */
+  .verso-table > colgroup > col {
+    width: auto !important;
+  }
+  /* The row's name takes what the rest leave, rather than holding its whole
+     length and pushing the state off the screen. */
+  .verso-table__cell:has(.verso-table__words) {
+    width: 100%;
+  }
+  /* In that cell the name is what is read first, so it is read whole: it
+     wraps where its words and hyphens part ("Allow-DHCP-|Renew"), never
+     inside one ("sysfixti|me"), rather than cutting two rules down to the
+     same "Allow-DHC…". Its longest word is the column's least width, so a
+     listing too wide for a phone even so scrolls, its names still whole. */
+  .verso-table__name:has(> .verso-table__words) {
+    flex-shrink: 0;
+    max-width: 100%;
+    min-width: min-content;
+    overflow: visible;
+    white-space: normal;
+  }
+  /* A tag beside the name gives way before the name does: it wraps under
+     it, whole, on the listing's 24px lines. */
+  .verso-table__title:has(> .verso-table__name > .verso-table__words) {
+    flex-wrap: wrap;
+  }
+  /* A name written as a phrase wraps between its parts; a part longer than
+     the whole line is clipped at the cell's edge rather than drawn over the
+     next column. */
+  .verso-table__phrase.verso-table__words {
+    flex-wrap: wrap;
+    row-gap: 0;
+  }
+  .verso-table__phrase.verso-table__words > * {
+    max-width: 100%;
+    overflow: hidden;
+  }
+  .verso-table[data-verso-narrow~="2"] > :is(thead, tbody) > tr > :nth-child(2), .verso-table[data-verso-narrow~="2"] > colgroup > col:nth-child(2),
+  .verso-table[data-verso-narrow~="3"] > :is(thead, tbody) > tr > :nth-child(3), .verso-table[data-verso-narrow~="3"] > colgroup > col:nth-child(3),
+  .verso-table[data-verso-narrow~="4"] > :is(thead, tbody) > tr > :nth-child(4), .verso-table[data-verso-narrow~="4"] > colgroup > col:nth-child(4),
+  .verso-table[data-verso-narrow~="5"] > :is(thead, tbody) > tr > :nth-child(5), .verso-table[data-verso-narrow~="5"] > colgroup > col:nth-child(5),
+  .verso-table[data-verso-narrow~="6"] > :is(thead, tbody) > tr > :nth-child(6), .verso-table[data-verso-narrow~="6"] > colgroup > col:nth-child(6),
+  .verso-table[data-verso-narrow~="7"] > :is(thead, tbody) > tr > :nth-child(7), .verso-table[data-verso-narrow~="7"] > colgroup > col:nth-child(7),
+  .verso-table[data-verso-narrow~="8"] > :is(thead, tbody) > tr > :nth-child(8), .verso-table[data-verso-narrow~="8"] > colgroup > col:nth-child(8),
+  .verso-table[data-verso-narrow~="9"] > :is(thead, tbody) > tr > :nth-child(9), .verso-table[data-verso-narrow~="9"] > colgroup > col:nth-child(9),
+  .verso-table[data-verso-narrow~="10"] > :is(thead, tbody) > tr > :nth-child(10), .verso-table[data-verso-narrow~="10"] > colgroup > col:nth-child(10),
+  .verso-table[data-verso-narrow~="11"] > :is(thead, tbody) > tr > :nth-child(11), .verso-table[data-verso-narrow~="11"] > colgroup > col:nth-child(11),
+  .verso-table[data-verso-narrow~="12"] > :is(thead, tbody) > tr > :nth-child(12), .verso-table[data-verso-narrow~="12"] > colgroup > col:nth-child(12),
+  .verso-table[data-verso-narrow~="13"] > :is(thead, tbody) > tr > :nth-child(13), .verso-table[data-verso-narrow~="13"] > colgroup > col:nth-child(13),
+  .verso-table[data-verso-narrow~="14"] > :is(thead, tbody) > tr > :nth-child(14), .verso-table[data-verso-narrow~="14"] > colgroup > col:nth-child(14),
+  .verso-table[data-verso-narrow~="15"] > :is(thead, tbody) > tr > :nth-child(15), .verso-table[data-verso-narrow~="15"] > colgroup > col:nth-child(15),
+  .verso-table[data-verso-narrow~="16"] > :is(thead, tbody) > tr > :nth-child(16), .verso-table[data-verso-narrow~="16"] > colgroup > col:nth-child(16) {
+    display: none;
+  }
+}

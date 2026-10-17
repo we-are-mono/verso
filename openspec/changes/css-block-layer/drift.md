@@ -123,3 +123,20 @@ The rail's 5px square stays as it is until the rail converts.
 | an inline form's submit | | `rounded-l-none` lost to a missing space in its class list | square on the left, joined to its field, as written |
 | a confirm's trigger | 2 | its own wash classes | the block's danger-wash and caution-wash |
 | the script's in-flight button | | a `verso-button-waiting` class | `data-verso-busy` |
+
+### `table` and `listing`
+
+| Copies | n | Difference | Became |
+|---|---|---|---|
+| verbatim cells (mono values, keywords, paths, a status's verbatim word) | ~400 | tabular figures | the body role's verbatim form, no tabular figures (a machine string is not a count) |
+| a lane's band ("Local network") | every lane | its words on a 28px line | the subheading role's 24px line; the band's line holds 28px, so the band stays 40px |
+| a listing's legend | 4 listings | its words on `text-sm`'s 21px line | the body role's 24px line, the legend's height unchanged |
+| a table outside a card (nested sections, sets in a form, Overview cards) | | the row's name 600 and its values 500, where a card's rules drew them 500 and 400 | a card's weights everywhere: the name the value role (500), values the body role (400) |
+| an inked figures cell (Devices' Now) | every row | 400 in a card, where the card rule lightened its `font-medium`, though the legend writes the ink's words at 500 "as the figures are" | 500, the value role, as the legend and ADR-018 say |
+| the seam's "N more" fold in a card | | 500, from the card rule that lightened every `font-semibold` in a cell | 600, the button role: it is an act |
+| a row's Details link and a link cell | | denim words with no underline | the link block: underlined, as every link that stands on its own |
+| Interfaces' row names | every row | mono 16/700 | the value role's verbatim form, 500 (as the type census mapped) |
+| Interfaces' acts column | every row | 23px from the card's edge, where a card's inset rule overrode the column's own 7px | 7px, the last act on the grid crossing a cell in, as every listing's acts; on a phone the name column gains the 16px |
+| Interfaces' unfolded sheet | | its hairline stopped 23px short of the card's edge | runs to the edge, as the rows' hairlines do |
+| an act's tip in the first row of a listing that scrolls | | opened upward into the box's clipping edge since the tip block landed (the flip rule looked for `bottom-full`) | opens under its act again |
+| the dragged row | | carried the scroller's edge utilities over | a table of its own at its source's density and edge insets, card insets included |

@@ -63,13 +63,7 @@
 
   function floatingRow(row, tableRect, rowRect) {
     var shell = document.createElement("div");
-    shell.className = "verso-reorder-float fixed z-[70] overflow-hidden rounded-xs bg-ground ring-1 ring-rule-strong shadow-(--shadow-lifted) pointer-events-none origin-center scale-y-[1.01] opacity-[0.98] will-change-[top,transform] motion-reduce:transform-none [&_td]:border-b-transparent [&_td]:bg-ground";
-    // The copy leaves the table wrapper. Carry its cell-inset utilities along
-    // so the first and last values stay on the same grid while dragging.
-    var wrap = row.closest(".overflow-x-auto");
-    if (wrap) [].forEach.call(wrap.classList, function (cls) {
-      if (cls.indexOf("[&_td") === 0) shell.classList.add(cls);
-    });
+    shell.className = "verso-reorder__float";
     shell.setAttribute("aria-hidden", "true");
     shell.inert = true;
     shell.style.left = tableRect.left + "px";
@@ -77,8 +71,21 @@
     shell.style.width = tableRect.width + "px";
     shell.style.height = rowRect.height + "px";
 
+    // The copy leaves its table, so it is a table of its own, at its
+    // source's density and edges, so the first and last values stay on the
+    // same grid while dragging.
+    var source = row.closest(".verso-table");
     var table = document.createElement("table");
-    table.className = "w-full table-fixed border-collapse text-sm";
+    table.className = "verso-table table-fixed";
+    table.setAttribute("data-verso-lifted", "");
+    if (source) {
+      ["data-verso-dense", "data-verso-in-form"].forEach(function (name) {
+        if (source.hasAttribute(name)) table.setAttribute(name, "");
+      });
+      var first = row.cells[0], last = row.cells[row.cells.length - 1];
+      if (first) table.style.setProperty("--verso-table-start", getComputedStyle(first).getPropertyValue("--verso-table-start"));
+      if (last) table.style.setProperty("--verso-table-end", getComputedStyle(last).getPropertyValue("--verso-table-end"));
+    }
     table.style.width = tableRect.width + "px";
     var body = document.createElement("tbody");
     var copy = document.createElement("tr");
@@ -98,10 +105,9 @@
 
   function placeholder(row, height) {
     var tr = document.createElement("tr");
-    tr.className = "verso-reorder-placeholder";
     tr.dataset.versoReorderGroup = row.dataset.versoReorderGroup || "";
     var td = document.createElement("td");
-    td.className = "border-b border-rule bg-quiet p-0!";
+    td.className = "verso-reorder__gap";
     td.colSpan = row.cells.length;
     var space = document.createElement("div");
     space.className = "w-full";
@@ -199,7 +205,7 @@
     drag.origin.remove();
     drag.floating.remove();
     restoreTable();
-    document.body.classList.remove("verso-reordering", "cursor-grabbing!", "select-none!", "[&_*]:cursor-grabbing!", "[&_*]:select-none!");
+    document.body.classList.remove("verso-reorder");
     announceOrder(drag.table, drag.group);
     drag = null;
   }
@@ -248,7 +254,7 @@
     var display = row.style.display;
     row.style.display = "none";
     row.setAttribute("data-verso-reorder-active", "");
-    document.body.classList.add("verso-reordering", "cursor-grabbing!", "select-none!", "[&_*]:cursor-grabbing!", "[&_*]:select-none!");
+    document.body.classList.add("verso-reorder");
 
     drag = {
       pointer: event.pointerId,
@@ -469,7 +475,7 @@ document.addEventListener(
         row.hidden = !parent || parent.hidden || !trigger || trigger.getAttribute("aria-expanded") !== "true";
         continue;
       }
-      if (row.classList.contains("verso-table-group")) {
+      if (row.classList.contains("verso-table__lane")) {
         if (band) band.hidden = bandKept === 0;
         band = row;
         bandKept = 0;
@@ -526,7 +532,7 @@ document.addEventListener(
 // Only the identity opens a row. Keep one open in the inventory, as in the
 // reference; the remaining cells stay available for selection and copying.
 //
-// A row unfolds: the fold under it (a grid track, input.css) grows from
+// A row unfolds: the fold under it (a grid track, blocks/table.css) grows from
 // nothing to its content and its parts arrive in reading order, then the
 // clip is lifted so nothing inside is cut. Closing folds it back and hides
 // it once the track has gone. With `animate` false — a refresh putting the
@@ -540,7 +546,7 @@ function versoExpandRow(button, open, animate) {
   button.setAttribute("aria-expanded", String(open));
   var chevron = button.querySelector("[data-verso-expand-chevron] svg") || button.querySelector("svg");
   if (chevron && !row.closest("[data-verso-inventory]")) chevron.classList.toggle("rotate-90", open);
-  var fold = detail.querySelector(".verso-unfold");
+  var fold = detail.querySelector(".verso-table__unfold");
   var still = animate === false || !fold || window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   if (detail.versoFolding) detail.versoFolding();
   delete detail.dataset.versoSettled;

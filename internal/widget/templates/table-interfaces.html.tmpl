@@ -6,47 +6,48 @@
 {{/* Match the shared table scroller: it scrolls sideways and clips only
      while the inventory is wider than it (data-verso-scroller), so a row
      act's tip rises over the column heads. */}}
-<div data-verso-listing>
-<div data-verso-inventory data-verso-scroller class="relative min-w-0 overflow-x-auto overflow-y-hidden">
-  <p data-verso-inventory-stale role="status" hidden class="mb-4 text-sm text-marigold-deep">{{t "Live status could not be refreshed. Retrying…"}}</p>
-  {{/* On the notebook's grid as every listing is (.verso-table): each row two
-       cells, its hairline the second cell's line, the tree drawn in the same
-       40px and on through the hairline. */}}
+<div class="verso-listing" data-verso-listing>
+<div data-verso-inventory data-verso-scroller class="verso-listing__scroller min-w-0">
+  <p data-verso-inventory-stale role="status" hidden class="verso-listing__stale">{{t "Live status could not be refreshed. Retrying…"}}</p>
+  {{/* On the notebook's grid as every listing is (the table block): each
+       row two cells, its hairline the second cell's line, the tree drawn in
+       the same 40px and on through the hairline. Dense: the columns' widths
+       space the cells. */}}
   {{/* A phone keeps the tree, the name, the state and the acts: the type,
        the address and the MAC are the interface's panel's to tell, and the
        state moves onto the name's line (table.interfaces-state). There the
        columns size to what they hold, so the acts take their icons' width
        and the name the rest. */}}
-  <table class="verso-table group/inventory w-full sm:min-w-[66rem] table-fixed max-sm:table-auto text-left text-sm leading-6">
+  <table class="verso-table group/inventory sm:min-w-[66rem] table-fixed max-sm:table-auto text-left" data-verso-dense>
     <colgroup><col><col class="w-30 max-sm:hidden"><col class="w-44 max-sm:hidden"><col class="w-50 max-sm:hidden"><col class="w-32 max-sm:hidden"><col class="w-39"></colgroup>
-    <thead><tr>{{range $i, $col := .Columns}}<th scope="col" class="border-b border-rule-strong pt-0.5 pb-px text-xs leading-4 font-medium tracking-[.08em] text-meta uppercase {{if eq $i 0}}pl-29.25{{else if eq $i 5}}pr-4{{else}}max-sm:hidden{{end}}">{{.Label}}</th>{{end}}</tr></thead>
+    <thead><tr>{{range $i, $col := .Columns}}<th scope="col" class="verso-table__head{{if eq $i 0}} pl-29.25{{else if ne $i 5}} max-sm:hidden{{end}}">{{.Label}}</th>{{end}}</tr></thead>
     <tbody>
     {{range .Rows}}
       {{$row := .}}
       {{/* A row with an editor hosts the panel scope: its pencil, whose
            address is the panel's, opens the editor in a drawer over the
            listing, fetched the first time it opens (verso-drawer-fetched). */}}
-      <tr{{if .Drawer}} x-data="modal"{{end}} data-verso-row-id="{{.ID}}" data-verso-tags="{{.Tags}}" class="group/row hover:bg-quiet/50 data-[expanded=true]:bg-quiet [&>td]:border-b [&>td]:border-rule">
+      <tr{{if .Drawer}} x-data="modal"{{end}} data-verso-row-id="{{.ID}}" data-verso-tags="{{.Tags}}" class="verso-table__row group/row data-[expanded=true]:bg-quiet">
       {{range $i, $cell := .Cells}}
         {{if eq $i 0}}
         {{/* A row that wraps hangs from its first line, as every listing's
              does: the node and its branch hold the first 40px, and only the
              trunks that run on to later rows stretch down the rest. */}}
-        <td class="relative py-0 pl-2.75 align-top">
+        <td class="verso-table__cell relative py-0 pr-0 pl-2.75">
           <svg width="66" height="40" viewBox="0 0 66 40" aria-hidden="true" class="pointer-events-none absolute top-0 left-2.75 h-10 text-faint group-data-[filtered=true]/inventory:hidden"><path d="{{$row.TreePath}}" fill="none" stroke="currentColor" vector-effect="non-scaling-stroke"/></svg>
           {{if $row.TreeContinuation}}<svg width="66" viewBox="0 0 66 1" preserveAspectRatio="none" aria-hidden="true" class="pointer-events-none absolute top-10 bottom-0 left-2.75 text-faint group-data-[filtered=true]/inventory:hidden"><path d="{{$row.TreeContinuation}}" fill="none" stroke="currentColor" vector-effect="non-scaling-stroke"/></svg>{{end}}
-          <button type="button" data-verso-expand-row aria-expanded="false" aria-label="{{t "Details"}} · {{.Text}}" aria-description="{{range .Chips}}{{if .Title}}{{.Title}} {{end}}{{end}}" class="group/identity flex w-full cursor-pointer items-start text-left focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-denim">
+          <button type="button" data-verso-expand-row aria-expanded="false" aria-label="{{t "Details"}} · {{.Text}}" aria-description="{{range .Chips}}{{if .Title}}{{.Title}} {{end}}{{end}}" class="verso-table__identity group/identity">
             <svg width="66" height="40" viewBox="0 0 66 40" class="relative -mb-px shrink-0 overflow-visible text-glyph" aria-hidden="true">
               <g class="group-data-[filtered=true]/inventory:hidden">{{if $row.TreeRoot}}{{if eq .LeadIcon "physical"}}<rect x="{{$row.TreeNodeX}}" y="16" width="9" height="9" rx="1" stroke="currentColor" stroke-width="1.5" class="fill-ground"/>{{else}}<circle cx="{{$row.TreeNodeCenter}}" cy="20" r="4" stroke="currentColor" stroke-width="1.5" class="fill-ground"/>{{end}}{{end}}</g>
             </svg>
-            <span class="-mb-px flex h-10 shrink-0 items-center"><span data-verso-expand-chevron class="grid size-7 shrink-0 place-items-center rounded-xs border border-rule-strong text-glyph group-aria-expanded/identity:border-denim group-aria-expanded/identity:bg-denim group-aria-expanded/identity:text-on-fill">{{icon "chevron-right" "size-3.5 transition-transform duration-200 ease-out group-aria-expanded/identity:rotate-90 motion-reduce:transition-none"}}</span></span>
-            <span class="flex min-w-0 flex-wrap items-center gap-x-1 py-row pr-3 pl-3"><span class="break-words font-mono text-base leading-6 font-bold text-ink">{{.Text}}</span>{{range .Chips}}{{template "verso-chip" .}}{{end}}{{if gt (len $row.Cells) 4}}{{template "table.interfaces-state" (index $row.Cells 4)}}{{end}}</span>
+            <span class="-mb-px flex h-10 shrink-0 items-center"><span data-verso-expand-chevron class="verso-table__toggle">{{icon "chevron-right" "size-3.5 transition-transform duration-200 ease-out group-aria-expanded/identity:rotate-90 motion-reduce:transition-none"}}</span></span>
+            <span class="flex min-w-0 flex-wrap items-center gap-x-1 py-row pr-3 pl-3"><span class="break-words type-value text-ink" data-verso-verbatim>{{.Text}}</span>{{range .Chips}}{{template "verso-chip" .}}{{end}}{{if gt (len $row.Cells) 4}}{{template "table.interfaces-state" (index $row.Cells 4)}}{{end}}</span>
           </button>
         </td>
         {{else if eq $i 5}}
         {{/* the last act on the grid crossing a cell in from the right edge,
              as every listing's is (table.html.tmpl, actions) */}}
-        <td class="pt-1.25 pr-1.75 pb-1.5 align-top"><div class="ml-auto flex w-35 max-sm:w-auto items-center justify-end">
+        <td class="verso-table__acts pl-0"><div class="ml-auto flex w-35 max-sm:w-auto items-center justify-end">
           {{range .Actions}}
           {{if and .Href $cell.Panel (eq .Href $cell.Panel)}}<a href="{{.Href}}" @click.prevent="showPanel" aria-label="{{.Title}}{{if $cell.RowName}} {{$cell.RowName}}{{end}}" class="verso-button group/act relative" data-verso-size="icon">{{icon .Icon "size-4"}}{{template "verso-act-tip" .Title}}</a>
           {{else if .Href}}<a href="{{.Href}}" aria-label="{{.Title}}" class="verso-button group/act relative" data-verso-size="icon">{{icon .Icon "size-4"}}{{template "verso-act-tip" .Title}}</a>
@@ -55,9 +56,9 @@
           {{end}}
         </div></td>
         {{else if eq $i 4}}
-        <td class="py-row pr-2 align-top max-sm:hidden"><span class="flex items-center gap-2 text-sm {{template "table.interfaces-state-ink" .}}">{{template "table.interfaces-state-mark" .}}{{.Text}}</span></td>
+        <td class="verso-table__cell pr-2 max-sm:hidden"><span class="verso-table__state" data-verso-tone="{{.Variant}}">{{template "table.interfaces-state-mark" .}}{{.Text}}</span></td>
         {{else}}
-        <td class="py-row pr-2 align-top font-mono text-base leading-6 font-medium max-sm:hidden {{if eq $i 1}}text-body{{else if eq .Text "—"}}text-faint{{else}}text-ink{{end}}"><span class="flex min-w-0 items-center"><span class="min-w-0 break-words">{{.Text}}</span>{{if .Copy}}{{template "verso-copy-inline" .Text}}{{end}}</span></td>
+        <td data-verso-verbatim class="verso-table__cell pr-2 max-sm:hidden {{if eq $i 1}}text-body{{else if eq .Text "—"}}text-faint{{else}}text-ink{{end}}"><span class="flex min-w-0 items-center"><span class="min-w-0 break-words">{{.Text}}</span>{{if .Copy}}{{template "verso-copy-inline" .Text}}{{end}}</span></td>
         {{end}}
       {{end}}
       {{if .PanelURL}}{{template "verso-drawer-fetched" .PanelURL}}{{end}}
@@ -69,7 +70,7 @@
            the fold opens: each ledger line draws itself and the facts under
            it rise, one after another. */}}
       <tr data-verso-expanded-row hidden><td colspan="6" class="p-0">
-        <div class="verso-unfold"><div>
+        <div class="verso-table__unfold"><div>
           <div class="relative border-b border-rule bg-ground pt-6 pr-4 pb-8 pl-26.25">
             {{if .TreeContinuation}}<svg width="66" viewBox="0 0 66 1" preserveAspectRatio="none" aria-hidden="true" class="absolute inset-y-0 left-2.75 h-full text-faint group-data-[filtered=true]/inventory:hidden"><path d="{{.TreeContinuation}}" fill="none" stroke="currentColor" vector-effect="non-scaling-stroke"/></svg>{{end}}
             <div class="@container min-w-0">{{range .Expanded}}{{.}}{{end}}</div>
@@ -79,18 +80,15 @@
     {{end}}
     </tbody>
   </table>
-  <p data-verso-listing-empty hidden class="py-row text-sm leading-6 text-meta">{{t "Nothing matches."}}</p>
-  {{if .Empty}}<p class="py-row text-sm leading-6 text-meta">{{.EmptyText}}</p>{{end}}
+  <p data-verso-listing-empty hidden class="verso-listing__note">{{t "Nothing matches."}}</p>
+  {{if .Empty}}<p class="verso-listing__note">{{.EmptyText}}</p>{{end}}
 </div>
 </div>
 {{end}}
 
-{{/* An interface's state as its column writes it: the packet, then the word
-     in the variant's ink. */}}
-{{define "table.interfaces-state-ink"}}{{if eq .Variant "danger"}}text-crimson-deep{{else if eq .Variant "warning"}}text-marigold-deep{{else if eq .Variant "success"}}text-ink{{else}}text-meta{{end}}{{end}}
 {{define "table.interfaces-state-mark"}}<span aria-hidden="true" class="verso-mark" data-verso-tone="{{.Variant}}"></span>{{end}}
 
 {{/* On a phone, where the state's column is left out, the state rides on the
      name's line after its networks, and wraps under them when the line is
      full. */}}
-{{define "table.interfaces-state"}}<span data-verso-inventory-state class="flex items-center gap-2 text-sm leading-6 {{template "table.interfaces-state-ink" .}} sm:hidden">{{template "table.interfaces-state-mark" .}}{{.Text}}</span>{{end}}
+{{define "table.interfaces-state"}}<span data-verso-inventory-state class="verso-table__state sm:hidden" data-verso-tone="{{.Variant}}">{{template "table.interfaces-state-mark" .}}{{.Text}}</span>{{end}}

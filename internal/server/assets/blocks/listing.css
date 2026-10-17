@@ -1,0 +1,84 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/* SPDX-FileCopyrightText: 2026 Mono Technologies Inc. */
+
+/*
+ * listing — a table in its frame: the box it scrolls sideways in, the header
+ * band a titled listing opens on, and the legend and notes under it.
+ *
+ * A table wider than its box scrolls sideways in it. A box that scrolls one
+ * way clips both (CSS computes overflow-y to auto too), so it clips the
+ * other way outright rather than grow a spurious vertical scrollbar. The
+ * shell measures every box (verso-tables.js): one whose table fits is marked
+ * data-verso-fits and neither scrolls nor clips nor fades its edge, so a row
+ * act's tip rises over the column heads on the first row too, and a copy
+ * control's tip hangs under the last row. Relative, so the scroller is the
+ * containing block of every absolutely placed word inside it (a dash's
+ * screen-reader "None"): otherwise a word in a column scrolled out of view
+ * escapes the clip and widens the page.
+ *
+ * Elements: __scroller  the box the table scrolls in; data-verso-fits once
+ *                       its table fits
+ *           __header    a titled listing's header band, the table's first
+ *                       row: the title flush left, its act flush right
+ *           __title     the header's title
+ *           __legend    the marks explained where the marks are, and hard
+ *                       right the one caveat about what the listing includes
+ *           __key       one mark and its words in the legend
+ *           __note      a line of words where a row would stand: nothing
+ *                       matches, or nothing to list
+ *           __stale     live status that could not be refreshed
+ */
+
+.verso-listing__scroller {
+  position: relative;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+.verso-listing__scroller[data-verso-fits] {
+  overflow: visible;
+  mask-image: none;
+  animation: none;
+}
+
+.verso-listing__header {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--spacing) * 3);
+  min-height: calc(var(--spacing) * 15);
+  padding-inline: calc(var(--spacing) * 4);
+  border: 0 solid var(--color-rule);
+  border-bottom-width: 1px;
+  background-color: var(--color-quiet);
+  @apply type-body;
+}
+.verso-listing__title {
+  color: var(--color-body);
+  @apply type-title;
+}
+
+.verso-listing__legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: calc(var(--spacing) * 6);
+  padding-top: calc(var(--spacing) * 6);
+  @apply type-body;
+}
+.verso-listing__key {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--spacing) * 2);
+  white-space: nowrap;
+}
+
+.verso-listing__note {
+  padding-block: calc(var(--spacing) * 1.75) calc(var(--spacing) * 2);
+  color: var(--color-meta);
+  @apply type-body;
+}
+
+.verso-listing__stale {
+  margin-bottom: calc(var(--spacing) * 4);
+  color: var(--color-marigold-deep);
+  @apply type-body;
+}

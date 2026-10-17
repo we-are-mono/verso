@@ -1,0 +1,47 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/* SPDX-FileCopyrightText: 2026 Mono Technologies Inc. */
+
+/*
+ * reorder — a row dragged to a new place in its listing (verso-tables.js).
+ * While the drag is under way the document is the block: the hand is
+ * grabbing wherever it goes, and nothing under it selects. The row rides
+ * over the listing as a copy lifted a little off the page, and the gap it
+ * left stands where it will land.
+ *
+ * Elements: __float  the lifted copy of the row, its table marked
+ *                    data-verso-lifted
+ *           __gap    the cell of the row's place in the listing, a Quiet
+ *                    Sand gap of the row's height
+ */
+
+.verso-reorder,
+.verso-reorder * {
+  cursor: grabbing !important;
+  user-select: none !important;
+}
+
+.verso-reorder__float {
+  position: fixed;
+  z-index: 70;
+  overflow: hidden;
+  border-radius: var(--radius-xs);
+  background-color: var(--color-ground);
+  box-shadow: 0 0 0 1px var(--color-rule-strong), var(--shadow-lifted);
+  pointer-events: none;
+  transform-origin: center;
+  scale: 1 1.01;
+  opacity: 0.98;
+  will-change: top, transform;
+}
+@media (prefers-reduced-motion: reduce) {
+  .verso-reorder__float {
+    transform: none;
+  }
+}
+
+.verso-reorder__gap {
+  padding: 0;
+  border: 0 solid var(--color-rule);
+  border-bottom-width: 1px;
+  background-color: var(--color-quiet);
+}

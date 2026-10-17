@@ -709,11 +709,75 @@ func noRepeatedBundles(src styleSources) []violation {
 func shortClassLists(src styleSources) []violation {
 	var out []violation
 	for _, cl := range src.classLists() {
-		if n := len(cl.utils) + cl.actions; n > 8 {
+		if n := carried(cl.raw); n > 8 {
 			out = append(out, violation{"short-class-lists", cl.file + "\t" + cl.raw, fmt.Sprintf("%s:%d (%d)", cl.file, cl.line, n)})
 		}
 	}
 	return out
+}
+
+// carried is how many utilities an element can carry at once: each utility
+// written outright, one for each value an action prints (a template's
+// {{.Tone}}, a script's ${tone}), and for a conditional the most any one of
+// its branches carries, so a choice between three inks counts as one ink.
+func carried(raw string) int {
+	raw = jsInterpolation.ReplaceAllString(raw, "{{.}}")
+	type item struct {
+		action bool
+		text   string
+	}
+	var items []item
+	for raw != "" {
+		at := strings.Index(raw, "{{")
+		if at < 0 {
+			items = append(items, item{text: raw})
+			break
+		}
+		items = append(items, item{text: raw[:at]})
+		end := strings.Index(raw[at:], "}}")
+		if end < 0 {
+			items = append(items, item{text: raw[at:]})
+			break
+		}
+		items = append(items, item{action: true, text: strings.Trim(raw[at+2:at+end], "- ")})
+		raw = raw[at+end+2:]
+	}
+	pos := 0
+	var run func() (int, string)
+	run = func() (int, string) {
+		n := 0
+		for pos < len(items) {
+			it := items[pos]
+			pos++
+			if !it.action {
+				for _, tok := range strings.Fields(it.text) {
+					if !strings.HasPrefix(tok, "verso-") {
+						n++
+					}
+				}
+				continue
+			}
+			switch keyword, _, _ := strings.Cut(it.text, " "); keyword {
+			case "if", "with", "range":
+				most := 0
+				for {
+					branch, stop := run()
+					most = max(most, branch)
+					if stop != "else" {
+						break
+					}
+				}
+				n += most
+			case "else", "end":
+				return n, keyword
+			default:
+				n++
+			}
+		}
+		return n, ""
+	}
+	n, _ := run()
+	return n
 }
 
 // noRulesInMarkup: an arbitrary variant or an important utility is a rule

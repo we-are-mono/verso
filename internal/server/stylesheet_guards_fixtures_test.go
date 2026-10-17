@@ -114,6 +114,13 @@ func TestStylesheetGuardsCatchWhatTheyName(t *testing.T) {
 			want:  "flex h-control",
 		},
 		{
+			name:  "a long class list behind a conditional",
+			guard: shortClassLists,
+			bad:   styleSources{markup: map[string]string{"widget/templates/table.html.tmpl": `<td class="pr-2 {{if .A}}flex items-center gap-2 px-4 py-2 text-ink underline rounded-xs{{else}}text-meta{{end}}"></td>`}},
+			good:  styleSources{markup: map[string]string{"widget/templates/table.html.tmpl": `<td class="verso-table__cell pr-2 max-sm:hidden {{if eq .I 1}}text-body{{else if eq .Text "—"}}text-faint{{else}}text-ink{{end}} {{.Extra}} whitespace-nowrap"></td>`}},
+			want:  "pr-2 {{if .A}}",
+		},
+		{
 			name:  "a selector written into a class attribute",
 			guard: noRulesInMarkup,
 			bad:   styleSources{markup: map[string]string{"widget/templates/table.html.tmpl": `<table class="w-full [&_td:last-child]:!text-right pl-1.75!"></table>`}},

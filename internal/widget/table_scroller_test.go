@@ -4,6 +4,7 @@
 package widget
 
 import (
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -17,9 +18,10 @@ func TestTableScrollerContainsItsHiddenWords(t *testing.T) {
 		Columns: []TableColumn{{Label: "Airtime busy", Kind: "meter"}},
 		Rows:    []TableRow{{ID: "a", Cells: []TableCell{{}}}},
 	})
-	if !strings.Contains(got, `class="relative overflow-x-auto overflow-y-hidden`) {
+	if !strings.Contains(got, `data-verso-scroller class="verso-listing__scroller verso-scroll-edge"`) {
 		t.Errorf("the table's scroller must contain its absolutely placed words:\n%s", got)
 	}
+	declares(t, "listing", ".verso-listing__scroller", "position: relative", "overflow-x: auto", "overflow-y: hidden")
 }
 
 // TestTableScrollerSaysThereIsMore: a table wider than its box (a phone) keeps
@@ -42,7 +44,8 @@ func TestAListingHoldsItsScrollerInAFrameOfItsOwn(t *testing.T) {
 		"interfaces": &Table{Style: "interfaces", Columns: []TableColumn{{Label: "Device"}}},
 	} {
 		got := render(t, r, w)
-		if !strings.Contains(got, "<div data-verso-listing>") || strings.Index(got, "<div data-verso-listing>") > strings.Index(got, "data-verso-scroller") {
+		const frame = `<div class="verso-listing" data-verso-listing>`
+		if !strings.Contains(got, frame) || strings.Index(got, frame) > strings.Index(got, "data-verso-scroller") {
 			t.Errorf("%s: the scroller does not stand in its listing's frame:\n%s", name, got)
 		}
 	}
@@ -93,8 +96,9 @@ func TestRuledSectionStandsFortyAboveAndBelowItsRule(t *testing.T) {
 
 // A phone's width leaves out the columns a listing names secondary — facts
 // the row's panel still holds — so the ones that decide (the name, the state,
-// the acts) stay on screen. The table names them by position; the sheet hides
-// each one's head, cells and width under the phone's breakpoint.
+// the acts) stay on screen. The table names them by position
+// (data-verso-narrow); the table block hides each one's head, cells and width
+// under the phone's breakpoint.
 func TestANarrowListingLeavesOutItsSecondaryColumns(t *testing.T) {
 	r := newRenderer(t)
 	tbl := &Table{
@@ -103,12 +107,30 @@ func TestANarrowListingLeavesOutItsSecondaryColumns(t *testing.T) {
 		Secondary: []int{1, 2},
 	}
 	got := render(t, r, tbl)
-	if !strings.Contains(got, `class="verso-table verso-narrow-2 verso-narrow-3 w-full`) {
+	if !strings.Contains(got, `<table class="verso-table" data-verso-narrow="2 3">`) {
 		t.Errorf("the table does not name its secondary columns: %s", got)
 	}
 	tbl.Secondary = []int{0, 9, -1}
-	if got := render(t, r, tbl); strings.Contains(got, "verso-narrow-1 ") || strings.Contains(got, "verso-narrow-10") || strings.Contains(got, "verso-narrow-0") {
+	if got := render(t, r, tbl); strings.Contains(got, "data-verso-narrow") {
 		t.Errorf("the identity column or a column the table lacks is left out: %s", got)
+	}
+	// The table block hides every position the table can name — its head,
+	// its cells and its width — under the phone's breakpoint.
+	css := blockCSS(t, "table")
+	phone := css[strings.LastIndex(css, "@media (width < 40rem) {"):]
+	for i := 2; i <= narrowMax; i++ {
+		n := strconv.Itoa(i)
+		for _, want := range []string{
+			`.verso-table[data-verso-narrow~="` + n + `"] > :is(thead, tbody) > tr > :nth-child(` + n + `)`,
+			`.verso-table[data-verso-narrow~="` + n + `"] > colgroup > col:nth-child(` + n + `)`,
+		} {
+			if !strings.Contains(phone, want) {
+				t.Errorf("the phone does not leave out position %s: want %s", n, want)
+			}
+		}
+	}
+	if !strings.Contains(phone, ":nth-child(16) {\n    display: none;\n  }") {
+		t.Errorf("the phone's narrow positions are not hidden:\n%s", phone)
 	}
 }
 
@@ -126,7 +148,7 @@ func TestAPanelListingOnAPhoneKeepsItsNameStateAndActs(t *testing.T) {
 			{ID: "b", Entity: &EntityRef{Kind: "device", ID: "b"}, Cells: []TableCell{{Text: "phone"}, {Text: "lan"}, {Text: "192.0.2.5"}, {Text: "udp"}, {Text: "Offline"}, {}}},
 		},
 	}
-	if got := render(t, r, tbl); !strings.Contains(got, `class="verso-table verso-narrow-2 verso-narrow-3 verso-narrow-4 w-full`) {
+	if got := render(t, r, tbl); !strings.Contains(got, `<table class="verso-table" data-verso-narrow="2 3 4">`) {
 		t.Errorf("a phone should keep the name, the state and the acts: %s", got)
 	}
 }
@@ -142,7 +164,7 @@ func TestAListingWithARowThatOpensNothingKeepsEveryColumn(t *testing.T) {
 			{ID: "b", Cells: []TableCell{{Text: "192.0.2.0/24"}, {Text: "—"}}},
 		},
 	}
-	if got := render(t, r, tbl); strings.Contains(got, "verso-narrow") {
+	if got := render(t, r, tbl); strings.Contains(got, "data-verso-narrow") {
 		t.Errorf("a row with no panel should keep its every column: %s", got)
 	}
 }
@@ -157,7 +179,7 @@ func TestAListingsOwnSecondaryColumnsOutrankTheShells(t *testing.T) {
 		Rows:      []TableRow{{ID: "a", Panel: "/rules/a", Cells: []TableCell{{Text: "Allow-Ping"}, {Text: "accept"}, {Text: "4"}}}},
 		Secondary: []int{2},
 	}
-	if got := render(t, r, tbl); !strings.Contains(got, `class="verso-table verso-narrow-3 w-full`) {
+	if got := render(t, r, tbl); !strings.Contains(got, `<table class="verso-table" data-verso-narrow="3">`) {
 		t.Errorf("the listing's own secondary columns should stand: %s", got)
 	}
 }
@@ -169,7 +191,7 @@ func TestAListingsOwnSecondaryColumnsOutrankTheShells(t *testing.T) {
 func TestAListStandsInItsCardsInset(t *testing.T) {
 	r := newRenderer(t)
 	tbl := &Table{Style: "list", Columns: []TableColumn{{Label: "Source", Kind: "reference"}}, Rows: []TableRow{{ID: "a", Cells: []TableCell{{Text: "10.0.0.2"}}}}}
-	if got := render(t, r, tbl); !strings.Contains(got, `<div data-verso-listing data-verso-list>`) {
+	if got := render(t, r, tbl); !strings.Contains(got, `<div class="verso-listing" data-verso-listing data-verso-list>`) {
 		t.Errorf("a list should say it is one: %s", got)
 	}
 	tbl.Style = ""

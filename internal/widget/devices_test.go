@@ -151,14 +151,19 @@ func TestRenderDevicesUsage(t *testing.T) {
 		}
 	}
 	// Now's figures are written at 500, a step over the row's words; the
-	// month's total stays at the row's own weight.
+	// month's total stays at the row's own weight. Now is the inked cell, and
+	// the table block sets the inked cell's weight.
 	cell := func(key string) string {
 		at := strings.Index(got, `data-verso-cell="`+key+`"`)
 		open := strings.LastIndex(got[:at], "<td")
-		return got[open:at]
+		end := at + strings.Index(got[at:], ">")
+		return got[open:end]
 	}
-	if !strings.Contains(cell("usage-now"), "font-medium") || strings.Contains(cell("usage-month"), "font-medium") {
+	if !strings.Contains(cell("usage-now"), "data-verso-ink") || strings.Contains(cell("usage-month"), "data-verso-ink") {
 		t.Errorf("Now's figures are 500 and the month's are not:\n%s\n%s", cell("usage-now"), cell("usage-month"))
+	}
+	if ink := cssRule(blockCSS(t, "table"), ".verso-table__cell[data-verso-ink]"); !strings.Contains(ink, "font-weight: 500") && !strings.Contains(ink, "@apply type-value") {
+		t.Errorf("the inked cell's figures are not written at 500:\n%s", ink)
 	}
 	// An idle row's Now carries no ink until the stream gives it one.
 	if n := strings.Count(got, `data-verso-ink=""`); n != 2 {

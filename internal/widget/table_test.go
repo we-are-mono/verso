@@ -13,6 +13,62 @@ import (
 	"testing"
 )
 
+// blockCSS is a block's stylesheet (internal/server/assets/blocks). A table's
+// geometry and type are the table and listing blocks' to declare: the markup
+// names the element, the sheet says how it is drawn.
+func blockCSS(t *testing.T, block string) string {
+	t.Helper()
+	css, err := os.ReadFile(filepath.Join("..", "server", "assets", "blocks", block+".css"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(css)
+}
+
+// cssRule is the declarations of the rule whose selector is sel, written as
+// the sheet writes it and starting its line, or "" when the sheet has none.
+func cssRule(css, sel string) string {
+	for at := 0; ; {
+		i := strings.Index(css[at:], sel+" {")
+		if i < 0 {
+			return ""
+		}
+		i += at
+		if line := strings.LastIndex(css[:i], "\n") + 1; strings.TrimSpace(css[line:i]) == "" {
+			body := css[i+len(sel)+2:]
+			return body[:strings.Index(body, "}")]
+		}
+		at = i + len(sel)
+	}
+}
+
+// declares fails t unless the block's rule sel holds every one of decls.
+func declares(t *testing.T, block, sel string, decls ...string) {
+	t.Helper()
+	rule := cssRule(blockCSS(t, block), sel)
+	if rule == "" {
+		t.Errorf("blocks/%s.css has no rule %q", block, sel)
+		return
+	}
+	for _, d := range decls {
+		if !strings.Contains(rule, d) {
+			t.Errorf("blocks/%s.css %s does not declare %q:\n%s", block, sel, d, rule)
+		}
+	}
+}
+
+// The table block's edges: the first and last cells of every row, and the
+// heads and lanes outside a form, take the table's own insets.
+const (
+	tableStartEdge = ":is(.verso-table__cell, .verso-table__seam, .verso-table__sheet):first-of-type,\n" +
+		":is(.verso-table__head, .verso-table__band):not(.verso-table__grip):where(.verso-table:not([data-verso-in-form]) *):first-of-type"
+	tableEndEdge = ":is(.verso-table__cell, .verso-table__seam, .verso-table__sheet):last-of-type,\n" +
+		".verso-table__head:where(.verso-table:not([data-verso-in-form]) *):last-of-type"
+	// tableHairline is the rule that gives every kind of body cell its
+	// hairline, the row's last pixel.
+	tableHairline = ".verso-table__cell,\n.verso-table__grip:not(th),\n.verso-table__acts,\n.verso-table__tail,\n.verso-table__sheet"
+)
+
 // redirectsTable is the firewall's Redirects listing in miniature: one
 // zone-sourced DNAT to the router and one internet-facing port forward to a
 // device — every column kind exercised once.
@@ -55,17 +111,21 @@ func TestRenderTableKinds(t *testing.T) {
 	got := render(t, r, redirectsTable())
 	for _, want := range []string{
 		">Protocol<", ">Hits<", // headers render
-		"text-xs font-medium tracking-[.08em] text-meta uppercase", // header treatment is the kicker, not a fill
-		"font-mono",                  // the port column is a machine string
-		"8443 → 443",                 // port rewrite verbatim
-		"tabular-nums",               // counters align
-		"Force-DNS-to-AdGuard-guest", // comments carry the optional UCI name
-		"text-right",                 // num columns right-align (th and td)
+		`<th scope="col" class="verso-table__head">Protocol</th>`, // header treatment is the kicker, not a fill
+		`<td data-verso-verbatim class="verso-table__cell`,        // the port column is a machine string
+		"8443 → 443", // port rewrite verbatim
+		`<td data-verso-figures class="verso-table__cell text-right`, // counters align
+		"Force-DNS-to-AdGuard-guest",                                 // comments carry the optional UCI name
+		`class="verso-table__head text-right">Hits</th>`,             // num columns right-align (th and td)
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("table missing %q:\n%s", want, got)
 		}
 	}
+	// The head is the kicker role in Meta; the cells are the body role, whose
+	// verbatim form is mono and whose figures are tabular.
+	declares(t, "table", ".verso-table__head", "@apply type-label", "color: var(--color-meta)")
+	declares(t, "table", ".verso-table__cell", "@apply type-body")
 }
 
 func TestRenderEmphasisedMonoCell(t *testing.T) {
@@ -74,13 +134,15 @@ func TestRenderEmphasisedMonoCell(t *testing.T) {
 		Columns: []TableColumn{{Label: "Address", Kind: "mono"}},
 		Rows:    []TableRow{{Cells: []TableCell{{Text: "10.0.0.232", Emphasis: true}}}},
 	})
-	// Emphasis is size alone: a mono value is 500 at every size.
-	for _, want := range []string{"font-mono", "text-base", "font-medium", "10.0.0.232"} {
+	// Emphasis is size alone: a mono value is the body role's verbatim form at
+	// every size, never a heavier weight.
+	for _, want := range []string{`<td data-verso-verbatim class="verso-table__cell whitespace-nowrap text-ink">`, "10.0.0.232"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("emphasised mono cell missing %q:\n%s", want, got)
 		}
 	}
-	if strings.Contains(got, "font-semibold") {
+	declares(t, "table", ".verso-table__cell", "@apply type-body")
+	if strings.Contains(got, "font-semibold") || strings.Contains(got, "font-bold") {
 		t.Errorf("emphasis must not thicken a mono value:\n%s", got)
 	}
 }
@@ -157,15 +219,18 @@ func TestRenderReorderHandle(t *testing.T) {
 		// The handle is named by what the row is called, not its config
 		// handle, and says the arrow keys move it: dragging is not the only way.
 		`aria-label="Reorder guest"`, `aria-keyshortcuts="ArrowUp ArrowDown"`,
-		"cursor-grab", "active:cursor-grabbing",
-		// The grip rests at the step the eye passes over and darkens with the
-		// whole row, not only under its own pointer.
-		lucideIcons["list-chevrons-up-down"], "text-inert", "group-hover:text-glyph",
+		`class="verso-table__handle"`, lucideIcons["list-chevrons-up-down"],
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("reorderable table missing %q:\n%s", want, got)
 		}
 	}
+	// The hand grabs it, and grabs harder while it drags. The grip rests at
+	// the step the eye passes over and darkens with the whole row, not only
+	// under its own pointer.
+	declares(t, "table", ".verso-table__handle", "cursor: grab", "color: var(--color-inert)")
+	declares(t, "table", ".verso-table__handle:active", "cursor: grabbing")
+	declares(t, "table", ".verso-table__handle:is(.verso-table__row:hover *)", "color: var(--color-glyph)")
 }
 
 // TestRenderReorderOrderForm: a reorderable table renders the page form the
@@ -250,25 +315,36 @@ func TestRenderTableWithoutReorderCarriesNoOrderForm(t *testing.T) {
 // line. What it gives up on the left it keeps on the right, so the column stays
 // as wide and every column after it stays where it was.
 func TestTheGripStandsOnAGridCrossing(t *testing.T) {
-	for dense, want := range map[bool]string{
-		// the column is its padding and the 16px grip whole, so a fixed
-		// layout (a page's lanes) keeps the grip in it
-		true:  `<td class="w-8 border-b border-rule pt-1.75 pb-2 pl-1.75! pr-2.25">`,
-		false: `<td class="w-10 border-b border-rule pt-1.75 pb-2 pl-1.75! pr-4.25">`,
-	} {
+	for _, dense := range []bool{true, false} {
 		got := render(t, newRenderer(t), &Table{
 			Dense:   dense,
 			Columns: []TableColumn{{Label: "Order", Kind: "reorder"}, {Label: "From"}},
 			Rows:    []TableRow{{ID: "a", Cells: []TableCell{{}, {Text: "wan"}}}},
 		})
-		if !strings.Contains(got, want) {
-			t.Errorf("dense=%v: the grip is not on a crossing, want %s in:\n%s", dense, want, got)
+		if !strings.Contains(got, `<td class="verso-table__grip">`) {
+			t.Errorf("dense=%v: the grip is not the grip element:\n%s", dense, got)
 		}
-		head := map[bool]string{true: "w-8 pl-1.75! pr-2.25", false: "w-10 pl-1.75! pr-4.25"}[dense]
-		if !strings.Contains(got, head) {
-			t.Errorf("dense=%v: the grip's head keeps the column's width, want %s in:\n%s", dense, head, got)
+		if !strings.Contains(got, `<th scope="col" class="verso-table__head verso-table__grip">Order</th>`) {
+			t.Errorf("dense=%v: the grip's head is not the grip element, so it would not keep the column's width:\n%s", dense, got)
+		}
+		if strings.Contains(got, "data-verso-dense") != dense {
+			t.Errorf("dense=%v: the table does not say its density:\n%s", dense, got)
 		}
 	}
+	// The column is its padding and the 16px grip whole, so a fixed layout (a
+	// page's lanes) keeps the grip in it: 7px on the left, the rest on the
+	// right, 7px over and 8px under the grip in a body cell; a dense table's
+	// column is 32px.
+	declares(t, "table", ".verso-table__grip", "width: calc(var(--spacing) * 10)",
+		"padding-inline: calc(var(--spacing) * 1.75) calc(var(--spacing) * 4.25)")
+	declares(t, "table", ".verso-table__grip:where(.verso-table[data-verso-dense] *)", "width: calc(var(--spacing) * 8)",
+		"padding-inline-end: calc(var(--spacing) * 2.25)")
+	declares(t, "table", ".verso-table__grip:not(th)", "padding-block: calc(var(--spacing) * 1.75) calc(var(--spacing) * 2)")
+	// The grip's head is not a first head: the edge's inset would undo its 7px.
+	if !strings.Contains(tableStartEdge, ":not(.verso-table__grip)") {
+		t.Error("the grip's head must not take the table's leading edge")
+	}
+	declares(t, "table", tableStartEdge, "padding-inline-start: var(--verso-table-start)")
 }
 
 // TestRenderReorderColumnWithoutConfigDrawsNoHandle: the drag persists through a
@@ -291,9 +367,10 @@ func TestRenderReorderColumnWithoutConfigDrawsNoHandle(t *testing.T) {
 			t.Errorf("table with no reorder_config still carries %q:\n%s", unwanted, got)
 		}
 	}
-	if !strings.Contains(got, `class="w-10 border-b border-rule`) {
+	if !strings.Contains(got, `<td class="verso-table__grip">`) {
 		t.Errorf("the reorder column should keep its slot:\n%s", got)
 	}
+	declares(t, "table", ".verso-table__grip", "width: calc(var(--spacing) * 10)")
 }
 
 // TestDecodeTableReorderConfig pins the wire name a plugin declares the drag
@@ -367,13 +444,13 @@ func TestRenderTableGroupHeader(t *testing.T) {
 	for _, want := range []string{
 		`colspan="2"`,
 		// The lane by its two ends, the arrow between them a glyph.
-		`text-sm font-semibold text-ink">Guest<span class="flex text-glyph">`, lucideIcons["arrow-right"], "</span>Router</span>",
+		`type-subheading text-ink">Guest<span class="flex text-glyph">`, lucideIcons["arrow-right"], "</span>Router</span>",
 		// The lane spans the row, so it is both first and last child and takes
-		// the wrapper's edge inset like every other cell. It is a row of the
+		// the table's edge inset like every other cell. It is a row of the
 		// listing's own two cells: a 28px line — the add's box — 5px above
 		// and 6px plus its hairline below, so a lane with no add is the same
 		// height as one with.
-		`class="verso-table-group"`, `pt-1.25 pb-1.5 pr-1.75! text-left leading-7 font-normal`, "[&_th:first-of-type]:pl-2.75",
+		`<tr class="verso-table__lane">`, `<th colspan="2" class="verso-table__band">`, `<span class="verso-table__line">`,
 		// The lane's add is a glyph at the band's right, its words on hover.
 		`aria-label="Add rule to Guest → Router"`, lucideIcons["plus"], ">Add rule to Guest → Router</span>",
 		// The handle is the drag's, not the band's.
@@ -383,7 +460,12 @@ func TestRenderTableGroupHeader(t *testing.T) {
 			t.Errorf("grouped table missing %q:\n%s", want, got)
 		}
 	}
-	if strings.Contains(got, "font-mono text-base leading-6 font-medium text-meta") {
+	declares(t, "table", ".verso-table__band",
+		"padding: calc(var(--spacing) * 1.25) calc(var(--spacing) * 1.75) calc(var(--spacing) * 1.5) 0",
+		"text-align: left", "@apply type-body")
+	declares(t, "table", ".verso-table__line", "min-height: calc(var(--spacing) * 7)")
+	declares(t, "table", tableStartEdge, "padding-inline-start: var(--verso-table-start)")
+	if strings.Contains(got, `type-value text-meta" data-verso-verbatim`) {
 		t.Errorf("a band with no verbatim string draws none:\n%s", got)
 	}
 }
@@ -405,16 +487,20 @@ func TestRenderTableNameAndPill(t *testing.T) {
 		},
 	})
 	for _, want := range []string{
-		"font-semibold text-ink",    // the identity column is emphasised ink, no icon
+		`<span class="verso-table__name"><span class="verso-table__words">lan</span></span>`, // the identity column is emphasised ink, no icon
 		`data-verso-tone="success"`, // accept pill through the badge palette
 		`data-verso-tone="warning"`, // reject pill
 		`data-verso-tone="info"`,    // NAT carries the info accent
-		`font-sans text-sm whitespace-nowrap text-faint"><span aria-hidden="true">—</span><span class="sr-only">None</span></td>`, // empty pill cell is the absence mark, said as "None"
+		`<td class="verso-table__cell whitespace-nowrap text-faint"><span aria-hidden="true">—</span><span class="sr-only">None</span></td>`, // empty pill cell is the absence mark, said as "None"
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("table missing %q:\n%s", want, got)
 		}
 	}
+	// The name is the value role in Ink, a step heavier than the row's words;
+	// the dash is the cell's own body role, the sans.
+	declares(t, "table", ".verso-table__name", "color: var(--color-ink)", "@apply type-value")
+	declares(t, "table", ".verso-table__cell", "@apply type-body")
 }
 
 func TestRenderTableReferenceWithZoneChip(t *testing.T) {
@@ -426,9 +512,13 @@ func TestRenderTableReferenceWithZoneChip(t *testing.T) {
 			{Text: "br-lan.10", Chips: []TableChip{{Icon: "zone", Label: "family"}}},
 		}}},
 	})
-	if !strings.Contains(got, `font-mono text-base font-medium text-ink">br-lan.10</span>`) {
+	// The reference is the body role's verbatim form, as a mono column's
+	// value is, so it reads at the MAC column's size and weight.
+	if !strings.Contains(got, `<span class="verso-table__name" data-verso-verbatim>br-lan.10</span>`) {
 		t.Errorf("referenced interface should render mono at the MAC column's size and weight:\n%s", got)
 	}
+	declares(t, "table", ".verso-table__name[data-verso-verbatim]", "@apply type-body")
+	declares(t, "table", ".verso-table__cell", "@apply type-body")
 	if !strings.Contains(got, ">family</span>") || !strings.Contains(got, lucideIcons["zone"]) {
 		t.Errorf("referenced interface should carry the shared zone chip:\n%s", got)
 	}
@@ -461,19 +551,30 @@ func TestRenderTableSeam(t *testing.T) {
 		"<details", "OpenWrt defaults — 9 stock rules", "Allow-Ping",
 		"verso-chevron",     // the shared rotate-on-open affordance
 		lucideIcons["lock"], // the stock-rules padlock
-		`colspan="6"`, `<td colspan="6" class="p-0 text-left">`, "verso-table-seam-row",
-		"justify-start", "text-left", "group-hover:underline",
+		`colspan="6"`, `<td colspan="6" class="verso-table__seam">`, `<summary class="verso-table__summary group">`,
+		`<tr class="verso-table__row group" data-verso-seam data-verso-row-id="allow_ping">`,
+		"group-hover:underline",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("seam missing %q:\n%s", want, got)
 		}
 	}
+	// The fold's words start at the seam's left, and the rows behind it are
+	// folded until it opens.
+	declares(t, "table", ".verso-table__seam", "text-align: left")
+	declares(t, "table", ".verso-table__summary", "display: flex")
+	declares(t, "table", ".verso-table tr[data-verso-seam]", "visibility: collapse")
 	// The fold's own control warms its ink, never its ground: a wash there would
 	// read as one more row of the listing rather than as the seam between two.
-	if seam := strings.Index(got, "verso-table-seam-control"); seam >= 0 {
-		if control := got[seam:]; strings.Contains(control[:min(len(control), 600)], "hover:bg-") {
-			t.Errorf("the table seam must not gain a hover background:\n%s", got)
-		}
+	seam := strings.Index(got, `class="verso-table__seam"`)
+	if seam < 0 {
+		t.Fatalf("no seam:\n%s", got)
+	}
+	if control := got[seam:]; strings.Contains(control[:min(len(control), 600)], "hover:bg-") {
+		t.Errorf("the table seam must not gain a hover background:\n%s", got)
+	}
+	if hover := cssRule(blockCSS(t, "table"), ".verso-table__summary:hover"); strings.Contains(hover, "background") {
+		t.Errorf("the table seam must not gain a hover background:\n%s", hover)
 	}
 	if strings.Count(got, "<table") != 1 || strings.Count(got, "<thead>") != 1 {
 		t.Errorf("the seam rows must share the original table and column head:\n%s", got)
@@ -575,7 +676,7 @@ func TestRenderTableRowDrawer(t *testing.T) {
 	got := b.String()
 	for _, want := range []string{
 		`x-data="modal"`, `@click="show"`, ">Details<", // opens from the trailing link
-		"text-denim transition-colors hover:text-denim-deep", // the action colour, like every other link
+		`<button type="button" @click="show" class="verso-link cursor-pointer">`, // the action colour, like every other link
 		"x-teleport", "Edit redirect — Force-DNS-to-AdGuard-guest",
 		"Save changes", `value="tok123"`, // the drawer's form carries the CSRF token
 		// A native dialog the browser holds modal, its scrim its ::backdrop;
@@ -671,11 +772,13 @@ func TestRenderTableCustomDrawerAction(t *testing.T) {
 	tbl.DrawerIcon = "pencil"
 	tbl.Rows[0].Drawer = &RowDrawer{Title: "Edit rule"}
 	got := render(t, r, tbl)
-	for _, want := range []string{"gap-1.5", lucideIcons["pencil"], ">Edit</button>"} {
+	for _, want := range []string{`class="verso-link cursor-pointer">`, lucideIcons["pencil"], ">Edit</button>"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("custom drawer action missing %q:\n%s", want, got)
 		}
 	}
+	// The glyph leads the words, 6px before them.
+	declares(t, "link", ".verso-link:not([data-verso-door])", "gap: calc(var(--spacing) * 1.5)")
 }
 
 // TestDecodeTableRowDrawer: the drawer's children decode recursively, and an
@@ -742,26 +845,31 @@ func TestRenderTableFlat(t *testing.T) {
 	r := newRenderer(t)
 	got := render(t, r, flatDevicesTable())
 	for _, want := range []string{
-		">Connected devices<",  // header band title
-		"12 online · 3 busy",   // header band detail
-		">View all<",           // header band action
-		`href="/devices"`,      // action link target
-		">Details<",            // the trailing "more" affordance
-		`@click="show"`,        // the Details link opens the drawer
-		"border-b border-rule", // hairline rows
-		// A cell writes on 20px lines, 10px over the first and 9px under the
-		// last plus its hairline — which is the row of two cells, arrived at
-		// rather than stated.
-		"px-3.5 py-row leading-6",
+		">Connected devices<", // header band title
+		"12 online · 3 busy",  // header band detail
+		">View all<",          // header band action
+		`href="/devices"`,     // action link target
+		">Details<",           // the trailing "more" affordance
+		`@click="show"`,       // the Details link opens the drawer
+		// Hairline rows: a cell writes on 24px lines, 7px over the first and
+		// 8px under the last plus its hairline — which is the row of 40px,
+		// arrived at rather than stated.
+		`<td class="verso-table__cell`,
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("flat table missing %q:\n%s", want, got)
 		}
 	}
+	declares(t, "table", tableHairline, "border-bottom-width: 1px", "var(--color-rule)")
+	declares(t, "table", ".verso-table__cell",
+		"padding: calc(var(--spacing) * 1.75) calc(var(--spacing) * 3.5) calc(var(--spacing) * 2)")
 	// The row itself is inert — no pointer, no click — so its values stay
 	// selectable; the trailing "Details" button is the one thing that opens.
-	if strings.Contains(got, `<tr class="group transition-colors hover:bg-quiet/50 cursor-pointer`) {
+	if strings.Contains(got, `<tr class="verso-table__row group cursor-pointer`) {
 		t.Errorf("flat rows must not take the pointer:\n%s", got)
+	}
+	if strings.Contains(cssRule(blockCSS(t, "table"), ".verso-table__row"), "cursor") {
+		t.Error("flat rows must not take the pointer")
 	}
 	for _, absent := range []string{
 		"odd:bg-quiet",         // stripes are retired in the flat style
@@ -774,16 +882,18 @@ func TestRenderTableFlat(t *testing.T) {
 	}
 }
 
-// TestANameReadsAtTheListingsSize: a row's name is the listing's 14px at 600
-// wherever its column stands, so a lease's device reads as a rule's name does.
+// TestANameReadsAtTheListingsSize: a row's name is the value role — the
+// listing's 14px, a step heavier than its words — wherever its column stands,
+// so a lease's device reads as a rule's name does.
 func TestANameReadsAtTheListingsSize(t *testing.T) {
 	got := render(t, newRenderer(t), &Table{
 		Columns: []TableColumn{{Label: "Device", Kind: "name"}, {Label: "Address", Kind: "mono"}},
 		Rows:    []TableRow{{ID: "a", Cells: []TableCell{{Text: "family-laptop"}, {Text: "192.168.77.195"}}}},
 	})
-	if !strings.Contains(got, `<span class="truncate font-semibold text-ink"><span class="verso-row-name">family-laptop</span></span>`) {
+	if !strings.Contains(got, `<span class="verso-table__name"><span class="verso-table__words">family-laptop</span></span>`) {
 		t.Errorf("a name in the first column is not set at the listing's size:\n%s", got)
 	}
+	declares(t, "table", ".verso-table__name", "@apply type-value", "color: var(--color-ink)", "text-overflow: ellipsis")
 }
 
 // TestAnEmptyTableIsTheEmptySlot: a listing with nothing in it says so the way
@@ -830,9 +940,12 @@ func TestRenderTableFlatLabels(t *testing.T) {
 	}
 	// The column heads are 24px: the 12px caps on a 16px line, 4px over and
 	// 3px under, the hairline the row's last pixel.
-	if strings.Count(got, "border-b border-rule-strong pt-1 pb-0.75 leading-4") != 2 {
+	if strings.Count(got, `<th scope="col" class="verso-table__head">`) != 2 {
 		t.Errorf("column heads are not 24px on the grid:\n%s", got)
 	}
+	declares(t, "table", ".verso-table__head",
+		"padding: var(--spacing) calc(var(--spacing) * 3.5) calc(var(--spacing) * 0.75)",
+		"border-bottom-width: 1px", "var(--color-rule-strong)", "@apply type-label")
 }
 
 // TestRenderTableDense: every row is inset from the table's edges so a hover
@@ -849,27 +962,34 @@ func TestRenderTableDense(t *testing.T) {
 	// on the grid's first crossing, so every row's first content lines up with
 	// it; the trailing edge keeps 16px.
 	roomy := render(t, r, &Table{Style: "flat", Columns: columns, Rows: rows})
-	for _, want := range []string{"[&_td:first-of-type]:pl-2.75", "[&_th:last-of-type]:pr-4", "px-3.5 py-row leading-6"} {
+	for _, want := range []string{`<table class="verso-table">`, `<td class="verso-table__cell relative">`} {
 		if !strings.Contains(roomy, want) {
 			t.Errorf("a listing's rows are inset from its edges, missing %q:\n%s", want, roomy)
 		}
 	}
 	dense := render(t, r, &Table{Style: "flat", Dense: true, Columns: columns, Rows: rows})
-	for _, want := range []string{"[&_td:first-of-type]:pl-2.75", "[&_th:last-of-type]:pr-4", `class="relative border-b border-rule py-row pr-4 leading-6"`} {
+	for _, want := range []string{`<table class="verso-table" data-verso-dense>`, `<td class="verso-table__cell relative">`} {
 		if !strings.Contains(dense, want) {
 			t.Errorf("a dense listing keeps the edge inset and drops the cells' own, missing %q:\n%s", want, dense)
 		}
 	}
-	if strings.Contains(dense, "px-3.5") {
-		t.Errorf("a dense listing's cells carry no inset of their own:\n%s", dense)
+	css := blockCSS(t, "table")
+	declares(t, "table", ".verso-table", "--verso-table-start: calc(var(--spacing) * 2.75)", "--verso-table-end: calc(var(--spacing) * 4)")
+	declares(t, "table", tableStartEdge, "padding-inline-start: var(--verso-table-start)")
+	declares(t, "table", tableEndEdge, "padding-inline-end: var(--verso-table-end)")
+	declares(t, "table", ".verso-table__cell", "calc(var(--spacing) * 3.5)")
+	declares(t, "table", ".verso-table__cell:where(.verso-table[data-verso-dense] *)", "padding-inline: 0 calc(var(--spacing) * 4)")
+	// Density says nothing about the edges: those stay the table's own.
+	if strings.Contains(css, "[data-verso-dense] {") {
+		t.Error("a dense listing keeps the edge inset")
 	}
 	// Of-type, not child: a row carrying an entity panel's teleport template
 	// after its last cell would otherwise miss the inset on that cell.
-	if strings.Contains(roomy, ":last-child]") || strings.Contains(dense, ":last-child]") {
+	if strings.Contains(tableStartEdge+tableEndEdge, "-child") || strings.Contains(roomy, ":last-child]") || strings.Contains(dense, ":last-child]") {
 		t.Error("the edge inset must not depend on the last cell being the row's last child")
 	}
 	// Density is horizontal: a dense listing keeps the row height of a roomy one.
-	if strings.Contains(dense, "[&_td]:py-1.5") {
+	if dense := cssRule(css, ".verso-table__cell:where(.verso-table[data-verso-dense] *)"); strings.Contains(dense, "padding-block") || strings.Contains(dense, "padding:") {
 		t.Errorf("dense should not tighten the row's vertical rhythm:\n%s", dense)
 	}
 }
@@ -887,20 +1007,19 @@ func TestTableRowsHangFromTheirFirstLine(t *testing.T) {
 			{Icon: "trash-2", Title: "Remove", Href: "/remove"},
 		}}}}},
 	})
-	css, err := os.ReadFile(filepath.Join("..", "server", "assets", "input.css"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !strings.Contains(got, `class="verso-table `) ||
-		!strings.Contains(string(css), ":where(.verso-table) :where(td, th) {\n    vertical-align: top;\n  }") {
+	if !strings.Contains(got, `<table class="verso-table">`) {
 		t.Errorf("every cell stands at the row's top:\n%s", got)
 	}
+	declares(t, "table", ".verso-table :where(td, th)", "vertical-align: top")
 	if strings.Contains(got, "align-middle") {
 		t.Errorf("no cell centres itself against the others:\n%s", got)
 	}
-	if !strings.Contains(got, "px-3.5 py-row") {
+	// The stacked cell is a cell like any other: the same 7px over its first
+	// line as a one-line cell's.
+	if !strings.Contains(got, `<td class="verso-table__cell relative">`) {
 		t.Errorf("a stacked cell writes its first line on the one-line cell's line:\n%s", got)
 	}
+	declares(t, "table", ".verso-table__cell", "padding: calc(var(--spacing) * 1.75)")
 }
 
 // TestTheLastRowActStandsOnAGridCrossing: the table ends on a line of the
@@ -912,8 +1031,19 @@ func TestTheLastRowActStandsOnAGridCrossing(t *testing.T) {
 		Columns: []TableColumn{{Kind: "name"}, {Kind: "actions"}},
 		Rows:    []TableRow{{ID: "a", Cells: []TableCell{{Text: "demo@laptop"}, {Actions: []TableRowAct{{Icon: "pencil", Title: "Edit"}}}}}},
 	})
-	if !strings.Contains(got, `<td class="border-b border-rule pt-1.25 pb-1.5 pl-3 pr-1.75! whitespace-nowrap">`) {
+	if !strings.Contains(got, `<td class="verso-table__acts">`) {
 		t.Errorf("the actions cell does not put its last act on a crossing:\n%s", got)
+	}
+	declares(t, "table", ".verso-table__acts",
+		"padding: calc(var(--spacing) * 1.25) calc(var(--spacing) * 1.75) calc(var(--spacing) * 1.5) calc(var(--spacing) * 3)",
+		"white-space: nowrap")
+	declares(t, "table", tableHairline, "border-bottom-width: 1px")
+	// The acts are not a cell, so the table's trailing edge does not move
+	// them off the crossing.
+	for _, line := range strings.Split(blockCSS(t, "table"), "\n") {
+		if strings.Contains(line, "last-of-type") && strings.Contains(line, "__acts") {
+			t.Errorf("the acts' 7px must not give way to the table's trailing edge: %s", line)
+		}
 	}
 }
 
@@ -1213,7 +1343,7 @@ func TestDecodeTableRowCarriesEveryField(t *testing.T) {
 	}
 	// And they reach the markup the bar narrows by.
 	got := render(t, newRenderer(t), w)
-	for _, want := range []string{`data-verso-tags="ipv4 ipv6"`, "text-meta"} {
+	for _, want := range []string{`data-verso-tags="ipv4 ipv6"`, `data-verso-row-id="allow_ping" data-verso-off data-verso-row="rule:allow_ping"`} {
 		if !strings.Contains(got, want) {
 			t.Errorf("decoded row missing %q in:\n%s", want, got)
 		}
@@ -1316,7 +1446,7 @@ func TestRowActPostsItselfAndTheRowNamesItsSection(t *testing.T) {
 		},
 	})
 	for _, want := range []string{
-		`<tr class="group transition-colors hover:bg-quiet/50" data-verso-row-id="allow_ping">`,
+		`<tr class="verso-table__row group" data-verso-row-id="allow_ping">`,
 		`<form method="post" data-verso-act class="contents">`,
 		`<input type="hidden" name="allow_ping" value="off">`,
 	} {
@@ -1343,12 +1473,24 @@ func TestEveryCellKeepsTheLastRowsHairline(t *testing.T) {
 	})
 	for _, td := range strings.Split(got, "<td")[1:] {
 		td = td[:strings.Index(td, ">")]
-		if !strings.Contains(td, "border-b border-rule") || strings.Contains(td, "group-last:border-b-0") {
+		if !strings.Contains(td, `class="verso-table__cell `) || strings.Contains(td, "group-last:border-b-0") {
 			t.Errorf("a cell gives up its hairline on the last row: <td%s>", td)
+		}
+	}
+	// The cell's hairline is its own, the last row's too: the block draws it
+	// on every cell and takes it from none.
+	declares(t, "table", tableHairline, "border-bottom-width: 1px", "var(--color-rule)")
+	css := blockCSS(t, "table")
+	for _, bad := range []string{"border-bottom-width: 0", "border-bottom: 0", "border-bottom: none", "tr:last-"} {
+		if strings.Contains(css, bad) {
+			t.Errorf("a cell must not give up its hairline on the last row (%q)", bad)
 		}
 	}
 	if table := got[strings.Index(got, "<table"):]; strings.Contains(table[:strings.Index(table, ">")], "border-b") {
 		t.Errorf("the table draws a closing line over its last row's own:\n%s", got)
+	}
+	if rule := cssRule(css, ".verso-table"); strings.Contains(rule, "border-bottom") || strings.Contains(rule, "border:") {
+		t.Errorf("the table draws a closing line over its last row's own:\n%s", rule)
 	}
 }
 
@@ -1365,8 +1507,8 @@ func TestAGroupWithNothingInItSaysSo(t *testing.T) {
 		Rows:      []TableRow{{Group: &TableGroup{Label: "Files", Chain: "0", AddLabel: "New file", AddText: "New file", AddHref: "/x/files/new"}}},
 	})
 	for _, want := range []string{
-		"verso-table-group", ">Files<", ">0<", ">New file<",
-		`<tr class="group"><td colspan="3" class="border-b border-rule px-4 py-row text-left text-sm leading-6 text-meta">No custom option files</td></tr>`,
+		`<tr class="verso-table__lane">`, ">Files<", ">0<", ">New file<",
+		`<tr><td colspan="3" class="verso-table__cell text-meta">No custom option files</td></tr>`,
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("want %s in:\n%s", want, got)
@@ -1391,8 +1533,8 @@ func TestCellDetailStandsUnderItsValue(t *testing.T) {
 		}}},
 	})
 	for _, want := range []string{
-		`<span data-verso-detail class="flex items-center gap-x-2 text-sm leading-6 whitespace-nowrap max-sm:flex-wrap max-sm:whitespace-normal text-meta"><span>Safari · iPhone</span>`,
-		`<span data-verso-detail class="flex items-center gap-x-2 text-sm leading-6 whitespace-nowrap max-sm:flex-wrap max-sm:whitespace-normal text-meta"><span>since today, 16:43</span>`,
+		`<span data-verso-detail class="verso-table__detail"><span>Safari · iPhone</span>`,
+		`<span data-verso-detail class="verso-table__detail"><span>since today, 16:43</span>`,
 		`>fd42:7ea:aa00::1a2b:3c4d:5e6f:7a8b</span>`,
 		">this browser</span>",
 		// the 20px chip fills the 20px detail line rather than making the line
@@ -1403,17 +1545,24 @@ func TestCellDetailStandsUnderItsValue(t *testing.T) {
 			t.Errorf("want %s in:\n%s", want, got)
 		}
 	}
-	// The stack writes on the row's lines: 10px over its value, 9px under its
+	// The detail is the secondary step on one line, its tag riding it, and on
+	// a phone it wraps between its words.
+	declares(t, "table", ".verso-table__detail", "white-space: nowrap", "color: var(--color-meta)")
+	if phone := blockCSS(t, "table"); !strings.Contains(phone, "@media (width < 40rem) {\n  .verso-table__detail {\n    flex-wrap: wrap;\n    white-space: normal;") {
+		t.Error("a detail line does not wrap on a phone")
+	}
+	// The stack writes on the row's lines: 7px over its value, 8px under its
 	// detail, so its first line is level with a one-line cell's and the row is
-	// 60px.
+	// 64px.
 	for _, want := range []string{
-		`<td class="relative border-b border-rule px-3.5 py-row">`,
-		`<td class="border-b border-rule px-3.5 py-row"><div class="leading-6`,
+		`<td class="verso-table__cell relative">`,
+		`<td class="verso-table__cell"><div class="whitespace-nowrap`,
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("a stacked cell sits evenly in its row, want %s in:\n%s", want, got)
 		}
 	}
+	declares(t, "table", ".verso-table__cell", "padding: calc(var(--spacing) * 1.75) calc(var(--spacing) * 3.5) calc(var(--spacing) * 2)", "@apply type-body")
 	if strings.Contains(got, "text-faint\">·</span>") {
 		t.Errorf("a detail is its own line, not an inline qualifier:\n%s", got)
 	}
@@ -1600,25 +1749,27 @@ func TestRenderTableOffRow(t *testing.T) {
 			{ID: "igmp", Muted: true, Cells: []TableCell{{Text: "Allow-IGMP", Href: "/rules/igmp"}, {Text: "igmp"}}},
 		},
 	})
-	if n := strings.Count(got, "data-verso-off"); n != 2 {
+	if n := len(regexp.MustCompile(`<tr[^>]*data-verso-off`).FindAllString(got, -1)); n != 2 {
 		t.Fatalf("data-verso-off on %d rows, want only the two switched off:\n%s", n, got)
 	}
 	if !regexp.MustCompile(`<tr[^>]*data-verso-row-id="renew"[^>]*data-verso-off`).MatchString(got) {
 		t.Errorf("the switched-off row should carry data-verso-off:\n%s", got)
 	}
 	for _, name := range []string{"Allow-Ping", "Allow-DHCP-Renew", "Allow-IGMP"} {
-		if !strings.Contains(got, `<span class="verso-row-name">`+name+`</span>`) {
+		if !strings.Contains(got, `<span class="verso-table__words">`+name+`</span>`) {
 			t.Errorf("%s's words should sit in the marker's own span:\n%s", name, got)
 		}
 	}
 	for _, name := range []string{"Allow-DHCP-Renew", "Allow-IGMP"} {
-		if !regexp.MustCompile(`text-body[^>]*>(<span class="verso-row-name">)?` + name).MatchString(got) {
+		if !strings.Contains(got, `<span class="verso-table__name" data-verso-off><span class="verso-table__words">`+name) {
 			t.Errorf("switched-off %s should be set in Body:\n%s", name, got)
 		}
 	}
-	if !regexp.MustCompile(`text-ink[^>]*>(<span class="verso-row-name">)?Allow-Ping`).MatchString(got) {
+	declares(t, "table", ".verso-table__name[data-verso-off]", "color: var(--color-body)")
+	if !strings.Contains(got, `<span class="verso-table__name"><span class="verso-table__words">Allow-Ping`) {
 		t.Errorf("a name in force keeps Ink:\n%s", got)
 	}
+	declares(t, "table", ".verso-table__name", "color: var(--color-ink)")
 	if n := strings.Count(got, `<span class="sr-only">off</span>`); n != 2 {
 		t.Errorf("a screen reader should hear off after each switched-off name; got %d:\n%s", n, got)
 	}
@@ -1636,18 +1787,19 @@ func TestRenderTableOffRowMarksOnlyItsName(t *testing.T) {
 			{Text: "Guest"}, {Text: "radio0"},
 		}}},
 	})
-	if n := strings.Count(got, "verso-row-name"); n != 1 {
-		t.Errorf("verso-row-name on %d cells, want the name only:\n%s", n, got)
+	if n := strings.Count(got, "verso-table__words"); n != 1 {
+		t.Errorf("verso-table__words on %d cells, want the name only:\n%s", n, got)
 	}
-	if !strings.Contains(got, `<span class="verso-row-name">Guest</span>`) {
+	if !strings.Contains(got, `<span class="verso-table__words">Guest</span>`) {
 		t.Errorf("the name should carry the marker's span:\n%s", got)
 	}
 	if n := strings.Count(got, `<span class="sr-only">off</span>`); n != 1 {
 		t.Errorf("off said %d times, want once, after the name:\n%s", n, got)
 	}
-	if !strings.Contains(got, `text-meta">radio0</span>`) {
+	if !strings.Contains(got, `data-verso-verbatim data-verso-muted>radio0</span>`) {
 		t.Errorf("the radio should read at Meta like the rest of the row:\n%s", got)
 	}
+	declares(t, "table", ".verso-table__name[data-verso-muted]", "color: var(--color-meta)")
 }
 
 // TestRenderTableNameIsNeverADoor: a row's name is words, never a control. A
@@ -1657,7 +1809,7 @@ func TestRenderTableOffRowMarksOnlyItsName(t *testing.T) {
 // the one the row lacks: the edit pencil for a panel, Details for a drawer.
 func TestRenderTableNameIsNeverADoor(t *testing.T) {
 	r := newRenderer(t)
-	nameIsADoor := regexp.MustCompile(`<(a|button)\b[^>]*>(<span[^>]*>)*<span class="verso-row-name">`)
+	nameIsADoor := regexp.MustCompile(`<(a|button)\b[^>]*>(<span[^>]*>)*<span class="verso-table__words">`)
 	edit := TableRowAct{Icon: "square-pen", Title: "Edit", Href: "/p/lan"}
 
 	// A panel row whose name was its only door gains the pencil.
@@ -1757,9 +1909,9 @@ func TestRenderTablePhrase(t *testing.T) {
 	got := render(t, r, phraseTable(false))
 	chip := strings.Index(got, ">Allow-Ping</span>")
 	key := strings.Index(got, ">target</span>")
-	before := strings.Index(got, `font-mono text-base font-medium">ACCEPT</span>`)
+	before := strings.Index(got, `<span class="truncate type-body" data-verso-verbatim>ACCEPT</span>`)
 	arrow := strings.Index(got, `>→</span>`)
-	after := strings.Index(got, `font-mono text-base font-medium">DROP</span>`)
+	after := strings.Index(got, `<span class="truncate type-body" data-verso-verbatim>DROP</span>`)
 	if chip < 0 || !(chip < key && key < before && before < arrow && arrow < after) {
 		t.Fatalf("parts out of place (%d %d %d %d %d):\n%s", chip, key, before, arrow, after, got)
 	}
@@ -1771,7 +1923,7 @@ func TestRenderTablePhrase(t *testing.T) {
 	}
 
 	off := render(t, r, phraseTable(true))
-	if n := strings.Count(off, "verso-row-name"); n != 1 {
+	if n := strings.Count(off, "verso-table__words"); n != 1 {
 		t.Errorf("a phrase not in force should be marked over once, got %d:\n%s", n, off)
 	}
 }
@@ -1889,28 +2041,33 @@ func TestATableAmongFieldsIsALedgerRow(t *testing.T) {
 		if act > 0 && answer > act && !strings.Contains(got[row+act:row+answer], `href="/plugins/firewall/settings/files/new"`) {
 			t.Errorf("%s: the add does not stand on the question's line:\n%s", name, got)
 		}
-		for _, want := range []string{"verso-field-wide", "data-verso-in-form", ">10-a.nft<", ">20-b.nft<"} {
+		for _, want := range []string{"verso-field-wide", `<table class="verso-table" data-verso-in-form>`, ">10-a.nft<", ">20-b.nft<"} {
 			if !strings.Contains(got, want) {
 				t.Errorf("%s: missing %q:\n%s", name, want, got)
 			}
 		}
-		for _, bad := range []string{"verso-table-group", "bg-quiet", "[&_td:first-of-type]:pl-2.75"} {
+		for _, bad := range []string{"verso-table__lane", "verso-table__band", "bg-quiet"} {
 			if strings.Contains(got[table:], bad) {
 				t.Errorf("%s: a table among fields draws %q:\n%s", name, bad, got)
 			}
 		}
 	}
+	// Its first and last words keep to the row's gutters, and its rows draw
+	// no tint under the pointer.
+	declares(t, "table", ".verso-table[data-verso-in-form]", "--verso-table-start: 0px", "--verso-table-end: 0px")
+	declares(t, "table", ".verso-table__row:where(.verso-table:not([data-verso-in-form]) *):hover", "background-color")
 }
 
 // TestATableOutsideAFormKeepsItsBand: the same table on a page is a listing
 // as it always was, its group a band over its rows.
 func TestATableOutsideAFormKeepsItsBand(t *testing.T) {
 	got := render(t, newRenderer(t), &Section{Title: "Custom rules", Children: Widgets{ruleFiles("10-a.nft")}})
-	for _, want := range []string{"verso-table-group", ">Files<", "bg-quiet"} {
+	for _, want := range []string{`<tr class="verso-table__lane">`, ">Files<", `class="verso-table__band"`} {
 		if !strings.Contains(got, want) {
 			t.Errorf("a listing outside a form lost %q:\n%s", want, got)
 		}
 	}
+	declares(t, "table", ".verso-table__band", "background-color: var(--color-quiet)")
 	for _, bad := range []string{"data-verso-in-form", "verso-field-row"} {
 		if strings.Contains(got, bad) {
 			t.Errorf("a listing outside a form is not a ledger row (%q):\n%s", bad, got)
@@ -1927,7 +2084,7 @@ func TestATableAmongFieldsWithNothingInIt(t *testing.T) {
 			t.Errorf("an empty table among fields lost %q:\n%s", want, got)
 		}
 	}
-	if strings.Contains(got, "verso-table-group") {
+	if strings.Contains(got, "verso-table__lane") || strings.Contains(got, "verso-table__band") {
 		t.Errorf("an empty table among fields still draws its band:\n%s", got)
 	}
 }

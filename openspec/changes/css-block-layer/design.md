@@ -111,7 +111,7 @@ The guards live in `internal/server/stylesheet_guards_test.go`. Each is a pure f
 - **Thresholds.** The ≥4 bundle size and the 8-utility cap come from today's distribution:
   - 789 of 1,075 class attributes carry five or fewer utilities;
   - 127 carry nine or more, and every one of those is a look without a name.
-  - A template action (`{{if}}…{{end}}`) inside a class attribute counts as one token, so conditional classes don't evade the cap.
+  - The cap counts what an element can carry at once: a printed value (`{{.Tone}}`, `${tone}`) counts as one, and a conditional (`{{if}}…{{else}}…{{end}}`) as its longest branch, so conditional classes don't evade the cap and a choice between three inks counts as one ink.
 - *Alternative: a near-duplicate (similarity) detector.* Rejected. It is noisy, and the 8-cap combined with the exact-bundle guard already pushes every substantial look into a block.
 
 ### 5. The renderer marks roles; a card is a section kind

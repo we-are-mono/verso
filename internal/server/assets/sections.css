@@ -391,10 +391,10 @@
   margin-inline: calc(var(--verso-side) * -1);
 }
 :is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > .verso-rhythm > [data-verso-listing]:not([data-verso-list]) :is(td, th):first-child {
-  padding-left: var(--verso-side);
+  --verso-table-start: var(--verso-side);
 }
 :is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > .verso-rhythm > [data-verso-listing]:not([data-verso-list]) :is(td, th):last-of-type {
-  padding-right: var(--verso-side);
+  --verso-table-end: var(--verso-side);
 }
 :is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:has(> .verso-rhythm > [data-verso-listing]:not([data-verso-list]):last-child):not(section section) {
   padding-bottom: 0;
@@ -452,10 +452,10 @@
   border-top-right-radius: 0;
 }
 :is(.verso-page-body > [data-verso-listing], .verso-page-body > .verso-stack > [data-verso-listing], .verso-page-body > .verso-stack > .verso-stack > [data-verso-listing]) > [data-verso-scroller]:not([data-verso-inventory]) :is(td, th):first-child {
-  padding-left: var(--verso-side);
+  --verso-table-start: var(--verso-side);
 }
 :is(.verso-page-body > [data-verso-listing], .verso-page-body > .verso-stack > [data-verso-listing], .verso-page-body > .verso-stack > .verso-stack > [data-verso-listing]) > [data-verso-scroller] :is(td, th):last-of-type {
-  padding-right: var(--verso-side);
+  --verso-table-end: var(--verso-side);
 }
 :is(.verso-page-body > [data-verso-listing], .verso-page-body > .verso-stack > [data-verso-listing], .verso-page-body > .verso-stack > .verso-stack > [data-verso-listing]) .verso-table > tbody > tr:not([hidden]):not(:has(~ tr:not([hidden]))) > td {
   border-bottom-width: 0;

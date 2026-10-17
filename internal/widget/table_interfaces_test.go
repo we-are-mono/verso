@@ -50,7 +50,7 @@ func TestInterfaceTreeKeepsBranchesThroughExpandedDescendants(t *testing.T) {
 	// The tree starts 11px in, where every listing's first content does, the
 	// first column's head over the names after it.
 	for _, want := range []string{
-		`<td class="relative py-0 pl-2.75 align-top">`,
+		`<td class="verso-table__cell relative py-0 pr-0 pl-2.75">`,
 		`class="pointer-events-none absolute top-0 left-2.75 h-10`,
 		`class="pointer-events-none absolute top-10 bottom-0 left-2.75`,
 		`pl-29.25`,
@@ -60,9 +60,15 @@ func TestInterfaceTreeKeepsBranchesThroughExpandedDescendants(t *testing.T) {
 			t.Errorf("want %s in:\n%s", want, got)
 		}
 	}
-	if n := strings.Count(got, "align-top"); n < 6 {
+	// Every cell of a row stands at its top: each is the table block's, and
+	// the block stands every cell of its table at the row's top.
+	if !strings.Contains(got, `<table class="verso-table `) {
+		t.Errorf("the inventory is not the table block:\n%s", got)
+	}
+	if n := strings.Count(got, `<td class="verso-table__`); n < 7 {
 		t.Errorf("every cell of a row stands at its top, got %d:\n%s", n, got)
 	}
+	declares(t, "table", ".verso-table :where(td, th)", "vertical-align: top")
 }
 
 // TestInterfaceRowOpensItsEditorInPlace: a row whose pencil's address is its
@@ -105,12 +111,16 @@ func TestInterfaceInventoryOnAPhoneKeepsTheNameStateAndActs(t *testing.T) {
 		`sm:min-w-[66rem]`,
 		`<col class="w-30 max-sm:hidden">`, `<col class="w-44 max-sm:hidden">`, `<col class="w-50 max-sm:hidden">`, `<col class="w-32 max-sm:hidden">`,
 		`max-sm:hidden">Type</th>`, `max-sm:hidden">State</th>`,
-		`<span data-verso-inventory-state class="flex items-center gap-2 text-sm leading-6 text-ink sm:hidden">`,
+		`<span data-verso-inventory-state class="verso-table__state sm:hidden" data-verso-tone="success">`,
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("want %s in:\n%s", want, got)
 		}
 	}
+	// The state is its packet and its word on one line, a link that is up
+	// written in Ink.
+	declares(t, "table", ".verso-table__state", "display: flex", "gap: calc(var(--spacing) * 2)")
+	declares(t, "table", `.verso-table__state[data-verso-tone="success"]`, "color: var(--color-ink)")
 	if strings.Contains(got, "break-all") {
 		t.Errorf("an interface's name should break only where its words part:\n%s", got)
 	}

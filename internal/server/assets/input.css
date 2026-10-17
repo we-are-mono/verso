@@ -33,10 +33,13 @@
 @import "./blocks/copy-inline.css" layer(components);
 @import "./blocks/fold.css" layer(components);
 @import "./blocks/link.css" layer(components);
+@import "./blocks/listing.css" layer(components);
 @import "./blocks/mark.css" layer(components);
 @import "./blocks/menu.css" layer(components);
+@import "./blocks/reorder.css" layer(components);
 @import "./blocks/rhythm.css" layer(components);
 @import "./blocks/steps.css" layer(components);
+@import "./blocks/table.css" layer(components);
 @import "./blocks/tabs.css" layer(components);
 @import "./blocks/tip.css" layer(components);
 @import "./blocks/waiting.css" layer(components);
@@ -341,113 +344,6 @@ html {
     flex-direction: column;
     flex: 1 1 0%;
     min-height: 0;
-  }
-
-  /* A collapsed table row contributes its intrinsic cell widths without taking
-     vertical space, so revealing continuation rows never reshapes the columns. */
-  .verso-table-seam-row { visibility: collapse; }
-  tbody:has(.verso-table-seam-control details[open]) > .verso-table-seam-row { visibility: visible; }
-
-  /* A switched-off row's name is marked over with a sand marker, the way an
-     operator runs a highlighter through an entry in the notebook that no
-     longer holds: Strong Hairline ink, laid under the words, its edges frayed
-     and streaked along the stroke, its chisel ends pooled a little darker
-     where the tip landed and lifted. The ink never passes 80%, so the name's
-     Body words keep 4.9 : 1 over it (4.87 on a hovered row); the rest of the
-     row's hues fall to sand (palette.css). The mask is the stroke's shape and
-     texture only; its colour is the palette's. When the row's power act turns
-     it off in place the marker is drawn left to right, and when it turns it
-     back on the marker lifts, once each (verso-forms.js marks the turn).
-     The stroke overshoots the words by 10px each side, as a hand does. It is
-     absolute, sized to the words; the box the name truncates in clips what
-     overflows it (that is its ellipsis), and only a containing block outside
-     that box would escape it, which could not then size to the words. So in
-     a marked row the box is given 12px of room each side, taken back by an
-     equal negative margin so nothing moves: a cell's 14px inset holds it, and
-     in a dense table the index column's slack does, to two digits. */
-  /* A name not in force gives up its weight too: it still names the row, but
-     no longer makes the row's claim. */
-  [data-verso-off] .verso-row-name {
-    position: relative;
-    isolation: isolate;
-    font-weight: 400;
-  }
-  [data-verso-off] :has(> .verso-row-name) {
-    padding-inline: 0.75rem;
-    margin-inline: -0.75rem;
-  }
-  [data-verso-off] .verso-row-name::after {
-    content: "";
-    position: absolute;
-    z-index: -1;
-    inset: var(--verso-marker-inset);
-    background-color: var(--color-rule-strong);
-    -webkit-mask: var(--verso-marker) no-repeat 0 0 / 100% 100%;
-    mask: var(--verso-marker) no-repeat 0 0 / 100% 100%;
-  }
-  .verso-row-name {
-    --verso-marker-inset: 0.25rem -0.625rem 0.1875rem;
-    --verso-marker: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 20' preserveAspectRatio='none'%3E%3Cfilter id='f' x='-5%25' y='-30%25' width='110%25' height='160%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.015 .45' numOctaves='3' seed='7'/%3E%3CfeDisplacementMap in='SourceGraphic' scale='3.5'/%3E%3C/filter%3E%3ClinearGradient id='g'%3E%3Cstop offset='0' stop-opacity='.8'/%3E%3Cstop offset='.12' stop-opacity='.66'/%3E%3Cstop offset='.55' stop-opacity='.72'/%3E%3Cstop offset='.9' stop-opacity='.62'/%3E%3Cstop offset='1' stop-opacity='.78'/%3E%3C/linearGradient%3E%3Cpath d='M4 4.5 120 2.5 116.5 17 0 18.5Z' fill='url(%23g)' filter='url(%23f)'/%3E%3C/svg%3E");
-  }
-  @media (prefers-reduced-motion: no-preference) {
-    [data-verso-turning="off"] .verso-row-name::after {
-      animation: verso-marker-draw 520ms cubic-bezier(.3, .7, .2, 1) 40ms both;
-    }
-    /* A row turned back on has no marker of its own; the turn holds one up
-       just long enough to lift it. */
-    [data-verso-turning="on"] .verso-row-name {
-      position: relative;
-      isolation: isolate;
-    }
-    [data-verso-turning="on"] :has(> .verso-row-name) {
-      padding-inline: 0.75rem;
-      margin-inline: -0.75rem;
-    }
-    [data-verso-turning="on"] .verso-row-name::after {
-      content: "";
-      position: absolute;
-      z-index: -1;
-      inset: var(--verso-marker-inset);
-      background-color: var(--color-rule-strong);
-      -webkit-mask: var(--verso-marker) no-repeat 0 0 / 100% 100%;
-      mask: var(--verso-marker) no-repeat 0 0 / 100% 100%;
-      animation: verso-marker-lift 280ms ease-out both;
-    }
-  }
-  @keyframes verso-marker-draw {
-    from { clip-path: inset(0 100% 0 0); }
-    to { clip-path: inset(0 0 0 0); }
-  }
-  @keyframes verso-marker-lift {
-    from { opacity: 1; }
-    to { opacity: 0; }
-  }
-
-  /* An inked figures cell: its figures written in the tone's Deep step, the
-     4.5 floor's step for words, the glyphs beside them left in Glyph. A live
-     listing changes the tone in place, and the ink eases to it. The tokens are
-     hex, and hex colours ease through sRGB, where green to crimson passes
-     through mud; each tone is restated in OKLCH so the ease runs through
-     Oklab, the way a pen's ink would shade over. A browser without relative
-     colours keeps the first declaration and eases the plain way. */
-  [data-verso-ink] {
-    color: var(--color-ink);
-    transition: color 300ms cubic-bezier(.16, 1, .3, 1);
-  }
-  [data-verso-ink="success"] {
-    color: var(--color-green-deep);
-    color: oklch(from var(--color-green-deep) l c h);
-  }
-  [data-verso-ink="warning"] {
-    color: var(--color-marigold-deep);
-    color: oklch(from var(--color-marigold-deep) l c h);
-  }
-  [data-verso-ink="danger"] {
-    color: var(--color-crimson-deep);
-    color: oklch(from var(--color-crimson-deep) l c h);
-  }
-  @media (prefers-reduced-motion: reduce) {
-    [data-verso-ink] { transition: none; }
   }
 
   /* Autofilled inputs: the browser's trust tint, repainted in the action colour.
@@ -870,87 +766,6 @@ html {
     background-color: transparent;
   }
   [data-verso-callout-acts] a svg { color: inherit; }
-  /* A table's box scrolls only while its table is wider than it, and a box
-     that scrolls clips both ways. One whose table fits (data-verso-fits, set
-     by verso-tables.js as the box and the table change size) neither scrolls
-     nor clips, nor fades its edge, so a row act's tip rises over the column
-     heads on the first row as on every other. While the table is wider, the
-     first row's tips open under their act, over the next row, rather than
-     into the edge that clips them. */
-  [data-verso-scroller][data-verso-fits] {
-    overflow: visible;
-    mask-image: none;
-    animation: none;
-  }
-  /* A phone leaves out a listing's secondary columns (Table.secondary, by
-     position): the head, every cell under it and the width it held, so the
-     columns that decide — the name, the state, the acts — stay on screen. A
-     spanning row (a lane's band, its closing line) is one cell and keeps it. */
-  @media (width < 40rem) {
-    /* The measures that hold a desktop grid steady are wider together than a
-       phone: there a column takes what its content needs. */
-    .verso-table > colgroup > col {
-      width: auto !important;
-    }
-    /* The row's name takes what the rest leave, rather than holding its whole
-       length and pushing the state off the screen. */
-    .verso-table > tbody > tr > td:has(.verso-row-name) {
-      width: 100%;
-    }
-    /* In that cell the name is what is read first, so it is read whole: it
-       wraps where its words and hyphens part ("Allow-DHCP-|Renew"), never
-       inside one ("sysfixti|me"), rather than cutting two rules down to the
-       same "Allow-DHC…". Its longest word is the column's least width, so a
-       listing too wide for a phone even so scrolls, its names still whole. */
-    .verso-table td .truncate:has(> .verso-row-name) {
-      flex-shrink: 0;
-      max-width: 100%;
-      min-width: min-content;
-      overflow: visible;
-      white-space: normal;
-    }
-    /* A tag beside the name gives way before the name does: it wraps under
-       it, whole, on the listing's 24px lines. */
-    .verso-table td :has(> .truncate > .verso-row-name) {
-      flex-wrap: wrap;
-      row-gap: 0;
-    }
-    /* A name written as a phrase (a change's subject, its option, its
-       values) wraps between its parts, on the listing's 24px lines. */
-    .verso-table td .verso-row-name.flex {
-      flex-wrap: wrap;
-      row-gap: 0;
-    }
-    /* A part longer than the whole line is clipped at the cell's edge rather
-       than drawn over the next column. */
-    .verso-table td .verso-row-name.flex > * {
-      max-width: 100%;
-      overflow: hidden;
-    }
-    .verso-narrow-2 > :is(thead, tbody) > tr > :nth-child(2), .verso-narrow-2 > colgroup > col:nth-child(2),
-    .verso-narrow-3 > :is(thead, tbody) > tr > :nth-child(3), .verso-narrow-3 > colgroup > col:nth-child(3),
-    .verso-narrow-4 > :is(thead, tbody) > tr > :nth-child(4), .verso-narrow-4 > colgroup > col:nth-child(4),
-    .verso-narrow-5 > :is(thead, tbody) > tr > :nth-child(5), .verso-narrow-5 > colgroup > col:nth-child(5),
-    .verso-narrow-6 > :is(thead, tbody) > tr > :nth-child(6), .verso-narrow-6 > colgroup > col:nth-child(6),
-    .verso-narrow-7 > :is(thead, tbody) > tr > :nth-child(7), .verso-narrow-7 > colgroup > col:nth-child(7),
-    .verso-narrow-8 > :is(thead, tbody) > tr > :nth-child(8), .verso-narrow-8 > colgroup > col:nth-child(8),
-    .verso-narrow-9 > :is(thead, tbody) > tr > :nth-child(9), .verso-narrow-9 > colgroup > col:nth-child(9),
-    .verso-narrow-10 > :is(thead, tbody) > tr > :nth-child(10), .verso-narrow-10 > colgroup > col:nth-child(10),
-    .verso-narrow-11 > :is(thead, tbody) > tr > :nth-child(11), .verso-narrow-11 > colgroup > col:nth-child(11),
-    .verso-narrow-12 > :is(thead, tbody) > tr > :nth-child(12), .verso-narrow-12 > colgroup > col:nth-child(12),
-    .verso-narrow-13 > :is(thead, tbody) > tr > :nth-child(13), .verso-narrow-13 > colgroup > col:nth-child(13),
-    .verso-narrow-14 > :is(thead, tbody) > tr > :nth-child(14), .verso-narrow-14 > colgroup > col:nth-child(14),
-    .verso-narrow-15 > :is(thead, tbody) > tr > :nth-child(15), .verso-narrow-15 > colgroup > col:nth-child(15),
-    .verso-narrow-16 > :is(thead, tbody) > tr > :nth-child(16), .verso-narrow-16 > colgroup > col:nth-child(16) {
-      display: none;
-    }
-  }
-  [data-verso-scroller]:not([data-verso-fits]) .verso-table > tbody > tr:first-child .group\/act > span.bottom-full {
-    top: 100%;
-    bottom: auto;
-    margin-top: calc(var(--spacing) * 2);
-    margin-bottom: 0;
-  }
   [data-verso-callout-acts] a:hover {
     color: inherit;
     border-color: color-mix(in srgb, currentColor 65%, transparent);
@@ -970,27 +785,6 @@ html {
   .verso-page-body > .verso-stack > .verso-console,
   .verso-page-body > .verso-stack > .verso-console-notice { margin-top: 0; }
   /* Sections, their air and their rules: sections.css. */
-
-  /* A listing on the grid: each cell writes on 24px lines with 8px over the
-     first and 7px under the last (table.cellpad, py-row), so a row is 16px
-     more than its lines and its hairline lands on a line however its values
-     wrap. The borders stay separate, so each row's hairline is its
-     own last pixel, the last row's too; every cell stands at the row's top,
-     so a row's first lines stay level. :where keeps both under a cell's own
-     classes. */
-  :where(.verso-table) {
-    border-collapse: separate;
-    border-spacing: 0;
-  }
-  :where(.verso-table) :where(td, th) {
-    vertical-align: top;
-  }
-  /* A value set in a size step (text-base carries its own 24px leading)
-     still writes on the cell's line; a chip, a tip, or anything that states
-     its own leading, keeps it. */
-  .verso-table :is(td, th) :not(.verso-chip, .verso-chip *, .verso-tip, .verso-tip *, [class*="leading-"]) {
-    line-height: inherit;
-  }
 
   /* Takeover and section ledes share one reading role, including inside drawers.
      Relative type and unitless leading let enlarged text and spacing overrides
@@ -1331,24 +1125,9 @@ html {
   .verso-stream-release:hover .verso-stream-release-x { color: var(--color-ink); }
 }
 
-/* An inventory row unfolds into the sections behind it (verso-tables.js).
-   The fold is a grid track that grows from nothing to whatever the sheet
-   holds, so the row opens at the height of its own content without anyone
-   measuring it, and the sheet is clipped to the track while it grows; once
-   it has settled the clip is lifted, so a tooltip inside it can hang past
-   its edge. A re-expand after a refresh, or a reader who asked for less
-   motion, gets the row open, not opening. */
+/* An inventory row unfolds into the sections behind it (verso-tables.js,
+   the table block's unfold). */
 @layer components {
-  .verso-unfold {
-    display: grid;
-    grid-template-rows: 0fr;
-    transition: grid-template-rows 0.36s cubic-bezier(0.22, 1, 0.36, 1);
-  }
-  .verso-unfold > * { min-height: 0; overflow: hidden; }
-  [data-verso-expanded-row][data-verso-open] .verso-unfold { grid-template-rows: 1fr; }
-  [data-verso-expanded-row][data-verso-still] .verso-unfold { transition: none; }
-  [data-verso-expanded-row][data-verso-settled] .verso-unfold > * { overflow: visible; }
-
   /* As the fold opens, its parts arrive in reading order: each ledger line
      draws itself from its name outward, and everything under it — the facts,
      the config text, the act at the line's end — rises the height of a
@@ -1368,7 +1147,6 @@ html {
   @keyframes verso-rise { from { opacity: 0; transform: translateY(0.375rem); } }
 
   @media (prefers-reduced-motion: reduce) {
-    .verso-unfold { transition: none; }
     [data-verso-expanded-row][data-verso-unfolding] [data-verso-ledger] > [aria-hidden],
     [data-verso-expanded-row][data-verso-unfolding] [data-verso-rise] { animation: none; }
   }

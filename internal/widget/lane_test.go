@@ -35,16 +35,17 @@ func TestAPagesLanesShareOneCard(t *testing.T) {
 	if n := strings.Count(got, ">Name</th>"); n != 1 {
 		t.Errorf("the column heads stand once, got %d:\n%s", n, got)
 	}
-	if n := strings.Count(got, `class="verso-table-group"`); n != 2 {
+	if n := strings.Count(got, `class="verso-table__lane"`); n != 2 {
 		t.Errorf("want a band row per lane, got %d:\n%s", n, got)
 	}
-	if strings.Contains(got, "pt-11.25") {
+	if strings.Contains(got, "data-verso-lane-gap") {
 		t.Errorf("a later lane in a page's card opens with air above its band:\n%s", got)
 	}
 	// Inside a section a later lane keeps the air above its band.
-	if inner := render(t, newRenderer(t), inSection(lanes())); !strings.Contains(inner, "pt-11.25") {
+	if inner := render(t, newRenderer(t), inSection(lanes())); !strings.Contains(inner, "data-verso-lane-gap") {
 		t.Errorf("a section's later lane lost its air:\n%s", inner)
 	}
+	declares(t, "table", ".verso-table__band[data-verso-lane-gap]", "padding-top: calc(var(--spacing) * 11.25)")
 }
 
 // TestLaneIsARowNotABand: a group's head is a row of the listing's own height
@@ -52,22 +53,28 @@ func TestAPagesLanesShareOneCard(t *testing.T) {
 // later lane stays the page's ground.
 func TestLaneIsARowNotABand(t *testing.T) {
 	got := render(t, newRenderer(t), inSection(lanes()))
-	if strings.Contains(got, `verso-table-group h-13 bg-quiet`) {
+	if strings.Contains(got, `h-13`) || strings.Contains(cssRule(blockCSS(t, "table"), ".verso-table__band"), "height") {
 		t.Errorf("a lane is a row, not a band of its own height:\n%s", got)
 	}
 	for _, want := range []string{
-		`class="verso-table-group"`,
 		// the first lane: a row of two cells, its add centred on the middle
 		// line and ending where the rows' acts do (7px in from the table's edge)
-		`border-b border-rule-strong bg-quiet pt-1.25 pb-1.5 pr-1.75! text-left leading-7`,
+		`<tr class="verso-table__lane"><th colspan="1" class="verso-table__band"><span class="verso-table__line">`,
 		// a later one: two cells of air above, unfilled, then the strong
 		// hairline the first lane takes from the column heads
-		`border-b border-rule-strong bg-[linear-gradient(transparent_calc(2.5rem_-_1px),var(--color-rule-strong)_calc(2.5rem_-_1px)_2.5rem,var(--color-quiet)_2.5rem)] pt-11.25 pb-1.5 pr-1.75! text-left leading-7`,
+		`<tr class="verso-table__lane"><th colspan="1" class="verso-table__band" data-verso-lane-gap><span class="verso-table__line">`,
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("lane rows missing %q:\n%s", want, got)
 		}
 	}
+	declares(t, "table", ".verso-table__band",
+		"padding: calc(var(--spacing) * 1.25) calc(var(--spacing) * 1.75) calc(var(--spacing) * 1.5) 0",
+		"border-bottom-width: 1px", "var(--color-rule-strong)", "background-color: var(--color-quiet)", "text-align: left")
+	declares(t, "table", ".verso-table__line", "min-height: calc(var(--spacing) * 7)")
+	declares(t, "table", ".verso-table__band[data-verso-lane-gap]",
+		"padding-top: calc(var(--spacing) * 11.25)",
+		"background: linear-gradient(transparent calc(2.5rem - 1px), var(--color-rule-strong) calc(2.5rem - 1px) 2.5rem, var(--color-quiet) 2.5rem)")
 }
 
 // TestLaneAddSaysWhatItDoes: a lane's add is a quiet labelled button — its

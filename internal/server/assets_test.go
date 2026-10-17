@@ -1203,16 +1203,16 @@ func TestAnUntitledOpeningKeepsNoClosingAir(t *testing.T) {
 // raises its tip over the column heads. While the table is wider, the first
 // row's tips open under their act rather than into the clipping edge.
 func TestAFittingTableClipsNoTip(t *testing.T) {
-	css, err := os.ReadFile("assets/input.css")
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, want := range []string{
-		"[data-verso-scroller][data-verso-fits] {\n    overflow: visible;\n    mask-image: none;\n    animation: none;\n  }",
-		"[data-verso-scroller]:not([data-verso-fits]) .verso-table > tbody > tr:first-child .group\\/act > span.bottom-full {\n    top: 100%;",
+	for file, want := range map[string]string{
+		"assets/blocks/listing.css": ".verso-listing__scroller[data-verso-fits] {\n  overflow: visible;\n  mask-image: none;\n  animation: none;\n}",
+		"assets/blocks/tip.css":     ".verso-tip:not([data-verso-tip-kind]):is([data-verso-scroller]:not([data-verso-fits]) tbody > tr:first-child *) {\n  top: 100%;",
 	} {
+		css, err := os.ReadFile(file)
+		if err != nil {
+			t.Fatal(err)
+		}
 		if !strings.Contains(string(css), want) {
-			t.Errorf("input.css missing %q", want)
+			t.Errorf("%s missing %q", file, want)
 		}
 	}
 	js, err := os.ReadFile("assets/verso-tables.js")
@@ -1222,6 +1222,34 @@ func TestAFittingTableClipsNoTip(t *testing.T) {
 	for _, want := range []string{"new ResizeObserver(", `box.toggleAttribute("data-verso-fits"`, `"htmx:afterSettle"`} {
 		if !strings.Contains(string(js), want) {
 			t.Errorf("verso-tables.js does not measure the table boxes (%q)", want)
+		}
+	}
+}
+
+// TestTheScriptDrawsRowsAsTheTableDoes: a live listing's rows are the
+// server's own, swapped in from the page it fetches, so they carry the table
+// block's classes and type attributes as rendered; the only rows the script
+// draws itself are a drag's — the lifted copy, a table block of its own at
+// its source's density and edges, and the gap it leaves, the reorder block's.
+func TestTheScriptDrawsRowsAsTheTableDoes(t *testing.T) {
+	raw, err := os.ReadFile("assets/verso-tables.js")
+	if err != nil {
+		t.Fatal(err)
+	}
+	js := string(raw)
+	for _, want := range []string{
+		`doc.querySelectorAll("[data-verso-inventory], [data-verso-live-table]")`,
+		`table.className = "verso-table table-fixed"`,
+		`table.setAttribute("data-verso-lifted", "")`,
+		`["data-verso-dense", "data-verso-in-form"]`,
+		`"--verso-table-start"`,
+		`copy.className = row.className`,
+		`shell.className = "verso-reorder__float"`,
+		`td.className = "verso-reorder__gap"`,
+		`document.body.classList.add("verso-reorder")`,
+	} {
+		if !strings.Contains(js, want) {
+			t.Errorf("verso-tables.js lacks %s", want)
 		}
 	}
 }

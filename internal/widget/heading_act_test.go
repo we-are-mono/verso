@@ -167,19 +167,23 @@ func TestControlBandIsTheListingCardsTopStrip(t *testing.T) {
 	}
 }
 
-// TestColumnHeadsAreARow: the heads are one cell of the grid — the 12px caps
-// on a 16px line, 2px over it and a pixel under it plus the 1px hairline —
-// whatever introduces the table.
+// TestColumnHeadsAreARow: the heads are one row of the grid — the 12px caps
+// on a 16px line, 4px over it and 3px under it plus the 1px hairline: 24px —
+// whatever introduces the table. The table block draws the head; the markup
+// only names it.
 func TestColumnHeadsAreARow(t *testing.T) {
 	for _, tbl := range []*Table{
 		{Columns: []TableColumn{{Label: "Name"}}, Rows: []TableRow{{ID: "a", Cells: []TableCell{{Text: "x"}}}}},
 		{Title: "Rules", Columns: []TableColumn{{Label: "Name"}}, Rows: []TableRow{{ID: "a", Cells: []TableCell{{Text: "x"}}}}},
 	} {
 		got := render(t, newRenderer(t), tbl)
-		if !strings.Contains(got, "border-rule-strong pt-1 pb-0.75 leading-4 px-3.5 text-xs") || strings.Contains(got, "pt-4 pb-2") {
+		if !strings.Contains(got, `<th scope="col" class="verso-table__head">Name</th>`) || strings.Contains(got, "pt-4 pb-2") {
 			t.Errorf("column heads are not a row of the grid:\n%s", got)
 		}
 	}
+	declares(t, "table", ".verso-table__head",
+		"padding: var(--spacing) calc(var(--spacing) * 3.5) calc(var(--spacing) * 0.75)",
+		"border-bottom-width: 1px", "@apply type-label")
 }
 
 // TestAQuietHeadingActOpensItsPanelInTheSecondaryDress: an act that opens a

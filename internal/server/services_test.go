@@ -78,18 +78,18 @@ func TestServicesTable(t *testing.T) {
 		"6\U0000202fh 14\U0000202fmin",   // process age belongs with live state
 		">PID</th>",                      // process facts share one compact column
 		"2.3\U0000202fMiB",               // runtime keeps process identity and aggregate RSS
-		"tabular-nums text-meta",         // runtime matches the landing-page RX/TX ink
-		">Memory</th>",                   // immediate restart sits before the switch
-		`aria-label="Restart dnsmasq"`,   // the icon-only action names the service it restarts
+		`<td data-verso-figures class="verso-table__cell whitespace-nowrap text-meta">`, // runtime matches the landing-page RX/TX ink, in figures
+		">Memory</th>",                 // immediate restart sits before the switch
+		`aria-label="Restart dnsmasq"`, // the icon-only action names the service it restarts
 		`name="_service_action" value="restart:dnsmasq"`,
 		">State</th>",  // the switch names and reflects persistent boot policy
 		"startup task", // lifecycle type is carried beside the service name
 		"subsystem",
-		"runs at boot",                                  // one-shot tasks are not misreported as stopped
+		"runs at boot", // one-shot tasks are not misreported as stopped
 		`<span class="verso-chip" data-verso-verbatim>`, // type reuses the mono chip
-		">verso</span>",                                 // APK ownership joins verso-rpcd to the verso package
-		"font-mono text-base font-medium",               // package ownership uses fixed 16px/500 mono type
-		"max-w-column-6xl",                              // runtime fits without forcing a horizontal scroller
+		">verso</span>",                   // APK ownership joins verso-rpcd to the verso package
+		"font-mono text-base font-medium", // package ownership uses fixed 16px/500 mono type
+		"max-w-column-6xl",                // runtime fits without forcing a horizontal scroller
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("services missing %q", want)
@@ -148,7 +148,7 @@ func TestServicesTable(t *testing.T) {
 	// No state, no PID, no memory (nor order or package here): each the one
 	// absence mark, the faint dash in the sans, never a hollow packet before it
 	// or a minus in mono.
-	if got := strings.Count(firewallRow, `font-sans text-sm whitespace-nowrap text-faint"><span aria-hidden="true">—</span><span class="sr-only">None</span></td>`); got < 3 {
+	if got := strings.Count(firewallRow, `<td class="verso-table__cell whitespace-nowrap text-faint"><span aria-hidden="true">—</span><span class="sr-only">None</span></td>`); got < 3 {
 		t.Errorf("an indeterminate State, PID and Memory must each be the absence mark (got %d): %s", got, firewallRow)
 	}
 	// The state it does state, applied at boot, is no live state: the empty

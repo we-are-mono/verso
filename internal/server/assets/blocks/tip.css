@@ -49,7 +49,10 @@
   transition-property: opacity;
   @apply type-tip;
 }
-.verso-tip[data-verso-place="below"] {
+/* An act's tip in the first row of a listing that scrolls opens under its
+   act: above it, the box the listing scrolls in would clip it. */
+.verso-tip[data-verso-place="below"],
+.verso-tip:not([data-verso-tip-kind]):is([data-verso-scroller]:not([data-verso-fits]) tbody > tr:first-child *) {
   top: 100%;
   bottom: auto;
   margin-top: calc(var(--spacing) * 2);
