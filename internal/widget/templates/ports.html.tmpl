@@ -1,58 +1,58 @@
 <!-- SPDX-License-Identifier: GPL-2.0-only -->
 <!-- SPDX-FileCopyrightText: 2026 Mono Technologies Inc. -->
 {{/* ports: a device's physical panel — a board profile's own art, or the panel
-     the shell generates from the port list for a board without art. Either is
-     SVG of data-verso-port groups that litPanel lit from live state, so one set
-     of stylesheet rules lights every panel. The connector art, palette, and
-     "connected" colour are the shell's (ADR-005) — the caller supplies ports +
-     state. */}}
-<div class="verso-ports verso-ports--{{.Accent}}"{{if .ArtWidth}} style="--art-w: {{.ArtWidth}}px"{{end}}>
-  {{if .Device}}<div class="verso-ports-name">{{.Device}}</div>{{end}}
+     the shell generates from the port list for a board without art — the
+     ports block (blocks/ports.css) around the panel block (blocks/panel.css).
+     Either is SVG of data-verso-port groups that litPanel lit from live state,
+     so one set of stylesheet rules lights every panel. The connector art,
+     palette, and "connected" colour are the shell's (ADR-005) — the caller
+     supplies ports + state. */}}
+<div class="verso-ports" data-verso-accent="{{.Accent}}"{{if .ArtWidth}} style="--art-w: {{.ArtWidth}}px"{{end}}>
+  {{if .Device}}<div class="verso-ports__name">{{.Device}}</div>{{end}}
   {{if .PanelBoth}}
   {{/* Both faces earn a Front/Rear control; one face carries no side label —
-       which side the connectors sit on is not the point. The control is the
-       app's segmented control, a quiet strip with the chosen segment filled in
-       the body ink, as every selected segment is. The bindings are the
+       which side the connectors sit on is not the point. The bindings are the
        panelFaces component's properties (verso.js): the CSP build of Alpine
        evaluates no expressions. */}}
-  <div class="verso-panel-art" x-data="panelFaces" data-verso-word-on="{{.WordOn}}" data-verso-word-off="{{.WordOff}}">
-    <div class="mb-3 inline-flex items-center gap-0.5 rounded-xs border border-rule-strong bg-quiet p-0.5 text-sm">
-      <button type="button" @click="showRear" :class="rearClass" :aria-pressed="rearPressed" class="h-7 rounded-xs px-3.5 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim">{{ t "Rear" }}</button>
-      <button type="button" @click="showFront" :class="frontClass" :aria-pressed="frontPressed" class="h-7 rounded-xs px-3.5 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim">{{ t "Front" }}</button>
+  <div class="verso-panel" x-data="panelFaces" data-verso-word-on="{{.WordOn}}" data-verso-word-off="{{.WordOff}}">
+    <div class="verso-ports__faces">
+      <button type="button" @click="showRear" :aria-pressed="rearPressed" class="verso-ports__face">{{ t "Rear" }}</button>
+      <button type="button" @click="showFront" :aria-pressed="frontPressed" class="verso-ports__face">{{ t "Front" }}</button>
     </div>
     <div x-show="rear">{{template "verso-panel-face" .Back}}</div>
     <div x-show="front" x-cloak>{{template "verso-panel-face" .Front}}</div>
     {{template "verso-port-tips" .Items}}
   </div>
   {{else if or .Back.Art .Front.Art}}
-  <div class="verso-panel-art" data-verso-word-on="{{.WordOn}}" data-verso-word-off="{{.WordOff}}">
+  <div class="verso-panel" data-verso-word-on="{{.WordOn}}" data-verso-word-off="{{.WordOff}}">
     {{if .Back.Art}}{{template "verso-panel-face" .Back}}{{else}}{{template "verso-panel-face" .Front}}{{end}}
     {{template "verso-port-tips" .Items}}
   </div>
   {{end}}
   {{if .Legend}}
-  <div class="verso-ports-legend">
-    <span class="verso-ports-key"><span class="verso-ports-dot on"></span>{{ t "Connected" }}</span>
-    <span class="verso-ports-key"><span class="verso-ports-dot act"></span>{{ t "Traffic" }}</span>
-    <span class="verso-ports-key"><span class="verso-ports-dot"></span>{{ t "Not connected" }}</span>
-    {{if .HasWAN}}<span class="verso-ports-key">{{ t "Internet = your WAN connection" }}</span>{{end}}
-    {{if .HasRJ45}}<span class="verso-ports-key">{{ t "RJ45 = network cable" }}</span>{{end}}
-    {{if .HasSFP}}<span class="verso-ports-key">{{ t "SFP+ = fiber" }}</span>{{end}}
+  <div class="verso-ports__legend">
+    <span class="verso-ports__key"><span class="verso-ports__dot" data-verso-state="on"></span>{{ t "Connected" }}</span>
+    <span class="verso-ports__key"><span class="verso-ports__dot" data-verso-state="act"></span>{{ t "Traffic" }}</span>
+    <span class="verso-ports__key"><span class="verso-ports__dot"></span>{{ t "Not connected" }}</span>
+    {{if .HasWAN}}<span class="verso-ports__key">{{ t "Internet = your WAN connection" }}</span>{{end}}
+    {{if .HasRJ45}}<span class="verso-ports__key">{{ t "RJ45 = network cable" }}</span>{{end}}
+    {{if .HasSFP}}<span class="verso-ports__key">{{ t "SFP+ = fiber" }}</span>{{end}}
   </div>
   {{end}}
 </div>
 
 {{/* One face of a panel: its art, at its own size where it fits and smaller in
-     whole 8px steps where it does not (input.css reads the two properties). */}}
-{{define "verso-panel-face"}}<div class="verso-panel-face" style="--art-h: {{.Height}}px; --art-aspect: {{.Aspect}}">{{.Art}}</div>{{end}}
+     whole 8px steps where it does not (the panel block reads the two
+     properties). */}}
+{{define "verso-panel-face"}}<div class="verso-panel__face" style="--art-h: {{.Height}}px; --art-aspect: {{.Aspect}}">{{.Art}}</div>{{end}}
 
 {{/* Each live port's detail, shown above it on hover or keyboard focus
      (verso.js). The stream fills the address and link slots in place. */}}
 {{define "verso-port-tips"}}{{range .}}{{if .Iface}}
-<div class="verso-port-tip" data-verso-port-tip="{{.Iface}}" role="tooltip" hidden>
-  <b>{{.Label}}</b>{{if .Role}} · <span class="role">{{.Role}}</span>{{end}}
-  <div class="r"><span class="k">iface</span>{{.Iface}}</div>
-  {{if .Note}}<div class="r"><span class="k">type</span>{{.Note}}</div>{{end}}
-  <div class="r"><span class="k">addr</span><span data-verso-port-addr>{{.Addr}}</span></div>
-  <div class="r"><span class="k">link</span><span data-verso-port-link></span></div>
+<div class="verso-ports__tip" data-verso-port-tip="{{.Iface}}" role="tooltip" hidden>
+  <b class="verso-ports__tip-name">{{.Label}}</b>{{if .Role}} · <span class="verso-ports__tip-role">{{.Role}}</span>{{end}}
+  <div class="verso-ports__tip-row" data-verso-verbatim><span class="verso-ports__tip-key">iface</span>{{.Iface}}</div>
+  {{if .Note}}<div class="verso-ports__tip-row" data-verso-verbatim><span class="verso-ports__tip-key">type</span>{{.Note}}</div>{{end}}
+  <div class="verso-ports__tip-row" data-verso-verbatim><span class="verso-ports__tip-key">addr</span><span data-verso-port-addr>{{.Addr}}</span></div>
+  <div class="verso-ports__tip-row" data-verso-verbatim><span class="verso-ports__tip-key">link</span><span data-verso-port-link></span></div>
 </div>{{end}}{{end}}{{end}}

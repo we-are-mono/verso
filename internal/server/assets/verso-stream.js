@@ -51,20 +51,18 @@
     dot.setAttribute("data-verso-tone", variant || "");
   }
 
-  // applyPort relights a port on a router's panel: its link LED, its traffic
-  // LED's activity level (the class keeps its blink running when the level
-  // holds), its speed, the label a keyboard reaches it by, and its detail's
-  // link line. The link words come in the reader's language from the panel.
+  // applyPort relights a port on a router's panel (blocks/panel.css): its link
+  // LED, its traffic LED's activity level (left alone while the level holds,
+  // so its blink keeps running), its speed, the label a keyboard reaches it
+  // by, and its detail's link line. The link words come in the reader's
+  // language from the panel.
   function applyPort(port, iface) {
-    port.classList.toggle("is-linked", !!iface.linked);
-    var level = "act-" + (iface.activity || 0);
-    if (!port.classList.contains(level)) {
-      for (var i = 0; i <= 4; i++) port.classList.remove("act-" + i);
-      port.classList.add(level);
-    }
+    port.toggleAttribute("data-verso-linked", !!iface.linked);
+    var level = String(iface.activity || 0);
+    if (port.getAttribute("data-verso-activity") !== level) port.setAttribute("data-verso-activity", level);
     var speed = port.querySelector("[data-verso-port-speed]");
     if (speed) speed.textContent = iface.speed;
-    var panel = port.closest(".verso-panel-art");
+    var panel = port.closest(".verso-panel");
     if (!panel) return;
     var word = panel.getAttribute(iface.linked ? "data-verso-word-on" : "data-verso-word-off") || "";
     var tip = panel.querySelector('[data-verso-port-tip="' + CSS.escape(iface.name) + '"]');

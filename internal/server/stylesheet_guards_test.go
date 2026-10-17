@@ -607,6 +607,11 @@ func crossBlockRulesSetOnlyProperties(src styleSources) []violation {
 			}
 			own, other := false, false
 			for _, c := range ownClasses(parts[len(parts)-1]) {
+				// A published contract's name is the data's own, not a block:
+				// the block that draws the data styles it.
+				if _, contract := contractNames[c]; contract {
+					continue
+				}
 				if strings.HasPrefix(c, "verso-") {
 					if blockOf(c) == block {
 						own = true

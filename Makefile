@@ -251,10 +251,12 @@ $(PLAYWRIGHT):
 layout-snapshot: $(PLAYWRIGHT) layout-fixtures
 	PLAYWRIGHT_CORE=$(abspath $(PLAYWRIGHT)) node scripts/layout-snapshot.cjs snap $(LAYOUT_OUT)
 
-# layout-fixtures writes the takeovers, which no dev route serves, as the shell
-# renders them, into build/layout-fixtures for layout-snapshot to record.
+# layout-fixtures writes the takeovers and the router's panel, which no dev
+# route serves, as the shell renders them, into build/layout-fixtures for
+# layout-snapshot to record.
 layout-fixtures:
 	go test -count=1 -tags layoutfixtures -run '^TestWriteLayoutFixtures$$' ./internal/server/ >/dev/null
+	go test -count=1 -tags layoutfixtures -run '^TestWriteWidgetLayoutFixtures$$' ./internal/widget/ >/dev/null
 
 layout-diff:
 	node scripts/layout-snapshot.cjs diff $(FROM) $(TO)

@@ -14,7 +14,7 @@ import (
 // by element and class, and its texts.
 type svgPort struct {
 	iface    string
-	children []string // "path.verso-port-body", "g.verso-port-mouth", …
+	children []string // "path.verso-panel__body", "g.verso-panel__mouth", …
 	texts    map[string]string
 	pins     int
 }
@@ -56,7 +56,7 @@ func readPanel(t *testing.T, svg string) (string, []svgPort) {
 			p := &ports[len(ports)-1]
 			if depth == portDepth+1 {
 				p.children = append(p.children, el.Name.Local+"."+attr["class"])
-				inPins = attr["class"] == "verso-port-pins"
+				inPins = attr["class"] == "verso-panel__pins"
 			}
 			if inPins && el.Name.Local == "rect" {
 				p.pins++
@@ -127,7 +127,7 @@ func TestGeneratedPanelPorts(t *testing.T) {
 				paths++
 			}
 		}
-		if paths != 1 || p.children[0] != "path.verso-port-body" {
+		if paths != 1 || p.children[0] != "path.verso-panel__body" {
 			t.Errorf("%s: direct children %v, want the outline as the only path, first", p.iface, p.children)
 		}
 		for _, want := range []string{"rect.led-link", "rect.led-traffic"} {
@@ -137,13 +137,13 @@ func TestGeneratedPanelPorts(t *testing.T) {
 		}
 	}
 	rj, sfp := ports[0], ports[1]
-	if !containsString(rj.children, "g.verso-port-mouth") || rj.pins != 8 {
+	if !containsString(rj.children, "g.verso-panel__mouth") || rj.pins != 8 {
 		t.Errorf("RJ45: children %v with %d pins, want its mouth group and 8 pins", rj.children, rj.pins)
 	}
-	if !containsString(sfp.children, "rect.verso-port-mouth") || !containsString(sfp.children, "rect.verso-port-socket") || sfp.pins != 0 {
+	if !containsString(sfp.children, "rect.verso-panel__mouth") || !containsString(sfp.children, "rect.verso-panel__socket") || sfp.pins != 0 {
 		t.Errorf("SFP+: children %v, want a mouth and a socket and no pins", sfp.children)
 	}
-	if rj.texts["verso-port-label"] != "lan1" || rj.texts["verso-port-speed"] != "1G" {
+	if rj.texts["verso-panel__label"] != "lan1" || rj.texts["verso-panel__speed"] != "1G" {
 		t.Errorf("RJ45 texts = %v, want lan1 and 1G", rj.texts)
 	}
 	// Each port carries an empty role slot over it, which the shell fills on
@@ -153,8 +153,25 @@ func TestGeneratedPanelPorts(t *testing.T) {
 			t.Errorf("%s: role slot = %q (present %v), want an empty slot", p.iface, role, ok)
 		}
 	}
-	if sfp.texts["verso-port-speed"] != "—" {
-		t.Errorf("SFP+ speed = %q, want a dash", sfp.texts["verso-port-speed"])
+	if sfp.texts["verso-panel__speed"] != "—" {
+		t.Errorf("SFP+ speed = %q, want a dash", sfp.texts["verso-panel__speed"])
+	}
+}
+
+// TestGeneratedPanelSetsItsWords: the generated panel's words are set in the
+// drawing, as a board's art sets its own, in the shell's mono face at the
+// drawing's size, so the panel scales as one picture.
+func TestGeneratedPanelSetsItsWords(t *testing.T) {
+	svg := generatedPanel([]PortItem{{Kind: "rj45", Label: "lan1", Iface: "lan1", Speed: "1G"}})
+	const face = ` font-family="Inconsolata, Menlo, monospace" font-size="11"`
+	for _, want := range []string{
+		`<text class="verso-port-role" x="48" y="16" text-anchor="middle"` + face + `></text>`,
+		`<text class="verso-panel__label" x="48" y="96" text-anchor="middle"` + face + `>lan1</text>`,
+		`text-anchor="middle"` + face + `>1G</text>`,
+	} {
+		if !strings.Contains(svg, want) {
+			t.Errorf("generated panel missing %q:\n%s", want, svg)
+		}
 	}
 }
 
@@ -179,7 +196,10 @@ func TestGeneratedPanelIsThemable(t *testing.T) {
 func TestPortsWithoutArtDrawTheGeneratedPanel(t *testing.T) {
 	r := newRenderer(t)
 	got := render(t, r, &Ports{Items: []PortItem{{Kind: "rj45", Label: "eth0", Iface: "eth0", Linked: true, Activity: 3}}})
-	for _, want := range []string{"verso-panel-art", "verso-panel-chassis", `data-verso-port="eth0" class="port is-linked act-3"`} {
+	for _, want := range []string{
+		`<div class="verso-panel"`, `<svg xmlns="http://www.w3.org/2000/svg" class="verso-panel__generated"`, `class="verso-panel__chassis"`,
+		`data-verso-port="eth0" class="port" data-verso-activity="3" data-verso-linked style=`,
+	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("generated panel missing %q:\n%s", want, got)
 		}
@@ -187,6 +207,11 @@ func TestPortsWithoutArtDrawTheGeneratedPanel(t *testing.T) {
 	if strings.Contains(got, "verso-ports-chassis") {
 		t.Errorf("the generated strip is gone:\n%s", got)
 	}
+	// The generated panel's own finish: Denim marks the WAN port on its sand,
+	// where board art's dark finish takes the hardware blue.
+	declares(t, "panel", ".verso-panel__generated [data-verso-port][data-verso-wan] > path", "stroke: var(--color-denim);")
+	declares(t, "panel", ".verso-panel__generated .verso-port-role", "fill: var(--color-denim);")
+	declares(t, "panel", ".verso-panel__chassis", "fill: var(--color-quiet);", "stroke: var(--color-rule-strong);")
 }
 
 func containsString(list []string, s string) bool {

@@ -263,7 +263,7 @@ func TestPortsCardOpensWithThePanel(t *testing.T) {
 			{Name: "eth9", Physical: true, Conduit: true, State: "down", Networks: []string{"lan"}},
 		}}
 	ports := cardBody(t, o, "ports")
-	panel, eth1, eth2, eth0 := strings.Index(ports, "verso-panel-art"),
+	panel, eth1, eth2, eth0 := strings.Index(ports, `class="verso-panel"`),
 		strings.Index(ports, `data-verso-row="interface:eth1"`), strings.Index(ports, `data-verso-row="interface:eth2"`), strings.Index(ports, `data-verso-row="interface:eth0"`)
 	if panel < 0 || !(panel < eth1 && eth1 < eth2 && eth2 < eth0) {
 		t.Errorf("want the panel, then eth1, eth2, eth0 (at %d, %d, %d, %d):\n%s", panel, eth1, eth2, eth0, ports)

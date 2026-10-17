@@ -743,20 +743,20 @@ func cssBlock(t *testing.T, css, head string) string {
 // does not it shrinks to a whole number of 8px steps tall, its width following
 // its proportions and its left edge the content's (device-panel).
 func TestAPanelMeasuresOnTheEightPixelGrid(t *testing.T) {
-	raw, err := os.ReadFile("assets/input.css")
+	raw, err := os.ReadFile("assets/blocks/panel.css")
 	if err != nil {
 		t.Fatal(err)
 	}
 	for _, want := range []string{
-		".verso-panel-art { position: relative; container-type: inline-size; }",
-		".verso-panel-face svg { display: block; width: auto; max-width: none; height: min(var(--art-h), round(down, 100cqi * var(--art-aspect), 0.5rem)); }",
+		".verso-panel {\n  position: relative;\n  container-type: inline-size;\n}",
+		".verso-panel__face svg {\n  display: block;\n  width: auto;\n  max-width: none;\n  height: min(var(--art-h), round(down, 100cqi * var(--art-aspect), 0.5rem));\n}",
 	} {
 		if !strings.Contains(string(raw), want) {
-			t.Errorf("the panel does not measure on the 8px grid: input.css is missing %s", want)
+			t.Errorf("the panel does not measure on the 8px grid: blocks/panel.css is missing %s", want)
 		}
 	}
 	// No panel rule sizes the art any other way.
-	if strings.Contains(string(raw), ".verso-panel-art svg { display: block; width: 100%; height: auto; }") {
+	if strings.Contains(string(raw), "width: 100%") || strings.Contains(string(raw), "height: auto") {
 		t.Error("the panel's art is still stretched to its column's width, off the grid")
 	}
 }
@@ -766,16 +766,16 @@ func TestAPanelMeasuresOnTheEightPixelGrid(t *testing.T) {
 // match the rule that starts it selector for selector, or the blink, being
 // more specific, wins and keeps blinking.
 func TestReducedMotionStillsTheTrafficLED(t *testing.T) {
-	raw, err := os.ReadFile("assets/input.css")
+	raw, err := os.ReadFile("assets/blocks/panel.css")
 	if err != nil {
 		t.Fatal(err)
 	}
 	css := string(raw)
-	const blinking = ".verso-panel-art [data-verso-port]:is(.act-1, .act-2, .act-3, .act-4) .led-traffic"
-	if !strings.Contains(css, blinking+" {\n    fill:") {
-		t.Fatalf("input.css no longer starts the blink with %s", blinking)
+	const blinking = `.verso-panel [data-verso-port][data-verso-activity]:not([data-verso-activity="0"]) .led-traffic`
+	if !strings.Contains(css, "\n"+blinking+" {\n  fill:") {
+		t.Fatalf("blocks/panel.css no longer starts the blink with %s", blinking)
 	}
-	if !strings.Contains(css, "@media (prefers-reduced-motion: reduce) {\n    "+blinking+" { animation: none; }") {
+	if !strings.Contains(css, "@media (prefers-reduced-motion: reduce) {\n  "+blinking+" {\n    animation: none;\n  }") {
 		t.Errorf("reduced motion must stop the blink with the same selector: %s { animation: none; }", blinking)
 	}
 }

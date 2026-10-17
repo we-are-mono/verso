@@ -386,11 +386,9 @@ document.addEventListener("alpine:init", function () {
 
   // panelFaces: which face of a board's panel art is shown, front or rear. The
   // CSP build evaluates no expressions in bindings, so each binding is a
-  // property here; the face shown is filled in the body ink, as every selected
-  // segment in the app is.
+  // property here; the segment pressed is filled in the body ink, as every
+  // selected segment in the app is (blocks/ports.css).
   Alpine.data("panelFaces", function () {
-    var on = "bg-body font-semibold text-on-fill";
-    var off = "font-normal text-body hover:text-ink";
     return {
       face: "rear",
       get rear() {
@@ -398,12 +396,6 @@ document.addEventListener("alpine:init", function () {
       },
       get front() {
         return this.face === "front";
-      },
-      get rearClass() {
-        return this.rear ? on : off;
-      },
-      get frontClass() {
-        return this.front ? on : off;
       },
       get rearPressed() {
         return this.rear ? "true" : "false";

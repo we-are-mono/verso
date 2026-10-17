@@ -190,11 +190,12 @@ func portLabel(it PortItem, v portsView) string {
 }
 
 // litPanel tags a panel's art with the live port state: for each port, the
-// shell adds its is-linked / act-N / is-wan classes, its blink phase, and the
-// focus and label a keyboard reaches it by onto the art's own data-verso-port
-// group, so one set of stylesheet rules lights every panel (ADR-005 — the
-// shell owns every pixel). The art is trusted: a profile's is first-party
-// content embedded in the binary, and a generated panel escapes what it draws.
+// shell adds its data-verso-linked / data-verso-activity / data-verso-wan
+// state, its blink phase, and the focus and label a keyboard reaches it by
+// onto the art's own data-verso-port group, so one set of stylesheet rules
+// lights every panel (blocks/panel.css; ADR-005 — the shell owns every
+// pixel). The art is trusted: a profile's is first-party content embedded in
+// the binary, and a generated panel escapes what it draws.
 func litPanel(svg string, items []PortItem, v portsView) template.HTML {
 	if svg == "" {
 		return ""
@@ -203,21 +204,20 @@ func litPanel(svg string, items []PortItem, v portsView) template.HTML {
 		if it.Iface == "" {
 			continue
 		}
-		var classes []string
+		state := ` data-verso-activity="` + strconv.Itoa(it.level()) + `"`
 		if it.Linked {
-			classes = append(classes, "is-linked")
+			state += ` data-verso-linked`
 		}
-		classes = append(classes, "act-"+strconv.Itoa(it.level()))
 		if it.Role == "wan" {
-			classes = append(classes, "is-wan")
+			state += ` data-verso-wan`
 		}
 		// The panel contract (profiles/README.md, back.svg header) tags each
-		// connector group `data-verso-port="<iface>" class="port"`; extend that
-		// class list so the lighting rules match, exactly once per port.
-		anchor := `data-verso-port="` + html.EscapeString(it.Iface) + `" class="port`
-		lit := anchor + " " + strings.Join(classes, " ") + `" style="--led-phase: ` + phaseText(it.Iface) + `"` +
+		// connector group `data-verso-port="<iface>" class="port"`; the state
+		// follows that opening, exactly once per port.
+		anchor := `data-verso-port="` + html.EscapeString(it.Iface) + `" class="port"`
+		lit := anchor + state + ` style="--led-phase: ` + phaseText(it.Iface) + `"` +
 			` tabindex="0" role="img" aria-label="` + html.EscapeString(portLabel(it, v)) + `"`
-		svg = strings.Replace(svg, anchor+`"`, lit, 1)
+		svg = strings.Replace(svg, anchor, lit, 1)
 		if it.Role == "wan" {
 			svg = tagRole(svg, lit, v.WordWAN)
 		}
@@ -228,6 +228,11 @@ func litPanel(svg string, items []PortItem, v portsView) template.HTML {
 // roleSlotEnd closes an empty role slot, the text element the art keeps over
 // each port for the shell to write its role into.
 const roleSlotEnd = `></text>`
+
+// roleWeight is the word the shell writes into a role slot set a step
+// heavier and spaced, over the art's own face and size: drawing attributes,
+// as the art's are, since the word is part of the drawing.
+const roleWeight = ` font-weight="600" letter-spacing="0.04em"`
 
 // tagRole writes word into the role slot of the port whose lit group opening
 // is group: the first slot after it and before the next port's group, so a
@@ -251,5 +256,5 @@ func tagRole(svg, group, word string) string {
 		return svg
 	}
 	closing += slot
-	return svg[:closing] + ">" + html.EscapeString(word) + "</text>" + svg[closing+len(roleSlotEnd):]
+	return svg[:closing] + roleWeight + ">" + html.EscapeString(word) + "</text>" + svg[closing+len(roleSlotEnd):]
 }

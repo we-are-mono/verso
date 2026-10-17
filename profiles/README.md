@@ -242,9 +242,11 @@ What the art carries:
   fits and shrinks it in whole 8px steps where it does not, so it stays on the
   layout's grid.
 
-How the shell lights it: each port group gains `is-linked` while it has link,
-`act-0` … `act-4` for how busy its traffic LED blinks (from its packets per second),
-`is-wan` on the WAN port, and a `--led-phase` so busy ports blink out of step. It is
+How the shell lights it: each port group gains `data-verso-linked` while it has
+link, `data-verso-activity` 0 … 4 for how busy its traffic LED blinks (from its
+packets per second), `data-verso-wan` on the WAN port, and a `--led-phase` so busy
+ports blink out of step. The word it writes into the WAN port's role slot is set at
+600 with 0.04em of tracking, over the slot's own face and size. It is
 reachable by keyboard and labelled with its name, link and speed, and its detail
 (role, address, link) shows on hover or focus.
 

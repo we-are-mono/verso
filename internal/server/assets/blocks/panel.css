@@ -1,0 +1,131 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/* SPDX-FileCopyrightText: 2026 Mono Technologies Inc. */
+
+/*
+ * panel — a router's physical panel: a board profile's own art, or the
+ * panel the widget generates for a board without art (widget.generatedPanel).
+ * Either is SVG of data-verso-port groups litPanel tags with the live state,
+ * so these rules, not per-board code, light every panel. A CSS property
+ * beats the SVG's own presentation attribute, so art ships its LEDs drawn
+ * dark and the shell paints the lit ones. The art's own names (port,
+ * led-link, led-traffic, verso-port-role) are its published contract
+ * (profiles/README.md).
+ *
+ * The panel stands at the content's left edge and is drawn at its own size
+ * wherever it fits, where every edge it draws is on the 8px grid; where it
+ * does not fit it shrinks to a whole number of 8px steps tall, its width
+ * following its proportions. It never grows past its own size. The face
+ * carries its size (--art-h, --art-aspect) from its viewBox.
+ *
+ * A port group's state: data-verso-linked while it has link (its link LED
+ * lit), data-verso-activity 0 to 4 for how busy its traffic LED blinks (an
+ * occasional blip, a steady blink, a fast flicker, a near-solid flicker),
+ * data-verso-wan on the WAN port (its outline and the word over it blue: the
+ * hardware blue on board art's dark finish, Denim on the generated panel's
+ * sand), and --led-phase, so busy ports never blink in step.
+ *
+ * Elements: __face       one face of the panel, sized from its viewBox
+ *           __generated  the panel the widget draws, on the palette's
+ *                        neutral finish: its __chassis, and each port's
+ *                        __body, __mouth, __pins, __socket, __slit, __label
+ *                        and __speed
+ */
+
+.verso-panel {
+  position: relative;
+  container-type: inline-size;
+}
+.verso-panel__face svg {
+  display: block;
+  width: auto;
+  max-width: none;
+  height: min(var(--art-h), round(down, 100cqi * var(--art-aspect), 0.5rem));
+}
+
+.verso-panel [data-verso-port] {
+  outline: none;
+}
+.verso-panel [data-verso-port]:focus-visible > path {
+  stroke: var(--color-denim);
+  stroke-width: 2;
+}
+.verso-panel [data-verso-port][data-verso-linked] .led-link {
+  fill: var(--color-hw-led-link);
+  filter: drop-shadow(0 0 3px color-mix(in srgb, var(--color-hw-led-link) 85%, transparent));
+}
+/* The traffic LED's dark beat is the lit LED dimmed, which reads as unlit
+   on any finish, and opacity is the cheapest property to animate. */
+.verso-panel [data-verso-port][data-verso-activity]:not([data-verso-activity="0"]) .led-traffic {
+  fill: var(--color-hw-led-act);
+  filter: drop-shadow(0 0 3px color-mix(in srgb, var(--color-hw-led-act) 80%, transparent));
+  animation: var(--led-beat) var(--led-period) steps(1, end) infinite;
+  animation-delay: calc(var(--led-period) * var(--led-phase, 0) * -1);
+}
+.verso-panel [data-verso-activity="1"] {
+  --led-beat: verso-led-blip;
+  --led-period: 1.8s;
+}
+.verso-panel [data-verso-activity="2"] {
+  --led-beat: verso-led-blink;
+  --led-period: 0.5s;
+}
+.verso-panel [data-verso-activity="3"] {
+  --led-beat: verso-led-blink;
+  --led-period: 0.16s;
+}
+.verso-panel [data-verso-activity="4"] {
+  --led-beat: verso-led-flicker;
+  --led-period: 0.08s;
+}
+@keyframes verso-led-blip { 0% { opacity: 1; } 8%, 100% { opacity: 0.2; filter: none; } }
+@keyframes verso-led-blink { 0% { opacity: 1; } 50%, 100% { opacity: 0.2; filter: none; } }
+@keyframes verso-led-flicker { 0% { opacity: 1; } 75%, 100% { opacity: 0.2; filter: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .verso-panel [data-verso-port][data-verso-activity]:not([data-verso-activity="0"]) .led-traffic {
+    animation: none;
+  }
+}
+
+.verso-panel [data-verso-port][data-verso-wan] > path {
+  stroke: var(--color-hw-wan);
+  stroke-width: 1.5;
+}
+.verso-panel .verso-port-role {
+  fill: var(--color-hw-wan);
+}
+
+.verso-panel__generated [data-verso-port][data-verso-wan] > path {
+  stroke: var(--color-denim);
+}
+.verso-panel__generated .verso-port-role {
+  fill: var(--color-denim);
+}
+.verso-panel__chassis {
+  fill: var(--color-quiet);
+  stroke: var(--color-rule-strong);
+  stroke-width: 1;
+}
+.verso-panel__body {
+  fill: var(--color-ground);
+  stroke: var(--color-rule-strong);
+  stroke-width: 1;
+  stroke-linejoin: round;
+}
+.verso-panel__mouth,
+.verso-panel__slit,
+.verso-panel__label {
+  fill: var(--color-ink);
+}
+.verso-panel__pins {
+  fill: var(--color-hw-pin);
+  opacity: 0.5;
+}
+.verso-panel__socket {
+  fill: var(--color-body);
+}
+.verso-panel__generated :is(.led-link, .led-traffic) {
+  fill: var(--color-inert);
+}
+.verso-panel__speed {
+  fill: var(--color-meta);
+}

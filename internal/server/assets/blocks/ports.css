@@ -1,0 +1,153 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/* SPDX-FileCopyrightText: 2026 Mono Technologies Inc. */
+
+/*
+ * ports — a device's physical ports: its name, its panel (the panel block),
+ * the Front/Rear control when both faces have art, each live port's detail
+ * and the legend for the LEDs.
+ *
+ * Variants: data-verso-accent  sky · emerald · violet · amber: the device's
+ *                              accent, tinting its name
+ * Elements: __name      the device, a label
+ *           __faces     the Front/Rear control: the app's segmented control,
+ *                       a quiet strip with the chosen segment filled in the
+ *                       body ink, as every selected segment is
+ *           __face      one segment; aria-pressed while chosen
+ *           __tip       a port's detail, over it on hover or keyboard focus
+ *                       (verso.js places it; data-below hangs it under)
+ *           __tip-name, __tip-role   the port and its role
+ *           __tip-row   one fact: its __tip-key and the value, verbatim
+ *           __legend    what the LEDs mean, at a listing legend's 14px
+ *           __key       one meaning
+ *           __dot       its LED; data-verso-state on (connected) or act
+ *                       (traffic), none not connected
+ */
+
+.verso-ports__name {
+  margin-bottom: calc(var(--spacing) * 2);
+  color: var(--color-meta);
+  @apply type-label;
+}
+.verso-ports[data-verso-accent="sky"] .verso-ports__name {
+  color: var(--color-denim-line);
+}
+.verso-ports[data-verso-accent="emerald"] .verso-ports__name {
+  color: var(--color-green-line);
+}
+.verso-ports[data-verso-accent="violet"] .verso-ports__name {
+  color: var(--color-amethyst-line);
+}
+.verso-ports[data-verso-accent="amber"] .verso-ports__name {
+  color: var(--color-marigold-line);
+}
+
+.verso-ports__faces {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--spacing) * 0.5);
+  margin-bottom: calc(var(--spacing) * 3);
+  padding: calc(var(--spacing) * 0.5);
+  border: 1px solid var(--color-rule-strong);
+  border-radius: var(--radius-xs);
+  background-color: var(--color-quiet);
+}
+.verso-ports__face {
+  height: calc(var(--spacing) * 7);
+  padding-inline: calc(var(--spacing) * 3.5);
+  border-radius: var(--radius-xs);
+  color: var(--color-body);
+  transition-property: color, background-color;
+  transition-duration: 150ms;
+  @apply type-body;
+}
+.verso-ports__face:hover {
+  color: var(--color-ink);
+}
+.verso-ports__face[aria-pressed="true"] {
+  background-color: var(--color-body);
+  color: var(--color-on-fill);
+  @apply type-button;
+}
+.verso-ports__face:focus-visible {
+  outline: 2px solid var(--color-denim);
+  outline-offset: 2px;
+}
+
+.verso-ports__tip {
+  position: absolute;
+  z-index: 5;
+  padding: calc(var(--spacing) * 2) calc(var(--spacing) * 3);
+  border: 1px solid var(--color-hw-tip-edge);
+  border-radius: var(--radius-xs);
+  background: var(--color-hw-tip);
+  color: var(--color-hw-tip-text);
+  box-shadow: var(--shadow-port-tip);
+  text-align: left;
+  white-space: nowrap;
+  pointer-events: none;
+  transform: translateX(-50%);
+  @apply type-tip;
+}
+.verso-ports__tip::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: var(--color-hw-tip);
+}
+.verso-ports__tip[data-below]::after {
+  top: auto;
+  bottom: 100%;
+  border-top-color: transparent;
+  border-bottom-color: var(--color-hw-tip);
+}
+.verso-ports__tip-name {
+  color: var(--color-canvas);
+  @apply type-subheading;
+}
+.verso-ports__tip-role {
+  text-transform: uppercase;
+}
+.verso-ports__tip-row {
+  display: flex;
+  justify-content: space-between;
+  gap: calc(var(--spacing) * 5);
+  margin-top: var(--spacing);
+  @apply type-chip;
+}
+.verso-ports__tip-key {
+  color: var(--color-hw-tip-key);
+}
+@media (prefers-reduced-motion: reduce) {
+  .verso-ports__tip {
+    transition: none;
+  }
+}
+
+.verso-ports__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(var(--spacing) * 2) calc(var(--spacing) * 5);
+  margin-top: calc(var(--spacing) * 4);
+  color: var(--color-meta);
+  @apply type-body;
+}
+.verso-ports__key {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--spacing) * 2);
+}
+.verso-ports__dot {
+  width: calc(var(--spacing) * 1.5);
+  height: calc(var(--spacing) * 1.5);
+  border-radius: 1px;
+  background: var(--color-inert);
+}
+.verso-ports__dot[data-verso-state="on"] {
+  background: var(--color-green);
+}
+.verso-ports__dot[data-verso-state="act"] {
+  background: var(--color-marigold);
+}

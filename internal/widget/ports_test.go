@@ -15,16 +15,22 @@ func TestRenderPorts(t *testing.T) {
 		{Kind: "sfp", Label: "Internet", Role: "wan", Linked: false, Iface: "eth4", Note: "PPPoE"},
 	}})
 	for _, want := range []string{
-		"Mono Gateway", "verso-ports--emerald",
+		`<div class="verso-ports__name">Mono Gateway</div>`, `<div class="verso-ports" data-verso-accent="emerald"`,
 		"Network 1", "Internet",
-		"verso-port-pins", "verso-port-socket", // both connector kinds drawn
-		"is-linked", "is-wan",
-		`data-verso-port-tip="eth0"`, "192.168.1.1", "PPPoE", // hover detail
+		"verso-panel__pins", "verso-panel__socket", // both connector kinds drawn
+		`data-verso-port="eth0" class="port" data-verso-activity="0" data-verso-linked style=`,
+		`data-verso-port="eth4" class="port" data-verso-activity="0" data-verso-wan style=`,
+		`<div class="verso-ports__tip" data-verso-port-tip="eth0"`, "192.168.1.1", "PPPoE", // hover detail
+		`<b class="verso-ports__tip-name">Internet</b>`, `<span class="verso-ports__tip-role">wan</span>`,
+		`<div class="verso-ports__tip-row" data-verso-verbatim><span class="verso-ports__tip-key">iface</span>eth0</div>`,
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("ports missing %q:\n%s", want, got)
 		}
 	}
+	// The device's accent tints its name.
+	declares(t, "ports", `.verso-ports[data-verso-accent="emerald"] .verso-ports__name`, "color: var(--color-green-line);")
+	declares(t, "ports", ".verso-ports__name", "@apply type-label;")
 }
 
 // TestPortsLegend: the legend renders only when asked, and lists only the connector
@@ -37,18 +43,28 @@ func TestPortsLegend(t *testing.T) {
 	// Legend text now flows through the {{ t }} localization function (ADR-012),
 	// so html/template autoescaping encodes the "+" as &#43; in the source — the
 	// browser still renders "SFP+ = fiber".
-	for _, want := range []string{"verso-ports-legend", "Connected", "Not connected", "Internet = your WAN", "RJ45 = network cable", "SFP&#43; = fiber"} {
+	for _, want := range []string{
+		`<div class="verso-ports__legend">`,
+		`<span class="verso-ports__key"><span class="verso-ports__dot" data-verso-state="on"></span>Connected</span>`,
+		`<span class="verso-ports__key"><span class="verso-ports__dot" data-verso-state="act"></span>Traffic</span>`,
+		`<span class="verso-ports__key"><span class="verso-ports__dot"></span>Not connected</span>`,
+		"Internet = your WAN", "RJ45 = network cable", "SFP&#43; = fiber",
+	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("legend missing %q:\n%s", want, got)
 		}
 	}
+	// Each dot is lit as the LED it stands for.
+	declares(t, "ports", `.verso-ports__dot[data-verso-state="on"]`, "background: var(--color-green);")
+	declares(t, "ports", `.verso-ports__dot[data-verso-state="act"]`, "background: var(--color-marigold);")
+	declares(t, "ports", ".verso-ports__dot", "background: var(--color-inert);")
 	// A copper-only device with no WAN omits the fiber and Internet hints.
 	rj := render(t, r, &Ports{Legend: true, Items: []PortItem{{Kind: "rj45", Label: "a", Role: "lan"}}})
 	if strings.Contains(rj, "SFP&#43; = fiber") || strings.Contains(rj, "Internet = your WAN") {
 		t.Errorf("legend should list only what the device has:\n%s", rj)
 	}
 	// No legend unless requested.
-	if strings.Contains(render(t, r, &Ports{Items: []PortItem{{Kind: "rj45", Label: "a"}}}), "verso-ports-legend") {
+	if strings.Contains(render(t, r, &Ports{Items: []PortItem{{Kind: "rj45", Label: "a"}}}), "verso-ports__legend") {
 		t.Error("legend should be absent when Legend is false")
 	}
 }
@@ -57,9 +73,10 @@ func TestPortsLegend(t *testing.T) {
 func TestPortsAccentDefault(t *testing.T) {
 	r := newRenderer(t)
 	got := render(t, r, &Ports{Items: []PortItem{{Kind: "rj45", Label: "x"}}})
-	if !strings.Contains(got, "verso-ports--sky") {
+	if !strings.Contains(got, `<div class="verso-ports" data-verso-accent="sky"`) {
 		t.Errorf("default accent should be sky:\n%s", got)
 	}
+	declares(t, "ports", `.verso-ports[data-verso-accent="sky"] .verso-ports__name`, "color: var(--color-denim-line);")
 }
 
 // TestDecodePorts covers the wire path (Decode → render) including the port list.
@@ -72,7 +89,11 @@ func TestDecodePorts(t *testing.T) {
 		t.Fatalf("decode ports: %v", err)
 	}
 	got := render(t, r, w)
-	for _, want := range []string{"D", "verso-ports--violet", "Internet", "verso-port-socket", "is-linked", "is-wan", "PPPoE", ">10 Gbps</text>"} {
+	for _, want := range []string{
+		"D", `<div class="verso-ports" data-verso-accent="violet"`, "Internet", "verso-panel__socket",
+		`data-verso-port="eth4" class="port" data-verso-activity="0" data-verso-linked data-verso-wan style=`,
+		"PPPoE", ">10 Gbps</text>",
+	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("decoded ports missing %q:\n%s", want, got)
 		}
@@ -104,8 +125,8 @@ func TestPortsWithoutIfaceIsStatic(t *testing.T) {
 
 // TestPortsPanelArt: a profile's own back-panel SVG renders in place of the
 // generated strip, lit from the live port state — the shell tags the art's own
-// data-verso-port groups with the same is-linked/is-active/is-wan classes the
-// strip wears, so one stylesheet lights both.
+// data-verso-port groups with the same data-verso-linked/-activity/-wan state
+// the generated panel wears, so one stylesheet lights both.
 func TestPortsPanelArt(t *testing.T) {
 	r := newRenderer(t)
 	back := `<svg viewBox="0 0 100 40"><g data-verso-port="eth0" class="port"><rect class="led-link"/></g><g data-verso-port="eth3" class="port"><path/></g></svg>`
@@ -117,15 +138,19 @@ func TestPortsPanelArt(t *testing.T) {
 		},
 	})
 	for _, want := range []string{
-		"verso-panel-art",
-		`data-verso-port="eth0" class="port is-linked act-2"`,        // link + traffic tagged
-		`data-verso-port="eth3" class="port is-linked act-0 is-wan"`, // link + WAN role tagged
+		`<div class="verso-panel"`,
+		`data-verso-port="eth0" class="port" data-verso-activity="2" data-verso-linked style=`,                // link + traffic tagged
+		`data-verso-port="eth3" class="port" data-verso-activity="0" data-verso-linked data-verso-wan style=`, // link + WAN role tagged
 		"led-link", // the art's own live layer survives intact
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("panel art missing %q:\n%s", want, got)
 		}
 	}
+	// The panel block lights what litPanel tagged: the link LED of a linked
+	// port and the WAN port's outline.
+	declares(t, "panel", ".verso-panel [data-verso-port][data-verso-linked] .led-link", "fill: var(--color-hw-led-link);")
+	declares(t, "panel", ".verso-panel [data-verso-port][data-verso-wan] > path", "stroke: var(--color-hw-wan);", "stroke-width: 1.5;")
 	// The generated chassis strip is not drawn when panel art is present.
 	if strings.Contains(got, "verso-ports-chassis") {
 		t.Errorf("panel art should replace the generated strip:\n%s", got)
@@ -143,9 +168,9 @@ func TestPortsActivityLevel(t *testing.T) {
 		{Iface: "a", Activity: 3, Active: true}, {Iface: "b", Active: true}, {Iface: "c"},
 	}})
 	for _, want := range []string{
-		`data-verso-port="a" class="port act-3" style="--led-phase: ` + phaseText("a") + `" tabindex="0"`,
-		`data-verso-port="b" class="port act-2"`,
-		`data-verso-port="c" class="port act-0"`,
+		`data-verso-port="a" class="port" data-verso-activity="3" style="--led-phase: ` + phaseText("a") + `" tabindex="0"`,
+		`data-verso-port="b" class="port" data-verso-activity="2" style=`,
+		`data-verso-port="c" class="port" data-verso-activity="0" style=`,
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("activity missing %q:\n%s", want, got)
@@ -154,6 +179,17 @@ func TestPortsActivityLevel(t *testing.T) {
 	if strings.Contains(got, "is-active") {
 		t.Errorf("the boolean class is gone; the level carries traffic:\n%s", got)
 	}
+	// Each level is its own beat, and level 0 leaves the LED dark.
+	for level, beat := range map[string][]string{
+		"1": {"--led-beat: verso-led-blip;", "--led-period: 1.8s;"},
+		"2": {"--led-beat: verso-led-blink;", "--led-period: 0.5s;"},
+		"3": {"--led-beat: verso-led-blink;", "--led-period: 0.16s;"},
+		"4": {"--led-beat: verso-led-flicker;", "--led-period: 0.08s;"},
+	} {
+		declares(t, "panel", `.verso-panel [data-verso-activity="`+level+`"]`, beat...)
+	}
+	declares(t, "panel", `.verso-panel [data-verso-port][data-verso-activity]:not([data-verso-activity="0"]) .led-traffic`,
+		"fill: var(--color-hw-led-act);", "animation: var(--led-beat) var(--led-period) steps(1, end) infinite;")
 
 	w, err := Decode([]byte(`{"type":"ports","ports":[{"kind":"rj45","label":"x","iface":"a","active":true}]}`))
 	if err != nil {
@@ -161,14 +197,15 @@ func TestPortsActivityLevel(t *testing.T) {
 	}
 	ports := w.(*Ports)
 	ports.Back = back
-	if got := render(t, r, ports); !strings.Contains(got, `data-verso-port="a" class="port act-2"`) {
+	if got := render(t, r, ports); !strings.Contains(got, `data-verso-port="a" class="port" data-verso-activity="2" style=`) {
 		t.Errorf("a plugin's boolean active should read as a steady blink:\n%s", got)
 	}
 }
 
 // TestTheWANPortIsTaggedAboveIt: the art carries an empty role slot over each
 // port, never the role itself; the shell writes "WAN" into the WAN port's slot
-// alone, and the port's label names the role too.
+// alone, a step heavier and spaced as part of the drawing, and the port's
+// label names the role too.
 func TestTheWANPortIsTaggedAboveIt(t *testing.T) {
 	r := newRenderer(t)
 	back := `<svg viewBox="0 0 100 40">` +
@@ -178,7 +215,7 @@ func TestTheWANPortIsTaggedAboveIt(t *testing.T) {
 		{Label: "eth0", Iface: "eth0", Role: "wan", Linked: true, Speed: "1G"}, {Label: "eth1", Iface: "eth1"},
 	}})
 	for _, want := range []string{
-		`<text class="verso-port-role" x="10" y="8">WAN</text>`,
+		`<text class="verso-port-role" x="10" y="8" font-weight="600" letter-spacing="0.04em">WAN</text>`,
 		`<text class="verso-port-role" x="60" y="8"></text>`,
 		`aria-label="eth0, WAN, Connected, 1G"`,
 	} {
@@ -186,6 +223,8 @@ func TestTheWANPortIsTaggedAboveIt(t *testing.T) {
 			t.Errorf("WAN tag missing %q:\n%s", want, got)
 		}
 	}
+	// The word is the hardware blue on board art's dark finish.
+	declares(t, "panel", ".verso-panel .verso-port-role", "fill: var(--color-hw-wan);")
 }
 
 // TestPortsArtSizesFromItsViewBox: a panel's own size reaches the stylesheet,
@@ -194,13 +233,14 @@ func TestTheWANPortIsTaggedAboveIt(t *testing.T) {
 func TestPortsArtSizesFromItsViewBox(t *testing.T) {
 	r := newRenderer(t)
 	got := render(t, r, &Ports{Back: `<svg viewBox="0 0 504 136"></svg>`, Items: []PortItem{{Iface: "eth0"}}})
-	if !strings.Contains(got, `style="--art-h: 136px; --art-aspect: 0.2698412698412698"`) {
+	if !strings.Contains(got, `<div class="verso-panel__face" style="--art-h: 136px; --art-aspect: 0.2698412698412698">`) {
 		t.Errorf("panel face should carry its native height and aspect:\n%s", got)
 	}
+	declares(t, "panel", ".verso-panel__face svg", "height: min(var(--art-h), round(down, 100cqi * var(--art-aspect), 0.5rem));")
 	// The panel says how wide its widest face is drawn, so a column that
 	// holds it can be exactly as wide.
 	got = render(t, r, &Ports{Back: `<svg viewBox="0 0 504 136"></svg>`, Front: `<svg viewBox="0 0 432 136"></svg>`, Items: []PortItem{{Iface: "eth0"}}})
-	if !strings.Contains(got, `<div class="verso-ports verso-ports--sky" style="--art-w: 504px">`) {
+	if !strings.Contains(got, `<div class="verso-ports" data-verso-accent="sky" style="--art-w: 504px">`) {
 		t.Errorf("the panel should carry its widest face's width:\n%s", got)
 	}
 }

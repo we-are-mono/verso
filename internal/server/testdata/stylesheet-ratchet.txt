@@ -74,30 +74,8 @@ classes-are-blocks	verso-page-body
 classes-are-blocks	verso-page-full
 classes-are-blocks	verso-page-ground
 classes-are-blocks	verso-page-heading
-classes-are-blocks	verso-panel-art
-classes-are-blocks	verso-panel-chassis
-classes-are-blocks	verso-panel-face
-classes-are-blocks	verso-panel-generated
 classes-are-blocks	verso-pending-link
 classes-are-blocks	verso-pluck
-classes-are-blocks	verso-port-body
-classes-are-blocks	verso-port-label
-classes-are-blocks	verso-port-mouth
-classes-are-blocks	verso-port-pins
-classes-are-blocks	verso-port-slit
-classes-are-blocks	verso-port-socket
-classes-are-blocks	verso-port-speed
-classes-are-blocks	verso-port-tip
-classes-are-blocks	verso-ports
-classes-are-blocks	verso-ports--
-classes-are-blocks	verso-ports--amber
-classes-are-blocks	verso-ports--emerald
-classes-are-blocks	verso-ports--sky
-classes-are-blocks	verso-ports--violet
-classes-are-blocks	verso-ports-dot
-classes-are-blocks	verso-ports-key
-classes-are-blocks	verso-ports-legend
-classes-are-blocks	verso-ports-name
 classes-are-blocks	verso-preview-busy
 classes-are-blocks	verso-prose
 classes-are-blocks	verso-rail-link
@@ -160,7 +138,6 @@ no-repeated-bundles	flex flex-1 flex-col gap-2 min-w-0
 no-repeated-bundles	flex flex-wrap gap-2 items-center min-w-0
 no-repeated-bundles	flex gap-1.5 items-center text-ink
 no-repeated-bundles	flex gap-3 items-start mt-11
-no-repeated-bundles	focus-visible:outline-2 focus-visible:outline-denim focus-visible:outline-offset-2 h-7 px-3.5 rounded-xs transition-colors
 no-repeated-bundles	font-medium font-mono min-w-0 text-base wrap-anywhere
 no-repeated-bundles	font-normal font-sans text-meta text-sm
 no-repeated-bundles	font-semibold leading-6 shrink-0 text-ink text-sm
@@ -452,54 +429,11 @@ rules-live-in-blocks	input.css	.verso-page-full > .verso-page-body
 rules-live-in-blocks	input.css	.verso-page-full > .verso-page-body > *
 rules-live-in-blocks	input.css	.verso-page-ground
 rules-live-in-blocks	input.css	.verso-page-heading
-rules-live-in-blocks	input.css	.verso-panel-art
-rules-live-in-blocks	input.css	.verso-panel-art .act-1
-rules-live-in-blocks	input.css	.verso-panel-art .act-2
-rules-live-in-blocks	input.css	.verso-panel-art .act-3
-rules-live-in-blocks	input.css	.verso-panel-art .act-4
-rules-live-in-blocks	input.css	.verso-panel-art .verso-port-role
-rules-live-in-blocks	input.css	.verso-panel-art [data-verso-port]
-rules-live-in-blocks	input.css	.verso-panel-art [data-verso-port].is-linked .led-link
-rules-live-in-blocks	input.css	.verso-panel-art [data-verso-port].is-wan > path
-rules-live-in-blocks	input.css	.verso-panel-art [data-verso-port]:focus-visible > path
-rules-live-in-blocks	input.css	.verso-panel-art [data-verso-port]:is(.act-1, .act-2, .act-3, .act-4) .led-traffic
-rules-live-in-blocks	input.css	.verso-panel-art [data-verso-port]:is(.act-1, .act-2, .act-3, .act-4) .led-traffic
-rules-live-in-blocks	input.css	.verso-panel-face svg
-rules-live-in-blocks	input.css	.verso-panel-generated .verso-panel-chassis
-rules-live-in-blocks	input.css	.verso-panel-generated .verso-port-body
-rules-live-in-blocks	input.css	.verso-panel-generated .verso-port-label
-rules-live-in-blocks	input.css	.verso-panel-generated .verso-port-mouth
-rules-live-in-blocks	input.css	.verso-panel-generated .verso-port-pins
-rules-live-in-blocks	input.css	.verso-panel-generated .verso-port-role
-rules-live-in-blocks	input.css	.verso-panel-generated .verso-port-slit
-rules-live-in-blocks	input.css	.verso-panel-generated .verso-port-socket
-rules-live-in-blocks	input.css	.verso-panel-generated .verso-port-speed
-rules-live-in-blocks	input.css	.verso-panel-generated :is(.led-link, .led-traffic)
-rules-live-in-blocks	input.css	.verso-panel-generated :is(.verso-port-label, .verso-port-speed)
-rules-live-in-blocks	input.css	.verso-panel-generated [data-verso-port].is-wan > path
 rules-live-in-blocks	input.css	.verso-pending-link[aria-current="page"]
 rules-live-in-blocks	input.css	.verso-pluck
 rules-live-in-blocks	input.css	.verso-pluck
 rules-live-in-blocks	input.css	.verso-pluck:focus-visible
 rules-live-in-blocks	input.css	.verso-pluck:hover
-rules-live-in-blocks	input.css	.verso-port-tip
-rules-live-in-blocks	input.css	.verso-port-tip
-rules-live-in-blocks	input.css	.verso-port-tip .r
-rules-live-in-blocks	input.css	.verso-port-tip .r .k
-rules-live-in-blocks	input.css	.verso-port-tip .role
-rules-live-in-blocks	input.css	.verso-port-tip b
-rules-live-in-blocks	input.css	.verso-port-tip::after
-rules-live-in-blocks	input.css	.verso-port-tip[data-below]::after
-rules-live-in-blocks	input.css	.verso-ports--amber .verso-ports-name
-rules-live-in-blocks	input.css	.verso-ports--emerald .verso-ports-name
-rules-live-in-blocks	input.css	.verso-ports--sky .verso-ports-name
-rules-live-in-blocks	input.css	.verso-ports--violet .verso-ports-name
-rules-live-in-blocks	input.css	.verso-ports-dot
-rules-live-in-blocks	input.css	.verso-ports-dot.act
-rules-live-in-blocks	input.css	.verso-ports-dot.on
-rules-live-in-blocks	input.css	.verso-ports-key
-rules-live-in-blocks	input.css	.verso-ports-legend
-rules-live-in-blocks	input.css	.verso-ports-name
 rules-live-in-blocks	input.css	.verso-prose > :last-child
 rules-live-in-blocks	input.css	.verso-prose a
 rules-live-in-blocks	input.css	.verso-prose code
@@ -785,7 +719,6 @@ short-class-lists	widget/templates/overview.html.tmpl	flex min-w-0 cursor-pointe
 short-class-lists	widget/templates/overview.html.tmpl	flex shrink-0 items-center gap-2 text-sm leading-6 font-medium whitespace-nowrap text-body group-data-[tone=success]/card:text-green-deep group-data-[tone=warning]/card:text-marigold-deep group-data-[tone=danger]/card:text-crimson-deep
 short-class-lists	widget/templates/overview.html.tmpl	group/chip -my-1 inline-flex h-7 cursor-pointer items-center gap-2 rounded-xs border border-rule-strong bg-ground px-2.5 text-ink transition-colors hover:border-denim-line hover:bg-denim-soft hover:text-denim-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim
 short-class-lists	widget/templates/overview.html.tmpl	mt-6 -mb-px hidden flex-wrap items-center gap-x-2 gap-y-6 rounded-xs border border-dashed border-rule-strong bg-quiet px-3 pt-1.75 pb-2 text-sm leading-6 text-meta group-data-arranging/overview:flex
-short-class-lists	widget/templates/ports.html.tmpl	mb-3 inline-flex items-center gap-0.5 rounded-xs border border-rule-strong bg-quiet p-0.5 text-sm
 short-class-lists	widget/templates/section.html.tmpl	ml-auto flex h-6 w-full items-center justify-end sm:w-auto [&>button]:h-control [&>button]:-mb-px [&>button]:gap-2 [&>button]:px-4
 short-class-lists	widget/templates/settings.html.tmpl	flex cursor-pointer items-center gap-1.5 px-3 pt-2.75 pb-3 leading-6 text-sm font-semibold text-denim-deep transition-colors select-none hover:bg-quiet hover:text-denim [&::-webkit-details-marker]:hidden
 short-class-lists	widget/templates/settings.html.tmpl	flex items-baseline justify-between gap-3 pt-1 pb-0.75 {{if not .Card}}border-b border-rule-strong {{end}}{{template "verso-kicker-class"}}
@@ -827,20 +760,7 @@ type-comes-from-roles	input.css	.verso-page-heading	font-size
 type-comes-from-roles	input.css	.verso-page-heading	font-weight
 type-comes-from-roles	input.css	.verso-page-heading	letter-spacing
 type-comes-from-roles	input.css	.verso-page-heading	line-height
-type-comes-from-roles	input.css	.verso-panel-art .verso-port-role	font-weight
-type-comes-from-roles	input.css	.verso-panel-art .verso-port-role	letter-spacing
-type-comes-from-roles	input.css	.verso-panel-generated .verso-port-role	font-family
-type-comes-from-roles	input.css	.verso-panel-generated .verso-port-role	font-size
-type-comes-from-roles	input.css	.verso-panel-generated :is(.verso-port-label, .verso-port-speed)	font-family
-type-comes-from-roles	input.css	.verso-panel-generated :is(.verso-port-label, .verso-port-speed)	font-size
 type-comes-from-roles	input.css	.verso-pluck	font
-type-comes-from-roles	input.css	.verso-port-tip	font-size
-type-comes-from-roles	input.css	.verso-port-tip .r	font-family
-type-comes-from-roles	input.css	.verso-port-tip b	font-weight
-type-comes-from-roles	input.css	.verso-ports-legend	font-size
-type-comes-from-roles	input.css	.verso-ports-name	font-size
-type-comes-from-roles	input.css	.verso-ports-name	font-weight
-type-comes-from-roles	input.css	.verso-ports-name	letter-spacing
 type-comes-from-roles	input.css	.verso-prose code	font-family
 type-comes-from-roles	input.css	.verso-prose code	font-size
 type-comes-from-roles	input.css	.verso-prose h1, .verso-prose h2, .verso-prose h3	font-weight
@@ -917,8 +837,6 @@ type-comes-from-roles	server/assets/verso-listing.js	text-sm
 type-comes-from-roles	server/assets/verso-listing.js	text-sm
 type-comes-from-roles	server/assets/verso-system.js	leading-6
 type-comes-from-roles	server/assets/verso-system.js	text-sm
-type-comes-from-roles	server/assets/verso.js	font-normal
-type-comes-from-roles	server/assets/verso.js	font-semibold
 type-comes-from-roles	server/assets/verso.js	leading-6
 type-comes-from-roles	server/assets/verso.js	text-sm
 type-comes-from-roles	server/entity.go	leading-snug
@@ -1242,7 +1160,6 @@ type-comes-from-roles	widget/templates/overview.html.tmpl	text-sm
 type-comes-from-roles	widget/templates/overview.html.tmpl	text-sm
 type-comes-from-roles	widget/templates/overview.html.tmpl	text-sm
 type-comes-from-roles	widget/templates/overview.html.tmpl	tracking-tight
-type-comes-from-roles	widget/templates/ports.html.tmpl	text-sm
 type-comes-from-roles	widget/templates/raw.html.tmpl	text-sm
 type-comes-from-roles	widget/templates/section.html.tmpl	font-medium
 type-comes-from-roles	widget/templates/section.html.tmpl	font-medium

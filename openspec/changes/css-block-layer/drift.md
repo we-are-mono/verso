@@ -163,3 +163,18 @@ The rail's 5px square stays as it is until the rail converts.
 | a band's live recolouring | | the script swapped colour classes | the script sets the band (`data-verso-tone`) the first paint carries |
 | a listing cell's meter bar | | square ends under a round clip | round ends, under the same clip: no pixel changes |
 | the traffic graph's lanes, latency line and chart parts | | hand-written spacing and `verso-chart-*` classes with `--` colour modifiers | the traffic and chart blocks; colours by `data-verso-tone`, no pixel changes |
+
+### `ports` and `panel`
+
+Measured on a fixture (build/layout-fixtures/ports.html: a generated panel, a
+board's art, and a board with both faces), rendered from the commit before and
+after; the SVG's fills, strokes and LED animations compared directly.
+
+| Copies | n | Difference | Became |
+|---|---|---|---|
+| a panel's device name | | 12px caps on the page's 18px line | the label role, on its 16px line |
+| a panel's legend | | `text-sm`'s 21px line | the body role's 24px line |
+| a port's detail (the dark hardware tip) | | 12px, its rows mono 12/400 | the tip role (14px), its rows the chip role's verbatim form (mono 14/500), the port's name the subheading role |
+| a port's live state | | `is-linked`, `act-N`, `is-wan` classes | `data-verso-linked`, `data-verso-activity`, `data-verso-wan` (profiles/README.md) |
+| the WAN word's weight and tracking, and the generated panel's mono 11px | | stylesheet rules | the drawing's own attributes, as a board's art sets its type; no pixel changes |
+| the Front/Rear control | | its pressed look a class string the script swapped | `aria-pressed`, which the block draws |

@@ -109,10 +109,10 @@
   // name. It shows over the port's middle as the pointer or focus arrives,
   // above it when there is room inside whatever would clip it and below when
   // there is not, and goes as the pointer or focus leaves, or on Escape.
-  var PORT = ".verso-panel-art [data-verso-port]";
+  var PORT = ".verso-panel [data-verso-port]";
   var shownPort = null;
   function portTip(port) {
-    var panel = port.closest(".verso-panel-art");
+    var panel = port.closest(".verso-panel");
     return panel && panel.querySelector('[data-verso-port-tip="' + CSS.escape(port.getAttribute("data-verso-port")) + '"]');
   }
   function showPort(port) {
@@ -120,7 +120,7 @@
     if (!tip) return;
     hidePort();
     tip.hidden = false;
-    var panel = port.closest(".verso-panel-art").getBoundingClientRect();
+    var panel = port.closest(".verso-panel").getBoundingClientRect();
     var rect = port.getBoundingClientRect();
     var box = clipper(port);
     var height = tip.offsetHeight + GAP;

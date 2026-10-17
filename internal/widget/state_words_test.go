@@ -31,22 +31,27 @@ func TestPortsSayTheirState(t *testing.T) {
 
 // TestPanelFacesSwitchWithoutExpressions: the Front/Rear control runs under the
 // CSP build of Alpine, which evaluates no expressions in bindings, so it binds
-// to a component's properties. The hardware face selector uses body ink.
+// to a component's properties. The chosen face is its aria-pressed state, which
+// the ports block fills in body ink.
 func TestPanelFacesSwitchWithoutExpressions(t *testing.T) {
 	got := render(t, newRenderer(t), &Ports{Back: `<svg></svg>`, Front: `<svg></svg>`})
 	for _, want := range []string{
 		`x-data="panelFaces"`, `@click="showRear"`, `@click="showFront"`,
-		`:class="rearClass"`, `:aria-pressed="rearPressed"`, `x-show="rear"`, `x-show="front"`,
+		`<div class="verso-ports__faces">`,
+		`:aria-pressed="rearPressed" class="verso-ports__face"`, `:aria-pressed="frontPressed" class="verso-ports__face"`,
+		`x-show="rear"`, `x-show="front"`,
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("panel faces missing %q:\n%s", want, got)
 		}
 	}
-	for _, gone := range []string{"face ===", "bg-denim text-on-fill"} {
+	for _, gone := range []string{"face ===", ":class=", "bg-denim text-on-fill"} {
 		if strings.Contains(got, gone) {
 			t.Errorf("panel faces must not carry %q:\n%s", gone, got)
 		}
 	}
+	declares(t, "ports", `.verso-ports__face[aria-pressed="true"]`,
+		"background-color: var(--color-body);", "color: var(--color-on-fill);", "@apply type-button;")
 }
 
 // TestFetchedPanelsSayTheyAreLoading: a drawer whose contents are one request
