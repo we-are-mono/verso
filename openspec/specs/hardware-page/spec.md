@@ -189,7 +189,7 @@ The Cooling card SHALL be one table with the columns Fan, Source, Speed, Duty an
 - **THEN** its Speed reads "—" and its Status reads Not connected, in the muted tone
 
 ### Requirement: Each SFP module is a card
-Each SFP cage that holds a module SHALL have a card of its own, titled "SFP+ module" with the cage's name as a chip in the card's header. Its facts are one list: the link verdict, transmit and receive power (dBm, then the raw power), temperature, supply and laser bias.
+Each SFP cage that holds a module SHALL have a card of its own, titled "SFP+ module" with the cage's name as a chip in the card's header. The modules' cards stand side by side where the page has room for two columns, and stack where it has not. Its facts are one list: the link verdict, transmit and receive power (dBm, then the raw power), temperature, supply and laser bias.
 
 #### Scenario: Two modules
 - **WHEN** cages `xfi0` and `xfi1` hold modules

@@ -373,10 +373,16 @@ func TestCoolingListsEveryFan(t *testing.T) {
 }
 
 // Each SFP module is a card of its own, titled "SFP+ module" with its cage's
-// chip in the header, its readings one list under it.
+// chip in the header, its readings one list under it; the modules' cards
+// stand side by side.
 func TestEachModuleIsACard(t *testing.T) {
+	page := renderCards(t, dkInput())
+	row := strings.Index(page, "<div data-verso-cards>")
+	if row < 0 || row > strings.Index(page, ">SFP&#43; module</h2>") {
+		t.Errorf("the modules' cards should stand in one row:\n%s", page)
+	}
 	var modules []string
-	for _, s := range strings.Split(renderCards(t, dkInput()), "<section data-verso-section") {
+	for _, s := range strings.Split(page, "<section data-verso-section") {
 		if strings.Contains(s, ">SFP&#43; module</h2>") {
 			modules = append(modules, s)
 		}

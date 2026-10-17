@@ -28,6 +28,29 @@ func TestRenderGrid(t *testing.T) {
 	}
 }
 
+// Cards of one kind stand in a row of cells, each card in a cell of its own,
+// so none is the card after another (sections.css spaces those) and the row
+// lays them side by side where the page has room.
+func TestGridCardsStandInCells(t *testing.T) {
+	got := render(t, newRenderer(t), &Grid{Style: "cards", Children: []Widget{
+		&Section{Title: "SFP+ module", Chip: "xfi0", Hairline: true},
+		&Section{Title: "SFP+ module", Chip: "xfi1", Hairline: true},
+	}})
+	if !strings.HasPrefix(strings.TrimSpace(got), `<div data-verso-cards><div>`) {
+		t.Errorf("the row should open the cards' cells:\n%s", got)
+	}
+	if n := strings.Count(got, `<div class="min-w-0"><section`); n != 2 {
+		t.Errorf("%d cards in cells of their own, want 2:\n%s", n, got)
+	}
+	css, err := os.ReadFile(filepath.Join("..", "server", "assets", "sections.css"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(css), "[data-verso-cards] > div {") {
+		t.Error("sections.css should lay the cards' row out")
+	}
+}
+
 // TestGridColumnsResponsive checks the count→responsive-class mapping the shell owns.
 func TestGridColumnsResponsive(t *testing.T) {
 	r := newRenderer(t)

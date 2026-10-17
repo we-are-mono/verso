@@ -304,6 +304,31 @@
 .verso-page-body > .verso-stack > * {
   margin-bottom: 0;
 }
+/* Cards of one kind side by side (a board's fiber modules): the row stands
+ * where a card would, 23px under the card before it, and lays its cards on
+ * the Overview's column measure: each column its share rounded down to 8px
+ * and a pixel more, the next 24px on less that pixel, so both borders of
+ * every card are lines. Narrow, they stack 23px apart, as cards do. */
+.verso-page-body > .verso-stack > * + [data-verso-cards] {
+  margin-top: calc(var(--spacing-inset) - 1px);
+}
+.verso-page-body > .verso-stack > [data-verso-cards]:last-child {
+  margin-bottom: -1px;
+}
+.verso-page-body [data-verso-cards] {
+  container: cards / inline-size;
+}
+.verso-page-body [data-verso-cards] > div {
+  display: grid;
+  grid-template-columns: calc(round(down, 100% - 1px, 8px) + 1px);
+  gap: calc(var(--spacing-inset) - 1px);
+  align-items: start;
+}
+@container cards (min-width: 40rem) {
+  .verso-page-body [data-verso-cards] > div {
+    grid-template-columns: repeat(2, calc(round(down, calc((100% - var(--spacing-inset) - 1px) / 2), 8px) + 1px));
+  }
+}
 /* The page's last card gives its bottom border's pixel back as every card
  * does to the next, so the colophon's hairline, the page's 40px on, lands on
  * a line. A form column's stack ends the page as well, beside its rail. */

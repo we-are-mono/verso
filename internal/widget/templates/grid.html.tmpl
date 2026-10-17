@@ -33,6 +33,11 @@
 <div class="@container">
   <div class="grid grid-cols-1 gap-10 @form-split:grid-cols-form [&>:first-child]:max-w-form [&>div:last-child]:self-start [&>div:last-child]:order-first @form-split:[&>div:last-child]:order-none @form-split:[&>div:last-child]:sticky @form-split:[&>div:last-child]:top-22">{{range $i, $child := .Children}}<div{{if eq $i 0}} data-verso-form-column{{end}} class="min-w-0">{{$child}}</div>{{end}}</div>
 </div>
+{{else if eq .Style "cards"}}
+{{/* Cards of one kind (a board's fiber modules) side by side where the page
+     has room, on the Overview's column measure (sections.css). Each stands in
+     a cell of its own, so none is the card after another. */}}
+<div data-verso-cards><div>{{range .Children}}<div class="min-w-0">{{.}}</div>{{end}}</div></div>
 {{else if eq .Style "form"}}
 {{/* Related fields share a row only when their own container has room. The
      group owns the outer field padding, so stacking keeps the same rhythm. */}}

@@ -95,12 +95,13 @@ func hardwareCards(tr func(string) string, in hardwareInput) []widget.Widget {
 		temperaturesCard(tr, in),
 		powerCard(in.inv.PageRails()),
 		coolingCard(in.inv.PageFans()),
+		fibreCards(in.inv.Fibers),
 	} {
 		if card != nil {
 			out = append(out, card)
 		}
 	}
-	return append(out, fibreCards(in.inv.Fibers)...)
+	return out
 }
 
 // hardwarePanel renders the router's panel (port_panel.go). A box with no
@@ -448,10 +449,13 @@ func fanStatus(state string) widget.TableCell {
 	}
 }
 
-// fibreCards is a card per fiber module, titled "SFP+ module" with its cage's
-// chip in the header, the optical pair leading its facts (dBm, with raw
-// microwatts as the quiet twin) under a plain link verdict.
-func fibreCards(fibers []sensors.FiberModule) []widget.Widget {
+// fibreCards is a card per fiber module, side by side, titled "SFP+ module"
+// with its cage's chip in the header, the optical pair leading its facts
+// (dBm, with raw microwatts as the quiet twin) under a plain link verdict.
+func fibreCards(fibers []sensors.FiberModule) widget.Widget {
+	if len(fibers) == 0 {
+		return nil
+	}
 	cards := make([]widget.Widget, 0, len(fibers))
 	for i := range fibers {
 		cards = append(cards, &widget.Section{
@@ -459,7 +463,7 @@ func fibreCards(fibers []sensors.FiberModule) []widget.Widget {
 			Children: []widget.Widget{fibreFacts(&fibers[i])},
 		})
 	}
-	return cards
+	return &widget.Grid{Style: "cards", Children: cards}
 }
 
 func fibreFacts(f *sensors.FiberModule) widget.Widget {
