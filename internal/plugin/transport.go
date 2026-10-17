@@ -349,29 +349,40 @@ func (t *SocketTransport) Fetch(ctx context.Context, target Endpoint, req Reques
 		return nil, err
 	}
 
-	resp, err := client.Do(httpReq)
+	var env Envelope
+	// Both a 200 and a 422 carry a renderable schema envelope.
+	renderable := func(status int) bool {
+		return status == http.StatusOK || status == http.StatusUnprocessableEntity
+	}
+	status, err := roundTrip(client, httpReq, socket, renderable, "fetch", "", "envelope", &env)
 	if err != nil {
-		return nil, fmt.Errorf("plugin: fetch %s: %w", socket, err)
+		return nil, err
+	}
+	env.Status = status
+	return &env, nil
+}
+
+// roundTrip sends req, refuses a status accept does not take, and decodes at
+// most maxEnvelopeBytes of JSON body into out, returning the status. The
+// labels keep each verb's error wording: verb names the failed request,
+// prefix leads the status and read errors, body names what failed to decode.
+func roundTrip(client *http.Client, req *http.Request, socket string, accept func(int) bool, verb, prefix, body string, out any) (int, error) {
+	resp, err := client.Do(req)
+	if err != nil {
+		return 0, fmt.Errorf("plugin: %s %s: %w", verb, socket, err)
 	}
 	defer resp.Body.Close()
-
-	switch resp.StatusCode {
-	case http.StatusOK, http.StatusUnprocessableEntity:
-		// Both carry a renderable schema envelope.
-	default:
-		return nil, fmt.Errorf("plugin: %s returned status %d", socket, resp.StatusCode)
+	if !accept(resp.StatusCode) {
+		return 0, fmt.Errorf("plugin: %s%s returned status %d", prefix, socket, resp.StatusCode)
 	}
-
 	data, err := io.ReadAll(io.LimitReader(resp.Body, maxEnvelopeBytes))
 	if err != nil {
-		return nil, fmt.Errorf("plugin: read %s: %w", socket, err)
+		return 0, fmt.Errorf("plugin: read %s%s: %w", prefix, socket, err)
 	}
-	var env Envelope
-	if err := json.Unmarshal(data, &env); err != nil {
-		return nil, fmt.Errorf("plugin: decode envelope from %s: %w", socket, err)
+	if err := json.Unmarshal(data, out); err != nil {
+		return 0, fmt.Errorf("plugin: decode %s from %s: %w", body, socket, err)
 	}
-	env.Status = resp.StatusCode
-	return &env, nil
+	return resp.StatusCode, nil
 }
 
 // Describe POSTs the pending-change list to the plugin's describe hook and decodes
@@ -402,21 +413,10 @@ func (t *SocketTransport) Describe(ctx context.Context, target Endpoint, changes
 		httpReq.Header.Set(HeaderUCI, base64.StdEncoding.EncodeToString(snap))
 	}
 
-	resp, err := client.Do(httpReq)
-	if err != nil {
-		return nil, fmt.Errorf("plugin: describe %s: %w", socket, err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("plugin: describe %s returned status %d", socket, resp.StatusCode)
-	}
-	data, err := io.ReadAll(io.LimitReader(resp.Body, maxEnvelopeBytes))
-	if err != nil {
-		return nil, fmt.Errorf("plugin: read describe %s: %w", socket, err)
-	}
 	var out describeResponse
-	if err := json.Unmarshal(data, &out); err != nil {
-		return nil, fmt.Errorf("plugin: decode describe from %s: %w", socket, err)
+	ok := func(status int) bool { return status == http.StatusOK }
+	if _, err := roundTrip(client, httpReq, socket, ok, "describe", "describe ", "describe", &out); err != nil {
+		return nil, err
 	}
 	return out.Descriptions, nil
 }
