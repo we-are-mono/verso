@@ -24,13 +24,3 @@ func TestASectionsGlyphLeadsItsTitle(t *testing.T) {
 		t.Errorf("a section without a glyph shows one:\n%s", bare)
 	}
 }
-
-// TestAnArtifactNamesItsFrame: an artifact (a certificate) draws its own
-// frame, which a page card takes away so no card holds a card; the
-// frame says what it is so the stylesheet can find it.
-func TestAnArtifactNamesItsFrame(t *testing.T) {
-	got := render(t, newRenderer(t), &Card{Style: "artifact", Title: "HTTPS certificate"})
-	if !strings.Contains(got, "<section data-verso-artifact class=") {
-		t.Errorf("the artifact's frame is not named:\n%s", got)
-	}
-}

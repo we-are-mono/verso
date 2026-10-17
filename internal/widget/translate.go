@@ -38,11 +38,6 @@ func translateFields(w Widget, t func(string) string) {
 	case *Callout:
 		n.Title = t(n.Title)
 		n.Body = t(n.Body)
-	case *Card:
-		n.Title = t(n.Title)
-		if !n.SubtitleMono {
-			n.Subtitle = t(n.Subtitle)
-		}
 	case *Chart:
 		if n.Verbatim {
 			break

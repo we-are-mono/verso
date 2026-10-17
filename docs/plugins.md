@@ -243,7 +243,7 @@ envelope** back — `Content-Type: application/json`:
 {
   "schema_version": 1,
   "title": "General",
-  "widget": { "type": "card", "title": "Hostname", "children": [ /* … */ ] }
+  "widget": { "type": "card", "children": [ /* … */ ] }
 }
 ```
 
@@ -717,12 +717,12 @@ You compose a **closed set** of widgets with **semantic** props — `label`,
 widget types; you nest and compose these. When nothing fits, `raw` is the
 display-only bridge (last). Every node is `{"type": "...", …}`.
 
-### card — a titled container
+### card — a container
 
 Nests other widgets. This is how you lay out a page.
 
 ```json
-{ "type": "card", "title": "Hostname",
+{ "type": "card",
   "children": [ /* any widgets */ ] }
 ```
 
@@ -1699,8 +1699,8 @@ and schema traversal. Row actions keep their own links or submitted verbs.
 `grid` style `editor` lays out a 640px interface form beside an anchor rail and
 configuration preview, collapsing to one column when space is limited. Reuse
 `link` style `rail` and a live `code` preview in that column. A chooser drawer uses
-`link` style `choice`, with optional `desc` prose and a `code` label. Stored keys
-and certificates use `card` style `artifact`; form sections remain unboxed.
+`link` style `choice`, with optional `desc` prose and a `code` label. Form
+sections remain unboxed.
 
 The Interfaces inventory uses `table` style `interfaces`: its six columns are
 identity, device type, IPv4 address, MAC, operational state, and actions. Identity
@@ -1714,8 +1714,8 @@ The new drawer opens on a `Type` select marked `reshapes` (Network, Internet
 connection, Bridge, VLAN, Tunnel); changing it draws the drawer for that kind,
 keeping the name, device, MTU and MAC override. The page has no control band.
 Expanded details use `grid` styles
-`facts` and `configurations`; an editor rail may use `card` style `preview` with
-an unlabeled live code block.
+`facts` and `configurations`; an editor rail may hold an unlabeled live code
+block.
 
 `verso.networkState` brokers normalized netifd booleans and kernel device facts.
 `interface-up`, `interface-down`, and `interface-restart` commands each require

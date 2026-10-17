@@ -119,27 +119,6 @@ func TestRenderStackDivided(t *testing.T) {
 	}
 }
 
-func TestRenderCardChrome(t *testing.T) {
-	r := newRenderer(t)
-
-	got := render(t, r, &Card{Title: "empty"})
-	want := `<section><div class="mb-6"><h3 class="text-lg font-semibold tracking-tight leading-6 text-ink">empty</h3></div><div class="space-y-6"></div></section>`
-	if got != want {
-		t.Errorf("Render mismatch:\n got: %s\nwant: %s", got, want)
-	}
-}
-
-func TestRenderCardSubtitle(t *testing.T) {
-	r := newRenderer(t)
-	got := render(t, r, &Card{Title: "Your gateway", Subtitle: "the back of the box"})
-	if !strings.Contains(got, `<h3 class="text-lg font-semibold tracking-tight leading-6 text-ink">Your gateway</h3>`) {
-		t.Errorf("card title missing:\n%s", got)
-	}
-	if !strings.Contains(got, `<p class="text-sm leading-6 text-body">the back of the box</p>`) {
-		t.Errorf("card subtitle missing or not styled as a subtitle:\n%s", got)
-	}
-}
-
 func TestRenderCardWithoutTitleOmitsHeader(t *testing.T) {
 	r := newRenderer(t)
 
@@ -155,7 +134,6 @@ func TestRenderCardWithoutTitleOmitsHeader(t *testing.T) {
 func TestRenderCardNestsChild(t *testing.T) {
 	r := newRenderer(t)
 	card := &Card{
-		Title:    "Status",
 		Children: []Widget{&Table{Columns: []TableColumn{{Label: "A"}}, Rows: []TableRow{{Cells: []TableCell{{Text: "1"}}}}}},
 	}
 
@@ -169,8 +147,8 @@ func TestRenderCardNestsChild(t *testing.T) {
 
 func TestRenderCardNestingDepth(t *testing.T) {
 	r := newRenderer(t)
-	card := &Card{Title: "outer", Children: []Widget{
-		&Card{Title: "inner", Children: []Widget{
+	card := &Card{Children: []Widget{
+		&Card{Children: []Widget{
 			&Table{Columns: []TableColumn{{Label: "A"}}, Rows: []TableRow{{Cells: []TableCell{{Text: "1"}}}}},
 		}},
 	}}
@@ -181,18 +159,6 @@ func TestRenderCardNestingDepth(t *testing.T) {
 	}
 	if !strings.Contains(got, "<table") {
 		t.Errorf("innermost table missing: %s", got)
-	}
-}
-
-func TestRenderCardEscapesTitle(t *testing.T) {
-	r := newRenderer(t)
-
-	got := render(t, r, &Card{Title: `<script>alert(1)</script>`})
-	if strings.Contains(got, "<script>") {
-		t.Errorf("card title not escaped: %s", got)
-	}
-	if !strings.Contains(got, "&lt;script&gt;") {
-		t.Errorf("escaped title missing: %s", got)
 	}
 }
 
@@ -1097,7 +1063,7 @@ func TestRenderLivePreview(t *testing.T) {
 
 	// The page around it is already on screen, so a preview request is answered
 	// with the block and nothing else — not the form it describes.
-	page := &Card{Title: "Zone", Children: []Widget{
+	page := &Card{Children: []Widget{
 		&Field{Name: "input", Label: "Traffic to the router", Kind: "text", Value: "ACCEPT"},
 		block,
 	}}
@@ -1113,7 +1079,7 @@ func TestRenderLivePreview(t *testing.T) {
 	if !strings.Contains(out, "config zone") {
 		t.Errorf("the answer is not the preview: %s", out)
 	}
-	if strings.Contains(out, `name="input"`) || strings.Contains(out, "Zone") {
+	if strings.Contains(out, `name="input"`) || strings.Contains(out, "Traffic to the router") {
 		t.Errorf("the answer carries the page as well as the preview: %s", out)
 	}
 

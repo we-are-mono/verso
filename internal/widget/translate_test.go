@@ -40,7 +40,7 @@ var slLoud = map[string]string{
 // machine fields (names, ids) are left verbatim.
 func TestTranslateSchemaWalksEveryTextField(t *testing.T) {
 	tr := fakeCatalog(slLoud)
-	tree := &Card{
+	tree := &Section{
 		Title: "Devices",
 		Children: []Widget{
 			&Form{Submit: "Save", Fields: []Widget{
@@ -58,7 +58,7 @@ func TestTranslateSchemaWalksEveryTextField(t *testing.T) {
 	translateSchema(tree, tr)
 
 	if tree.Title != "Naprave" {
-		t.Errorf("card title = %q, want translated", tree.Title)
+		t.Errorf("section title = %q, want translated", tree.Title)
 	}
 	form := tree.Children[0].(*Form)
 	if form.Submit != "Shrani" {
@@ -250,10 +250,10 @@ func TestTranslateHonorsVerbatimDeclarations(t *testing.T) {
 // keeps its English source, so a partial catalog never blanks a field.
 func TestTranslateSchemaFallsBackToSource(t *testing.T) {
 	tr := fakeCatalog(slLoud)
-	card := &Card{Title: "Not in the catalog"}
-	translateSchema(card, tr)
-	if card.Title != "Not in the catalog" {
-		t.Errorf("missing key must fall back to source, got %q", card.Title)
+	section := &Section{Title: "Not in the catalog"}
+	translateSchema(section, tr)
+	if section.Title != "Not in the catalog" {
+		t.Errorf("missing key must fall back to source, got %q", section.Title)
 	}
 }
 
@@ -307,7 +307,7 @@ func TestRenderEnglishWhenNoTranslator(t *testing.T) {
 // escaped.
 func TestTranslatedValuesAreEscaped(t *testing.T) {
 	evil := fakeCatalog(map[string]string{
-		"Devices": `<script>alert(1)</script>`,    // a walked struct field (Card.Title)
+		"Devices": `<script>alert(1)</script>`,    // a walked struct field (Section.Title)
 		"Copy":    `<img src=x onerror=alert(2)>`, // a {{ t }} template literal (properties.html.tmpl)
 	})
 	r := newRenderer(t)
@@ -316,7 +316,7 @@ func TestTranslatedValuesAreEscaped(t *testing.T) {
 	}
 
 	var b strings.Builder
-	tree := &Card{Title: "Devices", Children: []Widget{&Properties{Items: []Property{{Label: "x", Value: "y", Copy: true}}}}}
+	tree := &Section{Title: "Devices", Children: []Widget{&Properties{Items: []Property{{Label: "x", Value: "y", Copy: true}}}}}
 	if err := r.RenderWithToken(&b, tree, "", "xx", evil); err != nil {
 		t.Fatalf("RenderWithToken: %v", err)
 	}

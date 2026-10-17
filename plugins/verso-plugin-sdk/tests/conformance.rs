@@ -37,7 +37,9 @@ fn write_widget_fixtures() {
         ),
         (
             "card",
-            Widget::card("Tunnel", vec![Widget::text("One tunnel, two peers.")]),
+            Widget::Card {
+                children: vec![Widget::text("One tunnel, two peers.")],
+            },
         ),
         (
             "section",

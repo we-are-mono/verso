@@ -8,35 +8,22 @@ import (
 	"io"
 )
 
-// Card is a titled container that nests other widgets. It is the composition
+// Card is a container that nests other widgets. It is the composition
 // primitive: the schema's ability to nest — not merely render a leaf — rests on it.
 // Children decode recursively through Decode, so a card may hold any widget, itself
-// included, and the closed set is enforced at every level. An optional Subtitle sits
-// just under the title as part of the header block — describing the card — set apart
-// from the content below it.
+// included, and the closed set is enforced at every level.
 type Card struct {
-	Style    string `json:"style"`
-	Title    string `json:"title"`
-	Subtitle string `json:"subtitle"`
-	// SubtitleMono declares the subtitle a machine string (an SFP module's
-	// cage, "xfi0") rather than a sentence: set in mono, as every verbatim
-	// string is, and left out of translation.
-	SubtitleMono bool    `json:"subtitle_mono,omitempty"`
-	Children     Widgets `json:"children"`
+	Children Widgets `json:"children"`
 }
 
 func (*Card) isWidget() {}
 
 func (c *Card) children() []Widget { return c.Children }
 
-// cardView is the card template's model: the title and subtitle plus the children
-// already rendered to trusted HTML fragments.
+// cardView is the card template's model: the children already rendered to
+// trusted HTML fragments.
 type cardView struct {
-	Style        string
-	Title        string
-	Subtitle     string
-	SubtitleMono bool
-	Children     []template.HTML
+	Children []template.HTML
 }
 
 // renderInto renders each child through the renderer, so composition/nesting lives
@@ -46,5 +33,5 @@ func (c *Card) renderInto(r *Renderer, out io.Writer, csrf string) error {
 	if err != nil {
 		return err
 	}
-	return r.execute(out, "card.html.tmpl", cardView{Style: c.Style, Title: c.Title, Subtitle: c.Subtitle, SubtitleMono: c.SubtitleMono, Children: children})
+	return r.execute(out, "card.html.tmpl", cardView{Children: children})
 }

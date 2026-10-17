@@ -651,16 +651,8 @@ pub enum Widget {
         active: bool,
         children: Vec<Widget>,
     },
-    /// A titled box of child widgets — the page-layout primitive.
-    Card {
-        #[serde(skip_serializing_if = "String::is_empty")]
-        style: String,
-        #[serde(skip_serializing_if = "String::is_empty")]
-        title: String,
-        #[serde(skip_serializing_if = "String::is_empty")]
-        subtitle: String,
-        children: Vec<Widget>,
-    },
+    /// A box of child widgets — the page-layout primitive.
+    Card { children: Vec<Widget> },
     /// A titled region of the page, set apart with generous space. Meta is
     /// compact status text beside the title (an optional icon and "inline"
     /// position refine it). Control is one compact widget placed beside the
@@ -1446,16 +1438,6 @@ impl Widget {
             | Widget::Disclosure { children, .. }
             | Widget::Empty { children, .. } => children.iter().find_map(|w| w.reading(key)),
             _ => None,
-        }
-    }
-
-    /// card is a container of child widgets, optionally titled.
-    pub fn card(title: &str, children: Vec<Widget>) -> Widget {
-        Widget::Card {
-            style: String::new(),
-            title: title.into(),
-            subtitle: String::new(),
-            children,
         }
     }
 

@@ -1,23 +1,6 @@
 <!-- SPDX-License-Identifier: GPL-2.0-only -->
 <!-- SPDX-FileCopyrightText: 2026 Mono Technologies Inc. -->
-{{/* Legacy groups are sections. A frame is reserved for a stored artifact.
-     It is a multiple of 4px tall with its frame, as every box is, and every
-     word inside it writes on 20px lines. At the sides it holds the words
-     24px in, and it closes 22px under its last row. */}}
-<section{{if eq .Style "artifact"}} data-verso-artifact class="w-full rounded-xs border border-rule bg-quiet px-6 pb-5.5"{{end}}>
-  {{if eq .Style "artifact"}}
-  {{/* A stored document says what it is before its facts do: the name over a
-       sentence of what it is for, closed off from the facts by the strong
-       hairline a column head sits on — 24px of air above the name, the
-       name's line and the sentence's, 23px under them, and the hairline the
-       line after. */}}
-  {{if .Title}}<div class="border-b border-rule-strong pt-6 pb-5.75">
-    <h3 class="text-base leading-6 font-semibold text-ink">{{.Title}}</h3>
-    {{if .Subtitle}}<p class="{{if .SubtitleMono}}font-mono text-base leading-6 font-medium{{else}}text-sm leading-6{{end}} text-body">{{.Subtitle}}</p>{{end}}
-  </div>{{end}}
-  {{else if or .Title .Subtitle}}<div class="{{if eq .Style "preview"}}mt-10{{else}}mb-6{{end}}">
-    {{if .Title}}<h3 class="{{if eq .Style "preview"}}text-sm font-semibold{{else}}text-lg font-semibold tracking-tight{{end}} leading-6 text-ink">{{.Title}}</h3>{{end}}
-    {{if .Subtitle}}<p class="text-sm leading-6 text-body">{{.Subtitle}}</p>{{end}}
-  </div>{{end}}
+{{/* Legacy groups are sections. */}}
+<section>
   <div class="space-y-6">{{range .Children}}{{.}}{{end}}</div>
 </section>

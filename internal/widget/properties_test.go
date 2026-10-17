@@ -73,34 +73,6 @@ func TestRowsHangFromTheirFirstLine(t *testing.T) {
 	}
 }
 
-// TestArtifactFrameNamesWhatItHolds: a stored document says what it is before
-// its facts do — a header on the frame's own inset, the name over a sentence of
-// what it is for, closed off from the facts by the strong hairline a column
-// head sits on. It is the card's part, one step under the section it is in.
-func TestArtifactFrameNamesWhatItHolds(t *testing.T) {
-	got := render(t, newRenderer(t), &Card{Style: "artifact", Title: "HTTPS certificate", Subtitle: "What this router shows browsers.", Children: []Widget{&Properties{}}})
-	for _, want := range []string{
-		// a cell of air over the name, the name's 20px line and the
-		// sentence's, a cell under them, and the hairline on the cell's line
-		`<div class="border-b border-rule-strong pt-6 pb-5.75"><h3 class="text-base leading-6 font-semibold text-ink">HTTPS certificate</h3><p class="text-sm leading-6 text-body">What this router shows browsers.</p></div>`,
-	} {
-		if !strings.Contains(got, want) {
-			t.Errorf("want %s in:\n%s", want, got)
-		}
-	}
-}
-
-// TestArtifactFrameKeepsOneInset: inside the frame around a stored document,
-// every word writes on 20px lines, and the frame is a multiple of 4px tall,
-// closing 22px under its last row. At the sides the frame holds the words
-// 24px in.
-func TestArtifactFrameKeepsOneInset(t *testing.T) {
-	got := render(t, newRenderer(t), &Card{Style: "artifact", Children: []Widget{&Properties{}}})
-	if !strings.Contains(got, `class="w-full rounded-xs border border-rule bg-quiet px-6 pb-5.5"`) {
-		t.Errorf("want one inset on every side:\n%s", got)
-	}
-}
-
 // TestSpanRowDrawsTheStretchAndWhereNowIs: a fact that is a stretch between two
 // ends — a certificate's validity — draws the stretch as the meter's track,
 // filled in its state's hue up to where now is. The ends are written under the

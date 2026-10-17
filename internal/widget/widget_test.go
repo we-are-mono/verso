@@ -29,9 +29,6 @@ func TestDecodeCard(t *testing.T) {
 	if !ok {
 		t.Fatalf("Decode: got %T, want *Card", w)
 	}
-	if card.Title != "System" {
-		t.Errorf("Title = %q, want %q", card.Title, "System")
-	}
 	if len(card.Children) != 1 {
 		t.Fatalf("Children = %d, want 1", len(card.Children))
 	}

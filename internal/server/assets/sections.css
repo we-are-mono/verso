@@ -604,17 +604,6 @@
 :is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > .verso-rhythm > details.verso-disclosure:not(:only-child) > .verso-rhythm > .verso-field-row:first-child {
   padding-top: calc(var(--spacing) * 3.75);
 }
-/* A framed box in a card (a certificate) gives up its frame and fill: no card
- * holds a card. Its name and sentence stay where they stand, and the air
- * under its last row is the full 24px its frame's two pixels no longer take. */
-:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section] [data-verso-artifact] {
-  width: auto;
-  margin: 0;
-  border-width: 0;
-  background-color: transparent;
-  padding-inline: 0;
-  padding-bottom: var(--spacing-inset);
-}
 /* A page form's Save stands on the sand 24px under the last card, ruled off
  * by the cards themselves. */
 :is(.verso-page-body, [data-verso-drawer-body]) [data-verso-form-actions][data-verso-rule] {
