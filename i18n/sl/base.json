@@ -236,7 +236,7 @@
   "Internet = your WAN connection": "Internet = vaša povezava WAN",
   "Hardware": "Strojna oprema",
   "Processor": "Procesor",
-  "Board name": "Ime plošče",
+  "Board ID": "ID plošče",
   "1 core": "1 jedro",
   "%d cores": "%d jeder",
   "SD card": "kartica SD",

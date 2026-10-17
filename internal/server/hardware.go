@@ -158,7 +158,9 @@ func boardCard(tr func(string) string, nums units.Numbers, in hardwareInput) wid
 }
 
 // machineFacts is what the box is made of, one list read down: Processor,
-// Memory, Storage, NOR flash and Board name. A fact the box cannot answer is
+// Memory, Storage, NOR flash and Board ID (the board_name the device tree or
+// the firmware's DMI gives, which firmware images are matched by; an
+// identifier, not a name). A fact the box cannot answer is
 // left out.
 func machineFacts(tr func(string) string, nums units.Numbers, in hardwareInput) widget.Widget {
 	var items []widget.Property
@@ -175,7 +177,7 @@ func machineFacts(tr func(string) string, nums units.Numbers, in hardwareInput) 
 		items = append(items, widget.Property{Label: "NOR flash", Value: flashFact(nums, f), Verbatim: true})
 	}
 	if in.board.BoardName != "" {
-		items = append(items, widget.Property{Label: "Board name", Value: in.board.BoardName, Mono: true})
+		items = append(items, widget.Property{Label: "Board ID", Value: in.board.BoardName, Mono: true})
 	}
 	if len(items) == 0 {
 		return nil

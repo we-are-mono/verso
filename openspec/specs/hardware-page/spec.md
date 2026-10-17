@@ -31,11 +31,11 @@ The first card SHALL be titled with the board's name: the profile's `name`, else
 - **THEN** the first card is titled "Supermicro H13SAE-MF" and holds the generated panel, centred
 
 ### Requirement: The board card says what the box is made of
-Under the panel, the board card SHALL list the facts Processor, Memory, Storage, NOR flash and Board name, in one list read down. Processor is the profile's `processor`, else the name the kernel reports, followed by the number of cores and, where the kernel reports it, the top clock. Memory is the total the kernel manages. Storage is the size and kind of the disk the firmware boots from. NOR flash is the part as the kernel's SPI NOR framework names it, followed by the chip's size, as far as its MTD devices reach; a chip the framework names none reads its size alone. Board name is the `board_name`, in mono. A fact the board cannot answer is left out.
+Under the panel, the board card SHALL list the facts Processor, Memory, Storage, NOR flash and Board ID, in one list read down. Processor is the profile's `processor`, else the name the kernel reports, followed by the number of cores and, where the kernel reports it, the top clock. Memory is the total the kernel manages. Storage is the size and kind of the disk the firmware boots from. NOR flash is the part as the kernel's SPI NOR framework names it, followed by the chip's size, as far as its MTD devices reach; a chip the framework names none reads its size alone. Board ID is the `board_name` (from the device tree, else the firmware's DMI), in mono; it is labelled an ID because it is an identifier firmware images are matched by, not a name a person gave. A fact the board cannot answer is left out.
 
 #### Scenario: The Mono Gateway DK
 - **WHEN** the board card renders on the DK, whose profile's `processor` is "NXP LS1046A", with four cores clocked up to 1.6 GHz, 7.7 GiB of memory and a 29 GiB eMMC
-- **THEN** it reads Processor "NXP LS1046A · 4 cores · 1.6 GHz", Memory "7.7 GiB", Storage "29 GiB eMMC", NOR flash "n25q512a · 64 MiB" and Board name `mono,gateway-dk`, each size in the binary units every size in the shell is written in
+- **THEN** it reads Processor "NXP LS1046A · 4 cores · 1.6 GHz", Memory "7.7 GiB", Storage "29 GiB eMMC", NOR flash "n25q512a · 64 MiB" and Board ID `mono,gateway-dk`, each size in the binary units every size in the shell is written in
 
 #### Scenario: A board with no profile
 - **WHEN** a board no profile describes reports its processor as "AMD Ryzen 7 7700 8-Core Processor" with 16 CPUs

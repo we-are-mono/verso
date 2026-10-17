@@ -192,12 +192,12 @@ func TestTheBoardCardsFacts(t *testing.T) {
 			t.Errorf("board card missing %q:\n%s", want, board)
 		}
 	}
-	// One list, read down: Processor, Memory, Storage, NOR flash, Board name.
+	// One list, read down: Processor, Memory, Storage, NOR flash, Board ID.
 	if n := strings.Count(board, "<dl"); n != 1 || strings.Contains(board, "data-verso-facts") {
 		t.Errorf("the board's facts are %d lists, want one:\n%s", n, board)
 	}
 	last := -1
-	for _, label := range []string{">Processor<", ">Memory<", ">Storage<", ">NOR flash<", ">Board name<"} {
+	for _, label := range []string{">Processor<", ">Memory<", ">Storage<", ">NOR flash<", ">Board ID<"} {
 		i := strings.Index(board, label)
 		if i < last {
 			t.Errorf("%s out of order:\n%s", label, board)
