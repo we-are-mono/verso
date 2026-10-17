@@ -784,8 +784,7 @@ type pageTab struct {
 // pageHeader is the masthead the shell renders above a page body: the page's
 // heading, and what acts on the page beside it.
 type pageHeader struct {
-	Heading   string
-	Immediate bool
+	Heading string
 	// Tone declares the heading a message about now rather than a place-label:
 	// it tints in the closed tone vocabulary ("info" | "success" | "warning" |
 	// "danger" | "neutral" — never a colour) and the " — <tab>" navigation
