@@ -24,7 +24,8 @@ first: they hold the decisions and rationale. This file is the short "how we wor
 
 - **The shell** is a Go static binary. `net/http` + `ServeMux` (routes in
   `internal/server/routes.go`, no framework); `html/template` + HTMX; Tailwind v4
-  (build-time, embedded CSS). It runs **unprivileged** (ADR-007).
+  (build-time, embedded CSS) under the block contract of ADR-025 (see Styling). It runs
+  **unprivileged** (ADR-007).
 - **Backend, sid-gated.** `internal/openwrt` is the `Backend` interface; every method
   carries the operator's rpcd session id (`sid`) and acts through rpcd's ACL-gated objects
   — rpcd, not Verso, authorizes and executes. `internal/ubus` is the pure-Go ubus
@@ -83,6 +84,25 @@ first: they hold the decisions and rationale. This file is the short "how we wor
 - **A plugin's catalog travels with the plugin** — `i18n/<code>.json` beside its
   `manifest.json`, in this repo under `plugins/verso-plugin-*/i18n/`. Guidance
   for third-party authors is the Translations section of `docs/plugins.md`.
+
+## Styling (ADR-025)
+
+- **A look drawn in more than one place is a block.** Name it `verso-<block>`, its parts
+  `verso-<block>__<element>`, its variants and states `data-verso-*` on the root, and put
+  its rules in `internal/server/assets/blocks/<block>.css`, every selector starting from
+  the block. Templates and client scripts name the block; they never repeat its utilities.
+- **Text takes a type role.** Apply a `type-<role>` from `internal/server/assets/type.css`
+  (`@apply` in a block, or the class on a one-off) and set the ink beside it; never write a
+  size, weight, line height, tracking or font family. A machine-written value carries
+  `data-verso-verbatim` and a count or duration `data-verso-figures`, and the role draws
+  them. A text no role fits goes to DESIGN.md › Typography as a new role, with its reason.
+- **Utilities are layout glue and one-offs.** At most eight on an element, no `[&…]:` or
+  `!` utilities in markup; a selector belongs in a block.
+- **A block adjusts another only through the custom properties that block exposes**,
+  registered with `@property … inherits: false`.
+- **Check what a change moved.** With `make dev` running, `make layout-snapshot
+  LAYOUT_OUT=build/layout/before`, change, snapshot to `…/after`, then `make layout-diff
+  FROM=build/layout/before TO=build/layout/after` names every element whose style changed.
 
 ## Build · test · run
 

@@ -75,7 +75,9 @@ looks — while still offering a legitimate bridge when no widget yet fits.
    The stylesheet compiles via the
    standalone CLI (no Node) to an embedded file. This is an engine choice, not a contract
    change: plugins never see classes, so the styling stays reversible with zero plugin
-   impact. Shell templates use utilities; plugins never do.
+   impact. Plugins never write classes. In the shell, utilities are layout glue and
+   one-offs: every look is a named block defined once, and every text takes its type
+   from a role (ADR-025).
 7. **Behaviour is declared as intent; the shell realizes it.** The closed widget set
    includes *behavioural* widgets — the first is `repeater`, a repeatable group of
    widgets backed by a set of uci sections — but they obey the same rule as every other
