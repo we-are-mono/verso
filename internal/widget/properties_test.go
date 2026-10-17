@@ -17,8 +17,8 @@ func TestFactSheetRowCarriesItsMarkAndNote(t *testing.T) {
 		{Label: "Signed by", Value: "The router itself", Dot: "warning", Help: "Browsers warn until you trust it."},
 	}})
 	for _, want := range []string{
-		// centred on the value's 20px first line, 10px down the row
-		`<span class="absolute -left-3.75 top-1.75 size-1.5 rounded-[1px] bg-marigold" aria-hidden="true"></span>`,
+		// centred on the value's 24px first line: 9px over the 6px mark, 9px under
+		`<span class="absolute -left-3.75 top-2.25 size-1.5 rounded-[1px] bg-marigold" aria-hidden="true"></span>`,
 		`<dd class="relative flex min-w-0 items-start`,
 		// the note writes on the row's next 20px line
 		`<p class="basis-full sm:pl-30 text-sm leading-6 font-normal text-body">Browsers warn until you trust it.</p>`,

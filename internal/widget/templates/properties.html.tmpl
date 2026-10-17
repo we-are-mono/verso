@@ -92,8 +92,9 @@
       {{if .Span}}{{template "verso-prop-span" .Span}}{{else}}
       {{/* A mark hangs in the gutter before a left-set value, so a marked
            value starts where every other row's does; before a value on the
-           right edge it leads the value on its line, 8px off. */}}
-      {{if .Dot}}<span class="{{if eq $.Align "left"}}absolute -left-3.75 top-1.75{{else}}mt-2.25 mr-2 shrink-0{{end}} size-1.5 rounded-[1px] {{template "verso-mark-hue" .Dot}}"{{if .Key}} data-verso-prop-dot="{{.Key}}"{{end}} aria-hidden="true"></span>{{end}}
+           right edge it leads the value on its line, 8px off. Either way it
+           is centred on the value's 24px first line, 9px down. */}}
+      {{if .Dot}}<span class="{{if eq $.Align "left"}}absolute -left-3.75 top-2.25{{else}}mt-2.25 mr-2 shrink-0{{end}} size-1.5 rounded-[1px] {{template "verso-mark-hue" .Dot}}"{{if .Key}} data-verso-prop-dot="{{.Key}}"{{end}} aria-hidden="true"></span>{{end}}
       {{if .Chip}}<span class="{{template "verso-chip-class"}}">{{.Value}}</span>{{else if .Next}}
       {{/* What the value becomes, under what it is — as a table's cell says
            it: the value it was recedes to Meta, and what it becomes stands in
