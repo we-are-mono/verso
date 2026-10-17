@@ -8,34 +8,8 @@
 {{define "verso-link-face"}}{{if .Icon}}{{icon .Icon "size-4"}}{{else if .NewTab}}{{icon "external-link" "size-4 shrink-0"}}{{end}}{{.Label}}{{if .NewTab}}<span class="sr-only">{{t "(opens in a new tab)"}}</span>{{end}}{{end}}
 {{/* a link wearing a button's clothes is the same button: one height, one radius,
      one border — stated in the same place the form's own buttons take theirs. */}}
-{{if eq .Style "status"}}
-{{/* A status among settings follows the shared row: fact and explanation,
-     then the field-height quiet action directly below them. An
-     act on a thing of its own (a package) opens that thing's drawer over the
-     page; the page keeps its address, since the drawer is not a place on it. */}}
-<div class="{{template "verso-field-row-class"}}">
-  <div class="flex min-w-0 flex-wrap items-center gap-x-2 leading-6">
-    <span aria-hidden="true" class="size-1.5 shrink-0 rounded-[1px] border border-faint"></span>
-    <span class="text-sm font-semibold text-ink">{{.Label}}</span>
-    {{if .Code}}<span class="{{template "verso-chip-class"}}">{{.Code}}</span>{{end}}
-    {{if .Desc}}<p class="basis-full text-sm leading-6 text-body">{{.Desc}}</p>{{end}}
-  </div>
-  {{/* A fact something else on the router owns is said with no act. */}}
-  {{if .Act}}<div class="{{template "verso-field-control-class"}} items-start">
-    {{if .Panel}}<span x-data="modal" class="contents">{{end}}
-    <a href="{{.Href}}"{{if .Panel}} @click.prevent="showPanel" data-verso-panel-chrome{{end}} class="{{template "verso-btn-box"}} border {{template "verso-btn-secondary"}} focus-visible:outline-denim">{{if .Icon}}{{icon .Icon "size-4 shrink-0"}}{{end}}{{.Act}}</a>
-    {{if .Panel}}{{template "verso-drawer-fetched" ""}}</span>{{end}}
-  </div>{{end}}
-</div>
-{{else if eq .Style "choice"}}
-<a href="{{.Href}}" class="group flex items-start gap-4 border-b border-rule px-10 py-4 text-ink transition-colors hover:bg-quiet focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-denim">
-  {{if .Icon}}<span class="flex h-6 shrink-0 items-center text-glyph">{{icon .Icon "size-4"}}</span>{{end}}
-  <span class="min-w-0 flex-1"><span class="flex flex-wrap items-baseline gap-2 text-sm leading-6"><span class="font-semibold">{{.Label}}</span>{{if .Code}}<span class="{{template "verso-chip-class"}}">{{.Code}}</span>{{end}}</span>
-  {{if .Desc}}<span class="mt-1 block text-sm leading-relaxed text-body">{{.Desc}}</span>{{end}}</span>
-  <span class="flex h-6 shrink-0 items-center text-faint group-hover:text-denim">{{icon "chevron-right" "size-4"}}</span>
-</a>
-{{else if eq .Style "button"}}
-<a href="{{.Href}}"{{if .NewTab}} target="_blank" rel="noopener noreferrer"{{end}} class="{{template "verso-btn-box"}} {{template "verso-btn-primary"}} focus-visible:outline-denim-deep">{{template "verso-link-face" .}}</a>
+{{if eq .Style "button"}}
+<a href="{{.Href}}" class="{{template "verso-btn-box"}} {{template "verso-btn-primary"}} focus-visible:outline-denim-deep">{{template "verso-link-face" .}}</a>
 {{else if eq .Style "rail"}}
 {{/* One place on this page, in the list of them. It is a block so a run of them
      is a column, and it carries its own left hairline so the run draws one
@@ -61,7 +35,7 @@
 <a href="{{.Href}}" @click.prevent="showPanel" data-verso-panel-chrome class="{{template "verso-btn-act"}} {{if .Icon}}pl-2 pr-2.5{{else}}px-2.5{{end}}">{{template "verso-link-face" .}}</a>
 {{template "verso-drawer-fetched" ""}}</span>
 {{else}}
-<a href="{{.Href}}"{{if .NewTab}} target="_blank" rel="noopener noreferrer"{{end}} class="{{template "verso-btn-act"}} {{if .Icon}}pl-2 pr-2.5{{else}}px-2.5{{end}}">{{template "verso-link-face" .}}</a>
+<a href="{{.Href}}" class="{{template "verso-btn-act"}} {{if .Icon}}pl-2 pr-2.5{{else}}px-2.5{{end}}">{{template "verso-link-face" .}}</a>
 {{end}}
 {{else if eq .Style "secondary"}}
 {{/* A secondary act may open its destination in a drawer over the page, as
@@ -70,7 +44,7 @@
 <a href="{{.Href}}" @click.prevent="showPanel" data-verso-panel-chrome class="{{template "verso-btn-box"}} border {{template "verso-btn-secondary"}} focus-visible:outline-denim">{{template "verso-link-face" .}}</a>
 {{template "verso-drawer-fetched" ""}}</span>
 {{else}}
-<a href="{{.Href}}"{{if .NewTab}} target="_blank" rel="noopener noreferrer"{{end}} class="{{template "verso-btn-box"}} border {{template "verso-btn-secondary"}} focus-visible:outline-denim">{{template "verso-link-face" .}}</a>
+<a href="{{.Href}}" class="{{template "verso-btn-box"}} border {{template "verso-btn-secondary"}} focus-visible:outline-denim">{{template "verso-link-face" .}}</a>
 {{end}}
 {{else}}
 <a href="{{.Href}}"{{if .NewTab}} target="_blank" rel="noopener noreferrer"{{end}} class="inline-flex items-center gap-1.5 text-sm font-medium text-denim underline underline-offset-2 transition-colors hover:text-denim-deep">{{template "verso-link-face" .}}</a>

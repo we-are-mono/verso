@@ -76,7 +76,7 @@ func renderTagCell(t *testing.T, r *Renderer, cell TableCell) string {
 }
 
 // TestEveryCitationChipIsOneBox: a chip is one size wherever it stands — the
-// masthead's protocol beside IPv4, a choice's config value — the same box as
+// masthead's protocol beside IPv4 — the same box as
 // a table's tag and an interface cited in a row.
 // Only the face follows what it says: mono for a string the machine wrote,
 // sans for words.
@@ -89,10 +89,6 @@ func TestEveryCitationChipIsOneBox(t *testing.T) {
 		"masthead protocol": {
 			render(t, r, &Overview{V4Proto: "DHCP", V4: []OverviewFact{{Label: "Address", Value: "172.30.1.171/24"}}}),
 			[]string{chipMonoBox + " border-rule bg-quiet text-meta\">dhcp"},
-		},
-		"choice value": {
-			render(t, r, &Link{Style: "choice", Label: "WPA3", Code: "sae", Href: "/x"}),
-			[]string{chipMonoBox + " border-rule bg-quiet text-meta\">sae"},
 		},
 	} {
 		for _, want := range tc.want {

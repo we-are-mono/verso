@@ -763,24 +763,16 @@ pub enum Widget {
     /// plugin's to choose — a route inside the shell, most often — and the shell
     /// owns the look and the URL policy.
     Link {
-        #[serde(skip_serializing_if = "String::is_empty")]
-        desc: String,
-        #[serde(skip_serializing_if = "String::is_empty")]
-        code: String,
         label: String,
         #[serde(skip_serializing_if = "String::is_empty")]
         icon: String,
         href: String,
         #[serde(skip_serializing_if = "String::is_empty")]
         style: String,
-        /// The status style's act: the words on the control that changes the
-        /// status (the label), where a setting's control stands.
-        #[serde(skip_serializing_if = "String::is_empty")]
-        act: String,
         /// Opens the destination as a drawer over this page rather than
         /// leaving it — for a destination that is its own thing, such as a
         /// package to install (`/system/packages/package?name=…`) or a
-        /// certificate to replace. The status and act styles honour it.
+        /// certificate to replace. The act and secondary styles honour it.
         #[serde(skip_serializing_if = "is_false")]
         panel: bool,
     },
@@ -1765,13 +1757,10 @@ impl Widget {
     /// link points somewhere; style "" is a link, "button" a call to action.
     pub fn link(label: &str, href: &str, style: &str) -> Widget {
         Widget::Link {
-            desc: String::new(),
-            code: String::new(),
             label: label.into(),
             icon: String::new(),
             href: href.into(),
             style: style.into(),
-            act: String::new(),
             panel: false,
         }
     }

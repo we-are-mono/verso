@@ -115,10 +115,6 @@ func translateFields(w Widget, t func(string) string) {
 			n.Actions[i].Label = t(n.Actions[i].Label)
 		}
 	case *Link:
-		n.Desc = t(n.Desc)
-		if n.Code == "Tunnels page" {
-			n.Code = t(n.Code)
-		}
 		n.Label = t(n.Label)
 	case *List:
 		n.Label = t(n.Label)

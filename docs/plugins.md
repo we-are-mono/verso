@@ -1698,9 +1698,8 @@ and schema traversal. Row actions keep their own links or submitted verbs.
 
 `grid` style `editor` lays out a 640px interface form beside an anchor rail and
 configuration preview, collapsing to one column when space is limited. Reuse
-`link` style `rail` and a live `code` preview in that column. A chooser drawer uses
-`link` style `choice`, with optional `desc` prose and a `code` label. Form
-sections remain unboxed.
+`link` style `rail` and a live `code` preview in that column. Form sections
+remain unboxed.
 
 The Interfaces inventory uses `table` style `interfaces`: its six columns are
 identity, device type, IPv4 address, MAC, operational state, and actions. Identity

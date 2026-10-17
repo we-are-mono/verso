@@ -193,13 +193,10 @@ fn write_widget_fixtures() {
         (
             "link",
             Widget::Link {
-                desc: String::new(),
-                code: String::new(),
                 label: "Add rule".into(),
                 icon: "plus".into(),
                 href: "/plugins/firewall/rules/new".into(),
                 style: "button".into(),
-                act: String::new(),
                 panel: false,
             },
         ),
