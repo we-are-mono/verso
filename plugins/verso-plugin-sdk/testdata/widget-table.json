@@ -17,7 +17,7 @@
     },
     {
       "label": "Address",
-      "kind": "addr"
+      "kind": "mono"
     },
     {
       "label": "From",
@@ -41,13 +41,7 @@
       "width": "name"
     },
     {
-      "kind": "toggle"
-    },
-    {
       "kind": "link"
-    },
-    {
-      "kind": "pill"
     },
     {
       "kind": "actions"
@@ -118,16 +112,8 @@
           "fill": 61
         },
         {
-          "on": true,
-          "name": "cfg02zone"
-        },
-        {
           "text": "Details",
           "href": "/zones/lan"
-        },
-        {
-          "button": "Edit",
-          "disabled": true
         },
         {
           "actions": [
@@ -209,11 +195,6 @@
         },
         {},
         {},
-        {},
-        {
-          "button": "Edit",
-          "disabled": true
-        },
         {}
       ]
     }

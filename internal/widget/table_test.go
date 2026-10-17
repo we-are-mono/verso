@@ -19,7 +19,6 @@ import (
 func redirectsTable() *Table {
 	return &Table{
 		Columns: []TableColumn{
-			{Kind: "toggle"},
 			{Label: "From", Kind: "endpoint"},
 			{Label: "To", Kind: "endpoint"},
 			{Label: "Protocol", Kind: "keyword"},
@@ -29,7 +28,6 @@ func redirectsTable() *Table {
 		},
 		Rows: []TableRow{
 			{ID: "force_dns_guest", Cells: []TableCell{
-				{On: true, Name: "force_dns_guest"},
 				{Endpoints: []TableEndpoint{{Kind: "zone", Label: "guest"}}},
 				{Endpoints: []TableEndpoint{{Kind: "router", Label: "router"}}},
 				{Text: "tcp/udp"},
@@ -38,7 +36,6 @@ func redirectsTable() *Table {
 				{Text: "0"},
 			}},
 			{ID: "https_to_nas", Cells: []TableCell{
-				{On: false},
 				{Endpoints: []TableEndpoint{{Kind: "zone", Label: "wan"}}},
 				{Endpoints: []TableEndpoint{{Kind: "device", Label: "10.0.0.30"}}},
 				{Text: "tcp"},
@@ -52,7 +49,7 @@ func redirectsTable() *Table {
 
 // TestRenderTableKinds: each column kind gets its one treatment — mono for
 // machine strings, sans keywords, muted comments, right-aligned tabular
-// counters, a switch for toggles.
+// counters.
 func TestRenderTableKinds(t *testing.T) {
 	r := newRenderer(t)
 	got := render(t, r, redirectsTable())
@@ -62,19 +59,12 @@ func TestRenderTableKinds(t *testing.T) {
 		"font-mono",                  // the port column is a machine string
 		"8443 → 443",                 // port rewrite verbatim
 		"tabular-nums",               // counters align
-		`type="checkbox"`,            // the toggle is a real switch
-		`name="force_dns_guest"`,     // …posting under the section's handle
 		"Force-DNS-to-AdGuard-guest", // comments carry the optional UCI name
 		"text-right",                 // num columns right-align (th and td)
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("table missing %q:\n%s", want, got)
 		}
-	}
-	// " checked" is the bare attribute; the peer-checked: utility classes never
-	// carry a leading space before "checked".
-	if strings.Count(got, " checked") != 1 {
-		t.Errorf("exactly one toggle should be checked:\n%s", got)
 	}
 }
 
@@ -461,7 +451,7 @@ func TestRenderTableSeam(t *testing.T) {
 	tbl.Seam = &TableSeam{
 		Summary: "OpenWrt defaults — 9 stock rules",
 		Rows: []TableRow{{ID: "allow_ping", Cells: []TableCell{
-			{On: true}, {Endpoints: []TableEndpoint{{Kind: "zone", Label: "wan"}}},
+			{Endpoints: []TableEndpoint{{Kind: "zone", Label: "wan"}}},
 			{Endpoints: []TableEndpoint{{Kind: "router", Label: "router"}}},
 			{Text: "icmp"}, {Text: "echo-request"}, {Text: "Allow-Ping"}, {Text: "1.4k"},
 		}}},
@@ -471,7 +461,7 @@ func TestRenderTableSeam(t *testing.T) {
 		"<details", "OpenWrt defaults — 9 stock rules", "Allow-Ping",
 		"verso-chevron",     // the shared rotate-on-open affordance
 		lucideIcons["lock"], // the stock-rules padlock
-		`colspan="7"`, `<td colspan="7" class="p-0 text-left">`, "verso-table-seam-row",
+		`colspan="6"`, `<td colspan="6" class="p-0 text-left">`, "verso-table-seam-row",
 		"justify-start", "text-left", "group-hover:underline",
 	} {
 		if !strings.Contains(got, want) {
@@ -884,88 +874,6 @@ func TestRenderTableDense(t *testing.T) {
 	}
 }
 
-// TestRenderTableCellButton: a cell can carry a button that opens the row's
-// drawer in place of the trailing "Details" link. When every drawer row opens
-// from such a button, the table grows no trailing Details column at all.
-func TestRenderTableCellButton(t *testing.T) {
-	r := newRenderer(t)
-	got := render(t, r, &Table{
-		Style:   "flat",
-		Columns: []TableColumn{{Label: "Name", Kind: "name"}, {Label: "Static", Kind: "pill"}},
-		Rows: []TableRow{
-			// reserved: a badge, no drawer.
-			{Cells: []TableCell{{Text: "nas"}, {Text: "reserved", Variant: "info"}}},
-			// dynamic: an in-cell "Reserve IP" button that opens the drawer.
-			{Cells: []TableCell{{Text: "laptop"}, {Button: "Reserve IP"}},
-				Drawer: &RowDrawer{Title: "Reserve — laptop", Children: []Widget{&Divider{}}}},
-		},
-	})
-	for _, want := range []string{
-		"reserved",                      // the badge state
-		">Reserve IP<", `@click="show"`, // the action button opens the drawer
-		`x-data="modal"`, // the button's row hosts the modal scope
-	} {
-		if !strings.Contains(got, want) {
-			t.Errorf("cell-button table missing %q:\n%s", want, got)
-		}
-	}
-	if strings.Contains(got, ">Details<") {
-		t.Errorf("no trailing Details when the drawer opens from an in-cell button:\n%s", got)
-	}
-}
-
-// TestRenderTableDisabledRowButton: a Disabled cell button keeps the compact
-// row-button anatomy but is a real <button disabled> — muted ink, no hover, no
-// press, and no form, modal, or drawer behind it.
-func TestRenderTableDisabledRowButton(t *testing.T) {
-	r := newRenderer(t)
-	got := render(t, r, &Table{
-		Style:   "flat",
-		Columns: []TableColumn{{Label: "Zone", Kind: "name"}, {Kind: "pill"}},
-		Rows: []TableRow{{ID: "lan", Cells: []TableCell{
-			{Text: "lan"},
-			{Button: "Edit", Disabled: true},
-		}}},
-	})
-	for _, want := range []string{
-		`<button type="button" disabled`, ">Edit</button>",
-		"inline-flex h-7 items-center gap-1.5 rounded-xs border px-3 text-sm font-semibold", // the shared small-button anatomy
-		"cursor-not-allowed", "text-faint", "opacity-70",
-	} {
-		if !strings.Contains(got, want) {
-			t.Errorf("disabled row button missing %q:\n%s", want, got)
-		}
-	}
-	for _, absent := range []string{
-		"<form", `@click="show"`, `name="_action"`, `x-data="modal"`,
-		"hover:border-denim", "verso-press", // an action nobody can take offers no feedback
-	} {
-		if strings.Contains(got, absent) {
-			t.Errorf("disabled row button must not contain %q:\n%s", absent, got)
-		}
-	}
-}
-
-// TestRowButtonNamesItsRow: a row's labelled act says which row it acts on, so
-// a list of buttons read out of the table ("Revoke, Revoke") is still a list
-// of different acts. The visible label leads the name, as a voice user speaks it.
-func TestRowButtonNamesItsRow(t *testing.T) {
-	r := newRenderer(t)
-	for name, cell := range map[string]TableCell{
-		"confirmed": {Button: "Revoke", Action: "end:a", Confirm: "Signed out."},
-		"direct":    {Button: "Revoke", Action: "end:a"},
-		"disabled":  {Button: "Revoke", Disabled: true},
-	} {
-		got := render(t, r, &Table{
-			Columns: []TableColumn{{Label: "Source", Kind: "name"}, {Kind: "pill"}},
-			Rows:    []TableRow{{ID: "a", Cells: []TableCell{{Text: "10.0.0.229"}, cell}}},
-		})
-		if !strings.Contains(got, `aria-label="Revoke 10.0.0.229"`) {
-			t.Errorf("%s: the row button must name its row:\n%s", name, got)
-		}
-	}
-}
-
 // TestRowsHangFromTheirFirstLine: every cell stands at the row's top, so when
 // one cell spans two lines the others — the row's acts above all — stay level
 // with its first line rather than floating to the middle of the block. The
@@ -974,8 +882,8 @@ func TestRowButtonNamesItsRow(t *testing.T) {
 // row grows by a cell for its second line.
 func TestTableRowsHangFromTheirFirstLine(t *testing.T) {
 	got := render(t, newRenderer(t), &Table{
-		Columns: []TableColumn{{Kind: "addr"}, {Kind: "actions"}},
-		Rows: []TableRow{{ID: "k", Cells: []TableCell{{Text: "demo@laptop", Sub: "SHA256:x"}, {Actions: []TableRowAct{
+		Columns: []TableColumn{{Kind: "name"}, {Kind: "actions"}},
+		Rows: []TableRow{{ID: "k", Cells: []TableCell{{Text: "demo@laptop", Detail: "SHA256:x"}, {Actions: []TableRowAct{
 			{Icon: "trash-2", Title: "Remove", Href: "/remove"},
 		}}}}},
 	})
@@ -1045,10 +953,11 @@ func TestRenderTableDirectAction(t *testing.T) {
 	r := newRenderer(t)
 	got := render(t, r, &Table{
 		Style:   "flat",
-		Columns: []TableColumn{{Label: "Session", Kind: "name"}, {Label: "Access", Kind: "pill"}},
+		Columns: []TableColumn{{Label: "Session", Kind: "name"}, {Kind: "actions"}},
 		Rows: []TableRow{{ID: "iphone", Cells: []TableCell{
 			{Text: "Safari · iPhone"},
-			{Button: "End session", Action: "end-session:iphone", ConfirmTitle: "End this session?", Confirm: "Anyone using it will be signed out."},
+			{Actions: []TableRowAct{{Icon: "log-out", Title: "End session", Name: "_action", Value: "end-session:iphone",
+				ConfirmTitle: "End this session?", Confirm: "Anyone using it will be signed out."}}},
 		}}},
 	})
 	for _, want := range []string{
@@ -1086,12 +995,12 @@ func TestRenderTableDirectAction(t *testing.T) {
 func TestDecodeTable(t *testing.T) {
 	w, err := Decode([]byte(`{
 		"type": "table",
-		"columns": [{"kind":"toggle"},{"label":"From","kind":"endpoint"},{"label":"Hits","kind":"num"},{"kind":"pill"}],
+		"columns": [{"label":"Name","kind":"name"},{"label":"From","kind":"endpoint"},{"label":"Hits","kind":"num"},{"kind":"pill"}],
 		"rows": [{"id":"r1","key":"rule:r1","cells":[
-			{"on":true,"name":"r1"},
+			{"text":"r1"},
 			{"endpoints":[{"kind":"zone","label":"guest"},{"kind":"device","label":"10.0.0.30"}]},
 			{"text":"28","key":"hits:r1"},
-			{"button":"Edit","disabled":true}
+			{"text":"accept","variant":"success"}
 		]}]
 	}`))
 	if err != nil {
@@ -1110,8 +1019,8 @@ func TestDecodeTable(t *testing.T) {
 	if tb.Rows[0].Key != "rule:r1" || tb.Rows[0].Cells[2].Key != "hits:r1" {
 		t.Errorf("live-update keys not decoded: %+v", tb.Rows[0])
 	}
-	if edit := tb.Rows[0].Cells[3]; edit.Button != "Edit" || !edit.Disabled {
-		t.Errorf("disabled row button not decoded: %+v", edit)
+	if pill := tb.Rows[0].Cells[3]; pill.Text != "accept" || pill.Variant != "success" {
+		t.Errorf("pill cell not decoded: %+v", pill)
 	}
 }
 
@@ -1576,15 +1485,18 @@ func TestPostingActAsksFirstWhenItsCellDoes(t *testing.T) {
 }
 
 // TestAWayBackNamesWhatItKeeps: a plugin names the way back after what it
-// keeps ("Keep rule"), for an act and for a labelled row button alike.
+// keeps ("Keep rule"), for an act and for the cell an act takes its question
+// from alike.
 func TestAWayBackNamesWhatItKeeps(t *testing.T) {
 	got := render(t, newRenderer(t), &Table{
-		Columns: []TableColumn{{Label: "Rule", Kind: "name"}, {Label: "Session", Kind: "pill"}, {Kind: "actions"}},
+		Columns: []TableColumn{{Label: "Rule", Kind: "name"}, {Kind: "actions"}},
 		Rows: []TableRow{{ID: "r1", Cells: []TableCell{
 			{Text: "Allow-Ping"},
-			{Button: "End session", Action: "end:r1", Confirm: "Signed out.", ConfirmCancel: "Keep session"},
-			{Actions: []TableRowAct{{Icon: "trash-2", Title: "Delete rule", Name: "_delete", Value: "r1",
-				ConfirmTitle: "Delete rule “%s”?", Confirm: "It stops matching.", ConfirmCancel: "Keep rule"}}},
+			{Actions: []TableRowAct{
+				{Icon: "log-out", Title: "End session", Name: "_action", Value: "end:r1"},
+				{Icon: "trash-2", Title: "Delete rule", Name: "_delete", Value: "r1",
+					ConfirmTitle: "Delete rule “%s”?", Confirm: "It stops matching.", ConfirmCancel: "Keep rule"},
+			}, Confirm: "Signed out.", ConfirmCancel: "Keep session"},
 		}}},
 	})
 	for _, want := range []string{`>Keep session<`, `>Keep rule<`} {

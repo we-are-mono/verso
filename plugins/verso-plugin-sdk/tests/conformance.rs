@@ -547,7 +547,7 @@ fn listing() -> Widget {
             },
             TableColumn {
                 label: "Address".into(),
-                kind: "addr".into(),
+                kind: "mono".into(),
                 ..TableColumn::default()
             },
             TableColumn {
@@ -576,15 +576,7 @@ fn listing() -> Widget {
                 width: ColumnWidth::Name,
             },
             TableColumn {
-                kind: "toggle".into(),
-                ..TableColumn::default()
-            },
-            TableColumn {
                 kind: "link".into(),
-                ..TableColumn::default()
-            },
-            TableColumn {
-                kind: "pill".into(),
                 ..TableColumn::default()
             },
             TableColumn {
@@ -657,18 +649,8 @@ fn listing() -> Widget {
                         ..TableCell::default()
                     },
                     TableCell {
-                        on: true,
-                        name: "cfg02zone".into(),
-                        ..TableCell::default()
-                    },
-                    TableCell {
                         text: "Details".into(),
                         href: "/zones/lan".into(),
-                        ..TableCell::default()
-                    },
-                    TableCell {
-                        button: "Edit".into(),
-                        disabled: true,
                         ..TableCell::default()
                     },
                     TableCell {
@@ -758,12 +740,6 @@ fn listing() -> Widget {
                     },
                     TableCell::default(),
                     TableCell::default(),
-                    TableCell::default(),
-                    TableCell {
-                        button: "Edit".into(),
-                        disabled: true,
-                        ..TableCell::default()
-                    },
                     TableCell::default(),
                 ],
                 muted: true,

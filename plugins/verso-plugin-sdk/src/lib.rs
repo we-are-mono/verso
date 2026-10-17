@@ -890,7 +890,7 @@ pub enum Widget {
     },
     /// Config sections as identical rows under fixed columns: each column
     /// declares a kind ("name", "mono", "keyword", "pill", "endpoint",
-    /// "toggle", "comment", …) and that kind renders every cell in it the same
+    /// "actions", "comment", …) and that kind renders every cell in it the same
     /// way — rows cannot vary in shape, which is the point. Style "flat" (the
     /// default) draws bare hairline rows; Title/Detail draw the header band
     /// above them; Condensed tightens the rhythm; Align "top" pins cells to the
@@ -2546,8 +2546,7 @@ pub struct TableAction {
 
 /// TableCell carries the value for one cell; which field applies is decided by
 /// the column's kind — Text for the text kinds, Text plus Variant for a pill,
-/// On and Name for a toggle, Endpoints for an endpoint cell, Button for an
-/// in-row action.
+/// Endpoints for an endpoint cell, Actions for the row's acts.
 #[derive(Serialize, Debug, Default)]
 pub struct TableCell {
     #[serde(skip_serializing_if = "Vec::is_empty")]
@@ -2609,14 +2608,6 @@ pub struct TableCell {
     pub tag_dot: bool,
     #[serde(skip_serializing_if = "String::is_empty")]
     pub href: String,
-    #[serde(skip_serializing_if = "String::is_empty")]
-    pub button: String,
-    #[serde(skip_serializing_if = "is_false")]
-    pub disabled: bool,
-    #[serde(skip_serializing_if = "is_false")]
-    pub on: bool,
-    #[serde(skip_serializing_if = "String::is_empty")]
-    pub name: String,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub endpoints: Vec<TableEndpoint>,
     /// The row's own acts, drawn as quiet icon buttons at its trailing edge.
@@ -3701,20 +3692,6 @@ mod tests {
                 serde_json::json!([{"kind": kind, "label": label}])
             );
         }
-    }
-
-    #[test]
-    fn a_disabled_row_button_serializes_both_fields() {
-        let cell = TableCell {
-            button: "Edit".into(),
-            disabled: true,
-            ..TableCell::default()
-        };
-        let json = serde_json::to_value(&cell).unwrap();
-        assert_eq!(
-            json,
-            serde_json::json!({"button": "Edit", "disabled": true})
-        );
     }
 
     #[test]

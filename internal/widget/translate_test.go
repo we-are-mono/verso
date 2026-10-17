@@ -113,7 +113,7 @@ func TestTranslateSkipsMachineContent(t *testing.T) {
 	table := &Table{
 		Columns: []TableColumn{{Kind: "mono"}, {Kind: "num"}, {Kind: "text"}},
 		Rows: []TableRow{{Cells: []TableCell{
-			{Text: "br0", Sub: "Online", Button: "Remove", Actions: []TableRowAct{{Title: "Remove", Name: "Online", Value: "br0"}}},
+			{Text: "br0", Sub: "Online", Actions: []TableRowAct{{Title: "Remove", Name: "Online", Value: "br0"}}},
 			{Text: "Online"},
 			{Text: "Online"},
 			{Text: "br0"}, // overflow: no declared column, stays verbatim
@@ -123,9 +123,6 @@ func TestTranslateSkipsMachineContent(t *testing.T) {
 	cells := table.Rows[0].Cells
 	if cells[0].Text != "br0" || cells[0].Sub != "Online" {
 		t.Errorf("mono cell = %q/%q, must stay verbatim", cells[0].Text, cells[0].Sub)
-	}
-	if cells[0].Button != "Odstrani" {
-		t.Errorf("button in a mono column = %q, want translated", cells[0].Button)
 	}
 	if action := cells[0].Actions[0]; action.Title != "Odstrani" || action.Name != "Online" || action.Value != "br0" {
 		t.Errorf("action titles translate; submission targets stay verbatim: %+v", action)

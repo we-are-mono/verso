@@ -299,7 +299,7 @@ func translateRows(rows []TableRow, columns []TableColumn, t func(string) string
 		}
 		for j := range rows[i].Cells {
 			c := &rows[i].Cells[j]
-			// A cell's action prose (Button, Confirm) is always words; Text and
+			// A cell's action prose (Confirm) is always words; Text and
 			// Sub follow the column's declared kind. A row wider than its
 			// columns keeps its overflow verbatim — shape errors must not turn
 			// data into prose.
@@ -307,7 +307,6 @@ func translateRows(rows []TableRow, columns []TableColumn, t func(string) string
 				c.Text = t(c.Text)
 				c.Sub = t(c.Sub)
 			}
-			c.Button = t(c.Button)
 			c.Confirm = t(c.Confirm)
 			c.ConfirmTitle = t(c.ConfirmTitle)
 			c.ConfirmCancel = t(c.ConfirmCancel)

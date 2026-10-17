@@ -9,27 +9,11 @@ import (
 )
 
 // TestRowSwitchesCarryTheRowName: a bare switch has no visible label of its
-// own, since the row around it is what it switches. So the checkbox takes the
-// row's name as its accessible name, and a screen reader says which rule it
-// enables, not just "checkbox, checked".
+// own, since the row around it is what it switches. A settings switch with no
+// posted name has no id for its row's label to point at, so it carries the
+// row's title itself, and a screen reader says which option it enables, not
+// just "checkbox, checked".
 func TestRowSwitchesCarryTheRowName(t *testing.T) {
-	got := render(t, newRenderer(t), redirectsTable())
-	if !strings.Contains(got, `name="force_dns_guest" aria-label="Force-DNS-to-AdGuard-guest"`) {
-		t.Errorf("a table switch takes the row's comment as its name when no name column exists:\n%s", got)
-	}
-
-	named := render(t, newRenderer(t), &Table{
-		Columns: []TableColumn{{Label: "#", Kind: "text"}, {Kind: "toggle"}, {Label: "Name", Kind: "name"}, {Label: "Note", Kind: "comment"}},
-		Rows: []TableRow{{ID: "r1", Cells: []TableCell{
-			{Text: "1"}, {Name: "r1_enabled", On: true}, {Text: "Allow-SSH"}, {Text: "from the office"},
-		}}},
-	})
-	if !strings.Contains(named, `name="r1_enabled" aria-label="Allow-SSH"`) {
-		t.Errorf("the name column wins over the order number and the comment:\n%s", named)
-	}
-
-	// A settings switch with no posted name has no id for its row's label to
-	// point at, so it carries the row's title itself.
 	bare := render(t, newRenderer(t), &Settings{Items: []SettingsItem{
 		{Title: "SYN-flood protection", Toggle: &SettingsToggle{On: true}},
 	}})

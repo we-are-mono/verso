@@ -110,17 +110,17 @@ func TestStateMarksAreSquares(t *testing.T) {
 	}
 }
 
-// TestTableStatesHaveWords: a yes/no cell is a check or nothing, and a missing
-// value is a dash; each says so in words to a screen reader.
+// TestTableStatesHaveWords: a missing value is a dash, and says so in words to
+// a screen reader.
 func TestTableStatesHaveWords(t *testing.T) {
 	got := render(t, newRenderer(t), &Table{
-		Columns: []TableColumn{{Label: "Name", Kind: "name"}, {Label: "Static", Kind: "check"}, {Label: "Address", Kind: "addr"}},
+		Columns: []TableColumn{{Label: "Name", Kind: "name"}, {Label: "Address", Kind: "mono"}},
 		Rows: []TableRow{
-			{Cells: []TableCell{{Text: "a"}, {On: true}, {Text: "x"}}},
-			{Cells: []TableCell{{Text: "b"}, {On: false}, {}}},
+			{Cells: []TableCell{{Text: "a"}, {Text: "x"}}},
+			{Cells: []TableCell{{Text: "b"}, {}}},
 		},
 	})
-	for _, want := range []string{`<span class="sr-only">Yes</span>`, `<span class="sr-only">No</span>`, `<span aria-hidden="true">—</span><span class="sr-only">None</span>`} {
+	for _, want := range []string{`<span aria-hidden="true">—</span><span class="sr-only">None</span>`} {
 		if !strings.Contains(got, want) {
 			t.Errorf("table missing %q:\n%s", want, got)
 		}

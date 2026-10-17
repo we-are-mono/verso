@@ -36,11 +36,8 @@ import (
 //	"num"      — right-aligned tabular figures (counters); muted
 //	"rate"     — fixed-width, left-aligned live rate; tabular and non-wrapping
 //	"runtime"  — compact process facts; sans, muted, tabular and non-wrapping
-//	"action"   — a compact icon-only POST action
 //	"reorder"  — a compact drag handle; interaction is shell-owned, and it draws
 //	             only on a table that declares ReorderConfig
-//	"toggle"   — an on/off switch (a section's enabled state)
-//	"check"    — a yes/no fact: a checkmark for yes, nothing for no (cell On)
 //	"endpoint" — one or more traffic endpoints, each a type icon + label
 //	"status"   — a state as a bare dot + word (a link's up/down): the dot takes
 //	             the cell's variant colour, the word reads calm; no pill frame
@@ -475,7 +472,7 @@ type DrawerTab struct {
 
 // TableCell carries the value for one cell; which field applies is decided by
 // the column's kind (Text for text/name/mono/keyword/comment/num, Text+Variant
-// for pill, On/Name for toggle, Endpoints for endpoint).
+// for pill, Endpoints for endpoint).
 type TableCell struct {
 	Text         string `json:"text,omitempty"`
 	Variant      string `json:"variant,omitempty"`       // pill cells: the badge vocabulary ("success" | "warning" | "danger" | "info" | "neutral"); meter cells: the fill's band
@@ -492,7 +489,7 @@ type TableCell struct {
 	LeadIcon     string `json:"lead_icon,omitempty"`     // name cells: a device-type Lucide glyph before the name, plain slate ink (not a badge)
 	Key          string `json:"key,omitempty"`           // optional stable live-update hook; not displayed
 	Muted        bool   `json:"muted,omitempty"`         // text/mono and empty pill cells: render the value as secondary ink
-	Sub          string `json:"sub,omitempty"`           // addr cells: a second line under the primary (e.g. the IPv6 under the IPv4), muted and copyable
+	Sub          string `json:"sub,omitempty"`           // name/mono/path/count cells: the value's second part (a name's aside, the version a mono value becomes, a path's prefix, a count's unit)
 	Detail       string `json:"detail,omitempty"`        // name/reference/text cells: a line of words under the value saying what it is or since when (the browser behind an address); the tag rides it
 	Verbatim     bool   `json:"-"`                       // Text and Sub were composed and localized where they were made (a relative time); the walk leaves them
 	Tag          string `json:"tag,omitempty"`           // name/status cells: a small coloured label after the value (e.g. "new", "WAN")
@@ -500,16 +497,11 @@ type TableCell struct {
 	TagIcon      string `json:"tag_icon,omitempty"`      // name/status cells: a Lucide icon leading the tag (e.g. WAN's globe)
 	TagDot       bool   `json:"tag_dot,omitempty"`       // name/status cells: the packet square leading the tag, in its variant; an icon wins
 	Href         string `json:"href,omitempty"`          // link cells: the destination of the row's action link; name cells: where the row is edited, reached by the edit pencil the shell draws if the row lacks one
-	Button       string `json:"button,omitempty"`        // an in-cell row action or drawer trigger; replaces the auto trailing "Details" link for that row
-	Disabled     bool   `json:"disabled,omitempty"`      // the cell's button is unavailable: rendered natively disabled and muted
-	Action       string `json:"action,omitempty"`        // _action value posted by a direct row action (defaults to the row id)
-	ConfirmTitle string `json:"confirm_title,omitempty"` // direct-action confirmation heading (default "Are you sure?")
-	Confirm      string `json:"confirm,omitempty"`       // direct-action consequence copy; enables the confirmation dialog
+	ConfirmTitle string `json:"confirm_title,omitempty"` // actions cells: the confirmation heading for an act that names none (default "Are you sure?")
+	Confirm      string `json:"confirm,omitempty"`       // actions cells: the consequence copy for an act that names none; enables the confirmation dialog
 	// ConfirmCancel is the confirmation's way back, named for what it keeps —
 	// "Keep session" (default "Keep it"). Never "Cancel".
 	ConfirmCancel string          `json:"confirm_cancel,omitempty"`
-	On            bool            `json:"on,omitempty"`
-	Name          string          `json:"name,omitempty"` // form name the toggle posts under
 	Endpoints     []TableEndpoint `json:"endpoints,omitempty"`
 	Chips         []TableChip     `json:"chips,omitempty"`   // entity/name/reference cells: one or more icon+label reference chips
 	Parts         []TablePart     `json:"parts,omitempty"`   // phrase cells: the line's parts, in order; Text is the line read plain, which names the row
@@ -880,12 +872,8 @@ type tableCellView struct {
 	// Panel is the row's panel address, so a cell can tell whether its own link
 	// points there — a link to the panel opens it in place; any other link is an
 	// ordinary link and still leaves the page.
-	Panel     string
-	ConfirmID string
-	// Dialog is the alert the cell's labelled row button asks in, drawn once
-	// the cell is known (confirmDialog).
-	Dialog *confirmDialogView
-	Dense  bool // the listing's geometry: no inset of the cell's own, the columns' widths space them
+	Panel string
+	Dense bool // the listing's geometry: no inset of the cell's own, the columns' widths space them
 	// RowName is what the row is called, for the controls in it that have no
 	// visible label of their own: a switch, a drag handle.
 	RowName string
@@ -945,18 +933,17 @@ func partViews(parts []TablePart, chip func(TableChip) tableChipView) []tablePar
 // dash a caller wrote for none. Every column says it the same way
 // (table.absent), so a missing PID, a missing figure and a missing state read
 // as one absence rather than a minus in mono, a dash in the sans and a packet
-// with no state. Cells that are controls or slots (a switch, a grip, acts) or
-// that state their fact without words (a check's yes or no) are never absent:
-// their emptiness is their own.
+// with no state. Cells that are controls or slots (a grip, acts) are never
+// absent: their emptiness is their own.
 func (c tableCellView) Absent() bool {
 	switch c.Kind {
 	// A figures cell says its own dash, keeping its slots for a live listing.
-	case "reorder", "toggle", "actions", "check", "figures":
+	case "reorder", "actions", "figures":
 		return false
 	}
 	text := strings.TrimSpace(c.Text)
 	return (text == "" || text == "—") && c.Sub == "" && c.Detail == "" &&
-		c.Chip == "" && c.Tag == "" && c.Href == "" && c.Button == "" && c.Clip == "" &&
+		c.Chip == "" && c.Tag == "" && c.Href == "" && c.Clip == "" &&
 		len(c.Chips) == 0 && len(c.Phrase) == 0 && len(c.Endpoints) == 0 && len(c.Actions) == 0
 }
 
@@ -964,12 +951,6 @@ func (c tableCellView) Absent() bool {
 // where following it would fetch the very page we are already on, only to show
 // what a swap can show without leaving.
 func (c tableCellView) OpensPanel() bool { return c.Panel != "" && c.Href == c.Panel }
-
-// Control is a toggle cell's checkbox. The row is what it switches, so it takes
-// the row's name.
-func (c tableCellView) Control() switchControl {
-	return switchControl{Name: c.Name, On: c.On, Label: c.RowName}
-}
 
 // splitMagnitude separates a count's magnitude letter from its digits: "2.7k"
 // is "2.7" and "k". A value whose last character is not a magnitude letter
@@ -1050,13 +1031,13 @@ func EntityPath(kind, id string) string {
 }
 
 // rowOpensItself reports whether the row already carries a way in of its own: a
-// cell that opens the panel, a button, a link on its subject, or the acts at its
-// trailing edge. Any of them means the listing has said how this row is entered,
-// and the shell's own "Details" affordance would be a second door beside a door
-// — with the added cost of a whole extra column on a listing that had none.
+// cell that opens the panel, a link on its subject, or the acts at its trailing
+// edge. Any of them means the listing has said how this row is entered, and the
+// shell's own "Details" affordance would be a second door beside a door — with
+// the added cost of a whole extra column on a listing that had none.
 func (t *Table) rowOpensItself(row TableRow) bool {
 	for i, c := range row.Cells {
-		if c.Button != "" || len(c.Actions) > 0 {
+		if len(c.Actions) > 0 {
 			return true
 		}
 		if c.Opens || c.Href != "" {
@@ -1196,7 +1177,7 @@ func (t *Table) secondary() []int {
 // any width: its state or the acts on it.
 func decides(kind string) bool {
 	switch kind {
-	case "status", "toggle", "actions", "action", "reorder", "link":
+	case "status", "actions", "reorder", "link":
 		return true
 	}
 	return false
@@ -1565,26 +1546,6 @@ func (t *Table) rowViews(r *Renderer, csrf string, rows []TableRow, hasDetail bo
 				}
 				if cv.Href != "" {
 					cv.Href = SafeHref(cv.Href)
-				}
-				if cv.Confirm != "" {
-					cv.ConfirmID = fmt.Sprintf("verso-action-confirm-%d", r.seq.cfm.Add(1))
-					if cv.ConfirmTitle == "" {
-						cv.ConfirmTitle = r.tr("Are you sure?")
-					}
-					if cv.Button != "" {
-						value := cv.Action
-						if value == "" {
-							value = cv.RowID
-						}
-						dialog, err := confirmDialog(r, confirmDialogView{
-							ID: cv.ConfirmID, Title: cv.ConfirmTitle, Body: cv.Confirm, CSRFToken: csrf,
-							Name: "_action", Value: value, Act: cv.Button, Keep: cv.ConfirmCancel,
-						})
-						if err != nil {
-							return nil, err
-						}
-						cv.Dialog = dialog
-					}
 				}
 				for _, ep := range row.Cells[i].Endpoints {
 					icon, ok := endpointIcons[ep.Kind]

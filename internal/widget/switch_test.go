@@ -53,7 +53,7 @@ func TestDecodeAndRenderSwitch(t *testing.T) {
 // for its state beside it, inside one label, so the name, the box and the word
 // all flip it (form-fields). The stylesheet shows the word the box is in; the
 // checkbox already says its state to a screen reader, so the words are hidden
-// from it. A table's toggle cell stays a bare box.
+// from it.
 func TestAFormSwitchSaysOnOrOff(t *testing.T) {
 	r := newRenderer(t)
 	got := render(t, r, &Switch{Name: "wmm", Label: "WMM", On: true})
@@ -63,13 +63,6 @@ func TestAFormSwitchSaysOnOrOff(t *testing.T) {
 	}
 	if box := strings.Index(got, "data-verso-switch"); box < 0 || box > strings.Index(got, "verso-switch-word") {
 		t.Errorf("the word follows the box:\n%s", got)
-	}
-	cell := render(t, r, &Table{
-		Columns: []TableColumn{{Kind: "toggle"}, {Label: "Name", Kind: "name"}},
-		Rows:    []TableRow{{ID: "r1", Cells: []TableCell{{Name: "r1_enabled", On: true}, {Text: "Allow-SSH"}}}},
-	})
-	if !strings.Contains(cell, "data-verso-switch") || strings.Contains(cell, "verso-switch-word") {
-		t.Errorf("a table's toggle cell is a bare box:\n%s", cell)
 	}
 }
 

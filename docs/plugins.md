@@ -888,7 +888,6 @@ name is an optional trailing comment.
 ```json
 { "type": "table",
   "columns": [
-    { "kind": "toggle" },
     { "label": "From",     "kind": "endpoint" },
     { "label": "To",       "kind": "endpoint" },
     { "label": "Protocol", "kind": "keyword" },
@@ -898,7 +897,6 @@ name is an optional trailing comment.
   ],
   "rows": [
     { "id": "force_dns_guest", "cells": [
-      { "on": true, "name": "force_dns_guest" },
       { "endpoints": [ { "kind": "zone", "label": "guest" } ] },
       { "endpoints": [ { "kind": "router", "label": "router" } ] },
       { "text": "tcp/udp" },
@@ -945,7 +943,6 @@ Column kinds, one treatment each (never mix them per row):
   the faint dash.
 - A `text` cell may carry a `chip`: the config value the word stands for
   (`"WPA3"` beside `sae`).
-- `"toggle"` — an on/off checkbox; the cell carries `on` and an optional form `name`.
 - `"pill"` — an enum value as a status pill; the cell carries `text` plus a
   `variant` from the badge vocabulary (`success`/`warning`/`danger`/`info`/
   neutral) — e.g. `accept`→success, `reject`→warning, `drop`→danger. An empty
@@ -1040,28 +1037,16 @@ name's does. The phrase is the row's name, so a muted row marks it over.
   { "value": "ACCEPT" }, { "words": "→" }, { "value": "DROP" } ] }
 ```
 
-**Direct row action.** A `pill` cell may carry a compact immediate action instead
-of a state. Set `button`, `action`, `confirm_title`, and `confirm`; the shell opens
-its standard alert dialog and posts `_action=<action>` back to the page only after
-the operator confirms. Use this for a command with no edit surface, such as ending
-a login session.
-
-```json
-{ "button": "End session", "action": "end-session:iphone",
-  "confirm_title": "End this session?",
-  "confirm": "Anyone using this session will be signed out of Verso immediately." }
-```
-
-`confirm_cancel` names the way back after what it keeps — `"Keep session"`,
-`"Keep rule"`. Left out, the shell says "Keep it". It is never "Cancel": the
-alert speaks one hue, its question and both answers in crimson.
-
-An individual icon in an `actions` cell can also carry `confirm_title`,
+An individual icon in an `actions` cell can carry `confirm_title`,
 `confirm` and `confirm_cancel`. Only that action opens the dialog; its neighboring toggle or edit
 action keeps its usual behavior. The shell substitutes the row's name for `%s`
 in the title after translation. On confirmation it posts the action's `name`
 and `value` to the listing. Identify the removal target in that value rather
 than the `open` query parameter, which may still name a different editor.
+
+`confirm_cancel` names the way back after what it keeps — `"Keep session"`,
+`"Keep rule"`. Left out, the shell says "Keep it". It is never "Cancel": the
+alert speaks one hue, its question and both answers in crimson.
 
 ```json
 { "actions": [
