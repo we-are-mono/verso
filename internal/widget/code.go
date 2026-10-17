@@ -116,6 +116,10 @@ func (c *Code) renderInto(r *Renderer, out io.Writer, _ string) error {
 	return r.execute(out, "code.html.tmpl", c)
 }
 
+// drawsCard reports whether the block stands as a configuration card of its
+// own (code.html.tmpl's divider): every block but an unnamed live preview.
+func (c *Code) drawsCard() bool { return !c.Live || c.Label != "" }
+
 // EndsWithCode reports whether a surface ends in a visible configuration card.
 // Form actions belong to that card, so they follow it without another rule.
 // Hidden form carriers take no space and do not break that relationship.

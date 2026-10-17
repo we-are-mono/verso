@@ -6,7 +6,7 @@ The measuring system every page, card and drawer is laid out on: an 8px grid for
 ## Requirements
 
 ### Requirement: Fixed measures are multiples of 8px
-Every fixed measure of the layout SHALL be a multiple of 8px. This covers a box's height or width, the air between boxes, a card's or a drawer's inset, and a page measure. A framed box is measured between the lines its borders stand on, so it is a multiple of 8px and one pixel more from outer edge to outer edge.
+Every fixed measure of the layout SHALL be a multiple of 8px. This covers a box's height or width, the air between boxes, a card's inset or a drawer's gutter, and a page measure. A framed box is measured between the lines its borders stand on, so it is a multiple of 8px and one pixel more from outer edge to outer edge.
 
 #### Scenario: A control
 - **WHEN** a field, a select or a button stands at its control height on any page or in any drawer
@@ -28,15 +28,19 @@ Every fixed measure of the layout SHALL be a multiple of 8px. This covers a box'
 - **AND** a control that fills it has its left and right borders on grid lines
 
 ### Requirement: A squeezed column rounds down to the grid
-A content column the window squeezes SHALL round its width down to a multiple of 8px and one pixel more, so its end and the rules and frames that run to it land on the grid. A drawer's content column SHALL round the same way, whatever the drawer's width.
+A content column the window squeezes SHALL round its width down to a multiple of 8px and one pixel more, so its end and the rules and frames that run to it land on the grid. A drawer's cards SHALL keep the same gutter on both sides instead: at the drawer's 760px both of a card's borders land on grid lines, and on a narrower window the gutters stay equal.
 
 #### Scenario: A narrow window
 - **WHEN** the room for a page's content column is 1013px
 - **THEN** the column is 1009px wide
 
+#### Scenario: A drawer at its width
+- **WHEN** an operator opens a rule's drawer on a wide screen
+- **THEN** each card's left and right borders land on grid lines measured from the drawer's left border
+
 #### Scenario: A drawer on a phone
 - **WHEN** an operator opens a rule's drawer on a 390px-wide phone
-- **THEN** a field running the drawer's width ends with its right border on a grid line
+- **THEN** the sand left and right of its cards is the same width
 
 ### Requirement: Every drawn edge stands on a grid line
 Every border, hairline and frame the layout draws SHALL stand on a grid line, top, bottom, left and right. A box gives its bottom border's pixel back to what follows it, so the next box starts on a line too. A control standing beside its field's name SHALL centre on the name's 24px line instead, its top and bottom borders 4px inside the lines over and under that line, its left and right borders on lines.
@@ -132,7 +136,7 @@ In a dev session, pressing G outside a text field SHALL draw the 8px grid over t
 
 #### Scenario: A drawer open
 - **WHEN** a developer has the grid on and opens a rule's drawer
-- **THEN** the drawer shows the grid measured from its own chrome's hairline
+- **THEN** the drawer shows the grid measured from its own left border and its chrome's hairline
 
 #### Scenario: A reload keeps the choice
 - **WHEN** a developer has the grid on and the dev session reloads the page after a rebuild

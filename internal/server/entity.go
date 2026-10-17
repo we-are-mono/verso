@@ -300,13 +300,12 @@ func (s *Server) entityTabs(ctx context.Context, r *http.Request, kind, id, acti
 
 // entityPanelData is the panel's render model.
 type entityPanelData struct {
-	JoinsCode bool
-	Kind      string
-	ID        string
-	Title     string
-	Tabs      []entityTabView
-	Body      template.HTML
-	CTA       string
+	Kind  string
+	ID    string
+	Title string
+	Tabs  []entityTabView
+	Body  template.HTML
+	CTA   string
 	// Post is where the commit row's verb submits: the tab in force, on the
 	// panel's own route. The row is the panel's frame rather than part of the
 	// plugin's form, so it carries the route itself.
@@ -411,13 +410,13 @@ func (s *Server) entityPanel(r *http.Request, kind, id, active, lang string, tr 
 		widget.PostIntoFrame(tab.Body, widget.FrameEntity, tab.Href)
 		widget.MarkStaged(tab.Body, waits)
 		// The tab's widgets are the plugin's prose too, so they translate from
-		// that plugin's catalog exactly as its page would.
+		// that plugin's catalog exactly as its page would. The panel is a
+		// drawer, so the tab stands on its cards as any drawer's body does.
 		var body strings.Builder
-		if err := s.widgets.RenderWithToken(&body, tab.Body, s.sessionCSRF(r), lang, s.pluginTranslators(r)(tab.PluginID)); err != nil {
+		if err := s.widgets.RenderWithToken(&body, widget.OnCards(tab.Body), s.sessionCSRF(r), lang, s.pluginTranslators(r)(tab.PluginID)); err != nil {
 			continue
 		}
 		data.Body, data.CTA, data.Post = template.HTML(body.String()), tab.CTA, tab.Href
-		data.JoinsCode = widget.EndsWithCode(tab.Body)
 	}
 	return data, nil
 }

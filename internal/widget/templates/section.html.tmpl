@@ -41,8 +41,10 @@
        the one that stands between sections, so a ledger is told from the
        hairlines between the rows under it; a part with a glyph leads with
        it, in Glyph, so parts of different kinds are told apart at a
-       glance. */}}
-  <div data-verso-ledger class="mb-6 flex h-6 items-center gap-3">
+       glance. A part's lede belongs to its line, as a card's belongs to its
+       title: it stands straight under the line, and the 24px to the first
+       box stands under the lede instead. */}}
+  <div data-verso-ledger class="{{if not .Sub}}mb-6 {{end}}flex h-6 items-center gap-3">
     {{if .Icon}}<span class="shrink-0 text-glyph">{{icon .Icon "size-4"}}</span>{{end}}
     {{/* Its heading is one level under the nearest titled section over it,
          so an outline never skips a level (Level). */}}

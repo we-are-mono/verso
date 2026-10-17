@@ -24,13 +24,15 @@
 {{/* The tab in force. A subject no plugin claims has nothing here — the facts
      in the body are the whole panel, which is the honest reading of a board where
      nothing is installed that can act on it. */}}
-<div data-verso-drawer-body class="verso-drawer-scrollbar min-h-0 flex-1 overflow-x-hidden overflow-y-auto {{template "verso-drawer-inset"}} pt-8 pb-8">
+<div data-verso-drawer-body class="verso-drawer-scrollbar min-h-0 flex-1 overflow-x-hidden overflow-y-auto {{template "verso-drawer-ground"}}">
   {{if .Body}}<div>{{.Body}}</div>{{end}}
   {{if .CTA}}
   {{/* The commit row travels with the tab, not with the panel: the verb is the
        contributing plugin's, because only it knows what its tab saves. The
-       acts carry no explanation beside them. */}}
-  <div class="{{if .JoinsCode}}mt-6{{else}}mt-5.75 border-t border-rule pt-5.75{{end}} flex flex-wrap items-center gap-4">
+       acts carry no explanation beside them. It stands on the sand 24px under
+       the tab's last card, as a page form's Save does, the cards ruling it
+       off: 23px after the frame's pixel, so the buttons land on lines. */}}
+  <div class="mt-5.75 flex flex-wrap items-center gap-4">
     <div class="flex flex-none gap-2">
       {{/* The commit row sits outside the tab's form — the form is the plugin's
            body, the row is the panel's frame — so it posts the panel's own

@@ -48,7 +48,13 @@ func (r *Renderer) renderPanel(d *RowDrawer, csrf string, flash Flash) (drawerPa
 	for _, child := range d.Children {
 		PostIntoFrame(child, FramePanel, "")
 	}
-	body, err := r.drawer().renderChildren(d.Children, csrf)
+	// A chooser is a list of choices on the drawer's own Paper; every other
+	// panel's body stands on cards (drawer_cards.go).
+	children := d.Children
+	if d.Size != "choices" {
+		children = onCards(children)
+	}
+	body, err := r.drawer().renderChildren(children, csrf)
 	if err != nil {
 		return drawerPanelView{}, err
 	}

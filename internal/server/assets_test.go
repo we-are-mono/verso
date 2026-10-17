@@ -642,8 +642,8 @@ func TestACardsRowsKeepARowsAirAtItsEdges(t *testing.T) {
 }
 
 // TestAStagedRowIsMarkedDownItsEdge: a row whose change waits wears a 3px
-// bar in the stage's marigold down its left edge, from line to line: on a
-// card's border where rows run to it, at a drawer's edge where they do not.
+// bar in the stage's marigold down its left edge, from line to line: on its
+// card's border, where rows run to it, on a page and in a drawer alike.
 func TestAStagedRowIsMarkedDownItsEdge(t *testing.T) {
 	raw, err := os.ReadFile("assets/forms.css")
 	if err != nil {
@@ -656,8 +656,8 @@ func TestAStagedRowIsMarkedDownItsEdge(t *testing.T) {
 			t.Errorf("the staged bar lacks %s: %s", want, bar)
 		}
 	}
-	if !strings.Contains(cssBlock(t, css, "dialog .verso-staged-bar > [aria-hidden] {"), "left: calc(var(--spacing) * -10);") {
-		t.Error("in a drawer the staged bar does not stand at the drawer's edge")
+	if strings.Contains(css, "dialog .verso-staged-bar") {
+		t.Error("a drawer's staged bar stands off its card's border")
 	}
 }
 
@@ -698,14 +698,15 @@ func TestASwitchShowsTheWordForItsState(t *testing.T) {
 
 // TestFieldRowsRunToACardsBorders: in a page card a field row runs from the
 // card's left border to its right, its words still the card's 23px in, so the
-// hairlines between rows touch both borders (form-fields). A row inside
-// another row, a field set's cell, or a drawer's row stays in its column.
+// hairlines between rows touch both borders (form-fields), on a page and in a
+// drawer alike. A row inside another row or a field set's cell stays in its
+// column.
 func TestFieldRowsRunToACardsBorders(t *testing.T) {
 	raw, err := os.ReadFile("assets/sections.css")
 	if err != nil {
 		t.Fatal(err)
 	}
-	block := cssBlock(t, string(raw), ".verso-page-body section[data-verso-section]:not(section section, dialog *) .verso-field-row:not(.verso-field-row .verso-field-row, .verso-form-grid .verso-field-row) {")
+	block := cssBlock(t, string(raw), ":is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) .verso-field-row:not(.verso-field-row .verso-field-row, .verso-form-grid .verso-field-row) {")
 	for _, want := range []string{
 		"margin-inline: calc(var(--verso-side) * -1);",
 		"padding-inline: var(--verso-side);",

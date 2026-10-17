@@ -159,12 +159,21 @@ The pages with the light masthead (System › Logs, Firewall › Activity and Sy
 - **WHEN** an operator opens System › Diagnostics
 - **THEN** the tool row and its output stand under the light masthead, not inside a card
 
-### Requirement: Drawers keep their own layout
-A drawer SHALL keep its layout (Paper, 56px header, heading bands, configuration card), and sections inside a drawer SHALL NOT render as cards.
+### Requirement: A drawer's subjects are cards
+A drawer's body SHALL be a page's ground in small: Quiet Sand under its Paper header and tab strip, its sections Paper cards that stand as a page's do, its configuration card a card of its own, and its Save on the sand under the last card. Whatever a plugin draws loose in a drawer (the fields a form opens with, a device's facts) SHALL stand in an untitled card, without the plugin changing. The cards SHALL keep one gutter on the drawer's three open sides, and the drawer's title and first tab SHALL stand on the cards' left edge.
 
 #### Scenario: Editing a firewall rule
 - **WHEN** an operator opens a rule's drawer from the Rules page
-- **THEN** its sections stand under heading bands inside the drawer, not as cards
+- **THEN** "What this rule matches" is a card with that title in its header, and `/etc/config/firewall` is a card of its own under it
+
+#### Scenario: A port forward's opening fields
+- **WHEN** an operator opens a port forward's drawer
+- **THEN** "Forward is active" and Name stand in a card with no header, above the "Incoming traffic" card
+
+#### Scenario: Even gutters
+- **WHEN** an operator opens a device's Reserved address tab
+- **THEN** the sand left of the cards, right of them and over the first one is the same width
+- **AND** the drawer's title and the tab names start where the cards' frames do
 
 ### Requirement: Cards keep their content usable on a phone
 On a phone a card SHALL take the column's full width: a wide table scrolls sideways inside its card, a card header drops secondary counts before its title truncates, and a control strip stacks its controls.

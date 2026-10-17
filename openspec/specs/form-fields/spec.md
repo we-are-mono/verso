@@ -207,7 +207,7 @@ A field's refusal SHALL stand as its band under the control in the answer column
 - **THEN** the refusal band stands straight under the Burst field, beside the description, with no gap opened between the field and the band
 
 ### Requirement: A staged field is marked down its row's edge
-A field whose change waits on the stage SHALL wear a bar in the stage's marigold down its row's left edge, from the line above the row to the line below it, on the card's border or a drawer's edge, and SHALL say "staged" to a screen reader beside its name.
+A field whose change waits on the stage SHALL wear a bar in the stage's marigold down its row's left edge, from the line above the row to the line below it, on its card's border on a page and in a drawer, and SHALL say "staged" to a screen reader beside its name.
 
 #### Scenario: A staged switch
 - **WHEN** an operator checks "Drop packets that belong to no connection" and saves

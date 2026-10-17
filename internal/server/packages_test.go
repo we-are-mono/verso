@@ -85,7 +85,7 @@ func TestPackagesInventory(t *testing.T) {
 		"verso-prose text-sm", // the description is plain body prose, no heading over it
 		`href="https://htop.dev" target="_blank" rel="noopener noreferrer"`,           // project link opens safely outside Verso
 		"space-y-0 border-b border-mid not-first:pt-1.75", "border-t border-mid py-2", // facts are hairline rows 32px under the prose, closed by a rule as a table's are
-		`<header class="flex flex-none items-center gap-4 bg-quiet pl-10 pr-(--verso-drawer-end) py-3.5 shadow-[inset_0_-1px_0_var(--color-rule)]">`, // shared title band
+		`<header class="flex flex-none items-center gap-4 bg-ground px-(--verso-drawer-gutter) py-3.5 shadow-[inset_0_-1px_0_var(--color-rule)]">`, // shared title band
 		`href="/system/packages/files?package=htop"`, // an installed package lists its files
 	} {
 		if !strings.Contains(panel, want) {

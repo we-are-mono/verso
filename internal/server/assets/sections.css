@@ -24,26 +24,35 @@
  *
  * Where the surface differs is only how far its rules and bands run past the
  * content: the reach. A page runs them 40px into its gutter to the rail, and
- * a form column's 40px back past its end; a drawer, inset 40px as a page is,
- * runs them to both of its edges. The surface sets --verso-reach-start and
+ * a form column's 40px back past its end; a card, on a page or in a drawer,
+ * runs them to both of its borders. The surface sets --verso-reach-start and
  * --verso-reach-end and every rule — a section's, a heading band's, a page
  * Save's, a config preview's — reaches by them and pads back in, so its
  * words do not move.
  *
  * In utilities: the page stack's rhythm and the rows' own padding are
  * utilities, and only this layer outranks them. */
-/* A drawer's content column is the room inside its 40px insets rounded down
- * to the grid and a pixel more, as a page's column is (w-column), so a frame
- * across it ends on a line: the drawer is 760px or the window's width with
- * its left border, and its end inset takes what the rounding leaves. */
-:root {
-  --verso-drawer-end: calc(var(--spacing) * 10 + mod(min(var(--container-3xl), 100vw) - 1px - var(--spacing) * 20 - 1px, 0.5rem));
+/* A drawer's gutter: the sand between its edges and the cards it holds, one
+ * measure on its three open sides (after its left border, before the
+ * window's edge, under its chrome's hairline), and the chrome's words keep it
+ * too, so the title and the tabs stand on the cards' left edge and the close
+ * ends on their right one. It is the cards' 24px less the pixel of the edge
+ * it is measured from, so a card's frame lands on a line of the drawer's
+ * grid, which starts on its left border and its chrome's hairline; 760px is a
+ * whole number of lines, so the right border lands on one too. On a phone,
+ * where the drawer takes the window, it is 16px less that pixel, as a page's
+ * gutter is there. */
+:root { --verso-drawer-gutter: calc(var(--spacing-inset) - 1px); }
+@media (width < 48rem) {
+  :root { --verso-drawer-gutter: calc(var(--spacing) * 4 - 1px); }
 }
 @layer utilities {
   main { --verso-reach-start: calc(var(--spacing) * 10); --verso-reach-end: 0px; }
+  /* A drawer's subjects are cards, which set their own reach; what stands on
+     its sand between them reaches nowhere. */
   [data-verso-drawer-body] {
-    --verso-reach-start: calc(var(--spacing) * 10);
-    --verso-reach-end: var(--verso-drawer-end);
+    --verso-reach-start: 0px;
+    --verso-reach-end: 0px;
   }
   .verso-drawer-scrollbar:not([data-verso-drawer-body]) { --verso-reach-start: 0px; --verso-reach-end: 0px; }
 
@@ -115,7 +124,7 @@
      listing, a reading, a set, a form of acts alone, a field and its act on
      one row, whose field gives up its air) stands 24px under it, as a field
      does with its own. */
-  section[data-verso-section]:has(> [data-verso-section-band]) > .verso-rhythm > :not(input[type="hidden"], [hidden]):not(:not(input[type="hidden"], [hidden]) ~ *):not(.verso-field-row, .verso-form-grid, .verso-conditional, .verso-field-set, form:not([data-verso-compact-form]):has(.verso-field-row, .verso-form-grid, .verso-conditional), [data-verso-change-field], [data-verso-settings]) {
+  section[data-verso-section]:has(> [data-verso-section-band]) > .verso-rhythm > :not(input[type="hidden"], [hidden]):not(:not(input[type="hidden"], [hidden]) ~ *):not(.verso-field-row, .verso-form-grid, .verso-conditional, .verso-field-set, form:not([data-verso-compact-form]):has(.verso-field-row, .verso-form-grid, .verso-conditional), [data-verso-change-field], [data-verso-settings], [data-verso-rows]:has(> .verso-field-row:first-child)) {
     margin-top: var(--spacing-inset);
   }
   section[data-verso-section]:has(> [data-verso-section-band]),
@@ -129,34 +138,16 @@
     margin-top: calc(var(--spacing) * 10 - 1px);
   }
 
-  /* A drawer's chrome ends on a hairline (the header's, or the tab strip's
-     under it), and that hairline is the rule of the section the body opens
-     on: a band with nothing visible before it draws none of its own, and the
-     body gives back its top padding, so the title stands the band's 40px
-     under the chrome as it stands under any rule. A body that opens on
-     anything else keeps its padding. Hidden carriers and elements with
+  /* A page opens under the masthead's hairline: a heading band with nothing
+     visible before it in the page draws no rule of its own, and its title
+     stands under the masthead's own air. Hidden carriers and elements with
      nothing in them (a notice block with no notice) are not something
      before it, so no surface has to take care not to render them. */
-  [data-verso-drawer-body] [data-verso-section-band]:not(
-    [data-verso-drawer-body] :not(input[type="hidden"], template, script, [hidden], :empty) ~ * [data-verso-section-band],
-    [data-verso-drawer-body] :not(input[type="hidden"], template, script, [hidden], :empty) ~ [data-verso-section-band]
-  ) {
-    border-top-width: 0;
-  }
-  /* A page opens under the masthead's hairline the same way: a heading band
-     with nothing visible before it in the page draws no rule of its own, and
-     its title stands under the masthead's own air. */
   .verso-page-body [data-verso-section-band]:not(
     .verso-page-body :not(input[type="hidden"], template, script, [hidden], :empty) ~ * [data-verso-section-band],
     .verso-page-body :not(input[type="hidden"], template, script, [hidden], :empty) ~ [data-verso-section-band]
   ) {
     border-top-width: 0;
-    padding-top: 0;
-  }
-  [data-verso-drawer-body]:has([data-verso-section-band]:not(
-    [data-verso-drawer-body] :not(input[type="hidden"], template, script, [hidden], :empty) ~ * [data-verso-section-band],
-    [data-verso-drawer-body] :not(input[type="hidden"], template, script, [hidden], :empty) ~ [data-verso-section-band]
-  )) {
     padding-top: 0;
   }
 
@@ -204,9 +195,9 @@
   [data-verso-headless] > .verso-rhythm > form.verso-form:not(:not(input[type="hidden"], [hidden]) ~ *) > :not(input[type="hidden"], [hidden]):not(:not(input[type="hidden"], [hidden]) ~ *) { padding-top: 0; }
 }
 
-/* A page's subject is a card: a titled section on a page is Paper
- * in a Strong Hairline frame, its heading band the card's header behind a
- * hairline, its rules reaching the card's edges as a drawer's reach its own.
+/* A page's subject is a card, and a drawer's is too: a titled section is
+ * Paper in a Strong Hairline frame, its heading band the card's header behind
+ * a hairline, its rules reaching the card's edges.
  * Cards stand 24px apart, their words 24px in. A frame's edges are lines of
  * the grid, and its body's lines fill whole bands of it: its top border lands
  * on a line and the air after it is a pixel short of 24, so the body starts on
@@ -216,14 +207,14 @@
  * stand 23px after the left border and 23px before the right one
  * (--verso-side), so the body is a multiple of 8px and a pixel wide, and a
  * box that starts it or ends it, or runs across it, has its borders on lines.
- * A drawer's sections keep their bands. A page
- * form's untitled run of fields is a card with no header, so no field stands
- * loose on the sand.
+ * A form's untitled run of fields is a card with no header, so no field
+ * stands loose on the sand. A drawer's body is the page's ground in small
+ * (verso-drawer-ground), so its sections stand exactly as a page's do.
  *
  * Unlayered, so the card outranks the band rules above, whose surface
  * selectors would otherwise win on specificity alone. */
 :root { --verso-side: calc(var(--spacing-inset) - 1px); }
-.verso-page-body section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]):not(section section, dialog *) {
+:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]):not(section section) {
   --verso-reach-start: var(--verso-side);
   --verso-reach-end: var(--verso-side);
   margin: 0;
@@ -240,7 +231,7 @@
  * both borders: a line that touches a card's borders separates questions
  * (form-fields). A row inside a row, or in a field set's cell, stays in its
  * column; a drawer's rows run its content column. */
-.verso-page-body section[data-verso-section]:not(section section, dialog *) .verso-field-row:not(.verso-field-row .verso-field-row, .verso-form-grid .verso-field-row) {
+:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) .verso-field-row:not(.verso-field-row .verso-field-row, .verso-form-grid .verso-field-row) {
   margin-inline: calc(var(--verso-side) * -1);
   padding-inline: var(--verso-side);
 }
@@ -254,47 +245,47 @@
  * ends on. Under a header the body has already taken the seam's pixel back,
  * and the row's pull collapses with that margin rather than adding to it, so
  * the pull counts the pixel in. */
-.verso-page-body section[data-verso-section]:has(> [data-verso-section-band]):not(section section, dialog *) > .verso-rhythm > :not(input[type="hidden"], [hidden], template):not(:not(input[type="hidden"], [hidden], template) ~ *):is(.verso-field-set, .verso-conditional, [data-verso-settings], form:not([data-verso-compact-form])) > :not(input[type="hidden"], [hidden], template):not(:not(input[type="hidden"], [hidden], template) ~ *):is(.verso-field-row),
-.verso-page-body section[data-verso-section]:has(> [data-verso-section-band]):not(section section, dialog *) > .verso-rhythm > :not(input[type="hidden"], [hidden], template):not(:not(input[type="hidden"], [hidden], template) ~ *):is(.verso-field-row) {
+:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:has(> [data-verso-section-band]):not(section section) > .verso-rhythm > :not(input[type="hidden"], [hidden], template):not(:not(input[type="hidden"], [hidden], template) ~ *):is(.verso-field-set, .verso-conditional, [data-verso-settings], [data-verso-rows], form:not([data-verso-compact-form])) > :not(input[type="hidden"], [hidden], template):not(:not(input[type="hidden"], [hidden], template) ~ *):is(.verso-field-row),
+:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:has(> [data-verso-section-band]):not(section section) > .verso-rhythm > :not(input[type="hidden"], [hidden], template):not(:not(input[type="hidden"], [hidden], template) ~ *):is(.verso-field-row) {
   margin-top: calc(var(--spacing) * -2 - 1px);
 }
-.verso-page-body section[data-verso-section][data-verso-headless][data-verso-ruled]:not(section section, dialog *) > .verso-rhythm > :not(input[type="hidden"], [hidden], template):not(:not(input[type="hidden"], [hidden], template) ~ *):is(.verso-field-set, .verso-conditional, [data-verso-settings], form:not([data-verso-compact-form])) > :not(input[type="hidden"], [hidden], template):not(:not(input[type="hidden"], [hidden], template) ~ *):is(.verso-field-row),
-.verso-page-body section[data-verso-section][data-verso-headless][data-verso-ruled]:not(section section, dialog *) > .verso-rhythm > :not(input[type="hidden"], [hidden], template):not(:not(input[type="hidden"], [hidden], template) ~ *):is(.verso-field-row) {
+:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section][data-verso-headless][data-verso-ruled]:not(section section) > .verso-rhythm > :not(input[type="hidden"], [hidden], template):not(:not(input[type="hidden"], [hidden], template) ~ *):is(.verso-field-set, .verso-conditional, [data-verso-settings], [data-verso-rows], form:not([data-verso-compact-form])) > :not(input[type="hidden"], [hidden], template):not(:not(input[type="hidden"], [hidden], template) ~ *):is(.verso-field-row),
+:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section][data-verso-headless][data-verso-ruled]:not(section section) > .verso-rhythm > :not(input[type="hidden"], [hidden], template):not(:not(input[type="hidden"], [hidden], template) ~ *):is(.verso-field-row) {
   margin-top: calc(var(--spacing) * -2);
 }
-.verso-page-body section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]):not(section section, dialog *) > .verso-rhythm > :not(input[type="hidden"], [hidden], template):not(:has(~ :not(input[type="hidden"], [hidden], template))):is(.verso-field-set, [data-verso-settings], form:not([data-verso-compact-form])) > :not(input[type="hidden"], [hidden], template):not(:has(~ :not(input[type="hidden"], [hidden], template))):is(.verso-field-row):not(.verso-field-wide:has(> .verso-field-ledger > .verso-field-answer > [data-verso-field-note]:last-child)),
-.verso-page-body section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]):not(section section, dialog *) > .verso-rhythm > .verso-conditional:last-child:has(> .verso-conditional-gate input[data-verso-switch]:checked) > .verso-conditional-body > .verso-field-row:last-child,
-.verso-page-body section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]):not(section section, dialog *) > .verso-rhythm > .verso-conditional:last-child:not(:has(> .verso-conditional-gate input[data-verso-switch]:checked)) > .verso-conditional-otherwise > .verso-field-row:last-child,
-.verso-page-body section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]):not(section section, dialog *) > .verso-rhythm > .verso-conditional:last-child:not(:has(> .verso-conditional-gate input[data-verso-switch]:checked)):not(:has(> .verso-conditional-otherwise)) > .verso-conditional-gate,
-.verso-page-body section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]):not(section section, dialog *) > .verso-rhythm > :not(input[type="hidden"], [hidden], template):not(:has(~ :not(input[type="hidden"], [hidden], template))):is(.verso-field-row):not(.verso-field-wide:has(> .verso-field-ledger > .verso-field-answer > [data-verso-field-note]:last-child)) {
+:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]):not(section section) > .verso-rhythm > :not(input[type="hidden"], [hidden], template):not(:has(~ :not(input[type="hidden"], [hidden], template))):is(.verso-field-set, [data-verso-settings], [data-verso-rows], form:not([data-verso-compact-form])) > :not(input[type="hidden"], [hidden], template):not(:has(~ :not(input[type="hidden"], [hidden], template))):is(.verso-field-row):not(.verso-field-wide:has(> .verso-field-ledger > .verso-field-answer > [data-verso-field-note]:last-child)),
+:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]):not(section section) > .verso-rhythm > .verso-conditional:last-child:has(> .verso-conditional-gate input[data-verso-switch]:checked) > .verso-conditional-body > .verso-field-row:last-child,
+:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]):not(section section) > .verso-rhythm > .verso-conditional:last-child:not(:has(> .verso-conditional-gate input[data-verso-switch]:checked)) > .verso-conditional-otherwise > .verso-field-row:last-child,
+:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]):not(section section) > .verso-rhythm > .verso-conditional:last-child:not(:has(> .verso-conditional-gate input[data-verso-switch]:checked)):not(:has(> .verso-conditional-otherwise)) > .verso-conditional-gate,
+:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]):not(section section) > .verso-rhythm > :not(input[type="hidden"], [hidden], template):not(:has(~ :not(input[type="hidden"], [hidden], template))):is(.verso-field-row):not(.verso-field-wide:has(> .verso-field-ledger > .verso-field-answer > [data-verso-field-note]:last-child)) {
   margin-bottom: calc(var(--spacing) * -2);
 }
 /* A settings list's fold draws a line between its rows as a row does, so it
  * runs to the borders with them. */
-.verso-page-body section[data-verso-section]:not(section section, dialog *) [data-verso-settings] > details {
+:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) [data-verso-settings] > details {
   margin-inline: calc(var(--verso-side) * -1);
   padding-inline: var(--verso-side);
 }
 /* A field brings its own 24px of air, so after any block in a card it takes
  * no margin: the step is its air, and its label stands 24px under the block
  * as anything else would. */
-.verso-page-body section[data-verso-section]:not(section section, dialog *) > .verso-rhythm > * + :is(.verso-field-row, .verso-form-grid, .verso-conditional, .verso-field-set, form:not([data-verso-compact-form]):has(.verso-field-row, .verso-form-grid, .verso-conditional), [data-verso-change-field], [data-verso-settings]) {
+:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > .verso-rhythm > * + :is(.verso-field-row, .verso-form-grid, .verso-conditional, .verso-field-set, form:not([data-verso-compact-form]):has(.verso-field-row, .verso-form-grid, .verso-conditional), [data-verso-change-field], [data-verso-settings], [data-verso-rows]:has(> .verso-field-row:first-child)) {
   margin-top: 0;
 }
 /* A titled part inside a card starts a group of its own, 40px on. */
-.verso-page-body section[data-verso-section]:not(section section, dialog *) > .verso-rhythm > * + section[data-verso-section] {
+:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > .verso-rhythm > * + section[data-verso-section] {
   margin-top: var(--spacing-frame);
 }
-.verso-page-body section[data-verso-section][data-verso-headless][data-verso-ruled]:not(section section, dialog *) {
+:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section][data-verso-headless][data-verso-ruled]:not(section section) {
   padding-top: calc(var(--spacing-inset) - 1px);
 }
 /* Under the header's hairline the body takes its pixel back, so what stands
  * first (a field's air, a block's 24px) starts its lines on the grid. A
  * listing that opens the body stands straight on the hairline instead. */
-.verso-page-body section[data-verso-section]:not(section section, dialog *) > [data-verso-section-band] + .verso-rhythm:not(:has(> [data-verso-listing]:not([data-verso-list]):first-child)) {
+:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > [data-verso-section-band] + .verso-rhythm:not(:has(> [data-verso-listing]:not([data-verso-list]):first-child)) {
   margin-top: -1px;
 }
-.verso-page-body :not(input[type="hidden"], template, script, [hidden]) ~ section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]):not(section section, dialog *),
+:is(.verso-page-body, [data-verso-drawer-body]) :not(input[type="hidden"], template, script, [hidden]) ~ section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]):not(section section),
 .verso-page-body > .verso-stack > * + .verso-stack:has(> section[data-verso-section]:first-child > [data-verso-section-band]) {
   margin-top: calc(var(--spacing-inset) - 1px);
 }
@@ -361,19 +352,19 @@
  * title stands centred on the header's middle line. The hairline is the
  * frame's own ink, so the header reads as the card's, and the fainter lines
  * under it (between questions) as what the card holds. */
-.verso-page-body section[data-verso-section]:not(section section, dialog *) > [data-verso-section-band] {
+:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > [data-verso-section-band] {
   padding-block: calc(var(--spacing) * 2.75) calc(var(--spacing) * 3);
   border-top-width: 0;
   border-bottom: 1px solid var(--color-rule-strong);
 }
-.verso-page-body section[data-verso-section]:not(section section, dialog *) > [data-verso-section-band] h2 {
+:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > [data-verso-section-band] h2 {
   font-size: var(--text-base);
 }
 /* A lede belongs to the header: its lines stand straight under the title's,
  * over the header's hairline, so the header grows by a 24px line for each of
  * them and its hairline still lands on a line. It reads one step heavier
  * than a lede elsewhere, at 400, so it holds its own beside the title. */
-.verso-page-body section[data-verso-section]:not(section section, dialog *) > [data-verso-section-band] [data-verso-section-lede] {
+:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > [data-verso-section-band] [data-verso-section-lede] {
   font-weight: 400;
 }
 /* A row stands 7px after the hairline over it. A table with no column heads
@@ -381,36 +372,36 @@
  * and every row, a lane's band too, keeps its own air and lands its hairline
  * on a line. One that opens a card's body already stands on the header's
  * hairline. */
-.verso-page-body .verso-table:not(:has(> thead)):not(dialog *) {
+:is(.verso-page-body, [data-verso-drawer-body]) .verso-table:not(:has(> thead)) {
   padding-top: 1px;
 }
-.verso-page-body section[data-verso-section] > [data-verso-section-band] + .verso-rhythm > [data-verso-listing]:not([data-verso-list]):first-child .verso-table {
+:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section] > [data-verso-section-band] + .verso-rhythm > [data-verso-listing]:not([data-verso-list]):first-child .verso-table {
   padding-top: 0;
 }
 /* A listing in a card's flow closes on its last row's hairline, on a line,
  * and gives that pixel back to what follows, as a card does, so the next
  * block's lines still fill bands of the grid. */
-.verso-page-body section[data-verso-section]:not(dialog *) > .verso-rhythm > [data-verso-listing]:not(:last-child) {
+:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section] > .verso-rhythm > [data-verso-listing]:not(:last-child) {
   margin-bottom: -1px;
 }
 /* A listing in a card runs to the card's edges, its words in line with the
  * card's, and one that ends the card closes on the frame. */
-.verso-page-body section[data-verso-section]:not(section section, dialog *) > .verso-rhythm > [data-verso-listing]:not([data-verso-list]) {
+:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > .verso-rhythm > [data-verso-listing]:not([data-verso-list]) {
   margin-inline: calc(var(--verso-side) * -1);
 }
-.verso-page-body section[data-verso-section]:not(section section, dialog *) > .verso-rhythm > [data-verso-listing]:not([data-verso-list]) :is(td, th):first-child {
+:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > .verso-rhythm > [data-verso-listing]:not([data-verso-list]) :is(td, th):first-child {
   padding-left: var(--verso-side);
 }
-.verso-page-body section[data-verso-section]:not(section section, dialog *) > .verso-rhythm > [data-verso-listing]:not([data-verso-list]) :is(td, th):last-of-type {
+:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > .verso-rhythm > [data-verso-listing]:not([data-verso-list]) :is(td, th):last-of-type {
   padding-right: var(--verso-side);
 }
-.verso-page-body section[data-verso-section]:has(> .verso-rhythm > [data-verso-listing]:not([data-verso-list]):last-child):not(section section, dialog *) {
+:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:has(> .verso-rhythm > [data-verso-listing]:not([data-verso-list]):last-child):not(section section) {
   padding-bottom: 0;
 }
 /* The frame's bottom border takes the last row's hairline pixel, so the
  * border is the row's next line. A list's last row draws none either: its
  * hairlines stand between its rows, as a fact list's do. */
-.verso-page-body section[data-verso-section]:not(section section, dialog *) > .verso-rhythm > [data-verso-listing]:last-child .verso-table > tbody > tr:not([hidden]):not(:has(~ tr:not([hidden]))) > td {
+:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > .verso-rhythm > [data-verso-listing]:last-child .verso-table > tbody > tr:not([hidden]):not(:has(~ tr:not([hidden]))) > td {
   border-bottom-width: 0;
 }
 /* A list — a few facts about the page's subject — stands in the card's inset
@@ -418,29 +409,29 @@
  * own, so its words stand in line with the card's, and its hairlines stop at
  * them. A row's tint would run past its words to the inset's edge, so a list's
  * rows keep none. */
-.verso-page-body [data-verso-list] :is(td, th):first-of-type {
+:is(.verso-page-body, [data-verso-drawer-body]) [data-verso-list]:is(td, th):first-of-type {
   padding-left: 0;
 }
-.verso-page-body [data-verso-list] :is(td, th):last-of-type {
+:is(.verso-page-body, [data-verso-drawer-body]) [data-verso-list]:is(td, th):last-of-type {
   padding-right: 0;
 }
-.verso-page-body [data-verso-list] .verso-table > tbody > tr:hover {
+:is(.verso-page-body, [data-verso-drawer-body]) [data-verso-list].verso-table > tbody > tr:hover {
   background-color: transparent;
 }
 /* A list's detail rides its value's line where the column has room for both
  * ("10.0.0.232  Chrome · Linux"), and wraps under the value where it has not
  * — a long IPv6 address, a phone — so the second line is there only when it
  * earns its place. */
-.verso-page-body [data-verso-list] td:has(> [data-verso-detail]) > * {
+:is(.verso-page-body, [data-verso-drawer-body]) [data-verso-list]td:has(> [data-verso-detail]) > * {
   display: inline-flex;
   vertical-align: top;
 }
-.verso-page-body [data-verso-list] td:has(> [data-verso-detail]) > :not([data-verso-detail]) {
+:is(.verso-page-body, [data-verso-drawer-body]) [data-verso-list]td:has(> [data-verso-detail]) > :not([data-verso-detail]) {
   margin-inline-end: calc(var(--spacing) * 3);
 }
 /* Wrapped under its value, the detail is still one phrase: its words keep
  * together, and only a tag after them takes a line of its own. */
-.verso-page-body [data-verso-list] [data-verso-detail] > span:first-child {
+:is(.verso-page-body, [data-verso-drawer-body]) [data-verso-list][data-verso-detail] > span:first-child {
   white-space: nowrap;
 }
 /* A page that is one listing is one card with no header: the page's heading
@@ -469,7 +460,7 @@
   border-bottom-width: 0;
 }
 /* A listing's legend in a card keeps the card's inset and closes it. */
-.verso-page-body [data-verso-listing]:not(dialog *) [data-verso-table-legend] {
+:is(.verso-page-body, [data-verso-drawer-body]) [data-verso-listing] [data-verso-table-legend] {
   padding: calc(var(--spacing-inset) - 1px) var(--verso-side) var(--spacing-inset);
 }
 /* A page's own listing is the card, so its legend follows it close, as a
@@ -483,7 +474,7 @@
   margin-top: 0;
   padding: calc(var(--spacing) * 1.75) 0 0;
 }
-.verso-page-body :is([data-verso-listing] + [data-verso-table-legend]) ~ section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]):not(section section, dialog *):is([data-verso-table-legend] + *) {
+.verso-page-body :is([data-verso-listing] + [data-verso-table-legend]) ~ section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]):not(section section):is([data-verso-table-legend] + *) {
   margin-top: var(--spacing-inset);
 }
 /* A listing's column heads in a card are a row of the card's own Paper across
@@ -495,7 +486,7 @@
  * own hairline's, the 16px line 15px after that edge and 16px over its
  * hairline, centred on the row's middle line. Under a titled card's header it
  * draws no top border: the header keeps its own hairline, on the line. */
-.verso-page-body :is(section[data-verso-section]:not(section section) > .verso-rhythm > [data-verso-listing], .verso-page-body > [data-verso-listing], .verso-page-body > .verso-stack > [data-verso-listing], .verso-page-body > .verso-stack > .verso-stack > [data-verso-listing]) > [data-verso-scroller] > table > thead > tr > th:not(dialog *) {
+:is(.verso-page-body, [data-verso-drawer-body]) :is(section[data-verso-section]:not(section section) > .verso-rhythm > [data-verso-listing],.verso-page-body > [data-verso-listing], .verso-page-body > .verso-stack > [data-verso-listing], .verso-page-body > .verso-stack > .verso-stack > [data-verso-listing]) > [data-verso-scroller] > table > thead > tr > th {
   border-top: var(--verso-head-top, 1px) solid var(--color-rule);
   border-bottom: 1px solid var(--color-rule);
   padding-block: calc(var(--spacing) * 4 - 1px) calc(var(--spacing) * 4);
@@ -509,7 +500,7 @@
 /* A list's heads are a fact list's heading, not a band across the card: 40px
  * as the Overview's IPv4 and IPv6 heads stand, the 24px line 8px under the
  * air over it and 8px over its hairline, with no rule of its own above. */
-.verso-page-body section[data-verso-section]:not(section section) > .verso-rhythm > [data-verso-listing][data-verso-list] > [data-verso-scroller] > table > thead > tr > th:not(dialog *) {
+:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > .verso-rhythm > [data-verso-listing][data-verso-list] > [data-verso-scroller] > table > thead > tr > th {
   border-top-width: 0;
   padding-block: calc(var(--spacing) * 2);
   line-height: calc(var(--spacing) * 6);
@@ -518,33 +509,104 @@
  * other value 400. Links and buttons keep their weight; they are acts. A
  * grouped listing's lanes are Quiet Sand bands among the rows, each straight
  * after the row before it (table.go). */
-.verso-page-body :is(section[data-verso-section]:not(section section) > .verso-rhythm > [data-verso-listing], .verso-page-body > [data-verso-listing], .verso-page-body > .verso-stack > [data-verso-listing], .verso-page-body > .verso-stack > .verso-stack > [data-verso-listing]) > [data-verso-scroller] > table > tbody > tr > td:not(dialog *) .font-semibold:not(a, button) {
+:is(.verso-page-body, [data-verso-drawer-body]) :is(section[data-verso-section]:not(section section) > .verso-rhythm > [data-verso-listing],.verso-page-body > [data-verso-listing], .verso-page-body > .verso-stack > [data-verso-listing], .verso-page-body > .verso-stack > .verso-stack > [data-verso-listing]) > [data-verso-scroller] > table > tbody > tr > td .font-semibold:not(a, button) {
   font-weight: 500;
 }
-.verso-page-body :is(section[data-verso-section]:not(section section) > .verso-rhythm > [data-verso-listing], .verso-page-body > [data-verso-listing], .verso-page-body > .verso-stack > [data-verso-listing], .verso-page-body > .verso-stack > .verso-stack > [data-verso-listing]) > [data-verso-scroller] > table > tbody > tr > td.font-medium:not(dialog *),
-.verso-page-body :is(section[data-verso-section]:not(section section) > .verso-rhythm > [data-verso-listing], .verso-page-body > [data-verso-listing], .verso-page-body > .verso-stack > [data-verso-listing], .verso-page-body > .verso-stack > .verso-stack > [data-verso-listing]) > [data-verso-scroller] > table > tbody > tr > td:not(dialog *) .font-medium:not(a, button) {
+:is(.verso-page-body, [data-verso-drawer-body]) :is(section[data-verso-section]:not(section section) > .verso-rhythm > [data-verso-listing],.verso-page-body > [data-verso-listing], .verso-page-body > .verso-stack > [data-verso-listing], .verso-page-body > .verso-stack > .verso-stack > [data-verso-listing]) > [data-verso-scroller] > table > tbody > tr > td.font-medium,
+:is(.verso-page-body, [data-verso-drawer-body]) :is(section[data-verso-section]:not(section section) > .verso-rhythm > [data-verso-listing],.verso-page-body > [data-verso-listing], .verso-page-body > .verso-stack > [data-verso-listing], .verso-page-body > .verso-stack > .verso-stack > [data-verso-listing]) > [data-verso-scroller] > table > tbody > tr > td .font-medium:not(a, button) {
   font-weight: 400;
 }
 /* A listing that opens a titled card's body stands straight under the
  * header's hairline, which is its top edge on the line. A list stands in the
  * card's inset instead, under the same 24px of air as any first block. */
-.verso-page-body section[data-verso-section]:not(section section, dialog *) > [data-verso-section-band] + .verso-rhythm > [data-verso-listing]:not([data-verso-list]):first-child {
+:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > [data-verso-section-band] + .verso-rhythm > [data-verso-listing]:not([data-verso-list]):first-child {
   --verso-head-top: 0px;
   margin-top: 0;
 }
-.verso-page-body section[data-verso-section][data-verso-headless][data-verso-ruled]:has(> .verso-rhythm > [data-verso-listing]:first-child):not(section section, dialog *) {
+:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section][data-verso-headless][data-verso-ruled]:has(> .verso-rhythm > [data-verso-listing]:first-child):not(section section) {
   padding-top: 0;
 }
-.verso-page-body section[data-verso-section][data-verso-headless][data-verso-ruled]:not(section section, dialog *) > .verso-rhythm > [data-verso-listing]:first-child,
+:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section][data-verso-headless][data-verso-ruled]:not(section section) > .verso-rhythm > [data-verso-listing]:first-child,
 .verso-page-body > [data-verso-listing],
 .verso-page-body > .verso-stack > [data-verso-listing],
 .verso-page-body > .verso-stack > .verso-stack > [data-verso-listing] {
   --verso-head-top: 0px;
 }
+/* A fact list that opens a card's body, or a part's under its line and lede,
+ * gives its first row's air up, and one that closes the card (on its own or
+ * as the end of the card's last part) gives up its last row's, so its first
+ * and last lines stand the block's 24px from what is over and under them, as
+ * its words stand 24px in from the sides, and as an Overview card's fact list
+ * stands. */
+:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]):not(section section) > .verso-rhythm > dl:not(:not(input[type="hidden"], [hidden], template) ~ *) > :first-child,
+:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > .verso-rhythm > section[data-verso-section] > .verso-rhythm > dl:not(:not(input[type="hidden"], [hidden], template) ~ *) > :first-child {
+  padding-top: 0;
+}
+:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]):not(section section) > .verso-rhythm > dl:not(:has(~ :not(input[type="hidden"], [hidden], template))) > :last-child,
+:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]):not(section section) > .verso-rhythm > section[data-verso-section]:not(:has(~ :not(input[type="hidden"], [hidden], template))) > .verso-rhythm > dl:not(:has(~ :not(input[type="hidden"], [hidden], template))) > :last-child {
+  padding-bottom: 0;
+}
+/* Facts in columns (a part's DHCP server) are one list while they stand one
+ * column, so its first and last lines are the first column's first and the
+ * last column's last; side by side, each column starts and ends the block. */
+:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > .verso-rhythm > section[data-verso-section] > .verso-rhythm > [data-verso-facts]:not(:not(input[type="hidden"], [hidden], template) ~ *) > dl:first-child > :first-child {
+  padding-top: 0;
+}
+:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]):not(section section) > .verso-rhythm > section[data-verso-section]:not(:has(~ :not(input[type="hidden"], [hidden], template))) > .verso-rhythm > [data-verso-facts]:not(:has(~ :not(input[type="hidden"], [hidden], template))) > dl:last-child > :last-child {
+  padding-bottom: 0;
+}
+@container (width >= 42rem) {
+  :is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > .verso-rhythm > section[data-verso-section] > .verso-rhythm > [data-verso-facts]:not(:not(input[type="hidden"], [hidden], template) ~ *) > dl > :first-child {
+    padding-top: 0;
+  }
+  :is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]):not(section section) > .verso-rhythm > section[data-verso-section]:not(:has(~ :not(input[type="hidden"], [hidden], template))) > .verso-rhythm > [data-verso-facts]:not(:has(~ :not(input[type="hidden"], [hidden], template))) > dl > :last-child {
+    padding-bottom: 0;
+  }
+}
+/* The conditions a rule carries that close a card close it on their add, the
+ * card's 24px under the act, as under any block's last line. */
+:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > .verso-rhythm > [data-verso-conditions]:not(:has(~ :not(input[type="hidden"], [hidden], template))) > [data-verso-condition-picker] {
+  padding-bottom: 0;
+}
+/* A fold among a card's rows (a rule's "Parameters for the less common
+ * actions") is a row of the card rather than a box in it: its summary stands
+ * as a row's name between the card's hairlines, running to its borders, its
+ * chevron where the answers end, and what it folds are rows of the card under
+ * it, the first meeting the summary on a hairline. So no card holds a framed
+ * box. A fold that is all its card holds is the card itself (below). */
+:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > .verso-rhythm > details.verso-disclosure:not(:only-child) {
+  margin-inline: calc(var(--verso-side) * -1);
+  border-width: 1px 0 0;
+  border-color: var(--color-rule);
+  border-radius: 0;
+  background-color: transparent;
+}
+:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > .verso-rhythm > * + details.verso-disclosure:not(:only-child) {
+  margin-top: 0;
+}
+:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > .verso-rhythm > details.verso-disclosure:not(:only-child):not(:has(~ :not(input[type="hidden"], [hidden], template))) {
+  margin-bottom: calc(var(--spacing) * -2);
+}
+:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > .verso-rhythm > .verso-field-row:has(+ details.verso-disclosure:not(:only-child)) {
+  padding-bottom: calc(var(--spacing) * 4);
+}
+:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > .verso-rhythm > details.verso-disclosure:not(:only-child) > summary {
+  padding: calc(var(--spacing) * 3.75) var(--verso-side) calc(var(--spacing) * 4);
+  font-weight: var(--font-weight-medium);
+  line-height: calc(var(--spacing) * 6);
+  color: var(--color-ink);
+}
+:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > .verso-rhythm > details.verso-disclosure:not(:only-child) > .verso-rhythm {
+  border-top-color: var(--color-rule);
+  padding: 0 var(--verso-side) calc(var(--spacing) * 4);
+}
+:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > .verso-rhythm > details.verso-disclosure:not(:only-child) > .verso-rhythm > .verso-field-row:first-child {
+  padding-top: calc(var(--spacing) * 3.75);
+}
 /* A framed box in a card (a certificate) gives up its frame and fill: no card
  * holds a card. Its name and sentence stay where they stand, and the air
  * under its last row is the full 24px its frame's two pixels no longer take. */
-.verso-page-body section[data-verso-section] [data-verso-artifact]:not(dialog *) {
+:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section] [data-verso-artifact] {
   width: auto;
   margin: 0;
   border-width: 0;
@@ -554,7 +616,7 @@
 }
 /* A page form's Save stands on the sand 24px under the last card, ruled off
  * by the cards themselves. */
-.verso-page-body [data-verso-form-actions][data-verso-rule]:not(dialog *) {
+:is(.verso-page-body, [data-verso-drawer-body]) [data-verso-form-actions][data-verso-rule] {
   margin: calc(var(--spacing-inset) - 1px) 0 0;
   border-top-width: 0;
   padding: 0;
@@ -564,13 +626,79 @@
 :is([data-verso-code-divider], section[data-verso-section]:has(> .verso-rhythm > [data-verso-code-divider]:last-child)) ~ [data-verso-form-actions] {
   margin-top: calc(var(--spacing-inset) - 1px);
 }
-/* A page form's configuration preview is a card of its own, 24px under the
- * card before it, its file strip the card's header. */
-.verso-page-body [data-verso-code-divider]:not(dialog *) {
+/* In a drawer the cards rule a form off as a page's do, so a form with no
+ * configuration card stands its acts on the sand 24px under its last card
+ * too, with no rule of their own. */
+[data-verso-drawer-body] section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]):not(section section) ~ [data-verso-form-actions] {
+  margin-top: calc(var(--spacing-inset) - 1px);
+  border-top-width: 0;
+  padding-top: 0;
+}
+/* In a drawer's stack (a tab's form, then the files it writes), whatever a
+ * card follows gives up the stack's own step, so the card's 23px after the
+ * frame's pixel before it is the whole gap, as between any two cards. */
+[data-verso-drawer-body] .verso-stack > :has(+ :is(section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]), [data-verso-code-divider])) {
+  margin-bottom: 0;
+}
+/* A form's configuration preview is a card of its own, on a page or in a
+ * drawer, 24px under the card before it, its file strip the card's header. */
+:is(.verso-page-body, [data-verso-drawer-body]) [data-verso-code-divider] {
   margin: calc(var(--spacing-inset) - 1px) 0 0;
   border-top-width: 0;
   padding: 0;
 }
-.verso-page-body [data-verso-code-divider]:not(dialog *) > [data-verso-code-editor] {
+:is(.verso-page-body, [data-verso-drawer-body]) [data-verso-code-divider] > [data-verso-code-editor] {
   border-color: var(--color-rule-strong);
+}
+/* A fold that is all its card holds (a drawer's "Advanced — 4 more options")
+ * is the card itself, folding as an Overview card does: its summary is the
+ * card's header, 48px from the frame's line to the seam's (11px after the
+ * frame, the title's 24px line in the Card title's size and ink, 12px over
+ * the seam), its chevron at the header's end, and what it folds is the
+ * card's body behind that seam, the rows running to the card's borders.
+ * Closed, the card is its header alone. So no card holds a framed box. */
+:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section][data-verso-headless][data-verso-ruled]:not(section section):has(> .verso-rhythm > details.verso-disclosure:only-child) {
+  padding: 0;
+}
+:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section][data-verso-headless][data-verso-ruled]:not(section section) > .verso-rhythm > details.verso-disclosure:only-child {
+  border-width: 0;
+  border-radius: 0;
+  background-color: transparent;
+}
+:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section][data-verso-headless][data-verso-ruled]:not(section section) > .verso-rhythm > details.verso-disclosure:only-child > summary {
+  padding: calc(var(--spacing) * 2.75) var(--verso-side) calc(var(--spacing) * 3);
+  font-size: var(--text-base);
+  line-height: calc(var(--spacing) * 6);
+  color: var(--color-ink);
+}
+/* The body opens on a row as a titled card's does, its first name 15px after
+ * the seam, and closes 16px under its last row's words. */
+:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section][data-verso-headless][data-verso-ruled]:not(section section) > .verso-rhythm > details.verso-disclosure:only-child > .verso-rhythm {
+  border-top-color: var(--color-rule-strong);
+  padding: 0 var(--verso-side) calc(var(--spacing) * 4);
+}
+:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section][data-verso-headless][data-verso-ruled]:not(section section) > .verso-rhythm > details.verso-disclosure:only-child > .verso-rhythm > .verso-field-row:first-child {
+  padding-top: calc(var(--spacing) * 3.75);
+}
+/* The conditions a rule carries are a part of the card that holds them, so
+ * they are headed as a part is (section.html.tmpl's ledger): the name at the
+ * label's size on its 24px line, the Strong Hairline running on from it to
+ * the column's end, the lede under them. */
+:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) [data-verso-conditions] > :first-child {
+  column-gap: calc(var(--spacing) * 3);
+}
+:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) [data-verso-conditions] > :first-child::before {
+  content: "";
+  order: 1;
+  flex: 1 1 calc(var(--spacing) * 6);
+  height: 1px;
+  background-color: var(--color-rule-strong);
+}
+:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) [data-verso-conditions] > :first-child > legend {
+  font-size: var(--text-sm);
+  line-height: calc(var(--spacing) * 6);
+  letter-spacing: 0;
+}
+:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) [data-verso-conditions] > :first-child > :not(legend) {
+  order: 2;
 }

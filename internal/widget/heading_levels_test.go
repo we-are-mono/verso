@@ -22,7 +22,7 @@ func TestHeadingsFollowThePage(t *testing.T) {
 		"section": {&Section{Title: "Privacy"}, `<h2 class="text-lg leading-6 font-semibold tracking-[-0.025em] text-ink">Privacy</h2>`},
 		"kicker":  {&Section{Title: "On this page", Kicker: true}, `<h2 class="text-xs leading-6 font-medium tracking-[.08em] text-meta uppercase">On this page</h2>`},
 		"band":    {&Table{Title: "Leases", Columns: []TableColumn{{Label: "Name"}}}, `<h2 class="text-lg font-semibold tracking-tight text-body">Leases</h2>`},
-		"drawer":  {&Table{Columns: []TableColumn{{Label: "Name"}}, Rows: []TableRow{{Cells: []TableCell{{Text: "Rule"}}, Drawer: &RowDrawer{Title: "Edit rule", Open: true}}}}, `<h2 class="min-w-0 truncate text-lg font-semibold tracking-tight text-body">Edit rule</h2>`},
+		"drawer":  {&Table{Columns: []TableColumn{{Label: "Name"}}, Rows: []TableRow{{Cells: []TableCell{{Text: "Rule"}}, Drawer: &RowDrawer{Title: "Edit rule", Open: true}}}}, `<h2 class="min-w-0 truncate text-lg font-semibold tracking-tight text-ink">Edit rule</h2>`},
 		"modal":   {&Modal{Title: "Restart", Trigger: "Restart"}, `<h2 class="text-base font-semibold text-ink">Restart</h2>`},
 	}
 	for name, c := range cases {
@@ -60,6 +60,15 @@ func TestSubheadingIsALedgerLine(t *testing.T) {
 	}
 	if strings.Contains(got, "data-verso-count") || strings.Contains(got, ">2</span>") {
 		t.Errorf("a part counts what it holds:\n%s", got)
+	}
+	// A part's lede belongs to its ledger line, as a card's lede belongs to
+	// its title: it stands straight under the line, and the cell to the
+	// first box under the part stands under the lede.
+	got = render(t, newRenderer(t), &Section{Title: "Where it may go", Children: []Widget{
+		&Section{Title: "Named elsewhere", Sub: "A new name carries to each of them.", Children: []Widget{keys}},
+	}})
+	if !strings.Contains(got, `<div data-verso-ledger class="flex h-6 items-center gap-3">`) || !strings.Contains(got, `data-verso-section-lede class="verso-prose text-body mb-6"`) {
+		t.Errorf("a part's lede does not stand straight under its ledger line:\n%s", got)
 	}
 	// A part with a glyph leads with it, in Glyph, before its name.
 	got = render(t, newRenderer(t), &Section{Title: "Row", Children: []Widget{

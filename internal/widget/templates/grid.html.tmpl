@@ -9,13 +9,15 @@
 {{if eq .Style "facts"}}
 {{/* An expanded row's facts, in two columns 48px apart from the same top
      line: the first half of them on the left, the rest on the right, as the
-     Interfaces canvas lays them out. Narrow, the right column stands under
-     the left; an empty column keeps its place only while there are two. A
+     Interfaces canvas lays them out. Narrow, the right column continues the
+     left as one list: its first fact meets the left's last on a hairline,
+     7px over its line, with no gap between them; an empty column keeps its
+     place only while there are two. A
      code box in a column (what the daemon reported) is not a form's
      footnote, so it drops the rule and the standoff it keeps under a form,
      and takes a row's top padding so its caption stands on the first
      fact's line. */}}
-<div data-verso-facts class="grid min-w-0 grid-cols-1 gap-x-12 gap-y-6 @2xl:grid-cols-2 [&_dl]:divide-rule [&_dl>div]:justify-start [&_dt]:w-24 [&_dd]:flex-1 [&_dd]:justify-start [&_dd]:text-left [&>dl:not(:has(*))]:hidden @2xl:[&>dl:not(:has(*))]:block [&>div]:mt-0 [&>div]:min-w-0 [&>div]:border-t-0 [&>div]:pt-2 [&>div>span]:text-base">{{range .Children}}{{.}}{{end}}</div>
+<div data-verso-facts class="grid min-w-0 grid-cols-1 gap-x-12 gap-y-0 @2xl:grid-cols-2 @2xl:gap-y-6 @max-2xl:[&>dl:has(+dl:has(*))>div:last-child]:border-b @max-2xl:[&>dl+dl>div:first-child]:pt-1.75 [&_dl]:divide-rule [&_dl>div]:justify-start [&_dt]:w-24 [&_dd]:flex-1 [&_dd]:justify-start [&_dd]:text-left [&>dl:not(:has(*))]:hidden @2xl:[&>dl:not(:has(*))]:block [&>div]:mt-0 [&>div]:min-w-0 [&>div]:border-t-0 [&>div]:pt-2 [&>div>span]:text-base">{{range .Children}}{{.}}{{end}}</div>
 {{else if eq .Style "settings"}}
 <div class="@container"><div class="grid min-w-0 grid-cols-1 gap-10 @form-split:grid-cols-form [&>div:first-child]:max-w-form [&>div:last-child]:self-start @form-split:[&>div:last-child]:sticky @form-split:[&>div:last-child]:top-22 [&_section[id]>.verso-rhythm]:[--verso-rhythm:0rem]">{{range $i, $child := .Children}}<div{{if eq $i 0}} data-verso-form-column{{end}} class="min-w-0">{{$child}}</div>{{end}}</div></div>
 {{else if eq .Style "editor"}}

@@ -125,7 +125,7 @@
   --container-form-split: 62.5rem;
 }
 
-/* Page forms share one measure; dialog content retains the original one. */
+/* Forms share one measure, on a page and in a drawer (below). */
 @utility max-w-form {
   max-width: var(--verso-form-width, 40rem);
 }
@@ -188,11 +188,11 @@
 }
 
 @layer components {
-  /* A page form's measure is a column's: 760px and the pixel its cards'
-     right border lands on (w-column). A drawer's is 640px and its pixel, so
-     a field at the measure ends on a line too. */
-  main { --verso-form-width: calc(var(--container-3xl) + 1px); }
-  dialog { --verso-form-width: calc(40rem + 1px); }
+  /* A form's measure is a column's: 760px and the pixel its cards' right
+     border lands on (w-column). A drawer's forms stand in cards as a page's
+     do, so they keep the same measure, and a row runs from its card's left
+     border to its right one wherever the card stands. */
+  :is(main, dialog) { --verso-form-width: calc(var(--container-3xl) + 1px); }
 }
 
 html {
@@ -1690,8 +1690,9 @@ html {
    data-verso-grid on G; a released build never loads that script). Every fixed
    measure lands on an 8px line, so the lines run every 8px: over the page from
    the top bar's hairline and the rail's border, under the top bar so it stays
-   readable, and behind a drawer's body from its chrome's hairline, scrolling
-   with what the drawer holds. The lines never take a press. */
+   readable, and behind a drawer's body from its left border and its chrome's
+   hairline, a pixel before the body's own edges, scrolling with what the
+   drawer holds. The lines never take a press. */
 @layer components {
   :root[data-verso-grid] main { position: relative; }
   :root[data-verso-grid] main::after {
@@ -1710,6 +1711,7 @@ html {
       linear-gradient(to right, color-mix(in srgb, var(--color-denim) 22%, transparent) 1px, transparent 1px),
       linear-gradient(to bottom, color-mix(in srgb, var(--color-denim) 22%, transparent) 1px, transparent 1px);
     background-size: calc(var(--spacing) * 2) calc(var(--spacing) * 2);
+    background-position: -1px -1px;
     background-attachment: local;
   }
 }
