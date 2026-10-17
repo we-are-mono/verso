@@ -169,12 +169,14 @@ own and points at the decision that governs it; the rationale lives there, not h
 - **Release note: pending changes live at the top of the sidebar.** The chip
   beside the router's name is gone. While changes wait, a Pending changes row
   stands first in the sidebar and opens a page listing them by the page each
-  was made on: open its page, undo one or a page's worth, or apply them all
-  and watch each step as the router reports it. An apply the router puts
+  was made on: open its page, discard one or a page's worth, or apply them
+  all and watch each step as the router reports it. An apply the router puts
   back keeps the changes pending. Installed plugins need no upgrade.
 - **The reload step on the DUT.** The When you apply card names what procd's
   own triggers reload. Read it against what procd reloads for a dhcp +
-  firewall + network apply on the DUT (task 10.4), then archive the change.
+  firewall + network apply on the DUT: stage one change in each, read step 2,
+  compare it with `ubus call service list '{"verbose":true}'`, Discard all.
+  Governed by ADR-010.
 
 ## Themes (ADR-024)
 

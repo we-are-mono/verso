@@ -2,7 +2,7 @@
 
 ## Purpose
 
-How changes saved on the router but not yet live are shown, reviewed, undone, applied and kept: the rail's Pending changes row, the Pending changes page, and what an apply and a rollback leave behind.
+How changes saved on the router but not yet live are shown, reviewed, discarded, applied and kept: the rail's Pending changes row, the Pending changes page, and what an apply and a rollback leave behind.
 
 ## ADDED Requirements
 
@@ -33,7 +33,7 @@ An edit that is not saved SHALL NOT change the Pending changes row or the menu b
 - **THEN** the row reads 13, with nothing shown before the press
 
 ### Requirement: The Pending changes page lists the stage by page
-The Pending changes page SHALL head "N pending changes" with no acts on the heading line and no lede under the heading. It SHALL list the pending changes in one card per page they were made on, titled by that page's heading, each card offering to open that page and to undo its changes. **Apply N changes** and **Discard all** SHALL stand under the last card, where a page form's Save stands.
+The Pending changes page SHALL head "N pending changes" with no acts on the heading line and no lede under the heading. It SHALL list the pending changes in one card per page they were made on, titled by that page's heading, each card offering to open that page and to discard its changes. **Apply N changes** and **Discard all** SHALL stand under the last card, where a page form's Save stands.
 
 #### Scenario: Changes from three pages
 - **WHEN** changes were saved on Firewall rules, DHCP and General
@@ -44,7 +44,7 @@ The Pending changes page SHALL head "N pending changes" with no acts on the head
 - **THEN** the heading reads "1 pending change" and the primary act reads "Apply 1 change"
 
 ### Requirement: A pending change row says what it does
-Each row SHALL show the change's kind (added, changed, removed, reordered) as its mark and word, the owning page's sentence for it, and its old and new value where it is a setting. It SHALL NOT say how long ago it was staged: a pending change is minutes old, and its card names the page it came from. Each row SHALL offer to go to it on its page, to undo it, and to show the config lines it stands for.
+Each row SHALL show the change's kind (added, changed, removed, reordered) as its mark and word, the owning page's sentence for it, and its old and new value where it is a setting. It SHALL NOT say how long ago it was staged: a pending change is minutes old, and its card names the page it came from. Each row SHALL offer to go to it on its page, to discard it, and to show the config lines it stands for.
 
 #### Scenario: A setting that was not set
 - **WHEN** Cache size was not set and 151 is pending
@@ -54,22 +54,18 @@ Each row SHALL show the change's kind (added, changed, removed, reordered) as it
 - **WHEN** the operator presses a row's go-to act
 - **THEN** its page opens with that setting or item marked as the one the row named
 
-#### Scenario: A change staged before the router's UI last started
-- **WHEN** no staging time is on record for a change
-- **THEN** its row shows no age
+### Requirement: Changes can be discarded one at a time
+Letting changes go SHALL be named Discard at every reach: "Discard this change" on a row, "Discard these" on a card, "Discard all" under the cards. Discarding a row SHALL drop that change from the stage and leave every other pending change as it was. Discarding a card's changes SHALL drop every change on that card and no other. After a row's or a card's discard, the top-right notification SHALL say what was discarded and offer to put it back.
 
-### Requirement: Changes can be undone one at a time
-Undoing a row SHALL drop that change from the stage and leave every other pending change as it was. Undoing a card's changes SHALL drop every change on that card and no other. After an undo, the top-right notification SHALL offer to put it back.
-
-#### Scenario: Undoing one of two changes in one config
-- **WHEN** Lease time and Cache size are pending in the same config and the operator undoes Lease time
+#### Scenario: Discarding one of two changes in one config
+- **WHEN** Lease time and Cache size are pending in the same config and the operator discards Lease time
 - **THEN** Cache size is still pending with its value, and Lease time is no longer pending
 
 #### Scenario: Putting it back
-- **WHEN** the operator presses "Put it back" on the undo's notification
+- **WHEN** the operator presses "Put it back" on the discard's notification
 - **THEN** Lease time is pending again with the value it had
 
-#### Scenario: Undoing a card
+#### Scenario: Discarding a card
 - **WHEN** the operator presses "Discard these" on the DHCP card
 - **THEN** every DHCP change leaves the stage and no other card changes
 
@@ -146,11 +142,11 @@ Discard all SHALL be drawn as a secondary act, not in the danger colour, because
 - **THEN** no change is pending and the router keeps running what it ran
 
 ### Requirement: The page works without scripting
-With scripting unavailable, the Pending changes page SHALL list every pending change and SHALL undo and discard them. It SHALL say that applying needs scripting, because the router keeps an apply only when the page answers it.
+With scripting unavailable, the Pending changes page SHALL list every pending change and SHALL discard them, one, a card's or all. It SHALL say that applying needs scripting, because the router keeps an apply only when the page answers it.
 
 #### Scenario: No script
 - **WHEN** the operator opens the Pending changes page with scripting off
-- **THEN** the changes are listed, Undo and Discard all work, and Apply says it needs scripting
+- **THEN** the changes are listed, every Discard works, and Apply says it needs scripting
 
 ### Requirement: The old review address leads to the page
 A request for the review drawer's former address SHALL be redirected to the Pending changes page.
