@@ -109,8 +109,8 @@ func TestMeterCompact(t *testing.T) {
 		// canvas's meter band — on a 6px track.
 		"h-1.5 rounded-full",
 		"bg-green",
-		`bg-marigold" style="left: 89%"`, // the warn tick, in the warn band's own hue
-		"bg-crimson",                     // the critical tick
+		`bg-marigold" style="left: min(89%, calc(100% - 0.375rem))"`, // the warn tick, in the warn band's own hue, never past the critical one
+		"bg-crimson", // the critical tick
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("compact meter missing %q:\n%s", want, got)

@@ -304,9 +304,9 @@ func TestTemperaturesChartOneReadingAtATime(t *testing.T) {
 func TestATemperatureShowsItsHeadroom(t *testing.T) {
 	temps := card(t, renderCards(t, dkInput()), "Temperatures")
 	for _, want := range []string{
-		`bg-marigold" style="left: 89%"`,                  // warns at 85 of 95
-		`bg-crimson" style="left: calc(100% - 0.125rem)"`, // protects at the bar's end
-		`clip-path: inset(0 50% 0 0 round 9999px)`,        // 48 of 95
+		`bg-marigold" style="left: min(89%, calc(100% - 0.375rem))"`, // warns at 85 of 95
+		`bg-crimson" style="left: calc(100% - 0.125rem)"`,            // protects at the bar's end
+		`clip-path: inset(0 50% 0 0 round 9999px)`,                   // 48 of 95
 		">48.0\U0000202f°C<",
 		">warns 85\U0000202f°C · protects 95\U0000202f°C<",
 	} {

@@ -68,7 +68,7 @@ func TestMeterCellWithNoReadingIsADash(t *testing.T) {
 func TestMeterCellMarksItsLimits(t *testing.T) {
 	got := render(t, newRenderer(t), meterTable(TableCell{Text: "48.0 °C", Fill: 50, WarnMark: 89, CritMark: 100}))
 	for _, want := range []string{
-		`bg-marigold" style="left: 89%"`, // the warn band's own hue, as its bar fills past it
+		`bg-marigold" style="left: min(89%, calc(100% - 0.375rem))"`, // the warn band's own hue, as its bar fills past it
 		`bg-crimson" style="left: calc(100% - 0.125rem)"`,
 		`>48.0 °C<`,
 	} {
@@ -80,6 +80,18 @@ func TestMeterCellMarksItsLimits(t *testing.T) {
 	// longer clips what it holds; the fill clips itself.
 	if strings.Contains(got, "overflow-hidden rounded-full bg-rule") {
 		t.Errorf("the track clips its ticks:\n%s", got)
+	}
+
+	// A warn limit at the protect limit stands just before its tick, 2px
+	// apart, so every row reads marigold, then crimson; a warn limit with no
+	// protect limit after it ends on the track's end, as a protect tick does.
+	same := render(t, newRenderer(t), meterTable(TableCell{Text: "70.0 °C", Fill: 80, WarnMark: 100, CritMark: 100}))
+	if !strings.Contains(same, `bg-marigold" style="left: min(100%, calc(100% - 0.375rem))"`) {
+		t.Errorf("a warn limit at the protect limit should stand before it:\n%s", same)
+	}
+	alone := render(t, newRenderer(t), meterTable(TableCell{Text: "70.0 °C", Fill: 80, WarnMark: 100}))
+	if !strings.Contains(alone, `bg-marigold" style="left: min(100%, calc(100% - 0.125rem))"`) {
+		t.Errorf("a lone warn limit should end on the track's end:\n%s", alone)
 	}
 }
 

@@ -36,7 +36,10 @@
   {{else}}
   <span class="relative h-1.5 rounded-full bg-rule">
     <span class="verso-meter-bar absolute inset-0 {{if eq .Tone "danger"}}bg-crimson{{else if eq .Tone "warning"}}bg-marigold{{else}}bg-green{{end}}" style="clip-path: {{.Clip}}" data-verso-meter-bar></span>
-    {{if .WarnMark}}<span class="absolute -top-1 -bottom-1 w-0.5 rounded-[1px] bg-marigold" style="left: {{.WarnMark}}"></span>{{end}}
+    {{/* The warn tick never stands at or past the critical one: at the same
+         limit it stands 2px before it, so a column of rows reads marigold,
+         then crimson; with no critical tick it ends on the track's end. */}}
+    {{if .WarnMark}}<span class="absolute -top-1 -bottom-1 w-0.5 rounded-[1px] bg-marigold" style="left: min({{.WarnMark}}, calc(100% - {{if .CritMark}}0.375rem{{else}}0.125rem{{end}}))"></span>{{end}}
     {{if .CritMark}}<span class="absolute -top-1 -bottom-1 w-0.5 rounded-[1px] bg-crimson" style="left: calc({{.CritMark}} - 0.125rem)"></span>{{end}}
   </span>
   {{end}}
