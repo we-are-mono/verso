@@ -71,7 +71,7 @@ func TestCallHelperRefusesAListenerOfAnotherAccount(t *testing.T) {
 		_, _ = conn.Write([]byte(`{"status":0,"result":{"has_password":false}}` + "\n"))
 	}()
 
-	err = dialSetPassword(socket)(context.Background(), "operator-sid", "root", "new-secret")
+	err = (&NativeBackend{helperSocket: socket}).SetPassword(context.Background(), "operator-sid", "root", "new-secret")
 	if !errors.Is(err, errUntrustedHelper) {
 		t.Fatalf("error = %v, want errUntrustedHelper", err)
 	}
@@ -110,7 +110,7 @@ func TestCallHelperProtocol(t *testing.T) {
 		})
 	}()
 
-	packages, total, err := dialPkgSearch(socket)(context.Background(), "good-sid", "htop")
+	packages, total, err := (&NativeBackend{helperSocket: socket}).PkgSearch(context.Background(), "good-sid", "htop")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -157,17 +157,17 @@ func TestPackageDetailAndBrowseVerbsCarrySessionAndExactArguments(t *testing.T) 
 			}()
 			switch method {
 			case "pkgBrowse":
-				page, err := dialPkgBrowse(socket)(context.Background(), "operator-sid", "", 30)
+				page, err := (&NativeBackend{helperSocket: socket}).PkgBrowse(context.Background(), "operator-sid", "", 30)
 				if err != nil || page.Total != 64 || page.Count != 99 || page.Installed != 20 || len(page.Packages) != 1 {
 					t.Fatalf("page %+v, error %v", page, err)
 				}
 			case "pkgFiles":
-				files, err := dialPkgFiles(socket)(context.Background(), "operator-sid", "htop")
+				files, err := (&NativeBackend{helperSocket: socket}).PkgFiles(context.Background(), "operator-sid", "htop")
 				if err != nil || len(files) != 1 || files[0] != "/usr/bin/htop" {
 					t.Fatalf("files %v, error %v", files, err)
 				}
 			case "pkgUpgradeOne":
-				if err := dialPkgAct(socket, method)(context.Background(), "operator-sid", "htop"); err != nil {
+				if err := (&NativeBackend{helperSocket: socket}).PkgUpgradeOne(context.Background(), "operator-sid", "htop"); err != nil {
 					t.Fatal(err)
 				}
 			}
@@ -208,7 +208,7 @@ func TestFirewallCountersPassesResultThrough(t *testing.T) {
 		done <- err
 	}()
 
-	result, err := dialFirewallCounters(socket)(context.Background(), "good-sid")
+	result, err := (&NativeBackend{helperSocket: socket}).FirewallCounters(context.Background(), "good-sid")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -261,16 +261,16 @@ func helperReplyingTo(t *testing.T, method string, args map[string]string, body 
 func TestPkgInfoAnswersOnePackageOrNone(t *testing.T) {
 	socket := helperReplyingTo(t, "pkgInfo", map[string]string{"package": "htop"},
 		`{"status":0,"result":{"package":{"name":"htop","version":"3.5.1-r1","installed":true,"removable":true}}}`)
-	got, ok, err := dialPkgInfo(socket)(context.Background(), "good-sid", "htop")
+	got, ok, err := (&NativeBackend{helperSocket: socket}).PkgInfo(context.Background(), "good-sid", "htop")
 	if err != nil || !ok || got.Name != "htop" || got.Version != "3.5.1-r1" || !got.Installed || !got.Removable {
 		t.Fatalf("package=%+v ok=%v err=%v", got, ok, err)
 	}
 	socket = helperReplyingTo(t, "pkgInfo", map[string]string{"package": "nosuch"}, `{"status":0,"result":{"package":null}}`)
-	if got, ok, err := dialPkgInfo(socket)(context.Background(), "good-sid", "nosuch"); err != nil || ok {
+	if got, ok, err := (&NativeBackend{helperSocket: socket}).PkgInfo(context.Background(), "good-sid", "nosuch"); err != nil || ok {
 		t.Fatalf("an unknown package: package=%+v ok=%v err=%v", got, ok, err)
 	}
 	socket = helperReplyingTo(t, "pkgInfo", map[string]string{"package": "htop"}, `{"status":6,"error":"permission denied"}`)
-	if _, _, err := dialPkgInfo(socket)(context.Background(), "good-sid", "htop"); !errors.Is(err, ErrAccessDenied) {
+	if _, _, err := (&NativeBackend{helperSocket: socket}).PkgInfo(context.Background(), "good-sid", "htop"); !errors.Is(err, ErrAccessDenied) {
 		t.Fatalf("a refused read: err=%v", err)
 	}
 }
@@ -281,20 +281,20 @@ func TestPkgInfoAnswersOnePackageOrNone(t *testing.T) {
 func TestUsageReadsCarryAddressesAndDays(t *testing.T) {
 	socket := helperReplyingTo(t, "usageLive", map[string]string{"addresses": "192.168.77.20,fd42:7ea:1::20"},
 		`{"status":0,"result":{"accounting":true,"addresses":{"192.168.77.20":{"sent":10,"received":200}}}}`)
-	live, err := dialUsageLive(socket)(context.Background(), "good-sid", []string{"192.168.77.20", "fd42:7ea:1::20"})
+	live, err := (&NativeBackend{helperSocket: socket}).UsageLive(context.Background(), "good-sid", []string{"192.168.77.20", "fd42:7ea:1::20"})
 	if err != nil || !live.Accounting || live.Addresses["192.168.77.20"] != (UsageCounter{Sent: 10, Received: 200}) {
 		t.Fatalf("live=%+v err=%v", live, err)
 	}
 
 	socket = helperReplyingTo(t, "usageDays", map[string]string{"known": "2026-10-06,2026-10-05"},
 		`{"status":0,"result":{"enabled":true,"today":"2026-10-07","days":{"2026-10-07":{"02:aa":{"received":500,"sent":50}}}}}`)
-	days, err := dialUsageDays(socket)(context.Background(), "good-sid", []string{"2026-10-06", "2026-10-05"})
+	days, err := (&NativeBackend{helperSocket: socket}).UsageDays(context.Background(), "good-sid", []string{"2026-10-06", "2026-10-05"})
 	if err != nil || !days.Enabled || days.Today != "2026-10-07" || days.Days["2026-10-07"]["02:aa"] != (UsageCounter{Sent: 50, Received: 500}) {
 		t.Fatalf("days=%+v err=%v", days, err)
 	}
 
 	socket = helperReplyingTo(t, "usageDays", map[string]string{"known": ""}, `{"status":0,"result":{"enabled":false}}`)
-	if days, err := dialUsageDays(socket)(context.Background(), "good-sid", nil); err != nil || days.Enabled {
+	if days, err := (&NativeBackend{helperSocket: socket}).UsageDays(context.Background(), "good-sid", nil); err != nil || days.Enabled {
 		t.Fatalf("usage off: days=%+v err=%v", days, err)
 	}
 }
@@ -304,7 +304,7 @@ func TestUsageReadsCarryAddressesAndDays(t *testing.T) {
 func TestPkgUpgradableDecodesBothVersions(t *testing.T) {
 	socket := helperReplying(t, "pkgUpgradable",
 		`{"status":0,"result":{"packages":[{"name":"dnsmasq","installed":"2.91-r3","available":"2.93-r1"}]}}`)
-	packages, err := dialPkgUpgradable(socket)(context.Background(), "good-sid")
+	packages, err := (&NativeBackend{helperSocket: socket}).PkgUpgradable(context.Background(), "good-sid")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -318,7 +318,7 @@ func TestPkgUpgradableDecodesBothVersions(t *testing.T) {
 func TestFirmwareCheckDecodesTheRung(t *testing.T) {
 	socket := helperReplying(t, "firmwareCheck",
 		`{"status":0,"result":{"state":"unsupported","server":"","from":"","to":"","packages":0,"message":"File system type '(null)'"}}`)
-	update, err := dialFirmwareCheck(socket)(context.Background(), "good-sid")
+	update, err := (&NativeBackend{helperSocket: socket}).FirmwareCheck(context.Background(), "good-sid")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -333,7 +333,7 @@ func TestFirmwareCheckDecodesTheRung(t *testing.T) {
 // (ADR-007) — the helper's own argv has no room for one either.
 func TestFirmwareUpgradeCarriesNothingButTheSession(t *testing.T) {
 	socket := helperReplying(t, "firmwareUpgrade", `{"status":0,"result":{"result":true}}`)
-	if err := dialFirmwareUpgrade(socket)(context.Background(), "good-sid"); err != nil {
+	if err := (&NativeBackend{helperSocket: socket}).FirmwareUpgrade(context.Background(), "good-sid"); err != nil {
 		t.Fatalf("firmware upgrade: %v", err)
 	}
 }
@@ -344,7 +344,7 @@ func TestFactoryResetRefusalKeepsTheHelpersWords(t *testing.T) {
 	reason := "the history in /mnt/usb/verso cannot be emptied: it was replaced after it was reached"
 	socket := helperReplyingTo(t, "factoryReset", map[string]string{"history": "erase"},
 		`{"status":2,"error":"`+reason+`"}`)
-	err := dialFactoryReset(socket)(context.Background(), "good-sid", true)
+	err := (&NativeBackend{helperSocket: socket}).FactoryReset(context.Background(), "good-sid", true)
 	var refused interface{ ValidationMessage() string }
 	if !errors.As(err, &refused) || refused.ValidationMessage() != reason {
 		t.Fatalf("refusal = %v", err)
@@ -357,7 +357,7 @@ func TestFactoryResetRefusalKeepsTheHelpersWords(t *testing.T) {
 func TestFirmwareUpgradeReportsTheToolsOwnWords(t *testing.T) {
 	socket := helperReplying(t, "firmwareUpgrade",
 		`{"status":9,"error":"Update checks reveal errors, can't proceed"}`)
-	err := dialFirmwareUpgrade(socket)(context.Background(), "good-sid")
+	err := (&NativeBackend{helperSocket: socket}).FirmwareUpgrade(context.Background(), "good-sid")
 	if err == nil || !strings.Contains(err.Error(), "Update checks reveal errors, can't proceed") {
 		t.Fatalf("error = %v, want owut's own complaint", err)
 	}

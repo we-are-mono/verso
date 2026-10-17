@@ -14,34 +14,31 @@ type AccessCredentials struct {
 	CertificateFile  string `json:"certificate_file"`
 }
 
-func (*NativeBackend) AccessCredentials(ctx context.Context, sid string) (AccessCredentials, error) {
+func (b *NativeBackend) AccessCredentials(ctx context.Context, sid string) (AccessCredentials, error) {
 	var result AccessCredentials
-	err := callHelper(ctx, "", "accessCredentials", sid, nil, &result)
+	err := callHelper(ctx, b.helperSocket, "accessCredentials", sid, nil, &result)
 	return result, err
 }
-func (*NativeBackend) SetAuthorizedKeys(ctx context.Context, sid, expected, keys string) error {
-	return callHelper(ctx, "", "setAuthorizedKeys", sid, map[string]string{"expected": expected, "keys": keys}, nil)
+func (b *NativeBackend) SetAuthorizedKeys(ctx context.Context, sid, expected, keys string) error {
+	return callHelper(ctx, b.helperSocket, "setAuthorizedKeys", sid, map[string]string{"expected": expected, "keys": keys}, nil)
 }
-func (*NativeBackend) SetWebCertificate(ctx context.Context, sid, cert, key string) error {
-	return callHelper(ctx, "", "setWebCertificate", sid, map[string]string{"certificate": cert, "key": key}, nil)
+func (b *NativeBackend) SetWebCertificate(ctx context.Context, sid, cert, key string) error {
+	return callHelper(ctx, b.helperSocket, "setWebCertificate", sid, map[string]string{"certificate": cert, "key": key}, nil)
 }
-func (*NativeBackend) MakeWebCertificate(ctx context.Context, sid string) error {
-	return callHelper(ctx, "", "makeWebCertificate", sid, nil, nil)
+func (b *NativeBackend) MakeWebCertificate(ctx context.Context, sid string) error {
+	return callHelper(ctx, b.helperSocket, "makeWebCertificate", sid, nil, nil)
 }
-func (*NativeBackend) SetWebListeners(ctx context.Context, sid string, https, http []string, redirect string) error {
-	return callHelper(ctx, "", "setWebListeners", sid, map[string]string{
+func (b *NativeBackend) SetWebListeners(ctx context.Context, sid string, https, http []string, redirect string) error {
+	return callHelper(ctx, b.helperSocket, "setWebListeners", sid, map[string]string{
 		"https": strings.Join(https, " "), "http": strings.Join(http, " "), "redirect": redirect,
 	}, nil)
 }
-func (*NativeBackend) SetTheme(ctx context.Context, sid, id string) error {
-	return setTheme(ctx, "", sid, id)
-}
 
-// setTheme asks the helper at socket to put theme id in force for the
-// session sid (ADR-024).
-func setTheme(ctx context.Context, socket, sid, id string) error {
-	return callHelper(ctx, socket, "setTheme", sid, map[string]string{"theme": id}, nil)
+// SetTheme asks the helper to put theme id in force for the session sid
+// (ADR-024).
+func (b *NativeBackend) SetTheme(ctx context.Context, sid, id string) error {
+	return callHelper(ctx, b.helperSocket, "setTheme", sid, map[string]string{"theme": id}, nil)
 }
-func (*NativeBackend) SetWebOwner(ctx context.Context, sid, owner string) error {
-	return callHelper(ctx, "", "setWebOwner", sid, map[string]string{"owner": owner}, nil)
+func (b *NativeBackend) SetWebOwner(ctx context.Context, sid, owner string) error {
+	return callHelper(ctx, b.helperSocket, "setWebOwner", sid, map[string]string{"owner": owner}, nil)
 }

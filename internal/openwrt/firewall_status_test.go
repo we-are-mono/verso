@@ -27,7 +27,7 @@ func TestFirewallStatusRead(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			socket := helperReplying(t, "firewallStatus", tc.reply)
-			backend := &NativeBackend{fwStatus: dialFirewallStatus(socket)}
+			backend := &NativeBackend{helperSocket: socket}
 			got, err := backend.FirewallStatus(context.Background(), "good-sid")
 			if (err != nil) != tc.fail || errors.Is(err, ErrAccessDenied) != tc.denied || got != tc.want {
 				t.Fatalf("status=%+v, err=%v", got, err)

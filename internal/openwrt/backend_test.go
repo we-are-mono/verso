@@ -166,16 +166,15 @@ func TestAccessPassesProbe(t *testing.T) {
 }
 
 func TestSetSystemTimeThreadsStructuredArgs(t *testing.T) {
-	var got [3]string
-	b := &NativeBackend{setTime: func(_ context.Context, sid, datetime, timezone string) error {
-		got = [3]string{sid, datetime, timezone}
-		return nil
-	}}
+	socket, requests := helperOnce(t, `{"status":0,"result":{"result":true}}`)
+	b := &NativeBackend{helperSocket: socket}
 	if err := b.SetSystemTime(context.Background(), "s1", "2026-08-30T12:34:56", "GMT0"); err != nil {
 		t.Fatalf("SetSystemTime: %v", err)
 	}
-	if got != [3]string{"s1", "2026-08-30T12:34:56", "GMT0"} {
-		t.Errorf("args = %v", got)
+	got := <-requests
+	want := helperRequest{Method: "setSystemTime", SID: "s1", Args: map[string]string{"datetime": "2026-08-30T12:34:56", "timezone": "GMT0"}}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("request = %+v, want %+v", got, want)
 	}
 }
 

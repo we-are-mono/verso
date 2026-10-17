@@ -16,26 +16,18 @@ type FirewallStatus struct {
 	Rules int    `json:"rules"`
 }
 
-type firewallStatusFn func(context.Context, string) (FirewallStatus, error)
-
 func (b *NativeBackend) FirewallStatus(ctx context.Context, sid string) (FirewallStatus, error) {
-	return b.fwStatus(ctx, sid)
-}
-
-func dialFirewallStatus(socket string) firewallStatusFn {
-	return func(ctx context.Context, sid string) (FirewallStatus, error) {
-		var result struct {
-			State string `json:"state"`
-			Rules *int   `json:"rules"`
-		}
-		// A status read must not hold the homepage or its live stream behind the
-		// helper's much longer timeout for administrative operations.
-		if err := callHelperWithin(ctx, socket, "firewallStatus", sid, nil, &result, 2*time.Second); err != nil {
-			return FirewallStatus{}, err
-		}
-		if (result.State != "active" && result.State != "inactive" && result.State != "partial") || result.Rules == nil || *result.Rules < 0 {
-			return FirewallStatus{}, fmt.Errorf("verso-rpcd: invalid firewall status")
-		}
-		return FirewallStatus{State: result.State, Rules: *result.Rules}, nil
+	var result struct {
+		State string `json:"state"`
+		Rules *int   `json:"rules"`
 	}
+	// A status read must not hold the homepage or its live stream behind the
+	// helper's much longer timeout for administrative operations.
+	if err := callHelperWithin(ctx, b.helperSocket, "firewallStatus", sid, nil, &result, 2*time.Second); err != nil {
+		return FirewallStatus{}, err
+	}
+	if (result.State != "active" && result.State != "inactive" && result.State != "partial") || result.Rules == nil || *result.Rules < 0 {
+		return FirewallStatus{}, fmt.Errorf("verso-rpcd: invalid firewall status")
+	}
+	return FirewallStatus{State: result.State, Rules: *result.Rules}, nil
 }

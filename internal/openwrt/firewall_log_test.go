@@ -40,7 +40,7 @@ func TestFirewallLogCarriesSIDAndIndependentCursor(t *testing.T) {
 			_, err = conn.Write([]byte(response + "\n"))
 			done <- err
 		}()
-		result, err := dialFirewallLog(socket)(context.Background(), "operator", "epoch", 42, 50)
+		result, err := (&NativeBackend{helperSocket: socket}).FirewallLogRead(context.Background(), "operator", "epoch", 42, 50)
 		if denied {
 			if !errors.Is(err, ErrAccessDenied) {
 				t.Fatalf("denial = %v", err)

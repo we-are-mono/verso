@@ -21,7 +21,7 @@ import (
 
 // DHCPState describes the DHCPv4 servers actually loaded by dnsmasq. The
 // operator's staged UCI snapshot is deliberately not a source of live state.
-func (*NativeBackend) DHCPState(ctx context.Context, sid string) (json.RawMessage, error) {
+func (b *NativeBackend) DHCPState(ctx context.Context, sid string) (json.RawMessage, error) {
 	c, err := ubus.Dial("")
 	if err != nil {
 		return nil, err
@@ -54,7 +54,7 @@ func (*NativeBackend) DHCPState(ctx context.Context, sid string) (json.RawMessag
 	// Stock OpenWrt keeps its custom and built-in includes root-readable only.
 	// The helper authorizes this read independently and returns only DHCP scope
 	// directives from fixed roots, never staged edits or unrelated file contents.
-	_ = callHelperWithin(ctx, "", "dhcpState", sid, nil, &protected, 5*time.Second)
+	_ = callHelperWithin(ctx, b.helperSocket, "dhcpState", sid, nil, &protected, 5*time.Second)
 	reader := func(path string) ([]byte, error) {
 		if body, ok := protected.Files[path]; ok {
 			return []byte(body), nil

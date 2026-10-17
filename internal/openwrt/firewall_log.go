@@ -21,18 +21,10 @@ type FirewallLogBatch struct {
 	Overruns   uint64     `json:"overruns"`
 }
 
-type firewallLogFn func(context.Context, string, string, int64, int) (FirewallLogBatch, error)
-
 func (b *NativeBackend) FirewallLogRead(ctx context.Context, sid, generation string, after int64, limit int) (FirewallLogBatch, error) {
-	return b.firewallLog(ctx, sid, generation, after, limit)
-}
-
-func dialFirewallLog(socket string) firewallLogFn {
-	return func(ctx context.Context, sid, generation string, after int64, limit int) (FirewallLogBatch, error) {
-		var result FirewallLogBatch
-		err := callHelperWithin(ctx, socket, "firewallLog", sid, map[string]string{
-			"generation": generation, "after": strconv.FormatInt(after, 10), "limit": strconv.Itoa(limit),
-		}, &result, 5*time.Second)
-		return result, err
-	}
+	var result FirewallLogBatch
+	err := callHelperWithin(ctx, b.helperSocket, "firewallLog", sid, map[string]string{
+		"generation": generation, "after": strconv.FormatInt(after, 10), "limit": strconv.Itoa(limit),
+	}, &result, 5*time.Second)
+	return result, err
 }

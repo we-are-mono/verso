@@ -43,53 +43,53 @@ type configFileCall func(context.Context, string, string, map[string]string, any
 func nativeConfigFileCall(ctx context.Context, sid, method string, args map[string]string, result any) error {
 	return callHelper(ctx, "", method, sid, args, result)
 }
-func (*NativeBackend) DNSState(ctx context.Context, sid string) (json.RawMessage, error) {
+func (b *NativeBackend) DNSState(ctx context.Context, sid string) (json.RawMessage, error) {
 	var state json.RawMessage
-	err := callHelper(ctx, "", "dnsState", sid, nil, &state)
+	err := callHelper(ctx, b.helperSocket, "dnsState", sid, nil, &state)
 	return state, err
 }
 
 // OpenVPNFiles is OpenVPN's profiles as they will read once staged changes
 // are applied, each folded so no key in it leaves the helper.
-func (*NativeBackend) OpenVPNFiles(ctx context.Context, sid string) (json.RawMessage, error) {
+func (b *NativeBackend) OpenVPNFiles(ctx context.Context, sid string) (json.RawMessage, error) {
 	var state json.RawMessage
-	err := callHelper(ctx, "", "openvpnFiles", sid, nil, &state)
+	err := callHelper(ctx, b.helperSocket, "openvpnFiles", sid, nil, &state)
 	return state, err
 }
 
 // VPNState is each OpenVPN instance's profile, process and last word, and
 // every tunnel device's counters, read by the helper with nothing secret in it.
-func (*NativeBackend) VPNState(ctx context.Context, sid string) (json.RawMessage, error) {
+func (b *NativeBackend) VPNState(ctx context.Context, sid string) (json.RawMessage, error) {
 	var state json.RawMessage
-	err := callHelper(ctx, "", "vpnState", sid, nil, &state)
+	err := callHelper(ctx, b.helperSocket, "vpnState", sid, nil, &state)
 	return state, err
 }
 
 // DDNSState is what ddns-scripts last did for each service: the address its
 // name resolves to, when it last sent an update, and whether its updater runs.
-func (*NativeBackend) DDNSState(ctx context.Context, sid string) (json.RawMessage, error) {
+func (b *NativeBackend) DDNSState(ctx context.Context, sid string) (json.RawMessage, error) {
 	var state json.RawMessage
-	err := callHelper(ctx, "", "ddnsState", sid, nil, &state)
+	err := callHelper(ctx, b.helperSocket, "ddnsState", sid, nil, &state)
 	return state, err
 }
 
 // DDNSUpdate has the helper restart one ddns-scripts service's updater with no
 // record of a last update, so it sends its address at once.
-func (*NativeBackend) DDNSUpdate(ctx context.Context, sid, section string) error {
-	return callHelper(ctx, "", "ddnsUpdate", sid, map[string]string{"section": section}, nil)
+func (b *NativeBackend) DDNSUpdate(ctx context.Context, sid, section string) error {
+	return callHelper(ctx, b.helperSocket, "ddnsUpdate", sid, map[string]string{"section": section}, nil)
 }
 
 // RefreshGrants has the helper grant the session what rpcd's login would grant
 // it from the access lists on disk now.
-func (*NativeBackend) RefreshGrants(ctx context.Context, sid string) error {
-	return callHelper(ctx, "", "refreshGrants", sid, nil, nil)
+func (b *NativeBackend) RefreshGrants(ctx context.Context, sid string) error {
+	return callHelper(ctx, b.helperSocket, "refreshGrants", sid, nil, nil)
 }
 
 // FirewallFiles is the rule files fw4 reads from its own folder, as they will
 // read once staged changes are applied.
-func (*NativeBackend) FirewallFiles(ctx context.Context, sid string) (json.RawMessage, error) {
+func (b *NativeBackend) FirewallFiles(ctx context.Context, sid string) (json.RawMessage, error) {
 	var state json.RawMessage
-	err := callHelper(ctx, "", "firewallFiles", sid, nil, &state)
+	err := callHelper(ctx, b.helperSocket, "firewallFiles", sid, nil, &state)
 	return state, err
 }
 func (b *NativeBackend) configFileState(ctx context.Context, sid string) (configFileState, error) {

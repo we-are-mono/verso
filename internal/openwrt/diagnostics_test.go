@@ -37,7 +37,7 @@ func helperOnce(t *testing.T, response string) (string, <-chan helperRequest) {
 
 func TestDiagnosticStartSendsTheRunsPartsAndItsOperator(t *testing.T) {
 	socket, got := helperOnce(t, `{"status":0,"result":{"job":"abc123"}}`)
-	job, err := dialDiagStart(socket)(context.Background(), "operator", DiagnosticRun{Tool: "ping", Target: "example.com", Interface: "br-lan", Family: "6"})
+	job, err := (&NativeBackend{helperSocket: socket}).DiagStart(context.Background(), "operator", DiagnosticRun{Tool: "ping", Target: "example.com", Interface: "br-lan", Family: "6"})
 	if err != nil || job != "abc123" {
 		t.Fatalf("start = %q, %v", job, err)
 	}
@@ -50,7 +50,7 @@ func TestDiagnosticStartSendsTheRunsPartsAndItsOperator(t *testing.T) {
 
 func TestDiagnosticReadCarriesTheCursorAndTheEnding(t *testing.T) {
 	socket, got := helperOnce(t, `{"status":0,"result":{"lines":["64 bytes from 1.1.1.1"],"next":3,"done":true,"code":0,"ended":"exited"}}`)
-	out, err := dialDiagRead(socket)(context.Background(), "operator", "abc123", 2)
+	out, err := (&NativeBackend{helperSocket: socket}).DiagRead(context.Background(), "operator", "abc123", 2)
 	if err != nil || !reflect.DeepEqual(out.Lines, []string{"64 bytes from 1.1.1.1"}) || out.Next != 3 || !out.Done || out.Code == nil || *out.Code != 0 || out.Ended != "exited" {
 		t.Fatalf("read = %+v, %v", out, err)
 	}
@@ -62,7 +62,7 @@ func TestDiagnosticReadCarriesTheCursorAndTheEnding(t *testing.T) {
 
 func TestDiagnosticStopIsTheOperatorsAndADenialSaysSo(t *testing.T) {
 	socket, got := helperOnce(t, `{"status":6,"error":"permission denied"}`)
-	if err := dialDiagStop(socket)(context.Background(), "operator", "abc123"); !errors.Is(err, ErrAccessDenied) {
+	if err := (&NativeBackend{helperSocket: socket}).DiagStop(context.Background(), "operator", "abc123"); !errors.Is(err, ErrAccessDenied) {
 		t.Fatalf("stop = %v", err)
 	}
 	if request := <-got; request.Method != "diagStop" || request.SID != "operator" || request.Args["job"] != "abc123" {
@@ -72,7 +72,7 @@ func TestDiagnosticStopIsTheOperatorsAndADenialSaysSo(t *testing.T) {
 
 func TestDiagnosticRefusalKeepsTheHelpersWords(t *testing.T) {
 	socket, _ := helperOnce(t, `{"status":2,"error":"no such interface"}`)
-	_, err := dialDiagStart(socket)(context.Background(), "operator", DiagnosticRun{Tool: "ping", Target: "x", Interface: "eth9"})
+	_, err := (&NativeBackend{helperSocket: socket}).DiagStart(context.Background(), "operator", DiagnosticRun{Tool: "ping", Target: "x", Interface: "eth9"})
 	var refused interface{ ValidationMessage() string }
 	if !errors.As(err, &refused) || refused.ValidationMessage() != "no such interface" {
 		t.Fatalf("refusal = %v", err)

@@ -562,48 +562,28 @@ type Memory struct {
 // unit-testable with fakes; the real implementations dial the ubus socket and
 // go through rpcd (verified live, like the ubus client itself).
 type (
-	hostnameFn     func() (string, error)
-	systemInfoFn   func(ctx context.Context, sid string) (map[string]any, error)
-	systemBoardFn  func(ctx context.Context, sid string) (map[string]any, error)
-	ipv6LeasesFn   func(ctx context.Context, sid string) (map[string]any, error)
-	wanConnFn      func(ctx context.Context, sid string) (WANConn, error)
-	accessFn       func(ctx context.Context, sid, scope, object, function string) (bool, error)
-	uciSetFn       func(ctx context.Context, sid, config, section string, values map[string]any) error
-	uciConfigFn    func(ctx context.Context, sid, config string) (map[string]any, error)
-	uciAddFn       func(ctx context.Context, sid, config, secType, name string) (string, error)
-	uciDeleteFn    func(ctx context.Context, sid, config, section, option string) error
-	uciOrderFn     func(ctx context.Context, sid, config string, sections []string) error
-	passwdFn       func(ctx context.Context, sid, username, password string) error
-	setTimeFn      func(ctx context.Context, sid, datetime, timezone string) error
-	rootPasswdFn   func(ctx context.Context, sid string) (bool, error)
-	backupFn       func(ctx context.Context, sid, path string) error
-	firmwareFn     func(ctx context.Context, sid, path string) (FirmwareInfo, error)
-	maintenanceFn  func(ctx context.Context, sid string) error
-	uciChangesFn   func(ctx context.Context, sid string) (map[string][][]string, error)
-	uciRevertFn    func(ctx context.Context, sid, config string) error
-	uciApplyFn     func(ctx context.Context, sid string, timeout int) error
-	uciConfirmFn   func(ctx context.Context, sid string) error
-	rcListFn       func(ctx context.Context, sid string) (map[string]RCState, error)
-	failedSvcFn    func(ctx context.Context, sid string) ([]string, error)
-	rcInitFn       func(ctx context.Context, sid, name, action string) error
-	pkgStatusFn    func(ctx context.Context, sid string) (int64, error)
-	pkgUpdateFn    func(ctx context.Context, sid string) error
-	pkgSearchFn    func(ctx context.Context, sid, query string) ([]Package, int, error)
-	pkgBrowseFn    func(ctx context.Context, sid, query string, offset int) (PackagePage, error)
-	pkgFilesFn     func(ctx context.Context, sid, name string) ([]string, error)
-	pkgInfoFn      func(ctx context.Context, sid, name string) (Package, bool, error)
-	usageLiveFn    func(ctx context.Context, sid string, addrs []string) (UsageLive, error)
-	usageDaysFn    func(ctx context.Context, sid string, known []string) (UsageDays, error)
-	pkgInstalledFn func(ctx context.Context, sid string) ([]Package, error)
-	pkgActFn       func(ctx context.Context, sid, name string) error
-	pkgUpgradesFn  func(ctx context.Context, sid string) ([]PackageUpgrade, error)
-	pkgUpgradeFn   func(ctx context.Context, sid string) error
-	firmwareUpdFn  func(ctx context.Context, sid string) (FirmwareUpdate, error)
-	wanStatusFn    func(ctx context.Context, sid string) (WANState, error)
-	deviceStatsFn  func(ctx context.Context, sid, device string) (DeviceStats, error)
-	fwCountersFn   func(ctx context.Context, sid string) (json.RawMessage, error)
-	logReadFn      func(ctx context.Context, sid string, lines int) (map[string]any, error)
-	netIfacesFn    func(ctx context.Context, sid string) (map[string]any, error)
+	hostnameFn    func() (string, error)
+	systemInfoFn  func(ctx context.Context, sid string) (map[string]any, error)
+	systemBoardFn func(ctx context.Context, sid string) (map[string]any, error)
+	ipv6LeasesFn  func(ctx context.Context, sid string) (map[string]any, error)
+	wanConnFn     func(ctx context.Context, sid string) (WANConn, error)
+	accessFn      func(ctx context.Context, sid, scope, object, function string) (bool, error)
+	uciSetFn      func(ctx context.Context, sid, config, section string, values map[string]any) error
+	uciConfigFn   func(ctx context.Context, sid, config string) (map[string]any, error)
+	uciAddFn      func(ctx context.Context, sid, config, secType, name string) (string, error)
+	uciDeleteFn   func(ctx context.Context, sid, config, section, option string) error
+	uciOrderFn    func(ctx context.Context, sid, config string, sections []string) error
+	uciChangesFn  func(ctx context.Context, sid string) (map[string][][]string, error)
+	uciRevertFn   func(ctx context.Context, sid, config string) error
+	uciApplyFn    func(ctx context.Context, sid string, timeout int) error
+	uciConfirmFn  func(ctx context.Context, sid string) error
+	rcListFn      func(ctx context.Context, sid string) (map[string]RCState, error)
+	failedSvcFn   func(ctx context.Context, sid string) ([]string, error)
+	rcInitFn      func(ctx context.Context, sid, name, action string) error
+	wanStatusFn   func(ctx context.Context, sid string) (WANState, error)
+	deviceStatsFn func(ctx context.Context, sid, device string) (DeviceStats, error)
+	logReadFn     func(ctx context.Context, sid string, lines int) (map[string]any, error)
+	netIfacesFn   func(ctx context.Context, sid string) (map[string]any, error)
 )
 
 // NativeBackend reads OpenWrt state over the ubus socket, presenting the session
@@ -611,6 +591,9 @@ type (
 // rpcd authorizes and executes, so a restricted operator is limited to what
 // their ACLs grant (ADR-007).
 type NativeBackend struct {
+	// helperSocket is where the verso-rpcd helper listens; empty is its
+	// default path.
+	helperSocket   string
 	configFileCall configFileCall
 	hostname       hostnameFn
 	systemInfo     systemInfoFn
@@ -623,15 +606,6 @@ type NativeBackend struct {
 	uciAdd         uciAddFn
 	uciDelete      uciDeleteFn
 	uciOrder       uciOrderFn
-	setPassword    passwdFn
-	setTime        setTimeFn
-	rootPasswd     rootPasswdFn
-	createBackup   backupFn
-	restoreBackup  backupFn
-	firmwareCheck  firmwareFn
-	firmwareFlash  backupFn
-	restart        maintenanceFn
-	factoryReset   func(ctx context.Context, sid string, eraseHistory bool) error
 	kernelBuild    func() string
 	packageArch    func() string
 	uciChanges     uciChangesFn
@@ -642,57 +616,26 @@ type NativeBackend struct {
 	failedSvc      failedSvcFn
 	reloadTriggers reloadTriggersFn
 	rcInit         rcInitFn
-	pkgStatus      pkgStatusFn
-	pkgUpdate      pkgUpdateFn
-	pkgSearch      pkgSearchFn
-	pkgBrowse      pkgBrowseFn
-	pkgFiles       pkgFilesFn
-	pkgInfo        pkgInfoFn
-	usageLive      usageLiveFn
-	usageDays      usageDaysFn
-	pkgUpgradeOne  pkgActFn
-	pkgInstalled   pkgInstalledFn
-	pkgInstall     pkgActFn
-	pkgRemove      pkgActFn
-	pkgUpgrades    pkgUpgradesFn
-	pkgUpgrade     pkgUpgradeFn
-	firmwareUpd    firmwareUpdFn
-	firmwareUpg    maintenanceFn
 	wanStatus      wanStatusFn
 	deviceStats    deviceStatsFn
-	fwCounters     fwCountersFn
-	fwStatus       firewallStatusFn
-	firewallLog    firewallLogFn
 	logRead        logReadFn
 	netIfaces      netIfacesFn
-	diagStart      diagStartFn
-	diagRead       diagReadFn
-	diagStop       diagStopFn
 }
 
 // NewNativeBackend returns a backend using the default ubus socket.
 func NewNativeBackend() *NativeBackend {
 	return &NativeBackend{
-		hostname:      os.Hostname,
-		systemInfo:    dialSystemInfo(""),
-		systemBoard:   dialSystemBoard(""),
-		ipv6Leases:    dialIPv6Leases(""),
-		wanConn:       dialWANConn(""),
-		access:        dialAccess(""),
-		uciSet:        dialUCISet(""),
-		uciConfig:     dialUCIConfig(""),
-		uciAdd:        dialUCIAdd(""),
-		uciDelete:     dialUCIDelete(""),
-		uciOrder:      dialUCIOrder(""),
-		setPassword:   dialSetPassword(""),
-		setTime:       dialSetSystemTime(""),
-		rootPasswd:    dialRootHasPassword(""),
-		createBackup:  dialBackupAct("", "createBackup"),
-		restoreBackup: dialBackupAct("", "restoreBackup"),
-		firmwareCheck: dialFirmwareValidate(""),
-		firmwareFlash: dialBackupAct("", "installFirmware"),
-		restart:       dialMaintenanceAct("", "restart"),
-		factoryReset:  dialFactoryReset(""),
+		hostname:    os.Hostname,
+		systemInfo:  dialSystemInfo(""),
+		systemBoard: dialSystemBoard(""),
+		ipv6Leases:  dialIPv6Leases(""),
+		wanConn:     dialWANConn(""),
+		access:      dialAccess(""),
+		uciSet:      dialUCISet(""),
+		uciConfig:   dialUCIConfig(""),
+		uciAdd:      dialUCIAdd(""),
+		uciDelete:   dialUCIDelete(""),
+		uciOrder:    dialUCIOrder(""),
 		kernelBuild: func() string {
 			data, err := os.ReadFile("/proc/version")
 			if err != nil {
@@ -717,32 +660,10 @@ func NewNativeBackend() *NativeBackend {
 		failedSvc:      dialFailedServices(""),
 		reloadTriggers: dialReloadTriggers(""),
 		rcInit:         dialRCInit(""),
-		pkgStatus:      dialPkgStatus(""),
-		pkgUpdate:      dialPkgUpdate(""),
-		pkgSearch:      dialPkgSearch(""),
-		pkgBrowse:      dialPkgBrowse(""),
-		pkgFiles:       dialPkgFiles(""),
-		pkgInfo:        dialPkgInfo(""),
-		usageLive:      dialUsageLive(""),
-		usageDays:      dialUsageDays(""),
-		pkgUpgradeOne:  dialPkgAct("", "pkgUpgradeOne"),
-		pkgInstalled:   dialPkgInstalled(""),
-		pkgInstall:     dialPkgAct("", "pkgInstall"),
-		pkgRemove:      dialPkgAct("", "pkgRemove"),
-		pkgUpgrades:    dialPkgUpgradable(""),
-		pkgUpgrade:     dialPkgUpgrade(""),
-		firmwareUpd:    dialFirmwareCheck(""),
-		firmwareUpg:    dialFirmwareUpgrade(""),
 		wanStatus:      dialWANStatus(""),
 		deviceStats:    dialDeviceStats(""),
-		fwCounters:     dialFirewallCounters(""),
-		fwStatus:       dialFirewallStatus(""),
-		firewallLog:    dialFirewallLog(""),
 		logRead:        dialLogRead(""),
 		netIfaces:      dialNetworkInterfaces(""),
-		diagStart:      dialDiagStart(""),
-		diagRead:       dialDiagRead(""),
-		diagStop:       dialDiagStop(""),
 	}
 }
 
@@ -865,46 +786,77 @@ func (b *NativeBackend) UCIOrder(ctx context.Context, sid, config string, sectio
 }
 
 // SetPassword sets username's system password through the privileged `verso-rpcd`
-// helper (the setPassword verb), gated by the sid.
+// helper (the setPassword verb), gated by the sid. The helper runs as root and
+// self-gates on session.access for verso.setPassword, so the shell keeps no
+// ambient privilege. The password travels only over the protected local
+// socket, never in a process argument.
 func (b *NativeBackend) SetPassword(ctx context.Context, sid, username, password string) error {
-	return b.setPassword(ctx, sid, username, password)
+	return callHelper(ctx, b.helperSocket, "setPassword", sid, map[string]string{
+		"username": username,
+		"password": password,
+	}, nil)
 }
 
 // SetSystemTime updates the kernel clock through the helper's setSystemTime
-// verb, independently authorized against the operator's session.
+// verb, independently authorized against the operator's session. The helper
+// validates both fields again and invokes no shell.
 func (b *NativeBackend) SetSystemTime(ctx context.Context, sid, datetime, timezone string) error {
-	return b.setTime(ctx, sid, datetime, timezone)
+	return callHelper(ctx, b.helperSocket, "setSystemTime", sid, map[string]string{
+		"datetime": datetime,
+		"timezone": timezone,
+	}, nil)
 }
 
 // RootHasPassword reports whether root has a system password, read from
 // /etc/shadow by the privileged `verso-rpcd` helper (the shell cannot read it
-// itself), gated by the sid.
+// itself), gated by the sid. The helper self-gates on session.access, so the
+// shell needs no shadow-read capability of its own (ADR-007); only the
+// boolean crosses the socket, never the hash.
 func (b *NativeBackend) RootHasPassword(ctx context.Context, sid string) (bool, error) {
-	return b.rootPasswd(ctx, sid)
+	var result struct {
+		HasPassword bool `json:"has_password"`
+	}
+	if err := callHelper(ctx, b.helperSocket, "rootHasPassword", sid, nil, &result); err != nil {
+		return false, err
+	}
+	return result.HasPassword, nil
 }
 
+// CreateBackup, RestoreBackup and InstallFirmware broker OpenWrt-native backup
+// operations without carrying the archive through JSON. The helper accepts
+// only Verso's private temporary-file naming convention and invokes sysupgrade
+// directly, never through a shell.
 func (b *NativeBackend) CreateBackup(ctx context.Context, sid, path string) error {
-	return b.createBackup(ctx, sid, path)
+	return callHelper(ctx, b.helperSocket, "createBackup", sid, map[string]string{"path": path}, nil)
 }
 
 func (b *NativeBackend) RestoreBackup(ctx context.Context, sid, path string) error {
-	return b.restoreBackup(ctx, sid, path)
+	return callHelper(ctx, b.helperSocket, "restoreBackup", sid, map[string]string{"path": path}, nil)
 }
 
 func (b *NativeBackend) ValidateFirmware(ctx context.Context, sid, path string) (FirmwareInfo, error) {
-	return b.firmwareCheck(ctx, sid, path)
+	var result FirmwareInfo
+	err := callHelper(ctx, b.helperSocket, "validateFirmware", sid, map[string]string{"path": path}, &result)
+	return result, err
 }
 
 func (b *NativeBackend) InstallFirmware(ctx context.Context, sid, path string) error {
-	return b.firmwareFlash(ctx, sid, path)
+	return callHelper(ctx, b.helperSocket, "installFirmware", sid, map[string]string{"path": path}, nil)
 }
 
 func (b *NativeBackend) Restart(ctx context.Context, sid string) error {
-	return b.restart(ctx, sid)
+	return callHelper(ctx, b.helperSocket, "restart", sid, nil, nil)
 }
 
+// FactoryReset asks the helper to reset the router, erasing the router's
+// history first unless it is kept. The helper finds the history itself; the
+// shell only says whether.
 func (b *NativeBackend) FactoryReset(ctx context.Context, sid string, eraseHistory bool) error {
-	return b.factoryReset(ctx, sid, eraseHistory)
+	history := "keep"
+	if eraseHistory {
+		history = "erase"
+	}
+	return callHelper(ctx, b.helperSocket, "factoryReset", sid, map[string]string{"history": history}, nil)
 }
 
 // UCIChanges reads the pending uci changes across all configs through rpcd, gated
@@ -985,71 +937,112 @@ func (b *NativeBackend) RCInit(ctx context.Context, sid, name, action string) er
 }
 
 func (b *NativeBackend) PkgStatus(ctx context.Context, sid string) (int64, error) {
-	return b.pkgStatus(ctx, sid)
+	var result struct {
+		CheckedAt int64 `json:"checked_at"`
+	}
+	err := callHelper(ctx, b.helperSocket, "pkgStatus", sid, nil, &result)
+	return result.CheckedAt, err
 }
 
 func (b *NativeBackend) PkgUpdate(ctx context.Context, sid string) error {
-	return b.pkgUpdate(ctx, sid)
+	return callHelper(ctx, b.helperSocket, "pkgUpdate", sid, nil, nil)
 }
 
 func (b *NativeBackend) PkgSearch(ctx context.Context, sid, query string) ([]Package, int, error) {
-	return b.pkgSearch(ctx, sid, query)
+	var result struct {
+		Packages []Package `json:"packages"`
+		Total    int       `json:"total"`
+	}
+	err := callHelper(ctx, b.helperSocket, "pkgSearch", sid, map[string]string{"query": query}, &result)
+	return result.Packages, result.Total, err
 }
 
 func (b *NativeBackend) PkgBrowse(ctx context.Context, sid, query string, offset int) (PackagePage, error) {
-	return b.pkgBrowse(ctx, sid, query, offset)
+	var result PackagePage
+	err := callHelper(ctx, b.helperSocket, "pkgBrowse", sid, map[string]string{"query": query, "offset": strconv.Itoa(offset)}, &result)
+	return result, err
 }
 
 func (b *NativeBackend) PkgFiles(ctx context.Context, sid, name string) ([]string, error) {
-	return b.pkgFiles(ctx, sid, name)
+	var result struct {
+		Files []string `json:"files"`
+	}
+	err := callHelper(ctx, b.helperSocket, "pkgFiles", sid, map[string]string{"package": name}, &result)
+	return result.Files, err
 }
 
 func (b *NativeBackend) PkgInfo(ctx context.Context, sid, name string) (Package, bool, error) {
-	return b.pkgInfo(ctx, sid, name)
+	var result struct {
+		Package *Package `json:"package"`
+	}
+	if err := callHelper(ctx, b.helperSocket, "pkgInfo", sid, map[string]string{"package": name}, &result); err != nil || result.Package == nil {
+		return Package{}, false, err
+	}
+	return *result.Package, true, nil
 }
 
 func (b *NativeBackend) UsageLive(ctx context.Context, sid string, addrs []string) (UsageLive, error) {
-	return b.usageLive(ctx, sid, addrs)
+	var result UsageLive
+	err := callHelper(ctx, b.helperSocket, "usageLive", sid, map[string]string{"addresses": strings.Join(addrs, ",")}, &result)
+	return result, err
 }
 
 func (b *NativeBackend) UsageDays(ctx context.Context, sid string, known []string) (UsageDays, error) {
-	return b.usageDays(ctx, sid, known)
+	var result UsageDays
+	err := callHelper(ctx, b.helperSocket, "usageDays", sid, map[string]string{"known": strings.Join(known, ",")}, &result)
+	return result, err
 }
 
 func (b *NativeBackend) PkgUpgradeOne(ctx context.Context, sid, name string) error {
-	return b.pkgUpgradeOne(ctx, sid, name)
+	return callHelper(ctx, b.helperSocket, "pkgUpgradeOne", sid, map[string]string{"package": name}, nil)
 }
 
 func (b *NativeBackend) PkgInstalled(ctx context.Context, sid string) ([]Package, error) {
-	return b.pkgInstalled(ctx, sid)
+	var result struct {
+		Packages []Package `json:"packages"`
+	}
+	err := callHelper(ctx, b.helperSocket, "pkgInstalled", sid, nil, &result)
+	return result.Packages, err
 }
 
 func (b *NativeBackend) PkgInstall(ctx context.Context, sid, name string) error {
-	return b.pkgInstall(ctx, sid, name)
+	return callHelper(ctx, b.helperSocket, "pkgInstall", sid, map[string]string{"package": name}, nil)
 }
 
 func (b *NativeBackend) PkgRemove(ctx context.Context, sid, name string) error {
-	return b.pkgRemove(ctx, sid, name)
+	return callHelper(ctx, b.helperSocket, "pkgRemove", sid, map[string]string{"package": name}, nil)
 }
 
 func (b *NativeBackend) PkgUpgradable(ctx context.Context, sid string) ([]PackageUpgrade, error) {
-	return b.pkgUpgrades(ctx, sid)
+	var result struct {
+		Packages []PackageUpgrade `json:"packages"`
+	}
+	err := callHelper(ctx, b.helperSocket, "pkgUpgradable", sid, nil, &result)
+	return result.Packages, err
 }
 
 func (b *NativeBackend) PkgUpgrade(ctx context.Context, sid string) error {
-	return b.pkgUpgrade(ctx, sid)
+	return callHelper(ctx, b.helperSocket, "pkgUpgrade", sid, nil, nil)
 }
 
 // FirmwareCheck asks the privileged helper to run owut's check against the
-// device's configured attended-sysupgrade server, gated by the sid.
+// device's configured attended-sysupgrade server, gated by the sid. The helper
+// answers with a rung rather than an error whenever the check itself cannot
+// conclude, so an error here means the helper was unreachable, not that the
+// device has no answer.
 func (b *NativeBackend) FirmwareCheck(ctx context.Context, sid string) (FirmwareUpdate, error) {
-	return b.firmwareUpd(ctx, sid)
+	var result FirmwareUpdate
+	err := callHelper(ctx, b.helperSocket, "firmwareCheck", sid, nil, &result)
+	return result, err
 }
 
 // FirmwareUpgrade asks the privileged helper to run owut's download and start
-// its install, gated by the sid.
+// its install, gated by the sid. The request carries no arguments — the whole
+// point of the verb is that owut decides everything on the device — and the
+// wait is the long one, because the build happens on the update server before
+// this router has anything to download.
 func (b *NativeBackend) FirmwareUpgrade(ctx context.Context, sid string) error {
-	return b.firmwareUpg(ctx, sid)
+	return callHelperWithin(ctx, b.helperSocket, "firmwareUpgrade", sid, nil, nil, firmwareUpgradeTimeout)
 }
 
 func (b *NativeBackend) WANStatus(ctx context.Context, sid string) (WANState, error) {
@@ -1065,9 +1058,17 @@ func (b *NativeBackend) DeviceStats(ctx context.Context, sid, device string) (De
 }
 
 // FirewallCounters reads fw4's per-rule nftables counters through the privileged
-// `verso-rpcd` helper, gated by the sid.
+// `verso-rpcd` helper, gated by the sid. Listing an nftables table needs
+// CAP_NET_ADMIN, which the shell does not hold (ADR-007), so the helper lists
+// it as root and self-gates on session.access. The result crosses as raw JSON —
+// the shell forwards it to the plugin that declared the read without reading
+// it itself.
 func (b *NativeBackend) FirewallCounters(ctx context.Context, sid string) (json.RawMessage, error) {
-	return b.fwCounters(ctx, sid)
+	var result json.RawMessage
+	if err := callHelper(ctx, b.helperSocket, "firewallCounters", sid, nil, &result); err != nil {
+		return nil, err
+	}
+	return result, nil
 }
 
 // LogRead reads the tail of logd's ring and folds it to typed records.
@@ -1273,86 +1274,6 @@ func dialUCIAdd(socket string) uciAddFn {
 		}
 		section, _ := res["section"].(string)
 		return section, nil
-	}
-}
-
-// dialSetPassword returns a passwdFn that asks the resident Rust helper to set a
-// user's password. The helper runs as root and self-gates on session.access for
-// verso.setPassword, so the shell keeps no ambient privilege. The password
-// travels only over the protected local socket, never in a process argument.
-func dialSetPassword(socket string) passwdFn {
-	return func(ctx context.Context, sid, username, password string) error {
-		return callHelper(ctx, socket, "setPassword", sid, map[string]string{
-			"username": username,
-			"password": password,
-		}, nil)
-	}
-}
-
-// dialSetSystemTime returns the narrow helper client for setting the kernel
-// clock. The helper validates both fields again and invokes no shell.
-func dialSetSystemTime(socket string) setTimeFn {
-	return func(ctx context.Context, sid, datetime, timezone string) error {
-		return callHelper(ctx, socket, "setSystemTime", sid, map[string]string{
-			"datetime": datetime,
-			"timezone": timezone,
-		}, nil)
-	}
-}
-
-// dialRootHasPassword returns a rootPasswdFn that asks the resident Rust helper
-// whether root has a password (the rootHasPassword verb). The helper reads
-// /etc/shadow as root and self-gates on session.access, so the shell needs no
-// shadow-read capability of its own (ADR-007); only the boolean crosses the
-// socket, never the hash.
-func dialRootHasPassword(socket string) rootPasswdFn {
-	return func(ctx context.Context, sid string) (bool, error) {
-		var result struct {
-			HasPassword bool `json:"has_password"`
-		}
-		if err := callHelper(ctx, socket, "rootHasPassword", sid, nil, &result); err != nil {
-			return false, err
-		}
-		return result.HasPassword, nil
-	}
-}
-
-// dialFirewallCounters returns a fwCountersFn that asks the resident Rust helper
-// for fw4's per-rule nftables counters (the firewallCounters verb). Listing an
-// nftables table needs CAP_NET_ADMIN, which the shell does not hold (ADR-007), so
-// the helper lists it as root and self-gates on session.access. The result crosses
-// as raw JSON — the shell forwards it to the plugin that declared the read without
-// reading it itself.
-func dialFirewallCounters(socket string) fwCountersFn {
-	return func(ctx context.Context, sid string) (json.RawMessage, error) {
-		var result json.RawMessage
-		if err := callHelper(ctx, socket, "firewallCounters", sid, nil, &result); err != nil {
-			return nil, err
-		}
-		return result, nil
-	}
-}
-
-// dialBackupAct brokers OpenWrt-native backup operations without carrying the
-// archive through JSON. The helper accepts only Verso's private temporary-file
-// naming convention and invokes sysupgrade directly, never through a shell.
-func dialBackupAct(socket, method string) backupFn {
-	return func(ctx context.Context, sid, path string) error {
-		return callHelper(ctx, socket, method, sid, map[string]string{"path": path}, nil)
-	}
-}
-
-func dialFirmwareValidate(socket string) firmwareFn {
-	return func(ctx context.Context, sid, path string) (FirmwareInfo, error) {
-		var result FirmwareInfo
-		err := callHelper(ctx, socket, "validateFirmware", sid, map[string]string{"path": path}, &result)
-		return result, err
-	}
-}
-
-func dialMaintenanceAct(socket, method string) maintenanceFn {
-	return func(ctx context.Context, sid string) error {
-		return callHelper(ctx, socket, method, sid, nil, nil)
 	}
 }
 
@@ -2017,132 +1938,6 @@ func parseProcAge(stat []byte, systemUptime float64) int64 {
 	return int64(age)
 }
 
-func dialPkgStatus(socket string) pkgStatusFn {
-	return func(ctx context.Context, sid string) (int64, error) {
-		var result struct {
-			CheckedAt int64 `json:"checked_at"`
-		}
-		err := callHelper(ctx, socket, "pkgStatus", sid, nil, &result)
-		return result.CheckedAt, err
-	}
-}
-
-func dialPkgUpdate(socket string) pkgUpdateFn {
-	return func(ctx context.Context, sid string) error {
-		return callHelper(ctx, socket, "pkgUpdate", sid, nil, nil)
-	}
-}
-
-func dialPkgSearch(socket string) pkgSearchFn {
-	return func(ctx context.Context, sid, query string) ([]Package, int, error) {
-		var result struct {
-			Packages []Package `json:"packages"`
-			Total    int       `json:"total"`
-		}
-		err := callHelper(ctx, socket, "pkgSearch", sid, map[string]string{"query": query}, &result)
-		return result.Packages, result.Total, err
-	}
-}
-
-func dialPkgInstalled(socket string) pkgInstalledFn {
-	return func(ctx context.Context, sid string) ([]Package, error) {
-		var result struct {
-			Packages []Package `json:"packages"`
-		}
-		err := callHelper(ctx, socket, "pkgInstalled", sid, nil, &result)
-		return result.Packages, err
-	}
-}
-
-func dialPkgBrowse(socket string) pkgBrowseFn {
-	return func(ctx context.Context, sid, query string, offset int) (PackagePage, error) {
-		var result PackagePage
-		err := callHelper(ctx, socket, "pkgBrowse", sid, map[string]string{"query": query, "offset": strconv.Itoa(offset)}, &result)
-		return result, err
-	}
-}
-
-func dialPkgFiles(socket string) pkgFilesFn {
-	return func(ctx context.Context, sid, name string) ([]string, error) {
-		var result struct {
-			Files []string `json:"files"`
-		}
-		err := callHelper(ctx, socket, "pkgFiles", sid, map[string]string{"package": name}, &result)
-		return result.Files, err
-	}
-}
-
-func dialPkgInfo(socket string) pkgInfoFn {
-	return func(ctx context.Context, sid, name string) (Package, bool, error) {
-		var result struct {
-			Package *Package `json:"package"`
-		}
-		if err := callHelper(ctx, socket, "pkgInfo", sid, map[string]string{"package": name}, &result); err != nil || result.Package == nil {
-			return Package{}, false, err
-		}
-		return *result.Package, true, nil
-	}
-}
-
-func dialUsageLive(socket string) usageLiveFn {
-	return func(ctx context.Context, sid string, addrs []string) (UsageLive, error) {
-		var result UsageLive
-		err := callHelper(ctx, socket, "usageLive", sid, map[string]string{"addresses": strings.Join(addrs, ",")}, &result)
-		return result, err
-	}
-}
-
-func dialUsageDays(socket string) usageDaysFn {
-	return func(ctx context.Context, sid string, known []string) (UsageDays, error) {
-		var result UsageDays
-		err := callHelper(ctx, socket, "usageDays", sid, map[string]string{"known": strings.Join(known, ",")}, &result)
-		return result, err
-	}
-}
-
-func dialPkgAct(socket, methodName string) pkgActFn {
-	return func(ctx context.Context, sid, name string) error {
-		return callHelper(ctx, socket, methodName, sid, map[string]string{"package": name}, nil)
-	}
-}
-
-func dialPkgUpgradable(socket string) pkgUpgradesFn {
-	return func(ctx context.Context, sid string) ([]PackageUpgrade, error) {
-		var result struct {
-			Packages []PackageUpgrade `json:"packages"`
-		}
-		err := callHelper(ctx, socket, "pkgUpgradable", sid, nil, &result)
-		return result.Packages, err
-	}
-}
-
-func dialPkgUpgrade(socket string) pkgUpgradeFn {
-	return func(ctx context.Context, sid string) error {
-		return callHelper(ctx, socket, "pkgUpgrade", sid, nil, nil)
-	}
-}
-
-// dialFirmwareCheck asks the helper to run owut's check. The helper answers with a
-// rung rather than an error whenever the check itself cannot conclude, so an error
-// here means the helper was unreachable, not that the device has no answer.
-func dialFirmwareCheck(socket string) firmwareUpdFn {
-	return func(ctx context.Context, sid string) (FirmwareUpdate, error) {
-		var result FirmwareUpdate
-		err := callHelper(ctx, socket, "firmwareCheck", sid, nil, &result)
-		return result, err
-	}
-}
-
-// dialFirmwareUpgrade asks the helper to run the upgrade. The request carries no
-// arguments — the whole point of the verb is that owut decides everything on the
-// device — and the wait is the long one, because the build happens on the update
-// server before this router has anything to download.
-func dialFirmwareUpgrade(socket string) maintenanceFn {
-	return func(ctx context.Context, sid string) error {
-		return callHelperWithin(ctx, socket, "firmwareUpgrade", sid, nil, nil, firmwareUpgradeTimeout)
-	}
-}
-
 // dialRCInit drives one rc action on a named init script through procd, after
 // probing the session's ubus/rc/init access. Name and action policy is the
 // caller's (the shell restricts both); rpcd's session gate is the backstop.
@@ -2304,17 +2099,4 @@ func parseDeviceStats(m map[string]any) DeviceStats {
 		ds.TxBytes = asInt64(st["tx_bytes"])
 	}
 	return ds
-}
-
-// dialFactoryReset asks the helper to reset the router, erasing the
-// router's history first unless it is kept. The helper finds the history
-// itself; the shell only says whether.
-func dialFactoryReset(socket string) func(ctx context.Context, sid string, eraseHistory bool) error {
-	return func(ctx context.Context, sid string, eraseHistory bool) error {
-		history := "keep"
-		if eraseHistory {
-			history = "erase"
-		}
-		return callHelper(ctx, socket, "factoryReset", sid, map[string]string{"history": history}, nil)
-	}
 }

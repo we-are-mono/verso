@@ -77,6 +77,6 @@ func devicePartition(root string) string {
 // a few kilobytes of flash and one RTC register, so it answers fast.
 func (b *NativeBackend) HardwareState(ctx context.Context, sid string) (HardwareState, error) {
 	var state HardwareState
-	err := callHelperWithin(ctx, "", "hardwareState", sid, nil, &state, 10*time.Second)
+	err := callHelperWithin(ctx, b.helperSocket, "hardwareState", sid, nil, &state, 10*time.Second)
 	return state, err
 }

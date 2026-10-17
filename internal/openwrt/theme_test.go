@@ -11,7 +11,7 @@ import (
 
 func TestSetThemeAsksTheHelperWithTheOperatorsSession(t *testing.T) {
 	socket, got := helperOnce(t, `{"status":0,"result":{"result":true}}`)
-	if err := setTheme(context.Background(), socket, "operator", "catppuccin-mocha"); err != nil {
+	if err := (&NativeBackend{helperSocket: socket}).SetTheme(context.Background(), "operator", "catppuccin-mocha"); err != nil {
 		t.Fatal(err)
 	}
 	request := <-got
@@ -23,7 +23,7 @@ func TestSetThemeAsksTheHelperWithTheOperatorsSession(t *testing.T) {
 
 func TestSetThemeSaysWhenTheHelperRefuses(t *testing.T) {
 	socket, _ := helperOnce(t, `{"status":2,"error":"invalid theme"}`)
-	if err := setTheme(context.Background(), socket, "operator", "night"); err == nil {
+	if err := (&NativeBackend{helperSocket: socket}).SetTheme(context.Background(), "operator", "night"); err == nil {
 		t.Error("a refused theme reads as written")
 	}
 }
