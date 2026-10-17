@@ -358,9 +358,7 @@ func (s *Server) renderAccess(w http.ResponseWriter, r *http.Request, status int
 			// either way Access is read again rather than drawn as the answer to
 			// the post, so a reload never posts it a second time.
 			if pluginHeader.CommandDone || (pluginHeader.StagedCommit && code < http.StatusBadRequest) {
-				if pluginHeader.Notice != nil && pluginHeader.Notice.Text != "" {
-					s.flash(r, pluginHeader.Notice.Level, pluginHeader.Notice.Text)
-				}
+				s.flashNotice(r, pluginHeader.Notice)
 				http.Redirect(w, r, "/system/access", http.StatusSeeOther)
 				return
 			}

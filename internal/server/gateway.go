@@ -93,9 +93,7 @@ func (s *Server) handlePlugin(w http.ResponseWriter, r *http.Request) {
 	// notice instead: the frame shows that where the person is, rather than
 	// sending them away from what they typed.
 	if panelRequest(r) && !safeMethod(r.Method) && (status < http.StatusBadRequest || status == http.StatusUnprocessableEntity) {
-		if hdr.Notice != nil && hdr.Notice.Text != "" {
-			s.flash(r, hdr.Notice.Level, hdr.Notice.Text)
-		}
+		s.flashNotice(r, hdr.Notice)
 		destination := r.URL.Path
 		if hdr.Back != nil && hdr.Back.Href != "" && status < http.StatusBadRequest {
 			destination = hdr.Back.Href
@@ -113,9 +111,7 @@ func (s *Server) handlePlugin(w http.ResponseWriter, r *http.Request) {
 	// destination render's own translator leaves a sentence that is not a base
 	// key alone.
 	if !safeMethod(r.Method) && (hdr.StagedCommit || hdr.CommandDone) && hdr.Back != nil && hdr.Back.Href != "" {
-		if hdr.Notice != nil && hdr.Notice.Text != "" {
-			s.flash(r, hdr.Notice.Level, hdr.Notice.Text)
-		}
+		s.flashNotice(r, hdr.Notice)
 		http.Redirect(w, r, hdr.Back.Href, http.StatusSeeOther)
 		return
 	}
@@ -125,9 +121,7 @@ func (s *Server) handlePlugin(w http.ResponseWriter, r *http.Request) {
 	// behind the person's back. A refusal is drawn in place, with what was
 	// typed; a row's act, which the page reads by fetch, keeps its answer.
 	if !safeMethod(r.Method) && hdr.StagedCommit && status < http.StatusBadRequest && !actRequest(r) {
-		if hdr.Notice != nil && hdr.Notice.Text != "" {
-			s.flash(r, hdr.Notice.Level, hdr.Notice.Text)
-		}
+		s.flashNotice(r, hdr.Notice)
 		http.Redirect(w, r, r.URL.RequestURI(), http.StatusSeeOther)
 		return
 	}
@@ -166,6 +160,14 @@ func panelRedirect(w http.ResponseWriter, r *http.Request, to string) {
 		return
 	}
 	http.Redirect(w, r, to, http.StatusSeeOther)
+}
+
+// flashNotice stores a plugin's outcome as the request session's flash, where
+// it says something, for the page its redirect lands on.
+func (s *Server) flashNotice(r *http.Request, n *plugin.Notice) {
+	if n != nil && n.Text != "" {
+		s.flash(r, n.Level, n.Text)
+	}
 }
 
 // panelFlash is a plugin's outcome as a panel carries it for the notification —
@@ -769,7 +771,7 @@ func (s *Server) brokerStage(ctx context.Context, m plugin.Manifest, who stageAu
 	created := map[string]bool{}
 	for _, op := range ops {
 		if op.Config == "" || !declared[op.Config] {
-			return s.notice(tr("Not permitted"), fmt.Sprintf(tr("%s tried to change settings it did not declare."), m.Name)), http.StatusForbidden, false
+			return s.undeclaredWrite(m, tr)
 		}
 		if op.Section == "" && op.Type == "" {
 			return s.malformedOperation(m, tr)
@@ -902,6 +904,13 @@ func (s *Server) stageFailed(tr func(string) string) (template.HTML, int, bool) 
 		tr("The change couldn’t be saved just now. Try again in a moment.")), http.StatusServiceUnavailable, false
 }
 
+// undeclaredWrite is the contained response to a plugin writing a config its
+// manifest's acl does not declare: refused, and said plainly.
+func (s *Server) undeclaredWrite(m plugin.Manifest, tr func(string) string) (template.HTML, int, bool) {
+	return s.notice(tr("Not permitted"), fmt.Sprintf(
+		tr("%s tried to change settings it did not declare."), m.Name)), http.StatusForbidden, false
+}
+
 // malformedOperation is the contained response to an operation the shell cannot
 // act on — a commit op that describes two things at once, a repeater affordance
 // that posted without the fields to act on. A plugin-side problem, not the
@@ -928,8 +937,7 @@ func (s *Server) realizeRepeater(ctx context.Context, m plugin.Manifest, sid str
 	config := form.Get(widget.RepeaterConfigField)
 	if config == "" || !declaredUCIConfigs(m)[config] {
 		log.Printf("verso: plugin %q repeater op on undeclared uci config %q; refused", m.ID, config)
-		return s.notice(tr("Not permitted"), fmt.Sprintf(
-			tr("%s tried to change settings it did not declare."), m.Name)), http.StatusForbidden, false
+		return s.undeclaredWrite(m, tr)
 	}
 
 	var err error
@@ -968,8 +976,7 @@ func (s *Server) realizeReorder(ctx context.Context, m plugin.Manifest, sid stri
 	config := form.Get(widget.ReorderConfigField)
 	if !declaredUCIConfigs(m)[config] {
 		log.Printf("verso: plugin %q reorder of undeclared uci config %q; refused", m.ID, config)
-		return s.notice(tr("Not permitted"), fmt.Sprintf(
-			tr("%s tried to change settings it did not declare."), m.Name)), http.StatusForbidden, false
+		return s.undeclaredWrite(m, tr)
 	}
 	moved := form[widget.ReorderIDField]
 	if len(moved) == 0 {
