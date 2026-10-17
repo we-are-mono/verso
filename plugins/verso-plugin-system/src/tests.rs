@@ -104,6 +104,18 @@ fn ntp_target_is_read_from_snapshot() {
     assert_eq!(ntp["section"], "ntp");
 }
 #[test]
+fn ntp_switches_read_every_spelling_sysntpd_accepts() {
+    let facts_of = |enabled: &str, serve: &str| {
+        facts(&Snapshot::from_value(json!({"system": {"ntp": {
+            ".name": "ntp", ".type": "timeserver", "enabled": enabled, "enable_server": serve
+        }}})))
+    };
+    let off = facts_of("no", "off");
+    assert!(!off.ntp_enabled && !off.serve);
+    let on = facts_of("yes", "true");
+    assert!(on.ntp_enabled && on.serve);
+}
+#[test]
 fn computer_time_is_an_immediate_command() {
     let e = post(
         &request(),

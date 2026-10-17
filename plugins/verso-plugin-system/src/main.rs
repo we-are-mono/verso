@@ -247,11 +247,11 @@ fn facts(s: &Snapshot) -> Facts {
         system_section: system.map(|s| s.name()).unwrap_or_default(),
         globals_section: globals.map(|s| s.name()).unwrap_or_default(),
         ntp_section: ntp.map(|s| s.name()).unwrap_or_default(),
-        ntp_enabled: ntp.is_some_and(|s| s.scalar("enabled") != "0"),
+        ntp_enabled: ntp.is_some_and(|s| s.flag("enabled", true)),
         servers: ntp.map(|s| s.list("server")).unwrap_or_default(),
         ula: globals.map(|s| s.scalar("ula_prefix")).unwrap_or_default(),
         steering: globals.is_some_and(|s| s.scalar("packet_steering") == "1"),
-        serve: ntp.is_some_and(|s| s.scalar("enable_server") == "1"),
+        serve: ntp.is_some_and(|s| s.flag("enable_server", false)),
     }
 }
 fn keyed(
