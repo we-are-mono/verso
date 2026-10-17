@@ -771,7 +771,14 @@ func (s *Server) brokerStage(ctx context.Context, m plugin.Manifest, who stageAu
 		if op.Config == "" || !declared[op.Config] {
 			return s.notice(tr("Not permitted"), fmt.Sprintf(tr("%s tried to change settings it did not declare."), m.Name)), http.StatusForbidden, false
 		}
-		if (op.Section == "" && op.Type == "") || (op.Delete && (op.Section == "" || op.Type != "" || len(op.Values) > 0)) {
+		if op.Section == "" && op.Type == "" {
+			return s.malformedOperation(m, tr)
+		}
+		// A delete is the whole section and nothing else: naming a type or values
+		// beside it describes two operations at once, which the shell will not
+		// guess at.
+		if op.Delete && (op.Section == "" || op.Type != "" || len(op.Values) > 0) {
+			log.Printf("verso: plugin %q sent a malformed delete for uci %q; refused", m.ID, op.Config)
 			return s.malformedOperation(m, tr)
 		}
 		if op.Type != "" && op.Section != "" {
@@ -787,14 +794,7 @@ func (s *Server) brokerStage(ctx context.Context, m plugin.Manifest, who stageAu
 		}
 	}
 	for _, op := range ops {
-		// A delete is the whole section and nothing else: naming a type or values
-		// beside it describes two operations at once, which the shell will not
-		// guess at.
 		if op.Delete {
-			if op.Section == "" || op.Type != "" || len(op.Values) > 0 {
-				log.Printf("verso: plugin %q sent a malformed delete for uci %q; refused", m.ID, op.Config)
-				return s.malformedOperation(m, tr)
-			}
 			if err := s.backend.UCIDelete(ctx, sid, op.Config, op.Section, ""); err != nil {
 				log.Printf("verso: plugin %q delete in uci %q failed: %v", m.ID, op.Config, err)
 				return s.stageFailed(tr)
