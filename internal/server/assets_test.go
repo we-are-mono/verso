@@ -592,13 +592,26 @@ func TestDescriptionsFoldAway(t *testing.T) {
 		"[data-verso-field-desc] {":                                    {"display: grid;", "grid-template-rows: 1fr;", "200ms"},
 		"[data-verso-field-desc] > span {":                             {"min-height: 0;", "overflow: hidden;"},
 		`[data-verso-descriptions="folded"] [data-verso-field-desc] {`: {"grid-template-rows: 0fr;", "opacity: 0;", "visibility: hidden;"},
-		".verso-fold {": {"display: none;"},
-		`.verso-fold-show, [data-verso-descriptions="folded"] .verso-fold-hide {`:                                  {"display: none;"},
-		`[data-verso-descriptions="folded"] .verso-fold-show {`:                                                    {"display: inline-flex;"},
-		"[data-verso-column]:has(> .verso-page-body [data-verso-field-desc]) > [data-verso-masthead] .verso-fold,": {},
-		"dialog:has([data-verso-field-desc]) .verso-fold {":                                                        {"display: flex;"},
 	} {
 		block := cssBlock(t, css, head)
+		for _, want := range wants {
+			if !strings.Contains(block, want) {
+				t.Errorf("%s lacks %s: %s", head, want, block)
+			}
+		}
+	}
+	raw, err = os.ReadFile("assets/blocks/fold.css")
+	if err != nil {
+		t.Fatal(err)
+	}
+	fold := string(raw)
+	for head, wants := range map[string][]string{
+		".verso-fold {": {"display: none;"},
+		".verso-fold:is([data-verso-column]:has(> .verso-page-body [data-verso-field-desc]) > [data-verso-masthead] *, dialog:has([data-verso-field-desc]) *) {": {"display: flex;"},
+		`.verso-fold__show:is([data-verso-descriptions="folded"] *) {`:                                                                                           {"display: inline-flex;"},
+		`.verso-fold__hide:is([data-verso-descriptions="folded"] *) {`:                                                                                           {"display: none;"},
+	} {
+		block := cssBlock(t, fold, head)
 		for _, want := range wants {
 			if !strings.Contains(block, want) {
 				t.Errorf("%s lacks %s: %s", head, want, block)

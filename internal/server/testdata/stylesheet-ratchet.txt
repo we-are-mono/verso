@@ -38,7 +38,6 @@ classes-are-blocks	verso-chart-plot
 classes-are-blocks	verso-chart-series
 classes-are-blocks	verso-chart-tick
 classes-are-blocks	verso-chart-yl
-classes-are-blocks	verso-chevron
 classes-are-blocks	verso-collection
 classes-are-blocks	verso-colophon-fact
 classes-are-blocks	verso-condition
@@ -52,7 +51,6 @@ classes-are-blocks	verso-conditional-otherwise
 classes-are-blocks	verso-confirm
 classes-are-blocks	verso-console
 classes-are-blocks	verso-console-notice
-classes-are-blocks	verso-copy-inline
 classes-are-blocks	verso-disclosure
 classes-are-blocks	verso-drawer
 classes-are-blocks	verso-drawer-motion
@@ -70,9 +68,6 @@ classes-are-blocks	verso-field-question
 classes-are-blocks	verso-field-row
 classes-are-blocks	verso-field-set
 classes-are-blocks	verso-field-wide
-classes-are-blocks	verso-fold
-classes-are-blocks	verso-fold-hide
-classes-are-blocks	verso-fold-show
 classes-are-blocks	verso-form
 classes-are-blocks	verso-form-grid
 classes-are-blocks	verso-form-grid-fields
@@ -421,9 +416,6 @@ rules-live-in-blocks	forms.css	.verso-field-row:not(.verso-field-wide, .verso-fi
 rules-live-in-blocks	forms.css	.verso-field-set > .verso-field-row + .verso-field-row
 rules-live-in-blocks	forms.css	.verso-field-set > .verso-field-row:first-child
 rules-live-in-blocks	forms.css	.verso-field-wide > .verso-field-ledger > .verso-field-answer
-rules-live-in-blocks	forms.css	.verso-fold
-rules-live-in-blocks	forms.css	.verso-fold-hide
-rules-live-in-blocks	forms.css	.verso-fold-show
 rules-live-in-blocks	forms.css	.verso-form-grid
 rules-live-in-blocks	forms.css	.verso-form-grid-fields
 rules-live-in-blocks	forms.css	.verso-form-grid-fields > *
@@ -446,7 +438,6 @@ rules-live-in-blocks	forms.css	:is(.verso-field-row, .verso-conditional, .verso-
 rules-live-in-blocks	forms.css	:is(.verso-field-row, .verso-conditional, .verso-field-set, [data-verso-rows]) + :is(.verso-field-set, [data-verso-rows]) > .verso-field-row:first-child
 rules-live-in-blocks	forms.css	:is(.verso-field-row, .verso-conditional, .verso-field-set, [data-verso-rows], fieldset[data-verso-when]) + fieldset[data-verso-when] > .verso-field-row:first-child
 rules-live-in-blocks	forms.css	:is(.verso-field-set, [data-verso-rows]):has(+ :is(.verso-field-row, .verso-conditional, .verso-field-set, [data-verso-rows])) > .verso-field-row:last-child
-rules-live-in-blocks	forms.css	[data-verso-column]:has(> .verso-page-body [data-verso-field-desc]) > [data-verso-masthead] .verso-fold
 rules-live-in-blocks	forms.css	[data-verso-compact-form] .verso-field-answer
 rules-live-in-blocks	forms.css	[data-verso-compact-form] .verso-field-ledger
 rules-live-in-blocks	forms.css	[data-verso-compact-form] .verso-field-row
@@ -455,8 +446,6 @@ rules-live-in-blocks	forms.css	[data-verso-control-measure="choice"] > :has(> se
 rules-live-in-blocks	forms.css	[data-verso-control-measure="endpoint"]
 rules-live-in-blocks	forms.css	[data-verso-control-measure="prefix"]
 rules-live-in-blocks	forms.css	[data-verso-control-measure="secret"]
-rules-live-in-blocks	forms.css	[data-verso-descriptions="folded"] .verso-fold-hide
-rules-live-in-blocks	forms.css	[data-verso-descriptions="folded"] .verso-fold-show
 rules-live-in-blocks	forms.css	[data-verso-descriptions="folded"] [data-verso-field-desc]
 rules-live-in-blocks	forms.css	[data-verso-field-desc]
 rules-live-in-blocks	forms.css	[data-verso-field-desc]
@@ -465,7 +454,6 @@ rules-live-in-blocks	forms.css	[data-verso-gutter-line][data-verso-change="added
 rules-live-in-blocks	forms.css	[data-verso-gutter-line][data-verso-change="changed"]
 rules-live-in-blocks	forms.css	[data-verso-in-form] tbody > tr:last-child > td
 rules-live-in-blocks	forms.css	[data-verso-settings] .verso-field-row:has(+ details)
-rules-live-in-blocks	forms.css	dialog:has([data-verso-field-desc]) .verso-fold
 rules-live-in-blocks	forms.css	fieldset[data-verso-when] + .verso-conditional > .verso-conditional-gate
 rules-live-in-blocks	forms.css	fieldset[data-verso-when] + .verso-field-row
 rules-live-in-blocks	forms.css	fieldset[data-verso-when]:has(~ :is(.verso-field-row, .verso-conditional, .verso-field-set, [data-verso-rows])) > .verso-field-row:last-child
@@ -516,13 +504,11 @@ rules-live-in-blocks	input.css	.verso-chart-tick
 rules-live-in-blocks	input.css	.verso-chart-tick[data-align="center"]
 rules-live-in-blocks	input.css	.verso-chart-tick[data-align="end"]
 rules-live-in-blocks	input.css	.verso-chart-yl
-rules-live-in-blocks	input.css	.verso-chevron
 rules-live-in-blocks	input.css	.verso-colophon-fact
 rules-live-in-blocks	input.css	.verso-conditional-body
 rules-live-in-blocks	input.css	.verso-conditional-otherwise
 rules-live-in-blocks	input.css	.verso-conditional:has(> .verso-conditional-gate input[data-verso-switch]:checked) > .verso-conditional-body
 rules-live-in-blocks	input.css	.verso-conditional:has(> .verso-conditional-gate input[data-verso-switch]:checked) > .verso-conditional-otherwise
-rules-live-in-blocks	input.css	.verso-copy-inline
 rules-live-in-blocks	input.css	.verso-drawer
 rules-live-in-blocks	input.css	.verso-drawer
 rules-live-in-blocks	input.css	.verso-drawer
@@ -787,7 +773,6 @@ rules-live-in-blocks	input.css	[data-verso-turning="off"] .verso-row-name::after
 rules-live-in-blocks	input.css	[data-verso-turning="on"] .verso-row-name
 rules-live-in-blocks	input.css	[data-verso-turning="on"] .verso-row-name::after
 rules-live-in-blocks	input.css	[data-verso-turning="on"] :has(> .verso-row-name)
-rules-live-in-blocks	input.css	details[open] > summary .verso-chevron
 rules-live-in-blocks	input.css	main > [data-verso-colophon]
 rules-live-in-blocks	input.css	main [data-verso-masthead="light"]
 rules-live-in-blocks	input.css	main [data-verso-masthead]

@@ -523,7 +523,7 @@
      shows the act only where there is a description to fold, through a
      wrapper whose display no utility sets (verso-page.js keeps the
      state). */}}
-{{define "verso-fold-act"}}<span class="verso-fold {{.}}"><button type="button" data-verso-fold class="verso-button group/act relative" data-verso-size="act" data-verso-style="quiet" data-verso-glyph><span class="verso-fold-hide">{{icon "fold-vertical" "size-4"}}<span>{{t "Hide descriptions"}}</span></span><span class="verso-fold-show">{{icon "unfold-vertical" "size-4"}}<span>{{t "Show descriptions"}}</span></span></button></span>{{end}}
+{{define "verso-fold-act"}}<span class="verso-fold {{.}}"><button type="button" data-verso-fold class="verso-button group/act relative" data-verso-size="act" data-verso-style="quiet" data-verso-glyph><span class="verso-fold__hide">{{icon "fold-vertical" "size-4"}}<span>{{t "Hide descriptions"}}</span></span><span class="verso-fold__show">{{icon "unfold-vertical" "size-4"}}<span>{{t "Show descriptions"}}</span></span></button></span>{{end}}
 
 {{/* The band is 56px as the top bar is, and built the same way: its 28px
      line and 14px of air either side, the hairline drawn inside it. It is

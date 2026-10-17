@@ -114,6 +114,9 @@ var (
 	jsClassName      = regexp.MustCompile(`className\s*=\s*(["'])([^"']*)["']`)
 	jsClassList      = regexp.MustCompile(`classList\.(?:add|toggle)\(\s*(["'])([^"']*)["']`)
 	goClassField     = regexp.MustCompile(`\bClass:\s*"([^"]*)"`)
+	// tmplIconClass: the classes a template hands the icon func, which lands
+	// them on the drawn svg ({{icon "chevron-right" "verso-chevron size-4"}}).
+	tmplIconClass = regexp.MustCompile(`\bicon\s+(?:"[^"]*"|[.$][\w.]*)\s+"([^"]*)"`)
 )
 
 // classAttrs finds every class="…" in s, reading past template actions and
@@ -255,6 +258,11 @@ func (src styleSources) classLists() []classList {
 				if classish(body[from:to]) {
 					add(from, to)
 				}
+			}
+		}
+		if strings.HasSuffix(file, ".tmpl") {
+			for _, m := range tmplIconClass.FindAllStringSubmatchIndex(body, -1) {
+				add(m[2], m[3])
 			}
 		}
 		if strings.HasSuffix(file, ".go") {

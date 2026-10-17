@@ -1,0 +1,15 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/* SPDX-FileCopyrightText: 2026 Mono Technologies Inc. */
+
+/*
+ * chevron — the glyph that says a summary opens: it points at what it hides,
+ * and turns a quarter to point down into it while its details is open (the
+ * browser's own open state, read from the details).
+ */
+
+.verso-chevron {
+  transition: transform 150ms ease;
+}
+.verso-chevron:is(details[open] > summary *) {
+  transform: rotate(90deg);
+}

@@ -68,8 +68,8 @@ func TestStylesheetGuardsCatchWhatTheyName(t *testing.T) {
 				markup: map[string]string{"widget/templates/section.html.tmpl": `<section class="verso-card"></section>`},
 			},
 			good: styleSources{
-				css:    map[string]string{"blocks/card.css": ".verso-card {}"},
-				markup: map[string]string{"widget/templates/section.html.tmpl": `<section class="verso-card"></section>`},
+				css:    map[string]string{"blocks/card.css": ".verso-card {} .verso-card__glyph {}"},
+				markup: map[string]string{"widget/templates/section.html.tmpl": `<section class="verso-card">{{icon "chevron-right" "verso-card__glyph size-4"}}</section>`},
 			},
 			want: "verso-card__foot",
 		},

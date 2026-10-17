@@ -1,0 +1,14 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/* SPDX-FileCopyrightText: 2026 Mono Technologies Inc. */
+
+/*
+ * copy-inline — the copy control beside a value, a button block in its icon
+ * size laid on the value's first line: its 28px hit area keeps the line's
+ * height, centred on it, one 4px gap after the value supplied by the control.
+ */
+
+.verso-copy-inline {
+  align-self: flex-start;
+  margin-inline-start: var(--spacing);
+  margin-block: calc((1lh - var(--spacing) * 7) / 2);
+}

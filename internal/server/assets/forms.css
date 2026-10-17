@@ -259,25 +259,6 @@
   @media (prefers-reduced-motion: reduce) {
     [data-verso-field-desc] { transition: none; }
   }
-  /* The fold's act says what pressing it does: the one word the root's state
-     calls for. It stands only where there is a description to fold, in its
-     page's body (not a drawer's, which carries its own) or its drawer. */
-  .verso-fold {
-    display: none;
-  }
-  .verso-fold-hide,
-  [data-verso-descriptions="folded"] .verso-fold-show {
-    display: inline-flex;
-    align-items: center;
-    gap: calc(var(--spacing) * 1.5);
-  }
-  .verso-fold-show, [data-verso-descriptions="folded"] .verso-fold-hide {
-    display: none;
-  }
-  [data-verso-column]:has(> .verso-page-body [data-verso-field-desc]) > [data-verso-masthead] .verso-fold,
-  dialog:has([data-verso-field-desc]) .verso-fold {
-    display: flex;
-  }
   /* A choice of what a page shows (a chooser: "Show chart for") is no
      setting: it keeps its own layout, its name over its controls at every
      width, as a control band's controls stand. */

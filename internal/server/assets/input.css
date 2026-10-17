@@ -28,7 +28,10 @@
    order. CSS imports take no glob; TestEveryBlockIsImported fails on a block file
    left off this list, whose rules would otherwise go missing unseen. */
 @import "./blocks/button.css" layer(components);
+@import "./blocks/chevron.css" layer(components);
 @import "./blocks/chip.css" layer(components);
+@import "./blocks/copy-inline.css" layer(components);
+@import "./blocks/fold.css" layer(components);
 @import "./blocks/link.css" layer(components);
 @import "./blocks/mark.css" layer(components);
 @import "./blocks/menu.css" layer(components);
@@ -282,14 +285,6 @@ html {
     :is(.verso-modal-motion, .verso-drawer-motion)[open]::backdrop { opacity: 0; }
   }
 
-  /* A copy belongs to the value's first line. Its 28px hit area keeps the
-     surrounding line height, with one 4px gap supplied by the control. */
-  .verso-copy-inline {
-    align-self: flex-start;
-    margin-inline-start: var(--spacing);
-    margin-block: calc((1lh - var(--spacing) * 7) / 2);
-  }
-
   /* Drawers are persistent, narrow scroll surfaces, so give only their inner
      scroller a quiet thumb that follows the shell palette. The
      document scrollbar deliberately remains native. */
@@ -348,9 +343,6 @@ html {
     min-height: 0;
   }
 
-  /* Stateful selector + custom timing — no direct utility equivalent. */
-  .verso-chevron { transition: transform 150ms ease; }
-  details[open] > summary .verso-chevron { transform: rotate(90deg); }
   /* A collapsed table row contributes its intrinsic cell widths without taking
      vertical space, so revealing continuation rows never reshapes the columns. */
   .verso-table-seam-row { visibility: collapse; }

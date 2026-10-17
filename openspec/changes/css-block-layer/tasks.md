@@ -102,7 +102,7 @@
 - [x] 7.2 `link` and `chip` (`type-chip`, with its verbatim form): the repeated underline link; the chip and `verso-chip-class`. Verify: block done; the Overview's "IPv4 · dhcp" chip renders `data-verso-verbatim` (test).
 - [x] 7.3 `tip` and `menu`: tip look, tip class, copy tip; the suggest, token and condition menus. Verify: block done, with an open menu in the parity run.
 - [x] 7.4 `tabs`: the drawer and entity-panel tab strips. Verify: block done.
-- [ ] 7.5 `disclosure` and `copy`: disclosure, fold, unfold, reveal, chevron; copy inline. Verify: block done.
+- [x] 7.5 `disclosure` and `copy`: fold, chevron; copy inline. Disclosure's own rules go with the surfaces (group 6), unfold with the table (8.1), reveal with the condition (5.6). Verify: block done.
 
 ## 8. Data display
 
