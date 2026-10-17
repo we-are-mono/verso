@@ -137,27 +137,13 @@ func reverseOf(entries []history.Change) actPlan {
 				plan.Unknown = true
 				continue
 			}
-			typ, _ := held[".type"].(string)
-			values := map[string]any{}
-			for k, v := range held {
-				switch {
-				case strings.HasPrefix(k, "."):
-				case isFingerprint(v):
-					plan.secret(key + "." + k)
-				default:
-					values[k] = uciValue(v)
-				}
-			}
+			name, typ, values := remade(&plan, key, section, held)
 			for _, option := range options {
 				if then[option] == nil {
 					delete(values, option)
 				} else {
 					values[option] = then[option]
 				}
-			}
-			name := section
-			if anonymous, _ := held[".anonymous"].(bool); anonymous {
-				name = ""
 			}
 			if existsNow {
 				plan.step(removed.item, plugin.CommitOp{Config: config, Section: section, Delete: true})
@@ -179,6 +165,29 @@ func reverseOf(entries []history.Change) actPlan {
 		}
 	}
 	return plan
+}
+
+// remade is what makes a removed section again from what it held, at key: the
+// name it is made under, none where it was anonymous, its type, and its values
+// as uci writes them. A secret, kept only as its fingerprint, is left out and
+// noted on plan.
+func remade(plan *actPlan, key, section string, held map[string]any) (name, typ string, values map[string]any) {
+	typ, _ = held[".type"].(string)
+	values = map[string]any{}
+	for option, v := range held {
+		switch {
+		case strings.HasPrefix(option, "."):
+		case isFingerprint(v):
+			plan.secret(key + "." + option)
+		default:
+			values[option] = uciValue(v)
+		}
+	}
+	name = section
+	if anonymous, _ := held[".anonymous"].(bool); anonymous {
+		name = ""
+	}
+	return name, typ, values
 }
 
 // optionStates follows each option the touches change: what it held before
@@ -591,20 +600,7 @@ func startPlan(start, now map[string]map[string]map[string]any) actPlan {
 				if exists {
 					plan.step(nobody, plugin.CommitOp{Config: config, Section: name, Delete: true})
 				}
-				values := map[string]any{}
-				for option, v := range was {
-					switch {
-					case strings.HasPrefix(option, "."):
-					case isFingerprint(v):
-						plan.secret(key + "." + option)
-					default:
-						values[option] = uciValue(v)
-					}
-				}
-				section := name
-				if anonymous, _ := was[".anonymous"].(bool); anonymous {
-					section = ""
-				}
+				section, _, values := remade(&plan, key, name, was)
 				plan.step(nobody, plugin.CommitOp{Config: config, Section: section, Type: typ, Values: values})
 				plan.Rows = append(plan.Rows, planRow{key, none, typ})
 				continue
