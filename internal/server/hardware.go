@@ -135,7 +135,7 @@ func readPanel(dir, file string) string {
 
 // boardCard names the router (the profile's name, else its model, else
 // "Ports", so the panel never stands under an empty heading) and holds its
-// panel, then what it is made of in two columns.
+// panel, then what it is made of.
 func boardCard(tr func(string) string, nums units.Numbers, in hardwareInput) widget.Widget {
 	title := "Ports"
 	switch {
@@ -157,29 +157,26 @@ func boardCard(tr func(string) string, nums units.Numbers, in hardwareInput) wid
 	return &widget.Section{Title: title, Children: children}
 }
 
-// machineFacts is what the box is made of: Processor and Memory, then Storage
-// and Board name. A fact the box cannot answer is left out.
+// machineFacts is what the box is made of, one list read down: Processor,
+// Memory, Storage and Board name. A fact the box cannot answer is left out.
 func machineFacts(tr func(string) string, nums units.Numbers, in hardwareInput) widget.Widget {
-	var left, right []widget.Property
+	var items []widget.Property
 	if v := processorFact(tr, nums, in); v != "" {
-		left = append(left, widget.Property{Label: "Processor", Value: v, Verbatim: true})
+		items = append(items, widget.Property{Label: "Processor", Value: v, Verbatim: true})
 	}
 	if in.facts.MemoryBytes > 0 {
-		left = append(left, widget.Property{Label: "Memory", Value: nums.Bytes(in.facts.MemoryBytes), Verbatim: true})
+		items = append(items, widget.Property{Label: "Memory", Value: nums.Bytes(in.facts.MemoryBytes), Verbatim: true})
 	}
 	if d := in.facts.Disk; d != nil {
-		right = append(right, widget.Property{Label: "Storage", Value: nums.Bytes(d.Bytes) + " " + tr(d.Kind), Verbatim: true})
+		items = append(items, widget.Property{Label: "Storage", Value: nums.Bytes(d.Bytes) + " " + tr(d.Kind), Verbatim: true})
 	}
 	if in.board.BoardName != "" {
-		right = append(right, widget.Property{Label: "Board name", Value: in.board.BoardName, Mono: true})
+		items = append(items, widget.Property{Label: "Board name", Value: in.board.BoardName, Mono: true})
 	}
-	if len(left)+len(right) == 0 {
+	if len(items) == 0 {
 		return nil
 	}
-	return &widget.Grid{Style: "facts", Children: []widget.Widget{
-		&widget.Properties{Align: "left", Items: left},
-		&widget.Properties{Align: "left", Items: right},
-	}}
+	return &widget.Properties{Align: "left", Items: items}
 }
 
 // processorFact is the chip (the profile's, else the kernel's name for it),

@@ -518,19 +518,6 @@
 :is([data-verso-code-divider], section[data-verso-section]:has(> .verso-rhythm > [data-verso-code-divider]:last-child)) ~ [data-verso-form-actions] {
   margin-top: calc(var(--spacing-inset) - 1px);
 }
-/* A panel a page's card holds (the Hardware page's board card) stands centred
- * across the card, as the case stands on a desk: its art, its faces' switch
- * and its legend. The Overview's Ports card is no page section, so its panel
- * keeps flush with the listing under it. */
-.verso-page-body section[data-verso-section]:not(dialog *) .verso-panel-art {
-  text-align: center;
-}
-.verso-page-body section[data-verso-section]:not(dialog *) .verso-panel-face svg {
-  margin-inline: auto;
-}
-.verso-page-body section[data-verso-section]:not(dialog *) .verso-ports-legend {
-  justify-content: center;
-}
 /* A page form's configuration preview is a card of its own, 24px under the
  * card before it, its file strip the card's header. */
 .verso-page-body [data-verso-code-divider]:not(dialog *) {

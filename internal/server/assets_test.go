@@ -312,32 +312,17 @@ func TestACardEndingOnAStackedRowsSentenceKeepsItsAir(t *testing.T) {
 	}
 }
 
-// TestAPagesPanelStandsCentred: a panel in a page's card (the Hardware page's
-// board card) is centred across it, and the rule reaches no further: the
-// Overview's Ports card is an article, not a page section, and a drawer is a
-// dialog, so their panels keep flush with what stands under them.
-func TestAPagesPanelStandsCentred(t *testing.T) {
+// TestAPanelStandsAtTheLeft: a panel stands at its card's left edge wherever
+// it is drawn, flush with what stands under it (the Hardware page's facts,
+// the Overview's port listing), so no card's stylesheet moves it off.
+func TestAPanelStandsAtTheLeft(t *testing.T) {
 	raw, err := os.ReadFile("assets/sections.css")
 	if err != nil {
 		t.Fatal(err)
 	}
-	css := string(raw)
-	const scope = ".verso-page-body section[data-verso-section]:not(dialog *) "
-	for _, want := range []string{
-		scope + ".verso-panel-face svg {\n  margin-inline: auto;\n}",
-		scope + ".verso-panel-art {\n  text-align: center;\n}",
-		scope + ".verso-ports-legend {\n  justify-content: center;\n}",
-	} {
-		if !strings.Contains(css, want) {
-			t.Errorf("sections.css is missing %s", want)
-		}
-	}
-	for _, line := range strings.Split(css, "\n") {
-		if strings.Contains(line, "verso-panel") && strings.Contains(line, "verso-overview-card") {
-			t.Errorf("the centring reaches the Overview's Ports card: %s", line)
-		}
-		if strings.Contains(line, "verso-panel-face svg") && !strings.Contains(line, scope) {
-			t.Errorf("a panel is centred outside a page's card: %s", line)
+	for _, line := range strings.Split(string(raw), "\n") {
+		if strings.Contains(line, "verso-panel") || strings.Contains(line, "verso-ports") {
+			t.Errorf("sections.css places a panel: %s", line)
 		}
 	}
 }

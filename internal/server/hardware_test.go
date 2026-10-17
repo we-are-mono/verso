@@ -180,8 +180,7 @@ func TestTheBoardCardsTitle(t *testing.T) {
 func TestTheBoardCardsFacts(t *testing.T) {
 	board := card(t, renderCards(t, dkInput()), "Mono Gateway Development Kit")
 	for _, want := range []string{
-		"verso-ports",      // the panel
-		`data-verso-facts`, // two columns where the card is wide
+		"verso-ports", // the panel
 		">NXP LS1046A · 4 cores · 1.6\U0000202fGHz<", // the profile's chip, the kernel's cores and clock
 		">7.7\U0000202fGiB<",
 		">29\U0000202fGiB eMMC<", // whole GiB from ten up, as every size in the shell
@@ -190,6 +189,18 @@ func TestTheBoardCardsFacts(t *testing.T) {
 		if !strings.Contains(board, want) {
 			t.Errorf("board card missing %q:\n%s", want, board)
 		}
+	}
+	// One list, read down: Processor, Memory, Storage, Board name.
+	if n := strings.Count(board, "<dl"); n != 1 || strings.Contains(board, "data-verso-facts") {
+		t.Errorf("the board's facts are %d lists, want one:\n%s", n, board)
+	}
+	last := -1
+	for _, label := range []string{">Processor<", ">Memory<", ">Storage<", ">Board name<"} {
+		i := strings.Index(board, label)
+		if i < last {
+			t.Errorf("%s out of order:\n%s", label, board)
+		}
+		last = i
 	}
 
 	board = card(t, renderCards(t, unprofiledInput()), "Supermicro H13SAE-MF")
