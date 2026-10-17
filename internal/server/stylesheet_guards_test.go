@@ -667,7 +667,7 @@ func typeComesFromRoles(src styleSources) []violation {
 
 var (
 	roleUtility  = regexp.MustCompile(`@utility\s+(type-[\w-]+)`)
-	roleInDesign = regexp.MustCompile("\\(`(type-[\\w-]+)`\\)")
+	roleInDesign = regexp.MustCompile("\\(`(type-[\\w-]+)`[;)]")
 )
 
 // typeRolesMatchDesign: the roles type.css defines are the roles DESIGN.md
@@ -712,6 +712,34 @@ func everyBlockIsImported(src styleSources) []violation {
 		}
 	}
 	return out
+}
+
+var roleBlock = regexp.MustCompile(`(?s)@utility\s+(type-[\w-]+)\s*\{(.*?)\n\}`)
+
+// TestEveryRoleIsWhole: a role sets its face, size, line, weight, tracking and
+// figures itself, so nothing of the role around it leaks into a text that takes
+// it (ADR-025).
+func TestEveryRoleIsWhole(t *testing.T) {
+	src, err := loadStyleSources()
+	if err != nil {
+		t.Fatal(err)
+	}
+	roles := roleBlock.FindAllStringSubmatch(src.css[typeFile], -1)
+	if len(roles) == 0 {
+		t.Fatal("type.css defines no role")
+	}
+	for _, m := range roles {
+		own := regexp.MustCompile(`(?m)^  ([a-z-]+):`).FindAllStringSubmatch(m[2], -1)
+		set := map[string]bool{}
+		for _, p := range own {
+			set[p[1]] = true
+		}
+		for _, want := range []string{"font-family", "font-size", "line-height", "font-weight", "letter-spacing", "font-variant-numeric"} {
+			if !set[want] {
+				t.Errorf("%s does not set %s", m[1], want)
+			}
+		}
+	}
 }
 
 // ── the ratchet ────────────────────────────────────────────────────────────

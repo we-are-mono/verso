@@ -284,16 +284,35 @@ Sand dark mirrors Sand's steps at the same warm hue, each token keeping its job:
 **Character:** A friendly, open grotesk for every word, beside a narrow, even-pitched mono for every string the machine wrote. The split is semantic, not stylistic: you can tell a value from a label by its face alone.
 
 ### Hierarchy
-- **Headline** (600, 1.5rem/24px, 1.1, -0.025em): every page's h1, on a heading line that is always a control's 32px tall so pages never shift between each other.
-- **Title** (600, 1.125rem/18px, -0.025em): table titles in Body ink on sand, and a drawer's title in Ink on its Paper header.
-- **Section heading** (600, 1.125rem/18px, 1.25, -0.025em): a section's h2 where it stands outside a card. On a page or in a drawer the section's h2 is its card's title. Page titles, dialog titles and a graph's title retain their own roles.
-- **Card title** (600, 1rem/16px, -0.025em): a card's name in its header, on the Overview and on every page, in Ink.
-- **Sub-heading** (600, 0.875rem/14px): a section inside another section, as an h3 in Ink ("Authorized keys" under SSH), so a part of a subject never reads as a peer of its heading. It stands on a **ledger line**: the glyph of what the part is, when it has one (16px Lucide in Glyph: a network, a DHCP server, a bridge), then the name, then a Strong Hairline running on to the column's end, the line that stands between sections, so it reads as the start of a group and never as one more field label, and is told from the Hairlines between the rows under it. The ledger is one 24px line, and the part's first box stands 24px under it, as a form's rows stand apart.
-- **Body** (400, 0.875rem/14px, 1.5): compact prose, form labels (500, a step under a heading), buttons (600), cells.
-- **Lede** (Hanken Grotesk 300, 0.875rem/14px on 24px lines, a step under the section heading it explains): section introductions throughout the UI, including nested sections and drawers, never a page's h1, capped at 60ch in Body ink; paragraphs stand 16px apart. A takeover's lede keeps 1rem/16px. They wrap and grow with enlarged text and translations; labels and technical keys retain their compact roles and full contrast. Ledes stay Body gray while scrolling and focusing controls, with no color transition. Warning ledes retain their semantic warning color.
-- **Label** (500, 0.75rem/12px, 0.08em, uppercase): kickers and column heads, in Meta. A page card's column heads are the exception: 600 at 0.875rem/14px in Ink, sentence case, on their row of the card's Paper (Tables).
-- **Value** (Inconsolata 500, 1rem/16px): machine strings in rows — addresses, interface names, MACs, versions. Inputs for identifiers use Inconsolata 400 at 16px.
-- **Figure** (Inconsolata 700, 2.25rem/36px, -0.05em): big numbers.
+Every text the shell sets takes one of these roles, each a class in
+`internal/server/assets/type.css` (ADR-025) that sets its face, size, weight,
+line, tracking and figures together. A role has no ink: what applies it chooses
+the ink. A string the machine wrote takes its role's **verbatim** form, in mono,
+where the role has one, and a count, duration, rate or size takes tabular
+figures; the shell marks both from what the value is. The set is closed: a text
+no role fits takes the nearest, or comes here as a new role with its reason.
+
+- **Headline** (`type-headline`; 600, 1.5rem/24px, 1.1, -0.025em): every page's h1, on a heading line that is always a control's 32px tall so pages never shift between each other, and the one heading of a takeover.
+- **Title** (`type-title`; 600, 1.125rem/18px on 28px, -0.025em; verbatim Inconsolata 700, 1.25rem/20px): table titles in Body ink on sand, and a drawer's title in Ink on its Paper header. The router's name at the head of the top bar, on the sign-in page and on a takeover is the title's verbatim form: the router's own title, as the machine writes it.
+- **Section heading** (`type-section-title`; 600, 1.125rem/18px on 24px, -0.025em): a section's h2 where it stands outside a card. On a page or in a drawer the section's h2 is its card's title. Page titles, dialog titles and a graph's title retain their own roles.
+- **Card title** (`type-card-title`; 600, 1rem/16px on 24px, -0.025em): a card's name in its header, on the Overview and on every page, in Ink.
+- **Sub-heading** (`type-subheading`; 600, 0.875rem/14px on 24px): a section inside another section, as an h3 in Ink ("Authorized keys" under SSH), so a part of a subject never reads as a peer of its heading. It stands on a **ledger line**: the glyph of what the part is, when it has one (16px Lucide in Glyph: a network, a DHCP server, a bridge), then the name, then a Strong Hairline running on to the column's end, the line that stands between sections, so it reads as the start of a group and never as one more field label, and is told from the Hairlines between the rows under it. The ledger is one 24px line, and the part's first box stands 24px under it, as a form's rows stand apart.
+- **Body** (`type-body`; 400, 0.875rem/14px on 24px; verbatim Inconsolata 400, 1rem/16px): compact prose, descriptions, cells; a machine string in a cell, in a list field or as inline `code` in prose stands in its verbatim form. Its `strong` is 600.
+- **Lede** (`type-lede`; Hanken Grotesk 300, 0.875rem/14px on 24px lines, a step under the section heading it explains): section introductions throughout the UI, including nested sections and drawers, never a page's h1, capped at 60ch in Body ink; paragraphs stand 16px apart. They wrap and grow with enlarged text and translations; labels and technical keys retain their compact roles and full contrast. Ledes stay Body gray while scrolling and focusing controls, with no color transition. Warning ledes retain their semantic warning color.
+- **Takeover lede** (`type-takeover-lede`; 300, 1rem/16px on 24px): a takeover's lede, a step larger than a page's because it is the whole page's one sentence.
+- **Label** (`type-label`; 500, 0.75rem/12px on 16px, 0.08em, uppercase): kickers and column heads, in Meta.
+- **Column head** (`type-column-head`; 600, 0.875rem/14px on 16px): a page card's column heads, in Ink, sentence case, on their row of the card's Paper (Tables).
+- **Row label** (`type-row-label`; 400, 0.875rem/14px on 24px): a fact's label, in Meta.
+- **Field label** (`type-field-label`; 500, 0.875rem/14px on 24px): a setting's name, a row's name, an act's words, a step under a heading.
+- **Value** (`type-value`; 500, 0.875rem/14px on 24px; verbatim Inconsolata 500, 1rem/16px): a fact's value, a legend's figure; machine strings in rows (addresses, interface names, MACs, versions) stand in the verbatim form.
+- **Chip** (`type-chip`; 400, 0.875rem/14px on 16px; verbatim Inconsolata 500, 0.875rem/14px): the words in a citation chip (Chips); a mono chip is one step heavier because Inconsolata at 400 reads a size smaller than the Hanken beside it.
+- **Button** (`type-button`; 600, 0.875rem/14px on 24px): a button's words.
+- **Input** (`type-input`; 400, 0.875rem/14px on 24px; verbatim Inconsolata 400, 1rem/16px): what a field holds; a field for an identifier holds it in the verbatim form.
+- **Code** (`type-code`; Inconsolata 400, 1rem/16px on 24px): an editor's text, its line count and its gutter's numbers.
+- **Figure** (`type-figure`; Inconsolata 700, 2.25rem/36px on 40px, -0.05em, tabular): big numbers.
+- **Figure unit** (`type-figure-unit`; 400, 1rem/16px on 40px): the unit beside a figure, on the figure's line.
+- **Axis** (`type-axis`; 500, 0.75rem/12px on 24px, tabular): a chart's scale and time labels, in Meta, a step quieter than the legend (Charts).
+- **Tip** (`type-tip`; 400, 0.875rem/14px, 1.25): a tooltip's words, set close because a tip is read at a glance and should stand as small as it can.
 
 On a page and in a drawer a section's heading is its card's header, and its
 lede stands in the header under the title, at 400. A part's lede belongs to its

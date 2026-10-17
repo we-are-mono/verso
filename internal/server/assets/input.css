@@ -20,6 +20,7 @@
    looking for it). What is scanned is now exactly what renders. */
 @import "tailwindcss" source(none);
 @import "./palette.css";
+@import "./type.css";
 @import "./forms.css";
 @import "./sections.css";
 /* Blocks (ADR-025): one file per look under blocks/, each imported here into the

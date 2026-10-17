@@ -46,9 +46,9 @@
   - Write the mapping into `openspec/changes/css-block-layer/drift.md` (combination → role, and the elements carrying it). Each block task then records the convergences it makes.
   - List separately any combination that might be a deliberate distinction rather than drift, with the case for a role of its own.
 
-  Verify: every combination the snapshot recorded is mapped. **If any distinction is proposed, stop for the owner's decision on it; otherwise continue.** The 17 roles in Decision 11 are already approved.
-- [ ] 3.2 Test first: `TestTypeRolesMatchDesign` fails until DESIGN.md › Typography › Hierarchy lists every approved role by class with its full spec. Update DESIGN.md: name the ten existing roles by class, add the approved roles from other sections with their reasons, and state that a new role goes through DESIGN.md. Verify: the test passes against a `type.css` stub holding the role names.
-- [ ] 3.3 Write `internal/server/assets/type.css`, imported from `input.css` after `palette.css`. It holds every approved role as an `@utility type-<role>` with its verbatim and figures forms (Decision 11), and the `@theme` text overrides it supersedes are removed. Verify: `TestTypeRolesMatchDesign` passes; a compile-output test asserts each role's declarations; parity holds, since no role is applied yet.
+  Verify: every combination the snapshot recorded is mapped. **If any distinction is proposed, stop for the owner's decision on it; otherwise continue.** The owner settled the role set at 21 (drift.md).
+- [x] 3.2 Test first: `TestTypeRolesMatchDesign` fails until DESIGN.md › Typography › Hierarchy lists every approved role by class with its full spec. Update DESIGN.md: name the ten existing roles by class, add the approved roles from other sections with their reasons, and state that a new role goes through DESIGN.md. Verify: the test passes against `type.css`.
+- [x] 3.3 Write `internal/server/assets/type.css`, imported from `input.css` after `palette.css`. It holds every approved role as an `@utility type-<role>` with its verbatim and figures forms (Decision 11). Verify: `TestTypeRolesMatchDesign` passes; `TestEveryRoleIsWhole` asserts each role sets face, size, line, weight, tracking and figures; the compiled stylesheet is unchanged, since no role is applied yet.
 - [ ] 3.4 Test first, in the property, table-cell and chip tests:
   - a verbatim value renders `data-verso-verbatim` and no `font-mono`;
   - a duration, rate, size or count renders `data-verso-figures` and no `tabular-nums`;
@@ -122,7 +122,7 @@
 
 ## 10. Close the ratchet
 
-- [ ] 10.1 Delete `forms.css` and `sections.css`, and reduce `input.css` to its entry role (Decision 1). Verify: `TestRulesLiveInBlocks` passes with no ratchet lines, and parity holds.
+- [ ] 10.1 Delete `forms.css` and `sections.css`, reduce `input.css` to its entry role (Decision 1), and remove the `@theme` text overrides the roles supersede (`--text-sm--line-height`). Verify: `TestRulesLiveInBlocks` passes with no ratchet lines, and parity holds.
 - [ ] 10.2 Confirm that the ratchet list is empty, then delete it and the guards' ratchet-reading code, so every guard is unconditional. Verify: the file is gone; `make test` green; every guard passes with no exceptions.
 
 ## 11. Integration

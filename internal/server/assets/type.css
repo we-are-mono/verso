@@ -1,0 +1,231 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/* SPDX-FileCopyrightText: 2026 Mono Technologies Inc. */
+
+/*
+ * Type roles (ADR-025, DESIGN.md › Typography › Hierarchy). Every text the shell
+ * sets takes one of these, and nothing outside this file writes a size, weight,
+ * line, tracking or face. A role sets them together, and never an ink: what
+ * applies the role chooses the ink.
+ *
+ * Two marks the shell writes from what a value is change how a role draws it:
+ *   data-verso-verbatim  a string the machine wrote: the role's mono form, where
+ *                        it has one (the Verbatim Rule); a role without one
+ *                        keeps its face.
+ *   data-verso-figures   a count, duration, rate or size: tabular figures, so a
+ *                        column of them lines up and a live one holds still.
+ * A mono form is a size up, or a weight up, from its sans one: Inconsolata
+ * reads a step smaller than the Hanken Grotesk beside it.
+ *
+ * Lines are rem on the 8px grid (24px lines, layout-grid); a role whose line
+ * is a ratio sets it unitless.
+ */
+
+@utility type-headline {
+  font-family: var(--font-sans);
+  font-size: 1.5rem;
+  line-height: 1.1;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  font-variant-numeric: normal;
+  &[data-verso-figures] { font-variant-numeric: tabular-nums; }
+}
+
+@utility type-title {
+  font-family: var(--font-sans);
+  font-size: 1.125rem;
+  line-height: 1.75rem;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  font-variant-numeric: normal;
+  &[data-verso-verbatim] { font-family: var(--font-mono); font-size: 1.25rem; font-weight: 700; }
+  &[data-verso-figures] { font-variant-numeric: tabular-nums; }
+}
+
+@utility type-section-title {
+  font-family: var(--font-sans);
+  font-size: 1.125rem;
+  line-height: 1.5rem;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  font-variant-numeric: normal;
+  &[data-verso-figures] { font-variant-numeric: tabular-nums; }
+}
+
+@utility type-card-title {
+  font-family: var(--font-sans);
+  font-size: 1rem;
+  line-height: 1.5rem;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  font-variant-numeric: normal;
+  &[data-verso-figures] { font-variant-numeric: tabular-nums; }
+}
+
+@utility type-subheading {
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  line-height: 1.5rem;
+  font-weight: 600;
+  letter-spacing: normal;
+  font-variant-numeric: normal;
+  &[data-verso-figures] { font-variant-numeric: tabular-nums; }
+}
+
+@utility type-body {
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  line-height: 1.5rem;
+  font-weight: 400;
+  letter-spacing: normal;
+  font-variant-numeric: normal;
+  &[data-verso-verbatim] { font-family: var(--font-mono); font-size: 1rem; }
+  &[data-verso-figures] { font-variant-numeric: tabular-nums; }
+}
+
+@utility type-lede {
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  line-height: 1.5rem;
+  font-weight: 300;
+  letter-spacing: normal;
+  font-variant-numeric: normal;
+}
+
+@utility type-takeover-lede {
+  font-family: var(--font-sans);
+  font-size: 1rem;
+  line-height: 1.5rem;
+  font-weight: 300;
+  letter-spacing: normal;
+  font-variant-numeric: normal;
+}
+
+@utility type-label {
+  font-family: var(--font-sans);
+  font-size: 0.75rem;
+  line-height: 1rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-variant-numeric: normal;
+  &[data-verso-figures] { font-variant-numeric: tabular-nums; }
+}
+
+@utility type-column-head {
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  line-height: 1rem;
+  font-weight: 600;
+  letter-spacing: normal;
+  font-variant-numeric: normal;
+}
+
+@utility type-row-label {
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  line-height: 1.5rem;
+  font-weight: 400;
+  letter-spacing: normal;
+  font-variant-numeric: normal;
+  &[data-verso-figures] { font-variant-numeric: tabular-nums; }
+}
+
+@utility type-field-label {
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  line-height: 1.5rem;
+  font-weight: 500;
+  letter-spacing: normal;
+  font-variant-numeric: normal;
+  &[data-verso-figures] { font-variant-numeric: tabular-nums; }
+}
+
+@utility type-value {
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  line-height: 1.5rem;
+  font-weight: 500;
+  letter-spacing: normal;
+  font-variant-numeric: normal;
+  &[data-verso-verbatim] { font-family: var(--font-mono); font-size: 1rem; }
+  &[data-verso-figures] { font-variant-numeric: tabular-nums; }
+}
+
+@utility type-chip {
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  line-height: 1rem;
+  font-weight: 400;
+  letter-spacing: normal;
+  font-variant-numeric: normal;
+  &[data-verso-verbatim] { font-family: var(--font-mono); font-weight: 500; }
+  &[data-verso-figures] { font-variant-numeric: tabular-nums; }
+}
+
+@utility type-button {
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  line-height: 1.5rem;
+  font-weight: 600;
+  letter-spacing: normal;
+  font-variant-numeric: normal;
+  &[data-verso-figures] { font-variant-numeric: tabular-nums; }
+}
+
+@utility type-input {
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  line-height: 1.5rem;
+  font-weight: 400;
+  letter-spacing: normal;
+  font-variant-numeric: normal;
+  &[data-verso-verbatim] { font-family: var(--font-mono); font-size: 1rem; }
+  &[data-verso-figures] { font-variant-numeric: tabular-nums; }
+}
+
+@utility type-code {
+  font-family: var(--font-mono);
+  font-size: 1rem;
+  line-height: 1.5rem;
+  font-weight: 400;
+  letter-spacing: normal;
+  font-variant-numeric: normal;
+  &[data-verso-figures] { font-variant-numeric: tabular-nums; }
+}
+
+@utility type-figure {
+  font-family: var(--font-mono);
+  font-size: 2.25rem;
+  line-height: 2.5rem;
+  font-weight: 700;
+  letter-spacing: -0.05em;
+  font-variant-numeric: tabular-nums;
+}
+
+@utility type-figure-unit {
+  font-family: var(--font-sans);
+  font-size: 1rem;
+  line-height: 2.5rem;
+  font-weight: 400;
+  letter-spacing: normal;
+  font-variant-numeric: normal;
+}
+
+@utility type-axis {
+  font-family: var(--font-sans);
+  font-size: 0.75rem;
+  line-height: 1.5rem;
+  font-weight: 500;
+  letter-spacing: normal;
+  font-variant-numeric: tabular-nums;
+}
+
+@utility type-tip {
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  line-height: 1.25;
+  font-weight: 400;
+  letter-spacing: normal;
+  font-variant-numeric: normal;
+  &[data-verso-figures] { font-variant-numeric: tabular-nums; }
+}

@@ -194,25 +194,29 @@ The guards live in `internal/server/stylesheet_guards_test.go`. Each is a pure f
 
   | Role | Spec | Verbatim form |
   |---|---|---|
-  | `type-headline` | sans 24/600, 1.1, -0.025em | — |
-  | `type-title` | sans 18/600, -0.025em | — |
+  | `type-headline` | sans 24/600, 1.1, -0.025em (every page's h1, the takeovers' too) | — |
+  | `type-title` | sans 18/600 on 28, -0.025em | mono 20/700, -0.025em (the router's name) |
   | `type-section-title` | sans 18/600 on 24, -0.025em | — |
   | `type-card-title` | sans 16/600 on 24, -0.025em | — |
   | `type-subheading` | sans 14/600 on 24 | — |
-  | `type-body` | sans 14/400, 1.5 | inline `code`: mono 16/400 |
-  | `type-lede` | sans 14/300 on 24 (a takeover's 16/300) | — |
+  | `type-body` | sans 14/400 on 24 | mono 16/400 |
+  | `type-lede` | sans 14/300 on 24 | — |
+  | `type-takeover-lede` | sans 16/300 on 24 | — |
   | `type-label` | sans 12/500 on 16, 0.08em, uppercase | — |
   | `type-column-head` | sans 14/600 on 16 | — |
   | `type-row-label` | sans 14/400 on 24 | — |
   | `type-field-label` | sans 14/500 on 24 | — |
   | `type-value` | sans 14/500 on 24 | mono 16/500 |
   | `type-chip` | sans 14/400 on 16 | mono 14/500 |
-  | `type-button` | sans 14/600 | — |
-  | `type-input` | sans 14/400 | mono 16/400 |
+  | `type-button` | sans 14/600 on 24 | — |
+  | `type-input` | sans 14/400 on 24 | mono 16/400 |
   | `type-code` | mono 16/400 on 24 (the editor) | — |
-  | `type-figure` | mono 36/700, -0.05em, tabular | — |
+  | `type-figure` | mono 36/700 on 40, -0.05em, tabular | — |
+  | `type-figure-unit` | sans 16/400 on 40 (the unit beside a figure) | — |
+  | `type-axis` | sans 12/500 on 24, tabular (a chart's scale and time labels) | — |
+  | `type-tip` | sans 14/400, 1.25 (a tooltip) | — |
 
-  Task 3.1 measures the live combinations against this table. A combination with no row is a drift move, unless the owner approves it as a new row and it is added to DESIGN.md with its reason.
+  The owner approved the first 17 rows and, after task 3.1's mapping, the last four, the router's name as `type-title`'s verbatim form, and the takeover headings on `type-headline` (drift.md). A combination with no row is drift and converges, unless the owner approves it as a new row and it is added to DESIGN.md with its reason.
 - **The face follows the content.**
   - The renderer writes `data-verso-verbatim` on an element holding a machine-written string, and `data-verso-figures` on a count, duration, rate or size, from the flags it already has (`Mono`, `Duration`, a rate or size datatype).
   - Each role defines both forms inside its utility (`&[data-verso-verbatim] { … }`, `&[data-verso-figures] { font-variant-numeric: tabular-nums }`), so the attribute works wherever the role is applied and no block repeats it.
@@ -226,7 +230,7 @@ The guards live in `internal/server/stylesheet_guards_test.go`. Each is a pure f
 ## Risks / Trade-offs
 
 - **[A convergence shifts layout below it (a 21px line becoming 24px)]** → `drift.md` records the box effect along with the change itself, the gate accepts only recorded differences, and the owner sees a before/after screenshot of each.
-- **[Seventeen roles is more than DESIGN.md's ten]** → The seven extra roles are already specified in DESIGN.md's own sections; this only names them. The set stays closed after task 3.1, and growing it takes a DESIGN.md change.
+- **[Twenty-one roles is more than DESIGN.md's ten]** → Nine of the extra roles are already specified in DESIGN.md's own sections, and this only names them; the owner added the tip and the figure's unit. The set stays closed after task 3.1, and growing or shrinking it is a DESIGN.md change.
 
 - **[The conversion is large, and a long-running half-converted state invites mixing]** → The ratchet keeps every commit green and forbids new violations from the first commit, so nothing new is built the old way while the rest converts. Groups follow dependency order (compositions, then forms, then the card, …), so a block never waits on a converted dependency.
 - **[A renamed class breaks a script or test selector]** → Each block task greps `verso*.js` and `*_test.go` for the old names, converts them in the same commit, and runs `make test`. Scripts select by behaviour attributes wherever one exists.

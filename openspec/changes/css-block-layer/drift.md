@@ -54,16 +54,21 @@ already is the role; anything else is a convergence, its difference named.
 | mono 36/700 on 40, −1.8px | 12 | Overview gauge figures | `type-figure` | = |
 | mono 36/700 on 36, −1.8px, tabular | 3 | restart countdown | `type-figure` | line 36 → 40 |
 
-Six groups below fit no approved role. They are in the next section, waiting
-on the owner.
+| sans 12/500 on 24, tabular | 78 | chart axis labels | `type-axis` | = |
+| sans 14/400 on 17.5 (and tabular) | 740 | tooltips (icon-button tips, copy tips) | `type-tip` | = |
+| mono 20/700 on 36, −0.5px; on 20 | 57 | the router's name, top left of the top bar, sign-in and the restart takeovers | `type-title` verbatim | line 36 / 20 → 28, the top bar pads the mark back to centre |
+| sans 16/400 on 40 | 9 | the unit beside a gauge figure ("%") | `type-figure-unit` | = |
+| sans 16/300 on 24 | 3 | restart takeover ledes | `type-takeover-lede` | = |
+| sans 16/400 on 28 | 1 | firmware-installing lede | `type-takeover-lede` | 400 → 300, line 28 → 24 |
+| sans 24/600 on 30 | 3 | restart takeover headings | `type-headline` | line 30 → 26.4 |
+| sans 24/600 on 40 | 1 | upgrading heading | `type-headline` | line 40 → 26.4 |
+| sans 36/500 on 40, −0.9px | 1 | "Your router is restarting" (firmware installing) | `type-headline` | 36/500 → 24/600, line 40 → 26.4 |
 
-## Proposed roles (owner's decision)
+## Roles added by the owner (2026-10-17)
 
-| Today | n | What | Proposal |
-|---|---|---|---|
-| sans 12/500 on 24, tabular | 78 | chart axis labels | **`type-axis`**: DESIGN › Charts already specifies it ("sans 12px at 500 in Meta on 24px lines, tabular figures") |
-| sans 14/400 on 17.5 (and tabular) | 740 | tooltips (icon-button tips, copy tips) | **`type-tip`**: a tip is compact on purpose; on 24px lines a three-line tip grows by 20px |
-| mono 20/700 on 36, −0.5px (and on 20) | 57 | the router's name, in the rail head, sign-in and takeovers | **`type-nameplate`**: no role is a 20px mono mark; the figure is 36px |
-| sans 16/400 on 40 | 9 | the unit beside a gauge figure ("%") | **`type-figure-unit`**, or converge on `type-body` (14px, a visible step down) |
-| sans 16/300 on 24; sans 16/400 on 28 | 4 | takeover ledes | **`type-takeover-lede`**: DESIGN says "A takeover's lede keeps 1rem/16px", so it is a role of its own |
-| sans 24/600 on 30; 24/600 on 40; 36/500 on 40 | 4 | takeover headings | converge on `type-headline` (firmware-started's 36/500 becomes 24/600), or **`type-display`** for the takeovers' one heading |
+Four roles join the 17: `type-axis` (DESIGN › Charts already specified it),
+`type-tip` (a tip is compact on purpose), `type-figure-unit` (the unit beside a
+figure keeps its size) and `type-takeover-lede` (DESIGN gives a takeover's lede
+16px). The router's name takes `type-title`'s verbatim form, 20/700 at
+−0.025em, rather than a role of its own, and every takeover heading takes
+`type-headline`. 21 roles in all.
