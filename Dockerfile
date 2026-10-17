@@ -70,7 +70,7 @@ RUN apk add --no-check-certificate ca-bundle \
  && ( /etc/init.d/verso enable || ln -sf ../init.d/verso /etc/rc.d/S95verso ) \
  && ( /etc/init.d/cron enable || ln -sf ../init.d/cron /etc/rc.d/S50cron ) \
  && ( /etc/init.d/nlbwmon enable || ln -sf ../init.d/nlbwmon /etc/rc.d/S60nlbwmon ) \
- && ln -sf ../init.d/netfix /etc/rc.d/S91netfix ; true
+ && ln -sf ../init.d/netfix /etc/rc.d/S91netfix
 EXPOSE 8080
 # Boots OpenWrt via procd so verso can reach live ubus/uci. MUST run
 # non-privileged with NO /dev/watchdog (see docker-compose.yml): procd then
