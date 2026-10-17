@@ -164,6 +164,24 @@ APK_PAYLOAD := $(APK_DIR)/pkg
 APK_OUT     := $(APK_DIR)/verso-$(VER).apk
 POSTINST    := packaging/apk/post-install.sh
 
+# package_plugin lays one core plugin into the payload: its binary, init script
+# and manifest, its travelling catalogs (ADR-012), and the rpcd acl.d file a
+# plugin with uci scopes ships (ADR-007). A canned recipe, like cargo_plugin.
+define package_plugin
+install -Dm755 $(BUILDDIR)/verso-plugin-$(1)-$(APK_GOARCH) $(APK_PAYLOAD)/usr/bin/verso-plugin-$(1)
+install -Dm755 plugins/verso-plugin-$(1)/rootfs/etc/init.d/verso-plugin-$(1) $(APK_PAYLOAD)/etc/init.d/verso-plugin-$(1)
+install -Dm644 plugins/verso-plugin-$(1)/manifest.json $(APK_PAYLOAD)/usr/share/verso/plugins/$(1)/manifest.json
+$(foreach f,$(wildcard plugins/verso-plugin-$(1)/i18n/*.json),$(call install_data,$(f),$(APK_PAYLOAD)/usr/share/verso/plugins/$(1)/i18n/$(notdir $(f))))
+$(foreach f,$(wildcard plugins/verso-plugin-$(1)/rootfs/usr/share/rpcd/acl.d/*.json),$(call install_data,$(f),$(APK_PAYLOAD)/usr/share/rpcd/acl.d/$(notdir $(f))))
+
+endef
+
+# install_data is one data file's install line, file $(1) to path $(2).
+define install_data
+install -Dm644 $(1) $(2)
+
+endef
+
 # Local dev apk repo — only `make apk-publish` touches it, so its default lives
 # here rather than in the portable build path.
 VERSO_REPO_DIR ?= /srv/verso
@@ -311,9 +329,7 @@ apk: apk-preflight build-$(APK_GOARCH)
 	rm -rf $(APK_PAYLOAD)
 	install -Dm755 $(BUILDDIR)/$(BINARY)-$(APK_GOARCH)                   $(APK_PAYLOAD)/usr/bin/verso
 	install -Dm755 $(BUILDDIR)/verso-rpcd-$(APK_GOARCH)                  $(APK_PAYLOAD)/usr/sbin/verso-rpcd
-	install -Dm755 $(BUILDDIR)/verso-plugin-system-$(APK_GOARCH)         $(APK_PAYLOAD)/usr/bin/verso-plugin-system
-	install -Dm755 $(BUILDDIR)/verso-plugin-firewall-$(APK_GOARCH)       $(APK_PAYLOAD)/usr/bin/verso-plugin-firewall
-	install -Dm755 docker/rootfs/etc/init.d/verso                       $(APK_PAYLOAD)/etc/init.d/verso
+	install -Dm755 docker/rootfs/etc/init.d/verso                      $(APK_PAYLOAD)/etc/init.d/verso
 	install -Dm755 docker/rootfs/usr/libexec/verso/firewall-logging $(APK_PAYLOAD)/usr/libexec/verso/firewall-logging
 	install -Dm755 docker/rootfs/usr/libexec/verso/firewall-logging-setup $(APK_PAYLOAD)/usr/libexec/verso/firewall-logging-setup
 	install -Dm755 docker/rootfs/etc/init.d/verso-rpcd                  $(APK_PAYLOAD)/etc/init.d/verso-rpcd
@@ -321,12 +337,7 @@ apk: apk-preflight build-$(APK_GOARCH)
 	install -Dm755 docker/rootfs/usr/libexec/verso/web-owner            $(APK_PAYLOAD)/usr/libexec/verso/web-owner
 	install -Dm755 docker/rootfs/usr/libexec/verso/usage-setup          $(APK_PAYLOAD)/usr/libexec/verso/usage-setup
 	install -Dm644 docker/rootfs/etc/hotplug.d/openvpn/50-verso         $(APK_PAYLOAD)/etc/hotplug.d/openvpn/50-verso
-	install -Dm755 plugins/verso-plugin-system/rootfs/etc/init.d/verso-plugin-system $(APK_PAYLOAD)/etc/init.d/verso-plugin-system
-	install -Dm755 plugins/verso-plugin-firewall/rootfs/etc/init.d/verso-plugin-firewall $(APK_PAYLOAD)/etc/init.d/verso-plugin-firewall
-	install -Dm644 plugins/verso-plugin-system/manifest.json             $(APK_PAYLOAD)/usr/share/verso/plugins/system/manifest.json
-	install -Dm644 plugins/verso-plugin-firewall/manifest.json           $(APK_PAYLOAD)/usr/share/verso/plugins/firewall/manifest.json
-	install -Dm644 plugins/verso-plugin-firewall/i18n/sl.json $(APK_PAYLOAD)/usr/share/verso/plugins/firewall/i18n/sl.json
-	install -Dm644 docker/rootfs/etc/capabilities/verso.json           $(APK_PAYLOAD)/etc/capabilities/verso.json
+	install -Dm644 docker/rootfs/etc/capabilities/verso.json          $(APK_PAYLOAD)/etc/capabilities/verso.json
 	install -Dm644 docker/rootfs/etc/config/verso                      $(APK_PAYLOAD)/etc/config/verso
 	install -Dm644 docker/rootfs/lib/upgrade/keep.d/verso              $(APK_PAYLOAD)/lib/upgrade/keep.d/verso
 	install -Dm644 docker/rootfs/etc/sysctl.d/05-verso-ping.conf       $(APK_PAYLOAD)/etc/sysctl.d/05-verso-ping.conf
@@ -334,13 +345,7 @@ apk: apk-preflight build-$(APK_GOARCH)
 	install -Dm644 docker/rootfs/usr/share/rpcd/acl.d/verso-shell.json  $(APK_PAYLOAD)/usr/share/rpcd/acl.d/verso-shell.json
 	install -Dm644 docker/rootfs/usr/share/rpcd/acl.d/verso-helper.json $(APK_PAYLOAD)/usr/share/rpcd/acl.d/verso-helper.json
 	install -Dm644 docker/rootfs/usr/share/rpcd/acl.d/verso-admin.json  $(APK_PAYLOAD)/usr/share/rpcd/acl.d/verso-admin.json
-	install -Dm755 $(BUILDDIR)/verso-plugin-interfaces-$(APK_GOARCH) $(APK_PAYLOAD)/usr/bin/verso-plugin-interfaces
-	install -Dm755 plugins/verso-plugin-interfaces/rootfs/etc/init.d/verso-plugin-interfaces $(APK_PAYLOAD)/etc/init.d/verso-plugin-interfaces
-	install -Dm644 plugins/verso-plugin-interfaces/manifest.json $(APK_PAYLOAD)/usr/share/verso/plugins/interfaces/manifest.json
-	install -Dm644 plugins/verso-plugin-interfaces/rootfs/usr/share/rpcd/acl.d/verso-plugin-interfaces.json $(APK_PAYLOAD)/usr/share/rpcd/acl.d/verso-plugin-interfaces.json
-	install -Dm644 plugins/verso-plugin-system/rootfs/usr/share/rpcd/acl.d/verso-plugin-system.json $(APK_PAYLOAD)/usr/share/rpcd/acl.d/verso-plugin-system.json
-	install -Dm644 plugins/verso-plugin-interfaces/i18n/sl.json $(APK_PAYLOAD)/usr/share/verso/plugins/interfaces/i18n/sl.json
-	install -Dm644 plugins/verso-plugin-system/i18n/sl.json $(APK_PAYLOAD)/usr/share/verso/plugins/system/i18n/sl.json
+	$(foreach p,$(PLUGINS),$(call package_plugin,$(p)))
 	for theme in themes/*.json; do install -Dm644 "$$theme" "$(APK_PAYLOAD)/usr/share/verso/$$theme"; done
 	fakeroot -- sh -c 'chown -R 0:0 "$(APK_PAYLOAD)" && "$(APK)" mkpkg \
 	  --info name:verso --info version:$(VER) --info arch:$(APK_ARCH) \

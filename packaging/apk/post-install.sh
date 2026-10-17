@@ -39,14 +39,12 @@ fi
 sysctl -q -p /etc/sysctl.d/05-verso-ping.conf 2>/dev/null
 [ -x /etc/init.d/rpcd ] && /etc/init.d/rpcd reload 2>/dev/null
 killall -HUP ubusd 2>/dev/null
+# The core plugins are the Makefile's PLUGINS, in its order.
+plugins='interfaces system firewall'
 /etc/init.d/verso enable 2>/dev/null
 /etc/init.d/verso-rpcd enable 2>/dev/null
-/etc/init.d/verso-plugin-interfaces enable 2>/dev/null
-/etc/init.d/verso-plugin-system enable 2>/dev/null
-/etc/init.d/verso-plugin-firewall enable 2>/dev/null
+for p in $plugins; do /etc/init.d/verso-plugin-$p enable 2>/dev/null; done
 /etc/init.d/verso-rpcd restart 2>/dev/null
-/etc/init.d/verso-plugin-interfaces restart 2>/dev/null
-/etc/init.d/verso-plugin-system restart 2>/dev/null
-/etc/init.d/verso-plugin-firewall restart 2>/dev/null
+for p in $plugins; do /etc/init.d/verso-plugin-$p restart 2>/dev/null; done
 /etc/init.d/verso restart 2>/dev/null
 exit 0
