@@ -7,7 +7,7 @@
 //! reading for the eye only: the shell parses the key again with its own SSH
 //! library before anything is written.
 
-use verso_plugin::sha256;
+use verso_plugin::{base64_decode, sha256};
 
 /// A pasted public key, read.
 #[derive(Debug, PartialEq, Eq)]
@@ -107,27 +107,6 @@ fn magnitude_bits(number: &[u8]) -> u32 {
 
 const ALPHABET: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
-/// base64_decode reads standard base64, padded or not.
-fn base64_decode(text: &str) -> Option<Vec<u8>> {
-    let body = text.trim_end_matches('=');
-    if text.len() - body.len() > 2 || body.len() % 4 == 1 {
-        return None;
-    }
-    let mut out = Vec::with_capacity(body.len() * 3 / 4);
-    let (mut acc, mut held) = (0u32, 0u32);
-    for c in body.bytes() {
-        let value = ALPHABET.iter().position(|a| *a == c)? as u32;
-        acc = (acc << 6) | value;
-        held += 6;
-        if held >= 8 {
-            held -= 8;
-            out.push((acc >> held) as u8);
-            acc &= (1 << held) - 1;
-        }
-    }
-    Some(out)
-}
-
 /// base64_encode writes standard base64 without padding, as fingerprints are.
 fn base64_encode(data: &[u8]) -> String {
     let mut out = String::with_capacity(data.len().div_ceil(3) * 4);
@@ -150,15 +129,6 @@ mod tests {
     const ED25519: &str = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIG8/UqksrqlP7SLQWgj8xqnjV3e6cdgzDyzcNwOcT5+K demo@laptop";
     const RSA: &str = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCwGNPCD4xT9WS4G67DJuaBTKYR3ZgyliHwG5o0ObVR2q+VCBdgaRJc4RuiLZp5E6SrdFP+MjjAPLCDmHhq7AjjN5SR003gLz9E9Ndh+36KVyRoFxARuIlFSYqOaQGAFyClgTnJk67sYOCscw6wTaJLuqQ/7iD/BY3hTBItGVUPeeE4tfUtOlmx7IswX5GefmaPx/Lte5VKGJqOW8OoiSwT6mypwt7M0qD2bBMANxkD4zmZogmhMokEFGlxtUs+Q0Z1pt7OZYNPaISkGaAOzJjDrYYiRP8TnB4+JXRMhzneztKf8+Edzq3uTYPP9UXrw5PUNF73l2nvhQyhyrIb+KQr ci@buildbox";
     const ECDSA: &str = "ecdsa-sha2-nistp384 AAAAE2VjZHNhLXNoYTItbmlzdHAzODQAAAAIbmlzdHAzODQAAABhBI+tpyy873kmiPStjXTT/q26PVpqIMh9r9sB2VtVcxUrKLUg/XSfg/Bh6Td70ojpr9Bmudpq7gtPY2qu3r+ZCCNH0lBGEs0INQzSJH2LGN25uzFcd4NVXP9Zrdhzu4D3Rg==";
-
-    #[test]
-    fn base64_reads_padded_and_unpadded_text() {
-        assert_eq!(base64_decode("TWFu").unwrap(), b"Man");
-        assert_eq!(base64_decode("TWE=").unwrap(), b"Ma");
-        assert_eq!(base64_decode("TQ==").unwrap(), b"M");
-        assert!(base64_decode("TQ=A").is_none());
-        assert!(base64_decode("T!==").is_none());
-    }
 
     #[test]
     fn keys_read_as_ssh_keygen_reads_them() {

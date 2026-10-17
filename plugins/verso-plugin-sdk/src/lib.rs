@@ -35,6 +35,8 @@ use std::{env, fs, thread};
 pub use serde_json::{json, Map, Value};
 
 pub mod dhcp;
+mod encoding;
+pub use encoding::{base64_decode, url_encode};
 mod errors;
 pub use errors::Errors;
 /// Hand-edited files a page lists and edits in place. See [`files`].
@@ -3179,33 +3181,6 @@ fn request_query(target: &str) -> Form {
 
 fn find(haystack: &[u8], needle: &[u8]) -> Option<usize> {
     haystack.windows(needle.len()).position(|w| w == needle)
-}
-
-fn base64_decode(s: &str) -> Option<Vec<u8>> {
-    fn sextet(c: u8) -> Option<u32> {
-        match c {
-            b'A'..=b'Z' => Some((c - b'A') as u32),
-            b'a'..=b'z' => Some((c - b'a') as u32 + 26),
-            b'0'..=b'9' => Some((c - b'0') as u32 + 52),
-            b'+' => Some(62),
-            b'/' => Some(63),
-            _ => None,
-        }
-    }
-    let mut out = Vec::new();
-    let (mut acc, mut bits) = (0u32, 0u32);
-    for &c in s.as_bytes() {
-        if c == b'=' || c.is_ascii_whitespace() {
-            continue;
-        }
-        acc = (acc << 6) | sextet(c)?;
-        bits += 6;
-        if bits >= 8 {
-            bits -= 8;
-            out.push((acc >> bits) as u8);
-        }
-    }
-    Some(out)
 }
 
 fn url_decode(s: &str) -> String {

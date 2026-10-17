@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: 2026 Mono Technologies Inc.
 //! Shared presentation of the shell's live DHCPv4 observations. Both plugins
 //! use this vocabulary so a server has the same meaning on either page.
-use crate::{Snapshot, Ubus, Value};
+use crate::{url_encode, Snapshot, Ubus, Value};
 use std::collections::BTreeSet;
 
 #[derive(Clone, Debug)]
@@ -19,18 +19,7 @@ impl Server {
     /// href is where this server is edited: its row on the DHCP page, with its
     /// drawer open.
     pub fn href(&self) -> String {
-        let network: String = self
-            .network
-            .bytes()
-            .map(|b| {
-                if b.is_ascii_alphanumeric() || b"-_.~".contains(&b) {
-                    (b as char).to_string()
-                } else {
-                    format!("%{b:02X}")
-                }
-            })
-            .collect();
-        format!("/plugins/dnsdhcp/?open={network}")
+        format!("/plugins/dnsdhcp/?open={}", url_encode(&self.network))
     }
     pub fn tone(&self) -> &'static str {
         match self.state.as_str() {

@@ -55,20 +55,9 @@ impl Values {
 pub fn url(network: &str, device: &str, route: &str) -> String {
     format!(
         "{ROOT}{route}?network={}&device={}",
-        encode(network),
-        encode(device)
+        verso_plugin::url_encode(network),
+        verso_plugin::url_encode(device)
     )
-}
-fn encode(s: &str) -> String {
-    s.bytes()
-        .map(|b| {
-            if b.is_ascii_alphanumeric() || b"-_.".contains(&b) {
-                (b as char).to_string()
-            } else {
-                format!("%{b:02X}")
-            }
-        })
-        .collect()
 }
 fn defaults(m: &Model, kind: &str, network: &str, device: &str) -> Values {
     let mut v = Values::default();
