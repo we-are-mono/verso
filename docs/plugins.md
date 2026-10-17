@@ -1429,10 +1429,8 @@ commits a token, and every token can be removed independently:
   "items": ["53", "67", "547"] }
 ```
 
-> **The schema's edges are a finding.** A single value repeats with `list`; a group
-> of fields that maps to uci sections repeats with
-> [`repeater`](#repeater--a-repeatable-group-of-sections); a field-set appears on a
-> toggle with [`conditional`](#conditional--a-field-set-behind-a-toggle); a value is
+> **The schema's edges are a finding.** A single value repeats with `list`; a
+> field-set appears on a toggle with [`conditional`](#conditional--a-field-set-behind-a-toggle); a value is
 > *computed* by a form [action](#form--an-interactive-form) that re-renders. What
 > still can't be expressed — a field-set gated on a multi-value `select` — is a
 > *finding*: tell us, so the next behavioural widget is the right one.
@@ -1467,37 +1465,6 @@ validation contracts.
   inserts the declared controls with their supplied defaults.
 - The plugin remains responsible for interpreting the resulting fields and for
   returning per-field validation errors on 422.
-
-### repeater — a repeatable group of sections
-
-A **behavioural** widget: a group of widgets that repeats, backed by a set of uci
-sections. You declare the *intent* — the items are `section_type` sections of
-`config` — and render the items you read from the snapshot. **The shell owns the add
-and remove affordances and performs the uci section add/delete itself** (through
-rpcd, within your `acl.write`); you ship no add/remove logic and no client code
-(ADR-005 §7).
-
-```json
-{ "type": "repeater", "config": "network", "section_type": "wireguard_wg0",
-  "add_label": "Add peer",
-  "items": [
-    { "section": "cfg0a1b2c",
-      "widget": { "type": "card", "title": "Peer: phone",
-                  "children": [ /* this peer's form */ ] } }
-  ] }
-```
-
-- `config` + `section_type` — the uci backing the shell adds to and deletes from. It
-  must be a config you declared in `acl.write`, or the shell refuses the change.
-- `items[].section` — the item's uci section id (the snapshot's section key), so the
-  shell's Remove can name it.
-- `items[].widget` — the subtree that renders the item (typically a `card` with a
-  `form`). Namespace its field names by the section so a save targets the right one.
-
-On **add**, the shell creates a new empty section of `section_type` and re-renders;
-its fields are blank for the operator to fill and save through the ordinary form
-path. On **remove**, the shell deletes the item's section and re-renders. You never
-see the add/remove request — you only ever render the sections that exist.
 
 ### conditional — a field-set behind a toggle
 

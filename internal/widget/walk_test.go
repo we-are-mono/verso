@@ -40,7 +40,6 @@ func TestWalkReachesNestedWidgets(t *testing.T) {
 		{"conditional", &Conditional{Fields: []Widget{leaf()}, Otherwise: []Widget{leaf()}}, 2},
 		{"conditions", &Conditions{Items: []ConditionItem{{Key: "k", Children: []Widget{leaf()}}}}, 1},
 		{"form", &Form{Fields: []Widget{leaf()}}, 1},
-		{"repeater", &Repeater{Items: []RepeaterItem{{Section: "s", Widget: leaf()}}}, 1},
 		{"table row drawer", &Table{Rows: []TableRow{{Drawer: &RowDrawer{Children: []Widget{leaf()}}}}}, 1},
 		{"table seam row drawer", &Table{Seam: &TableSeam{Rows: []TableRow{{Drawer: &RowDrawer{Children: []Widget{leaf()}}}}}}, 1},
 		{"deep nesting", &Modal{Children: []Widget{

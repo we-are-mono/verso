@@ -28,7 +28,7 @@ type Widget interface {
 	isWidget()
 	renderInto(r *Renderer, out io.Writer, csrf string) error
 	// children returns every widget nested beneath this one — a section's
-	// control, a table row's drawer contents, a repeater item's subtree. It is
+	// control, a table row's drawer contents, a condition's block. It is
 	// the one structural seam every tree pass recurses through (Walk), declared
 	// beside the widget so no walk can silently miss a container. Leaves return
 	// nil; widgets composed only at render time (Overview) are leaves here.
@@ -76,7 +76,6 @@ var catalog = map[string]func() Widget{
 	"field":       func() Widget { return new(Field) },
 	"list":        func() Widget { return new(List) },
 	"raw":         func() Widget { return new(Raw) },
-	"repeater":    func() Widget { return new(Repeater) },
 	"conditional": func() Widget { return new(Conditional) },
 	"when":        func() Widget { return new(When) },
 	"conditions":  func() Widget { return new(Conditions) },

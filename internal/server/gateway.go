@@ -275,7 +275,7 @@ func (s *Server) pluginBodyAt(r *http.Request, m plugin.Manifest, pluginPath str
 		}
 	}
 
-	// Parse a state-changing request's form up front, so a repeater structural op
+	// Parse a state-changing request's form up front, so a structural op
 	// can be read and, failing that, the form can be forwarded to the plugin.
 	method := r.Method
 	if !safeMethod(method) {
@@ -291,19 +291,11 @@ func (s *Server) pluginBodyAt(r *http.Request, m plugin.Manifest, pluginPath str
 			r.PostForm.Set("_action", reshapeAction)
 		}
 		// A structural change to the plugin's own uci sections is the shell's to
-		// realize, not the plugin's (ADR-005 §7): the shell performs the add,
-		// delete, or reorder through rpcd, then re-renders the fresh state as a
-		// read. The plugin ships none of that logic — it only declared the
-		// repeater, or the listing whose rows drag.
-		var realize structuralOp
-		switch {
-		case r.PostForm.Get(widget.RepeaterOpField) != "":
-			realize = s.realizeRepeater
-		case r.PostForm.Get(widget.ReorderConfigField) != "":
-			realize = s.realizeReorder
-		}
-		if realize != nil {
-			if body, st, ok := realize(r.Context(), m, s.sessionSID(r), r.PostForm, tr); !ok {
+		// realize, not the plugin's (ADR-005 §7): the shell performs the reorder
+		// through rpcd, then re-renders the fresh state as a read. The plugin
+		// ships none of that logic — it only declared the listing whose rows drag.
+		if r.PostForm.Get(widget.ReorderConfigField) != "" {
+			if body, st, ok := s.realizeReorder(r.Context(), m, s.sessionSID(r), r.PostForm, tr); !ok {
 				return body, st
 			}
 			method = http.MethodGet // render current state; carry no form, run no commit
@@ -317,7 +309,7 @@ func (s *Server) pluginBodyAt(r *http.Request, m plugin.Manifest, pluginPath str
 	// The shell brokers the plugin's reads (ADR-007): it reads each config the plugin
 	// declared in acl.read with the operator's sid and hands the plugin a snapshot,
 	// so a session-less plugin never touches /etc/config itself. Read after any
-	// repeater op, so the re-render reflects the structural change.
+	// structural op, so the re-render reflects the structural change.
 	req.UCI = s.readSnapshot(r.Context(), m, s.sessionSID(r))
 	req.Ubus = s.readUbus(r.Context(), m, s.sessionSID(r))
 
@@ -411,7 +403,7 @@ func (s *Server) pluginBodyAt(r *http.Request, m plugin.Manifest, pluginPath str
 	// 422, and blocks the write — merged with whatever the plugin already flagged.
 	// Only a clean submission reaches brokerStage, which stages the plugin's
 	// commit intent through rpcd (ADR-007, ADR-010) — nothing is live until the
-	// drawer applies. A repeater op was downgraded to a render above, so it skips
+	// drawer applies. A structural op was downgraded to a render above, so it skips
 	// this — its write already went through rpcd.
 	// A preview is a question, not a submission: the plugin was handed the values
 	// on screen and asked what it would write from them, and the answer goes back
@@ -901,64 +893,18 @@ func (s *Server) undeclaredWrite(m plugin.Manifest, tr func(string) string) (tem
 }
 
 // malformedOperation is the contained response to an operation the shell cannot
-// act on — a commit op that describes two things at once, a repeater affordance
-// that posted without the fields to act on. A plugin-side problem, not the
-// operator's, so it is a plain notice.
+// act on — a commit op that describes two things at once. A plugin-side
+// problem, not the operator's, so it is a plain notice.
 func (s *Server) malformedOperation(m plugin.Manifest, tr func(string) string) (template.HTML, int, bool) {
 	return s.notice(tr("Couldn’t apply that change"), fmt.Sprintf(
 		tr("That change couldn’t be applied to %s."), m.Name)), http.StatusBadRequest, false
 }
 
-// structuralOp is one shell-realized change to a plugin's uci sections — the
-// repeater's add and remove, a reorderable listing's new order. Each is bounded
-// by the plugin's declared write scope, performs its write through rpcd on the
-// operator's behalf, and answers a contained notice with ok=false when it
-// refuses or fails.
-type structuralOp func(context.Context, plugin.Manifest, string, url.Values, func(string) string) (template.HTML, int, bool)
-
-// realizeRepeater performs a repeater's structural change on the operator's behalf
-// (ADR-005 §7): a uci section add or delete through rpcd, staged like every other
-// write (ADR-010). It refuses a config the plugin did not declare in its
-// acl.write — the same surface brokerStage bounds — and rpcd re-checks the
-// operator's sid. On success the caller re-renders the fresh state; a failure is
-// a contained notice, never a crash.
-func (s *Server) realizeRepeater(ctx context.Context, m plugin.Manifest, sid string, form url.Values, tr func(string) string) (template.HTML, int, bool) {
-	config := form.Get(widget.RepeaterConfigField)
-	if config == "" || !declaredUCIConfigs(m)[config] {
-		log.Printf("verso: plugin %q repeater op on undeclared uci config %q; refused", m.ID, config)
-		return s.undeclaredWrite(m, tr)
-	}
-
-	var err error
-	switch op := form.Get(widget.RepeaterOpField); op {
-	case widget.RepeaterOpAdd:
-		secType := form.Get(widget.RepeaterTypeField)
-		if secType == "" {
-			return s.malformedOperation(m, tr)
-		}
-		_, err = s.backend.UCIAdd(ctx, sid, config, secType, "")
-	case widget.RepeaterOpRemove:
-		section := form.Get(widget.RepeaterSectionField)
-		if section == "" {
-			return s.malformedOperation(m, tr)
-		}
-		err = s.backend.UCIDelete(ctx, sid, config, section, "")
-	default:
-		log.Printf("verso: plugin %q unknown repeater op %q; refused", m.ID, op)
-		return s.malformedOperation(m, tr)
-	}
-	if err != nil {
-		log.Printf("verso: plugin %q repeater op on uci %q failed: %v", m.ID, config, err)
-		return s.stageFailed(tr)
-	}
-	return "", 0, true
-}
-
 // realizeReorder performs a dragged listing's structural change on the operator's
-// behalf: rpcd's `uci order` on the declared config, staged like every other write
-// (ADR-010), so the review drawer owns the apply. It is bounded exactly as
-// realizeRepeater is — the config must be one the plugin declared in acl.write,
-// and rpcd re-checks the operator's sid — and every posted id must name a section
+// behalf (ADR-005 §7): rpcd's `uci order` on the declared config, staged like every
+// other write (ADR-010), so the review drawer owns the apply. It is bounded by the
+// plugin's declared write scope — the config must be one the plugin declared in
+// acl.write, and rpcd re-checks the operator's sid — and every posted id must name a section
 // the config really holds, so a stale page cannot order a listing into a shape the
 // device does not have.
 func (s *Server) realizeReorder(ctx context.Context, m plugin.Manifest, sid string, form url.Values, tr func(string) string) (template.HTML, int, bool) {
