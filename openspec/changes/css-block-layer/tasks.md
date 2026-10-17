@@ -107,7 +107,7 @@
 ## 8. Data display
 
 - [x] 8.1 `table` (`type-column-head`, `type-label`, `type-value`): table, seams, row name, unfold, the inventory; its frame is the `listing` block and a drag the `reorder` block. Narrow columns become `data-verso-narrow~="N"`. Rename `verso-tables.js` row-building in the same commit (`verso-stream.js` builds console lines, 9.3). A card's edge insets reach the table as `--verso-table-start`/`--verso-table-end`; its column heads' look stays with the surfaces (group 6). Verify: block done; a live listing's rows are the server's, and the rows the script draws carry the table and reorder blocks (test).
-- [ ] 8.2 `list` and `facts` (`type-row-label`, `type-value`, `type-subheading` for the head): the identity, system and ruled styles. Verify: block done; the `page-cards` "Facts read as one list" scenarios and the spec's Internet-card scenarios pass in their tests.
+- [x] 8.2 `list` and `facts` (`type-row-label`, `type-value`, `type-subheading` for the head): the identity, system and ruled styles; the head is the `facts-head` block, since it stands outside the list. The token editor's box is an input (5.3). Verify: block done; the `page-cards` "Facts read as one list" scenarios and the spec's Internet-card scenarios pass in their tests.
 - [ ] 8.3 `meter` and `chart` (`type-figure` where a figure stands): the chart's `--` colour modifiers become a `data-verso-tone` attribute and its parts become `__` elements, in `verso-chart.js` too. Verify: block done; the history-charts tests pass.
 - [ ] 8.4 `ports` and `panel`. Verify: block done.
 - [ ] 8.5 `code` (`type-code`), `prose` (`type-body`, inline `code` verbatim), `empty`. Verify: block done.

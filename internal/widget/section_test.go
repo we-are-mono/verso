@@ -129,24 +129,30 @@ func TestListAddHoversAsEverySecondaryButton(t *testing.T) {
 func TestListRowsTakeTheirHeightFromPadding(t *testing.T) {
 	got := render(t, newRenderer(t), &List{Name: "server", Label: "Time servers", Style: "rows", Prompt: "Add a server",
 		Items: []string{"0.openwrt.pool.ntp.org", "1.openwrt.pool.ntp.org"}})
-	const row = `class="flex items-start gap-2 border-t border-rule py-row pr-3 pl-1.5 first:border-t-transparent @min-[36rem]/verso-field:first:-mt-1"`
+	const row = `<div data-verso-list-row class="verso-list__row">`
 	if strings.Count(got, row) != 3 { // two values and the row the shell clones
 		t.Errorf("value rows take their height from padding, want %s three times in:\n%s", row, got)
 	}
+	declares(t, "list", ".verso-list__row",
+		"padding: calc(var(--spacing) * 1.75) calc(var(--spacing) * 3) calc(var(--spacing) * 2) calc(var(--spacing) * 1.5);",
+		"border: 0 solid var(--color-rule);", "border-top-width: 1px;")
+	declares(t, "list", ".verso-list__row:first-child", "border-top-color: transparent;")
 	// Each value leads with the packet in its words' ink, centred on its first
 	// line and in the grid's first column, the value starting at the next; the
 	// values are divided from each other, never from the label.
 	const packet = `<span aria-hidden="true" class="verso-mark mt-2.25" data-verso-tone="meta"></span>`
-	const value = `class="min-w-0 flex-1 wrap-anywhere font-mono text-base leading-6 text-meta"`
+	const value = `class="verso-list__value" data-verso-verbatim`
 	if strings.Count(got, packet) != 3 || strings.Count(got, value) != 3 {
 		t.Errorf("each value leads with the packet, its words quiet:\n%s", got)
 	}
-	if strings.Contains(got, "min-h-8") {
+	declares(t, "list", ".verso-list__value", "color: var(--color-meta);", "@apply type-body;")
+	if strings.Contains(got, "min-h-8") || strings.Contains(blockCSS(t, "list"), "height:") {
 		t.Errorf("no fixed row floor:\n%s", got)
 	}
-	if !strings.Contains(got, `<div data-verso-list-items class="has-[[data-verso-list-row]]:pb-2">`) || !strings.Contains(got, `<div class="flex items-center gap-2">`) {
+	if !strings.Contains(got, `<div data-verso-list-items class="verso-list__items">`) || !strings.Contains(got, `<div class="flex items-center gap-2">`) {
 		t.Errorf("the set's rows start on the line under the label, and the add box stands 8px under them:\n%s", got)
 	}
+	declares(t, "list", ".verso-list__items:has(> .verso-list__row)", "padding-bottom: calc(var(--spacing) * 2);")
 }
 
 // TestRenderSectionSub: the description belongs to the heading band and keeps

@@ -1,0 +1,241 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/* SPDX-FileCopyrightText: 2026 Mono Technologies Inc. */
+
+/*
+ * facts — a label/value list (a <dl>): the facts about one thing, the label
+ * in the row-label role and the value in the value role, so they line up and
+ * scan cleanly. A row hangs from its first line: a value that wraps keeps its
+ * label, copy control and pill level with its top line.
+ *
+ * A divided row is a row of the notebook's grid: its 24px lines 7px after
+ * the hairline over it and 8px over its own, so a row is 16px more than its
+ * lines; the last draws no hairline and keeps that pixel as air. The first
+ * row stands 8px under what is over the list, 7px under a head's hairline.
+ * A system row is the Overview's 44px row: the value's 24px line, inset
+ * 10px, ruled above, the list ruled below; one after anything stands 7px
+ * further down, so the stack's step becomes the 32px a drawer's content
+ * stands under its chrome. A plain row keeps no rule, 12px apart.
+ *
+ * Variants: data-verso-style   divided (hairlines between rows) · plain ·
+ *                              system · identity (a label and its value on
+ *                              one line, its note beneath)
+ *           data-verso-align   left: a document's facts, read beside a
+ *                              fixed label column; on a phone the label
+ *                              stands over its value, which takes the width
+ *           data-verso-headed  a head stands over the list (facts-head)
+ * Elements: __row     one fact; data-verso-help when a note follows it,
+ *                     data-verso-next when its value says what it becomes
+ *           __pair    an identity fact's label and value on one line
+ *           __label   what the fact is
+ *           __value   the fact; data-verso-emphasis promotes it a step (an
+ *                     identity's verbatim value to the title's verbatim form),
+ *                     data-verso-span when it is a stretch between two ends
+ *           __mark    the state's packet before a value: in the gutter of a
+ *                     left-set list, so a marked value starts where every
+ *                     other does; leading the value on the right, 8px off.
+ *                     Either way centred on the value's first line
+ *           __help    the note under a fact, in its value's column
+ *           __span    a stretch between two ends, drawn as a meter's own
+ *                     track — never a hairline, which a list of hairline
+ *                     rows would swallow — filled in the state's hue up to
+ *                     where now is, its ends written under the track's
+ *           __track   the stretch's line, 24px tall
+ *           __groove  the track drawn across it
+ *           __fill    how far along it now is; data-verso-tone, none the
+ *                     hollow packet, the absent state
+ *           __ends    the stretch's two ends
+ */
+
+.verso-facts:is([data-verso-style="plain"], [data-verso-style="identity"]) > :not(:last-child) {
+  margin-bottom: calc(var(--spacing) * 3);
+}
+.verso-facts[data-verso-style="system"] {
+  border: 0 solid var(--color-mid);
+  border-bottom-width: 1px;
+}
+.verso-facts[data-verso-style="system"]:not(:first-child) {
+  padding-top: calc(var(--spacing) * 1.75);
+}
+
+.verso-facts__row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  column-gap: calc(var(--spacing) * 6);
+  @apply type-body;
+}
+.verso-facts__row[data-verso-help] {
+  flex-wrap: wrap;
+}
+.verso-facts__row:where(.verso-facts[data-verso-style="divided"] *) {
+  padding-block: calc(var(--spacing) * 1.75) calc(var(--spacing) * 2);
+  border: 0 solid var(--color-mid);
+  border-bottom-width: 1px;
+}
+.verso-facts__row:where(.verso-facts[data-verso-style="divided"] *):first-child {
+  padding-top: calc(var(--spacing) * 2);
+}
+.verso-facts__row:where(.verso-facts[data-verso-style="divided"][data-verso-headed] *):first-child {
+  padding-top: calc(var(--spacing) * 1.75);
+}
+.verso-facts__row:where(.verso-facts[data-verso-style="divided"] *):last-child {
+  border-bottom-width: 0;
+}
+.verso-facts__row:where(.verso-facts[data-verso-align="left"] *) {
+  flex-direction: column;
+  justify-content: flex-start;
+}
+@media (width >= 40rem) {
+  .verso-facts__row:where(.verso-facts[data-verso-align="left"] *) {
+    flex-direction: row;
+  }
+}
+.verso-facts__row:where(.verso-facts[data-verso-style="system"] *) {
+  align-items: center;
+  padding-block: calc(var(--spacing) * 2.5);
+  border: 0 solid var(--color-mid);
+  border-top-width: 1px;
+}
+.verso-facts__row[data-verso-next]:where(.verso-facts[data-verso-style="system"] *) {
+  align-items: flex-start;
+}
+
+.verso-facts__row:where(.verso-facts[data-verso-style="identity"] *) {
+  display: block;
+}
+
+.verso-facts__pair {
+  display: flex;
+  align-items: baseline;
+  gap: calc(var(--spacing) * 2);
+}
+
+.verso-facts__label {
+  flex-shrink: 0;
+  color: var(--color-meta);
+  @apply type-row-label;
+}
+@media (width >= 40rem) {
+  .verso-facts__label:where(.verso-facts[data-verso-align="left"] *) {
+    width: calc(var(--spacing) * 24);
+  }
+}
+
+.verso-facts__value {
+  display: flex;
+  align-items: center;
+  color: var(--color-ink);
+  @apply type-value;
+}
+.verso-facts__value[data-verso-emphasis] {
+  @apply type-card-title;
+}
+.verso-facts__value[data-verso-emphasis][data-verso-verbatim] {
+  @apply type-title;
+}
+.verso-facts__value:where(.verso-facts:is([data-verso-style="divided"], [data-verso-style="plain"]) *) {
+  position: relative;
+  min-width: 0;
+  align-items: flex-start;
+  justify-content: flex-end;
+  text-align: right;
+}
+.verso-facts__value[data-verso-span]:where(.verso-facts:is([data-verso-style="divided"], [data-verso-style="plain"]) *) {
+  flex: 1 1 0%;
+  justify-content: flex-start;
+  text-align: left;
+}
+.verso-facts__value:where(.verso-facts[data-verso-align="left"] *) {
+  align-self: stretch;
+  justify-content: flex-start;
+  text-align: left;
+}
+@media (width >= 40rem) {
+  .verso-facts__value:where(.verso-facts[data-verso-align="left"] *) {
+    flex: 1 1 0%;
+    align-self: auto;
+  }
+}
+
+.verso-facts__mark {
+  margin-top: calc(var(--spacing) * 2.25);
+  margin-right: calc(var(--spacing) * 2);
+}
+.verso-facts__mark:where(.verso-facts[data-verso-align="left"] *) {
+  position: absolute;
+  top: calc(var(--spacing) * 2.25);
+  left: calc(var(--spacing) * -3.75);
+  margin: 0;
+}
+.verso-facts__mark:where(.verso-facts[data-verso-style="system"] *) {
+  margin-top: 0;
+}
+
+.verso-facts__help {
+  flex-basis: 100%;
+  color: var(--color-body);
+  text-align: right;
+  @apply type-body;
+}
+.verso-facts__help:where(.verso-facts[data-verso-style="identity"] *) {
+  margin-top: var(--spacing);
+  text-align: left;
+}
+@media (width >= 40rem) {
+  .verso-facts__help:where(.verso-facts[data-verso-align="left"] *) {
+    padding-left: calc(var(--spacing) * 30);
+  }
+}
+.verso-facts__help:where(.verso-facts[data-verso-align="left"] *) {
+  text-align: left;
+}
+
+.verso-facts__span {
+  display: block;
+  width: 100%;
+}
+.verso-facts__track {
+  position: relative;
+  display: block;
+  height: calc(var(--spacing) * 6);
+}
+.verso-facts__groove,
+.verso-facts__fill {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  height: calc(var(--spacing) * 1.5);
+  border-radius: calc(infinity * 1px);
+  translate: 0 -50%;
+}
+.verso-facts__groove {
+  right: 0;
+  background-color: var(--color-rule);
+}
+.verso-facts__fill {
+  border: 1px solid var(--color-faint);
+}
+.verso-facts__fill[data-verso-tone="success"] {
+  border-width: 0;
+  background-color: var(--color-green);
+}
+.verso-facts__fill[data-verso-tone="warning"] {
+  border-width: 0;
+  background-color: var(--color-marigold);
+}
+.verso-facts__fill[data-verso-tone="danger"] {
+  border-width: 0;
+  background-color: var(--color-crimson);
+}
+.verso-facts__fill[data-verso-tone="info"] {
+  border-width: 0;
+  background-color: var(--color-denim);
+}
+.verso-facts__ends {
+  display: flex;
+  justify-content: space-between;
+  gap: calc(var(--spacing) * 4);
+  color: var(--color-meta);
+  white-space: nowrap;
+  @apply type-body;
+}

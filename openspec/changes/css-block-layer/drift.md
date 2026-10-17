@@ -140,3 +140,13 @@ The rail's 5px square stays as it is until the rail converts.
 | Interfaces' unfolded sheet | | its hairline stopped 23px short of the card's edge | runs to the edge, as the rows' hairlines do |
 | an act's tip in the first row of a listing that scrolls | | opened upward into the box's clipping edge since the tip block landed (the flip rule looked for `bottom-full`) | opens under its act again |
 | the dragged row | | carried the scroller's edge utilities over | a table of its own at its source's density and edge insets, card insets included |
+
+### `facts`, `facts-head` and `list`
+
+| Copies | n | Difference | Became |
+|---|---|---|---|
+| everything inside a fact's value (chips, copy tips, badges) | | forced onto a 24px line by an arbitrary variant on the value | each part's own role: a chip 18px tall on its 16px line, a copy tip on the tip role's line |
+| a plain fact list's rows | | `text-sm`'s 21px line | the body role's 24px line |
+| an emphasised fact (the firmware and backup confirmations) | 5 | sans 16/500 | the card-title role (16/600): one step up from the value role, the role list holding no 16/500 |
+| an identity fact | none ship | label 16/400, value 16/500, an emphasised verbatim value 18/600 | the row-label and value roles; an emphasised verbatim value the title role's verbatim form (mono 20/700) |
+| a system fact's label | | could shrink beside a long value | keeps its width, as every fact's label does |

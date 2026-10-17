@@ -389,13 +389,13 @@ func TestRenderProperties(t *testing.T) {
 		{Label: "Tunnel address", Value: "10.7.0.2", Mono: true},
 		{Label: "Server key", Value: "KEY==", Copy: true},
 	}})
-	for _, want := range []string{"<dl", "Can reach", "My whole home network", "Tunnel address", "10.7.0.2", "font-mono"} {
+	for _, want := range []string{"<dl", "Can reach", "My whole home network", "Tunnel address", `data-verso-verbatim class="min-w-0 wrap-anywhere text-balance type-value">10.7.0.2<`} {
 		if !strings.Contains(got, want) {
 			t.Errorf("properties missing %q in: %s", want, got)
 		}
 	}
-	// A non-mono value carries no font-mono on its own row.
-	if strings.Count(got, "font-mono") != 1 {
+	// A non-mono value is not verbatim on its own row.
+	if strings.Count(got, "data-verso-verbatim") != 1 {
 		t.Errorf("only the mono value should be monospaced: %s", got)
 	}
 	// A Copy row grows an inline copy button (shell-owned) carrying the value.
@@ -418,7 +418,10 @@ func TestRenderPropertiesStyles(t *testing.T) {
 	// Each ruled row draws its own hairline as its last pixel, landing it on a
 	// line of the grid; the first, with no hairline over it, keeps 8px over its
 	// line, and the last draws none, so the run starts and ends on lines.
-	const hairlineRow = "border-b border-mid py-row leading-6 first:pt-2 last:border-b-0"
+	const hairlineRow = `<dl class="verso-facts" data-verso-style="divided">`
+	declares(t, "facts", `.verso-facts__row:where(.verso-facts[data-verso-style="divided"] *)`,
+		"padding-block: calc(var(--spacing) * 1.75) calc(var(--spacing) * 2);", "border: 0 solid var(--color-mid);", "border-bottom-width: 1px;")
+	declares(t, "facts", `.verso-facts__row:where(.verso-facts[data-verso-style="divided"] *):last-child`, "border-bottom-width: 0;")
 	divided := render(t, r, &Properties{Items: items}) // default
 	if !strings.Contains(divided, hairlineRow) {
 		t.Errorf("default properties should use hairlines:\n%s", divided)
@@ -433,13 +436,17 @@ func TestRenderPropertiesStyles(t *testing.T) {
 		t.Errorf("retired striped should render as the hairline default:\n%s", striped)
 	}
 	bare := render(t, r, &Properties{Style: "plain", Items: items})
-	if !strings.Contains(bare, "space-y-3") || strings.Contains(bare, "divide-y") || strings.Contains(bare, "odd:bg-quiet") {
+	if !strings.Contains(bare, `data-verso-style="plain"`) || strings.Contains(bare, "divide-y") || strings.Contains(bare, "odd:bg-quiet") {
 		t.Errorf("plain properties should have no separators:\n%s", bare)
 	}
+	declares(t, "facts", `.verso-facts:is([data-verso-style="plain"], [data-verso-style="identity"]) > :not(:last-child)`, "margin-bottom: calc(var(--spacing) * 3);")
 	identity := render(t, r, &Properties{Style: "identity", Items: []Property{{
 		Label: "Username", Value: "root", Mono: true, Emphasis: true, Help: "Main system username cannot be changed.",
 	}}})
-	for _, want := range []string{"text-base", ">Username:<", "text-lg", "font-semibold", "font-mono", ">root<", "Main system username cannot be changed."} {
+	// the larger single-identity treatment: an emphasised verbatim value in
+	// the title's verbatim form
+	declares(t, "facts", ".verso-facts__value[data-verso-emphasis][data-verso-verbatim]", "@apply type-title;")
+	for _, want := range []string{`data-verso-style="identity"`, ">Username:<", "data-verso-verbatim", "data-verso-emphasis", ">root<", "Main system username cannot be changed."} {
 		if !strings.Contains(identity, want) {
 			t.Errorf("identity properties missing %q:\n%s", want, identity)
 		}
@@ -452,24 +459,28 @@ func TestRenderPropertiesStyles(t *testing.T) {
 		{Label: "Kernel", Value: "Linux 6.12", Mono: true},
 	}})
 	for _, want := range []string{
-		// The 44px row: the value's 24px line inset 10px, the label raised to
-		// the same line, and the value a flex line so its copy control cannot
-		// lift it.
-		"space-y-0", "border-t border-mid py-2", "text-sm leading-6 text-meta",
-		"flex items-center text-sm font-medium text-ink", "font-mono text-base font-medium",
+		`data-verso-style="system"`, `<dt class="verso-facts__label">`, `<dd class="verso-facts__value">`,
+		`data-verso-verbatim class="type-value">Linux 6.12<`,
 	} {
 		if !strings.Contains(system, want) {
 			t.Errorf("system properties missing %q:\n%s", want, system)
 		}
 	}
+	// The 44px row: the value's 24px line inset 10px, the label raised to the
+	// same line, and the value a flex line so its copy control cannot lift it.
+	declares(t, "facts", `.verso-facts__row:where(.verso-facts[data-verso-style="system"] *)`,
+		"align-items: center;", "padding-block: calc(var(--spacing) * 2.5);", "border-top-width: 1px;")
+	declares(t, "facts", ".verso-facts__label", "@apply type-row-label;", "color: var(--color-meta);")
+	declares(t, "facts", ".verso-facts__value", "display: flex;", "align-items: center;", "@apply type-value;")
 	emphasised := render(t, r, &Properties{Items: []Property{
 		{Label: "Installed", Value: "Mono OpenWrt 25.12", Emphasis: true},
 		{Label: "Target", Value: "aarch64_generic", Mono: true, Emphasis: true},
 	}})
+	declares(t, "facts", ".verso-facts__value[data-verso-emphasis]", "@apply type-card-title;")
 	for _, want := range []string{
-		`<dt class="shrink-0 text-meta">Installed</dt>`,
-		`<dd class="relative flex min-w-0 items-start justify-end text-right text-base font-medium text-ink [&_*]:leading-6">`,
-		`class="min-w-0 wrap-anywhere text-balance font-mono text-base font-medium">aarch64_generic</span>`,
+		`<dt class="verso-facts__label">Installed</dt>`,
+		`<dd class="verso-facts__value" data-verso-emphasis>`,
+		`data-verso-verbatim class="min-w-0 wrap-anywhere text-balance type-value">aarch64_generic</span>`,
 	} {
 		if !strings.Contains(emphasised, want) {
 			t.Errorf("emphasised properties missing %q:\n%s", want, emphasised)
@@ -489,8 +500,8 @@ func TestRenderPropertyVariantTonesTheValue(t *testing.T) {
 		{Label: "Available build", Value: "25.12.5", Mono: true, Emphasis: true, Variant: "success"},
 	}})
 	for _, want := range []string{
-		`class="font-mono text-base font-medium text-marigold-deep">25.12.4</span>`,
-		`class="font-mono text-base font-medium text-green-deep">25.12.5</span>`,
+		`data-verso-verbatim class="type-value text-marigold-deep">25.12.4</span>`,
+		`data-verso-verbatim class="type-value text-green-deep">25.12.5</span>`,
 	} {
 		if !strings.Contains(toned, want) {
 			t.Errorf("toned system properties missing %q:\n%s", want, toned)

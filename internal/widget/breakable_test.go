@@ -38,12 +38,13 @@ func TestListValueWrapsAtItsSeparators(t *testing.T) {
 		Items: []string{"/corp.example.com/10.66.0.53"}})
 	// The remove hangs from the value's first line: the row aligns to the top,
 	// and the 28px remove pulls 4px out either side to centre on the value's
-	// first 20px line.
-	if !strings.Contains(got, `class="min-w-0 flex-1 wrap-anywhere font-mono text-base leading-6 text-meta">/<wbr>corp.example.com/<wbr>10.66.0.53</span>`) ||
+	// first 24px line.
+	if !strings.Contains(got, `class="verso-list__value" data-verso-verbatim>/<wbr>corp.example.com/<wbr>10.66.0.53</span>`) ||
 		!strings.Contains(got, `aria-label="Remove" class="verso-button -my-1" data-verso-size="icon"`) {
 		t.Errorf("the value wraps at its own separators, hung from its first line:\n%s", got)
 	}
 	if strings.Contains(got, "break-all") {
 		t.Errorf("no break-all on a list value:\n%s", got)
 	}
+	declares(t, "list", ".verso-list__value", "overflow-wrap: anywhere;")
 }

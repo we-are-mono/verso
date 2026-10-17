@@ -31,8 +31,11 @@
 @import "./blocks/chevron.css" layer(components);
 @import "./blocks/chip.css" layer(components);
 @import "./blocks/copy-inline.css" layer(components);
+@import "./blocks/facts.css" layer(components);
+@import "./blocks/facts-head.css" layer(components);
 @import "./blocks/fold.css" layer(components);
 @import "./blocks/link.css" layer(components);
+@import "./blocks/list.css" layer(components);
 @import "./blocks/listing.css" layer(components);
 @import "./blocks/mark.css" layer(components);
 @import "./blocks/menu.css" layer(components);

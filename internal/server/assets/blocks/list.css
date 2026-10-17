@@ -1,0 +1,51 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/* SPDX-FileCopyrightText: 2026 Mono Technologies Inc. */
+
+/*
+ * list — a setting of many values, one row each, with an add box under them
+ * (list.html.tmpl, the "rows" style). Each value is a row on the grid, a
+ * hairline above it on a line: the value writes on 24px lines 7px after the
+ * hairline and 8px over the next, so a row is 16px more than its lines, and
+ * the 28px remove rides the first line. Each value leads with the packet in
+ * its words' Meta ink, centred on the first line and in the grid's first
+ * column: the row starts 6px in, the 6px packet in the middle of that
+ * column, and 8px on the value starts at the next. The values are divided
+ * from each other, never from the label: the first row's hairline goes
+ * clear, keeping its pixel, and beside the question the first value stands
+ * on the name's own line, as a control's words do. The add box stands 8px
+ * under the last row.
+ *
+ * Elements: __items  the values
+ *           __row    one value and its remove
+ *           __value  the value, verbatim, wrapping after its own
+ *                    separators
+ */
+
+.verso-list__items:has(> .verso-list__row) {
+  padding-bottom: calc(var(--spacing) * 2);
+}
+
+.verso-list__row {
+  display: flex;
+  align-items: flex-start;
+  gap: calc(var(--spacing) * 2);
+  padding: calc(var(--spacing) * 1.75) calc(var(--spacing) * 3) calc(var(--spacing) * 2) calc(var(--spacing) * 1.5);
+  border: 0 solid var(--color-rule);
+  border-top-width: 1px;
+}
+.verso-list__row:first-child {
+  border-top-color: transparent;
+}
+@container verso-field (width >= 36rem) {
+  .verso-list__row:first-child {
+    margin-top: calc(var(--spacing) * -1);
+  }
+}
+
+.verso-list__value {
+  flex: 1 1 0%;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--color-meta);
+  @apply type-body;
+}

@@ -1,0 +1,27 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/* SPDX-FileCopyrightText: 2026 Mono Technologies Inc. */
+
+/*
+ * facts-head — what names a list of facts, on a line of its own over it: its
+ * 24px line, 8px over and under, on the strong hairline a column head stands
+ * on, so the hairline lands on a line and the list's first row stands 7px
+ * after it, as every row after a hairline does. A group's title is a heading,
+ * its protocol a chip beside it.
+ *
+ * Variants: data-verso-columns  two column names (Part, Current) over the
+ *                               labels and the values, set as a table's head
+ */
+
+.verso-facts-head {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--spacing) * 3);
+  padding-block: calc(var(--spacing) * 2);
+  border: 0 solid var(--color-rule-strong);
+  border-bottom-width: 1px;
+  color: var(--color-ink);
+  @apply type-subheading;
+}
+.verso-facts-head[data-verso-columns] {
+  gap: 0 calc(var(--spacing) * 6);
+}
