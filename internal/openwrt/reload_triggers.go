@@ -10,24 +10,15 @@ import (
 	"strings"
 )
 
-// reloadTriggersFn reads which init scripts a change to each config reloads.
-type reloadTriggersFn func(ctx context.Context, sid string) (map[string][]string, error)
-
 // ReloadTriggers names, for each config, the init scripts procd reloads when
 // a change to it is applied, from procd's own trigger table (ADR-010: procd
 // owns that mapping, so the shell reads it rather than keeping a copy).
-func (b *NativeBackend) ReloadTriggers(ctx context.Context, sid string) (map[string][]string, error) {
-	return b.reloadTriggers(ctx, sid)
-}
-
-func dialReloadTriggers(socket string) reloadTriggersFn {
-	return func(_ context.Context, sid string) (map[string][]string, error) {
-		raw, err := callChecked(socket, sid, "service", "list", map[string]any{"verbose": true})
-		if err != nil {
-			return nil, err
-		}
-		return reloadTriggers(raw), nil
+func (*NativeBackend) ReloadTriggers(_ context.Context, sid string) (map[string][]string, error) {
+	raw, err := callChecked("", sid, "service", "list", map[string]any{"verbose": true})
+	if err != nil {
+		return nil, err
 	}
+	return reloadTriggers(raw), nil
 }
 
 // reloadTriggers reads procd's service table into config → init scripts:

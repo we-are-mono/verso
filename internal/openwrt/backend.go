@@ -558,15 +558,12 @@ type Memory struct {
 	Available int64
 }
 
-// The side-effecting operations sit behind func seams so the backend is
-// unit-testable with fakes; the real implementations dial the ubus socket and
-// go through rpcd (verified live, like the ubus client itself).
+// The ubus operations whose shell-side logic is unit-tested sit behind func
+// seams the tests fake; the real implementations dial the ubus socket and go
+// through rpcd (verified live, like the ubus client itself).
 type (
-	hostnameFn    func() (string, error)
 	systemInfoFn  func(ctx context.Context, sid string) (map[string]any, error)
 	systemBoardFn func(ctx context.Context, sid string) (map[string]any, error)
-	ipv6LeasesFn  func(ctx context.Context, sid string) (map[string]any, error)
-	wanConnFn     func(ctx context.Context, sid string) (WANConn, error)
 	accessFn      func(ctx context.Context, sid, scope, object, function string) (bool, error)
 	uciSetFn      func(ctx context.Context, sid, config, section string, values map[string]any) error
 	uciConfigFn   func(ctx context.Context, sid, config string) (map[string]any, error)
@@ -577,11 +574,6 @@ type (
 	uciRevertFn   func(ctx context.Context, sid, config string) error
 	uciApplyFn    func(ctx context.Context, sid string, timeout int) error
 	uciConfirmFn  func(ctx context.Context, sid string) error
-	rcListFn      func(ctx context.Context, sid string) (map[string]RCState, error)
-	failedSvcFn   func(ctx context.Context, sid string) ([]string, error)
-	rcInitFn      func(ctx context.Context, sid, name, action string) error
-	wanStatusFn   func(ctx context.Context, sid string) (WANState, error)
-	deviceStatsFn func(ctx context.Context, sid, device string) (DeviceStats, error)
 	logReadFn     func(ctx context.Context, sid string, lines int) (map[string]any, error)
 	netIfacesFn   func(ctx context.Context, sid string) (map[string]any, error)
 )
@@ -593,42 +585,30 @@ type (
 type NativeBackend struct {
 	// helperSocket is where the verso-rpcd helper listens; empty is its
 	// default path.
-	helperSocket   string
-	hostname       hostnameFn
-	systemInfo     systemInfoFn
-	systemBoard    systemBoardFn
-	ipv6Leases     ipv6LeasesFn
-	wanConn        wanConnFn
-	access         accessFn
-	uciSet         uciSetFn
-	uciConfig      uciConfigFn
-	uciAdd         uciAddFn
-	uciDelete      uciDeleteFn
-	uciOrder       uciOrderFn
-	kernelBuild    func() string
-	packageArch    func() string
-	uciChanges     uciChangesFn
-	uciRevert      uciRevertFn
-	uciApply       uciApplyFn
-	uciConfirm     uciConfirmFn
-	rcList         rcListFn
-	failedSvc      failedSvcFn
-	reloadTriggers reloadTriggersFn
-	rcInit         rcInitFn
-	wanStatus      wanStatusFn
-	deviceStats    deviceStatsFn
-	logRead        logReadFn
-	netIfaces      netIfacesFn
+	helperSocket string
+	systemInfo   systemInfoFn
+	systemBoard  systemBoardFn
+	access       accessFn
+	uciSet       uciSetFn
+	uciConfig    uciConfigFn
+	uciAdd       uciAddFn
+	uciDelete    uciDeleteFn
+	uciOrder     uciOrderFn
+	kernelBuild  func() string
+	packageArch  func() string
+	uciChanges   uciChangesFn
+	uciRevert    uciRevertFn
+	uciApply     uciApplyFn
+	uciConfirm   uciConfirmFn
+	logRead      logReadFn
+	netIfaces    netIfacesFn
 }
 
 // NewNativeBackend returns a backend using the default ubus socket.
 func NewNativeBackend() *NativeBackend {
 	return &NativeBackend{
-		hostname:    os.Hostname,
 		systemInfo:  dialSystemInfo(""),
 		systemBoard: dialSystemBoard(""),
-		ipv6Leases:  dialIPv6Leases(""),
-		wanConn:     dialWANConn(""),
 		access:      dialAccess(""),
 		uciSet:      dialUCISet(""),
 		uciConfig:   dialUCIConfig(""),
@@ -650,25 +630,19 @@ func NewNativeBackend() *NativeBackend {
 			line, _, _ := strings.Cut(string(data), "\n")
 			return strings.TrimSpace(line)
 		},
-		uciChanges:     dialUCIChanges(""),
-		uciRevert:      dialUCIRevert(""),
-		uciApply:       dialUCIApply(""),
-		uciConfirm:     dialUCIConfirm(""),
-		rcList:         dialRCList(""),
-		failedSvc:      dialFailedServices(""),
-		reloadTriggers: dialReloadTriggers(""),
-		rcInit:         dialRCInit(""),
-		wanStatus:      dialWANStatus(""),
-		deviceStats:    dialDeviceStats(""),
-		logRead:        dialLogRead(""),
-		netIfaces:      dialNetworkInterfaces(""),
+		uciChanges: dialUCIChanges(""),
+		uciRevert:  dialUCIRevert(""),
+		uciApply:   dialUCIApply(""),
+		uciConfirm: dialUCIConfirm(""),
+		logRead:    dialLogRead(""),
+		netIfaces:  dialNetworkInterfaces(""),
 	}
 }
 
 // Hostname reads the running name, just like the public sign-in page and
 // OpenWrt's system.board response. This kernel fact needs no rpcd session.
-func (b *NativeBackend) Hostname(_ context.Context, _ string) (string, error) {
-	return b.hostname()
+func (*NativeBackend) Hostname(_ context.Context, _ string) (string, error) {
+	return os.Hostname()
 }
 
 // SystemInfo fetches and maps live system info, gated by an rpcd ACL check.
@@ -922,18 +896,6 @@ func (*NativeBackend) UCICommitted(ctx context.Context, sid string, configs []st
 	return out, err
 }
 
-func (b *NativeBackend) RCList(ctx context.Context, sid string) (map[string]RCState, error) {
-	return b.rcList(ctx, sid)
-}
-
-func (b *NativeBackend) FailedServices(ctx context.Context, sid string) ([]string, error) {
-	return b.failedSvc(ctx, sid)
-}
-
-func (b *NativeBackend) RCInit(ctx context.Context, sid, name, action string) error {
-	return b.rcInit(ctx, sid, name, action)
-}
-
 func (b *NativeBackend) PkgStatus(ctx context.Context, sid string) (int64, error) {
 	var result struct {
 		CheckedAt int64 `json:"checked_at"`
@@ -1041,18 +1003,6 @@ func (b *NativeBackend) FirmwareCheck(ctx context.Context, sid string) (Firmware
 // this router has anything to download.
 func (b *NativeBackend) FirmwareUpgrade(ctx context.Context, sid string) error {
 	return callHelperWithin(ctx, b.helperSocket, "firmwareUpgrade", sid, nil, nil, firmwareUpgradeTimeout)
-}
-
-func (b *NativeBackend) WANStatus(ctx context.Context, sid string) (WANState, error) {
-	return b.wanStatus(ctx, sid)
-}
-
-func (b *NativeBackend) WANConn(ctx context.Context, sid string) (WANConn, error) {
-	return b.wanConn(ctx, sid)
-}
-
-func (b *NativeBackend) DeviceStats(ctx context.Context, sid, device string) (DeviceStats, error) {
-	return b.deviceStats(ctx, sid, device)
 }
 
 // FirewallCounters reads fw4's per-rule nftables counters through the privileged
@@ -1192,14 +1142,6 @@ func dialSystemInfo(socket string) systemInfoFn {
 func dialSystemBoard(socket string) systemBoardFn {
 	return func(_ context.Context, sid string) (map[string]any, error) {
 		return callChecked(socket, sid, "system", "board", nil)
-	}
-}
-
-// dialIPv6Leases returns an ipv6LeasesFn that reads `ubus call dhcp ipv6leases`
-// (odhcpd's DHCPv6 lease table), sid-gated like the other reads.
-func dialIPv6Leases(socket string) ipv6LeasesFn {
-	return func(_ context.Context, sid string) (map[string]any, error) {
-		return callChecked(socket, sid, "dhcp", "ipv6leases", nil)
 	}
 }
 
@@ -1491,10 +1433,11 @@ func parseSystemInfo(m map[string]any) SystemInfo {
 	return si
 }
 
-// IPv6Leases reads odhcpd's DHCPv6 lease table and folds it to a flat list of
-// DUID + hostname + assigned addresses per client.
-func (b *NativeBackend) IPv6Leases(ctx context.Context, sid string) ([]V6Lease, error) {
-	m, err := b.ipv6Leases(ctx, sid)
+// IPv6Leases reads odhcpd's DHCPv6 lease table (`ubus call dhcp ipv6leases`,
+// sid-gated like the other reads) and folds it to a flat list of DUID +
+// hostname + assigned addresses per client.
+func (*NativeBackend) IPv6Leases(_ context.Context, sid string) ([]V6Lease, error) {
+	m, err := callChecked("", sid, "dhcp", "ipv6leases", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -1634,7 +1577,7 @@ func failedServices(raw map[string]any) []string {
 	return out
 }
 
-// dialRCList reads the cheap rc inventory first, then enriches it from procd's
+// RCList reads the cheap rc inventory first, then enriches it from procd's
 // service instances and procfs. The richer read is best-effort: an older ACL or
 // procd without service.list still gets the complete, controllable rc table.
 //
@@ -1643,60 +1586,56 @@ func failedServices(raw map[string]any) []string {
 // seconds on a router with fifty procd services — and some packages' scripts
 // reload their daemon from that hook. procd's own instance table, read next,
 // already says what runs.
-func dialRCList(socket string) rcListFn {
-	return func(_ context.Context, sid string) (map[string]RCState, error) {
-		c, err := ubus.Dial(socket)
-		if err != nil {
-			return nil, err
-		}
-		defer c.Close()
-
-		if ok, err := probeAccess(c, sid, "ubus", "rc", "list"); err != nil || !ok {
-			return nil, ErrAccessDenied
-		}
-		id, err := c.Lookup("rc")
-		if err != nil {
-			return nil, err
-		}
-		res, err := c.InvokeTable(id, "list", map[string]any{"skip_running_check": true})
-		if err != nil {
-			return nil, err
-		}
-		out := make(map[string]RCState, len(res))
-		for name, v := range res {
-			t, ok := v.(map[string]any)
-			if !ok {
-				continue
-			}
-			st := RCState{Enabled: asBool(t["enabled"])}
-			if value, ok := t["start"]; ok {
-				order := int(asInt64(value))
-				st.Order = &order
-			}
-			out[name] = st
-		}
-
-		details := map[string]serviceDetail{}
-		if ok, _ := probeAccess(c, sid, "ubus", "service", "list"); ok {
-			if serviceID, lookupErr := c.Lookup("service"); lookupErr == nil {
-				if serviceRes, invokeErr := c.Invoke(serviceID, "list"); invokeErr == nil {
-					details = parseServiceDetails(serviceRes)
-				}
-			}
-		}
-		enrichRCStates(out, details, os.ReadFile, livePIDs())
-		return out, nil
+func (*NativeBackend) RCList(_ context.Context, sid string) (map[string]RCState, error) {
+	c, err := ubus.Dial("")
+	if err != nil {
+		return nil, err
 	}
+	defer c.Close()
+
+	if ok, err := probeAccess(c, sid, "ubus", "rc", "list"); err != nil || !ok {
+		return nil, ErrAccessDenied
+	}
+	id, err := c.Lookup("rc")
+	if err != nil {
+		return nil, err
+	}
+	res, err := c.InvokeTable(id, "list", map[string]any{"skip_running_check": true})
+	if err != nil {
+		return nil, err
+	}
+	out := make(map[string]RCState, len(res))
+	for name, v := range res {
+		t, ok := v.(map[string]any)
+		if !ok {
+			continue
+		}
+		st := RCState{Enabled: asBool(t["enabled"])}
+		if value, ok := t["start"]; ok {
+			order := int(asInt64(value))
+			st.Order = &order
+		}
+		out[name] = st
+	}
+
+	details := map[string]serviceDetail{}
+	if ok, _ := probeAccess(c, sid, "ubus", "service", "list"); ok {
+		if serviceID, lookupErr := c.Lookup("service"); lookupErr == nil {
+			if serviceRes, invokeErr := c.Invoke(serviceID, "list"); invokeErr == nil {
+				details = parseServiceDetails(serviceRes)
+			}
+		}
+	}
+	enrichRCStates(out, details, os.ReadFile, livePIDs())
+	return out, nil
 }
 
-func dialFailedServices(socket string) failedSvcFn {
-	return func(_ context.Context, sid string) ([]string, error) {
-		raw, err := callChecked(socket, sid, "service", "list", nil)
-		if err != nil {
-			return nil, err
-		}
-		return failedServices(raw), nil
+func (*NativeBackend) FailedServices(_ context.Context, sid string) ([]string, error) {
+	raw, err := callChecked("", sid, "service", "list", nil)
+	if err != nil {
+		return nil, err
 	}
+	return failedServices(raw), nil
 }
 
 func parseServiceDetails(raw map[string]any) map[string]serviceDetail {
@@ -1936,41 +1875,35 @@ func parseProcAge(stat []byte, systemUptime float64) int64 {
 	return int64(age)
 }
 
-// dialRCInit drives one rc action on a named init script through procd, after
+// RCInit drives one rc action on a named init script through procd, after
 // probing the session's ubus/rc/init access. Name and action policy is the
 // caller's (the shell restricts both); rpcd's session gate is the backstop.
-func dialRCInit(socket string) rcInitFn {
-	return func(_ context.Context, sid, name, action string) error {
-		_, err := callChecked(socket, sid, "rc", "init", map[string]any{"name": name, "action": action})
-		return err
-	}
+func (*NativeBackend) RCInit(_ context.Context, sid, name, action string) error {
+	_, err := callChecked("", sid, "rc", "init", map[string]any{"name": name, "action": action})
+	return err
 }
 
-// dialWANStatus reads one plural netifd dump and supplements it with the kernel
+// WANStatus reads one plural netifd dump and supplements it with the kernel
 // route/rule view. Kernel discovery is best-effort: stock netifd discovery still
 // works if the platform refuses a route-netlink dump.
-func dialWANStatus(socket string) wanStatusFn {
-	return func(_ context.Context, sid string) (WANState, error) {
-		dump, err := fetchNetworkDump(socket, sid)
-		if err != nil {
-			return WANState{}, err
-		}
-		routes, _ := kernelDefaultRoutes()
-		return discoverWAN(dump, routes), nil
+func (*NativeBackend) WANStatus(_ context.Context, sid string) (WANState, error) {
+	dump, err := fetchNetworkDump("", sid)
+	if err != nil {
+		return WANState{}, err
 	}
+	routes, _ := kernelDefaultRoutes()
+	return discoverWAN(dump, routes), nil
 }
 
-// dialWANConn reads the same plural netifd dump and chooses the preferred
+// WANConn reads the same plural netifd dump and chooses the preferred
 // main-table route owner independently for IPv4 and IPv6.
-func dialWANConn(socket string) wanConnFn {
-	return func(_ context.Context, sid string) (WANConn, error) {
-		dump, err := fetchNetworkDump(socket, sid)
-		if err != nil {
-			return WANConn{}, err
-		}
-		wan, wan6 := wanStatuses(dump)
-		return parseWANConn(wan, wan6), nil
+func (*NativeBackend) WANConn(_ context.Context, sid string) (WANConn, error) {
+	dump, err := fetchNetworkDump("", sid)
+	if err != nil {
+		return WANConn{}, err
 	}
+	wan, wan6 := wanStatuses(dump)
+	return parseWANConn(wan, wan6), nil
 }
 
 func fetchNetworkDump(socket, sid string) (map[string]any, error) {
@@ -2077,16 +2010,14 @@ func parseWANConn(v4, v6 map[string]any) WANConn {
 	return wc
 }
 
-// dialDeviceStats reads network.device status for one named device, after
+// DeviceStats reads network.device status for one named device, after
 // probing the session's access to the object.
-func dialDeviceStats(socket string) deviceStatsFn {
-	return func(_ context.Context, sid, device string) (DeviceStats, error) {
-		res, err := callChecked(socket, sid, "network.device", "status", map[string]any{"name": device})
-		if err != nil {
-			return DeviceStats{}, err
-		}
-		return parseDeviceStats(res), nil
+func (*NativeBackend) DeviceStats(_ context.Context, sid, device string) (DeviceStats, error) {
+	res, err := callChecked("", sid, "network.device", "status", map[string]any{"name": device})
+	if err != nil {
+		return DeviceStats{}, err
 	}
+	return parseDeviceStats(res), nil
 }
 
 // parseDeviceStats maps network.device status onto DeviceStats.
