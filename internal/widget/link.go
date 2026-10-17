@@ -43,9 +43,21 @@ type linkView struct {
 	Style  string
 	NewTab bool
 	Panel  bool
+	// Door marks a link that closes a run of words (a notice's): it takes the
+	// words' own ink and weight, told apart only by its underline (ADR-025).
+	Door bool
 }
 
 func (l *Link) renderInto(r *Renderer, out io.Writer, _ string) error {
+	return l.draw(r, out, false)
+}
+
+// renderDoor draws the link as the door that closes a run of words.
+func (l *Link) renderDoor(r *Renderer, out io.Writer) error {
+	return l.draw(r, out, true)
+}
+
+func (l *Link) draw(r *Renderer, out io.Writer, door bool) error {
 	href := l.Href
 	// A link to a place on a page — this one, or one it opens (an expanded
 	// row's act into the editor's DHCP section) — is a link to a section,
@@ -55,7 +67,7 @@ func (l *Link) renderInto(r *Renderer, out io.Writer, _ string) error {
 		href = href[:at+1] + SectionID(href[at+1:])
 	}
 	return r.execute(out, "link.html.tmpl", linkView{
-		Label: l.Label, Icon: l.Icon, Href: template.URL(SafeHref(href)), Style: l.Style, NewTab: l.NewTab, Panel: l.Panel,
+		Label: l.Label, Icon: l.Icon, Href: template.URL(SafeHref(href)), Style: l.Style, NewTab: l.NewTab, Panel: l.Panel, Door: door,
 	})
 }
 

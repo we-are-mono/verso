@@ -1,0 +1,39 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/* SPDX-FileCopyrightText: 2026 Mono Technologies Inc. */
+
+/*
+ * link — words that take you somewhere, underlined. One that stands on its
+ * own is an act's words in the action colour, a step deeper under the
+ * pointer. A door — a link that closes a run of words (a notice's, a row's
+ * value or phrase) — is the words' own ink and weight, told apart only by its
+ * underline, which thickens under the pointer: a Denim link inside a marigold
+ * band would be a second voice in a one-hue exchange.
+ *
+ * Elements: none; a glyph leads the words as an icon does.
+ * Variants: data-verso-door  the link closes a run of words, and takes their
+ *                            ink and type
+ */
+
+.verso-link {
+  text-decoration-line: underline;
+  text-underline-offset: 2px;
+  transition-property: color, text-decoration-color;
+}
+.verso-link:hover {
+  text-decoration-thickness: 2px;
+}
+.verso-link:focus-visible {
+  outline: 2px solid var(--color-denim);
+  outline-offset: 2px;
+}
+
+.verso-link:not([data-verso-door]) {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--spacing) * 1.5);
+  color: var(--color-denim);
+  @apply type-field-label;
+}
+.verso-link:not([data-verso-door]):hover {
+  color: var(--color-denim-deep);
+}

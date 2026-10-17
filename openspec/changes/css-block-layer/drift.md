@@ -97,3 +97,11 @@ The rail's 5px square stays as it is until the rail converts.
 | traffic endpoint chips (firewall rules) | ~60 | mono 16/400, tabular figures | the chip role's verbatim form, 14/500, no tabular figures (an address is not a count); 3px narrower |
 | a tag's or a pill's glyph | | Faint whatever the tone (tags), the words' ink (pills) | the tone's glyph ink, Faint when neutral |
 | a toned chip's words | | each site's own class list | one `data-verso-tone` per chip |
+
+### `link`
+
+| Copies | n | Difference | Became |
+|---|---|---|---|
+| a notice's door | 3 | an unbreakable box (inline-flex) in the words' ink by a rule reaching in from the notice | a door the shell marks: inline words in their own ink, wrapping as the sentence does |
+| the "router didn't answer" retry | 1 | 600 weight, Ink under the pointer | a door: the band's words' weight and ink, its underline thickening |
+| row links and phrase links | | their own underline and focus utilities | the link block's door |

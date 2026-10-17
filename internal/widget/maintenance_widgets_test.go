@@ -51,9 +51,11 @@ func TestACalloutCarriesTheActsThatResolveIt(t *testing.T) {
 		t.Error("an act inside a band is not coloured from it")
 	}
 	// A door in the band's words is the words' own ink, told apart only by its
-	// underline: denim inside a marigold band would be a second voice.
-	if !strings.Contains(string(css), "[data-verso-callout] p a {\n    color: inherit;\n    font-weight: inherit;") {
-		t.Error("a link in a band's words does not take the band's ink")
+	// underline: denim inside a marigold band would be a second voice. The
+	// shell marks it a door, and the link block keeps its colour off it.
+	got := render(t, newRenderer(t), &Callout{Variant: "warning", Body: "Reachable.", Link: &Link{Label: "Open Firewall", Href: "/x"}})
+	if !strings.Contains(got, `class="verso-link" data-verso-door`) {
+		t.Errorf("a link in a band's words is not its door:\n%s", got)
 	}
 }
 

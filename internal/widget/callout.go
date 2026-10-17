@@ -53,10 +53,12 @@ func (c *Callout) renderInto(r *Renderer, out io.Writer, _ string) error {
 	}
 	var link template.HTML
 	if c.Link != nil {
-		var err error
-		if link, err = render(c.Link); err != nil {
+		// The link closes the notice's words: a door, in the words' own ink.
+		var buf bytes.Buffer
+		if err := c.Link.renderDoor(r, &buf); err != nil {
 			return err
 		}
+		link = template.HTML(buf.String()) //nolint:gosec // rendered by the shell's own templates
 	}
 	acts := make([]template.HTML, 0, len(c.Acts))
 	for i := range c.Acts {

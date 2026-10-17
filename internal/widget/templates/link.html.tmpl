@@ -47,5 +47,5 @@
 <a href="{{.Href}}" class="{{template "verso-btn-box"}} border {{template "verso-btn-secondary"}} focus-visible:outline-denim">{{template "verso-link-face" .}}</a>
 {{end}}
 {{else}}
-<a href="{{.Href}}"{{if .NewTab}} target="_blank" rel="noopener noreferrer"{{end}} class="inline-flex items-center gap-1.5 text-sm font-medium text-denim underline underline-offset-2 transition-colors hover:text-denim-deep">{{template "verso-link-face" .}}</a>
+<a href="{{.Href}}" class="verso-link"{{if .Door}} data-verso-door{{end}}{{if .NewTab}} target="_blank" rel="noopener noreferrer"{{end}}>{{template "verso-link-face" .}}</a>
 {{end}}

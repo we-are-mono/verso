@@ -218,7 +218,7 @@
      itself, so it says which (verso-page.js). */}}
 <template data-verso-unanswered><div class="{{template "verso-flash-class" "danger"}}" data-verso-flash-variant="danger">
   {{template "verso-message-mark" "danger"}}
-  <span>{{ t "The router didn't answer." }} <a href="" class="font-semibold underline underline-offset-2 hover:text-ink">{{ t "Reload to reconnect." }}</a></span>
+  <span>{{ t "The router didn't answer." }} <a href="" class="verso-link" data-verso-door>{{ t "Reload to reconnect." }}</a></span>
 </div></template>
 {{/* The refusal navigator: while settings on the page stand refused, how many,
      and the way to the next one. It pins itself under the bar, centred over
