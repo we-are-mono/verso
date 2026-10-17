@@ -21,14 +21,7 @@ func (*NativeBackend) WirelessState(_ context.Context, sid string) (json.RawMess
 		return nil, err
 	}
 	defer c.Close()
-	if ok, err := probeAccess(c, sid, "ubus", "network.wireless", "status"); err != nil || !ok {
-		return nil, ErrAccessDenied
-	}
-	id, err := c.Lookup("network.wireless")
-	if err != nil {
-		return nil, err
-	}
-	status, err := c.Invoke(id, "status")
+	status, err := checkedOn(c, sid, "network.wireless", "status", nil)
 	if err != nil {
 		return nil, err
 	}

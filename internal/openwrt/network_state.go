@@ -28,14 +28,7 @@ func (*NativeBackend) NetworkState(_ context.Context, sid string) (json.RawMessa
 		return nil, err
 	}
 	defer c.Close()
-	if ok, err := probeAccess(c, sid, "ubus", "network.device", "status"); err != nil || !ok {
-		return nil, ErrAccessDenied
-	}
-	id, err := c.Lookup("network.device")
-	if err != nil {
-		return nil, err
-	}
-	devices, err := c.Invoke(id, "status")
+	devices, err := checkedOn(c, sid, "network.device", "status", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -48,12 +41,8 @@ func (*NativeBackend) NetworkState(_ context.Context, sid string) (json.RawMessa
 	if routes, err := liveRoutes(); err == nil {
 		state["routes"] = routes
 	}
-	if ok, err := probeAccess(c, sid, "ubus", "network", "get_proto_handlers"); err == nil && ok {
-		if id, err := c.Lookup("network"); err == nil {
-			if protocols, err := c.Invoke(id, "get_proto_handlers"); err == nil {
-				state["protocols"] = protocols
-			}
-		}
+	if protocols, err := checkedOn(c, sid, "network", "get_proto_handlers", nil); err == nil {
+		state["protocols"] = protocols
 	}
 	return json.Marshal(state)
 }

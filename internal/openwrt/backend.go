@@ -1402,6 +1402,12 @@ func callChecked(socket, sid, object, method string, args map[string]any) (map[s
 		return nil, err
 	}
 	defer c.Close()
+	return checkedOn(c, sid, object, method, args)
+}
+
+// checkedOn is callChecked over a connection the caller holds, for a read
+// that asks more of the same connection afterwards.
+func checkedOn(c *ubus.Client, sid, object, method string, args map[string]any) (map[string]any, error) {
 	if ok, err := probeAccess(c, sid, "ubus", object, method); err != nil || !ok {
 		return nil, ErrAccessDenied
 	}
@@ -1593,14 +1599,7 @@ func (*NativeBackend) RCList(_ context.Context, sid string) (map[string]RCState,
 	}
 	defer c.Close()
 
-	if ok, err := probeAccess(c, sid, "ubus", "rc", "list"); err != nil || !ok {
-		return nil, ErrAccessDenied
-	}
-	id, err := c.Lookup("rc")
-	if err != nil {
-		return nil, err
-	}
-	res, err := c.InvokeTable(id, "list", map[string]any{"skip_running_check": true})
+	res, err := checkedOn(c, sid, "rc", "list", map[string]any{"skip_running_check": true})
 	if err != nil {
 		return nil, err
 	}
@@ -1619,12 +1618,8 @@ func (*NativeBackend) RCList(_ context.Context, sid string) (map[string]RCState,
 	}
 
 	details := map[string]serviceDetail{}
-	if ok, _ := probeAccess(c, sid, "ubus", "service", "list"); ok {
-		if serviceID, lookupErr := c.Lookup("service"); lookupErr == nil {
-			if serviceRes, invokeErr := c.Invoke(serviceID, "list"); invokeErr == nil {
-				details = parseServiceDetails(serviceRes)
-			}
-		}
+	if serviceRes, err := checkedOn(c, sid, "service", "list", nil); err == nil {
+		details = parseServiceDetails(serviceRes)
 	}
 	enrichRCStates(out, details, os.ReadFile, livePIDs())
 	return out, nil
