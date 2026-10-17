@@ -189,12 +189,16 @@ The Cooling card SHALL be one table with the columns Fan, Source, Speed, Duty an
 - **THEN** its Speed reads "—" and its Status reads Not connected, in the muted tone
 
 ### Requirement: Each SFP module is a card
-Each SFP cage that holds a module SHALL have a card of its own, titled "SFP+ module" with the cage's name as a chip in the card's header. The modules' cards stand side by side where the page has room for two columns, and stack where it has not. Its facts are one list: the link verdict, transmit and receive power (dBm, then the raw power), temperature, supply and laser bias.
+Each SFP cage that holds a module SHALL have a card of its own, titled "SFP+ module" with the cage's name as a chip in the card's header. The modules' cards stand side by side where the page has room for two columns, and stack where it has not. Its facts are one list: the link verdict, transmit and receive power (dBm, then the raw power), temperature, supply and laser bias. The link verdict is the module's own: "No signal" when it raises its receive low alarm, else when its receive power is under its own low alarm threshold; only a module that states neither is held to a fixed floor of −20 dBm, since receivers differ by the module (a GPON ONU hears down to about −28 dBm).
 
 #### Scenario: Two modules
 - **WHEN** cages `xfi0` and `xfi1` hold modules
 - **THEN** the page shows two cards, "SFP+ module `xfi0`" and "SFP+ module `xfi1`"
 
 #### Scenario: A dark receiver
-- **WHEN** the `xfi1` module's receive power is under its light floor
+- **WHEN** the `xfi1` module raises its receive low alarm
 - **THEN** its Link reads "No signal" in the warning tone and its Receive reads its dBm and "no light"
+
+#### Scenario: A GPON stick on a weak but working fiber
+- **WHEN** the `xfi1` module, a GPON ONU, receives 3 µW (−25 dBm) with its own low alarm at 1 µW and its alarm clear
+- **THEN** its Link reads "Receiving light"

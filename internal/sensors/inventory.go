@@ -412,12 +412,24 @@ func fiberFrom(h Hwmon) FiberModule {
 		f.RxMicroW, f.HasRx = uw, true
 		f.RxMin, _ = readInt64OK(filepath.Join(h.Dir, chanAttr("power", 2, "min")))
 		f.RxMax, _ = readInt64OK(filepath.Join(h.Dir, chanAttr("power", 2, "max")))
-		// Receive power under a receiver-sensitivity floor (~−20 dBm) is loss of
-		// signal — the honest verdict a cage gives from its own DOM, without
-		// asking the interface its link speed.
-		f.RxHasLight = uw >= rxLightFloorMicroW
+		f.RxHasLight = rxHasLight(h.Dir, uw)
 	}
 	return f
+}
+
+// rxHasLight is the loss-of-signal verdict, by the module's own word where it
+// gives it: its receive low alarm where it raises one, else its power against
+// its own low alarm threshold. Receivers differ by the module (a GPON ONU
+// hears down to −28 dBm, a 10G SR receiver to about −14), so only a module
+// that states neither is held to a fixed floor.
+func rxHasLight(dir string, uw int64) bool {
+	if alarm, ok := readIntOK(filepath.Join(dir, chanAttr("power", 2, "lcrit_alarm"))); ok {
+		return alarm == 0
+	}
+	if floor, ok := readInt64OK(filepath.Join(dir, chanAttr("power", 2, "lcrit"))); ok && floor > 0 {
+		return uw >= floor
+	}
+	return uw >= rxLightFloorMicroW
 }
 
 // rxLightFloorMicroW is ~−20 dBm — under it a 10G receiver has no usable signal.

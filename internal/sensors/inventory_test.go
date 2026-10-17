@@ -92,14 +92,15 @@ func buildDK(t *testing.T) *Reader {
 		write(t, filepath.Join(d, "curr1_input"), itoa(rl.ma))
 	}
 
-	// Two SFP+ cages: ISA hwmon, no of_node, matched by name. xfi0 has light, xfi1
-	// is below the receive floor (no signal).
+	// Two SFP+ cages: ISA hwmon, no of_node, matched by name. xfi0 is a 10G
+	// module; xfi1 is the ISP's GPON stick, whose 3 µW (−25 dBm) is weak for
+	// a 10G receiver but above its own low alarm of 1 µW, its alarm clear.
 	x0 := chip(t, root, 20, "sfp_xfi0", "", "")
 	writeSFP(t, x0, sfpVals{temp: 47200, tmax: 73000, tcrit: 78000, vcc: 3300, vmin: 3000, vmax: 3600,
-		bias: 9, bmax: 10, tx: 542, txmin: 200, txmax: 794, rx: 412, rxmin: 16, rxmax: 794})
+		bias: 9, bmax: 10, tx: 542, txmin: 200, txmax: 794, rx: 412, rxmin: 16, rxmax: 794, rxlcrit: 10, rxalarm: "0"})
 	x1 := chip(t, root, 21, "sfp_xfi1", "", "")
 	writeSFP(t, x1, sfpVals{temp: 54600, tmax: 90000, tcrit: 95000, vcc: 3260, vmin: 3100, vmax: 3500,
-		bias: 20, bmax: 70, tx: 2150, txmin: 708, txmax: 5010, rx: 3, rxmin: 1, rxmax: 251})
+		bias: 20, bmax: 70, tx: 2150, txmin: 708, txmax: 5010, rx: 3, rxmin: 1, rxmax: 251, rxlcrit: 1, rxalarm: "0"})
 
 	return &Reader{Root: filepath.Join(root, "sys")}
 }
@@ -229,8 +230,8 @@ func TestResolveAllFibers(t *testing.T) {
 	if !x0.RxHasLight {
 		t.Fatal("xfi0 receives light and should read as linked")
 	}
-	if x1.RxHasLight {
-		t.Fatal("xfi1 is below the receive floor and should read as no signal")
+	if !x1.RxHasLight {
+		t.Fatal("xfi1 is above its own low alarm, its alarm clear, and should read as receiving light")
 	}
 	if x0.TxMicroW != 542 || x0.RxMicroW != 412 || x0.VccMilliV != 3300 || x0.BiasMilliA != 9 {
 		t.Fatalf("xfi0 DOM: %+v", x0)
@@ -427,6 +428,8 @@ type sfpVals struct {
 	bias, bmax        int
 	tx, txmin, txmax  int
 	rx, rxmin, rxmax  int
+	rxlcrit           int    // the module's own receive low alarm threshold; 0 writes none
+	rxalarm           string // its receive low alarm flag; "" writes none
 }
 
 func writeSFP(t *testing.T, dir string, v sfpVals) {
@@ -446,6 +449,41 @@ func writeSFP(t *testing.T, dir string, v sfpVals) {
 	write(t, filepath.Join(dir, "power2_input"), itoa(v.rx))
 	write(t, filepath.Join(dir, "power2_min"), itoa(v.rxmin))
 	write(t, filepath.Join(dir, "power2_max"), itoa(v.rxmax))
+	if v.rxlcrit != 0 {
+		write(t, filepath.Join(dir, "power2_lcrit"), itoa(v.rxlcrit))
+	}
+	if v.rxalarm != "" {
+		write(t, filepath.Join(dir, "power2_lcrit_alarm"), v.rxalarm)
+	}
+}
+
+// A module says by its own word whether it receives light: its receive low
+// alarm where it raises one, else its power against its own low alarm
+// threshold; only a module that states neither is held to a 10G receiver's
+// floor (~−20 dBm).
+func TestAModuleJudgesItsOwnSignal(t *testing.T) {
+	for _, c := range []struct {
+		name    string
+		rx      int
+		lcrit   int
+		alarm   string
+		hasLink bool
+	}{
+		{"a GPON stick at −25 dBm, its alarm clear", 3, 1, "0", true},
+		{"its alarm raised", 300, 1, "1", false},
+		{"no alarm flag, under its own threshold", 3, 10, "", false},
+		{"no alarm flag, over its own threshold", 3, 1, "", true},
+		{"no word of its own, under the floor", 3, 0, "", false},
+		{"no word of its own, over the floor", 412, 0, "", true},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			dir := t.TempDir()
+			writeSFP(t, dir, sfpVals{rx: c.rx, rxlcrit: c.lcrit, rxalarm: c.alarm})
+			if got := fiberFrom(Hwmon{Dir: dir, Name: "sfp_xfi1"}).RxHasLight; got != c.hasLink {
+				t.Errorf("RxHasLight = %v, want %v", got, c.hasLink)
+			}
+		})
+	}
 }
 
 func findTemp(ts []TempReading, pred func(TempReading) bool) *TempReading {
