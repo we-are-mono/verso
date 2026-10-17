@@ -1,0 +1,185 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/* SPDX-FileCopyrightText: 2026 Mono Technologies Inc. */
+
+/*
+ * button — every button and button-shaped link. One height for the whole app
+ * (the control's 32px and its bottom border's pixel), the app's radius, a 1px
+ * border on every style, including the ones that draw it transparent, so a
+ * button beside a field or another button lines up without anyone adjusting
+ * it. Its words take the button role; a glyph leads them 6px off, the
+ * component's own step.
+ *
+ * Variants: data-verso-style    primary (the default) · secondary, the quiet
+ *                               bordered act · danger, the destructive act ·
+ *                               caution, the act a caution confirm asks for:
+ *                               white on the deep marigold, since white on full
+ *                               marigold fails the 4.5 floor, darkening by a
+ *                               tenth under the pointer · quiet, an act with no
+ *                               border at rest (a set's "+ Add file", the
+ *                               descriptions' fold) · danger-wash and
+ *                               caution-wash, a confirm's trigger: the act's
+ *                               name on its tone's wash and hairline, in the
+ *                               deep step, the hairline full chroma under the
+ *                               pointer
+ *           data-verso-size     act: an act on a part of a section, 28px, in
+ *                               the secondary dress with an act's words ·
+ *                               icon: a glyph-only act, a 28px square in Glyph
+ *                               on no border · glyph: the same look at the size
+ *                               of its place (a field's 20px remove glyph)
+ *           data-verso-glyph    an act led by a glyph: 8px before it, 10px
+ *                               after the words
+ *           data-verso-standby  a primary with nothing to act on yet (a form's
+ *                               Save before anything changed): while disabled
+ *                               it rests in sand, and takes Denim the moment
+ *                               it is spoken for
+ *           data-verso-busy     an act in flight: one look whatever its style,
+ *                               sand ground, strong hairline, Glyph words, on
+ *                               the same footprint, the waiting mark 10px
+ *                               from its words
+ */
+
+.verso-button {
+  --verso-button-edge: var(--color-denim);
+  --verso-button-ground: var(--color-denim);
+  --verso-button-ink: var(--color-on-fill);
+  --verso-button-ring: var(--color-denim-deep);
+  display: inline-flex;
+  height: var(--spacing-control);
+  align-items: center;
+  justify-content: center;
+  gap: calc(var(--spacing) * 1.5);
+  padding-inline: calc(var(--spacing) * 4);
+  border: 1px solid var(--verso-button-edge);
+  border-radius: var(--radius-xs);
+  background-color: var(--verso-button-ground);
+  color: var(--verso-button-ink);
+  white-space: nowrap;
+  cursor: pointer;
+  transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, filter;
+}
+/* A control-height button gives its bottom border's pixel back, as every 33px
+   control does, so what follows it starts on a line of the grid. */
+.verso-button:not([data-verso-size]) {
+  margin-bottom: -1px;
+  @apply type-button;
+}
+.verso-button:focus-visible {
+  outline: 2px solid var(--verso-button-ring);
+  outline-offset: 2px;
+}
+.verso-button:not(:disabled, [aria-disabled="true"], [aria-busy="true"]):active {
+  box-shadow: none;
+  @media (prefers-reduced-motion: no-preference) {
+    translate: 0 1px;
+  }
+}
+.verso-button:not(:disabled, [aria-disabled="true"]):hover {
+  --verso-button-edge: var(--color-denim-deep);
+  --verso-button-ground: var(--color-denim-deep);
+}
+
+.verso-button[data-verso-style="secondary"],
+.verso-button:is([data-verso-size="act"], [data-verso-size="icon"], [data-verso-size="glyph"]) {
+  --verso-button-edge: var(--color-rule-strong);
+  --verso-button-ground: transparent;
+  --verso-button-ink: var(--color-meta);
+  --verso-button-ring: var(--color-denim);
+}
+.verso-button:is([data-verso-style="secondary"], [data-verso-size="act"], [data-verso-size="icon"], [data-verso-size="glyph"]):not(:disabled, [aria-disabled="true"]):hover {
+  --verso-button-edge: var(--color-sand-5);
+  --verso-button-ground: var(--color-rule);
+  --verso-button-ink: var(--color-ink);
+}
+
+.verso-button[data-verso-style="danger"] {
+  --verso-button-edge: var(--color-crimson);
+  --verso-button-ground: var(--color-crimson);
+  --verso-button-ring: var(--color-crimson-deep);
+}
+.verso-button[data-verso-style="danger"]:not(:disabled, [aria-disabled="true"]):hover {
+  --verso-button-edge: var(--color-crimson-deep);
+  --verso-button-ground: var(--color-crimson-deep);
+}
+
+.verso-button[data-verso-style="caution"] {
+  --verso-button-edge: var(--color-marigold-deep);
+  --verso-button-ground: var(--color-marigold-deep);
+  --verso-button-ring: var(--color-marigold-deep);
+}
+.verso-button[data-verso-style="caution"]:not(:disabled, [aria-disabled="true"]):hover {
+  --verso-button-edge: var(--color-marigold-deep);
+  --verso-button-ground: var(--color-marigold-deep);
+  filter: brightness(0.9);
+}
+
+.verso-button[data-verso-size="act"] {
+  height: calc(var(--spacing) * 7);
+  flex-shrink: 0;
+  padding-inline: calc(var(--spacing) * 2.5);
+  @apply type-field-label;
+}
+.verso-button[data-verso-size="act"][data-verso-glyph] {
+  padding-left: calc(var(--spacing) * 2);
+}
+.verso-button:is([data-verso-size="act"], [data-verso-size="icon"], [data-verso-size="glyph"]):focus-visible {
+  outline-offset: -2px;
+}
+.verso-button[data-verso-style="danger-wash"] {
+  --verso-button-edge: var(--color-crimson-line);
+  --verso-button-ground: var(--color-crimson-soft);
+  --verso-button-ink: var(--color-crimson-deep);
+  --verso-button-ring: var(--color-crimson-deep);
+}
+.verso-button[data-verso-style="danger-wash"]:not(:disabled, [aria-disabled="true"]):hover {
+  --verso-button-edge: var(--color-crimson);
+  --verso-button-ground: var(--color-crimson-soft);
+}
+.verso-button[data-verso-style="caution-wash"] {
+  --verso-button-edge: var(--color-marigold-line);
+  --verso-button-ground: var(--color-marigold-soft);
+  --verso-button-ink: var(--color-marigold-deep);
+  --verso-button-ring: var(--color-marigold-deep);
+}
+.verso-button[data-verso-style="caution-wash"]:not(:disabled, [aria-disabled="true"]):hover {
+  --verso-button-edge: var(--color-marigold);
+  --verso-button-ground: var(--color-marigold-soft);
+}
+
+.verso-button[data-verso-style="quiet"] {
+  --verso-button-edge: transparent;
+}
+.verso-button:is([data-verso-size="icon"], [data-verso-size="glyph"]) {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  padding: 0;
+  --verso-button-edge: transparent;
+  --verso-button-ink: var(--color-glyph);
+}
+.verso-button[data-verso-size="icon"] {
+  width: calc(var(--spacing) * 7);
+  height: calc(var(--spacing) * 7);
+}
+.verso-button[data-verso-size="glyph"] {
+  height: auto;
+}
+
+.verso-button[data-verso-standby]:disabled {
+  cursor: default;
+  --verso-button-edge: var(--color-rule-strong);
+  --verso-button-ground: var(--color-quiet);
+  --verso-button-ink: var(--color-meta);
+}
+
+.verso-button:disabled:not([data-verso-busy], [data-verso-standby]) {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+.verso-button[data-verso-busy] {
+  pointer-events: none;
+  cursor: default;
+  gap: calc(var(--spacing) * 2.5);
+  --verso-button-edge: var(--color-rule-strong);
+  --verso-button-ground: var(--color-quiet);
+  --verso-button-ink: var(--color-glyph);
+}

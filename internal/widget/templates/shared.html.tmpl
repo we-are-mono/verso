@@ -7,37 +7,9 @@
      drift apart; a widget's own template keeps only its layout. The class
      strings stay in template files (not Go) so Tailwind's scanner keeps them. */}}
 
-{{/* Native buttons get their press affordance from input.css automatically.
-     This marker includes button-styled links in the same rule. */}}
-{{define "verso-press"}}verso-press{{end}}
-
-{{/* verso-btn-box: the shape every button and button-shaped link takes — one
-     height for the whole app, the app's radius, and the padding that goes with
-     them. A button set beside a field then ends exactly where the field does,
-     because both are 36px and both carry a 1px border. Colour comes from the
-     chains below; this says nothing about colour. */}}
-{{define "verso-btn-box"}}inline-flex h-control cursor-pointer items-center justify-center gap-1.5 rounded-xs px-4 text-sm font-semibold whitespace-nowrap focus-visible:outline-2 focus-visible:outline-offset-2{{end}}
-
-{{/* verso-btn-primary: the primary action's colour + interaction chain. The
-     call site owns layout (flex, gap, padding, radius, focus treatment). */}}
-{{define "verso-btn-primary"}}border border-denim bg-denim text-on-fill transition-colors hover:border-denim-deep hover:bg-denim-deep {{template "verso-press"}}{{end}}
-
-{{/* verso-btn-waiting: a primary that has nothing to act on yet — a settings
-     form's Save before anything in it changed. It rests in sand, as a control
-     that is there but not yet spoken for, and takes denim the moment it is. */}}
-{{define "verso-btn-waiting"}}disabled:cursor-default disabled:border-rule-strong disabled:bg-quiet disabled:text-meta{{end}}
-
-{{/* verso-btn-secondary: the quiet bordered action, in the colours of the
-     subsection act: meta words on the strong hairline at rest, the hairline
-     wash, the parked border and ink words under the pointer — so every quiet
-     button answers the pointer alike, whatever its size. Layout stays at the
-     call site, as with verso-btn-primary. */}}
-{{/* verso-btn-act: an act on a part of a section — adding a key, installing
-     or fetching a certificate. The 28px quiet size, the strong hairline of a
-     secondary control at rest, warming to the hairline wash under the pointer.
-     The call site adds the inset: pl-2 pr-2.5 before a leading glyph, px-2.5
-     for words alone. */}}
-{{define "verso-btn-act"}}verso-act group/act relative inline-flex h-7 shrink-0 cursor-pointer items-center gap-1.5 rounded-xs border border-rule-strong bg-transparent text-sm font-medium whitespace-nowrap text-meta transition-colors hover:border-sand-5 hover:bg-rule hover:text-ink focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-denim {{template "verso-press"}}{{end}}
+{{/* Every button and button-shaped link is the button block
+     (blocks/button.css): class="verso-button", its dress by data-verso-style,
+     its size by data-verso-size. */}}
 
 {{/* verso-select-compact and verso-select-compact-chevron: a dropdown on a
      line of words, its 24px box the line itself, so it rides a legend or a
@@ -60,28 +32,6 @@
 {{define "verso-empty-slot-class"}}flex w-full items-center gap-3 rounded-xs border border-dashed border-rule-strong bg-quiet px-4 pt-1.75 pb-2 leading-6{{end}}
 {{define "verso-empty-slot-body"}}<span aria-hidden="true" class="verso-mark"></span>
     <p class="min-w-0 flex-1 text-sm leading-6 text-meta">{{.}}</p>{{end}}
-
-{{/* verso-btn-icon: the one dress of a glyph-only act — a table row's edit or
-     remove, a list's remove, a copy beside a value or on a code box. A 28px
-     square in Glyph on no border, taking the parked border, the hairline wash
-     and Ink under the pointer, as a subsection act does. The call site sets
-     the display (grid, or inline-grid inside a line of text) and position.
-     verso-btn-icon-look is that look without the size, for a glyph act that
-     is smaller by its place — the 20px glyph that takes a value out of a
-     field — so every glyph act answers the pointer the same way. */}}
-{{define "verso-btn-icon"}}size-7 {{template "verso-btn-icon-look"}}{{end}}
-{{define "verso-btn-icon-look"}}shrink-0 cursor-pointer place-items-center rounded-xs border border-transparent text-glyph transition-colors hover:border-sand-5 hover:bg-rule hover:text-ink focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-denim {{template "verso-press"}}{{end}}
-
-{{define "verso-btn-secondary"}}border-rule-strong bg-transparent text-meta transition-colors hover:border-sand-5 hover:bg-rule hover:text-ink {{template "verso-press"}}{{end}}
-
-{{/* verso-btn-danger: the destructive action's colour + interaction chain —
-     one red across the confirm widget and the table's confirmed row action. */}}
-{{define "verso-btn-danger"}}border border-crimson bg-crimson text-on-fill transition-colors hover:border-crimson-deep hover:bg-crimson-deep {{template "verso-press"}}{{end}}
-
-{{/* verso-btn-caution: the act a caution confirm asks for. White on full
-     marigold fails the 4.5 floor, so it is white on the deep step; the palette
-     has no step below that, so hover darkens by a tenth instead. */}}
-{{define "verso-btn-caution"}}border border-marigold-deep bg-marigold-deep text-on-fill transition-[color,background-color,border-color,filter] hover:brightness-90 {{template "verso-press"}}{{end}}
 
 {{/* verso-input-border: a form control's border, the only thing that changes
      about it — the strong hairline at rest, the faint step under the pointer,
@@ -176,9 +126,8 @@
      it is — taking a condition off a rule changes nothing on the device until the
      whole change is applied, so dressing it in crimson would promise a severity
      it does not have. The red is reserved for acts that cannot be taken back. */}}
-{{define "verso-remove-glyph-class"}}grid flex-none {{template "verso-btn-icon"}}{{end}}
 {{define "verso-row-remove"}}<button type="button" data-verso-remove-field="{{.Name}}" aria-label="{{ t "Remove" }} {{.Label}}"
-  class="group/act relative mt-1 {{template "verso-remove-glyph-class"}}">{{icon "x" "size-4"}}</button>{{end}}
+  class="verso-button group/act relative mt-1" data-verso-size="icon">{{icon "x" "size-4"}}</button>{{end}}
 
 {{/* The field's label: what the setting is called, the option it writes, and
      — on a label that carries an explanation — the help cursor and tab stop that
@@ -369,11 +318,10 @@
 
 {{/* The glyph that takes one value out. Twenty pixels, so what it takes on
      hover is a target rather than an outline of the glyph, and it answers the
-     pointer as every glyph act does (verso-btn-icon-look): the parked border,
+     pointer as every glyph act does (the button block's glyph size): the parked border,
      the hairline wash, a step darker than the chip so it shows on it, and Ink.
      It pulls 4px into the chip's right padding so it sits inside the chip's
      edge. */}}
-{{define "verso-token-chip-remove"}}grid size-5 -mr-1 flex-none {{template "verso-btn-icon-look"}}{{end}}
 
 {{/* verso-entity-drawer: the same sliding frame as a row's own drawer, with
      nothing in it. A row whose subject several plugins have a say about does not
@@ -568,10 +516,6 @@
      drawer's edges, as far from each as they stand from each other. */}}
 {{define "verso-drawer-ground"}}bg-quiet px-(--verso-drawer-gutter) pt-(--verso-drawer-gutter) pb-10{{end}}
 
-{{/* verso-act-quiet: the quiet act with its words (a set's "+ Add file",
-     the descriptions' fold): meta ink at rest (the glyph step is never
-     text), ink and the sand wash under the pointer, a 28px box. */}}
-{{define "verso-act-quiet"}}group/act relative inline-flex h-7 shrink-0 cursor-pointer items-center gap-1.5 rounded-xs border border-transparent pr-2.5 pl-2 text-sm font-medium whitespace-nowrap text-meta transition-colors hover:border-sand-5 hover:bg-rule hover:text-ink focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-denim {{template "verso-press"}}{{end}}
 {{/* verso-fold-act: the one act that folds every description on the page
      away and brings them back (form-fields), on the page's heading line and
      in every drawer's header, given its place's own classes. It holds both
@@ -579,7 +523,7 @@
      shows the act only where there is a description to fold, through a
      wrapper whose display no utility sets (verso-page.js keeps the
      state). */}}
-{{define "verso-fold-act"}}<span class="verso-fold {{.}}"><button type="button" data-verso-fold class="{{template "verso-act-quiet"}}"><span class="verso-fold-hide">{{icon "fold-vertical" "size-4"}}<span>{{t "Hide descriptions"}}</span></span><span class="verso-fold-show">{{icon "unfold-vertical" "size-4"}}<span>{{t "Show descriptions"}}</span></span></button></span>{{end}}
+{{define "verso-fold-act"}}<span class="verso-fold {{.}}"><button type="button" data-verso-fold class="verso-button group/act relative" data-verso-size="act" data-verso-style="quiet" data-verso-glyph><span class="verso-fold-hide">{{icon "fold-vertical" "size-4"}}<span>{{t "Hide descriptions"}}</span></span><span class="verso-fold-show">{{icon "unfold-vertical" "size-4"}}<span>{{t "Show descriptions"}}</span></span></button></span>{{end}}
 
 {{/* The band is 56px as the top bar is, and built the same way: its 28px
      line and 14px of air either side, the hairline drawn inside it. It is

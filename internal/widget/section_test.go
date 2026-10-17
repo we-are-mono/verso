@@ -113,7 +113,7 @@ func TestListAddHoversAsEverySecondaryButton(t *testing.T) {
 	}
 	add := got[at:]
 	add = add[:strings.Index(add, ">")]
-	if !strings.Contains(add, "hover:border-sand-5 hover:bg-rule") || strings.Contains(add, "hover:bg-quiet") {
+	if !strings.Contains(add, `class="verso-button" data-verso-style="secondary"`) || strings.Contains(add, "hover:") {
 		t.Errorf("Add hovers as every secondary button: %s", add)
 	}
 }

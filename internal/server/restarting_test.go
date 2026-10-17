@@ -81,7 +81,7 @@ func TestFactoryResetAsksForTheHostnameOnly(t *testing.T) {
 	// page's script holds shut until the box says what it shows.
 	form := section(t, reset, `action="/system/maintenance/factory-reset"`, "</form>")
 	field, button := strings.Index(form, `name="hostname"`), strings.Index(form, "Erase and start over")
-	if field < 0 || button < field || !strings.Contains(form, `placeholder="verso-lab"`) || !strings.Contains(form, "bg-crimson") {
+	if field < 0 || button < field || !strings.Contains(form, `placeholder="verso-lab"`) || !strings.Contains(form, `data-verso-style="danger"`) {
 		t.Errorf("the hostname field should show the hostname, and the danger act stand under it:\n%s", form)
 	}
 	// What the box shows is said to be the hostname, under it, so it never

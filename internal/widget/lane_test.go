@@ -78,7 +78,8 @@ func TestLaneAddSaysWhatItDoes(t *testing.T) {
 	for _, want := range []string{
 		`aria-label="Add rule to WAN → Router"`,
 		`>Add rule</span>`,
-		"h-7", "text-meta", "hover:text-ink",
+		// The button block's act size in its quiet dress, glyph first.
+		`aria-label="Add rule to WAN → Router" class="verso-button group/act relative" data-verso-size="act" data-verso-style="quiet" data-verso-glyph>`,
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("lane add missing %q:\n%s", want, got)

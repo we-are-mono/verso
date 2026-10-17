@@ -40,7 +40,7 @@
      it turns while events arrive and stands still while they are held or the
      stream is down. */}}
 {{define "actionbar.live"}}
-    <button type="button" data-verso-live title="{{t "Pause"}}" class="flex h-control shrink-0 cursor-pointer items-center gap-2 rounded-xs border px-4 text-sm font-semibold whitespace-nowrap {{template "verso-btn-secondary"}} focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim">
+    <button type="button" data-verso-live title="{{t "Pause"}}" class="verso-button shrink-0" data-verso-style="secondary">
       {{template "verso-waiting" ""}}<span data-verso-live-label>{{.Live}}</span>
     </button>
 {{end}}
@@ -51,9 +51,9 @@
          stays where it is and no page is loaded to show a form. */}}
     <span x-data="modal" class="contents">
       {{if eq .Action.Style "quiet"}}
-      <a href="{{.Action.Href}}" @click.prevent="showPanel" class="flex h-control shrink-0 cursor-pointer items-center gap-2 rounded-xs border px-4 text-sm font-semibold whitespace-nowrap {{template "verso-btn-secondary"}}">{{.Action.Label}}</a>
+      <a href="{{.Action.Href}}" @click.prevent="showPanel" class="verso-button shrink-0" data-verso-style="secondary">{{.Action.Label}}</a>
       {{else}}
-      <a href="{{.Action.Href}}" @click.prevent="showPanel" class="flex h-control shrink-0 cursor-pointer items-center gap-2 rounded-xs border border-denim bg-denim px-4 text-sm font-semibold whitespace-nowrap text-on-fill transition-colors hover:border-denim-deep hover:bg-denim-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim-deep {{template "verso-press"}}">{{template "actionbar.primary-glyph" .Action}}{{.Action.Label}}</a>
+      <a href="{{.Action.Href}}" @click.prevent="showPanel" class="verso-button shrink-0">{{template "actionbar.primary-glyph" .Action}}{{.Action.Label}}</a>
       {{end}}
       {{template "verso-drawer-fetched" ""}}
     </span>
@@ -64,23 +64,23 @@
          with the panel already open; the anchor underneath is what a browser
          with no script still follows. */}}
     <span x-data="modal"{{if .Open}} data-open="true"{{end}}{{if .Panel.Closed}} data-closed-href="{{.Panel.Closed}}"{{end}} class="contents">
-      <a href="{{.Action.Href}}" @click.prevent="show" class="flex h-control shrink-0 cursor-pointer items-center gap-2 rounded-xs border border-denim bg-denim px-4 text-sm font-semibold whitespace-nowrap text-on-fill transition-colors hover:border-denim-deep hover:bg-denim-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim-deep {{template "verso-press"}}">{{template "actionbar.primary-glyph" .Action}}{{.Action.Label}}</a>
+      <a href="{{.Action.Href}}" @click.prevent="show" class="verso-button shrink-0">{{template "actionbar.primary-glyph" .Action}}{{.Action.Label}}</a>
       {{template "verso-drawer-panel" .Panel}}
     </span>
     {{else if .Entity}}
     {{/* Making one is editing one that does not exist yet, so it opens the same
          panel rather than a page of its own. */}}
     <span x-data="modal" class="contents">
-      <button type="button" @click="show" class="flex h-control shrink-0 cursor-pointer items-center gap-2 rounded-xs border border-denim bg-denim px-4 text-sm font-semibold whitespace-nowrap text-on-fill transition-colors hover:border-denim-deep hover:bg-denim-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim-deep {{template "verso-press"}}">{{template "actionbar.primary-glyph" .Action}}{{.Action.Label}}</button>
+      <button type="button" @click="show" class="verso-button shrink-0">{{template "actionbar.primary-glyph" .Action}}{{.Action.Label}}</button>
       {{template "verso-entity-drawer" .}}
     </span>
     {{else if .Action.Quiet}}
     {{/* An act that takes something away from the page rather than leading
          somewhere sits with the bar's other controls and wears their weight:
          the filled colour is reserved for the one thing the listing is for. */}}
-    <a href="{{.Action.Href}}" class="flex h-control shrink-0 items-center gap-2 rounded-xs border px-4 text-sm font-semibold whitespace-nowrap {{template "verso-btn-secondary"}} focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim">{{if or (eq .Action.Icon "download") (eq .Action.Icon "upload") (eq .Action.Icon "external-link") (eq .Action.Icon "plus")}}{{icon .Action.Icon "size-4"}}{{end}}{{.Action.Label}}</a>
+    <a href="{{.Action.Href}}" class="verso-button shrink-0" data-verso-style="secondary">{{if or (eq .Action.Icon "download") (eq .Action.Icon "upload") (eq .Action.Icon "external-link") (eq .Action.Icon "plus")}}{{icon .Action.Icon "size-4"}}{{end}}{{.Action.Label}}</a>
     {{else}}
-    <a href="{{.Action.Href}}" class="flex h-control shrink-0 items-center gap-2 rounded-xs border border-denim bg-denim px-4 text-sm font-semibold whitespace-nowrap text-on-fill transition-colors hover:border-denim-deep hover:bg-denim-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim-deep {{template "verso-press"}}">{{template "actionbar.primary-glyph" .Action}}{{.Action.Label}}</a>
+    <a href="{{.Action.Href}}" class="verso-button shrink-0">{{template "actionbar.primary-glyph" .Action}}{{.Action.Label}}</a>
     {{end}}
     {{end}}
 {{end}}

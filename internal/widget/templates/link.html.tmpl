@@ -9,7 +9,7 @@
 {{/* a link wearing a button's clothes is the same button: one height, one radius,
      one border — stated in the same place the form's own buttons take theirs. */}}
 {{if eq .Style "button"}}
-<a href="{{.Href}}" class="{{template "verso-btn-box"}} {{template "verso-btn-primary"}} focus-visible:outline-denim-deep">{{template "verso-link-face" .}}</a>
+<a href="{{.Href}}" class="verso-button">{{template "verso-link-face" .}}</a>
 {{else if eq .Style "rail"}}
 {{/* One place on this page, in the list of them. It is a block so a run of them
      is a column, and it carries its own left hairline so the run draws one
@@ -32,19 +32,19 @@
      that makes or replaces the thing it stands under opens its form in a drawer
      over the page, which keeps its address. */}}
 {{if .Panel}}<span x-data="modal" class="contents">
-<a href="{{.Href}}" @click.prevent="showPanel" data-verso-panel-chrome class="{{template "verso-btn-act"}} {{if .Icon}}pl-2 pr-2.5{{else}}px-2.5{{end}}">{{template "verso-link-face" .}}</a>
+<a href="{{.Href}}" @click.prevent="showPanel" data-verso-panel-chrome class="verso-button group/act relative" data-verso-size="act"{{if .Icon}} data-verso-glyph{{end}}>{{template "verso-link-face" .}}</a>
 {{template "verso-drawer-fetched" ""}}</span>
 {{else}}
-<a href="{{.Href}}" class="{{template "verso-btn-act"}} {{if .Icon}}pl-2 pr-2.5{{else}}px-2.5{{end}}">{{template "verso-link-face" .}}</a>
+<a href="{{.Href}}" class="verso-button group/act relative" data-verso-size="act"{{if .Icon}} data-verso-glyph{{end}}>{{template "verso-link-face" .}}</a>
 {{end}}
 {{else if eq .Style "secondary"}}
 {{/* A secondary act may open its destination in a drawer over the page, as
      an act does (a package installed where its need is). */}}
 {{if .Panel}}<span x-data="modal" class="contents">
-<a href="{{.Href}}" @click.prevent="showPanel" data-verso-panel-chrome class="{{template "verso-btn-box"}} border {{template "verso-btn-secondary"}} focus-visible:outline-denim">{{template "verso-link-face" .}}</a>
+<a href="{{.Href}}" @click.prevent="showPanel" data-verso-panel-chrome class="verso-button" data-verso-style="secondary">{{template "verso-link-face" .}}</a>
 {{template "verso-drawer-fetched" ""}}</span>
 {{else}}
-<a href="{{.Href}}" class="{{template "verso-btn-box"}} border {{template "verso-btn-secondary"}} focus-visible:outline-denim">{{template "verso-link-face" .}}</a>
+<a href="{{.Href}}" class="verso-button" data-verso-style="secondary">{{template "verso-link-face" .}}</a>
 {{end}}
 {{else}}
 <a href="{{.Href}}" class="verso-link"{{if .Door}} data-verso-door{{end}}{{if .NewTab}} target="_blank" rel="noopener noreferrer"{{end}}>{{template "verso-link-face" .}}</a>

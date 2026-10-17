@@ -94,7 +94,7 @@ func TestACalloutCarriesTheMachinesWords(t *testing.T) {
 // the router) wears the danger act rather than the primary.
 func TestAFormsActCanBeTheDangerAct(t *testing.T) {
 	got := render(t, newRenderer(t), &Form{Action: "/system/maintenance/factory-reset", Submit: "Erase and start over", Tone: ToneDanger})
-	if !strings.Contains(got, "bg-crimson") || strings.Contains(got, "bg-denim") {
+	if !strings.Contains(got, `class="verso-button" data-verso-style="danger"`) || strings.Contains(got, `class="verso-button">`) {
 		t.Errorf("the destroying act is not the danger act:\n%s", got)
 	}
 }

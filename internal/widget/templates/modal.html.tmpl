@@ -43,7 +43,7 @@
   </button>
   {{else}}
   <button type="button" @click="show"
-    class="{{template "verso-btn-box"}} {{if eq .TriggerStyle "secondary"}}border {{template "verso-btn-secondary"}} focus-visible:outline-denim{{else}}{{template "verso-btn-primary"}} focus-visible:outline-denim-deep{{end}}">
+    class="verso-button"{{if eq .TriggerStyle "secondary"}} data-verso-style="secondary"{{end}}>
     {{if .TriggerIcon}}{{icon .TriggerIcon "size-4"}}{{end}}{{.Trigger}}
   </button>
   {{end}}

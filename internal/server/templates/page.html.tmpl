@@ -188,7 +188,7 @@
         {{if .Target}}<span aria-hidden="true" class="hidden xl:inline">·</span><span class="verso-colophon-fact hidden min-w-0 truncate [--fact:2] xl:inline">{{.Target}}</span>{{end}}
       </p>
       <span class="verso-colophon-fact min-w-0 truncate [--fact:3]">Verso {{.Verso}}</span>
-      <button type="button" @click="run" :data-copy-failed="failed" aria-label="{{ t "Copy for a bug report" }}" class="group/copy relative grid {{template "verso-btn-icon"}}">
+      <button type="button" @click="run" :data-copy-failed="failed" aria-label="{{ t "Copy for a bug report" }}" class="verso-button group/copy relative" data-verso-size="icon">
         <span x-ref="src" class="hidden">{{.Report}}</span>
         <span x-show="idle">{{icon "copy" "size-4"}}</span>
         <span x-show="done" x-cloak class="text-green">{{icon "check" "size-4"}}</span>
@@ -252,11 +252,11 @@
     </h2>
     <p id="verso-session-ending-body" class="mt-2 text-sm leading-[1.45] text-body text-pretty"><span data-verso-session-capped hidden>{{ t "Sessions last at most 12 hours." }} </span>{{ t "Staged changes are kept. Anything typed but not saved will be lost." }}</p>
     <div class="mt-6 flex items-center gap-2 border-t border-rule pt-6">
-      <button type="button" data-verso-session-stay data-verso-session-extendable class="{{template "verso-btn-box"}} {{template "verso-btn-primary"}} focus-visible:outline-denim-deep">{{ t "Stay signed in" }}</button>
-      <button type="button" data-verso-session-dismiss data-verso-session-capped hidden class="{{template "verso-btn-box"}} {{template "verso-btn-primary"}} focus-visible:outline-denim-deep">{{ t "Keep working" }}</button>
+      <button type="button" data-verso-session-stay data-verso-session-extendable class="verso-button">{{ t "Stay signed in" }}</button>
+      <button type="button" data-verso-session-dismiss data-verso-session-capped hidden class="verso-button">{{ t "Keep working" }}</button>
       <form method="post" action="/logout" class="flex">
         <input type="hidden" name="_csrf" value="{{.CSRFToken}}">
-        <button type="submit" class="{{template "verso-btn-box"}} border {{template "verso-btn-secondary"}} focus-visible:outline-denim">{{ t "Sign out" }}</button>
+        <button type="submit" class="verso-button" data-verso-style="secondary">{{ t "Sign out" }}</button>
       </form>
     </div>
   </div>

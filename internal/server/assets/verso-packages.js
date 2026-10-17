@@ -118,7 +118,7 @@
     // A wait the server drew (the page loaded mid-refresh) ends the same way.
     button.disabled = false; button.removeAttribute("aria-disabled");
     button.removeAttribute("aria-busy");
-    button.classList.remove("verso-button-waiting");
+    button.removeAttribute("data-verso-busy");
     button.textContent = T("Refresh index");
   }
   async function poll() {

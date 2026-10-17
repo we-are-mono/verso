@@ -85,9 +85,10 @@ func TestSystemLogActsStandOnTheHeadingLine(t *testing.T) {
 	if !(heading < bar && bar < search && search < live && live < download && download < settings && settings < rows) {
 		t.Errorf("search, Live, Download, Settings should stand in that order on the heading line, the log under them (h1 %d, bar %d, search %d, live %d, download %d, settings %d, log %d)", heading, bar, search, live, download, settings, rows)
 	}
-	// the acts wear the secondary dress every quiet button does: meta words on
-	// the strong hairline, the hairline wash and ink under the pointer
-	if acts := body[live:rows]; strings.Count(acts, "border-rule-strong bg-transparent text-meta transition-colors hover:border-sand-5 hover:bg-rule hover:text-ink") != 3 {
+	// the acts wear the secondary dress every quiet button does, the button
+	// block's: meta words on the strong hairline, the hairline wash and ink
+	// under the pointer
+	if acts := body[live:rows]; strings.Count(acts, `class="verso-button" data-verso-style="secondary">`) != 3 {
 		t.Errorf("the log's three acts wear the secondary dress:\n%s", acts)
 	}
 	for _, want := range []string{

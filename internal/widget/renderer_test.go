@@ -107,7 +107,7 @@ func TestRenderStackDivided(t *testing.T) {
 	// wrapped rows 40px apart, and the row a control's 32px, so its controls'
 	// edges are the row's own and land on the grid's lines.
 	inline := render(t, r, &Stack{Inline: true, Children: []Widget{&Badge{Text: "a"}, &Text{Markdown: "or"}, &Badge{Text: "b"}}})
-	if !strings.Contains(inline, `class="flex flex-wrap items-center gap-x-3 gap-y-2 has-[.verso-act]:gap-y-3 has-[.verso-act]:py-0.5"`) || !strings.Contains(inline, ">or</p>") {
+	if !strings.Contains(inline, `class="flex flex-wrap items-center gap-x-3 gap-y-2 has-[[data-verso-size=act]]:gap-y-3 has-[[data-verso-size=act]]:py-0.5"`) || !strings.Contains(inline, ">or</p>") {
 		t.Errorf("inline stack should keep its children in one wrapping row: %s", inline)
 	}
 	if strings.Contains(div, "space-y-") {
@@ -529,15 +529,18 @@ func TestRenderConfirmCaution(t *testing.T) {
 	got := render(t, r, &Confirm{Trigger: "Download and install 25.12.5", Title: "Install 25.12.5 now?", Message: "It restarts on its own.", Confirm: "Install firmware", Cancel: "Not yet", Tone: "caution"})
 	for _, want := range []string{
 		`data-verso-confirm-tone="caution"`,
-		"border-marigold-line bg-marigold-soft", "text-marigold-deep", "text-marigold", "hover:border-marigold",
-		"border-marigold-deep bg-marigold-deep text-on-fill transition-[", "hover:bg-marigold-line/50",
+		"border-marigold-line bg-marigold-soft", "text-marigold-deep", "text-marigold",
+		// The trigger is the button block's caution wash, the act its caution
+		// dress.
+		`class="verso-button w-fit" data-verso-style="caution-wash">`,
+		`class="verso-button shrink-0" data-verso-style="caution">`, "hover:bg-marigold-line/50",
 		"Download and install 25.12.5", "Install 25.12.5 now?", "Install firmware", "Not yet",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("caution confirm missing %q in: %s", want, got)
 		}
 	}
-	if strings.Contains(got, "crimson") {
+	if strings.Contains(got, "crimson") || strings.Contains(got, `data-verso-style="danger`) {
 		t.Errorf("a caution confirm must carry no crimson: %s", got)
 	}
 	if danger := render(t, r, &Confirm{Trigger: "Delete", Message: "Sure?"}); !strings.Contains(danger, `data-verso-confirm-tone="danger"`) {
@@ -583,12 +586,10 @@ func TestRenderConfirm(t *testing.T) {
 		// cancel keeps the explanation's tone and hovers by a soft wash, not a
 		// heavy colour darken.
 		`<div data-verso-callout-acts class="mt-6 pb-2 flex flex-wrap items-center gap-x-3 gap-y-2"><button type="submit" x-ref="first"`, "hover:bg-crimson-line/50",
-		"border-crimson bg-crimson text-on-fill transition-colors",
-		"verso-press",
-		// The trigger is a control like every other button: h-control holds
-		// the border inside the height, where a line plus padding would add 2px,
-		// and it is as wide as its words, never the column.
-		"flex h-control w-fit cursor-pointer items-center justify-center rounded-xs border px-4",
+		`x-ref="first" class="verso-button shrink-0" data-verso-style="danger">`,
+		// The trigger is a control like every other button, the button block
+		// in its danger wash, and it is as wide as its words, never the column.
+		`class="verso-button w-fit" data-verso-style="danger-wash">`,
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("confirm missing %q in: %s", want, got)
@@ -687,14 +688,13 @@ func TestRenderLink(t *testing.T) {
 		t.Errorf("a data: link must collapse to #: %s", data)
 	}
 	primary := render(t, r, &Link{Label: "Download backup", Href: "/backup", Style: "button"})
-	if !strings.Contains(primary, "verso-press") {
+	// The button block carries the tactile pressed state.
+	if !strings.Contains(primary, `class="verso-button">`) {
 		t.Errorf("primary button link missing tactile pressed state: %s", primary)
 	}
 	secondary := render(t, r, &Link{Label: "Restart router", Href: "/restart", Style: "secondary"})
 	for _, want := range []string{
-		"hover:border-sand-5 hover:bg-rule",
-		"border-rule-strong bg-transparent text-meta",
-		"verso-press",
+		`class="verso-button" data-verso-style="secondary">`,
 	} {
 		if !strings.Contains(secondary, want) {
 			t.Errorf("secondary link missing %q: %s", want, secondary)
@@ -763,7 +763,8 @@ func TestRenderLink(t *testing.T) {
 func TestRenderButton(t *testing.T) {
 	r := newRenderer(t)
 	inert := render(t, r, &Button{Label: "Choose firmware…", Icon: "upload"})
-	for _, want := range []string{`type="button"`, "border-denim bg-denim text-on-fill", "hover:border-denim-deep hover:bg-denim-deep", "verso-press", "size-4", "Choose firmware…"} {
+	// The button block in no other dress is the pressing primary.
+	for _, want := range []string{`type="button"`, `class="verso-button">`, "size-4", "Choose firmware…"} {
 		if !strings.Contains(inert, want) {
 			t.Errorf("inert button missing %q: %s", want, inert)
 		}
@@ -772,53 +773,63 @@ func TestRenderButton(t *testing.T) {
 		t.Errorf("inert button must not submit anything: %s", inert)
 	}
 	submit := render(t, r, &Button{Label: "Apply", Style: "secondary", Name: "_action", Value: "apply"})
-	for _, want := range []string{`type="submit"`, `name="_action"`, `value="apply"`, "border-rule-strong bg-transparent text-meta", "hover:border-sand-5 hover:bg-rule hover:text-ink"} {
+	for _, want := range []string{`type="submit"`, `name="_action"`, `value="apply"`, `class="verso-button" data-verso-style="secondary">`} {
 		if !strings.Contains(submit, want) {
 			t.Errorf("submitting button missing %q: %s", want, submit)
 		}
 	}
 	loading := render(t, r, &Button{Label: "Fetching sources", Icon: "refresh-cw", Style: "secondary", Loading: true})
 	// Waiting is the canvas's one look whatever the style — sand ground, strong
-	// hairline, glyph label, no pointer — on the same h-control footprint. It
-	// is the one waiting rule the shell's script puts on a pressed button
-	// (verso-button-waiting), laid over the style's own dress, so a script
-	// ends a wait the server drew by taking the rule off.
-	for _, want := range []string{`disabled`, `aria-disabled="true"`, `aria-busy="true"`, "h-control", "verso-button-waiting", `data-verso-wait`, "Fetching sources", "verso-waiting__square"} {
+	// hairline, glyph label, no pointer — on the button block's own footprint.
+	// It is the one busy state the shell's script puts on a pressed button
+	// (data-verso-busy), laid over the style's own dress, so a script ends a
+	// wait the server drew by taking the attribute off.
+	for _, want := range []string{`disabled`, `aria-disabled="true"`, `aria-busy="true"`, `data-verso-busy class="verso-button" data-verso-style="secondary">`, `data-verso-wait`, "Fetching sources", "verso-waiting__square"} {
 		if !strings.Contains(loading, want) {
 			t.Errorf("loading button missing %q: %s", want, loading)
 		}
 	}
-	for _, never := range []string{lucideIcons["refresh-cw"], "bg-ground", "cursor-wait", "verso-press"} {
+	for _, never := range []string{lucideIcons["refresh-cw"], "bg-ground", "cursor-wait"} {
 		if strings.Contains(loading, never) {
 			t.Errorf("loading button must drop its icon and its press, found %q: %s", never, loading)
 		}
 	}
-	css, err := os.ReadFile(filepath.Join("..", "server", "assets", "input.css"))
+	css, err := os.ReadFile(filepath.Join("..", "server", "assets", "blocks", "button.css"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	waiting := regexp.MustCompile(`button\.verso-button-waiting:disabled \{\s*pointer-events: none;\s*cursor: default;\s*opacity: 1;\s*border-color: var\(--color-rule-strong\);\s*background-color: var\(--color-quiet\);\s*color: var\(--color-glyph\);`)
+	waiting := regexp.MustCompile(`\.verso-button\[data-verso-busy\] \{\s*pointer-events: none;\s*cursor: default;[^}]*--verso-button-edge: var\(--color-rule-strong\);\s*--verso-button-ground: var\(--color-quiet\);\s*--verso-button-ink: var\(--color-glyph\);`)
 	if !waiting.Match(css) {
-		t.Error("the waiting rule no longer takes the pointer and lays the sand ground, strong hairline and glyph label over every style")
+		t.Error("the busy rule does not take the pointer and lay the sand ground, strong hairline and glyph label over every style")
+	}
+	// The press stands down while the button is busy.
+	if !strings.Contains(string(css), `.verso-button:not(:disabled, [aria-disabled="true"], [aria-busy="true"]):active {`) {
+		t.Error("the button block presses a busy button")
 	}
 	// act: an act on a part of a section wears the subsection act's one dress,
-	// the same as a Link's act, whether it leads somewhere or submits.
+	// the same as a Link's act, whether it leads somewhere or submits: the
+	// button block's act size, the glyph's tighter inset.
 	act := render(t, r, &Button{Label: "Use my computer's time", Icon: "clock", Style: "act", Name: "_action", Value: "clock"})
-	for _, want := range []string{`type="submit"`, `name="_action"`, "group/act", "h-7", "border-rule-strong bg-transparent", "hover:bg-rule", "pl-2 pr-2.5", lucideIcons["clock"]} {
+	for _, want := range []string{`type="submit"`, `name="_action"`, `class="verso-button group/act relative" data-verso-size="act" data-verso-glyph>`, lucideIcons["clock"]} {
 		if !strings.Contains(act, want) {
 			t.Errorf("act button missing %q: %s", want, act)
 		}
 	}
-	for _, never := range []string{"h-control", "bg-denim", "bg-ground"} {
+	for _, never := range []string{"data-verso-style="} {
 		if strings.Contains(act, never) {
 			t.Errorf("act button wears another dress's %q: %s", never, act)
 		}
 	}
 	disabled := render(t, r, &Button{Label: "Apply", Disabled: true})
-	for _, want := range []string{`disabled`, "cursor-not-allowed"} {
+	for _, want := range []string{`disabled aria-disabled="true" class="verso-button">`} {
 		if !strings.Contains(disabled, want) {
 			t.Errorf("disabled button missing %q: %s", want, disabled)
 		}
+	}
+	// The button block marks a plain disabled button with the not-allowed
+	// pointer.
+	if !regexp.MustCompile(`\.verso-button:disabled:not\(\[data-verso-busy\], \[data-verso-standby\]\) \{\s*cursor: not-allowed;`).Match(css) {
+		t.Error("a disabled button does not take the not-allowed pointer")
 	}
 }
 
@@ -834,15 +845,15 @@ func TestRenderLiveButton(t *testing.T) {
 		"data-verso-live",
 		`data-verso-wait`, "verso-waiting__square",
 		"<span data-verso-live-label>Pause</span>",
-		"hover:border-sand-5", // hover intact
-		"cursor-pointer",      // the pointer says "press me"
-		"verso-press",         // and it presses
+		// The button block in its secondary dress: hover intact, the pointer
+		// saying "press me", and it presses.
+		`data-verso-live class="verso-button" data-verso-style="secondary">`,
 	} {
 		if !strings.Contains(live, want) {
 			t.Errorf("live button missing %q: %s", want, live)
 		}
 	}
-	for _, unwanted := range []string{"disabled", "cursor-wait", "opacity-70"} {
+	for _, unwanted := range []string{"disabled", "cursor-wait", "opacity-70", "data-verso-busy", "aria-busy"} {
 		if strings.Contains(live, unwanted) {
 			t.Errorf("live button must not take anything away (%q): %s", unwanted, live)
 		}
@@ -1272,8 +1283,9 @@ func TestRenderTokenListKeepsRepeatedFieldContract(t *testing.T) {
 		// remove glyph's hover is a step darker again, so it shows on the chip.
 		`inline-flex h-6 items-center gap-1.5 rounded-xs border border-rule-strong bg-mid px-2 font-mono text-base font-medium whitespace-nowrap text-ink`,
 		// Its remove glyph takes the hover every icon act takes: the parked
-		// border, the hairline wash and Ink.
-		`grid size-5 -mr-1 flex-none shrink-0 cursor-pointer place-items-center rounded-xs border border-transparent text-glyph transition-colors hover:border-sand-5 hover:bg-rule hover:text-ink`,
+		// border, the hairline wash and Ink, the button block at its glyph
+		// size.
+		`class="verso-button size-5 -mr-1" data-verso-size="glyph">`,
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("token list missing %q:\n%s", want, got)
@@ -1325,12 +1337,9 @@ func TestRenderFormSubmit(t *testing.T) {
 	if !strings.Contains(got, ">Apply<") {
 		t.Errorf("custom submit label missing: %s", got)
 	}
-	if !strings.Contains(got, "border border-denim bg-denim text-on-fill transition-colors") {
+	// The button block in no other dress is the primary, and it presses.
+	if !strings.Contains(got, `<button type="submit" class="verso-button">Apply</button>`) {
 		t.Errorf("form submit missing the primary-button treatment: %s", got)
-	}
-	if !strings.Contains(got, "hover:border-denim-deep hover:bg-denim-deep") ||
-		!strings.Contains(got, "verso-press") {
-		t.Errorf("form submit missing tactile pressed state: %s", got)
 	}
 }
 

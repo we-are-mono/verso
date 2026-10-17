@@ -57,11 +57,12 @@ func TestDecodeAndRenderConditions(t *testing.T) {
 		// A condition is a form row, and the one thing that is different about
 		// it — that it can be taken away — is a glyph at the row's trailing
 		// edge, labelled for a reader who cannot see it. It wears the quiet
-		// treatment every icon act in a table wears: taking a condition off a
-		// rule changes nothing on the device until the whole change is applied,
-		// and crimson would promise a severity it does not have.
+		// treatment every icon act in a table wears, the button block's icon
+		// size: taking a condition off a rule changes nothing on the device
+		// until the whole change is applied, and crimson would promise a
+		// severity it does not have.
 		`data-verso-condition-remove aria-label="Remove Destination ports"`,
-		`border border-transparent text-glyph transition-colors hover:border-sand-5 hover:bg-rule hover:text-ink`,
+		`class="verso-button ml-auto" data-verso-size="icon">`,
 		// The glyph stands on the condition's own name line, at the shared
 		// form measure's edge, so the controls under it keep the full measure;
 		// the condition itself runs the content's width, so the hairline between
@@ -69,7 +70,7 @@ func TestDecodeAndRenderConditions(t *testing.T) {
 		`data-verso-condition="dest_port" data-verso-and="and" role="group" aria-labelledby="condition-dest_port-label" class="verso-condition verso-condition-single"`,
 		`class="verso-condition-name flex max-w-form items-center gap-3"`,
 		`class="verso-rhythm max-w-form`,
-		"hover:border-sand-5 hover:bg-rule",
+		`data-verso-condition-open aria-expanded="false" class="verso-button group/act relative" data-verso-size="act" data-verso-glyph>`,
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("conditions missing %q:\n%s", want, got)
@@ -221,7 +222,7 @@ func TestConditionsSayWhenEmptyAsASetDoes(t *testing.T) {
 		`<p class="min-w-0 flex-1 text-sm leading-6 text-meta">No additional conditions.`,
 		`<div data-verso-condition-picker class="relative pt-6 pb-1">`,
 		// The collection's own add act, glyph first.
-		`group/act relative inline-flex h-7 shrink-0 cursor-pointer items-center gap-1.5 rounded-xs border border-rule-strong bg-transparent text-sm font-medium whitespace-nowrap text-meta transition-colors hover:border-sand-5 hover:bg-rule hover:text-ink focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-denim verso-press pl-2 pr-2.5">`,
+		`class="verso-button group/act relative" data-verso-size="act" data-verso-glyph>`,
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("want %s in:\n%s", want, got)

@@ -98,7 +98,7 @@
 
 ## 7. Controls
 
-- [ ] 7.1 `button` (`type-button`): button styles, waiting, press, menu button, icon button (`verso-btn-icon`), the actionbar buttons' repeated bundle. Verify: block done; the busy-button test asserts `data-verso-*` busy state.
+- [x] 7.1 `button` (`type-button`): button styles, waiting, press, menu button, icon button (`verso-btn-icon`), the actionbar buttons' repeated bundle. Verify: block done; the busy-button test asserts `data-verso-*` busy state.
 - [x] 7.2 `link` and `chip` (`type-chip`, with its verbatim form): the repeated underline link; the chip and `verso-chip-class`. Verify: block done; the Overview's "IPv4 · dhcp" chip renders `data-verso-verbatim` (test).
 - [ ] 7.3 `tip` and `menu`: tip look, tip class, copy tip; the suggest, token and condition menus. Verify: block done, with an open menu in the parity run.
 - [ ] 7.4 `tabs`: the drawer and entity-panel tab strips. Verify: block done.

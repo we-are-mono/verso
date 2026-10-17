@@ -27,6 +27,7 @@
    components layer, so a utility in the markup outranks every block by layer
    order. CSS imports take no glob; TestEveryBlockIsImported fails on a block file
    left off this list, whose rules would otherwise go missing unseen. */
+@import "./blocks/button.css" layer(components);
 @import "./blocks/chip.css" layer(components);
 @import "./blocks/link.css" layer(components);
 @import "./blocks/mark.css" layer(components);
@@ -186,9 +187,9 @@
 }
 
 /* Native buttons inherit the press treatment, including controls inserted by
-   the client. Button-styled links opt in through the shared verso-press class. */
+   the client; a button-shaped link takes it from the button block. */
 @layer utilities {
-  :is(button, input[type="button"], input[type="submit"], input[type="reset"], [role="button"], .verso-press):not(:disabled, [aria-disabled="true"], [aria-busy="true"]):active {
+  :is(button, input[type="button"], input[type="submit"], input[type="reset"], [role="button"]):not(:disabled, [aria-disabled="true"], [aria-busy="true"]):active {
     box-shadow: none;
     @media (prefers-reduced-motion: no-preference) {
       translate: 0 1px;
@@ -960,15 +961,6 @@ html {
     color: inherit;
     border-color: color-mix(in srgb, currentColor 65%, transparent);
     background-color: color-mix(in srgb, currentColor 8%, transparent);
-  }
-  button.verso-button-waiting:disabled {
-    pointer-events: none;
-    cursor: default;
-    opacity: 1;
-    border-color: var(--color-rule-strong);
-    background-color: var(--color-quiet);
-    color: var(--color-glyph);
-    gap: calc(var(--spacing) * 2.5);
   }
   /* One page rhythm: the page's blocks stand apart by the body's own inset,
      2.5rem — the gap the page keeps from the window's top and left edge. The

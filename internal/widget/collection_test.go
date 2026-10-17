@@ -129,14 +129,15 @@ func TestSubsectionActsWearOneDress(t *testing.T) {
 	add := renderCollection(t, keyCollection(), "")
 	withIcon := render(t, r, &Link{Label: "Download", Href: "/x", Style: "act", Icon: "download"})
 	plain := render(t, r, &Link{Label: "Make a new one", Href: "/y", Style: "act"})
-	dress := "group/act relative inline-flex h-7 shrink-0 cursor-pointer items-center gap-1.5 rounded-xs border border-rule-strong bg-transparent text-sm font-medium whitespace-nowrap text-meta transition-colors hover:border-sand-5 hover:bg-rule hover:text-ink"
+	dress := `class="verso-button group/act relative" data-verso-size="act"`
 	for name, got := range map[string]string{"add": add, "icon link": withIcon, "plain link": plain} {
 		if !strings.Contains(got, dress) {
 			t.Errorf("%s does not wear the subsection act's dress:\n%s", name, got)
 		}
 	}
-	if !strings.Contains(add, dress+" focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-denim verso-press pl-2 pr-2.5") ||
-		!strings.Contains(withIcon, "pl-2 pr-2.5") || !strings.Contains(plain, " px-2.5") {
+	// The button block sets the tighter inset on an act marked with a glyph.
+	if !strings.Contains(add, dress+" data-verso-glyph>") ||
+		!strings.Contains(withIcon, dress+" data-verso-glyph>") || !strings.Contains(plain, dress+">") {
 		t.Errorf("a leading glyph takes the tighter inset, words alone an even one:\n%s\n%s\n%s", add, withIcon, plain)
 	}
 }

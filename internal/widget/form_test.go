@@ -101,8 +101,7 @@ func TestFormRendersSecondaryActions(t *testing.T) {
 	for _, want := range []string{
 		">Save</button>",
 		`name="_action" value="generate-keypair"`, ">Generate keypair</button>",
-		"verso-press",
-		"hover:border-sand-5 hover:bg-rule",
+		`value="generate-keypair" class="verso-button" data-verso-style="secondary">`,
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("form render missing %q", want)
@@ -132,7 +131,8 @@ func TestSettingsFormSaveRestsInSandUntilChanged(t *testing.T) {
 	got := render(t, newRenderer(t), f)
 	for _, want := range []string{
 		"data-verso-dirty-form",
-		"disabled:cursor-default disabled:border-rule-strong disabled:bg-quiet disabled:text-meta",
+		// The button block's standby rests the Save in sand.
+		`class="verso-button" data-verso-standby>Save</button>`,
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("settings form missing %q:\n%s", want, got)
@@ -211,8 +211,7 @@ func TestSearchFormSetsSubmitBesideItsField(t *testing.T) {
 	got := render(t, newRenderer(t), f)
 	for _, want := range []string{
 		`<div class="flex max-w-full items-end gap-2 [&>.verso-field-row]:w-80 [&>.verso-field-row]:min-w-0">`,
-		`<button type="submit" class="inline-flex h-control cursor-pointer`,
-		"shrink-0 border border-denim bg-denim",
+		`<button type="submit" class="verso-button shrink-0">`,
 		`placeholder="Package name"`,
 		">Search</button>",
 	} {

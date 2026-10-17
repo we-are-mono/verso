@@ -134,7 +134,8 @@ func TestHeadingActRendersTheActAlone(t *testing.T) {
 	bar := actOnly()
 	bar.Heading = true
 	got := render(t, newRenderer(t), bar)
-	for _, want := range []string{`@click.prevent="showPanel"`, "h-control", "bg-denim", ">Add network<"} {
+	// The button block in no other dress or size is the 32px primary.
+	for _, want := range []string{`@click.prevent="showPanel" class="verso-button shrink-0">`, ">Add network<"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("heading act missing %q:\n%s", want, got)
 		}
@@ -187,7 +188,7 @@ func TestColumnHeadsAreARow(t *testing.T) {
 func TestAQuietHeadingActOpensItsPanelInTheSecondaryDress(t *testing.T) {
 	got := render(t, newRenderer(t), &ActionBar{Heading: true, OpensPanel: true,
 		Action: &TableAction{Label: "Alerts", Href: "/system/events/alerts", Icon: "bell", Style: "quiet"}})
-	if !strings.Contains(got, `@click.prevent="showPanel"`) || !strings.Contains(got, "border-rule-strong bg-transparent text-meta") || strings.Contains(got, "bg-denim") {
+	if !strings.Contains(got, `@click.prevent="showPanel" class="verso-button shrink-0" data-verso-style="secondary">`) || strings.Contains(got, `class="verso-button shrink-0">`) {
 		t.Errorf("a quiet act that opens a panel is not in the secondary dress:\n%s", got)
 	}
 }

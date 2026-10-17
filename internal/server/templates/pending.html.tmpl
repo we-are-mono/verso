@@ -29,8 +29,8 @@
      stand where a page form's Save does: on the sand 24px under the last
      card, as one card stands under another (sections.css). */}}
 {{define "verso-pending-acts"}}<div data-verso-pending-acts data-verso-form-actions data-verso-rule class="flex flex-wrap items-center gap-4">
-  <button type="submit" form="verso-pending-apply" data-verso-pending-apply hidden class="{{template "verso-btn-box"}} {{template "verso-btn-primary"}} focus-visible:outline-denim-deep">{{.Apply}}</button>
-  <form method="post" action="/pending/discard" class="contents">{{template "verso-csrf" .CSRF}}<button type="submit" class="{{template "verso-btn-box"}} border {{template "verso-btn-secondary"}} focus-visible:outline-denim-deep">{{t "Discard all"}}</button></form>
+  <button type="submit" form="verso-pending-apply" data-verso-pending-apply hidden class="verso-button">{{.Apply}}</button>
+  <form method="post" action="/pending/discard" class="contents">{{template "verso-csrf" .CSRF}}<button type="submit" class="verso-button" data-verso-style="secondary">{{t "Discard all"}}</button></form>
   <noscript><span class="text-sm text-meta">{{t "Applying needs scripting: the router keeps an apply only when this page answers it."}}</span></noscript>
   {{/* What the page says when the router turns an apply away. */}}
   <template data-verso-apply-refused>{{template "verso-flash" .Refused}}</template>

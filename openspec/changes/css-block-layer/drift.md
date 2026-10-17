@@ -113,3 +113,13 @@ The rail's 5px square stays as it is until the rail converts.
 | a setting's sentence tip | every labelled setting | its sentence on a 1.45 line, its footer on a 24px line | the tip role's 1.25 line; the footer the chip role's verbatim form on its 16px line |
 | the "Remove" act tip in a row's acts | 1 | raised on hover only | raised on hover and on focus, as every act's tip |
 | act tips in table cells | | kept their line from a `leading-tight` class a table rule looked for | the tip role's line; the table rule names the tip block (until the table converts) |
+
+### `button`
+
+| Copies | n | Difference | Became |
+|---|---|---|---|
+| buttons led by a glyph (the Button widget, the action bar's acts, Logs' acts) | ~20 | an 8px gap between glyph and words | the component's 6px (layout-grid); a right-aligned bar shifts 2px |
+| the action bar's and Logs' buttons | 7 | hand-written flex boxes | the button block (inline-flex, the same box) |
+| an inline form's submit | | `rounded-l-none` lost to a missing space in its class list | square on the left, joined to its field, as written |
+| a confirm's trigger | 2 | its own wash classes | the block's danger-wash and caution-wash |
+| the script's in-flight button | | a `verso-button-waiting` class | `data-verso-busy` |

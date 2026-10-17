@@ -20,7 +20,7 @@ var versoButtons = (function () {
     // server draws does.
     if (label) {
       button.setAttribute("aria-busy", "true");
-      button.classList.add("verso-button-waiting");
+      button.setAttribute("data-verso-busy", "");
       var mark = document.querySelector("[data-verso-button-waiting]");
       button.replaceChildren(mark.content.cloneNode(true), document.createTextNode(label));
     }
@@ -35,7 +35,7 @@ var versoButtons = (function () {
       if (attribute[1] === null) button.removeAttribute(attribute[0]);
       else button.setAttribute(attribute[0], attribute[1]);
     });
-    button.classList.remove("verso-button-waiting");
+    button.removeAttribute("data-verso-busy");
     waiting.delete(button);
   }
   function submit(event, label) {

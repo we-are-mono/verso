@@ -8,11 +8,11 @@ import (
 	"testing"
 )
 
-// iconButton is the one dress of a glyph-only act: a 28px square in Glyph on
-// no border, taking the parked border, the hairline wash and Ink under the
-// pointer — a table row's edit or remove, a list's remove, a copy beside a
-// value or on a code box.
-const iconButton = "size-7 shrink-0 cursor-pointer place-items-center rounded-xs border border-transparent text-glyph transition-colors hover:border-sand-5 hover:bg-rule hover:text-ink"
+// iconButton is the one dress of a glyph-only act, the button block's icon
+// size: a 28px square in Glyph on no border, taking the parked border, the
+// hairline wash and Ink under the pointer — a table row's edit or remove, a
+// list's remove, a copy beside a value or on a code box.
+const iconButton = `data-verso-size="icon"`
 
 // buttonClass returns the class of the first button after marker.
 func buttonClass(t *testing.T, html, marker string) string {
@@ -39,7 +39,7 @@ func TestEveryIconActLooksAlike(t *testing.T) {
 		"code copy":   buttonClass(t, render(t, r, &Code{Value: "ssh-ed25519 AAAA", Copy: true}), `x-data="copy"`),
 		"arrange":     buttonClass(t, render(t, r, fullOverview()), "data-overview-arrange"),
 	} {
-		if !strings.Contains(tag, iconButton) {
+		if !strings.Contains(tag, `class="verso-button`) || !strings.Contains(tag, iconButton) {
 			t.Errorf("%s is not the icon act: %s", name, tag)
 		}
 	}

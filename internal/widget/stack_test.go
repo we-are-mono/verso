@@ -22,12 +22,12 @@ func TestARowOfActsIsAControlTall(t *testing.T) {
 	if strings.Contains(got, " py-1") {
 		t.Errorf("an inline row adds no air over its controls:\n%s", got)
 	}
-	for _, want := range []string{"has-[.verso-act]:py-0.5", "has-[.verso-act]:gap-y-3"} {
+	for _, want := range []string{"has-[[data-verso-size=act]]:py-0.5", "has-[[data-verso-size=act]]:gap-y-3"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("an inline row is missing %q:\n%s", want, got)
 		}
 	}
-	if strings.Count(got, "verso-act ") != 2 {
+	if strings.Count(got, `data-verso-size="act"`) != 2 {
 		t.Errorf("each act carries the mark the row reads:\n%s", got)
 	}
 }

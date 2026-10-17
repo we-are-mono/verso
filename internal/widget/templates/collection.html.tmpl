@@ -40,7 +40,7 @@
   {{/* the 28px act centred in the two cells under the last item's row, or a
        cell under the empty slot's edge and then centred in two */}}
   <div x-data="confirm" @keydown.escape="escape"{{if $.Open}} data-verso-open{{end}} class="{{if $.Items}}pt-1.5 pb-1.5{{else}}pt-6 pb-1{{end}}">
-    <button type="button" x-ref="trigger" x-show="idle" @click="ask" :aria-expanded="expanded" aria-controls="{{$.AddID}}" class="{{template "verso-btn-act"}} pl-2 pr-2.5">{{icon "plus" "size-4"}}{{.Label}}</button>
+    <button type="button" x-ref="trigger" x-show="idle" @click="ask" :aria-expanded="expanded" aria-controls="{{$.AddID}}" class="verso-button group/act relative" data-verso-size="act" data-verso-glyph>{{icon "plus" "size-4"}}{{.Label}}</button>
     <form id="{{$.AddID}}" method="post"{{if $.Action}} action="{{$.Action}}"{{end}} x-show="asking" x-cloak class="space-y-3">
       {{template "verso-csrf" $.CSRFToken}}
       <label for="{{$.AddID}}-input" class="sr-only">{{.Label}}</label>
@@ -48,8 +48,8 @@
       {{if .Error}}<p id="{{$.AddID}}-error" data-verso-error class="{{template "verso-refusal-band"}}">{{template "verso-error-words" .Error}}</p>{{end}}
       {{$.Preview}}
       <div class="flex items-center gap-2 pt-2">
-        <button type="submit" class="{{template "verso-btn-box"}} {{template "verso-btn-primary"}} focus-visible:outline-denim-deep">{{.Submit}}</button>
-        <button type="button" @click="cancel" class="{{template "verso-btn-box"}} border {{template "verso-btn-secondary"}}">{{ t "Not now" }}</button>
+        <button type="submit" class="verso-button">{{.Submit}}</button>
+        <button type="button" @click="cancel" class="verso-button" data-verso-style="secondary">{{ t "Not now" }}</button>
       </div>
     </form>
   </div>

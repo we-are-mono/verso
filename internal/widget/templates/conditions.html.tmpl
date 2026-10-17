@@ -16,7 +16,7 @@
 <section data-verso-condition="{{.Key}}" data-verso-and="{{ t "and" }}" role="group" aria-labelledby="{{.Name.For}}-label" class="verso-condition{{if .Single}} verso-condition-single{{end}}">
   <div class="verso-condition-name flex max-w-form items-center gap-3">
     {{template "verso-field-label" .Name}}
-    <button type="button" data-verso-condition-remove aria-label="{{ t "Remove" }} {{.Label}}" title="{{ t "Remove" }} {{.Label}}" class="ml-auto {{template "verso-remove-glyph-class"}}">{{icon "x" "size-4"}}</button>
+    <button type="button" data-verso-condition-remove aria-label="{{ t "Remove" }} {{.Label}}" title="{{ t "Remove" }} {{.Label}}" class="verso-button ml-auto" data-verso-size="icon">{{icon "x" "size-4"}}</button>
   </div>
   <div class="verso-rhythm max-w-form [&>div]:border-0">{{range .Children}}{{.}}{{end}}</div>
 </section>
@@ -51,7 +51,7 @@
        show what a condition writes, and cannot say what sort of value it takes.
        The picker is a list someone reads or filters, and pressing a line adds it. */}}
   <div data-verso-condition-picker class="relative pt-6 pb-1">
-    <button type="button" data-verso-condition-open aria-expanded="false" class="{{template "verso-btn-act"}} pl-2 pr-2.5">{{icon "plus" "size-4"}}{{ t "Add a condition" }}</button>
+    <button type="button" data-verso-condition-open aria-expanded="false" class="verso-button group/act relative" data-verso-size="act" data-verso-glyph>{{icon "plus" "size-4"}}{{ t "Add a condition" }}</button>
     <div data-verso-condition-menu hidden class="absolute top-full left-0 z-30 mt-2 w-[36rem] max-w-[calc(100vw-2rem)] rounded-xs border border-rule-strong bg-ground shadow-(--shadow-menu)">
       {{/* The filter is the first thing focus lands on, because on a catalogue
            this size typing the name is faster than reading to find it. It is not

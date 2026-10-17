@@ -51,7 +51,7 @@
             <p class="verso-lede mt-0 text-body text-pretty">{{ t "It answered. Sign in again to carry on." }}</p>
           </div>
         </div>
-        <a href="/login" class="mt-9 {{template "verso-btn-box"}} {{template "verso-btn-primary"}} focus-visible:outline-denim-deep">{{ t "Sign in" }}</a>
+        <a href="/login" class="verso-button mt-9">{{ t "Sign in" }}</a>
       </div>
 
       <div data-verso-restarting-surface="stalled" hidden>
@@ -63,7 +63,7 @@
           </div>
         </div>
         {{if .Address}}<div class="mt-6 flex items-start gap-2 rounded-xs bg-marigold-soft px-3 py-2 leading-[1.45] text-marigold-deep"><span class="verso-mark mt-1.75" data-verso-tone="warning"></span><span>{{.Address}}</span></div>{{end}}
-        <a href="{{if .Target}}{{.Target}}{{else}}/{{end}}" class="mt-9 {{template "verso-btn-box"}} border {{template "verso-btn-secondary"}} focus-visible:outline-denim-deep">{{ t "Try the router again" }}</a>
+        <a href="{{if .Target}}{{.Target}}{{else}}/{{end}}" class="verso-button mt-9" data-verso-style="secondary">{{ t "Try the router again" }}</a>
       </div>
     </div>
   </main>

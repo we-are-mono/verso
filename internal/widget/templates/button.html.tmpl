@@ -8,24 +8,11 @@
      in-flight submit, still disables. The label sits in its own span so the
      shell's stream client can rewrite it (Pause ⇄ Resume · N new) without
      touching the spinner beside it. */}}
-{{if eq .Style "act"}}
-{{/* act: an act on a part of a section, in the subsection act's one dress —
-     the same as a Link's act, so a section's acts read as one set whether
-     they lead somewhere or submit. */}}
-<button type="{{if .Name}}submit{{else}}button{{end}}"{{if .Name}} name="{{.Name}}" value="{{.Value}}"{{with .Form}} form="{{.}}"{{end}}{{end}}{{with .Busy}} data-busy-label="{{.}}"{{end}}{{if or .Disabled .Loading}} disabled aria-disabled="true"{{end}}{{if .Loading}} aria-busy="true"{{end}} class="{{template "verso-btn-act"}} {{if or .Icon .Loading}}pl-2 pr-2.5{{else}}px-2.5{{end}}">{{if .Loading}}{{template "verso-waiting" ""}}{{else if .Icon}}{{icon .Icon "size-4"}}{{end}}{{.Label}}</button>
-{{else}}
-<button type="{{if .Name}}submit{{else}}button{{end}}"{{if .Name}} name="{{.Name}}" value="{{.Value}}"{{with .Form}} form="{{.}}"{{end}}{{end}}{{with .Busy}} data-busy-label="{{.}}"{{end}}{{if or .Disabled .Loading}} disabled aria-disabled="true"{{end}}{{if .Loading}} aria-busy="true"{{end}}{{if .Live}} data-verso-live{{end}}
-  {{/* 36px tall, the one button height on the page, and a 1px border on every
-       style — including the ones that draw it transparent — so a button dropped
-       beside a field or another button lines up without anyone adjusting it.
-       A waiting button is one look whatever its style — sand ground, strong
-       hairline, glyph label — on the same footprint, so the row does not jump
-       when the press lands. It is the one waiting rule the shell's script
-       puts on a pressed button too (verso-button-waiting), over the style's
-       own dress, so a script ends a wait the server drew as it ends its own. */}}
-  class="inline-flex h-control items-center justify-center gap-2 rounded-xs border px-4 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2
-  {{if .Loading}}verso-button-waiting{{else if .Disabled}}cursor-not-allowed opacity-70{{else}}cursor-pointer {{template "verso-press"}}{{end}}
-  {{if eq .Style "secondary"}}border-rule-strong bg-transparent text-meta {{if not .Disabled}}hover:border-sand-5 hover:bg-rule hover:text-ink{{end}} focus-visible:outline-denim
-  {{else if eq .Style "danger"}}border-crimson bg-crimson text-on-fill {{if not .Disabled}}hover:border-crimson-deep hover:bg-crimson-deep{{end}} focus-visible:outline-crimson-deep
-  {{else}}border-denim bg-denim text-on-fill {{if not .Disabled}}hover:border-denim-deep hover:bg-denim-deep{{end}} focus-visible:outline-denim-deep{{end}}">{{if or .Loading .Live}}{{template "verso-waiting" ""}}{{else if .Icon}}{{icon .Icon "size-4"}}{{end}}{{if .Live}}<span data-verso-live-label>{{.Label}}</span>{{else}}{{.Label}}{{end}}</button>
-{{end}}
+{{/* The look is the button block's (blocks/button.css): an act is its 28px
+     size in the secondary dress, the same as a Link's act, so a section's acts
+     read as one set whether they lead somewhere or submit. A waiting button is
+     one look whatever its style, on the same footprint, so the row does not
+     jump when the press lands; it is the busy state the shell's script puts on
+     a pressed button too (data-verso-busy), so a script ends a wait the server
+     drew as it ends its own. */}}
+<button type="{{if .Name}}submit{{else}}button{{end}}"{{if .Name}} name="{{.Name}}" value="{{.Value}}"{{with .Form}} form="{{.}}"{{end}}{{end}}{{with .Busy}} data-busy-label="{{.}}"{{end}}{{if or .Disabled .Loading}} disabled aria-disabled="true"{{end}}{{if .Loading}} aria-busy="true" data-verso-busy{{end}}{{if .Live}} data-verso-live{{end}} class="verso-button{{if eq .Style "act"}} group/act relative{{end}}"{{if eq .Style "act"}} data-verso-size="act"{{if or .Icon .Loading}} data-verso-glyph{{end}}{{else if eq .Style "secondary"}} data-verso-style="secondary"{{else if eq .Style "danger"}} data-verso-style="danger"{{end}}>{{if or .Loading .Live}}{{template "verso-waiting" ""}}{{else if .Icon}}{{icon .Icon "size-4"}}{{end}}{{if .Live}}<span data-verso-live-label>{{.Label}}</span>{{else}}{{.Label}}{{end}}</button>

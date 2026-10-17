@@ -966,10 +966,10 @@ func TestRenderTableDirectAction(t *testing.T) {
 		// the question is the confirm's own band: crimson wash in its hairline,
 		// the square at full chroma, the words in the deep step
 		"border-crimson-line bg-crimson-soft text-crimson-deep", "verso-mark", `data-verso-tone="danger"`,
-		`>End session<`, "border-crimson bg-crimson text-on-fill transition-colors", // the destructive act
+		// the destructive act, the button block's danger dress
+		`class="verso-button shrink-0" data-verso-style="danger">End session<`,
 		// the way back speaks the question's hue, bare, never a sand Cancel
 		`>Keep it<`, "text-crimson-deep transition-colors hover:bg-crimson-line/50",
-		"verso-press",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("direct table action missing %q:\n%s", want, got)

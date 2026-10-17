@@ -20,18 +20,12 @@
      holds 4.5 : 1 over the marker. */}}
 {{define "table.name-words"}}{{if .Identity}}<span class="verso-row-name">{{.Text}}</span>{{else}}{{.Text}}{{end}}{{end}}
 {{define "table.name-ink"}}{{if .Off}}text-body{{else if .Muted}}text-meta{{else}}text-ink{{end}}{{end}}
-{{/* The icon act of the whole listing: a 28px square, the glyph in the quiet
-     ink, that takes a border and the mid ground under the pointer. A row's own
-     acts and a band's add are the same control, so they are stated together
-     rather than drifting into two shapes. Its words are a tip that hangs above
-     its right edge, so a tip on the last column stays inside the table. */}}
-{{define "table.actbtn-class"}}group/act relative grid {{template "verso-btn-icon"}}{{end}}
-{{/* the same quiet act with its words (verso-act-quiet). */}}
-{{define "table.laneadd-class"}}{{template "verso-act-quiet"}}{{end}}
-{{/* table.laneadd-look / -body: a lane's add, given its TableGroup. With
-     words it is the labelled act, and its tooltip still names the lane unless
-     the words already say it all; without them it is the glyph alone. */}}
-{{define "table.laneadd-look"}}{{if .AddText}}{{template "table.laneadd-class"}}{{else}}{{template "table.actbtn-class"}}{{end}}{{end}}
+{{/* table.laneadd-attrs / -body: a lane's add, given its TableGroup — the
+     button block (blocks/button.css), a row's own icon act and a band's add
+     being the same control. With words it is the quiet labelled act, and its
+     tooltip still names the lane unless the words already say it all; without
+     them it is the glyph alone, its words a tip above its right edge. */}}
+{{define "table.laneadd-attrs"}} class="verso-button group/act relative"{{if .AddText}} data-verso-size="act" data-verso-style="quiet" data-verso-glyph{{else}} data-verso-size="icon"{{end}}{{end}}
 {{define "table.laneadd-body"}}{{icon "plus" "size-4"}}{{if .AddText}}<span>{{.AddText}}</span>{{end}}{{if ne .AddText .AddLabel}}{{template "verso-act-tip" .AddLabel}}{{end}}{{end}}
 {{/* table.cellpad: a cell's inset, and the line it insets. A row states no
      height of its own: every cell writes on the notebook's 20px lines with
@@ -64,7 +58,7 @@
 {{/* table.confirm-answers: the band's acts — the act, posting the one pair,
      then the way back, bare words in the deep step that close the alert, as
      the inline confirm's answers are (confirm.answers). */}}
-{{define "table.confirm-answers"}}<form method="post" class="contents">{{template "verso-csrf" .CSRFToken}}<button type="submit" name="{{.Name}}" value="{{.Value}}" class="{{template "verso-btn-box"}} shrink-0 {{template "verso-btn-danger"}} focus-visible:outline-crimson-deep">{{.Act}}</button></form>
+{{define "table.confirm-answers"}}<form method="post" class="contents">{{template "verso-csrf" .CSRFToken}}<button type="submit" name="{{.Name}}" value="{{.Value}}" class="verso-button shrink-0" data-verso-style="danger">{{.Act}}</button></form>
 <button type="button" @click="hide" class="flex h-control shrink-0 cursor-pointer items-center rounded-xs px-3 text-sm font-semibold text-crimson-deep transition-colors hover:bg-crimson-line/50 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-crimson-deep">{{.Keep}}</button>
 {{end}}
 {{/* table.cellpad-detail: a value over its detail line, a 20px line each —
@@ -82,10 +76,10 @@
      it is followed and the page answers with the panel open on it. */}}
 {{define "table.lane-add"}}{{if and .AddHref .AddPanel}}
             <span x-data="modal" class="contents">
-              <a href="{{.AddHref}}" @click.prevent="showPanel" aria-label="{{.AddLabel}}" class="{{template "table.laneadd-look" .}}">{{template "table.laneadd-body" .}}</a>
+              <a href="{{.AddHref}}" @click.prevent="showPanel" aria-label="{{.AddLabel}}"{{template "table.laneadd-attrs" .}}>{{template "table.laneadd-body" .}}</a>
               {{template "verso-drawer-fetched" ""}}
             </span>
-            {{else if .AddHref}}<a href="{{.AddHref}}" aria-label="{{.AddLabel}}" class="{{template "table.laneadd-look" .}}">{{template "table.laneadd-body" .}}</a>{{end}}{{end}}
+            {{else if .AddHref}}<a href="{{.AddHref}}" aria-label="{{.AddLabel}}"{{template "table.laneadd-attrs" .}}>{{template "table.laneadd-body" .}}</a>{{end}}{{end}}
 {{/* table.legend: the marks explained where the marks are: the same dot the
      rows wear, the plain words for it, and hard right the one caveat about
      what the listing includes. */}}
@@ -302,13 +296,13 @@
             {{/* an act that ends something asks first, in the alert the
                  labelled row act uses, and posts only from its answer */}}
             {{if .Dialog}}<span x-data="modal" class="inline-flex">
-              <button type="button" @click="show" aria-label="{{.Title}}{{if $row}} {{$row}}{{end}}" class="{{template "table.actbtn-class"}}">
+              <button type="button" @click="show" aria-label="{{.Title}}{{if $row}} {{$row}}{{end}}" class="verso-button group/act relative" data-verso-size="icon">
                 {{icon .Icon "size-4"}}
                 {{template "verso-act-tip" .Title}}
               </button>
               {{template "table.confirm-dialog" .Dialog}}
             </span>
-            {{else if .Opens}}<button type="button" @click="showTab"{{if .Tab}} data-verso-entity-tab="{{.Tab}}"{{end}} aria-label="{{.Title}}{{if $row}} {{$row}}{{end}}" class="{{template "table.actbtn-class"}}">
+            {{else if .Opens}}<button type="button" @click="showTab"{{if .Tab}} data-verso-entity-tab="{{.Tab}}"{{end}} aria-label="{{.Title}}{{if $row}} {{$row}}{{end}}" class="verso-button group/act relative" data-verso-size="icon">
               {{icon .Icon "size-4"}}
               {{template "verso-act-tip" .Title}}
             </button>
@@ -319,16 +313,16 @@
             {{else if .Name}}<form method="post"{{with .Post}} action="{{.}}"{{end}}{{if not .Whole}} data-verso-act{{end}} class="contents">
               {{template "verso-csrf" $csrf}}
               <input type="hidden" name="{{.Name}}" value="{{.Value}}">
-              <button type="submit" aria-label="{{.Title}}{{if $row}} {{$row}}{{end}}" class="{{template "table.actbtn-class"}}">
+              <button type="submit" aria-label="{{.Title}}{{if $row}} {{$row}}{{end}}" class="verso-button group/act relative" data-verso-size="icon">
                 {{icon .Icon "size-4"}}
                 {{template "verso-act-tip" .Title}}
               </button>
             </form>
-            {{else if and $panel (eq .Href $panel)}}<a href="{{.Href}}" @click.prevent="showPanel" aria-label="{{.Title}}{{if $row}} {{$row}}{{end}}" class="{{template "table.actbtn-class"}}">
+            {{else if and $panel (eq .Href $panel)}}<a href="{{.Href}}" @click.prevent="showPanel" aria-label="{{.Title}}{{if $row}} {{$row}}{{end}}" class="verso-button group/act relative" data-verso-size="icon">
               {{icon .Icon "size-4"}}
               {{template "verso-act-tip" .Title}}
             </a>
-            {{else if .Href}}<a href="{{.Href}}" aria-label="{{.Title}}{{if $row}} {{$row}}{{end}}" class="{{template "table.actbtn-class"}}">
+            {{else if .Href}}<a href="{{.Href}}" aria-label="{{.Title}}{{if $row}} {{$row}}{{end}}" class="verso-button group/act relative" data-verso-size="icon">
               {{icon .Icon "size-4"}}
               {{template "verso-act-tip" .Title}}
             </a>
