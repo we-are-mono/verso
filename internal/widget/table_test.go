@@ -1195,7 +1195,7 @@ func TestDecodeTableStream(t *testing.T) {
 func TestDecodeTableRowCarriesEveryField(t *testing.T) {
 	w, err := Decode([]byte(`{"type":"table","columns":[{"kind":"name"}],"rows":[{
 		"id":"allow_ping","key":"rule:allow_ping","muted":true,
-		"tags":["ipv4","ipv6"],"facet":{"network":"guest"},
+		"tags":["ipv4","ipv6"],
 		"entity":{"kind":"device","id":"aa:bb:cc:dd:ee:ff"},
 		"cells":[{"text":"Allow-Ping"}]}]}`))
 	if err != nil {
@@ -1208,15 +1208,12 @@ func TestDecodeTableRowCarriesEveryField(t *testing.T) {
 	if strings.Join(row.Tags, " ") != "ipv4 ipv6" {
 		t.Errorf("tags lost in decode: %#v", row.Tags)
 	}
-	if row.Facet["network"] != "guest" {
-		t.Errorf("facet lost in decode: %#v", row.Facet)
-	}
 	if row.Entity == nil || row.Entity.ID != "aa:bb:cc:dd:ee:ff" {
 		t.Errorf("entity lost in decode: %#v", row.Entity)
 	}
 	// And they reach the markup the bar narrows by.
 	got := render(t, newRenderer(t), w)
-	for _, want := range []string{`data-verso-tags="ipv4 ipv6"`, `data-verso-facet-network="guest"`, "text-meta"} {
+	for _, want := range []string{`data-verso-tags="ipv4 ipv6"`, "text-meta"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("decoded row missing %q in:\n%s", want, got)
 		}

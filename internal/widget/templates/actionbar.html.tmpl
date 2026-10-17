@@ -2,7 +2,7 @@
 <!-- SPDX-FileCopyrightText: 2026 Mono Technologies Inc. -->
 {{/* The listing's control band: the surface it is narrowed from, one row under
      the heading. Left is finding things: the search first, then the coarse cuts
-     as one counted dropdown, then the dimension the listing is sliced along.
+     as one counted dropdown.
      It is the top strip of the listing's card, on the card's Paper over a
      hairline, and the listing under it closes the card, so band and table
      read as one object. A live log has none: its search and
@@ -25,15 +25,6 @@
     <select{{if not .Paged}} data-verso-listing-cut{{end}} aria-label="{{t "Show"}}"
       class="h-control w-full cursor-pointer appearance-none rounded-xs border border-rule-strong bg-canvas pr-9 pl-3 text-sm text-ink shadow-(--shadow-field) transition-colors hover:border-faint focus:border-denim focus:outline-none">
       {{range .Tabs}}<option value="{{.Match}}" data-label="{{.Label}}"{{with .Href}} data-href="{{.}}"{{end}}{{if .Active}} selected{{end}}>{{.Label}}{{if not .Uncounted}} · {{.Count}}{{end}}</option>{{end}}
-    </select>
-    <span class="pointer-events-none absolute right-3 flex text-meta">{{icon "chevron-down" "size-4"}}</span>
-  </div>
-  {{end}}
-  {{if .Select}}
-  <div class="relative flex max-w-full items-center">
-    <select data-verso-listing-select="{{.Select.Key}}" aria-label="{{ t "Show" }}"
-      class="h-control cursor-pointer appearance-none rounded-xs border border-rule-strong bg-canvas pr-9 pl-3 text-sm text-ink shadow-(--shadow-field) transition-colors hover:border-faint focus:border-denim focus:outline-none">
-      {{range .Select.Options}}<option value="{{.Value}}">{{.Label}}</option>{{end}}
     </select>
     <span class="pointer-events-none absolute right-3 flex text-meta">{{icon "chevron-down" "size-4"}}</span>
   </div>

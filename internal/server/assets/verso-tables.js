@@ -406,8 +406,7 @@ document.addEventListener(
 })();
 
 // The listing's action bar narrows what is already on screen: a tab cuts by the
-// flags a row carries, the select by one of its facets, the field by the words
-// in it. None of it is a request — the rows are all here, and the bar only
+// flags a row carries, the field by the words in it. None of it is a request — the rows are all here, and the bar only
 // decides which of them are drawn. A group band disappears with the last row it
 // introduces, so a network with nothing left does not sit there as an empty
 // heading.
@@ -425,8 +424,6 @@ document.addEventListener(
 
   var cut = bar.querySelector("[data-verso-listing-cut]");
   var field = bar.querySelector("[data-verso-listing-filter]");
-  var select = bar.querySelector("[data-verso-listing-select]");
-  var facetKey = select ? select.getAttribute("data-verso-listing-select") : "";
 
   // On a live listing the counts are not a fact the page was rendered with —
   // they are what is on screen this second, and they climb as events arrive. So
@@ -457,7 +454,6 @@ document.addEventListener(
   function apply() {
     var tag = cut ? cut.value : "";
     var needle = field ? (field.value || "").trim().toLowerCase() : "";
-    var facet = select ? select.value : "";
     if (table.closest("[data-verso-inventory]")) table.dataset.filtered = String(!!(needle || tag));
 
     var band = null;
@@ -484,9 +480,6 @@ document.addEventListener(
         var tags = " " + (row.getAttribute("data-verso-tags") || "") + " ";
         keep = tags.indexOf(" " + tag + " ") !== -1;
       }
-      if (keep && facet && facetKey) {
-        keep = row.getAttribute("data-verso-facet-" + facetKey) === facet;
-      }
       if (keep && needle) {
         keep = (row.textContent || "").toLowerCase().indexOf(needle) !== -1;
       }
@@ -505,7 +498,6 @@ document.addEventListener(
 
   bar.versoApplyFilters = apply;
   if (field) field.addEventListener("input", apply);
-  if (select) select.addEventListener("change", apply);
   if (cut) cut.addEventListener("change", apply);
   // A live listing's rows arrive after this ran, so the bar watches for them:
   // every batch re-prices the cuts and re-applies the one in force, and a line

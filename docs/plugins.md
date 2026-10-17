@@ -849,13 +849,13 @@ there are no items, under the head when there is one. The SDK builds them with
 ### actionbar — a listing's controls
 
 The band between a page's heading and its listing, and only the listing's
-controls: `filter` (the search's placeholder), `tabs`, `select` and `live`. Over
+controls: `filter` (the search's placeholder), `tabs` and `live`. Over
 a table it is the listing's one filled surface — quiet sand between two
 hairlines, every control 1rem from its edges — and the table sits flush under
 it; a `live` log's bar is the same controls, unfilled. `tabs` are the coarse
 cuts, drawn as one dropdown with each option priced by its `count` ("IPv4 ·
 14"); name the whole set in the first one's label ("All families", not "All").
-`select` is a second dropdown for a facet the rows carry. The search is drawn
+The search is drawn
 only over a `live` listing: a listing that holds what it has is scrolled and
 searched with the browser's own find, however long it is. A bar left with
 nothing to show is not drawn. The page's act is not on the bar: it is the

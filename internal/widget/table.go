@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"html/template"
 	"io"
-	"maps"
 	"net/url"
 	"slices"
 	"strings"
@@ -340,14 +339,12 @@ type TableRow struct {
 	// is a statement about the subject, not about the row's importance: the
 	// values are still exact, still readable at 4.5 : 1, and still copyable.
 	Muted bool `json:"muted,omitempty"`
-	// Tags and Facet are what an ActionBar narrows this row by, and they exist
-	// only because narrowing a listing you are already looking at should not be
-	// a round trip: Tags are the flags a tab matches ("online", "reserved"), and
-	// Facet the key/value a select matches ("network" → "guest"). A listing with
-	// no bar above it sets neither.
-	Tags  []string          `json:"tags,omitempty"`
-	Facet map[string]string `json:"facet,omitempty"`
-	Cells []TableCell       `json:"cells"`
+	// Tags are what an ActionBar narrows this row by, and they exist only
+	// because narrowing a listing you are already looking at should not be a
+	// round trip: the flags a tab matches ("online", "reserved"). A listing
+	// with no bar above it sets none.
+	Tags  []string    `json:"tags,omitempty"`
+	Cells []TableCell `json:"cells"`
 	// Entity names the subject this row is about, for a row whose panel is the
 	// shell's rather than this listing's. The row then carries no drawer contents
 	// at all: the panel is fetched when it opens, once, instead of every row of
@@ -761,10 +758,6 @@ type tableView struct {
 	PageBlock bool
 }
 
-// tableFacetView is one key/value the client narrows by, flattened for the
-// template.
-type tableFacetView struct{ Key, Value string }
-
 type tableRowView struct {
 	Expanded         []template.HTML
 	TreeNodeX        int
@@ -802,11 +795,10 @@ type tableRowView struct {
 	// fetches its contents from this address when it opens.
 	Entity   string
 	PanelURL string
-	// Tags is the row's flags as one space-separated attribute, and Facets its
-	// key/value pairs — both flattened here so the template writes plain data
-	// attributes and the client reads them without parsing anything.
+	// Tags is the row's flags as one space-separated attribute, flattened here
+	// so the template writes a plain data attribute and the client reads it
+	// without parsing anything.
 	Tags        string
-	Facets      []tableFacetView
 	Cells       []tableCellView
 	HasDetail   bool // table-wide flag, copied so the rows sub-template needs no second argument
 	Drawer      bool // this row has a drawer (hosts the modal scope)
@@ -1452,11 +1444,6 @@ func (t *Table) rowViews(r *Renderer, csrf string, rows []TableRow, hasDetail bo
 		// The lane's last row carries the lane's last word.
 		if band != nil && (rowIndex == len(rows)-1 || rows[rowIndex+1].Group != nil) {
 			rv.Close = partViews(band.Close, chipView)
-		}
-		// Keys in a fixed order, so the same row renders the same attributes
-		// every time — a page that differs run to run is a page no test can pin.
-		for _, key := range slices.Sorted(maps.Keys(row.Facet)) {
-			rv.Facets = append(rv.Facets, tableFacetView{Key: key, Value: row.Facet[key]})
 		}
 		switch {
 		case row.Entity != nil:

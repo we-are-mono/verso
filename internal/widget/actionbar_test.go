@@ -9,24 +9,21 @@ import (
 )
 
 // TestActionBarCutsStandTogether: every cut reads left to right from the
-// search — the counted dropdown, then the dimension the listing is sliced
-// along — so no dropdown strays to the far end of the band, which holds only
-// what acts.
+// search, so the counted dropdown never strays to the far end of the band,
+// which holds only what acts.
 func TestActionBarCutsStandTogether(t *testing.T) {
 	got := render(t, newRenderer(t), &ActionBar{
 		Filter: "Filter · name, address, MAC",
 		Tabs:   []ActionTab{{Label: "All devices", Count: 14, Active: true}, {Label: "Online", Match: "online", Count: 1}},
-		Select: &ActionPick{Key: "network", Options: []ActionOption{{Label: "All networks"}}},
 		Action: &TableAction{Label: "Clear", Href: "/x", Style: "quiet"},
 	})
 	cut := strings.Index(got, "data-verso-listing-cut")
-	pick := strings.Index(got, `data-verso-listing-select="network"`)
 	right := strings.Index(got, "ml-auto")
-	if cut < 0 || pick < 0 || right < 0 {
-		t.Fatalf("bar lost a part (cut %d, select %d, acts %d):\n%s", cut, pick, right, got)
+	if cut < 0 || right < 0 {
+		t.Fatalf("bar lost a part (cut %d, acts %d):\n%s", cut, right, got)
 	}
-	if !(cut < pick && pick < right) {
-		t.Errorf("the select stands beside the counted dropdown, before the acts (cut %d, select %d, acts %d):\n%s", cut, pick, right, got)
+	if cut > right {
+		t.Errorf("the counted dropdown stands before the acts (cut %d, acts %d):\n%s", cut, right, got)
 	}
 }
 

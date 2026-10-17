@@ -172,9 +172,9 @@
       {{/* A row that carries only its group is the band alone. */}}
       {{if not .BandOnly}}
       {{if .Drawer}}
-      <tr x-data="modal"{{if .Open}} data-open="true"{{end}}{{if .Panel.Closed}} data-closed-href="{{.Panel.Closed}}"{{end}} class="group transition-colors{{if not .InForm}} hover:bg-quiet/50{{end}}{{if .Seam}} verso-table-seam-row{{end}}"{{if .ID}} data-verso-row-id="{{.ID}}"{{end}}{{if .Off}} data-verso-off{{end}}{{if .Reorder}} data-verso-reorder-row data-verso-reorder-id="{{.ID}}" data-verso-reorder-group="{{.ReorderGroup}}"{{end}}{{if .Key}} data-verso-row="{{.Key}}"{{end}}{{if .Tags}} data-verso-tags="{{.Tags}}"{{end}}{{range .Facets}} data-verso-facet-{{.Key}}="{{.Value}}"{{end}}>
+      <tr x-data="modal"{{if .Open}} data-open="true"{{end}}{{if .Panel.Closed}} data-closed-href="{{.Panel.Closed}}"{{end}} class="group transition-colors{{if not .InForm}} hover:bg-quiet/50{{end}}{{if .Seam}} verso-table-seam-row{{end}}"{{if .ID}} data-verso-row-id="{{.ID}}"{{end}}{{if .Off}} data-verso-off{{end}}{{if .Reorder}} data-verso-reorder-row data-verso-reorder-id="{{.ID}}" data-verso-reorder-group="{{.ReorderGroup}}"{{end}}{{if .Key}} data-verso-row="{{.Key}}"{{end}}{{if .Tags}} data-verso-tags="{{.Tags}}"{{end}}>
       {{else}}
-      <tr class="group transition-colors{{if not .InForm}} hover:bg-quiet/50{{end}}{{if .Seam}} verso-table-seam-row{{end}}"{{if .ID}} data-verso-row-id="{{.ID}}"{{end}}{{if .Off}} data-verso-off{{end}}{{if .Reorder}} data-verso-reorder-row data-verso-reorder-id="{{.ID}}" data-verso-reorder-group="{{.ReorderGroup}}"{{end}}{{if .Key}} data-verso-row="{{.Key}}"{{end}}{{if .Tags}} data-verso-tags="{{.Tags}}"{{end}}{{range .Facets}} data-verso-facet-{{.Key}}="{{.Value}}"{{end}}>
+      <tr class="group transition-colors{{if not .InForm}} hover:bg-quiet/50{{end}}{{if .Seam}} verso-table-seam-row{{end}}"{{if .ID}} data-verso-row-id="{{.ID}}"{{end}}{{if .Off}} data-verso-off{{end}}{{if .Reorder}} data-verso-reorder-row data-verso-reorder-id="{{.ID}}" data-verso-reorder-group="{{.ReorderGroup}}"{{end}}{{if .Key}} data-verso-row="{{.Key}}"{{end}}{{if .Tags}} data-verso-tags="{{.Tags}}"{{end}}>
       {{end}}
         {{range .Cells}}
         {{if .Absent}}

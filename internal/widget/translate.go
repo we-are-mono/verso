@@ -209,11 +209,6 @@ func translateFields(w Widget, t func(string) string) {
 		for i := range n.Tabs {
 			n.Tabs[i].Label = t(n.Tabs[i].Label)
 		}
-		if n.Select != nil {
-			for i := range n.Select.Options {
-				n.Select.Options[i].Label = t(n.Select.Options[i].Label)
-			}
-		}
 		if n.Action != nil {
 			n.Action.Label = t(n.Action.Label)
 		}

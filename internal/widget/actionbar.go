@@ -17,8 +17,7 @@ import (
 //
 // The parts read left to right in the order a person reaches for them. Tabs are
 // the coarse cut, each carrying its own count so the cut is priced before it is
-// made. With them, the fine cuts: a free-text Filter and a Select for the one
-// dimension a listing is always sliced along.
+// made. With them, the fine cut: a free-text Filter.
 //
 // Everything here narrows what is already on screen, so the whole bar is
 // client-side: nothing it does is a request, and nothing it does can fail.
@@ -29,7 +28,6 @@ import (
 type ActionBar struct {
 	Tabs   []ActionTab `json:"tabs,omitempty"`
 	Filter string      `json:"filter,omitempty"` // the search field's placeholder; drawn over a live listing only (searches)
-	Select *ActionPick `json:"select,omitempty"`
 	// Live is the label of the control that holds a running listing still. It
 	// is not a narrowing, so the shell lifts it to the heading line beside the
 	// page's act (TakeLive): it reads Live, its spinner turning, while events
@@ -158,9 +156,9 @@ func TakeLive(w Widget) (live, filter string) {
 func (a *ActionBar) searches() bool { return a.overLog() || a.Finds }
 
 // bare reports whether the bar has nothing left to show: no search it draws,
-// no cut, no select, no act and no live control.
+// no cut, no act and no live control.
 func (a *ActionBar) bare() bool {
-	return (a.Filter == "" || !a.searches()) && len(a.Tabs) == 0 && a.Select == nil &&
+	return (a.Filter == "" || !a.searches()) && len(a.Tabs) == 0 &&
 		a.Action == nil && a.Live == "" && !a.Heading
 }
 
@@ -177,20 +175,6 @@ type ActionTab struct {
 	// not read, so it goes unpriced. Shell only.
 	Href      string `json:"-"`
 	Uncounted bool   `json:"-"`
-}
-
-// ActionPick is the bar's one select: the dimension a listing is always sliced
-// along (a devices listing by network, a log by severity). Key names the row
-// attribute its options match against.
-type ActionPick struct {
-	Key     string         `json:"key"`
-	Options []ActionOption `json:"options"`
-}
-
-// ActionOption is one value of that dimension. An empty Value is "all of them".
-type ActionOption struct {
-	Label string `json:"label"`
-	Value string `json:"value,omitempty"`
 }
 
 func (*ActionBar) isWidget() {}
