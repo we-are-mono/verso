@@ -251,14 +251,13 @@ func TestRenderBadge(t *testing.T) {
 }
 
 // TestAFocusedBoxStaysFocusedUnderThePointer: a box whose focus is inside
-// it (a field of value chips, the page filter, a file's drop area) turns
+// it (a field of value chips, a file's drop area) turns
 // denim while focused whether or not the pointer is over it — its hover
 // colour applies only while it is not focused, as a plain field's does.
 func TestAFocusedBoxStaysFocusedUnderThePointer(t *testing.T) {
 	r := newRenderer(t)
 	for name, w := range map[string]Widget{
 		"tokens": &List{Name: "proto", Label: "Protocol", Style: "tokens"},
-		"filter": &Filter{},
 		"file":   &Field{Name: "backup", Kind: "file"},
 	} {
 		got := render(t, r, w)

@@ -496,16 +496,6 @@ func (s *Server) pluginBodyAt(r *http.Request, m plugin.Manifest, pluginPath str
 	// until the change is applied or discarded.
 	widget.MarkStaged(wdg, s.waitingOptions(r.Context(), s.sessionSID(r)))
 
-	// The page-wide lens is the shell's call, not each plugin's constant: a
-	// plugin declares the filter it would like and the shell keeps it only over
-	// a live listing (ADR-005 §5 — the vocabulary decides what a widget is
-	// worth). A still page is scrolled and searched with the browser's own
-	// find, so there the widget is removed rather than hidden: no dead dock and
-	// no "/" shortcut into nothing.
-	if !widget.HasLiveListing(wdg) {
-		wdg = widget.StripFilters(wdg)
-	}
-
 	// A page form carries its own submit: pressing it stages what the form
 	// holds, and the stage is applied from the review drawer (ADR-010). The
 	// shell guarantees the button — a page form the plugin left label-less has

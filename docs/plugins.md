@@ -855,7 +855,9 @@ hairlines, every control 1rem from its edges — and the table sits flush under
 it; a `live` log's bar is the same controls, unfilled. `tabs` are the coarse
 cuts, drawn as one dropdown with each option priced by its `count` ("IPv4 ·
 14"); name the whole set in the first one's label ("All families", not "All").
-`select` is a second dropdown for a facet the rows carry. A bar left with
+`select` is a second dropdown for a facet the rows carry. The search is drawn
+only over a `live` listing: a listing that holds what it has is scrolled and
+searched with the browser's own find, however long it is. A bar left with
 nothing to show is not drawn. The page's act is not on the bar: it is the
 envelope's `act` (below).
 
@@ -1172,8 +1174,6 @@ there.)
 - **Narrowing.** Every value in a streamed row is a control: click a verdict, a
   zone, or an address and the listing narrows to it, with what was clicked
   travelling to a shelf above the table wearing the treatment it had in the row.
-  The page-wide `filter` composes with it (the lens dims, a plucked value
-  hides), so a live listing should declare one.
 
 A plugin writes none of that, and none of it is configurable: it declares the
 source, the ring, the columns, and the words.
@@ -1193,30 +1193,6 @@ your plugin. Declare the same `pages` on every subpage's envelope.
              { "label": "Configuration", "path": "config" } ],
   "widget": { /* … */ } }
 ```
-
-### filter — the page-wide lens
-
-One field that narrows **every** listing on the page at once — the scale answer
-for long pages (never tabs, never pagination). The shell owns the behaviour:
-while typing nothing moves — non-matching table rows dim in place, zero-match
-sections ghost, a collapsed seam opens only when it holds a match. `/` focuses
-it from anywhere; Escape clears. It rides a sticky dock that pins to the top of
-the scroll. Declare it once, near the top of the page:
-
-```json
-{ "type": "filter", "placeholder": "Filter — zone, port, IP, comment…" }
-```
-
-**Whether it renders is the shell's call, not yours.** The shell keeps the
-filter only on a page with a live listing (a table with a `stream`), and
-**removes** it everywhere else: a page that holds what it has is scrolled and
-searched with the browser's own find, however long it is, while a live
-listing's rows arrive as it is read and the browser's find cannot hold a
-question across them. Removal, not concealment: no dead dock, no "/" shortcut
-into nothing. The same rule holds for an `actionbar`'s `filter`: over a still
-listing the bar draws no search field, and a bar left with nothing to narrow
-with is not drawn. So declare the filter your page would want and carry no rule
-of your own — the rule that decides is one rule for every plugin.
 
 ### settings — a card of option rows
 

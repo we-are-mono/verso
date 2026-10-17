@@ -29,8 +29,6 @@ func (*Card) isWidget() {}
 
 func (c *Card) children() []Widget { return c.Children }
 
-func (c *Card) prune(keep func(Widget) bool) { c.Children = pruneList(c.Children, keep) }
-
 // cardView is the card template's model: the title and subtitle plus the children
 // already rendered to trusted HTML fragments.
 type cardView struct {

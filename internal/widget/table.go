@@ -702,21 +702,6 @@ func (t *Table) children() []Widget {
 	return out
 }
 
-func (t *Table) prune(keep func(Widget) bool) {
-	rows := func(rows []TableRow) {
-		for i := range rows {
-			rows[i].Expanded = pruneList(rows[i].Expanded, keep)
-			if rows[i].Drawer != nil {
-				rows[i].Drawer.Children = pruneList(rows[i].Drawer.Children, keep)
-			}
-		}
-	}
-	rows(t.Rows)
-	if t.Seam != nil {
-		rows(t.Seam.Rows)
-	}
-}
-
 // endpointIcons maps an endpoint kind to its registered icon. Unknown kinds fall
 // back to the zone glyph — a wrong icon beats a missing one in a listing.
 var endpointIcons = map[string]string{

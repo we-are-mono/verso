@@ -164,11 +164,6 @@ func (r *Renderer) setFor(lang string) *template.Template {
 // widget set is closed, so an unknown type is a programming error, not an
 // extension point.
 func (r *Renderer) RenderWithToken(out io.Writer, w Widget, csrfToken, lang string, t func(string) string) error {
-	// The one place a page's tree becomes markup: dock the page-wide lens here so
-	// every page — shell or plugin — renders it below the masthead wherever the page
-	// declared it, without each render site remembering to place it first. Whether a
-	// page carries a lens at all is the page's own decision, made before this.
-	w = HoistFilter(w)
 	markPageBlocks(w)
 	if t != nil {
 		translateSchema(w, t)
@@ -204,11 +199,6 @@ func (r *Renderer) translate(w Widget) {
 // render dispatches to the widget itself — polymorphism replaces the old type
 // switch (Open/Closed). Containers call it back on their children for recursion.
 func (r *Renderer) render(out io.Writer, w Widget, csrf string) error {
-	// A pruned tree can come back empty — a page whose whole body was a lens it
-	// did not earn. Nothing to render is not a failure to render.
-	if w == nil {
-		return nil
-	}
 	return w.renderInto(r, out, csrf)
 }
 

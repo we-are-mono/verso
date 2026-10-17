@@ -48,11 +48,6 @@ func (c *Conditional) children() []Widget {
 	return append(append([]Widget{}, c.Fields...), c.Otherwise...)
 }
 
-func (c *Conditional) prune(keep func(Widget) bool) {
-	c.Fields = pruneList(c.Fields, keep)
-	c.Otherwise = pruneList(c.Otherwise, keep)
-}
-
 // conditionalView is the conditional template's model: the gate's row and the
 // gated fields, already rendered to trusted HTML.
 type conditionalView struct {

@@ -158,9 +158,7 @@ function versoConsole(o) {
 // and its values are their own filter: click a verdict, a zone, an address,
 // and what was clicked travels to a shelf above the log wearing exactly the
 // treatment it had in the line. A second click, the shelf's ×, or Clear lets
-// go; with nothing held there is no shelf at all. The page-wide lens (the
-// still-lens) is the other half and the two compose — a plucked value hides
-// what does not match, the lens dims it.
+// go; with nothing held there is no shelf at all.
 (function () {
   if (!window.EventSource) return;
   var consoles = document.querySelectorAll('[data-verso-stream][data-verso-stream-style="console"]');
@@ -229,7 +227,6 @@ function versoConsole(o) {
     var metaRest = meta ? meta.textContent : "";
     // The live control sits on the heading line, outside any section.
     var pause = (section && section.querySelector("button[data-verso-live]")) || document.querySelector("button[data-verso-live]");
-    var lens = document.querySelector("[data-verso-filter]");
 
     // rows is the ring, newest first; each remembers the tuple it collapses on
     // and the values it can be narrowed by.
@@ -495,12 +492,6 @@ function versoConsole(o) {
       }
     }
 
-    // The still-lens is the page's own control and owns its behaviour; a batch
-    // of new rows simply asks it to look again, so the two never drift apart.
-    function relens() {
-      if (lens && lens.value) lens.dispatchEvent(new Event("input", { bubbles: true }));
-    }
-
     var log = versoConsole({
       pause: pause,
       label: pause && pause.querySelector("[data-verso-live-label]"),
@@ -538,12 +529,10 @@ function versoConsole(o) {
         if (!batch.length) return;
         batch.forEach(ingest);
         updateMeta();
-        relens();
       },
       resume: function (batch) {
         batch.forEach(ingest);
         applyHeld();
-        relens();
       },
     });
 

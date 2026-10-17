@@ -26,8 +26,6 @@ func (*Disclosure) isWidget() {}
 
 func (d *Disclosure) children() []Widget { return d.Children }
 
-func (d *Disclosure) prune(keep func(Widget) bool) { d.Children = pruneList(d.Children, keep) }
-
 // disclosureView is the template's model: the summary plus the contents already
 // rendered to trusted HTML.
 type disclosureView struct {

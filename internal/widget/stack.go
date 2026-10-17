@@ -30,8 +30,6 @@ func (*Stack) isWidget() {}
 
 func (s *Stack) children() []Widget { return s.Children }
 
-func (s *Stack) prune(keep func(Widget) bool) { s.Children = pruneList(s.Children, keep) }
-
 type stackView struct {
 	Divided  bool
 	Compact  bool

@@ -31,8 +31,6 @@ func (*Empty) isWidget() {}
 
 func (e *Empty) children() []Widget { return e.Children }
 
-func (e *Empty) prune(keep func(Widget) bool) { e.Children = pruneList(e.Children, keep) }
-
 // emptyView is the empty template's model: the icon/title plus the reassurance
 // and the call-to-action children already rendered to trusted HTML.
 type emptyView struct {

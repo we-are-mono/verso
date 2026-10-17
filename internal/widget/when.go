@@ -19,9 +19,8 @@ type When struct {
 	Children Widgets `json:"children"`
 }
 
-func (*When) isWidget()                      {}
-func (w *When) children() []Widget           { return w.Children }
-func (w *When) prune(keep func(Widget) bool) { w.Children = pruneList(w.Children, keep) }
+func (*When) isWidget()            {}
+func (w *When) children() []Widget { return w.Children }
 func (w *When) renderInto(r *Renderer, out io.Writer, csrf string) error {
 	body, err := r.renderChildren(w.Children, csrf)
 	if err != nil {

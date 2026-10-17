@@ -342,11 +342,6 @@ document.addEventListener(
   function (e) {
     var d = e.target;
     if (!(d instanceof HTMLDetailsElement) || !d.open) return;
-    // The page filter opens seams quietly to reveal matches — no scrolling then.
-    if (d.dataset.versoQuietOpen) {
-      delete d.dataset.versoQuietOpen;
-      return;
-    }
     var reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     requestAnimationFrame(function () {
       var fits = d.getBoundingClientRect().height < window.innerHeight * 0.8;
@@ -355,62 +350,6 @@ document.addEventListener(
   },
   true
 );
-
-// Page-wide filter (the still-lens): one field narrows every listing at once,
-// and typing never moves the page — non-matching rows dim in place, zero-match
-// sections ghost whole, and a collapsed seam opens only when it holds a match.
-// "/" focuses the field from anywhere; Escape clears and releases it. The
-// sentinel div rendered just before the dock drives the pinned state.
-(function () {
-  var input = document.querySelector("[data-verso-filter]");
-  if (!input) return;
-  var dock = input.closest(".verso-filter-dock");
-  var sentinel = dock && dock.previousElementSibling;
-  if (dock && sentinel && "IntersectionObserver" in window) {
-    new IntersectionObserver(function (entries) {
-      dock.classList.toggle("verso-filter-stuck", !entries[0].isIntersecting);
-    }).observe(sentinel);
-  }
-  function apply() {
-    var q = input.value.trim().toLowerCase();
-    [].forEach.call(document.querySelectorAll("main tbody tr"), function (tr) {
-      tr.classList.toggle("verso-filter-out", !!q && tr.textContent.toLowerCase().indexOf(q) === -1);
-    });
-    [].forEach.call(document.querySelectorAll("main details"), function (d) {
-      var seam = d.closest("tbody");
-      var seamMatch = seam && seam.querySelector(".verso-table-seam-row:not(.verso-filter-out)");
-      if (q && !d.open && (d.querySelector("tbody tr:not(.verso-filter-out)") || seamMatch)) {
-        d.dataset.versoQuietOpen = "1";
-        d.open = true;
-        var control = d.closest(".verso-table-seam-control");
-        if (control) control.classList.remove("verso-filter-out");
-      }
-    });
-    [].forEach.call(document.querySelectorAll("main section"), function (sec) {
-      var rows = sec.querySelectorAll("tbody tr");
-      if (!rows.length) return;
-      var visible = 0;
-      [].forEach.call(rows, function (r) {
-        if (!r.classList.contains("verso-filter-out")) visible++;
-      });
-      sec.classList.toggle("verso-filter-ghost", !!q && visible === 0);
-    });
-  }
-  input.addEventListener("input", apply);
-  document.addEventListener("keydown", function (e) {
-    var active = document.activeElement;
-    var typing = active && /^(input|select|textarea)$/i.test(active.tagName);
-    if (e.key === "/" && !typing) {
-      e.preventDefault();
-      input.focus();
-    }
-    if (e.key === "Escape" && active === input) {
-      input.value = "";
-      apply();
-      input.blur();
-    }
-  });
-})();
 
 // Dropped rows are a staged change, not a write. The reorderable table renders
 // the page form beside itself, holding the config and one hidden input per row id

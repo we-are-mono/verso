@@ -947,17 +947,6 @@ pub enum Widget {
     /// three rows to fold: below that the fold's own line costs the height it
     /// would save, so those rows render on the block.
     Settings(Settings),
-    /// The page-wide lens: one field that narrows every listing on the page at
-    /// once. The plugin declares only the placeholder; the shell owns the
-    /// behaviour — and whether the lens renders at all. Only a page with a live
-    /// listing keeps it: a page that holds what it has is scrolled and searched
-    /// with the browser's own find, however long it is, so there the shell
-    /// removes the widget. State the lens your page would want and carry no
-    /// rule of your own.
-    Filter {
-        #[serde(skip_serializing_if = "String::is_empty")]
-        placeholder: String,
-    },
     /// A short run of styled prose (Markdown), inline in a composition.
     Text { markdown: String },
     /// A destructive action behind an explicit confirmation.
@@ -2364,8 +2353,8 @@ impl ColumnWidth {
 ///
 /// Everything else is the shell's: the transport, the pause, the collapse of
 /// consecutive repeats, and the narrowing that clicking a value in a row does.
-/// A live listing should also declare a [`Widget::Filter`], which composes with
-/// it as the free-text half of the same question.
+/// Its free-text search is the bar's: an [`ActionBar`] with a `filter` over a
+/// `live` listing.
 #[derive(Serialize, Debug, Default)]
 pub struct TableStream {
     pub source: String,

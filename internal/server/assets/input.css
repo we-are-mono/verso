@@ -567,37 +567,6 @@ html {
       inset 0 0 0 62.5rem var(--color-denim-soft) !important;
   }
 
-  /* The dock's pin offset lives here (not as a utility, which would win the
-     layer order): the viewport edge. */
-  .verso-filter-dock { top: 0; }
-
-  /* Page-wide filter (the still-lens, verso.js "filter"): the dock is invisible at
-     rest (page-ground colour); pinned, rows slide beneath it and dissolve through
-     the gradient fade. On pin the bar breathes in a step; typing never moves the
-     page — non-matching rows dim in place, zero-match sections ghost whole. */
-  .verso-filter-dock::after {
-    content: "";
-    position: absolute;
-    top: 100%;
-    left: 0;
-    right: 0;
-    height: 3rem;
-    /* The upper 70% is solid ground, the bottom 30% the actual gradient.
-       Solid ground would blank real content while the
-       dock rests in the flow, so the fade exists only while pinned. */
-    background: linear-gradient(var(--color-ground) 70%, transparent);
-    pointer-events: none;
-    opacity: 0;
-    transition: opacity 0.2s ease;
-  }
-  .verso-filter-stuck::after { opacity: 1; }
-  tbody tr { transition: opacity 0.15s ease; }
-  tbody tr.verso-filter-out { opacity: 0.16; }
-  section.verso-filter-ghost { opacity: 0.4; transition: opacity 0.15s ease; }
-  @media (prefers-reduced-motion: reduce) {
-    tbody tr, section.verso-filter-ghost, .verso-filter-dock::after { transition: none; }
-  }
-
   /* The outcome layer (verso-page.js): an act made in place says how it went at
      the right, where the panel it came from has just gone. It arrives from that
      edge with the panel's own timing and leaves the same way. */
@@ -984,12 +953,6 @@ html {
   }
 }
 
-/* The dock keeps a constant pt-10 so pinning never shifts the page — but a lens
-   that OPENS a page would sit 2.5rem below the masthead line other toolbars
-   start on. When its sentinel is the container's first child, the dock cancels
-   that padding out of the flow; pinned geometry is unchanged. Utilities layer,
-   at the end: the stack's space-y utility writes margin-block-start on every
-   non-last child, and only a later utilities-layer rule outranks it. */
 @layer utilities {
   /* An in-flight action keeps its size but gives up its hover and press states. */
   /* An act inside a band keeps its own shape and takes the band's ink: its
@@ -1114,16 +1077,13 @@ html {
      rhythm instead of adding its own padding on top (a ruled one keeps its
      2.5rem under the rule). A control band is the top strip of its listing's
      card, so the listing stands flush under it. A log stays flush on
-     its bar; the pinned lens holds to its listing with its own padding. In
-     utilities because the stack's space-y utility sets every child's margins
-     and only a utilities-layer rule outranks it; before the dock's rules,
-     which must still win their pull-up. */
+     its bar. In utilities because the stack's space-y utility sets every
+     child's margins and only a utilities-layer rule outranks it. */
   .verso-page-body > .verso-stack > * + * { margin-top: calc(var(--spacing) * 10); }
   .verso-page-body > .verso-stack > [data-verso-actionbar] { margin-bottom: 0; }
   .verso-page-body > .verso-stack > [data-verso-actionbar] + * { margin-top: 0; }
   .verso-page-body > .verso-stack > .verso-console,
   .verso-page-body > .verso-stack > .verso-console-notice { margin-top: 0; }
-  .verso-page-body > .verso-stack > .verso-filter-dock + * { margin-top: calc(var(--spacing) * 2); }
   /* Sections, their air and their rules: sections.css. */
 
   /* A listing on the grid: each cell writes on 24px lines with 8px over the
@@ -1220,13 +1180,6 @@ html {
     border-bottom: 1px solid var(--color-rule);
     background-color: var(--color-ground);
   }
-
-  :first-child + .verso-filter-dock { margin-top: -2.5rem; }
-  /* …and the stack gap after the sentinel goes too, or it reintroduces 1rem. */
-  :first-child:has(+ .verso-filter-dock) { margin-block-end: 0; }
-  /* With a flash above the body, the pull-up would slide the dock's white
-     ground over the flash's bottom — the space it reclaims is occupied. */
-  .verso-flash ~ .verso-page-body .verso-filter-dock { margin-top: 0; }
 }
 
 /* Live meters glide: the bar spans its track and a fresh reading lands as a

@@ -1313,47 +1313,6 @@ func TestPluginPageRendersSchema(t *testing.T) {
 	}
 }
 
-// TestPluginFilterOnlyOverALiveListing: the page-wide lens is the shell's rule,
-// not a constant every plugin carries. A page that lists what it has is read by
-// scrolling and found in with the browser's own find, however long it is, so
-// the shell removes the widget outright — no dead dock, no shortcut into
-// nothing. Only a live listing keeps it: its rows arrive while it is read, and
-// the browser's find cannot hold a question across them.
-func TestPluginFilterOnlyOverALiveListing(t *testing.T) {
-	page := func(rows int, stream string) json.RawMessage {
-		var b strings.Builder
-		b.WriteString(`{"type":"stack","children":[` +
-			`{"type":"filter","placeholder":"Filter — zone, port…"},` +
-			`{"type":"table",` + stream + `"columns":[{"label":"Name"}],"rows":[`)
-		for i := range rows {
-			if i > 0 {
-				b.WriteString(",")
-			}
-			fmt.Fprintf(&b, `{"id":"r%d","cells":[{"text":"row %d"}]}`, i, i)
-		}
-		b.WriteString(`]}]}`)
-		return json.RawMessage(b.String())
-	}
-	live := fmt.Sprintf(`"stream":{"source":%q},`, widget.StreamSourceFirewallLog)
-	for _, tc := range []struct {
-		name   string
-		widget json.RawMessage
-		want   bool
-	}{
-		{"a long static listing", page(200, ""), false},
-		{"a live listing", page(0, live), true},
-	} {
-		tr := &fakeTransport{env: &plugin.Envelope{
-			SchemaVersion: 1, Title: "Firewall", Widget: tc.widget,
-		}}
-		s := newServerWith(t, fakeBackend{}, tr, []plugin.Manifest{demoManifest()})
-		body := get(t, s, "/plugins/demo/").Body.String()
-		if got := strings.Contains(body, "data-verso-filter"); got != tc.want {
-			t.Errorf("%s: filter rendered = %v, want %v", tc.name, got, tc.want)
-		}
-	}
-}
-
 // TestPluginReadBrokeredAsSnapshot: a plugin declaring acl.read receives the config
 // in its request as a snapshot the shell read with the operator's sid (ADR-007) —
 // the plugin never reads /etc/config itself.

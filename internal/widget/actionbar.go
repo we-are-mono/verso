@@ -202,12 +202,6 @@ func (a *ActionBar) children() []Widget {
 	return a.Drawer.Children
 }
 
-func (a *ActionBar) prune(keep func(Widget) bool) {
-	if a.Drawer != nil {
-		a.Drawer.Children = pruneList(a.Drawer.Children, keep)
-	}
-}
-
 // actionBarView is the bar plus, where the act opens one, the rendered panel it
 // opens — the same panel model a row's drawer builds, so the two cannot drift.
 type actionBarView struct {

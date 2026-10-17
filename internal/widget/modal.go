@@ -36,8 +36,6 @@ func (*Modal) isWidget() {}
 
 func (m *Modal) children() []Widget { return m.Children }
 
-func (m *Modal) prune(keep func(Widget) bool) { m.Children = pruneList(m.Children, keep) }
-
 // modalView is the modal template's model: the trigger label and style, title, and
 // the dialog body already rendered to trusted HTML.
 type modalView struct {

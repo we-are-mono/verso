@@ -101,7 +101,6 @@ var catalog = map[string]func() Widget{
 	"ports":       func() Widget { return new(Ports) },
 	"settings":    func() Widget { return new(Settings) },
 	"actionbar":   func() Widget { return new(ActionBar) },
-	"filter":      func() Widget { return new(Filter) },
 	"slot":        func() Widget { return new(Slot) },
 }
 

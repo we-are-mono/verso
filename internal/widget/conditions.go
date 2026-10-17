@@ -52,12 +52,6 @@ func (c *Conditions) children() []Widget {
 	return out
 }
 
-func (c *Conditions) prune(keep func(Widget) bool) {
-	for i := range c.Items {
-		c.Items[i].Children = pruneList(c.Items[i].Children, keep)
-	}
-}
-
 // UnmarshalJSON refuses an item without a key, or with a key another item
 // already has: the key is what the picker adds and removes an item by.
 func (c *Conditions) UnmarshalJSON(data []byte) error {

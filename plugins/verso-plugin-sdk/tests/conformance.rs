@@ -452,12 +452,6 @@ fn write_widget_fixtures() {
             }),
         ),
         (
-            "filter",
-            Widget::Filter {
-                placeholder: "Filter rules, zones, and ports…".into(),
-            },
-        ),
-        (
             "actionbar",
             Widget::ActionBar(ActionBar {
                 tabs: vec![

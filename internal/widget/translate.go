@@ -110,8 +110,6 @@ func translateFields(w Widget, t func(string) string) {
 				n.Options[i].Label = t(n.Options[i].Label)
 			}
 		}
-	case *Filter:
-		n.Placeholder = t(n.Placeholder)
 	case *Form:
 		n.Submit = t(n.Submit)
 		n.Error = t(n.Error)

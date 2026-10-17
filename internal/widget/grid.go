@@ -45,8 +45,6 @@ func (*Grid) isWidget() {}
 
 func (g *Grid) children() []Widget { return g.Children }
 
-func (g *Grid) prune(keep func(Widget) bool) { g.Children = pruneList(g.Children, keep) }
-
 // fusable reports whether a group of related fields is values typed into
 // boxes, which the shell joins into one control (verso-box) — a secret and
 // its repeat among them, or a value and the unit it is counted in. A group
