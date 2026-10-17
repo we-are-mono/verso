@@ -9,6 +9,7 @@ import (
 	"hash/fnv"
 	"log"
 	"net/http"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -562,11 +563,11 @@ func stagedItemOf(label string, mono bool, changes []stagedChange, tr func(strin
 		ops[i] = describeChange(c).Op
 	}
 	switch {
-	case hasOp(ops, "remove-section"):
+	case slices.Contains(ops, "remove-section"):
 		verb = "removed"
-	case hasOp(ops, "add-section"):
+	case slices.Contains(ops, "add-section"):
 		verb = "added"
-	case hasOp(ops, "reorder"):
+	case slices.Contains(ops, "reorder"):
 		verb = "reordered"
 	}
 	item := stagedItem{Verb: verb, Word: tr(verb), Label: label, Mono: mono, changes: changes}
@@ -603,15 +604,6 @@ func soleOption(changes []stagedChange) string {
 		option = c.Option
 	}
 	return option
-}
-
-func hasOp(ops []string, op string) bool {
-	for _, o := range ops {
-		if o == op {
-			return true
-		}
-	}
-	return false
 }
 
 // describeChange flattens a coalesced uci change tuple into the named-field shape
@@ -738,33 +730,27 @@ func humanizeChange(config string, ch []string, secrets map[string]bool) string 
 // as its own uncoalesced entry so nothing is silently dropped.
 func coalesceChanges(list [][]string) [][]string {
 	type state struct {
-		order        int
 		firstPresent bool // the first op left the target present (a set) rather than absent (a removal)
 		present      bool // the final op's effect
 		last         []string
 	}
 	seen := map[string]*state{}
-	order := 0
+	var ordered []*state // each target, in the order first seen
 	for _, ch := range list {
 		key, present, ok := changeTarget(ch)
 		if !ok {
-			key = fmt.Sprintf("\x00unmodeled\x00%d", order)
+			key = fmt.Sprintf("\x00unmodeled\x00%d", len(ordered))
 			present = true
 		}
 		st := seen[key]
 		if st == nil {
-			st = &state{order: order, firstPresent: present}
+			st = &state{firstPresent: present}
 			seen[key] = st
-			order++
+			ordered = append(ordered, st)
 		}
 		st.present = present
 		st.last = ch
 	}
-	ordered := make([]*state, 0, len(seen))
-	for _, st := range seen {
-		ordered = append(ordered, st)
-	}
-	sort.Slice(ordered, func(i, j int) bool { return ordered[i].order < ordered[j].order })
 	out := make([][]string, 0, len(ordered))
 	for _, st := range ordered {
 		if !st.present && st.firstPresent {
