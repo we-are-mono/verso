@@ -205,7 +205,7 @@ func TestTheBoardCardsFacts(t *testing.T) {
 		}
 	}
 	// The facts stand at the left, the panel beside them on the right.
-	figure, list, panel := strings.Index(board, "<div data-verso-figure>"), strings.Index(board, "<dl"), strings.Index(board, "verso-ports")
+	figure, list, panel := strings.Index(board, "<div data-verso-beside>"), strings.Index(board, "<dl"), strings.Index(board, "verso-ports")
 	if figure < 0 || list < figure || panel < list {
 		t.Errorf("the facts should stand beside the panel, the facts first:\n%s", board)
 	}

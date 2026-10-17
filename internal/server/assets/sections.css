@@ -309,18 +309,19 @@
  * own width (a panel says its art's, --art-w) at the right edge, both from
  * the same top line. Where what is said would read narrower than a fact
  * list does, the figure stands under it, 24px down, as a card's blocks
- * stand. */
-[data-verso-figure] {
+ * stand. Its hook is its own: a listing's live figures carry
+ * data-verso-figure. */
+[data-verso-beside] {
   display: flex;
   flex-wrap: wrap;
   align-items: flex-start;
   gap: var(--spacing-inset) calc(var(--spacing) * 10);
 }
-[data-verso-figure] > :not(:last-child) {
+[data-verso-beside] > :not(:last-child) {
   flex: 1 1 22rem;
   min-width: 0;
 }
-[data-verso-figure] > :last-child {
+[data-verso-beside] > :last-child {
   flex: 0 1 var(--art-w, auto);
   min-width: 0;
 }

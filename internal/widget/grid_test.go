@@ -59,16 +59,35 @@ func TestGridFigureStandsBesideItsFacts(t *testing.T) {
 		&Properties{Align: "left", Items: []Property{{Label: "Memory", Value: "7.7 GiB"}}},
 		&Ports{Back: `<svg viewBox="0 0 504 136"></svg>`, Items: []PortItem{{Iface: "eth0"}}},
 	}})
-	figure, list, ports := strings.Index(got, "<div data-verso-figure>"), strings.Index(got, "<dl"), strings.Index(got, `class="verso-ports`)
-	if figure < 0 || list < figure || ports < list {
+	row, list, ports := strings.Index(got, "<div data-verso-beside>"), strings.Index(got, "<dl"), strings.Index(got, `class="verso-ports`)
+	if row < 0 || list < row || ports < list {
 		t.Errorf("the facts should open the row, then the figure:\n%s", got)
 	}
 	css, err := os.ReadFile(filepath.Join("..", "server", "assets", "sections.css"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(css), "[data-verso-figure] > :last-child {") {
+	if !strings.Contains(string(css), "[data-verso-beside] > :last-child {") {
 		t.Error("sections.css should size the figure's column")
+	}
+	// The row's hook is its own: a listing's live figures (a device's Now
+	// cell) carry data-verso-figure, and a rule aimed at that would stack
+	// them and stretch every row.
+	if strings.Contains(string(css), "[data-verso-figure]") {
+		t.Error("sections.css styles the live figures' hook")
+	}
+	templates, err := filepath.Glob(filepath.Join("templates", "*.tmpl"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, path := range templates {
+		body, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if strings.Contains(string(body), "data-verso-beside") && filepath.Base(path) != "grid.html.tmpl" {
+			t.Errorf("%s uses the figure row's hook", path)
+		}
 	}
 }
 
