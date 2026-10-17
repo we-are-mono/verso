@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -1761,7 +1762,7 @@ func dialRCList(socket string) rcListFn {
 				}
 			}
 		}
-		enrichRCStates(out, details, os.ReadFile)
+		enrichRCStates(out, details, os.ReadFile, livePIDs())
 		return out, nil
 	}
 }
@@ -1806,12 +1807,18 @@ func parseServiceDetails(raw map[string]any) map[string]serviceDetail {
 	return out
 }
 
+// enrichRCStates classifies each service and reads its runtime. procs is every
+// live process, read once for all services, so a service's memory counts the
+// processes its instances started: a jailed instance is procd's ujail
+// wrapper, and the daemon runs as its child.
 func enrichRCStates(
 	states map[string]RCState,
 	details map[string]serviceDetail,
 	readFile func(string) ([]byte, error),
+	procs []int,
 ) {
 	systemUptime := readProcUptime(readFile)
+	children := processChildren(procs, readFile)
 	for name, state := range states {
 		detail := details[name]
 		var script []byte
@@ -1831,7 +1838,7 @@ func enrichRCStates(
 		// running service's own business.
 		state.Failed = state.Failed && !state.Running
 		sort.Ints(state.PIDs)
-		state.MemoryBytes, state.Uptime = readProcessRuntime(state.PIDs, systemUptime, readFile)
+		state.MemoryBytes, state.Uptime = readProcessRuntime(state.PIDs, children, systemUptime, readFile)
 		states[name] = state
 	}
 }
@@ -1897,19 +1904,79 @@ func readProcUptime(readFile func(string) ([]byte, error)) float64 {
 	return uptime
 }
 
-func readProcessRuntime(pids []int, systemUptime float64, readFile func(string) ([]byte, error)) (memory, uptime int64) {
-	for _, pid := range pids {
-		base := filepath.Join("/proc", strconv.Itoa(pid))
-		if status, err := readFile(filepath.Join(base, "status")); err == nil {
+// readProcessRuntime is what a service's instances hold now: the resident
+// memory of each instance and every process under it (children, from
+// processChildren), each counted once, and how long the oldest instance has
+// run.
+func readProcessRuntime(pids []int, children map[int][]int, systemUptime float64, readFile func(string) ([]byte, error)) (memory, uptime int64) {
+	counted := map[int]bool{}
+	tree := slices.Clone(pids)
+	for len(tree) > 0 {
+		pid := tree[0]
+		tree = tree[1:]
+		if counted[pid] {
+			continue
+		}
+		counted[pid] = true
+		if status, err := readFile(filepath.Join("/proc", strconv.Itoa(pid), "status")); err == nil {
 			memory += parseProcRSS(status)
 		}
-		if stat, err := readFile(filepath.Join(base, "stat")); err == nil {
+		tree = append(tree, children[pid]...)
+	}
+	for _, pid := range pids {
+		if stat, err := readFile(filepath.Join("/proc", strconv.Itoa(pid), "stat")); err == nil {
 			if age := parseProcAge(stat, systemUptime); age > uptime {
 				uptime = age
 			}
 		}
 	}
 	return memory, uptime
+}
+
+// processChildren maps each process to the processes it started, from each
+// one's parent in its stat.
+func processChildren(procs []int, readFile func(string) ([]byte, error)) map[int][]int {
+	children := map[int][]int{}
+	for _, pid := range procs {
+		stat, err := readFile(filepath.Join("/proc", strconv.Itoa(pid), "stat"))
+		if err != nil {
+			continue
+		}
+		if parent := parseProcParent(stat); parent > 0 {
+			children[parent] = append(children[parent], pid)
+		}
+	}
+	return children
+}
+
+// parseProcParent is a stat's parent pid (field 4), read after comm's final
+// ')' as parseProcAge reads its own field.
+func parseProcParent(stat []byte) int {
+	end := bytes.LastIndexByte(stat, ')')
+	if end < 0 {
+		return 0
+	}
+	fields := strings.Fields(string(stat[end+1:]))
+	if len(fields) < 2 {
+		return 0
+	}
+	parent, _ := strconv.Atoi(fields[1])
+	return parent
+}
+
+// livePIDs is every process the router runs now, by its /proc entry.
+func livePIDs() []int {
+	entries, err := os.ReadDir("/proc")
+	if err != nil {
+		return nil
+	}
+	var pids []int
+	for _, entry := range entries {
+		if pid, err := strconv.Atoi(entry.Name()); err == nil && pid > 0 {
+			pids = append(pids, pid)
+		}
+	}
+	return pids
 }
 
 func parseProcRSS(status []byte) int64 {

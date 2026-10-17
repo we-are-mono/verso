@@ -10,6 +10,7 @@ import (
 	"os"
 	"reflect"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -547,7 +548,7 @@ func TestEnrichRCStatesClassifiesServicesAndAggregatesRuntime(t *testing.T) {
 		return nil, fmt.Errorf("missing %s", path)
 	}
 
-	enrichRCStates(states, details, readFile)
+	enrichRCStates(states, details, readFile, nil)
 	if states["boot"].Kind != ServiceTask || states["urandom_seed"].Kind != ServiceTask {
 		t.Errorf("task classification = boot:%q urandom:%q", states["boot"].Kind, states["urandom_seed"].Kind)
 	}
@@ -568,6 +569,48 @@ func TestEnrichRCStatesClassifiesServicesAndAggregatesRuntime(t *testing.T) {
 	}
 }
 
+// TestAJailedServiceCountsWhatRunsInItsJail: procd names a jailed instance by
+// its ujail wrapper's pid, and the service runs as the wrapper's child, so a
+// service's memory is its instance's whole process tree: the wrapper, the
+// daemon, and whatever the daemon started; a process outside it is not.
+func TestAJailedServiceCountsWhatRunsInItsJail(t *testing.T) {
+	stat := func(pid, ppid int) string {
+		fields := append([]string{"S", strconv.Itoa(ppid)}, make([]string, 18)...)
+		for i := 2; i < 20; i++ {
+			fields[i] = "0"
+		}
+		return strconv.Itoa(pid) + " (x) " + strings.Join(fields, " ") + "\n"
+	}
+	files := map[string]string{
+		"/proc/uptime":     "100.00 20.00\n",
+		"/proc/50/status":  "Name:\tujail\nVmRSS:\t1024 kB\n",
+		"/proc/50/stat":    stat(50, 1),
+		"/proc/51/status":  "Name:\tAdGuardHome\nVmRSS:\t280000 kB\n",
+		"/proc/51/stat":    stat(51, 50),
+		"/proc/52/status":  "Name:\thelper\nVmRSS:\t1000 kB\n",
+		"/proc/52/stat":    stat(52, 51),
+		"/proc/60/status":  "Name:\tdnsmasq\nVmRSS:\t2048 kB\n",
+		"/proc/60/stat":    stat(60, 1),
+		"/etc/init.d/adgh": "USE_PROCD=1\nprocd_set_param command /usr/bin/AdGuardHome\n",
+	}
+	readFile := func(path string) ([]byte, error) {
+		if value, ok := files[path]; ok {
+			return []byte(value), nil
+		}
+		return nil, fmt.Errorf("missing %s", path)
+	}
+	states := map[string]RCState{"adgh": {}}
+	details := map[string]serviceDetail{"adgh": {Instances: []serviceInstance{{PID: 50, Running: true, HasCommand: true}}}}
+	enrichRCStates(states, details, readFile, []int{1, 50, 51, 52, 60})
+	adgh := states["adgh"]
+	if want := int64(1024+280000+1000) * 1024; adgh.MemoryBytes != want {
+		t.Errorf("memory = %d, want %d: the wrapper, the daemon in it and its helper", adgh.MemoryBytes, want)
+	}
+	if !slices.Equal(adgh.PIDs, []int{50}) {
+		t.Errorf("pids = %v, want procd's own, [50]", adgh.PIDs)
+	}
+}
+
 // TestProcdFailedIsAnInstanceProcdStoppedRestarting: procd keeps a daemon's
 // instance after it gives up on it (a crash loop clears its respawn), while a
 // stop drops the instance. Not running, an error exit and no respawn left is
@@ -585,7 +628,7 @@ func TestProcdFailedIsAnInstanceProcdStoppedRestarting(t *testing.T) {
 		t.Errorf("failedServices = %v, want [gave-up sysntpd]", got)
 	}
 	states := map[string]RCState{"sysntpd": {Enabled: true}, "odhcpd": {Enabled: true}, "dnsmasq": {Enabled: true}}
-	enrichRCStates(states, parseServiceDetails(raw), func(string) ([]byte, error) { return nil, fmt.Errorf("missing") })
+	enrichRCStates(states, parseServiceDetails(raw), func(string) ([]byte, error) { return nil, fmt.Errorf("missing") }, nil)
 	for name, want := range map[string]bool{"sysntpd": true, "odhcpd": false, "dnsmasq": false} {
 		if states[name].Failed != want {
 			t.Errorf("%s failed = %v, want %v", name, states[name].Failed, want)
