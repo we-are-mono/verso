@@ -1,0 +1,45 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/* SPDX-FileCopyrightText: 2026 Mono Technologies Inc. */
+
+/*
+ * tabs — a drawer's readings, one tab per reading, on a 56px strip under its
+ * header with the strip's own hairline drawn inside it, so a tab's underline
+ * sits on that hairline. The strip keeps the drawer's gutter, so the first
+ * tab stands on the cards' left edge, and scrolls sideways when the readings
+ * outrun the drawer.
+ *
+ * Elements: verso-tabs__tab   one reading: its name in Meta, Ink and an Inert
+ *                             underline under the pointer; the one in force
+ *                             (aria-current="page") Ink at 500 over a Deep
+ *                             Denim underline
+ */
+
+.verso-tabs {
+  display: flex;
+  flex: none;
+  gap: calc(var(--spacing) * 6);
+  overflow-x: auto;
+  padding-inline: var(--verso-drawer-gutter);
+  box-shadow: inset 0 -1px 0 var(--color-rule);
+}
+
+.verso-tabs__tab {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  padding-block: calc(var(--spacing) * 4);
+  white-space: nowrap;
+  color: var(--color-meta);
+  transition-property: color, box-shadow;
+  transition-duration: 150ms;
+  @apply type-body;
+}
+.verso-tabs__tab:hover {
+  color: var(--color-ink);
+  box-shadow: inset 0 -2px 0 var(--color-inert);
+}
+.verso-tabs__tab[aria-current="page"] {
+  color: var(--color-ink);
+  box-shadow: inset 0 -2px 0 var(--color-denim-deep);
+  @apply type-field-label;
+}

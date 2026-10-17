@@ -1267,10 +1267,8 @@ func TestRenderRowDrawerTitleBand(t *testing.T) {
 		// The strip: the tab in force carries the action colour under it; the
 		// rest stay quiet. The tabs are the air, so an underline stands on the
 		// strip's own hairline.
-		`<nav class="flex flex-none gap-6 overflow-x-auto px-(--verso-drawer-gutter) shadow-[inset_0_-1px_0_var(--color-rule)]"`,
-		`class="flex shrink-0 items-center py-3.5 text-sm leading-7 whitespace-nowrap transition`,
-		`aria-current="page"`,
-		"shadow-[inset_0_-2px_0_var(--color-denim-deep)]",
+		`<nav class="verso-tabs"`,
+		`aria-current="page" class="verso-tabs__tab"`,
 		// The body under the strip is the page's ground in small: Quiet Sand,
 		// its cards keeping one gutter under the strip as at the drawer's
 		// edges, the strip's tabs and the title standing on that gutter too.

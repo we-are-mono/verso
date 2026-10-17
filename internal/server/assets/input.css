@@ -33,6 +33,7 @@
 @import "./blocks/mark.css" layer(components);
 @import "./blocks/rhythm.css" layer(components);
 @import "./blocks/steps.css" layer(components);
+@import "./blocks/tabs.css" layer(components);
 @import "./blocks/tip.css" layer(components);
 @import "./blocks/waiting.css" layer(components);
 

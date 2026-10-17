@@ -232,9 +232,7 @@ no-repeated-bundles	border-b border-mid flex gap-6 items-center py-2.5
 no-repeated-bundles	border-b border-rule text-right whitespace-nowrap
 no-repeated-bundles	cursor-pointer focus-visible:outline-2 focus-visible:outline-denim focus-visible:outline-offset-2 font-medium gap-1.5 hover:text-denim-deep inline-flex items-center text-denim text-sm transition-colors
 no-repeated-bundles	flex flex-1 flex-col gap-2 min-w-0
-no-repeated-bundles	flex flex-none gap-6 overflow-x-auto shadow-[inset_0_-1px_0_var(--color-rule)]
 no-repeated-bundles	flex flex-wrap gap-2 items-center min-w-0
-no-repeated-bundles	flex font-medium hover:shadow-[inset_0_-2px_0_var(--color-inert)] hover:text-ink items-center leading-7 py-3.5 shadow-[inset_0_-2px_0_var(--color-denim-deep)] shrink-0 text-ink text-meta text-sm transition whitespace-nowrap
 no-repeated-bundles	flex font-semibold gap-2 items-center text-ink text-sm
 no-repeated-bundles	flex gap-1.5 items-center text-ink
 no-repeated-bundles	flex gap-3 items-center pr-6
@@ -933,7 +931,6 @@ short-class-lists	server/assets/verso-listing.js	group col-span-full grid grid-c
 short-class-lists	server/assets/verso-tables.js	verso-reorder-float fixed z-[70] overflow-hidden rounded-xs bg-ground ring-1 ring-rule-strong shadow-(--shadow-lifted) pointer-events-none origin-center scale-y-[1.01] opacity-[0.98] will-change-[top,transform] motion-reduce:transform-none [&_td]:border-b-transparent [&_td]:bg-ground
 short-class-lists	server/templates/diagnostics.html.tmpl	{{template "verso-input-words"}} {{template "verso-input-border" false}} cursor-pointer appearance-none pr-9 pl-9.5 disabled:cursor-default disabled:bg-quiet disabled:text-meta
 short-class-lists	server/templates/entity-panel.html.tmpl	flex h-control cursor-pointer items-center rounded-xs border border-denim bg-denim px-4 text-sm font-semibold whitespace-nowrap text-on-fill transition-colors hover:border-denim-deep hover:bg-denim-deep
-short-class-lists	server/templates/entity-panel.html.tmpl	flex shrink-0 items-center py-3.5 text-sm leading-7 whitespace-nowrap transition {{if .Active}}font-medium text-ink shadow-[inset_0_-2px_0_var(--color-denim-deep)]{{else}}text-meta hover:text-ink hover:shadow-[inset_0_-2px_0_var(--color-inert)]{{end}}
 short-class-lists	server/templates/login.html.tmpl	flex items-start gap-2 rounded-xs bg-marigold-soft px-3 py-2 text-sm leading-[1.45] text-marigold-deep
 short-class-lists	server/templates/login.html.tmpl	flex w-full min-w-0 flex-col gap-6 p-6 sm:p-8 lg:w-100 lg:shrink-0
 short-class-lists	server/templates/login.html.tmpl	group flex min-w-0 flex-col border-b border-rule bg-quiet p-6 sm:p-8 lg:min-w-100 lg:max-w-[calc(100vw-448px)] lg:shrink-0 lg:border-r lg:border-b-0
@@ -1042,7 +1039,6 @@ short-class-lists	widget/templates/section.html.tmpl	ml-auto flex h-6 w-full ite
 short-class-lists	widget/templates/section.html.tmpl	{{if and .Sub (not $band)}}flex flex-wrap items-center justify-between gap-x-6{{else}}{{template "verso-section-band-class"}}{{end}}{{if .Kicker}} mb-6{{end}}
 short-class-lists	widget/templates/settings.html.tmpl	flex cursor-pointer items-center gap-1.5 px-3 pt-2.75 pb-3 leading-6 text-sm font-semibold text-denim-deep transition-colors select-none hover:bg-quiet hover:text-denim [&::-webkit-details-marker]:hidden
 short-class-lists	widget/templates/settings.html.tmpl	flex items-baseline justify-between gap-3 pt-1 pb-0.75 {{if not .Card}}border-b border-rule-strong {{end}}{{template "verso-kicker-class"}}
-short-class-lists	widget/templates/shared.html.tmpl	flex shrink-0 items-center py-3.5 text-sm leading-7 whitespace-nowrap transition {{if .Active}}font-medium text-ink shadow-[inset_0_-2px_0_var(--color-denim-deep)]{{else}}text-meta hover:text-ink hover:shadow-[inset_0_-2px_0_var(--color-inert)]{{end}}
 short-class-lists	widget/templates/shared.html.tmpl	flex w-full cursor-pointer items-baseline gap-3 px-3 py-1.5 text-left text-ink transition-colors hover:bg-denim-soft hover:text-denim-deep aria-selected:bg-denim-soft aria-selected:text-denim-deep
 short-class-lists	widget/templates/shared.html.tmpl	grid size-7 flex-none cursor-pointer place-items-center rounded-xs border border-transparent text-glyph transition-colors hover:border-sand-5 hover:bg-rule hover:text-ink focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-denim
 short-class-lists	widget/templates/shared.html.tmpl	grid size-7 shrink-0 cursor-pointer place-items-center rounded-xs text-meta transition-colors hover:bg-mid/50 hover:text-ink focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-denim
@@ -1223,10 +1219,7 @@ type-comes-from-roles	server/entity.go	text-sm
 type-comes-from-roles	server/restarting.go	font-mono
 type-comes-from-roles	server/restarting.go	text-base
 type-comes-from-roles	server/templates/diagnostics.html.tmpl	text-sm
-type-comes-from-roles	server/templates/entity-panel.html.tmpl	font-medium
 type-comes-from-roles	server/templates/entity-panel.html.tmpl	font-semibold
-type-comes-from-roles	server/templates/entity-panel.html.tmpl	leading-7
-type-comes-from-roles	server/templates/entity-panel.html.tmpl	text-sm
 type-comes-from-roles	server/templates/entity-panel.html.tmpl	text-sm
 type-comes-from-roles	server/templates/firmware-started.html.tmpl	font-medium
 type-comes-from-roles	server/templates/firmware-started.html.tmpl	font-sans
@@ -1650,7 +1643,6 @@ type-comes-from-roles	widget/templates/shared.html.tmpl	[&_h3]:font-medium
 type-comes-from-roles	widget/templates/shared.html.tmpl	[&_h3]:tracking-[.08em]
 type-comes-from-roles	widget/templates/shared.html.tmpl	font-medium
 type-comes-from-roles	widget/templates/shared.html.tmpl	font-medium
-type-comes-from-roles	widget/templates/shared.html.tmpl	font-medium
 type-comes-from-roles	widget/templates/shared.html.tmpl	font-mono
 type-comes-from-roles	widget/templates/shared.html.tmpl	font-mono
 type-comes-from-roles	widget/templates/shared.html.tmpl	font-mono
@@ -1659,13 +1651,11 @@ type-comes-from-roles	widget/templates/shared.html.tmpl	font-sans
 type-comes-from-roles	widget/templates/shared.html.tmpl	font-semibold
 type-comes-from-roles	widget/templates/shared.html.tmpl	leading-6
 type-comes-from-roles	widget/templates/shared.html.tmpl	leading-6
-type-comes-from-roles	widget/templates/shared.html.tmpl	leading-7
 type-comes-from-roles	widget/templates/shared.html.tmpl	placeholder:font-normal
 type-comes-from-roles	widget/templates/shared.html.tmpl	text-base
 type-comes-from-roles	widget/templates/shared.html.tmpl	text-base
 type-comes-from-roles	widget/templates/shared.html.tmpl	text-base
 type-comes-from-roles	widget/templates/shared.html.tmpl	text-lg
-type-comes-from-roles	widget/templates/shared.html.tmpl	text-sm
 type-comes-from-roles	widget/templates/shared.html.tmpl	text-sm
 type-comes-from-roles	widget/templates/shared.html.tmpl	text-sm
 type-comes-from-roles	widget/templates/shared.html.tmpl	text-sm

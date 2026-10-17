@@ -91,8 +91,8 @@ func TestDrawerTabsAreTheirNames(t *testing.T) {
 		t.Fatal(err)
 	}
 	got := b.String()
-	if n := strings.Count(got, "items-center py-3.5 text-sm leading-7 whitespace-nowrap transition"); n != 2 {
-		t.Errorf("want both tabs at the 14px label scale, found %d:\n%s", n, got)
+	if n := strings.Count(got, `class="verso-tabs__tab"`); n != 2 {
+		t.Errorf("want both tabs as the tab block's tab, found %d:\n%s", n, got)
 	}
 	if strings.Contains(got, "whitespace-nowrap text-base") {
 		t.Error("a tab is set a step above the drawer's labels")

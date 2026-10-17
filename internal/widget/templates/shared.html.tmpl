@@ -558,7 +558,7 @@
       {{/* A strip that keeps edits (RowDrawer.TabsKeepEdits) is marked, so a
            press posts the form to the tab rather than fetching it bare
            (verso-forms.js). */}}
-      <nav{{if .TabsKeepEdits}} data-verso-tabs-keep{{end}} class="flex flex-none gap-6 overflow-x-auto {{template "verso-drawer-inset"}} shadow-[inset_0_-1px_0_var(--color-rule)]" aria-label="{{ t "Sections" }}">
+      <nav{{if .TabsKeepEdits}} data-verso-tabs-keep{{end}} class="verso-tabs" aria-label="{{ t "Sections" }}">
         {{range .Tabs}}
         {{/* A reading is swapped into the panel that is already open, never
              navigated to: the frame stays where it is, so it does not slide in
@@ -566,8 +566,7 @@
              follows, so a reading is still a place you can link to — and with no
              script the link is simply followed and the page answers with the
              panel open on it. */}}
-        <a href="{{.Href}}" hx-get="{{.Href}}" hx-target="closest [data-verso-panel]" hx-swap="innerHTML" hx-replace-url="true"{{if .Active}} aria-current="page"{{end}}
-          class="flex shrink-0 items-center py-3.5 text-sm leading-7 whitespace-nowrap transition {{if .Active}}font-medium text-ink shadow-[inset_0_-2px_0_var(--color-denim-deep)]{{else}}text-meta hover:text-ink hover:shadow-[inset_0_-2px_0_var(--color-inert)]{{end}}">{{.Label}}</a>
+        <a href="{{.Href}}" hx-get="{{.Href}}" hx-target="closest [data-verso-panel]" hx-swap="innerHTML" hx-replace-url="true"{{if .Active}} aria-current="page"{{end}} class="verso-tabs__tab">{{.Label}}</a>
         {{end}}
       </nav>
       {{end}}
