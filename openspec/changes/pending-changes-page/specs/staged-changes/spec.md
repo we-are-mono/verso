@@ -37,7 +37,7 @@ The Pending changes page SHALL head "N pending changes" with no acts on the head
 
 #### Scenario: Changes from three pages
 - **WHEN** changes were saved on Firewall rules, DHCP and General
-- **THEN** the page shows a "Firewall rules" card, a "DHCP" card and a "General" card, each with "Open page" and "Undo these"
+- **THEN** the page shows a "Firewall rules" card, a "DHCP" card and a "General" card, each with "Open page" and "Discard these"
 
 #### Scenario: One change
 - **WHEN** a single change is pending
@@ -70,7 +70,7 @@ Undoing a row SHALL drop that change from the stage and leave every other pendin
 - **THEN** Lease time is pending again with the value it had
 
 #### Scenario: Undoing a card
-- **WHEN** the operator presses "Undo these" on the DHCP card
+- **WHEN** the operator presses "Discard these" on the DHCP card
 - **THEN** every DHCP change leaves the stage and no other card changes
 
 ### Requirement: The page says what applying will do

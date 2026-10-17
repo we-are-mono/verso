@@ -68,7 +68,7 @@ Every task ends green under `make lint` and `make test`. A task that touches a t
   - `GET /pending` renders "N pending changes" with no acts on the heading line and no lede, and Apply N and Discard all under the last card, 24px under it as cards stand;
   - When you apply comes first, with the disconnect callout (a packet, no buttons) when flagged, then the numbered steps, then the note;
   - a trigger read that fails (no ACL) leaves the card without a reload step and the page renders;
-  - one card per group titled by its page heading, with Open page and (for more than one row) Undo these;
+  - one card per group titled by its page heading, with Open page and (for more than one row) Discard these;
   - the rows carry their mark, verb, sentence, from → to and the three acts, and no age.
 - [x] 6.2 Write the tests first, then implement and verify:
   - "1 pending change" / "Apply 1 change";
@@ -76,7 +76,7 @@ Every task ends green under `make lint` and `make test`. A task that touches a t
   - opened clean with nothing on record, it reads "Nothing pending" and offers no way back;
   - after a rollback, the callout names the rollback's time.
 - [x] 6.3 Write the tests first, then implement and verify:
-  - with scripting off, Undo, Undo these and Discard all are forms;
+  - with scripting off, Discard this change, Discard these and Discard all are forms;
   - Apply is replaced by the sentence that it needs scripting;
   - `GET /uci/review` answers 308 to `/pending`;
   - the page composes existing widgets only (no new widget kind in the render).

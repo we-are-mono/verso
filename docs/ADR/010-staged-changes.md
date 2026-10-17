@@ -77,7 +77,7 @@ rollback.**
    changes across the configs plugins have declared and lists them in one card
    per page they were made on — each change as its owning plugin's sentence
    (the describe hook, docs/plugins.md), led by what happened in a word, with
-   its way to the page, its undo, and the uci lines it stands for. Above them a **When you apply** card numbers what an
+   its way to the page, its discard, and the uci lines it stands for. Above them a **When you apply** card numbers what an
    apply does, in the order it does it (§5), opening with a warning where a
    pending change touches the interface this browser reaches the router
    through. **Apply N** and **Discard all** stand under the changes, read

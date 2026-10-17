@@ -74,7 +74,7 @@ func TestPendingPageHeadsTheStage(t *testing.T) {
 		"Keeps them if this page checks in within 30 s.",
 		`name="note"`,
 		`text-ink">DHCP</h2>`, `text-ink">Firewall rules</h2>`,
-		`href="/plugins/dnsdhcp/"`, `href="/plugins/dnsdhcp/rules"`, "Open page", "Undo these",
+		`href="/plugins/dnsdhcp/"`, `href="/plugins/dnsdhcp/rules"`, "Open page", "Discard these",
 	)
 	// The note's question stands over its box, which takes the row's width.
 	if note := strings.Index(body, `name="note"`); note < 0 || !strings.Contains(body[strings.LastIndex(body[:note], "verso-field-row"):note], "verso-field-wide") {
@@ -99,9 +99,15 @@ func TestPendingPageHeadsTheStage(t *testing.T) {
 	if !strings.Contains(block, `action="/pending/discard"`) || strings.Contains(block, "crimson") {
 		t.Errorf("Discard all is not a plain secondary act:\n%s", block)
 	}
-	// Firewall rules has one row, so no Undo these of its own.
-	if strings.Count(body, "Undo these") != 1 {
-		t.Errorf("Undo these appears %d times, want once, on the card of two rows", strings.Count(body, "Undo these"))
+	// Firewall rules has one row, so no Discard these of its own.
+	if strings.Count(body, "Discard these") != 1 {
+		t.Errorf("Discard these appears %d times, want once, on the card of two rows", strings.Count(body, "Discard these"))
+	}
+	// Letting changes go is one act at three reaches, so one verb names it:
+	// a row's, a card's, the page's.
+	mustContain(t, body, `aria-label="Discard this change`, ">Discard all</button>")
+	if strings.Contains(body, "Undo") {
+		t.Error("the page names letting a change go two ways, Undo and Discard")
 	}
 }
 

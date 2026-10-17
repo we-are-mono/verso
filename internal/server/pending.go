@@ -144,7 +144,7 @@ func pendingCard(g stagedGroup, kept []history.ChangeItem, oldRead bool, tr func
 		for _, item := range g.Items {
 			undo.Fields = append(undo.Fields, &widget.Field{Name: "row", Kind: "hidden", Value: item.ID})
 		}
-		undo.Fields = append(undo.Fields, &widget.Button{Label: "Undo these", Icon: "undo-2", Name: "undo", Value: "1", Style: "act"})
+		undo.Fields = append(undo.Fields, &widget.Button{Label: "Discard these", Icon: "undo-2", Name: "undo", Value: "1", Style: "act"})
 		acts = append(acts, undo)
 	}
 	table := &widget.Table{Columns: []widget.TableColumn{
@@ -193,7 +193,7 @@ func pendingRow(item stagedItem, kept history.ChangeItem, oldRead bool, href str
 		acts = append(acts, widget.TableRowAct{Icon: "arrow-up-right", Title: "Go to it on its page", Href: goTo})
 	}
 	acts = append(acts,
-		widget.TableRowAct{Icon: "undo-2", Title: "Undo this change", Name: "row", Value: item.ID, Post: pendingPath + "/undo", Whole: true},
+		widget.TableRowAct{Icon: "undo-2", Title: "Discard this change", Name: "row", Value: item.ID, Post: pendingPath + "/undo", Whole: true},
 		widget.TableRowAct{Icon: "info", Title: "Show the config lines", Opens: true},
 	)
 	var lines []string
@@ -314,8 +314,9 @@ func (s *Server) handleUCIReview(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, pendingPath, http.StatusPermanentRedirect)
 }
 
-// handlePendingUndo takes the posted rows out of the stage, a row's undo or a
-// card's Undo these, and leads back to the page, which offers them back.
+// handlePendingUndo takes the posted rows out of the stage, a row's Discard
+// this change or a card's Discard these, and leads back to the page, which
+// offers them back.
 func (s *Server) handlePendingUndo(w http.ResponseWriter, r *http.Request) {
 	_, t := s.localize(r)
 	tr := translatorOrIdentity(t)
@@ -332,7 +333,7 @@ func (s *Server) handlePendingUndo(w http.ResponseWriter, r *http.Request) {
 		s.flash(r, "warning", tr("Those changes were no longer pending."))
 	case err != nil:
 		log.Printf("verso: undo failed: %v", err)
-		s.flash(r, "danger", tr("The router did not take the undo, so the changes stay as they were."))
+		s.flash(r, "danger", tr("The router did not let them go, so the changes stay as they were."))
 	default:
 		record := undoRecord{ops: ops, words: words, token: randomToken()}
 		record.restorable = slices.ContainsFunc(ops, func(op replayOp) bool { return op.tuple[0] != "file" })
@@ -372,7 +373,7 @@ func (s *Server) rowWordsOf(r *http.Request, sid string, ids []string) string {
 		}
 	}
 	if len(found) == 1 {
-		return fmt.Sprintf(tr("Undone: %s."), found[0])
+		return fmt.Sprintf(tr("Discarded: %s."), found[0])
 	}
-	return i18n.Count(tr, len(found), "Undone: %d change.", "Undone: %d changes. (two)", "Undone: %d changes. (few)", "Undone: %d changes.")
+	return i18n.Count(tr, len(found), "Discarded: %d change.", "Discarded: %d changes. (two)", "Discarded: %d changes. (few)", "Discarded: %d changes.")
 }

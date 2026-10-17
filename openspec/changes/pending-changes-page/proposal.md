@@ -23,7 +23,7 @@ Operators find the staging flow confusing. The marigold chip next to the router'
   - a marigold "May disconnect you" callout when a change touches the interface this browser reaches the router through;
   - the apply's own steps, numbered because they happen in that order, one line each: "Saves N changes.", "Reloads <services>." (named together from procd's own triggers), "Keeps them if this page checks in within 30 s.";
   - the optional note for config history.
-- Under it, one card per page the changes came from, titled by that page's heading. Each card has "Open page" and "Undo these".
+- Under it, one card per page the changes came from, titled by that page's heading. Each card has "Open page" and "Discard these".
 - Each change row shows:
   - its verb mark, its sentence and its from → to;
   - when it was staged;

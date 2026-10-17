@@ -143,7 +143,7 @@ On the client, the confirm loop's timeout:
 
 ### 9. Without scripting
 
-Undo, Undo these and Discard all are form POSTs that redirect back to `/pending`. Apply is replaced by a sentence saying it needs scripting. This is truthful, because the router keeps an apply only when the page confirms it.
+Discard this change, Discard these and Discard all are form POSTs that redirect back to `/pending`. Apply is replaced by a sentence saying it needs scripting. This is truthful, because the router keeps an apply only when the page confirms it.
 
 ## Risks / Trade-offs
 

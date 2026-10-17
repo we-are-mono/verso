@@ -61,7 +61,7 @@ func TestThePageOffersAnUndoBackOnce(t *testing.T) {
 	postPlugin(t, s, "/pending/undo", url.Values{"row": {id}})
 
 	body := get(t, s, pendingPath).Body.String()
-	for _, want := range []string{"data-verso-arrival", "Undone: dhcp.lan changed.", `action="/pending/restore"`, "Put it back"} {
+	for _, want := range []string{"data-verso-arrival", "Discarded: dhcp.lan changed.", `action="/pending/restore"`, "Put it back"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("the page after an undo is missing %q", want)
 		}
