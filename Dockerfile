@@ -12,31 +12,14 @@ COPY internal/ ./internal/
 COPY profiles/ ./profiles/
 RUN CGO_ENABLED=0 go build -trimpath -o /out/verso ./cmd/verso
 
-# The privileged companion is a small persistent Rust daemon. Unlike an rpcd
-# exec plugin it is not respawned for every method invocation.
-FROM rust:1.98-alpine AS helper-build
-WORKDIR /src
-COPY verso-rpcd/Cargo.toml verso-rpcd/Cargo.lock ./
-COPY verso-rpcd/src/ ./src/
-RUN cargo build --locked --release
-
-# General is a bundled core plugin: independently isolated, but always shipped.
-FROM rust:1.98-alpine AS system-plugin-build
-WORKDIR /src
-COPY plugins/verso-plugin-sdk/ ./verso-plugin-sdk/
-COPY plugins/verso-plugin-system/ ./verso-plugin-system/
-RUN cargo build --locked --release --manifest-path verso-plugin-system/Cargo.toml
-
 # --- runtime: full OpenWrt (procd init), verso as a procd service ----------
 # 25.12 = the apk-based series the Mono image targets (25.12.5); the hub's
 # newest published rootfs tag is .4 — bump when .5 lands.
+# verso-rpcd and the plugins are not baked in: `make dev` builds, deploys and
+# enables each one on the running container.
 FROM openwrt/rootfs:x86-64-25.12.4
 COPY --from=build /out/verso /usr/bin/verso
-COPY --from=helper-build /src/target/release/verso-rpcd /usr/sbin/verso-rpcd
-COPY --from=system-plugin-build /src/verso-plugin-system/target/release/verso-plugin-system /usr/bin/verso-plugin-system
 COPY docker/rootfs/ /
-COPY plugins/verso-plugin-system/manifest.json /usr/share/verso/plugins/system/manifest.json
-COPY plugins/verso-plugin-system/rootfs/etc/init.d/verso-plugin-system /etc/init.d/verso-plugin-system
 # The full network stack runs (netifd, dnsmasq, odhcpd, fw4): /etc/config/network
 # declares eth0's Docker address as the static mgmt interface and the firewall's
 # mgmt zone keeps input open there, so port publishing survives — while wan0 and
@@ -77,16 +60,13 @@ RUN apk add --no-check-certificate ca-bundle \
  && chmod 0755 /usr/libexec/verso/update-check /usr/libexec/verso/web-owner /usr/libexec/verso/usage-setup \
  && /usr/libexec/verso/usage-setup \
  && chmod 0600 /etc/crontabs/root \
- && chmod 0755 /usr/sbin/verso-rpcd /usr/bin/verso-plugin-system \
  && chmod 0755 /usr/libexec/verso/firewall-logging /usr/libexec/verso/firewall-logging-setup \
- && chmod +x /etc/init.d/verso /etc/init.d/verso-rpcd /etc/init.d/verso-plugin-system /etc/init.d/netfix \
+ && chmod +x /etc/init.d/verso /etc/init.d/verso-rpcd /etc/init.d/netfix \
  # No ujail in an unprivileged container: it cannot clone namespaces (EPERM),
  # which turns jailed services (dnsmasq) into crash loops. Without the binary,
  # procd runs every instance plain — the same skip verso's own jail params
  # already get here (see /etc/init.d/verso). Jails apply on real hardware.
  && rm -f /sbin/ujail \
- && ( /etc/init.d/verso-rpcd enable || ln -sf ../init.d/verso-rpcd /etc/rc.d/S18verso-rpcd ) \
- && ( /etc/init.d/verso-plugin-system enable || ln -sf ../init.d/verso-plugin-system /etc/rc.d/S93verso-plugin-system ) \
  && ( /etc/init.d/verso enable || ln -sf ../init.d/verso /etc/rc.d/S95verso ) \
  && ( /etc/init.d/cron enable || ln -sf ../init.d/cron /etc/rc.d/S50cron ) \
  && ( /etc/init.d/nlbwmon enable || ln -sf ../init.d/nlbwmon /etc/rc.d/S60nlbwmon ) \
