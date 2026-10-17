@@ -701,6 +701,19 @@ func typeRolesMatchDesign(src styleSources) []violation {
 	return out
 }
 
+// everyBlockIsImported: the entry imports each block file into the components
+// layer, since a CSS import takes no glob and a file left off is a look gone.
+func everyBlockIsImported(src styleSources) []violation {
+	var out []violation
+	for _, block := range keys(src.blockFiles()) {
+		want := `@import "./blocks/` + block + `.css" layer(components);`
+		if !strings.Contains(src.css["input.css"], want) {
+			out = append(out, violation{"every-block-is-imported", block, "input.css"})
+		}
+	}
+	return out
+}
+
 // ── the ratchet ────────────────────────────────────────────────────────────
 
 const ratchetFile = "testdata/stylesheet-ratchet.txt"
@@ -813,6 +826,10 @@ func TestNoClassStringTemplates(t *testing.T) {
 
 func TestTypeComesFromRoles(t *testing.T) {
 	holdTheRatchet(t, "type-comes-from-roles", typeComesFromRoles)
+}
+
+func TestEveryBlockIsImported(t *testing.T) {
+	holdTheRatchet(t, "every-block-is-imported", everyBlockIsImported)
 }
 
 func TestTypeRolesMatchDesign(t *testing.T) {

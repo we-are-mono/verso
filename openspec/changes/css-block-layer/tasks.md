@@ -37,7 +37,7 @@
 
   Amend ADR-005 Decision 6 in place to point at it. Add a "Styling" section to CONTRIBUTING.md saying when a look becomes a block, when text needs a role, and where each goes. Verify: ADR-025 states the contract with no process wording, ADR-005 §6 and CONTRIBUTING link it, and `docs/ADR` numbering has no clash.
 - [x] 2.2 Test first: write the ten guards in `internal/server/stylesheet_guards_test.go` (Decision 4), with their fixture tests in `stylesheet_guards_fixtures_test.go`. Each guard first gets a table test over in-memory fixture sources that shows it failing on its violation and passing on the conforming form. Then generate `internal/server/testdata/stylesheet-ratchet.txt` from the real sources, and make each guard fail on an unlisted violation and on a listed line that no longer occurs. Verify: the fixture tests cover every guard; `make test` is green; adding `[&_td]:pt-0` to any template fails `TestNoRulesInMarkup` with the template's name; adding `text-xs` fails `TestTypeComesFromRoles`.
-- [ ] 2.3 Create `internal/server/assets/blocks/` and import it from `input.css` inside `@layer components`, after the current imports. Verify: `make css` builds and parity holds.
+- [x] 2.3 Import blocks from `input.css` inside `@layer components`, after the current imports (`@import "./blocks/<b>.css" layer(components);`, one line per block, since an import takes no glob), and guard that every block file is imported (`TestEveryBlockIsImported`). Verify: `make css` builds and the compiled stylesheet is unchanged.
 
 ## 3. Type roles
 

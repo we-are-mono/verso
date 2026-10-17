@@ -127,6 +127,13 @@ func TestStylesheetGuardsCatchWhatTheyName(t *testing.T) {
 			want: "text-sm",
 		},
 		{
+			name:  "a block file the entry does not import",
+			guard: everyBlockIsImported,
+			bad:   styleSources{css: map[string]string{"input.css": `@import "./palette.css";`, "blocks/card.css": ".verso-card {}"}},
+			good:  styleSources{css: map[string]string{"input.css": `@import "./blocks/card.css" layer(components);`, "blocks/card.css": ".verso-card {}"}},
+			want:  "card",
+		},
+		{
 			name:  "a role DESIGN.md does not list",
 			guard: typeRolesMatchDesign,
 			bad: styleSources{

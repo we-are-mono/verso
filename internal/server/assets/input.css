@@ -22,6 +22,10 @@
 @import "./palette.css";
 @import "./forms.css";
 @import "./sections.css";
+/* Blocks (ADR-025): one file per look under blocks/, each imported here into the
+   components layer, so a utility in the markup outranks every block by layer
+   order. CSS imports take no glob; TestEveryBlockIsImported fails on a block file
+   left off this list, whose rules would otherwise go missing unseen. */
 
 @source "../templates/*.tmpl";
 @source "../../widget/templates/*.tmpl";
