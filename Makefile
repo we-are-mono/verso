@@ -186,6 +186,15 @@ endef
 # here rather than in the portable build path.
 VERSO_REPO_DIR ?= /srv/verso
 
+# index_feed rebuilds the signed v3 index (packages.adb) over every package in
+# this arch's dev feed and opens the feed to the web server's reads.
+# --allow-untrusted only skips verification on THIS host (it doesn't trust our
+# own key); the index is still signed and the router verifies it.
+define index_feed
+cd $(VERSO_REPO_DIR)/$(APK_ARCH) && "$(APK)" mkndx --allow-untrusted --sign-key "$(KEY)" --output packages.adb *.apk
+chmod -R a+rX $(VERSO_REPO_DIR)
+endef
+
 # build-<arch> is intentionally NOT phony: make skips pattern rules for phony
 # targets, and no file of that name is ever produced, so the rule fires each run.
 .PHONY: all build dev css test lint deadcode vuln hooks clean apk apk-publish apk-preflight apk-i18n apk-i18n-publish i18n-audit version
@@ -363,19 +372,15 @@ apk: apk-preflight build-$(APK_GOARCH)
 	  --output "$(APK_OUT)"'
 	@echo "built and signed: $(APK_OUT)  (arch $(APK_ARCH), version $(VER))"
 
-# apk-publish copies the built package into the local dev repo and rebuilds the
-# signed v3 index (packages.adb). Dev-box-specific: it writes to VERSO_REPO_DIR.
-# --allow-untrusted only skips verification on THIS host (it doesn't trust our
-# own key); the index is still signed and the router verifies it. Publishing
-# runs `make vuln` first, so no package reaches a feed past an untriaged
-# advisory; `make apk` alone builds without it.
+# apk-publish copies the built package into the local dev repo, in place of
+# every package there, and rebuilds the index. Dev-box-specific: it writes to
+# VERSO_REPO_DIR. Publishing runs `make vuln` first, so no package reaches a
+# feed past an untriaged advisory; `make apk` alone builds without it.
 apk-publish: vuln apk
 	mkdir -p $(VERSO_REPO_DIR)/$(APK_ARCH)
 	rm -f $(VERSO_REPO_DIR)/$(APK_ARCH)/*.apk
 	cp $(APK_OUT) $(VERSO_REPO_DIR)/$(APK_ARCH)/
-	APK="$(APK)" scripts/check-feed-arch.sh $(VERSO_REPO_DIR)/$(APK_ARCH) $(APK_ARCH)
-	cd $(VERSO_REPO_DIR)/$(APK_ARCH) && "$(APK)" mkndx --allow-untrusted --sign-key "$(KEY)" --output packages.adb *.apk
-	chmod -R a+rX $(VERSO_REPO_DIR)
+	$(index_feed)
 	@echo "published to: $(VERSO_REPO_DIR)/$(APK_ARCH)/  (index: packages.adb)"
 
 # ── i18n catalog packaging ────────────────────────────────────────────────────
@@ -419,8 +424,7 @@ apk-i18n-publish: apk-i18n
 	mkdir -p $(VERSO_REPO_DIR)/$(APK_ARCH)
 	cp $(I18N_OUT) $(VERSO_REPO_DIR)/$(APK_ARCH)/
 	APK="$(APK)" scripts/check-feed-arch.sh $(VERSO_REPO_DIR)/$(APK_ARCH) $(APK_ARCH)
-	cd $(VERSO_REPO_DIR)/$(APK_ARCH) && "$(APK)" mkndx --allow-untrusted --sign-key "$(KEY)" --output packages.adb *.apk
-	chmod -R a+rX $(VERSO_REPO_DIR)
+	$(index_feed)
 	@echo "published: $(VERSO_REPO_DIR)/$(APK_ARCH)/$(notdir $(I18N_OUT))  (index rebuilt)"
 
 # i18n-audit renders every page reachable from / and /login in each installed

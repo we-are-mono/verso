@@ -191,9 +191,7 @@ It runs `make vuln` first ([Vulnerability checks](#vulnerability-checks)): an
 untriaged advisory against anything the package ships stops the publish before
 the build. Then it copies the fresh `.apk` into `VERSO_REPO_DIR` (default `/srv/verso`, the only
 dev-box-specific path) under its arch subdir (`aarch64_generic/` or `x86_64/`),
-checks that every package there is built for that arch or for none
-(`scripts/check-feed-arch.sh`, which names any that is not and stops), and
-rebuilds the v3 index — which
+in place of every package there, and rebuilds the v3 index — which
 **must be named `packages.adb`** (OpenWrt convention) — signed. `mkndx` runs with
 `--allow-untrusted`, which only means "don't verify on the build host" (the host
 doesn't trust our own key); the index is still **signed** with `--sign-key`, and
