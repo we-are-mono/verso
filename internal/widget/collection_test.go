@@ -86,7 +86,7 @@ func TestCollectionRemovesInPlace(t *testing.T) {
 		`<input type="hidden" name="_key_remove" value="SHA256:UPedI7ax">`,
 		`aria-label="Remove demo@laptop"`,
 		`x-data="confirm"`,
-		"border-crimson-line bg-crimson-soft",
+		`<div data-verso-callout class="verso-notice" data-verso-tone="danger"`,
 		">Remove this key?<", ">Remove key</button>", ">Not now</button>",
 	} {
 		if !strings.Contains(got, want) {

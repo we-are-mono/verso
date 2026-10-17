@@ -193,3 +193,14 @@ after; the SVG's fills, strokes and LED animations compared directly.
 | an empty state's title | | 24/600 on a 40px line | the headline role, padded back to its 40px line |
 | an empty state's acts | | 40px under its body (its last paragraph kept a 16px margin) | 24px, as the state's own measure says |
 | the raw widget's kicker | | 12px caps on a 24px line | the label role on its 16px line |
+
+### `notice`, `outcome` and `staged`
+
+| Copies | n | Difference | Became |
+|---|---|---|---|
+| a band, a flash and the shell's plain notice | | three hand-written boxes, the band's and the flash's tones written out per tone | one notice block: one tone set (context properties) and three kinds; no pixel changes |
+| a flash in the outcome layer | | its air, inset and lift overridden by arbitrary variants reaching into it | the layer sets the flash's knobs |
+| a link act in a band | | a utilities-layer rule reaching into every `a` | the band sets the button block's own knobs on its link acts |
+| a confirmation's way back | 2 | a hand-written box in crimson or marigold | the notice's cancel, in its band's ink |
+| an undo's "Put it back" | 1 | denim-deep words, underlined under the pointer only | the link block's door in the flash's ink, underlined, at the button role's weight |
+| the outcome layer's shown state | | an `is-shown` class | `data-verso-shown` |

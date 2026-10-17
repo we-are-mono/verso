@@ -337,7 +337,7 @@ func TestMaintenanceUpdatesEverythingCurrent(t *testing.T) {
 	// has nothing to compare: a lone tinted version would warn about nothing.
 	// (The page's own content, not the rail's rows.)
 	content := body[strings.Index(body, `<main id="main"`):]
-	for _, unwanted := range []string{"font-semibold text-marigold-deep", "font-semibold text-green-deep", "Download and install"} {
+	for _, unwanted := range []string{"type-value text-marigold-deep", "type-value text-green-deep", "Download and install"} {
 		if strings.Contains(content, unwanted) {
 			t.Errorf("the resting firmware rung should not carry %q:\n%s", unwanted, content)
 		}
@@ -429,7 +429,7 @@ func TestMaintenanceFirmwareRungs(t *testing.T) {
 			if tc.warning != "" {
 				// An inline warning sets its title and its sentence at one size,
 				// the title bold: the sentence is the band's own 14px, not a lede.
-				if !strings.Contains(band, `<p class="font-semibold">`+tc.warning+`</p>`) {
+				if !strings.Contains(band, `<p class="verso-notice__title">`+tc.warning+`</p>`) {
 					t.Errorf("the %s rung should title its warning band %q:\n%s", tc.name, tc.warning, band)
 				}
 				if strings.Contains(band, "verso-lede") {
@@ -437,7 +437,7 @@ func TestMaintenanceFirmwareRungs(t *testing.T) {
 				}
 			}
 			if tc.inWarning != "" {
-				if words := verbatimLine(band); !strings.Contains(words, tc.inWarning) || !strings.Contains(words, "font-mono") {
+				if words := verbatimLine(band); !strings.Contains(words, tc.inWarning) || !strings.Contains(words, "data-verso-verbatim") {
 					t.Errorf("the %s rung should carry %q verbatim in mono inside its warning band:\n%s", tc.name, tc.inWarning, band)
 				}
 				if !strings.Contains(band, `x-data="copy"`) {
@@ -480,7 +480,7 @@ func TestMaintenanceFirmwareRungs(t *testing.T) {
 func ledgerWarning(t *testing.T, body string) string {
 	t.Helper()
 	head := section(t, body, `id="section-firmware"`, "data-verso-properties-head")
-	at := strings.Index(head, "bg-marigold-soft text-marigold-deep")
+	at := strings.Index(head, `class="verso-notice" data-verso-tone="warning"`)
 	if at < 0 {
 		return ""
 	}
@@ -490,7 +490,7 @@ func ledgerWarning(t *testing.T, body string) string {
 // verbatimLine is the paragraph a callout sets the tool's own words in, its
 // class and all, or "" when the band carries none.
 func verbatimLine(band string) string {
-	at := strings.Index(band, "font-mono")
+	at := strings.Index(band, `class="verso-notice__said"`)
 	if at < 0 {
 		return ""
 	}
@@ -771,7 +771,7 @@ func TestAutocheckRowUnreadableShowsNoSwitch(t *testing.T) {
 	if ledger := strings.Index(body, "data-verso-properties-head"); ledger < 0 || notice > ledger {
 		t.Errorf("the unreadable notice should lead the ledger, not trail the acts:\n%s", body)
 	}
-	if band := strings.LastIndex(body[:notice], "data-verso-callout"); band < 0 || !strings.Contains(body[band:notice], "bg-marigold-soft") {
+	if band := strings.LastIndex(body[:notice], "data-verso-callout"); band < 0 || !strings.HasPrefix(body[band:notice], `data-verso-callout class="verso-notice" data-verso-tone="warning"`) {
 		t.Errorf("the unreadable notice should be the marigold warning:\n%s", body)
 	}
 	if strings.Contains(body, `name="autocheck"`) {

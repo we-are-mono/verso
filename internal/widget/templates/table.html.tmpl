@@ -49,7 +49,7 @@
      then the way back, bare words in the deep step that close the alert, as
      the inline confirm's answers are (confirm.answers). */}}
 {{define "table.confirm-answers"}}<form method="post" class="contents">{{template "verso-csrf" .CSRFToken}}<button type="submit" name="{{.Name}}" value="{{.Value}}" class="verso-button shrink-0" data-verso-style="danger">{{.Act}}</button></form>
-<button type="button" @click="hide" class="flex h-control shrink-0 cursor-pointer items-center rounded-xs px-3 text-sm font-semibold text-crimson-deep transition-colors hover:bg-crimson-line/50 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-crimson-deep">{{.Keep}}</button>
+<button type="button" @click="hide" class="verso-notice__cancel">{{.Keep}}</button>
 {{end}}
 {{/* table.detail: the line of words under a cell's value — what it is, or
      since when — in the secondary step, with the cell's tag riding it. */}}

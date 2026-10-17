@@ -857,7 +857,7 @@
     if (!frame || !xhr || !config || String(config.verb).toLowerCase() !== "post") return;
     if (xhr.status !== 200 || xhr.getResponseHeader("HX-Reswap") !== "none") return;
     var response = versoParse(xhr.responseText);
-    var outcome = response.querySelector(".verso-flash");
+    var outcome = response.querySelector("[data-verso-flash-variant]");
     var row = rowOf(frame);
     frame.dispatchEvent(new CustomEvent("verso-panel-done", { bubbles: true }));
     if (outcome && window.versoOutcome) window.versoOutcome.show(document.importNode(outcome, true));

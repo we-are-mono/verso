@@ -76,7 +76,7 @@ func TestAMarkedRowCarriesItsAddress(t *testing.T) {
 // applied or discarded.
 func TestAStagedRowWearsTheStagesMark(t *testing.T) {
 	r := newRenderer(t)
-	mark := `<span data-verso-staged-row class="verso-staged-bar"><span aria-hidden="true"></span><span class="sr-only">staged</span></span>`
+	mark := `<span data-verso-staged-row class="verso-staged"><span aria-hidden="true" class="verso-staged__bar"></span><span class="sr-only">staged</span></span>`
 	for name, w := range map[string]Widget{
 		"field":  &Field{Name: "Port", Label: "Port", Key: "Port", Staged: true},
 		"switch": &Switch{Name: "RootPasswordAuth", Label: "Allow root", Key: "RootPasswordAuth", Staged: true},

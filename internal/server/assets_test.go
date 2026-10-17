@@ -651,19 +651,26 @@ func TestACardsRowsKeepARowsAirAtItsEdges(t *testing.T) {
 // bar in the stage's marigold down its left edge, from line to line: on its
 // card's border, where rows run to it, on a page and in a drawer alike.
 func TestAStagedRowIsMarkedDownItsEdge(t *testing.T) {
-	raw, err := os.ReadFile("assets/forms.css")
+	raw, err := os.ReadFile("assets/blocks/staged.css")
 	if err != nil {
 		t.Fatal(err)
 	}
 	css := string(raw)
-	bar := cssBlock(t, css, ".verso-staged-bar > [aria-hidden] {")
+	bar := cssBlock(t, css, "\n.verso-staged__bar {")
 	for _, want := range []string{"position: absolute;", "inset-block: 0;", "left: 0;", "width: calc(var(--spacing) * 0.75);", "background: var(--color-marigold);"} {
 		if !strings.Contains(bar, want) {
 			t.Errorf("the staged bar lacks %s: %s", want, bar)
 		}
 	}
-	if strings.Contains(css, "dialog .verso-staged-bar") {
-		t.Error("a drawer's staged bar stands off its card's border")
+	// One bar wherever the row stands: no sheet places a drawer's apart.
+	for _, sheet := range []string{"assets/blocks/staged.css", "assets/forms.css", "assets/input.css"} {
+		raw, err := os.ReadFile(sheet)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if regexp.MustCompile(`dialog[^{]*\.verso-staged`).Match(raw) {
+			t.Errorf("%s: a drawer's staged bar stands off its card's border", sheet)
+		}
 	}
 }
 

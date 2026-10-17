@@ -38,8 +38,8 @@
 
 {{/* verso-pending-putback: an undo's outcome, offering what it took back
      once, in the notification's own dress. */}}
-{{define "verso-pending-putback"}}<div class="{{template "verso-flash-class" "info"}}" data-verso-flash-variant="info">
+{{define "verso-pending-putback"}}<div {{template "verso-flash-attrs" "info"}}>
   {{template "verso-message-mark" "info"}}
   <span class="min-w-0 flex-1">{{.Words}}</span>
-  {{if .Restorable}}<form method="post" action="/pending/restore" class="contents">{{template "verso-csrf" .CSRF}}<input type="hidden" name="undo" value="{{.Token}}"><button type="submit" class="-my-0.5 shrink-0 cursor-pointer font-semibold text-denim-deep underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-denim">{{t "Put it back"}}</button></form>{{end}}
+  {{if .Restorable}}<form method="post" action="/pending/restore" class="contents">{{template "verso-csrf" .CSRF}}<input type="hidden" name="undo" value="{{.Token}}"><button type="submit" class="verso-link type-button shrink-0 cursor-pointer" data-verso-door>{{t "Put it back"}}</button></form>{{end}}
 </div>{{end}}

@@ -144,11 +144,12 @@
 {{define "verso-field-label-text"}}{{.Label}}{{if .Explained}}{{template "verso-tip-wide" .Tip}}{{end}}{{end}}
 
 {{/* verso-staged-row: this setting's change waits on the stage — a bar in
-     the stage's marigold down the row's left edge (forms.css), the word said
-     to a screen reader beside the setting's name. The shell marks it on every
-     visit until the change is applied or discarded (MarkStaged), named by the
-     option's address so the Pending changes page can lead to it. */}}
-{{define "verso-staged-row"}}<span{{with .}} id="staged-{{.}}"{{end}} data-verso-staged-row class="verso-staged-bar"><span aria-hidden="true"></span><span class="sr-only">{{t "staged"}}</span></span>{{end}}
+     the stage's marigold down the row's left edge (blocks/staged.css), the
+     word said to a screen reader beside the setting's name. The shell marks
+     it on every visit until the change is applied or discarded (MarkStaged),
+     named by the option's address so the Pending changes page can lead to
+     it. */}}
+{{define "verso-staged-row"}}<span{{with .}} id="staged-{{.}}"{{end}} data-verso-staged-row class="verso-staged"><span aria-hidden="true" class="verso-staged__bar"></span><span class="sr-only">{{t "staged"}}</span></span>{{end}}
 
 {{/* verso-field: one setting's row, the same on a page, in a drawer and in a
      settings block (fieldFrame), and one shape whatever it holds: a ledger of
@@ -426,14 +427,16 @@
      both carry it in a template, never in their content, and the outcome layer
      says it (verso-page.js). One definition, so the two cannot drift apart.
      Nothing draws without a message. */}}
-{{define "verso-flash"}}{{if .Message}}<div class="{{template "verso-flash-class" .Variant}}" data-verso-flash-variant="{{.Variant}}">
+{{define "verso-flash"}}{{if .Message}}<div {{template "verso-flash-attrs" .Variant}}>
   {{template "verso-message-mark" .Variant}}
   <span>{{.Message}}</span>
 </div>{{end}}{{end}}
 
-{{/* verso-flash-class: a flash's box in its tone, for a flash whose words the
-     page composes itself (the unanswered request's, with its Reload). */}}
-{{define "verso-flash-class"}}verso-flash mb-6 flex items-start gap-2 rounded-xs border px-4 py-3 text-sm leading-6 {{if eq . "danger"}}border-crimson-line bg-crimson-soft text-crimson-deep{{else if eq . "warning"}}border-marigold-line bg-marigold-soft text-marigold-deep{{else if eq . "info"}}border-denim-line bg-denim-soft text-denim-deep{{else}}border-green-line bg-green-soft text-green-deep{{end}}{{end}}
+{{/* verso-flash-attrs: a flash's box in its tone (the notice block's flash),
+     for a flash whose words the page composes itself (the unanswered
+     request's, with its Reload). Anything unnamed is an outcome that went
+     well. */}}
+{{define "verso-flash-attrs"}}class="verso-notice" data-verso-kind="flash" data-verso-tone="{{if or (eq . "danger") (eq . "warning") (eq . "info")}}{{.}}{{else}}success{{end}}" data-verso-flash-variant="{{.}}"{{end}}
 
 {{/* verso-message-mark: how an error, a notice, a warning or a confirmation
      says its tone — the state mark, the 6px square in the tone's hue, hung on

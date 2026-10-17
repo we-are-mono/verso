@@ -382,7 +382,7 @@ func TestFlashConfirmsActions(t *testing.T) {
 	}
 	if body := do(http.MethodGet, "/system/packages", nil).Body.String(); !strings.Contains(body, "htop removed.") {
 		t.Error("the redirect target must show the confirmation")
-	} else if !strings.Contains(body, "border-green-line bg-green-soft text-green-deep") {
+	} else if !strings.Contains(body, `<div class="verso-notice" data-verso-kind="flash" data-verso-tone="success"`) {
 		t.Error("a success flash wears green's soft ground and its text step")
 	}
 	if body := do(http.MethodGet, "/system/packages", nil).Body.String(); strings.Contains(body, "htop removed.") {

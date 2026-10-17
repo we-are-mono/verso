@@ -1,0 +1,74 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/* SPDX-FileCopyrightText: 2026 Mono Technologies Inc. */
+
+/*
+ * outcome — the notification at the top right of the window that says how
+ * an act went (verso-page.js): one flash at a time, lifted over the page,
+ * sliding in from the edge and back out, the close control in its corner.
+ * Where the reader asked for less motion it fades instead.
+ *
+ * Variants: data-verso-shown  in place; without it the layer waits off the
+ *                             edge
+ * Elements: __slot   where the flash stands: no air under it, room for the
+ *                    close control at its end, and the lift of a floating
+ *                    layer
+ *           __close  the close control
+ */
+
+.verso-outcome {
+  position: fixed;
+  top: 4.5rem;
+  right: calc(var(--spacing) * 4);
+  left: calc(var(--spacing) * 4);
+  z-index: 40;
+  opacity: 0;
+  transform: translateX(calc(100% + 1.5rem));
+  transition: transform 0.3s ease-out, opacity 0.3s ease-out;
+}
+@media (width >= 40rem) {
+  .verso-outcome {
+    right: calc(var(--spacing) * 6);
+    left: auto;
+    width: 100%;
+    max-width: var(--container-md);
+  }
+}
+.verso-outcome[data-verso-shown] {
+  opacity: 1;
+  transform: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .verso-outcome {
+    transform: none;
+    transition: opacity 0.2s ease-out;
+  }
+}
+
+.verso-outcome__slot {
+  --verso-flash-after: 0px;
+  --verso-flash-end: calc(var(--spacing) * 12);
+  --verso-flash-lift: var(--shadow-float);
+}
+
+.verso-outcome__close {
+  position: absolute;
+  top: calc(var(--spacing) * 2);
+  right: calc(var(--spacing) * 2);
+  display: grid;
+  place-items: center;
+  width: calc(var(--spacing) * 7);
+  height: calc(var(--spacing) * 7);
+  border-radius: var(--radius-xs);
+  color: var(--color-meta);
+  cursor: pointer;
+  transition-property: color, background-color;
+  transition-duration: 150ms;
+}
+.verso-outcome__close:hover {
+  background-color: color-mix(in srgb, var(--color-mid) 50%, transparent);
+  color: var(--color-ink);
+}
+.verso-outcome__close:focus-visible {
+  outline: 2px solid var(--color-denim);
+  outline-offset: -2px;
+}

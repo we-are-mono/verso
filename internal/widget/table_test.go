@@ -1096,16 +1096,20 @@ func TestRenderTableDirectAction(t *testing.T) {
 		`role="alertdialog"`, `>End this session?<`, "Anyone using it will be signed out.",
 		// the question is the confirm's own band: crimson wash in its hairline,
 		// the square at full chroma, the words in the deep step
-		"border-crimson-line bg-crimson-soft text-crimson-deep", "verso-mark", `data-verso-tone="danger"`,
+		`<div data-verso-callout class="verso-notice" data-verso-tone="danger"`, `class="verso-mark verso-notice__mark" data-verso-tone="danger"`,
 		// the destructive act, the button block's danger dress
 		`class="verso-button shrink-0" data-verso-style="danger">End session<`,
 		// the way back speaks the question's hue, bare, never a sand Cancel
-		`>Keep it<`, "text-crimson-deep transition-colors hover:bg-crimson-line/50",
+		`<button type="button" @click="hide" class="verso-notice__cancel">Keep it</button>`,
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("direct table action missing %q:\n%s", want, got)
 		}
 	}
+	declares(t, "notice", noticeTone("danger"),
+		"--verso-notice-line: var(--color-crimson-line);", "--verso-notice-wash: var(--color-crimson-soft);", "--verso-notice-ink: var(--color-crimson-deep);")
+	declares(t, "notice", ".verso-notice__cancel", "color: var(--verso-notice-ink);")
+	declares(t, "notice", ".verso-notice__cancel:hover", "background-color: color-mix(in srgb, var(--verso-notice-line) 50%, transparent);")
 	if strings.Contains(got, `>Cancel<`) {
 		t.Errorf("the way back is never a Cancel:\n%s", got)
 	}

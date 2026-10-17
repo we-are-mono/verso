@@ -4,8 +4,6 @@
 package widget
 
 import (
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -30,26 +28,29 @@ func TestAButtonSaysWhatItDoesWhilePressed(t *testing.T) {
 // stand 16px over the frame rather than the words' 8px, at either width.
 func TestACalloutCarriesTheActsThatResolveIt(t *testing.T) {
 	for _, compact := range []bool{true, false} {
-		class := "mt-6 pb-2 flex"
 		got := render(t, newRenderer(t), &Callout{Variant: "info", Compact: compact, Title: "Nothing is blocked", Body: "Installing adds a blocklist.",
 			Acts: []Link{{Style: "secondary", Label: "Install adblock", Icon: "download", Href: "/system/packages/package?name=adblock", Panel: true}}})
-		row := strings.Index(got, `<div data-verso-callout-acts class="`+class+` flex-wrap items-center gap-x-3 gap-y-2">`)
+		row := strings.Index(got, `<div data-verso-callout-acts class="verso-notice__acts">`)
 		words := strings.Index(got, "Installing adds a blocklist.")
-		if row < 0 || words < 0 || row < words {
+		band := strings.LastIndex(got, "</div></div>")
+		if row < 0 || words < 0 || row < words || band < row {
 			t.Errorf("compact=%v: the acts row stands inside the band, under its words:\n%s", compact, got)
+			continue
 		}
 		if !strings.Contains(got[row:], ">Install adblock</a>") || !strings.Contains(got[row:], `@click.prevent="showPanel"`) {
 			t.Errorf("compact=%v: the act keeps its button and its panel:\n%s", compact, got)
 		}
 	}
+	// 24px under the words, a wrapping row, and 8px more under its buttons.
+	declares(t, "notice", ".verso-notice__acts",
+		"display: flex;", "flex-wrap: wrap;", "align-items: center;",
+		"gap: calc(var(--spacing) * 2) calc(var(--spacing) * 3);",
+		"margin-top: calc(var(--spacing) * 6);", "padding-bottom: calc(var(--spacing) * 2);")
 	// In the band's ink: the stylesheet colours an act inside a band from it.
-	css, err := os.ReadFile(filepath.Join("..", "server", "assets", "input.css"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !strings.Contains(string(css), "[data-verso-callout-acts] a {") {
-		t.Error("an act inside a band is not coloured from it")
-	}
+	declares(t, "notice", ".verso-notice__acts a.verso-button",
+		"--verso-button-ink: currentColor;",
+		"--verso-button-edge: color-mix(in srgb, currentColor 40%, transparent);",
+		"--verso-button-ground: transparent;")
 	// A door in the band's words is the words' own ink, told apart only by its
 	// underline: denim inside a marigold band would be a second voice. The
 	// shell marks it a door, and the link block keeps its colour off it.
@@ -64,15 +65,37 @@ func TestACalloutCarriesTheActsThatResolveIt(t *testing.T) {
 // so it lands on the notebook's lines, its words half a cell inside it above
 // and below.
 func TestACompactCalloutIsFramedOneStepDarker(t *testing.T) {
-	for variant, border := range map[string]string{
-		"info": "border-denim-line bg-denim-soft", "warning": "border-marigold-line bg-marigold-soft",
-		"danger": "border-crimson-line bg-crimson-soft", "success": "border-green-line bg-green-soft", "neutral": "border-rule bg-quiet",
+	for variant, tone := range map[string]struct{ line, wash string }{
+		"info":    {"var(--color-denim-line)", "var(--color-denim-soft)"},
+		"warning": {"var(--color-marigold-line)", "var(--color-marigold-soft)"},
+		"danger":  {"var(--color-crimson-line)", "var(--color-crimson-soft)"},
+		"success": {"var(--color-green-line)", "var(--color-green-soft)"},
+		"neutral": {"var(--color-rule)", "var(--color-quiet)"},
 	} {
 		got := render(t, newRenderer(t), &Callout{Variant: variant, Compact: true, Body: "x"})
-		if !strings.Contains(got, `relative flex w-full max-w-(--container-3xl) items-start rounded-xs border pt-1.75 pr-3 pb-2 pl-5.75`) || !strings.Contains(got, border) {
-			t.Errorf("%s: a compact band is framed one step darker on the lines, want %q:\n%s", variant, border, got)
+		if !strings.Contains(got, `<div data-verso-callout class="verso-notice" data-verso-tone="`+variant+`" data-verso-compact>`) {
+			t.Errorf("%s: a compact band is the notice block in its tone, kept to the form's measure:\n%s", variant, got)
 		}
+		declares(t, "notice", noticeTone(variant), "--verso-notice-line: "+tone.line+";", "--verso-notice-wash: "+tone.wash+";")
 	}
+	declares(t, "notice", ".verso-notice",
+		"position: relative;", "display: flex;", "align-items: flex-start;", "width: 100%;",
+		"padding: calc(var(--spacing) * 1.75) calc(var(--spacing) * 3) calc(var(--spacing) * 2) calc(var(--spacing) * 5.75);",
+		"border: 1px solid var(--verso-notice-line);", "border-radius: var(--radius-xs);",
+		"background-color: var(--verso-notice-wash);", "margin-bottom: -1px;")
+	declares(t, "notice", ".verso-notice[data-verso-compact]", "max-width: var(--container-3xl);")
+}
+
+// noticeTone is the notice block's rule that sets a tone's context: info is
+// the block's own, and warning shares its rule with caution.
+func noticeTone(tone string) string {
+	switch tone {
+	case "info":
+		return ".verso-notice"
+	case "warning", "caution":
+		return `.verso-notice:is([data-verso-tone="warning"], [data-verso-tone="caution"])`
+	}
+	return `.verso-notice[data-verso-tone="` + tone + `"]`
 }
 
 // TestACalloutCarriesTheMachinesWords: what a tool reported rides inside the
@@ -80,12 +103,16 @@ func TestACompactCalloutIsFramedOneStepDarker(t *testing.T) {
 // control beside it.
 func TestACalloutCarriesTheMachinesWords(t *testing.T) {
 	got := render(t, newRenderer(t), &Callout{Variant: "warning", Title: "The check could not finish", Body: "The update tool stopped.", Verbatim: "owut: no route to host"})
-	for _, want := range []string{"border-t ", "border-marigold-line", "font-mono", "owut: no route to host", `x-data="copy"`} {
+	for _, want := range []string{`data-verso-tone="warning"`, `<div class="verso-notice__verbatim">`,
+		`<p class="verso-notice__said" data-verso-verbatim>owut: no route to host</p>`, `x-data="copy"`} {
 		if !strings.Contains(got, want) {
 			t.Errorf("the band does not carry the machine's words (%q):\n%s", want, got)
 		}
 	}
-	if plain := render(t, newRenderer(t), &Callout{Variant: "warning", Body: "Nothing verbatim."}); strings.Contains(plain, "font-mono") {
+	// Under a hairline of the band's tone, in the verbatim type.
+	declares(t, "notice", ".verso-notice__verbatim", "border: 0 solid var(--verso-notice-line);", "border-top-width: 1px;")
+	declares(t, "notice", ".verso-notice__said", "@apply type-value;")
+	if plain := render(t, newRenderer(t), &Callout{Variant: "warning", Body: "Nothing verbatim."}); strings.Contains(plain, "verso-notice__said") || strings.Contains(plain, "data-verso-verbatim") {
 		t.Errorf("a band with no machine words draws a mono line:\n%s", plain)
 	}
 }

@@ -1,30 +1,17 @@
 <!-- SPDX-License-Identifier: GPL-2.0-only -->
 <!-- SPDX-FileCopyrightText: 2026 Mono Technologies Inc. -->
-{{/* callout: a notice in context, toned by intent. The plugin names the intent
-     (variant); the shell maps it to the palette.
-
-     A tone at full chroma is a mark and never sets type, so a band is built the
-     way the palette says: the tone's soft ground, its deep step carrying the
-     words, and a small square of the tone itself as the mark. No glyph: the
-     colour and the mark already say what kind of thing this is, and a triangle
-     beside three words of prose only crowds them.
-
-     Every notice is this one band, whether it explains the control it sits
-     under or leads a page or a card. Compact says only where it stands: under
-     a control it keeps that control's measure — the form's — rather than
-     running past it; otherwise it reaches its container's width.
-
-     It writes on 24px lines and is framed as a card is: the frame's top border
-     on a line, the words 7px after it and 8px over the bottom border, so they
-     fill whole bands of the grid and both borders land on lines; the bottom
-     border's pixel is given back, so a line of it is a row's 40px. */}}
-{{/* callout.verbatim: what a tool reported, in its own words, under a hairline
-     of the band's tone 8px down, on a line, its words 7px after it so they
-     fill bands of the grid: mono, wrapping rather than scrolling, the copy
-     control riding its first line. */}}
-{{define "callout.verbatim"}}<div class="mt-2 flex items-start border-t pt-1.75 leading-6 {{if eq .Variant "success"}}border-green-line{{else if eq .Variant "warning"}}border-marigold-line{{else if eq .Variant "danger"}}border-crimson-line{{else if eq .Variant "neutral"}}border-rule{{else}}border-denim-line{{end}}">
-  <p class="min-w-0 font-mono text-base leading-6 font-medium [overflow-wrap:anywhere] whitespace-pre-wrap">{{.Verbatim}}</p>
-  <button type="button" x-data="copy" @click="run" :data-copy-failed="failed" aria-label="{{ t "Copy" }}" class="verso-copy-inline group/copy relative -my-1 grid size-7 shrink-0 cursor-pointer place-items-center rounded-xs border border-transparent transition-colors hover:bg-canvas/50 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-current">
+{{/* callout: a notice in context, toned by intent, the notice block's band
+     (blocks/notice.css). The plugin names the intent (variant); the shell
+     maps it to the palette. Every notice is this one band, whether it
+     explains the control it sits under or leads a page or a card. Compact
+     says only where it stands: under a control it keeps that control's
+     measure — the form's — rather than running past it; otherwise it
+     reaches its container's width. */}}
+{{/* callout.verbatim: what a tool reported, in its own words, verbatim,
+     the copy control riding its first line. */}}
+{{define "callout.verbatim"}}<div class="verso-notice__verbatim">
+  <p class="verso-notice__said" data-verso-verbatim>{{.Verbatim}}</p>
+  <button type="button" x-data="copy" @click="run" :data-copy-failed="failed" aria-label="{{ t "Copy" }}" class="verso-notice__copy verso-copy-inline group/copy">
     <span x-ref="src" class="hidden">{{.Verbatim}}</span>
     <span x-show="idle">{{icon "copy" "size-4"}}</span>
     <span x-show="done" x-cloak>{{icon "check" "size-4"}}</span>
@@ -39,19 +26,14 @@
      the middle of the 8px cell in the middle of that 24px: the cell's lines
      are the frame's 8th and 16th pixels, so its 6px stand 10px from the
      frame's edge. */}}
-<div data-verso-callout class="relative flex w-full{{if .Compact}} max-w-(--container-3xl){{end}} items-start rounded-xs border pt-1.75 pr-3 pb-2 pl-5.75 text-left text-sm leading-6
-  {{if eq .Variant "success"}}border-green-line bg-green-soft text-green-deep
-  {{else if eq .Variant "warning"}}border-marigold-line bg-marigold-soft text-marigold-deep
-  {{else if eq .Variant "danger"}}border-crimson-line bg-crimson-soft text-crimson-deep
-  {{else if eq .Variant "neutral"}}border-rule bg-quiet text-body
-  {{else}}border-denim-line bg-denim-soft text-denim-deep{{end}}">
+<div data-verso-callout class="verso-notice" data-verso-tone="{{if or (eq .Variant "success") (eq .Variant "warning") (eq .Variant "danger") (eq .Variant "neutral")}}{{.Variant}}{{else}}info{{end}}"{{if .Compact}} data-verso-compact{{end}}>
   {{/* The mark sits on the first line's optical centre, 9px down its 24px
        line (7px of air, then 9), and 9px after the border's pixel. */}}
-  <span aria-hidden="true" class="verso-mark absolute top-4 left-2.25" data-verso-tone="{{if or (eq .Variant "success") (eq .Variant "warning") (eq .Variant "danger")}}{{.Variant}}{{else if eq .Variant "neutral"}}muted{{else}}info{{end}}"></span>
-  <div class="min-w-0">
+  <span aria-hidden="true" class="verso-mark verso-notice__mark" data-verso-tone="{{if or (eq .Variant "success") (eq .Variant "warning") (eq .Variant "danger")}}{{.Variant}}{{else if eq .Variant "neutral"}}muted{{else}}info{{end}}"></span>
+  <div class="verso-notice__words">
     {{/* As a dialog's face (Named), the title and words carry the ids the
          dialog is labelled and described by. */}}
-    {{if .Title}}<p{{with .Named}} id="{{.}}-title"{{end}} class="font-semibold">{{.Title}}</p>{{end}}
+    {{if .Title}}<p{{with .Named}} id="{{.}}-title"{{end}} class="verso-notice__title">{{.Title}}</p>{{end}}
     {{/* One line of words, and its door closes that line — the sentence, then
          where to go about it — rather than standing on a line of its own. */}}
     {{if .Body}}<p{{with .Named}} id="{{.}}-body"{{end}}>{{.Body}}{{if .RenderedLink}} {{.RenderedLink}}{{end}}</p>{{else if .RenderedLink}}<p>{{.RenderedLink}}</p>{{end}}
@@ -61,6 +43,6 @@
 </div>
 {{/* callout.acts: what resolves the notice, inside the band — a row of
      32px buttons 24px under its words, so the buttons stand on the band's
-     lines and the band stays on the grid. The buttons keep their own shape
-     and take the band's ink (input.css, data-verso-callout-acts). */}}
-{{define "callout.acts"}}{{if .RenderedActs}}<div data-verso-callout-acts class="mt-6 pb-2 flex flex-wrap items-center gap-x-3 gap-y-2">{{range .RenderedActs}}{{.}}{{end}}</div>{{end}}{{end}}
+     lines and the band stays on the grid. A link act keeps its own shape
+     and takes the band's ink (the notice block). */}}
+{{define "callout.acts"}}{{if .RenderedActs}}<div data-verso-callout-acts class="verso-notice__acts">{{range .RenderedActs}}{{.}}{{end}}</div>{{end}}{{end}}

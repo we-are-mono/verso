@@ -156,7 +156,7 @@ func TestRenderOpenPanelWithToken(t *testing.T) {
 		}
 	}
 	// The frame, the scrim and the listing around them are already on screen.
-	for _, unwanted := range []string{"x-teleport", "<dialog", "Allow-Ping", "<table", "verso-flash"} {
+	for _, unwanted := range []string{"x-teleport", "<dialog", "Allow-Ping", "<table", `data-verso-kind="flash"`} {
 		if strings.Contains(got, unwanted) {
 			t.Errorf("a panel's contents must not carry %q:\n%s", unwanted, got)
 		}
@@ -200,9 +200,10 @@ func TestOpenPanelBringsItsOutcome(t *testing.T) {
 		t.Fatalf("the panel should bring its outcome for the outcome layer:\n%s", got)
 	}
 	carried := got[open:end]
-	if !strings.Contains(carried, `<div class="verso-flash`) || !strings.Contains(carried, "Rule saved.") || !strings.Contains(carried, "border-green-line") {
+	if !strings.Contains(carried, `<div class="verso-notice" data-verso-kind="flash" data-verso-tone="success"`) || !strings.Contains(carried, "Rule saved.") {
 		t.Errorf("the carried outcome is not the flash treatment:\n%s", carried)
 	}
+	declares(t, "notice", `.verso-notice[data-verso-tone="success"]`, "--verso-notice-line: var(--color-green-line);")
 	if strings.Contains(got[:open]+got[end:], "Rule saved.") {
 		t.Errorf("the outcome is drawn in the panel:\n%s", got)
 	}

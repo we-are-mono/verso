@@ -237,10 +237,11 @@ func TestAFocusedBoxStaysFocusedUnderThePointer(t *testing.T) {
 // — rather than running past it; it leads with its tone's small square.
 func TestACompactNoteKeepsItsControlsMeasure(t *testing.T) {
 	got := render(t, newRenderer(t), &Callout{Variant: "warning", Compact: true, Body: "Named once."})
-	if !strings.Contains(got, `flex w-full max-w-(--container-3xl) items-start rounded-xs`) {
+	if !strings.Contains(got, `<div data-verso-callout class="verso-notice" data-verso-tone="warning" data-verso-compact>`) {
 		t.Errorf("a compact note keeps the form's measure:\n%s", got)
 	}
-	if !strings.Contains(got, `verso-mark absolute top-4 left-2.25" data-verso-tone="warning"`) {
+	declares(t, "notice", ".verso-notice[data-verso-compact]", "max-width: var(--container-3xl);")
+	if !strings.Contains(got, `class="verso-mark verso-notice__mark" data-verso-tone="warning"`) {
 		t.Errorf("a compact note leads with its tone's square:\n%s", got)
 	}
 }
@@ -252,13 +253,21 @@ func TestACompactNoteKeepsItsControlsMeasure(t *testing.T) {
 func TestEveryNoticeIsOneBand(t *testing.T) {
 	standing := render(t, newRenderer(t), &Callout{Variant: "warning", Title: "The internet can reach this web interface",
 		Body: "The firewall zone “mgmt” accepts every connection from the internet.", Link: &Link{Label: "Open Firewall", Href: "/plugins/firewall/"}})
-	for _, want := range []string{`verso-mark absolute top-4 left-2.25" data-verso-tone="warning"`, "pt-1.75 pr-3 pb-2 pl-5.75", "border-marigold-line bg-marigold-soft text-marigold-deep"} {
+	for _, want := range []string{`class="verso-mark verso-notice__mark" data-verso-tone="warning"`, `<div data-verso-callout class="verso-notice" data-verso-tone="warning">`} {
 		if !strings.Contains(standing, want) {
 			t.Errorf("a standing notice is not the one band, missing %q:\n%s", want, standing)
 		}
 	}
-	if strings.Contains(standing, "max-w-(--container-3xl)") {
+	// The one band's air and its tone are the block's, not the variant's.
+	declares(t, "notice", ".verso-notice",
+		"padding: calc(var(--spacing) * 1.75) calc(var(--spacing) * 3) calc(var(--spacing) * 2) calc(var(--spacing) * 5.75);")
+	declares(t, "notice", noticeTone("warning"),
+		"--verso-notice-line: var(--color-marigold-line);", "--verso-notice-wash: var(--color-marigold-soft);", "--verso-notice-ink: var(--color-marigold-deep);")
+	if strings.Contains(standing, "data-verso-compact") {
 		t.Errorf("a standing notice reaches its container's width:\n%s", standing)
+	}
+	if band := cssRule(blockCSS(t, "notice"), ".verso-notice"); strings.Contains(band, "max-width") {
+		t.Errorf("only a compact band keeps a measure; the band itself reaches its container's width:\n%s", band)
 	}
 	body := strings.Index(standing, "accepts every connection")
 	closes := strings.Index(standing[body:], "</p>")
@@ -549,18 +558,23 @@ func TestRenderConfirmCaution(t *testing.T) {
 	got := render(t, r, &Confirm{Trigger: "Download and install 25.12.5", Title: "Install 25.12.5 now?", Message: "It restarts on its own.", Confirm: "Install firmware", Cancel: "Not yet", Tone: "caution"})
 	for _, want := range []string{
 		`data-verso-confirm-tone="caution"`,
-		"border-marigold-line bg-marigold-soft", "text-marigold-deep", "text-marigold",
+		// The question is the marigold band, marked by marigold's square.
+		`<div data-verso-callout class="verso-notice" data-verso-tone="warning" data-verso-compact>`,
+		`class="verso-mark verso-notice__mark" data-verso-tone="warning"`,
 		// The trigger is the button block's caution wash, the act its caution
-		// dress.
+		// dress, the way back the band's own words.
 		`class="verso-button w-fit" data-verso-style="caution-wash">`,
-		`class="verso-button shrink-0" data-verso-style="caution">`, "hover:bg-marigold-line/50",
+		`class="verso-button shrink-0" data-verso-style="caution">`,
+		`<button type="button" @click="cancel" class="verso-notice__cancel">Not yet</button>`,
 		"Download and install 25.12.5", "Install 25.12.5 now?", "Install firmware", "Not yet",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("caution confirm missing %q in: %s", want, got)
 		}
 	}
-	if strings.Contains(got, "crimson") || strings.Contains(got, `data-verso-style="danger`) {
+	declares(t, "notice", noticeTone("warning"),
+		"--verso-notice-line: var(--color-marigold-line);", "--verso-notice-wash: var(--color-marigold-soft);", "--verso-notice-ink: var(--color-marigold-deep);")
+	if strings.Contains(got, "crimson") || strings.Contains(got, `data-verso-tone="danger"`) || strings.Contains(got, `data-verso-style="danger`) {
 		t.Errorf("a caution confirm must carry no crimson: %s", got)
 	}
 	if danger := render(t, r, &Confirm{Trigger: "Delete", Message: "Sure?"}); !strings.Contains(danger, `data-verso-confirm-tone="danger"`) {
@@ -598,14 +612,15 @@ func TestRenderConfirm(t *testing.T) {
 		// Both states stand on crimson's own soft ground inside its hairline,
 		// worded in the step of the hue that can carry words; the full-chroma
 		// value stays a mark, on the square.
-		"border-crimson-line bg-crimson-soft", "text-crimson-deep", `verso-mark absolute top-4 left-2.25" data-verso-tone="danger"`,
+		`class="verso-mark verso-notice__mark" data-verso-tone="danger"`,
 		// The question is the compact callout in the act's tone: a row's
 		// height for a line, its words 24px in from the frame's edge.
-		`<div data-verso-callout class="relative flex w-full max-w-(--container-3xl) items-start rounded-xs border pt-1.75 pr-3 pb-2 pl-5.75`,
+		`<div data-verso-callout class="verso-notice" data-verso-tone="danger" data-verso-compact>`,
 		// The answers are the band's acts, on the line a cell under the words;
 		// cancel keeps the explanation's tone and hovers by a soft wash, not a
 		// heavy colour darken.
-		`<div data-verso-callout-acts class="mt-6 pb-2 flex flex-wrap items-center gap-x-3 gap-y-2"><button type="submit" x-ref="first"`, "hover:bg-crimson-line/50",
+		`<div data-verso-callout-acts class="verso-notice__acts"><button type="submit" x-ref="first"`,
+		`<button type="button" @click="cancel" class="verso-notice__cancel">Keep it</button>`,
 		`x-ref="first" class="verso-button shrink-0" data-verso-style="danger">`,
 		// The trigger is a control like every other button, the button block
 		// in its danger wash, and it is as wide as its words, never the column.
@@ -615,13 +630,21 @@ func TestRenderConfirm(t *testing.T) {
 			t.Errorf("confirm missing %q in: %s", want, got)
 		}
 	}
+	// Crimson's own soft ground inside its hairline, its words the deep step.
+	declares(t, "notice", noticeTone("danger"),
+		"--verso-notice-line: var(--color-crimson-line);", "--verso-notice-wash: var(--color-crimson-soft);", "--verso-notice-ink: var(--color-crimson-deep);")
+	// The way back is the band's words, washed by the band's hairline under
+	// the pointer.
+	declares(t, "notice", ".verso-notice__cancel", "color: var(--verso-notice-ink);", "height: var(--spacing-control);", "@apply type-button;")
+	declares(t, "notice", ".verso-notice__cancel:hover", "background-color: color-mix(in srgb, var(--verso-notice-line) 50%, transparent);")
 	// No checkbox pretending to be a button, and no inline script: the
 	// behaviour is the shell's confirm component.
 	if strings.Contains(got, "<script") || strings.Contains(got, `type="checkbox"`) {
 		t.Errorf("confirm must use the shell component, not a checkbox or script: %s", got)
 	}
-	if strings.Contains(got, `@click="cancel" class="flex h-control shrink-0 cursor-pointer items-center rounded-xs border`) {
-		t.Errorf("confirm cancel must not render as a bordered button: %s", got)
+	if cancel := cssRule(blockCSS(t, "notice"), ".verso-notice__cancel"); strings.Contains(cancel, "border:") || strings.Contains(cancel, "border-width") ||
+		strings.Contains(got, `@click="cancel" class="verso-button`) {
+		t.Errorf("confirm cancel must not render as a bordered button:\n%s\n%s", cancel, got)
 	}
 	// Unset, the confirm button repeats the act it confirms — the question
 	// and its answer name the same act, never a bare "Confirm" — and the way
@@ -637,19 +660,20 @@ func TestRenderConfirm(t *testing.T) {
 	// A Title renders as the band's bold title on the 20px line above the
 	// message; without one the message stands alone (no stray heading element).
 	titled := render(t, r, &Confirm{Trigger: "Download and install", Title: "Install now?", Message: "It will be unavailable for several minutes.", Tone: ToneCaution})
-	if !strings.Contains(titled, `<p class="font-semibold">Install now?</p>`) {
+	if !strings.Contains(titled, `<p class="verso-notice__title">Install now?</p>`) {
 		t.Errorf("a titled confirm should render its heading bold: %s", titled)
 	}
+	declares(t, "notice", ".verso-notice__title", "@apply type-subheading;")
 	if !strings.Contains(titled, "It will be unavailable for several minutes.") {
 		t.Errorf("a titled confirm should still render its message: %s", titled)
 	}
 	// Caution asks in the warning's marigold band.
-	if !strings.Contains(titled, "border-marigold-line bg-marigold-soft text-marigold-deep") || strings.Contains(titled, "bg-crimson-soft") {
+	if !strings.Contains(titled, `class="verso-notice" data-verso-tone="warning"`) || strings.Contains(titled, `data-verso-tone="danger"`) {
 		t.Errorf("a caution confirm should ask in the marigold band: %s", titled)
 	}
 	// The trigger and the confirm button are semibold like every other control;
 	// what an untitled confirm must not draw is the heading paragraph.
-	if strings.Contains(def, `<p class="font-semibold">`) {
+	if strings.Contains(def, `<p class="verso-notice__title">`) {
 		t.Errorf("an untitled confirm should draw no heading: %s", def)
 	}
 }
@@ -661,13 +685,18 @@ func TestRenderCallout(t *testing.T) {
 	// own hairline and marked by its square.
 	ok := render(t, r, &Callout{Variant: "success", Title: "Reachable", Body: "Verified from the internet."})
 	for _, want := range []string{
-		"border-green-line bg-green-soft text-green-deep",
+		`<div data-verso-callout class="verso-notice" data-verso-tone="success">`,
+		`class="verso-mark verso-notice__mark" data-verso-tone="success"`,
 		"Reachable", "Verified from the internet.",
 	} {
 		if !strings.Contains(ok, want) {
 			t.Errorf("success callout missing %q in: %s", want, ok)
 		}
 	}
+	declares(t, "notice", noticeTone("success"),
+		"--verso-notice-line: var(--color-green-line);", "--verso-notice-wash: var(--color-green-soft);", "--verso-notice-ink: var(--color-green-deep);")
+	declares(t, "notice", ".verso-notice",
+		"border: 1px solid var(--verso-notice-line);", "background-color: var(--verso-notice-wash);", "color: var(--verso-notice-ink);")
 	// No glyph anywhere: the colour and the mark already say what kind of thing
 	// this is, and a triangle beside three words of prose only crowds them.
 	if strings.Contains(ok, "<svg") {
@@ -675,29 +704,41 @@ func TestRenderCallout(t *testing.T) {
 	}
 	// Unknown/default variant falls back to info (denim), never leaks the variant name.
 	def := render(t, r, &Callout{Body: "heads up"})
-	if !strings.Contains(def, "border-denim-line bg-denim-soft text-denim-deep") {
+	if !strings.Contains(def, `class="verso-notice" data-verso-tone="info"`) {
 		t.Errorf("default callout should use the info palette: %s", def)
 	}
+	declares(t, "notice", noticeTone("info"),
+		"--verso-notice-line: var(--color-denim-line);", "--verso-notice-wash: var(--color-denim-soft);", "--verso-notice-ink: var(--color-denim-deep);")
+	if odd := render(t, r, &Callout{Variant: "loud", Body: "x"}); !strings.Contains(odd, `data-verso-tone="info"`) || strings.Contains(odd, "loud") {
+		t.Errorf("an unknown variant should fall back to info without leaking its name: %s", odd)
+	}
 	warn := render(t, r, &Callout{Variant: "warning", Body: "x"})
-	if !strings.Contains(warn, "bg-marigold-soft text-marigold-deep") {
+	if !strings.Contains(warn, `class="verso-notice" data-verso-tone="warning"`) {
 		t.Errorf("warning callout should use marigold: %s", warn)
 	}
+	declares(t, "notice", noticeTone("warning"), "--verso-notice-wash: var(--color-marigold-soft);", "--verso-notice-ink: var(--color-marigold-deep);")
 	neutral := render(t, r, &Callout{Variant: "neutral", Compact: true, Body: "Quiet context."})
-	if !strings.Contains(neutral, "bg-quiet text-body") || !strings.Contains(neutral, `data-verso-tone="muted"`) {
+	if !strings.Contains(neutral, `class="verso-notice" data-verso-tone="neutral"`) || !strings.Contains(neutral, `data-verso-tone="muted"`) {
 		t.Errorf("neutral callout should be the quiet band: %s", neutral)
 	}
+	declares(t, "notice", noticeTone("neutral"), "--verso-notice-wash: var(--color-quiet);", "--verso-notice-ink: var(--color-body);")
 	// Compact is the note under a control: its words 24px in from the frame's
 	// edge, the mark in the middle of that 24px on the first line's optical
 	// centre, framed one step darker than its ground as every band is, without
 	// the standing band's padding.
 	compact := render(t, r, &Callout{Compact: true, Body: "A short note."})
-	for _, want := range []string{"items-start", "pl-5.75", "pr-3", "pt-1.75 pr-3 pb-2", "border-denim-line", `verso-mark absolute top-4 left-2.25" data-verso-tone="info"`, "A short note."} {
+	for _, want := range []string{`<div data-verso-callout class="verso-notice" data-verso-tone="info" data-verso-compact>`,
+		`<span aria-hidden="true" class="verso-mark verso-notice__mark" data-verso-tone="info"></span>`, "A short note."} {
 		if !strings.Contains(compact, want) {
 			t.Errorf("compact callout missing %q in: %s", want, compact)
 		}
 	}
-	if strings.Contains(compact, "px-5") {
-		t.Errorf("compact callout should not carry the standing padding: %s", compact)
+	declares(t, "notice", ".verso-notice", "align-items: flex-start;",
+		"padding: calc(var(--spacing) * 1.75) calc(var(--spacing) * 3) calc(var(--spacing) * 2) calc(var(--spacing) * 5.75);",
+		"border: 1px solid var(--verso-notice-line);")
+	declares(t, "notice", ".verso-notice__mark", "position: absolute;", "top: calc(var(--spacing) * 4);", "left: calc(var(--spacing) * 2.25);")
+	if rule := cssRule(blockCSS(t, "notice"), ".verso-notice[data-verso-compact]"); rule == "" || strings.Contains(rule, "padding") {
+		t.Errorf("compact callout should not carry padding of its own:\n%s", rule)
 	}
 }
 

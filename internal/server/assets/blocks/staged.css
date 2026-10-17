@@ -1,0 +1,20 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/* SPDX-FileCopyrightText: 2026 Mono Technologies Inc. */
+
+/*
+ * staged — a setting whose change waits on the stage: a bar in the stage's
+ * marigold down the row's left edge, 3px wide, on the edge of whatever the
+ * row stands in (its card's border, where rows run to it, on a page and in
+ * a drawer alike), and the word said to a screen reader beside the
+ * setting's name.
+ *
+ * Elements: __bar  the bar
+ */
+
+.verso-staged__bar {
+  position: absolute;
+  inset-block: 0;
+  left: 0;
+  width: calc(var(--spacing) * 0.75);
+  background: var(--color-marigold);
+}

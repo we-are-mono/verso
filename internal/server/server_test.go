@@ -1884,7 +1884,7 @@ func TestPluginPanelSubmissionThatStagedValuesIsDone(t *testing.T) {
 	body := rec.Body.String()
 	// The panel closes on a change that is only staged: the chip says it
 	// waits, and the row it came from sends it there (verso-commit.js).
-	for _, unwanted := range []string{"<form", "<html", "<table", "Allow-DHCP", `<div class="verso-flash`, "Nothing is live"} {
+	for _, unwanted := range []string{"<form", "<html", "<table", "Allow-DHCP", `data-verso-kind="flash"`, "Nothing is live"} {
 		if strings.Contains(body, unwanted) {
 			t.Errorf("the outcome is said alone, not with %q:\n%s", unwanted, body)
 		}
@@ -2060,7 +2060,7 @@ func TestPluginPanelRefusalSwapsInAt422(t *testing.T) {
 		t.Fatalf("a refused save staged %d write(s); it must stage none", len(calls))
 	}
 	body := rec.Body.String()
-	for _, want := range []string{`value="nowhere"`, "Not a zone.", "Some values aren’t ones the firewall accepts.", "border-crimson-line"} {
+	for _, want := range []string{`value="nowhere"`, "Not a zone.", "Some values aren’t ones the firewall accepts.", `data-verso-kind="flash" data-verso-tone="danger"`} {
 		if !strings.Contains(body, want) {
 			t.Errorf("refusal missing %q:\n%s", want, body)
 		}
@@ -2669,7 +2669,7 @@ func TestPluginNoticeArrivesAsTheNotification(t *testing.T) {
 
 	body := get(t, s, "/plugins/demo/").Body.String()
 	outcome := arrival(body)
-	for _, want := range []string{`<div class="verso-flash`, "Takes effect on the next reload.", "border-marigold-line"} {
+	for _, want := range []string{`<div class="verso-notice" data-verso-kind="flash" data-verso-tone="warning"`, "Takes effect on the next reload."} {
 		if !strings.Contains(outcome, want) {
 			t.Errorf("the arriving notice is missing %q:\n%s", want, outcome)
 		}
@@ -2834,7 +2834,7 @@ func inContent(body, text string) bool {
 // flashShown reports whether the page says an outcome at all: one it arrived
 // with, or a flash drawn anywhere it should never be.
 func flashShown(body string) bool {
-	return arrival(body) != "" || inContent(body, `<div class="verso-flash`)
+	return arrival(body) != "" || inContent(body, `data-verso-kind="flash"`)
 }
 
 // TestPluginWithoutNoticeShowsNoFlash: no notice, no outcome said.

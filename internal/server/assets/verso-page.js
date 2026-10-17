@@ -270,11 +270,11 @@
   function leave() {
     clearTimeout(timer);
     timer = null;
-    layer.classList.remove("is-shown");
+    layer.removeAttribute("data-verso-shown");
     // Emptied once the slide is over (the layer's own 300 ms), unless a newer
     // outcome has arrived in the meantime.
     setTimeout(function () {
-      if (layer.classList.contains("is-shown")) return;
+      if (layer.hasAttribute("data-verso-shown")) return;
       slot.replaceChildren();
       layer.hidden = true;
       if (layer.parentNode !== home) home.appendChild(layer);
@@ -304,7 +304,7 @@
     // Shown on the next frame, so the layer starts from its off-screen place
     // and the arrival is a slide rather than an appearance.
     requestAnimationFrame(function () {
-      requestAnimationFrame(function () { layer.classList.add("is-shown"); });
+      requestAnimationFrame(function () { layer.setAttribute("data-verso-shown", ""); });
     });
     if (!lasting) stay();
   }

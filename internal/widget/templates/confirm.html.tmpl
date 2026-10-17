@@ -30,4 +30,4 @@
      not a colour shift — darkening the deep step desaturates it toward maroon
      and reads heavy. */}}
 {{define "confirm.answers"}}{{$caution := eq .Tone "caution"}}<button type="submit" x-ref="first" class="verso-button shrink-0" data-verso-style="{{if $caution}}caution{{else}}danger{{end}}">{{.Confirm}}</button>
-<button type="button" @click="cancel" class="flex h-control shrink-0 cursor-pointer items-center rounded-xs px-3 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:-outline-offset-2 {{if $caution}}text-marigold-deep hover:bg-marigold-line/50 focus-visible:outline-marigold-deep{{else}}text-crimson-deep hover:bg-crimson-line/50 focus-visible:outline-crimson-deep{{end}}">{{.Cancel}}</button>{{end}}
+<button type="button" @click="cancel" class="verso-notice__cancel">{{.Cancel}}</button>{{end}}

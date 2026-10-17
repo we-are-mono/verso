@@ -6,8 +6,8 @@
 {{/* One hairline on the page's own ground, and the door beside the message in the
      secondary button's treatment — the same frame and the same act every other
      boxed surface in the app wears. */}}
-<section class="rounded-xs border border-rule-strong px-4 py-4">
-  <h3 class="text-sm font-semibold text-ink">{{.Title}}</h3>
-  <p class="mt-1 text-sm text-body">{{.Message}}</p>
+<section class="verso-notice" data-verso-kind="plain">
+  <h3 class="verso-notice__title">{{.Title}}</h3>
+  <p class="mt-1">{{.Message}}</p>
   {{if .ActionHref}}<a href="{{.ActionHref}}" class="verso-button mt-3" data-verso-style="secondary">{{.ActionLabel}}</a>{{end}}
 </section>

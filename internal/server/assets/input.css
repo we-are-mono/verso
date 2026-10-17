@@ -43,6 +43,8 @@
 @import "./blocks/mark.css" layer(components);
 @import "./blocks/menu.css" layer(components);
 @import "./blocks/meter.css" layer(components);
+@import "./blocks/notice.css" layer(components);
+@import "./blocks/outcome.css" layer(components);
 @import "./blocks/panel.css" layer(components);
 @import "./blocks/ports.css" layer(components);
 @import "./blocks/prose.css" layer(components);
@@ -50,6 +52,7 @@
 @import "./blocks/reorder.css" layer(components);
 @import "./blocks/rhythm.css" layer(components);
 @import "./blocks/slot.css" layer(components);
+@import "./blocks/staged.css" layer(components);
 @import "./blocks/steps.css" layer(components);
 @import "./blocks/table.css" layer(components);
 @import "./blocks/tabs.css" layer(components);
@@ -405,11 +408,6 @@ html {
       inset 0 0 0 62.5rem var(--color-denim-soft) !important;
   }
 
-  /* The outcome layer (verso-page.js): an act made in place says how it went at
-     the right, where the panel it came from has just gone. It arrives from that
-     edge with the panel's own timing and leaves the same way. */
-  .verso-outcome { opacity: 0; transform: translateX(calc(100% + 1.5rem)); transition: transform 0.3s ease-out, opacity 0.3s ease-out; }
-  .verso-outcome.is-shown { opacity: 1; transform: none; }
   /* The stage's row, first in the rail (staged.html.tmpl). The marker of the
      page it leads to is the stage's marigold. */
   .verso-pending-link[aria-current="page"] { box-shadow: inset -0.125rem 0 0 var(--color-marigold); }
@@ -427,9 +425,6 @@ html {
     to { background-color: transparent; box-shadow: -0.75rem 0 0 transparent, 0.75rem 0 0 transparent; }
   }
   .verso-arrived { animation: verso-arrived 2s ease-out; }
-  @media (prefers-reduced-motion: reduce) {
-    .verso-outcome { transform: none; transition: opacity 0.2s ease-out; }
-  }
 
 
   /* The rail beside a long page marks the section you are reading: the words go
@@ -505,9 +500,6 @@ html {
      and stays on the grid. A control that states its own vertical margin
      keeps it. */
   :is(.h-control, .verso-box, [data-verso-token-list]) { margin-bottom: -1px; }
-  /* A notice is framed as a card is, 8px over the bottom border, and gives
-     its pixel back the same way. */
-  [data-verso-callout] { margin-bottom: -1px; }
   /* The heading keeps the masthead's act-height line on its own, centred on
      it, so it stands at one height whether an act shares its line or the
      acts wrap to a line of their own under it. */
@@ -529,21 +521,6 @@ html {
 }
 
 @layer utilities {
-  /* An in-flight action keeps its size but gives up its hover and press states. */
-  /* An act inside a band keeps its own shape and takes the band's ink: its
-     words and glyph in the band's deep step, its border that ink thinned, a
-     wash of it under the pointer, so it reads as the band's own way out. */
-  [data-verso-callout-acts] a {
-    color: inherit;
-    border-color: color-mix(in srgb, currentColor 40%, transparent);
-    background-color: transparent;
-  }
-  [data-verso-callout-acts] a svg { color: inherit; }
-  [data-verso-callout-acts] a:hover {
-    color: inherit;
-    border-color: color-mix(in srgb, currentColor 65%, transparent);
-    background-color: color-mix(in srgb, currentColor 8%, transparent);
-  }
   /* One page rhythm: the page's blocks stand apart by the body's own inset,
      2.5rem — the gap the page keeps from the window's top and left edge. The
      page's root stack carries it; a section on it takes its standoff from the
