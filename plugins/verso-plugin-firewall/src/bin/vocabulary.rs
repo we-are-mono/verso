@@ -238,6 +238,7 @@ fn render(sections: &[(String, Vec<Spec>)], version: &str, digest: &str) -> Stri
          sha256: \"{digest}\",\n        \
          extractor: \"{EXTRACTOR}\",\n    \
          }},\n    sections: SECTIONS,\n}};\n\n\
+         #[rustfmt::skip]\n\
          const SECTIONS: &[SectionVocabulary] = &[\n"
     );
     for (kind, _) in sections {
@@ -249,7 +250,11 @@ fn render(sections: &[(String, Vec<Spec>)], version: &str, digest: &str) -> Stri
     }
     out.push_str("];\n");
     for (kind, options) in sections {
-        let _ = writeln!(out, "\nconst {}: &[OptionSpec] = &[", const_name(kind));
+        let _ = writeln!(
+            out,
+            "\n#[rustfmt::skip]\nconst {}: &[OptionSpec] = &[",
+            const_name(kind)
+        );
         for spec in options {
             let default = match &spec.default {
                 Some(value) => format!("Some(\"{value}\")"),
