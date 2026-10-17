@@ -330,8 +330,7 @@ func changeOp(c stagedChange, secrets map[string]bool) history.ChangeOp {
 		value := d.Value
 		op.Value = &value
 	}
-	switch d.Op {
-	case "set", "list-add", "list-del", "remove-option":
+	if optionOp(d.Op) {
 		op.Secret = secrets[d.Config+"."+d.Option]
 	}
 	return op
@@ -347,14 +346,14 @@ func replaced(committed map[string]map[string]any, op history.ChangeOp, secrets 
 		return nil
 	}
 	var old any
-	switch op.Op {
-	case "set", "list-add", "list-del", "remove-option":
+	switch {
+	case optionOp(op.Op):
 		value, present := section[op.Option]
 		if !present {
 			return nil
 		}
 		old = value
-	case "remove-section":
+	case op.Op == "remove-section":
 		old, _ = history.WithoutSecrets(op.Config, section, secrets)
 	default:
 		return nil

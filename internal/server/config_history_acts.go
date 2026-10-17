@@ -84,15 +84,6 @@ func (p *actPlan) secret(path string) {
 	}
 }
 
-// optionOp reports whether an op changes one option rather than a section.
-func optionOp(op history.ChangeOp) bool {
-	switch op.Op {
-	case "set", "remove-option", "list-add", "list-del":
-		return true
-	}
-	return false
-}
-
 // reverseOf is what returns the configs to how they were before the first of
 // entries (oldest first): each option to what the first change to it
 // replaced, each section made since removed, each removed since made again
@@ -198,7 +189,7 @@ func optionStates(ts []touch, plan *actPlan) (order []string, then, now map[stri
 	then, now = map[string]any{}, map[string]any{}
 	skip := map[string]bool{}
 	for _, t := range ts {
-		if !optionOp(t.op) {
+		if !optionOp(t.op.Op) {
 			continue
 		}
 		option := t.op.Option
@@ -337,7 +328,7 @@ func forwardOf(c history.Change) actPlan {
 		values := map[string]any{}
 		started := map[string]bool{}
 		for _, t := range ts {
-			if !optionOp(t.op) {
+			if !optionOp(t.op.Op) {
 				continue
 			}
 			option := t.op.Option
@@ -414,7 +405,7 @@ func touchedAgain(all []history.Change, c history.Change) []history.Change {
 	options, sections := map[string]bool{}, map[string]bool{}
 	for _, item := range c.Items {
 		for _, op := range item.Ops {
-			if optionOp(op) {
+			if optionOp(op.Op) {
 				options[op.Config+"."+op.Section+"."+op.Option] = true
 			} else {
 				sections[op.Config+"."+op.Section] = true
@@ -431,7 +422,7 @@ func touchedAgain(all []history.Change, c history.Change) []history.Change {
 		for _, item := range later.Items {
 			for _, op := range item.Ops {
 				section := op.Config + "." + op.Section
-				hit = hit || sections[section] || options[section+"."+op.Option] || (!optionOp(op) && hasPrefixKey(options, section+"."))
+				hit = hit || sections[section] || options[section+"."+op.Option] || (!optionOp(op.Op) && hasPrefixKey(options, section+"."))
 			}
 		}
 		if hit {

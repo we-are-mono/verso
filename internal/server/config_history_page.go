@@ -535,9 +535,7 @@ func verbOf(verbs []string) string {
 // knew, only what the option became.
 func editParts(op history.ChangeOp, oldRead bool, tr func(string) string) ([]widget.TablePart, bool) {
 	key := widget.TablePart{Chip: &widget.TableChip{Label: op.Option}}
-	switch op.Op {
-	case "set", "remove-option", "list-add", "list-del":
-	default:
+	if !optionOp(op.Op) {
 		return nil, false
 	}
 	if op.Secret {

@@ -594,9 +594,7 @@ func soleOption(changes []stagedChange) string {
 	option := ""
 	for _, change := range changes {
 		c := describeChange(change)
-		switch c.Op {
-		case "set", "remove-option", "list-add", "list-del":
-		default:
+		if !optionOp(c.Op) {
 			return ""
 		}
 		if option != "" && c.Option != option {
@@ -664,6 +662,16 @@ func describeChange(c stagedChange) plugin.DescribeChange {
 	return dc
 }
 
+// optionOp reports whether a normalized op, as describeChange names it,
+// changes one option rather than a section or a file.
+func optionOp(op string) bool {
+	switch op {
+	case "set", "remove-option", "list-add", "list-del":
+		return true
+	}
+	return false
+}
+
 // configOwner returns the installed plugin that declares write access to config,
 // the one asked to describe that config's changes. Ownership is a write grant; a
 // config no plugin writes (or the shell's own) has no describer.
@@ -704,9 +712,7 @@ func humanizeChange(config string, ch []string, secrets map[string]bool) string 
 		return section
 	case op == "set" && len(ch) == 4:
 		return fmt.Sprintf("%s: %s.%s = %s", config, section, ch[2], shownValue(config, ch[2], ch[3], secrets))
-	case op == "set" && len(ch) == 3:
-		return fmt.Sprintf("%s: new %s section %s", config, ch[2], section)
-	case op == "add" && len(ch) == 3:
+	case (op == "set" || op == "add") && len(ch) == 3:
 		return fmt.Sprintf("%s: new %s section %s", config, ch[2], section)
 	case op == "remove" && len(ch) == 3:
 		return fmt.Sprintf("%s: remove %s.%s", config, section, ch[2])
