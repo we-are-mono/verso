@@ -246,7 +246,7 @@ func (d directSource) snapshot(context.Context, plugin.Manifest) plugin.UCI {
 func diffConfig(before, after map[string]map[string]any) ([][]string, map[string]bool) {
 	var tuples [][]string
 	secret := map[string]bool{}
-	for _, name := range sectionsInOrder(after) {
+	for _, name := range sectionOrder(after) {
 		now := after[name]
 		then, existed := before[name]
 		typ, _ := now[".type"].(string)
@@ -283,7 +283,7 @@ func diffConfig(before, after map[string]map[string]any) ([][]string, map[string
 			}
 		}
 	}
-	for _, name := range sectionsInOrder(before) {
+	for _, name := range sectionOrder(before) {
 		if _, kept := after[name]; !kept {
 			tuples = append(tuples, []string{"remove", name})
 		}
@@ -323,31 +323,6 @@ func optionChange(section, option string, was any, had bool, is any) [][]string 
 		}
 	}
 	return tuples
-}
-
-// sectionsInOrder is a reading's sections in the order the config holds
-// them.
-func sectionsInOrder(sections map[string]map[string]any) []string {
-	names := make([]string, 0, len(sections))
-	for name := range sections {
-		names = append(names, name)
-	}
-	index := func(name string) float64 {
-		switch i := sections[name][".index"].(type) {
-		case float64:
-			return i
-		case int:
-			return float64(i)
-		}
-		return 0
-	}
-	sort.SliceStable(names, func(a, b int) bool {
-		if index(names[a]) != index(names[b]) {
-			return index(names[a]) < index(names[b])
-		}
-		return names[a] < names[b]
-	})
-	return names
 }
 
 // optionNames is every option either reading of a section holds, by name.

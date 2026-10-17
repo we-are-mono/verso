@@ -1016,8 +1016,9 @@ func (s *Server) realizeReorder(ctx context.Context, m plugin.Manifest, sid stri
 // sectionOrder is a uci snapshot's sections in the sequence the file holds them.
 // rpcd hands a config back as a map, so only each section's `.index` states where
 // it sits; equal indices fall back to the name, so one snapshot always yields one
-// order.
-func sectionOrder(sections map[string]any) []string {
+// order. A section is whatever value the snapshot holds it as: a map read off
+// rpcd, or one decoded already.
+func sectionOrder[S any](sections map[string]S) []string {
 	names := make([]string, 0, len(sections))
 	for name := range sections {
 		names = append(names, name)
@@ -1038,6 +1039,8 @@ func sectionOrder(sections map[string]any) []string {
 func sectionIndex(section any) float64 {
 	values, _ := section.(map[string]any)
 	switch index := values[".index"].(type) {
+	case int:
+		return float64(index)
 	case int64:
 		return float64(index)
 	case float64:

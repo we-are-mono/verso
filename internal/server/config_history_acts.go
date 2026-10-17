@@ -576,7 +576,7 @@ func startPlan(start, now map[string]map[string]map[string]any) actPlan {
 		if current == nil {
 			continue
 		}
-		for _, name := range sectionsInOrder(then) {
+		for _, name := range sectionOrder(then) {
 			key := config + "." + name
 			was := then[name]
 			is, exists := current[name]
@@ -624,7 +624,7 @@ func startPlan(start, now map[string]map[string]map[string]any) actPlan {
 				plan.step(nobody, plugin.CommitOp{Config: config, Section: name, Values: values})
 			}
 		}
-		for _, name := range sectionsInOrder(current) {
+		for _, name := range sectionOrder(current) {
 			if _, kept := then[name]; !kept {
 				typ, _ := current[name][".type"].(string)
 				plan.step(nobody, plugin.CommitOp{Config: config, Section: name, Delete: true})
