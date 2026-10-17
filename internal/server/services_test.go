@@ -6,7 +6,6 @@ package server
 import (
 	"context"
 	"net/http"
-	"net/http/httptest"
 	"net/url"
 	"regexp"
 	"strings"
@@ -268,71 +267,27 @@ func TestServicesFailedDaemonReadsFailed(t *testing.T) {
 	}
 }
 
-// TestServicesSwitchCouplesBothFacts: off is stop+disable, on is enable+start
-// — one human concept, both procd facts — for plain and plugin services alike.
-func TestServicesSwitchCouplesBothFacts(t *testing.T) {
-	var inits []string
-	s := pluginsServer(t, fakeBackend{access: true, rcInits: &inits}, true, mgmtManifest())
-
-	rec := postPlugin(t, s, "/system/services", url.Values{"svc:dnsmasq": {"off"}})
-	if rec.Code != http.StatusSeeOther {
-		t.Fatalf("expected 303, got %d: %s", rec.Code, rec.Body.String())
-	}
-	postPlugin(t, s, "/system/services", url.Values{"on:demo": {"on"}})
-	postPlugin(t, s, "/system/services", url.Values{"service": {"dnsmasq"}, "_action": {"restart"}})
-	want := []string{"dnsmasq stop", "dnsmasq disable",
-		"verso-plugin-demo enable", "verso-plugin-demo start", "dnsmasq restart"}
-	if len(inits) != len(want) {
-		t.Fatalf("rc actions = %v, want %v", inits, want)
-	}
-	for i := range want {
-		if inits[i] != want[i] {
-			t.Fatalf("rc actions = %v, want %v", inits, want)
-		}
-	}
-}
-
-func TestServicesSwitchFetchAvoidsRedirectRender(t *testing.T) {
-	var inits []string
-	s := pluginsServer(t, fakeBackend{access: true, rcInits: &inits}, true, mgmtManifest())
-	token := s.sessions.CreateWithMetadata("test-sid", "root", "", "")
-	sess, _ := s.sessions.get(token)
-	form := url.Values{"svc:dnsmasq": {"off"}, "_csrf": {sess.csrf}}
-	req := httptest.NewRequest(http.MethodPost, "/system/services", strings.NewReader(form.Encode()))
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Set("X-Verso-Interaction", "switch")
-	req.AddCookie(&http.Cookie{Name: sessionCookie, Value: token})
-	rec := httptest.NewRecorder()
-	s.Handler().ServeHTTP(rec, req)
-
-	if rec.Code != http.StatusNoContent {
-		t.Fatalf("switch fetch status = %d, want 204: %s", rec.Code, rec.Body.String())
-	}
-	want := []string{"dnsmasq stop", "dnsmasq disable"}
-	if len(inits) != len(want) || inits[0] != want[0] || inits[1] != want[1] {
-		t.Fatalf("rc actions = %v, want %v", inits, want)
-	}
-}
-
 // TestServicesRefusals: the keep-list never reaches procd; unknown verbs and
 // bad names are refused.
 func TestServicesRefusals(t *testing.T) {
 	var inits []string
 	s := pluginsServer(t, fakeBackend{access: true, rcInits: &inits}, true, mgmtManifest())
 
-	if rec := postPlugin(t, s, "/system/services", url.Values{"service": {"verso"}, "_primary": {"restart"}}); rec.Code != http.StatusOK {
+	if rec := postPlugin(t, s, "/system/services", url.Values{"_service_action": {"restart:verso"}}); rec.Code != http.StatusOK {
 		t.Errorf("keep-list restart should re-render the refusal, got %d", rec.Code)
 	}
-	if rec := postPlugin(t, s, "/system/services", url.Values{"service": {"verso-rpcd"}, "_primary": {"stop"}}); rec.Code != http.StatusOK {
+	if rec := postPlugin(t, s, "/system/services", url.Values{"_service_action": {"stop:verso-rpcd"}}); rec.Code != http.StatusOK {
 		t.Errorf("verso-rpcd stop should be refused, got %d", rec.Code)
 	}
-	if rec := postPlugin(t, s, "/system/services", url.Values{"svc:firewall": {"off"}}); rec.Code != http.StatusOK {
-		t.Errorf("firewall disable should be refused, got %d", rec.Code)
+	if rec := postPlugin(t, s, "/system/services", url.Values{"_service_action": {"stop:firewall"}}); rec.Code != http.StatusOK {
+		t.Errorf("firewall stop should be refused, got %d", rec.Code)
 	}
-	if rec := postPlugin(t, s, "/system/services", url.Values{"service": {"dnsmasq"}, "_action": {"reboot-the-moon"}}); rec.Code != http.StatusBadRequest {
-		t.Errorf("unknown verb: got %d, want 400", rec.Code)
+	for _, verb := range []string{"reboot-the-moon", "enable", "disable"} {
+		if rec := postPlugin(t, s, "/system/services", url.Values{"_service_action": {verb + ":dnsmasq"}}); rec.Code != http.StatusBadRequest {
+			t.Errorf("unknown verb %q: got %d, want 400", verb, rec.Code)
+		}
 	}
-	if rec := postPlugin(t, s, "/system/services", url.Values{"service": {"../etc"}, "_primary": {"restart"}}); rec.Code != http.StatusBadRequest {
+	if rec := postPlugin(t, s, "/system/services", url.Values{"_service_action": {"restart:../etc"}}); rec.Code != http.StatusBadRequest {
 		t.Errorf("bad name: got %d, want 400", rec.Code)
 	}
 	if len(inits) != 0 {

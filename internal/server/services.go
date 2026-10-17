@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
-	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -35,7 +34,7 @@ const pluginServicePrefix = "verso-plugin-"
 
 // rcActions is the closed set of lifecycle verbs the surface forwards to
 // procd; anything else in a POST is rejected before touching the bus.
-var rcActions = map[string]bool{"start": true, "stop": true, "restart": true, "reload": true, "enable": true, "disable": true}
+var rcActions = map[string]bool{"start": true, "stop": true, "restart": true, "reload": true}
 
 // svcReapply names the subsystems (init scripts that apply configuration and
 // exit, leaving nothing running) whose live state can drift from their config
@@ -55,7 +54,7 @@ var svcKeep = map[string]bool{"verso": true, "verso-rpcd": true, "rpcd": true, "
 // svcMustStayEnabled covers kernel-state loaders whose stop action is unsafe as
 // an everyday service control. firewall4 has no resident daemon: stopping it
 // flushes the router's nftables, NAT and forwarding rules. It may be restarted,
-// but the Services page never offers or accepts stop/disable.
+// but the Services page never offers or accepts stop.
 var svcMustStayEnabled = map[string]bool{"firewall": true}
 
 // svcNameRe is the shape of an init-script name — the only thing that reaches
@@ -110,9 +109,8 @@ func (s *Server) handleServicesPage(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleServicesAction dispatches a lifecycle POST. Row actions return runtime
-// cells; legacy switch submissions and ordinary forms retain their response paths.
+// cells; an ordinary form submission re-renders or redirects.
 func (s *Server) handleServicesAction(w http.ResponseWriter, r *http.Request) {
-	switchRequest := r.Header.Get("X-Verso-Interaction") == "switch"
 	rowRequest := r.Header.Get("X-Verso-Interaction") == "act"
 	_, t := s.localize(r)
 	tr := translatorOrIdentity(t)
@@ -120,7 +118,7 @@ func (s *Server) handleServicesAction(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "bad form", http.StatusBadRequest)
 		return
 	}
-	svc, actions := serviceActionsOf(r, s.manifestByID)
+	svc, verb := serviceActionOf(r)
 	if svc == "" {
 		http.Error(w, "no action in form", http.StatusBadRequest)
 		return
@@ -131,55 +129,44 @@ func (s *Server) handleServicesAction(w http.ResponseWriter, r *http.Request) {
 	}
 	if svcKeep[svc] {
 		msg := fmt.Sprintf(tr("%s keeps this page alive — manage it over SSH if you really mean it."), svc)
-		if switchRequest || rowRequest {
-			// A switch POST reads res.ok as success and reloads (verso.js), so a
-			// refusal must be an error status, not a 200 re-render — parity with the
-			// svcMustStayEnabled branch below.
+		if rowRequest {
+			// A row act reads res.ok as success, so a refusal must be an error
+			// status, not a 200 re-render — parity with the svcMustStayEnabled
+			// branch below.
 			http.Error(w, msg, http.StatusConflict)
 			return
 		}
 		s.renderServices(w, r, msg)
 		return
 	}
-	if svcMustStayEnabled[svc] && (slices.Contains(actions, "stop") || slices.Contains(actions, "disable")) {
+	if svcMustStayEnabled[svc] && verb == "stop" {
 		msg := fmt.Sprintf(tr("%s must remain enabled; stopping it would remove the router's firewall and forwarding rules."), svc)
-		if switchRequest || rowRequest {
+		if rowRequest {
 			http.Error(w, msg, http.StatusConflict)
 			return
 		}
 		s.renderServices(w, r, msg)
 		return
 	}
-	for _, a := range actions {
-		// A reload is offered only where putting the state back means something
-		// (svcReapply), so it is accepted only there.
-		if !rcActions[a] || (a == "reload" && svcReapply[svc] == "") {
-			http.Error(w, "unknown action", http.StatusBadRequest)
-			return
-		}
+	// A reload is offered only where putting the state back means something
+	// (svcReapply), so it is accepted only there.
+	if !rcActions[verb] || (verb == "reload" && svcReapply[svc] == "") {
+		http.Error(w, "unknown action", http.StatusBadRequest)
+		return
 	}
-	for _, a := range actions {
-		if err := s.backend.RCInit(r.Context(), s.sessionSID(r), svc, a); err != nil {
-			if switchRequest || rowRequest {
-				http.Error(w, fmt.Sprintf(tr("Could not %s %s: the device refused (%v)."), a, svc, err), http.StatusBadGateway)
-				return
-			}
-			s.renderServices(w, r, fmt.Sprintf(tr("Could not %s %s: the device refused (%v)."), a, svc, err))
+	if err := s.backend.RCInit(r.Context(), s.sessionSID(r), svc, verb); err != nil {
+		if rowRequest {
+			http.Error(w, fmt.Sprintf(tr("Could not %s %s: the device refused (%v)."), verb, svc, err), http.StatusBadGateway)
 			return
 		}
+		s.renderServices(w, r, fmt.Sprintf(tr("Could not %s %s: the device refused (%v)."), verb, svc, err))
+		return
 	}
 	if rowRequest {
 		s.renderServiceRuntime(w, r, svc)
 		return
 	}
-	s.flash(r, "success", svc+" "+tr(lifecycleWord(actions))+".")
-	if switchRequest {
-		// A fetch-based switch already reloads the page after this response.
-		// Returning 204 avoids following a 303 through one expensive service-list
-		// render only to discard it and perform the same render again.
-		w.WriteHeader(http.StatusNoContent)
-		return
-	}
+	s.flash(r, "success", svc+" "+tr(lifecycleWord(verb))+".")
 	http.Redirect(w, r, "/system/services", http.StatusSeeOther)
 }
 
@@ -217,63 +204,16 @@ func (s *Server) renderServiceRuntime(w http.ResponseWriter, r *http.Request, na
 	_, _ = fmt.Fprintf(w, `<div data-verso-row-patch="3,4,5,6">%s</div>`, body.String())
 }
 
-// serviceActionsOf extracts (service, rc actions) from the POSTed form. The
-// on/off switch posts under "on:<plugin id>" (resolved through the manifest)
-// or "svc:<service>" for plain services, expanding to both procd facts; the
-// drawer's action form posts plugin=<id> or service=<name> with _action
-// ("" = the primary button, restart).
-func serviceActionsOf(r *http.Request, byID func(string) (plugin.Manifest, bool)) (string, []string) {
-	if verb, name, ok := strings.Cut(r.PostForm.Get("_service_action"), ":"); ok {
-		return name, []string{verb}
-	}
-	for name, vals := range r.PostForm {
-		if len(vals) == 0 {
-			continue
-		}
-		var svc string
-		if id, found := strings.CutPrefix(name, "on:"); found {
-			m, ok := byID(id)
-			if !ok {
-				continue
-			}
-			svc = pluginServicePrefix + m.ID
-		} else if v, found := strings.CutPrefix(name, "svc:"); found {
-			svc = v
-		} else {
-			continue
-		}
-		if vals[0] == "on" {
-			return svc, []string{"enable", "start"}
-		}
-		return svc, []string{"stop", "disable"}
-	}
-	action := r.PostForm.Get("_action")
-	if action == "" {
-		action = r.PostForm.Get("_primary")
-	}
-	if id := r.PostForm.Get("plugin"); id != "" {
-		m, ok := byID(id)
-		if !ok {
-			return "", nil
-		}
-		return pluginServicePrefix + m.ID, []string{action}
-	}
-	if svc := r.PostForm.Get("service"); svc != "" {
-		return svc, []string{action}
-	}
-	return "", nil
+// serviceActionOf extracts (service, rc verb) from the POSTed form: a row act
+// posts _service_action=<verb>:<service>.
+func serviceActionOf(r *http.Request) (string, string) {
+	verb, name, _ := strings.Cut(r.PostForm.Get("_service_action"), ":")
+	return name, verb
 }
 
-// lifecycleWord names the completed act in the flash: the switch pairs read
-// as their one human concept, single verbs as their past tense.
-func lifecycleWord(actions []string) string {
-	if len(actions) == 2 {
-		if actions[0] == "enable" {
-			return "turned on"
-		}
-		return "turned off"
-	}
-	switch actions[0] {
+// lifecycleWord names the completed act in the flash: the verb's past tense.
+func lifecycleWord(verb string) string {
+	switch verb {
 	case "restart":
 		return "restarted"
 	case "start":
@@ -281,7 +221,7 @@ func lifecycleWord(actions []string) string {
 	case "stop":
 		return "stopped"
 	default:
-		return actions[0] + "ed"
+		return verb + "ed"
 	}
 }
 
