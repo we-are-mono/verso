@@ -189,18 +189,18 @@ func (m Manifest) validate() error {
 			}
 		}
 	}
-	for i, a := range m.ACL.Read {
-		// A partial triple names no config to fetch — reject it rather than carry a
-		// meaningless read scope.
-		if a.Scope == "" || a.Object == "" || a.Function == "" {
-			return fmt.Errorf("plugin %q acl.read[%d] needs scope, object and function", m.ID, i)
-		}
-	}
-	for i, a := range m.ACL.Write {
-		// A partial triple can't be probed against session.access, so it would
-		// silently gate nothing — reject it rather than dispatch an ungated write.
-		if a.Scope == "" || a.Object == "" || a.Function == "" {
-			return fmt.Errorf("plugin %q acl.write[%d] needs scope, object and function", m.ID, i)
+	// A partial read triple names no config to fetch, and a partial write
+	// triple can't be probed against session.access, so it would silently gate
+	// nothing — reject either rather than carry a meaningless read scope or
+	// dispatch an ungated write.
+	for _, acl := range []struct {
+		name   string
+		scopes []ACLScope
+	}{{"read", m.ACL.Read}, {"write", m.ACL.Write}} {
+		for i, a := range acl.scopes {
+			if a.Scope == "" || a.Object == "" || a.Function == "" {
+				return fmt.Errorf("plugin %q acl.%s[%d] needs scope, object and function", m.ID, acl.name, i)
+			}
 		}
 	}
 	for i, secret := range m.Secrets {
