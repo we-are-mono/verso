@@ -213,7 +213,7 @@ function versoNameDialog(dialog) {
 // motion of its own, or for a reader who asked for less, closes at once.
 function versoDialogClose(dialog) {
   if (!dialog || !dialog.open || dialog.hasAttribute("data-closing")) return;
-  if (!dialog.matches(".verso-modal-motion, .verso-drawer-motion") ||
+  if (!dialog.matches(".verso-modal") ||
     window.matchMedia("(prefers-reduced-motion: reduce)").matches) return dialog.close();
   function ended(e) {
     if (e.target === dialog && e.pseudoElement === "::backdrop") leave();

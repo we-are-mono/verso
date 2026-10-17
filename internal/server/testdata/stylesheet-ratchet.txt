@@ -20,8 +20,6 @@ classes-are-blocks	verso-confirm
 classes-are-blocks	verso-console
 classes-are-blocks	verso-console-notice
 classes-are-blocks	verso-disclosure
-classes-are-blocks	verso-drawer-motion
-classes-are-blocks	verso-drawer-scrollbar
 classes-are-blocks	verso-field-act
 classes-are-blocks	verso-field-answer
 classes-are-blocks	verso-field-control
@@ -46,8 +44,6 @@ classes-are-blocks	verso-joined-word
 classes-are-blocks	verso-kicker
 classes-are-blocks	verso-landed
 classes-are-blocks	verso-lede
-classes-are-blocks	verso-modal
-classes-are-blocks	verso-modal-motion
 classes-are-blocks	verso-overview
 classes-are-blocks	verso-overview-body
 classes-are-blocks	verso-overview-card
@@ -75,12 +71,8 @@ classes-are-blocks	verso-switch-off
 classes-are-blocks	verso-switch-on
 classes-are-blocks	verso-switch-word
 classes-are-blocks	verso-time-input
-no-class-string-templates	widget/templates/modal.html.tmpl	modal.frame
-no-class-string-templates	widget/templates/shared.html.tmpl	verso-dialog-box
-no-class-string-templates	widget/templates/shared.html.tmpl	verso-drawer-box
 no-class-string-templates	widget/templates/shared.html.tmpl	verso-drawer-ground
 no-class-string-templates	widget/templates/shared.html.tmpl	verso-drawer-inset
-no-class-string-templates	widget/templates/shared.html.tmpl	verso-drawer-width
 no-class-string-templates	widget/templates/shared.html.tmpl	verso-error-line
 no-class-string-templates	widget/templates/shared.html.tmpl	verso-field-control-class
 no-class-string-templates	widget/templates/shared.html.tmpl	verso-field-desc-class
@@ -317,14 +309,6 @@ rules-live-in-blocks	input.css	.verso-conditional-body
 rules-live-in-blocks	input.css	.verso-conditional-otherwise
 rules-live-in-blocks	input.css	.verso-conditional:has(> .verso-conditional-gate input[data-verso-switch]:checked) > .verso-conditional-body
 rules-live-in-blocks	input.css	.verso-conditional:has(> .verso-conditional-gate input[data-verso-switch]:checked) > .verso-conditional-otherwise
-rules-live-in-blocks	input.css	.verso-drawer-motion
-rules-live-in-blocks	input.css	.verso-drawer-motion[data-closing]
-rules-live-in-blocks	input.css	.verso-drawer-motion[open]
-rules-live-in-blocks	input.css	.verso-drawer-scrollbar
-rules-live-in-blocks	input.css	.verso-drawer-scrollbar::-webkit-scrollbar
-rules-live-in-blocks	input.css	.verso-drawer-scrollbar::-webkit-scrollbar-thumb
-rules-live-in-blocks	input.css	.verso-drawer-scrollbar::-webkit-scrollbar-thumb:hover
-rules-live-in-blocks	input.css	.verso-drawer-scrollbar::-webkit-scrollbar-track
 rules-live-in-blocks	input.css	.verso-glyph-fan-spin
 rules-live-in-blocks	input.css	.verso-glyph-fan-spin
 rules-live-in-blocks	input.css	.verso-inline-switch-off
@@ -334,11 +318,6 @@ rules-live-in-blocks	input.css	.verso-inline-switch:has(input[data-verso-switch]
 rules-live-in-blocks	input.css	.verso-kicker
 rules-live-in-blocks	input.css	.verso-lede
 rules-live-in-blocks	input.css	.verso-lede
-rules-live-in-blocks	input.css	.verso-modal
-rules-live-in-blocks	input.css	.verso-modal-motion
-rules-live-in-blocks	input.css	.verso-modal-motion[data-closing]
-rules-live-in-blocks	input.css	.verso-modal-motion[open]
-rules-live-in-blocks	input.css	.verso-modal::backdrop
 rules-live-in-blocks	input.css	.verso-overview
 rules-live-in-blocks	input.css	.verso-overview > .verso-overview-cols:has(> [data-overview-col])
 rules-live-in-blocks	input.css	.verso-overview-body
@@ -393,9 +372,6 @@ rules-live-in-blocks	input.css	.verso-stream-release-x
 rules-live-in-blocks	input.css	.verso-stream-release:hover .verso-stream-release-x
 rules-live-in-blocks	input.css	.verso-stream-shelf
 rules-live-in-blocks	input.css	:is(.h-control, .verso-box, [data-verso-token-list])
-rules-live-in-blocks	input.css	:is(.verso-modal-motion, .verso-drawer-motion)::backdrop
-rules-live-in-blocks	input.css	:is(.verso-modal-motion, .verso-drawer-motion)[data-closing]::backdrop
-rules-live-in-blocks	input.css	:is(.verso-modal-motion, .verso-drawer-motion)[open]::backdrop
 rules-live-in-blocks	input.css	:root[data-verso-grid] [data-verso-drawer-body]
 rules-live-in-blocks	input.css	:root[data-verso-grid] main
 rules-live-in-blocks	input.css	:root[data-verso-grid] main::after
@@ -598,7 +574,6 @@ short-class-lists	widget/templates/grid.html.tmpl	grid min-w-0 grid-cols-1 gap-1
 short-class-lists	widget/templates/grid.html.tmpl	grid min-w-0 grid-cols-1 gap-x-12 gap-y-0 @2xl:grid-cols-2 @2xl:gap-y-6 @max-2xl:[&>dl:has(+dl:has(*))>div:last-child]:border-b @max-2xl:[&>dl+dl>div:first-child]:pt-1.75 [&_dl]:divide-rule [&_dl>div]:justify-start [&_dt]:w-24 [&_dd]:flex-1 [&_dd]:justify-start [&_dd]:text-left [&>dl:not(:has(*))]:hidden @2xl:[&>dl:not(:has(*))]:block [&>div]:mt-0 [&>div]:min-w-0 [&>div]:border-t-0 [&>div]:pt-2 [&>div>span]:text-base
 short-class-lists	widget/templates/list.html.tmpl	flex min-h-control flex-wrap items-center gap-x-1 gap-y-4 rounded-xs border border-rule-strong {{template "verso-input-fill"}} p-0.75 transition-colors hover:not-focus-within:border-faint focus-within:border-denim
 short-class-lists	widget/templates/list.html.tmpl	h-6 min-w-18 flex-1 border-0 bg-transparent px-1.5 font-mono text-base font-normal text-ink outline-none placeholder:font-sans placeholder:text-sm placeholder:font-normal placeholder:text-meta
-short-class-lists	widget/templates/modal.html.tmpl	inline-flex cursor-pointer items-center gap-1.5 rounded-xs text-sm font-medium text-meta transition-colors hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim
 short-class-lists	widget/templates/overview.html.tmpl	-my-1 ml-auto h-7 cursor-pointer rounded-xs px-2.5 font-medium text-denim-deep transition-colors hover:bg-denim-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim
 short-class-lists	widget/templates/overview.html.tmpl	flex min-w-0 cursor-pointer items-center gap-2 pt-2.75 pr-2.5 pb-3 pl-5.75 leading-6 select-none group-data-arranging/overview:cursor-grab group-data-arranging/overview:pl-1.5
 short-class-lists	widget/templates/overview.html.tmpl	flex shrink-0 items-center gap-2 text-sm leading-6 font-medium whitespace-nowrap text-body group-data-[tone=success]/card:text-green-deep group-data-[tone=warning]/card:text-marigold-deep group-data-[tone=danger]/card:text-crimson-deep
@@ -608,12 +583,10 @@ short-class-lists	widget/templates/section.html.tmpl	ml-auto flex h-6 w-full ite
 short-class-lists	widget/templates/settings.html.tmpl	flex cursor-pointer items-center gap-1.5 px-3 pt-2.75 pb-3 leading-6 text-sm font-semibold text-denim-deep transition-colors select-none hover:bg-quiet hover:text-denim [&::-webkit-details-marker]:hidden
 short-class-lists	widget/templates/settings.html.tmpl	flex items-baseline justify-between gap-3 pt-1 pb-0.75 {{if not .Card}}border-b border-rule-strong {{end}}{{template "verso-kicker-class"}}
 short-class-lists	widget/templates/shared.html.tmpl	grid size-7 flex-none cursor-pointer place-items-center rounded-xs border border-transparent text-glyph transition-colors hover:border-sand-5 hover:bg-rule hover:text-ink focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-denim
-short-class-lists	widget/templates/shared.html.tmpl	grid size-7 shrink-0 cursor-pointer place-items-center rounded-xs text-meta transition-colors hover:bg-mid/50 hover:text-ink focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-denim
 short-class-lists	widget/templates/shared.html.tmpl	h-control w-80 max-w-full rounded-xs border border-rule-strong bg-canvas pr-3 pl-8.5 text-sm text-ink shadow-(--shadow-field) transition-colors placeholder:font-normal placeholder:text-meta hover:border-faint focus:border-denim focus:outline-none
 short-class-lists	widget/templates/shared.html.tmpl	verso-drawer-scrollbar min-h-0 flex-1 {{if not .Choices}}space-y-6 {{end}}overflow-x-hidden overflow-y-auto {{if .Choices}}space-y-0 pb-8 [&>section]:pt-0 [&>section>div:first-child]:mb-0 [&>section>div:first-child]:border-y [&>section>div:first-child]:border-rule [&>section>div:first-child]:bg-quiet [&>section>div:first-child]:px-(--verso-drawer-gutter) [&>section>div:first-child]:py-2 [&_h3]:font-medium [&_h3]:tracking-[.08em] [&_.verso-rhythm>*]:!mt-0{{else}}{{template "verso-drawer-ground"}}{{end}} [&_table]:min-w-0 [&_.overflow-x-auto]:!overflow-visible [&_tbody_tr:hover]:!bg-transparent [&_td:last-child]:!text-right [&_th:last-child]:!text-right
 short-class-lists	widget/templates/switch.html.tmpl	absolute inset-0 rounded-xs border border-choice-border bg-canvas shadow-(--shadow-field) transition-colors peer-checked:border-choice peer-checked:bg-choice peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-denim-deep peer-disabled:border-inert peer-disabled:shadow-none peer-disabled:peer-checked:bg-inert
 short-class-lists	widget/templates/table.html.tmpl	verso-drawer-scrollbar min-h-0 flex-1 overflow-y-auto pt-3 pb-6 grid content-start grid-cols-[auto_4.5rem_5.5rem_minmax(min-content,max-content)_1.5rem_minmax(min-content,max-content)_6rem_minmax(12.75rem,1fr)] gap-x-3
-short-class-lists	widget/templates/table.html.tmpl	verso-modal verso-modal-motion mx-auto mt-auto mb-4 sm:mb-auto {{template "verso-dialog-box"}} rounded-xs bg-transparent shadow-(--shadow-dialog) text-left whitespace-normal focus:outline-none
 type-comes-from-roles	forms.css	.verso-box-input::placeholder	font-weight
 type-comes-from-roles	forms.css	.verso-box-select	font-family
 type-comes-from-roles	forms.css	.verso-box-select	font-size
@@ -789,11 +762,7 @@ type-comes-from-roles	server/templates/page.html.tmpl	focus:font-semibold
 type-comes-from-roles	server/templates/page.html.tmpl	font-normal
 type-comes-from-roles	server/templates/page.html.tmpl	font-sans
 type-comes-from-roles	server/templates/page.html.tmpl	font-semibold
-type-comes-from-roles	server/templates/page.html.tmpl	font-semibold
-type-comes-from-roles	server/templates/page.html.tmpl	leading-[1.45]
 type-comes-from-roles	server/templates/page.html.tmpl	leading-normal
-type-comes-from-roles	server/templates/page.html.tmpl	text-base
-type-comes-from-roles	server/templates/page.html.tmpl	text-sm
 type-comes-from-roles	server/templates/page.html.tmpl	text-sm
 type-comes-from-roles	server/templates/page.html.tmpl	text-sm
 type-comes-from-roles	server/templates/page.html.tmpl	text-sm
@@ -944,14 +913,6 @@ type-comes-from-roles	widget/templates/list.html.tmpl	placeholder:font-normal
 type-comes-from-roles	widget/templates/list.html.tmpl	placeholder:font-sans
 type-comes-from-roles	widget/templates/list.html.tmpl	placeholder:text-sm
 type-comes-from-roles	widget/templates/list.html.tmpl	text-base
-type-comes-from-roles	widget/templates/modal.html.tmpl	font-medium
-type-comes-from-roles	widget/templates/modal.html.tmpl	font-semibold
-type-comes-from-roles	widget/templates/modal.html.tmpl	font-semibold
-type-comes-from-roles	widget/templates/modal.html.tmpl	leading-[1.45]
-type-comes-from-roles	widget/templates/modal.html.tmpl	text-base
-type-comes-from-roles	widget/templates/modal.html.tmpl	text-base
-type-comes-from-roles	widget/templates/modal.html.tmpl	text-sm
-type-comes-from-roles	widget/templates/modal.html.tmpl	text-sm
 type-comes-from-roles	widget/templates/overview.html.tmpl	font-medium
 type-comes-from-roles	widget/templates/overview.html.tmpl	font-medium
 type-comes-from-roles	widget/templates/overview.html.tmpl	font-semibold

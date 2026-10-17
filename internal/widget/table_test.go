@@ -681,12 +681,7 @@ func TestRenderTableRowDrawer(t *testing.T) {
 		"Save changes", `value="tok123"`, // the drawer's form carries the CSRF token
 		// A native dialog the browser holds modal, its scrim its ::backdrop;
 		// Escape and the scrim close it through the component.
-		`<dialog x-ref="dialog"`, "verso-modal verso-drawer-motion", `@cancel="dismiss"`, `@click="scrim"`,
-		// The panel is a column that does not itself scroll: the nameplate and
-		// the tab strip stay put and only the body moves under them, so what
-		// the panel is about is still on screen at the bottom of a long form.
-		"ml-auto h-full max-h-none w-full max-w-3xl flex-col open:flex",
-		"overflow-hidden",
+		`<dialog x-ref="dialog"`, `class="verso-modal overflow-hidden" data-verso-kind="drawer"`, `@cancel="dismiss"`, `@click="scrim"`,
 		`<header class="flex flex-none items-center gap-4 bg-ground px-(--verso-drawer-gutter) py-3.5 shadow-[inset_0_-1px_0_var(--color-rule)]">`, // the shared drawer panel's header
 		"verso-drawer-scrollbar min-h-0 flex-1 space-y-6 overflow-x-hidden overflow-y-auto bg-quiet px-(--verso-drawer-gutter)",
 	} {
@@ -706,6 +701,11 @@ func TestRenderTableRowDrawer(t *testing.T) {
 	if strings.Count(got, `x-data="modal"`) != 1 {
 		t.Errorf("only drawer rows should host a modal scope:\n%s", got)
 	}
+	// The panel is a column that does not itself scroll: the nameplate and the
+	// tab strip stay put and only the body moves under them, so what the panel
+	// is about is still on screen at the bottom of a long form.
+	declares(t, "modal", `.verso-modal[data-verso-kind="drawer"]`, "flex-direction: column;", "height: 100%;", "margin: 0 0 0 auto;")
+	declares(t, "modal", `.verso-modal[data-verso-kind="drawer"][open]`, "display: flex;")
 }
 
 func TestRenderTableRowDrawerTitleBand(t *testing.T) {

@@ -23,7 +23,7 @@ func TestHeadingsFollowThePage(t *testing.T) {
 		"kicker":  {&Section{Title: "On this page", Kicker: true}, `<h2 class="text-xs leading-6 font-medium tracking-[.08em] text-meta uppercase">On this page</h2>`},
 		"band":    {&Table{Title: "Leases", Columns: []TableColumn{{Label: "Name"}}}, `<h2 class="verso-listing__title">Leases</h2>`},
 		"drawer":  {&Table{Columns: []TableColumn{{Label: "Name"}}, Rows: []TableRow{{Cells: []TableCell{{Text: "Rule"}}, Drawer: &RowDrawer{Title: "Edit rule", Open: true}}}}, `<h2 class="min-w-0 truncate text-lg font-semibold tracking-tight text-ink">Edit rule</h2>`},
-		"modal":   {&Modal{Title: "Restart", Trigger: "Restart"}, `<h2 class="text-base font-semibold text-ink">Restart</h2>`},
+		"modal":   {&Modal{Title: "Restart", Trigger: "Restart"}, `<h2 class="verso-modal__title">Restart</h2>`},
 	}
 	for name, c := range cases {
 		got := render(t, r, c.w)
@@ -36,6 +36,8 @@ func TestHeadingsFollowThePage(t *testing.T) {
 	}
 	// A table's band title is the listing block's: the title role in Body.
 	declares(t, "listing", ".verso-listing__title", "@apply type-title", "color: var(--color-body)")
+	// A dialog's title is the title role in Ink, as a drawer's is.
+	declares(t, "modal", ".verso-modal__title", "@apply type-title", "color: var(--color-ink)")
 }
 
 // TestSubheadingIsALedgerLine: a part of a section reads as the start of a

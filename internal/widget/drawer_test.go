@@ -19,9 +19,10 @@ func TestDrawerOneWidth(t *testing.T) {
 			Drawer: &RowDrawer{Title: "lan", Size: size, Children: []Widget{&Callout{Body: "x"}}},
 		}}}
 		got := render(t, r, tbl)
-		if !strings.Contains(got, "max-w-3xl") {
+		if !strings.Contains(got, `class="verso-modal overflow-hidden" data-verso-kind="drawer"`) {
 			t.Errorf("drawer size %q is not the one width:\n%s", size, got)
 		}
+		declares(t, "modal", `.verso-modal[data-verso-kind="drawer"]`, "max-width: var(--container-3xl);")
 		for _, other := range []string{"max-w-md", "max-w-[40rem]", "data-verso-panel-size"} {
 			if strings.Contains(got, other) {
 				t.Errorf("drawer size %q carries a second width %q", size, other)

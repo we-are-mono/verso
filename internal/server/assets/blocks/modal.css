@@ -1,0 +1,170 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/* SPDX-FileCopyrightText: 2026 Mono Technologies Inc. */
+
+/*
+ * modal — every overlay, a native <dialog> opened with showModal(): the top
+ * layer, the page shut behind it, Tab kept inside it and Escape are the
+ * browser's. It is held to the window, its ink its own rather than the
+ * browser's, with no height cap of its own to scroll inside, and its scrim is
+ * its ::backdrop: ink at 18% over a 2px blur, so what it covers stays legible
+ * as texture and the panel in front is plainly the thing in hand.
+ *
+ * How it comes and goes: a dialog scales up from 95% as it fades in over
+ * 150ms and leaves in 75ms; a drawer slides in from the right over 300ms and
+ * out over 200ms. The scrim fades over 280ms both ways, so the dimming is
+ * already there as the panel arrives, and its fade out is the last thing to
+ * finish. Arriving is the browser's (@starting-style); leaving is marked
+ * data-closing while the dialog is still open, and versoDialogClose
+ * (verso.js) closes it once the scrim has gone.
+ *
+ * Variants: data-verso-kind  dialog (the default): a card 448px wide, a 16px
+ *                            gutter from a narrow window's edges, centred,
+ *                            whose contents may hang past it as a menu or a
+ *                            tip does; one hairline on the page's own ground,
+ *                            lifted off the scrim by a shadow ·
+ *                            confirm: an act's question, its face the
+ *                            notice band itself, standing at the foot of a
+ *                            phone's window under the thumb ·
+ *                            drawer: the window's full height at its right
+ *                            edge, at the one drawer width (768px, a page
+ *                            form's measure), flex only while open
+ * Elements: __head        a dialog's title and its close control
+ *           __title       the dialog's title
+ *           __close       the × that dismisses an overlay
+ *           __body        a dialog's contents
+ *           __busy        a dialog's face while its act runs: the waiting
+ *                         mark, its __busy-title and __busy-words
+ */
+
+.verso-modal {
+  position: fixed;
+  inset: 0;
+  width: calc(100% - 2rem);
+  max-width: var(--container-md);
+  max-height: none;
+  margin: auto;
+  overflow: visible;
+  border: 1px solid var(--color-rule-strong);
+  border-radius: var(--radius-xs);
+  background-color: var(--color-ground);
+  color: var(--color-ink);
+  box-shadow: var(--shadow-dialog);
+  transition: opacity 150ms cubic-bezier(0.4, 0, 0.2, 1), scale 150ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+.verso-modal:focus {
+  outline: none;
+}
+.verso-modal::backdrop {
+  background-color: color-mix(in oklab, var(--color-ink) 18%, transparent);
+  -webkit-backdrop-filter: blur(0.125rem);
+  backdrop-filter: blur(0.125rem);
+  transition: opacity 280ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+.verso-modal[data-closing] {
+  opacity: 0;
+  scale: 0.95;
+  transition-duration: 75ms;
+}
+.verso-modal[data-closing]::backdrop {
+  opacity: 0;
+}
+@starting-style {
+  .verso-modal[open] {
+    opacity: 0;
+    scale: 0.95;
+  }
+  .verso-modal[open]::backdrop {
+    opacity: 0;
+  }
+}
+
+.verso-modal[data-verso-kind="confirm"] {
+  margin: auto auto calc(var(--spacing) * 4);
+  border: 0;
+  background-color: transparent;
+  text-align: left;
+  white-space: normal;
+}
+@media (width >= 40rem) {
+  .verso-modal[data-verso-kind="confirm"] {
+    margin-bottom: auto;
+  }
+}
+
+.verso-modal[data-verso-kind="drawer"] {
+  flex-direction: column;
+  width: 100%;
+  max-width: var(--container-3xl);
+  height: 100%;
+  margin: 0 0 0 auto;
+  border-width: 0 0 0 1px;
+  border-radius: 0;
+  box-shadow: var(--shadow-drawer);
+  transition: translate 300ms cubic-bezier(0, 0, 0.2, 1);
+}
+.verso-modal[data-verso-kind="drawer"][open] {
+  display: flex;
+}
+.verso-modal[data-verso-kind="drawer"][data-closing] {
+  opacity: 1;
+  scale: none;
+  translate: 100% 0;
+  transition: translate 200ms cubic-bezier(0.4, 0, 1, 1);
+}
+@starting-style {
+  .verso-modal[data-verso-kind="drawer"][open] {
+    opacity: 1;
+    scale: none;
+    translate: 100% 0;
+  }
+}
+
+.verso-modal__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: calc(var(--spacing) * 4) calc(var(--spacing) * 6) calc(var(--spacing) * 2);
+}
+.verso-modal__title {
+  color: var(--color-ink);
+  @apply type-title;
+}
+.verso-modal__close {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: calc(var(--spacing) * 7);
+  height: calc(var(--spacing) * 7);
+  border-radius: var(--radius-xs);
+  color: var(--color-meta);
+  cursor: pointer;
+  transition-property: color, background-color;
+  transition-duration: 150ms;
+}
+.verso-modal__close:hover {
+  background-color: color-mix(in srgb, var(--color-mid) 50%, transparent);
+  color: var(--color-ink);
+}
+.verso-modal__close:focus-visible {
+  outline: 2px solid var(--color-denim);
+  outline-offset: -2px;
+}
+
+.verso-modal__body {
+  padding: calc(var(--spacing) * 2) calc(var(--spacing) * 6) calc(var(--spacing) * 6);
+}
+
+.verso-modal__busy {
+  text-align: center;
+}
+.verso-modal__busy-title {
+  margin-top: calc(var(--spacing) * 4);
+  color: var(--color-ink);
+  @apply type-title;
+}
+.verso-modal__busy-words {
+  max-width: var(--container-sm);
+  margin: calc(var(--spacing) * 2) auto 0;
+  color: var(--color-body);
+  @apply type-body;
+}

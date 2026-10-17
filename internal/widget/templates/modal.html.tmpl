@@ -2,8 +2,8 @@
 <!-- SPDX-FileCopyrightText: 2026 Mono Technologies Inc. -->
 {{/* Header and body: the title, the close button, and the dialog's contents. */}}
 {{define "modal.standard.contents"}}
-<header class="flex items-center justify-between px-6 pt-4 pb-2">
-  <h2 class="text-base font-semibold text-ink">{{.Title}}</h2>
+<header class="verso-modal__head">
+  <h2 class="verso-modal__title">{{.Title}}</h2>
   {{template "verso-close-btn"}}
 </header>
 {{/* Where a stepped dialog is: each step's packet filled green when done,
@@ -12,33 +12,29 @@
 {{if .Steps}}<ol data-verso-steps aria-label="{{ t "Steps" }}" class="verso-steps px-6 pb-1">{{range .Steps}}<li data-verso-step data-verso-state="{{.State}}"{{if eq .State "current"}} aria-current="step"{{end}} class="verso-steps__step"><span aria-hidden="true" class="verso-mark verso-steps__mark"></span><span>{{.Label}}</span></li>{{end}}</ol>{{end}}
 {{/* With a busy state, the body holds two faces and shows one: the step
      between them is the faces' own, so the hidden one adds no air. */}}
-<div class="{{if not .BusyTitle}}space-y-4 {{end}}px-6 pt-2 pb-6">
+<div class="verso-modal__body{{if not .BusyTitle}} space-y-4{{end}}">
   {{if .BusyTitle}}<div x-show="idle" class="space-y-4">{{range .Children}}{{.}}{{end}}</div>
   <div x-show="busy" x-cloak class="py-6">{{template "modal.busy" .}}</div>
   {{else}}{{range .Children}}{{.}}{{end}}{{end}}
 </div>
 {{end}}
 {{define "modal.busy"}}
-<div data-verso-busy class="text-center">
+<div data-verso-busy class="verso-modal__busy">
   <span class="mx-auto grid size-12 place-items-center text-denim">{{template "verso-waiting" ""}}</span>
-  <h3 class="mt-4 text-base font-semibold text-ink">{{.BusyTitle}}</h3>
-  {{if .BusyBody}}<p class="mx-auto mt-2 max-w-sm text-sm leading-[1.45] text-body">{{.BusyBody}}</p>{{end}}
+  <h3 class="verso-modal__busy-title">{{.BusyTitle}}</h3>
+  {{if .BusyBody}}<p class="verso-modal__busy-words">{{.BusyBody}}</p>{{end}}
 </div>
 {{end}}
-{{/* modal: shell-owned Alpine dialog (CSP build). The plugin declares the intent;
-     verso.js owns open/close/focus. The dialog is a native <dialog> (input.css,
-     .verso-modal) that moves to <body>, so what it holds is styled as on the
-     page's own ground rather than as part of the section its trigger stands
-     in, and its forms are never nested in another. */}}
-{{/* The window is a card like every other card — one hairline on the page's own
-     ground — lifted off the scrim by a shadow rather than by a second colour. */}}
-{{define "modal.frame"}}rounded-xs border border-rule-strong bg-ground shadow-(--shadow-dialog){{end}}
+{{/* modal: shell-owned Alpine dialog (CSP build), the modal block
+     (blocks/modal.css). The plugin declares the intent; verso.js owns
+     open/close/focus. The dialog moves to <body>, so what it holds is styled
+     as on the page's own ground rather than as part of the section its
+     trigger stands in, and its forms are never nested in another. */}}
 <div x-data="modal" data-open="{{if .Open}}true{{else}}false{{end}}">
   {{if eq .TriggerStyle "link"}}
-  {{/* "link" trigger: a quiet ghost link, for a door that sits under a primary
+  {{/* "link" trigger: the quiet act, for a door that sits under a primary
        act — the recessive alternative, not a second competing button. */}}
-  <button type="button" @click="show"
-    class="inline-flex cursor-pointer items-center gap-1.5 rounded-xs text-sm font-medium text-meta transition-colors hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim">
+  <button type="button" @click="show" class="verso-button" data-verso-size="act" data-verso-style="quiet"{{if .TriggerIcon}} data-verso-glyph{{end}}>
     {{if .TriggerIcon}}{{icon .TriggerIcon "size-4"}}{{end}}{{.Trigger}}
   </button>
   {{else}}
@@ -48,8 +44,7 @@
   </button>
   {{end}}
   <template x-teleport="body">
-    <dialog x-ref="dialog" tabindex="-1"{{if .BusyTitle}} @submit="startBusy"{{end}} {{template "verso-dialog-on"}}
-      class="verso-modal verso-modal-motion m-auto {{template "verso-dialog-box"}} {{template "modal.frame"}} focus:outline-none">
+    <dialog x-ref="dialog" tabindex="-1"{{if .BusyTitle}} @submit="startBusy"{{end}} {{template "verso-dialog-on"}} class="verso-modal">
       {{template "modal.standard.contents" .}}
     </dialog>
   </template>

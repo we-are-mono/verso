@@ -36,6 +36,7 @@
 @import "./blocks/code.css" layer(components);
 @import "./blocks/colophon.css" layer(components);
 @import "./blocks/copy-inline.css" layer(components);
+@import "./blocks/drawer-scrollbar.css" layer(components);
 @import "./blocks/empty.css" layer(components);
 @import "./blocks/facts.css" layer(components);
 @import "./blocks/facts-head.css" layer(components);
@@ -46,6 +47,7 @@
 @import "./blocks/mark.css" layer(components);
 @import "./blocks/menu.css" layer(components);
 @import "./blocks/meter.css" layer(components);
+@import "./blocks/modal.css" layer(components);
 @import "./blocks/nav.css" layer(components);
 @import "./blocks/notice.css" layer(components);
 @import "./blocks/outcome.css" layer(components);
@@ -278,56 +280,6 @@ html {
      initialized, so nothing flashes on load before x-show applies (ADR-004). */
   [x-cloak] { display: none !important; }
 
-  /* Every overlay — a dialog, a drawer — is a native <dialog> opened with
-     showModal(): the top layer, the page shut behind it, Tab kept inside it and
-     Escape are the browser's. It is held to the window, and its scrim is its
-     ::backdrop: ink at 18% over a 2px blur, so what it covers stays legible as
-     texture and the panel in front is plainly the thing in hand — a heavier
-     scrim would make the page behind it look switched off. */
-  .verso-modal { position: fixed; inset: 0; }
-  .verso-modal::backdrop {
-    background-color: color-mix(in oklab, var(--color-ink) 18%, transparent);
-    -webkit-backdrop-filter: blur(0.125rem);
-    backdrop-filter: blur(0.125rem);
-  }
-  /* How it comes and goes. A dialog scales up from 95% as it fades in over
-     150ms and leaves in 75ms; a drawer slides in from the right over 300ms and
-     out over 200ms. The scrim fades over 280ms both ways, so the dimming is
-     already there as the panel arrives, and its fade out is the last thing to
-     finish. Arriving is the browser's (@starting-style); leaving is marked
-     data-closing while the dialog is still open, and versoDialogClose
-     (verso.js) closes it once the scrim has gone — a dialog that had already
-     left the top layer would drop onto the page mid-fade. */
-  .verso-modal-motion { transition: opacity 150ms cubic-bezier(0.4, 0, 0.2, 1), scale 150ms cubic-bezier(0.4, 0, 0.2, 1); }
-  .verso-modal-motion[data-closing] { opacity: 0; scale: 0.95; transition-duration: 75ms; }
-  .verso-drawer-motion { transition: translate 300ms cubic-bezier(0, 0, 0.2, 1); }
-  .verso-drawer-motion[data-closing] { translate: 100% 0; transition: translate 200ms cubic-bezier(0.4, 0, 1, 1); }
-  :is(.verso-modal-motion, .verso-drawer-motion)::backdrop { transition: opacity 280ms cubic-bezier(0.4, 0, 0.2, 1); }
-  :is(.verso-modal-motion, .verso-drawer-motion)[data-closing]::backdrop { opacity: 0; }
-  @starting-style {
-    .verso-modal-motion[open] { opacity: 0; scale: 0.95; }
-    .verso-drawer-motion[open] { translate: 100% 0; }
-    :is(.verso-modal-motion, .verso-drawer-motion)[open]::backdrop { opacity: 0; }
-  }
-
-  /* Drawers are persistent, narrow scroll surfaces, so give only their inner
-     scroller a quiet thumb that follows the shell palette. The
-     document scrollbar deliberately remains native. */
-  .verso-drawer-scrollbar {
-    scrollbar-width: thin;
-    scrollbar-color: var(--color-inert) transparent;
-  }
-  .verso-drawer-scrollbar::-webkit-scrollbar { width: 0.625rem; height: 0.625rem; }
-  .verso-drawer-scrollbar::-webkit-scrollbar-track { background: transparent; }
-  .verso-drawer-scrollbar::-webkit-scrollbar-thumb {
-    border: 0.125rem solid transparent;
-    border-radius: var(--radius-xs);
-    background-color: var(--color-inert);
-    background-clip: padding-box;
-  }
-  .verso-drawer-scrollbar::-webkit-scrollbar-thumb:hover {
-    background-color: var(--color-glyph);
-  }
   /* On a surface that is itself quiet — the console — the same scrollbar needs
      a track to sit in, or the thumb floats on the stream's own ground. */
   [data-scroll="sand"] {

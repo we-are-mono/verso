@@ -240,13 +240,13 @@
      drawer, and the browser shuts the page behind it. */}}
 {{if .SessionExpiry}}
 <dialog id="verso-session-ending" role="alertdialog" aria-labelledby="verso-session-ending-title" aria-describedby="verso-session-ending-body" tabindex="-1"
-  class="verso-modal m-auto {{template "verso-dialog-box"}} rounded-xs border border-rule-strong bg-ground shadow-(--shadow-dialog) focus:outline-none">
+  class="verso-modal">
   <div class="px-6 pt-4 pb-6">
-    <h2 id="verso-session-ending-title" class="text-base font-semibold text-ink">
+    <h2 id="verso-session-ending-title" class="verso-modal__title">
       <span data-verso-session-extendable>{{ t "You’ll be signed out in" }}</span><span data-verso-session-capped hidden>{{ t "Your session ends in" }}</span>
       <span data-verso-session-countdown class="tabular-nums">1:00</span>
     </h2>
-    <p id="verso-session-ending-body" class="mt-2 text-sm leading-[1.45] text-body text-pretty"><span data-verso-session-capped hidden>{{ t "Sessions last at most 12 hours." }} </span>{{ t "Staged changes are kept. Anything typed but not saved will be lost." }}</p>
+    <p id="verso-session-ending-body" class="type-body mt-2 text-body text-pretty"><span data-verso-session-capped hidden>{{ t "Sessions last at most 12 hours." }} </span>{{ t "Staged changes are kept. Anything typed but not saved will be lost." }}</p>
     <div class="mt-6 flex items-center gap-2 border-t border-rule pt-6">
       <button type="button" data-verso-session-stay data-verso-session-extendable class="verso-button">{{ t "Stay signed in" }}</button>
       <button type="button" data-verso-session-dismiss data-verso-session-capped hidden class="verso-button">{{ t "Keep working" }}</button>

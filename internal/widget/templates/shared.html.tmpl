@@ -315,7 +315,7 @@
      per row before anyone had clicked anything. So the frame ships empty and
      fetches its contents the first time it opens. */}}
 {{define "verso-entity-drawer"}}<template x-teleport="body">
-  <dialog x-ref="dialog" tabindex="-1" {{template "verso-dialog-on"}} class="{{template "verso-drawer-box"}} overflow-visible">
+  <dialog x-ref="dialog" tabindex="-1" {{template "verso-dialog-on"}} class="verso-modal overflow-visible" data-verso-kind="drawer">
     {{/* The panel's contents are fetched when the drawer is opened, by the
          shell's own modal component rather than by a trigger on this element:
          what is asked for depends on which icon opened it, and an open that
@@ -390,23 +390,8 @@
      through the component, and a close the browser made itself is followed. */}}
 {{define "verso-dialog-on"}}@cancel="dismiss" @close="closed" @pointerdown="press" @click="scrim"{{end}}
 
-{{/* verso-dialog-box: how a <dialog> stands once it is open, undoing what
-     the browser gives one — its own ink, and a height cap it scrolls inside —
-     so it is a card 448px wide, a 16px gutter from a narrow window's edges,
-     whose contents may hang past it as a menu or a tip does. The caller
-     places it: m-auto centres it, since the reset zeroes the browser's own
-     auto margin. */}}
-{{define "verso-dialog-box"}}max-h-none w-[calc(100%-2rem)] max-w-md overflow-visible text-ink{{end}}
-
-{{/* verso-drawer-box: a <dialog> standing as a drawer — the window's full
-     height at its right edge, at the one drawer width, sliding in from there
-     (input.css, .verso-drawer-motion). Flex only while open: a closed dialog
-     is not drawn, and a display utility would draw it. The caller says how it
-     clips. */}}
-{{define "verso-drawer-box"}}verso-modal verso-drawer-motion ml-auto h-full max-h-none w-full {{template "verso-drawer-width"}} flex-col open:flex border-l border-rule-strong bg-ground text-ink shadow-(--shadow-drawer) focus:outline-none{{end}}
-
 {{/* verso-close-btn: the × that dismisses an overlay. */}}
-{{define "verso-close-btn"}}<button type="button" @click="hide" aria-label="{{ t "Close" }}" class="grid size-7 shrink-0 cursor-pointer place-items-center rounded-xs text-meta transition-colors hover:bg-mid/50 hover:text-ink focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-denim">{{icon "x" "size-4"}}</button>{{end}}
+{{define "verso-close-btn"}}<button type="button" @click="hide" aria-label="{{ t "Close" }}" class="verso-modal__close">{{icon "x" "size-4"}}</button>{{end}}
 
 {{/* verso-csrf: the hidden CSRF carrier every state-changing form posts;
      renders nothing without a token (a render outside a session). */}}
@@ -469,7 +454,7 @@
      a frame in a <tr> would not survive the parser there, and its forms are
      never nested in the page's. */}}
 {{define "verso-drawer-panel"}}<template x-teleport="body">
-  <dialog x-ref="dialog" tabindex="-1" {{template "verso-dialog-on"}} @verso-panel-done="finish" class="{{template "verso-drawer-box"}} overflow-hidden">
+  <dialog x-ref="dialog" tabindex="-1" {{template "verso-dialog-on"}} @verso-panel-done="finish" class="verso-modal overflow-hidden" data-verso-kind="drawer">
     <div data-verso-panel class="contents">{{template "verso-drawer-contents" .}}</div>
   </dialog>
 </template>{{end}}
@@ -481,7 +466,7 @@
      because it is mounted once it animates once — switching tabs later swaps
      what is inside it and the panel itself never moves. */}}
 {{define "verso-drawer-fetched"}}<template x-teleport="body">
-  <dialog x-ref="dialog" tabindex="-1" {{template "verso-dialog-on"}} @verso-panel-done="finish" class="{{template "verso-drawer-box"}} overflow-hidden">
+  <dialog x-ref="dialog" tabindex="-1" {{template "verso-dialog-on"}} @verso-panel-done="finish" class="verso-modal overflow-hidden" data-verso-kind="drawer">
     <div data-verso-panel{{if .}} data-verso-panel-url="{{.}}"{{end}} class="contents"><span class="sr-only">{{ t "Loading…" }}</span></div>
   </dialog>
 </template>{{end}}
@@ -492,10 +477,6 @@
      (--verso-drawer-gutter, sections.css), the sand between its edges and its
      cards, so the chrome's title and tabs stand on the cards' left edge and
      its close ends on their right one. */}}
-{{/* verso-drawer-width: the one width every drawer stands at, 768px — a
-     page form's measure, so a form, a chooser and a reading each get the same
-     frame, and nothing changes size between one object and the next. */}}
-{{define "verso-drawer-width"}}max-w-3xl{{end}}
 {{define "verso-drawer-inset"}}px-(--verso-drawer-gutter){{end}}
 {{/* verso-drawer-ground: the body under a drawer's chrome, a page's own
      ground in small — Quiet Sand, its subjects Paper cards. The cards keep

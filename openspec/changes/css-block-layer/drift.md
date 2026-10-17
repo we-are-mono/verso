@@ -216,3 +216,13 @@ after; the SVG's fills, strokes and LED animations compared directly.
 | the rail's open state | | a class the script returned | `data-verso-open`, bound to the component's own state |
 | the colophon's facts | | the place in the wash as an arbitrary property | `--fact` in the element's style |
 | the page's banner | | a hand-written strip, on a 28px line | the notice block's banner kind: the body role, padded back to 28 |
+
+### `modal` and `drawer-scrollbar`
+
+| Copies | n | Difference | Became |
+|---|---|---|---|
+| a dialog, a confirm's alert and a drawer | | class-string templates for each box, motion as two classes | one modal block, its kinds dialog, confirm and drawer; no pixel changes |
+| a dialog's title and its busy face's heading | | 16/600 | the title role (18/600 on 28), as a drawer's title |
+| a dialog's busy words and the session dialog's words | | 14px on a 1.45 line | the body role |
+| the session-ending dialog | 1 | no motion of its own; its title 16/600 | the dialog kind: it comes and goes as every dialog does; its title the title role |
+| a modal's "link" trigger | | a hand-written ghost link | the button block's quiet act, the subsection act's one dress |

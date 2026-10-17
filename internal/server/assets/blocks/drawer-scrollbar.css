@@ -1,0 +1,29 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/* SPDX-FileCopyrightText: 2026 Mono Technologies Inc. */
+
+/*
+ * drawer-scrollbar — an inner scroller's quiet thumb, in the shell's
+ * palette: a drawer's body, a code block's lines, a console. The document's
+ * own scrollbar deliberately stays native.
+ */
+
+.verso-drawer-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-inert) transparent;
+}
+.verso-drawer-scrollbar::-webkit-scrollbar {
+  width: 0.625rem;
+  height: 0.625rem;
+}
+.verso-drawer-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.verso-drawer-scrollbar::-webkit-scrollbar-thumb {
+  border: 0.125rem solid transparent;
+  border-radius: var(--radius-xs);
+  background-color: var(--color-inert);
+  background-clip: padding-box;
+}
+.verso-drawer-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color-glyph);
+}
