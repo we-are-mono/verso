@@ -369,16 +369,16 @@
              without colour: the value it was recedes to Meta, and what it
              becomes stands in Ink, led by an arrow turning down into it in the
              cell's tone (the action colour for info). */}}
-        <td class="border-b border-rule {{template "table.cellpad" .}} font-mono text-base font-medium tabular-nums whitespace-nowrap {{if or .Muted .Sub}}text-meta{{else}}text-ink{{end}}"><span class="flex items-center"><span>{{.Text}}</span>{{if and .Dot (not .Sub)}}<span role="img" aria-label="{{t "Available version"}}" class="ml-2 size-1.5 shrink-0 rounded-[1px] {{template "verso-tone-dot" .Variant}}" title="{{t "Available version"}}"></span>{{end}}{{if and .Copy .Text}}{{template "verso-copy-inline" .Text}}{{end}}</span>{{if .Sub}}<span class="flex items-center gap-1.5 text-ink"><span role="img" aria-label="{{t "Available version"}}" title="{{t "Available version"}}" class="flex shrink-0 {{if eq .Variant "info"}}text-denim{{else}}text-glyph{{end}}">{{icon "corner-down-right" "size-4"}}</span><span>{{.Sub}}</span></span>{{end}}</td>
+        <td data-verso-verbatim class="border-b border-rule {{template "table.cellpad" .}} font-mono text-base font-medium tabular-nums whitespace-nowrap {{if or .Muted .Sub}}text-meta{{else}}text-ink{{end}}"><span class="flex items-center"><span>{{.Text}}</span>{{if and .Dot (not .Sub)}}<span role="img" aria-label="{{t "Available version"}}" class="ml-2 size-1.5 shrink-0 rounded-[1px] {{template "verso-tone-dot" .Variant}}" title="{{t "Available version"}}"></span>{{end}}{{if and .Copy .Text}}{{template "verso-copy-inline" .Text}}{{end}}</span>{{if .Sub}}<span class="flex items-center gap-1.5 text-ink"><span role="img" aria-label="{{t "Available version"}}" title="{{t "Available version"}}" class="flex shrink-0 {{if eq .Variant "info"}}text-denim{{else}}text-glyph{{end}}">{{icon "corner-down-right" "size-4"}}</span><span>{{.Sub}}</span></span>{{end}}</td>
         {{else if eq .Kind "keyword"}}
-        <td class="border-b border-rule {{template "table.cellpad" .}} whitespace-nowrap font-mono text-base font-medium text-body">{{.Text}}</td>
+        <td data-verso-verbatim class="border-b border-rule {{template "table.cellpad" .}} whitespace-nowrap font-mono text-base font-medium text-body">{{.Text}}</td>
         {{else if eq .Kind "runtime"}}
-        <td class="border-b border-rule {{template "table.cellpad" .}} whitespace-nowrap tabular-nums text-meta">{{.Text}}</td>
+        <td data-verso-figures class="border-b border-rule {{template "table.cellpad" .}} whitespace-nowrap tabular-nums text-meta">{{.Text}}</td>
         {{else if eq .Kind "comment"}}
         <td class="border-b border-rule {{template "table.cellpad" .}} max-w-[24rem] text-meta"><span class="line-clamp-1" title="{{.Text}}">{{.Text}}</span></td>
         {{else if eq .Kind "rate"}}
         {{/* a rate's longest is "999 Mb/s" or "1.2 Gb/s" (internal/units) */}}
-        <td class="w-24 min-w-24 max-w-24 border-b border-rule {{template "table.cellpad" .}} text-left whitespace-nowrap tabular-nums text-meta"{{if .Key}} data-verso-cell="{{.Key}}"{{end}}>{{.Text}}</td>
+        <td data-verso-figures class="w-24 min-w-24 max-w-24 border-b border-rule {{template "table.cellpad" .}} text-left whitespace-nowrap tabular-nums text-meta"{{if .Key}} data-verso-cell="{{.Key}}"{{end}}>{{.Text}}</td>
         {{else if eq .Kind "meter"}}
         {{/* the meter widget at a row's scale: the 6px track filled to the
              share, the figure hard beside it in a slot of one width, so the
@@ -392,10 +392,10 @@
         <td class="border-b border-rule {{template "table.cellpad" .}}">
           {{if .Clip}}<span class="flex items-center gap-3 pr-6">
             <span class="relative h-1.5 min-w-16 flex-1 rounded-full bg-rule"><span class="absolute inset-0 {{if eq .Variant "danger"}}bg-crimson{{else if eq .Variant "warning"}}bg-marigold{{else}}bg-green{{end}}" style="clip-path: {{.Clip}}"></span>{{if .WarnAt}}<span class="absolute -top-1 -bottom-1 w-0.5 rounded-[1px] bg-marigold" style="left: min({{.WarnAt}}, calc(100% - {{if .CritAt}}0.375rem{{else}}0.125rem{{end}}))"></span>{{end}}{{if .CritAt}}<span class="absolute -top-1 -bottom-1 w-0.5 rounded-[1px] bg-crimson" style="left: calc({{.CritAt}} - 0.125rem)"></span>{{end}}</span>
-            <span class="w-16 shrink-0 text-right tabular-nums whitespace-nowrap {{if .Muted}}text-meta{{else}}text-ink{{end}}">{{.Text}}</span>
+            <span data-verso-figures class="w-16 shrink-0 text-right tabular-nums whitespace-nowrap {{if .Muted}}text-meta{{else}}text-ink{{end}}">{{.Text}}</span>
           </span>{{else if and .NoTrack .Text (ne .Text "—")}}<span class="flex items-center gap-3 pr-6">
             <span class="min-w-16 flex-1"></span>
-            <span class="w-16 shrink-0 text-right tabular-nums whitespace-nowrap {{if .Muted}}text-meta{{else}}text-ink{{end}}">{{.Text}}</span>
+            <span data-verso-figures class="w-16 shrink-0 text-right tabular-nums whitespace-nowrap {{if .Muted}}text-meta{{else}}text-ink{{end}}">{{.Text}}</span>
           </span>{{else}}<span class="text-inert">{{template "verso-none"}}</span>{{end}}
         </td>
         {{else if eq .Kind "figures"}}
@@ -409,14 +409,14 @@
              reading. The dash stands over the slots, not beside them, for a cell with no figure. */}}
         <td class="border-b border-rule {{template "table.cellpad" .}} whitespace-nowrap {{if .Ink}}font-medium{{else if .Muted}}text-meta{{else}}text-ink{{end}}"{{if .Key}} data-verso-cell="{{.Key}}"{{end}}{{if .Ink}} data-verso-ink="{{.Variant}}"{{end}}>
           <span class="relative inline-block align-top"><span class="absolute top-0 left-0 text-inert" data-verso-figures-none{{if .FiguresShown}} hidden{{end}}>{{template "verso-none"}}</span>
-          {{range .Figures}}<span class="relative mr-4 inline-flex w-22 items-center justify-end gap-1 align-top tabular-nums last:mr-0{{if not .Text}} invisible{{end}}" data-verso-figure="{{.Label}}">
+          {{range .Figures}}<span data-verso-figures class="relative mr-4 inline-flex w-22 items-center justify-end gap-1 align-top tabular-nums last:mr-0{{if not .Text}} invisible{{end}}" data-verso-figure="{{.Label}}">
             <span data-verso-figure-text>{{.Text}}</span>{{if .Icon}}<span aria-hidden="true" class="text-glyph">{{icon .Icon "size-3.5"}}</span>{{end}}{{if .Label}}<span class="sr-only">{{ t .Label }}</span>{{end}}
           </span>{{end}}</span>
         </td>
         {{else if eq .Kind "num"}}
         {{/* a counter that has counted something is a fact about this row and
              reads in full ink; one that is nothing yet stays out of the way. */}}
-        <td class="border-b border-rule {{template "table.cellpad" .}} text-right tabular-nums {{if .Muted}}text-meta{{else}}text-ink{{end}}"{{if .Key}} data-verso-cell="{{.Key}}"{{end}}>{{if .SuffixSlot}}{{.Figure}}<span class="inline-block w-[1ch] text-left">{{.Suffix}}</span>{{else}}{{.Text}}{{end}}</td>
+        <td data-verso-figures class="border-b border-rule {{template "table.cellpad" .}} text-right tabular-nums {{if .Muted}}text-meta{{else}}text-ink{{end}}"{{if .Key}} data-verso-cell="{{.Key}}"{{end}}>{{if .SuffixSlot}}{{.Figure}}<span class="inline-block w-[1ch] text-left">{{.Suffix}}</span>{{else}}{{.Text}}{{end}}</td>
         {{else}}
         {{/* a word, and when it stands for a config value, that value in the
              chip beside it — "WPA3" and the `sae` it writes. */}}

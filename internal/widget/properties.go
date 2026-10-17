@@ -105,6 +105,11 @@ type Property struct {
 	Duration *int64 `json:"duration,omitempty"`
 }
 
+// Figures reports whether the value is a count of something — a rate or a
+// duration the shell writes — so its role sets it in tabular figures, and never
+// in the verbatim face, which is for strings the machine wrote (ADR-025).
+func (p Property) Figures() bool { return p.Rate != nil || p.Duration != nil }
+
 // PropertySpan is a stretch between From and To, filled At a share of it
 // (0–100) in Tone's hue (the tone vocabulary; "" is a hollow track).
 type PropertySpan struct {

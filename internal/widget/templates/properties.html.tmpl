@@ -56,7 +56,7 @@
   <div>
     <div class="flex items-baseline gap-2 text-base">
       <dt class="text-meta">{{.Label}}:</dt>
-      <dd class="{{if and .Mono .Emphasis}}text-lg font-semibold{{else}}font-medium{{end}} {{if .Variant}}{{template "verso-tone-text" .Variant}}{{else}}text-ink{{end}}{{if .Mono}} font-mono{{end}}">{{.Value}}</dd>
+      <dd{{if .Mono}} data-verso-verbatim{{end}}{{if .Figures}} data-verso-figures{{end}} class="{{if and .Mono .Emphasis}}text-lg font-semibold{{else}}font-medium{{end}} {{if .Variant}}{{template "verso-tone-text" .Variant}}{{else}}text-ink{{end}}{{if .Mono}} font-mono{{end}}">{{.Value}}</dd>
     </div>
     {{if .Help}}<p class="mt-1 text-sm leading-snug text-body">{{.Help}}</p>{{end}}
   </div>
@@ -66,7 +66,7 @@
   <div class="flex {{if .Next}}items-start{{else}}items-center{{end}} justify-between gap-6 border-t border-mid py-2.5">
     <dt class="text-sm leading-6 text-meta">{{.Label}}</dt>
     <dd class="flex items-center text-sm font-medium text-ink">
-      {{if .Next}}{{/* what it becomes, under what it is, as a table's cell says it */}}<span data-verso-prop-next class="flex flex-col items-end{{if .Mono}} font-mono text-base font-medium{{end}}"><span class="text-meta">{{.Value}}</span><span class="flex items-center gap-1.5 text-ink"><span role="img" aria-label="{{t "Available version"}}" title="{{t "Available version"}}" class="flex shrink-0 text-denim">{{icon "corner-down-right" "size-4"}}</span><span>{{.Next}}</span></span></span>{{else}}{{if .Dot}}<span class="mr-2 size-1.5 shrink-0 rounded-[1px] {{template "verso-tone-dot" .Dot}}"{{if .Key}} data-verso-prop-dot="{{.Key}}"{{end}}></span>{{end}}<span{{if .Key}} data-verso-prop="{{.Key}}"{{end}} class="{{if .Mono}}font-mono text-base font-medium{{end}}{{if .Duration}} tabular-nums{{end}}{{if .Variant}} {{template "verso-tone-text" .Variant}}{{end}}">{{.Value}}</span>{{if .Copy}}{{template "verso-copy-inline" .Value}}{{end}}{{end}}
+      {{if .Next}}{{/* what it becomes, under what it is, as a table's cell says it */}}<span data-verso-prop-next{{if .Mono}} data-verso-verbatim{{end}} class="flex flex-col items-end{{if .Mono}} font-mono text-base font-medium{{end}}"><span class="text-meta">{{.Value}}</span><span class="flex items-center gap-1.5 text-ink"><span role="img" aria-label="{{t "Available version"}}" title="{{t "Available version"}}" class="flex shrink-0 text-denim">{{icon "corner-down-right" "size-4"}}</span><span>{{.Next}}</span></span></span>{{else}}{{if .Dot}}<span class="mr-2 size-1.5 shrink-0 rounded-[1px] {{template "verso-tone-dot" .Dot}}"{{if .Key}} data-verso-prop-dot="{{.Key}}"{{end}}></span>{{end}}<span{{if .Key}} data-verso-prop="{{.Key}}"{{end}}{{if .Mono}} data-verso-verbatim{{end}}{{if .Figures}} data-verso-figures{{end}} class="{{if .Mono}}font-mono text-base font-medium{{end}}{{if .Duration}} tabular-nums{{end}}{{if .Variant}} {{template "verso-tone-text" .Variant}}{{end}}">{{.Value}}</span>{{if .Copy}}{{template "verso-copy-inline" .Value}}{{end}}{{end}}
     </dd>
   </div>
   {{else}}
@@ -99,8 +99,8 @@
       {{/* What the value becomes, under what it is — as a table's cell says
            it: the value it was recedes to Meta, and what it becomes stands in
            Ink, led by the arrow turning down into it in the action colour. */}}
-      <span class="flex min-w-0 flex-col {{if eq $.Align "left"}}items-start{{else}}items-end{{end}}{{if .Mono}} font-mono text-base font-medium{{end}}"><span class="wrap-anywhere text-meta">{{.Value}}</span><span class="flex items-center gap-1.5 text-ink"><span role="img" aria-label="{{t "Available version"}}" title="{{t "Available version"}}" class="flex shrink-0 text-denim">{{icon "corner-down-right" "size-4"}}</span><span class="wrap-anywhere">{{.Next}}</span></span></span>
-      {{else}}<span{{if .Key}} data-verso-prop="{{.Key}}"{{end}} class="min-w-0 wrap-anywhere text-balance{{if .Mono}} font-mono text-base font-medium{{end}}{{if .Duration}} tabular-nums{{end}}{{if .Variant}} {{template "verso-tone-text" .Variant}}{{end}}">{{.Value}}</span>{{end}}
+      <span{{if .Mono}} data-verso-verbatim{{end}} class="flex min-w-0 flex-col {{if eq $.Align "left"}}items-start{{else}}items-end{{end}}{{if .Mono}} font-mono text-base font-medium{{end}}"><span class="wrap-anywhere text-meta">{{.Value}}</span><span class="flex items-center gap-1.5 text-ink"><span role="img" aria-label="{{t "Available version"}}" title="{{t "Available version"}}" class="flex shrink-0 text-denim">{{icon "corner-down-right" "size-4"}}</span><span class="wrap-anywhere">{{.Next}}</span></span></span>
+      {{else}}<span{{if .Key}} data-verso-prop="{{.Key}}"{{end}}{{if .Mono}} data-verso-verbatim{{end}}{{if .Figures}} data-verso-figures{{end}} class="min-w-0 wrap-anywhere text-balance{{if .Mono}} font-mono text-base font-medium{{end}}{{if .Duration}} tabular-nums{{end}}{{if .Variant}} {{template "verso-tone-text" .Variant}}{{end}}">{{.Value}}</span>{{end}}
       {{if .Copy}}{{template "verso-copy-inline" .Value}}{{end}}
       {{if .Status}}<span class="{{if eq $.Align "left"}}ml-auto pl-3{{else}}ml-2{{end}} inline-flex h-6 shrink-0 items-center">{{template "badge.html.tmpl" .Status}}</span>{{end}}
       {{end}}
