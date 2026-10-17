@@ -195,7 +195,6 @@ no-class-string-templates	widget/templates/shared.html.tmpl	verso-btn-primary
 no-class-string-templates	widget/templates/shared.html.tmpl	verso-btn-secondary
 no-class-string-templates	widget/templates/shared.html.tmpl	verso-btn-waiting
 no-class-string-templates	widget/templates/shared.html.tmpl	verso-control-band-class
-no-class-string-templates	widget/templates/shared.html.tmpl	verso-copy-tip-class
 no-class-string-templates	widget/templates/shared.html.tmpl	verso-dialog-box
 no-class-string-templates	widget/templates/shared.html.tmpl	verso-drawer-box
 no-class-string-templates	widget/templates/shared.html.tmpl	verso-drawer-ground
@@ -226,9 +225,6 @@ no-class-string-templates	widget/templates/shared.html.tmpl	verso-section-title-
 no-class-string-templates	widget/templates/shared.html.tmpl	verso-segment-focus
 no-class-string-templates	widget/templates/shared.html.tmpl	verso-select-compact
 no-class-string-templates	widget/templates/shared.html.tmpl	verso-select-compact-chevron
-no-class-string-templates	widget/templates/shared.html.tmpl	verso-tip-below-class
-no-class-string-templates	widget/templates/shared.html.tmpl	verso-tip-class
-no-class-string-templates	widget/templates/shared.html.tmpl	verso-tip-look
 no-class-string-templates	widget/templates/shared.html.tmpl	verso-token-chip
 no-class-string-templates	widget/templates/shared.html.tmpl	verso-token-chip-remove
 no-class-string-templates	widget/templates/shared.html.tmpl	verso-tone-text
@@ -727,7 +723,7 @@ rules-live-in-blocks	input.css	.verso-stream-release
 rules-live-in-blocks	input.css	.verso-stream-release-x
 rules-live-in-blocks	input.css	.verso-stream-release:hover .verso-stream-release-x
 rules-live-in-blocks	input.css	.verso-stream-shelf
-rules-live-in-blocks	input.css	.verso-table :is(td, th) :not(.verso-chip, .verso-chip *, [class*="leading-"])
+rules-live-in-blocks	input.css	.verso-table :is(td, th) :not(.verso-chip, .verso-chip *, .verso-tip, .verso-tip *, [class*="leading-"])
 rules-live-in-blocks	input.css	.verso-table > colgroup > col
 rules-live-in-blocks	input.css	.verso-table > tbody > tr > td:has(.verso-row-name)
 rules-live-in-blocks	input.css	.verso-table td .truncate:has(> .verso-row-name)
@@ -808,14 +804,6 @@ rules-live-in-blocks	input.css	[data-verso-section-lede] *
 rules-live-in-blocks	input.css	[data-verso-section-lede] p:last-child
 rules-live-in-blocks	input.css	[data-verso-section-lede] p:not(:last-child)
 rules-live-in-blocks	input.css	[data-verso-session] > div
-rules-live-in-blocks	input.css	[data-verso-tip-below] > [role="tooltip"]
-rules-live-in-blocks	input.css	[data-verso-tip-below] > [role="tooltip"]::before
-rules-live-in-blocks	input.css	[data-verso-tip-dismissed] > [role="tooltip"]
-rules-live-in-blocks	input.css	[data-verso-tip] > [role="tooltip"]
-rules-live-in-blocks	input.css	[data-verso-tip] > [role="tooltip"]::before
-rules-live-in-blocks	input.css	[data-verso-tip]:focus-visible > [role="tooltip"]
-rules-live-in-blocks	input.css	[data-verso-tip]:hover > [role="tooltip"]
-rules-live-in-blocks	input.css	[data-verso-tip]:is(:hover, :focus-visible) > [role="tooltip"]
 rules-live-in-blocks	input.css	[data-verso-token-list]:has([data-verso-token]) [data-verso-token-input]::placeholder
 rules-live-in-blocks	input.css	[data-verso-turning="off"] .verso-row-name::after
 rules-live-in-blocks	input.css	[data-verso-turning="on"] .verso-row-name
@@ -1091,9 +1079,6 @@ short-class-lists	widget/templates/section.html.tmpl	ml-auto flex h-6 w-full ite
 short-class-lists	widget/templates/section.html.tmpl	{{if and .Sub (not $band)}}flex flex-wrap items-center justify-between gap-x-6{{else}}{{template "verso-section-band-class"}}{{end}}{{if .Kicker}} mb-6{{end}}
 short-class-lists	widget/templates/settings.html.tmpl	flex cursor-pointer items-center gap-1.5 px-3 pt-2.75 pb-3 leading-6 text-sm font-semibold text-denim-deep transition-colors select-none hover:bg-quiet hover:text-denim [&::-webkit-details-marker]:hidden
 short-class-lists	widget/templates/settings.html.tmpl	flex items-baseline justify-between gap-3 pt-1 pb-0.75 {{if not .Card}}border-b border-rule-strong {{end}}{{template "verso-kicker-class"}}
-short-class-lists	widget/templates/shared.html.tmpl	absolute left-0 z-30 w-80 rounded-xs border border-rule-strong bg-ground p-3 text-left font-normal whitespace-normal shadow-(--shadow-float)
-short-class-lists	widget/templates/shared.html.tmpl	absolute left-0 z-30 {{if .LimitTip}}w-72 p-4{{else}}w-max max-w-64 px-3 py-2{{end}} rounded-xs border border-rule-strong bg-ground text-left font-sans text-sm leading-tight font-normal {{if .LimitTip}}whitespace-normal{{else}}whitespace-pre-line{{end}} text-ink shadow-(--shadow-float)
-short-class-lists	widget/templates/shared.html.tmpl	flex items-center gap-2 border-t border-rule pt-2 font-mono text-sm font-medium text-meta
 short-class-lists	widget/templates/shared.html.tmpl	flex shrink-0 items-center py-3.5 text-sm leading-7 whitespace-nowrap transition {{if .Active}}font-medium text-ink shadow-[inset_0_-2px_0_var(--color-denim-deep)]{{else}}text-meta hover:text-ink hover:shadow-[inset_0_-2px_0_var(--color-inert)]{{end}}
 short-class-lists	widget/templates/shared.html.tmpl	flex w-full cursor-pointer items-baseline gap-3 px-3 py-1.5 text-left text-ink transition-colors hover:bg-denim-soft hover:text-denim-deep aria-selected:bg-denim-soft aria-selected:text-denim-deep
 short-class-lists	widget/templates/shared.html.tmpl	grid size-7 flex-none cursor-pointer place-items-center rounded-xs border border-transparent text-glyph transition-colors hover:border-sand-5 hover:bg-rule hover:text-ink focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-denim
@@ -1193,7 +1178,7 @@ type-comes-from-roles	input.css	.verso-prose h1, .verso-prose h2, .verso-prose h
 type-comes-from-roles	input.css	.verso-rail-link[aria-current="true"]	font-weight
 type-comes-from-roles	input.css	.verso-stream-release-x	font-size
 type-comes-from-roles	input.css	.verso-stream-release-x	line-height
-type-comes-from-roles	input.css	.verso-table :is(td, th) :not(.verso-chip, .verso-chip *, [class*="leading-"])	line-height
+type-comes-from-roles	input.css	.verso-table :is(td, th) :not(.verso-chip, .verso-chip *, .verso-tip, .verso-tip *, [class*="leading-"])	line-height
 type-comes-from-roles	input.css	::marker	font-family
 type-comes-from-roles	input.css	[data-verso-off] .verso-row-name	font-weight
 type-comes-from-roles	input.css	[data-verso-section-lede], [data-verso-section-lede] *	font-size
@@ -1729,30 +1714,20 @@ type-comes-from-roles	widget/templates/shared.html.tmpl	[&_h3]:tracking-[.08em]
 type-comes-from-roles	widget/templates/shared.html.tmpl	font-medium
 type-comes-from-roles	widget/templates/shared.html.tmpl	font-medium
 type-comes-from-roles	widget/templates/shared.html.tmpl	font-medium
-type-comes-from-roles	widget/templates/shared.html.tmpl	font-medium
-type-comes-from-roles	widget/templates/shared.html.tmpl	font-mono
 type-comes-from-roles	widget/templates/shared.html.tmpl	font-mono
 type-comes-from-roles	widget/templates/shared.html.tmpl	font-mono
 type-comes-from-roles	widget/templates/shared.html.tmpl	font-mono
 type-comes-from-roles	widget/templates/shared.html.tmpl	font-normal
-type-comes-from-roles	widget/templates/shared.html.tmpl	font-normal
-type-comes-from-roles	widget/templates/shared.html.tmpl	font-normal
-type-comes-from-roles	widget/templates/shared.html.tmpl	font-sans
 type-comes-from-roles	widget/templates/shared.html.tmpl	font-sans
 type-comes-from-roles	widget/templates/shared.html.tmpl	font-semibold
 type-comes-from-roles	widget/templates/shared.html.tmpl	leading-6
 type-comes-from-roles	widget/templates/shared.html.tmpl	leading-6
 type-comes-from-roles	widget/templates/shared.html.tmpl	leading-7
-type-comes-from-roles	widget/templates/shared.html.tmpl	leading-[1.45]
-type-comes-from-roles	widget/templates/shared.html.tmpl	leading-tight
 type-comes-from-roles	widget/templates/shared.html.tmpl	placeholder:font-normal
 type-comes-from-roles	widget/templates/shared.html.tmpl	text-base
 type-comes-from-roles	widget/templates/shared.html.tmpl	text-base
 type-comes-from-roles	widget/templates/shared.html.tmpl	text-base
 type-comes-from-roles	widget/templates/shared.html.tmpl	text-lg
-type-comes-from-roles	widget/templates/shared.html.tmpl	text-sm
-type-comes-from-roles	widget/templates/shared.html.tmpl	text-sm
-type-comes-from-roles	widget/templates/shared.html.tmpl	text-sm
 type-comes-from-roles	widget/templates/shared.html.tmpl	text-sm
 type-comes-from-roles	widget/templates/shared.html.tmpl	text-sm
 type-comes-from-roles	widget/templates/shared.html.tmpl	text-sm

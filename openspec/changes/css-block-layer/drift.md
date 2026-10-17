@@ -105,3 +105,11 @@ The rail's 5px square stays as it is until the rail converts.
 | a notice's door | 3 | an unbreakable box (inline-flex) in the words' ink by a rule reaching in from the notice | a door the shell marks: inline words in their own ink, wrapping as the sentence does |
 | the "router didn't answer" retry | 1 | 600 weight, Ink under the pointer | a door: the band's words' weight and ink, its underline thickening |
 | row links and phrase links | | their own underline and focus utilities | the link block's door |
+
+### `tip`
+
+| Copies | n | Difference | Became |
+|---|---|---|---|
+| a setting's sentence tip | every labelled setting | its sentence on a 1.45 line, its footer on a 24px line | the tip role's 1.25 line; the footer the chip role's verbatim form on its 16px line |
+| the "Remove" act tip in a row's acts | 1 | raised on hover only | raised on hover and on focus, as every act's tip |
+| act tips in table cells | | kept their line from a `leading-tight` class a table rule looked for | the tip role's line; the table rule names the tip block (until the table converts) |

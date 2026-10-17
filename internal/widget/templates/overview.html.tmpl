@@ -24,7 +24,7 @@
     <div class="ml-auto flex items-center">
       <button type="button" data-overview-arrange aria-pressed="false" aria-label="{{ t "Arrange cards" }}" class="group/arrange relative grid {{template "verso-btn-icon"}} group-data-arranging/overview:border-denim group-data-arranging/overview:bg-denim group-data-arranging/overview:text-on-fill group-data-arranging/overview:hover:border-denim-deep group-data-arranging/overview:hover:bg-denim-deep group-data-arranging/overview:hover:text-on-fill">
         <span class="flex group-data-arranging/overview:hidden">{{icon "arrange" "size-4"}}</span><span class="hidden group-data-arranging/overview:flex">{{icon "check" "size-4"}}</span>
-        <span aria-hidden="true" class="{{template "verso-tip-below-class"}} group-hover/arrange:opacity-100 group-focus-visible/arrange:opacity-100"><span class="group-data-arranging/overview:hidden">{{ t "Arrange cards" }}</span><span class="hidden group-data-arranging/overview:inline">{{ t "Done" }}</span></span>
+        <span aria-hidden="true" class="verso-tip group-hover/arrange:opacity-100 group-focus-visible/arrange:opacity-100" data-verso-place="below"><span class="group-data-arranging/overview:hidden">{{ t "Arrange cards" }}</span><span class="hidden group-data-arranging/overview:inline">{{ t "Done" }}</span></span>
       </button>
     </div>
   </div>

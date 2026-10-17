@@ -1,0 +1,125 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/* SPDX-FileCopyrightText: 2026 Mono Technologies Inc. */
+
+/*
+ * tip — the one tooltip: a small card in the page's own palette rather than
+ * an inverted bubble, because nothing else in Verso is inverted. Its words
+ * take the tip role (type.css).
+ *
+ * A control's tip names it, on one line, resting above whatever raises it and
+ * flush to that thing's right edge, so a tip on the last column stays inside
+ * the table. It is hidden until its trigger's named group is hovered or
+ * focused; the caller writes that reveal (group-hover/act:opacity-100), since
+ * the trigger's state is the trigger's.
+ *
+ * A tip that carries a sentence (data-verso-tip-kind) explains what its label
+ * names. Its label carries data-verso-tip; the tip waits 200ms for a pointer
+ * to settle and comes at once for focus, hangs above or below as verso-page.js
+ * decides (data-verso-tip-below on the label), takes the pointer while shown
+ * and is bridged across the gap to its label so it stays up to be read (WCAG
+ * 1.4.13), and Escape puts it away (data-verso-tip-dismissed). Until it shows
+ * it is out of the page outright, so a waiting tip never catches the pointer
+ * nor takes room: one by a chip near the window's edge would widen the page
+ * past it, and a phone would scroll sideways.
+ *
+ * Elements: verso-tip__footer   a sentence tip's last line: the option it
+ *                               explains and what reads it, ruled off, verbatim
+ * Variants: data-verso-place    below: under its trigger, where a sticky bar
+ *                               over a heading-line act cannot cover it
+ *           data-verso-tip-kind info (a chip's word: as wide as its words, to
+ *                               16rem) · wide (a label's sentence, 20rem) ·
+ *                               limit (a device's limits, 18rem)
+ */
+
+.verso-tip {
+  position: absolute;
+  right: 0;
+  bottom: 100%;
+  z-index: 30;
+  margin-bottom: calc(var(--spacing) * 2);
+  padding: calc(var(--spacing) * 2) calc(var(--spacing) * 3);
+  border: 1px solid var(--color-rule-strong);
+  border-radius: var(--radius-xs);
+  background-color: var(--color-ground);
+  color: var(--color-ink);
+  box-shadow: var(--shadow-float);
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition-property: opacity;
+  @apply type-tip;
+}
+.verso-tip[data-verso-place="below"] {
+  top: 100%;
+  bottom: auto;
+  margin-top: calc(var(--spacing) * 2);
+  margin-bottom: 0;
+}
+
+.verso-tip[data-verso-tip-kind] {
+  left: 0;
+  right: auto;
+  display: none;
+  visibility: hidden;
+  text-align: left;
+  white-space: pre-line;
+  transition: opacity 150ms ease-out, visibility 0s linear 150ms, display 0s linear 150ms;
+  transition-behavior: allow-discrete;
+}
+.verso-tip[data-verso-tip-kind="info"] { width: max-content; max-width: 16rem; }
+.verso-tip[data-verso-tip-kind="wide"] { width: 20rem; padding: calc(var(--spacing) * 3); white-space: normal; }
+.verso-tip[data-verso-tip-kind="limit"] { width: 18rem; padding: calc(var(--spacing) * 4); white-space: normal; }
+
+.verso-tip[data-verso-tip-kind]:is([data-verso-tip]:hover > *) {
+  display: block;
+  visibility: visible;
+  opacity: 1;
+  pointer-events: auto;
+  transition-delay: 200ms;
+}
+.verso-tip[data-verso-tip-kind]:is([data-verso-tip]:focus-visible > *) {
+  display: block;
+  visibility: visible;
+  opacity: 1;
+  pointer-events: auto;
+  transition-delay: 0ms;
+}
+@starting-style {
+  .verso-tip[data-verso-tip-kind]:is([data-verso-tip]:is(:hover, :focus-visible) > *) {
+    visibility: hidden;
+    opacity: 0;
+  }
+}
+.verso-tip[data-verso-tip-kind]:is([data-verso-tip-below] > *) {
+  top: 100%;
+  bottom: auto;
+  margin-top: calc(var(--spacing) * 2);
+  margin-bottom: 0;
+}
+.verso-tip[data-verso-tip-kind]::before {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  bottom: -0.5rem;
+  height: 0.5rem;
+}
+.verso-tip[data-verso-tip-kind]:is([data-verso-tip-below] > *)::before {
+  top: -0.5rem;
+  bottom: auto;
+}
+.verso-tip:is([data-verso-tip-dismissed] > *) {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+.verso-tip__footer {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--spacing) * 2);
+  border-top: 1px solid var(--color-rule);
+  padding-top: calc(var(--spacing) * 2);
+  color: var(--color-meta);
+  @apply type-chip;
+}

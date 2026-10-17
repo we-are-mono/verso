@@ -32,7 +32,7 @@
      words it is the labelled act, and its tooltip still names the lane unless
      the words already say it all; without them it is the glyph alone. */}}
 {{define "table.laneadd-look"}}{{if .AddText}}{{template "table.laneadd-class"}}{{else}}{{template "table.actbtn-class"}}{{end}}{{end}}
-{{define "table.laneadd-body"}}{{icon "plus" "size-4"}}{{if .AddText}}<span>{{.AddText}}</span>{{end}}{{if ne .AddText .AddLabel}}<span class="{{template "verso-tip-class"}} group-hover/act:opacity-100 group-focus-visible/act:opacity-100">{{.AddLabel}}</span>{{end}}{{end}}
+{{define "table.laneadd-body"}}{{icon "plus" "size-4"}}{{if .AddText}}<span>{{.AddText}}</span>{{end}}{{if ne .AddText .AddLabel}}{{template "verso-act-tip" .AddLabel}}{{end}}{{end}}
 {{/* table.cellpad: a cell's inset, and the line it insets. A row states no
      height of its own: every cell writes on the notebook's 20px lines with
      10px above its first and 9px under its last, and its hairline is the
@@ -304,13 +304,13 @@
             {{if .Dialog}}<span x-data="modal" class="inline-flex">
               <button type="button" @click="show" aria-label="{{.Title}}{{if $row}} {{$row}}{{end}}" class="{{template "table.actbtn-class"}}">
                 {{icon .Icon "size-4"}}
-                <span class="{{template "verso-tip-class"}} group-hover/act:opacity-100 group-focus-visible/act:opacity-100">{{.Title}}</span>
+                {{template "verso-act-tip" .Title}}
               </button>
               {{template "table.confirm-dialog" .Dialog}}
             </span>
             {{else if .Opens}}<button type="button" @click="showTab"{{if .Tab}} data-verso-entity-tab="{{.Tab}}"{{end}} aria-label="{{.Title}}{{if $row}} {{$row}}{{end}}" class="{{template "table.actbtn-class"}}">
               {{icon .Icon "size-4"}}
-              <span class="{{template "verso-tip-class"}} group-hover/act:opacity-100 group-focus-visible/act:opacity-100">{{.Title}}</span>
+              {{template "verso-act-tip" .Title}}
             </button>
             {{/* an act that posts is a form of its own, marked so the shell's
                  script can post it where it stands and reconcile the row from
@@ -321,20 +321,20 @@
               <input type="hidden" name="{{.Name}}" value="{{.Value}}">
               <button type="submit" aria-label="{{.Title}}{{if $row}} {{$row}}{{end}}" class="{{template "table.actbtn-class"}}">
                 {{icon .Icon "size-4"}}
-                <span class="{{template "verso-tip-class"}} group-hover/act:opacity-100 group-focus-visible/act:opacity-100">{{.Title}}</span>
+                {{template "verso-act-tip" .Title}}
               </button>
             </form>
             {{else if and $panel (eq .Href $panel)}}<a href="{{.Href}}" @click.prevent="showPanel" aria-label="{{.Title}}{{if $row}} {{$row}}{{end}}" class="{{template "table.actbtn-class"}}">
               {{icon .Icon "size-4"}}
-              <span class="{{template "verso-tip-class"}} group-hover/act:opacity-100 group-focus-visible/act:opacity-100">{{.Title}}</span>
+              {{template "verso-act-tip" .Title}}
             </a>
             {{else if .Href}}<a href="{{.Href}}" aria-label="{{.Title}}{{if $row}} {{$row}}{{end}}" class="{{template "table.actbtn-class"}}">
               {{icon .Icon "size-4"}}
-              <span class="{{template "verso-tip-class"}} group-hover/act:opacity-100 group-focus-visible/act:opacity-100">{{.Title}}</span>
+              {{template "verso-act-tip" .Title}}
             </a>
             {{else}}<span aria-label="{{.Title}}" aria-disabled="true" class="group/act relative grid size-7 shrink-0 place-items-center rounded-xs text-glyph">
               {{icon .Icon "size-4"}}
-              <span class="{{template "verso-tip-class"}} group-hover/act:opacity-100">{{.Title}}</span>
+              {{template "verso-act-tip" .Title}}
             </span>{{end}}
             {{end}}
           </span>

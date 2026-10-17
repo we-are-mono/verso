@@ -394,20 +394,14 @@
   </dialog>
 </template>{{end}}
 
-{{/* verso-tip-class: the one tooltip — a small card in the page's own palette
-     rather than an inverted bubble, because nothing else in Verso is inverted.
-     It rests above whatever raises it and flush to that thing's right edge, so a
-     tip on the last column stays inside the table. Hidden until its named group
-     is hovered or focused; the caller supplies those variants. An act on the
-     heading line, under the sticky top bar, raises its tip below it instead
-     (verso-tip-below-class), where the bar cannot cover it. */}}
-{{define "verso-tip-class"}}pointer-events-none absolute right-0 bottom-full z-30 mb-2 {{template "verso-tip-look"}}{{end}}
-{{define "verso-tip-below-class"}}pointer-events-none absolute right-0 top-full z-30 mt-2 {{template "verso-tip-look"}}{{end}}
-{{define "verso-tip-look"}}rounded-xs border border-rule-strong bg-ground px-3 py-2 text-sm leading-tight font-normal whitespace-nowrap text-ink opacity-0 shadow-(--shadow-float) transition-opacity{{end}}
+{{/* verso-act-tip: an act's tip (blocks/tip.css), naming the act its group
+     raises it from on hover or focus. */}}
+{{define "verso-act-tip"}}<span class="verso-tip group-hover/act:opacity-100 group-focus-visible/act:opacity-100">{{.}}</span>{{end}}
 
-{{/* Copy feedback is prose, even beside a machine value. A refused copy keeps
-     its explanation visible briefly, including after a touch activation. */}}
-{{define "verso-copy-tip-class"}}{{template "verso-tip-class"}} font-sans group-hover/copy:opacity-100 group-focus-visible/copy:opacity-100 group-data-[copy-failed=true]/copy:opacity-100{{end}}
+{{/* verso-copy-tip: a copy control's tip. Copy feedback is prose, even beside
+     a machine value. A refused copy keeps its explanation visible briefly,
+     including after a touch activation. */}}
+{{define "verso-copy-tip"}}<span class="verso-tip group-hover/copy:opacity-100 group-focus-visible/copy:opacity-100 group-data-[copy-failed=true]/copy:opacity-100">{{template "verso-copy-label" .}}</span>{{end}}
 {{define "verso-copy-label"}}
   <span x-show="ready">{{t .}}</span>
   <span x-show="done" x-cloak>{{t "Copied"}}</span>
@@ -430,9 +424,9 @@
      shown, and bridged across the gap to its label), so a pointer can move
      onto the sentence to read it, and Escape puts it away (verso-page.js). */}}
 {{define "verso-tip-wide"}}
-<span role="tooltip" id="{{.ID}}" class="absolute left-0 z-30 w-80 rounded-xs border border-rule-strong bg-ground p-3 text-left font-normal whitespace-normal shadow-(--shadow-float)"><span class="flex flex-col gap-2">
-  {{with .Tip}}<span class="text-sm leading-[1.45] text-ink">{{.}}</span>{{end}}
-  {{if .Footer}}<span class="flex items-center gap-2 border-t border-rule pt-2 font-mono text-sm font-medium text-meta">{{.Footer}}</span>{{end}}
+<span role="tooltip" id="{{.ID}}" class="verso-tip" data-verso-tip-kind="wide"><span class="flex flex-col gap-2">
+  {{with .Tip}}<span>{{.}}</span>{{end}}
+  {{if .Footer}}<span class="verso-tip__footer" data-verso-verbatim>{{.Footer}}</span>{{end}}
 </span></span>
 {{end}}
 
@@ -445,7 +439,7 @@
 {{/* verso-chip: the entity chip (an interface, a zone, a port) — the label
      names the one, led by one mark or none: a Lucide glyph naming the kind, or
      the packet square in the chip's tone. An icon wins. */}}
-{{define "verso-chip"}}<span class="verso-chip{{if .Title}} relative z-10 cursor-help focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim{{end}}"{{if not .LocalizeLabel}} data-verso-verbatim{{end}}{{with .Tone}} data-verso-tone="{{.}}"{{end}}{{if .Title}} data-verso-tip tabindex="0" aria-describedby="{{.TipID}}"{{end}}>{{if .Icon}}<span class="verso-chip__glyph">{{icon .Icon "size-3.5"}}</span>{{else if .Dot}}{{template "verso-chip-packet" .Tone}}{{end}}{{.Label}}{{if .Title}}<span role="tooltip" id="{{.TipID}}" class="absolute left-0 z-30 {{if .LimitTip}}w-72 p-4{{else}}w-max max-w-64 px-3 py-2{{end}} rounded-xs border border-rule-strong bg-ground text-left font-sans text-sm leading-tight font-normal {{if .LimitTip}}whitespace-normal{{else}}whitespace-pre-line{{end}} text-ink shadow-(--shadow-float)">{{if .LimitTip}}<span class="sr-only">{{.Title}}</span>{{template "verso-device-limit-tip" .LimitTip}}{{else}}{{.Title}}{{end}}</span>{{end}}</span>{{end}}
+{{define "verso-chip"}}<span class="verso-chip{{if .Title}} relative z-10 cursor-help focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim{{end}}"{{if not .LocalizeLabel}} data-verso-verbatim{{end}}{{with .Tone}} data-verso-tone="{{.}}"{{end}}{{if .Title}} data-verso-tip tabindex="0" aria-describedby="{{.TipID}}"{{end}}>{{if .Icon}}<span class="verso-chip__glyph">{{icon .Icon "size-3.5"}}</span>{{else if .Dot}}{{template "verso-chip-packet" .Tone}}{{end}}{{.Label}}{{if .Title}}<span role="tooltip" id="{{.TipID}}" class="verso-tip" data-verso-tip-kind="{{if .LimitTip}}limit{{else}}info{{end}}">{{if .LimitTip}}<span class="sr-only">{{.Title}}</span>{{template "verso-device-limit-tip" .LimitTip}}{{else}}{{.Title}}{{end}}</span>{{end}}</span>{{end}}
 
 {{/* verso-dot: the status dot, a mark (blocks/mark.css) in a tone of the badge
      vocabulary, filled in Glyph for any other; success pulses, since it marks

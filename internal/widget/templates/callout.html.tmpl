@@ -28,7 +28,7 @@
     <span x-ref="src" class="hidden">{{.Verbatim}}</span>
     <span x-show="idle">{{icon "copy" "size-4"}}</span>
     <span x-show="done" x-cloak>{{icon "check" "size-4"}}</span>
-    <span class="{{template "verso-copy-tip-class"}}">{{template "verso-copy-label" "Copy"}}</span>
+    {{template "verso-copy-tip" "Copy"}}
   </button>
 </div>{{end}}
 {{/* Framed as every band is, in its tone one step darker than its ground.

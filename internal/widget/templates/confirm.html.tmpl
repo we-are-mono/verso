@@ -21,7 +21,7 @@
      word the tip and, with the item, its name. The confirm lays itself into
      the item's row (contents), so the question drops full-width under it. */}}
 <div class="verso-confirm{{if .InRow}} contents{{else}} flow-root{{end}}" x-data="confirm" @keydown.escape="escape" data-verso-confirm-tone="{{.Tone}}">
-  {{if .Icon}}<button type="button" x-ref="trigger" x-show="idle" @click="ask" :aria-expanded="expanded" aria-controls="{{.ID}}" aria-label="{{.Trigger}}{{if .Subject}} {{.Subject}}{{end}}" class="{{template "table.actbtn-class"}} -my-0.5">{{icon .Icon "size-4"}}<span class="{{template "verso-tip-class"}} group-hover/act:opacity-100 group-focus-visible/act:opacity-100">{{.Trigger}}</span></button>
+  {{if .Icon}}<button type="button" x-ref="trigger" x-show="idle" @click="ask" :aria-expanded="expanded" aria-controls="{{.ID}}" aria-label="{{.Trigger}}{{if .Subject}} {{.Subject}}{{end}}" class="{{template "table.actbtn-class"}} -my-0.5">{{icon .Icon "size-4"}}{{template "verso-act-tip" .Trigger}}</button>
   {{else}}<button type="button" x-ref="trigger" x-show="idle" @click="ask" :aria-expanded="expanded" aria-controls="{{.ID}}" class="flex h-control w-fit cursor-pointer items-center justify-center rounded-xs border px-4 text-sm font-semibold transition-colors {{template "verso-press"}} focus-visible:outline-2 focus-visible:outline-offset-2 {{if $caution}}border-marigold-line bg-marigold-soft text-marigold-deep hover:border-marigold focus-visible:outline-marigold-deep{{else}}border-crimson-line bg-crimson-soft text-crimson-deep hover:border-crimson focus-visible:outline-crimson-deep{{end}}">{{.Trigger}}</button>{{end}}
   <div id="{{.ID}}" x-show="asking" x-cloak{{if .InRow}} class="mt-3 basis-full"{{end}}>{{.Question}}</div>
 </div>

@@ -32,6 +32,7 @@
 @import "./blocks/mark.css" layer(components);
 @import "./blocks/rhythm.css" layer(components);
 @import "./blocks/steps.css" layer(components);
+@import "./blocks/tip.css" layer(components);
 @import "./blocks/waiting.css" layer(components);
 
 @source "../templates/*.tmpl";
@@ -276,81 +277,6 @@ html {
     .verso-modal-motion[open] { opacity: 0; scale: 0.95; }
     .verso-drawer-motion[open] { translate: 100% 0; }
     :is(.verso-modal-motion, .verso-drawer-motion)[open]::backdrop { opacity: 0; }
-  }
-
-  /* A tip rises above the label that raises it, the way the system's own
-     tooltips stand by the pointer: the pointer on its way down to the control
-     never meets it, and what it covers is what has been read. verso-page.js
-     sets it at the pointer's place along the label, once, as the pointer
-     arrives, and marks the label to drop it below only where there is no room
-     above (a panel's first field, under its title bar).
-
-     A pointer passing over the label raises nothing: the tip waits 200ms for
-     the pointer to settle. Focus from the keyboard raises it at once. Until it
-     shows it is out of the page outright, so a waiting tip never catches the
-     pointer, nor takes room: one by a chip near the window's edge would
-     widen the page past it, and a phone would scroll sideways. It leaves
-     after its fade and arrives before it.
-
-     The states live here rather than in the template's utilities: a utility
-     outranks anything this layer says, so a half-stated position, display or
-     reveal would fight the other half. */
-  [data-verso-tip] > [role="tooltip"] {
-    display: none;
-    bottom: 100%;
-    margin-bottom: 0.5rem;
-    visibility: hidden;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 150ms ease-out, visibility 0s linear 150ms, display 0s linear 150ms;
-    transition-behavior: allow-discrete;
-  }
-  [data-verso-tip]:hover > [role="tooltip"] {
-    display: block;
-    visibility: visible;
-    opacity: 1;
-    pointer-events: auto;
-    transition-delay: 200ms;
-  }
-  [data-verso-tip]:focus-visible > [role="tooltip"] {
-    display: block;
-    visibility: visible;
-    opacity: 1;
-    pointer-events: auto;
-    transition-delay: 0ms;
-  }
-  @starting-style {
-    [data-verso-tip]:is(:hover, :focus-visible) > [role="tooltip"] {
-      visibility: hidden;
-      opacity: 0;
-    }
-  }
-  [data-verso-tip-below] > [role="tooltip"] {
-    top: 100%;
-    bottom: auto;
-    margin-top: 0.5rem;
-    margin-bottom: 0;
-  }
-  /* While shown, the tip takes the pointer, and a strip the height of the gap
-     joins it to its label, so moving from one to the other never passes
-     through nothing and the tip stays up to be read (WCAG 1.4.13). */
-  [data-verso-tip] > [role="tooltip"]::before {
-    content: "";
-    position: absolute;
-    inset-inline: 0;
-    bottom: -0.5rem;
-    height: 0.5rem;
-  }
-  [data-verso-tip-below] > [role="tooltip"]::before {
-    top: -0.5rem;
-    bottom: auto;
-  }
-  /* Escape put it away: it stays away until the pointer or focus leaves. */
-  [data-verso-tip-dismissed] > [role="tooltip"] {
-    display: none !important;
-    visibility: hidden !important;
-    opacity: 0 !important;
-    pointer-events: none !important;
   }
 
   /* A copy belongs to the value's first line. Its 28px hit area keeps the
@@ -1074,9 +1000,9 @@ html {
     vertical-align: top;
   }
   /* A value set in a size step (text-base carries its own 24px leading)
-     still writes on the cell's line; a chip, or anything that states its
-     own leading, keeps it. */
-  .verso-table :is(td, th) :not(.verso-chip, .verso-chip *, [class*="leading-"]) {
+     still writes on the cell's line; a chip, a tip, or anything that states
+     its own leading, keeps it. */
+  .verso-table :is(td, th) :not(.verso-chip, .verso-chip *, .verso-tip, .verso-tip *, [class*="leading-"]) {
     line-height: inherit;
   }
 

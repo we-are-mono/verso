@@ -192,7 +192,7 @@
         <span x-ref="src" class="hidden">{{.Report}}</span>
         <span x-show="idle">{{icon "copy" "size-4"}}</span>
         <span x-show="done" x-cloak class="text-green">{{icon "check" "size-4"}}</span>
-        <span class="{{template "verso-copy-tip-class"}}">{{template "verso-copy-label" "Copy for a bug report"}}</span>
+        {{template "verso-copy-tip" "Copy for a bug report"}}
       </button>
     </div>
   </footer>

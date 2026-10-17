@@ -1221,17 +1221,18 @@ func TestAFittingTableClipsNoTip(t *testing.T) {
 // otherwise widen the page past the window, and a phone would scroll sideways.
 // It still fades in and out. Below is only where there is no room above.
 func TestTipsRiseAboveTheirLabel(t *testing.T) {
-	css, err := os.ReadFile("assets/input.css")
+	css, err := os.ReadFile("assets/blocks/tip.css")
 	if err != nil {
 		t.Fatal(err)
 	}
 	for _, want := range []string{
-		"[data-verso-tip] > [role=\"tooltip\"] {\n    display: none;\n    bottom: 100%;\n    margin-bottom: 0.5rem;\n    visibility: hidden;\n    opacity: 0;\n    pointer-events: none;\n    transition: opacity 150ms ease-out, visibility 0s linear 150ms, display 0s linear 150ms;\n    transition-behavior: allow-discrete;",
-		"[data-verso-tip]:hover > [role=\"tooltip\"] {\n    display: block;\n    visibility: visible;\n    opacity: 1;\n    pointer-events: auto;\n    transition-delay: 200ms;",
-		"[data-verso-tip]:focus-visible > [role=\"tooltip\"] {\n    display: block;\n    visibility: visible;\n    opacity: 1;\n    pointer-events: auto;\n    transition-delay: 0ms;",
-		"@starting-style {\n    [data-verso-tip]:is(:hover, :focus-visible) > [role=\"tooltip\"] {\n      visibility: hidden;\n      opacity: 0;\n    }\n  }",
-		"[data-verso-tip-below] > [role=\"tooltip\"] {\n    top: 100%;\n    bottom: auto;",
-		"[data-verso-tip-dismissed] > [role=\"tooltip\"] {\n    display: none !important;",
+		".verso-tip[data-verso-tip-kind] {\n  left: 0;\n  right: auto;\n  display: none;\n  visibility: hidden;",
+		"transition: opacity 150ms ease-out, visibility 0s linear 150ms, display 0s linear 150ms;\n  transition-behavior: allow-discrete;",
+		".verso-tip[data-verso-tip-kind]:is([data-verso-tip]:hover > *) {\n  display: block;\n  visibility: visible;\n  opacity: 1;\n  pointer-events: auto;\n  transition-delay: 200ms;",
+		".verso-tip[data-verso-tip-kind]:is([data-verso-tip]:focus-visible > *) {\n  display: block;\n  visibility: visible;\n  opacity: 1;\n  pointer-events: auto;\n  transition-delay: 0ms;",
+		"@starting-style {\n  .verso-tip[data-verso-tip-kind]:is([data-verso-tip]:is(:hover, :focus-visible) > *) {\n    visibility: hidden;\n    opacity: 0;\n  }\n}",
+		".verso-tip[data-verso-tip-kind]:is([data-verso-tip-below] > *) {\n  top: 100%;\n  bottom: auto;",
+		".verso-tip:is([data-verso-tip-dismissed] > *) {\n  display: none !important;",
 	} {
 		if !strings.Contains(string(css), want) {
 			t.Errorf("stylesheet is missing %s", want)

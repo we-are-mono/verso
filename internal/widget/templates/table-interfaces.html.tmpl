@@ -48,9 +48,9 @@
              as every listing's is (table.html.tmpl, actions) */}}
         <td class="pt-1.25 pr-1.75 pb-1.5 align-top"><div class="ml-auto flex w-35 max-sm:w-auto items-center justify-end">
           {{range .Actions}}
-          {{if and .Href $cell.Panel (eq .Href $cell.Panel)}}<a href="{{.Href}}" @click.prevent="showPanel" aria-label="{{.Title}}{{if $cell.RowName}} {{$cell.RowName}}{{end}}" class="{{template "table.actbtn-class"}}">{{icon .Icon "size-4"}}<span class="{{template "verso-tip-class"}} group-hover/act:opacity-100 group-focus-visible/act:opacity-100">{{.Title}}</span></a>
-          {{else if .Href}}<a href="{{.Href}}" aria-label="{{.Title}}" class="{{template "table.actbtn-class"}}">{{icon .Icon "size-4"}}<span class="{{template "verso-tip-class"}} group-hover/act:opacity-100 group-focus-visible/act:opacity-100">{{.Title}}</span></a>
-          {{else if .Name}}<form method="post" class="flex">{{template "verso-csrf" $cell.CSRFToken}}<button type="submit" name="{{.Name}}" value="{{.Value}}" aria-label="{{.Title}}" class="{{template "table.actbtn-class"}}">{{icon .Icon "size-4"}}<span class="{{template "verso-tip-class"}} group-hover/act:opacity-100 group-focus-visible/act:opacity-100">{{.Title}}</span></button></form>
+          {{if and .Href $cell.Panel (eq .Href $cell.Panel)}}<a href="{{.Href}}" @click.prevent="showPanel" aria-label="{{.Title}}{{if $cell.RowName}} {{$cell.RowName}}{{end}}" class="{{template "table.actbtn-class"}}">{{icon .Icon "size-4"}}{{template "verso-act-tip" .Title}}</a>
+          {{else if .Href}}<a href="{{.Href}}" aria-label="{{.Title}}" class="{{template "table.actbtn-class"}}">{{icon .Icon "size-4"}}{{template "verso-act-tip" .Title}}</a>
+          {{else if .Name}}<form method="post" class="flex">{{template "verso-csrf" $cell.CSRFToken}}<button type="submit" name="{{.Name}}" value="{{.Value}}" aria-label="{{.Title}}" class="{{template "table.actbtn-class"}}">{{icon .Icon "size-4"}}{{template "verso-act-tip" .Title}}</button></form>
           {{else}}<span class="size-7 shrink-0" aria-hidden="true"></span>{{end}}
           {{end}}
         </div></td>
