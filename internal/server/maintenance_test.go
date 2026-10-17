@@ -195,6 +195,54 @@ func TestRestoreBackendFailureIsAModalErrorNotAFieldError(t *testing.T) {
 	}
 }
 
+// TestReceiveUploadLeavesNothingBehind: an upload that is missing, empty or over
+// the limit names its step and leaves no temporary file; one that fits is
+// stored whole and handed over.
+func TestReceiveUploadLeavesNothingBehind(t *testing.T) {
+	upload := func(field string, data []byte) *http.Request {
+		var body bytes.Buffer
+		mw := multipart.NewWriter(&body)
+		part, err := mw.CreateFormFile(field, "image.bin")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := part.Write(data); err != nil {
+			t.Fatal(err)
+		}
+		if err := mw.Close(); err != nil {
+			t.Fatal(err)
+		}
+		req := httptest.NewRequest(http.MethodPost, "/", &body)
+		req.Header.Set("Content-Type", mw.FormDataContentType())
+		return req
+	}
+	for name, tc := range map[string]struct {
+		field string
+		data  []byte
+		want  uploadStep
+	}{
+		"missing":   {"other", []byte("abc"), uploadMissing},
+		"empty":     {"image", nil, uploadContent},
+		"too large": {"image", []byte("abcde"), uploadContent},
+	} {
+		dir := t.TempDir()
+		if path, _, step := receiveUpload(upload(tc.field, tc.data), "image", dir, "up-*", 4); step != tc.want || path != "" {
+			t.Errorf("%s: step %d path %q, want step %d and no path", name, step, path, tc.want)
+		}
+		if left, _ := os.ReadDir(dir); len(left) != 0 {
+			t.Errorf("%s: left %d files behind", name, len(left))
+		}
+	}
+	dir := t.TempDir()
+	path, header, step := receiveUpload(upload("image", []byte("abcd")), "image", dir, "up-*", 4)
+	if step != uploadOK || header.Filename != "image.bin" {
+		t.Fatalf("step %d header %+v, want the upload", step, header)
+	}
+	if got, err := os.ReadFile(path); err != nil || string(got) != "abcd" {
+		t.Fatalf("stored %q (%v), want the whole file", got, err)
+	}
+}
+
 func openWrtBackup(t *testing.T) []byte {
 	t.Helper()
 	var body bytes.Buffer

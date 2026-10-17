@@ -12,6 +12,7 @@ import (
 	"io"
 	"log"
 	"mime"
+	"mime/multipart"
 	"net/http"
 	"os"
 	"path"
@@ -235,39 +236,70 @@ func backupFilename(hostname string, now time.Time) string {
 	return fmt.Sprintf("%s-backup-%s.tar.gz", clean.String(), now.Format("20060102-150405"))
 }
 
-func (s *Server) handleRestoreInspect(w http.ResponseWriter, r *http.Request) {
-	if err := r.ParseMultipartForm(maxRestoreSize); err != nil {
-		s.renderMaintenance(w, r, http.StatusUnprocessableEntity, restoreState{open: true, errorMessage: "The file is too large or could not be uploaded. Choose an OpenWrt backup up to 32 MiB."})
-		return
+// uploadStep is the step at which receiveUpload stopped.
+type uploadStep int
+
+const (
+	uploadOK      uploadStep = iota
+	uploadParse              // the multipart form could not be read within the limit
+	uploadMissing            // the form carries no file under the field
+	uploadStore              // the temporary file could not be made or closed
+	uploadContent            // the file is empty, over the limit, or could not be read
+)
+
+// receiveUpload stores the file posted under field in a new temporary file in
+// dir, accepting at most limit bytes, and answers its path and header. On any
+// failure the temporary file is gone and the step says where it stopped; on
+// success the file is closed and the caller owns removing it.
+func receiveUpload(r *http.Request, field, dir, pattern string, limit int64) (string, *multipart.FileHeader, uploadStep) {
+	if err := r.ParseMultipartForm(limit); err != nil {
+		return "", nil, uploadParse
 	}
-	source, header, err := r.FormFile("backup")
+	source, header, err := r.FormFile(field)
 	if err != nil {
-		s.renderMaintenance(w, r, http.StatusUnprocessableEntity, restoreState{open: true, errorMessage: "Choose an OpenWrt backup archive first."})
-		return
+		return "", nil, uploadMissing
 	}
 	defer source.Close()
-	temp, err := os.CreateTemp(s.maintenanceDir, "verso-restore-*.tar.gz")
+	temp, err := os.CreateTemp(dir, pattern)
 	if err != nil {
-		http.Error(w, "Could not store the upload.", http.StatusInternalServerError)
-		return
+		return "", nil, uploadStore
 	}
 	tempPath := temp.Name()
+	written, err := io.Copy(temp, io.LimitReader(source, limit+1))
+	if err != nil || written == 0 || written > limit {
+		_ = temp.Close()
+		_ = os.Remove(tempPath)
+		return "", nil, uploadContent
+	}
+	if err := temp.Close(); err != nil {
+		_ = os.Remove(tempPath)
+		return "", nil, uploadStore
+	}
+	return tempPath, header, uploadOK
+}
+
+func (s *Server) handleRestoreInspect(w http.ResponseWriter, r *http.Request) {
+	tempPath, header, step := receiveUpload(r, "backup", s.maintenanceDir, "verso-restore-*.tar.gz", maxRestoreSize)
+	switch step {
+	case uploadParse:
+		s.renderMaintenance(w, r, http.StatusUnprocessableEntity, restoreState{open: true, errorMessage: "The file is too large or could not be uploaded. Choose an OpenWrt backup up to 32 MiB."})
+		return
+	case uploadMissing:
+		s.renderMaintenance(w, r, http.StatusUnprocessableEntity, restoreState{open: true, errorMessage: "Choose an OpenWrt backup archive first."})
+		return
+	case uploadStore:
+		http.Error(w, "Could not store the upload.", http.StatusInternalServerError)
+		return
+	case uploadContent:
+		s.renderMaintenance(w, r, http.StatusUnprocessableEntity, restoreState{open: true, errorMessage: "The selected file is empty, too large, or could not be read."})
+		return
+	}
 	keep := false
 	defer func() {
-		_ = temp.Close()
 		if !keep {
 			_ = os.Remove(tempPath)
 		}
 	}()
-	written, err := io.Copy(temp, io.LimitReader(source, maxRestoreSize+1))
-	if err != nil || written == 0 || written > maxRestoreSize {
-		s.renderMaintenance(w, r, http.StatusUnprocessableEntity, restoreState{open: true, errorMessage: "The selected file is empty, too large, or could not be read."})
-		return
-	}
-	if err := temp.Close(); err != nil {
-		http.Error(w, "Could not store the upload.", http.StatusInternalServerError)
-		return
-	}
 	entries, err := inspectBackup(tempPath)
 	if err != nil {
 		s.renderMaintenance(w, r, http.StatusUnprocessableEntity, restoreState{open: true, errorMessage: "The selected file is not a readable OpenWrt backup archive. Choose another file and try again."})

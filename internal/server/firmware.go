@@ -129,38 +129,27 @@ func firmwareVersion(info openwrt.FirmwareInfo) string {
 }
 
 func (s *Server) handleFirmwareInspect(w http.ResponseWriter, r *http.Request) {
-	if err := r.ParseMultipartForm(maxFirmwareSize); err != nil {
+	tempPath, header, step := receiveUpload(r, "firmware_image", s.maintenanceDir, "verso-firmware-*.bin", maxFirmwareSize)
+	switch step {
+	case uploadParse:
 		s.renderMaintenanceFirmware(w, r, http.StatusUnprocessableEntity, firmwareState{open: true, errorMessage: "The file is too large or could not be uploaded. Choose a sysupgrade image up to 128 MiB."})
 		return
-	}
-	source, header, err := r.FormFile("firmware_image")
-	if err != nil {
+	case uploadMissing:
 		s.renderMaintenanceFirmware(w, r, http.StatusUnprocessableEntity, firmwareState{open: true, errorMessage: "Choose an OpenWrt sysupgrade image first."})
 		return
-	}
-	defer source.Close()
-	temp, err := os.CreateTemp(s.maintenanceDir, "verso-firmware-*.bin")
-	if err != nil {
+	case uploadStore:
 		http.Error(w, "Could not store the firmware image.", http.StatusInternalServerError)
 		return
+	case uploadContent:
+		s.renderMaintenanceFirmware(w, r, http.StatusUnprocessableEntity, firmwareState{open: true, errorMessage: "The selected image is empty, too large, or could not be read."})
+		return
 	}
-	tempPath := temp.Name()
 	keep := false
 	defer func() {
-		_ = temp.Close()
 		if !keep {
 			_ = os.Remove(tempPath)
 		}
 	}()
-	written, err := io.Copy(temp, io.LimitReader(source, maxFirmwareSize+1))
-	if err != nil || written == 0 || written > maxFirmwareSize {
-		s.renderMaintenanceFirmware(w, r, http.StatusUnprocessableEntity, firmwareState{open: true, errorMessage: "The selected image is empty, too large, or could not be read."})
-		return
-	}
-	if err := temp.Close(); err != nil {
-		http.Error(w, "Could not store the firmware image.", http.StatusInternalServerError)
-		return
-	}
 	info, err := s.backend.ValidateFirmware(r.Context(), s.sessionSID(r), tempPath)
 	if err != nil {
 		log.Printf("verso: validate firmware: %v", err)
