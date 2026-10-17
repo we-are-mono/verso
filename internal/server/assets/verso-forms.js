@@ -1263,12 +1263,12 @@
     // Only the question still waiting for an answer wears the fade. An older one
     // finishing must not clear it while a newer one is still out.
     var current = function () { return asked.get(form) === mine; };
-    var settle = function () { if (current()) preview.classList.remove("verso-preview-busy"); };
+    var settle = function () { if (current()) preview.removeAttribute("data-verso-busy"); };
     // The fade says "this is a moment out of date". A block already carrying the
     // value that was just typed is not out of date in any way a reader would
     // care about, so it does not dim — the confirmation arrives under it and
     // usually changes nothing.
-    if (!patched) preview.classList.add("verso-preview-busy");
+    if (!patched) preview.setAttribute("data-verso-busy", "");
     versoPost(target(form), body, "preview").then(function (res) {
       settle();
       // 204: the page answered with no preview of its own. Nothing to show and

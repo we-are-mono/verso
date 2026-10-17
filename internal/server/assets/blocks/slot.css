@@ -1,0 +1,33 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/* SPDX-FileCopyrightText: 2026 Mono Technologies Inc. */
+
+/*
+ * slot — where the first of a set would stand while it has none: a dashed
+ * frame on Quiet Sand with the hollow packet and the words for the nothing,
+ * on one 24px line 7px after the frame's top and 8px over its bottom. Every
+ * set says its nothing this way (a collection, a fact list, a listing, a
+ * rule's conditions). The frame's bottom pixel is given back, so what
+ * follows still lands on a line.
+ *
+ * Elements: __words  the nothing, said
+ */
+
+.verso-slot {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--spacing) * 3);
+  width: 100%;
+  margin-bottom: -1px;
+  padding: calc(var(--spacing) * 1.75) calc(var(--spacing) * 4) calc(var(--spacing) * 2);
+  border: 1px dashed var(--color-rule-strong);
+  border-radius: var(--radius-xs);
+  background-color: var(--color-quiet);
+  @apply type-body;
+}
+
+.verso-slot__words {
+  flex: 1 1 0%;
+  min-width: 0;
+  color: var(--color-meta);
+  @apply type-body;
+}

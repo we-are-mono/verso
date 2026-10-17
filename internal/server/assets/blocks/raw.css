@@ -1,0 +1,23 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/* SPDX-FileCopyrightText: 2026 Mono Technologies Inc. */
+
+/*
+ * raw — the governed display-only bridge (ADR-005 §4), Markdown for when no
+ * widget fits, shown with a visible "raw" affordance: the demand signal for
+ * the next widget. A dashed frame, the one line that marks a place rather
+ * than a thing, with its kicker over the prose.
+ *
+ * Elements: __kicker  the word "Raw", a label
+ */
+
+.verso-raw {
+  padding: calc(var(--spacing) * 3) calc(var(--spacing) * 4);
+  border: 1px dashed var(--color-rule-strong);
+  border-radius: var(--radius-xs);
+}
+
+.verso-raw__kicker {
+  margin-bottom: calc(var(--spacing) * 2);
+  color: var(--color-meta);
+  @apply type-label;
+}

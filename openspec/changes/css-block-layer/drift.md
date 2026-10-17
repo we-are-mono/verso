@@ -178,3 +178,18 @@ after; the SVG's fills, strokes and LED animations compared directly.
 | a port's live state | | `is-linked`, `act-N`, `is-wan` classes | `data-verso-linked`, `data-verso-activity`, `data-verso-wan` (profiles/README.md) |
 | the WAN word's weight and tracking, and the generated panel's mono 11px | | stylesheet rules | the drawing's own attributes, as a board's art sets its type; no pixel changes |
 | the Front/Rear control | | its pressed look a class string the script swapped | `aria-pressed`, which the block draws |
+
+### `code`, `prose`, `empty`, `slot` and `raw`
+
+| Copies | n | Difference | Became |
+|---|---|---|---|
+| a configuration card's lines and an opaque value | every preview | mono 16/500, the value on a 26px line | the code role (mono 16/400 on 24): a preview is the file, as the editor shows it |
+| the gutter's line numbers | every preview | mono 14px | the code role with figures (16px), on the lines' own 24px |
+| a configuration card's path | every preview | mono 14/500 on 24 | the chip role's verbatim form on its 16px line, the tab's 40px holding it centred |
+| a preview in flight | | a `verso-preview-busy` class | `data-verso-busy` |
+| prose's paragraphs and lists | | 12px apart, or 16px where a widget added an arbitrary variant | 16px everywhere, on the grid |
+| inline code in prose | | 0.85em of the words (11.9px) | the body role's verbatim form (mono 16px), the renderer marking it |
+| prose headings and the raw widget's words | | 600 by a weight rule; 14px on 21 | the subheading role; the body role on 24 |
+| an empty state's title | | 24/600 on a 40px line | the headline role, padded back to its 40px line |
+| an empty state's acts | | 40px under its body (its last paragraph kept a 16px margin) | 24px, as the state's own measure says |
+| the raw widget's kicker | | 12px caps on a 24px line | the label role on its 16px line |

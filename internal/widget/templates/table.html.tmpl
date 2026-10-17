@@ -474,9 +474,9 @@
      page's rhythm, not the listing's own. */}}
 {{if and .Empty (not .Stream) (not .Title) (not .Live)}}
 {{/* Nothing to list: the listing says so as every set does, with the empty
-     slot where its first row would stand (verso-empty-slot-class), outside
+     slot where its first row would stand (the slot block), outside
      the scroller so its frame keeps its pixel out on the lines. */}}
-<div data-verso-slot class="{{template "verso-empty-slot-class"}}">
+<div data-verso-slot class="verso-slot">
     {{template "verso-empty-slot-body" .EmptyText}}
   </div>
 {{else}}

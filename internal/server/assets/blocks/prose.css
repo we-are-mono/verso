@@ -1,0 +1,46 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/* SPDX-FileCopyrightText: 2026 Mono Technologies Inc. */
+
+/*
+ * prose — Markdown the shell's sanitizing renderer wrote (goldmark), styled
+ * minimally and display-only (ADR-005): the body role on its 24px lines, a
+ * paragraph or a list 16px apart, so every block of words starts on a line.
+ * Inline code is a machine string, the role's verbatim form (the renderer
+ * marks it, widget.verbatimCode); a link the action colour, underlined; a
+ * heading one step heavier.
+ */
+
+.verso-prose {
+  @apply type-body;
+}
+.verso-prose :is(p, ul, ol) {
+  margin: 0 0 calc(var(--spacing) * 4);
+}
+.verso-prose > :last-child {
+  margin-bottom: 0;
+}
+.verso-prose :is(ul, ol) {
+  padding-left: calc(var(--spacing) * 5);
+}
+.verso-prose ul {
+  list-style: disc;
+}
+.verso-prose ol {
+  list-style: decimal;
+}
+.verso-prose :is(h1, h2, h3) {
+  margin: 0 0 calc(var(--spacing) * 2);
+  @apply type-subheading;
+}
+.verso-prose a {
+  color: var(--color-denim);
+  text-decoration: underline;
+}
+.verso-prose :not(pre) > code {
+  @apply type-body;
+}
+.verso-prose pre {
+  margin: 0 0 calc(var(--spacing) * 4);
+  overflow-x: auto;
+  @apply type-code;
+}

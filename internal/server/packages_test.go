@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -82,7 +83,7 @@ func TestPackagesInventory(t *testing.T) {
 	panel := getPanel(t, s, "/system/packages/package?name=htop").Body.String()
 	for _, want := range []string{
 		"Process viewer", "GPL-2.0", // the drawer's story
-		"verso-prose text-sm", // the description is plain body prose, no heading over it
+		`<div class="verso-prose text-body"><p>Process viewer</p>`,                                                                                 // the description is plain body prose, no heading over it
 		`href="https://htop.dev" class="verso-link" target="_blank" rel="noopener noreferrer"`,                                                     // project link opens safely outside Verso
 		`<dl class="verso-facts" data-verso-style="system">`,                                                                                       // facts are hairline rows 32px under the prose, closed by a rule as a table's are
 		`<header class="flex flex-none items-center gap-4 bg-ground px-(--verso-drawer-gutter) py-3.5 shadow-[inset_0_-1px_0_var(--color-rule)]">`, // shared title band
@@ -91,6 +92,12 @@ func TestPackagesInventory(t *testing.T) {
 		if !strings.Contains(panel, want) {
 			t.Errorf("drawer missing %q", want)
 		}
+	}
+	// Prose is set in the body role (blocks/prose.css).
+	if prose, err := os.ReadFile("assets/blocks/prose.css"); err != nil {
+		t.Fatal(err)
+	} else if !strings.Contains(string(prose), ".verso-prose {\n  @apply type-body;\n}") {
+		t.Error("blocks/prose.css does not set prose in the body role")
 	}
 	if strings.Contains(panel, `value="install"`) {
 		t.Error("an installed package's drawer offers no install")
@@ -449,7 +456,7 @@ func TestAvailableWaitsForExplicitSearch(t *testing.T) {
 	body := get(t, s, "/system/packages/discover").Body.String()
 	// Before a search the listing is its empty slot, saying what goes there.
 	for _, want := range []string{
-		`<p class="min-w-0 flex-1 text-sm leading-6 text-meta">Enter a package name, then select Search. Matching packages will appear here.</p>`,
+		`<p class="verso-slot__words">Enter a package name, then select Search. Matching packages will appear here.</p>`,
 		`placeholder="Package name"`,
 		"autofocus",
 	} {
@@ -466,7 +473,7 @@ func TestAvailableNoResultsExplainsRecovery(t *testing.T) {
 	body := get(t, pluginsServer(t, fakeBackend{access: true}, true, mgmtManifest()), "/system/packages/discover?q=missing").Body.String()
 	// No match is the listing's empty slot, telling a filtered nothing apart.
 	for _, want := range []string{
-		`<p class="min-w-0 flex-1 text-sm leading-6 text-meta">No available packages match “missing”. Check the spelling or refresh the package feeds.</p>`,
+		`<p class="verso-slot__words">No available packages match “missing”. Check the spelling or refresh the package feeds.</p>`,
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("no-results state missing %q", want)

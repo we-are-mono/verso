@@ -281,9 +281,10 @@ func TestInternetCardBodySaysWhatIsMissing(t *testing.T) {
 	if !strings.Contains(body, "192.0.2.1/24") || !strings.Contains(body, `x-data="copy"`) {
 		t.Error("the IPv4 address must be listed and copyable")
 	}
-	if !strings.Contains(body, "No prefix was delegated.") || !strings.Contains(body, "border-dashed") || !strings.Contains(body, `<span aria-hidden="true" class="verso-mark"></span>`) {
+	if !strings.Contains(body, "No prefix was delegated.") || !strings.Contains(body, `<div data-verso-slot class="verso-slot">`) || !strings.Contains(body, `<span aria-hidden="true" class="verso-mark"></span>`) {
 		t.Errorf("an absent IPv6 needs the empty slot and its hollow packet: %s", body)
 	}
+	declaresTheSlot(t)
 }
 
 // The uplink's device and how long it has been connected head the Internet

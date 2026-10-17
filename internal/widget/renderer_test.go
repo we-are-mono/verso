@@ -321,7 +321,11 @@ func TestRenderEmpty(t *testing.T) {
 	})
 
 	for _, want := range []string{
-		"verso-empty-icon",
+		`<div class="verso-empty">`,
+		`<span class="verso-empty__icon">`,
+		`<h2 class="verso-empty__title">Reach your home from anywhere</h2>`,
+		`<div class="verso-prose verso-empty__body">`,
+		`<div class="verso-empty__acts">`,
 		"Reach your home from anywhere",
 		"Set up a private VPN so your devices can reach home.",
 		"Set up home VPN", // the CTA (a modal trigger) rendered as a child
@@ -331,6 +335,11 @@ func TestRenderEmpty(t *testing.T) {
 			t.Errorf("empty missing %q in: %s", want, got)
 		}
 	}
+	// The pulsing accent icon is the block's: 80px, 24px over the title.
+	declares(t, "empty", ".verso-empty__icon",
+		"width: calc(var(--spacing) * 20)", "height: calc(var(--spacing) * 20)",
+		"margin-bottom: calc(var(--spacing) * 6)", "border-radius: var(--radius-3xl)")
+	declares(t, "empty", ".verso-empty__icon::after", "animation: verso-pulse-lg")
 }
 
 // TestRenderEmptyBodyIsMarkdown: an empty state's one line of reassurance is
@@ -922,11 +931,17 @@ func TestRenderSection(t *testing.T) {
 func TestRenderCode(t *testing.T) {
 	r := newRenderer(t)
 	got := render(t, r, &Code{Label: "Server public key", Value: "HIgo9xNzJM==", Copy: true})
-	for _, want := range []string{"Server public key", "HIgo9xNzJM==", "font-mono", `x-data="copy"`, "Copy", "Copied", "text-green", "whitespace-pre"} {
+	for _, want := range []string{
+		`<span class="verso-code__path" data-verso-verbatim>Server public key</span>`,
+		`<div class="verso-code__value verso-drawer-scrollbar">HIgo9xNzJM==</div>`,
+		`x-data="copy"`, "Copy", "Copied", "text-green",
+	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("code missing %q in: %s", want, got)
 		}
 	}
+	// The value is a machine string, set as code and kept as written.
+	declares(t, "code", ".verso-code__value", "white-space: pre", "@apply type-code")
 	// Without copy, no copy button.
 	nocopy := render(t, r, &Code{Value: "abc"})
 	if strings.Contains(nocopy, "x-data") {
@@ -963,7 +978,7 @@ func TestRenderCodeInUciGrammar(t *testing.T) {
 		// The file it goes into heads it, as an editor's tab does, with the
 		// copy control on that line and the whole text behind it.
 		`data-verso-code-head`,
-		`<span class="min-w-0 truncate font-mono text-sm font-medium text-meta">/etc/config/network · interface</span>`,
+		`<span class="verso-code__path" data-verso-verbatim>/etc/config/network · interface</span>`,
 		`<span x-ref="src" class="hidden">config interface &#39;lan&#39;`,
 		// A gutter numbers the lines, apart from the text, so selecting and
 		// copying the text takes none of it.
@@ -978,9 +993,28 @@ func TestRenderCodeInUciGrammar(t *testing.T) {
 	}
 	// Each line and its number stand on a 24px line, so a file of any length
 	// closes its card on a line of the 8px grid.
-	if strings.Count(got, "leading-6") < 2 || strings.Contains(got, "text-sm leading-5") || strings.Contains(got, "text-base leading-5") {
-		t.Errorf("the file's lines are not 24px: %s", got)
+	if !strings.Contains(got, `class="verso-code__gutter" data-verso-figures>`) ||
+		!strings.Contains(got, `class="verso-code__text verso-drawer-scrollbar">`) {
+		t.Errorf("the gutter and the text are not the code block's: %s", got)
 	}
+	declares(t, "code", ".verso-code__gutter", "@apply type-code")
+	declares(t, "code", ".verso-code__text", "@apply type-code", "white-space: pre")
+	typeCSS, err := os.ReadFile(filepath.Join("..", "server", "assets", "type.css"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(cssRule(string(typeCSS), "@utility type-code"), "line-height: 1.5rem;") {
+		t.Errorf("the file's lines are not 24px: %s", cssRule(string(typeCSS), "@utility type-code"))
+	}
+	// Past 99 lines the gutter widens for a third figure.
+	var long strings.Builder
+	for i := 0; i < 100; i++ {
+		long.WriteString("config interface 'lan'\n")
+	}
+	if wide := render(t, r, &Code{Value: long.String(), Grammar: "uci"}); !strings.Contains(wide, `class="verso-code__gutter" data-verso-figures data-verso-wide>`) {
+		t.Errorf("a gutter past 99 lines is not the wide one: %s", wide)
+	}
+	declares(t, "code", ".verso-code__gutter[data-verso-wide]", "width: calc(var(--spacing) * 16)")
 	// A file ends in a newline; the line it closes is not a line of its own.
 	ended := &Code{Value: text + "\n", Grammar: "uci"}
 	if n := len(ended.Lines()); n != 4 {
@@ -994,9 +1028,20 @@ func TestRenderCodeInUciGrammar(t *testing.T) {
 	if strings.Contains(frame, "overflow-hidden") {
 		t.Errorf("the card must not clip its copy control's tip: %s", frame)
 	}
-	if !strings.Contains(got, `data-verso-code-head class="flex h-10 items-center gap-2 rounded-t-xs`) {
-		t.Errorf("the head rounds its own corners: %s", got)
+	if !strings.Contains(got, `data-verso-code-head class="verso-code__head"`) {
+		t.Errorf("the head is not the code block's: %s", got)
 	}
+	declares(t, "code", ".verso-code__editor", "border-radius: var(--radius-xs)")
+	if strings.Contains(cssRule(blockCSS(t, "code"), ".verso-code__editor"), "overflow") {
+		t.Error("the card must not clip its copy control's tip")
+	}
+	declares(t, "code", ".verso-code__head", "height: calc(var(--spacing) * 10)",
+		"border-radius: var(--radius-xs) var(--radius-xs) 0 0", "background-color: var(--color-quiet)")
+	// The gutter rounds the corner it stands in: the bottom left under a head,
+	// the top left as well with none.
+	declares(t, "code", ".verso-code__gutter", "border-radius: 0 0 0 var(--radius-xs)")
+	declares(t, "code", ".verso-code__gutter:where(.verso-code__editor:not(:has(> .verso-code__head)) *)",
+		"border-top-left-radius: var(--radius-xs)")
 	// The card stands two cells under the rule that sets it off, the rule two
 	// cells under what it follows, as every section's rule and title — on a
 	// page and in a drawer alike, so the air is the stylesheet's, not the
@@ -1005,7 +1050,8 @@ func TestRenderCodeInUciGrammar(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(got, `class="flex flex-col gap-2 border-t border-rule" data-verso-code-divider`) ||
+	declares(t, "code", ".verso-code[data-verso-code-divider]", "border-top-width: 1px", "var(--color-rule)")
+	if !strings.Contains(got, `class="verso-code" data-verso-code-divider`) ||
 		!strings.Contains(string(sections), "[data-verso-code-divider] {\n    margin-top: calc(var(--spacing) * 10);\n    padding-top: calc(var(--spacing) * 10 - 1px);\n  }") {
 		t.Errorf("the card stands a cell under its rule: %s", got)
 	}
@@ -1358,11 +1404,19 @@ func TestRenderRawMarkdown(t *testing.T) {
 	r := newRenderer(t)
 
 	got := render(t, r, &Raw{Markdown: "**bold** and `code`"})
-	for _, want := range []string{"<strong>bold</strong>", "<code>code</code>", "Raw"} {
+	for _, want := range []string{
+		`<div class="verso-raw"><div class="verso-raw__kicker">Raw</div><div class="verso-prose text-ink">`,
+		"<strong>bold</strong>",
+		// Inline code is a machine string, set in the prose's verbatim form.
+		`<code data-verso-verbatim="">code</code>`,
+	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("raw output missing %q: %s", want, got)
 		}
 	}
+	declares(t, "prose", ".verso-prose :not(pre) > code", "@apply type-body")
+	declares(t, "raw", ".verso-raw", "border: 1px dashed var(--color-rule-strong)")
+	declares(t, "raw", ".verso-raw__kicker", "@apply type-label")
 }
 
 // TestRenderRawSanitizes is the bridge's safety net: source HTML is neutralised

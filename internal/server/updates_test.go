@@ -311,7 +311,7 @@ func TestMaintenanceUpdatesEverythingCurrent(t *testing.T) {
 		// and revision together, and names the server it was checked
 		// against, the name verbatim in mono.
 		">Installed<", ">25.12.4 r32933-4ccb782af7<",
-		"Checked against <code>https://sysupgrade.mono.si</code>",
+		`Checked against <code data-verso-verbatim="">https://sysupgrade.mono.si</code>`,
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("the up-to-date Updates section is missing %q:\n%s", want, body)
@@ -370,7 +370,7 @@ func TestMaintenanceFirmwareRungs(t *testing.T) {
 				// the arrow, each as the update tool writes it; no sentence
 				// restates it.
 				">Installed<", `aria-label="Available version"`, ">25.12.4 r32933<", ">25.12.5 r33051<",
-				"Built by <code>https://sysupgrade.openwrt.org</code>", "78 packages change",
+				`Built by <code data-verso-verbatim="">https://sysupgrade.openwrt.org</code>`, "78 packages change",
 				// Installing is caution, not danger: the same one-hue confirm, in
 				// marigold, naming the build.
 				"Download and install 25.12.5", `data-verso-confirm-tone="caution"`, "Install 25.12.5 now?",

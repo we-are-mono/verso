@@ -28,11 +28,11 @@
     {{end}}
   </ul>
   {{/* Where the first item would stand, while there is none: the empty slot
-       every set draws (verso-empty-slot-class). It is inert: the add stays at
+       every set draws (the slot block). It is inert: the add stays at
        the foot, where it stands under the items once there are some. The slot
        keeps no air above it: the subheading's is the gap. */}}
   {{else if .Empty}}
-  <div data-verso-slot class="{{template "verso-empty-slot-class"}}">
+  <div data-verso-slot class="verso-slot">
     {{template "verso-empty-slot-body" .Empty}}
   </div>
   {{end}}

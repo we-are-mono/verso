@@ -31,7 +31,9 @@
 @import "./blocks/chart.css" layer(components);
 @import "./blocks/chevron.css" layer(components);
 @import "./blocks/chip.css" layer(components);
+@import "./blocks/code.css" layer(components);
 @import "./blocks/copy-inline.css" layer(components);
+@import "./blocks/empty.css" layer(components);
 @import "./blocks/facts.css" layer(components);
 @import "./blocks/facts-head.css" layer(components);
 @import "./blocks/fold.css" layer(components);
@@ -43,8 +45,11 @@
 @import "./blocks/meter.css" layer(components);
 @import "./blocks/panel.css" layer(components);
 @import "./blocks/ports.css" layer(components);
+@import "./blocks/prose.css" layer(components);
+@import "./blocks/raw.css" layer(components);
 @import "./blocks/reorder.css" layer(components);
 @import "./blocks/rhythm.css" layer(components);
+@import "./blocks/slot.css" layer(components);
 @import "./blocks/steps.css" layer(components);
 @import "./blocks/table.css" layer(components);
 @import "./blocks/tabs.css" layer(components);
@@ -426,26 +431,6 @@ html {
     .verso-outcome { transform: none; transition: opacity 0.2s ease-out; }
   }
 
-  /* The live preview while its answer is in flight (verso-forms.js). It fades
-     rather than blanks or spins: the lines on screen are still the last true
-     answer, a moment out of date, and a box that emptied itself between
-     keystrokes would keep saying "this writes nothing". The fade is slow enough
-     in and instant out that a fast answer never flickers. */
-  [data-verso-preview] { transition: opacity 0.4s ease 0.15s; }
-  [data-verso-preview].verso-preview-busy { opacity: 0.55; }
-  @media (prefers-reduced-motion: reduce) {
-    [data-verso-preview] { transition: none; }
-  }
-
-  /* Prose for the raw bridge: goldmark output, styled minimally and display-only
-     (ADR-005) — the Tailwind typography plugin needs Node, which we don't ship. */
-  .verso-prose p { margin: 0 0 0.75rem; }
-  .verso-prose > :last-child { margin-bottom: 0; }
-  .verso-prose a { color: var(--color-denim); text-decoration: underline; }
-  .verso-prose code { font-family: var(--font-mono); font-size: 0.85em; }
-  .verso-prose ul { list-style: disc; padding-left: 1.25rem; margin: 0 0 0.75rem; }
-  .verso-prose ol { list-style: decimal; padding-left: 1.25rem; margin: 0 0 0.75rem; }
-  .verso-prose h1, .verso-prose h2, .verso-prose h3 { font-weight: 600; margin: 0 0 0.5rem; }
 
   /* The rail beside a long page marks the section you are reading: the words go
      to ink and take on weight, and the hairline the link already carries becomes
@@ -489,38 +474,6 @@ html {
   .verso-inline-switch:has(input[data-verso-switch]:checked) .verso-inline-switch-on { display: inline; }
   .verso-inline-switch:has(input[data-verso-switch]:checked) .verso-inline-switch-off { display: none; }
 
-  /* empty widget: a first-run state (ADR-005 §7). The accent icon breathes a soft
-     ring so the eye lands on the one thing to do. Keyframes have no utility equivalent. */
-  .verso-empty-icon {
-    --verso-empty-accent-100: var(--color-denim-soft);
-    --verso-empty-accent-500: var(--color-denim);
-    --verso-empty-accent-600: var(--color-denim-deep);
-    background-color: var(--verso-empty-accent-100);
-    color: var(--verso-empty-accent-600);
-    position: relative;
-  }
-  /* A state that has arrived rather than one waiting to begin: the icon carries
-     the success tone, ring and all, by swapping the accent the whole treatment
-     reads from. */
-  .verso-empty-icon--success {
-    --verso-empty-accent-100: var(--color-green-soft);
-    --verso-empty-accent-500: var(--color-green);
-    --verso-empty-accent-600: var(--color-green-deep);
-  }
-  /* The ring grows out from the icon's edge and fades: scale and opacity only,
-     which the compositor runs without repainting the page each frame. */
-  .verso-empty-icon::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
-    border: 0.125rem solid color-mix(in srgb, var(--verso-empty-accent-500) 35%, transparent);
-    animation: verso-pulse-lg 3s ease-out infinite;
-  }
-  @keyframes verso-pulse-lg {
-    0%       { transform: scale(1); opacity: 1; }
-    70%,100% { transform: scale(1.5); opacity: 0; }
-  }
 
   /* A live state mark (a green packet) breathes an expanding ring of its own
      shape, so "connected" reads at a glance. Static marks stay calm. */
@@ -552,9 +505,9 @@ html {
      and stays on the grid. A control that states its own vertical margin
      keeps it. */
   :is(.h-control, .verso-box, [data-verso-token-list]) { margin-bottom: -1px; }
-  /* A notice and an empty set's slot are framed as a card is, 8px over the
-     bottom border, and give its pixel back the same way. */
-  :is([data-verso-callout], [data-verso-slot]) { margin-bottom: -1px; }
+  /* A notice is framed as a card is, 8px over the bottom border, and gives
+     its pixel back the same way. */
+  [data-verso-callout] { margin-bottom: -1px; }
   /* The heading keeps the masthead's act-height line on its own, centred on
      it, so it stands at one height whether an act shares its line or the
      acts wrap to a line of their own under it. */
@@ -571,7 +524,7 @@ html {
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .verso-empty-icon::after, .verso-live-dot::after { animation: none; }
+    .verso-live-dot::after { animation: none; }
   }
 }
 

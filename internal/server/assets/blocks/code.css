@@ -1,0 +1,141 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/* SPDX-FileCopyrightText: 2026 Mono Technologies Inc. */
+
+/*
+ * code — the lines a form will write, exactly as it will write them, under
+ * the file they go into: a form's own footnote, behind a hairline at its
+ * foot. A block in a grammar reads as an editor shows a file: its path heads
+ * it on a quiet strip, as an editor's tab, with the copy control on that
+ * line; under it the text on a field's white, each line numbered in a gutter
+ * apart from the text, so selecting or copying the text takes none of it.
+ * Each line fills a 24px band of the grid, 23px after the edge over the
+ * first and 24px under the last, and the gutter's numbers stand on the same
+ * lines; the text scrolls sideways rather than wrapping, because a wrapped
+ * uci line is a misread one. An opaque value (a key, a token) is one string
+ * in one box, the copy control inside it at the top right.
+ *
+ * The card does not clip what stands outside it (the copy control's tip
+ * hangs above the head), so its quiet pieces round their own corners.
+ *
+ * Variants: data-verso-code-divider  the block stands under a hairline
+ *           data-verso-busy          a live preview whose answer is in
+ *                                    flight (verso-forms.js): it fades rather
+ *                                    than blanks, slow in and instant out, so
+ *                                    a fast answer never flickers
+ * Elements: __editor  the file's card
+ *           __head    its tab: the path and the copy control
+ *           __path    the file's path
+ *           __gutter  the line numbers; data-verso-wide past 99 lines
+ *           __text    the lines
+ *           __value   an opaque value's box
+ *           __says    what the lines do, in words
+ */
+
+.verso-code {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--spacing) * 2);
+}
+.verso-code[data-verso-code-divider] {
+  border: 0 solid var(--color-rule);
+  border-top-width: 1px;
+}
+.verso-code[data-verso-preview] {
+  transition: opacity 0.4s ease 0.15s;
+}
+.verso-code[data-verso-preview][data-verso-busy] {
+  opacity: 0.55;
+}
+@media (prefers-reduced-motion: reduce) {
+  .verso-code[data-verso-preview] {
+    transition: none;
+  }
+}
+
+.verso-code__editor {
+  min-width: 0;
+  border: 1px solid var(--color-rule);
+  border-radius: var(--radius-xs);
+  background-color: var(--color-canvas);
+}
+.verso-code__head {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--spacing) * 2);
+  height: calc(var(--spacing) * 10);
+  padding: 0 var(--spacing) 1px calc(var(--spacing) * 3);
+  border: 0 solid var(--color-rule);
+  border-bottom-width: 1px;
+  border-radius: var(--radius-xs) var(--radius-xs) 0 0;
+  background-color: var(--color-quiet);
+}
+.verso-code__path {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-meta);
+  @apply type-chip;
+}
+
+.verso-code__gutter {
+  flex-shrink: 0;
+  width: calc(var(--spacing) * 10);
+  padding-block: calc(var(--spacing) * 5.75) calc(var(--spacing) * 6);
+  border: 0 solid var(--color-rule);
+  border-right-width: 1px;
+  border-radius: 0 0 0 var(--radius-xs);
+  background-color: var(--color-quiet);
+  color: var(--color-faint);
+  text-align: right;
+  user-select: none;
+  @apply type-code;
+}
+.verso-code__gutter[data-verso-wide] {
+  width: calc(var(--spacing) * 16);
+}
+.verso-code__gutter:where(.verso-code__editor:not(:has(> .verso-code__head)) *) {
+  border-top-left-radius: var(--radius-xs);
+}
+.verso-code__gutter > * {
+  display: block;
+  padding-inline: calc(var(--spacing) * 2.5);
+}
+/* The gutter marks what the form has done to the file since it was opened
+   (verso-forms.js): a line changed wears the stage's marigold, a line added
+   green — a bar at the gutter's edge and the number in the same hue's deep
+   ink, where the eye already looks for a line. */
+.verso-code__gutter > [data-verso-change="changed"] {
+  box-shadow: inset 3px 0 0 var(--color-marigold);
+  color: var(--color-marigold-deep);
+}
+.verso-code__gutter > [data-verso-change="added"] {
+  box-shadow: inset 3px 0 0 var(--color-green);
+  color: var(--color-green-deep);
+}
+
+.verso-code__text {
+  flex: 1 1 0%;
+  min-width: 0;
+  overflow-x: auto;
+  padding: calc(var(--spacing) * 5.75) calc(var(--spacing) * 3) calc(var(--spacing) * 6);
+  white-space: pre;
+  color: var(--color-ink);
+  @apply type-code;
+}
+
+.verso-code__value {
+  overflow-x: auto;
+  padding: calc(var(--spacing) * 3) calc(var(--spacing) * 12) calc(var(--spacing) * 3) calc(var(--spacing) * 3);
+  border: 1px solid var(--color-rule);
+  border-radius: var(--radius-xs);
+  background-color: var(--color-quiet);
+  white-space: pre;
+  color: var(--color-ink);
+  @apply type-code;
+}
+
+.verso-code__says {
+  color: var(--color-ink);
+  @apply type-body;
+}

@@ -19,19 +19,12 @@
 {{define "verso-select-compact"}}h-6 cursor-pointer appearance-none rounded-xs border border-rule-strong bg-canvas pr-7 pl-2 text-sm leading-none text-ink transition-colors hover:border-faint focus:border-denim focus:outline-none{{end}}
 {{define "verso-select-compact-chevron"}}pointer-events-none absolute right-2 flex text-meta{{end}}
 
-{{/* verso-empty-slot-class and verso-empty-slot-body: where the first of a
-     set's things would stand while there is none — a place, not a sentence.
-     Quiet Sand inside a dashed Strong Hairline, the one line in the app that
-     marks a place rather than a thing, holding the hollow packet (absent) and
-     the set's empty words in Meta. Every set draws its empty state this way (a
-     collection's keys, a rule's conditions); the element and its attributes
-     stay at the call site, and the add stands 24px under it. On the grid its
-     frame's borders are lines and it is a row's 40px with the bottom
-     border's pixel given back, its words 7px after the top border and 8px
-     over the bottom one, filling a band of the grid. */}}
-{{define "verso-empty-slot-class"}}flex w-full items-center gap-3 rounded-xs border border-dashed border-rule-strong bg-quiet px-4 pt-1.75 pb-2 leading-6{{end}}
+{{/* verso-empty-slot-body: what stands in a set's slot (the slot block,
+     blocks/slot.css) — the hollow packet (absent) and the set's empty words.
+     The slot element and its attributes stay at the call site, and the add
+     stands 24px under it. */}}
 {{define "verso-empty-slot-body"}}<span aria-hidden="true" class="verso-mark"></span>
-    <p class="min-w-0 flex-1 text-sm leading-6 text-meta">{{.}}</p>{{end}}
+    <p class="verso-slot__words">{{.}}</p>{{end}}
 
 {{/* verso-input-border: a form control's border, the only thing that changes
      about it — the strong hairline at rest, the faint step under the pointer,

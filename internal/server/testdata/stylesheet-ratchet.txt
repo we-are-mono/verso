@@ -25,8 +25,6 @@ classes-are-blocks	verso-drawer
 classes-are-blocks	verso-drawer-motion
 classes-are-blocks	verso-drawer-open
 classes-are-blocks	verso-drawer-scrollbar
-classes-are-blocks	verso-empty-icon
-classes-are-blocks	verso-empty-icon--success
 classes-are-blocks	verso-field-act
 classes-are-blocks	verso-field-answer
 classes-are-blocks	verso-field-control
@@ -76,8 +74,6 @@ classes-are-blocks	verso-page-ground
 classes-are-blocks	verso-page-heading
 classes-are-blocks	verso-pending-link
 classes-are-blocks	verso-pluck
-classes-are-blocks	verso-preview-busy
-classes-are-blocks	verso-prose
 classes-are-blocks	verso-rail-link
 classes-are-blocks	verso-reveal
 classes-are-blocks	verso-reveal-act
@@ -100,7 +96,6 @@ no-class-string-templates	widget/templates/shared.html.tmpl	verso-drawer-box
 no-class-string-templates	widget/templates/shared.html.tmpl	verso-drawer-ground
 no-class-string-templates	widget/templates/shared.html.tmpl	verso-drawer-inset
 no-class-string-templates	widget/templates/shared.html.tmpl	verso-drawer-width
-no-class-string-templates	widget/templates/shared.html.tmpl	verso-empty-slot-class
 no-class-string-templates	widget/templates/shared.html.tmpl	verso-error-line
 no-class-string-templates	widget/templates/shared.html.tmpl	verso-field-control-class
 no-class-string-templates	widget/templates/shared.html.tmpl	verso-field-desc-class
@@ -160,7 +155,6 @@ no-rules-in-markup	widget/templates/disclosure.html.tmpl	[&::-webkit-details-mar
 no-rules-in-markup	widget/templates/disclosure.html.tmpl	[&::-webkit-details-marker]:hidden
 no-rules-in-markup	widget/templates/disclosure.html.tmpl	[&_tbody_tr:last-child_td]:pb-0
 no-rules-in-markup	widget/templates/disclosure.html.tmpl	[&_thead_th]:pt-0
-no-rules-in-markup	widget/templates/empty.html.tmpl	[&_p]:mb-4
 no-rules-in-markup	widget/templates/form.html.tmpl	[&>.verso-field-row]:min-w-0
 no-rules-in-markup	widget/templates/form.html.tmpl	[&>.verso-field-row]:w-80
 no-rules-in-markup	widget/templates/form.html.tmpl	[&>div:not(:last-of-type)]:w-52
@@ -226,7 +220,6 @@ no-rules-in-markup	widget/templates/shared.html.tmpl	[&_th:last-child]:!text-rig
 no-rules-in-markup	widget/templates/shared.html.tmpl	w-measure-24!
 no-rules-in-markup	widget/templates/shared.html.tmpl	w-measure-32!
 no-rules-in-markup	widget/templates/shared.html.tmpl	w-measure-44!
-no-rules-in-markup	widget/templates/text.html.tmpl	[&>:is(p,ul,ol):not(:last-child)]:mb-4
 no-rules-in-markup	widget/templates/when.html.tmpl	!mt-0
 rules-live-in-blocks	forms.css	.verso-box
 rules-live-in-blocks	forms.css	.verso-box-chevron
@@ -333,8 +326,6 @@ rules-live-in-blocks	forms.css	[data-verso-descriptions="folded"] [data-verso-fi
 rules-live-in-blocks	forms.css	[data-verso-field-desc]
 rules-live-in-blocks	forms.css	[data-verso-field-desc]
 rules-live-in-blocks	forms.css	[data-verso-field-desc] > span
-rules-live-in-blocks	forms.css	[data-verso-gutter-line][data-verso-change="added"]
-rules-live-in-blocks	forms.css	[data-verso-gutter-line][data-verso-change="changed"]
 rules-live-in-blocks	forms.css	[data-verso-in-form] tbody > tr:last-child > td
 rules-live-in-blocks	forms.css	[data-verso-settings] .verso-field-row:has(+ details)
 rules-live-in-blocks	forms.css	fieldset[data-verso-when] + .verso-conditional > .verso-conditional-gate
@@ -360,10 +351,6 @@ rules-live-in-blocks	input.css	.verso-drawer-scrollbar::-webkit-scrollbar-thumb
 rules-live-in-blocks	input.css	.verso-drawer-scrollbar::-webkit-scrollbar-thumb:hover
 rules-live-in-blocks	input.css	.verso-drawer-scrollbar::-webkit-scrollbar-track
 rules-live-in-blocks	input.css	.verso-drawer.verso-drawer-open
-rules-live-in-blocks	input.css	.verso-empty-icon
-rules-live-in-blocks	input.css	.verso-empty-icon--success
-rules-live-in-blocks	input.css	.verso-empty-icon::after
-rules-live-in-blocks	input.css	.verso-empty-icon::after
 rules-live-in-blocks	input.css	.verso-glyph-fan-spin
 rules-live-in-blocks	input.css	.verso-glyph-fan-spin
 rules-live-in-blocks	input.css	.verso-inline-switch-off
@@ -434,15 +421,6 @@ rules-live-in-blocks	input.css	.verso-pluck
 rules-live-in-blocks	input.css	.verso-pluck
 rules-live-in-blocks	input.css	.verso-pluck:focus-visible
 rules-live-in-blocks	input.css	.verso-pluck:hover
-rules-live-in-blocks	input.css	.verso-prose > :last-child
-rules-live-in-blocks	input.css	.verso-prose a
-rules-live-in-blocks	input.css	.verso-prose code
-rules-live-in-blocks	input.css	.verso-prose h1
-rules-live-in-blocks	input.css	.verso-prose h2
-rules-live-in-blocks	input.css	.verso-prose h3
-rules-live-in-blocks	input.css	.verso-prose ol
-rules-live-in-blocks	input.css	.verso-prose p
-rules-live-in-blocks	input.css	.verso-prose ul
 rules-live-in-blocks	input.css	.verso-rail-link
 rules-live-in-blocks	input.css	.verso-rail-link:hover
 rules-live-in-blocks	input.css	.verso-rail-link[aria-current="true"]
@@ -474,7 +452,6 @@ rules-live-in-blocks	input.css	:is(.h-control, .verso-box, [data-verso-token-lis
 rules-live-in-blocks	input.css	:is(.verso-modal-motion, .verso-drawer-motion)::backdrop
 rules-live-in-blocks	input.css	:is(.verso-modal-motion, .verso-drawer-motion)[data-closing]::backdrop
 rules-live-in-blocks	input.css	:is(.verso-modal-motion, .verso-drawer-motion)[open]::backdrop
-rules-live-in-blocks	input.css	:is([data-verso-callout], [data-verso-slot])
 rules-live-in-blocks	input.css	:root[data-verso-grid] [data-verso-drawer-body]
 rules-live-in-blocks	input.css	:root[data-verso-grid] main
 rules-live-in-blocks	input.css	:root[data-verso-grid] main::after
@@ -490,15 +467,13 @@ rules-live-in-blocks	input.css	[data-copied] .verso-colophon-fact
 rules-live-in-blocks	input.css	[data-verso-callout-acts] a
 rules-live-in-blocks	input.css	[data-verso-callout-acts] a svg
 rules-live-in-blocks	input.css	[data-verso-callout-acts] a:hover
+rules-live-in-blocks	input.css	[data-verso-callout]
 rules-live-in-blocks	input.css	[data-verso-colophon] > div
 rules-live-in-blocks	input.css	[data-verso-diag-form][data-verso-diag-picked] [data-verso-diag-glyph]
 rules-live-in-blocks	input.css	[data-verso-expanded-row][data-verso-unfolding] [data-verso-ledger] > [aria-hidden]
 rules-live-in-blocks	input.css	[data-verso-expanded-row][data-verso-unfolding] [data-verso-ledger] > [aria-hidden]
 rules-live-in-blocks	input.css	[data-verso-expanded-row][data-verso-unfolding] [data-verso-rise]
 rules-live-in-blocks	input.css	[data-verso-expanded-row][data-verso-unfolding] [data-verso-rise]
-rules-live-in-blocks	input.css	[data-verso-preview]
-rules-live-in-blocks	input.css	[data-verso-preview]
-rules-live-in-blocks	input.css	[data-verso-preview].verso-preview-busy
 rules-live-in-blocks	input.css	[data-verso-section-lede]
 rules-live-in-blocks	input.css	[data-verso-section-lede]
 rules-live-in-blocks	input.css	[data-verso-section-lede] *
@@ -682,10 +657,6 @@ short-class-lists	widget/templates/actionbar.html.tmpl	h-control w-full cursor-p
 short-class-lists	widget/templates/badge.html.tmpl	inline-flex items-center gap-2 rounded-xs border px-3 py-3 text-sm font-medium {{if eq .Variant "success"}}border-green-line bg-green-soft text-green-deep {{else if eq .Variant "warning"}}border-marigold-line bg-marigold-soft text-marigold-deep {{else if eq .Variant "danger"}}border-crimson-line bg-crimson-soft text-crimson-deep {{else if eq .Variant "info"}}border-denim-line bg-denim-soft text-denim-deep {{else}}border-rule bg-quiet text-meta{{end}}
 short-class-lists	widget/templates/callout.html.tmpl	relative flex w-full{{if .Compact}} max-w-(--container-3xl){{end}} items-start rounded-xs border pt-1.75 pr-3 pb-2 pl-5.75 text-left text-sm leading-6 {{if eq .Variant "success"}}border-green-line bg-green-soft text-green-deep {{else if eq .Variant "warning"}}border-marigold-line bg-marigold-soft text-marigold-deep {{else if eq .Variant "danger"}}border-crimson-line bg-crimson-soft text-crimson-deep {{else if eq .Variant "neutral"}}border-rule bg-quiet text-body {{else}}border-denim-line bg-denim-soft text-denim-deep{{end}}
 short-class-lists	widget/templates/callout.html.tmpl	verso-copy-inline group/copy relative -my-1 grid size-7 shrink-0 cursor-pointer place-items-center rounded-xs border border-transparent transition-colors hover:bg-canvas/50 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-current
-short-class-lists	widget/templates/code.html.tmpl	flex h-10 items-center gap-2 rounded-t-xs border-b border-rule bg-quiet pr-1 pb-px pl-3
-short-class-lists	widget/templates/code.html.tmpl	shrink-0 {{if or .Label .Copy}}rounded-bl-xs{{else}}rounded-l-xs{{end}} {{if gt (len .Lines) 99}}w-16{{else}}w-10{{end}} border-r border-rule bg-quiet pt-5.75 pb-6 text-right font-mono text-sm leading-6 tabular-nums text-faint select-none
-short-class-lists	widget/templates/code.html.tmpl	verso-drawer-scrollbar min-w-0 flex-1 overflow-x-auto px-3 pt-5.75 pb-6 font-mono text-base leading-6 font-medium whitespace-pre text-ink
-short-class-lists	widget/templates/code.html.tmpl	verso-drawer-scrollbar overflow-x-auto rounded-xs border border-rule bg-quiet py-3 pr-12 pl-3 font-mono text-base leading-relaxed font-medium whitespace-pre text-ink
 short-class-lists	widget/templates/conditions.html.tmpl	absolute top-full left-0 z-30 mt-2 w-[36rem] max-w-[calc(100vw-2rem)] rounded-xs border border-rule-strong bg-ground shadow-(--shadow-menu)
 short-class-lists	widget/templates/conditions.html.tmpl	flex w-full items-center gap-3 border-t border-rule px-4 py-2 text-left transition-colors first:border-t-0 enabled:cursor-pointer enabled:hover:bg-quiet/50 disabled:opacity-45
 short-class-lists	widget/templates/conditions.html.tmpl	h-6 min-w-0 flex-1 border-0 bg-transparent p-0 text-sm text-ink outline-none placeholder:font-normal placeholder:text-meta
@@ -761,9 +732,6 @@ type-comes-from-roles	input.css	.verso-page-heading	font-weight
 type-comes-from-roles	input.css	.verso-page-heading	letter-spacing
 type-comes-from-roles	input.css	.verso-page-heading	line-height
 type-comes-from-roles	input.css	.verso-pluck	font
-type-comes-from-roles	input.css	.verso-prose code	font-family
-type-comes-from-roles	input.css	.verso-prose code	font-size
-type-comes-from-roles	input.css	.verso-prose h1, .verso-prose h2, .verso-prose h3	font-weight
 type-comes-from-roles	input.css	.verso-rail-link[aria-current="true"]	font-weight
 type-comes-from-roles	input.css	.verso-stream-release-x	font-size
 type-comes-from-roles	input.css	.verso-stream-release-x	line-height
@@ -1003,25 +971,6 @@ type-comes-from-roles	widget/templates/callout.html.tmpl	leading-6
 type-comes-from-roles	widget/templates/callout.html.tmpl	leading-6
 type-comes-from-roles	widget/templates/callout.html.tmpl	text-base
 type-comes-from-roles	widget/templates/callout.html.tmpl	text-sm
-type-comes-from-roles	widget/templates/code.html.tmpl	font-medium
-type-comes-from-roles	widget/templates/code.html.tmpl	font-medium
-type-comes-from-roles	widget/templates/code.html.tmpl	font-medium
-type-comes-from-roles	widget/templates/code.html.tmpl	font-medium
-type-comes-from-roles	widget/templates/code.html.tmpl	font-mono
-type-comes-from-roles	widget/templates/code.html.tmpl	font-mono
-type-comes-from-roles	widget/templates/code.html.tmpl	font-mono
-type-comes-from-roles	widget/templates/code.html.tmpl	font-mono
-type-comes-from-roles	widget/templates/code.html.tmpl	font-mono
-type-comes-from-roles	widget/templates/code.html.tmpl	leading-6
-type-comes-from-roles	widget/templates/code.html.tmpl	leading-6
-type-comes-from-roles	widget/templates/code.html.tmpl	leading-6
-type-comes-from-roles	widget/templates/code.html.tmpl	leading-relaxed
-type-comes-from-roles	widget/templates/code.html.tmpl	text-base
-type-comes-from-roles	widget/templates/code.html.tmpl	text-base
-type-comes-from-roles	widget/templates/code.html.tmpl	text-sm
-type-comes-from-roles	widget/templates/code.html.tmpl	text-sm
-type-comes-from-roles	widget/templates/code.html.tmpl	text-sm
-type-comes-from-roles	widget/templates/code.html.tmpl	text-sm
 type-comes-from-roles	widget/templates/collection.html.tmpl	font-medium
 type-comes-from-roles	widget/templates/collection.html.tmpl	font-mono
 type-comes-from-roles	widget/templates/collection.html.tmpl	font-mono
@@ -1070,11 +1019,6 @@ type-comes-from-roles	widget/templates/disclosure.html.tmpl	leading-6
 type-comes-from-roles	widget/templates/disclosure.html.tmpl	text-sm
 type-comes-from-roles	widget/templates/disclosure.html.tmpl	text-sm
 type-comes-from-roles	widget/templates/disclosure.html.tmpl	text-sm
-type-comes-from-roles	widget/templates/empty.html.tmpl	font-semibold
-type-comes-from-roles	widget/templates/empty.html.tmpl	leading-10
-type-comes-from-roles	widget/templates/empty.html.tmpl	leading-6
-type-comes-from-roles	widget/templates/empty.html.tmpl	text-2xl
-type-comes-from-roles	widget/templates/empty.html.tmpl	tracking-[-0.025em]
 type-comes-from-roles	widget/templates/field.html.tmpl	font-medium
 type-comes-from-roles	widget/templates/field.html.tmpl	font-mono
 type-comes-from-roles	widget/templates/field.html.tmpl	font-mono
@@ -1160,7 +1104,6 @@ type-comes-from-roles	widget/templates/overview.html.tmpl	text-sm
 type-comes-from-roles	widget/templates/overview.html.tmpl	text-sm
 type-comes-from-roles	widget/templates/overview.html.tmpl	text-sm
 type-comes-from-roles	widget/templates/overview.html.tmpl	tracking-tight
-type-comes-from-roles	widget/templates/raw.html.tmpl	text-sm
 type-comes-from-roles	widget/templates/section.html.tmpl	font-medium
 type-comes-from-roles	widget/templates/section.html.tmpl	font-medium
 type-comes-from-roles	widget/templates/section.html.tmpl	font-mono
@@ -1196,17 +1139,13 @@ type-comes-from-roles	widget/templates/shared.html.tmpl	font-normal
 type-comes-from-roles	widget/templates/shared.html.tmpl	font-sans
 type-comes-from-roles	widget/templates/shared.html.tmpl	font-semibold
 type-comes-from-roles	widget/templates/shared.html.tmpl	leading-6
-type-comes-from-roles	widget/templates/shared.html.tmpl	leading-6
 type-comes-from-roles	widget/templates/shared.html.tmpl	placeholder:font-normal
 type-comes-from-roles	widget/templates/shared.html.tmpl	text-base
 type-comes-from-roles	widget/templates/shared.html.tmpl	text-base
 type-comes-from-roles	widget/templates/shared.html.tmpl	text-lg
 type-comes-from-roles	widget/templates/shared.html.tmpl	text-sm
 type-comes-from-roles	widget/templates/shared.html.tmpl	text-sm
-type-comes-from-roles	widget/templates/shared.html.tmpl	text-sm
 type-comes-from-roles	widget/templates/shared.html.tmpl	tracking-tight
 type-comes-from-roles	widget/templates/table.html.tmpl	font-semibold
 type-comes-from-roles	widget/templates/table.html.tmpl	text-sm
 type-comes-from-roles	widget/templates/table.html.tmpl	text-sm
-type-comes-from-roles	widget/templates/text.html.tmpl	leading-6
-type-comes-from-roles	widget/templates/text.html.tmpl	text-sm

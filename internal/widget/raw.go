@@ -49,9 +49,23 @@ func (w *Raw) renderInto(r *Renderer, out io.Writer, _ string) error {
 func newMarkdown() goldmark.Markdown {
 	return goldmark.New(
 		goldmark.WithParserOptions(
-			parser.WithASTTransformers(util.Prioritized(safeLinks{}, 100)),
+			parser.WithASTTransformers(util.Prioritized(safeLinks{}, 100), util.Prioritized(verbatimCode{}, 200)),
 		),
 	)
+}
+
+// verbatimCode marks inline code a machine string (data-verso-verbatim), so
+// the prose block sets it in its role's verbatim form, as every machine
+// string in the shell is set.
+type verbatimCode struct{}
+
+func (verbatimCode) Transform(doc *ast.Document, _ text.Reader, _ parser.Context) {
+	_ = ast.Walk(doc, func(n ast.Node, entering bool) (ast.WalkStatus, error) {
+		if code, ok := n.(*ast.CodeSpan); ok && entering {
+			code.SetAttributeString("data-verso-verbatim", []byte(""))
+		}
+		return ast.WalkContinue, nil
+	})
 }
 
 // safeLinks holds every link, image and autolink to the scheme allowlist on

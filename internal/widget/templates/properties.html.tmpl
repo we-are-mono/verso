@@ -37,7 +37,7 @@
 {{if .Head}}<section aria-label="{{.Head.Label}}" class="min-w-0">{{template "properties.head" .}}{{end}}
 {{/* No facts: the empty set's slot where the first row would stand, its
      frame 7px after the head's hairline so it lands on a line. */}}
-{{if and .Empty (not .Items)}}<div{{if .Head}} class="pt-1.75"{{end}}><div data-verso-slot class="{{template "verso-empty-slot-class"}}">{{template "verso-empty-slot-body" .Empty}}</div></div>{{else}}
+{{if and .Empty (not .Items)}}<div{{if .Head}} class="pt-1.75"{{end}}><div data-verso-slot class="verso-slot">{{template "verso-empty-slot-body" .Empty}}</div></div>{{else}}
 <dl class="verso-facts" data-verso-style="{{if or (eq .Style "plain") (eq .Style "system") (eq .Style "identity")}}{{.Style}}{{else}}divided{{end}}"{{if eq .Align "left"}} data-verso-align="left"{{end}}{{if .Head}} data-verso-headed{{end}}>
   {{range .Items}}
   {{if eq $.Style "identity"}}

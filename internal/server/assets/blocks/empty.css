@@ -1,0 +1,85 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/* SPDX-FileCopyrightText: 2026 Mono Technologies Inc. */
+
+/*
+ * empty — a whole-page state that is not a listing (a listing's nothing is
+ * the table's one row): a first run, a thing not set up yet (ADR-005 §7). On
+ * the grid: 40px of air, the 80px icon and 24px under it, the title on its
+ * 40px line, the body on 24px lines 16px between paragraphs, and the acts
+ * 24px under it. The icon breathes a soft ring so the eye lands on the one
+ * thing to do; the ring grows out from the icon's edge and fades, scale and
+ * opacity only, which the compositor runs without repainting the page.
+ *
+ * Elements: __icon   the accent icon; data-verso-tone="success" for a state
+ *                    that has arrived rather than one waiting to begin, its
+ *                    ring and all
+ *           __title  the state, in the headline role, centred on its line
+ *           __body   what it means, as prose
+ *           __acts   the call to act
+ */
+
+.verso-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: calc(var(--spacing) * 10) calc(var(--spacing) * 6);
+  text-align: center;
+}
+
+.verso-empty__icon {
+  --verso-empty-wash: var(--color-denim-soft);
+  --verso-empty-ring: var(--color-denim);
+  --verso-empty-ink: var(--color-denim-deep);
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: calc(var(--spacing) * 20);
+  height: calc(var(--spacing) * 20);
+  margin-bottom: calc(var(--spacing) * 6);
+  border-radius: var(--radius-3xl);
+  background-color: var(--verso-empty-wash);
+  color: var(--verso-empty-ink);
+}
+.verso-empty__icon[data-verso-tone="success"] {
+  --verso-empty-wash: var(--color-green-soft);
+  --verso-empty-ring: var(--color-green);
+  --verso-empty-ink: var(--color-green-deep);
+}
+.verso-empty__icon::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  border: 0.125rem solid color-mix(in srgb, var(--verso-empty-ring) 35%, transparent);
+  animation: verso-pulse-lg 3s ease-out infinite;
+}
+@keyframes verso-pulse-lg {
+  0% { transform: scale(1); opacity: 1; }
+  70%, 100% { transform: scale(1.5); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .verso-empty__icon::after {
+    animation: none;
+  }
+}
+
+.verso-empty__title {
+  padding-block: calc((calc(var(--spacing) * 10) - 1lh) / 2);
+  color: var(--color-ink);
+  text-wrap: balance;
+  @apply type-headline;
+}
+
+.verso-empty__body {
+  max-width: 44ch;
+  color: var(--color-body);
+}
+
+.verso-empty__acts {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: calc(var(--spacing) * 6);
+  width: 100%;
+  margin-top: calc(var(--spacing) * 6);
+}

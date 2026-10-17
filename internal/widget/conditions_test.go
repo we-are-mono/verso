@@ -217,9 +217,11 @@ func TestConditionsSayWhenEmptyAsASetDoes(t *testing.T) {
 	for _, want := range []string{
 		// mb-0: the act stands a cell under the slot, as it does under every
 		// set's, and nothing of the block adds to that.
-		`<div data-verso-condition-empty data-verso-slot class="flex w-full items-center gap-3 rounded-xs border border-dashed border-rule-strong bg-quiet px-4 pt-1.75 pb-2 leading-6 max-w-form -mb-px">`,
+		// The slot gives its bottom border's pixel back itself (the slot
+		// block's -1px), so the act lands on the line.
+		`<div data-verso-condition-empty data-verso-slot class="verso-slot max-w-form">`,
 		`<span aria-hidden="true" class="verso-mark"></span>`,
-		`<p class="min-w-0 flex-1 text-sm leading-6 text-meta">No additional conditions.`,
+		`<p class="verso-slot__words">No additional conditions.`,
 		`<div data-verso-condition-picker class="relative pt-6 pb-1">`,
 		// The collection's own add act, glyph first.
 		`class="verso-button group/act relative" data-verso-size="act" data-verso-glyph>`,
@@ -228,6 +230,7 @@ func TestConditionsSayWhenEmptyAsASetDoes(t *testing.T) {
 			t.Errorf("want %s in:\n%s", want, got)
 		}
 	}
+	declaresTheSlot(t)
 
 	// With a condition carried, the slot is there for the script to bring back
 	// but hidden — by the attribute, which no display utility overrides.

@@ -110,7 +110,7 @@
 - [x] 8.2 `list` and `facts` (`type-row-label`, `type-value`, `type-subheading` for the head): the identity, system and ruled styles; the head is the `facts-head` block, since it stands outside the list. The token editor's box is an input (5.3). Verify: block done; the `page-cards` "Facts read as one list" scenarios and the spec's Internet-card scenarios pass in their tests.
 - [x] 8.3 `meter` and `chart` (`type-figure` where a figure stands): the chart's `--` colour modifiers become a `data-verso-tone` attribute and its parts become `__` elements, in `verso-chart.js` too; the meter's band is `data-verso-tone` in `verso-stream.js` too; a listing cell's meter is the meter block; the two-lane graph is the `traffic` block. Verify: block done; the history-charts tests pass.
 - [x] 8.4 `ports` and `panel`: the art's published names stay; the shell's port state becomes attributes; a fixture records a panel, since no dev route draws one. Verify: block done, the fixture's SVG paint matches the commit before.
-- [ ] 8.5 `code` (`type-code`), `prose` (`type-body`, inline `code` verbatim), `empty`. Verify: block done.
+- [x] 8.5 `code` (`type-code`), `prose` (`type-body`, inline `code` verbatim, marked by the Markdown renderer), `empty`; a set's empty slot is the `slot` block, the raw bridge's frame the `raw` block. Verify: block done.
 - [ ] 8.6 `notice`: callout, flash, staged bar, outcome. Verify: block done.
 - [ ] 8.7 `mark`, `waiting`, `live`, `step`: the 6px state square (the six-site bundle), the four-square waiting mark, the live dot, steps. Verify: block done; `TestNoRepeatedBundles` lists none of them.
 

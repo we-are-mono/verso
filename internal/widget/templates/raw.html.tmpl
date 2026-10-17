@@ -1,7 +1,8 @@
 <!-- SPDX-License-Identifier: GPL-2.0-only -->
 <!-- SPDX-FileCopyrightText: 2026 Mono Technologies Inc. -->
-{{/* raw: the governed display-only bridge, with a visible "raw" affordance */}}
-<div class="rounded-xs border border-dashed border-rule-strong px-4 py-3">
-  <div class="mb-2 {{template "verso-kicker-class"}}">{{ t "Raw" }}</div>
-  <div class="verso-prose text-sm text-ink">{{.HTML}}</div>
+{{/* raw: the governed display-only bridge, with a visible "raw" affordance
+     (blocks/raw.css) */}}
+<div class="verso-raw">
+  <div class="verso-raw__kicker">{{ t "Raw" }}</div>
+  <div class="verso-prose text-ink">{{.HTML}}</div>
 </div>

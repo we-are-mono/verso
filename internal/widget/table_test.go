@@ -904,14 +904,15 @@ func TestAnEmptyTableIsTheEmptySlot(t *testing.T) {
 	r := newRenderer(t)
 	got := render(t, r, &Table{Columns: []TableColumn{{Label: "Name"}}, EmptyText: "No device has a reserved address."})
 	for _, want := range []string{
-		`<div data-verso-slot class="flex w-full items-center gap-3 rounded-xs border border-dashed border-rule-strong bg-quiet`,
+		`<div data-verso-slot class="verso-slot">`,
 		`<span aria-hidden="true" class="verso-mark"></span>`,
-		`<p class="min-w-0 flex-1 text-sm leading-6 text-meta">No device has a reserved address.</p>`,
+		`<p class="verso-slot__words">No device has a reserved address.</p>`,
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("an empty listing is not the empty slot, missing %q:\n%s", want, got)
 		}
 	}
+	declaresTheSlot(t)
 	if strings.Contains(got, "<table") {
 		t.Errorf("an empty listing draws no table:\n%s", got)
 	}

@@ -28,6 +28,22 @@ func renderCollection(t *testing.T, raw string, action string) string {
 	return render(t, newRenderer(t), c)
 }
 
+// declaresTheSlot fails t unless the slot block draws the empty set's place
+// as every set draws it: a dashed Strong Hairline on Quiet Sand, its words in
+// Meta on one 24px line 7px after the top border and 8px over the bottom one,
+// 12px after the hollow packet, the bottom border's pixel given back.
+func declaresTheSlot(t *testing.T) {
+	t.Helper()
+	declares(t, "slot", ".verso-slot",
+		"display: flex", "align-items: center", "gap: calc(var(--spacing) * 3)", "width: 100%",
+		"margin-bottom: -1px",
+		"padding: calc(var(--spacing) * 1.75) calc(var(--spacing) * 4) calc(var(--spacing) * 2)",
+		"border: 1px dashed var(--color-rule-strong)", "border-radius: var(--radius-xs)",
+		"background-color: var(--color-quiet)", "@apply type-body")
+	declares(t, "slot", ".verso-slot__words",
+		"flex: 1 1 0%", "min-width: 0", "color: var(--color-meta)", "@apply type-body")
+}
+
 // TestCollectionItemsStandOnSpaceAlone: a short set of kept things — keys,
 // peers — is a list of identities, each its name over its detail in the
 // machine's own type, separated by the page's space and not by rules.
@@ -151,15 +167,16 @@ func TestCollectionSaysWhenEmpty(t *testing.T) {
 	  "add":{"label":"Add a key","name":"authorized_key","submit":"Add key"}}`
 	got := renderCollection(t, empty, "")
 	for _, want := range []string{
-		`<div data-verso-slot class="flex w-full items-center gap-3 rounded-xs border border-dashed border-rule-strong bg-quiet px-4 pt-1.75 pb-2 leading-6">`,
+		`<div data-verso-slot class="verso-slot">`,
 		`<span aria-hidden="true" class="verso-mark"></span>`,
-		`<p class="min-w-0 flex-1 text-sm leading-6 text-meta">No keys are authorized.</p>`,
+		`<p class="verso-slot__words">No keys are authorized.</p>`,
 		`x-data="confirm" @keydown.escape="escape" class="pt-6 pb-1"`,
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("want %s in:\n%s", want, got)
 		}
 	}
+	declaresTheSlot(t)
 	// The slot is a place, not a control: nothing in it answers the pointer.
 	slot := got[strings.Index(got, "data-verso-slot"):strings.Index(got, `x-data="confirm"`)]
 	if strings.Contains(slot, "hover:") || strings.Contains(slot, "@click") || strings.Contains(slot, "<button") {
