@@ -41,7 +41,7 @@
 
 ## 3. Type roles
 
-- [ ] 3.1 Map type to roles:
+- [x] 3.1 Map type to roles:
   - Map every live type combination (template, script and stylesheet) to a role in Decision 11's table.
   - Write the mapping into `openspec/changes/css-block-layer/drift.md` (combination → role, and the elements carrying it). Each block task then records the convergences it makes.
   - List separately any combination that might be a deliberate distinction rather than drift, with the case for a role of its own.
