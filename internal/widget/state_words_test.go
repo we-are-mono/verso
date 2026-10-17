@@ -100,7 +100,6 @@ func TestCountsAlignOnTheirDigits(t *testing.T) {
 func TestStateMarksAreSquares(t *testing.T) {
 	for name, w := range map[string]Widget{
 		"badge": &Badge{Variant: "success", Text: "Up", Dot: true},
-		"stat":  &Stat{Label: "Uptime", Value: "3 d", Sub: "since boot", Dot: true, Variant: "success"},
 		"meter": &Meter{Compact: true, Label: "CPU", Value: "40", Fill: 40, Tone: "success"},
 	} {
 		// (a meter's track is a pill, which is a track, not a mark)

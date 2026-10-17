@@ -162,21 +162,10 @@ func TestTranslateSkipsMachineContent(t *testing.T) {
 }
 
 // TestTranslateHonorsVerbatimDeclarations covers the remaining dual-use fields:
-// a Stat's value, a Section's meta, and a row drawer's title each hold words in
-// one page and data in another, so each carries its own verbatim declaration.
+// a Section's meta and a row drawer's title each hold words in one page and
+// data in another, so each carries its own verbatim declaration.
 func TestTranslateHonorsVerbatimDeclarations(t *testing.T) {
 	tr := fakeCatalog(map[string]string{"Online": "Povezano", "up to date": "posodobljeno"})
-
-	measured := &Stat{Label: "Devices", Value: "Online", Verbatim: true}
-	prose := &Stat{Label: "Devices", Value: "Online"}
-	translateSchema(measured, tr)
-	translateSchema(prose, tr)
-	if measured.Value != "Online" {
-		t.Errorf("verbatim stat value = %q, must stay verbatim", measured.Value)
-	}
-	if prose.Value != "Povezano" {
-		t.Errorf("prose stat value = %q, want translated", prose.Value)
-	}
 
 	composed := &Section{Title: "Devices", Meta: "up to date", MetaVerbatim: true}
 	worded := &Section{Title: "Devices", Meta: "up to date"}

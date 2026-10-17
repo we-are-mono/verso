@@ -94,7 +94,6 @@ var catalog = map[string]func() Widget{
 	"disclosure":  func() Widget { return new(Disclosure) },
 	"section":     func() Widget { return new(Section) },
 	"code":        func() Widget { return new(Code) },
-	"stat":        func() Widget { return new(Stat) },
 	"grid":        func() Widget { return new(Grid) },
 	"meter":       func() Widget { return new(Meter) },
 	"ports":       func() Widget { return new(Ports) },

@@ -195,17 +195,6 @@ func translateFields(w Widget, t func(string) string) {
 			n.Seam.Summary = t(n.Seam.Summary)
 			translateSettingsItems(n.Seam.Items, t)
 		}
-	case *Stat:
-		n.Label = t(n.Label)
-		// Value is prose in a status tile ("Online") and a declared measurement
-		// in a metric tile ("300", Verbatim) that stays exactly as authored;
-		// the sub line carries its own declaration the same way.
-		if !n.Verbatim {
-			n.Value = t(n.Value)
-		}
-		if !n.SubVerbatim {
-			n.Sub = t(n.Sub)
-		}
 	case *Switch:
 		if !n.Verbatim {
 			n.Label = t(n.Label)

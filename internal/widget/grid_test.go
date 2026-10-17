@@ -14,8 +14,8 @@ import (
 func TestRenderGrid(t *testing.T) {
 	r := newRenderer(t)
 	g := &Grid{Columns: 2, Children: []Widget{
-		&Stat{Label: "A", Value: "1"},
-		&Stat{Label: "B", Value: "2"},
+		&Text{Markdown: "A"},
+		&Text{Markdown: "B"},
 	}}
 	got := render(t, r, g)
 	if !strings.Contains(got, "grid-cols-2") {
@@ -96,7 +96,7 @@ func TestGridColumnsResponsive(t *testing.T) {
 	r := newRenderer(t)
 	cases := map[int]string{1: "grid-cols-1", 2: "grid-cols-2", 3: "md:grid-cols-3", 4: "md:grid-cols-4"}
 	for cols, want := range cases {
-		got := render(t, r, &Grid{Columns: cols, Children: []Widget{&Stat{Label: "x", Value: "1"}}})
+		got := render(t, r, &Grid{Columns: cols, Children: []Widget{&Text{Markdown: "x"}}})
 		if !strings.Contains(got, want) {
 			t.Errorf("columns=%d: want class %q in:\n%s", cols, want, got)
 		}
@@ -168,8 +168,8 @@ func TestASecretAndItsRepeatAreOneControl(t *testing.T) {
 func TestDecodeGridChildren(t *testing.T) {
 	r := newRenderer(t)
 	w, err := Decode([]byte(`{"type":"grid","columns":3,"children":[
-		{"type":"stat","label":"Devices","value":"9"},
-		{"type":"stat","label":"Uplink","value":"up"}
+		{"type":"text","markdown":"Devices"},
+		{"type":"text","markdown":"up"}
 	]}`))
 	if err != nil {
 		t.Fatalf("decode grid: %v", err)

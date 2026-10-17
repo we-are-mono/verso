@@ -13,7 +13,7 @@ import (
 
 // Grid arranges its children across columns — the side-by-side counterpart to stack
 // (one column). It is a generic layout primitive that names no content: it composes
-// a row of stat tiles, a set of service cards, anything.
+// a row of meters, a set of service cards, anything.
 //
 // Columns is the target for wide screens; the plugin declares only that intent
 // ("lay these out in N columns") and the shell owns the responsive behaviour,
