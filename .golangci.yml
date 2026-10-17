@@ -13,3 +13,8 @@ linters:
       - common-false-positives
       - legacy
       - std-error-handling
+
+# gofmt drift fails the run like any lint finding, across every package.
+formatters:
+  enable:
+    - gofmt

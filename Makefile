@@ -221,7 +221,7 @@ test:
 	APK="$(APK)" node --test scripts/*.test.cjs
 
 # lint replaces plain `go vet` (govet is one of the linters it runs), with
-# golangci-lint's default linter set as .golangci.yml tunes it.
+# golangci-lint's default linter set and its gofmt check as .golangci.yml tunes them.
 $(GOLANGCI):
 	@$(require_tools_host)
 	@mkdir -p $(dir $@)
@@ -252,7 +252,6 @@ deadcode: $(DEADCODE)
 	done; exit $$status
 
 lint: deadcode $(GOLANGCI)
-	@fmt_drift=$$(gofmt -l cmd internal); if [ -n "$$fmt_drift" ]; then echo "gofmt drift:"; echo "$$fmt_drift"; exit 1; fi
 	@$(call verify_sha256,$(GOLANGCI),$(GOLANGCI_SHA256)) \
 	&& $(GOLANGCI) run ./...
 	set -e; for m in $(CRATES); do $(CARGO) clippy --locked --manifest-path $$m --all-targets -- -D warnings; done
