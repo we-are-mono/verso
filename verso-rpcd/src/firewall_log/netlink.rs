@@ -5,35 +5,23 @@
 //! only header metadata is retained and sent to the shell.
 
 use super::{now_nanos, GROUP, SNAPLEN};
+use crate::netlink::{
+    self, sendto, socket, SockaddrNl, AF_NETLINK, NETLINK_NETFILTER, NLMSG_ERROR, SOCK_CLOEXEC,
+    SOCK_RAW,
+};
 use std::ffi::{c_void, CStr};
 use std::io;
 use std::net::{Ipv4Addr, Ipv6Addr};
 use std::os::fd::{AsRawFd, FromRawFd, OwnedFd};
 
-#[repr(C)]
-struct Address {
-    family: u16,
-    pad: u16,
-    pid: u32,
-    groups: u32,
-}
 unsafe extern "C" {
-    fn socket(family: i32, kind: i32, protocol: i32) -> i32;
-    fn bind(fd: i32, addr: *const Address, len: u32) -> i32;
-    fn sendto(
-        fd: i32,
-        data: *const c_void,
-        len: usize,
-        flags: i32,
-        addr: *const Address,
-        addrlen: u32,
-    ) -> isize;
+    fn bind(fd: i32, addr: *const SockaddrNl, len: u32) -> i32;
     fn recvfrom(
         fd: i32,
         data: *mut c_void,
         len: usize,
         flags: i32,
-        addr: *mut Address,
+        addr: *mut SockaddrNl,
         addrlen: *mut u32,
     ) -> isize;
     fn setsockopt(fd: i32, level: i32, option: i32, value: *const c_void, len: u32) -> i32;
@@ -67,19 +55,12 @@ pub(super) fn ensure_supported() -> Result<(), String> {
 
 impl Socket {
     pub(super) fn open() -> Result<Self, String> {
-        // AF_NETLINK, SOCK_RAW|SOCK_CLOEXEC, NETLINK_NETFILTER.
-        let fd = unsafe { socket(16, 3 | 0x80000, 12) };
+        let fd = unsafe { socket(AF_NETLINK, SOCK_RAW | SOCK_CLOEXEC, NETLINK_NETFILTER) };
         if fd < 0 {
             return Err(io::Error::last_os_error().to_string());
         }
         let socket = Self(unsafe { OwnedFd::from_raw_fd(fd) });
-        let local = Address {
-            family: 16,
-            pad: 0,
-            pid: 0,
-            groups: 0,
-        };
-        if unsafe { bind(fd, &local, 12) } < 0 {
+        if unsafe { bind(fd, &SockaddrNl::KERNEL, SockaddrNl::LEN) } < 0 {
             return Err(io::Error::last_os_error().to_string());
         }
         let size = 256 * 1024i32;
@@ -108,20 +89,14 @@ impl Socket {
         }
         let len = message.len() as u32;
         message[..4].copy_from_slice(&len.to_ne_bytes());
-        let kernel = Address {
-            family: 16,
-            pad: 0,
-            pid: 0,
-            groups: 0,
-        };
         if unsafe {
             sendto(
                 self.0.as_raw_fd(),
                 message.as_ptr().cast(),
                 message.len(),
                 0,
-                &kernel,
-                12,
+                &SockaddrNl::KERNEL,
+                SockaddrNl::LEN,
             )
         } < 0
         {
@@ -139,12 +114,14 @@ impl Socket {
                 continue;
             }
             let len = self.receive(&mut response).map_err(|e| e.to_string())?;
-            for item in messages(&response[..len]) {
-                if item.len() >= 20
-                    && native_u16(&item[4..]) == 2
-                    && native_u32(&item[8..]) == sequence
+            // struct nlmsgerr: the errno, then the header of the request it
+            // answers, whose sequence names which one.
+            for item in netlink::messages(&response[..len]) {
+                if item.kind == NLMSG_ERROR
+                    && item.body.len() >= 16
+                    && native_u32(&item.body[12..]) == sequence
                 {
-                    let error = i32::from_ne_bytes(item[16..20].try_into().unwrap());
+                    let error = i32::from_ne_bytes(item.body[..4].try_into().unwrap());
                     return if error == 0 {
                         Ok(())
                     } else {
@@ -156,13 +133,13 @@ impl Socket {
         Err("NFLOG configuration timed out".into())
     }
     pub(super) fn receive(&self, buffer: &mut [u8]) -> io::Result<usize> {
-        let mut peer = Address {
+        let mut peer = SockaddrNl {
             family: 0,
             pad: 0,
             pid: 0,
             groups: 0,
         };
-        let mut length = 12;
+        let mut length = SockaddrNl::LEN;
         let result = unsafe {
             recvfrom(
                 self.0.as_raw_fd(),
@@ -186,9 +163,6 @@ impl Socket {
     }
 }
 
-fn native_u16(data: &[u8]) -> u16 {
-    u16::from_ne_bytes(data[..2].try_into().unwrap())
-}
 fn native_u32(data: &[u8]) -> u32 {
     u32::from_ne_bytes(data[..4].try_into().unwrap())
 }
@@ -196,47 +170,26 @@ fn big_u32(data: &[u8]) -> u32 {
     u32::from_be_bytes(data[..4].try_into().unwrap())
 }
 
-fn messages(mut bytes: &[u8]) -> Vec<&[u8]> {
-    let mut result = Vec::new();
-    while bytes.len() >= 16 {
-        let length = native_u32(bytes) as usize;
-        if length < 16 || length > bytes.len() {
-            break;
-        }
-        result.push(&bytes[..length]);
-        let next = (length + 3) & !3;
-        if next > bytes.len() {
-            break;
-        }
-        bytes = &bytes[next..];
-    }
-    result
-}
-
 pub(super) fn decode(bytes: &[u8]) -> Vec<(u64, String)> {
     let mut result = Vec::new();
-    for message in messages(bytes) {
-        if message.len() < 20
-            || native_u16(&message[4..]) != 0x400
-            || u16::from_be_bytes([message[18], message[19]]) != GROUP
+    for message in netlink::messages(bytes) {
+        // struct nfgenmsg: family, version, then the log group, big-endian.
+        let body = &message.body;
+        if message.kind != 0x400
+            || body.len() < 4
+            || u16::from_be_bytes([body[2], body[3]]) != GROUP
         {
             continue;
         }
-        let mut data = &message[20..];
+        let attributes = &body[4..];
         let mut prefix = String::new();
         let mut input = 0;
         let mut output = 0;
         let mut payload = None;
         let mut timestamp = (now_nanos() / 1_000_000) as u64;
-        let mut valid = true;
-        while data.len() >= 4 {
-            let length = native_u16(data) as usize;
-            if length < 4 || length > data.len() {
-                valid = false;
-                break;
-            }
-            let kind = native_u16(&data[2..]) & 0x3fff;
-            let value = &data[4..length];
+        let mut walked = 0;
+        for (kind, value) in netlink::attributes(attributes) {
+            walked += netlink::align(4 + value.len());
             match kind {
                 3 if value.len() >= 16 => {
                     let sec = u64::from_be_bytes(value[..8].try_into().unwrap());
@@ -256,23 +209,21 @@ pub(super) fn decode(bytes: &[u8]) -> Vec<(u64, String)> {
                 }
                 _ => {}
             }
-            let next = (length + 3) & !3;
-            if next > data.len() {
-                break;
-            }
-            data = &data[next..];
         }
-        if valid {
-            if let Some(fields) = payload.and_then(packet_fields) {
-                result.push((
-                    timestamp,
-                    format!(
-                        "{prefix} IN={} OUT={} {fields}",
-                        interface_name(input),
-                        interface_name(output)
-                    ),
-                ));
-            }
+        // The walk stops at an attribute whose length does not fit; a message
+        // carrying one is dropped whole rather than read in part.
+        if attributes.len().saturating_sub(walked) >= 4 {
+            continue;
+        }
+        if let Some(fields) = payload.and_then(packet_fields) {
+            result.push((
+                timestamp,
+                format!(
+                    "{prefix} IN={} OUT={} {fields}",
+                    interface_name(input),
+                    interface_name(output)
+                ),
+            ));
         }
     }
     result

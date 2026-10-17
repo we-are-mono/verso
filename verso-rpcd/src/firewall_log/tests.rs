@@ -133,6 +133,12 @@ fn netlink_decodes_metadata_and_rejects_malformed_messages() {
         malformed[20..22].copy_from_slice(&length.to_ne_bytes());
         assert!(netlink::decode(&malformed).is_empty());
     }
+    // An attribute that overruns the message drops it even after the payload.
+    let mut overrun = message.clone();
+    overrun.extend_from_slice(&[8, 0, 1, 0]);
+    let len = overrun.len() as u32;
+    overrun[..4].copy_from_slice(&len.to_ne_bytes());
+    assert!(netlink::decode(&overrun).is_empty());
 }
 
 #[test]

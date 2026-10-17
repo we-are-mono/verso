@@ -12,15 +12,15 @@ use std::ffi::c_void;
 use std::net::{Ipv4Addr, Ipv6Addr};
 use std::os::fd::{AsRawFd, FromRawFd, OwnedFd};
 
-const AF_NETLINK: i32 = 16;
+pub(crate) const AF_NETLINK: i32 = 16;
 const AF_INET: u8 = 2;
 const AF_INET6: u8 = 10;
-const SOCK_RAW: i32 = 3;
-const SOCK_CLOEXEC: i32 = 0o2_000_000;
+pub(crate) const SOCK_RAW: i32 = 3;
+pub(crate) const SOCK_CLOEXEC: i32 = 0o2_000_000;
 const NETLINK_ROUTE: i32 = 0;
 pub const NETLINK_NETFILTER: i32 = 12;
 
-const NLMSG_ERROR: u16 = 2;
+pub(crate) const NLMSG_ERROR: u16 = 2;
 const NLMSG_DONE: u16 = 3;
 const NLM_F_REQUEST: u16 = 0x1;
 const NLM_F_DUMP: u16 = 0x300;
@@ -166,7 +166,7 @@ pub fn attributes(mut data: &[u8]) -> impl Iterator<Item = (u16, &[u8])> {
     })
 }
 
-fn align(len: usize) -> usize {
+pub(crate) fn align(len: usize) -> usize {
     (len + 3) & !3
 }
 
@@ -183,7 +183,7 @@ pub struct Message {
 
 /// messages splits a datagram into its messages (struct nlmsghdr: length,
 /// type, flags, sequence, port, then the body).
-fn messages(mut data: &[u8]) -> Vec<Message> {
+pub(crate) fn messages(mut data: &[u8]) -> Vec<Message> {
     let mut out = Vec::new();
     while data.len() >= 16 {
         let len = u32::from_ne_bytes([data[0], data[1], data[2], data[3]]) as usize;
@@ -196,17 +196,25 @@ fn messages(mut data: &[u8]) -> Vec<Message> {
     out
 }
 
+/// SockaddrNl is struct sockaddr_nl: a netlink address, the kernel's when
+/// every field but the family is zero.
 #[repr(C)]
-struct SockaddrNl {
-    family: u16,
-    pad: u16,
-    pid: u32,
-    groups: u32,
+pub(crate) struct SockaddrNl {
+    pub(crate) family: u16,
+    pub(crate) pad: u16,
+    pub(crate) pid: u32,
+    pub(crate) groups: u32,
+}
+
+impl SockaddrNl {
+    /// KERNEL is the kernel's own address, and an unbound socket's.
+    pub(crate) const KERNEL: SockaddrNl = SockaddrNl { family: AF_NETLINK as u16, pad: 0, pid: 0, groups: 0 };
+    pub(crate) const LEN: u32 = std::mem::size_of::<SockaddrNl>() as u32;
 }
 
 unsafe extern "C" {
-    fn socket(family: i32, kind: i32, protocol: i32) -> i32;
-    fn sendto(fd: i32, data: *const c_void, len: usize, flags: i32, addr: *const SockaddrNl, addrlen: u32) -> isize;
+    pub(crate) fn socket(family: i32, kind: i32, protocol: i32) -> i32;
+    pub(crate) fn sendto(fd: i32, data: *const c_void, len: usize, flags: i32, addr: *const SockaddrNl, addrlen: u32) -> isize;
     fn recv(fd: i32, data: *mut c_void, len: usize, flags: i32) -> isize;
 }
 
@@ -236,18 +244,10 @@ impl Socket {
         packet.extend_from_slice(&1u32.to_ne_bytes());
         packet.extend_from_slice(&0u32.to_ne_bytes());
         packet.extend_from_slice(header);
-        let kernel = SockaddrNl { family: AF_NETLINK as u16, pad: 0, pid: 0, groups: 0 };
         // SAFETY: the buffer and the address outlive the call and their lengths
         // are the ones passed.
         let sent = unsafe {
-            sendto(
-                self.0.as_raw_fd(),
-                packet.as_ptr().cast(),
-                packet.len(),
-                0,
-                &kernel,
-                std::mem::size_of::<SockaddrNl>() as u32,
-            )
+            sendto(self.0.as_raw_fd(), packet.as_ptr().cast(), packet.len(), 0, &SockaddrNl::KERNEL, SockaddrNl::LEN)
         };
         if sent < 0 {
             return Err(format!("netlink send: {}", std::io::Error::last_os_error()));
