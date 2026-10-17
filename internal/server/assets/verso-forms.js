@@ -1096,7 +1096,7 @@
   // setStep moves the dialog's step line to the step in hand.
   function setStep(dialog, index) {
     [].forEach.call(dialog.querySelectorAll("[data-verso-step]"), function (step, i) {
-      step.setAttribute("data-state", i < index ? "done" : i === index ? "current" : "ahead");
+      step.setAttribute("data-verso-state", i < index ? "done" : i === index ? "current" : "ahead");
       if (i === index) step.setAttribute("aria-current", "step");
       else step.removeAttribute("aria-current");
     });

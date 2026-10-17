@@ -31,6 +31,8 @@
 @import "./blocks/link.css" layer(components);
 @import "./blocks/mark.css" layer(components);
 @import "./blocks/rhythm.css" layer(components);
+@import "./blocks/steps.css" layer(components);
+@import "./blocks/waiting.css" layer(components);
 
 @source "../templates/*.tmpl";
 @source "../../widget/templates/*.tmpl";
@@ -1298,29 +1300,6 @@ html {
   .verso-overview-content [data-verso-listing-empty] { padding-right: 0; }
 }
 
-/* A stepped dialog's line (modal.html.tmpl): the steps read left to right with
-   a short hairline between them; the packet says where each stands — green
-   when done, denim for the one in hand (Ink words, 600), hollow for what is
-   ahead (Meta words). The script moves data-state as an upload goes, so the
-   words and marks ease rather than jump. */
-@layer components {
-  .verso-step + .verso-step::before {
-    content: "";
-    width: 1.25rem;
-    height: 1px;
-    margin-inline: 0.75rem;
-    background: var(--color-rule-strong);
-  }
-  .verso-step { color: var(--color-meta); transition: color 200ms ease-out; }
-  .verso-step-mark { border: 1px solid var(--color-faint); transition: background-color 200ms ease-out, border-color 200ms ease-out; }
-  .verso-step[data-state="done"] { color: var(--color-body); }
-  .verso-step[data-state="done"] .verso-step-mark { background: var(--color-green); border-color: var(--color-green); }
-  .verso-step[data-state="current"] { color: var(--color-ink); font-weight: 600; }
-  .verso-step[data-state="current"] .verso-step-mark { background: var(--color-denim); border-color: var(--color-denim); }
-  @media (prefers-reduced-motion: reduce) {
-    .verso-step, .verso-step-mark { transition: none; }
-  }
-}
 
 /* The colophon answers its copy by washing what it copied, one fact after
    another from the left, then letting it go. The wash is the band's own sand a
@@ -1376,55 +1355,6 @@ html {
   }
 }
 
-/* The waiting mark (verso-waiting in shared.html.tmpl, and the sign-in
-   button's): four packets taking turns round the square's corners — the
-   design's vq0–vq3 choreography, twelve moves over four seconds. A packet on
-   the move wears meta and rides above the parked ones. A mark whose wait is
-   held (data-verso-wait-paused: a log that is paused, or not connected) stands
-   still where it is. A reader who asked for less motion gets the four parked
-   packets. */
-@layer components {
-  @media (prefers-reduced-motion: no-preference) {
-    [data-verso-wait] > * {
-      animation-duration: 4s;
-      animation-timing-function: ease;
-      animation-iteration-count: infinite;
-    }
-    [data-verso-wait] > :nth-child(1) { animation-name: verso-wait-0; }
-    [data-verso-wait] > :nth-child(2) { animation-name: verso-wait-1; }
-    [data-verso-wait] > :nth-child(3) { animation-name: verso-wait-2; }
-    [data-verso-wait] > :nth-child(4) { animation-name: verso-wait-3; }
-    [data-verso-wait][data-verso-wait-paused] > * { animation-play-state: paused; }
-  }
-}
-@keyframes verso-wait-0 {
-  0%, 8.33%, 16.66%, 24.99%, 74.97%, 83.3%, 91.63%, 100% { transform: translate(0, 0); background-color: var(--color-sand-5); z-index: 1; }
-  33.32%, 66.64% { transform: translate(0, 0); background-color: var(--color-meta); z-index: 2; }
-  41.65% { transform: translate(0.5rem, 0); background-color: var(--color-meta); z-index: 2; }
-  49.98% { transform: translate(0.5rem, 0.5rem); background-color: var(--color-meta); z-index: 2; }
-  58.31% { transform: translate(0, 0.5rem); background-color: var(--color-meta); z-index: 2; }
-}
-@keyframes verso-wait-1 {
-  0%, 66.64%, 100% { transform: translate(-0.5rem, 0); background-color: var(--color-meta); z-index: 2; }
-  8.33%, 41.65%, 74.97% { transform: translate(0, 0); background-color: var(--color-meta); z-index: 2; }
-  16.66%, 24.99%, 33.32% { transform: translate(0, 0); background-color: var(--color-sand-5); z-index: 1; }
-  49.98%, 83.3% { transform: translate(0, 0.5rem); background-color: var(--color-meta); z-index: 2; }
-  58.31%, 91.63% { transform: translate(-0.5rem, 0.5rem); background-color: var(--color-meta); z-index: 2; }
-}
-@keyframes verso-wait-2 {
-  0%, 100% { transform: translate(-0.5rem, -0.5rem); background-color: var(--color-meta); z-index: 2; }
-  8.33% { transform: translate(0, -0.5rem); background-color: var(--color-meta); z-index: 2; }
-  16.66%, 83.3% { transform: translate(0, 0); background-color: var(--color-meta); z-index: 2; }
-  24.99%, 33.32%, 41.65%, 49.98%, 58.31%, 66.64%, 74.97% { transform: translate(0, 0); background-color: var(--color-sand-5); z-index: 1; }
-  91.63% { transform: translate(-0.5rem, 0); background-color: var(--color-meta); z-index: 2; }
-}
-@keyframes verso-wait-3 {
-  0%, 33.32%, 100% { transform: translate(0, -0.5rem); background-color: var(--color-meta); z-index: 2; }
-  8.33%, 41.65% { transform: translate(0.5rem, -0.5rem); background-color: var(--color-meta); z-index: 2; }
-  16.66%, 49.98% { transform: translate(0.5rem, 0); background-color: var(--color-meta); z-index: 2; }
-  24.99%, 58.31%, 91.63% { transform: translate(0, 0); background-color: var(--color-meta); z-index: 2; }
-  66.64%, 74.97%, 83.3% { transform: translate(0, 0); background-color: var(--color-sand-5); z-index: 1; }
-}
 
 /* Diagnostics' tool glyph: a pick swaps the glyph, and the new one settles in
    from a little smaller, so the field answers the pick where the eye is. Only

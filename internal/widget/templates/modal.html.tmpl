@@ -7,9 +7,9 @@
   {{template "verso-close-btn"}}
 </header>
 {{/* Where a stepped dialog is: each step's packet filled green when done,
-     denim for the one in hand, hollow for what is ahead (input.css,
-     .verso-step). The page's script moves data-state as an upload goes. */}}
-{{if .Steps}}<ol data-verso-steps aria-label="{{ t "Steps" }}" class="flex flex-wrap items-center gap-y-1 px-6 pb-1 text-sm leading-6">{{range .Steps}}<li data-verso-step data-state="{{.State}}"{{if eq .State "current"}} aria-current="step"{{end}} class="verso-step flex items-center gap-2"><span aria-hidden="true" class="verso-step-mark size-1.5 shrink-0 rounded-[1px]"></span><span>{{.Label}}</span></li>{{end}}</ol>{{end}}
+     denim for the one in hand, hollow for what is ahead (blocks/steps.css).
+     The page's script moves data-verso-state as an upload goes. */}}
+{{if .Steps}}<ol data-verso-steps aria-label="{{ t "Steps" }}" class="verso-steps px-6 pb-1">{{range .Steps}}<li data-verso-step data-verso-state="{{.State}}"{{if eq .State "current"}} aria-current="step"{{end}} class="verso-steps__step"><span aria-hidden="true" class="verso-mark verso-steps__mark"></span><span>{{.Label}}</span></li>{{end}}</ol>{{end}}
 {{/* With a busy state, the body holds two faces and shows one: the step
      between them is the faces' own, so the hidden one adds no air. */}}
 <div class="{{if not .BusyTitle}}space-y-4 {{end}}px-6 pt-2 pb-6">

@@ -1,0 +1,76 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/* SPDX-FileCopyrightText: 2026 Mono Technologies Inc. */
+
+/*
+ * waiting — the waiting mark: four packets taking turns round a 14px
+ * square's corners, the design's vq0–vq3 choreography, twelve moves over four
+ * seconds. A packet on the move wears Meta and rides above the parked ones. A
+ * reader who asked for less motion gets the four parked packets.
+ *
+ * Elements: verso-waiting__square  one packet, 6px, parked in Mid Sand
+ * Variants: data-verso-wait-paused  the wait is held (a log that is paused,
+ *                                   or not connected): it stands still where
+ *                                   it is. data-verso-wait stays the hook the
+ *                                   scripts find the mark by.
+ */
+
+.verso-waiting {
+  position: relative;
+  display: block;
+  width: calc(var(--spacing) * 3.5);
+  height: calc(var(--spacing) * 3.5);
+  flex-shrink: 0;
+}
+.verso-waiting__square {
+  position: absolute;
+  width: calc(var(--spacing) * 1.5);
+  height: calc(var(--spacing) * 1.5);
+  border-radius: 1px;
+  background-color: var(--color-sand-5);
+}
+.verso-waiting__square:nth-child(1) { top: 0; left: 0; }
+.verso-waiting__square:nth-child(2) { top: 0; left: calc(var(--spacing) * 2); }
+.verso-waiting__square:nth-child(3) { top: calc(var(--spacing) * 2); left: calc(var(--spacing) * 2); }
+.verso-waiting__square:nth-child(4) { top: calc(var(--spacing) * 2); left: 0; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .verso-waiting__square {
+    animation-duration: 4s;
+    animation-timing-function: ease;
+    animation-iteration-count: infinite;
+  }
+  .verso-waiting__square:nth-child(1) { animation-name: verso-wait-0; }
+  .verso-waiting__square:nth-child(2) { animation-name: verso-wait-1; }
+  .verso-waiting__square:nth-child(3) { animation-name: verso-wait-2; }
+  .verso-waiting__square:nth-child(4) { animation-name: verso-wait-3; }
+  .verso-waiting[data-verso-wait-paused] > .verso-waiting__square { animation-play-state: paused; }
+}
+
+@keyframes verso-wait-0 {
+  0%, 8.33%, 16.66%, 24.99%, 74.97%, 83.3%, 91.63%, 100% { transform: translate(0, 0); background-color: var(--color-sand-5); z-index: 1; }
+  33.32%, 66.64% { transform: translate(0, 0); background-color: var(--color-meta); z-index: 2; }
+  41.65% { transform: translate(0.5rem, 0); background-color: var(--color-meta); z-index: 2; }
+  49.98% { transform: translate(0.5rem, 0.5rem); background-color: var(--color-meta); z-index: 2; }
+  58.31% { transform: translate(0, 0.5rem); background-color: var(--color-meta); z-index: 2; }
+}
+@keyframes verso-wait-1 {
+  0%, 66.64%, 100% { transform: translate(-0.5rem, 0); background-color: var(--color-meta); z-index: 2; }
+  8.33%, 41.65%, 74.97% { transform: translate(0, 0); background-color: var(--color-meta); z-index: 2; }
+  16.66%, 24.99%, 33.32% { transform: translate(0, 0); background-color: var(--color-sand-5); z-index: 1; }
+  49.98%, 83.3% { transform: translate(0, 0.5rem); background-color: var(--color-meta); z-index: 2; }
+  58.31%, 91.63% { transform: translate(-0.5rem, 0.5rem); background-color: var(--color-meta); z-index: 2; }
+}
+@keyframes verso-wait-2 {
+  0%, 100% { transform: translate(-0.5rem, -0.5rem); background-color: var(--color-meta); z-index: 2; }
+  8.33% { transform: translate(0, -0.5rem); background-color: var(--color-meta); z-index: 2; }
+  16.66%, 83.3% { transform: translate(0, 0); background-color: var(--color-meta); z-index: 2; }
+  24.99%, 33.32%, 41.65%, 49.98%, 58.31%, 66.64%, 74.97% { transform: translate(0, 0); background-color: var(--color-sand-5); z-index: 1; }
+  91.63% { transform: translate(-0.5rem, 0); background-color: var(--color-meta); z-index: 2; }
+}
+@keyframes verso-wait-3 {
+  0%, 33.32%, 100% { transform: translate(0, -0.5rem); background-color: var(--color-meta); z-index: 2; }
+  8.33%, 41.65% { transform: translate(0.5rem, -0.5rem); background-color: var(--color-meta); z-index: 2; }
+  16.66%, 49.98% { transform: translate(0.5rem, 0); background-color: var(--color-meta); z-index: 2; }
+  24.99%, 58.31%, 91.63% { transform: translate(0, 0); background-color: var(--color-meta); z-index: 2; }
+  66.64%, 74.97%, 83.3% { transform: translate(0, 0); background-color: var(--color-sand-5); z-index: 1; }
+}

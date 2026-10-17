@@ -88,12 +88,7 @@
               class="group mt-2 flex h-control w-full items-center justify-center rounded-xs border border-denim bg-denim text-sm font-semibold text-on-fill transition-colors enabled:hover:border-denim-deep enabled:hover:bg-denim-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim disabled:pointer-events-none disabled:transition-none disabled:border-rule-strong disabled:bg-quiet disabled:text-glyph">
               <span class="group-disabled:hidden">{{ t "Sign in to router" }}</span>
               <span role="status" class="hidden items-center gap-2 group-disabled:flex">
-                <span data-verso-wait aria-hidden="true" class="relative block size-3.5 shrink-0">
-                  <span class="absolute top-0 left-0 size-1.5 rounded-[1px] bg-sand-5"></span>
-                  <span class="absolute top-0 left-2 size-1.5 rounded-[1px] bg-sand-5"></span>
-                  <span class="absolute top-2 left-2 size-1.5 rounded-[1px] bg-sand-5"></span>
-                  <span class="absolute top-2 left-0 size-1.5 rounded-[1px] bg-sand-5"></span>
-                </span>
+                {{template "verso-waiting"}}
                 {{ t "Signing in…" }}
               </span>
             </button>

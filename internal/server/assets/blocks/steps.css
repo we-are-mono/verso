@@ -1,0 +1,59 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/* SPDX-FileCopyrightText: 2026 Mono Technologies Inc. */
+
+/*
+ * steps — where a stepped dialog is (modal.html.tmpl): the steps read left to
+ * right with a short hairline between them, and each step's mark says where
+ * it stands: green when done, Denim for the one in hand (Ink words, 600),
+ * hollow for what is ahead (Meta words). The script moves the state as an
+ * upload goes, so the words and marks ease rather than jump.
+ *
+ * Elements: verso-steps__step  one step: its mark, then its name
+ *           verso-steps__mark  the step's mark (a mark, blocks/mark.css)
+ * Variants: data-verso-state   on a step: done · current · ahead
+ * Sets:     --verso-mark-fill, --verso-mark-edge on its mark, by its state
+ */
+
+.verso-steps {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  row-gap: calc(var(--spacing) * 1);
+}
+
+.verso-steps__step {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--spacing) * 2);
+  color: var(--color-meta);
+  transition: color 200ms ease-out;
+  @apply type-body;
+}
+.verso-steps__step + .verso-steps__step::before {
+  content: "";
+  width: 1.25rem;
+  height: 1px;
+  margin-inline: 0.75rem;
+  background: var(--color-rule-strong);
+}
+.verso-steps__step[data-verso-state="done"] { color: var(--color-body); }
+.verso-steps__step[data-verso-state="current"] {
+  color: var(--color-ink);
+  @apply type-subheading;
+}
+
+.verso-steps__mark {
+  transition: background-color 200ms ease-out, border-color 200ms ease-out;
+}
+.verso-steps__step[data-verso-state="done"] > .verso-steps__mark {
+  --verso-mark-fill: var(--color-green);
+  --verso-mark-edge: transparent;
+}
+.verso-steps__step[data-verso-state="current"] > .verso-steps__mark {
+  --verso-mark-fill: var(--color-denim);
+  --verso-mark-edge: transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .verso-steps__step, .verso-steps__mark { transition: none; }
+}

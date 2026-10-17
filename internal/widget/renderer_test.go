@@ -783,7 +783,7 @@ func TestRenderButton(t *testing.T) {
 	// is the one waiting rule the shell's script puts on a pressed button
 	// (verso-button-waiting), laid over the style's own dress, so a script
 	// ends a wait the server drew by taking the rule off.
-	for _, want := range []string{`disabled`, `aria-disabled="true"`, `aria-busy="true"`, "h-control", "verso-button-waiting", `data-verso-wait`, "Fetching sources", "size-1.5 rounded-[1px] bg-sand-5"} {
+	for _, want := range []string{`disabled`, `aria-disabled="true"`, `aria-busy="true"`, "h-control", "verso-button-waiting", `data-verso-wait`, "Fetching sources", "verso-waiting__square"} {
 		if !strings.Contains(loading, want) {
 			t.Errorf("loading button missing %q: %s", want, loading)
 		}
@@ -832,7 +832,7 @@ func TestRenderLiveButton(t *testing.T) {
 	live := render(t, r, &Button{Label: "Pause", Style: "secondary", Live: true})
 	for _, want := range []string{
 		"data-verso-live",
-		`data-verso-wait`, "size-1.5 rounded-[1px] bg-sand-5",
+		`data-verso-wait`, "verso-waiting__square",
 		"<span data-verso-live-label>Pause</span>",
 		"hover:border-sand-5", // hover intact
 		"cursor-pointer",      // the pointer says "press me"

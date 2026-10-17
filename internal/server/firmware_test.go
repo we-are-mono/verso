@@ -24,7 +24,7 @@ func TestMaintenanceFirmwarePickerMatchesSysupgradeImages(t *testing.T) {
 	for _, want := range []string{
 		// the dialog says the trigger's words, where it is, and what fits
 		"Upload a custom image…", ">Upload a custom image</h2>", "Drop a sysupgrade image here",
-		`data-state="current" aria-current="step"`, ">Choose</span>", ">Verify</span>", ">Install</span>",
+		`data-verso-state="current" aria-current="step"`, ">Choose</span>", ">Verify</span>", ">Install</span>",
 		"A sysupgrade image built for Mono Gateway DK · .bin, up to 128\U0000202fMiB",
 		`accept=".bin,application/octet-stream"`, `action="/system/maintenance/firmware"`,
 		`data-verso-autosubmit`,
@@ -44,8 +44,8 @@ func TestFirmwareUploadedFromTheDialogAnswersTheDialog(t *testing.T) {
 		status int
 		want   []string
 	}{
-		"refused":  {false, http.StatusUnprocessableEntity, []string{"Firmware could not be verified", `aria-current="step" class="verso-step flex items-center gap-2"><span aria-hidden="true" class="verso-step-mark size-1.5 shrink-0 rounded-[1px]"></span><span>Choose</span>`}},
-		"verified": {true, http.StatusOK, []string{"Firmware verified", "Install and restart", `aria-current="step" class="verso-step flex items-center gap-2"><span aria-hidden="true" class="verso-step-mark size-1.5 shrink-0 rounded-[1px]"></span><span>Install</span>`}},
+		"refused":  {false, http.StatusUnprocessableEntity, []string{"Firmware could not be verified", `aria-current="step" class="verso-steps__step"><span aria-hidden="true" class="verso-mark verso-steps__mark"></span><span>Choose</span>`}},
+		"verified": {true, http.StatusOK, []string{"Firmware verified", "Install and restart", `aria-current="step" class="verso-steps__step"><span aria-hidden="true" class="verso-mark verso-steps__mark"></span><span>Install</span>`}},
 	} {
 		t.Run(name, func(t *testing.T) {
 			srv := newServer(t, fakeBackend{

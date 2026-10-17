@@ -18,9 +18,9 @@ func TestModalSaysWhichStepItIsOn(t *testing.T) {
 		Steps: []string{"Choose", "Verify", "Install"}, Step: 1})
 	for _, want := range []string{
 		`<ol data-verso-steps aria-label="Steps"`,
-		`<li data-verso-step data-state="done"`,
-		`<li data-verso-step data-state="current" aria-current="step"`,
-		`<li data-verso-step data-state="ahead"`,
+		`<li data-verso-step data-verso-state="done"`,
+		`<li data-verso-step data-verso-state="current" aria-current="step"`,
+		`<li data-verso-step data-verso-state="ahead"`,
 		">Choose</span>", ">Verify</span>", ">Install</span>",
 	} {
 		if !strings.Contains(got, want) {
@@ -68,7 +68,7 @@ func TestModalContentsRenderAlone(t *testing.T) {
 		t.Fatal(err)
 	}
 	got := out.String()
-	for _, want := range []string{">Upload a custom image</h2>", `data-state="current" aria-current="step"`, "Firmware verified"} {
+	for _, want := range []string{">Upload a custom image</h2>", `data-verso-state="current" aria-current="step"`, "Firmware verified"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("want %s in:\n%s", want, got)
 		}

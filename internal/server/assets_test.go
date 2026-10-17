@@ -117,7 +117,7 @@ func TestWaitingMarkAvailableOutsidePackages(t *testing.T) {
 			t.Fatalf("%s is missing the shared waiting template", route)
 		}
 		mark, _, _ = strings.Cut(mark, `</template>`)
-		if !strings.Contains(mark, `data-verso-wait aria-hidden="true"`) || strings.Count(mark, "size-1.5") != 4 {
+		if !strings.Contains(mark, `class="verso-waiting" data-verso-wait aria-hidden="true"`) || strings.Count(mark, "verso-waiting__square") != 4 {
 			t.Errorf("%s must supply the four-square waiting mark", route)
 		}
 	}

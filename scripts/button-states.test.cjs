@@ -305,8 +305,8 @@ for (const reducedMotion of [false, true]) {
     // The mark's motion is the stylesheet's, gated on the reader's motion
     // preference; the script never animates it.
     assert.equal(animations, 0);
-    const css = fs.readFileSync(path.join(__dirname, '../internal/server/assets/input.css'), 'utf8');
-    assert.match(css, /@media \(prefers-reduced-motion: no-preference\) \{\s*\[data-verso-wait\] > \* \{\s*animation-duration:/);
+    const css = fs.readFileSync(path.join(__dirname, '../internal/server/assets/blocks/waiting.css'), 'utf8');
+    assert.match(css, /@media \(prefers-reduced-motion: no-preference\) \{\s*\.verso-waiting__square \{\s*animation-duration:/);
     env.window.emit('pageshow');
     assert.equal(button.disabled, false);
     assert.equal(button.getAttribute('aria-busy'), null);

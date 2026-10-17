@@ -164,8 +164,6 @@ classes-are-blocks	verso-row-name
 classes-are-blocks	verso-scroll-edge
 classes-are-blocks	verso-stack
 classes-are-blocks	verso-staged-bar
-classes-are-blocks	verso-step
-classes-are-blocks	verso-step-mark
 classes-are-blocks	verso-stream-release
 classes-are-blocks	verso-stream-release-x
 classes-are-blocks	verso-stream-shelf
@@ -244,10 +242,6 @@ no-repeated-bundles	-bottom-1 -top-1 absolute bg-marigold rounded-[1px] w-0.5
 no-repeated-bundles	-mx-10 bg-quiet flex-1 min-h-0 overflow-y-auto pb-6 pt-3 shadow-(--shadow-edge)
 no-repeated-bundles	-translate-y-1/2 absolute left-3 pointer-events-none whitespace-nowrap
 no-repeated-bundles	absolute bg-crimson bg-green bg-marigold inset-0
-no-repeated-bundles	absolute bg-sand-5 left-0 rounded-[1px] size-1.5 top-0
-no-repeated-bundles	absolute bg-sand-5 left-0 rounded-[1px] size-1.5 top-2
-no-repeated-bundles	absolute bg-sand-5 left-2 rounded-[1px] size-1.5 top-0
-no-repeated-bundles	absolute bg-sand-5 left-2 rounded-[1px] size-1.5 top-2
 no-repeated-bundles	absolute cursor-pointer inset-0 opacity-0 size-full
 no-repeated-bundles	absolute flex inset-y-0 items-center left-3 pointer-events-none text-glyph
 no-repeated-bundles	absolute flex inset-y-0 items-center pointer-events-none right-3 text-meta
@@ -256,7 +250,6 @@ no-repeated-bundles	bg-denim border border-denim cursor-pointer flex focus-visib
 no-repeated-bundles	bg-marigold-soft flex gap-2 items-start leading-[1.45] mt-6 px-3 py-2 rounded-xs text-marigold-deep
 no-repeated-bundles	bg-rule-strong h-5 shrink-0 w-px
 no-repeated-bundles	block mt-1.75 relative shrink-0 size-3.5
-no-repeated-bundles	block relative shrink-0 size-3.5
 no-repeated-bundles	border cursor-pointer flex font-semibold h-control items-center px-4 rounded-xs text-sm whitespace-nowrap
 no-repeated-bundles	border-b border-mid flex gap-6 items-center py-2.5
 no-repeated-bundles	border-b border-rule text-right whitespace-nowrap
@@ -730,15 +723,6 @@ rules-live-in-blocks	input.css	.verso-rail-link:hover
 rules-live-in-blocks	input.css	.verso-rail-link[aria-current="true"]
 rules-live-in-blocks	input.css	.verso-row-name
 rules-live-in-blocks	input.css	.verso-scroll-edge
-rules-live-in-blocks	input.css	.verso-step
-rules-live-in-blocks	input.css	.verso-step
-rules-live-in-blocks	input.css	.verso-step + .verso-step::before
-rules-live-in-blocks	input.css	.verso-step-mark
-rules-live-in-blocks	input.css	.verso-step-mark
-rules-live-in-blocks	input.css	.verso-step[data-state="current"]
-rules-live-in-blocks	input.css	.verso-step[data-state="current"] .verso-step-mark
-rules-live-in-blocks	input.css	.verso-step[data-state="done"]
-rules-live-in-blocks	input.css	.verso-step[data-state="done"] .verso-step-mark
 rules-live-in-blocks	input.css	.verso-stream-release
 rules-live-in-blocks	input.css	.verso-stream-release-x
 rules-live-in-blocks	input.css	.verso-stream-release:hover .verso-stream-release-x
@@ -837,12 +821,6 @@ rules-live-in-blocks	input.css	[data-verso-turning="off"] .verso-row-name::after
 rules-live-in-blocks	input.css	[data-verso-turning="on"] .verso-row-name
 rules-live-in-blocks	input.css	[data-verso-turning="on"] .verso-row-name::after
 rules-live-in-blocks	input.css	[data-verso-turning="on"] :has(> .verso-row-name)
-rules-live-in-blocks	input.css	[data-verso-wait] > *
-rules-live-in-blocks	input.css	[data-verso-wait] > :nth-child(1)
-rules-live-in-blocks	input.css	[data-verso-wait] > :nth-child(2)
-rules-live-in-blocks	input.css	[data-verso-wait] > :nth-child(3)
-rules-live-in-blocks	input.css	[data-verso-wait] > :nth-child(4)
-rules-live-in-blocks	input.css	[data-verso-wait][data-verso-wait-paused] > *
 rules-live-in-blocks	input.css	button.verso-button-waiting:disabled
 rules-live-in-blocks	input.css	details[open] > summary .verso-chevron
 rules-live-in-blocks	input.css	main > [data-verso-colophon]
@@ -1213,7 +1191,6 @@ type-comes-from-roles	input.css	.verso-prose code	font-family
 type-comes-from-roles	input.css	.verso-prose code	font-size
 type-comes-from-roles	input.css	.verso-prose h1, .verso-prose h2, .verso-prose h3	font-weight
 type-comes-from-roles	input.css	.verso-rail-link[aria-current="true"]	font-weight
-type-comes-from-roles	input.css	.verso-step[data-state="current"]	font-weight
 type-comes-from-roles	input.css	.verso-stream-release-x	font-size
 type-comes-from-roles	input.css	.verso-stream-release-x	line-height
 type-comes-from-roles	input.css	.verso-table :is(td, th) :not(.verso-chip, .verso-chip *, [class*="leading-"])	line-height
@@ -1660,11 +1637,9 @@ type-comes-from-roles	widget/templates/meter.html.tmpl	tracking-tight
 type-comes-from-roles	widget/templates/modal.html.tmpl	font-medium
 type-comes-from-roles	widget/templates/modal.html.tmpl	font-semibold
 type-comes-from-roles	widget/templates/modal.html.tmpl	font-semibold
-type-comes-from-roles	widget/templates/modal.html.tmpl	leading-6
 type-comes-from-roles	widget/templates/modal.html.tmpl	leading-[1.45]
 type-comes-from-roles	widget/templates/modal.html.tmpl	text-base
 type-comes-from-roles	widget/templates/modal.html.tmpl	text-base
-type-comes-from-roles	widget/templates/modal.html.tmpl	text-sm
 type-comes-from-roles	widget/templates/modal.html.tmpl	text-sm
 type-comes-from-roles	widget/templates/modal.html.tmpl	text-sm
 type-comes-from-roles	widget/templates/overview.html.tmpl	font-medium
