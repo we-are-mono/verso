@@ -64,12 +64,11 @@ func (s *Server) watchApply(sid string, change history.Change, reverses []int64,
 func (s *Server) confirmedApply(sid string) {
 	s.applies.mu.Lock()
 	pending, ok := s.applies.by[sid]
+	delete(s.applies.by, sid)
 	s.applies.mu.Unlock()
 	if ok {
-		if pending, taken := s.takeApply(sid, pending.seq); taken {
-			s.recordApply(history.ChangeApplied, pending)
-			s.stageEnds.set(sid, stageEnd{Kind: stageApplied, At: time.Now(), Count: pending.restage.count, Back: pending.restage.back})
-		}
+		s.recordApply(history.ChangeApplied, pending)
+		s.stageEnds.set(sid, stageEnd{Kind: stageApplied, At: time.Now(), Count: pending.restage.count, Back: pending.restage.back})
 	}
 }
 
