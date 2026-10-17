@@ -292,12 +292,7 @@ fn ipv4_network(ipaddr: &str, netmask: &str) -> Option<String> {
     let Some(prefix) = prefix.filter(|prefix| *prefix <= 32) else {
         return Some(address.to_string());
     };
-    let mask = if prefix == 0 {
-        0
-    } else {
-        u32::MAX << (32 - prefix)
-    };
-    let network = (u32::from_be_bytes(octets) & mask).to_be_bytes();
+    let network = (u32::from_be_bytes(octets) & mask(prefix)).to_be_bytes();
     Some(format!(
         "{}.{}.{}.{}/{}",
         network[0], network[1], network[2], network[3], prefix
@@ -312,14 +307,9 @@ pub fn subnet_holds(ipaddr: &str, netmask: &str, address: &str) -> Option<bool> 
     let network = ipv4_network(ipaddr, netmask)?;
     let (base, prefix) = network.split_once('/')?;
     let prefix: u32 = prefix.parse().ok()?;
-    let mask = if prefix == 0 {
-        0
-    } else {
-        u32::MAX << (32 - prefix)
-    };
     let base = u32::from_be_bytes(ipv4_octets(base)?);
     let address = u32::from_be_bytes(ipv4_octets(address.trim())?);
-    Some(address & mask == base)
+    Some(address & mask(prefix) == base)
 }
 
 /// prefix_of counts the leading ones of a dotted-quad netmask. A mask with a gap
@@ -327,13 +317,12 @@ pub fn subnet_holds(ipaddr: &str, netmask: &str, address: &str) -> Option<bool> 
 fn prefix_of(netmask: &str) -> Option<u32> {
     let bits = u32::from_be_bytes(ipv4_octets(netmask.trim())?);
     let ones = bits.leading_ones();
-    (bits
-        == if ones == 0 {
-            0
-        } else {
-            u32::MAX << (32 - ones)
-        })
-    .then_some(ones)
+    (bits == mask(ones)).then_some(ones)
+}
+
+/// mask is the IPv4 netmask of a prefix length from 0 to 32.
+fn mask(prefix: u32) -> u32 {
+    u32::MAX.checked_shl(32 - prefix).unwrap_or(0)
 }
 
 fn ipv4_octets(address: &str) -> Option<[u8; 4]> {

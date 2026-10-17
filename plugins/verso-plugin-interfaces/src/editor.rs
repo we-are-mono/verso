@@ -662,7 +662,11 @@ fn valid_mac(s: &str) -> bool {
 pub(crate) fn mask_bits(s: &str) -> Option<u32> {
     let m = u32::from(s.parse::<Ipv4Addr>().ok()?);
     let bits = m.leading_ones();
-    (bits > 0 && m == u32::MAX.checked_shl(32 - bits).unwrap_or(0)).then_some(bits)
+    (bits > 0 && m == mask(bits)).then_some(bits)
+}
+/// mask is the IPv4 netmask of a prefix length from 0 to 32.
+pub(crate) fn mask(prefix: u32) -> u32 {
+    u32::MAX.checked_shl(32 - prefix).unwrap_or(0)
 }
 fn prefix6(s: &str) -> bool {
     s.split_once('/')
@@ -887,7 +891,7 @@ fn validate(m: &Model, kind: &str, network: &str, device: &str, v: &Values) -> E
         }
         if let (Ok(addr), Some(bits)) = (addr, bits) {
             let ip = u32::from(addr);
-            let mask = u32::MAX << (32 - bits);
+            let mask = mask(bits);
             let host = ip & !mask;
             if bits < 31 && (host == 0 || host == !mask) {
                 err(

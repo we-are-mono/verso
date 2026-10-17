@@ -7,7 +7,7 @@
 //! blank, and one set of controls draws both. The rest are the kernel's main
 //! table, read live. The address names the open drawer (`?open=`).
 
-use crate::editor::{mask_bits, uint};
+use crate::editor::{mask, mask_bits, uint};
 use crate::model::Record;
 use crate::{Model, ROOT};
 use serde_json::{json, Map, Value};
@@ -695,7 +695,7 @@ fn values(existing: Option<&Record>, route: &Route) -> Value {
     }
     let masked = !route.v6 && existing.is_some_and(|r| !r.get("netmask").is_empty());
     if let (true, Some((addr, len))) = (masked, network(route.get("target"), false)) {
-        let mask = Ipv4Addr::from(u32::MAX.checked_shl(32 - len).unwrap_or(0));
+        let mask = Ipv4Addr::from(mask(len));
         v.insert("target".into(), json!(addr.to_string()));
         v.insert("netmask".into(), json!(mask.to_string()));
     }
