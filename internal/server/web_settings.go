@@ -65,25 +65,6 @@ type webMoves struct {
 	pending *webMove
 }
 
-// stringList reads a uci option that may be a list or a single value.
-func stringList(v any) []string {
-	switch v := v.(type) {
-	case string:
-		return []string{v}
-	case []any:
-		out := make([]string, 0, len(v))
-		for _, item := range v {
-			if s, ok := item.(string); ok {
-				out = append(out, s)
-			}
-		}
-		return out
-	case []string:
-		return v
-	}
-	return nil
-}
-
 // webConfig is verso.web as written, and whether it could be read.
 func (s *Server) webConfig(r *http.Request) (webOptions, bool) {
 	snapshot, err := s.backend.UCIConfig(r.Context(), s.sessionSID(r), versoConfig)
@@ -93,7 +74,7 @@ func (s *Server) webConfig(r *http.Request) (webOptions, bool) {
 	}
 	web := asSection(snapshot[webSection])
 	redirect, _ := web[webRedirectOpt].(string)
-	return webOptions{HTTPS: stringList(web[webHTTPSOption]), HTTP: stringList(web[webHTTPOption]), Redirect: redirect}, true
+	return webOptions{HTTPS: uciList(web[webHTTPSOption]), HTTP: uciList(web[webHTTPOption]), Redirect: redirect}, true
 }
 
 // webPort is the port a listener list answers on, the first one's.

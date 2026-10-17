@@ -49,7 +49,7 @@ func exposure(fw map[string]any, wanNetworks []string, ports []string) []exposed
 			defaults = option(s, "input")
 		case "zone":
 			name := option(s, "name")
-			nets := words(s["network"])
+			nets := uciWords(s["network"])
 			if name == "wan" || slices.ContainsFunc(nets, func(n string) bool { return slices.Contains(wanNetworks, n) }) {
 				wanZones[name] = true
 			}
@@ -101,15 +101,6 @@ func option(s map[string]any, key string) string {
 	return strings.TrimSpace(v)
 }
 
-// words is a list option, or a single option holding several words.
-func words(v any) []string {
-	var out []string
-	for _, item := range stringList(v) {
-		out = append(out, strings.Fields(item)...)
-	}
-	return out
-}
-
 // off is a section switched off, as fw4 reads `enabled`.
 func off(s map[string]any) bool {
 	switch strings.ToLower(option(s, "enabled")) {
@@ -122,7 +113,7 @@ func off(s map[string]any) bool {
 // carriesTCP is whether a rule or forward matches TCP, the shell's protocol:
 // fw4 reads no proto as TCP and UDP both.
 func carriesTCP(s map[string]any) bool {
-	protos := words(s["proto"])
+	protos := uciWords(s["proto"])
 	if len(protos) == 0 {
 		return true
 	}

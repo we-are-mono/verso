@@ -343,17 +343,8 @@ func reservedMACs(cfg map[string]any) map[string]bool {
 		if s == nil || s[".type"] != "host" {
 			continue
 		}
-		switch mac := s["mac"].(type) {
-		case string:
-			for _, one := range strings.Fields(mac) {
-				out[strings.ToLower(one)] = true
-			}
-		case []any:
-			for _, entry := range mac {
-				if one, ok := entry.(string); ok {
-					out[strings.ToLower(one)] = true
-				}
-			}
+		for _, one := range uciWords(s["mac"]) {
+			out[strings.ToLower(one)] = true
 		}
 	}
 	return out
