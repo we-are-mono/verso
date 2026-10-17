@@ -6,10 +6,8 @@ package widget
 import "io"
 
 // Divider is a section separator: a light horizontal rule that sets groups of
-// content apart on a long page.
-type Divider struct {
-	Tight bool `json:"tight"` // compact spacing, for separating groups inside a card/panel
-}
+// content apart inside a card or panel.
+type Divider struct{}
 
 func (*Divider) isWidget() {}
 

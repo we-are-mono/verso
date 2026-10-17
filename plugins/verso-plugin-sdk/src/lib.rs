@@ -995,8 +995,6 @@ pub struct SectionWidget {
     #[serde(skip_serializing_if = "String::is_empty")]
     pub meta: String,
     #[serde(skip_serializing_if = "String::is_empty")]
-    pub meta_icon: String,
-    #[serde(skip_serializing_if = "String::is_empty")]
     pub meta_position: String,
     #[serde(skip_serializing_if = "is_false")]
     pub flush: bool,
@@ -1138,8 +1136,6 @@ pub struct Field {
 pub struct Switch {
     pub name: String,
     pub label: String,
-    #[serde(skip_serializing_if = "String::is_empty")]
-    pub off_label: String,
     /// What the switch is for, written under its label as the row's
     /// description, as a field's `help` is. In a labelled group of switches
     /// it says which thing the row is, and stays when descriptions fold.
@@ -2553,8 +2549,6 @@ pub struct TableCell {
     #[serde(skip_serializing_if = "String::is_empty")]
     pub chip: String,
     #[serde(skip_serializing_if = "String::is_empty")]
-    pub chip_icon: String,
-    #[serde(skip_serializing_if = "String::is_empty")]
     pub lead_icon: String,
     #[serde(skip_serializing_if = "String::is_empty")]
     pub key: String,
@@ -3675,7 +3669,6 @@ mod tests {
         let off = Widget::Switch(Switch {
             name: "counter".into(),
             label: "Count matching packets".into(),
-            off_label: "Not counted".into(),
             help: "Hit counts come from the kernel.".into(),
             style: "inline".into(),
             ..Default::default()
@@ -3684,7 +3677,7 @@ mod tests {
             serde_json::to_value(&off).unwrap(),
             serde_json::json!({
                 "type": "switch", "name": "counter", "label": "Count matching packets",
-                "off_label": "Not counted", "help": "Hit counts come from the kernel.",
+                "help": "Hit counts come from the kernel.",
                 "style": "inline"
             })
         );

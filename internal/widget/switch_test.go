@@ -41,7 +41,7 @@ func TestDecodeAndRenderSwitch(t *testing.T) {
 	if label, control := strings.Index(got, ">Enabled"), strings.Index(got, "data-verso-switch"); label < 0 || control < 0 || label > control {
 		t.Errorf("the switch's name comes before its box in DOM order: %s", got)
 	}
-	inline := render(t, newRenderer(t), &Switch{Name: "enabled", Label: "Enabled", OffLabel: "Disabled", Style: "inline", On: true})
+	inline := render(t, newRenderer(t), &Switch{Name: "enabled", Label: "Enabled", Style: "inline", On: true})
 	for _, want := range []string{"verso-inline-switch inline-flex cursor-pointer", "size-1 rounded-full bg-inert", "ml-3 inline-flex translate-y-px", "verso-inline-switch-on", "Enabled", "verso-inline-switch-off", "Disabled", "text-ink"} {
 		if !strings.Contains(inline, want) {
 			t.Errorf("inline switch missing %q: %s", want, inline)
@@ -94,7 +94,7 @@ func TestSwitchControlIsACheckbox(t *testing.T) {
 // settings rows declare.
 func TestSwitchDeclaresChangeHooks(t *testing.T) {
 	for _, style := range []string{"", "checkbox", "inline"} {
-		got := render(t, newRenderer(t), &Switch{Name: "enabled", Label: "Enabled", OffLabel: "Disabled", Style: style, On: true})
+		got := render(t, newRenderer(t), &Switch{Name: "enabled", Label: "Enabled", Style: style, On: true})
 		for _, want := range []string{
 			`data-verso-change-field`, `data-verso-change-name="enabled"`,
 			`data-verso-change-label="Enabled"`, `data-verso-change-kind="toggle"`,

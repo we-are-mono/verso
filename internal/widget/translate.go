@@ -190,7 +190,6 @@ func translateFields(w Widget, t func(string) string) {
 		if !n.Verbatim {
 			n.Label = t(n.Label)
 		}
-		n.OffLabel = t(n.OffLabel)
 		n.Help = t(n.Help)
 		n.Tip = t(n.Tip)
 		n.Error = t(n.Error)

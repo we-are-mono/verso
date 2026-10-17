@@ -633,7 +633,7 @@ func (s *Server) renderDiscover(w http.ResponseWriter, r *http.Request, errMsg s
 		toolbar.Note = packageIndexNote(checkedAt, statusErr, tr)
 		toolbar.NoteVerbatim = true
 	}
-	children = append(children, toolbar, &widget.Divider{Tight: true})
+	children = append(children, toolbar, &widget.Divider{})
 
 	if refreshing {
 		children = append(children, refreshingInstead(

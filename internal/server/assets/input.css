@@ -174,15 +174,12 @@
 }
 
 /* Native buttons inherit the press treatment, including controls inserted by
-   the client. Button-styled links opt in through the shared verso-press class.
-   Moving a visual child preserves an enlarged hit area on table name buttons. */
+   the client. Button-styled links opt in through the shared verso-press class. */
 @layer utilities {
   :is(button, input[type="button"], input[type="submit"], input[type="reset"], [role="button"], .verso-press):not(:disabled, [aria-disabled="true"], [aria-busy="true"]):active {
     box-shadow: none;
     @media (prefers-reduced-motion: no-preference) {
-      &:not(:has(> .verso-press-content)), & > .verso-press-content {
-        translate: 0 1px;
-      }
+      translate: 0 1px;
     }
   }
 }

@@ -4,7 +4,6 @@
   "anchor": "rule",
   "sub": "Devices that may connect.",
   "meta": "3 peers",
-  "meta_icon": "shield",
   "meta_position": "inline",
   "flush": true,
   "target": "firewall.cfg0a1b2c",

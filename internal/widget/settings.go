@@ -19,11 +19,9 @@ type Settings struct {
 	Style string `json:"style,omitempty"` // "" (bare rows on the page, default; "plain" is its legacy alias) | "card" — boxed, for the select places that earn a card
 	Title string `json:"title,omitempty"` // optional group label above the rows
 	Meta  string `json:"meta,omitempty"`  // optional quiet detail on the title row's right, e.g. a subnet · live count
-	// Condensed lowers the row padding only — same anatomy, tighter, for a list
-	// of many short facts.
-	Condensed bool           `json:"condensed,omitempty"`
-	Items     []SettingsItem `json:"items"`
-	Seam      *SettingsSeam  `json:"seam,omitempty"`
+
+	Items []SettingsItem `json:"items"`
+	Seam  *SettingsSeam  `json:"seam,omitempty"`
 }
 
 // SettingsSeam folds a card's long tail of options behind a collapsed block
@@ -181,14 +179,11 @@ func (it *SettingsItem) frame() fieldFrame {
 }
 
 // itemViews draws each row through the field frame: an in-place value, a
-// switch, or a fact's read-out. A condensed list's rows stand closer.
+// switch, or a fact's read-out.
 func (s *Settings) itemViews(r *Renderer, items []SettingsItem) ([]template.HTML, error) {
 	out := make([]template.HTML, 0, len(items))
 	for _, it := range items {
 		frame := it.frame()
-		if s.Condensed {
-			frame.Class += " verso-field-condensed"
-		}
 		var b strings.Builder
 		var err error
 		switch {

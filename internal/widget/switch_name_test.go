@@ -28,7 +28,7 @@ func TestRowSwitchesCarryTheRowName(t *testing.T) {
 // would pin it to one of them.
 func TestLabelledSwitchesKeepTheirLabel(t *testing.T) {
 	for _, style := range []string{"", "checkbox", "inline"} {
-		got := render(t, newRenderer(t), &Switch{Name: "enabled", Label: "Enabled", OffLabel: "Disabled", Style: style})
+		got := render(t, newRenderer(t), &Switch{Name: "enabled", Label: "Enabled", Style: style})
 		if strings.Contains(got, `data-verso-switch id="enabled" name="enabled" aria-label`) {
 			t.Errorf("style %q: a labelled switch must not carry an aria-label:\n%s", style, got)
 		}

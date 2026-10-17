@@ -36,15 +36,6 @@ func TestAFactIsALedgerRow(t *testing.T) {
 	}
 }
 
-// TestCondensedFactsStandCloser: a condensed list of many short facts keeps
-// the ledger's anatomy, its rows tighter.
-func TestCondensedFactsStandCloser(t *testing.T) {
-	got := render(t, newRenderer(t), &Settings{Condensed: true, Items: []SettingsItem{{Title: "Uptime", Value: "3 days"}, {Title: "Load", Value: "0.12"}}})
-	if n := strings.Count(got, "verso-field-condensed"); n != 2 {
-		t.Errorf("every condensed row is marked, got %d:\n%s", n, got)
-	}
-}
-
 // firewallDefaults is the "config defaults" block in miniature: a read-only
 // policy row carrying value pills, and toggle rows carrying the shared switch
 // plus their underlying option name as a code chip.

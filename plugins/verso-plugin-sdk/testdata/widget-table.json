@@ -69,7 +69,6 @@
         {
           "text": "lan",
           "chip": "trusted",
-          "chip_icon": "zone",
           "lead_icon": "network",
           "tag": "default",
           "tag_variant": "info",

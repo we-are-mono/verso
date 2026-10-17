@@ -1383,8 +1383,8 @@ own `staged` mark. In Rust:
 `Widget::form_grid(1, switches).labelled("Files the config includes", "")`.
 
 For object-level state, a section may place an inline switch in its heading with
-`control`; set the switch's `style` to `"inline"` and provide `off_label`. The
-state label follows the switch and changes with it. This keeps identity and state
+`control`; set the switch's `style` to `"inline"`. The state label — its
+`label` when on, "Disabled" when off — follows the switch and changes with it. This keeps identity and state
 together without turning the switch into a form field row.
 
 ### list — a repeating text field

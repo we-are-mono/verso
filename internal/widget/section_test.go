@@ -195,7 +195,6 @@ func TestRenderSectionMeta(t *testing.T) {
 		Title:     "Time and region",
 		MetaLabel: "Current time",
 		Meta:      "2026-08-29 22:14:08",
-		MetaIcon:  "clock",
 		Children:  []Widget{&Text{Markdown: "body"}},
 	})
 	for _, want := range []string{
@@ -203,7 +202,6 @@ func TestRenderSectionMeta(t *testing.T) {
 		"Current time",
 		"font-semibold text-body",
 		"2026-08-29 22:14:08",
-		lucideIcons["clock"],
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("section meta missing %q:\n%s", want, got)

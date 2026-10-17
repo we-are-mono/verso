@@ -20,8 +20,7 @@ import (
 // the heading: it renders tight beneath the title, and the gap to the section's
 // first child stays where it was — the head reads as one unit, the content as
 // another. Meta is optional, compact status text aligned opposite the title;
-// MetaLabel can identify that value without folding the label into it, and
-// MetaIcon names a shell-owned Lucide glyph rendered immediately before both.
+// MetaLabel can identify that value without folding the label into it.
 // MetaPosition may be "inline" when the meta belongs directly to the title;
 // the shell separates the two with a centred dot. The default keeps meta on the
 // opposite edge of the title row.
@@ -58,7 +57,6 @@ type Section struct {
 	// stays undeclared and translates.
 	MetaVerbatim bool   `json:"-"`
 	MetaLabel    string `json:"meta_label,omitempty"`
-	MetaIcon     string `json:"meta_icon,omitempty"`
 	MetaPosition string `json:"meta_position,omitempty"`
 	Hairline     bool   `json:"hairline,omitempty"`
 	Flush        bool   `json:"flush,omitempty"`
@@ -123,7 +121,6 @@ type sectionView struct {
 	Sub        template.HTML
 	Meta       string
 	MetaLabel  string
-	MetaIcon   string
 	MetaInline bool
 	Hairline   bool
 	Flush      bool
@@ -200,7 +197,6 @@ func (s *Section) renderInto(r *Renderer, out io.Writer, csrf string) error {
 		Chip:       s.Chip,
 		Meta:       s.Meta,
 		MetaLabel:  s.MetaLabel,
-		MetaIcon:   s.MetaIcon,
 		MetaInline: s.MetaPosition == "inline",
 		Hairline:   s.Hairline,
 		Flush:      s.Flush,

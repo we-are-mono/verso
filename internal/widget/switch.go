@@ -11,14 +11,13 @@ import (
 // Switch is one persistent on/off setting. It uses the same control as table
 // toggle cells, so an object's enabled state has one visual language in
 // summaries and editors. Pure CSS in every style (ADR-005 §7): the checkbox's
-// :checked state drives the box and, inline, the Label/OffLabel swap, so no
-// style ships JavaScript.
+// :checked state drives the box and, inline, the swap between the Label and
+// "Disabled", so no style ships JavaScript.
 type Switch struct {
-	Name     string `json:"name"`
-	Label    string `json:"label"`
-	OffLabel string `json:"off_label,omitempty"`
-	Help     string `json:"help,omitempty"`
-	Style    string `json:"style,omitempty"` // "" labelled row | "checkbox" the same row | "inline" beside a section heading | "locked" a state nothing here changes: drawn set or clear, inert, posting nothing
+	Name  string `json:"name"`
+	Label string `json:"label"`
+	Help  string `json:"help,omitempty"`
+	Style string `json:"style,omitempty"` // "" labelled row | "checkbox" the same row | "inline" beside a section heading | "locked" a state nothing here changes: drawn set or clear, inert, posting nothing
 	// Verbatim says the label is a machine string — a path, a device — rather
 	// than words: it is set in mono and never looked up in a catalog.
 	Verbatim bool `json:"verbatim,omitempty"`

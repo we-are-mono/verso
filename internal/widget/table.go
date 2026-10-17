@@ -482,7 +482,6 @@ type TableCell struct {
 	Copy         bool   `json:"copy,omitempty"`          // mono cells: offer the inline copy button beside the value
 	Emphasis     bool   `json:"emphasis,omitempty"`      // mono cells: promote an important value one size and weight step
 	Chip         string `json:"chip,omitempty"`          // name cells: a small category chip inline after the name (e.g. its zone)
-	ChipIcon     string `json:"chip_icon,omitempty"`     // name cells: optional Lucide icon inside the category chip
 	LeadIcon     string `json:"lead_icon,omitempty"`     // name cells: a device-type Lucide glyph before the name, plain slate ink (not a badge)
 	Key          string `json:"key,omitempty"`           // optional stable live-update hook; not displayed
 	Muted        bool   `json:"muted,omitempty"`         // text/mono and empty pill cells: render the value as secondary ink

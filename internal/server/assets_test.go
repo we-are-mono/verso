@@ -490,10 +490,8 @@ func TestARevealedFieldIsARowLikeAnyOther(t *testing.T) {
 }
 
 // TestAFactsRowsKeepTheLedgersStep: a settings list's facts are ledger rows,
-// so none keeps a rule of its own; a condensed list stands 8px over its first
-// row, 7px after each hairline and 8px before the next, a 40px pitch for a
-// one-line fact; the row before a fold keeps a row's 16px over the fold's
-// hairline.
+// so none keeps a rule of its own; the row before a fold keeps a row's 16px
+// over the fold's hairline.
 func TestAFactsRowsKeepTheLedgersStep(t *testing.T) {
 	raw, err := os.ReadFile("assets/forms.css")
 	if err != nil {
@@ -504,10 +502,7 @@ func TestAFactsRowsKeepTheLedgersStep(t *testing.T) {
 		t.Error("a fact's row keeps a rule of its own")
 	}
 	for head, want := range map[string]string{
-		".verso-field-row.verso-field-condensed {":                         "padding-top: calc(var(--spacing) * 2);",
-		".verso-field-row + .verso-field-row.verso-field-condensed {":      "padding-top: calc(var(--spacing) * 1.75);",
-		".verso-field-row.verso-field-condensed:has(+ .verso-field-row) {": "padding-bottom: calc(var(--spacing) * 2);",
-		"[data-verso-settings] .verso-field-row:has(+ details) {":          "padding-bottom: calc(var(--spacing) * 4);",
+		"[data-verso-settings] .verso-field-row:has(+ details) {": "padding-bottom: calc(var(--spacing) * 4);",
 	} {
 		if !strings.Contains(cssBlock(t, css, head), want) {
 			t.Errorf("%s wants %s", head, want)

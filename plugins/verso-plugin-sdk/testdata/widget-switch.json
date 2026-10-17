@@ -2,7 +2,6 @@
   "type": "switch",
   "name": "enabled",
   "label": "Enabled",
-  "off_label": "Disabled",
   "help": "A disabled rule is kept but never evaluated.",
   "style": "inline",
   "on": true

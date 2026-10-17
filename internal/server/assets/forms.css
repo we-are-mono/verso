@@ -109,18 +109,6 @@
   fieldset[data-verso-when]:has(~ :is(.verso-field-row, .verso-conditional, .verso-field-set, [data-verso-rows])) > .verso-field-row:last-child {
     padding-bottom: calc(var(--spacing) * 4);
   }
-  /* A condensed list of many short facts keeps the ledger's anatomy on a
-     tighter step: 8px over its first row, 7px after each hairline and 8px
-     before the next, a 40px pitch for a one-line fact. */
-  .verso-field-row.verso-field-condensed {
-    padding-top: calc(var(--spacing) * 2);
-  }
-  .verso-field-row + .verso-field-row.verso-field-condensed {
-    padding-top: calc(var(--spacing) * 1.75);
-  }
-  .verso-field-row.verso-field-condensed:has(+ .verso-field-row) {
-    padding-bottom: calc(var(--spacing) * 2);
-  }
   /* A settings list's fold draws its own hairline over its summary; the row
      before it keeps a row's 16px over that line. */
   [data-verso-settings] .verso-field-row:has(+ details) {

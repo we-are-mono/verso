@@ -10,7 +10,7 @@
   <span aria-hidden="true" class="size-1 rounded-full bg-inert"></span>
   <span class="ml-3 inline-flex translate-y-px">{{template "switch.control" .Control}}</span>
   <span class="verso-inline-switch-on ml-2 translate-y-px text-ink">{{.Label}}</span>
-  <span class="verso-inline-switch-off ml-2 translate-y-px text-ink">{{if .OffLabel}}{{.OffLabel}}{{else}}{{ t "Disabled" }}{{end}}</span>
+  <span class="verso-inline-switch-off ml-2 translate-y-px text-ink">{{ t "Disabled" }}</span>
 </label>
 {{end}}
 

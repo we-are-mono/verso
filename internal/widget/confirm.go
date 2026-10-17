@@ -32,11 +32,6 @@ type Confirm struct {
 	// into the item's own row, so the question drops full-width under the item
 	// it asks about. For an act on one of a set's items: removing a key.
 	Icon string `json:"icon,omitempty"`
-	// InRow lays a named trigger into the row of acts it stands in, as an icon
-	// act lays itself into its item's row, so the question drops full-width
-	// under the row rather than beside the acts that share its line: Discard
-	// all beside Apply.
-	InRow bool `json:"in_row,omitempty"`
 	// subject is the item an icon act acts on, named after the trigger for
 	// anyone who hears the control rather than sees its row.
 	subject string
@@ -59,7 +54,7 @@ type confirmView struct {
 	ID                                             string
 	Trigger, Title, Message, Confirm, Cancel, Tone string
 	Icon, Subject                                  string
-	InRow                                          bool // an icon act, or a named one laid into its row
+	InRow                                          bool // an icon act, laid into its item's row
 	Question                                       template.HTML
 }
 
@@ -93,7 +88,7 @@ func (c *Confirm) renderInto(r *Renderer, out io.Writer, _ string) error {
 		Cancel:  cancel,
 		Icon:    c.Icon,
 		Subject: c.subject,
-		InRow:   c.InRow || c.Icon != "",
+		InRow:   c.Icon != "",
 	}
 	question, err := c.question(r, view)
 	if err != nil {

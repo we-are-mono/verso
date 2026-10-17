@@ -237,7 +237,7 @@
             {{/* a mark over words is not read aloud, so the row says it */}}
             {{if .Off}}<span class="sr-only">{{t "off"}}</span>{{end}}
             {{if .Sub}}<span class="-mx-1.5 shrink-0 text-faint">·</span><span class="shrink-0 whitespace-nowrap text-meta">{{.Sub}}</span>{{end}}
-            {{if .Chip}}<span class="{{template "verso-chip-class"}}">{{if .ChipIcon}}<span class="text-faint">{{icon .ChipIcon "size-3.5"}}</span>{{end}}{{.Chip}}</span>{{end}}
+            {{if .Chip}}<span class="{{template "verso-chip-class"}}">{{.Chip}}</span>{{end}}
             {{range .Chips}}{{template "verso-chip" .}}{{end}}
             {{if and .Tag (not .Detail)}}{{template "table.tag" .}}{{end}}
           </span>

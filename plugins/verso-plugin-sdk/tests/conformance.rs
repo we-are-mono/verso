@@ -48,7 +48,6 @@ fn write_widget_fixtures() {
                 anchor: "rule".into(),
                 sub: "Devices that may connect.".into(),
                 meta: "3 peers".into(),
-                meta_icon: "shield".into(),
                 meta_position: "inline".into(),
                 flush: true,
                 target: "firewall.cfg0a1b2c".into(),
@@ -135,7 +134,6 @@ fn write_widget_fixtures() {
             Widget::Switch(Switch {
                 name: "enabled".into(),
                 label: "Enabled".into(),
-                off_label: "Disabled".into(),
                 help: "A disabled rule is kept but never evaluated.".into(),
                 style: "inline".into(),
                 on: true,
@@ -605,7 +603,6 @@ fn listing() -> Widget {
                     TableCell {
                         text: "lan".into(),
                         chip: "trusted".into(),
-                        chip_icon: "zone".into(),
                         lead_icon: "network".into(),
                         tag: "default".into(),
                         tag_variant: "info".into(),

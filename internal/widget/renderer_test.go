@@ -376,14 +376,10 @@ func TestRenderBadgeDotIsStill(t *testing.T) {
 
 func TestRenderDivider(t *testing.T) {
 	r := newRenderer(t)
-	plain := render(t, r, &Divider{})
-	if !strings.Contains(plain, `<hr class="border-rule my-20">`) {
-		t.Errorf("divider should be a bare rule at the page gap: %s", plain)
-	}
-	// Tight uses compact spacing for inline group separators, not the page-scale gap.
-	tight := render(t, r, &Divider{Tight: true})
-	if !strings.Contains(tight, "my-6") || strings.Contains(tight, "my-20") {
-		t.Errorf("tight divider should use compact spacing: %s", tight)
+	// A divider separates groups inside a card or panel at the compact spacing.
+	got := render(t, r, &Divider{})
+	if !strings.Contains(got, `<hr class="border-rule my-6">`) {
+		t.Errorf("divider should be a bare rule at the compact spacing: %s", got)
 	}
 }
 
@@ -550,13 +546,13 @@ func TestRenderConfirmCaution(t *testing.T) {
 	}
 }
 
-// A named confirm standing in a row of acts lays itself into that row, as an
-// icon act does, so its question drops full-width under the row rather than
-// squeezing in beside the acts it shares the line with.
+// An icon confirm standing in its item's row lays itself into that row, so its
+// question drops full-width under the row rather than squeezing in beside the
+// acts it shares the line with.
 func TestRenderConfirmInARowOfActs(t *testing.T) {
 	r := newRenderer(t)
-	got := render(t, r, &Confirm{Trigger: "Discard all", Message: "Discard 3 staged changes?", Confirm: "Discard", Cancel: "Keep them", InRow: true})
-	for _, want := range []string{`class="verso-confirm contents"`, `x-cloak class="mt-3 basis-full"`, ">Discard all</button>"} {
+	got := render(t, r, &Confirm{Trigger: "Remove", Icon: "trash-2", Message: "Remove this key?", Confirm: "Remove", Cancel: "Keep it"})
+	for _, want := range []string{`class="verso-confirm contents"`, `x-cloak class="mt-3 basis-full"`, `aria-label="Remove"`} {
 		if !strings.Contains(got, want) {
 			t.Errorf("in-row confirm missing %q in: %s", want, got)
 		}
