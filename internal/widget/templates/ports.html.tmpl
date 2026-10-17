@@ -6,7 +6,7 @@
      of stylesheet rules lights every panel. The connector art, palette, and
      "connected" colour are the shell's (ADR-005) — the caller supplies ports +
      state. */}}
-<div class="verso-ports verso-ports--{{.Accent}}">
+<div class="verso-ports verso-ports--{{.Accent}}"{{if .ArtWidth}} style="--art-w: {{.ArtWidth}}px"{{end}}>
   {{if .Device}}<div class="verso-ports-name">{{.Device}}</div>{{end}}
   {{if .PanelBoth}}
   {{/* Both faces earn a Front/Rear control; one face carries no side label —

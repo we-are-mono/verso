@@ -7,6 +7,7 @@ import (
 	"html"
 	"html/template"
 	"io"
+	"math"
 	"regexp"
 	"strconv"
 	"strings"
@@ -96,6 +97,9 @@ type portsView struct {
 	PanelBoth bool      // both faces present → show a Front/Rear control
 	Back      panelFace // the rear panel, lit from live state
 	Front     panelFace // the front panel, lit from live state
+	// ArtWidth is the widest face's own width in pixels, so a column that
+	// holds the panel can be exactly as wide; 0 with no art.
+	ArtWidth float64
 	// The link words a stream relabels a port with, in the reader's language.
 	WordOn, WordOff string
 	// WordWAN is the tag written over the WAN port.
@@ -124,6 +128,14 @@ func newFace(art template.HTML) panelFace {
 		}
 	}
 	return face
+}
+
+// width is the face's own width in pixels, 0 with no art.
+func (f panelFace) width() float64 {
+	if f.Aspect == 0 {
+		return 0
+	}
+	return math.Round(f.Height / f.Aspect)
 }
 
 func (p *Ports) renderInto(r *Renderer, out io.Writer, _ string) error {
@@ -156,6 +168,7 @@ func (p *Ports) renderInto(r *Renderer, out io.Writer, _ string) error {
 	v.PanelBoth = back != "" && front != ""
 	v.Back = newFace(litPanel(back, p.Items, v))
 	v.Front = newFace(litPanel(front, p.Items, v))
+	v.ArtWidth = max(v.Back.width(), v.Front.width())
 	return r.execute(out, "ports.html.tmpl", v)
 }
 

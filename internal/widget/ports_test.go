@@ -197,4 +197,10 @@ func TestPortsArtSizesFromItsViewBox(t *testing.T) {
 	if !strings.Contains(got, `style="--art-h: 136px; --art-aspect: 0.2698412698412698"`) {
 		t.Errorf("panel face should carry its native height and aspect:\n%s", got)
 	}
+	// The panel says how wide its widest face is drawn, so a column that
+	// holds it can be exactly as wide.
+	got = render(t, r, &Ports{Back: `<svg viewBox="0 0 504 136"></svg>`, Front: `<svg viewBox="0 0 432 136"></svg>`, Items: []PortItem{{Iface: "eth0"}}})
+	if !strings.Contains(got, `<div class="verso-ports verso-ports--sky" style="--art-w: 504px">`) {
+		t.Errorf("the panel should carry its widest face's width:\n%s", got)
+	}
 }
