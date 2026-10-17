@@ -847,8 +847,22 @@ func postPluginRequest(t *testing.T, srv *Server, path string, form url.Values, 
 // close button.
 func TestTheRailStandsOnTheTitlesBaseline(t *testing.T) {
 	body := get(t, newServer(t, fakeBackend{}), "/").Body.String()
-	if !strings.Contains(body, `<nav class="min-h-0 flex-1 overflow-y-auto pt-6 pb-4">`) {
+	if !strings.Contains(body, `<nav class="verso-nav min-h-0 flex-1 overflow-y-auto pt-6 pb-4">`) {
 		t.Error("the rail's rows do not stand on the title's baseline")
+	}
+	// Each row its 24px line and 8px over and under: 40px.
+	if row := cssBlock(t, blockSheet(t, "nav"), ".verso-nav__row,\n.verso-nav__sub {"); !strings.Contains(row, "padding: calc(var(--spacing) * 2) calc(var(--spacing) * 6);") ||
+		!strings.Contains(row, "@apply type-body;") {
+		t.Errorf("the rail's rows do not stand 40px apart:\n%s", row)
+	}
+	// The phone's drawer: its close bar 16px down, a 32px control, then the
+	// nav's own 24px.
+	sheet := blockSheet(t, "sidebar")
+	if head := cssBlock(t, sheet, ".verso-sidebar__head {"); !strings.Contains(head, "padding: calc(var(--spacing) * 4) calc(var(--spacing) * 4) 0;") {
+		t.Errorf("the drawer's close bar moved:\n%s", head)
+	}
+	if shut := cssBlock(t, sheet, ".verso-sidebar__close {"); !strings.Contains(shut, "height: calc(var(--spacing) * 8);") {
+		t.Errorf("the drawer's close control is not 32px:\n%s", shut)
 	}
 }
 
@@ -868,11 +882,16 @@ func TestTopBarCarriesTheNameplateAndTheWayOut(t *testing.T) {
 		`href="/"`, ">gdk-edge-01</a>",
 		`aria-label="Open menu"`,
 		`action="/logout"`, ">root<", ">Log out<",
-		"md:left-72", "data-verso-session",
+		`<div data-verso-session class="verso-bar__session">`, `<div class="verso-bar__end">`,
 	} {
 		if !strings.Contains(header, want) {
 			t.Errorf("top bar missing %q:\n%s", want, header)
 		}
+	}
+	// The way out is aligned to the content column: past the rail beside the
+	// page, the bar's own edge only on a phone.
+	if !strings.Contains(blockSheet(t, "bar"), "@media (width >= 48rem) {\n  .verso-bar__session {\n    left: calc(var(--spacing) * 72);") {
+		t.Error("beside the rail the way out does not start where the page does")
 	}
 	// The hamburger says whether the rail it opens is open, and which element
 	// that rail is.
@@ -918,13 +937,20 @@ func TestPluginSubpagesOpenInTheRail(t *testing.T) {
 	for _, want := range []string{
 		`href="/plugins/demo/dnsdhcp"`,
 		`href="/plugins/demo/dnsdhcp/config"`,
-		"border-l border-rule",              // the hairline the subpages hang from
-		`text-meta rotate-90 ml-auto"><svg`, // the open row's chevron, turned down
-		`<path d="m9 18 6-6-6-6" />`,        // the one chevron every row that opens wears
+		`class="verso-nav__branch"`,                               // the hairline the subpages hang from
+		`class="verso-nav__chevron ml-auto" data-verso-down><svg`, // the open row's chevron, turned down
+		`<path d="m9 18 6-6-6-6" />`,                              // the one chevron every row that opens wears
 	} {
 		if !strings.Contains(nav, want) {
 			t.Errorf("rail missing %q:\n%s", want, nav)
 		}
+	}
+	sheet := blockSheet(t, "nav")
+	if branch := cssBlock(t, sheet, ".verso-nav__branch {"); !strings.Contains(branch, "border: 0 solid var(--color-rule);") || !strings.Contains(branch, "border-left-width: 1px;") {
+		t.Errorf("the branch does not hang from a hairline:\n%s", branch)
+	}
+	if down := cssBlock(t, sheet, ".verso-nav__chevron[data-verso-down] {"); !strings.Contains(down, "rotate: 90deg;") {
+		t.Errorf("the open row's chevron is not turned down:\n%s", down)
 	}
 	// The active marker sits on Leases (the requested path), not Configuration,
 	// and the open parent hands it down rather than keeping one of its own.
@@ -934,7 +960,8 @@ func TestPluginSubpagesOpenInTheRail(t *testing.T) {
 	if strings.Contains(nav, `href="/plugins/demo/dnsdhcp/config" aria-current`) {
 		t.Error("the inactive subpage must not carry aria-current")
 	}
-	if !strings.Contains(nav, "shadow-[inset_-0.125rem_0_0_var(--color-ink)]") {
+	if !strings.Contains(nav, `class="verso-nav__marker"`) ||
+		!strings.Contains(cssBlock(t, sheet, ".verso-nav__marker {"), "box-shadow: inset -0.125rem 0 0 var(--color-ink);") {
 		t.Error("the active subpage should wear the rail's marker, on the rail's content edge")
 	}
 	// The marker is one thing of its own, behind the words, so it can travel
@@ -1016,12 +1043,21 @@ func TestARailRowSaysWhatWaitsThere(t *testing.T) {
 	// the whole sentence stays on the row.
 	for _, want := range []string{
 		`<span class="min-w-0 shrink-0 truncate">System</span>`,
-		`<span class="ml-auto flex min-w-0 items-center gap-2 text-sm font-medium tabular-nums text-denim">`,
-		`<span aria-hidden="true" class="size-1.25 shrink-0 rounded-[1px] bg-denim"></span><span class="min-w-0 truncate">New firmware</span></span>`,
+		`<span class="verso-nav__detail" data-verso-tone="info" data-verso-figures>`,
+		`<span aria-hidden="true" class="verso-mark" data-verso-tone="info"></span><span class="min-w-0 truncate">New firmware</span></span>`,
 	} {
 		if !strings.Contains(row, want) {
 			t.Errorf("System row missing %q:\n%s", want, row)
 		}
+	}
+	// At the row's end, in the action colour.
+	sheet := blockSheet(t, "nav")
+	if detail := cssBlock(t, sheet, ".verso-nav__detail {"); !strings.Contains(detail, "margin-left: auto;") || !strings.Contains(detail, "min-width: 0;") ||
+		!strings.Contains(detail, "gap: calc(var(--spacing) * 2);") || !strings.Contains(detail, "@apply type-value;") {
+		t.Errorf("what waits does not stand at the row's end:\n%s", detail)
+	}
+	if info := cssBlock(t, sheet, `.verso-nav__detail[data-verso-tone="info"] {`); !strings.Contains(info, "color: var(--color-denim);") {
+		t.Errorf("what waits is not in the action colour:\n%s", info)
 	}
 }
 
@@ -1040,7 +1076,7 @@ func TestARowThatOpensPointsTheWay(t *testing.T) {
 	}}
 	s := newServerWith(t, fakeBackend{}, tr, []plugin.Manifest{m})
 	right := `<path d="m9 18 6-6-6-6" />`
-	chevron := `style="--verso-vt: verso-nav-chevron-plugins-demo" class="verso-vt flex shrink-0 text-meta`
+	chevron := `style="--verso-vt: verso-nav-chevron-plugins-demo" class="verso-nav__chevron`
 	rowOf := func(body, href string) string {
 		nav := body[strings.Index(body, "<nav "):strings.Index(body, "</nav>")]
 		row := nav[strings.Index(nav, `href="`+href+`"`):]
@@ -1051,7 +1087,7 @@ func TestARowThatOpensPointsTheWay(t *testing.T) {
 		t.Errorf("a closed row with subpages must point right, unturned:\n%s", closed)
 	}
 	open := rowOf(get(t, s, "/plugins/demo/dnsdhcp").Body.String(), "/plugins/demo/")
-	if !strings.Contains(open, chevron+` rotate-90 ml-auto">`) || !strings.Contains(open, right) {
+	if !strings.Contains(open, chevron+` ml-auto" data-verso-down>`) || !strings.Contains(open, right) {
 		t.Errorf("the open row must turn the same chevron down over its branch:\n%s", open)
 	}
 	if home := rowOf(get(t, s, "/").Body.String(), "/"); strings.Contains(home, right) || strings.Contains(home, "verso-nav-chevron") {
@@ -1099,12 +1135,39 @@ func TestARailRowIsFetchedAsItIsPressed(t *testing.T) {
 // The sign-in page's bar is the same bar.
 func TestTheTopBarIsItsLineAndItsAir(t *testing.T) {
 	const bar = `flex shrink-0 items-center gap-4 bg-canvas px-6 py-2.5 shadow-[inset_0_-1px_0_var(--color-rule)]`
-	app := get(t, newServer(t, fakeBackend{}), "/").Body.String()
-	if !strings.Contains(app, `<header class="sticky top-0 z-30 `+bar+`">`) {
+	app := get(t, newServer(t, fakeBackend{hn: "gdk-edge-01"}), "/").Body.String()
+	if !strings.Contains(app, `<header class="verso-bar">`) {
 		t.Errorf("the app's top bar is not its line and its air:\n%s", app[:min(len(app), 4000)])
 	}
-	if !strings.Contains(app, `font-mono text-xl leading-9 font-bold`) {
-		t.Error("the bar's name does not stand on the 36px line")
+	sheet := blockSheet(t, "bar")
+	// The bar block draws what the sign-in page's utilities draw: the same
+	// line, the same air, the same hairline, and stays at the top.
+	for _, want := range []string{
+		"position: sticky;", "top: 0;", "z-index: 30;",
+		"display: flex;", "flex-shrink: 0;", "align-items: center;", "gap: calc(var(--spacing) * 4);",
+		"padding: calc(var(--spacing) * 2.5) calc(var(--spacing) * 6);",
+		"background-color: var(--color-canvas);", "box-shadow: inset 0 -1px 0 var(--color-rule);",
+	} {
+		if rule := cssBlock(t, sheet, ".verso-bar {"); !strings.Contains(rule, want) {
+			t.Errorf("blocks/bar.css .verso-bar is missing %s", want)
+		}
+	}
+	if rule := cssBlock(t, sheet, ".verso-bar {"); strings.Contains(rule, "height:") {
+		t.Errorf("the top bar keeps a fixed height:\n%s", rule)
+	}
+	// The name: the title role's verbatim form (mono 20px on its 28px line),
+	// 4px over and under it, so it stands on the bar's 36px line.
+	if !strings.Contains(app, `data-verso-verbatim class="verso-bar__nameplate">gdk-edge-01</a>`) {
+		t.Errorf("the bar's name is not the nameplate in its verbatim form:\n%s", app[:min(len(app), 4000)])
+	}
+	if plate := cssBlock(t, sheet, ".verso-bar__nameplate {"); !strings.Contains(plate, "padding-block: calc(var(--spacing) * 1);") || !strings.Contains(plate, "@apply type-title;") {
+		t.Errorf("the bar's name does not stand on the 36px line:\n%s", plate)
+	}
+	if typ, err := os.ReadFile("assets/type.css"); err != nil {
+		t.Fatal(err)
+	} else if title := cssBlock(t, string(typ), "@utility type-title {"); !strings.Contains(title, "line-height: 1.75rem;") ||
+		!strings.Contains(title, "&[data-verso-verbatim] { font-family: var(--font-mono); font-size: 1.25rem; font-weight: 700;") {
+		t.Errorf("the title role's verbatim form is not mono 20px/700 on a 28px line:\n%s", title)
 	}
 	// Signed out: a signed-in visit to /login is sent on.
 	rec := httptest.NewRecorder()
@@ -3328,8 +3391,8 @@ func TestNoPasswordWarningStandsInTheTopBarOnEveryPage(t *testing.T) {
 		for _, want := range []string{
 			`title="No administrator password is set. Anyone who can reach this router can change its settings."`,
 			// the state in the weight of a heading, what it means in the body's
-			`<span class="font-semibold">No administrator password</span> — anyone can sign in`,
-			"border-crimson bg-crimson-soft",
+			`<span class="type-subheading">No administrator password</span> — anyone can sign in`,
+			`class="verso-bar__flag" data-verso-tone="danger"`,
 		} {
 			if !strings.Contains(chip, want) {
 				t.Errorf("%s: the top-bar warning is missing %q:\n%s", path, want, chip)
@@ -3338,6 +3401,13 @@ func TestNoPasswordWarningStandsInTheTopBarOnEveryPage(t *testing.T) {
 		if strings.Contains(main, "No administrator password") {
 			t.Errorf("%s: the content area repeats the warning", path)
 		}
+	}
+	// A flag is the danger tone unless it says otherwise: crimson's hairline,
+	// soft ground and deep words, the body's weight.
+	if flag := cssBlock(t, blockSheet(t, "bar"), ".verso-bar__flag {"); !strings.Contains(flag, "border: 1px solid var(--color-crimson);") ||
+		!strings.Contains(flag, "background-color: var(--color-crimson-soft);") || !strings.Contains(flag, "color: var(--color-crimson-deep);") ||
+		!strings.Contains(flag, "@apply type-body;") {
+		t.Errorf("the top-bar warning is not in the danger tone:\n%s", flag)
 	}
 	safe := newServer(t, fakeBackend{}) // hasPassword true
 	if strings.Contains(get(t, safe, "/").Body.String(), "No administrator password") {
@@ -3359,8 +3429,12 @@ func TestNoPasswordWarningStandsInTheTopBarOnEveryPage(t *testing.T) {
 	main := body[strings.Index(body, "<main "):]
 	bannerAt := strings.Index(main, "SSH accepts passwords from the internet.")
 	bodyAt := strings.Index(main, `class="verso-page-body"`)
-	if bannerAt < 0 || bodyAt < 0 || bannerAt > bodyAt || !strings.Contains(main, "border-crimson-line bg-crimson-soft") {
+	if bannerAt < 0 || bodyAt < 0 || bannerAt > bodyAt || !strings.Contains(main, `<div class="verso-notice" data-verso-kind="banner" data-verso-tone="danger">`) {
 		t.Errorf("a declared danger banner heads the content: banner=%d body=%d", bannerAt, bodyAt)
+	}
+	if danger := cssBlock(t, blockSheet(t, "notice"), `.verso-notice[data-verso-tone="danger"] {`); !strings.Contains(danger, "--verso-notice-line: var(--color-crimson-line);") ||
+		!strings.Contains(danger, "--verso-notice-wash: var(--color-crimson-soft);") {
+		t.Errorf("a danger banner is not on crimson's hairline and soft ground:\n%s", danger)
 	}
 	if !strings.Contains(body[:strings.Index(body, "<main ")], "</span> — anyone can sign in") {
 		t.Error("a page's banner does not displace the top-bar password warning")

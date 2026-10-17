@@ -157,11 +157,26 @@ func TestThePendingRowStandsFirstInTheRail(t *testing.T) {
 	if strings.Contains(body, `id="verso-staged"`) {
 		t.Error("the top bar still holds the chip")
 	}
-	if !strings.Contains(body, `id="verso-menu-count" class="text-sm font-semibold tabular-nums">1</span>`) {
+	if !strings.Contains(body, `id="verso-menu-count" class="verso-bar__count" data-verso-figures>1</span>`) {
 		t.Error("on a phone the menu button says the count")
 	}
-	if !strings.Contains(get(t, s, pendingPath).Body.String(), `<a href="/pending" aria-current="page"`) {
+	if !strings.Contains(body, `data-count="1" class="verso-bar__menu"`) {
+		t.Error("on a phone the menu button carries the stage's count for its wash")
+	}
+	if !strings.Contains(body, `<a href="/pending" class="verso-nav__row" data-verso-stage>`) {
+		t.Error("the Pending changes row is a rail row on the stage's wash")
+	}
+	if !strings.Contains(get(t, s, pendingPath).Body.String(), `<a href="/pending" aria-current="page" class="verso-nav__row" data-verso-stage>`) {
 		t.Error("on the Pending changes page the row carries the marker")
+	}
+	nav := blockSheet(t, "nav")
+	for _, want := range []string{
+		".verso-nav__row[data-verso-stage],\n.verso-nav__row[data-verso-stage]:hover {\n  background-color: var(--color-marigold-soft);\n  color: var(--color-marigold-deep);",
+		".verso-nav__row[data-verso-stage][aria-current=\"page\"] {\n  box-shadow: inset -0.125rem 0 0 var(--color-marigold);\n}",
+	} {
+		if !strings.Contains(nav, want) {
+			t.Errorf("blocks/nav.css is missing the stage's row: %s", want)
+		}
 	}
 }
 

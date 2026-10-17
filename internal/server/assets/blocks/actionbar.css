@@ -1,0 +1,59 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/* SPDX-FileCopyrightText: 2026 Mono Technologies Inc. */
+
+/*
+ * actionbar — a listing's control band, the surface it is narrowed from: the
+ * top strip of the listing's card, on the card's Paper over a hairline, so
+ * band and table read as one object. Left is finding things (the search,
+ * then the coarse cuts as one counted dropdown); the band's own acts hold
+ * its end. A live log has none: on the heading line its search, its live
+ * control and what it offers stand together as equals (data-verso-actionbar
+ * "log"), the group the log's bar.
+ *
+ * The band's top border is a line: 15px after it to the controls, which
+ * stand on the line 16px down, 16px under them, and its hairline the line
+ * 64px down, so the column heads under it start just past a line as they do
+ * under a card's frame; its controls stand 23px after its left border, as a
+ * card's words do, so the first one's left border is a line.
+ *
+ * Variants: data-verso-actionbar="log"  the log's group on the heading line
+ * Elements: __cut  the coarse cuts' dropdown
+ *           __end  the band's acts, at its end
+ */
+
+.verso-actionbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: calc(var(--spacing) * 4);
+  padding: calc(var(--spacing) * 3.75) calc(var(--spacing) * 5.75) calc(var(--spacing) * 4);
+  border: 1px solid var(--color-rule-strong);
+  border-bottom-color: var(--color-rule);
+  border-radius: var(--radius-xs) var(--radius-xs) 0 0;
+  background-color: var(--color-ground);
+}
+.verso-actionbar[data-verso-actionbar="log"] {
+  gap: calc(var(--spacing) * 2);
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background-color: transparent;
+}
+
+.verso-actionbar__cut {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: calc(var(--spacing) * 44);
+  max-width: 100%;
+}
+
+.verso-actionbar__end {
+  display: flex;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: calc(var(--spacing) * 2);
+  margin-left: auto;
+}

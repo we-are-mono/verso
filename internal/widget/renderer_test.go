@@ -767,14 +767,24 @@ func TestRenderLink(t *testing.T) {
 	// A link to a place on this page reaches the section's namespaced id.
 	rail := render(t, r, &Link{Label: "Speed", Href: "#speed", Style: "rail"})
 	for _, want := range []string{
-		`href="#section-speed"`, "data-verso-rail-link", "verso-rail-link",
-		// 28px each, its 20px line and 4px over and under, so a run of any
-		// count is a multiple of 4px; the hairline a pixel out onto the column's
-		"-ml-px flex items-center gap-1.5 border-l border-rule py-1 pl-4 text-sm leading-6",
+		`href="#section-speed"`, "data-verso-rail-link", `class="verso-rail"`,
 	} {
 		if !strings.Contains(rail, want) {
 			t.Errorf("rail link missing %q: %s", want, rail)
 		}
+	}
+	// 32px each, its 24px line and 4px over and under, so a run of any count
+	// is a multiple of 8px; each its own left hairline; the current one Ink
+	// and weighted with a 2px bar drawn inside, so nothing shifts as it moves.
+	declares(t, "rail", ".verso-rail",
+		"display: flex", "align-items: center", "gap: calc(var(--spacing) * 1.5)",
+		"padding: var(--spacing) 0 var(--spacing) calc(var(--spacing) * 4)",
+		"border: 0 solid var(--color-rule)", "border-left-width: 1px", "@apply type-body")
+	declares(t, "rail", `.verso-rail[aria-current="true"]`,
+		"color: var(--color-ink)", "box-shadow: inset 2px 0 0 var(--color-ink)", "@apply type-subheading")
+	// Beside a form the hairline steps back a pixel onto the column's line.
+	if !strings.Contains(blockCSS(t, "rail"), "@container (width >= 62.5rem) {\n  .verso-rail {\n    margin-left: -1px;") {
+		t.Error("blocks/rail.css: beside a form the rail's hairline should step back 1px")
 	}
 	if strings.Contains(rail, "underline") || strings.Contains(rail, "text-denim") {
 		t.Errorf("a rail link is not an ordinary link: %s", rail)

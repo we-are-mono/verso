@@ -204,3 +204,15 @@ after; the SVG's fills, strokes and LED animations compared directly.
 | a confirmation's way back | 2 | a hand-written box in crimson or marigold | the notice's cancel, in its band's ink |
 | an undo's "Put it back" | 1 | denim-deep words, underlined under the pointer only | the link block's door in the flash's ink, underlined, at the button role's weight |
 | the outcome layer's shown state | | an `is-shown` class | `data-verso-shown` |
+
+### `nav`, `bar`, `sidebar`, `rail`, `colophon` and `actionbar`
+
+| Copies | n | Difference | Became |
+|---|---|---|---|
+| the rail's state square | | 5px, its own fill classes and a live-dot ring of its own | the mark block: 6px, its tones and its live ring |
+| the nameplate | every page | mono 20/700 on a 36px line | the title role's verbatim form on its 28px line, padded back to 36 |
+| "This device", the name of a box with no readable hostname | | mono, as the hostname | the title role in sans: it is words, not a machine string |
+| the rail's rows, the stage's row and the section rail's links | | a class-string template and utility strings; the current link's weight a stylesheet rule | the nav and rail blocks, their weights from roles |
+| the rail's open state | | a class the script returned | `data-verso-open`, bound to the component's own state |
+| the colophon's facts | | the place in the wash as an arbitrary property | `--fact` in the element's style |
+| the page's banner | | a hand-written strip, on a 28px line | the notice block's banner kind: the body role, padded back to 28 |

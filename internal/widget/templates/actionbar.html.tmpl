@@ -12,8 +12,8 @@
 {{/* A live log has no band: on the heading line its search, its live control
      and what the log offers stand together as equals, and the group is the
      log's bar, which its search narrows the log from. */}}
-{{if .Heading}}{{if .Live}}<div data-verso-actionbar="log" class="flex min-w-0 flex-wrap items-center gap-2">{{if .Filter}}{{template "verso-listing-search" .}}{{end}}{{template "actionbar.live" .}}{{template "actionbar.act" .}}</div>{{else}}{{template "actionbar.act" .}}{{end}}{{else}}
-<div data-verso-actionbar class="{{template "verso-control-band-class"}}">
+{{if .Heading}}{{if .Live}}<div data-verso-actionbar="log" class="verso-actionbar">{{if .Filter}}{{template "verso-listing-search" .}}{{end}}{{template "actionbar.live" .}}{{template "actionbar.act" .}}</div>{{else}}{{template "actionbar.act" .}}{{end}}{{else}}
+<div data-verso-actionbar class="verso-actionbar">
   {{if .Filter}}{{template "verso-listing-search" .}}{{end}}
   {{if .Tabs}}
   {{/* The coarse cuts are one dropdown beside the search, each option priced
@@ -21,7 +21,7 @@
        them itself as lines arrive, from each option's own label. An option
        that is another listing carries its address (data-href), and the
        shell's listing script loads it rather than narrowing. */}}
-  <div class="relative flex max-w-full min-w-44 items-center">
+  <div class="verso-actionbar__cut">
     <select{{if not .Paged}} data-verso-listing-cut{{end}} aria-label="{{t "Show"}}"
       class="h-control w-full cursor-pointer appearance-none rounded-xs border border-rule-strong bg-canvas pr-9 pl-3 text-sm text-ink shadow-(--shadow-field) transition-colors hover:border-faint focus:border-denim focus:outline-none">
       {{range .Tabs}}<option value="{{.Match}}" data-label="{{.Label}}"{{with .Href}} data-href="{{.}}"{{end}}{{if .Active}} selected{{end}}>{{.Label}}{{if not .Uncounted}} · {{.Count}}{{end}}</option>{{end}}
@@ -29,7 +29,7 @@
     <span class="pointer-events-none absolute right-3 flex text-meta">{{icon "chevron-down" "size-4"}}</span>
   </div>
   {{end}}
-  <div class="ml-auto flex shrink-0 flex-wrap items-center gap-2">
+  <div class="verso-actionbar__end">
     {{if .Live}}{{template "actionbar.live" .}}{{end}}
     {{template "actionbar.act" .}}
   </div>

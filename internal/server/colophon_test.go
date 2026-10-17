@@ -73,13 +73,41 @@ func TestColophonClosesEveryPageButALog(t *testing.T) {
 func TestColophonIsItsLineAndItsAir(t *testing.T) {
 	body := get(t, newServer(t, fakeBackend{}), "/").Body.String()
 	for _, want := range []string{
-		`data-verso-colophon x-data="copy" :data-copied="done" class="bg-mid shadow-[inset_0_1px_0_var(--color-rule)]"`,
-		`items-center gap-4 px-4 py-3.5 font-mono text-base leading-6 text-meta md:px-10`,
-		`<p class="flex min-w-0 flex-auto items-center gap-x-3 whitespace-nowrap">`,
-		`<span class="verso-colophon-fact min-w-0 truncate font-medium">`,
+		`data-verso-colophon x-data="copy" :data-copied="done" class="verso-colophon"`,
+		// The copy's verbatim form: mono 16px on the 24px line.
+		`<div class="verso-colophon__line" data-verso-verbatim>`,
+		`<p class="verso-colophon__facts">`,
+		`<span class="verso-colophon__fact type-value" data-verso-verbatim>`,
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("colophon missing %q", want)
 		}
+	}
+	sheet := blockSheet(t, "colophon")
+	for head, want := range map[string][]string{
+		// The hairline drawn inside the band: no border, no fixed height.
+		".verso-colophon {": {"background-color: var(--color-mid);", "box-shadow: inset 0 1px 0 var(--color-rule);"},
+		".verso-colophon__line {": {
+			"display: flex;", "align-items: center;", "gap: calc(var(--spacing) * 4);",
+			"padding: calc(var(--spacing) * 3.5) calc(var(--spacing) * 4);",
+			"color: var(--color-meta);", "@apply type-body;",
+		},
+		".verso-colophon__facts {": {"flex: 1 1 auto;", "min-width: 0;", "column-gap: calc(var(--spacing) * 3);", "white-space: nowrap;"},
+		".verso-colophon__fact {":  {"min-width: 0;", "overflow: hidden;", "text-overflow: ellipsis;", "white-space: nowrap;"},
+	} {
+		rule := cssBlock(t, sheet, head)
+		for _, w := range want {
+			if !strings.Contains(rule, w) {
+				t.Errorf("blocks/colophon.css %s is missing %s", head, w)
+			}
+		}
+		for _, never := range []string{"height:", "border:", "border-top", "border-bottom", "border-width"} {
+			if strings.Contains(rule, never) {
+				t.Errorf("blocks/colophon.css %s adds %s to the line and its air:\n%s", head, never, rule)
+			}
+		}
+	}
+	if !strings.Contains(sheet, "@media (width >= 48rem) {\n  .verso-colophon__line {\n    padding-inline: calc(var(--spacing) * 10);") {
+		t.Error("past a phone the colophon's words keep the page's 40px gutter")
 	}
 }

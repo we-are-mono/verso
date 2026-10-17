@@ -32,34 +32,33 @@
      the top while the page scrolls under it. On a phone it also holds the
      hamburger that opens the rail. Only the home page adds app-wide warnings
      here. */}}
-{{/* The bar is its 36px line (the name, and the phone's menu button) with
-     10px above and below: 56px, the hairline drawn inside it so the rail and
-     every sticky offset under it can count on the 56. */}}
-<header class="sticky top-0 z-30 flex shrink-0 items-center gap-4 bg-canvas px-6 py-2.5 shadow-[inset_0_-1px_0_var(--color-rule)]">
-  <button type="button" @click="toggle" x-ref="menuButton" :aria-expanded="expanded" aria-controls="verso-rail" aria-label="{{ t "Open menu" }}" data-count="{{.Staged.Count}}" class="verso-menu-button flex h-9 min-w-9 shrink-0 items-center justify-center gap-1.5 rounded-xs px-2 text-body transition-colors hover:bg-mid hover:text-ink md:hidden">{{icon "menu" "size-5"}}{{template "verso-menu-pending" .Staged}}</button>
+{{/* The bar block (blocks/bar.css). */}}
+<header class="verso-bar">
+  <button type="button" @click="toggle" x-ref="menuButton" :aria-expanded="expanded" aria-controls="verso-rail" aria-label="{{ t "Open menu" }}" data-count="{{.Staged.Count}}" class="verso-bar__menu">{{icon "menu" "size-5"}}{{template "verso-menu-pending" .Staged}}</button>
   {{/* One line whatever the name's length; where the bar has to cut it, the
-       whole name is a hover away. */}}
-  <a href="/" data-verso-nameplate{{if .Nameplate}} title="{{.Nameplate}}"{{end}} class="min-w-0 truncate font-mono text-xl leading-9 font-bold tracking-tight text-ink">{{if .Nameplate}}{{.Nameplate}}{{else}}{{ t "This device" }}{{end}}</a>
-  {{if .Maker}}<span class="hidden h-5 w-px shrink-0 bg-rule-strong sm:block"></span>
-  <span class="hidden min-w-0 truncate text-sm font-normal text-body sm:block"><span class="font-semibold text-ink">{{.Maker}}</span>{{if .Model}} · {{.Model}}{{end}}</span>{{end}}
-  <div data-verso-session class="pointer-events-none absolute inset-y-0 right-0 left-0 flex items-center md:left-72">
-    <div class="flex min-w-0 items-center justify-end gap-2 md:gap-4">
+       whole name is a hover away. A fresh box with no readable name says what
+       it is instead. */}}
+  <a href="/" data-verso-nameplate{{if .Nameplate}} title="{{.Nameplate}}" data-verso-verbatim{{end}} class="verso-bar__nameplate">{{if .Nameplate}}{{.Nameplate}}{{else}}{{ t "This device" }}{{end}}</a>
+  {{if .Maker}}<span class="verso-bar__rule"></span>
+  <span class="verso-bar__maker"><span class="type-subheading text-ink">{{.Maker}}</span>{{if .Model}} · {{.Model}}{{end}}</span>{{end}}
+  <div data-verso-session class="verso-bar__session">
+    <div class="verso-bar__end">
       {{/* Security state is the router's, not one page's: with no root
            password the warning stands in the top bar on every page, leading to
            Access where the password is set. */}}
-      {{if .NoPassword}}<a href="/system/access" title="{{ t "No administrator password is set." }} {{ t "Anyone who can reach this router can change its settings." }}" class="pointer-events-auto flex h-7 min-w-0 items-center gap-2 rounded-xs border border-crimson bg-crimson-soft px-2.5 text-sm text-crimson-deep"><span aria-hidden="true" class="verso-mark" data-verso-tone="danger"></span><span class="sr-only xl:not-sr-only xl:truncate"><span class="font-semibold">{{ t "No administrator password" }}</span> — {{ t "anyone can sign in" }}</span></a>
-      {{else if .UpdateNotice}}<a href="/system/maintenance" title="{{.UpdateNotice}}" class="pointer-events-auto flex h-7 min-w-0 items-center gap-2 rounded-xs border border-denim bg-denim-soft px-2.5 text-sm font-semibold text-denim-deep hover:border-denim-deep hover:bg-denim-soft/80"><span aria-hidden="true" class="verso-mark" data-verso-tone="info"></span><span class="sr-only xl:not-sr-only xl:truncate">{{.UpdateNotice}}</span></a>{{end}}
+      {{if .NoPassword}}<a href="/system/access" title="{{ t "No administrator password is set." }} {{ t "Anyone who can reach this router can change its settings." }}" class="verso-bar__flag" data-verso-tone="danger"><span aria-hidden="true" class="verso-mark" data-verso-tone="danger"></span><span class="sr-only xl:not-sr-only xl:truncate"><span class="type-subheading">{{ t "No administrator password" }}</span> — {{ t "anyone can sign in" }}</span></a>
+      {{else if .UpdateNotice}}<a href="/system/maintenance" title="{{.UpdateNotice}}" class="verso-bar__flag" data-verso-tone="info"><span aria-hidden="true" class="verso-mark" data-verso-tone="info"></span><span class="sr-only xl:not-sr-only xl:truncate">{{.UpdateNotice}}</span></a>{{end}}
       {{/* Logging out is a plain act with the identity it ends beside it: the
            account is a decided constant (ADR-007: one root credential, the shell
            its authority), so the button states the name and the verb — no
            avatar, no presence, nothing an account system would imply. */}}
-      <form method="post" action="/logout" class="pointer-events-auto">
+      <form method="post" action="/logout">
         <input type="hidden" name="_csrf" value="{{.CSRFToken}}">
-        <button type="submit" title="{{ t "End this session" }}" class="flex h-8 cursor-pointer items-center gap-2 rounded-xs border border-transparent px-3 text-sm font-medium text-body transition-colors hover:border-rule-strong hover:bg-quiet hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim">
+        <button type="submit" title="{{ t "End this session" }}" class="verso-bar__account">
           <span class="flex text-meta">{{icon "user" "size-4"}}</span>
-          <span class="font-mono text-base font-medium">root</span>
-          <span class="h-3.5 w-px bg-rule-strong"></span>
-          <span class="font-normal">{{ t "Log out" }}</span>
+          <span class="type-value" data-verso-verbatim>root</span>
+          <span class="verso-bar__rule"></span>
+          <span class="type-body">{{ t "Log out" }}</span>
         </button>
       </form>
     </div>
@@ -68,23 +67,23 @@
 {{/* Under the bar: the rail and the page, side by side. */}}
 <div class="flex min-h-0 flex-1">
 {{/* Mobile: a scrim behind the off-canvas drawer; tap it to close. */}}
-<div x-show="open" x-cloak @click="close" x-transition.opacity class="fixed inset-0 z-30 bg-ink/40 md:hidden"></div>
+<div x-show="open" x-cloak @click="close" x-transition.opacity class="verso-sidebar__scrim"></div>
 {{/* Left rail: the sidebar. On phones it's an off-canvas drawer behind the bar's
      hamburger (verso.js "sidebar"); on desktop it's the static rail under the
      bar, as tall as what the bar leaves of the screen. No fill of its own —
      one hairline separates it from the page, and only the active row is a
      surface. */}}
-<aside id="verso-rail" class="verso-drawer fixed inset-y-0 left-0 z-40 flex h-screen w-72 shrink-0 flex-col border-r border-rule bg-ground md:sticky md:inset-y-auto md:top-14 md:left-auto md:z-auto md:h-[calc(100vh-3.5rem)]" :class="drawerClass" @keydown.escape.window="close">
+<aside id="verso-rail" class="verso-sidebar" :data-verso-open="open" @keydown.escape.window="close">
   {{/* On a phone the rail is a drawer over the bar, so it carries its own way
        shut. */}}
-  <div class="flex items-center justify-end px-4 pt-4 md:hidden">
-    <button type="button" @click="close" x-ref="railClose" aria-label="{{ t "Close menu" }}" class="grid size-8 shrink-0 place-items-center rounded-xs text-faint transition-colors hover:bg-mid hover:text-ink">{{icon "x" "size-5"}}</button>
+  <div class="verso-sidebar__head">
+    <button type="button" @click="close" x-ref="railClose" aria-label="{{ t "Close menu" }}" class="verso-sidebar__close">{{icon "x" "size-5"}}</button>
   </div>
   {{/* One flat list of destinations — no titles, no rules. The row you are in
        opens its subpages beneath it, so the rail carries the whole path.
        Each row is 40px, its 24px line and 8px over and under, so the rows
        stand on the grid, the first beside the page's heading line. */}}
-  <nav class="min-h-0 flex-1 overflow-y-auto pt-6 pb-4">
+  <nav class="verso-nav min-h-0 flex-1 overflow-y-auto pt-6 pb-4">
     <ul data-verso-nav-rows class="flex flex-col">
       {{template "verso-nav-pending" .}}
       {{range .Nav.Rows}}{{template "verso-nav-row" .}}{{end}}
@@ -104,13 +103,10 @@
        itself, so a page's own depth is read in one place and the content area
        starts at the content. */}}
   {{if .Banner}}
-  {{/* the square hangs on the banner's first 28px line */}}
-  <div class="relative z-10 -mt-px flex items-start gap-2 border-y px-8 py-3 text-sm leading-7
-    {{if eq .Banner.Variant "danger"}}border-crimson-line bg-crimson-soft text-crimson-deep
-    {{else if eq .Banner.Variant "warning"}}border-marigold-line bg-marigold-soft text-marigold-deep
-    {{else}}border-denim-line bg-denim-soft text-denim-deep{{end}}">
-    <span class="flex shrink-0 pt-1">{{if or (eq .Banner.Variant "danger") (eq .Banner.Variant "warning")}}{{template "verso-message-mark" .Banner.Variant}}{{else}}{{template "verso-message-mark" "info"}}{{end}}</span>
-    <span>{{if .Banner.Title}}<span class="font-semibold">{{.Banner.Title}}</span>{{end}}{{if and .Banner.Title .Banner.Body}} {{end}}{{.Banner.Body}}</span>
+  {{/* the page's banner, under the bar: the notice block's banner kind */}}
+  <div class="verso-notice" data-verso-kind="banner" data-verso-tone="{{if or (eq .Banner.Variant "danger") (eq .Banner.Variant "warning")}}{{.Banner.Variant}}{{else}}info{{end}}">
+    <span class="flex shrink-0 pt-0.5">{{if or (eq .Banner.Variant "danger") (eq .Banner.Variant "warning")}}{{template "verso-message-mark" .Banner.Variant}}{{else}}{{template "verso-message-mark" "info"}}{{end}}</span>
+    <span>{{if .Banner.Title}}<span class="verso-notice__title">{{.Banner.Title}}</span>{{end}}{{if and .Banner.Title .Banner.Body}} {{end}}{{.Banner.Body}}</span>
   </div>
   {{end}}
   {{/* The page's frame: 40px of air on every side, and inside it a measure the
@@ -180,14 +176,14 @@
        in an ellipsis rather than wrapping, since the copy carries them all
        whole. */}}
   {{if ne .Width "full"}}{{with .Colophon}}
-  <footer data-verso-colophon x-data="copy" :data-copied="done" class="bg-mid shadow-[inset_0_1px_0_var(--color-rule)]">
-    <div class="flex max-w-[calc(var(--container-6xl)+5rem)] items-center gap-4 px-4 py-3.5 font-mono text-base leading-6 text-meta md:px-10">
-      <p class="flex min-w-0 flex-auto items-center gap-x-3 whitespace-nowrap">
-        <span class="verso-colophon-fact min-w-0 truncate font-medium">{{.Release}}</span>
-        {{if .Revision}}<span aria-hidden="true" class="hidden sm:inline">·</span><span class="verso-colophon-fact hidden min-w-0 truncate [--fact:1] sm:inline">{{.Revision}}</span>{{end}}
-        {{if .Target}}<span aria-hidden="true" class="hidden xl:inline">·</span><span class="verso-colophon-fact hidden min-w-0 truncate [--fact:2] xl:inline">{{.Target}}</span>{{end}}
+  <footer data-verso-colophon x-data="copy" :data-copied="done" class="verso-colophon">
+    <div class="verso-colophon__line" data-verso-verbatim>
+      <p class="verso-colophon__facts">
+        <span class="verso-colophon__fact type-value" data-verso-verbatim>{{.Release}}</span>
+        {{if .Revision}}<span aria-hidden="true" class="hidden sm:inline">·</span><span class="verso-colophon__fact hidden sm:inline" style="--fact: 1">{{.Revision}}</span>{{end}}
+        {{if .Target}}<span aria-hidden="true" class="hidden xl:inline">·</span><span class="verso-colophon__fact hidden xl:inline" style="--fact: 2">{{.Target}}</span>{{end}}
       </p>
-      <span class="verso-colophon-fact min-w-0 truncate [--fact:3]">Verso {{.Verso}}</span>
+      <span class="verso-colophon__fact" style="--fact: 3">Verso {{.Verso}}</span>
       <button type="button" @click="run" :data-copy-failed="failed" aria-label="{{ t "Copy for a bug report" }}" class="verso-button group/copy relative" data-verso-size="icon">
         <span x-ref="src" class="hidden">{{.Report}}</span>
         <span x-show="idle">{{icon "copy" "size-4"}}</span>

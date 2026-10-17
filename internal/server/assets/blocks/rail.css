@@ -1,0 +1,42 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/* SPDX-FileCopyrightText: 2026 Mono Technologies Inc. */
+
+/*
+ * rail — one place on a long page, in the list of them beside it (the link
+ * widget's "rail" style). Each is a block, so a run of them is a column, and
+ * each carries its own left hairline, so the run draws one continuous line
+ * without a container having to know it is a rail. A link is 32px: its 24px
+ * line and 4px over and under. The one you are reading (aria-current, the
+ * shell's to say, verso-page.js) goes to Ink and takes on weight, and the
+ * hairline becomes a 2px bar in Ink over its own length: an inset shadow
+ * rather than a thicker border, so nothing in the column shifts as the mark
+ * moves. Beside a form its column starts a pixel past a line (the form's
+ * column is a pixel wider than its measure), so the hairline steps back onto
+ * it.
+ */
+
+.verso-rail {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--spacing) * 1.5);
+  padding: var(--spacing) 0 var(--spacing) calc(var(--spacing) * 4);
+  border: 0 solid var(--color-rule);
+  border-left-width: 1px;
+  color: var(--color-body);
+  transition-property: color, box-shadow;
+  transition-duration: 150ms;
+  @apply type-body;
+}
+.verso-rail:hover {
+  color: var(--color-ink);
+}
+.verso-rail[aria-current="true"] {
+  color: var(--color-ink);
+  box-shadow: inset 2px 0 0 var(--color-ink);
+  @apply type-subheading;
+}
+@container (width >= 62.5rem) {
+  .verso-rail {
+    margin-left: -1px;
+  }
+}

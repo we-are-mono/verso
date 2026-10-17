@@ -1,0 +1,94 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/* SPDX-FileCopyrightText: 2026 Mono Technologies Inc. */
+
+/*
+ * sidebar — the rail that holds the destinations (the nav block). On a
+ * desktop it is the static rail under the bar, as tall as what the bar
+ * leaves of the screen, one hairline separating it from the page; on a phone
+ * it is an off-canvas drawer behind the bar's menu button (verso.js
+ * "sidebar"), its own way shut at its top. Closed, the drawer is hidden as
+ * well as slid away, so its links leave the tab order and what a screen
+ * reader reads; the hiding waits for the slide to finish, and showing it is
+ * immediate, so the motion is seen both ways.
+ *
+ * Variants: data-verso-open  the phone's drawer is open
+ * Elements: __head   the phone's drawer's top, holding its close control
+ *           __close  the close control
+ *           __scrim  behind the open drawer, closing it when pressed
+ */
+
+.verso-sidebar {
+  position: fixed;
+  inset-block: 0;
+  left: 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  width: calc(var(--spacing) * 72);
+  height: 100vh;
+  border: 0 solid var(--color-rule);
+  border-right-width: 1px;
+  background-color: var(--color-ground);
+  transform: translateX(-100%);
+  visibility: hidden;
+  transition: transform 0.28s ease, visibility 0s linear 0.28s;
+}
+.verso-sidebar[data-verso-open] {
+  transform: translateX(0);
+  visibility: visible;
+  transition: transform 0.28s ease, visibility 0s;
+}
+@media (width >= 48rem) {
+  .verso-sidebar {
+    position: sticky;
+    inset-block: auto;
+    top: calc(var(--spacing) * 14);
+    left: auto;
+    z-index: auto;
+    height: calc(100vh - 3.5rem);
+    transform: none;
+    visibility: visible;
+    transition: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .verso-sidebar {
+    transition: none;
+  }
+}
+
+.verso-sidebar__head {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: calc(var(--spacing) * 4) calc(var(--spacing) * 4) 0;
+}
+.verso-sidebar__close {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: calc(var(--spacing) * 8);
+  height: calc(var(--spacing) * 8);
+  border-radius: var(--radius-xs);
+  color: var(--color-faint);
+  transition-property: color, background-color;
+  transition-duration: 150ms;
+}
+.verso-sidebar__close:hover {
+  background-color: var(--color-mid);
+  color: var(--color-ink);
+}
+@media (width >= 48rem) {
+  .verso-sidebar__head,
+  .verso-sidebar__scrim {
+    display: none;
+  }
+}
+
+.verso-sidebar__scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  background-color: color-mix(in srgb, var(--color-ink) 40%, transparent);
+}

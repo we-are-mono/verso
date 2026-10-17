@@ -679,12 +679,19 @@ func TestNameplateWearsTheHostname(t *testing.T) {
 	if !strings.Contains(body, ">jedis-are-not-as-great-as-sith</a>") {
 		t.Errorf("the bar should wear the hostname:\n%s", body)
 	}
-	if !strings.Contains(body, `title="jedis-are-not-as-great-as-sith" class="min-w-0 truncate font-mono`) {
+	if !strings.Contains(body, `title="jedis-are-not-as-great-as-sith" data-verso-verbatim class="verso-bar__nameplate">`) {
 		t.Error("a long name stays on one line, and the whole of it is a hover away")
 	}
+	plate := cssBlock(t, blockSheet(t, "bar"), ".verso-bar__nameplate {")
+	for _, want := range []string{"min-width: 0;", "overflow: hidden;", "text-overflow: ellipsis;", "white-space: nowrap;"} {
+		if !strings.Contains(plate, want) {
+			t.Errorf("a long name stays on one line: .verso-bar__nameplate is missing %s", want)
+		}
+	}
 
+	// No hostname: the words are the shell's own, so they are not verbatim.
 	nameless := newServer(t, fakeBackend{access: true})
-	if body := get(t, nameless, "/system/services").Body.String(); !strings.Contains(body, ">This device</a>") {
+	if body := get(t, nameless, "/system/services").Body.String(); !strings.Contains(body, `<a href="/" data-verso-nameplate class="verso-bar__nameplate">This device</a>`) {
 		t.Errorf("a box with no readable hostname should say what it is:\n%s", body)
 	}
 }

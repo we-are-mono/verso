@@ -16,8 +16,8 @@
   {{/* A rail row like the rest (nav-row.html.tmpl): the same 40px, flush with
        the rows under it, sliding under the pointer but on its own page, and
        keeping its wash. */}}
-  <a href="/pending"{{if .Nav.PendingActive}} aria-current="page"{{end}} class="verso-pending-link group/navrow relative flex items-center bg-marigold-soft py-2 pr-6 pl-6 leading-6 font-semibold text-marigold-deep focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-marigold-deep">
-    <span class="flex min-w-0 flex-1 items-center gap-4 transition-transform duration-150{{if not .Nav.PendingActive}} group-hover/navrow:translate-x-1{{end}}">
+  <a href="/pending"{{if .Nav.PendingActive}} aria-current="page"{{end}} class="verso-nav__row" data-verso-stage>
+    <span class="verso-nav__face">
       <span class="grid h-6 w-4 shrink-0 place-items-center">{{icon "list-todo" "size-4"}}</span>
       <span class="min-w-0 truncate">{{t "Pending changes"}}</span><span id="verso-pending-count" class="ml-auto tabular-nums">{{.Staged.Count}}</span>
     </span>
@@ -26,4 +26,4 @@
 
 {{/* verso-menu-pending: on a phone the rail sits behind the menu button, so
      the button carries the stage's count on the caveat's wash. */}}
-{{define "verso-menu-pending"}}<span id="verso-menu-count" class="text-sm font-semibold tabular-nums"{{if not .Count}} hidden{{end}}>{{.Count}}</span>{{end}}
+{{define "verso-menu-pending"}}<span id="verso-menu-count" class="verso-bar__count" data-verso-figures{{if not .Count}} hidden{{end}}>{{.Count}}</span>{{end}}

@@ -23,7 +23,8 @@
  * Variants: data-verso-tone     info (the default) · success · warning ·
  *                               caution · danger · neutral
  *           data-verso-kind     flash: the one-shot outcome of an act, its
- *                               words beside the mark · plain: a shell
+ *                               words beside the mark · banner: the page's
+ *                               notice under the bar · plain: a shell
  *                               message on the page's own ground, one
  *                               hairline, its door the secondary act
  *           data-verso-compact  a band under a control keeps the form's
@@ -88,6 +89,18 @@
   margin-bottom: var(--verso-flash-after, calc(var(--spacing) * 6));
   padding: calc(var(--spacing) * 3) var(--verso-flash-end, calc(var(--spacing) * 4)) calc(var(--spacing) * 3) calc(var(--spacing) * 4);
   box-shadow: var(--verso-flash-lift, none);
+}
+
+/* A banner: the page's own notice under the bar, the window's width, ruled
+   above and below, on a 28px line of its own (its 24px words and 2px either
+   side) with 12px of air. */
+.verso-notice[data-verso-kind="banner"] {
+  z-index: 10;
+  gap: calc(var(--spacing) * 2);
+  margin: -1px 0 0;
+  padding: calc(var(--spacing) * 3.5) calc(var(--spacing) * 8);
+  border-inline-width: 0;
+  border-radius: 0;
 }
 
 /* A plain notice: the shell's own message on the page's ground, the same

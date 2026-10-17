@@ -18,12 +18,17 @@ func TestActionBarCutsStandTogether(t *testing.T) {
 		Action: &TableAction{Label: "Clear", Href: "/x", Style: "quiet"},
 	})
 	cut := strings.Index(got, "data-verso-listing-cut")
-	right := strings.Index(got, "ml-auto")
+	right := strings.Index(got, `class="verso-actionbar__end"`)
 	if cut < 0 || right < 0 {
 		t.Fatalf("bar lost a part (cut %d, acts %d):\n%s", cut, right, got)
 	}
 	if cut > right {
 		t.Errorf("the counted dropdown stands before the acts (cut %d, acts %d):\n%s", cut, right, got)
+	}
+	// The acts are pushed to the band's far end; the cut stays with the search.
+	declares(t, "actionbar", ".verso-actionbar__end", "margin-left: auto")
+	if strings.Contains(cssRule(blockCSS(t, "actionbar"), ".verso-actionbar__cut"), "margin-left: auto") {
+		t.Error("the cut must not stray to the band's far end")
 	}
 }
 

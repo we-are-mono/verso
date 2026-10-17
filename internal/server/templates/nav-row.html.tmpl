@@ -1,25 +1,17 @@
 <!-- SPDX-License-Identifier: GPL-2.0-only -->
 <!-- SPDX-FileCopyrightText: 2026 Mono Technologies Inc. -->
 {{/* verso-nav-row: one destination in the rail, and the subpages it opens while
-     it is the one you are in. A leading icon identifies each destination;
-     the subpages share that identity and carry only their labels.
-
-     Where the marker sits depends on whether the row opened anything. A row with
-     no subpages wears it itself — the quiet surface with a 2px ink rule at the
-     rail's content edge, against the page it opens. A row that did open subpages
-     hands the marker down to whichever of them you are on, and keeps only the
-     weight and the ink, so the rail never marks two places at once. Inactive
-     rows slide 4px inward on hover.
-
-     The marker is a thing of its own, behind the row's words, and the words, the
-     branch and each subpage carry a name for the page change (--verso-vt; the
-     stylesheet's view transitions): the browser carries each from the page you
-     leave to the one you open, so the marker glides to where you are going. */}}
+     it is the one you are in — the nav block (blocks/nav.css). A leading icon
+     identifies each destination; the subpages share that identity and carry
+     only their labels. The marker, the face of each row, the branch and each
+     subpage carry a name for the page change (--verso-vt) and their kind
+     (--verso-vt-class), so the marker glides to where you are going. */}}
 {{/* verso-nav-marker: where you are — one in the rail, laid behind the words of
      the place it marks. */}}
-{{define "verso-nav-marker"}}<span data-verso-nav-marker aria-hidden="true" style="--verso-vt: verso-nav-marker" class="verso-vt pointer-events-none absolute inset-0 bg-quiet shadow-[inset_-0.125rem_0_0_var(--color-ink)]"></span>{{end}}
-{{/* verso-nav-square: the rail's 5px state square, in a tone's hue. */}}
-{{define "verso-nav-square"}}<span aria-hidden="true" class="size-1.25 shrink-0 rounded-[1px] {{if eq . "success"}}verso-live-dot bg-green{{else if eq . "danger"}}bg-crimson{{else if eq . "info"}}bg-denim{{else}}bg-glyph{{end}}"></span>{{end}}
+{{define "verso-nav-marker"}}<span data-verso-nav-marker aria-hidden="true" style="--verso-vt: verso-nav-marker" class="verso-nav__marker"></span>{{end}}
+{{/* verso-nav-square: the rail's state mark, in a tone's hue; a live one
+     breathes. */}}
+{{define "verso-nav-square"}}<span aria-hidden="true" class="verso-mark" data-verso-tone="{{if or (eq . "success") (eq . "danger") (eq . "info")}}{{.}}{{else}}muted{{end}}"{{if eq . "success"}} data-verso-live{{end}}></span>{{end}}
 {{/* A group (its subpages known on every page) is a disclosure named with
      every other, so the browser keeps one open and the keyboard and a screen
      reader get it with no script; it opens with the page it holds. Its row is
@@ -28,12 +20,12 @@
 {{define "verso-nav-row"}}
 <li>
   {{if .Group}}
-  <details name="verso-nav"{{if .Open}} open{{end}} class="group/navgroup">
-    <summary{{if .Hint}} title="{{.Hint}}"{{end}} class="{{template "verso-nav-row-class" .}} cursor-pointer list-none [&::-webkit-details-marker]:hidden">{{template "verso-nav-face" .}}</summary>
+  <details name="verso-nav"{{if .Open}} open{{end}} class="verso-nav__group">
+    <summary{{if .Hint}} title="{{.Hint}}"{{end}} class="verso-nav__row"{{template "verso-nav-row-state" .}}>{{template "verso-nav-face" .}}</summary>
     {{template "verso-nav-branch" .}}
   </details>
   {{else}}
-  <a href="{{.Href}}"{{if .Active}} aria-current="page"{{end}}{{if .Hint}} title="{{.Hint}}"{{end}} class="{{template "verso-nav-row-class" .}}">
+  <a href="{{.Href}}"{{if .Active}} aria-current="page"{{end}}{{if .Hint}} title="{{.Hint}}"{{end}} class="verso-nav__row"{{template "verso-nav-row-state" .}}>
     {{if and .Active (not .Children)}}{{template "verso-nav-marker"}}{{end}}
     {{template "verso-nav-face" .}}
   </a>
@@ -41,35 +33,32 @@
   {{end}}
 </li>
 {{end}}
-{{/* A row a pointer rests on leans 4px in: its face moves, not its padding,
-     so the lean is the compositor's and lays nothing out again. */}}
-{{define "verso-nav-row-class"}}group/navrow relative flex items-center py-2 pr-6 pl-6 leading-6 transition-[color,background-color] duration-150 {{if .Active}}font-semibold text-ink{{if .Children}} hover:bg-quiet/50{{end}}{{else}}text-body hover:bg-mid/50 hover:text-ink{{end}}{{end}}
+{{define "verso-nav-row-state"}}{{if .Active}} data-verso-active{{if .Children}} data-verso-open{{end}}{{end}}{{end}}
 {{define "verso-nav-face"}}
-    <span style="--verso-vt: {{.Transition}}; --verso-vt-class: verso-nav-row" class="verso-vt relative flex min-w-0 flex-1 items-center gap-4 transition-transform duration-150{{if not .Active}} group-hover/navrow:translate-x-1{{end}}">
+    <span style="--verso-vt: {{.Transition}}; --verso-vt-class: verso-nav-row" class="verso-nav__face">
       {{if .Active}}{{icon .Icon "size-4 shrink-0 text-ink"}}{{else}}{{icon .Icon "size-4 shrink-0 text-glyph"}}{{end}}
       <span class="min-w-0{{if .Detail}} shrink-0{{end}} truncate">{{.Label}}</span>
       {{/* What waits there, at the row's end: a word or two, led by the rail's
            square and tinted with it. The row's name never gives way to it; the
            words do, and the row's title keeps the whole sentence. */}}
-      {{if .Detail}}<span class="ml-auto flex min-w-0 items-center gap-2 text-sm font-medium tabular-nums {{if eq .Variant "info"}}text-denim{{else}}text-meta{{end}}">{{if .Dot}}{{template "verso-nav-square" .Variant}}{{end}}<span class="min-w-0 truncate">{{.Detail}}</span></span>
+      {{if .Detail}}<span class="verso-nav__detail"{{if eq .Variant "info"}} data-verso-tone="info"{{end}} data-verso-figures>{{if .Dot}}{{template "verso-nav-square" .Variant}}{{end}}<span class="min-w-0 truncate">{{.Detail}}</span></span>
       {{else if .Dot}}{{template "verso-nav-square" .Variant}}{{end}}
       {{/* A row that opens into subpages says so on every page: one chevron,
            pointing the way it opens while closed and turned down over its open
            branch. It is named for its row, so a page change turns it; a group's
            turns as it opens in place, on the rail's easing. */}}
-      {{if or (and .Active .Children) .Opens}}<span style="--verso-vt: {{.ChevronTransition}}" class="verso-vt flex shrink-0 text-meta{{if .Group}} transition-transform duration-[360ms] ease-[cubic-bezier(0.22,1,0.36,1)] group-open/navgroup:rotate-90 motion-reduce:transition-none{{else if and .Active .Children}} rotate-90{{end}}{{if not .Detail}} ml-auto{{end}}">{{icon "chevron-right" "size-4"}}</span>{{end}}
+      {{if or (and .Active .Children) .Opens}}<span style="--verso-vt: {{.ChevronTransition}}" class="verso-nav__chevron{{if not .Detail}} ml-auto{{end}}"{{if and (not .Group) .Active .Children}} data-verso-down{{end}}>{{icon "chevron-right" "size-4"}}</span>{{end}}
     </span>
 {{end}}
 {{define "verso-nav-branch"}}
-  {{/* The branch hangs beneath the parent's icon, its hairline on the icon's
-       centre 32px in; its labels align with the parent's label 56px in,
-       leaving the icon column to the first tier. Each subpage
-       is numbered in its class so the page change can bring them in in order. */}}
-  <ul style="--verso-vt: {{.BranchTransition}}; --verso-vt-class: verso-nav-branch" class="verso-vt mb-2 ml-8 flex flex-col border-l border-rule">
+  {{/* Its labels align with the parent's label 56px in, leaving the icon
+       column to the first tier. Each subpage is numbered in its class so the
+       page change can bring them in in order. */}}
+  <ul style="--verso-vt: {{.BranchTransition}}; --verso-vt-class: verso-nav-branch" class="verso-nav__branch">
     {{range $i, $sub := .Children}}
-    <li><a href="{{.Href}}"{{if .Active}} aria-current="page"{{end}} class="group/navrow relative flex items-center py-2 pr-6 pl-6 leading-6 transition-colors duration-150 {{if .Active}}font-semibold text-ink{{else}}text-body hover:text-ink{{end}}">
+    <li><a href="{{.Href}}"{{if .Active}} aria-current="page" data-verso-active{{end}} class="verso-nav__sub">
       {{if .Active}}{{template "verso-nav-marker"}}{{end}}
-      <span style="--verso-vt: {{.Transition}}; --verso-vt-class: verso-nav-sub verso-nav-sub-{{$i}}" class="verso-vt relative flex min-w-0 flex-1 items-center transition-transform duration-150{{if not .Active}} group-hover/navrow:translate-x-1{{end}}"><span class="min-w-0 truncate">{{.Label}}</span></span>
+      <span style="--verso-vt: {{.Transition}}; --verso-vt-class: verso-nav-sub verso-nav-sub-{{$i}}" class="verso-nav__face"><span class="min-w-0 truncate">{{.Label}}</span></span>
     </a></li>
     {{end}}
   </ul>

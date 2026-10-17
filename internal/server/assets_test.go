@@ -1049,8 +1049,6 @@ func TestMastheadEndsUnderLogOut(t *testing.T) {
 		":root{--verso-gutter:calc(var(--spacing) * 4)}",
 		":root{--verso-gutter:calc(var(--spacing) * 10)}",
 		"main [data-verso-masthead]{--verso-measure:calc(round(down, min(round(100cqw, 1px) - var(--verso-gutter) * 2 - 1px, var(--container-6xl)), .5rem) + 1px);margin-inline:calc(var(--verso-gutter) * -1) calc(100% - round(100cqw, 1px) + var(--verso-gutter));padding-inline:var(--verso-gutter) calc(round(100cqw, 1px) - var(--verso-gutter) - var(--verso-measure))}",
-		"[data-verso-session]>div{margin-inline:var(--verso-gutter);width:calc(round(down, min(100% - var(--verso-gutter) * 2 - 1px, var(--container-6xl)), .5rem) + 1px);flex:none}",
-		"[data-verso-colophon]>div{max-width:none;width:calc(round(down, min(100% - var(--verso-gutter) * 2 - 1px, var(--container-6xl)), .5rem) + 1px + var(--verso-gutter) * 2)}",
 		".w-column{width:calc(round(down,100% - 1px,.5rem) + 1px)}",
 		".max-w-column-6xl{max-width:calc(var(--container-6xl) + 1px)}",
 	} {
@@ -1058,6 +1056,42 @@ func TestMastheadEndsUnderLogOut(t *testing.T) {
 			t.Errorf("the masthead runs from the rail to the window's edge and its acts end where Log out does; stylesheet is missing %s", want)
 		}
 	}
+	// Log out's group and the colophon's words are measured as the column is.
+	for block, want := range map[string][]string{
+		".verso-bar__end {": {
+			"flex: none;",
+			"margin-inline: var(--verso-gutter);",
+			"width: calc(round(down, min(100% - var(--verso-gutter) * 2 - 1px, var(--container-6xl)), 0.5rem) + 1px);",
+		},
+		".verso-colophon__line {": {
+			"width: calc(round(down, min(100% - var(--verso-gutter) * 2 - 1px, var(--container-6xl)), 0.5rem) + 1px + var(--verso-gutter) * 2);",
+		},
+	} {
+		sheet := blockSheet(t, strings.TrimPrefix(strings.SplitN(block, "__", 2)[0], ".verso-"))
+		rule := cssBlock(t, sheet, block)
+		for _, w := range want {
+			if !strings.Contains(rule, w) {
+				t.Errorf("the masthead's acts and the colophon's words end where Log out does; %s is missing %s", block, w)
+			}
+		}
+		if strings.Contains(rule, "max-width") {
+			t.Errorf("%s is measured as the column is, never capped short of it:\n%s", block, rule)
+		}
+	}
+	// The page is what the rail leaves; the bar's group spans it.
+	if !strings.Contains(blockSheet(t, "bar"), "@media (width >= 48rem) {\n  .verso-bar__session {\n    left: calc(var(--spacing) * 72);") {
+		t.Error("beside the rail the bar's group starts where the page does")
+	}
+}
+
+// blockSheet is the source of blocks/<name>.css.
+func blockSheet(t *testing.T, name string) string {
+	t.Helper()
+	raw, err := os.ReadFile("assets/blocks/" + name + ".css")
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(raw)
 }
 
 // TestColophonHoldsStillBetweenPages: the colophon is one 56px line on every
@@ -1074,8 +1108,11 @@ func TestColophonHoldsStillBetweenPages(t *testing.T) {
 	if !strings.Contains(css, ".verso-page-ground{flex:1 0 auto}") {
 		t.Error("a short page's ground fills the window down to the colophon")
 	}
-	if !strings.Contains(css, "main>[data-verso-colophon]{flex:none}") {
+	if !strings.Contains(cssBlock(t, blockSheet(t, "colophon"), ".verso-colophon {"), "flex: none;") {
 		t.Error("the colophon keeps its own 56px whatever the window's height")
+	}
+	if body := get(t, newServer(t, fakeBackend{}), "/").Body.String(); !strings.Contains(body, `<footer data-verso-colophon x-data="copy" :data-copied="done" class="verso-colophon">`) {
+		t.Error("the page's colophon is not the colophon block")
 	}
 	if strings.Contains(css, "100vh - var(--spacing) * 28") {
 		t.Error("the ground is not rounded to the grid, leaving the colophon the remainder")
@@ -1114,6 +1151,11 @@ func TestTheRailCarriesItsPlaceAcrossAPageChange(t *testing.T) {
 		if !strings.Contains(s, want) {
 			t.Errorf("stylesheet is missing %q", want)
 		}
+	}
+	// The carried parts are the nav block's own: the marker, each row's face,
+	// its chevron and the open branch.
+	if !strings.Contains(blockSheet(t, "nav"), ":is(.verso-nav__face, .verso-nav__marker, .verso-nav__chevron, .verso-nav__branch) {\n    view-transition-name: var(--verso-vt);") {
+		t.Error("blocks/nav.css does not name the rail's parts for the page change")
 	}
 }
 

@@ -533,9 +533,10 @@ var contractNames = map[string]string{
 	"verso-port-role": "the board art's role slot (profiles/README.md)",
 }
 
-// viewTransitionName is a view transition's class, named in a style and
-// selected through ::view-transition-*(), never an element's class.
-var viewTransitionName = regexp.MustCompile(`^verso-nav-sub-\d+$`)
+// viewTransitionName is a view transition's class, named in a style
+// (--verso-vt-class) and selected through ::view-transition-*(), never an
+// element's class: the rail's rows, its branch and its subpages.
+var viewTransitionName = regexp.MustCompile(`^verso-nav-(row|branch|sub|sub-\d+)$`)
 
 const typeFile = "type.css"
 

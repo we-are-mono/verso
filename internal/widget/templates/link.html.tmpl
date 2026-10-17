@@ -11,22 +11,10 @@
 {{if eq .Style "button"}}
 <a href="{{.Href}}" class="verso-button">{{template "verso-link-face" .}}</a>
 {{else if eq .Style "rail"}}
-{{/* One place on this page, in the list of them. It is a block so a run of them
-     is a column, and it carries its own left hairline so the run draws one
-     continuous line without a container having to know it is a rail. Which one
-     you are reading is the shell's to say — it marks this link aria-current, and
-     verso.css draws the bar. */}}
-{{/* The colour is the named rule's, not a utility's: resting, hovered and current
-     are one set of three states, and a utility for any of them would beat the
-     rule that draws the other two — the utility layer wins the cascade whatever
-     the specificity. */}}
-{{/* A link is 28px: its 20px line and 4px over and under, close enough for a
-     run of 14px words to read as one list, so a run of any count is a
-     multiple of 4px and its edges land on the grid. Beside a form its column
-     starts a pixel past a line (the form's column is a pixel wider than its
-     measure), so the hairline steps back onto it; stacked under the form the
-     column starts on a line and the hairline with it. */}}
-<a href="{{.Href}}" data-verso-rail-link class="verso-rail-link @form-split:-ml-px flex items-center gap-1.5 border-l border-rule py-1 pl-4 text-sm leading-6 transition-colors">{{template "verso-link-face" .}}</a>
+{{/* One place on this page, in the list of them: the rail block
+     (blocks/rail.css). Which one you are reading is the shell's to say — it
+     marks this link aria-current. */}}
+<a href="{{.Href}}" data-verso-rail-link class="verso-rail">{{template "verso-link-face" .}}</a>
 {{else if eq .Style "act"}}
 {{/* act: an act on a part of a section, in the subsection act's one dress. One
      that makes or replaces the thing it stands under opens its form in a drawer

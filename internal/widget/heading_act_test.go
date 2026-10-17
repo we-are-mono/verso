@@ -100,9 +100,14 @@ func TestTakeLiveJoinsTheLogsActs(t *testing.T) {
 		t.Errorf("the heading line should hold the search, Live, then Download:\n%s", heading)
 	}
 	// The search narrows the log from up here: the group is the log's bar.
-	if !strings.Contains(heading, `<div data-verso-actionbar="log" class="flex min-w-0 flex-wrap items-center gap-2">`) {
+	if !strings.Contains(heading, `<div data-verso-actionbar="log" class="verso-actionbar">`) {
 		t.Errorf("the heading's log group is not the log's bar:\n%s", heading)
 	}
+	// As equals on the heading line: no band of its own around them.
+	declares(t, "actionbar", ".verso-actionbar", "display: flex", "flex-wrap: wrap", "align-items: center")
+	declares(t, "actionbar", `.verso-actionbar[data-verso-actionbar="log"]`,
+		"gap: calc(var(--spacing) * 2)", "min-width: 0",
+		"padding: 0", "border: 0", "background-color: transparent")
 }
 
 // TestPrimaryActsWearThePlus: every page's primary act wears the plus —
@@ -155,9 +160,14 @@ func TestHeadingActRendersTheActAlone(t *testing.T) {
 // the card.
 func TestControlBandIsTheListingCardsTopStrip(t *testing.T) {
 	got := render(t, newRenderer(t), &ActionBar{Tabs: []ActionTab{{Label: "All families", Count: 3, Active: true}}})
-	if !strings.Contains(got, `data-verso-actionbar class="flex flex-wrap items-center gap-4 rounded-t-xs border border-rule-strong border-b-rule bg-ground px-5.75 pt-3.75 pb-4"`) {
+	if !strings.Contains(got, `<div data-verso-actionbar class="verso-actionbar">`) {
 		t.Errorf("control band surface wrong:\n%s", got)
 	}
+	declares(t, "actionbar", ".verso-actionbar",
+		"display: flex", "flex-wrap: wrap", "align-items: center", "gap: calc(var(--spacing) * 4)",
+		"padding: calc(var(--spacing) * 3.75) calc(var(--spacing) * 5.75) calc(var(--spacing) * 4)",
+		"border: 1px solid var(--color-rule-strong)", "border-bottom-color: var(--color-rule)",
+		"border-radius: var(--radius-xs) var(--radius-xs) 0 0", "background-color: var(--color-ground)")
 	if strings.Contains(got, "mb-5") || strings.Contains(got, "mb-8") {
 		t.Errorf("the band sits flush on its listing:\n%s", got)
 	}

@@ -87,9 +87,10 @@ func TestServicesTable(t *testing.T) {
 		"subsystem",
 		"runs at boot", // one-shot tasks are not misreported as stopped
 		`<span class="verso-chip" data-verso-verbatim>`, // type reuses the mono chip
-		">verso</span>",                   // APK ownership joins verso-rpcd to the verso package
-		"font-mono text-base font-medium", // package ownership uses fixed 16px/500 mono type
-		"max-w-column-6xl",                // runtime fits without forcing a horizontal scroller
+		">verso</span>", // APK ownership joins verso-rpcd to the verso package
+		// package ownership is verbatim: the cell's role in its fixed 16px mono form
+		`<td data-verso-verbatim class="verso-table__cell whitespace-nowrap text-ink"><span class="flex items-center"><span>verso</span>`,
+		"max-w-column-6xl", // runtime fits without forcing a horizontal scroller
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("services missing %q", want)

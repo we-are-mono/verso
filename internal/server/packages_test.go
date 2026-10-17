@@ -59,12 +59,13 @@ func TestPackagesInventory(t *testing.T) {
 		`<select data-verso-listing-cut`, `<option value="upgradable" data-label="Upgradable">Upgradable · `,
 		`<option value="all" data-label="All" data-href="/system/packages?tab=all">All</option>`, // the index is its own listing
 		// the listing card's top strip
-		`data-verso-actionbar class="flex flex-wrap items-center gap-4 rounded-t-xs border border-rule-strong border-b-rule bg-ground px-5.75 pt-3.75 pb-4"`,
+		`<div data-verso-actionbar class="verso-actionbar">`,
 		"htop", "3.5.1-r1", "packages", // the row
-		"font-mono text-base font-medium", // package versions use the fixed 16px/500 mono treatment
-		"Process viewer",                  // what it is, in its column
-		">Remove</button>",                // removal is the row's act, asked on the row
-		"max-w-column-6xl",                // package management uses the wide content width
+		// package versions are verbatim: the cell's role in its fixed 16px mono form
+		`<td data-verso-verbatim class="verso-table__cell whitespace-nowrap text-ink"><span class="flex items-center"><span>3.5.1-r1</span>`,
+		"Process viewer",   // what it is, in its column
+		">Remove</button>", // removal is the row's act, asked on the row
+		"max-w-column-6xl", // package management uses the wide content width
 		`data-verso-panel-url="/system/packages/package?name=htop"`, // the drawer is fetched as it opens
 	} {
 		if !strings.Contains(body, want) {
@@ -92,6 +93,15 @@ func TestPackagesInventory(t *testing.T) {
 		if !strings.Contains(panel, want) {
 			t.Errorf("drawer missing %q", want)
 		}
+	}
+	// A verbatim cell is the body role's mono form: 16px mono.
+	if !strings.Contains(cssBlock(t, blockSheet(t, "table"), ".verso-table__cell {"), "@apply type-body;") {
+		t.Error("blocks/table.css does not set a cell in the body role")
+	}
+	if typ, err := os.ReadFile("assets/type.css"); err != nil {
+		t.Fatal(err)
+	} else if body := cssBlock(t, string(typ), "@utility type-body {"); !strings.Contains(body, "&[data-verso-verbatim] { font-family: var(--font-mono); font-size: 1rem;") {
+		t.Error("the body role's verbatim form is not 16px mono")
 	}
 	// Prose is set in the body role (blocks/prose.css).
 	if prose, err := os.ReadFile("assets/blocks/prose.css"); err != nil {
@@ -413,11 +423,12 @@ func TestDiscoverSearchRenders(t *testing.T) {
 	}
 	for _, want := range []string{
 		"htop", "Process viewer", "3.5.1-r1", "packages",
-		"font-mono text-base font-medium", // Available versions match Installed
-		"installed",                       // the already-present package carries its state
-		"htop-lang",                       // package identities label their drawers
-		"Index refreshed",                 // freshness honesty
-		`href="/system/packages"`,         // the local switch links the faces
+		// Available versions match Installed: verbatim, the fixed 16px mono form
+		`<td data-verso-verbatim class="verso-table__cell whitespace-nowrap text-ink"><span class="flex items-center"><span>3.5.1-r1</span>`,
+		"installed",               // the already-present package carries its state
+		"htop-lang",               // package identities label their drawers
+		"Index refreshed",         // freshness honesty
+		`href="/system/packages"`, // the local switch links the faces
 		`action="/system/packages/discover"`,
 		"Install packages",
 	} {

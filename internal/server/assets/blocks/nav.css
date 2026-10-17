@@ -1,0 +1,219 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/* SPDX-FileCopyrightText: 2026 Mono Technologies Inc. */
+
+/*
+ * nav — the rail's destinations (nav-row.html.tmpl): one row each, a leading
+ * glyph identifying it, and under the one you are in, the subpages it opens.
+ * Where the marker sits depends on whether the row opened anything: a row
+ * with no subpages wears it itself — the quiet surface with a 2px Ink rule at
+ * the rail's content edge, against the page it opens — and a row that did
+ * open subpages hands it down to whichever of them you are on and keeps only
+ * the weight and the ink, so the rail never marks two places at once. A row
+ * a pointer rests on leans 4px in: its face moves, not its padding, so the
+ * lean is the compositor's and lays nothing out again.
+ *
+ * Across a page change the marker, each row's face, the open branch and each
+ * subpage's words are named for where they lead (--verso-vt, and their kind
+ * in --verso-vt-class: verso-nav-row, verso-nav-branch, verso-nav-sub and
+ * verso-nav-sub-N, view-transition classes rather than element classes), so
+ * the browser carries each from the page you leave to the page you open: the
+ * marker glides from where you were to where you are going, the rows under
+ * a branch that opens slide down to make room while its hairline draws down
+ * and its subpages drop in one after another, and a branch you leave is
+ * simply gone as the rows under it close up. Nothing else is carried: the
+ * root is unnamed, so the page itself appears at once. Only where the rail
+ * stands beside the page, and only for a reader who has not asked for
+ * stillness.
+ *
+ * Elements: __row      a destination; data-verso-active while you are in
+ *                      it, data-verso-open while it shows its subpages,
+ *                      data-verso-stage for the stage's row (the Pending
+ *                      changes row, first in the rail, on the caveat's wash)
+ *           __group    a destination whose subpages are known on every page,
+ *                      a disclosure named with every other
+ *           __face     what a row shows, the part that leans
+ *           __marker   where you are, behind the words of the place it marks
+ *           __detail   what waits there, at the row's end, led by the rail's
+ *                      state mark; data-verso-tone="info" tints it
+ *           __chevron  a row that opens into subpages says so: pointing the
+ *                      way it opens while closed, turned down over its open
+ *                      branch (data-verso-down), turning as a group opens
+ *           __branch   the subpages, hung beneath the parent's glyph, its
+ *                      hairline on the glyph's centre 32px in
+ *           __sub      a subpage; data-verso-active while you are on it
+ */
+
+.verso-nav__row,
+.verso-nav__sub {
+  position: relative;
+  display: flex;
+  align-items: center;
+  padding: calc(var(--spacing) * 2) calc(var(--spacing) * 6);
+  color: var(--color-body);
+  transition-property: color, background-color;
+  transition-duration: 150ms;
+  @apply type-body;
+}
+.verso-nav__row:hover {
+  background-color: color-mix(in srgb, var(--color-mid) 50%, transparent);
+}
+.verso-nav__row:hover,
+.verso-nav__sub:hover {
+  color: var(--color-ink);
+}
+.verso-nav__row[data-verso-active],
+.verso-nav__sub[data-verso-active] {
+  color: var(--color-ink);
+  @apply type-subheading;
+}
+.verso-nav__row[data-verso-active]:not([data-verso-open]):hover {
+  background-color: transparent;
+}
+.verso-nav__row[data-verso-active][data-verso-open]:hover {
+  background-color: color-mix(in srgb, var(--color-quiet) 50%, transparent);
+}
+summary.verso-nav__row {
+  cursor: pointer;
+  list-style: none;
+}
+summary.verso-nav__row::-webkit-details-marker {
+  display: none;
+}
+
+.verso-nav__row[data-verso-stage],
+.verso-nav__row[data-verso-stage]:hover {
+  background-color: var(--color-marigold-soft);
+  color: var(--color-marigold-deep);
+  @apply type-subheading;
+}
+.verso-nav__row[data-verso-stage][aria-current="page"] {
+  box-shadow: inset -0.125rem 0 0 var(--color-marigold);
+}
+.verso-nav__row[data-verso-stage]:focus-visible {
+  outline: 2px solid var(--color-marigold-deep);
+  outline-offset: -2px;
+}
+
+.verso-nav__face {
+  position: relative;
+  display: flex;
+  flex: 1 1 0%;
+  align-items: center;
+  gap: calc(var(--spacing) * 4);
+  min-width: 0;
+  transition: translate 150ms;
+}
+.verso-nav__face:is(:is(.verso-nav__row, .verso-nav__sub):not([data-verso-active], [aria-current="page"]):hover > *) {
+  translate: calc(var(--spacing) * 1) 0;
+}
+
+.verso-nav__marker {
+  position: absolute;
+  inset: 0;
+  background-color: var(--color-quiet);
+  box-shadow: inset -0.125rem 0 0 var(--color-ink);
+  pointer-events: none;
+}
+
+.verso-nav__detail {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--spacing) * 2);
+  min-width: 0;
+  margin-left: auto;
+  color: var(--color-meta);
+  @apply type-value;
+}
+.verso-nav__detail[data-verso-tone="info"] {
+  color: var(--color-denim);
+}
+
+.verso-nav__chevron {
+  display: flex;
+  flex-shrink: 0;
+  color: var(--color-meta);
+}
+.verso-nav__chevron[data-verso-down] {
+  rotate: 90deg;
+}
+.verso-nav__chevron:where(.verso-nav__group *) {
+  transition: rotate 0.36s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.verso-nav__chevron:is(.verso-nav__group[open] > summary *) {
+  rotate: 90deg;
+}
+@media (prefers-reduced-motion: reduce) {
+  .verso-nav__chevron {
+    transition: none;
+  }
+}
+
+.verso-nav__branch {
+  display: flex;
+  flex-direction: column;
+  margin: 0 0 calc(var(--spacing) * 2) calc(var(--spacing) * 8);
+  border: 0 solid var(--color-rule);
+  border-left-width: 1px;
+}
+
+/* A group opening in place, with no page change: its branch grows to its
+   height on the rail's easing where the browser can size to auto, and a
+   closed group's branch is not drawn, so its names are never carried across
+   a page change. Elsewhere, and for a reader who asked for stillness, it
+   opens at once. */
+@media (prefers-reduced-motion: no-preference) {
+  .verso-nav__group {
+    interpolate-size: allow-keywords;
+  }
+  .verso-nav__group::details-content {
+    block-size: 0;
+    overflow: clip;
+    transition: block-size 0.36s cubic-bezier(0.22, 1, 0.36, 1), content-visibility 0.36s allow-discrete;
+  }
+  .verso-nav__group[open]::details-content {
+    block-size: auto;
+  }
+}
+
+@media (min-width: 48rem) and (prefers-reduced-motion: no-preference) {
+  :is(.verso-nav__face, .verso-nav__marker, .verso-nav__chevron, .verso-nav__branch) {
+    view-transition-name: var(--verso-vt);
+    view-transition-class: var(--verso-vt-class, none);
+  }
+  /* A row that gains or gives up the weight swaps it quickly, so the words
+     never read doubled while they move. */
+  ::view-transition-old(.verso-nav-row),
+  ::view-transition-new(.verso-nav-row) {
+    animation-duration: 0.14s;
+  }
+  /* A branch that opens draws its hairline down from its parent. */
+  ::view-transition-new(.verso-nav-branch):only-child {
+    animation: verso-nav-unfold 0.36s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  /* Its subpages drop in after the rows have begun to make room, one after
+     another in reading order. */
+  ::view-transition-new(.verso-nav-sub):only-child {
+    animation: verso-nav-arrive 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation-delay: 0.08s;
+  }
+  ::view-transition-new(.verso-nav-sub-1):only-child { animation-delay: 0.11s; }
+  ::view-transition-new(.verso-nav-sub-2):only-child { animation-delay: 0.14s; }
+  ::view-transition-new(.verso-nav-sub-3):only-child { animation-delay: 0.17s; }
+  ::view-transition-new(.verso-nav-sub-4):only-child { animation-delay: 0.2s; }
+  ::view-transition-new(.verso-nav-sub-5):only-child { animation-delay: 0.23s; }
+  ::view-transition-new(.verso-nav-sub-6):only-child { animation-delay: 0.26s; }
+  ::view-transition-new(.verso-nav-sub-7):only-child { animation-delay: 0.29s; }
+  ::view-transition-new(.verso-nav-sub-8):only-child,
+  ::view-transition-new(.verso-nav-sub-9):only-child,
+  ::view-transition-new(.verso-nav-sub-10):only-child,
+  ::view-transition-new(.verso-nav-sub-11):only-child { animation-delay: 0.32s; }
+  /* A branch you leave is gone at once: the rows under it close over the
+     space it held, and nothing of it lingers under them. */
+  ::view-transition-old(.verso-nav-branch):only-child,
+  ::view-transition-old(.verso-nav-sub):only-child {
+    animation: none;
+    opacity: 0;
+  }
+}
+@keyframes verso-nav-unfold { from { clip-path: inset(0 0 100% 0); } }
+@keyframes verso-nav-arrive { from { opacity: 0; transform: translateY(-0.375rem); } }

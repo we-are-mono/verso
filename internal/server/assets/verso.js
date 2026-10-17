@@ -349,12 +349,9 @@ document.addEventListener("alpine:init", function () {
   // by default on every page.
   Alpine.data("sidebar", function () {
     return {
+      // While open the rail binds data-verso-open (the sidebar block slides it
+      // in); Alpine drops the attribute again when it is false.
       open: false,
-      // The CSP-friendly Alpine build can't evaluate a ternary inside :class, so expose
-      // the drawer's open-class as a plain (reactive) property to bind to.
-      get drawerClass() {
-        return this.open ? "verso-drawer-open" : "";
-      },
       // The hamburger's aria-expanded, as the string the attribute takes.
       get expanded() {
         return this.open ? "true" : "false";

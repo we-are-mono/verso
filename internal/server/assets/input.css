@@ -27,11 +27,14 @@
    components layer, so a utility in the markup outranks every block by layer
    order. CSS imports take no glob; TestEveryBlockIsImported fails on a block file
    left off this list, whose rules would otherwise go missing unseen. */
+@import "./blocks/actionbar.css" layer(components);
+@import "./blocks/bar.css" layer(components);
 @import "./blocks/button.css" layer(components);
 @import "./blocks/chart.css" layer(components);
 @import "./blocks/chevron.css" layer(components);
 @import "./blocks/chip.css" layer(components);
 @import "./blocks/code.css" layer(components);
+@import "./blocks/colophon.css" layer(components);
 @import "./blocks/copy-inline.css" layer(components);
 @import "./blocks/empty.css" layer(components);
 @import "./blocks/facts.css" layer(components);
@@ -43,14 +46,17 @@
 @import "./blocks/mark.css" layer(components);
 @import "./blocks/menu.css" layer(components);
 @import "./blocks/meter.css" layer(components);
+@import "./blocks/nav.css" layer(components);
 @import "./blocks/notice.css" layer(components);
 @import "./blocks/outcome.css" layer(components);
 @import "./blocks/panel.css" layer(components);
 @import "./blocks/ports.css" layer(components);
 @import "./blocks/prose.css" layer(components);
+@import "./blocks/rail.css" layer(components);
 @import "./blocks/raw.css" layer(components);
 @import "./blocks/reorder.css" layer(components);
 @import "./blocks/rhythm.css" layer(components);
+@import "./blocks/sidebar.css" layer(components);
 @import "./blocks/slot.css" layer(components);
 @import "./blocks/staged.css" layer(components);
 @import "./blocks/steps.css" layer(components);
@@ -335,17 +341,6 @@ html {
     border-color: var(--color-mid);
   }
 
-  /* Sidebar as a mobile off-canvas drawer: slid off-screen by default, in when open
-     (verso.js "sidebar" adds .verso-drawer-open). On desktop (md+) it's a static rail
-     with no transform. Position is Tailwind's job (fixed on mobile, sticky on md+); this
-     owns only the slide. */
-  /* Closed, the rail is hidden as well as slid away, so its links leave the tab
-     order and what a screen reader reads; the hiding waits for the slide to
-     finish, and showing it is immediate, so the motion is seen both ways. */
-  .verso-drawer { transform: translateX(-100%); visibility: hidden; transition: transform 0.28s ease, visibility 0s linear 0.28s; }
-  .verso-drawer.verso-drawer-open { transform: translateX(0); visibility: visible; transition: transform 0.28s ease, visibility 0s; }
-  @media (min-width: 768px) { .verso-drawer { transform: none; visibility: visible; transition: none; } }
-  @media (prefers-reduced-motion: reduce) { .verso-drawer { transition: none; } }
 
   /* A page that fills the window (Width "full") hands its height down to the one
      thing that wants it — a console, a canvas, anything that scrolls inside
@@ -408,11 +403,6 @@ html {
       inset 0 0 0 62.5rem var(--color-denim-soft) !important;
   }
 
-  /* The stage's row, first in the rail (staged.html.tmpl). The marker of the
-     page it leads to is the stage's marigold. */
-  .verso-pending-link[aria-current="page"] { box-shadow: inset -0.125rem 0 0 var(--color-marigold); }
-  /* On a phone the menu button carries the count on the stage's wash. */
-  .verso-menu-button:not([data-count="0"]) { background-color: var(--color-marigold-soft); color: var(--color-marigold-deep); }
 
   @keyframes verso-landed { from, 50% { background-color: var(--color-marigold-soft); } to { background-color: transparent; } }
   tr.verso-landed { animation: verso-landed 1.4s ease-out; }
@@ -426,26 +416,6 @@ html {
   }
   .verso-arrived { animation: verso-arrived 2s ease-out; }
 
-
-  /* The rail beside a long page marks the section you are reading: the words go
-     to ink and take on weight, and the hairline the link already carries becomes
-     a 2px bar in ink over its own length. The bar is an inset shadow rather than
-     a thicker border so nothing in the column shifts by a pixel as the mark moves
-     from one link to the next.
-
-     All three states are here rather than as utilities on the element, because a
-     utility for any one of them would beat the rule that draws the other two:
-     this layer loses to utilities whatever its specificity. */
-  /* A run of rail links holds its own ends: the half cell its last link keeps
-     or gives back (link.html.tmpl) must not merge with what stands after it. */
-  :has(> [data-verso-rail-link]) { display: flow-root; }
-  .verso-rail-link { color: var(--color-body); }
-  .verso-rail-link:hover { color: var(--color-ink); }
-  .verso-rail-link[aria-current="true"] {
-    color: var(--color-ink);
-    font-weight: 600;
-    box-shadow: inset 2px 0 0 var(--color-ink);
-  }
 
   /* A token box holding values no longer needs telling what goes in it. The
      prompt is for an empty box; beside two chips there is no room left for a
@@ -469,22 +439,6 @@ html {
   .verso-inline-switch:has(input[data-verso-switch]:checked) .verso-inline-switch-on { display: inline; }
   .verso-inline-switch:has(input[data-verso-switch]:checked) .verso-inline-switch-off { display: none; }
 
-
-  /* A live state mark (a green packet) breathes an expanding ring of its own
-     shape, so "connected" reads at a glance. Static marks stay calm. */
-  .verso-live-dot { position: relative; }
-  .verso-live-dot::after {
-    content: "";
-    position: absolute;
-    inset: -0.1875rem;
-    border-radius: 0.125rem;
-    border: 0.125rem solid color-mix(in srgb, var(--color-green) 60%, transparent);
-    animation: verso-ring 2s ease-out infinite;
-  }
-  @keyframes verso-ring {
-    0%   { transform: scale(0.6); opacity: 1; }
-    100% { transform: scale(1.5); opacity: 0; }
-  }
 
   /* page masthead: the header the shell chrome renders over every page (an
      optional kicker over the headline). Sizes live here so they hot-reload.
@@ -513,10 +467,6 @@ html {
   @keyframes verso-fan-spin { to { transform: rotate(360deg); } }
   @media (prefers-reduced-motion: reduce) {
     .verso-glyph-fan-spin { animation: none; }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .verso-live-dot::after { animation: none; }
   }
 }
 
@@ -574,27 +524,10 @@ html {
   @media (width >= 48rem) {
     :root { --verso-gutter: calc(var(--spacing) * 10); }
   }
-  /* Log out ends on the same line: the top bar's session group measures
-     itself the way the column does, against the same width beside the
-     rail. */
-  [data-verso-session] > div {
-    flex: none;
-    margin-inline: var(--verso-gutter);
-    width: calc(round(down, min(100% - var(--verso-gutter) * 2 - 1px, var(--container-6xl)), 0.5rem) + 1px);
-  }
-  /* The colophon's words end on the same line too: measured the same way,
-     against the same width beside the rail, the page's gutters outside the
-     rounded measure. */
-  [data-verso-colophon] > div {
-    max-width: none;
-    width: calc(round(down, min(100% - var(--verso-gutter) * 2 - 1px, var(--container-6xl)), 0.5rem) + 1px + var(--verso-gutter) * 2);
-  }
   /* A short page's ground fills the window down to the colophon, every pixel
      of it, so the colophon stands at the window's foot exactly as it stands at
-     the foot of a long page scrolled to its end: one 56px line, as the top bar
-     is, that never moves between pages. */
+     the foot of a long page scrolled to its end. */
   .verso-page-ground { flex: 1 0 auto; }
-  main > [data-verso-colophon] { flex: none; }
   main [data-verso-masthead] {
     --verso-measure: calc(round(down, min(round(100cqw, 1px) - var(--verso-gutter) * 2 - 1px, var(--container-6xl)), 0.5rem) + 1px);
     margin-inline: calc(var(--verso-gutter) * -1) calc(100% - round(100cqw, 1px) + var(--verso-gutter));
@@ -746,31 +679,6 @@ html {
 }
 
 
-/* The colophon answers its copy by washing what it copied, one fact after
-   another from the left, then letting it go. The wash is the band's own sand a
-   step down, never a hue: nothing changed, it was only picked up. Each fact
-   carries 6px of side padding that its margin gives back, so the wash sits
-   around the words like a chip while the line at rest does not move, and the
-   words go to Ink under it. The check in the button says the same thing under
-   reduced motion. */
-@layer components {
-  .verso-colophon-fact {
-    margin-inline: calc(var(--spacing) * -1.5);
-    padding-inline: calc(var(--spacing) * 1.5);
-    border-radius: var(--radius-xs);
-  }
-  [data-copied] .verso-colophon-fact {
-    animation: verso-colophon-copied 1200ms cubic-bezier(0.16, 1, 0.3, 1) both;
-    animation-delay: calc(var(--fact, 0) * 70ms);
-  }
-  @keyframes verso-colophon-copied {
-    0%, 100% { background-color: transparent; }
-    12%, 55% { background-color: var(--color-rule-strong); color: var(--color-ink); }
-  }
-  @media (prefers-reduced-motion: reduce) {
-    [data-copied] .verso-colophon-fact { animation: none; }
-  }
-}
 
 /* A table wider than its box scrolls inside it, and on a phone that hides the
    trailing columns, a row's own act among them. While more of the table waits to
@@ -891,23 +799,13 @@ html {
   }
 }
 
-/* The rail across a page change. The rail's rows, the open branch, each
-   subpage's words and the marker are named for where they lead (--verso-vt,
-   nav-row.html.tmpl), so the browser carries each from the page you leave to
-   the page you open: the marker glides from where you were to where you are
-   going, the rows under a branch that opens slide down to make room while its
-   hairline draws down and its subpages drop in one after another, and a branch
-   you leave is simply gone as the rows under it close up. Nothing else is
-   carried: the root is unnamed, so the page itself appears at once, and the
-   carried parts let every press through to it. Only where the rail stands
-   beside the page (on a phone it is a closed drawer by then), and only for a
-   reader who has not asked for stillness; anywhere else the page simply loads. */
+/* The rail across a page change (the nav block names what is carried). The
+   root is unnamed, so the page itself appears at once, and the carried parts
+   let every press through to it. Only where the rail stands beside the page
+   (on a phone it is a closed drawer by then), and only for a reader who has
+   not asked for stillness; anywhere else the page simply loads. */
 @media (min-width: 48rem) and (prefers-reduced-motion: no-preference) {
   @view-transition { navigation: auto; }
-  .verso-vt {
-    view-transition-name: var(--verso-vt);
-    view-transition-class: var(--verso-vt-class, none);
-  }
   :root { view-transition-name: none; }
   ::view-transition { pointer-events: none; }
   /* The rail's one easing, the unfold's: a quick start, a long settle. */
@@ -921,52 +819,6 @@ html {
   ::view-transition-group(verso-nav-marker) { z-index: 0; }
   ::view-transition-old(verso-nav-marker),
   ::view-transition-new(verso-nav-marker) { block-size: 100%; object-fit: fill; }
-  /* A row that gains or gives up the weight swaps it quickly, so the words
-     never read doubled while they move. */
-  ::view-transition-old(.verso-nav-row),
-  ::view-transition-new(.verso-nav-row) { animation-duration: 0.14s; }
-  /* A branch that opens draws its hairline down from its parent. */
-  ::view-transition-new(.verso-nav-branch):only-child {
-    animation: verso-nav-unfold 0.36s cubic-bezier(0.22, 1, 0.36, 1) both;
-  }
-  /* Its subpages drop in after the rows have begun to make room, one after
-     another in reading order. */
-  ::view-transition-new(.verso-nav-sub):only-child {
-    animation: verso-nav-arrive 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
-    animation-delay: 0.08s;
-  }
-  ::view-transition-new(.verso-nav-sub-1):only-child { animation-delay: 0.11s; }
-  ::view-transition-new(.verso-nav-sub-2):only-child { animation-delay: 0.14s; }
-  ::view-transition-new(.verso-nav-sub-3):only-child { animation-delay: 0.17s; }
-  ::view-transition-new(.verso-nav-sub-4):only-child { animation-delay: 0.2s; }
-  ::view-transition-new(.verso-nav-sub-5):only-child { animation-delay: 0.23s; }
-  ::view-transition-new(.verso-nav-sub-6):only-child { animation-delay: 0.26s; }
-  ::view-transition-new(.verso-nav-sub-7):only-child { animation-delay: 0.29s; }
-  ::view-transition-new(.verso-nav-sub-8):only-child,
-  ::view-transition-new(.verso-nav-sub-9):only-child,
-  ::view-transition-new(.verso-nav-sub-10):only-child,
-  ::view-transition-new(.verso-nav-sub-11):only-child { animation-delay: 0.32s; }
-  /* A branch you leave is gone at once: the rows under it close over the space
-     it held, and nothing of it lingers under them. */
-  ::view-transition-old(.verso-nav-branch):only-child,
-  ::view-transition-old(.verso-nav-sub):only-child { animation: none; opacity: 0; }
-}
-@keyframes verso-nav-unfold { from { clip-path: inset(0 0 100% 0); } }
-@keyframes verso-nav-arrive { from { opacity: 0; transform: translateY(-0.375rem); } }
-
-/* A rail group opening in place, with no page change: its branch grows to its
-   height on the rail's easing where the browser can size to auto, and a
-   closed group's branch is not drawn, so its names are never carried across a
-   page change. Elsewhere, and for a reader who asked for stillness, it opens
-   at once. */
-@media (prefers-reduced-motion: no-preference) {
-  details[name="verso-nav"] { interpolate-size: allow-keywords; }
-  details[name="verso-nav"]::details-content {
-    block-size: 0;
-    overflow: clip;
-    transition: block-size 0.36s cubic-bezier(0.22, 1, 0.36, 1), content-visibility 0.36s allow-discrete;
-  }
-  details[name="verso-nav"][open]::details-content { block-size: auto; }
 }
 
 /* The layout grid, drawn on request in a dev session (verso-dev.js sets

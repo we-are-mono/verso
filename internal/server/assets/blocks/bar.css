@@ -1,0 +1,195 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/* SPDX-FileCopyrightText: 2026 Mono Technologies Inc. */
+
+/*
+ * bar — the top bar: the device's nameplate on the left (the hostname,
+ * verbatim, then who built the board and what they call it), and on the
+ * right the router's standing flags and the way out, aligned to the content
+ * column rather than to the bar's own edge, so they line up with a page's
+ * primary act below them. White, a step above the paper the page sits on,
+ * and it stays at the top while the page scrolls under it. It is its 36px
+ * line with 10px above and below: 56px, the hairline drawn inside it so the
+ * rail and every sticky offset under it can count on the 56. On a phone it
+ * also holds the button that opens the rail.
+ *
+ * Elements: __menu       the phone's rail button; it carries the stage's
+ *                        count on the caveat's wash while a change waits
+ *           __count      that count
+ *           __nameplate  the hostname, the title role's verbatim form, padded
+ *                        to the bar's 36px line
+ *           __rule       a hairline divider standing in the line
+ *           __maker      who built the board, and its model
+ *           __session    the right-hand group's span, over the bar
+ *           __end        the group itself, measured as the column is
+ *           __flag       a standing flag (no password, an update); its tone
+ *                        in data-verso-tone
+ *           __account    the way out, with the identity it ends beside it
+ */
+
+.verso-bar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: calc(var(--spacing) * 4);
+  padding: calc(var(--spacing) * 2.5) calc(var(--spacing) * 6);
+  background-color: var(--color-canvas);
+  box-shadow: inset 0 -1px 0 var(--color-rule);
+}
+
+.verso-bar__menu {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  gap: calc(var(--spacing) * 1.5);
+  min-width: calc(var(--spacing) * 9);
+  height: calc(var(--spacing) * 9);
+  padding-inline: calc(var(--spacing) * 2);
+  border-radius: var(--radius-xs);
+  color: var(--color-body);
+  transition-property: color, background-color;
+  transition-duration: 150ms;
+}
+.verso-bar__menu:hover {
+  background-color: var(--color-mid);
+  color: var(--color-ink);
+}
+.verso-bar__menu:not([data-count="0"]) {
+  background-color: var(--color-marigold-soft);
+  color: var(--color-marigold-deep);
+}
+@media (width >= 48rem) {
+  .verso-bar__menu {
+    display: none;
+  }
+}
+.verso-bar__count {
+  @apply type-subheading;
+}
+
+.verso-bar__nameplate {
+  min-width: 0;
+  padding-block: calc(var(--spacing) * 1);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-ink);
+  @apply type-title;
+}
+
+.verso-bar__rule {
+  display: none;
+  flex-shrink: 0;
+  width: 1px;
+  height: calc(var(--spacing) * 5);
+  background-color: var(--color-rule-strong);
+}
+@media (width >= 40rem) {
+  .verso-bar__rule:where(:not(.verso-bar__account *)) {
+    display: block;
+  }
+}
+.verso-bar__rule:where(.verso-bar__account *) {
+  display: block;
+  height: calc(var(--spacing) * 3.5);
+}
+
+.verso-bar__maker {
+  display: none;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-body);
+  @apply type-body;
+}
+@media (width >= 40rem) {
+  .verso-bar__maker {
+    display: block;
+  }
+}
+
+.verso-bar__session {
+  position: absolute;
+  inset-block: 0;
+  inset-inline: 0;
+  display: flex;
+  align-items: center;
+  pointer-events: none;
+}
+@media (width >= 48rem) {
+  .verso-bar__session {
+    left: calc(var(--spacing) * 72);
+  }
+}
+/* The group ends where the page's column ends: measured as the column is,
+   against the room beside the rail, the page's gutters outside it. */
+.verso-bar__end {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: flex-end;
+  gap: calc(var(--spacing) * 2);
+  min-width: 0;
+  margin-inline: var(--verso-gutter);
+  width: calc(round(down, min(100% - var(--verso-gutter) * 2 - 1px, var(--container-6xl)), 0.5rem) + 1px);
+}
+@media (width >= 48rem) {
+  .verso-bar__end {
+    gap: calc(var(--spacing) * 4);
+  }
+}
+.verso-bar__end > * {
+  pointer-events: auto;
+}
+
+.verso-bar__flag {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--spacing) * 2);
+  min-width: 0;
+  height: calc(var(--spacing) * 7);
+  padding-inline: calc(var(--spacing) * 2.5);
+  border: 1px solid var(--color-crimson);
+  border-radius: var(--radius-xs);
+  background-color: var(--color-crimson-soft);
+  color: var(--color-crimson-deep);
+  @apply type-body;
+}
+.verso-bar__flag[data-verso-tone="info"] {
+  border-color: var(--color-denim);
+  background-color: var(--color-denim-soft);
+  color: var(--color-denim-deep);
+  @apply type-subheading;
+}
+.verso-bar__flag[data-verso-tone="info"]:hover {
+  border-color: var(--color-denim-deep);
+  background-color: color-mix(in srgb, var(--color-denim-soft) 80%, transparent);
+}
+
+.verso-bar__account {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--spacing) * 2);
+  height: calc(var(--spacing) * 8);
+  padding-inline: calc(var(--spacing) * 3);
+  border: 1px solid transparent;
+  border-radius: var(--radius-xs);
+  color: var(--color-body);
+  cursor: pointer;
+  transition-property: color, background-color, border-color;
+  transition-duration: 150ms;
+  @apply type-field-label;
+}
+.verso-bar__account:hover {
+  border-color: var(--color-rule-strong);
+  background-color: var(--color-quiet);
+  color: var(--color-ink);
+}
+.verso-bar__account:focus-visible {
+  outline: 2px solid var(--color-denim);
+  outline-offset: 2px;
+}
