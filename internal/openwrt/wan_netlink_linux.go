@@ -14,8 +14,12 @@ import (
 )
 
 const (
+	rtaDst       = 1
+	rtaSrc       = 2
 	rtaOIF       = 4
+	rtaGateway   = 5
 	rtaPriority  = 6
+	rtaPrefSrc   = 7
 	rtaMultipath = 9
 	rtaTable     = 15
 
@@ -41,13 +45,9 @@ type netlinkAttr struct {
 // reachable, forwarding defaults survive; multipath routes yield every live
 // output device.
 func kernelDefaultRoutes() ([]kernelRoute, error) {
-	interfaces, err := net.Interfaces()
+	nameByIndex, err := interfaceNamesByIndex()
 	if err != nil {
 		return nil, err
-	}
-	nameByIndex := make(map[int]string, len(interfaces))
-	for _, iface := range interfaces {
-		nameByIndex[iface.Index] = iface.Name
 	}
 	vrfTables, _ := kernelVRFTables()
 
@@ -82,31 +82,11 @@ func kernelDefaultRoutes() ([]kernelRoute, error) {
 			if flags&(rtnhDead|rtnhLinkDown) != 0 {
 				continue
 			}
-			table := uint32(message.Data[4])
-			attrs, attrErr := parseNetlinkAttrs(message.Data[syscall.SizeofRtMsg:])
-			if attrErr != nil {
+			route, ok := decodeRoute(message.Data)
+			if !ok {
 				continue
 			}
-			metric := uint32(0)
-			var outputs []int
-			for _, attr := range attrs {
-				switch attr.typeID {
-				case rtaTable:
-					if value, ok := attrUint32(attr.value); ok {
-						table = value
-					}
-				case rtaPriority:
-					if value, ok := attrUint32(attr.value); ok {
-						metric = value
-					}
-				case rtaOIF:
-					if value, ok := attrUint32(attr.value); ok {
-						outputs = append(outputs, int(value))
-					}
-				case rtaMultipath:
-					outputs = append(outputs, multipathOutputs(attr.value)...)
-				}
-			}
+			table := route.table
 			if table == 0 {
 				table = mainRouteTable
 			}
@@ -114,13 +94,13 @@ func kernelDefaultRoutes() ([]kernelRoute, error) {
 				continue
 			}
 			seen := map[int]bool{}
-			for _, index := range outputs {
+			for _, index := range route.outputs {
 				name := nameByIndex[index]
 				if name == "" || seen[index] {
 					continue
 				}
 				seen[index] = true
-				out = append(out, kernelRoute{Family: spec.family, Device: name, Table: table, Metric: metric})
+				out = append(out, kernelRoute{Family: spec.family, Device: name, Table: table, Metric: route.metric})
 			}
 		}
 	}
@@ -227,13 +207,9 @@ func kernelVRFTables() (map[uint32]bool, error) {
 
 // liveRoutes is the kernel's main routing table, IPv4 then IPv6.
 func liveRoutes() ([]liveRoute, error) {
-	interfaces, err := net.Interfaces()
+	nameByIndex, err := interfaceNamesByIndex()
 	if err != nil {
 		return nil, err
-	}
-	nameByIndex := make(map[int]string, len(interfaces))
-	for _, iface := range interfaces {
-		nameByIndex[iface.Index] = iface.Name
 	}
 	out := []liveRoute{}
 	for _, af := range []int{syscall.AF_INET, syscall.AF_INET6} {
@@ -261,10 +237,7 @@ var routeTypes = map[byte]string{
 // liveRoutesFrom reads one family's route dump as `ip route show table main`
 // lists it. A cached clone (RTM_F_CLONED) is not a route anyone set.
 func liveRoutesFrom(rib []byte, af int, nameByIndex map[int]string) []liveRoute {
-	const (
-		rtaDst, rtaSrc, rtaGateway, rtaPrefSrc = 1, 2, 5, 7
-		rtmFCloned                             = 0x200
-	)
+	const rtmFCloned = 0x200
 	messages, err := syscall.ParseNetlinkMessage(rib)
 	if err != nil {
 		return nil
@@ -283,55 +256,101 @@ func liveRoutesFrom(rib []byte, af int, nameByIndex map[int]string) []liveRoute 
 		if !kept || binary.NativeEndian.Uint32(data[8:12])&rtmFCloned != 0 {
 			continue
 		}
-		attrs, err := parseNetlinkAttrs(data[syscall.SizeofRtMsg:])
-		if err != nil {
+		decoded, ok := decodeRoute(data)
+		if !ok || decoded.table != mainRouteTable {
 			continue
 		}
-		table := uint32(data[4])
-		dst := net.IPv4zero
-		if family == 6 {
-			dst = net.IPv6zero
-		}
-		route := liveRoute{Family: family, Type: typ, Proto: routeProtocols[data[5]]}
+		route := liveRoute{Family: family, Type: typ, Proto: routeProtocols[data[5]], Metric: decoded.metric}
 		if route.Proto == "" {
 			route.Proto = fmt.Sprint(data[5])
 		}
-		for _, attr := range attrs {
-			value, isUint := attrUint32(attr.value)
-			switch attr.typeID {
-			case rtaTable:
-				if isUint {
-					table = value
-				}
-			case rtaDst:
-				dst = net.IP(attr.value)
-			case rtaSrc:
-				// The source prefix the route answers only; its length is
-				// the message's own (rtm_src_len).
-				route.From = fmt.Sprintf("%s/%d", net.IP(attr.value), data[2])
-			case rtaGateway:
-				route.Gateway = net.IP(attr.value).String()
-			case rtaPrefSrc:
-				route.Source = net.IP(attr.value).String()
-			case rtaPriority:
-				route.Metric = value
-			case rtaOIF:
-				route.Device = nameByIndex[int(value)]
-			case rtaMultipath:
-				// ponytail: a multipath route reads as its first live output;
-				// list every nexthop when ECMP is something Verso configures.
-				if outputs := multipathOutputs(attr.value); len(outputs) > 0 {
-					route.Device = nameByIndex[outputs[0]]
-				}
+		dst := decoded.dst
+		if dst == nil {
+			dst = net.IPv4zero
+			if family == 6 {
+				dst = net.IPv6zero
 			}
 		}
-		if table != mainRouteTable {
-			continue
+		if decoded.src != nil {
+			// The source prefix the route answers only; its length is the
+			// message's own (rtm_src_len).
+			route.From = fmt.Sprintf("%s/%d", decoded.src, data[2])
+		}
+		if decoded.gateway != nil {
+			route.Gateway = decoded.gateway.String()
+		}
+		if decoded.prefSrc != nil {
+			route.Source = decoded.prefSrc.String()
+		}
+		// ponytail: a multipath route reads as its first live output; list
+		// every nexthop when ECMP is something Verso configures.
+		if len(decoded.outputs) > 0 {
+			route.Device = nameByIndex[decoded.outputs[0]]
 		}
 		route.Target = fmt.Sprintf("%s/%d", dst, data[1])
 		out = append(out, route)
 	}
 	return out
+}
+
+// interfaceNamesByIndex maps each kernel ifindex to its interface name.
+func interfaceNamesByIndex() (map[int]string, error) {
+	interfaces, err := net.Interfaces()
+	if err != nil {
+		return nil, err
+	}
+	nameByIndex := make(map[int]string, len(interfaces))
+	for _, iface := range interfaces {
+		nameByIndex[iface.Index] = iface.Name
+	}
+	return nameByIndex, nil
+}
+
+// decodedRoute is what one RTM_NEWROUTE's attributes say: the table
+// (RTA_TABLE over rtm_table), the metric, every output device in wire order
+// (RTA_OIF, then each live multipath nexthop), and the addresses as sent.
+type decodedRoute struct {
+	table, metric              uint32
+	outputs                    []int
+	dst, src, gateway, prefSrc net.IP
+}
+
+// decodeRoute reads one RTM_NEWROUTE body (rtmsg, then its attributes); a
+// malformed attribute run is refused.
+func decodeRoute(data []byte) (decodedRoute, bool) {
+	attrs, err := parseNetlinkAttrs(data[syscall.SizeofRtMsg:])
+	if err != nil {
+		return decodedRoute{}, false
+	}
+	route := decodedRoute{table: uint32(data[4])}
+	for _, attr := range attrs {
+		value, isUint := attrUint32(attr.value)
+		switch attr.typeID {
+		case rtaTable:
+			if isUint {
+				route.table = value
+			}
+		case rtaPriority:
+			if isUint {
+				route.metric = value
+			}
+		case rtaOIF:
+			if isUint {
+				route.outputs = append(route.outputs, int(value))
+			}
+		case rtaMultipath:
+			route.outputs = append(route.outputs, multipathOutputs(attr.value)...)
+		case rtaDst:
+			route.dst = net.IP(attr.value)
+		case rtaSrc:
+			route.src = net.IP(attr.value)
+		case rtaGateway:
+			route.gateway = net.IP(attr.value)
+		case rtaPrefSrc:
+			route.prefSrc = net.IP(attr.value)
+		}
+	}
+	return route, true
 }
 
 func multipathOutputs(data []byte) []int {
