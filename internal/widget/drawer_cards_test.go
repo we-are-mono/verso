@@ -106,6 +106,22 @@ func TestDrawerConfigurationCardLeavesTheCardHoldingIt(t *testing.T) {
 	}
 }
 
+// TestDrawerTabBodyKeepsItsLiftedFile: a tab's body that is one section ending
+// on its configuration card stands as that card and the file after it, the
+// file kept rather than lost with the lift.
+func TestDrawerTabBodyKeepsItsLiftedFile(t *testing.T) {
+	name := &Field{Name: "name"}
+	file := &Code{Label: "/etc/config/firewall", Live: true, Grammar: "uci", Value: "config rule"}
+	match := &Section{Title: "What this rule matches", Children: []Widget{name, file}}
+
+	got := OnCards(match)
+
+	want := &Stack{Children: []Widget{&Section{Title: "What this rule matches", Children: []Widget{name}}, file}}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("the lifted file was lost from the tab's body:\n got %#v\nwant %#v", got, want)
+	}
+}
+
 // TestDrawerCardsAreStoodOnce: standing a body on cards twice changes nothing
 // the second time, so a tree rendered as a page and then as its open panel
 // is not boxed twice.

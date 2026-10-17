@@ -16,12 +16,17 @@ package widget
 // containers on the way are copied.
 
 // OnCards stands a tab's body, drawn into the entity panel's drawer, on
-// cards.
+// cards: a body that stands as more than one (a card and the file lifted out
+// of it) is stacked.
 func OnCards(w Widget) Widget {
 	if w == nil {
 		return nil
 	}
-	return onCards([]Widget{w})[0]
+	out := onCards([]Widget{w})
+	if len(out) > 1 {
+		return &Stack{Children: out}
+	}
+	return out[0]
 }
 
 // onCards stands a drawer's top-level widgets on cards: each loose run in an
