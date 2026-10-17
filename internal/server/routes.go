@@ -61,7 +61,7 @@ func (s *Server) routes() {
 	// disk; Services are procd's live table — two natures, two pages. All
 	// immediate acts, outside the staged-changes lifecycle.
 	s.mux.HandleFunc("GET /system/packages", s.handlePackagesPage)
-	s.mux.HandleFunc("POST /system/packages", s.handlePackagesAction)
+	s.mux.HandleFunc("POST /system/packages", s.handleDiscoverAction)
 	s.mux.HandleFunc("GET /system/packages/discover", s.handleDiscoverPage)
 	s.mux.HandleFunc("POST /system/packages/discover", s.handleDiscoverAction)
 	s.mux.HandleFunc("GET /system/logs", s.handleLogs)

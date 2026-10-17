@@ -38,11 +38,6 @@ func (s *Server) handlePackagesPage(w http.ResponseWriter, r *http.Request) {
 	s.renderPackages(w, r, "")
 }
 
-// handlePackagesAction shares the exact-name install, remove and upgrade path.
-func (s *Server) handlePackagesAction(w http.ResponseWriter, r *http.Request) {
-	s.handleDiscoverAction(w, r)
-}
-
 // renderPackages composes the inventory: the full installed set, the lens
 // keeping 100+ rows one page. errMsg, when set, leads as a danger callout.
 func (s *Server) renderPackages(w http.ResponseWriter, r *http.Request, errMsg string) {
@@ -360,14 +355,13 @@ func (s *Server) handleDiscoverAction(w http.ResponseWriter, r *http.Request) {
 	sid := s.sessionSID(r)
 	q := strings.TrimSpace(r.PostForm.Get("q"))
 	back := "/system/packages/discover"
-	if r.URL.Path == "/system/packages" {
-		back = "/system/packages"
+	if r.URL.Path == packagesPath {
+		back = packagesPath
 	}
-	if q != "" {
+	if r.PostForm.Get("return_to") == packagesPath {
+		back = packagesPath
+	} else if q != "" {
 		back += "?q=" + url.QueryEscape(q)
-	}
-	if r.PostForm.Get("return_to") == "/system/packages" {
-		back = "/system/packages"
 	}
 	// A secondary button's _action (Refresh) outranks the form's primary. A
 	// row's trash act posts its one pair, remove=<name>: removal is the row's
@@ -406,6 +400,7 @@ func (s *Server) handleDiscoverAction(w http.ResponseWriter, r *http.Request) {
 		}
 		http.Redirect(w, r, back, http.StatusSeeOther)
 	case "install", "remove", "upgrade":
+		act := packageVerbs(s.backend)[verb]
 		name := r.PostForm.Get("package")
 		if name == "" {
 			name = r.PostForm.Get("remove")
@@ -423,23 +418,15 @@ func (s *Server) handleDiscoverAction(w http.ResponseWriter, r *http.Request) {
 			http.Redirect(w, r, back, http.StatusSeeOther)
 			return
 		}
-		var err error
-		if verb == "install" {
-			err = s.backend.PkgInstall(r.Context(), sid, name)
-		} else if verb == "upgrade" {
-			err = s.backend.PkgUpgradeOne(r.Context(), sid, name)
-		} else {
-			err = s.backend.PkgRemove(r.Context(), sid, name)
-		}
-		if err != nil {
-			if panelRequest(r) {
-				s.entityNotice(w, http.StatusBadGateway, fmt.Sprintf(tr("The device refused: %v."), err))
-				return
-			}
-			if r.URL.Path == packagesPath {
-				s.renderPackages(w, r, fmt.Sprintf(tr("The device refused: %v."), err))
-			} else {
-				s.renderDiscover(w, r, fmt.Sprintf(tr("The device refused: %v."), err))
+		if err := act.run(r.Context(), sid, name); err != nil {
+			refused := fmt.Sprintf(tr("The device refused: %v."), err)
+			switch {
+			case panelRequest(r):
+				s.entityNotice(w, http.StatusBadGateway, refused)
+			case r.URL.Path == packagesPath:
+				s.renderPackages(w, r, refused)
+			default:
+				s.renderDiscover(w, r, refused)
 			}
 			return
 		}
@@ -449,39 +436,40 @@ func (s *Server) handleDiscoverAction(w http.ResponseWriter, r *http.Request) {
 		if err := s.refreshPackageTruth(r.Context(), sid); err != nil {
 			log.Printf("verso: package action completed; update status: %v", err)
 		}
+		done := fmt.Sprintf(tr(act.done), name)
 		if panelRequest(r) {
-			message := tr("%s removed.")
-			if verb == "install" {
-				message = tr("%s installed.")
-			}
-			if verb == "upgrade" {
-				message = tr("%s upgraded.")
-			}
 			w.Header().Set("HX-Reswap", "none")
 			w.Header().Set("X-Verso-Packages", "changed")
 			lang, _ := s.localize(r)
-			_ = s.pageSet(lang).ExecuteTemplate(w, "verso-flash", widget.Flash{Variant: "success", Message: fmt.Sprintf(message, name)})
+			_ = s.pageSet(lang).ExecuteTemplate(w, "verso-flash", widget.Flash{Variant: "success", Message: done})
 			// Installing/removing a plugin or catalog can change navigation. Send
 			// those rows with the outcome, without rebuilding the surrounding page.
 			pluginTr := s.pluginTranslators(r)
-			pages := s.sectionPages("System", packagesPath)
-			for i := range pages {
-				pages[i].Label = localizeLabel(pages[i].PluginID, pages[i].Label, tr, pluginTr)
-			}
+			pages, _ := localizePages(s.sectionPages("System", packagesPath), tr, pluginTr)
 			nav := s.buildSidebar(packagesPath, tr, pluginTr, pages)
 			_ = s.pageSet(lang).ExecuteTemplate(w, "package-navigation.html.tmpl", nav)
 			return
 		}
-		if verb == "upgrade" {
-			s.flash(r, "success", fmt.Sprintf(tr("%s upgraded."), name))
-		} else if verb == "install" {
-			s.flash(r, "success", fmt.Sprintf(tr("%s installed."), name))
-		} else {
-			s.flash(r, "success", fmt.Sprintf(tr("%s removed."), name))
-		}
+		s.flash(r, "success", done)
 		http.Redirect(w, r, back, http.StatusSeeOther)
 	default:
 		http.Error(w, "no package action in form", http.StatusBadRequest)
+	}
+}
+
+// packageVerb is one exact-name package act: the helper verb that does it and
+// the outcome it is told as.
+type packageVerb struct {
+	run  func(ctx context.Context, sid, name string) error
+	done string
+}
+
+// packageVerbs is the closed set of package acts a POST may name.
+func packageVerbs(b openwrt.Backend) map[string]packageVerb {
+	return map[string]packageVerb{
+		"install": {b.PkgInstall, "%s installed."},
+		"upgrade": {b.PkgUpgradeOne, "%s upgraded."},
+		"remove":  {b.PkgRemove, "%s removed."},
 	}
 }
 

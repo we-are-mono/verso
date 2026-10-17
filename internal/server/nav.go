@@ -262,11 +262,7 @@ func (s *Server) buildSidebar(active string, tr func(string) string, pluginTr fu
 	})
 
 	for i := range rows {
-		if rows[i].PluginID == "" {
-			rows[i].Label = tr(rows[i].Label)
-		} else {
-			rows[i].Label = pluginTr(rows[i].PluginID)(rows[i].Label)
-		}
+		rows[i].Label = localizeLabel(rows[i].PluginID, rows[i].Label, tr, pluginTr)
 		for j, p := range rows[i].Children {
 			rows[i].Children[j].Label = localizeLabel(p.PluginID, p.Label, tr, pluginTr)
 		}

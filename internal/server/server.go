@@ -472,6 +472,21 @@ func localizeLabel(pluginID, label string, tr func(string) string, pluginTr func
 	return pluginTr(pluginID)(label)
 }
 
+// localizePages is a section's pages with each label localized from its owner's
+// catalog, and the active page's localized label ("" when none is active).
+func localizePages(pages []pageTab, tr func(string) string, pluginTr func(string) func(string) string) ([]pageTab, string) {
+	active := ""
+	out := make([]pageTab, len(pages))
+	for i, p := range pages {
+		p.Label = localizeLabel(p.PluginID, p.Label, tr, pluginTr)
+		out[i] = p
+		if p.Active {
+			active = p.Label
+		}
+	}
+	return out, active
+}
+
 // langAttr is the value for <html lang>: the negotiated code, or "en" for English.
 func langAttr(lang string) string {
 	if lang == "" {
@@ -961,15 +976,7 @@ func (s *Server) renderPage(w http.ResponseWriter, r *http.Request, status int, 
 	// owner's catalog (base for the shell's, the plugin's for a plugin's — ADR-012
 	// §5) and name the active face in the headline in muted ink so the domain stays
 	// the title.
-	headingDetail := ""
-	localizedPages := make([]pageTab, len(pages))
-	for i, p := range pages {
-		p.Label = localizeLabel(p.PluginID, p.Label, tr, pluginTr)
-		localizedPages[i] = p
-		if p.Active {
-			headingDetail = p.Label
-		}
-	}
+	localizedPages, headingDetail := localizePages(pages, tr, pluginTr)
 	// Whether root has a password is read from /etc/shadow by verso-rpcd (the
 	// shell can't); a helper miss fails safe to "has one" so it never falsely warns.
 	hasPassword, hpErr := s.backend.RootHasPassword(r.Context(), s.sessionSID(r))
