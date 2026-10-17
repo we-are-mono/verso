@@ -108,9 +108,9 @@ func (r *Reader) Hwmons() []Hwmon {
 			Name:   readStr(filepath.Join(d, "name")),
 			OfNode: ofNodePath(filepath.Join(d, "device", "of_node")),
 			Dir:    d,
-			Temp:   readChannels(d, "temp"),
-			Fan:    readChannels(d, "fan"),
-			Power:  readChannels64(d, "power"),
+			Temp:   readChannels[int](d, "temp"),
+			Fan:    readChannels[int](d, "fan"),
+			Power:  readChannels[int64](d, "power"),
 		}
 		out = append(out, h)
 	}
@@ -134,25 +134,12 @@ func ofNodePath(link string) string {
 }
 
 // readChannels collects "<kind>N_input" readings keyed by channel index N.
-func readChannels(dir, kind string) map[int]int {
+func readChannels[T int | int64](dir, kind string) map[int]T {
 	files, _ := filepath.Glob(filepath.Join(dir, kind+"*_input"))
-	out := make(map[int]int, len(files))
+	out := make(map[int]T, len(files))
 	for _, f := range files {
 		if n, ok := channelIndex(filepath.Base(f), kind); ok {
-			if value, valid := readIntOK(f); valid {
-				out[n] = value
-			}
-		}
-	}
-	return out
-}
-
-func readChannels64(dir, kind string) map[int]int64 {
-	files, _ := filepath.Glob(filepath.Join(dir, kind+"*_input"))
-	out := make(map[int]int64, len(files))
-	for _, f := range files {
-		if n, ok := channelIndex(filepath.Base(f), kind); ok {
-			if value, valid := readInt64OK(f); valid {
+			if value, valid := readNumberOK[T](f); valid {
 				out[n] = value
 			}
 		}
@@ -183,32 +170,26 @@ func readInt(path string) int {
 	return n
 }
 
-// readIntOK reads an integer attribute, reporting present=false when the file is
-// absent or unparsable — the caller needs to tell a real 0 from a missing limit.
-func readIntOK(path string) (int, bool) {
-	s := readStr(path)
-	if s == "" {
-		return 0, false
-	}
-	n, err := strconv.Atoi(s)
-	if err != nil {
-		return 0, false
-	}
-	return n, true
-}
-
-// readInt64OK is readIntOK for the 64-bit channels (power, optical microwatts).
-func readInt64OK(path string) (int64, bool) {
+// readNumberOK reads an integer attribute, reporting present=false when the
+// file is absent, unparsable or out of T's range — the caller needs to tell a
+// real 0 from a missing limit.
+func readNumberOK[T int | int64](path string) (T, bool) {
 	s := readStr(path)
 	if s == "" {
 		return 0, false
 	}
 	n, err := strconv.ParseInt(s, 10, 64)
-	if err != nil {
+	if err != nil || int64(T(n)) != n {
 		return 0, false
 	}
-	return n, true
+	return T(n), true
 }
+
+// readIntOK is readNumberOK for the int channels and limits.
+func readIntOK(path string) (int, bool) { return readNumberOK[int](path) }
+
+// readInt64OK is readNumberOK for the 64-bit channels (power, optical microwatts).
+func readInt64OK(path string) (int64, bool) { return readNumberOK[int64](path) }
 
 // readFlag reads a boolean sysfs attribute — a non-zero integer is true, and an
 // absent file is false (the chip does not report that alarm).
