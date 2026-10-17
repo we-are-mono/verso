@@ -2,8 +2,8 @@
 // SPDX-FileCopyrightText: 2026 Mono Technologies Inc.
 
 // Package machine reads what the box is built from: its processor's cores and
-// top clock, the memory the kernel manages, and the disk the firmware boots
-// from. These are facts of the build, read once per page from procfs and
+// top clock, the memory the kernel manages, the disk the firmware boots from,
+// and its NOR flash. These are facts of the build, read once per page from procfs and
 // sysfs; the readings that change (temperatures, rails, fans) are the sensors
 // package's.
 package machine
@@ -23,12 +23,19 @@ type Facts struct {
 	MaxKHz      int    // the highest top clock any CPU's cpufreq reports, 0 with none
 	MemoryBytes uint64 // MemTotal: what the kernel manages, less than what is fitted
 	Disk        *Disk  // the disk the firmware boots from
+	Flash       *Flash // the NOR flash chip the kernel maps
 }
 
 // Disk is the whole disk under the firmware's own filesystem.
 type Disk struct {
 	Bytes uint64
 	Kind  string // "eMMC" | "SD card" | "MMC" | "NVMe" | "disk"
+}
+
+// Flash is a NOR flash chip.
+type Flash struct {
+	Part  string // as the SPI NOR framework names it ("n25q512a"); empty for a chip it names none
+	Bytes uint64 // as far as the chip's MTD devices reach
 }
 
 // Reader reads the facts under Root, "/" when empty; tests point it at a tree.
@@ -51,6 +58,7 @@ func (r *Reader) Read() Facts {
 		MaxKHz:      r.maxKHz(),
 		MemoryBytes: r.memTotal(),
 		Disk:        r.bootDisk(),
+		Flash:       r.norFlash(),
 	}
 }
 
@@ -192,6 +200,41 @@ func diskKind(name string, read func(string) string) string {
 		return "disk"
 	}
 	return ""
+}
+
+// norFlash is the NOR chip the kernel maps: its MTD devices grouped by the
+// device each is on, the chip the group that reaches furthest. A part split
+// inside another is on that part, so it never stands for the chip; a
+// read-only twin and NAND carry another type, or none. A kernel too old to
+// say a part's offset has each part start at the chip's.
+func (r *Reader) norFlash() *Flash {
+	paths, _ := filepath.Glob(r.path("sys/class/mtd/mtd*"))
+	reach := map[string]uint64{}
+	for _, p := range paths {
+		if readTrim(filepath.Join(p, "type")) != "nor" {
+			continue
+		}
+		dev, err := filepath.EvalSymlinks(filepath.Join(p, "device"))
+		if err != nil {
+			continue
+		}
+		size, err := strconv.ParseUint(readTrim(filepath.Join(p, "size")), 10, 64)
+		if err != nil {
+			continue
+		}
+		offset, _ := strconv.ParseUint(readTrim(filepath.Join(p, "offset")), 10, 64)
+		reach[dev] = max(reach[dev], offset+size)
+	}
+	chip := ""
+	for dev, end := range reach {
+		if end > reach[chip] || (end == reach[chip] && dev < chip) {
+			chip = dev
+		}
+	}
+	if reach[chip] == 0 {
+		return nil
+	}
+	return &Flash{Part: readTrim(filepath.Join(chip, "spi-nor/partname")), Bytes: reach[chip]}
 }
 
 func readTrim(p string) string {

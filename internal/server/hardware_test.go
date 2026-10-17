@@ -76,7 +76,7 @@ func dkInput() hardwareInput {
 		board:   openwrt.Board{Model: "Mono Gateway DK", BoardName: "mono,gateway-dk", System: "ARMv8 Processor rev 2"},
 		profile: &sensors.Profile{Name: "Mono Gateway Development Kit", Processor: "NXP LS1046A"},
 		inv:     dkInventory(),
-		facts:   machine.Facts{Cores: 4, MaxKHz: 1600000, MemoryBytes: 8070316 * 1024, Disk: &machine.Disk{Bytes: 61071360 * 512, Kind: "eMMC"}},
+		facts:   machine.Facts{Cores: 4, MaxKHz: 1600000, MemoryBytes: 8070316 * 1024, Disk: &machine.Disk{Bytes: 61071360 * 512, Kind: "eMMC"}, Flash: &machine.Flash{Part: "n25q512a", Bytes: 64 << 20}},
 		panel:   &widget.Ports{Items: []widget.PortItem{{Label: "eth0", Iface: "eth0"}}},
 	}
 }
@@ -183,19 +183,20 @@ func TestTheBoardCardsFacts(t *testing.T) {
 		"verso-ports", // the panel
 		">NXP LS1046A · 4 cores · 1.6\U0000202fGHz<", // the profile's chip, the kernel's cores and clock
 		">7.7\U0000202fGiB<",
-		">29\U0000202fGiB eMMC<", // whole GiB from ten up, as every size in the shell
+		">29\U0000202fGiB eMMC<",       // whole GiB from ten up, as every size in the shell
+		">n25q512a · 64\U0000202fMiB<", // the part as the kernel names it, then its size
 		">mono,gateway-dk<",
 	} {
 		if !strings.Contains(board, want) {
 			t.Errorf("board card missing %q:\n%s", want, board)
 		}
 	}
-	// One list, read down: Processor, Memory, Storage, Board name.
+	// One list, read down: Processor, Memory, Storage, NOR flash, Board name.
 	if n := strings.Count(board, "<dl"); n != 1 || strings.Contains(board, "data-verso-facts") {
 		t.Errorf("the board's facts are %d lists, want one:\n%s", n, board)
 	}
 	last := -1
-	for _, label := range []string{">Processor<", ">Memory<", ">Storage<", ">Board name<"} {
+	for _, label := range []string{">Processor<", ">Memory<", ">Storage<", ">NOR flash<", ">Board name<"} {
 		i := strings.Index(board, label)
 		if i < last {
 			t.Errorf("%s out of order:\n%s", label, board)
@@ -207,8 +208,15 @@ func TestTheBoardCardsFacts(t *testing.T) {
 	if !strings.Contains(board, ">AMD Ryzen 7 7700 8-Core Processor · 16 cores<") {
 		t.Errorf("an unprofiled processor reads as the kernel names it, with its cores:\n%s", board)
 	}
-	if strings.Contains(board, "Storage") || strings.Contains(board, "GHz") {
+	if strings.Contains(board, "Storage") || strings.Contains(board, "GHz") || strings.Contains(board, "NOR flash") {
 		t.Errorf("a fact the box cannot answer should be left out:\n%s", board)
+	}
+
+	// A chip the SPI NOR framework names none says its size alone.
+	in := dkInput()
+	in.facts.Flash = &machine.Flash{Bytes: 8 << 20}
+	if board := card(t, renderCards(t, in), "Mono Gateway Development Kit"); !strings.Contains(board, ">8\U0000202fMiB<") {
+		t.Errorf("an unnamed NOR should read its size alone:\n%s", board)
 	}
 }
 

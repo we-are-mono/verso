@@ -158,7 +158,8 @@ func boardCard(tr func(string) string, nums units.Numbers, in hardwareInput) wid
 }
 
 // machineFacts is what the box is made of, one list read down: Processor,
-// Memory, Storage and Board name. A fact the box cannot answer is left out.
+// Memory, Storage, NOR flash and Board name. A fact the box cannot answer is
+// left out.
 func machineFacts(tr func(string) string, nums units.Numbers, in hardwareInput) widget.Widget {
 	var items []widget.Property
 	if v := processorFact(tr, nums, in); v != "" {
@@ -169,6 +170,9 @@ func machineFacts(tr func(string) string, nums units.Numbers, in hardwareInput) 
 	}
 	if d := in.facts.Disk; d != nil {
 		items = append(items, widget.Property{Label: "Storage", Value: nums.Bytes(d.Bytes) + " " + tr(d.Kind), Verbatim: true})
+	}
+	if f := in.facts.Flash; f != nil {
+		items = append(items, widget.Property{Label: "NOR flash", Value: flashFact(nums, f), Verbatim: true})
 	}
 	if in.board.BoardName != "" {
 		items = append(items, widget.Property{Label: "Board name", Value: in.board.BoardName, Mono: true})
@@ -199,6 +203,15 @@ func processorFact(tr func(string) string, nums units.Numbers, in hardwareInput)
 		parts = append(parts, nums.Figure(float64(khz)/1e6)+units.Space+"GHz")
 	}
 	return strings.Join(parts, " · ")
+}
+
+// flashFact is the NOR chip as the kernel names its part, then its size; a
+// chip it names none is its size alone.
+func flashFact(nums units.Numbers, f *machine.Flash) string {
+	if f.Part == "" {
+		return nums.Bytes(f.Bytes)
+	}
+	return f.Part + " · " + nums.Bytes(f.Bytes)
 }
 
 // --- the kinds of reading --------------------------------------------------

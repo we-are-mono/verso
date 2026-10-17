@@ -171,10 +171,77 @@ func TestAnUnknownDiskIsLeftOut(t *testing.T) {
 	}
 }
 
+// mtd writes one MTD device as sysfs lists it: its type, its size and its
+// offset in what holds it, linked to the device it is on. A read-only twin
+// (mtd0ro) has no type.
+func mtd(t *testing.T, root, name, typ, device string, offset, size uint64) {
+	t.Helper()
+	d := filepath.Join(root, "sys/class/mtd", name)
+	if typ != "" {
+		write(t, filepath.Join(d, "type"), typ+"\n")
+		write(t, filepath.Join(d, "size"), strconv.FormatUint(size, 10)+"\n")
+		write(t, filepath.Join(d, "offset"), strconv.FormatUint(offset, 10)+"\n")
+	}
+	if err := os.MkdirAll(device, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	link(t, device, filepath.Join(d, "device"))
+}
+
+const mib = 1 << 20
+
+// The DK's QSPI NOR: the SPI NOR framework names the part, and the partition
+// spanning the whole chip says its size, over the parts mapped inside it.
+func TestTheDKsNOR(t *testing.T) {
+	root := box(t, "0-3", 4, 1600000, "8070316")
+	spi := filepath.Join(root, "sys/devices/platform/soc/1550000.spi/spi_master/spi1/spi1.0")
+	write(t, filepath.Join(spi, "spi-nor/partname"), "n25q512a\n")
+	mtd(t, root, "mtd0", "nor", spi, 0, 64*mib)
+	mtd(t, root, "mtd0ro", "", spi, 0, 0)
+	mtd(t, root, "mtd1", "nor", spi, 0, 1*mib)
+	mtd(t, root, "mtd6", "nor", spi, 8*mib, 24*mib)
+	mtd(t, root, "mtd7", "nor", spi, 32*mib, 32*mib)
+
+	f := (&Reader{Root: root}).Read()
+	if f.Flash == nil || f.Flash.Part != "n25q512a" || f.Flash.Bytes != 64*mib {
+		t.Errorf("flash %+v, want the 64 MiB n25q512a", f.Flash)
+	}
+}
+
+// A chip mapped only in parts is as large as the furthest part reaches; a
+// part split inside another (a firmware's rootfs) is measured in its parent,
+// never taken for the chip.
+func TestANORMappedInParts(t *testing.T) {
+	root := box(t, "0", 1, 0, "250000")
+	spi := filepath.Join(root, "sys/devices/platform/10000000.spi/spi_master/spi0/spi0.0")
+	write(t, filepath.Join(spi, "spi-nor/partname"), "w25q128\n")
+	mtd(t, root, "mtd0", "nor", spi, 0, mib/4)
+	mtd(t, root, "mtd1", "nor", spi, mib/4, 16*mib-mib/4)
+	mtd(t, root, "mtd2", "nor", filepath.Join(root, "sys/class/mtd/mtd1"), 2*mib, 13*mib)
+
+	f := (&Reader{Root: root}).Read()
+	if f.Flash == nil || f.Flash.Part != "w25q128" || f.Flash.Bytes != 16*mib {
+		t.Errorf("flash %+v, want the 16 MiB w25q128", f.Flash)
+	}
+}
+
+// A parallel NOR has no SPI NOR name: its size alone. NAND is not NOR.
+func TestAParallelNORAndNAND(t *testing.T) {
+	root := box(t, "0", 1, 0, "250000")
+	cfi := filepath.Join(root, "sys/devices/platform/1e000000.flash")
+	mtd(t, root, "mtd0", "nor", cfi, 0, 8*mib)
+	mtd(t, root, "mtd1", "nand", filepath.Join(root, "sys/devices/platform/1e100000.nand"), 0, 128*mib)
+
+	f := (&Reader{Root: root}).Read()
+	if f.Flash == nil || f.Flash.Part != "" || f.Flash.Bytes != 8*mib {
+		t.Errorf("flash %+v, want the 8 MiB parallel NOR", f.Flash)
+	}
+}
+
 // Nothing to read is no facts, never a crash.
 func TestAnEmptyRoot(t *testing.T) {
 	f := (&Reader{Root: t.TempDir()}).Read()
-	if f.Cores != 0 || f.MaxKHz != 0 || f.MemoryBytes != 0 || f.Disk != nil {
+	if f.Cores != 0 || f.MaxKHz != 0 || f.MemoryBytes != 0 || f.Disk != nil || f.Flash != nil {
 		t.Errorf("an empty root gave facts: %+v", f)
 	}
 }
