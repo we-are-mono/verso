@@ -788,9 +788,6 @@ func TestStagedViewSaysWhereAndWhen(t *testing.T) {
 		t.Errorf("second card = %q at %q, want the page named as its entry, Demo, at /plugins/demo/zones", second.Heading, second.Href)
 	}
 	rule, input := first.Items[0], second.Items[0]
-	if rule.Age != "10 min ago" || input.Age != "4 min ago" {
-		t.Errorf("ages = %q, %q, want 10 min ago and 4 min ago", rule.Age, input.Age)
-	}
 	if rule.Anchor != "staged-system.cfg99" || input.Anchor != "staged-system.lan.input" {
 		t.Errorf("anchors = %q, %q, want the section's and the option's", rule.Anchor, input.Anchor)
 	}
@@ -826,15 +823,15 @@ func TestASavedPageNamesItsCardByItsHeading(t *testing.T) {
 	}
 }
 
-// TestStagedRowWithNoTimeOnRecordSaysNoAge: a change staged before the shell
-// last started has no time on record, and its row says no age.
-func TestStagedRowWithNoTimeOnRecordSaysNoAge(t *testing.T) {
+// TestStagedRowWithNoTimeOnRecordIsNoLatest: a change staged before the shell
+// last started has no time on record, so it is no stage's latest change.
+func TestStagedRowWithNoTimeOnRecordIsNoLatest(t *testing.T) {
 	s := newServerWith(t, fakeBackend{access: true, changes: map[string][][]string{
 		"system": {{"set", "lan", "input", "REJECT"}},
 	}}, &fakeTransport{}, []plugin.Manifest{demoACLManifest()})
 	identity := func(s string) string { return s }
 	view := s.staged(context.Background(), "test-sid", identity, func(string) func(string) string { return identity })
-	if age := view.Groups[0].Items[0].Age; age != "" {
-		t.Errorf("Age = %q, want none", age)
+	if view.Latest != "" {
+		t.Errorf("Latest = %q, want none", view.Latest)
 	}
 }

@@ -44,11 +44,11 @@ The Pending changes page SHALL head "N pending changes" with no acts on the head
 - **THEN** the heading reads "1 pending change" and the primary act reads "Apply 1 change"
 
 ### Requirement: A pending change row says what it does
-Each row SHALL show the change's kind (added, changed, removed, reordered) as its mark and word, the owning page's sentence for it, its old and new value where it is a setting, and how long ago it was staged when that is known. Each row SHALL offer to go to it on its page, to undo it, and to show the config lines it stands for.
+Each row SHALL show the change's kind (added, changed, removed, reordered) as its mark and word, the owning page's sentence for it, and its old and new value where it is a setting. It SHALL NOT say how long ago it was staged: a pending change is minutes old, and its card names the page it came from. Each row SHALL offer to go to it on its page, to undo it, and to show the config lines it stands for.
 
 #### Scenario: A setting that was not set
 - **WHEN** Cache size was not set and 151 is pending
-- **THEN** its row reads "Changed · Cache size `cachesize` not set → 151" with how long ago it was staged
+- **THEN** its row reads "Changed · Cache size `cachesize` not set → 151"
 
 #### Scenario: Going to it
 - **WHEN** the operator presses a row's go-to act

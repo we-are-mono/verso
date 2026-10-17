@@ -77,8 +77,7 @@ rollback.**
    changes across the configs plugins have declared and lists them in one card
    per page they were made on — each change as its owning plugin's sentence
    (the describe hook, docs/plugins.md), led by what happened in a word, with
-   how long ago it was staged and its way to the page, its undo, and the uci
-   lines it stands for. Above them a **When you apply** card numbers what an
+   its way to the page, its undo, and the uci lines it stands for. Above them a **When you apply** card numbers what an
    apply does, in the order it does it (§5), opening with a warning where a
    pending change touches the interface this browser reaches the router
    through. **Apply N** and **Discard all** stand under the changes, read
@@ -147,8 +146,8 @@ rollback.**
   never did.
 - A staged-but-never-applied change persists indefinitely (also true of `uci`
   itself). The rail's row, on every page for as long as the change persists,
-  is the standing reminder, and each row on the page says how long ago it was
-  staged.
+  is the standing reminder, and each card on the page names the page its
+  changes were made on.
 - An undo is not atomic: a write refused part way through its replay would
   leave the config short. The shell then lets go of the config again and
   stages it as it was before the undo, and says the undo failed.

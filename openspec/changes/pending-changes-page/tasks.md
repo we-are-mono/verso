@@ -10,7 +10,7 @@ Every task ends green under `make lint` and `make test`. A task that touches a t
   - `forget` drops both.
 - [x] 1.2 Write the tests first in `staged_test.go`, then implement in `staged.go` and verify:
   - `stagedGroup` carries its page heading and href;
-  - `stagedItem` carries `Age` (empty when no time is on record) and `Anchor` (`staged-<config>.<section>[.<option>]`);
+  - `stagedItem` carries the time it was staged (zero when none is on record, which `Latest` and the way back read) and `Anchor` (`staged-<config>.<section>[.<option>]`);
   - `stagedView.Latest` is the sentence of the most recently staged row;
   - the count is still rows, not writes (`TestStagedCountsItemsNotWrites` unchanged).
 - [x] 1.3 Write the test first in `internal/widget/staged_test.go`, then implement in `MarkStaged` and the shared row template and verify: a staged setting's mark carries `id="staged-<config>.<section>.<option>"`. A table row already carries its section as `data-verso-row-id`, so going to an item's anchor (`staged-<config>.<section>`) finds its row by that id in the browser (task 8.2).
@@ -69,7 +69,7 @@ Every task ends green under `make lint` and `make test`. A task that touches a t
   - When you apply comes first, with the disconnect callout (a packet, no buttons) when flagged, then the numbered steps, then the note;
   - a trigger read that fails (no ACL) leaves the card without a reload step and the page renders;
   - one card per group titled by its page heading, with Open page and (for more than one row) Undo these;
-  - the rows carry their mark, verb, sentence, from → to, age and the three acts.
+  - the rows carry their mark, verb, sentence, from → to and the three acts, and no age.
 - [x] 6.2 Write the tests first, then implement and verify:
   - "1 pending change" / "Apply 1 change";
   - after an apply or a Discard all, the empty page offers "Back to <page>", the page of the most recent applied or discarded change, whatever the referrer (a bookmark, an undo's redirect, a rollback reload);

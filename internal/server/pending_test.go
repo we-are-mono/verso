@@ -119,14 +119,27 @@ func TestPendingPageTakesTheListingsColumn(t *testing.T) {
 	}
 }
 
-// TestPendingRowsSayWhatAndWhen: each row reads as the Changes page's rows
-// do, says how long ago it was staged, and offers its three acts: its page at
-// its anchor, its undo, and its config lines.
-func TestPendingRowsSayWhatAndWhen(t *testing.T) {
+// TestPendingRowsSayWhat: each row reads as the Changes page's rows do, says
+// what happened, and offers its three acts: its page at its anchor, its undo,
+// and its config lines. It says no age: a pending change is minutes old, and
+// the card already says where it came from.
+func TestPendingRowsSayWhat(t *testing.T) {
 	s := pendingServer(t, fakeBackend{committed: map[string]map[string]any{"dhcp": {"lan": map[string]any{"leasetime": "12h"}}}})
 	body := get(t, s, pendingPath).Body.String()
+	for _, absent := range []string{">Staged<", "min ago"} {
+		if strings.Contains(body, absent) {
+			t.Errorf("the rows still say when they were staged: %q", absent)
+		}
+	}
+	// The column of what changed is headed by a noun its rows' status words
+	// do not repeat ("Changed" over a row whose status is Changed).
+	head := body[strings.Index(body, "<thead>"):]
+	head = head[:strings.Index(head, "</thead>")]
+	if !strings.Contains(head, "Item") || strings.Contains(head, "Changed") {
+		t.Errorf("the first column's head repeats a status word:\n%s", head)
+	}
 	mustContain(t, body,
-		"leasetime", "12h", "6h", "9 min ago", "4 min ago", "Changed",
+		"leasetime", "12h", "6h", "Changed",
 		`href="/plugins/dnsdhcp/#staged-dhcp.lan.leasetime"`,
 		`action="/pending/undo"`, `name="row"`,
 		"~ dhcp: lan.leasetime = 6h",

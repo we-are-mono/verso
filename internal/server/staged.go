@@ -16,7 +16,6 @@ import (
 	"github.com/we-are-mono/verso/internal/history"
 	"github.com/we-are-mono/verso/internal/i18n"
 	"github.com/we-are-mono/verso/internal/plugin"
-	"github.com/we-are-mono/verso/internal/units"
 )
 
 // waitingOptions is the set of options that wait on the stage, by their full
@@ -108,11 +107,9 @@ type stagedItem struct {
 	// its new value is (settingWas); nil where the two cannot be said alike.
 	Was   *stagedWas
 	Lines []stagedLine
-	// Age is how long ago the row was staged ("4 min ago"), empty where its
-	// time is not on record. Anchor is the id its page marks it by
-	// ("staged-config.section[.option]"), what going to it lands on. ID names
-	// the row among the stage's rows, what an undo names it by.
-	Age    string
+	// Anchor is the id its page marks it by ("staged-config.section[.option]"),
+	// what going to it lands on. ID names the row among the stage's rows, what
+	// an undo names it by.
 	Anchor string
 	ID     string
 	// at is when the row was staged, zero where it is not known; author is
@@ -330,7 +327,6 @@ func (s *Server) describedGroups(ctx context.Context, src changeSource, flat []s
 	var groups []stagedGroup
 	count := 0
 	index := map[string]int{}
-	now := s.stageNow()
 	for _, row := range s.describeStaged(ctx, src, flat, tr) {
 		page := tr("System")
 		switch {
@@ -359,7 +355,6 @@ func (s *Server) describedGroups(ctx context.Context, src changeSource, flat []s
 		row.item.author, row.item.authored = row.author, row.authored
 		if row.authored && !row.author.At.IsZero() {
 			row.item.at = row.author.At
-			row.item.Age = units.For(tr).Ago(int64(now.Sub(row.author.At) / time.Second))
 		}
 		if row.authored && !row.author.Shell {
 			row.item.plugin = row.author.Plugin
@@ -383,15 +378,6 @@ func (s *Server) describedGroups(ctx context.Context, src changeSource, flat []s
 		count += n
 	}
 	return groups, count
-}
-
-// stageNow is the clock a row's age is told by: the one its record was
-// stamped by.
-func (s *Server) stageNow() time.Time {
-	if s.authors.now != nil {
-		return s.authors.now()
-	}
-	return time.Now()
 }
 
 // rowID names a row by what it changes: each change's config and the target

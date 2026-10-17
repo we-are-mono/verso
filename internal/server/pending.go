@@ -148,8 +148,9 @@ func pendingCard(g stagedGroup, kept []history.ChangeItem, oldRead bool, tr func
 		acts = append(acts, undo)
 	}
 	table := &widget.Table{Columns: []widget.TableColumn{
-		{Label: "Changed", Kind: "phrase"},
-		{Label: "Staged", Width: widget.MeasureShort},
+		// Headed by a noun its rows' status words (Changed, Added) do not
+		// repeat.
+		{Label: "Item", Kind: "phrase"},
 		{Label: "Status", Kind: "status", Width: widget.MeasureWord},
 		{Kind: "actions", Width: widget.MeasureShort},
 	}}
@@ -206,7 +207,6 @@ func pendingRow(item stagedItem, kept history.ChangeItem, oldRead bool, href str
 		}},
 		Cells: []widget.TableCell{
 			{Text: plain, Parts: parts, Verbatim: true},
-			{Text: item.Age, Verbatim: true, Muted: true},
 			{Text: tr(pendingWord[item.Verb]), Variant: pendingVariant[item.Verb], Verbatim: true},
 			{Actions: acts},
 		},
