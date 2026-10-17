@@ -10,6 +10,8 @@ import (
 	"fmt"
 	"net"
 	"time"
+
+	"github.com/we-are-mono/verso/internal/peercred"
 )
 
 const (
@@ -128,7 +130,7 @@ func callHelperWithin(ctx context.Context, socket, method, sid string, args map[
 // whoever binds it while it is free answers there, and every request carries
 // the operator's session and, for a password change, the new password.
 func requireHelperOwner(conn net.Conn) error {
-	uid, err := socketPeerUID(conn)
+	uid, err := peercred.UID(conn)
 	if err != nil {
 		return fmt.Errorf("peer credentials: %w", err)
 	}
