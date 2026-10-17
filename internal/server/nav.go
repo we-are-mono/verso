@@ -21,8 +21,12 @@ var coreSectionOrder = []string{"Status", "Network", "Security", "System"}
 // sectionLess orders the sections destinations are filed under: core sections
 // first in canonical order, plugin-introduced sections after all of them, by
 // title (ADR-009 §5) — deterministic regardless of plugin discovery order.
-func sectionLess(a, b string) bool {
-	ra, rb := slices.Index(coreSectionOrder, a), slices.Index(coreSectionOrder, b)
+func sectionLess(a, b string) bool { return orderedLess(coreSectionOrder, a, b) }
+
+// orderedLess orders names by their place in order; names order does not hold
+// follow all of them, by name.
+func orderedLess(order []string, a, b string) bool {
+	ra, rb := slices.Index(order, a), slices.Index(order, b)
 	if (ra >= 0) != (rb >= 0) {
 		return ra >= 0
 	}

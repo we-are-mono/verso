@@ -64,19 +64,7 @@ func (s *Server) sectionPages(section, active string) []pageTab {
 			}
 		}
 	}
-	rank := func(label string) int {
-		if i := slices.Index(c.Order, label); i >= 0 {
-			return i
-		}
-		return len(c.Order)
-	}
-	sort.SliceStable(tabs, func(a, b int) bool {
-		ra, rb := rank(tabs[a].Label), rank(tabs[b].Label)
-		if ra != rb {
-			return ra < rb
-		}
-		return ra == len(c.Order) && tabs[a].Label < tabs[b].Label
-	})
+	sort.SliceStable(tabs, func(a, b int) bool { return orderedLess(c.Order, tabs[a].Label, tabs[b].Label) })
 	tabs = append(tabs, c.Shell...)
 	hrefs := make([]string, len(tabs))
 	for i, tab := range tabs {
