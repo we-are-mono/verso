@@ -109,6 +109,19 @@ func TestTheDK(t *testing.T) {
 	}
 }
 
+// The root the kernel booted is its command line's root=.
+func TestTheBootedRoot(t *testing.T) {
+	root := box(t, "0", 1, 0, "250000")
+	write(t, filepath.Join(root, "proc/cmdline"), "root=/dev/mmcblk0p4 rootwait console=ttyS0,115200 panic=10\n")
+	if got := (&Reader{Root: root}).Read().Root; got != "/dev/mmcblk0p4" {
+		t.Errorf("root %q, want /dev/mmcblk0p4", got)
+	}
+	write(t, filepath.Join(root, "proc/cmdline"), "console=ttyS0 quiet\n")
+	if got := (&Reader{Root: root}).Read().Root; got != "" {
+		t.Errorf("a command line with no root= gave %q", got)
+	}
+}
+
 // An eMMC's wear grades by the worse of what it estimates: its life used in
 // tenths, and its reserve blocks spent.
 func TestWearLevels(t *testing.T) {

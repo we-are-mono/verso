@@ -39,6 +39,7 @@ func (s *Server) handleSystemHardware(w http.ResponseWriter, r *http.Request) {
 		profile: profile,
 		inv:     s.sensorInventory(profile),
 		facts:   (&machine.Reader{}).Read(),
+		hw:      s.hardwareState(r.Context(), sid),
 		panel:   s.hardwarePanel(r, profile),
 	}
 
@@ -58,7 +59,7 @@ func (s *Server) handleSystemHardware(w http.ResponseWriter, r *http.Request) {
 	}
 	// Wide, as every page of listings: the Temperatures table's bar takes what
 	// its name, source and limits leave.
-	s.renderPage(w, r, http.StatusOK, hardwareHeading(tr, in.inv, hardwareAlerts(in.facts)),
+	s.renderPage(w, r, http.StatusOK, hardwareHeading(tr, in.inv, hardwareAlerts(in.facts, in.hw)),
 		"wide", s.sectionPages("System", r.URL.Path), template.HTML(body.String()))
 }
 
@@ -68,7 +69,8 @@ type hardwareInput struct {
 	profile *sensors.Profile
 	inv     sensors.Inventory
 	facts   machine.Facts
-	panel   widget.Widget // nil for a box with no ports
+	hw      openwrt.HardwareState // what only root may read: the clock's battery, U-Boot's slot
+	panel   widget.Widget         // nil for a box with no ports
 	// tempGraph is the Temperatures graph as the page opens on it: the first
 	// reading (the CPU) over the last 24 hours. Without it the card is its
 	// table alone.
@@ -159,9 +161,9 @@ func boardCard(tr func(string) string, nums units.Numbers, in hardwareInput) wid
 }
 
 // machineFacts is what the box is made of, one list read down: Processor,
-// Memory, Storage, NOR flash and Board ID (the board_name the device tree or
-// the firmware's DMI gives, which firmware images are matched by; an
-// identifier, not a name). A fact the box cannot answer is
+// Memory, Storage, Boot slot, NOR flash, Clock and Board ID (the board_name
+// the device tree or the firmware's DMI gives, which firmware images are
+// matched by; an identifier, not a name). A fact the box cannot answer is
 // left out.
 func machineFacts(tr func(string) string, nums units.Numbers, in hardwareInput) widget.Widget {
 	var items []widget.Property
@@ -174,8 +176,14 @@ func machineFacts(tr func(string) string, nums units.Numbers, in hardwareInput) 
 	if d := in.facts.Disk; d != nil {
 		items = append(items, storageFact(tr, nums, d))
 	}
+	if slot := in.hw.BootSlot(in.facts.Root); slot != nil {
+		items = append(items, widget.Property{Label: "Boot slot", Value: bootSlotFact(tr, slot), Verbatim: true})
+	}
 	if f := in.facts.Flash; f != nil {
 		items = append(items, widget.Property{Label: "NOR flash", Value: flashFact(nums, f), Verbatim: true})
+	}
+	if c := in.hw.Clock; c != nil {
+		items = append(items, clockFact(tr, c))
 	}
 	if in.board.BoardName != "" {
 		items = append(items, widget.Property{Label: "Board ID", Value: in.board.BoardName, Mono: true})
@@ -222,6 +230,39 @@ func storageFact(tr func(string) string, nums units.Numbers, d *machine.Disk) wi
 		if level := w.Level(); level != "" {
 			p.Dot = tempVariant(level)
 		}
+	}
+	return p
+}
+
+// bootSlotFact is the slot the kernel booted, then the slot U-Boot boots next
+// when a switch is staged, and a new image's boots so far on trial.
+func bootSlotFact(tr func(string) string, s *openwrt.BootSlot) string {
+	parts := []string{strings.ToUpper(s.Running)}
+	if s.Next != s.Running {
+		parts = append(parts, fmt.Sprintf(tr("%s on next boot"), strings.ToUpper(s.Next)))
+	}
+	if s.Trial {
+		if s.Limit > 0 {
+			parts = append(parts, fmt.Sprintf(tr("trial boot %d of %d"), s.Count, s.Limit))
+		} else {
+			parts = append(parts, tr("on trial"))
+		}
+	}
+	return strings.Join(parts, " · ")
+}
+
+// clockFact is the clock the system time was set from at boot, as its device
+// tree names its part, then its backup battery where it says; a battery
+// running down marks the row in the warning tone the heading speaks it in.
+func clockFact(tr func(string) string, c *openwrt.Clock) widget.Property {
+	p := widget.Property{Label: "Clock", Value: c.Part, Verbatim: true}
+	switch c.Battery {
+	case "good":
+		p.Value += " · " + tr("battery good")
+	case "low":
+		p.Value, p.Dot = p.Value+" · "+tr("battery low"), "warning"
+	case "empty":
+		p.Value, p.Dot = p.Value+" · "+tr("battery empty"), "warning"
 	}
 	return p
 }

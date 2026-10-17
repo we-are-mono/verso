@@ -34,6 +34,7 @@ type fakeBackend struct {
 	v6Leases       []openwrt.V6Lease
 	hn             string
 	rootNoPassword bool // RootHasPassword returns !rootNoPassword (default: root has a password)
+	hardware       openwrt.HardwareState
 	err            error
 	access         bool
 	accessErr      error
@@ -512,6 +513,10 @@ func (f fakeBackend) SetSystemTime(ctx context.Context, sid, datetime, timezone 
 
 func (f fakeBackend) RootHasPassword(context.Context, string) (bool, error) {
 	return !f.rootNoPassword, nil
+}
+
+func (f fakeBackend) HardwareState(context.Context, string) (openwrt.HardwareState, error) {
+	return f.hardware, nil
 }
 
 func (f fakeBackend) CreateBackup(ctx context.Context, sid, path string) error {

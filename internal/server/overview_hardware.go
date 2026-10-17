@@ -4,12 +4,15 @@
 package server
 
 import (
+	"context"
+	"log"
 	"os"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/we-are-mono/verso/internal/machine"
+	"github.com/we-are-mono/verso/internal/openwrt"
 	"github.com/we-are-mono/verso/internal/sensors"
 	"github.com/we-are-mono/verso/internal/units"
 	"github.com/we-are-mono/verso/internal/widget"
@@ -99,8 +102,8 @@ func hardwareView(inv sensors.Inventory, alerts []widget.OverviewAlert) *widget.
 }
 
 // hardwareAlerts are what needs attention in the box beyond its readings: an
-// eMMC wearing out.
-func hardwareAlerts(facts machine.Facts) []widget.OverviewAlert {
+// eMMC wearing out, a clock battery running down.
+func hardwareAlerts(facts machine.Facts, hw openwrt.HardwareState) []widget.OverviewAlert {
 	var out []widget.OverviewAlert
 	if d := facts.Disk; d != nil && d.Wear != nil {
 		switch d.Wear.Level() {
@@ -110,7 +113,25 @@ func hardwareAlerts(facts machine.Facts) []widget.OverviewAlert {
 			out = append(out, widget.OverviewAlert{Tone: "danger", Words: "Storage is worn out"})
 		}
 	}
+	if c := hw.Clock; c != nil {
+		switch c.Battery {
+		case "low":
+			out = append(out, widget.OverviewAlert{Tone: "warning", Words: "Clock battery is low"})
+		case "empty":
+			out = append(out, widget.OverviewAlert{Tone: "warning", Words: "Clock battery is empty"})
+		}
+	}
 	return out
+}
+
+// hardwareState is what the root helper reads of the board for the session;
+// a helper that cannot answer leaves the clock and the slot unsaid.
+func (s *Server) hardwareState(ctx context.Context, sid string) openwrt.HardwareState {
+	hw, err := s.backend.HardwareState(ctx, sid)
+	if err != nil {
+		log.Printf("verso: hardware: state unavailable: %v", err)
+	}
+	return hw
 }
 
 // hardwareRows is the sensors frame: each row's value by its key.

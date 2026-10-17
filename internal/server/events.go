@@ -147,7 +147,7 @@ func (s *Server) handleOverviewEvents(w http.ResponseWriter, r *http.Request) {
 	// past its limits. Only the card's rows wait on it being shown.
 	// What needs attention beyond the readings changes over weeks, not
 	// seconds, so it is read once for the connection.
-	hwAlerts := hardwareAlerts((&machine.Reader{}).Read())
+	hwAlerts := hardwareAlerts((&machine.Reader{}).Read(), s.hardwareState(r.Context(), sid))
 	sendSensors := func() bool {
 		if s.boardSensors == nil {
 			return true

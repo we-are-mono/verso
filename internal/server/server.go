@@ -1099,7 +1099,7 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	// The board's sensors fill the Hardware card and weigh in the heading, so
 	// they are read whether the card is shown or hidden.
 	if s.boardSensors != nil {
-		ov.Hardware = hardwareView(s.boardSensors.Read(), hardwareAlerts((&machine.Reader{}).Read()))
+		ov.Hardware = hardwareView(s.boardSensors.Read(), hardwareAlerts((&machine.Reader{}).Read(), s.hardwareState(r.Context(), sid)))
 	}
 	// The router's panel opens the Ports card, when the card is shown.
 	if ov.Layout.Shows("ports") {

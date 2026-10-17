@@ -108,6 +108,10 @@ type Backend interface {
 	// cannot read it), carrying the operator's sid. It returns only the boolean,
 	// never the hash.
 	RootHasPassword(ctx context.Context, sid string) (bool, error)
+	// HardwareState asks the persistent root helper what the board says of
+	// itself that only root may read: the system clock's backup battery and
+	// U-Boot's slot variables.
+	HardwareState(ctx context.Context, sid string) (HardwareState, error)
 	// CreateBackup asks OpenWrt's sysupgrade machinery to write its native
 	// configuration archive to path. RestoreBackup applies that same format.
 	// The path is a shell-created, private temporary file; archive bytes never

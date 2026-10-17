@@ -24,6 +24,7 @@ type Facts struct {
 	MemoryBytes uint64 // MemTotal: what the kernel manages, less than what is fitted
 	Disk        *Disk  // the disk the firmware boots from
 	Flash       *Flash // the NOR flash chip the kernel maps
+	Root        string // the root the kernel booted, as its command line's root= names it
 }
 
 // Disk is the whole disk under the firmware's own filesystem.
@@ -80,7 +81,18 @@ func (r *Reader) Read() Facts {
 		MemoryBytes: r.memTotal(),
 		Disk:        r.bootDisk(),
 		Flash:       r.norFlash(),
+		Root:        r.bootedRoot(),
 	}
+}
+
+// bootedRoot is root= of the kernel's command line, empty without one.
+func (r *Reader) bootedRoot() string {
+	for field := range strings.FieldsSeq(r.readLine("proc/cmdline")) {
+		if v, ok := strings.CutPrefix(field, "root="); ok {
+			return v
+		}
+	}
+	return ""
 }
 
 func (r *Reader) readLine(p string) string {

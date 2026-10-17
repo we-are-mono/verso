@@ -76,8 +76,18 @@ func dkInput() hardwareInput {
 		board:   openwrt.Board{Model: "Mono Gateway DK", BoardName: "mono,gateway-dk", System: "ARMv8 Processor rev 2"},
 		profile: &sensors.Profile{Name: "Mono Gateway Development Kit", Processor: "NXP LS1046A"},
 		inv:     dkInventory(),
-		facts:   machine.Facts{Cores: 4, MaxKHz: 1600000, MemoryBytes: 8070316 * 1024, Disk: &machine.Disk{Bytes: 61071360 * 512, Kind: "eMMC", Wear: &machine.Wear{Band: 1, PreEOL: 1}}, Flash: &machine.Flash{Part: "n25q512a", Bytes: 64 << 20}},
+		facts:   machine.Facts{Cores: 4, MaxKHz: 1600000, MemoryBytes: 8070316 * 1024, Disk: &machine.Disk{Bytes: 61071360 * 512, Kind: "eMMC", Wear: &machine.Wear{Band: 1, PreEOL: 1}}, Flash: &machine.Flash{Part: "n25q512a", Bytes: 64 << 20}, Root: "/dev/mmcblk0p4"},
+		hw:      openwrt.HardwareState{Clock: &openwrt.Clock{Part: "pcf2131", Battery: "good"}, Boot: dkBootEnv()},
 		panel:   &widget.Ports{Items: []widget.PortItem{{Label: "eth0", Iface: "eth0"}}},
+	}
+}
+
+// dkBootEnv is the DK's U-Boot slot variables, as zamanifi prints them.
+func dkBootEnv() map[string]string {
+	return map[string]string{
+		"slot": "b", "bootcount": "0", "bootlimit": "3", "upgrade_available": "0",
+		"set_slot_a": "setenv bootpart 1; setenv rootpart 2",
+		"set_slot_b": "setenv bootpart 3; setenv rootpart 4",
 	}
 }
 
@@ -186,18 +196,21 @@ func TestTheBoardCardsFacts(t *testing.T) {
 		">7.7\U0000202fGiB<",
 		">29\U0000202fGiB eMMC · 0–10\U0000202f% worn<", // whole GiB from ten up, then the eMMC's own wear estimate
 		">n25q512a · 64\U0000202fMiB<",                  // the part as the kernel names it, then its size
+		">B<",                                           // the slot the kernel booted
+		">pcf2131 · battery good<",                      // the clock the system time was set from
 		">mono,gateway-dk<",
 	} {
 		if !strings.Contains(board, want) {
 			t.Errorf("board card missing %q:\n%s", want, board)
 		}
 	}
-	// One list, read down: Processor, Memory, Storage, NOR flash, Board ID.
+	// One list, read down: Processor, Memory, Storage, Boot slot, NOR flash,
+	// Clock, Board ID.
 	if n := strings.Count(board, "<dl"); n != 1 || strings.Contains(board, "data-verso-facts") {
 		t.Errorf("the board's facts are %d lists, want one:\n%s", n, board)
 	}
 	last := -1
-	for _, label := range []string{">Processor<", ">Memory<", ">Storage<", ">NOR flash<", ">Board ID<"} {
+	for _, label := range []string{">Processor<", ">Memory<", ">Storage<", ">Boot slot<", ">NOR flash<", ">Clock<", ">Board ID<"} {
 		i := strings.Index(board, label)
 		if i < last {
 			t.Errorf("%s out of order:\n%s", label, board)
@@ -209,7 +222,8 @@ func TestTheBoardCardsFacts(t *testing.T) {
 	if !strings.Contains(board, ">AMD Ryzen 7 7700 8-Core Processor · 16 cores<") {
 		t.Errorf("an unprofiled processor reads as the kernel names it, with its cores:\n%s", board)
 	}
-	if strings.Contains(board, "Storage") || strings.Contains(board, "GHz") || strings.Contains(board, "NOR flash") {
+	if strings.Contains(board, "Storage") || strings.Contains(board, "GHz") || strings.Contains(board, "NOR flash") ||
+		strings.Contains(board, "Boot slot") || strings.Contains(board, "Clock") {
 		t.Errorf("a fact the box cannot answer should be left out:\n%s", board)
 	}
 
@@ -227,6 +241,36 @@ func TestTheBoardCardsFacts(t *testing.T) {
 	board = card(t, renderCards(t, in), "Mono Gateway Development Kit")
 	if !strings.Contains(board, ">29\U0000202fGiB eMMC · past its rated wear<") || !strings.Contains(board, "bg-crimson") {
 		t.Errorf("a worn-out eMMC should say so, marked in danger:\n%s", board)
+	}
+}
+
+// The boot slot says which slot runs, the slot U-Boot boots next when a
+// switch is staged, and how far a new image's trial has come; the clock says
+// a low battery in the warning tone.
+func TestTheBootSlotAndClock(t *testing.T) {
+	cases := []struct {
+		name string
+		edit func(*hardwareInput)
+		want string
+	}{
+		{"a staged switch", func(in *hardwareInput) { in.hw.Boot["slot"] = "a" }, ">B · A on next boot<"},
+		{"on trial", func(in *hardwareInput) { in.hw.Boot["upgrade_available"], in.hw.Boot["bootcount"] = "1", "2" }, ">B · trial boot 2 of 3<"},
+		{"a low battery", func(in *hardwareInput) { in.hw.Clock.Battery = "low" }, ">pcf2131 · battery low<"},
+		{"a clock that does not say", func(in *hardwareInput) { in.hw.Clock.Battery = "" }, ">pcf2131<"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			in := dkInput()
+			c.edit(&in)
+			if board := card(t, renderCards(t, in), "Mono Gateway Development Kit"); !strings.Contains(board, c.want) {
+				t.Errorf("board card missing %q:\n%s", c.want, board)
+			}
+		})
+	}
+	in := dkInput()
+	in.hw.Clock.Battery = "low"
+	if board := card(t, renderCards(t, in), "Mono Gateway Development Kit"); !strings.Contains(board, "bg-marigold") {
+		t.Errorf("a low clock battery should mark its row in the warning tone:\n%s", board)
 	}
 }
 
@@ -438,10 +482,18 @@ func TestTheHeadingSaysWhatNeedsAttention(t *testing.T) {
 			inv := dkInventory()
 			c.edit(&inv)
 			facts := machine.Facts{Disk: &machine.Disk{Bytes: 1 << 30, Kind: "eMMC", Wear: &c.wear}}
-			if h := hardwareHeading(identityTranslator, inv, hardwareAlerts(facts)); h.Heading != c.heading || h.Tone != c.tone {
+			if h := hardwareHeading(identityTranslator, inv, hardwareAlerts(facts, openwrt.HardwareState{})); h.Heading != c.heading || h.Tone != c.tone {
 				t.Errorf("heading = %q %q, want %q %q", h.Heading, h.Tone, c.heading, c.tone)
 			}
 		})
+	}
+
+	// A clock battery running down is a warning, after any reading's.
+	for battery, words := range map[string]string{"low": "Clock battery is low", "empty": "Clock battery is empty", "good": "Hardware"} {
+		hw := openwrt.HardwareState{Clock: &openwrt.Clock{Part: "pcf2131", Battery: battery}}
+		if h := hardwareHeading(identityTranslator, dkInventory(), hardwareAlerts(machine.Facts{}, hw)); h.Heading != words {
+			t.Errorf("a %s battery: heading %q, want %q", battery, h.Heading, words)
+		}
 	}
 }
 
