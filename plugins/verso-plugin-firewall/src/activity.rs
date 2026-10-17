@@ -66,7 +66,6 @@ fn live() -> Widget {
 /// on the heading line.
 fn bar() -> Widget {
     Widget::ActionBar(ActionBar {
-        tabs: Vec::new(),
         filter: "Find an address, port or rule".into(),
         live: "Live".into(),
     })

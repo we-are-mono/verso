@@ -10,10 +10,9 @@
 use std::collections::BTreeMap;
 use std::fs;
 use verso_plugin::{
-    ActionBar, ActionTab, CollectionAdd, CollectionItem, CollectionRemove, ColumnWidth,
-    ConditionItem, Field, Grid, HeadingAct, List, Property, RemoveConfirm, RowDrawer,
-    SectionWidget, SelectOption, Settings, SettingsItem, SettingsPill, SettingsSeam,
-    SettingsToggle, SubjectKind, Switch, Table, TableCell, TableChip, TableColumn, TableEndpoint,
+    ActionBar, CollectionAdd, CollectionItem, CollectionRemove, ColumnWidth, ConditionItem, Field,
+    Grid, HeadingAct, List, PropertiesHead, Property, RemoveConfirm, RowDrawer, SectionWidget,
+    SelectOption, SubjectKind, Switch, Table, TableCell, TableChip, TableColumn, TableEndpoint,
     TableGroup, TablePart, TableRow, TableRowAct, TableStream, Tone, Widget, STREAM_FIREWALL_LOG,
 };
 
@@ -308,21 +307,35 @@ fn write_widget_fixtures() {
         ),
         (
             "properties-headed",
-            Widget::properties(vec![Property {
-                label: "Address".into(),
-                value: "10.0.0.2/24".into(),
-                mono: true,
-                copy: true,
-                ..Property::default()
-            }])
-            .grouped_as("IPv4", "dhcp")
-            .empty_says("No address."),
+            Widget::Properties {
+                items: vec![Property {
+                    label: "Address".into(),
+                    value: "10.0.0.2/24".into(),
+                    mono: true,
+                    copy: true,
+                    ..Property::default()
+                }],
+                align: String::new(),
+                head: Some(PropertiesHead {
+                    label: "IPv4".into(),
+                    value: String::new(),
+                    chip: "dhcp".into(),
+                }),
+                empty: "No address.".into(),
+            },
         ),
         (
             "properties-columns",
-            Widget::properties(vec![])
-                .columns_named("Part", "Installed")
-                .empty_says("Nothing is installed."),
+            Widget::Properties {
+                items: vec![],
+                align: String::new(),
+                head: Some(PropertiesHead {
+                    label: "Part".into(),
+                    value: "Installed".into(),
+                    chip: String::new(),
+                }),
+                empty: "Nothing is installed.".into(),
+            },
         ),
         ("text", Widget::text("A short explanatory line.")),
         (
@@ -379,92 +392,8 @@ fn write_widget_fixtures() {
         ("slot", Widget::slot("appearance")),
         ("table", listing()),
         (
-            "settings",
-            Widget::Settings(Settings {
-                style: "card".into(),
-                title: "Global defaults".into(),
-                meta: "firewall.@defaults[0]".into(),
-                items: vec![
-                    SettingsItem {
-                        title: "Default policies".into(),
-                        desc: "What happens to traffic that matches no rule.".into(),
-                        code: "input · output · forward".into(),
-                        pills: vec![
-                            SettingsPill {
-                                variant: Tone::Warning,
-                                text: "in reject".into(),
-                            },
-                            SettingsPill {
-                                variant: Tone::Success,
-                                text: "out accept".into(),
-                            },
-                            SettingsPill {
-                                variant: Tone::Warning,
-                                text: "fwd reject".into(),
-                            },
-                        ],
-                        ..SettingsItem::default()
-                    },
-                    SettingsItem {
-                        title: "Drop invalid packets".into(),
-                        desc: "Discard packets that belong to no known connection.".into(),
-                        code: "drop_invalid".into(),
-                        toggle: Some(SettingsToggle {
-                            name: "drop_invalid".into(),
-                            on: true,
-                        }),
-                        ..SettingsItem::default()
-                    },
-                    SettingsItem {
-                        title: "Tracked connections".into(),
-                        desc: "How many connections the router follows at once.".into(),
-                        code: "nf_conntrack_max".into(),
-                        value: "16384".into(),
-                        name: "nf_conntrack_max".into(),
-                        ..SettingsItem::default()
-                    },
-                ],
-                seam: Some(SettingsSeam {
-                    summary: "2 more options".into(),
-                    items: vec![
-                        SettingsItem {
-                            title: "Software flow offloading".into(),
-                            desc: "Fast-path established connections.".into(),
-                            code: "flow_offloading".into(),
-                            toggle: Some(SettingsToggle {
-                                name: "flow_offloading".into(),
-                                on: false,
-                            }),
-                            ..SettingsItem::default()
-                        },
-                        SettingsItem {
-                            title: "Custom rules file".into(),
-                            desc: "Read by fw4 after the generated ruleset.".into(),
-                            code: "/etc/nftables.d".into(),
-                            ..SettingsItem::default()
-                        },
-                    ],
-                }),
-                ..Default::default()
-            }),
-        ),
-        (
             "actionbar",
             Widget::ActionBar(ActionBar {
-                tabs: vec![
-                    ActionTab {
-                        label: "All".into(),
-                        count: 22,
-                        active: true,
-                        ..ActionTab::default()
-                    },
-                    ActionTab {
-                        label: "IPv6".into(),
-                        count: 19,
-                        matches: "ipv6".into(),
-                        active: false,
-                    },
-                ],
                 filter: "Find a rule".into(),
                 live: "Pause".into(),
             }),

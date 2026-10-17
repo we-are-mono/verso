@@ -833,9 +833,8 @@ with `"align": "left"` beside a fixed label column, for values read line by
 line (addresses, versions). A `head` names the facts on a line over them:
 a group's title with a machine word beside it as a chip, or the names of the
 two columns. `empty` is the sentence that stands in the empty set's slot when
-there are no items, under the head when there is one. The SDK builds them with
-`.grouped_as(title, chip)`, `.columns_named(label, value)` and
-`.empty_says(sentence)`.
+there are no items, under the head when there is one. In the SDK they are the
+`head` (a `PropertiesHead`) and `empty` of `Widget::Properties`.
 
 ```json
 { "type": "properties", "align": "left",

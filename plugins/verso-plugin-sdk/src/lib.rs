@@ -859,10 +859,9 @@ pub enum Widget {
     /// A label/value fact sheet, the same rows an Overview card's facts are.
     /// Build it with [`Widget::properties`]. `align` "left" sets the values
     /// beside a fixed label column rather than on the right edge — the reading
-    /// order for a document's facts, read line by line. A head names the facts
-    /// on a line over them ([`Widget::grouped_as`], [`Widget::columns_named`]),
-    /// and `empty` is what stands in their place when there are none
-    /// ([`Widget::empty_says`]).
+    /// order for a document's facts, read line by line. A head
+    /// ([`PropertiesHead`]) names the facts on a line over them, and `empty` is
+    /// what stands in their place when there are none.
     Properties {
         items: Vec<Property>,
         #[serde(skip_serializing_if = "String::is_empty")]
@@ -922,15 +921,6 @@ pub enum Widget {
         #[serde(skip_serializing_if = "is_false")]
         live: bool,
     },
-    /// A block of option rows: a plainly-named option, a one-line description,
-    /// the underlying option name as a code chip, and its state hard right — a
-    /// switch for an on/off option, pills for a row that reads rather than
-    /// toggles. Style "card" boxes the block. A Seam folds the block's long
-    /// tail of rare options behind a collapsed line inside the same block —
-    /// state the tail as it is, and the shell folds it only once there are
-    /// three rows to fold: below that the fold's own line costs the height it
-    /// would save, so those rows render on the block.
-    Settings(Settings),
     /// A short run of styled prose (Markdown), inline in a composition.
     Text { markdown: String },
     /// A destructive action behind an explicit confirmation.
@@ -1274,8 +1264,6 @@ pub struct Table {
 /// default.
 #[derive(Serialize, Debug, Default)]
 pub struct ActionBar {
-    #[serde(skip_serializing_if = "Vec::is_empty")]
-    pub tabs: Vec<ActionTab>,
     /// The search field's placeholder. The shell draws the field over a live
     /// listing only; over a still one the browser's own find serves.
     #[serde(skip_serializing_if = "String::is_empty")]
@@ -1310,25 +1298,6 @@ pub struct HeadingAct {
     pub opens_panel: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub drawer: Option<RowDrawer>,
-}
-
-/// Settings is the body of [`Widget::Settings`]; set what differs from the
-/// default.
-#[derive(Serialize, Debug, Default)]
-pub struct Settings {
-    #[serde(skip_serializing_if = "String::is_empty")]
-    pub style: String,
-    #[serde(skip_serializing_if = "String::is_empty")]
-    pub title: String,
-    #[serde(skip_serializing_if = "String::is_empty")]
-    pub meta: String,
-    /// Lowers the row padding only — same anatomy, tighter, for a list of
-    /// many short facts.
-    #[serde(skip_serializing_if = "is_false")]
-    pub condensed: bool,
-    pub items: Vec<SettingsItem>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub seam: Option<SettingsSeam>,
 }
 
 impl Widget {
@@ -1650,19 +1619,6 @@ impl Widget {
         self
     }
 
-    /// removable makes this row one someone can take out of the set — the shell
-    /// ends it with the glyph that clears it. Every other row in the same group
-    /// sets its `remove` to "lane", or their controls sit where the glyph is.
-    pub fn removable(mut self) -> Widget {
-        match &mut self {
-            Widget::Field(Field { remove, .. }) | Widget::List(List { remove, .. }) => {
-                *remove = "yes".into()
-            }
-            _ => {}
-        }
-        self
-    }
-
     /// segmented draws a `checks` field as one strip of togglable chips instead
     /// of a grid of boxes — for a set short enough to show whole, where which
     /// members are on is a shape rather than a list to read.
@@ -1964,42 +1920,6 @@ impl Widget {
         }
     }
 
-    /// grouped_as heads this fact sheet with the name of the group it lists —
-    /// an address family — and, when not empty, a machine word beside it as a
-    /// chip (its protocol), on the strong hairline a column head stands on.
-    pub fn grouped_as(mut self, title: &str, chip: &str) -> Widget {
-        if let Widget::Properties { head, .. } = &mut self {
-            *head = Some(PropertiesHead {
-                label: title.into(),
-                value: String::new(),
-                chip: chip.into(),
-            });
-        }
-        self
-    }
-
-    /// columns_named heads this fact sheet with the names of its two columns:
-    /// `label` over the labels, `value` over the values ("Part", "Installed").
-    pub fn columns_named(mut self, label: &str, value: &str) -> Widget {
-        if let Widget::Properties { head, .. } = &mut self {
-            *head = Some(PropertiesHead {
-                label: label.into(),
-                value: value.into(),
-                chip: String::new(),
-            });
-        }
-        self
-    }
-
-    /// empty_says is the sentence that stands in the empty set's slot when this
-    /// fact sheet has no rows, under its head if it has one.
-    pub fn empty_says(mut self, sentence: &str) -> Widget {
-        if let Widget::Properties { empty, .. } = &mut self {
-            *empty = sentence.into();
-        }
-        self
-    }
-
     /// text is a short run of styled prose.
     pub fn text(markdown: &str) -> Widget {
         Widget::Text {
@@ -2136,10 +2056,10 @@ pub struct Property {
     pub duration: Option<u64>,
 }
 
-/// PropertiesHead is what a fact sheet's head says: a group's title, with a
-/// machine word beside it as a chip, or the names of its two columns. Build it
-/// with [`Widget::grouped_as`] or [`Widget::columns_named`]. The chip is never
-/// translated.
+/// PropertiesHead is what a fact sheet's head says: a group's title (`label`),
+/// with a machine word beside it as a chip (an address family and its
+/// protocol), or the names of its two columns (`label` over the labels,
+/// `value` over the values: "Part", "Installed"). The chip is never translated.
 #[derive(Serialize, Debug, Default)]
 pub struct PropertiesHead {
     pub label: String,
@@ -2475,42 +2395,6 @@ pub struct TableGroup {
     pub close: Vec<TablePart>,
 }
 
-/// ActionTab is one coarse cut of a listing, and what taking it would leave.
-/// `matches` is the tag a row must carry to survive the cut; empty is the tab
-/// that cuts nothing.
-#[derive(Serialize, Debug, Default)]
-pub struct ActionTab {
-    pub label: String,
-    /// What taking this cut would leave. A live listing states none: what is on
-    /// screen is whatever has arrived this second, so the shell counts it.
-    #[serde(skip_serializing_if = "is_zero")]
-    pub count: u32,
-    #[serde(rename = "match", skip_serializing_if = "String::is_empty")]
-    pub matches: String,
-    #[serde(skip_serializing_if = "is_false")]
-    pub active: bool,
-}
-
-/// TableAction is a bar's or a header band's one forward act — a label and
-/// where it leads.
-#[derive(Serialize, Debug, Default)]
-pub struct TableAction {
-    pub label: String,
-    pub href: String,
-    /// The glyph the act wears, by Lucide name. An act that makes a new object
-    /// leaves it empty and takes the plus every "add" wears, so the affordance a
-    /// listing most often carries reads identically everywhere; an act that does
-    /// something else names its own.
-    #[serde(skip_serializing_if = "String::is_empty")]
-    pub icon: String,
-    /// The act's weight: empty is the bar's one forward act, filled with the
-    /// action colour; "quiet" draws it as the secondary button beside the bar's
-    /// other controls — for an act that takes something away from the page
-    /// rather than leading somewhere.
-    #[serde(skip_serializing_if = "String::is_empty")]
-    pub style: String,
-}
-
 /// TableCell carries the value for one cell; which field applies is decided by
 /// the column's kind — Text for the text kinds, Text plus Variant for a pill,
 /// Endpoints for an endpoint cell, Actions for the row's acts.
@@ -2713,67 +2597,6 @@ impl TableCell {
 pub struct TableEndpoint {
     pub kind: String,
     pub label: String,
-}
-
-/// SettingsItem is one option row of a [`Widget::Settings`]. Exactly one of
-/// Toggle, Pills, or Value carries the trailing state; a row with none is
-/// informational. A Value with a Name is edited in place.
-#[derive(Serialize, Debug, Default)]
-pub struct SettingsItem {
-    pub title: String,
-    #[serde(skip_serializing_if = "String::is_empty")]
-    pub desc: String,
-    #[serde(skip_serializing_if = "String::is_empty")]
-    pub code: String,
-    #[serde(skip_serializing_if = "String::is_empty")]
-    pub value: String,
-    #[serde(skip_serializing_if = "String::is_empty")]
-    pub name: String,
-    /// Inline makes a Value+Name row a manage-page control that stages its own
-    /// change (inline-settings-commit-model): it reads as text with a square-pen,
-    /// opens on edit, and commits just this one option on ✓/Enter/blur — the
-    /// counterpart of a row switch for a value. A plain input that stages on blur
-    /// or Enter — the "done" a person expects, no edit/confirm icons. Place it
-    /// outside a page form; a form-driven value clears this.
-    #[serde(skip_serializing_if = "is_false")]
-    pub inline: bool,
-    /// Datatype names the shape an inline value must have ("hostname", …) so the
-    /// shell validates it on blur before staging — an invalid value shows its
-    /// error beneath the field and does not stage. Only meaningful with `inline`.
-    #[serde(skip_serializing_if = "String::is_empty")]
-    pub datatype: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub toggle: Option<SettingsToggle>,
-    #[serde(skip_serializing_if = "Vec::is_empty")]
-    pub pills: Vec<SettingsPill>,
-}
-
-/// SettingsSeam folds a block's rarely-touched options behind a collapsed line
-/// inside the same block: the everyday rows stay visible, the long tail stays
-/// present and honest without carrying the block. Summary is the line that
-/// opens it.
-#[derive(Serialize, Debug)]
-pub struct SettingsSeam {
-    pub summary: String,
-    pub items: Vec<SettingsItem>,
-}
-
-/// SettingsToggle is an option row's switch: its state and the form name it
-/// posts under.
-#[derive(Serialize, Debug)]
-pub struct SettingsToggle {
-    #[serde(skip_serializing_if = "String::is_empty")]
-    pub name: String,
-    #[serde(skip_serializing_if = "is_false")]
-    pub on: bool,
-}
-
-/// SettingsPill is one value pill on an option row that reads rather than
-/// toggles — the tone vocabulary, never a colour.
-#[derive(Serialize, Debug)]
-pub struct SettingsPill {
-    pub variant: Tone,
-    pub text: String,
 }
 
 /// Notice is the outcome of the action this render answers — said by the
@@ -3189,9 +3012,8 @@ mod tests {
     use super::{
         commit, commit_delete, commit_new, header, parse_head, request_path, request_query, Change,
         ConditionItem, DescribeRequestBody, DescribeResponseBody, Description, Envelope, Field,
-        Form, List, PageTab, RowDrawer, SectionWidget, SelectOption, Settings, SettingsItem,
-        SettingsPill, SettingsSeam, Snapshot, SubjectKind, Switch, TableCell, TableRow, Tone, Ubus,
-        Widget,
+        Form, List, PageTab, RowDrawer, SectionWidget, SelectOption, Snapshot, SubjectKind, Switch,
+        TableCell, TableRow, Ubus, Widget,
     };
     use super::{json, uci_text, Map, Value};
 
@@ -3850,43 +3672,6 @@ mod tests {
             ..TableRow::default()
         };
         assert!(serde_json::to_value(&bare).unwrap().get("drawer").is_none());
-    }
-
-    #[test]
-    fn a_settings_seam_folds_its_own_rows() {
-        let block = Widget::Settings(Settings {
-            items: vec![SettingsItem {
-                title: "Expand hosts".into(),
-                ..SettingsItem::default()
-            }],
-            seam: Some(SettingsSeam {
-                summary: "1 more option".into(),
-                items: vec![SettingsItem {
-                    title: "Skip /etc/hosts".into(),
-                    ..SettingsItem::default()
-                }],
-            }),
-            ..Default::default()
-        });
-        let json = serde_json::to_value(&block).unwrap();
-        assert_eq!(json["seam"]["summary"], "1 more option");
-        assert_eq!(json["seam"]["items"][0]["title"], "Skip /etc/hosts");
-
-        let plain = Widget::Settings(Settings::default());
-        assert!(serde_json::to_value(&plain).unwrap().get("seam").is_none());
-    }
-
-    #[test]
-    fn settings_pills_speak_the_tone_vocabulary() {
-        let pill = SettingsPill {
-            variant: Tone::Success,
-            text: "accept".into(),
-        };
-        let json = serde_json::to_value(&pill).unwrap();
-        assert_eq!(
-            json,
-            serde_json::json!({"variant": "success", "text": "accept"})
-        );
     }
 
     // A scratch directory of the test's own, gone when the guard drops.
