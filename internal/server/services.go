@@ -6,7 +6,6 @@ package server
 import (
 	"context"
 	"fmt"
-	"html/template"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -237,7 +236,7 @@ func (s *Server) installedPackagesForOwnership(ctx context.Context, sid string) 
 // renderServices composes the page: procd's whole table, using the same
 // flush-edged table treatment as the rest of Verso; errMsg leads as a danger callout.
 func (s *Server) renderServices(w http.ResponseWriter, r *http.Request, errMsg string) {
-	lang, t := s.localize(r)
+	_, t := s.localize(r)
 	tr := translatorOrIdentity(t)
 	sid := s.sessionSID(r)
 	rc, rcErr := s.backend.RCList(r.Context(), sid)
@@ -284,16 +283,11 @@ func (s *Server) renderServices(w http.ResponseWriter, r *http.Request, errMsg s
 		children = append(children, table)
 	}
 
-	var body strings.Builder
-	if err := s.widgets.RenderWithToken(&body, &widget.Stack{Children: children}, s.sessionCSRF(r), lang, t); err != nil {
-		http.Error(w, "render error", http.StatusInternalServerError)
-		return
-	}
 	// Immediate acts only (ADR-011 §8) — the staged-changes bar appears here
 	// solely when other pages' edits are pending.
-	s.renderPage(w, r, http.StatusOK, pageHeader{
+	s.renderWidgetPage(w, r, http.StatusOK, pageHeader{
 		Heading: "Services", Tone: "neutral",
-	}, "wide", s.sectionPages("System", r.URL.Path), template.HTML(body.String()))
+	}, "wide", s.sectionPages("System", r.URL.Path), &widget.Stack{Children: children})
 }
 
 // servicesTable is procd's table, one flush-edged row per service: name and

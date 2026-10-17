@@ -9,7 +9,6 @@ import (
 	"compress/gzip"
 	"errors"
 	"fmt"
-	"html/template"
 	"io"
 	"log"
 	"mime"
@@ -144,12 +143,7 @@ func (s *Server) renderMaintenancePage(w http.ResponseWriter, r *http.Request, s
 	if stage := s.staged(r.Context(), sid, tr, s.pluginTranslators(r)); stage.Count > 0 {
 		v.Staged = pendingCount(stage.Count, tr)
 	}
-	var body strings.Builder
-	if err := s.widgets.RenderWithToken(&body, maintenanceBody(v), s.sessionCSRF(r), lang, t); err != nil {
-		http.Error(w, "render error", http.StatusInternalServerError)
-		return
-	}
-	s.renderPage(w, r, status, pageHeader{Heading: "Maintenance", Tone: "neutral"}, "wide", s.sectionPages("System", r.URL.Path), template.HTML(body.String())) //nolint:gosec // rendered by the shell's own templates
+	s.renderWidgetPage(w, r, status, pageHeader{Heading: "Maintenance", Tone: "neutral"}, "wide", s.sectionPages("System", r.URL.Path), maintenanceBody(v))
 }
 
 func (s *Server) restoreModal(state restoreState) *widget.Modal {

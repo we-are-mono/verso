@@ -6,7 +6,6 @@ package server
 import (
 	"context"
 	"fmt"
-	"html/template"
 	"io"
 	"log"
 	"net/http"
@@ -323,7 +322,7 @@ func (s *Server) renderAccess(w http.ResponseWriter, r *http.Request, status int
 	if username == "" {
 		username = "root"
 	}
-	lang, t := s.localize(r)
+	_, t := s.localize(r)
 	g := s.grantsFor(s.sessionSID(r))
 	access := accessBody(hasPassword, username, fieldErrs, formErr, s.accessSessions(r, g), g, translatorOrIdentity(t))
 	hdr := pageHeader{Heading: "Access", Tone: "neutral"}
@@ -392,10 +391,5 @@ func (s *Server) renderAccess(w http.ResponseWriter, r *http.Request, status int
 		access.Children = append(access.Children, luci)
 	}
 
-	var body strings.Builder
-	if err := s.widgets.RenderWithToken(&body, access, s.sessionCSRF(r), lang, t); err != nil {
-		http.Error(w, "render error", http.StatusInternalServerError)
-		return
-	}
-	s.renderPage(w, r, status, hdr, "form", s.sectionPages("System", r.URL.Path), template.HTML(body.String()))
+	s.renderWidgetPage(w, r, status, hdr, "form", s.sectionPages("System", r.URL.Path), access)
 }

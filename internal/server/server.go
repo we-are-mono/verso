@@ -968,6 +968,18 @@ func documentTitle(overview bool, heading, detail string, tr func(string) string
 	return strings.Join(append(parts, "Verso"), " · ")
 }
 
+// renderWidgetPage renders root with the session's token in the request's
+// language and serves it as the page body; a render failure is a 500.
+func (s *Server) renderWidgetPage(w http.ResponseWriter, r *http.Request, status int, hdr pageHeader, width string, pages []pageTab, root widget.Widget) {
+	lang, t := s.localize(r)
+	var body strings.Builder
+	if err := s.widgets.RenderWithToken(&body, root, s.sessionCSRF(r), lang, t); err != nil {
+		http.Error(w, "render error", http.StatusInternalServerError)
+		return
+	}
+	s.renderPage(w, r, status, hdr, width, pages, template.HTML(body.String())) //nolint:gosec // rendered by the shell's own templates
+}
+
 func (s *Server) renderPage(w http.ResponseWriter, r *http.Request, status int, hdr pageHeader, width string, pages []pageTab, body template.HTML) {
 	lang, t := s.localize(r)
 	tr := translatorOrIdentity(t)
@@ -1055,7 +1067,7 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	// Plugin destinations come from their manifests; no plugin markup crosses
 	// into this page. A failed source leaves an explicit unavailable state.
 	sid := s.sessionSID(r)
-	lang, catalog := s.localize(r)
+	_, catalog := s.localize(r)
 	tr := translatorOrIdentity(catalog)
 	now := clock.Now()
 	zone, _ := now.Zone()
@@ -1131,12 +1143,7 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	ov.TunnelsHref = s.navLabelHref("VPN")
 	ov.InterfacesHref = s.navLabelHref("Interfaces")
 
-	var body strings.Builder
-	if err := s.widgets.RenderWithToken(&body, ov, s.sessionCSRF(r), lang, catalog); err != nil {
-		http.Error(w, "render error", http.StatusInternalServerError)
-		return
-	}
-	s.renderPage(w, r, http.StatusOK, pageHeader{}, "wide", nil, template.HTML(body.String()))
+	s.renderWidgetPage(w, r, http.StatusOK, pageHeader{}, "wide", nil, ov)
 }
 
 // sysMetricsToWidget maps the System readings onto the overview's gauge fields,

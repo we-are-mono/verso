@@ -5,7 +5,6 @@ package server
 
 import (
 	"fmt"
-	"html/template"
 	"io/fs"
 	"log"
 	"math"
@@ -43,7 +42,7 @@ func (s *Server) handleSystemHardware(w http.ResponseWriter, r *http.Request) {
 		panel:   s.hardwarePanel(r, profile),
 	}
 
-	lang, t := s.localize(r)
+	_, t := s.localize(r)
 	tr := translatorOrIdentity(t)
 	// The page opens on the first reading's day, drawn here, so the graph
 	// needs no second request.
@@ -52,15 +51,10 @@ func (s *Server) handleSystemHardware(w http.ResponseWriter, r *http.Request) {
 	}
 	root := &widget.Stack{Children: hardwareCards(tr, in)}
 
-	var body strings.Builder
-	if err := s.widgets.RenderWithToken(&body, root, s.sessionCSRF(r), lang, t); err != nil {
-		http.Error(w, "render error", http.StatusInternalServerError)
-		return
-	}
 	// Wide, as every page of listings: the Temperatures table's bar takes what
 	// its name, source and limits leave.
-	s.renderPage(w, r, http.StatusOK, hardwareHeading(tr, in.inv, hardwareAlerts(in.facts, in.hw)),
-		"wide", s.sectionPages("System", r.URL.Path), template.HTML(body.String()))
+	s.renderWidgetPage(w, r, http.StatusOK, hardwareHeading(tr, in.inv, hardwareAlerts(in.facts, in.hw)),
+		"wide", s.sectionPages("System", r.URL.Path), root)
 }
 
 // hardwareInput is everything the page is drawn from.

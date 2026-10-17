@@ -5,7 +5,6 @@ package server
 
 import (
 	"bytes"
-	"html/template"
 	"net"
 	"net/http"
 	"sort"
@@ -43,7 +42,6 @@ func (s *Server) handleDevices(w http.ResponseWriter, r *http.Request) {
 		used.apply(roster)
 	}
 
-	var body strings.Builder
 	act := widget.DevicesAct(roster, s.EntityListingAct("device"), func(mac string) string {
 		if mac == "" {
 			return widget.EntityPath("device", "new")
@@ -72,14 +70,10 @@ func (s *Server) handleDevices(w http.ResponseWriter, r *http.Request) {
 			}, table}
 		}
 	}
-	if err := s.widgets.RenderWithToken(&body, page, s.sessionCSRF(r), lang, t); err != nil {
-		http.Error(w, "render error", http.StatusInternalServerError)
-		return
-	}
-	s.renderPage(w, r, http.StatusOK, pageHeader{
+	s.renderWidgetPage(w, r, http.StatusOK, pageHeader{
 		Heading:    "Devices",
 		HeadingAct: s.headingAct(r, act, lang, t),
-	}, "wide", nil, template.HTML(body.String()))
+	}, "wide", nil, page)
 }
 
 // presence is the roster's honest tri-state: the kernel confirmed the device
