@@ -57,8 +57,7 @@ func pluginSecrets(m plugin.Manifest) []string {
 // stagedPlain is sid's stage read in the words config history keeps, the
 // pages' own, untranslated.
 func (s *Server) stagedPlain(ctx context.Context, sid string) stagedView {
-	identity := func(s string) string { return s }
-	return s.staged(ctx, sid, identity, func(string) func(string) string { return identity })
+	return s.staged(ctx, sid, identityTranslator, func(string) func(string) string { return identityTranslator })
 }
 
 // stagedChangeOf is sid's stage, as view read it, as config history keeps it

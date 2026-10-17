@@ -188,8 +188,7 @@ func (s *Server) directChange(ctx context.Context, reading configReading, before
 	for i, tuple := range tuples {
 		flat[i] = stagedChange{config: config, tuple: tuple, raw: humanizeChange(config, tuple, secrets)}
 	}
-	identity := func(s string) string { return s }
-	groups, _ := s.describedGroups(ctx, directSource{s, config, reading.Sections}, flat, identity, func(string) func(string) string { return identity })
+	groups, _ := s.describedGroups(ctx, directSource{s, config, reading.Sections}, flat, identityTranslator, func(string) func(string) string { return identityTranslator })
 	change := history.Change{Time: time.Unix(reading.Time, 0), Status: history.ChangeApplied, OldRead: true,
 		Items: stagedItems(stagedView{Groups: groups}, secrets)}
 	held := map[string]any{}

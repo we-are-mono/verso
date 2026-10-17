@@ -98,8 +98,7 @@ func (u *undoRecords) forget(sid string) {
 // change staged as it was, and answers what it took. A replay that fails
 // part way stages the config again as it was before the undo.
 func (s *Server) undoRows(ctx context.Context, sid string, ids []string) ([]replayOp, error) {
-	identity := func(s string) string { return s }
-	view := s.staged(ctx, sid, identity, func(string) func(string) string { return identity })
+	view := s.stagedPlain(ctx, sid)
 	named := map[string]bool{}
 	for _, id := range ids {
 		named[id] = true
