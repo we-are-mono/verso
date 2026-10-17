@@ -35,9 +35,9 @@
 </div>
 {{else if eq .Style "figure"}}
 {{/* A figure beside what is said of it (the Hardware page's board card: the
-     router's panel, then its facts): the figure at its own width on the
-     left, the rest taking what is left; narrow, the rest stands under it
-     (sections.css). */}}
+     router's facts, then its panel): what is said at the left, taking the
+     row, the figure last at its own width on the right; narrow, the figure
+     stands under it (sections.css). */}}
 <div data-verso-figure>{{range .Children}}{{.}}{{end}}</div>
 {{else if eq .Style "cards"}}
 {{/* Cards of one kind (a board's fiber modules) side by side where the page

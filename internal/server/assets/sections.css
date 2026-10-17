@@ -304,23 +304,24 @@
 .verso-page-body > .verso-stack > * {
   margin-bottom: 0;
 }
-/* A figure beside what is said of it (the Hardware page's board card): the
- * figure at its own width (a panel says its art's, --art-w) at the left
- * edge, what is said of it taking the rest of the row 40px on, both from
- * the same top line. Where the rest would read narrower than a fact list
- * does, it stands under the figure, 24px down, as a card's blocks stand. */
+/* A figure beside what is said of it (the Hardware page's board card): what
+ * is said of it at the left, taking the row, and the figure 40px on at its
+ * own width (a panel says its art's, --art-w) at the right edge, both from
+ * the same top line. Where what is said would read narrower than a fact
+ * list does, the figure stands under it, 24px down, as a card's blocks
+ * stand. */
 [data-verso-figure] {
   display: flex;
   flex-wrap: wrap;
   align-items: flex-start;
   gap: var(--spacing-inset) calc(var(--spacing) * 10);
 }
-[data-verso-figure] > :first-child {
-  flex: 0 1 var(--art-w, auto);
+[data-verso-figure] > :not(:last-child) {
+  flex: 1 1 22rem;
   min-width: 0;
 }
-[data-verso-figure] > :not(:first-child) {
-  flex: 1 1 22rem;
+[data-verso-figure] > :last-child {
+  flex: 0 1 var(--art-w, auto);
   min-width: 0;
 }
 /* Cards of one kind side by side (a board's fiber modules): the row stands

@@ -312,10 +312,10 @@ func TestACardEndingOnAStackedRowsSentenceKeepsItsAir(t *testing.T) {
 	}
 }
 
-// TestAPanelStandsAtTheLeft: a panel stands at its card's left edge wherever
-// it is drawn, flush with what stands under it (the Hardware page's facts,
-// the Overview's port listing), so no card's stylesheet moves it off.
-func TestAPanelStandsAtTheLeft(t *testing.T) {
+// TestNoRuleAimsAtThePanel: where a panel stands is the row that holds it to
+// say (flush left over the Overview's port listing, the figure's column on
+// the Hardware page), never a card rule aimed at the panel's own classes.
+func TestNoRuleAimsAtThePanel(t *testing.T) {
 	raw, err := os.ReadFile("assets/sections.css")
 	if err != nil {
 		t.Fatal(err)

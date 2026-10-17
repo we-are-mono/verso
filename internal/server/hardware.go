@@ -137,8 +137,8 @@ func readPanel(dir, file string) string {
 // --- the board card --------------------------------------------------------
 
 // boardCard names the router (the profile's name, else its model, else
-// "Ports", so the panel never stands under an empty heading) and holds its
-// panel at the left, what it is made of beside it on the right.
+// "Ports", so the panel never stands under an empty heading) and holds what
+// it is made of at the left, its panel beside it on the right.
 func boardCard(tr func(string) string, nums units.Numbers, in hardwareInput) widget.Widget {
 	title := "Ports"
 	switch {
@@ -148,11 +148,11 @@ func boardCard(tr func(string) string, nums units.Numbers, in hardwareInput) wid
 		title = in.board.Model
 	}
 	var children []widget.Widget
-	if in.panel != nil {
-		children = append(children, in.panel)
-	}
 	if facts := machineFacts(tr, nums, in); facts != nil {
 		children = append(children, facts)
+	}
+	if in.panel != nil {
+		children = append(children, in.panel)
 	}
 	switch len(children) {
 	case 0:

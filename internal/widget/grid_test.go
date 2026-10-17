@@ -51,22 +51,23 @@ func TestGridCardsStandInCells(t *testing.T) {
 	}
 }
 
-// A figure stands beside what is said of it: the figure first, at its own
-// width, then the rest (sections.css lays them out and wraps them).
+// A figure stands beside what is said of it: what is said first, taking the
+// row, then the figure at its own width (sections.css lays them out and
+// wraps them).
 func TestGridFigureStandsBesideItsFacts(t *testing.T) {
 	got := render(t, newRenderer(t), &Grid{Style: "figure", Children: []Widget{
-		&Ports{Back: `<svg viewBox="0 0 504 136"></svg>`, Items: []PortItem{{Iface: "eth0"}}},
 		&Properties{Align: "left", Items: []Property{{Label: "Memory", Value: "7.7 GiB"}}},
+		&Ports{Back: `<svg viewBox="0 0 504 136"></svg>`, Items: []PortItem{{Iface: "eth0"}}},
 	}})
-	figure, ports, list := strings.Index(got, "<div data-verso-figure>"), strings.Index(got, `class="verso-ports`), strings.Index(got, "<dl")
-	if figure < 0 || ports < figure || list < ports {
-		t.Errorf("the figure should open the row, then its facts:\n%s", got)
+	figure, list, ports := strings.Index(got, "<div data-verso-figure>"), strings.Index(got, "<dl"), strings.Index(got, `class="verso-ports`)
+	if figure < 0 || list < figure || ports < list {
+		t.Errorf("the facts should open the row, then the figure:\n%s", got)
 	}
 	css, err := os.ReadFile(filepath.Join("..", "server", "assets", "sections.css"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(css), "[data-verso-figure] > :first-child {") {
+	if !strings.Contains(string(css), "[data-verso-figure] > :last-child {") {
 		t.Error("sections.css should size the figure's column")
 	}
 }

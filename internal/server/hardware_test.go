@@ -204,10 +204,10 @@ func TestTheBoardCardsFacts(t *testing.T) {
 			t.Errorf("board card missing %q:\n%s", want, board)
 		}
 	}
-	// The panel stands at the left, the facts beside it on the right.
-	figure, panel, list := strings.Index(board, "<div data-verso-figure>"), strings.Index(board, "verso-ports"), strings.Index(board, "<dl")
-	if figure < 0 || panel < figure || list < panel {
-		t.Errorf("the panel should stand beside the facts, the panel first:\n%s", board)
+	// The facts stand at the left, the panel beside them on the right.
+	figure, list, panel := strings.Index(board, "<div data-verso-figure>"), strings.Index(board, "<dl"), strings.Index(board, "verso-ports")
+	if figure < 0 || list < figure || panel < list {
+		t.Errorf("the facts should stand beside the panel, the facts first:\n%s", board)
 	}
 	// One list, read down: Processor, Memory, Storage, Boot slot, NOR flash,
 	// Clock, Board ID.
