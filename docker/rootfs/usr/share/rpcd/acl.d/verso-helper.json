@@ -15,7 +15,8 @@
           "firewallFiles",
           "uciCommitted",
           "diagRead",
-          "refreshGrants"
+          "refreshGrants",
+          "hardwareState"
         ]
       }
     },

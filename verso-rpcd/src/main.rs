@@ -18,6 +18,7 @@ mod diagnostics;
 mod firewall;
 mod firewall_log;
 mod firmware;
+mod hardware;
 mod netlink;
 mod openvpn;
 mod packages;
@@ -510,6 +511,7 @@ fn dispatch(request: &Value, state: &State, uid: u32) -> Result<Value, Failure> 
             Ok(json!({"result": true, "output": output}))
         }
         "rootHasPassword" => Ok(json!({"has_password": root_has_password()})),
+        "hardwareState" => Ok(hardware::state()),
         "firewallCounters" => firewall_counters(),
         "firewallStatus" => firewall_status(),
         "firewallLog" => state.firewall_log.read(&request["args"]),
@@ -1405,6 +1407,7 @@ mod tests {
         "pkgInstall",
         "pkgRemove",
         "rootHasPassword",
+        "hardwareState",
         "firewallCounters",
         "firewallStatus",
         "firewallLog",
