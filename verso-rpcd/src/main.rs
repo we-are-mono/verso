@@ -28,6 +28,10 @@ mod reset;
 mod uci_committed;
 mod usage;
 
+#[path = "../../plugins/verso-plugin-system/src/datetime.rs"]
+mod datetime;
+use datetime::normalize_local_datetime;
+
 use serde_json::{json, Value};
 use std::ffi::c_void;
 use std::fs;
@@ -1311,49 +1315,6 @@ fn set_system_time(datetime: &str, timezone: &str) -> Result<(), Failure> {
         return Err(Failure::unknown(format!("date failed: {message}")));
     }
     Ok(())
-}
-
-fn normalize_local_datetime(value: &str) -> Option<String> {
-    let bytes = value.as_bytes();
-    if bytes.len() != 19
-        || bytes[4] != b'-'
-        || bytes[7] != b'-'
-        || bytes[10] != b'T'
-        || bytes[13] != b':'
-        || bytes[16] != b':'
-    {
-        return None;
-    }
-    let number = |from: usize, to: usize| value[from..to].parse::<u32>().ok();
-    let (year, month, day, hour, minute, second) = (
-        number(0, 4)?,
-        number(5, 7)?,
-        number(8, 10)?,
-        number(11, 13)?,
-        number(14, 16)?,
-        number(17, 19)?,
-    );
-    if !(1970..=9999).contains(&year)
-        || !(1..=12).contains(&month)
-        || hour > 23
-        || minute > 59
-        || second > 59
-    {
-        return None;
-    }
-    let leap = year % 4 == 0 && (year % 100 != 0 || year % 400 == 0);
-    let days = match month {
-        2 if leap => 29,
-        2 => 28,
-        4 | 6 | 9 | 11 => 30,
-        _ => 31,
-    };
-    if !(1..=days).contains(&day) {
-        return None;
-    }
-    Some(format!(
-        "{year:04}-{month:02}-{day:02} {hour:02}:{minute:02}:{second:02}"
-    ))
 }
 
 fn valid_posix_timezone(value: &str) -> bool {

@@ -9,7 +9,9 @@ use verso_plugin::{
 };
 mod access;
 mod credentials;
+mod datetime;
 mod describe;
+use datetime::normalize_local_datetime;
 mod sshkey;
 mod timezones;
 use timezones::ZONES;
@@ -78,7 +80,7 @@ fn post(r: &Request, f: &Form) -> Envelope {
     }
     if time && f.get("_action") == "clock" {
         let datetime = f.get("_client_time");
-        if !valid_local_datetime(&datetime) {
+        if normalize_local_datetime(&datetime).is_none() {
             errors.insert(
                 "clock".into(),
                 "The computer's time could not be read. Try again.".into(),
@@ -439,46 +441,6 @@ fn valid_hostname(name: &str) -> bool {
         && !name.starts_with('-')
         && !name.ends_with('-')
         && name.chars().all(|c| c.is_ascii_alphanumeric() || c == '-')
-}
-
-fn valid_local_datetime(value: &str) -> bool {
-    let bytes = value.as_bytes();
-    if bytes.len() != 19
-        || bytes[4] != b'-'
-        || bytes[7] != b'-'
-        || bytes[10] != b'T'
-        || bytes[13] != b':'
-        || bytes[16] != b':'
-    {
-        return false;
-    }
-    let number = |from: usize, to: usize| value[from..to].parse::<u32>().ok();
-    let (Some(year), Some(month), Some(day), Some(hour), Some(minute), Some(second)) = (
-        number(0, 4),
-        number(5, 7),
-        number(8, 10),
-        number(11, 13),
-        number(14, 16),
-        number(17, 19),
-    ) else {
-        return false;
-    };
-    if !(1970..=9999).contains(&year)
-        || !(1..=12).contains(&month)
-        || hour > 23
-        || minute > 59
-        || second > 59
-    {
-        return false;
-    }
-    let leap = year % 4 == 0 && (year % 100 != 0 || year % 400 == 0);
-    let days = match month {
-        2 if leap => 29,
-        2 => 28,
-        4 | 6 | 9 | 11 => 30,
-        _ => 31,
-    };
-    (1..=days).contains(&day)
 }
 
 // valid_posix_tz bounds a preserved custom timezone to the POSIX TZ charset —
