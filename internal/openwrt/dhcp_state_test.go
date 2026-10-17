@@ -60,6 +60,9 @@ func TestDHCPObservedServiceStates(t *testing.T) {
 			c["lan"].(map[string]any)["instance"] = "other"
 			s["dnsmasq"].(map[string]any)["instances"].(map[string]any)["other"] = map[string]any{"running": false}
 		}},
+		{"bound instance absent", "stopped", "", func(c, _, _ map[string]any, _ map[string]string) {
+			c["lan"].(map[string]any)["instance"] = "nosuch"
+		}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			c, s, d, f := dhcpFixture()

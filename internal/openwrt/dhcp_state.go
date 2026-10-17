@@ -273,153 +273,181 @@ func dhcpStates(config, services, dump map[string]any, readConfig, readLeases fu
 		if device == "" {
 			device = stringValue(live["device"])
 		}
-		var matched []dhcpRange
-		leaseFiles := map[string]bool{}
-		running, stopped, failed, unknown, blocked := false, false, false, false, false
-		for _, instance := range instances {
-			if selected != "" && instance.id != selected {
-				continue
-			}
-			var ranges []dhcpRange
-			for _, r := range instance.ranges {
-				if r.tag == tag {
-					ranges = append(ranges, r)
-				}
-			}
-			// An explicit instance binding must not borrow another daemon's health.
-			// Without a binding, a range's network tag identifies the serving instance.
-			if len(ranges) == 0 && selected == "" {
-				continue
-			}
-			running = running || instance.running
-			stopped = stopped || !instance.running
-			failed = failed || instance.failed
-			unknown = unknown || !instance.readable
-			if len(instance.interfaces) > 0 {
-				allowed := false
-				for _, pattern := range instance.interfaces {
-					allowed = allowed || dhcpDeviceMatches(pattern, device)
-				}
-				blocked = blocked || !allowed
-			}
-			for _, excluded := range instance.excluded {
-				blocked = blocked || dhcpDeviceMatches(excluded, device)
-			}
-			matched = append(matched, ranges...)
-			leaseFiles[instance.leaseFile] = true
-		}
-		addressed := len(matched) > 0
-		for _, r := range matched {
-			addressed = addressed && dhcpAddressOnNetwork(r.first, live)
-		}
-		state := dhcpNetworkState{Enabled: enabled, State: "disabled"}
-		switch {
-		case !enabled && len(matched) == 0:
-		case !running && (failed || stopped):
-			state.State = "stopped"
-			if failed {
-				state.Reason = "failed"
-			}
-		case !running && len(matched) == 0:
-			if enabled {
-				anyRunning := false
-				anyUnknown := false
-				for _, instance := range instances {
-					if selected == "" || instance.id == selected {
-						anyRunning = anyRunning || instance.running
-						anyUnknown = anyUnknown || !instance.readable
-					}
-				}
-				if !anyRunning {
-					state.State = "stopped"
-				} else {
-					state.State = "warning"
-					state.Reason = "not-serving"
-					if anyUnknown {
-						state.Reason = "unknown"
-					}
-				}
-			}
-		case live == nil:
-			state.State = "warning"
-			state.Reason = "interface-unavailable"
-		case asBool(live["pending"]) || !asBool(live["up"]):
-			state.State = "warning"
-			state.Reason = "interface-down"
-		case unknown:
-			state.State = "warning"
-			state.Reason = "unknown"
-		case blocked || len(matched) == 0 || !addressed:
-			state.State = "warning"
-			state.Reason = "not-serving"
-		case stopped || failed:
-			state.State = "warning"
-			state.Reason = "partial"
-		default:
-			state.State = "running"
-		}
-		if len(matched) > 0 {
-			pools := []string{}
-			leased := map[string]bool{}
-			leaseOK := true
-			for path := range leaseFiles {
-				data, err := readLeases(path)
-				if err != nil {
-					leaseOK = false
-					continue
-				}
-				for _, line := range strings.Split(string(data), "\n") {
-					fields := strings.Fields(line)
-					if len(fields) < 3 {
-						continue
-					}
-					expiry, err := strconv.ParseInt(fields[0], 10, 64)
-					if err != nil || expiry != 0 && expiry <= now {
-						continue
-					}
-					if dhcpAddressOnNetwork(fields[2], live) {
-						leased[fields[2]] = true
-					}
-				}
-			}
-			var capacity, used uint64
-			for _, r := range matched {
-				if r.last == "static" {
-					pools = append(pools, "reservations")
-				} else {
-					pools = append(pools, r.first+"–"+r.last)
-					first, last := dhcpIPv4(r.first), dhcpIPv4(r.last)
-					if last >= first {
-						capacity += uint64(last) - uint64(first) + 1
-						for ip := range leased {
-							n := dhcpIPv4(ip)
-							if n >= first && n <= last {
-								used++
-							}
-						}
-					}
-				}
-				if state.LeaseTime == "" {
-					state.LeaseTime = r.duration
-				}
-			}
-			state.Pool = strings.Join(pools, ", ")
-			if leaseOK && live != nil {
-				count := len(leased)
-				state.Leases = &count
-			}
-			if state.State == "running" && !leaseOK {
-				state.State = "warning"
-				state.Reason = "leases-unavailable"
-			}
-			if state.State == "running" && capacity > 0 && used >= capacity {
-				state.State = "warning"
-				state.Reason = "pool-full"
-			}
+		serving := servingInstances(instances, selected, tag, device)
+		state := serving.judge(enabled, selected, live, instances)
+		if len(serving.matched) > 0 {
+			serving.pool(&state, live, readLeases, now)
 		}
 		out[name] = state
 	}
 	return out
+}
+
+// dhcpServing is what the instances serving one network add up to: their
+// ranges for its tag, their lease files, and their health.
+type dhcpServing struct {
+	matched                                    []dhcpRange
+	leaseFiles                                 map[string]bool
+	running, stopped, failed, unknown, blocked bool
+}
+
+// servingInstances joins the instances that serve the network tagged tag on
+// device: the one the section binds, or without a binding every instance with
+// a range for the tag.
+func servingInstances(instances []dhcpInstance, selected, tag, device string) dhcpServing {
+	s := dhcpServing{leaseFiles: map[string]bool{}}
+	for _, instance := range instances {
+		if selected != "" && instance.id != selected {
+			continue
+		}
+		var ranges []dhcpRange
+		for _, r := range instance.ranges {
+			if r.tag == tag {
+				ranges = append(ranges, r)
+			}
+		}
+		// An explicit instance binding must not borrow another daemon's health.
+		// Without a binding, a range's network tag identifies the serving instance.
+		if len(ranges) == 0 && selected == "" {
+			continue
+		}
+		s.running = s.running || instance.running
+		s.stopped = s.stopped || !instance.running
+		s.failed = s.failed || instance.failed
+		s.unknown = s.unknown || !instance.readable
+		if len(instance.interfaces) > 0 {
+			allowed := false
+			for _, pattern := range instance.interfaces {
+				allowed = allowed || dhcpDeviceMatches(pattern, device)
+			}
+			s.blocked = s.blocked || !allowed
+		}
+		for _, excluded := range instance.excluded {
+			s.blocked = s.blocked || dhcpDeviceMatches(excluded, device)
+		}
+		s.matched = append(s.matched, ranges...)
+		s.leaseFiles[instance.leaseFile] = true
+	}
+	return s
+}
+
+// judge is the network's verdict from its serving instances and its live
+// netifd status.
+func (s dhcpServing) judge(enabled bool, selected string, live map[string]any, instances []dhcpInstance) dhcpNetworkState {
+	addressed := len(s.matched) > 0
+	for _, r := range s.matched {
+		addressed = addressed && dhcpAddressOnNetwork(r.first, live)
+	}
+	state := dhcpNetworkState{Enabled: enabled, State: "disabled"}
+	switch {
+	case !enabled && len(s.matched) == 0:
+	case !s.running && (s.failed || s.stopped):
+		state.State = "stopped"
+		if s.failed {
+			state.Reason = "failed"
+		}
+	case !s.running && len(s.matched) == 0:
+		// An enabled network no instance joined. A bound instance that did
+		// not join is absent; without a binding, an instance that runs
+		// serves no range for this network.
+		state.State = "stopped"
+		if selected != "" {
+			break
+		}
+		anyRunning, anyUnknown := false, false
+		for _, instance := range instances {
+			anyRunning = anyRunning || instance.running
+			anyUnknown = anyUnknown || !instance.readable
+		}
+		if anyRunning {
+			state.State = "warning"
+			state.Reason = "not-serving"
+			if anyUnknown {
+				state.Reason = "unknown"
+			}
+		}
+	case live == nil:
+		state.State = "warning"
+		state.Reason = "interface-unavailable"
+	case asBool(live["pending"]) || !asBool(live["up"]):
+		state.State = "warning"
+		state.Reason = "interface-down"
+	case s.unknown:
+		state.State = "warning"
+		state.Reason = "unknown"
+	case s.blocked || len(s.matched) == 0 || !addressed:
+		state.State = "warning"
+		state.Reason = "not-serving"
+	case s.stopped || s.failed:
+		state.State = "warning"
+		state.Reason = "partial"
+	default:
+		state.State = "running"
+	}
+	return state
+}
+
+// pool states the network's ranges, lease time and live leases, and turns a
+// running verdict into a warning when the leases cannot be read or every
+// address in the pool is taken.
+func (s dhcpServing) pool(state *dhcpNetworkState, live map[string]any, readLeases func(string) ([]byte, error), now int64) {
+	pools := []string{}
+	leased := map[string]bool{}
+	leaseOK := true
+	for path := range s.leaseFiles {
+		data, err := readLeases(path)
+		if err != nil {
+			leaseOK = false
+			continue
+		}
+		for _, line := range strings.Split(string(data), "\n") {
+			fields := strings.Fields(line)
+			if len(fields) < 3 {
+				continue
+			}
+			expiry, err := strconv.ParseInt(fields[0], 10, 64)
+			if err != nil || expiry != 0 && expiry <= now {
+				continue
+			}
+			if dhcpAddressOnNetwork(fields[2], live) {
+				leased[fields[2]] = true
+			}
+		}
+	}
+	var capacity, used uint64
+	for _, r := range s.matched {
+		if r.last == "static" {
+			pools = append(pools, "reservations")
+		} else {
+			pools = append(pools, r.first+"–"+r.last)
+			first, last := dhcpIPv4(r.first), dhcpIPv4(r.last)
+			if last >= first {
+				capacity += uint64(last) - uint64(first) + 1
+				for ip := range leased {
+					n := dhcpIPv4(ip)
+					if n >= first && n <= last {
+						used++
+					}
+				}
+			}
+		}
+		if state.LeaseTime == "" {
+			state.LeaseTime = r.duration
+		}
+	}
+	state.Pool = strings.Join(pools, ", ")
+	if leaseOK && live != nil {
+		count := len(leased)
+		state.Leases = &count
+	}
+	if state.State == "running" && !leaseOK {
+		state.State = "warning"
+		state.Reason = "leases-unavailable"
+	}
+	if state.State == "running" && capacity > 0 && used >= capacity {
+		state.State = "warning"
+		state.Reason = "pool-full"
+	}
 }
 func dhcpIPv4(address string) uint32 {
 	ip := net.ParseIP(address).To4()
