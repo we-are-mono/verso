@@ -209,7 +209,7 @@ endef
 
 # build-<arch> is intentionally NOT phony: make skips pattern rules for phony
 # targets, and no file of that name is ever produced, so the rule fires each run.
-.PHONY: all build dev css layout-snapshot layout-diff layout-noise test lint deadcode vuln hooks clean apk apk-publish apk-publish-feed apk-preflight apk-i18n apk-i18n-publish i18n-audit version
+.PHONY: all build dev css layout-snapshot layout-fixtures layout-diff layout-noise test lint deadcode vuln hooks clean apk apk-publish apk-publish-feed apk-preflight apk-i18n apk-i18n-publish i18n-audit version
 
 all: lint test build
 
@@ -248,8 +248,13 @@ $(PLAYWRIGHT):
 # layout-snapshot records the reference pages of the running dev container
 # (`make dev`) into LAYOUT_OUT; layout-diff compares two such records. See
 # scripts/layout-snapshot.cjs for what is recorded and how a diff reads.
-layout-snapshot: $(PLAYWRIGHT)
+layout-snapshot: $(PLAYWRIGHT) layout-fixtures
 	PLAYWRIGHT_CORE=$(abspath $(PLAYWRIGHT)) node scripts/layout-snapshot.cjs snap $(LAYOUT_OUT)
+
+# layout-fixtures writes the takeovers, which no dev route serves, as the shell
+# renders them, into build/layout-fixtures for layout-snapshot to record.
+layout-fixtures:
+	go test -count=1 -tags layoutfixtures -run '^TestWriteLayoutFixtures$$' ./internal/server/ >/dev/null
 
 layout-diff:
 	node scripts/layout-snapshot.cjs diff $(FROM) $(TO)

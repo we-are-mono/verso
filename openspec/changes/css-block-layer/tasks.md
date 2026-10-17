@@ -14,8 +14,8 @@
 
 ## 1. Baseline and toolchain checks
 
-- [ ] 1.1 Write `scripts/layout-snapshot.js` (Decision 10), recording boxes, spacing, colours and computed type. Verify: two snapshots of Firewall settings taken back to back in the dev container diff empty; a `mt-1` added by hand in the browser to one card makes the diff name exactly that card and the boxes below it; a `font-weight` changed by hand on one label makes it name that label.
-- [ ] 1.2 Write the test-only fixture writer, behind a build tag, that renders the login page and the restarting, upgrading and firmware-started takeovers as self-contained HTML into `build/layout-fixtures/`. Serve them from the Playwright scratch server (bind 0.0.0.0, open via 10.0.0.232). Verify: each fixture opens and looks like the live page in a screenshot.
+- [x] 1.1 Write `scripts/layout-snapshot.js` (Decision 10), recording boxes, spacing, colours and computed type. Verify: two snapshots of Firewall settings taken back to back in the dev container diff empty; a `mt-1` added by hand in the browser to one card makes the diff name exactly that card and the boxes below it; a `font-weight` changed by hand on one label makes it name that label.
+- [x] 1.2 Write the test-only fixture writer, behind a build tag, that renders the login page and the restarting, upgrading and firmware-started takeovers as self-contained HTML into `build/layout-fixtures/`. Serve them from the Playwright scratch server (bind 0.0.0.0, open via 10.0.0.232). Verify: each fixture opens and looks like the live page in a screenshot.
 - [ ] 1.3 Confirm that Tailwind's compile keeps each of these unchanged:
   - `:nth-child(1 of S)` and `:nth-last-child(1 of S)`;
   - `@property` with `inherits: false`;
