@@ -1,0 +1,245 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/* SPDX-FileCopyrightText: 2026 Mono Technologies Inc. */
+
+/*
+ * console — a running stream, drawn as a terminal draws it rather than as a
+ * table: one line per event, no grid, no hairlines between them, everything
+ * the device wrote in mono, on the page's sand. It fills whatever height the
+ * frame gives it and scrolls inside itself, and it runs to the window's
+ * right and bottom edges — a log has no natural end, so a margin under it
+ * would be a lie. The firewall's live events, the system log and a
+ * diagnostics run are the one console.
+ *
+ * Variants: data-verso-kind="events"  the firewall's: every line a row of one
+ *                                     grid (verso-listing.js lays each as a
+ *                                     subgrid), so the columns hold down the
+ *                                     whole log — the mark, the clock, the
+ *                                     verdict, the arrow and the protocol at
+ *                                     their measures, each end of the path as
+ *                                     wide as the longest address it holds,
+ *                                     and the rule taking whatever is left,
+ *                                     never under 10rem of words
+ * Elements: __notice   what stands between the reader and the stream (a
+ *                      source that cannot be read, events lost), on the
+ *                      caveat's wash over the lines
+ *           __rows     the lines, the part that scrolls
+ *           __waiting  the stream before its first line
+ *           __event    a firewall event; __bar, __time, __verdict, __path
+ *                      (__addr, __zone, __port), __arrow, __proto, __rule
+ *                      (__rule-name, __count)
+ *           __entry    a system log entry: __bar, __time, __source, __level,
+ *                      __message
+ *           __summary  a diagnostics run's last word
+ *           __output   a line a diagnostics tool printed
+ *           __bar      a line's mark down its left edge, in its tone's hue
+ *                      (data-verso-tone), none for an ordinary line
+ * Tones (data-verso-tone on a bar, a verdict, an address, a level, a
+ * message or a summary): success · warning · danger
+ */
+
+.verso-console {
+  display: flex;
+  flex: 1 1 0%;
+  flex-direction: column;
+  min-height: 0;
+  margin-inline: calc(var(--spacing) * -10);
+  background-color: var(--color-quiet);
+  box-shadow: var(--shadow-edge);
+}
+
+.verso-console__notice {
+  padding: calc(var(--spacing) * 3) calc(var(--spacing) * 10);
+  border: 0 solid var(--color-rule-strong);
+  border-bottom-width: 1px;
+  background-color: var(--color-marigold-soft);
+  color: var(--color-marigold-deep);
+  @apply type-body;
+}
+
+.verso-console__rows {
+  flex: 1 1 0%;
+  min-height: 0;
+  overflow-y: auto;
+  padding-block: calc(var(--spacing) * 3) calc(var(--spacing) * 6);
+}
+.verso-console__rows:where(.verso-console[data-verso-kind="events"] *) {
+  display: grid;
+  align-content: start;
+  grid-template-columns: auto 4.5rem 5.5rem minmax(min-content, max-content) 1.5rem minmax(min-content, max-content) 6rem minmax(12.75rem, 1fr);
+  column-gap: calc(var(--spacing) * 3);
+}
+
+.verso-console__waiting {
+  grid-column: 1 / -1;
+  padding: calc(var(--spacing) * 6) calc(var(--spacing) * 10);
+  color: var(--color-meta);
+  @apply type-body;
+}
+
+.verso-console__event,
+.verso-console__entry {
+  align-items: stretch;
+  cursor: default;
+  @apply type-value;
+}
+.verso-console__event:hover,
+.verso-console__entry:hover {
+  background-color: color-mix(in srgb, var(--color-mid) 50%, transparent);
+}
+
+.verso-console__event {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
+  padding: 1px calc(var(--spacing) * 11) 1px calc(var(--spacing) * 7.25);
+  cursor: pointer;
+}
+
+.verso-console__entry {
+  display: grid;
+  grid-template-columns: 0.1875rem 4rem minmax(0, 1fr) 4rem;
+  column-gap: calc(var(--spacing) * 3);
+  padding: var(--spacing) calc(var(--spacing) * 10) var(--spacing) calc(var(--spacing) * 6.25);
+}
+@media (width >= 64rem) {
+  .verso-console__entry {
+    display: flex;
+    padding-block: 1px;
+  }
+}
+
+.verso-console__bar {
+  flex-shrink: 0;
+  width: calc(var(--spacing) * 0.75);
+  margin-block: calc(var(--spacing) * 0.5);
+  border-radius: calc(infinity * 1px);
+  background-color: var(--color-glyph);
+}
+.verso-console__bar:where(.verso-console__entry *) {
+  grid-row: span 2;
+  background-color: transparent;
+}
+.verso-console__bar[data-verso-tone="success"] {
+  background-color: var(--color-green);
+}
+.verso-console__bar[data-verso-tone="warning"] {
+  background-color: var(--color-marigold);
+}
+.verso-console__bar[data-verso-tone="danger"] {
+  background-color: var(--color-crimson);
+}
+
+.verso-console__time {
+  flex-shrink: 0;
+  color: var(--color-body);
+}
+@media (width >= 64rem) {
+  .verso-console__time:where(.verso-console__entry *) {
+    width: calc(var(--spacing) * 20);
+  }
+}
+
+.verso-console__verdict,
+.verso-console__message {
+  color: var(--color-ink);
+}
+.verso-console__level {
+  flex-shrink: 0;
+  width: calc(var(--spacing) * 16);
+  color: var(--color-meta);
+}
+:is(.verso-console__verdict, .verso-console__addr, .verso-console__level, .verso-console__message, .verso-console__summary)[data-verso-tone="success"] {
+  color: var(--color-green-deep);
+}
+:is(.verso-console__verdict, .verso-console__addr, .verso-console__level, .verso-console__message, .verso-console__summary)[data-verso-tone="warning"] {
+  color: var(--color-marigold-deep);
+}
+:is(.verso-console__verdict, .verso-console__addr, .verso-console__level, .verso-console__message, .verso-console__summary)[data-verso-tone="danger"] {
+  color: var(--color-crimson-deep);
+}
+
+.verso-console__path {
+  display: flex;
+  align-self: flex-start;
+  align-items: baseline;
+  gap: calc(var(--spacing) * 2);
+}
+.verso-console__zone {
+  flex-shrink: 0;
+  color: var(--color-meta);
+}
+.verso-console__port {
+  flex-shrink: 0;
+  align-self: last baseline;
+  color: var(--color-glyph);
+}
+.verso-console__arrow {
+  display: flex;
+  justify-content: center;
+  color: var(--color-faint);
+}
+.verso-console__proto {
+  display: flex;
+  align-items: baseline;
+  gap: calc(var(--spacing) * 1.5);
+  color: var(--color-body);
+}
+
+.verso-console__rule {
+  display: flex;
+  align-items: baseline;
+  gap: calc(var(--spacing) * 2);
+  min-width: 0;
+  padding-right: calc(var(--spacing) * 3);
+}
+.verso-console__rule-name {
+  min-width: 0;
+  overflow-wrap: break-word;
+  color: var(--color-body);
+  @apply type-body;
+}
+a.verso-console__rule-name {
+  color: var(--color-ink);
+  transition: color 150ms;
+}
+a.verso-console__rule-name:hover {
+  color: var(--color-denim-deep);
+}
+.verso-console__count {
+  flex-shrink: 0;
+  color: var(--color-meta);
+  @apply type-body;
+}
+
+.verso-console__source {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-ink);
+}
+@media (width >= 64rem) {
+  .verso-console__source {
+    flex-shrink: 0;
+    width: calc(var(--spacing) * 34);
+  }
+}
+.verso-console__message {
+  grid-column: 2 / span 3;
+  flex: 1 1 0%;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.verso-console__summary {
+  padding: calc(var(--spacing) * 2) calc(var(--spacing) * 10) 0;
+  color: var(--color-meta);
+  @apply type-body;
+}
+.verso-console__output {
+  padding-inline: calc(var(--spacing) * 10);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: var(--color-ink);
+  @apply type-value;
+}

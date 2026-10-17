@@ -1,0 +1,36 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/* SPDX-FileCopyrightText: 2026 Mono Technologies Inc. */
+
+/*
+ * pluck — a value in a stream that is its own control: point at a verdict,
+ * a zone, an address, and the stream narrows to it. The affordance is the
+ * pointer and a quiet lift under it; the value keeps exactly the treatment
+ * it had, because what travels to the shelf is the thing that was pressed.
+ * Its words are the value's: a button inherits its face, size and line from
+ * where it stands (the preflight), so the pluck sets none of its own.
+ */
+
+.verso-pluck {
+  appearance: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-xs);
+  background: none;
+  color: inherit;
+  text-align: inherit;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+.verso-pluck:hover {
+  opacity: 0.65;
+}
+.verso-pluck:focus-visible {
+  outline: 0.125rem solid var(--color-denim-deep);
+  outline-offset: 0.125rem;
+}
+@media (prefers-reduced-motion: reduce) {
+  .verso-pluck {
+    transition: none;
+  }
+}

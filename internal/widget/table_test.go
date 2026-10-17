@@ -1202,7 +1202,7 @@ func TestRenderStreamTableWiresItsSource(t *testing.T) {
 // room and wrapping where it has not, the arrow between them, the protocol,
 // and the rule taking whatever is left, never less than 10rem of words (the
 // track also takes in the line's 2.75rem right inset).
-const consoleColumns = "grid-cols-[auto_4.5rem_5.5rem_minmax(min-content,max-content)_1.5rem_minmax(min-content,max-content)_6rem_minmax(12.75rem,1fr)]"
+const consoleColumns = "grid-template-columns: auto 4.5rem 5.5rem minmax(min-content, max-content) 1.5rem minmax(min-content, max-content) 6rem minmax(12.75rem, 1fr)"
 
 // TestAConsoleLaysItsLinesOnOneGrid: every line of a console shares one set of
 // columns, so an end of the path is as wide as the longest address the log
@@ -1213,12 +1213,15 @@ func TestAConsoleLaysItsLinesOnOneGrid(t *testing.T) {
 	tbl := streamTable()
 	tbl.Style = "console"
 	got := render(t, newRenderer(t), tbl)
-	if !strings.Contains(got, "grid content-start "+consoleColumns+" gap-x-3") {
-		t.Errorf("console rows are not one grid:\n%s", got)
+	if !strings.Contains(got, `class="verso-console__rows verso-drawer-scrollbar"`) {
+		t.Errorf("console rows are not the console's rows:\n%s", got)
 	}
-	if !strings.Contains(got, `<div data-verso-stream-empty class="col-span-full`) {
-		t.Errorf("the waiting line does not span the console:\n%s", got)
+	declares(t, "console", `.verso-console__rows:where(.verso-console[data-verso-kind="events"] *)`,
+		"display: grid", "align-content: start", consoleColumns, "column-gap: calc(var(--spacing) * 3)")
+	if !strings.Contains(got, `<div data-verso-stream-empty class="verso-console__waiting">`) {
+		t.Errorf("the waiting line is not the console's:\n%s", got)
 	}
+	declares(t, "console", ".verso-console__waiting", "grid-column: 1 / -1")
 }
 
 // TestRenderStreamTableKeepsItsHeadWhileWaiting: an ordinary empty table drops

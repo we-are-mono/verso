@@ -113,7 +113,10 @@ var (
 	jsInterpolation  = regexp.MustCompile(`\$\{[^}]*\}`)
 	jsClassName      = regexp.MustCompile(`className\s*=\s*(["'])([^"']*)["']`)
 	jsClassList      = regexp.MustCompile(`classList\.(?:add|toggle)\(\s*(["'])([^"']*)["']`)
-	goClassField     = regexp.MustCompile(`\bClass:\s*"([^"]*)"`)
+	// jsElClass: the classes a script hands the element helper
+	// (versoEl(tag, classes, text), aliased el), however few.
+	jsElClass    = regexp.MustCompile(`\b(?:versoEl|el)\(\s*["'][a-z]+["']\s*,\s*(["'])([^"']*)["']`)
+	goClassField = regexp.MustCompile(`\bClass:\s*"([^"]*)"`)
 	// tmplIconClass: the classes a template hands the icon func, which lands
 	// them on the drawn svg ({{icon "chevron-right" "verso-chevron size-4"}}).
 	tmplIconClass = regexp.MustCompile(`\bicon\s+(?:"[^"]*"|[.$][\w.]*)\s+"([^"]*)"`)
@@ -245,7 +248,7 @@ func (src styleSources) classLists() []classList {
 			}
 		}
 		if strings.HasSuffix(file, ".js") {
-			for _, re := range []*regexp.Regexp{jsClassName, jsClassList} {
+			for _, re := range []*regexp.Regexp{jsClassName, jsClassList, jsElClass} {
 				for _, m := range re.FindAllStringSubmatchIndex(body, -1) {
 					add(m[4], m[5])
 				}

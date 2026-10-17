@@ -92,7 +92,8 @@ func TestSystemLogActsStandOnTheHeadingLine(t *testing.T) {
 		t.Errorf("the log's three acts wear the secondary dress:\n%s", acts)
 	}
 	for _, want := range []string{
-		"overflow-y-auto bg-quiet pt-3 pb-6 shadow-(--shadow-edge)", // the log on the sand bar's ground, under the light bar, sunk under it
+		`<div data-verso-system-log class="verso-console">`, // the log on the sand bar's ground, under the light bar, sunk under it: the firewall log's console
+		`class="verso-console__rows verso-drawer-scrollbar"`,
 		`data-log-pause title="Pause"`, "<span data-log-pause-label>Connecting…</span></button>",
 		"data-verso-wait", // the log's spinner, turning while lines arrive
 		`<p data-log-health role="status" hidden`,

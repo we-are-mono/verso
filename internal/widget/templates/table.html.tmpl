@@ -436,34 +436,21 @@
      into the hairline card frame shared with the settings card, so every boxed
      listing speaks one card language. */}}
 {{/* A table wider than its box scrolls sideways in it (blocks/listing.css). */}}
-{{/* A console is not a table and is not drawn as one. What a firewall log wants
-     is what a terminal gives: one line per event, no grid, no hairlines between
-     them, everything in mono at fixed columns so the eye reads down a column
-     without a rule to guide it, on the page's own ground: the sand band of
-     controls over it is the one filled surface, which keeps the log's controls
-     apart from the page's acts above. It fills whatever height the frame gives it and
-     scrolls inside itself, and it runs to the window's right and bottom edges —
-     a log has no natural end, so a margin under it would be a lie.
-
-     Rows arrive from the shell's stream client, which builds them in this same
-     shape; nothing is server-rendered here but the waiting line.
-
-     Every line is a row of one grid (verso-listing.js lays each as a subgrid),
-     so the columns hold down the whole log: the mark in an auto track that
-     takes the line's inset in, the clock, the verdict, the arrow and the
-     protocol at their fixed measures, each end of the path as wide as the
-     longest address the log holds, and the rule taking whatever the window
-     has left — never under 10rem of words (12.75rem with the line's own right
-     inset, which the last track takes in). Nothing on a line is cut short: where the
-     window cannot hold a line whole, an address wraps at its separators and
-     a rule's name at its words, as the system log's message does. */}}
+{{/* A console is not a table and is not drawn as one: the firewall's events
+     are the console block's (blocks/console.css), the same frame the system
+     log and a diagnostics run read in. Rows arrive from the shell's stream
+     client, which builds them as the block's events; nothing is
+     server-rendered here but the waiting line. Nothing on a line is cut
+     short: where the window cannot hold a line whole, an address wraps at
+     its separators and a rule's name at its words, as the system log's
+     message does. */}}
 {{if eq .Style "interfaces"}}
 {{template "table.interfaces" .}}
 {{else if eq .Style "console"}}
-<div class="verso-console -mx-10 flex min-h-0 flex-1 flex-col bg-quiet shadow-(--shadow-edge)"
+<div class="verso-console" data-verso-kind="events"
   data-verso-stream="{{.StreamSource}}" data-verso-stream-ring="{{.StreamRing}}" data-verso-stream-style="console">
-  <div data-verso-console-rows data-scroll="sand" class="verso-drawer-scrollbar min-h-0 flex-1 overflow-y-auto pt-3 pb-6 grid content-start grid-cols-[auto_4.5rem_5.5rem_minmax(min-content,max-content)_1.5rem_minmax(min-content,max-content)_6rem_minmax(12.75rem,1fr)] gap-x-3">
-    <div data-verso-stream-empty class="col-span-full px-11 py-6 text-sm text-meta">{{.EmptyText}}</div>
+  <div data-verso-console-rows data-scroll="sand" class="verso-console__rows verso-drawer-scrollbar">
+    <div data-verso-stream-empty class="verso-console__waiting">{{.EmptyText}}</div>
   </div>
 </div>
 {{else}}

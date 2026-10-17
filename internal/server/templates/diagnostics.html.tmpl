@@ -1,10 +1,10 @@
 <!-- SPDX-License-Identifier: GPL-2.0-only -->
 <!-- SPDX-FileCopyrightText: 2026 Mono Technologies Inc. -->
-<div data-verso-diagnostics class="contents">
+<div data-verso-diagnostics class="verso-console">
   {{/* The run's output fills the sand under the heading as a log does, each
        line as the router wrote it; until something runs, it says so. */}}
-  <div data-verso-diag-output data-scroll="sand" role="log" class="verso-drawer-scrollbar -mx-10 min-h-0 flex-1 overflow-y-auto bg-quiet pt-3 pb-6 shadow-(--shadow-edge)">
-    <p data-verso-diag-empty class="px-10 py-6 text-sm text-meta">{{t "Nothing run yet."}}</p>
+  <div data-verso-diag-output data-scroll="sand" role="log" class="verso-console__rows verso-drawer-scrollbar">
+    <p data-verso-diag-empty class="verso-console__waiting">{{t "Nothing run yet."}}</p>
   </div>
 </div>
 {{/* diagnostics.acts: what to run, on a line of its own under the heading —

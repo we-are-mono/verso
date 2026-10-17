@@ -1,13 +1,13 @@
 <!-- SPDX-License-Identifier: GPL-2.0-only -->
 <!-- SPDX-FileCopyrightText: 2026 Mono Technologies Inc. -->
-<div data-verso-system-log class="contents">
+<div data-verso-system-log class="verso-console">
   {{/* The log runs straight under the heading: what narrows it and what acts
        on it stand on the heading line (logs.acts). What stands between the
        reader and the log — a source that cannot be read — is said on a line
        of its own above it, as the firewall log does. */}}
-  <p data-log-health role="status" hidden class="verso-console-notice -mx-10 border-b border-rule-strong bg-marigold-soft px-10 py-3 text-sm text-marigold-deep"></p>
-  <div data-verso-console-rows data-scroll="sand" class="verso-drawer-scrollbar -mx-10 min-h-0 flex-1 overflow-y-auto bg-quiet pt-3 pb-6 shadow-(--shadow-edge)">
-    <div data-verso-stream-empty class="px-10 py-6 text-sm text-meta">{{t "Waiting for logs…"}}</div>
+  <p data-log-health role="status" hidden class="verso-console__notice"></p>
+  <div data-verso-console-rows data-scroll="sand" class="verso-console__rows verso-drawer-scrollbar">
+    <div data-verso-stream-empty class="verso-console__waiting">{{t "Waiting for logs…"}}</div>
   </div>
 </div>
 {{/* logs.acts: the log's bar, on the heading line — the search first, then its
@@ -17,7 +17,7 @@
      and the live control are the firewall log's own (verso-listing-search,
      actionbar.live), so both logs read alike. */}}
 {{define "logs.acts"}}
-<div data-verso-actionbar="log" class="flex min-w-0 flex-wrap items-center gap-2">
+<div class="verso-actionbar" data-verso-actionbar="log">
   {{template "verso-listing-search" .}}
   <button type="button" data-log-pause title="{{t "Pause"}}" class="verso-button" data-verso-style="secondary">{{template "verso-waiting" ""}}<span data-log-pause-label>{{t "Connecting…"}}</span></button>
   <button type="button" data-log-download class="verso-button" data-verso-style="secondary">{{t "Download"}}</button>

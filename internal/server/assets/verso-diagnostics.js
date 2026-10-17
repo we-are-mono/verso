@@ -78,8 +78,9 @@
   function finish(summary, tone) {
     if (stream) { stream.close(); stream = null; }
     if (summary) {
-      var colour = tone === "danger" ? "text-crimson-deep" : tone === "warning" ? "text-marigold-deep" : "text-meta";
-      show([el("p", "px-10 pt-2 text-sm " + colour, summary)]);
+      var said = el("p", "verso-console__summary", summary);
+      if (tone) said.setAttribute("data-verso-tone", tone);
+      show([said]);
     }
     job = ""; sync();
   }
@@ -90,7 +91,8 @@
       var frame;
       try { frame = JSON.parse(event.data); } catch (_) { return; }
       show((frame.lines || []).map(function (tokens) {
-        var line = el("div", "px-10 font-mono text-base font-medium leading-6 whitespace-pre-wrap wrap-anywhere text-ink");
+        var line = el("div", "verso-console__output");
+        line.setAttribute("data-verso-verbatim", "");
         tokens.forEach(function (token) {
           line.appendChild(token[0] ? el("span", INKS[token[0]], token[1]) : document.createTextNode(token[1]));
         });

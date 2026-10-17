@@ -150,35 +150,52 @@ func TestAConsoleLineIsARowOfItsGrid(t *testing.T) {
 		t.Fatal(err)
 	}
 	js := string(src)
-	start := strings.Index(js, "var CONSOLE = {")
-	if start < 0 {
-		t.Fatal("verso-listing.js has no CONSOLE line shape")
+	build := js[strings.Index(js, "function build(ev)"):]
+	build = build[:strings.Index(build, "\n    }\n")]
+	if !strings.Contains(build, `el("div", "verso-console__event")`) {
+		t.Errorf("a console line is not the console block's event:\n%s", build)
 	}
-	shape := js[start : start+strings.Index(js[start:], "};")]
-	if !strings.Contains(shape, `row: "group col-span-full grid grid-cols-subgrid `) {
-		t.Errorf("a console line is not a row of the console's grid:\n%s", shape)
+	raw, err := os.ReadFile("assets/blocks/console.css")
+	if err != nil {
+		t.Fatal(err)
 	}
-	for _, fixed := range []string{"w-66", "w-18 ", "w-22 ", "w-24 ", "flex-1"} {
-		if strings.Contains(shape, fixed) {
-			t.Errorf("a console column still sizes itself (%q):\n%s", fixed, shape)
+	css := string(raw)
+	event := css[strings.Index(css, ".verso-console__event {"):]
+	event = event[:strings.Index(event, "}")]
+	if !strings.Contains(event, "grid-template-columns: subgrid") || !strings.Contains(event, "grid-column: 1 / -1") {
+		t.Errorf("a console line is not a row of the console's grid:\n%s", event)
+	}
+	// No column of an event sizes itself; the grid gives each its measure.
+	for _, part := range []string{"__time", "__verdict", "__path", "__proto", "__rule"} {
+		at := strings.Index(css, ".verso-console"+part+" {")
+		if at < 0 {
+			continue
+		}
+		rule := css[at : at+strings.Index(css[at:], "}")]
+		if strings.Contains(rule, "width:") && !strings.Contains(rule, "min-width") {
+			t.Errorf("a console column still sizes itself:\n%s", rule)
 		}
 	}
 	// Nothing on a line is cut short, as nothing on the system log's is: an
 	// address shows whole, and a rule's name wraps rather than ending in an
 	// ellipsis.
-	build := js[strings.Index(js, "function build(ev)"):]
-	build = build[:strings.Index(build, "\n    }\n")]
-	if strings.Contains(shape, "truncate") || strings.Contains(build, "truncate") {
-		t.Errorf("a console line cuts a value short:\n%s\n%s", shape, build)
+	for _, part := range []string{"__event", "__path", "__addr", "__rule", "__rule-name"} {
+		at := strings.Index(css, ".verso-console"+part+" {")
+		if at < 0 {
+			continue
+		}
+		if rule := css[at : at+strings.Index(css[at:], "}")]; strings.Contains(rule, "text-overflow") || strings.Contains(rule, "nowrap") {
+			t.Errorf("a console line cuts a value short:\n%s", rule)
+		}
 	}
-	if !strings.Contains(build, "wrap-break-word") {
-		t.Errorf("a rule's name does not wrap:\n%s", build)
+	if name := css[strings.Index(css, ".verso-console__rule-name {"):]; !strings.Contains(name[:strings.Index(name, "}")], "overflow-wrap: break-word") {
+		t.Errorf("a rule's name does not wrap:\n%s", name)
 	}
 	// An address that the window cannot hold whole wraps at its own
 	// separators — a break after each ":" or "." — never mid-group, and a
 	// copy of it is still the plain string.
-	if !strings.Contains(js, `document.createElement("wbr")`) || strings.Contains(shape, "whitespace-nowrap") {
-		t.Errorf("an address cannot wrap at its separators:\n%s", shape)
+	if !strings.Contains(js, `document.createElement("wbr")`) {
+		t.Errorf("an address cannot wrap at its separators:\n%s", build)
 	}
 }
 
@@ -899,7 +916,7 @@ func TestStylesheetKeepsOnePageRhythm(t *testing.T) {
 		".verso-page-body>.verso-stack>*+*{margin-top:calc(var(--spacing) * 10)}",
 		// the listing joins its band, as a log (and its notice) sits flush on its bar
 		".verso-page-body>.verso-stack>[data-verso-actionbar]{margin-bottom:0}",
-		".verso-page-body>.verso-stack>[data-verso-actionbar]+*,.verso-page-body>.verso-stack>.verso-console,.verso-page-body>.verso-stack>.verso-console-notice{margin-top:0}",
+		".verso-page-body>.verso-stack>[data-verso-actionbar]+*,.verso-page-body>.verso-stack>.verso-console{margin-top:0}",
 		".verso-page-body>.verso-stack>section[data-verso-section]:not([data-verso-section=ruled],[data-verso-section=part]){padding-top:0}",
 		"margin-top:var(--verso-step,var(--verso-rhythm,calc(var(--spacing) * 10)))",
 	} {

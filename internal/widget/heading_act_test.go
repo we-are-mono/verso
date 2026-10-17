@@ -172,9 +172,11 @@ func TestControlBandIsTheListingCardsTopStrip(t *testing.T) {
 		t.Errorf("the band sits flush on its listing:\n%s", got)
 	}
 	console := render(t, newRenderer(t), &Table{Style: "console", Stream: &TableStream{Source: StreamSourceFirewallLog}})
-	if !strings.Contains(console, `class="verso-console -mx-10 flex min-h-0 flex-1 flex-col bg-quiet shadow-(--shadow-edge)"`) {
-		t.Errorf("a live log stands on Quiet Sand, a step under its light bar, sunk under it:\n%s", console)
+	if !strings.Contains(console, `<div class="verso-console" data-verso-kind="events"`) {
+		t.Errorf("a live log is the console block:\n%s", console)
 	}
+	declares(t, "console", ".verso-console",
+		"margin-inline: calc(var(--spacing) * -10)", "background-color: var(--color-quiet)", "box-shadow: var(--shadow-edge)")
 }
 
 // TestColumnHeadsAreARow: the heads are one row of the grid — the 12px caps

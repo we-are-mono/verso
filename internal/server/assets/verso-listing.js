@@ -169,34 +169,14 @@ function versoConsole(o) {
   // every line is something that already happened to real traffic, and the
   // loudest of them is the one that vanished without an answer.
   //
-  // The mark down a console line's left edge: the hue at full chroma, which is
-  // what a mark is for.
-  var VERDICT_MARK = { accept: "bg-green", reject: "bg-marigold", drop: "bg-crimson" };
-  var VERDICT_INK = {
-    accept: "text-green-deep",
-    reject: "text-marigold-deep",
-    drop: "text-crimson-deep",
-  };
-  // One console line: a row of the console's one grid (table.html.tmpl), so
-  // the columns hold down the whole log and the eye reads down one without a
-  // rule to guide it. The grid gives each column its measure — an end of the
-  // path as wide as the longest address the log holds, the rule the rest —
-  // and nothing here sizes itself or is cut short: an address shows whole and
-  // a rule's name wraps, as the system log's message does. Everything in mono
-  // at the reading size, because every value on the line is a machine string.
-  var CONSOLE = {
-    row: "group col-span-full grid grid-cols-subgrid cursor-pointer items-stretch py-px pr-11 pl-7.25 leading-6 hover:bg-mid/50",
-    mark: "my-0.5 w-0.75 rounded-full ",
-    time: "font-mono text-base font-medium text-body",
-    verdict: "font-mono text-base font-medium ",
-    path: "flex self-start items-baseline gap-2 font-mono text-base font-medium",
-    arrow: "flex justify-center text-faint",
-    proto: "flex items-baseline gap-1.5 font-mono text-base font-medium text-body",
-    rule: "flex min-w-0 items-baseline gap-2 pr-3",
-    zone: "shrink-0 text-meta",
-    port: "shrink-0 self-baseline-last text-glyph",
-    count: "shrink-0 font-mono text-sm text-meta",
-  };
+  // The tone a verdict wears on its line: its mark at full chroma, which is
+  // what a mark is for, and its words deep (blocks/console.css).
+  var VERDICT_TONE = { accept: "success", reject: "warning", drop: "danger" };
+  // toned sets a part's tone, or leaves it in its ordinary ink.
+  function toned(node, tone) {
+    if (tone) node.setAttribute("data-verso-tone", tone);
+    return node;
+  }
   var TIMES = "×";
   // SAFE_HREF is the whole URL policy for a destination that arrived over the
   // wire: a path inside this app, and demonstrably nothing else. It enforces,
@@ -242,10 +222,10 @@ function versoConsole(o) {
     // Whether the source can be read, and whether events were lost on the way.
     var available = true;
     var lost = false;
-    var health = el("p", "verso-console-notice border-b border-rule-strong bg-marigold-soft px-10 py-3 text-sm text-marigold-deep");
+    var health = el("p", "verso-console__notice");
     health.setAttribute("role", "status");
     health.hidden = true;
-    wrapper.parentNode.insertBefore(health, wrapper);
+    wrapper.insertBefore(health, body);
     function sayHealth() {
       health.hidden = available && !lost;
       health.textContent = available ? T("Some firewall events were lost.") : T("Firewall logs unavailable");
@@ -284,15 +264,15 @@ function versoConsole(o) {
     // step of ink, so the address reads first and the rest sits behind it.
     // An address the column cannot hold wraps at its separators, the zone
     // standing on its first line and the port on its last, after its end.
-    function consoleEnd(zone, addr, port, ink) {
-      var span = el("div", CONSOLE.path);
-      if (zone) span.appendChild(pluckable("from", zone, el("span", CONSOLE.zone, zone)));
+    function consoleEnd(zone, addr, port, tone) {
+      var span = el("div", "verso-console__path");
+      if (zone) span.appendChild(pluckable("from", zone, el("span", "verso-console__zone", zone)));
       if (addr) {
-        var shown = el("span", ink);
+        var shown = toned(el("span", "verso-console__addr"), tone);
         shown.appendChild(separable(addr));
         span.appendChild(pluckable("src", addr, shown));
       }
-      if (port) span.appendChild(el("span", CONSOLE.port, port));
+      if (port) span.appendChild(el("span", "verso-console__port", port));
       return span;
     }
 
@@ -311,17 +291,21 @@ function versoConsole(o) {
       return out;
     }
 
-    // build renders one event as a line of the log: a mark in the verdict's
-    // own hue down the left edge, then the fixed columns. No cells, no borders
-    // — a terminal does not draw a grid around what it prints.
+    // build renders one event as a line of the log (blocks/console.css): a mark
+    // in the verdict's own hue down the left edge, then the fixed columns. No
+    // cells, no borders — a terminal does not draw a grid around what it
+    // prints. Every value on the line is a machine string, so the line reads
+    // verbatim; the rule's name and the count are the page's own words.
     function build(ev) {
-      var row = el("div", CONSOLE.row);
+      var row = el("div", "verso-console__event");
+      row.setAttribute("data-verso-verbatim", "");
       // The cuts the bar above narrows by. The stream says which they are; this
       // only carries them, the way a rendered row carries the same attribute.
       if (ev.tags && ev.tags.length) row.setAttribute("data-verso-tags", ev.tags.join(" "));
-      row.appendChild(el("span", CONSOLE.mark + (VERDICT_MARK[ev.verdict] || "bg-glyph")));
-      row.appendChild(el("div", CONSOLE.time));
-      var verdict = el("div", CONSOLE.verdict + (VERDICT_INK[ev.verdict] || "text-ink"));
+      var tone = VERDICT_TONE[ev.verdict] || "";
+      row.appendChild(toned(el("span", "verso-console__bar"), tone));
+      row.appendChild(el("div", "verso-console__time"));
+      var verdict = toned(el("div", "verso-console__verdict"), tone);
       verdict.appendChild(pluckable("verdict", ev.verdict || "", document.createTextNode(ev.verdict || "")));
       row.appendChild(verdict);
       // Traffic that was stopped is named in the colour of the stopping, so a
@@ -330,19 +314,21 @@ function versoConsole(o) {
       var port = function (p) {
         return p ? ":" + p : "";
       };
-      row.appendChild(consoleEnd(ev.from, ev.src, port(ev.sport), blocked ? VERDICT_INK[ev.verdict] : ""));
-      row.appendChild(el("div", CONSOLE.arrow, "→"));
+      row.appendChild(consoleEnd(ev.from, ev.src, port(ev.sport), blocked ? tone : ""));
+      row.appendChild(el("div", "verso-console__arrow", "→"));
       row.appendChild(consoleEnd(ev.to_zone || (ev.to_kind === "router" ? "router" : ""), ev.to, port(ev.port), ""));
-      row.appendChild(el("div", CONSOLE.proto, ev.proto || ""));
-      var rule = el("div", CONSOLE.rule);
+      row.appendChild(el("div", "verso-console__proto", ev.proto || ""));
+      var rule = el("div", "verso-console__rule");
       if (ev.rule && typeof ev.rule_href === "string" && SAFE_HREF.test(ev.rule_href)) {
-        var link = el("a", "min-w-0 wrap-break-word text-sm text-ink transition-colors hover:text-denim-deep", ev.rule);
+        var link = el("a", "verso-console__rule-name", ev.rule);
         link.setAttribute("href", ev.rule_href);
         rule.appendChild(link);
       } else if (ev.rule) {
-        rule.appendChild(el("span", "min-w-0 wrap-break-word text-sm text-body", ev.rule));
+        rule.appendChild(el("span", "verso-console__rule-name", ev.rule));
       }
-      rule.appendChild(el("span", CONSOLE.count));
+      var count = el("span", "verso-console__count");
+      count.setAttribute("data-verso-figures", "");
+      rule.appendChild(count);
       row.appendChild(rule);
       return row;
     }
@@ -415,21 +401,21 @@ function versoConsole(o) {
         return;
       }
       if (!shelf) {
-        shelf = el("div", "verso-stream-shelf");
+        shelf = el("div", "verso-shelf");
         shelf.setAttribute("data-verso-stream-shelf", "");
         if (wrapper.parentNode) wrapper.parentNode.insertBefore(shelf, wrapper);
       }
       while (shelf.firstChild) shelf.removeChild(shelf.firstChild);
       held.forEach(function (item, index) {
-        var release = el("button", "verso-pluck verso-stream-release");
+        var release = el("button", "verso-pluck verso-shelf__release");
         release.type = "button";
         release.setAttribute("data-verso-stream-release", String(index));
         release.setAttribute("aria-label", T("Remove filter %s").replace("%s", item.value));
         release.appendChild(item.chip.cloneNode(true));
-        release.appendChild(el("span", "verso-stream-release-x", TIMES));
+        release.appendChild(el("span", "verso-shelf__x", TIMES));
         shelf.appendChild(release);
       });
-      var clear = el("button", "verso-pluck text-sm font-medium text-meta hover:text-ink", T("Clear"));
+      var clear = el("button", "verso-pluck verso-shelf__clear", T("Clear"));
       clear.type = "button";
       clear.setAttribute("data-verso-stream-clear", "");
       shelf.appendChild(clear);
@@ -624,17 +610,26 @@ function versoConsole(o) {
       if (seen.has(row.id)) return;
       seen.add(row.id);
       var error = ["emerg", "alert", "crit", "err"].indexOf(row.severity) !== -1;
-      var warning = error || row.severity === "warn";
-      var line = el("div", "grid grid-cols-[0.1875rem_4rem_minmax(0,1fr)_4rem] items-stretch gap-x-3 py-1 pr-10 pl-6.25 leading-6 hover:bg-mid/50 lg:flex lg:py-px");
+      var tone = error ? "danger" : row.severity === "warn" ? "warning" : "";
+      // One entry of the console (blocks/console.css), every part of it a
+      // string the device wrote.
+      var line = el("div", "verso-console__entry");
+      line.setAttribute("data-verso-verbatim", "");
       line.setAttribute("data-log-row", String(row.id));
       line.dataset.logAt = String(row.at);
-      line.appendChild(el("span", "row-span-2 my-0.5 w-0.75 shrink-0 rounded-full " + (error ? "bg-crimson" : warning ? "bg-marigold" : "bg-transparent")));
+      var mark = el("span", "verso-console__bar");
+      if (tone) mark.setAttribute("data-verso-tone", tone);
+      line.appendChild(mark);
       var at = new Date(row.at * 1000);
-      var stamp = el("time", "shrink-0 font-mono lg:w-20 text-base font-medium text-body", versoClock(at));
+      var stamp = el("time", "verso-console__time", versoClock(at));
       stamp.dateTime = at.toISOString(); stamp.title = at.toLocaleString(); line.appendChild(stamp);
-      var origin = el("span", "min-w-0 truncate font-mono lg:w-34 lg:shrink-0 text-base font-medium text-ink", row.source); origin.title = row.source; line.appendChild(origin);
-      line.appendChild(el("span", "w-16 shrink-0 font-mono text-base " + (error ? "font-bold text-crimson-deep" : warning ? "font-medium text-marigold-deep" : "font-medium text-meta"), row.severity));
-      line.appendChild(el("span", "col-span-3 col-start-2 min-w-0 flex-1 wrap-anywhere font-mono text-base font-medium " + (error ? "text-crimson-deep" : "text-ink"), row.message));
+      var origin = el("span", "verso-console__source", row.source); origin.title = row.source; line.appendChild(origin);
+      var level = el("span", "verso-console__level", row.severity);
+      if (tone) level.setAttribute("data-verso-tone", tone);
+      line.appendChild(level);
+      var message = el("span", "verso-console__message", row.message);
+      if (error) message.setAttribute("data-verso-tone", tone);
+      line.appendChild(message);
       line.dataset.logText = at.toISOString() + " " + row.source + " " + row.severity + " " + row.message;
       fragment.appendChild(line);
     });

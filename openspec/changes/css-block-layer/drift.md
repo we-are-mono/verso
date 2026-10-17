@@ -226,3 +226,17 @@ after; the SVG's fills, strokes and LED animations compared directly.
 | a dialog's busy words and the session dialog's words | | 14px on a 1.45 line | the body role |
 | the session-ending dialog | 1 | no motion of its own; its title 16/600 | the dialog kind: it comes and goes as every dialog does; its title the title role |
 | a modal's "link" trigger | | a hand-written ghost link | the button block's quiet act, the subsection act's one dress |
+
+### `console`, `pluck` and `shelf`
+
+| Copies | n | Difference | Became |
+|---|---|---|---|
+| the firewall's events, the system log and a diagnostics run | 3 | three hand-written sand frames: the firewall's a box around its rows, the log's and the run's the rows themselves under a `contents` wrapper | one console block: the frame, its rows and its waiting line; the events kind lays the firewall's grid |
+| the waiting line | 3 | 44px in on the firewall's, 40px on the others | 40px, the console's inset |
+| a source that cannot be read, events lost | 2 | the firewall's notice above its frame, the log's beside its rows, each a hand-written strip | the console's notice, the frame's first line |
+| a console line's parts | | mono 16/500 written out per part, the line itself the page's sans | the value role's verbatim form, set once on the line |
+| a log entry's level, for an error | | 700 | 500, the value role's, its tone carrying the weight |
+| an event's count | | mono 14 | the body role's figures: a count is the page's own words |
+| a line's tones | | three colour maps (bar, ink, summary) | `data-verso-tone` success, warning or danger |
+| a plucked value's × | | 14px on a 1 line | the chip role |
+| the shelf's Clear | | 14/500 utilities | the field-label role |

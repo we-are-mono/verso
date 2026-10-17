@@ -1,0 +1,42 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/* SPDX-FileCopyrightText: 2026 Mono Technologies Inc. */
+
+/*
+ * shelf — what was plucked from a stream, each value wearing the colour it
+ * wore in the stream with a × to let it go, and a way to clear them all. No
+ * filters, no shelf: the row exists only for as long as something is held.
+ *
+ * Elements: __release  one held value, which lets it go when pressed
+ *           __x        its ×
+ *           __clear    let go of everything
+ */
+
+.verso-shelf {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: calc(var(--spacing) * 2);
+  margin-bottom: calc(var(--spacing) * 3);
+}
+
+.verso-shelf__release {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--spacing) * 1.5);
+}
+
+.verso-shelf__x {
+  color: var(--color-glyph);
+  @apply type-chip;
+}
+.verso-shelf__x:is(.verso-shelf__release:hover *) {
+  color: var(--color-ink);
+}
+
+.verso-shelf__clear {
+  color: var(--color-meta);
+  @apply type-field-label;
+}
+.verso-shelf__clear:hover {
+  color: var(--color-ink);
+}
