@@ -23,7 +23,7 @@
   - `@apply` of that utility inside an `@layer components` rule, carrying its nested rule along.
 
   Add throwaway rules, run `make css`, then remove them. Verify: the compiled `verso.css` held all four as written. If not, record the fallback in design.md Decisions 7 and 11.
-- [ ] 1.4 Capture the baseline: snapshots and one screenshot of every reference-set surface at both widths, under `build/layout-baseline/` (gitignored). Verify: one snapshot per surface and width, and a second full run diffs empty.
+- [x] 1.4 Capture the baseline: snapshots and one screenshot of every reference-set surface at both widths, under `build/layout-baseline/` (gitignored). Verify: one snapshot per surface and width, and a second full run diffs empty.
 
 ## 2. Contract and guards
 

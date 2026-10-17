@@ -14,7 +14,8 @@
 // its ?open= links, the sign-in page, the self-contained pages written to
 // build/layout-fixtures, and the interactions scripts/layout-reference.json
 // names (a device's tabs, a confirm, Arrange). Each is recorded at 1440px and
-// at 390px wide.
+// at 390px wide. A live list the reference names under "trim" (the system
+// log) is cut to its first rows before measuring, since its length is live.
 //
 // What a record holds, per element: its border box, margins, paddings,
 // borders, radius, inks, shadow and type (family, size, weight, line height,
@@ -49,7 +50,12 @@ const NOISE = path.join(ROOT, 'build', 'layout', 'noise.json');
 
 // measure runs in the page. It is one synchronous pass, so nothing the page
 // streams in can land between the digits being written and the boxes read.
-function measure() {
+function measure(trims) {
+  for (const { selector, keep } of trims) {
+    for (const list of document.querySelectorAll(selector)) {
+      while (list.children.length > keep) list.lastElementChild.remove();
+    }
+  }
   const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
   for (let n = walker.nextNode(); n; n = walker.nextNode()) {
     const p = n.parentElement;
@@ -74,6 +80,7 @@ function measure() {
     const b = el.getBoundingClientRect();
     const rec = {
       _label: (el.tagName.toLowerCase() + ' ' + (el.getAttribute('class') || '').split(/\s+/).filter((c) => c.startsWith('verso-')).join(' ') + ' ' + (el.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 32)).trim(),
+      _text: [...el.childNodes].some((n) => n.nodeType === 3 && n.data.trim() !== ''),
       box: [r1(b.left + scrollX), r1(b.top + scrollY), r1(b.width), r1(b.height)].join(' '),
     };
     for (const p of props) rec[p] = cs.getPropertyValue(p);
@@ -105,9 +112,9 @@ async function settle(page) {
   await page.waitForTimeout(250);
 }
 
-async function record(page, outDir, name, width) {
+async function record(page, outDir, name, width, trims = []) {
   const file = path.join(outDir, `${slug(name)}@${width}`);
-  const data = await page.evaluate(measure);
+  const data = await page.evaluate(measure, trims);
   fs.writeFileSync(file + '.json', JSON.stringify(data, null, 1));
   await page.screenshot({ path: file + '.png', fullPage: true });
 }
@@ -216,7 +223,7 @@ async function snap(outDir) {
         await page.waitForTimeout(150);
       }
       await settle(page);
-      await record(page, outDir, s.name, w);
+      await record(page, outDir, s.name, w, reference.trim || []);
       for (const step of s.undo || []) {
         await page.click(step, { timeout: 5000 }).catch(() => {});
         await page.waitForTimeout(150);
@@ -239,7 +246,7 @@ function* compare(fromDir, toDir) {
 }
 
 function differs(x, y) {
-  return Object.keys(x).some((p) => p !== '_label' && x[p] !== y[p]);
+  return Object.keys(x).some((p) => !p.startsWith('_') && x[p] !== y[p]);
 }
 
 // noise records what two records of the same app disagree on.
@@ -277,7 +284,7 @@ function diff(fromDir, toDir, limit = 25) {
       if (quiet.has(k)) continue;
       if (!(k in a)) { lines.push(`  + ${b[k]._label}  (${k})`); continue; }
       if (!(k in b)) { lines.push(`  - ${a[k]._label}  (${k})`); continue; }
-      const moved = Object.keys(a[k]).filter((p) => p !== '_label' && a[k][p] !== b[k][p]);
+      const moved = Object.keys(a[k]).filter((p) => !p.startsWith('_') && a[k][p] !== b[k][p]);
       if (!moved.length) continue;
       if (moved.length === 1 && moved[0] === 'box') { shifted++; continue; }
       lines.push(`  ~ ${b[k]._label}  (${k})\n      ` + moved.map((p) => `${p}: ${a[k][p]} -> ${b[k][p]}`).join('\n      '));

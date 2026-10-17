@@ -1,5 +1,9 @@
 {
   "skip": [],
+  "trim": [
+    { "selector": "[data-verso-console-rows]", "keep": 40 },
+    { "selector": "section:has(button[aria-label^=\"Revoke session\"]) tbody", "keep": 2 }
+  ],
   "interactions": [
     { "name": "/devices details", "url": "/devices", "click": ["button[aria-label^=\"Details\"]"] },
     { "name": "/devices reserve", "url": "/devices", "click": ["[data-verso-entity-tab=\"reserve\"]"] },
