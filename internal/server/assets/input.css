@@ -27,6 +27,7 @@
    components layer, so a utility in the markup outranks every block by layer
    order. CSS imports take no glob; TestEveryBlockIsImported fails on a block file
    left off this list, whose rules would otherwise go missing unseen. */
+@import "./blocks/rhythm.css" layer(components);
 
 @source "../templates/*.tmpl";
 @source "../../widget/templates/*.tmpl";
@@ -615,29 +616,6 @@ html {
   .verso-prose ul { list-style: disc; padding-left: 1.25rem; margin: 0 0 0.75rem; }
   .verso-prose ol { list-style: decimal; padding-left: 1.25rem; margin: 0 0 0.75rem; }
   .verso-prose h1, .verso-prose h2, .verso-prose h3 { font-weight: 600; margin: 0 0 0.5rem; }
-
-  /* A container of form contents: blocks stand off from each other, form rows do
-     not. A row already carries its own air — 16px above and below — so two of
-     them sitting flush is what gives a form its rhythm. The 40px that rightly
-     separates a table from a callout would separate every control from the next
-     and turn eight settings into eight islands.
-
-     It is a named rule rather than a utility pair because the two declarations
-     have to resolve in a fixed order, and the attribute selector's specificity
-     is what guarantees the second beats the first whatever Tailwind emits.
-
-     Every container of rows wears it — a section, a folded block, a condition —
-     so a row's spacing is the row's, not its surroundings'. --verso-rhythm is
-     how much air the blocks between them take; the rows themselves take none
-     wherever they are. */
-  .verso-rhythm > * + * { margin-top: var(--verso-rhythm, calc(var(--spacing) * 10)); }
-  .verso-rhythm > :is(.verso-field-row, .verso-form-grid, .verso-field-set, [data-verso-change-field]) + :is(.verso-field-row, .verso-form-grid, .verso-field-set, [data-verso-change-field]) { margin-top: 0; }
-  /* A graph stands a group's step under the field that chooses what it shows
-     ("Show chart for …"): the two are one block. */
-  .verso-rhythm > .verso-field-row + .verso-chart-graph { margin-top: var(--spacing-inset); }
-  /* Hidden carriers are not blocks: the first row after them — the first a
-     reader sees — takes no gap above it. */
-  .verso-rhythm > :not(input[type="hidden"]):not(:not(input[type="hidden"]) ~ *) { margin-top: 0; }
 
   /* The rail beside a long page marks the section you are reading: the words go
      to ink and take on weight, and the hairline the link already carries becomes

@@ -27,6 +27,13 @@ func TestStylesheetGuardsCatchWhatTheyName(t *testing.T) {
 			want:  ".verso-field-row",
 		},
 		{
+			name:  "a block's rule after a glob in a string",
+			guard: rulesLiveInBlocks,
+			bad:   styleSources{css: map[string]string{"input.css": "@source \"../templates/*.tmpl\";\n/* a note */\n.verso-field-row { padding: 0; }"}},
+			good:  styleSources{css: map[string]string{"input.css": "@source \"../templates/*.tmpl\";\nsummary { display: block; }"}},
+			want:  ".verso-field-row",
+		},
+		{
 			name:  "a block rule starting from outside the block",
 			guard: aBlockStartsFromItself,
 			bad:   styleSources{css: map[string]string{"blocks/card.css": ".verso-page-body .verso-card { margin: 0; }"}},
@@ -36,7 +43,7 @@ func TestStylesheetGuardsCatchWhatTheyName(t *testing.T) {
 		{
 			name:  "a block setting another block's declaration",
 			guard: crossBlockRulesSetOnlyProperties,
-			bad:   styleSources{css: map[string]string{"blocks/card.css": ".verso-card__body > .verso-field { margin-inline: -23px; }"}},
+			bad:   styleSources{css: map[string]string{"blocks/card.css": ".verso-card__body > :is(.verso-field, .verso-form) { margin-inline: -23px; }"}},
 			good:  styleSources{css: map[string]string{"blocks/card.css": ".verso-card__body > .verso-field { --verso-field-bleed: 23px; } .verso-card .verso-card__title { color: red; }"}},
 			want:  "margin-inline",
 		},

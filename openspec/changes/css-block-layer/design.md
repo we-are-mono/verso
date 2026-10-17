@@ -136,8 +136,12 @@ The guards live in `internal/server/stylesheet_guards_test.go`. Each is a pure f
   - `padding-top: var(--verso-field-lead, calc(var(--spacing) * 3.75))`.
 - A container's rule sets the property only (`.verso-card__body > … > .verso-field { --verso-field-lead: … }`).
 - Exactly one rule sets each property on a given element, so layer and specificity stop mattering.
-- **Properties don't inherit.** Each property is registered with `@property --verso-field-lead { syntax: "<length>"; inherits: false; initial-value: … }`. A value set on one row never leaks into a row nested inside it.
+- **Two kinds of property.**
+  - A **context** property describes a subtree, and is meant to flow down it as `color` does. `--verso-rhythm` (the step between blocks inside a card, a fold, a condition), `--verso-reach-start` / `--verso-reach-end` and `--verso-side` are set once on a surface and read by every rhythm or rule inside it. They stay unregistered and inherit.
+  - A **knob** describes one element: `--verso-step` (how far this child stands from the one before it in a rhythm), the field row's bleed, lead and trail. The rest of this decision is about knobs.
+- **Knobs don't inherit.** Each knob is registered with `@property --verso-field-lead { syntax: "<length>"; inherits: false; initial-value: … }`. A value set on one row never leaks into a row nested inside it.
   - Where a container hands its edge down to the content that meets it, the handoff is explicit: the card sets `--verso-edge-trail` on its last visible child, and that child's block (a form, a field set, a conditional) forwards it to its own last visible child, down to the row that reads it.
+  - A knob its reader falls back from when nothing sets it (`margin-top: var(--verso-step, var(--verso-rhythm, 2.5rem))`) is registered with `syntax: "*"` and no initial value, so an unset knob is the guaranteed-invalid value and the fallback applies.
   - `@property` is within Tailwind v4's own browser floor (Chrome 111, Safari 16.4, Firefox 128), which Tailwind already uses for its own variables, so the baseline does not move.
 - **Precedent:** `--verso-reach-start` / `--verso-reach-end` and `--verso-rhythm` already work this way.
 - Each block file's header lists the properties it reads, with defaults, and the properties it sets on other blocks.

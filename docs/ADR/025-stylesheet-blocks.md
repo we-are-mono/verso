@@ -52,12 +52,15 @@ of it.**
    may reach inside, never start from an ancestor. A block that adjusts
    another (a card bleeding its rows to its borders, handing its edge to the
    last row) sets only the custom properties the other block exposes; the
-   exposing block reads each with its default. These properties are
-   registered with `@property … inherits: false`, so a value set on one
-   element never reaches a block nested inside it, and where an edge is handed
-   down through containers each container forwards it explicitly. Each block
-   file opens with its elements, variants, the properties it reads and the
-   properties it sets on others.
+   exposing block reads each with its default. A property is one of two
+   kinds. A context property describes a subtree (the step between blocks
+   inside a card, how far a card's rules reach) and inherits, as `color`
+   does. A knob describes one element (how far a child stands from the one
+   before it, a row's bleed) and is registered with `@property … inherits:
+   false`, so a value set on one element never reaches a block nested inside
+   it; where an edge is handed down through containers each container
+   forwards it explicitly. Each block file opens with its elements, variants,
+   the properties it reads and the properties it sets on others.
 
 4. **The shell names roles; the stylesheet does not infer them.** Where a rule
    treats an element by its role (a section rendered as a card, a part, a

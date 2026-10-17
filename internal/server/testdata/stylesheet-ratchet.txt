@@ -9,6 +9,10 @@ classes-are-blocks	verso-busy
 classes-are-blocks	verso-button-waiting
 classes-are-blocks	verso-chart
 classes-are-blocks	verso-chart--
+classes-are-blocks	verso-chart--amethyst
+classes-are-blocks	verso-chart--denim
+classes-are-blocks	verso-chart--emerald
+classes-are-blocks	verso-chart--violet
 classes-are-blocks	verso-chart-area
 classes-are-blocks	verso-chart-axis
 classes-are-blocks	verso-chart-figure
@@ -23,12 +27,19 @@ classes-are-blocks	verso-chart-legend-series
 classes-are-blocks	verso-chart-line
 classes-are-blocks	verso-chart-mark--
 classes-are-blocks	verso-chart-mark--boot
+classes-are-blocks	verso-chart-mark--loss
+classes-are-blocks	verso-chart-mark--outage
 classes-are-blocks	verso-chart-peak
 classes-are-blocks	verso-chart-peak--
+classes-are-blocks	verso-chart-peak--amethyst
+classes-are-blocks	verso-chart-peak--denim
+classes-are-blocks	verso-chart-peak--emerald
+classes-are-blocks	verso-chart-peak--violet
 classes-are-blocks	verso-chart-plot
 classes-are-blocks	verso-chart-series
 classes-are-blocks	verso-chart-tick
 classes-are-blocks	verso-chart-yl
+classes-are-blocks	verso-chevron
 classes-are-blocks	verso-chip
 classes-are-blocks	verso-collection
 classes-are-blocks	verso-colophon-fact
@@ -46,6 +57,8 @@ classes-are-blocks	verso-console-notice
 classes-are-blocks	verso-copy-inline
 classes-are-blocks	verso-disclosure
 classes-are-blocks	verso-drawer
+classes-are-blocks	verso-drawer-motion
+classes-are-blocks	verso-drawer-open
 classes-are-blocks	verso-drawer-scrollbar
 classes-are-blocks	verso-empty-icon
 classes-are-blocks	verso-empty-icon--success
@@ -66,6 +79,7 @@ classes-are-blocks	verso-form
 classes-are-blocks	verso-form-grid
 classes-are-blocks	verso-form-grid-fields
 classes-are-blocks	verso-glyph-`)
+classes-are-blocks	verso-glyph-fan-spin
 classes-are-blocks	verso-inline-switch
 classes-are-blocks	verso-inline-switch-off
 classes-are-blocks	verso-inline-switch-on
@@ -80,6 +94,24 @@ classes-are-blocks	verso-menu-button
 classes-are-blocks	verso-meter-bar
 classes-are-blocks	verso-modal
 classes-are-blocks	verso-modal-motion
+classes-are-blocks	verso-narrow-10
+classes-are-blocks	verso-narrow-11
+classes-are-blocks	verso-narrow-12
+classes-are-blocks	verso-narrow-13
+classes-are-blocks	verso-narrow-14
+classes-are-blocks	verso-narrow-15
+classes-are-blocks	verso-narrow-16
+classes-are-blocks	verso-narrow-2
+classes-are-blocks	verso-narrow-3
+classes-are-blocks	verso-narrow-4
+classes-are-blocks	verso-narrow-5
+classes-are-blocks	verso-narrow-6
+classes-are-blocks	verso-narrow-7
+classes-are-blocks	verso-narrow-8
+classes-are-blocks	verso-narrow-9
+classes-are-blocks	verso-nav-branch
+classes-are-blocks	verso-nav-row
+classes-are-blocks	verso-nav-sub
 classes-are-blocks	verso-outcome
 classes-are-blocks	verso-overview
 classes-are-blocks	verso-overview-body
@@ -112,10 +144,15 @@ classes-are-blocks	verso-port-speed
 classes-are-blocks	verso-port-tip
 classes-are-blocks	verso-ports
 classes-are-blocks	verso-ports--
+classes-are-blocks	verso-ports--amber
+classes-are-blocks	verso-ports--emerald
+classes-are-blocks	verso-ports--sky
+classes-are-blocks	verso-ports--violet
 classes-are-blocks	verso-ports-dot
 classes-are-blocks	verso-ports-key
 classes-are-blocks	verso-ports-legend
 classes-are-blocks	verso-ports-name
+classes-are-blocks	verso-press
 classes-are-blocks	verso-preview-busy
 classes-are-blocks	verso-prose
 classes-are-blocks	verso-rail-link
@@ -124,7 +161,6 @@ classes-are-blocks	verso-reorder-placeholder
 classes-are-blocks	verso-reordering
 classes-are-blocks	verso-reveal
 classes-are-blocks	verso-reveal-act
-classes-are-blocks	verso-rhythm
 classes-are-blocks	verso-row-name
 classes-are-blocks	verso-scroll-edge
 classes-are-blocks	verso-stack
@@ -132,6 +168,8 @@ classes-are-blocks	verso-staged-bar
 classes-are-blocks	verso-step
 classes-are-blocks	verso-step-mark
 classes-are-blocks	verso-stream-release
+classes-are-blocks	verso-stream-release-x
+classes-are-blocks	verso-stream-shelf
 classes-are-blocks	verso-switch-off
 classes-are-blocks	verso-switch-on
 classes-are-blocks	verso-switch-word
@@ -480,7 +518,355 @@ rules-live-in-blocks	forms.css	fieldset[data-verso-when] + .verso-field-row
 rules-live-in-blocks	forms.css	fieldset[data-verso-when]:has(~ :is(.verso-field-row, .verso-conditional, .verso-field-set, [data-verso-rows])) > .verso-field-row:last-child
 rules-live-in-blocks	forms.css	label:has(input:checked) > .verso-switch-word > .verso-switch-off
 rules-live-in-blocks	forms.css	label:not(:has(input:checked)) > .verso-switch-word > .verso-switch-on
+rules-live-in-blocks	input.css	.verso-arrived
+rules-live-in-blocks	input.css	.verso-chart--amethyst .verso-chart-fill-0
+rules-live-in-blocks	input.css	.verso-chart--amethyst .verso-chart-fill-1
+rules-live-in-blocks	input.css	.verso-chart--amethyst .verso-chart-line
+rules-live-in-blocks	input.css	.verso-chart--denim .verso-chart-fill-0
+rules-live-in-blocks	input.css	.verso-chart--denim .verso-chart-fill-1
+rules-live-in-blocks	input.css	.verso-chart--denim .verso-chart-line
+rules-live-in-blocks	input.css	.verso-chart--emerald .verso-chart-fill-0
+rules-live-in-blocks	input.css	.verso-chart--emerald .verso-chart-fill-1
+rules-live-in-blocks	input.css	.verso-chart--emerald .verso-chart-line
+rules-live-in-blocks	input.css	.verso-chart--violet .verso-chart-fill-0
+rules-live-in-blocks	input.css	.verso-chart--violet .verso-chart-fill-1
+rules-live-in-blocks	input.css	.verso-chart--violet .verso-chart-line
+rules-live-in-blocks	input.css	.verso-chart-area
+rules-live-in-blocks	input.css	.verso-chart-axis
+rules-live-in-blocks	input.css	.verso-chart-figure
+rules-live-in-blocks	input.css	.verso-chart-frame
+rules-live-in-blocks	input.css	.verso-chart-graph
+rules-live-in-blocks	input.css	.verso-chart-graph:not([data-chart-axis]) .verso-chart-axis[data-chart-axis-first]
+rules-live-in-blocks	input.css	.verso-chart-graph[data-chart-axis="3"] .verso-chart-axis[data-chart-axis="3"]
+rules-live-in-blocks	input.css	.verso-chart-graph[data-chart-axis="4"] .verso-chart-axis[data-chart-axis="4"]
+rules-live-in-blocks	input.css	.verso-chart-graph[data-chart-axis="6"] .verso-chart-axis[data-chart-axis="6"]
+rules-live-in-blocks	input.css	.verso-chart-graph[data-chart-axis]
+rules-live-in-blocks	input.css	.verso-chart-graph[data-chart-place="compact"]
+rules-live-in-blocks	input.css	.verso-chart-head
+rules-live-in-blocks	input.css	.verso-chart-head
+rules-live-in-blocks	input.css	.verso-chart-legend
+rules-live-in-blocks	input.css	.verso-chart-legend-peak
+rules-live-in-blocks	input.css	.verso-chart-legend-peak
+rules-live-in-blocks	input.css	.verso-chart-legend-series
+rules-live-in-blocks	input.css	.verso-chart-line
+rules-live-in-blocks	input.css	.verso-chart-mark--boot
+rules-live-in-blocks	input.css	.verso-chart-mark--loss
+rules-live-in-blocks	input.css	.verso-chart-mark--outage
+rules-live-in-blocks	input.css	.verso-chart-peak
+rules-live-in-blocks	input.css	.verso-chart-peak--amethyst
+rules-live-in-blocks	input.css	.verso-chart-peak--denim
+rules-live-in-blocks	input.css	.verso-chart-peak--emerald
+rules-live-in-blocks	input.css	.verso-chart-peak--violet
+rules-live-in-blocks	input.css	.verso-chart-plot
+rules-live-in-blocks	input.css	.verso-chart-plot > svg
+rules-live-in-blocks	input.css	.verso-chart-tick
+rules-live-in-blocks	input.css	.verso-chart-tick[data-align="center"]
+rules-live-in-blocks	input.css	.verso-chart-tick[data-align="end"]
+rules-live-in-blocks	input.css	.verso-chart-yl
+rules-live-in-blocks	input.css	.verso-chevron
+rules-live-in-blocks	input.css	.verso-colophon-fact
+rules-live-in-blocks	input.css	.verso-conditional-body
+rules-live-in-blocks	input.css	.verso-conditional-otherwise
+rules-live-in-blocks	input.css	.verso-conditional:has(> .verso-conditional-gate input[data-verso-switch]:checked) > .verso-conditional-body
+rules-live-in-blocks	input.css	.verso-conditional:has(> .verso-conditional-gate input[data-verso-switch]:checked) > .verso-conditional-otherwise
+rules-live-in-blocks	input.css	.verso-copy-inline
+rules-live-in-blocks	input.css	.verso-drawer
+rules-live-in-blocks	input.css	.verso-drawer
+rules-live-in-blocks	input.css	.verso-drawer
+rules-live-in-blocks	input.css	.verso-drawer-motion
+rules-live-in-blocks	input.css	.verso-drawer-motion[data-closing]
+rules-live-in-blocks	input.css	.verso-drawer-motion[open]
+rules-live-in-blocks	input.css	.verso-drawer-scrollbar
+rules-live-in-blocks	input.css	.verso-drawer-scrollbar::-webkit-scrollbar
+rules-live-in-blocks	input.css	.verso-drawer-scrollbar::-webkit-scrollbar-thumb
+rules-live-in-blocks	input.css	.verso-drawer-scrollbar::-webkit-scrollbar-thumb:hover
+rules-live-in-blocks	input.css	.verso-drawer-scrollbar::-webkit-scrollbar-track
+rules-live-in-blocks	input.css	.verso-drawer.verso-drawer-open
+rules-live-in-blocks	input.css	.verso-empty-icon
+rules-live-in-blocks	input.css	.verso-empty-icon--success
+rules-live-in-blocks	input.css	.verso-empty-icon::after
+rules-live-in-blocks	input.css	.verso-empty-icon::after
+rules-live-in-blocks	input.css	.verso-glyph-fan-spin
+rules-live-in-blocks	input.css	.verso-glyph-fan-spin
+rules-live-in-blocks	input.css	.verso-inline-switch-off
+rules-live-in-blocks	input.css	.verso-inline-switch-on
+rules-live-in-blocks	input.css	.verso-inline-switch:has(input[data-verso-switch]:checked) .verso-inline-switch-off
+rules-live-in-blocks	input.css	.verso-inline-switch:has(input[data-verso-switch]:checked) .verso-inline-switch-on
+rules-live-in-blocks	input.css	.verso-kicker
+rules-live-in-blocks	input.css	.verso-lede
+rules-live-in-blocks	input.css	.verso-lede
+rules-live-in-blocks	input.css	.verso-live-dot
+rules-live-in-blocks	input.css	.verso-live-dot::after
+rules-live-in-blocks	input.css	.verso-live-dot::after
+rules-live-in-blocks	input.css	.verso-menu-button:not([data-count="0"])
+rules-live-in-blocks	input.css	.verso-meter-bar
+rules-live-in-blocks	input.css	.verso-meter-bar
+rules-live-in-blocks	input.css	.verso-modal
+rules-live-in-blocks	input.css	.verso-modal-motion
+rules-live-in-blocks	input.css	.verso-modal-motion[data-closing]
+rules-live-in-blocks	input.css	.verso-modal-motion[open]
+rules-live-in-blocks	input.css	.verso-modal::backdrop
+rules-live-in-blocks	input.css	.verso-narrow-10 > :is(thead, tbody) > tr > :nth-child(10)
+rules-live-in-blocks	input.css	.verso-narrow-10 > colgroup > col:nth-child(10)
+rules-live-in-blocks	input.css	.verso-narrow-11 > :is(thead, tbody) > tr > :nth-child(11)
+rules-live-in-blocks	input.css	.verso-narrow-11 > colgroup > col:nth-child(11)
+rules-live-in-blocks	input.css	.verso-narrow-12 > :is(thead, tbody) > tr > :nth-child(12)
+rules-live-in-blocks	input.css	.verso-narrow-12 > colgroup > col:nth-child(12)
+rules-live-in-blocks	input.css	.verso-narrow-13 > :is(thead, tbody) > tr > :nth-child(13)
+rules-live-in-blocks	input.css	.verso-narrow-13 > colgroup > col:nth-child(13)
+rules-live-in-blocks	input.css	.verso-narrow-14 > :is(thead, tbody) > tr > :nth-child(14)
+rules-live-in-blocks	input.css	.verso-narrow-14 > colgroup > col:nth-child(14)
+rules-live-in-blocks	input.css	.verso-narrow-15 > :is(thead, tbody) > tr > :nth-child(15)
+rules-live-in-blocks	input.css	.verso-narrow-15 > colgroup > col:nth-child(15)
+rules-live-in-blocks	input.css	.verso-narrow-16 > :is(thead, tbody) > tr > :nth-child(16)
+rules-live-in-blocks	input.css	.verso-narrow-16 > colgroup > col:nth-child(16)
+rules-live-in-blocks	input.css	.verso-narrow-2 > :is(thead, tbody) > tr > :nth-child(2)
+rules-live-in-blocks	input.css	.verso-narrow-2 > colgroup > col:nth-child(2)
+rules-live-in-blocks	input.css	.verso-narrow-3 > :is(thead, tbody) > tr > :nth-child(3)
+rules-live-in-blocks	input.css	.verso-narrow-3 > colgroup > col:nth-child(3)
+rules-live-in-blocks	input.css	.verso-narrow-4 > :is(thead, tbody) > tr > :nth-child(4)
+rules-live-in-blocks	input.css	.verso-narrow-4 > colgroup > col:nth-child(4)
+rules-live-in-blocks	input.css	.verso-narrow-5 > :is(thead, tbody) > tr > :nth-child(5)
+rules-live-in-blocks	input.css	.verso-narrow-5 > colgroup > col:nth-child(5)
+rules-live-in-blocks	input.css	.verso-narrow-6 > :is(thead, tbody) > tr > :nth-child(6)
+rules-live-in-blocks	input.css	.verso-narrow-6 > colgroup > col:nth-child(6)
+rules-live-in-blocks	input.css	.verso-narrow-7 > :is(thead, tbody) > tr > :nth-child(7)
+rules-live-in-blocks	input.css	.verso-narrow-7 > colgroup > col:nth-child(7)
+rules-live-in-blocks	input.css	.verso-narrow-8 > :is(thead, tbody) > tr > :nth-child(8)
+rules-live-in-blocks	input.css	.verso-narrow-8 > colgroup > col:nth-child(8)
+rules-live-in-blocks	input.css	.verso-narrow-9 > :is(thead, tbody) > tr > :nth-child(9)
+rules-live-in-blocks	input.css	.verso-narrow-9 > colgroup > col:nth-child(9)
+rules-live-in-blocks	input.css	.verso-outcome
+rules-live-in-blocks	input.css	.verso-outcome
+rules-live-in-blocks	input.css	.verso-outcome.is-shown
+rules-live-in-blocks	input.css	.verso-overview
+rules-live-in-blocks	input.css	.verso-overview > .verso-overview-cols:has(> [data-overview-col])
+rules-live-in-blocks	input.css	.verso-overview-body
+rules-live-in-blocks	input.css	.verso-overview-body
+rules-live-in-blocks	input.css	.verso-overview-card table :is(th, td):nth-child(3)
+rules-live-in-blocks	input.css	.verso-overview-card table :is(th, td):nth-child(4)
+rules-live-in-blocks	input.css	.verso-overview-card[data-lifted]
+rules-live-in-blocks	input.css	.verso-overview-chevron
+rules-live-in-blocks	input.css	.verso-overview-chevron
+rules-live-in-blocks	input.css	.verso-overview-col
+rules-live-in-blocks	input.css	.verso-overview-cols
+rules-live-in-blocks	input.css	.verso-overview-cols
+rules-live-in-blocks	input.css	.verso-overview-content > [data-verso-listing]:first-child thead th
+rules-live-in-blocks	input.css	.verso-overview-content > div:first-child > div:first-child > dl:first-child > div:first-child
+rules-live-in-blocks	input.css	.verso-overview-content > div:first-child > section:first-child > :first-child
+rules-live-in-blocks	input.css	.verso-overview-content > div:last-child > section:last-child > dl:last-child > div:last-child
+rules-live-in-blocks	input.css	.verso-overview-content > div:last-child > section:last-child > dl:last-child > div:last-child
+rules-live-in-blocks	input.css	.verso-overview-content > dl:first-child > div:first-child
+rules-live-in-blocks	input.css	.verso-overview-content > dl:last-child > div:last-child
+rules-live-in-blocks	input.css	.verso-overview-content > dl:last-child > div:last-child
+rules-live-in-blocks	input.css	.verso-overview-content [data-verso-listing-empty]
+rules-live-in-blocks	input.css	.verso-overview-content [data-verso-listing-empty]
+rules-live-in-blocks	input.css	.verso-overview-content [data-verso-listing] :is(td, th):first-of-type
+rules-live-in-blocks	input.css	.verso-overview-content [data-verso-listing] :is(td, th):last-of-type
+rules-live-in-blocks	input.css	.verso-overview-content tbody > tr:last-child > td
+rules-live-in-blocks	input.css	.verso-overview-content thead th
+rules-live-in-blocks	input.css	.verso-overview-dragging
+rules-live-in-blocks	input.css	.verso-overview-dragging *
+rules-live-in-blocks	input.css	.verso-overview-meters > * + *
+rules-live-in-blocks	input.css	.verso-overview-meters > :nth-child(2)
+rules-live-in-blocks	input.css	.verso-overview-meters > :nth-child(2n + 3)::before
+rules-live-in-blocks	input.css	.verso-overview-slot
+rules-live-in-blocks	input.css	.verso-overview-summary
+rules-live-in-blocks	input.css	.verso-overview-summary
+rules-live-in-blocks	input.css	.verso-page-body > .verso-stack > * + *
+rules-live-in-blocks	input.css	.verso-page-body > .verso-stack > .verso-console
+rules-live-in-blocks	input.css	.verso-page-body > .verso-stack > .verso-console-notice
+rules-live-in-blocks	input.css	.verso-page-body > .verso-stack > [data-verso-actionbar]
+rules-live-in-blocks	input.css	.verso-page-body > .verso-stack > [data-verso-actionbar] + *
+rules-live-in-blocks	input.css	.verso-page-full
+rules-live-in-blocks	input.css	.verso-page-full > .verso-page-body
+rules-live-in-blocks	input.css	.verso-page-full > .verso-page-body > *
+rules-live-in-blocks	input.css	.verso-page-ground
+rules-live-in-blocks	input.css	.verso-page-heading
+rules-live-in-blocks	input.css	.verso-panel-art
+rules-live-in-blocks	input.css	.verso-panel-art .act-1
+rules-live-in-blocks	input.css	.verso-panel-art .act-2
+rules-live-in-blocks	input.css	.verso-panel-art .act-3
+rules-live-in-blocks	input.css	.verso-panel-art .act-4
+rules-live-in-blocks	input.css	.verso-panel-art .verso-port-role
+rules-live-in-blocks	input.css	.verso-panel-art [data-verso-port]
+rules-live-in-blocks	input.css	.verso-panel-art [data-verso-port].is-linked .led-link
+rules-live-in-blocks	input.css	.verso-panel-art [data-verso-port].is-wan > path
+rules-live-in-blocks	input.css	.verso-panel-art [data-verso-port]:focus-visible > path
+rules-live-in-blocks	input.css	.verso-panel-art [data-verso-port]:is(.act-1, .act-2, .act-3, .act-4) .led-traffic
+rules-live-in-blocks	input.css	.verso-panel-art [data-verso-port]:is(.act-1, .act-2, .act-3, .act-4) .led-traffic
+rules-live-in-blocks	input.css	.verso-panel-face svg
+rules-live-in-blocks	input.css	.verso-panel-generated .verso-panel-chassis
+rules-live-in-blocks	input.css	.verso-panel-generated .verso-port-body
+rules-live-in-blocks	input.css	.verso-panel-generated .verso-port-label
+rules-live-in-blocks	input.css	.verso-panel-generated .verso-port-mouth
+rules-live-in-blocks	input.css	.verso-panel-generated .verso-port-pins
+rules-live-in-blocks	input.css	.verso-panel-generated .verso-port-role
+rules-live-in-blocks	input.css	.verso-panel-generated .verso-port-slit
+rules-live-in-blocks	input.css	.verso-panel-generated .verso-port-socket
+rules-live-in-blocks	input.css	.verso-panel-generated .verso-port-speed
+rules-live-in-blocks	input.css	.verso-panel-generated :is(.led-link, .led-traffic)
+rules-live-in-blocks	input.css	.verso-panel-generated :is(.verso-port-label, .verso-port-speed)
+rules-live-in-blocks	input.css	.verso-panel-generated [data-verso-port].is-wan > path
+rules-live-in-blocks	input.css	.verso-pending-link[aria-current="page"]
+rules-live-in-blocks	input.css	.verso-pluck
+rules-live-in-blocks	input.css	.verso-pluck
+rules-live-in-blocks	input.css	.verso-pluck:focus-visible
+rules-live-in-blocks	input.css	.verso-pluck:hover
+rules-live-in-blocks	input.css	.verso-port-tip
+rules-live-in-blocks	input.css	.verso-port-tip
+rules-live-in-blocks	input.css	.verso-port-tip .r
+rules-live-in-blocks	input.css	.verso-port-tip .r .k
+rules-live-in-blocks	input.css	.verso-port-tip .role
+rules-live-in-blocks	input.css	.verso-port-tip b
+rules-live-in-blocks	input.css	.verso-port-tip::after
+rules-live-in-blocks	input.css	.verso-port-tip[data-below]::after
+rules-live-in-blocks	input.css	.verso-ports--amber .verso-ports-name
+rules-live-in-blocks	input.css	.verso-ports--emerald .verso-ports-name
+rules-live-in-blocks	input.css	.verso-ports--sky .verso-ports-name
+rules-live-in-blocks	input.css	.verso-ports--violet .verso-ports-name
+rules-live-in-blocks	input.css	.verso-ports-dot
+rules-live-in-blocks	input.css	.verso-ports-dot.act
+rules-live-in-blocks	input.css	.verso-ports-dot.on
+rules-live-in-blocks	input.css	.verso-ports-key
+rules-live-in-blocks	input.css	.verso-ports-legend
+rules-live-in-blocks	input.css	.verso-ports-name
+rules-live-in-blocks	input.css	.verso-prose > :last-child
+rules-live-in-blocks	input.css	.verso-prose a
+rules-live-in-blocks	input.css	.verso-prose code
+rules-live-in-blocks	input.css	.verso-prose h1
+rules-live-in-blocks	input.css	.verso-prose h2
+rules-live-in-blocks	input.css	.verso-prose h3
+rules-live-in-blocks	input.css	.verso-prose ol
+rules-live-in-blocks	input.css	.verso-prose p
+rules-live-in-blocks	input.css	.verso-prose ul
+rules-live-in-blocks	input.css	.verso-rail-link
+rules-live-in-blocks	input.css	.verso-rail-link:hover
+rules-live-in-blocks	input.css	.verso-rail-link[aria-current="true"]
+rules-live-in-blocks	input.css	.verso-row-name
+rules-live-in-blocks	input.css	.verso-scroll-edge
+rules-live-in-blocks	input.css	.verso-step
+rules-live-in-blocks	input.css	.verso-step
+rules-live-in-blocks	input.css	.verso-step + .verso-step::before
+rules-live-in-blocks	input.css	.verso-step-mark
+rules-live-in-blocks	input.css	.verso-step-mark
+rules-live-in-blocks	input.css	.verso-step[data-state="current"]
+rules-live-in-blocks	input.css	.verso-step[data-state="current"] .verso-step-mark
+rules-live-in-blocks	input.css	.verso-step[data-state="done"]
+rules-live-in-blocks	input.css	.verso-step[data-state="done"] .verso-step-mark
+rules-live-in-blocks	input.css	.verso-stream-release
+rules-live-in-blocks	input.css	.verso-stream-release-x
+rules-live-in-blocks	input.css	.verso-stream-release:hover .verso-stream-release-x
+rules-live-in-blocks	input.css	.verso-stream-shelf
+rules-live-in-blocks	input.css	.verso-table :is(td, th) :not(.verso-chip, .verso-chip *, [class*="leading-"])
+rules-live-in-blocks	input.css	.verso-table > colgroup > col
+rules-live-in-blocks	input.css	.verso-table > tbody > tr > td:has(.verso-row-name)
+rules-live-in-blocks	input.css	.verso-table td .truncate:has(> .verso-row-name)
+rules-live-in-blocks	input.css	.verso-table td .verso-row-name.flex
+rules-live-in-blocks	input.css	.verso-table td .verso-row-name.flex > *
+rules-live-in-blocks	input.css	.verso-table td :has(> .truncate > .verso-row-name)
+rules-live-in-blocks	input.css	.verso-table-seam-row
+rules-live-in-blocks	input.css	.verso-unfold
+rules-live-in-blocks	input.css	.verso-unfold
+rules-live-in-blocks	input.css	.verso-unfold > *
+rules-live-in-blocks	input.css	.verso-vt
+rules-live-in-blocks	input.css	::view-transition-new(.verso-nav-branch):only-child
+rules-live-in-blocks	input.css	::view-transition-new(.verso-nav-row)
+rules-live-in-blocks	input.css	::view-transition-new(.verso-nav-sub):only-child
+rules-live-in-blocks	input.css	::view-transition-new(.verso-nav-sub-1):only-child
+rules-live-in-blocks	input.css	::view-transition-new(.verso-nav-sub-10):only-child
+rules-live-in-blocks	input.css	::view-transition-new(.verso-nav-sub-11):only-child
+rules-live-in-blocks	input.css	::view-transition-new(.verso-nav-sub-2):only-child
+rules-live-in-blocks	input.css	::view-transition-new(.verso-nav-sub-3):only-child
+rules-live-in-blocks	input.css	::view-transition-new(.verso-nav-sub-4):only-child
+rules-live-in-blocks	input.css	::view-transition-new(.verso-nav-sub-5):only-child
+rules-live-in-blocks	input.css	::view-transition-new(.verso-nav-sub-6):only-child
+rules-live-in-blocks	input.css	::view-transition-new(.verso-nav-sub-7):only-child
+rules-live-in-blocks	input.css	::view-transition-new(.verso-nav-sub-8):only-child
+rules-live-in-blocks	input.css	::view-transition-new(.verso-nav-sub-9):only-child
+rules-live-in-blocks	input.css	::view-transition-old(.verso-nav-branch):only-child
+rules-live-in-blocks	input.css	::view-transition-old(.verso-nav-row)
+rules-live-in-blocks	input.css	::view-transition-old(.verso-nav-sub):only-child
+rules-live-in-blocks	input.css	:has(> [data-verso-rail-link])
+rules-live-in-blocks	input.css	:is(.h-control, .verso-box, [data-verso-token-list])
+rules-live-in-blocks	input.css	:is(.verso-modal-motion, .verso-drawer-motion)::backdrop
+rules-live-in-blocks	input.css	:is(.verso-modal-motion, .verso-drawer-motion)[data-closing]::backdrop
+rules-live-in-blocks	input.css	:is(.verso-modal-motion, .verso-drawer-motion)[open]::backdrop
+rules-live-in-blocks	input.css	:is([data-verso-callout], [data-verso-slot])
+rules-live-in-blocks	input.css	:is(button, input[type="button"], input[type="submit"], input[type="reset"], [role="button"], .verso-press):not(:disabled, [aria-disabled="true"], [aria-busy="true"]):active
 rules-live-in-blocks	input.css	:root[data-verso-grid] [data-verso-drawer-body]
+rules-live-in-blocks	input.css	:root[data-verso-grid] main
+rules-live-in-blocks	input.css	:root[data-verso-grid] main::after
+rules-live-in-blocks	input.css	:where(.verso-table)
+rules-live-in-blocks	input.css	:where(.verso-table) :where(td, th)
+rules-live-in-blocks	input.css	[data-arranging] .verso-overview-col
+rules-live-in-blocks	input.css	[data-arranging] .verso-overview-col::before
+rules-live-in-blocks	input.css	[data-closed] .verso-overview-chevron
+rules-live-in-blocks	input.css	[data-closed] .verso-overview-summary
+rules-live-in-blocks	input.css	[data-closed] > .verso-overview-body
+rules-live-in-blocks	input.css	[data-closed] > .verso-overview-body > div > div
+rules-live-in-blocks	input.css	[data-closed] > .verso-overview-body > div > div
+rules-live-in-blocks	input.css	[data-copied] .verso-colophon-fact
+rules-live-in-blocks	input.css	[data-copied] .verso-colophon-fact
+rules-live-in-blocks	input.css	[data-verso-callout-acts] a
+rules-live-in-blocks	input.css	[data-verso-callout-acts] a svg
+rules-live-in-blocks	input.css	[data-verso-callout-acts] a:hover
+rules-live-in-blocks	input.css	[data-verso-callout] p a
+rules-live-in-blocks	input.css	[data-verso-callout] p a:hover
+rules-live-in-blocks	input.css	[data-verso-colophon] > div
+rules-live-in-blocks	input.css	[data-verso-diag-form][data-verso-diag-picked] [data-verso-diag-glyph]
+rules-live-in-blocks	input.css	[data-verso-expanded-row][data-verso-open] .verso-unfold
+rules-live-in-blocks	input.css	[data-verso-expanded-row][data-verso-settled] .verso-unfold > *
+rules-live-in-blocks	input.css	[data-verso-expanded-row][data-verso-still] .verso-unfold
+rules-live-in-blocks	input.css	[data-verso-expanded-row][data-verso-unfolding] [data-verso-ledger] > [aria-hidden]
+rules-live-in-blocks	input.css	[data-verso-expanded-row][data-verso-unfolding] [data-verso-ledger] > [aria-hidden]
+rules-live-in-blocks	input.css	[data-verso-expanded-row][data-verso-unfolding] [data-verso-rise]
+rules-live-in-blocks	input.css	[data-verso-expanded-row][data-verso-unfolding] [data-verso-rise]
+rules-live-in-blocks	input.css	[data-verso-ink="danger"]
+rules-live-in-blocks	input.css	[data-verso-ink="success"]
+rules-live-in-blocks	input.css	[data-verso-ink="warning"]
+rules-live-in-blocks	input.css	[data-verso-ink]
+rules-live-in-blocks	input.css	[data-verso-ink]
+rules-live-in-blocks	input.css	[data-verso-off] .verso-row-name
+rules-live-in-blocks	input.css	[data-verso-off] .verso-row-name::after
+rules-live-in-blocks	input.css	[data-verso-off] :has(> .verso-row-name)
+rules-live-in-blocks	input.css	[data-verso-preview]
+rules-live-in-blocks	input.css	[data-verso-preview]
+rules-live-in-blocks	input.css	[data-verso-preview].verso-preview-busy
+rules-live-in-blocks	input.css	[data-verso-scroller]:not([data-verso-fits]) .verso-table > tbody > tr:first-child .group\/act > span.bottom-full
+rules-live-in-blocks	input.css	[data-verso-scroller][data-verso-fits]
+rules-live-in-blocks	input.css	[data-verso-section-lede]
+rules-live-in-blocks	input.css	[data-verso-section-lede]
+rules-live-in-blocks	input.css	[data-verso-section-lede] *
+rules-live-in-blocks	input.css	[data-verso-section-lede] p:last-child
+rules-live-in-blocks	input.css	[data-verso-section-lede] p:not(:last-child)
+rules-live-in-blocks	input.css	[data-verso-session] > div
+rules-live-in-blocks	input.css	[data-verso-tip-below] > [role="tooltip"]
+rules-live-in-blocks	input.css	[data-verso-tip-below] > [role="tooltip"]::before
+rules-live-in-blocks	input.css	[data-verso-tip-dismissed] > [role="tooltip"]
+rules-live-in-blocks	input.css	[data-verso-tip] > [role="tooltip"]
+rules-live-in-blocks	input.css	[data-verso-tip] > [role="tooltip"]::before
+rules-live-in-blocks	input.css	[data-verso-tip]:focus-visible > [role="tooltip"]
+rules-live-in-blocks	input.css	[data-verso-tip]:hover > [role="tooltip"]
+rules-live-in-blocks	input.css	[data-verso-tip]:is(:hover, :focus-visible) > [role="tooltip"]
+rules-live-in-blocks	input.css	[data-verso-token-list]:has([data-verso-token]) [data-verso-token-input]::placeholder
+rules-live-in-blocks	input.css	[data-verso-turning="off"] .verso-row-name::after
+rules-live-in-blocks	input.css	[data-verso-turning="on"] .verso-row-name
+rules-live-in-blocks	input.css	[data-verso-turning="on"] .verso-row-name::after
+rules-live-in-blocks	input.css	[data-verso-turning="on"] :has(> .verso-row-name)
+rules-live-in-blocks	input.css	[data-verso-wait] > *
+rules-live-in-blocks	input.css	[data-verso-wait] > :nth-child(1)
+rules-live-in-blocks	input.css	[data-verso-wait] > :nth-child(2)
+rules-live-in-blocks	input.css	[data-verso-wait] > :nth-child(3)
+rules-live-in-blocks	input.css	[data-verso-wait] > :nth-child(4)
+rules-live-in-blocks	input.css	[data-verso-wait][data-verso-wait-paused] > *
+rules-live-in-blocks	input.css	button.verso-button-waiting:disabled
+rules-live-in-blocks	input.css	details[open] > summary .verso-chevron
+rules-live-in-blocks	input.css	main > [data-verso-colophon]
+rules-live-in-blocks	input.css	main [data-verso-masthead="light"]
+rules-live-in-blocks	input.css	main [data-verso-masthead]
+rules-live-in-blocks	input.css	tbody:has(.verso-table-seam-control details[open]) > .verso-table-seam-row
+rules-live-in-blocks	input.css	tr.verso-landed
 rules-live-in-blocks	palette.css	[data-verso-off]
 rules-live-in-blocks	palette.css	[data-verso-off] .verso-chip
 rules-live-in-blocks	sections.css	.verso-drawer-scrollbar:not([data-verso-drawer-body])
@@ -819,6 +1205,53 @@ type-comes-from-roles	forms.css	.verso-joined-word	font-family
 type-comes-from-roles	forms.css	.verso-joined-word	font-size
 type-comes-from-roles	forms.css	.verso-joined-word	line-height
 type-comes-from-roles	forms.css	.verso-reveal-act	line-height
+type-comes-from-roles	input.css	.verso-chart-figure	font-weight
+type-comes-from-roles	input.css	.verso-chart-legend	font-size
+type-comes-from-roles	input.css	.verso-chart-legend	line-height
+type-comes-from-roles	input.css	.verso-chart-yl, .verso-chart-tick	font-size
+type-comes-from-roles	input.css	.verso-chart-yl, .verso-chart-tick	font-weight
+type-comes-from-roles	input.css	.verso-chart-yl, .verso-chart-tick	line-height
+type-comes-from-roles	input.css	.verso-kicker	font-size
+type-comes-from-roles	input.css	.verso-kicker	font-weight
+type-comes-from-roles	input.css	.verso-kicker	letter-spacing
+type-comes-from-roles	input.css	.verso-lede, [data-verso-section-lede]	font-size
+type-comes-from-roles	input.css	.verso-lede, [data-verso-section-lede]	font-weight
+type-comes-from-roles	input.css	.verso-lede, [data-verso-section-lede]	line-height
+type-comes-from-roles	input.css	.verso-overview-content thead th	font-size
+type-comes-from-roles	input.css	.verso-overview-content thead th	font-weight
+type-comes-from-roles	input.css	.verso-overview-content thead th	letter-spacing
+type-comes-from-roles	input.css	.verso-overview-content thead th	line-height
+type-comes-from-roles	input.css	.verso-page-heading	font-size
+type-comes-from-roles	input.css	.verso-page-heading	font-weight
+type-comes-from-roles	input.css	.verso-page-heading	letter-spacing
+type-comes-from-roles	input.css	.verso-page-heading	line-height
+type-comes-from-roles	input.css	.verso-panel-art .verso-port-role	font-weight
+type-comes-from-roles	input.css	.verso-panel-art .verso-port-role	letter-spacing
+type-comes-from-roles	input.css	.verso-panel-generated .verso-port-role	font-family
+type-comes-from-roles	input.css	.verso-panel-generated .verso-port-role	font-size
+type-comes-from-roles	input.css	.verso-panel-generated :is(.verso-port-label, .verso-port-speed)	font-family
+type-comes-from-roles	input.css	.verso-panel-generated :is(.verso-port-label, .verso-port-speed)	font-size
+type-comes-from-roles	input.css	.verso-pluck	font
+type-comes-from-roles	input.css	.verso-port-tip	font-size
+type-comes-from-roles	input.css	.verso-port-tip .r	font-family
+type-comes-from-roles	input.css	.verso-port-tip b	font-weight
+type-comes-from-roles	input.css	.verso-ports-legend	font-size
+type-comes-from-roles	input.css	.verso-ports-name	font-size
+type-comes-from-roles	input.css	.verso-ports-name	font-weight
+type-comes-from-roles	input.css	.verso-ports-name	letter-spacing
+type-comes-from-roles	input.css	.verso-prose code	font-family
+type-comes-from-roles	input.css	.verso-prose code	font-size
+type-comes-from-roles	input.css	.verso-prose h1, .verso-prose h2, .verso-prose h3	font-weight
+type-comes-from-roles	input.css	.verso-rail-link[aria-current="true"]	font-weight
+type-comes-from-roles	input.css	.verso-step[data-state="current"]	font-weight
+type-comes-from-roles	input.css	.verso-stream-release-x	font-size
+type-comes-from-roles	input.css	.verso-stream-release-x	line-height
+type-comes-from-roles	input.css	.verso-table :is(td, th) :not(.verso-chip, .verso-chip *, [class*="leading-"])	line-height
+type-comes-from-roles	input.css	::marker	font-family
+type-comes-from-roles	input.css	[data-verso-callout] p a	font-weight
+type-comes-from-roles	input.css	[data-verso-off] .verso-row-name	font-weight
+type-comes-from-roles	input.css	[data-verso-section-lede], [data-verso-section-lede] *	font-size
+type-comes-from-roles	input.css	[data-verso-section-lede], [data-verso-section-lede] *	line-height
 type-comes-from-roles	sections.css	:is(.verso-page-body, [data-verso-drawer-body]) :is(section[data-verso-section]:not(section section) > .verso-rhythm > [data-verso-listing],.verso-page-body > [data-verso-listing], .verso-page-body > .verso-stack > [data-verso-listing], .verso-page-body > .verso-stack > .verso-stack > [data-verso-listing]) > [data-verso-scroller] > table > tbody > tr > td .font-semibold:not(a, button)	font-weight
 type-comes-from-roles	sections.css	:is(.verso-page-body, [data-verso-drawer-body]) :is(section[data-verso-section]:not(section section) > .verso-rhythm > [data-verso-listing],.verso-page-body > [data-verso-listing], .verso-page-body > .verso-stack > [data-verso-listing], .verso-page-body > .verso-stack > .verso-stack > [data-verso-listing]) > [data-verso-scroller] > table > tbody > tr > td.font-medium, :is(.verso-page-body, [data-verso-drawer-body]) :is(section[data-verso-section]:not(section section) > .verso-rhythm > [data-verso-listing],.verso-page-body > [data-verso-listing], .verso-page-body > .verso-stack > [data-verso-listing], .verso-page-body > .verso-stack > .verso-stack > [data-verso-listing]) > [data-verso-scroller] > table > tbody > tr > td .font-medium:not(a, button)	font-weight
 type-comes-from-roles	sections.css	:is(.verso-page-body, [data-verso-drawer-body]) :is(section[data-verso-section]:not(section section) > .verso-rhythm > [data-verso-listing],.verso-page-body > [data-verso-listing], .verso-page-body > .verso-stack > [data-verso-listing], .verso-page-body > .verso-stack > .verso-stack > [data-verso-listing]) > [data-verso-scroller] > table > thead > tr > th	font-size

@@ -881,7 +881,7 @@ func TestStylesheetKeepsOnePageRhythm(t *testing.T) {
 		".verso-page-body>.verso-stack>[data-verso-actionbar]{margin-bottom:0}",
 		".verso-page-body>.verso-stack>[data-verso-actionbar]+*,.verso-page-body>.verso-stack>.verso-console,.verso-page-body>.verso-stack>.verso-console-notice{margin-top:0}",
 		".verso-page-body>.verso-stack>section[data-verso-section]:not([data-verso-section=ruled],[data-verso-section=part]){padding-top:0}",
-		"margin-top:var(--verso-rhythm,calc(var(--spacing) * 10))",
+		"margin-top:var(--verso-step,var(--verso-rhythm,calc(var(--spacing) * 10)))",
 	} {
 		if !strings.Contains(string(css), want) {
 			t.Errorf("stylesheet is missing %q", want)
@@ -966,7 +966,7 @@ func TestASectionKeepsTheMastheadsAirAndNoMore(t *testing.T) {
 		`[data-verso-headless]>.verso-rhythm>:not(input[type=hidden],[hidden]):not(:not(input[type=hidden],[hidden])~*),` +
 			`[data-verso-headless]>.verso-rhythm>:is([data-verso-rows],.verso-conditional):not(input[type=hidden],[hidden]):not(:not(input[type=hidden],[hidden])~*)>:not(input[type=hidden],[hidden]):not(:not(input[type=hidden],[hidden])~*),` +
 			`[data-verso-headless]>.verso-rhythm>form.verso-form:not(:not(input[type=hidden],[hidden])~*)>:not(input[type=hidden],[hidden]):not(:not(input[type=hidden],[hidden])~*){padding-top:0}`,
-		`.verso-rhythm>:not(input[type=hidden]):not(:not(input[type=hidden])~*){margin-top:0}`,
+		`.verso-rhythm>:nth-child(1 of :not(input[type=hidden])){margin-top:0}`,
 	} {
 		if !strings.Contains(css, want) {
 			t.Errorf("stylesheet is missing %s", want)

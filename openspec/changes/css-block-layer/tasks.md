@@ -58,7 +58,7 @@
 
 ## 4. Compositions
 
-- [ ] 4.1 `rhythm`: the block rhythm and its `--verso-rhythm` property, registered with `@property`; first-visible via `:nth-child(1 of S)`. Verify: block done.
+- [x] 4.1 `rhythm`: the block rhythm; `--verso-rhythm` stays a context property, and each child's `--verso-step` is a knob registered with `@property`; first-visible via `:nth-child(1 of S)`. Verify: block done.
 - [ ] 4.2 `stack` and `cluster`: the page stack, and the repeated `flex flex-wrap items-center gap-2 min-w-0` row. Verify: block done; `TestNoRepeatedBundles` no longer lists that bundle.
 - [ ] 4.3 `page`: page body, full and ground variants, heading (`type-headline`), the reach properties. Verify: block done.
 - [ ] 4.4 `section`: the kinds other than card (ruled, part, continued, plain, bare), band, ledger, kicker (`type-label`) and lede (`type-lede`). Every rule keyed on `data-verso-headless` or `data-verso-ruled` names its kind. Verify: block done; `section.html.tmpl` holds no class-string template call.

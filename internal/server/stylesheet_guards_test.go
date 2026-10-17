@@ -264,7 +264,32 @@ type cssRule struct {
 
 type cssDecl struct{ prop, value string }
 
-var cssComment = regexp.MustCompile(`(?s)/\*.*?\*/`)
+// stripCSSComments removes /* … */ comments, reading past quoted strings, so a
+// glob in a string (@source "../templates/*.tmpl") does not open one.
+func stripCSSComments(s string) string {
+	var b strings.Builder
+	for i := 0; i < len(s); i++ {
+		switch {
+		case s[i] == '"' || s[i] == '\'':
+			end := strings.IndexByte(s[i+1:], s[i])
+			if end < 0 {
+				b.WriteString(s[i:])
+				return b.String()
+			}
+			b.WriteString(s[i : i+end+2])
+			i += end + 1
+		case strings.HasPrefix(s[i:], "/*"):
+			end := strings.Index(s[i+2:], "*/")
+			if end < 0 {
+				return b.String()
+			}
+			i += end + 3
+		default:
+			b.WriteByte(s[i])
+		}
+	}
+	return b.String()
+}
 
 // rules parses every stylesheet into its rules. It knows only what the shell's
 // stylesheets write: nested blocks, at-rules with and without a body, and
@@ -272,7 +297,7 @@ var cssComment = regexp.MustCompile(`(?s)/\*.*?\*/`)
 func (src styleSources) rules() []cssRule {
 	var out []cssRule
 	for _, file := range keys(src.css) {
-		parseCSSBlock(file, cssComment.ReplaceAllString(src.css[file], ""), nil, &out)
+		parseCSSBlock(file, stripCSSComments(src.css[file]), nil, &out)
 	}
 	return out
 }
@@ -404,22 +429,47 @@ func compounds(sel string) []string {
 }
 
 var (
-	cssClass      = regexp.MustCompile(`\.(-?[_a-zA-Z][\w-]*)`)
-	cssVersoAttr  = regexp.MustCompile(`\[data-verso-[\w-]+`)
-	functionalArg = regexp.MustCompile(`\([^()]*\)`)
+	cssClass     = regexp.MustCompile(`\.(-?[_a-zA-Z][\w-]*)`)
+	cssVersoAttr = regexp.MustCompile(`\[data-verso-[\w-]+`)
 )
 
-// ownClasses is the classes a compound itself carries, not those named inside
-// its :is(), :not() or :has().
+// ownClasses is the classes a compound itself carries, the ones its :is() and
+// :where() name included (they describe the element), and not those inside
+// its :not() or :has() (they describe what it is not, or what it holds).
 func ownClasses(compound string) []string {
-	for functionalArg.MatchString(compound) {
-		compound = functionalArg.ReplaceAllString(compound, "")
-	}
+	compound = dropPseudoArgs(compound, ":not(", ":has(")
 	var out []string
 	for _, m := range cssClass.FindAllStringSubmatch(compound, -1) {
 		out = append(out, m[1])
 	}
 	return out
+}
+
+// dropPseudoArgs removes each of the named functional pseudo-classes from s,
+// its argument with it, however deep its parentheses nest.
+func dropPseudoArgs(s string, names ...string) string {
+	for _, name := range names {
+		for {
+			at := strings.Index(s, name)
+			if at < 0 {
+				break
+			}
+			depth, end := 0, len(s)
+			for j := at + len(name) - 1; j < len(s); j++ {
+				if s[j] == '(' {
+					depth++
+				} else if s[j] == ')' {
+					depth--
+					if depth == 0 {
+						end = j + 1
+						break
+					}
+				}
+			}
+			s = s[:at] + s[end:]
+		}
+	}
+	return s
 }
 
 // blockOf is the block a verso-* class belongs to: what stands before its

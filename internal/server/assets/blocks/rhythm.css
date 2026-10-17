@@ -1,0 +1,46 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/* SPDX-FileCopyrightText: 2026 Mono Technologies Inc. */
+
+/*
+ * rhythm — a container of blocks and rows: blocks stand off from each other,
+ * rows do not. A row carries its own air (16px above and below), so two rows
+ * meeting flush is what gives a form its rhythm; the 40px that rightly
+ * separates a table from a callout would separate every control from the next
+ * and turn eight settings into eight islands. Every container of rows wears it
+ * (a section, a folded block, a condition), so a row's spacing is the row's,
+ * not its surroundings'.
+ *
+ * Elements: none; the rhythm spaces whatever stands in it.
+ * Reads:    --verso-rhythm  context: the step between blocks on this surface
+ *                           (a card sets 24px; default 40px)
+ *           --verso-step    knob, on each child: how far it stands from the
+ *                           one before it (unset: the surface's step)
+ * Sets:     --verso-step    0 on a row-like after a row-like; a group's step
+ *                           on a chart under the field that chooses it
+ */
+
+@property --verso-step {
+  syntax: "*";
+  inherits: false;
+}
+
+.verso-rhythm > * + * {
+  margin-top: var(--verso-step, var(--verso-rhythm, calc(var(--spacing) * 10)));
+}
+
+/* Rows that follow each other meet on their own air. */
+.verso-rhythm > :is(.verso-field-row, .verso-form-grid, .verso-field-set, [data-verso-change-field]) + :is(.verso-field-row, .verso-form-grid, .verso-field-set, [data-verso-change-field]) {
+  --verso-step: 0;
+}
+
+/* A graph stands a group's step under the field that chooses what it shows
+   ("Show chart for …"): the two are one block. */
+.verso-rhythm > .verso-field-row + .verso-chart-graph {
+  --verso-step: var(--spacing-inset);
+}
+
+/* Hidden carriers are not blocks: the first child a reader sees takes no gap
+   above it. */
+.verso-rhythm > :nth-child(1 of :not(input[type="hidden"])) {
+  margin-top: 0;
+}
