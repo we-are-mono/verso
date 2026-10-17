@@ -1010,9 +1010,7 @@ short-class-lists	widget/templates/grid.html.tmpl	grid min-w-0 grid-cols-1 gap-x
 short-class-lists	widget/templates/grid.html.tmpl	grid {{if le .Columns 1}}grid-cols-1{{else if eq .Columns 2}}grid-cols-2{{else if eq .Columns 3}}grid-cols-2 md:grid-cols-3{{else}}grid-cols-2 md:grid-cols-4{{end}} gap-8
 short-class-lists	widget/templates/link.html.tmpl	verso-rail-link @form-split:-ml-px flex items-center gap-1.5 border-l border-rule py-1 pl-4 text-sm leading-6 transition-colors
 short-class-lists	widget/templates/list.html.tmpl	flex min-h-control flex-wrap items-center gap-x-1 gap-y-4 rounded-xs border border-rule-strong {{template "verso-input-fill"}} p-0.75 transition-colors hover:not-focus-within:border-faint focus-within:border-denim
-short-class-lists	widget/templates/list.html.tmpl	flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left font-mono text-base font-medium text-ink transition-colors hover:bg-denim-soft hover:text-denim-deep aria-selected:bg-denim-soft aria-selected:text-denim-deep
 short-class-lists	widget/templates/list.html.tmpl	h-6 min-w-18 flex-1 border-0 bg-transparent px-1.5 font-mono text-base font-normal text-ink outline-none placeholder:font-sans placeholder:text-sm placeholder:font-normal placeholder:text-meta
-short-class-lists	widget/templates/list.html.tmpl	verso-drawer-scrollbar absolute top-full right-0 left-0 z-20 mt-1 max-h-56 overflow-y-auto rounded-xs border border-rule-strong bg-ground py-1 shadow-(--shadow-float)
 short-class-lists	widget/templates/meter.html.tmpl	grid grid-cols-[7rem_minmax(0,1fr)_6.5rem] sm:grid-cols-[9.5rem_minmax(0,1fr)_6.5rem] items-center gap-6 border-b border-rule py-row leading-6 first:pt-2 last:border-0
 short-class-lists	widget/templates/meter.html.tmpl	verso-meter-bar absolute inset-0 {{if eq .Tone "danger"}}bg-crimson{{else if eq .Tone "warning"}}bg-marigold{{else}}bg-green{{end}}
 short-class-lists	widget/templates/meter.html.tmpl	verso-meter-bar h-full rounded-full {{if .Role}}{{if eq .Role "sky"}}bg-denim{{else if eq .Role "violet"}}bg-amethyst{{else if eq .Role "emerald"}}bg-green{{else if eq .Role "amber"}}bg-marigold{{else}}bg-glyph{{end}}{{else if eq .Band "danger"}}bg-crimson{{else if eq .Band "warning"}}bg-marigold{{else if eq .Band "info"}}bg-denim{{else}}bg-green{{end}}
@@ -1039,11 +1037,9 @@ short-class-lists	widget/templates/section.html.tmpl	ml-auto flex h-6 w-full ite
 short-class-lists	widget/templates/section.html.tmpl	{{if and .Sub (not $band)}}flex flex-wrap items-center justify-between gap-x-6{{else}}{{template "verso-section-band-class"}}{{end}}{{if .Kicker}} mb-6{{end}}
 short-class-lists	widget/templates/settings.html.tmpl	flex cursor-pointer items-center gap-1.5 px-3 pt-2.75 pb-3 leading-6 text-sm font-semibold text-denim-deep transition-colors select-none hover:bg-quiet hover:text-denim [&::-webkit-details-marker]:hidden
 short-class-lists	widget/templates/settings.html.tmpl	flex items-baseline justify-between gap-3 pt-1 pb-0.75 {{if not .Card}}border-b border-rule-strong {{end}}{{template "verso-kicker-class"}}
-short-class-lists	widget/templates/shared.html.tmpl	flex w-full cursor-pointer items-baseline gap-3 px-3 py-1.5 text-left text-ink transition-colors hover:bg-denim-soft hover:text-denim-deep aria-selected:bg-denim-soft aria-selected:text-denim-deep
 short-class-lists	widget/templates/shared.html.tmpl	grid size-7 flex-none cursor-pointer place-items-center rounded-xs border border-transparent text-glyph transition-colors hover:border-sand-5 hover:bg-rule hover:text-ink focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-denim
 short-class-lists	widget/templates/shared.html.tmpl	grid size-7 shrink-0 cursor-pointer place-items-center rounded-xs text-meta transition-colors hover:bg-mid/50 hover:text-ink focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-denim
 short-class-lists	widget/templates/shared.html.tmpl	h-control w-80 max-w-full rounded-xs border border-rule-strong bg-canvas pr-3 pl-8.5 text-sm text-ink shadow-(--shadow-field) transition-colors placeholder:font-normal placeholder:text-meta hover:border-faint focus:border-denim focus:outline-none
-short-class-lists	widget/templates/shared.html.tmpl	verso-drawer-scrollbar absolute top-full left-0 z-20 mt-1 max-h-56 w-max min-w-full max-w-[min(32rem,calc(100vw-2rem))] overflow-y-auto rounded-xs border border-rule-strong bg-ground py-1 shadow-(--shadow-float)
 short-class-lists	widget/templates/shared.html.tmpl	verso-drawer-scrollbar min-h-0 flex-1 {{if not .Choices}}space-y-6 {{end}}overflow-x-hidden overflow-y-auto {{if .Choices}}space-y-0 pb-8 [&>section]:pt-0 [&>section>div:first-child]:mb-0 [&>section>div:first-child]:border-y [&>section>div:first-child]:border-rule [&>section>div:first-child]:bg-quiet [&>section>div:first-child]:px-(--verso-drawer-gutter) [&>section>div:first-child]:py-2 [&_h3]:font-medium [&_h3]:tracking-[.08em] [&_.verso-rhythm>*]:!mt-0{{else}}{{template "verso-drawer-ground"}}{{end}} [&_table]:min-w-0 [&_.overflow-x-auto]:!overflow-visible [&_tbody_tr:hover]:!bg-transparent [&_td:last-child]:!text-right [&_th:last-child]:!text-right
 short-class-lists	widget/templates/shared.html.tmpl	{{if .Mono}}font-mono text-base leading-6 font-medium text-ink{{else}}{{template "verso-field-label-class"}}{{end}}{{if .Explained}} relative cursor-help{{end}}
 short-class-lists	widget/templates/shared.html.tmpl	{{if .Words}}{{template "verso-input-words"}}{{else}}{{template "verso-input-class"}}{{end}} {{if and (eq .Measure "address") (ne .ControlMeasure "prefix")}}w-measure-44! max-w-full{{else if eq .Measure "number"}}w-measure-24! max-w-full{{else if eq .Measure "short"}}w-measure-32! max-w-full{{end}} {{template "verso-input-border" .Error}}
@@ -1508,14 +1504,11 @@ type-comes-from-roles	widget/templates/grid.html.tmpl	[&_select]:font-normal
 type-comes-from-roles	widget/templates/grid.html.tmpl	[&_textarea]:font-normal
 type-comes-from-roles	widget/templates/link.html.tmpl	leading-6
 type-comes-from-roles	widget/templates/link.html.tmpl	text-sm
-type-comes-from-roles	widget/templates/list.html.tmpl	font-medium
-type-comes-from-roles	widget/templates/list.html.tmpl	font-mono
 type-comes-from-roles	widget/templates/list.html.tmpl	font-mono
 type-comes-from-roles	widget/templates/list.html.tmpl	font-normal
 type-comes-from-roles	widget/templates/list.html.tmpl	placeholder:font-normal
 type-comes-from-roles	widget/templates/list.html.tmpl	placeholder:font-sans
 type-comes-from-roles	widget/templates/list.html.tmpl	placeholder:text-sm
-type-comes-from-roles	widget/templates/list.html.tmpl	text-base
 type-comes-from-roles	widget/templates/list.html.tmpl	text-base
 type-comes-from-roles	widget/templates/meter.html.tmpl	font-bold
 type-comes-from-roles	widget/templates/meter.html.tmpl	font-extrabold
@@ -1642,8 +1635,6 @@ type-comes-from-roles	widget/templates/settings.html.tmpl	text-xs
 type-comes-from-roles	widget/templates/shared.html.tmpl	[&_h3]:font-medium
 type-comes-from-roles	widget/templates/shared.html.tmpl	[&_h3]:tracking-[.08em]
 type-comes-from-roles	widget/templates/shared.html.tmpl	font-medium
-type-comes-from-roles	widget/templates/shared.html.tmpl	font-medium
-type-comes-from-roles	widget/templates/shared.html.tmpl	font-mono
 type-comes-from-roles	widget/templates/shared.html.tmpl	font-mono
 type-comes-from-roles	widget/templates/shared.html.tmpl	font-mono
 type-comes-from-roles	widget/templates/shared.html.tmpl	font-normal
@@ -1654,9 +1645,7 @@ type-comes-from-roles	widget/templates/shared.html.tmpl	leading-6
 type-comes-from-roles	widget/templates/shared.html.tmpl	placeholder:font-normal
 type-comes-from-roles	widget/templates/shared.html.tmpl	text-base
 type-comes-from-roles	widget/templates/shared.html.tmpl	text-base
-type-comes-from-roles	widget/templates/shared.html.tmpl	text-base
 type-comes-from-roles	widget/templates/shared.html.tmpl	text-lg
-type-comes-from-roles	widget/templates/shared.html.tmpl	text-sm
 type-comes-from-roles	widget/templates/shared.html.tmpl	text-sm
 type-comes-from-roles	widget/templates/shared.html.tmpl	text-sm
 type-comes-from-roles	widget/templates/shared.html.tmpl	text-sm

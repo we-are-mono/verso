@@ -363,7 +363,7 @@ func TestATextFieldWithOptionsSuggestsThem(t *testing.T) {
 		`data-verso-suggest-input role="combobox" aria-expanded="false" aria-autocomplete="list" aria-controls="dest_ip-options" autocomplete="off"`,
 		`<div id="dest_ip-options" data-verso-suggest-menu role="listbox" aria-labelledby="dest_ip-label" hidden`,
 		`id="dest_ip-option-0" role="option" aria-selected="false" tabindex="-1" data-verso-suggest-option="10.0.0.30" data-verso-suggest-label="nas"`,
-		`<span class="font-mono text-base font-medium">10.0.0.30</span><span class="text-sm text-meta">nas</span>`,
+		`<span class="verso-menu__value" data-verso-verbatim>10.0.0.30</span><span class="verso-menu__note">nas</span>`,
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("want %s in:\n%s", want, got)

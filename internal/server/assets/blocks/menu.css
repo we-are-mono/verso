@@ -1,0 +1,66 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/* SPDX-FileCopyrightText: 2026 Mono Technologies Inc. */
+
+/*
+ * menu — the list of choices a field opens under itself (a value list's
+ * suggestions, a token list's options): a card in the page's own palette,
+ * hung 4px under the field, scrolling past 14rem. The option under the
+ * pointer or the keyboard (aria-selected) takes the Denim wash.
+ *
+ * Elements: verso-menu__option  one choice
+ *           verso-menu__value   a choice's value, as the machine writes it
+ *                               (the value role, verbatim)
+ *           verso-menu__note    what the value is, beside it, in Meta
+ * Variants: data-verso-menu-width  field: as wide as its field · words: as
+ *                                  wide as its words, never narrower than its
+ *                                  field nor wider than 32rem or the window
+ */
+
+.verso-menu {
+  position: absolute;
+  top: 100%;
+  z-index: 20;
+  margin-top: calc(var(--spacing) * 1);
+  max-height: 14rem;
+  overflow-y: auto;
+  padding-block: calc(var(--spacing) * 1);
+  border: 1px solid var(--color-rule-strong);
+  border-radius: var(--radius-xs);
+  background-color: var(--color-ground);
+  box-shadow: var(--shadow-float);
+}
+.verso-menu[data-verso-menu-width="field"] {
+  left: 0;
+  right: 0;
+}
+.verso-menu[data-verso-menu-width="words"] {
+  left: 0;
+  width: max-content;
+  min-width: 100%;
+  max-width: min(32rem, calc(100vw - 2rem));
+}
+
+.verso-menu__option {
+  display: flex;
+  width: 100%;
+  align-items: baseline;
+  gap: calc(var(--spacing) * 3);
+  padding: calc(var(--spacing) * 1.5) calc(var(--spacing) * 3);
+  text-align: left;
+  color: var(--color-ink);
+  cursor: pointer;
+  transition-property: color, background-color;
+  @apply type-value;
+}
+.verso-menu__option:is(:hover, [aria-selected="true"]) {
+  background-color: var(--color-denim-soft);
+  color: var(--color-denim-deep);
+}
+
+.verso-menu__value {
+  @apply type-value;
+}
+.verso-menu__note {
+  color: var(--color-meta);
+  @apply type-row-label;
+}

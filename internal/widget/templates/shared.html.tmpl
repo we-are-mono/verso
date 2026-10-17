@@ -264,9 +264,9 @@
      list to its own edge; the list grows past it for a long name. */}}
 {{define "verso-suggest-input"}}<div class="relative{{if or (eq .Measure "address") (eq .Measure "number") (eq .Measure "short")}} w-fit max-w-full{{end}}">
   {{template "verso-text-input" .}}
-  <div id="{{.Name}}-options" data-verso-suggest-menu role="listbox"{{if .Label}} aria-labelledby="{{.Name}}-label"{{end}} hidden class="verso-drawer-scrollbar absolute top-full left-0 z-20 mt-1 max-h-56 w-max min-w-full max-w-[min(32rem,calc(100vw-2rem))] overflow-y-auto rounded-xs border border-rule-strong bg-ground py-1 shadow-(--shadow-float)">
+  <div id="{{.Name}}-options" data-verso-suggest-menu role="listbox"{{if .Label}} aria-labelledby="{{.Name}}-label"{{end}} hidden class="verso-menu verso-drawer-scrollbar" data-verso-menu-width="words">
     {{range $i, $o := .Options}}
-    <button type="button" id="{{$.Name}}-option-{{$i}}" role="option" aria-selected="false" tabindex="-1" data-verso-suggest-option="{{$o.Value}}" data-verso-suggest-label="{{$o.Label}}" class="flex w-full cursor-pointer items-baseline gap-3 px-3 py-1.5 text-left text-ink transition-colors hover:bg-denim-soft hover:text-denim-deep aria-selected:bg-denim-soft aria-selected:text-denim-deep"><span class="font-mono text-base font-medium">{{$o.Value}}</span>{{if ne $o.Label $o.Value}}<span class="text-sm text-meta">{{$o.Label}}</span>{{end}}</button>
+    <button type="button" id="{{$.Name}}-option-{{$i}}" role="option" aria-selected="false" tabindex="-1" data-verso-suggest-option="{{$o.Value}}" data-verso-suggest-label="{{$o.Label}}" class="verso-menu__option"><span class="verso-menu__value" data-verso-verbatim>{{$o.Value}}</span>{{if ne $o.Label $o.Value}}<span class="verso-menu__note">{{$o.Label}}</span>{{end}}</button>
     {{end}}
   </div>
 </div>{{end}}
