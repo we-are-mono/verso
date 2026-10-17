@@ -197,7 +197,7 @@ endef
 
 # build-<arch> is intentionally NOT phony: make skips pattern rules for phony
 # targets, and no file of that name is ever produced, so the rule fires each run.
-.PHONY: all build dev css test lint deadcode vuln hooks clean apk apk-publish apk-preflight apk-i18n apk-i18n-publish i18n-audit version
+.PHONY: all build dev css test lint deadcode vuln hooks clean apk apk-publish apk-publish-feed apk-preflight apk-i18n apk-i18n-publish i18n-audit version
 
 all: lint test build
 
@@ -376,7 +376,11 @@ apk: apk-preflight build-$(APK_GOARCH)
 # every package there, and rebuilds the index. Dev-box-specific: it writes to
 # VERSO_REPO_DIR. Publishing runs `make vuln` first, so no package reaches a
 # feed past an untriaged advisory; `make apk` alone builds without it.
-apk-publish: vuln apk
+# apk-publish-feed is the same publish without the scan, for a caller that has
+# run `make vuln` once over every arch it publishes.
+apk-publish: vuln apk-publish-feed
+
+apk-publish-feed: apk
 	mkdir -p $(VERSO_REPO_DIR)/$(APK_ARCH)
 	rm -f $(VERSO_REPO_DIR)/$(APK_ARCH)/*.apk
 	cp $(APK_OUT) $(VERSO_REPO_DIR)/$(APK_ARCH)/
