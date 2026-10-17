@@ -207,17 +207,17 @@ func (m Manifest) validate() error {
 		// A secret naming no config and option protects nothing; reject it
 		// rather than let the value it meant to keep out land in the history.
 		config, option, ok := strings.Cut(secret, ".")
-		if !ok || !uciName(config, true) || !uciName(option, false) {
+		if !ok || !UCIName(config, true) || !UCIName(option, false) {
 			return fmt.Errorf("plugin %q secrets[%d] %q must be config.option", m.ID, i, secret)
 		}
 	}
 	return nil
 }
 
-// uciName reports whether s is a name uci accepts, as libuci's
+// UCIName reports whether s is a name uci accepts, as libuci's
 // uci_validate_str has it: letters, digits and underscores, and for a config
 // (package) also dashes.
-func uciName(s string, config bool) bool {
+func UCIName(s string, config bool) bool {
 	if s == "" {
 		return false
 	}
