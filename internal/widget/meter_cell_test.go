@@ -68,7 +68,7 @@ func TestMeterCellWithNoReadingIsADash(t *testing.T) {
 func TestMeterCellMarksItsLimits(t *testing.T) {
 	got := render(t, newRenderer(t), meterTable(TableCell{Text: "48.0 °C", Fill: 50, WarnMark: 89, CritMark: 100}))
 	for _, want := range []string{
-		`bg-marigold-deep" style="left: 89%"`,
+		`bg-marigold" style="left: 89%"`, // the warn band's own hue, as its bar fills past it
 		`bg-crimson" style="left: calc(100% - 0.125rem)"`,
 		`>48.0 °C<`,
 	} {

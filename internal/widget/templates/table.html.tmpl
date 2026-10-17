@@ -464,7 +464,7 @@
              empty track would say "idle", which is a fact. */}}
         <td class="border-b border-rule {{template "table.cellpad" .}}">
           {{if .Clip}}<span class="flex items-center gap-3 pr-6">
-            <span class="relative h-1.5 min-w-16 flex-1 rounded-full bg-rule"><span class="absolute inset-0 {{if eq .Variant "danger"}}bg-crimson{{else if eq .Variant "warning"}}bg-marigold{{else}}bg-green{{end}}" style="clip-path: {{.Clip}}"></span>{{if .WarnAt}}<span class="absolute -top-1 -bottom-1 w-0.5 rounded-[1px] bg-marigold-deep" style="left: {{.WarnAt}}"></span>{{end}}{{if .CritAt}}<span class="absolute -top-1 -bottom-1 w-0.5 rounded-[1px] bg-crimson" style="left: calc({{.CritAt}} - 0.125rem)"></span>{{end}}</span>
+            <span class="relative h-1.5 min-w-16 flex-1 rounded-full bg-rule"><span class="absolute inset-0 {{if eq .Variant "danger"}}bg-crimson{{else if eq .Variant "warning"}}bg-marigold{{else}}bg-green{{end}}" style="clip-path: {{.Clip}}"></span>{{if .WarnAt}}<span class="absolute -top-1 -bottom-1 w-0.5 rounded-[1px] bg-marigold" style="left: {{.WarnAt}}"></span>{{end}}{{if .CritAt}}<span class="absolute -top-1 -bottom-1 w-0.5 rounded-[1px] bg-crimson" style="left: calc({{.CritAt}} - 0.125rem)"></span>{{end}}</span>
             <span class="w-16 shrink-0 text-right tabular-nums whitespace-nowrap {{if .Muted}}text-meta{{else}}text-ink{{end}}">{{.Text}}</span>
           </span>{{else if and .NoTrack .Text (ne .Text "—")}}<span class="flex items-center gap-3 pr-6">
             <span class="min-w-16 flex-1"></span>

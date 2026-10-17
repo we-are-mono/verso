@@ -105,13 +105,12 @@ func TestMeterCompact(t *testing.T) {
 	for _, want := range []string{
 		"Memory", ">47.0<", "°C",
 		"clip-path: inset(0 51% 0 0 round 9999px)", // fills to the reading's own ceiling
-		"left: 89%", // the warn tick
 		// A reading in its ordinary range is green, bar and dot alike — the
 		// canvas's meter band — on a 6px track.
 		"h-1.5 rounded-full",
 		"bg-green",
-		"bg-marigold-deep", // the warn tick
-		"bg-crimson",       // the critical tick
+		`bg-marigold" style="left: 89%"`, // the warn tick, in the warn band's own hue
+		"bg-crimson",                     // the critical tick
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("compact meter missing %q:\n%s", want, got)
