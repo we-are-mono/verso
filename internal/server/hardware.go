@@ -22,7 +22,8 @@ import (
 
 // handleSystemHardware renders the Hardware page: the board card (its name,
 // its panel, what it is made of), then one card per kind of reading the board
-// has: Temperatures, Power, Cooling and Fiber modules, each reading once. It
+// has: Temperatures, Power and Cooling, then a card per fiber module, each
+// reading once. It
 // reads local sysfs and procfs only (no network, no blocking), so it renders
 // fresh on each load, with no cache. The panel stays live from the overview
 // stream's interfaces frame; the readings are as loaded.
@@ -94,13 +95,12 @@ func hardwareCards(tr func(string) string, in hardwareInput) []widget.Widget {
 		temperaturesCard(tr, in),
 		powerCard(in.inv.PageRails()),
 		coolingCard(in.inv.PageFans()),
-		fibreCard(in.inv.Fibers),
 	} {
 		if card != nil {
 			out = append(out, card)
 		}
 	}
-	return out
+	return append(out, fibreCards(in.inv.Fibers)...)
 }
 
 // hardwarePanel renders the router's panel (port_panel.go). A box with no
@@ -428,21 +428,18 @@ func fanStatus(state string) widget.TableCell {
 	}
 }
 
-// fibreCard heads each SFP module's facts as the Overview heads an address
-// family: "SFP+ module" with its cage as a chip, the optical pair leading
-// (dBm, with raw microwatts as the quiet twin) under a plain link verdict.
-func fibreCard(fibers []sensors.FiberModule) widget.Widget {
-	if len(fibers) == 0 {
-		return nil
-	}
-	lists := make([]widget.Widget, 0, len(fibers))
+// fibreCards is a card per fiber module, titled "SFP+ module" with its cage's
+// chip in the header, the optical pair leading its facts (dBm, with raw
+// microwatts as the quiet twin) under a plain link verdict.
+func fibreCards(fibers []sensors.FiberModule) []widget.Widget {
+	cards := make([]widget.Widget, 0, len(fibers))
 	for i := range fibers {
-		lists = append(lists, fibreFacts(&fibers[i]))
+		cards = append(cards, &widget.Section{
+			Title: "SFP+ module", Chip: fibers[i].Cage, Hairline: true,
+			Children: []widget.Widget{fibreFacts(&fibers[i])},
+		})
 	}
-	return &widget.Section{
-		Title: "Fiber modules", Hairline: true,
-		Children: []widget.Widget{&widget.Grid{Columns: 2, Children: lists}},
-	}
+	return cards
 }
 
 func fibreFacts(f *sensors.FiberModule) widget.Widget {
@@ -466,11 +463,7 @@ func fibreFacts(f *sensors.FiberModule) widget.Widget {
 	if f.HasBias {
 		items = append(items, widget.Property{Label: "Laser bias", Value: fmt.Sprintf("%d"+units.Space+"mA", f.BiasMilliA), Verbatim: true})
 	}
-	return &widget.Properties{
-		Align: "left",
-		Head:  &widget.PropertiesHead{Label: "SFP+ module", Chip: f.Cage},
-		Items: items,
-	}
+	return &widget.Properties{Align: "left", Items: items}
 }
 
 // --- unit formatting -------------------------------------------------------

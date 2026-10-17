@@ -125,10 +125,11 @@ func card(t *testing.T, body, title string) string {
 	return rest
 }
 
-// The page is the board card, then one card per kind of reading, in order.
+// The page is the board card, then one card per kind of reading, in order,
+// and one per fiber module.
 func TestHardwareCardsStandInOrder(t *testing.T) {
 	got := cardTitles(renderCards(t, dkInput()))
-	want := []string{"Mono Gateway Development Kit", "Temperatures", "Power", "Cooling", "Fiber modules"}
+	want := []string{"Mono Gateway Development Kit", "Temperatures", "Power", "Cooling", "SFP&#43; module", "SFP&#43; module"}
 	if !slices.Equal(got, want) {
 		t.Fatalf("cards %q, want %q", got, want)
 	}
@@ -362,17 +363,27 @@ func TestCoolingListsEveryFan(t *testing.T) {
 	}
 }
 
-// Each SFP module is a headed fact list, as the Overview heads an address
-// family, never a card inside the card.
-func TestEachModuleIsAHeadedList(t *testing.T) {
-	fibre := card(t, renderCards(t, dkInput()), "Fiber modules")
-	for _, want := range []string{"data-verso-properties-head", ">SFP&#43; module<", ">xfi0<", ">xfi1<", ">Receiving light<", ">No signal<"} {
-		if !strings.Contains(fibre, want) {
-			t.Errorf("Fiber modules missing %q", want)
+// Each SFP module is a card of its own, titled "SFP+ module" with its cage's
+// chip in the header, its readings one list under it.
+func TestEachModuleIsACard(t *testing.T) {
+	var modules []string
+	for _, s := range strings.Split(renderCards(t, dkInput()), "<section data-verso-section") {
+		if strings.Contains(s, ">SFP&#43; module</h2>") {
+			modules = append(modules, s)
 		}
 	}
-	if strings.Contains(fibre, "data-verso-artifact") {
-		t.Errorf("a module stands as a card inside the card:\n%s", fibre)
+	if len(modules) != 2 {
+		t.Fatalf("%d module cards, want one per module", len(modules))
+	}
+	for i, want := range [][]string{{">xfi0</span>", ">Receiving light<"}, {">xfi1</span>", ">No signal<"}} {
+		for _, w := range want {
+			if !strings.Contains(modules[i], w) {
+				t.Errorf("module card %d missing %q:\n%s", i, w, modules[i])
+			}
+		}
+		if strings.Contains(modules[i], "data-verso-properties-head") {
+			t.Errorf("the card's header names the module; its list has no head of its own:\n%s", modules[i])
+		}
 	}
 }
 

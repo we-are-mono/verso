@@ -46,9 +46,13 @@ type Section struct {
 	// Kicker makes Title a small label over a group rather than a heading over a
 	// subject — a rail's "On this page", where the words name the list beneath
 	// them and must not compete with the headings the list points at.
-	Kicker bool   `json:"kicker,omitempty"`
-	Sub    string `json:"sub,omitempty"`
-	Meta   string `json:"meta,omitempty"`
+	Kicker bool `json:"kicker,omitempty"`
+	// Chip names which one of its kind a card is (a fiber module's cage), in
+	// the shell's chip beside the title, verbatim. The shell composes it; it
+	// is no part of the plugin contract.
+	Chip string `json:"-"`
+	Sub  string `json:"sub,omitempty"`
+	Meta string `json:"meta,omitempty"`
 	// MetaVerbatim declares Meta a machine value or an already-composed string
 	// — data the localization walk leaves exactly as authored. Prose meta
 	// stays undeclared and translates.
@@ -124,6 +128,7 @@ type sectionView struct {
 	Icon       string
 	Anchor     string
 	Kicker     bool
+	Chip       string
 	Sub        template.HTML
 	Meta       string
 	MetaLabel  string
@@ -201,6 +206,7 @@ func (s *Section) renderInto(r *Renderer, out io.Writer, csrf string) error {
 		Icon:       s.Icon,
 		Anchor:     SectionID(s.Anchor),
 		Kicker:     s.Kicker,
+		Chip:       s.Chip,
 		Meta:       s.Meta,
 		MetaLabel:  s.MetaLabel,
 		MetaIcon:   s.MetaIcon,

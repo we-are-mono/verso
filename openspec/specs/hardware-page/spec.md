@@ -7,11 +7,11 @@ What System › Hardware shows: the router as a board card with its panel, then 
 ## Requirements
 
 ### Requirement: The page is one card per kind of reading
-System › Hardware SHALL show, in this order: the board card, Temperatures, Power, Cooling and Fiber modules. A card the board has no reading for does not stand. No reading SHALL appear on the page more than once, and the page SHALL show no tile strip and no separate table of all sensors.
+System › Hardware SHALL show, in this order: the board card, Temperatures, Power, Cooling, then a card per SFP module. A card the board has no reading for does not stand. No reading SHALL appear on the page more than once, and the page SHALL show no tile strip and no separate table of all sensors.
 
 #### Scenario: The Mono Gateway DK
 - **WHEN** an operator opens System › Hardware on the DK
-- **THEN** the page shows the cards Mono Gateway Development Kit, Temperatures, Power, Cooling and Fiber modules, in that order
+- **THEN** the page shows the cards Mono Gateway Development Kit, Temperatures, Power, Cooling, SFP+ module `xfi0` and SFP+ module `xfi1`, in that order
 - **AND** the CPU temperature, the USB Power Delivery rail and System Fan 1 each appear once
 
 #### Scenario: A board with no fans
@@ -183,12 +183,12 @@ The Cooling card SHALL be one table with the columns Fan, Source, Speed, Duty an
 - **WHEN** a fan channel reads zero with no alarm
 - **THEN** its Speed reads "—" and its Status reads Not connected, in the muted tone
 
-### Requirement: Each SFP module is a headed fact list
-The Fiber modules card SHALL show one fact list per SFP cage, side by side, each headed "SFP+ module" with the cage's name as a chip, on the strong hairline the Overview's address families stand on. Its facts are the link verdict, transmit and receive power (dBm, then the raw power), temperature, supply and laser bias. A module SHALL NOT stand as a framed card inside the Fiber modules card.
+### Requirement: Each SFP module is a card
+Each SFP cage that holds a module SHALL have a card of its own, titled "SFP+ module" with the cage's name as a chip in the card's header. Its facts are one list: the link verdict, transmit and receive power (dBm, then the raw power), temperature, supply and laser bias.
 
 #### Scenario: Two modules
 - **WHEN** cages `xfi0` and `xfi1` hold modules
-- **THEN** the card shows two lists headed "SFP+ module `xfi0`" and "SFP+ module `xfi1`"
+- **THEN** the page shows two cards, "SFP+ module `xfi0`" and "SFP+ module `xfi1`"
 
 #### Scenario: A dark receiver
 - **WHEN** the `xfi1` module's receive power is under its light floor

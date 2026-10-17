@@ -222,6 +222,19 @@ func TestRenderSectionInlineMeta(t *testing.T) {
 	}
 }
 
+// A card's chip names which one of its kind it is (a module's cage), as a
+// fact list's head carries one: beside the title, verbatim.
+func TestRenderSectionChip(t *testing.T) {
+	s := &Section{Title: "SFP+ module", Chip: "xfi0"}
+	translateSchema(s, func(string) string { return "translated" })
+	got := render(t, newRenderer(t), s)
+	title := strings.Index(got, ">translated</h2>")
+	chip := strings.Index(got, `border-rule bg-quiet text-meta">xfi0</span>`)
+	if title < 0 || chip < title {
+		t.Errorf("the shell's chip should follow the title in the header, verbatim:\n%s", got)
+	}
+}
+
 func TestRenderSectionControl(t *testing.T) {
 	r := newRenderer(t)
 	w, err := Decode([]byte(`{"type":"section","title":"Rule","control":{"type":"switch","name":"enabled","label":"Enabled","off_label":"Disabled","style":"inline","on":true},"children":[]}`))
