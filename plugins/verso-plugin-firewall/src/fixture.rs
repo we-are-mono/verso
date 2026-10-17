@@ -73,7 +73,7 @@ pub fn listing(body: &Value) -> Value {
 
 /// widget finds the first widget of one kind anywhere in a page — for the
 /// pieces that are not a titled region and carry no name of their own (the
-/// page-wide lens, a nothing-here state).
+/// action bar, a nothing-here state).
 pub fn widget(body: &Value, kind: &str) -> Value {
     find(body, &|value| value["type"] == kind)
         .unwrap_or_else(|| panic!("no {kind} widget on the page"))

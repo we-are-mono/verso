@@ -34,7 +34,6 @@ func TestRowsNeverTrimTheirOwnEdges(t *testing.T) {
 		// Under a list's head the first fact stands after the head's strong
 		// hairline, 7px, as every row after a hairline does.
 		"properties.html.tmpl first:pt-1.75": "a first fact under a head stands after the head's hairline",
-		"settings.html.tmpl first:pt-2":      "a first condensed fact has no hairline over it",
 		"settings.html.tmpl first:pt-6":      "a first fact has no hairline over it",
 	}
 	files, err := filepath.Glob("templates/*.tmpl")
