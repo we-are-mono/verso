@@ -296,7 +296,7 @@
      frame takes the field's states (forms.css). The row's label names the
      group; each part stays its own input under its own name, which a screen
      reader says as the caret enters it and a refusal band repeats. */}}
-{{define "verso-box"}}<span class="verso-box"{{with .Group}} role="group" aria-labelledby="{{.}}"{{end}}{{with .Described}} aria-describedby="{{.}}"{{end}}>{{range .Parts}}{{template "verso-box-part" .}}{{end}}</span>{{end}}
+{{define "verso-box"}}<span class="verso-box"{{if .Stacked}} data-verso-stacked{{end}}{{with .Group}} role="group" aria-labelledby="{{.}}"{{end}}{{with .Described}} aria-describedby="{{.}}"{{end}}>{{range .Parts}}{{template "verso-box-part" .}}{{end}}</span>{{end}}
 {{/* verso-select: one dropdown (a boxPart) — appearance-none and our own
      chevron, inset right-3 to mirror the text's pl-3, because the native arrow
      hugs the border and can't follow the theme. A part of a joined row is

@@ -19,7 +19,7 @@ Every field of a form that commits settings SHALL render as one row: on the left
 - **THEN** the zone's name field stands in the answer column of its row, at the same place as every other answer in the drawer
 
 ### Requirement: Rows are separated by hairlines across their surface
-Field rows SHALL be separated by hairlines that run the full width of what holds them: a card's from its left border to its right, a drawer's from its content's left edge to its right. A row's words SHALL keep the surface's 24px gutter. The first row of a run of rows, under a card's header or after another block, SHALL draw no hairline of its own, and rows SHALL carry no fill.
+Field rows SHALL be separated by hairlines that run the full width of the card that holds them, from its left border to its right, on a page and in a drawer. A row's words SHALL keep the card's 24px gutter. Rows SHALL meet on their hairline across a hidden carrier between them and across the group a choice shows for one of its values. The first row of a run of rows, under a card's header or after another block, SHALL draw no hairline of its own, and rows SHALL carry no fill.
 
 #### Scenario: Rows in a card
 - **WHEN** an operator opens the Protection card on Firewall settings
@@ -84,20 +84,24 @@ A switch in a ledger row SHALL be its box in the answer column with the word "On
 - **WHEN** an operator clicks "Off" beside "Drop packets that belong to no connection"
 - **THEN** the box is checked and the word beside it reads "On"
 
-### Requirement: A wide answer stands under its question
-An answer that cannot stand in the answer column SHALL stand under its question at the row's full width: a set of value chips, rows of values, a code or text area, a weekday strip, a field of the endpoint measure, and a fused or joined value whose parts together are wider than the column. The question and its description stay on their own lines above it.
+### Requirement: Every answer stands in the answer column
+Every answer SHALL stand in the answer column beside its question: a set of value chips, rows of values, a weekday strip, a field of the endpoint measure, and a fused or joined value too. An answer wider than one line of the column SHALL take more of its lines: a fused box stacks its parts, a joined sentence wraps, a list grows a row at a time. Only a code or text area, free text read as a sentence, and a table among fields SHALL stand under their question at the row's full width.
 
 #### Scenario: A rule's protocols
 - **WHEN** an operator opens a rule's drawer on its Match tab
-- **THEN** the protocol chips stand under "Protocol" across the row's full width
+- **THEN** the protocol chips stand in the answer column beside "Protocol"
+
+#### Scenario: A rule's path
+- **WHEN** an operator opens a rule's drawer on its Match tab
+- **THEN** the source zone and "to" stand on the name's line in the answer column, and the destination on the line under them
 
 #### Scenario: An address with its netmask
 - **WHEN** an operator opens a static interface's drawer
-- **THEN** the IPv4 address and its netmask stand as one fused box under "IPv4 address" at the row's full width
+- **THEN** the IPv4 address and its netmask stand as one box in the answer column, the address on its first line and the netmask on its second
 
 #### Scenario: A joined value that fits
 - **WHEN** an operator opens the Protection card
-- **THEN** "Connection rate" keeps its count, "per" and its period together in the answer column
+- **THEN** "Connection rate" keeps its count, "per" and its period together on one line of the answer column
 
 ### Requirement: A narrow row stacks
 A field row narrower than 576px SHALL stack: the question, its description, then the answer straight under them at the row's width, with no hairline between them. A stacked switch stays its box and its word.
@@ -110,13 +114,17 @@ A field row narrower than 576px SHALL stack: the question, its description, then
 - **WHEN** an operator opens the firmware upload dialog
 - **THEN** its password field stands under its name, not beside it
 
-### Requirement: A revealed field stands under the switch that reveals it
-A field a switch reveals SHALL stand under that switch's row with its question indented 24px and no hairline between them, its answer in the same answer column as every other row. A field revealed inside a revealed field SHALL indent 24px more. The hairline after the group SHALL follow its last revealed row.
+### Requirement: A revealed field is a row like any other
+A field a switch reveals SHALL stand under that switch's row as a row like any other: a hairline between the two rows, its question on the form's one left edge, its answer in the same answer column as every other row. A switch inside a reveal SHALL be one of its rows. A notice the switch raises while off SHALL keep a row's 16px under it before the next question's hairline.
 
 #### Scenario: Hardware offload
 - **WHEN** an operator checks "Shortcut established connections"
-- **THEN** "Do it in hardware" appears under it, indented 24px, with no hairline between the two rows
+- **THEN** "Do it in hardware" appears under it, a hairline between the two rows, its name on the same left edge as the first row's
 - **AND** its box stands in the answer column under the first row's box
+
+#### Scenario: A device's schedule
+- **WHEN** an operator opens a device's Limits with its internet access on
+- **THEN** "Block internet on a schedule" stands under "Internet access" on a hairline, its name on the same left edge
 
 ### Requirement: A group of switches stands under its group's name
 A labelled group of switches (one setting asked of several things) SHALL stand as its group's name with its chip and description, then one row per item with no hairline between items, each item's name verbatim where the group says so, its detail under it, and its box and word in the answer column.
@@ -149,12 +157,12 @@ Each typed part of a labelled set fused into one box SHALL show its name inside 
 - **AND** one box reads 5060 "Port", 10 "Priority" and 5 "Weight", its parts split by inner hairlines
 - **AND** the description reads "Port: SRV only. Priority: SRV and MX. Lower wins. Weight: SRV only."
 
-### Requirement: A fused box stands where its parts fit
-A fused box SHALL stand in the answer column when its parts fit it, and under its question at the row's full width when they do not. A part's name and a unit inside a box are words, set in the sans face.
+### Requirement: A fused box stacks its parts when they do not fit
+A fused box SHALL stand in the answer column with its parts side by side when they fit it, and one under another, split by hairlines, when they do not, still one box at the column's width. A part's name and a unit inside a box are words, set in the sans face.
 
 #### Scenario: Three numbers and their names
 - **WHEN** an operator opens a DNS service record's port and ranking
-- **THEN** the box of three numbers with their names, wider than the answer column, stands under the description at the row's full width
+- **THEN** the box of three numbers with their names, wider than the answer column, stands in the answer column with each number and its name on a line of its own
 
 #### Scenario: A unit
 - **WHEN** an operator opens the Protection card

@@ -406,7 +406,7 @@ func TestAFieldRowIsALedger(t *testing.T) {
 			t.Errorf("rows do not meet on a hairline 15px over the name: missing %s in %s", want, between)
 		}
 	}
-	before := cssBlock(t, css, ".verso-field-row:has(+ :is(.verso-field-row, .verso-conditional, .verso-field-set)) {")
+	before := cssBlock(t, css, ".verso-field-row:has(+ :is(.verso-field-row, .verso-conditional, .verso-field-set, [data-verso-rows])) {")
 	if !strings.Contains(before, "padding-bottom: calc(var(--spacing) * 4);") {
 		t.Errorf("a row followed by a row keeps 16px under its last line: %s", before)
 	}
@@ -467,27 +467,25 @@ func TestAMeasureIsAStackedRows(t *testing.T) {
 	}
 }
 
-// TestARevealedFieldStandsUnderItsGate: what a switch reveals is the switch's
-// own group: its rows draw no hairline and no air over them, and their
-// questions indent 24px, 48px inside a second gate, while their answers keep
-// the form's one column (form-fields).
-func TestARevealedFieldStandsUnderItsGate(t *testing.T) {
+// TestARevealedFieldIsARowLikeAnyOther: what a switch reveals is rows like
+// any other: the first meets the gate on a hairline 15px over its name, a gate
+// inside the reveal among them, and no question indents, so every question
+// keeps the form's one left edge as every answer keeps its one column
+// (form-fields).
+func TestARevealedFieldIsARowLikeAnyOther(t *testing.T) {
 	raw, err := os.ReadFile("assets/forms.css")
 	if err != nil {
 		t.Fatal(err)
 	}
 	css := string(raw)
-	revealed := cssBlock(t, css, ".verso-conditional-body > .verso-field-row,")
-	for _, want := range []string{"border-top: 0;", "padding-top: 0;"} {
+	revealed := cssBlock(t, css, `:is(.verso-conditional-body, .verso-conditional-otherwise) > .verso-field-row:not(:not(input[type="hidden"], [hidden], template) ~ *),`)
+	for _, want := range []string{"border-top: 1px solid var(--color-rule);", "padding-top: calc(var(--spacing) * 3.75);"} {
 		if !strings.Contains(revealed, want) {
-			t.Errorf("a revealed row draws its own %s: %s", want, revealed)
+			t.Errorf("a revealed row does not meet its gate on a hairline (%s): %s", want, revealed)
 		}
 	}
-	if !strings.Contains(cssBlock(t, css, ".verso-conditional-body .verso-field-question {"), "padding-left: var(--spacing-inset);") {
-		t.Error("a revealed field's question does not indent 24px")
-	}
-	if !strings.Contains(cssBlock(t, css, ".verso-conditional-body .verso-conditional-body .verso-field-question {"), "padding-left: calc(var(--spacing-inset) * 2);") {
-		t.Error("a field revealed inside a revealed field does not indent 48px")
+	if strings.Contains(css, "verso-conditional-body .verso-field-question") {
+		t.Error("a revealed field's question still indents off the form's left edge")
 	}
 }
 
@@ -971,7 +969,7 @@ func TestASectionKeepsTheMastheadsAirAndNoMore(t *testing.T) {
 	css := string(raw)
 	for _, want := range []string{
 		`[data-verso-headless]>.verso-rhythm>:not(input[type=hidden],[hidden]):not(:not(input[type=hidden],[hidden])~*),` +
-			`[data-verso-headless]>.verso-rhythm>[data-verso-rows]:not(input[type=hidden],[hidden]):not(:not(input[type=hidden],[hidden])~*)>:not(input[type=hidden],[hidden]):not(:not(input[type=hidden],[hidden])~*),` +
+			`[data-verso-headless]>.verso-rhythm>:is([data-verso-rows],.verso-conditional):not(input[type=hidden],[hidden]):not(:not(input[type=hidden],[hidden])~*)>:not(input[type=hidden],[hidden]):not(:not(input[type=hidden],[hidden])~*),` +
 			`[data-verso-headless]>.verso-rhythm>form.verso-form:not(:not(input[type=hidden],[hidden])~*)>:not(input[type=hidden],[hidden]):not(:not(input[type=hidden],[hidden])~*){padding-top:0}`,
 		`.verso-rhythm>:not(input[type=hidden]):not(:not(input[type=hidden])~*){margin-top:0}`,
 	} {
@@ -1153,16 +1151,17 @@ func TestTheRuleAfterASectionBringsItsOwnAir(t *testing.T) {
 
 // TestASectionTrimsThroughARunOfRows: rows grouped in a flush stack are still
 // the section's rows, so an untitled section's first row gives its air back
-// from inside the group too. A port forward's panel opened lower than a DHCP
-// server's because its first rows stood in one. The last row keeps its
-// padding, in a group or not, so it ends on a line.
+// from inside the group too, as a gate's row that opens it does. A port
+// forward's panel opened lower than a DHCP server's because its first rows
+// stood in one. The last row keeps its padding, in a group or not, so it ends
+// on a line.
 func TestASectionTrimsThroughARunOfRows(t *testing.T) {
 	raw, err := os.ReadFile("assets/sections.css")
 	if err != nil {
 		t.Fatal(err)
 	}
 	css := string(raw)
-	want := "[data-verso-headless] > .verso-rhythm > [data-verso-rows]:not(input[type=\"hidden\"], [hidden]):not(:not(input[type=\"hidden\"], [hidden]) ~ *) > :not(input[type=\"hidden\"], [hidden]):not(:not(input[type=\"hidden\"], [hidden]) ~ *) { padding-top: 0; }"
+	want := "[data-verso-headless] > .verso-rhythm > :is([data-verso-rows], .verso-conditional):not(input[type=\"hidden\"], [hidden]):not(:not(input[type=\"hidden\"], [hidden]) ~ *) > :not(input[type=\"hidden\"], [hidden]):not(:not(input[type=\"hidden\"], [hidden]) ~ *) { padding-top: 0; }"
 	if !strings.Contains(css, want) {
 		t.Errorf("sections.css is missing %s", want)
 	}

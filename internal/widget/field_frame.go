@@ -120,6 +120,9 @@ type boxView struct {
 	Parts     []boxPart
 	Group     string
 	Described string
+	// Stacked stands a fused box's parts one under another, split by
+	// hairlines, when side by side they would outgrow the answer column.
+	Stacked bool
 }
 
 // boxPart is one value in a box. Track puts the change hooks on the part

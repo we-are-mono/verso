@@ -323,8 +323,8 @@ func TestRenderMultipleChoiceChips(t *testing.T) {
 	days := render(t, r, &Field{Name: "days", Label: "Days", Kind: "checks", Style: "segmented", Values: []string{"mon"},
 		Options: []Option{{Value: "mon", Label: "Mon"}, {Value: "tue", Label: "Tue"}}})
 	for _, want := range []string{
-		`class="inline-flex w-fit max-w-full flex-wrap gap-0.5 self-start rounded-xs border border-rule-strong bg-quiet p-0.5">`,
-		`<label class="flex h-7 cursor-pointer items-center rounded-xs px-3.5 text-sm font-normal text-body transition-colors hover:text-ink has-checked:bg-choice has-checked:font-semibold has-checked:text-on-fill has-focus-visible:outline-2`,
+		`class="flex w-full max-w-full flex-wrap gap-0.5 self-start rounded-xs border border-rule-strong bg-quiet p-0.5">`,
+		`<label class="flex h-7 flex-1 cursor-pointer items-center justify-center rounded-xs px-1 text-sm font-normal text-body transition-colors hover:text-ink has-checked:bg-choice has-checked:font-semibold has-checked:text-on-fill has-focus-visible:outline-2`,
 	} {
 		if !strings.Contains(days, want) {
 			t.Errorf("segmented field missing %q:\n%s", want, days)

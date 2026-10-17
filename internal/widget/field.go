@@ -206,11 +206,12 @@ func chip(key, source string) string {
 	return strings.Join(halves, " · ")
 }
 
-// wide reports whether the field's control cannot stand in the answer column:
-// a code or text area, an address of the endpoint measure, a weekday strip,
-// or one the shell stands under its question (Wide).
+// wide reports whether the field's control is a page of text rather than an
+// answer, which stands under its question at the row's width: a code or text
+// area, or free text the shell reads as a sentence (Wide). Every other
+// control stands in the answer column, an endpoint and a weekday strip too.
 func (f *Field) wide() bool {
-	return f.Wide || f.Style == "code" || f.Kind == "textarea" || f.ControlMeasure() == "endpoint" || f.Segmented()
+	return f.Wide || f.Style == "code" || f.Kind == "textarea"
 }
 
 // description is what the field is for, written under its name: the help,

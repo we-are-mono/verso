@@ -116,43 +116,49 @@ func TestNoRowsNameRaisesATooltip(t *testing.T) {
 	}
 }
 
-// TestAWideAnswerStandsUnderItsQuestion: an answer that cannot stand in the
-// 272px answer column stands under its question at the row's full width
-// (form-fields): a code or text area, an endpoint, a weekday strip, every list,
-// and a fused or joined value whose parts together are wider than the column.
-// One that fits keeps the column.
-func TestAWideAnswerStandsUnderItsQuestion(t *testing.T) {
+// TestEveryAnswerStandsInTheAnswerColumn: every answer stands beside its
+// question in the 272px answer column, so a form's answers read down one edge
+// (form-fields): a list, an endpoint, a weekday strip, and a fused or joined
+// value whose parts together are wider than the column, which take more lines
+// of the column instead (a fused box stacks its parts, a joined row wraps).
+// Only a page of text stands under its question at the row's full width: a
+// code or text area, and free text the shell reads as a sentence.
+func TestEveryAnswerStandsInTheAnswerColumn(t *testing.T) {
 	r := newRenderer(t)
 	days := []Option{{Value: "mon", Label: "Mon"}, {Value: "tue", Label: "Tue"}}
 	periods := []Option{{Value: "second", Label: "second"}, {Value: "minute", Label: "minute"}, {Value: "hour", Label: "hour"}, {Value: "day", Label: "day"}}
 	for name, c := range map[string]struct {
-		w    Widget
-		wide bool
+		w             Widget
+		wide, stacked bool
 	}{
-		"code":     {&Field{Name: "contents", Label: "Contents", Style: "code"}, true},
-		"textarea": {&Field{Name: "note", Label: "Note", Kind: "textarea"}, true},
-		"endpoint": {&Field{Name: "resolver_url", Label: "Resolver", Key: "resolver_url"}, true},
-		"weekdays": {&Field{Name: "days", Label: "Days", Kind: "checks", Style: "segmented", Options: days}, true},
-		"list":     {&List{Name: "proto", Label: "Protocol"}, true},
-		"text":     {&Field{Name: "name", Label: "Name"}, false},
-		"stacked":  {&Field{Name: "note", Label: "Note", Wide: true}, true},
-		"switch":   {&Switch{Name: "on", Label: "On"}, false},
-		"rate": {&Grid{Style: "form", Label: "Connection rate", Join: "per", Children: []Widget{
+		"code":     {w: &Field{Name: "contents", Label: "Contents", Style: "code"}, wide: true},
+		"textarea": {w: &Field{Name: "note", Label: "Note", Kind: "textarea"}, wide: true},
+		"sentence": {w: &Field{Name: "note", Label: "Note", Wide: true}, wide: true},
+		"endpoint": {w: &Field{Name: "resolver_url", Label: "Resolver", Key: "resolver_url"}},
+		"weekdays": {w: &Field{Name: "days", Label: "Days", Kind: "checks", Style: "segmented", Options: days}},
+		"rows":     {w: &List{Name: "dns", Label: "DNS servers", Style: "rows"}},
+		"chips":    {w: &List{Name: "proto", Label: "Protocol", Style: "tokens"}},
+		"text":     {w: &Field{Name: "name", Label: "Name"}},
+		"switch":   {w: &Switch{Name: "on", Label: "On"}},
+		"rate": {w: &Grid{Style: "form", Label: "Connection rate", Join: "per", Children: []Widget{
 			&Field{Name: "synflood_rate", Label: "Connections", Key: "synflood_rate"},
 			&Field{Name: "synflood_rate_unit", Label: "Per", Kind: "select", Options: periods},
-		}}, false},
-		"address": {&Grid{Style: "form", Label: "IPv4 address", Children: []Widget{
+		}}},
+		"address": {w: &Grid{Style: "form", Label: "IPv4 address", Children: []Widget{
 			&Field{Name: "ipaddr", Label: "Address", Key: "ipaddr"},
 			&Field{Name: "netmask", Label: "Netmask", Key: "netmask"},
-		}}, true},
-		"window": {&Grid{Style: "form", Label: "Hours", Join: "to", Children: []Widget{
+		}}, stacked: true},
+		"window": {w: &Grid{Style: "form", Label: "Hours", Join: "to", Children: []Widget{
 			&Field{Name: "start", Label: "Starts", Kind: "time"},
 			&Field{Name: "stop", Label: "Ends", Kind: "time"},
-		}}, true},
+		}}},
 	} {
 		got := render(t, r, w(c.w))
 		if wide := strings.Contains(got, "verso-field-wide"); wide != c.wide {
 			t.Errorf("%s: wide = %v, want %v:\n%s", name, wide, c.wide, got)
+		}
+		if stacked := strings.Contains(got, "data-verso-stacked"); stacked != c.stacked {
+			t.Errorf("%s: stacked = %v, want %v:\n%s", name, stacked, c.stacked, got)
 		}
 	}
 }

@@ -188,10 +188,11 @@
      heading). Every row ends on a line of its own, so the last row keeps its
      padding. Hidden carriers are skipped. Rows grouped in a run (a flush
      stack, data-verso-rows) are still the section's rows: the group's own
-     first gives its air back the same way, and so do the rows of the form a
-     card saves itself with, when that form is the card's body. */
+     first gives its air back the same way, as does a gate's row that opens
+     the section, and so do the rows of the form a card saves itself with,
+     when that form is the card's body. */
   [data-verso-headless] > .verso-rhythm > :not(input[type="hidden"], [hidden]):not(:not(input[type="hidden"], [hidden]) ~ *) { padding-top: 0; }
-  [data-verso-headless] > .verso-rhythm > [data-verso-rows]:not(input[type="hidden"], [hidden]):not(:not(input[type="hidden"], [hidden]) ~ *) > :not(input[type="hidden"], [hidden]):not(:not(input[type="hidden"], [hidden]) ~ *) { padding-top: 0; }
+  [data-verso-headless] > .verso-rhythm > :is([data-verso-rows], .verso-conditional):not(input[type="hidden"], [hidden]):not(:not(input[type="hidden"], [hidden]) ~ *) > :not(input[type="hidden"], [hidden]):not(:not(input[type="hidden"], [hidden]) ~ *) { padding-top: 0; }
   [data-verso-headless] > .verso-rhythm > form.verso-form:not(:not(input[type="hidden"], [hidden]) ~ *) > :not(input[type="hidden"], [hidden]):not(:not(input[type="hidden"], [hidden]) ~ *) { padding-top: 0; }
 }
 

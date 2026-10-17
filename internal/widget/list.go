@@ -92,7 +92,8 @@ func (l *List) renderInto(r *Renderer, out io.Writer, _ string) error {
 		Label:   l.LabelView(),
 		Change:  fieldChange{Track: true, Name: l.Name, Label: l.Label, Kind: "list"},
 		Measure: l.ControlMeasure(), Lane: l.Lane(), Removable: l.Removable(),
-		// Rows of values and a box of chips grow across: always wide.
-		Desc: l.description(), Wide: true,
+		// Rows of values and a box of chips grow down the answer column, a
+		// row or a line of chips at a time, as any answer stands.
+		Desc: l.description(),
 	})
 }

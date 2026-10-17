@@ -63,21 +63,50 @@
   /* Rows that follow each other meet on a hairline: the one keeps 16px under
      its last line, the line lands on the grid, and the next one's name stands
      15px after it, a band of the grid. A gate's row is the first of its
-     block, and the row after a gate follows whatever the gate last shows. */
+     block, and the row after a gate follows whatever the gate last shows. A
+     run of rows (a flush stack, data-verso-rows) meets the rows beside it the
+     same way, through its own first and last. */
   .verso-field-row + .verso-field-row,
-  :is(.verso-conditional, .verso-field-set) + .verso-field-row,
-  :is(.verso-field-row, .verso-conditional, .verso-field-set) + .verso-conditional > .verso-conditional-gate,
-  :is(.verso-field-row, .verso-conditional, .verso-field-set) + .verso-field-set > .verso-field-row:first-child {
+  :is(.verso-conditional, .verso-field-set, [data-verso-rows]) + .verso-field-row,
+  :is(.verso-field-row, .verso-conditional, .verso-field-set, [data-verso-rows]) + .verso-conditional > .verso-conditional-gate,
+  :is(.verso-field-row, .verso-conditional, .verso-field-set, [data-verso-rows]) + :is(.verso-field-set, [data-verso-rows]) > .verso-field-row:first-child {
     border-top: 1px solid var(--color-rule);
     padding-top: calc(var(--spacing) * 3.75);
   }
-  .verso-field-row:has(+ :is(.verso-field-row, .verso-conditional, .verso-field-set)) {
+  .verso-field-row:has(+ :is(.verso-field-row, .verso-conditional, .verso-field-set, [data-verso-rows])) {
     padding-bottom: calc(var(--spacing) * 4);
   }
-  .verso-conditional:has(+ :is(.verso-field-row, .verso-conditional, .verso-field-set)) > .verso-conditional-gate,
-  .verso-conditional:has(+ :is(.verso-field-row, .verso-conditional, .verso-field-set)) > .verso-conditional-body > .verso-field-row:last-child,
-  .verso-conditional:has(> .verso-conditional-gate input[data-verso-switch]:checked) > .verso-conditional-gate,
-  .verso-field-set:has(+ :is(.verso-field-row, .verso-conditional, .verso-field-set)) > .verso-field-row:last-child {
+  .verso-conditional:has(+ :is(.verso-field-row, .verso-conditional, .verso-field-set, [data-verso-rows])) > .verso-conditional-gate,
+  .verso-conditional:has(+ :is(.verso-field-row, .verso-conditional, .verso-field-set, [data-verso-rows])) > .verso-conditional-body > .verso-field-row:last-child,
+  .verso-conditional:has(> .verso-conditional-gate input[data-verso-switch]:checked):has(> .verso-conditional-body > :not(input[type="hidden"], [hidden], template)) > .verso-conditional-gate,
+  :is(.verso-field-set, [data-verso-rows]):has(+ :is(.verso-field-row, .verso-conditional, .verso-field-set, [data-verso-rows])) > .verso-field-row:last-child {
+    padding-bottom: calc(var(--spacing) * 4);
+  }
+  /* A hidden carrier between two rows (the object's address, posted with
+     the form) draws nothing, so the rows still meet on a hairline across
+     it. */
+  .verso-field-row + input[type="hidden"] + .verso-field-row,
+  .verso-field-row + input[type="hidden"] + input[type="hidden"] + .verso-field-row {
+    border-top: 1px solid var(--color-rule);
+    padding-top: calc(var(--spacing) * 3.75);
+  }
+  .verso-field-row:has(+ input[type="hidden"] + .verso-field-row),
+  .verso-field-row:has(+ input[type="hidden"] + input[type="hidden"] + .verso-field-row) {
+    padding-bottom: calc(var(--spacing) * 4);
+  }
+  /* The rows a choice shows for one of its values (data-verso-when: a
+     provider's own fields, a protocol's addresses) are rows of the form like
+     the rest. The group draws nothing of its own, so its first row meets the
+     row before it on a hairline and the row after it meets its last; a group
+     the choice hides draws nothing and is passed over. */
+  :is(.verso-field-row, .verso-conditional, .verso-field-set, [data-verso-rows], fieldset[data-verso-when]) + fieldset[data-verso-when] > .verso-field-row:first-child,
+  fieldset[data-verso-when] + .verso-field-row,
+  fieldset[data-verso-when] + .verso-conditional > .verso-conditional-gate {
+    border-top: 1px solid var(--color-rule);
+    padding-top: calc(var(--spacing) * 3.75);
+  }
+  .verso-field-row:has(+ fieldset[data-verso-when]),
+  fieldset[data-verso-when]:has(~ :is(.verso-field-row, .verso-conditional, .verso-field-set, [data-verso-rows])) > .verso-field-row:last-child {
     padding-bottom: calc(var(--spacing) * 4);
   }
   /* A condensed list of many short facts keeps the ledger's anatomy on a
@@ -105,24 +134,33 @@
     border-top: 0;
     padding-top: calc(var(--spacing) * 2);
   }
-  /* What a gate reveals is the gate's own group: its rows stand under it
-     with no hairline and no air of their own over them. */
-  .verso-conditional-body > .verso-field-row,
-  .verso-conditional-otherwise > .verso-field-row {
-    border-top: 0;
-    padding-top: 0;
+  /* What a gate reveals is rows like any other: the first meets the gate on
+     a hairline, 15px over its name, and the rest meet each other as rows
+     do; their questions keep the form's one left edge as their answers keep
+     its one column. A gate inside a reveal is one of its rows. Hidden
+     carriers are not what a reveal opens on. */
+  :is(.verso-conditional-body, .verso-conditional-otherwise) > .verso-field-row:not(:not(input[type="hidden"], [hidden], template) ~ *),
+  :is(.verso-conditional-body, .verso-conditional-otherwise) > .verso-conditional:not(:not(input[type="hidden"], [hidden], template) ~ *) > .verso-conditional-gate {
+    border-top: 1px solid var(--color-rule);
+    padding-top: calc(var(--spacing) * 3.75);
   }
-  .verso-conditional-body > .verso-field-row:has(+ .verso-field-row),
-  .verso-conditional-otherwise > .verso-field-row:has(+ .verso-field-row) {
+  /* The gate keeps a row's 16px over that hairline while what it shows
+     opens on a row: its reveal when it is on, what stands otherwise when it
+     is off. */
+  .verso-conditional:not(:has(> .verso-conditional-gate input[data-verso-switch]:checked)):has(> .verso-conditional-otherwise > .verso-field-row) > .verso-conditional-gate {
     padding-bottom: calc(var(--spacing) * 4);
   }
-  /* Its questions indent under the gate's, a step per gate, while their
-     answers keep the form's one column. */
-  .verso-conditional-body .verso-field-question {
-    padding-left: var(--spacing-inset);
+  /* What a gate shows that ends on a block rather than a row (the notice an
+     off switch raises) keeps a row's 16px under it, so the next question's
+     hairline stands clear of the block's frame. */
+  .verso-conditional:has(+ :is(.verso-field-row, .verso-conditional, .verso-field-set, [data-verso-rows])) > :is(.verso-conditional-body, .verso-conditional-otherwise):has(> :not(.verso-field-row, .verso-conditional, input[type="hidden"], [hidden], template):last-child) {
+    padding-bottom: calc(var(--spacing) * 4);
   }
-  .verso-conditional-body .verso-conditional-body .verso-field-question {
-    padding-left: calc(var(--spacing-inset) * 2);
+  /* A gate inside a reveal that is the reveal's last row keeps the 16px
+     over the next question's hairline, as the reveal's last row does. */
+  .verso-conditional:has(+ :is(.verso-field-row, .verso-conditional, .verso-field-set, [data-verso-rows])) > .verso-conditional-body > .verso-conditional:last-child > .verso-conditional-gate,
+  .verso-conditional:has(+ :is(.verso-field-row, .verso-conditional, .verso-field-set, [data-verso-rows])) > .verso-conditional-body > .verso-conditional:last-child > .verso-conditional-body > .verso-field-row:last-child {
+    padding-bottom: calc(var(--spacing) * 4);
   }
 
   /* The ledger: the question on the left, the answer in the form's one
@@ -170,9 +208,10 @@
       margin-top: var(--spacing);
     }
   }
-  /* An answer the column cannot hold (rows of values, a code area, a value
-     wider than the column) stands under its question at the row's full
-     width, straight under it as a stacked row's does. */
+  /* A page of text rather than an answer (a code or text area, free text
+     read as a sentence) stands under its question at the row's full width,
+     straight under it as a stacked row's does. Every other answer stands in
+     the column, taking more of its lines where it needs them. */
   .verso-field-wide > .verso-field-ledger > .verso-field-answer {
     grid-column: 1 / -1;
     margin-block: 0;
@@ -325,6 +364,28 @@
   .verso-box-part[data-verso-measure="number"] { --verso-part-width: calc(var(--spacing) * 24); }
   .verso-box-part[data-verso-measure="secret"] { --verso-part-width: calc(var(--spacing) * 64); }
   .verso-box-part + .verso-box-part { border-left: 1px solid var(--color-rule); }
+  /* A box whose parts would outgrow the answer column side by side stacks
+     them, one under another, split by hairlines: still one control in the
+     column, each part a line of it, its value at the left and its name at
+     the right. The frame and the hairlines between parts stand on the grid's
+     lines 32px apart, each part 31px inside them, so the box is whole
+     controls tall and a pixel, and its first part centres on the question's
+     line as a lone control does. */
+  .verso-box[data-verso-stacked] {
+    flex-direction: column;
+    width: 100%;
+    height: auto;
+  }
+  .verso-box[data-verso-stacked] > .verso-box-part { height: calc(var(--spacing) * 8 - 1px); }
+  .verso-box[data-verso-stacked] > .verso-box-part + .verso-box-part {
+    height: calc(var(--spacing) * 8);
+    border-left-width: 0;
+    border-top: 1px solid var(--color-rule);
+  }
+  .verso-box[data-verso-stacked] .verso-box-input {
+    flex: 1 1 auto;
+    width: auto;
+  }
   /* A clock time's own picker glyph gives way to the app's clock
      (verso-time-input): it keeps its place at the end of the box, exactly
      under the drawn glyph, a 16px square with no air of its own, so a press
@@ -340,8 +401,9 @@
 
   /* verso-joined: a sentence of fields side by side, the group's word
      between them. A dropdown measures its own longest option and a typed
-     value its own measure, as they do alone; the row wraps under a phone's
-     width rather than squeezing them. */
+     value its own measure, as they do alone; a sentence wider than the
+     answer column wraps onto its next line, 40px on, rather than squeezing
+     them. */
   .verso-joined {
     display: flex;
     flex-wrap: wrap;

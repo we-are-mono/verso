@@ -138,15 +138,17 @@ func (r *Renderer) renderFused(out io.Writer, g *Grid, fields []*Field) error {
 		}
 	}
 	box, frame := groupRow(g, fields, parts)
-	frame.Wide = partsWidth(box.Parts, 1) > answerColumn
+	// Parts too wide to stand side by side in the answer column stand one
+	// under another inside the box, so it stays one control in the column.
+	box.Stacked = partsWidth(box.Parts, 1) > answerColumn
 	return r.renderFrame(out, "verso-box", box, frame)
 }
 
 // renderJoined draws a sentence of related fields as one row: each part its
-// own control, side by side, the group's word between them.
+// own control, side by side, the group's word between them. A sentence too
+// wide for the answer column wraps onto its next line there (forms.css).
 func (r *Renderer) renderJoined(out io.Writer, g *Grid, fields []*Field) error {
 	parts, frame := groupRow(g, fields, groupParts(g, fields))
-	frame.Wide = partsWidth(parts.Parts, joinerWidth(g.Join)) > answerColumn
 	return r.renderFrame(out, "verso-joined", parts, frame)
 }
 
@@ -197,10 +199,6 @@ func partWidth(f *Field) int {
 	}
 	return width
 }
-
-// joinerWidth is how wide a joined row's word stands with its 12px either
-// side.
-func joinerWidth(word string) int { return 24 + utf8.RuneCountInString(word)*sansRune }
 
 // groupRow is the row a group of related fields stands in. The row is one
 // setting: one label covering every part, one chip naming every option, one

@@ -122,13 +122,14 @@ func TestListAddHoversAsEverySecondaryButton(t *testing.T) {
 // height is its line plus its padding, never a fixed floor — the value's 24px
 // line 7px after the hairline above every row and 8px over the next, so its
 // line fills a band of the grid, the 28px remove riding the line. The first
-// row's hairline goes clear and keeps its pixel, on the line under the label;
-// the add box stands 8px after the last row, so a set with nothing in it puts
-// its box directly under the label.
+// row's hairline goes clear and keeps its pixel, on the line under the label,
+// and beside the question the first value stands on the name's own line; the
+// add box stands 8px after the last row, so a set with nothing in it puts its
+// box straight under the label, or beside it on the name's line.
 func TestListRowsTakeTheirHeightFromPadding(t *testing.T) {
 	got := render(t, newRenderer(t), &List{Name: "server", Label: "Time servers", Style: "rows", Prompt: "Add a server",
 		Items: []string{"0.openwrt.pool.ntp.org", "1.openwrt.pool.ntp.org"}})
-	const row = `class="flex items-start gap-2 border-t border-rule py-row pr-3 pl-1.5 first:border-t-transparent"`
+	const row = `class="flex items-start gap-2 border-t border-rule py-row pr-3 pl-1.5 first:border-t-transparent @min-[36rem]/verso-field:first:-mt-1"`
 	if strings.Count(got, row) != 3 { // two values and the row the shell clones
 		t.Errorf("value rows take their height from padding, want %s three times in:\n%s", row, got)
 	}
@@ -143,7 +144,7 @@ func TestListRowsTakeTheirHeightFromPadding(t *testing.T) {
 	if strings.Contains(got, "min-h-8") {
 		t.Errorf("no fixed row floor:\n%s", got)
 	}
-	if !strings.Contains(got, `<div data-verso-list-items>`) || !strings.Contains(got, `<div class="flex items-center gap-2 pt-2">`) {
+	if !strings.Contains(got, `<div data-verso-list-items class="has-[[data-verso-list-row]]:pb-2">`) || !strings.Contains(got, `<div class="flex items-center gap-2">`) {
 		t.Errorf("the set's rows start on the line under the label, and the add box stands 8px under them:\n%s", got)
 	}
 }
