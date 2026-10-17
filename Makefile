@@ -109,6 +109,18 @@ require_tools_host = test "$$(uname -s)/$$(uname -m)" = $(TOOLS_HOST_OS)/$(TOOLS
 tool_tmp = tmp=$$(mktemp -d "$@.XXXXXX") || exit 1; \
 	trap 'rm -rf "$$tmp"' EXIT; trap 'exit 1' HUP INT TERM
 
+# playwright-core drives the layout snapshot (scripts/layout-snapshot.cjs), a dev
+# tool that records every box and type property of the reference pages so a
+# stylesheet change shows exactly what it moved. It has no dependencies; the
+# registry tarball is pinned by SHA-256 like the binaries above, and the browser
+# is the Chromium headless shell that version names, fetched into Playwright's
+# own cache on first use.
+PLAYWRIGHT_VERSION := 1.63.0
+PLAYWRIGHT_SHA256  := 208593d4e1bcd8f8fe5f869cad1cc332dc7f1d70dc1d58c102dc3ac36e30f26c
+PLAYWRIGHT_URL     := https://registry.npmjs.org/playwright-core/-/playwright-core-$(PLAYWRIGHT_VERSION).tgz
+PLAYWRIGHT         := $(BUILDDIR)/tools/playwright-core-$(PLAYWRIGHT_VERSION)
+LAYOUT_OUT         ?= $(BUILDDIR)/layout/latest
+
 # Whole-program Go dead-code analysis, also pinned + cached on the build host.
 DEADCODE_VERSION := v0.51.0
 DEADCODE         := $(BUILDDIR)/tools/deadcode-$(DEADCODE_VERSION)/deadcode
@@ -197,7 +209,7 @@ endef
 
 # build-<arch> is intentionally NOT phony: make skips pattern rules for phony
 # targets, and no file of that name is ever produced, so the rule fires each run.
-.PHONY: all build dev css test lint deadcode vuln hooks clean apk apk-publish apk-publish-feed apk-preflight apk-i18n apk-i18n-publish i18n-audit version
+.PHONY: all build dev css layout-snapshot layout-diff layout-noise test lint deadcode vuln hooks clean apk apk-publish apk-publish-feed apk-preflight apk-i18n apk-i18n-publish i18n-audit version
 
 all: lint test build
 
@@ -221,6 +233,31 @@ $(TAILWIND):
 css: $(TAILWIND)
 	@$(call verify_sha256,$(TAILWIND),$(TAILWIND_SHA256)) \
 	&& $(TAILWIND) -i $(CSS_IN) -o $(CSS_OUT) --minify
+
+$(PLAYWRIGHT):
+	@$(require_sha256sum)
+	@mkdir -p $(dir $@)
+	@$(tool_tmp); \
+	echo "curl -fsSL $(PLAYWRIGHT_URL)"; \
+	curl -fsSL $(PLAYWRIGHT_URL) -o "$$tmp/package.tgz" \
+	&& $(call verify_sha256,$$tmp/package.tgz,$(PLAYWRIGHT_SHA256)) \
+	&& tar -xzf "$$tmp/package.tgz" -C "$$tmp" \
+	&& node "$$tmp/package/cli.js" install chromium-headless-shell \
+	&& mv "$$tmp/package" $@
+
+# layout-snapshot records the reference pages of the running dev container
+# (`make dev`) into LAYOUT_OUT; layout-diff compares two such records. See
+# scripts/layout-snapshot.cjs for what is recorded and how a diff reads.
+layout-snapshot: $(PLAYWRIGHT)
+	PLAYWRIGHT_CORE=$(abspath $(PLAYWRIGHT)) node scripts/layout-snapshot.cjs snap $(LAYOUT_OUT)
+
+layout-diff:
+	node scripts/layout-snapshot.cjs diff $(FROM) $(TO)
+
+# layout-noise records what two snapshots of the unchanged app disagree on (live
+# readings, a device going idle), so later diffs leave those elements out.
+layout-noise:
+	node scripts/layout-snapshot.cjs noise $(FROM) $(TO)
 
 # build cross-compiles verso (Go) and verso-rpcd (Rust) for every arch in ARCHES.
 # Outputs are arch-suffixed: build/verso-<arch>, build/verso-rpcd-<arch>. The Rust

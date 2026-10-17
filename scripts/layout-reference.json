@@ -1,0 +1,11 @@
+{
+  "skip": [],
+  "interactions": [
+    { "name": "/devices details", "url": "/devices", "click": ["button[aria-label^=\"Details\"]"] },
+    { "name": "/devices reserve", "url": "/devices", "click": ["[data-verso-entity-tab=\"reserve\"]"] },
+    { "name": "/devices shape", "url": "/devices", "click": ["[data-verso-entity-tab=\"shape\"]"] },
+    { "name": "/plugins/firewall/ confirm", "url": "/plugins/firewall/", "click": ["button[aria-label^=\"Delete rule\"]"] },
+    { "name": "/ arrange", "url": "/", "click": ["[data-overview-arrange]"], "undo": ["[data-overview-arrange]"] },
+    { "name": "/ closed card", "url": "/", "click": ["[data-overview-toggle]"], "undo": ["[data-overview-toggle]"] }
+  ]
+}
