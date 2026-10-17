@@ -1,0 +1,133 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/* SPDX-FileCopyrightText: 2026 Mono Technologies Inc. */
+
+/*
+ * takeover — a page that holds the whole window while the router cannot be
+ * worked as usual: signing in, restarting, installing firmware. No rail and
+ * no nav. The bar names the box when there is one to name, so the person
+ * knows which router they are waiting for, and one column stands in the
+ * middle of the room left under it, on the page's own ground.
+ *
+ * Its body is the block: the page's words in the body role, in Ink.
+ *
+ * Elements: __main       the room under the bar, its column centred in it
+ *           __column     the takeover's one measure
+ *           __state      what is happening: its __mark, then its __words
+ *           __mark       the waiting mark, or the state's square once it has
+ *                        settled, centred on the title's first line
+ *           __words      the __title, then the __lede under it, 8px apart
+ *           __title      the state, in the headline role
+ *           __lede       the sentence under it, in the takeover's lede
+ *           __reading    the elapsed time (__clock) and what to expect
+ *                        (__estimate), on one baseline
+ *           __clock      the elapsed time, in the figure role
+ *           __estimate   what to expect, in Meta
+ *           __aside      what stands beside the state (where the router will
+ *                        answer next), 24px under it
+ *           __note       a quiet line under the state, in Meta
+ *           __act        the one act, 40px under the state
+ *           __countdown  how long until the wait opens a door, in Meta, its
+ *                        __time in Ink
+ */
+
+.verso-takeover {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  margin: 0;
+  background-color: var(--color-ground);
+  color: var(--color-ink);
+  @apply type-body;
+}
+
+.verso-takeover__main {
+  display: flex;
+  flex: 1 1 0%;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: calc(var(--spacing) * 12) calc(var(--spacing) * 4);
+}
+@media (width >= 40rem) {
+  .verso-takeover__main {
+    padding-inline: calc(var(--spacing) * 6);
+  }
+}
+
+.verso-takeover__column {
+  width: 100%;
+  max-width: 32rem;
+}
+
+.verso-takeover__state {
+  display: flex;
+  align-items: flex-start;
+  gap: calc(var(--spacing) * 3);
+}
+
+.verso-takeover__mark {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: calc(var(--spacing) * 3.5);
+  height: calc(var(--spacing) * 3.5);
+  margin-top: calc(var(--spacing) * 1.5);
+}
+
+.verso-takeover__words {
+  display: flex;
+  flex: 1 1 0%;
+  flex-direction: column;
+  gap: calc(var(--spacing) * 2);
+  min-width: 0;
+}
+
+.verso-takeover__title {
+  color: var(--color-ink);
+  text-wrap: balance;
+  @apply type-headline;
+}
+
+.verso-takeover__lede {
+  max-width: 60ch;
+  color: var(--color-body);
+  text-wrap: pretty;
+  @apply type-takeover-lede;
+}
+
+.verso-takeover__reading {
+  display: flex;
+  align-items: baseline;
+  gap: calc(var(--spacing) * 4);
+  margin-top: calc(var(--spacing) * 8);
+}
+.verso-takeover__clock {
+  color: var(--color-ink);
+  @apply type-figure;
+}
+.verso-takeover__estimate {
+  color: var(--color-meta);
+}
+
+.verso-takeover__aside {
+  margin-top: calc(var(--spacing) * 6);
+}
+
+.verso-takeover__note {
+  margin-top: calc(var(--spacing) * 6);
+  color: var(--color-meta);
+  text-wrap: pretty;
+}
+
+.verso-takeover__act {
+  margin-top: calc(var(--spacing) * 10);
+}
+
+.verso-takeover__countdown {
+  margin-top: calc(var(--spacing) * 8);
+  color: var(--color-meta);
+  text-align: center;
+}
+.verso-takeover__time {
+  color: var(--color-ink);
+}

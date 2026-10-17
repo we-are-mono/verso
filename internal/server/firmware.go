@@ -212,7 +212,7 @@ func (s *Server) renderFirmwareStarted(w http.ResponseWriter, r *http.Request) {
 		Lang       string
 		Bars       []theme.Bar
 		CSS, Theme template.CSS
-	}{Lang: langAttr(lang), Bars: s.themeBars("canvas"), CSS: s.currentCSS(), Theme: s.themeCSS()}); err != nil {
+	}{Lang: langAttr(lang), Bars: s.themeBars("ground"), CSS: s.currentCSS(), Theme: s.themeCSS()}); err != nil {
 		http.Error(w, "firmware started page error", http.StatusInternalServerError)
 		return
 	}

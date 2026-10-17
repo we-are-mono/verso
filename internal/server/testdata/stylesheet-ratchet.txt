@@ -41,7 +41,6 @@ classes-are-blocks	verso-joined-part
 classes-are-blocks	verso-joined-word
 classes-are-blocks	verso-kicker
 classes-are-blocks	verso-landed
-classes-are-blocks	verso-lede
 classes-are-blocks	verso-overview
 classes-are-blocks	verso-overview-body
 classes-are-blocks	verso-overview-card
@@ -93,23 +92,12 @@ no-class-string-templates	widget/templates/shared.html.tmpl	verso-tone-text
 no-repeated-bundles	absolute cursor-pointer inset-0 opacity-0 size-full
 no-repeated-bundles	absolute flex inset-y-0 items-center left-3 pointer-events-none text-glyph
 no-repeated-bundles	absolute flex inset-y-0 items-center pointer-events-none right-3 text-meta
-no-repeated-bundles	bg-canvas font-sans leading-normal m-0 min-h-screen text-ink text-sm
-no-repeated-bundles	bg-marigold-soft flex gap-2 items-start leading-[1.45] mt-6 px-3 py-2 rounded-xs text-marigold-deep
-no-repeated-bundles	bg-rule-strong h-5 shrink-0 w-px
-no-repeated-bundles	block mt-1.75 relative shrink-0 size-3.5
-no-repeated-bundles	border-b border-mid flex gap-6 items-center py-2.5
-no-repeated-bundles	flex flex-1 flex-col gap-2 min-w-0
 no-repeated-bundles	flex gap-1.5 items-center text-ink
-no-repeated-bundles	flex gap-3 items-start mt-11
-no-repeated-bundles	font-medium font-mono min-w-0 text-base wrap-anywhere
-no-repeated-bundles	font-normal font-sans text-meta text-sm
 no-repeated-bundles	font-semibold leading-6 shrink-0 text-ink text-sm
-no-repeated-bundles	font-semibold leading-tight text-2xl text-balance tracking-tight
 no-repeated-bundles	font-semibold text-denim-deep underline underline-offset-2 whitespace-nowrap
 no-repeated-bundles	group-data-dragging/drop:text-denim mb-2 text-glyph transition-colors
 no-repeated-bundles	leading-6 text-meta text-pretty text-sm
 no-repeated-bundles	opacity-0 peer-checked:opacity-100 relative text-on-fill
-no-repeated-bundles	shrink-0 text-meta truncate w-32
 no-rules-in-markup	server/assets/verso-forms.js	border-crimson!
 no-rules-in-markup	server/templates/diagnostics.html.tmpl	[&::-webkit-calendar-picker-indicator]:hidden!
 no-rules-in-markup	server/templates/login.html.tmpl	bg-ground!
@@ -307,8 +295,6 @@ rules-live-in-blocks	input.css	.verso-inline-switch-on
 rules-live-in-blocks	input.css	.verso-inline-switch:has(input[data-verso-switch]:checked) .verso-inline-switch-off
 rules-live-in-blocks	input.css	.verso-inline-switch:has(input[data-verso-switch]:checked) .verso-inline-switch-on
 rules-live-in-blocks	input.css	.verso-kicker
-rules-live-in-blocks	input.css	.verso-lede
-rules-live-in-blocks	input.css	.verso-lede
 rules-live-in-blocks	input.css	.verso-overview
 rules-live-in-blocks	input.css	.verso-overview > .verso-overview-cols:has(> [data-overview-col])
 rules-live-in-blocks	input.css	.verso-overview-body
@@ -513,20 +499,12 @@ rules-live-in-blocks	sections.css	section[data-verso-section]:has(> [data-verso-
 rules-live-in-blocks	sections.css	section[data-verso-section]:has(> [data-verso-section-band]) > .verso-rhythm > :not(input[type="hidden"], [hidden]):not(:not(input[type="hidden"], [hidden]) ~ *):not(.verso-field-row, .verso-form-grid, .verso-conditional, .verso-field-set, form:not([data-verso-compact-form]):has(.verso-field-row, .verso-form-grid, .verso-conditional), [data-verso-change-field], [data-verso-settings], [data-verso-rows]:has(> .verso-field-row:first-child))
 short-class-lists	server/templates/diagnostics.html.tmpl	{{template "verso-input-words"}} {{template "verso-input-border" false}} cursor-pointer appearance-none pr-9 pl-9.5 disabled:cursor-default disabled:bg-quiet disabled:text-meta
 short-class-lists	server/templates/entity-panel.html.tmpl	flex h-control cursor-pointer items-center rounded-xs border border-denim bg-denim px-4 text-sm font-semibold whitespace-nowrap text-on-fill transition-colors hover:border-denim-deep hover:bg-denim-deep
-short-class-lists	server/templates/login.html.tmpl	flex items-start gap-2 rounded-xs bg-marigold-soft px-3 py-2 text-sm leading-[1.45] text-marigold-deep
-short-class-lists	server/templates/login.html.tmpl	flex w-full min-w-0 flex-col gap-6 p-6 sm:p-8 lg:w-100 lg:shrink-0
-short-class-lists	server/templates/login.html.tmpl	group flex min-w-0 flex-col border-b border-rule bg-quiet p-6 sm:p-8 lg:min-w-100 lg:max-w-[calc(100vw-448px)] lg:shrink-0 lg:border-r lg:border-b-0
-short-class-lists	server/templates/login.html.tmpl	group mt-2 flex h-control w-full items-center justify-center rounded-xs border border-denim bg-denim text-sm font-semibold text-on-fill transition-colors enabled:hover:border-denim-deep enabled:hover:bg-denim-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim disabled:pointer-events-none disabled:transition-none disabled:border-rule-strong disabled:bg-quiet disabled:text-glyph
-short-class-lists	server/templates/login.html.tmpl	m-0 flex min-h-dvh flex-col bg-ground font-sans text-sm leading-normal text-ink
-short-class-lists	server/templates/login.html.tmpl	size-1.5 shrink-0 rounded-[1px] border border-faint group-data-[internet=up]:border-transparent group-data-[internet=up]:bg-green group-data-[internet=down]:border-transparent group-data-[internet=down]:bg-crimson
 short-class-lists	server/templates/logs.html.tmpl	absolute inset-0 rounded-xs border border-choice-border bg-canvas shadow-(--shadow-field) peer-checked:border-choice peer-checked:bg-choice peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-denim-deep
 short-class-lists	server/templates/package-files.html.tmpl	max-h-80 overflow-auto rounded-xs border border-rule bg-quiet p-3 font-mono text-base text-body
 short-class-lists	server/templates/page.html.tmpl	flex h-7 cursor-pointer items-center gap-1 rounded-xs px-2 font-semibold transition-colors hover:bg-crimson-line/60 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-crimson-deep group-data-[ready]/refusals:hidden
 short-class-lists	server/templates/page.html.tmpl	group/refusals fixed top-[4.25rem] left-1/2 z-20 flex h-control -translate-x-1/2 items-center gap-2 rounded-xs border border-crimson-line bg-crimson-soft pr-1 pl-3 text-sm font-normal whitespace-nowrap text-crimson-deep shadow-(--shadow-float) md:left-[calc(50%+9rem)] data-[ready]:border-green-line data-[ready]:bg-green-soft data-[ready]:text-green-deep
 short-class-lists	server/templates/page.html.tmpl	min-h-screen m-0 flex flex-col bg-ground font-sans text-sm leading-normal text-ink
 short-class-lists	server/templates/page.html.tmpl	sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus:rounded-xs focus:bg-canvas focus:px-4 focus:py-2 focus:font-semibold focus:outline-2 focus:outline-denim
-short-class-lists	server/templates/restarting.html.tmpl	mt-6 flex items-start gap-2 rounded-xs bg-marigold-soft px-3 py-2 leading-[1.45] text-marigold-deep
-short-class-lists	server/templates/restarting.html.tmpl	mt-6 flex items-start gap-2 rounded-xs bg-marigold-soft px-3 py-2 leading-[1.45] text-marigold-deep
 short-class-lists	widget/templates/actionbar.html.tmpl	h-control w-full cursor-pointer appearance-none rounded-xs border border-rule-strong bg-canvas pr-9 pl-3 text-sm text-ink shadow-(--shadow-field) transition-colors hover:border-faint focus:border-denim focus:outline-none
 short-class-lists	widget/templates/badge.html.tmpl	inline-flex items-center gap-2 rounded-xs border px-3 py-3 text-sm font-medium {{if eq .Variant "success"}}border-green-line bg-green-soft text-green-deep {{else if eq .Variant "warning"}}border-marigold-line bg-marigold-soft text-marigold-deep {{else if eq .Variant "danger"}}border-crimson-line bg-crimson-soft text-crimson-deep {{else if eq .Variant "info"}}border-denim-line bg-denim-soft text-denim-deep {{else}}border-rule bg-quiet text-meta{{end}}
 short-class-lists	widget/templates/conditions.html.tmpl	absolute top-full left-0 z-30 mt-2 w-[36rem] max-w-[calc(100vw-2rem)] rounded-xs border border-rule-strong bg-ground shadow-(--shadow-menu)
@@ -585,9 +563,6 @@ type-comes-from-roles	forms.css	.verso-reveal-act	line-height
 type-comes-from-roles	input.css	.verso-kicker	font-size
 type-comes-from-roles	input.css	.verso-kicker	font-weight
 type-comes-from-roles	input.css	.verso-kicker	letter-spacing
-type-comes-from-roles	input.css	.verso-lede, [data-verso-section-lede]	font-size
-type-comes-from-roles	input.css	.verso-lede, [data-verso-section-lede]	font-weight
-type-comes-from-roles	input.css	.verso-lede, [data-verso-section-lede]	line-height
 type-comes-from-roles	input.css	.verso-overview-content thead th	font-size
 type-comes-from-roles	input.css	.verso-overview-content thead th	font-weight
 type-comes-from-roles	input.css	.verso-overview-content thead th	letter-spacing
@@ -597,6 +572,9 @@ type-comes-from-roles	input.css	.verso-page-heading	font-weight
 type-comes-from-roles	input.css	.verso-page-heading	letter-spacing
 type-comes-from-roles	input.css	.verso-page-heading	line-height
 type-comes-from-roles	input.css	::marker	font-family
+type-comes-from-roles	input.css	[data-verso-section-lede]	font-size
+type-comes-from-roles	input.css	[data-verso-section-lede]	font-weight
+type-comes-from-roles	input.css	[data-verso-section-lede]	line-height
 type-comes-from-roles	input.css	[data-verso-section-lede], [data-verso-section-lede] *	font-size
 type-comes-from-roles	input.css	[data-verso-section-lede], [data-verso-section-lede] *	line-height
 type-comes-from-roles	sections.css	:is(.verso-page-body, [data-verso-drawer-body]) :is(section[data-verso-section]:not(section section) > .verso-rhythm > [data-verso-listing],.verso-page-body > [data-verso-listing], .verso-page-body > .verso-stack > [data-verso-listing], .verso-page-body > .verso-stack > .verso-stack > [data-verso-listing]) > [data-verso-scroller] > table > tbody > tr > td .font-semibold:not(a, button)	font-weight
@@ -634,56 +612,6 @@ type-comes-from-roles	server/restarting.go	font-mono
 type-comes-from-roles	server/restarting.go	text-base
 type-comes-from-roles	server/templates/entity-panel.html.tmpl	font-semibold
 type-comes-from-roles	server/templates/entity-panel.html.tmpl	text-sm
-type-comes-from-roles	server/templates/firmware-started.html.tmpl	font-medium
-type-comes-from-roles	server/templates/firmware-started.html.tmpl	font-sans
-type-comes-from-roles	server/templates/firmware-started.html.tmpl	leading-7
-type-comes-from-roles	server/templates/firmware-started.html.tmpl	leading-normal
-type-comes-from-roles	server/templates/firmware-started.html.tmpl	text-4xl
-type-comes-from-roles	server/templates/firmware-started.html.tmpl	text-base
-type-comes-from-roles	server/templates/firmware-started.html.tmpl	text-sm
-type-comes-from-roles	server/templates/firmware-started.html.tmpl	text-sm
-type-comes-from-roles	server/templates/firmware-started.html.tmpl	tracking-tight
-type-comes-from-roles	server/templates/login.html.tmpl	font-bold
-type-comes-from-roles	server/templates/login.html.tmpl	font-light
-type-comes-from-roles	server/templates/login.html.tmpl	font-medium
-type-comes-from-roles	server/templates/login.html.tmpl	font-medium
-type-comes-from-roles	server/templates/login.html.tmpl	font-medium
-type-comes-from-roles	server/templates/login.html.tmpl	font-medium
-type-comes-from-roles	server/templates/login.html.tmpl	font-mono
-type-comes-from-roles	server/templates/login.html.tmpl	font-mono
-type-comes-from-roles	server/templates/login.html.tmpl	font-mono
-type-comes-from-roles	server/templates/login.html.tmpl	font-mono
-type-comes-from-roles	server/templates/login.html.tmpl	font-normal
-type-comes-from-roles	server/templates/login.html.tmpl	font-normal
-type-comes-from-roles	server/templates/login.html.tmpl	font-sans
-type-comes-from-roles	server/templates/login.html.tmpl	font-sans
-type-comes-from-roles	server/templates/login.html.tmpl	font-sans
-type-comes-from-roles	server/templates/login.html.tmpl	font-semibold
-type-comes-from-roles	server/templates/login.html.tmpl	font-semibold
-type-comes-from-roles	server/templates/login.html.tmpl	font-semibold
-type-comes-from-roles	server/templates/login.html.tmpl	font-semibold
-type-comes-from-roles	server/templates/login.html.tmpl	leading-9
-type-comes-from-roles	server/templates/login.html.tmpl	leading-[1.1]
-type-comes-from-roles	server/templates/login.html.tmpl	leading-[1.1]
-type-comes-from-roles	server/templates/login.html.tmpl	leading-[1.45]
-type-comes-from-roles	server/templates/login.html.tmpl	leading-normal
-type-comes-from-roles	server/templates/login.html.tmpl	leading-relaxed
-type-comes-from-roles	server/templates/login.html.tmpl	leading-relaxed
-type-comes-from-roles	server/templates/login.html.tmpl	text-2xl
-type-comes-from-roles	server/templates/login.html.tmpl	text-2xl
-type-comes-from-roles	server/templates/login.html.tmpl	text-base
-type-comes-from-roles	server/templates/login.html.tmpl	text-base
-type-comes-from-roles	server/templates/login.html.tmpl	text-base
-type-comes-from-roles	server/templates/login.html.tmpl	text-sm
-type-comes-from-roles	server/templates/login.html.tmpl	text-sm
-type-comes-from-roles	server/templates/login.html.tmpl	text-sm
-type-comes-from-roles	server/templates/login.html.tmpl	text-sm
-type-comes-from-roles	server/templates/login.html.tmpl	text-sm
-type-comes-from-roles	server/templates/login.html.tmpl	text-xl
-type-comes-from-roles	server/templates/login.html.tmpl	text-xs
-type-comes-from-roles	server/templates/login.html.tmpl	tracking-[.08em]
-type-comes-from-roles	server/templates/login.html.tmpl	tracking-tight
-type-comes-from-roles	server/templates/login.html.tmpl	tracking-tight
 type-comes-from-roles	server/templates/logs.html.tmpl	font-medium
 type-comes-from-roles	server/templates/logs.html.tmpl	text-sm
 type-comes-from-roles	server/templates/package-files.html.tmpl	font-mono
@@ -701,40 +629,6 @@ type-comes-from-roles	server/templates/page.html.tmpl	text-sm
 type-comes-from-roles	server/templates/page.html.tmpl	text-sm
 type-comes-from-roles	server/templates/pending.html.tmpl	leading-6
 type-comes-from-roles	server/templates/pending.html.tmpl	text-sm
-type-comes-from-roles	server/templates/restarting.html.tmpl	font-bold
-type-comes-from-roles	server/templates/restarting.html.tmpl	font-bold
-type-comes-from-roles	server/templates/restarting.html.tmpl	font-light
-type-comes-from-roles	server/templates/restarting.html.tmpl	font-mono
-type-comes-from-roles	server/templates/restarting.html.tmpl	font-mono
-type-comes-from-roles	server/templates/restarting.html.tmpl	font-sans
-type-comes-from-roles	server/templates/restarting.html.tmpl	font-semibold
-type-comes-from-roles	server/templates/restarting.html.tmpl	font-semibold
-type-comes-from-roles	server/templates/restarting.html.tmpl	font-semibold
-type-comes-from-roles	server/templates/restarting.html.tmpl	font-semibold
-type-comes-from-roles	server/templates/restarting.html.tmpl	leading-[1.45]
-type-comes-from-roles	server/templates/restarting.html.tmpl	leading-[1.45]
-type-comes-from-roles	server/templates/restarting.html.tmpl	leading-none
-type-comes-from-roles	server/templates/restarting.html.tmpl	leading-none
-type-comes-from-roles	server/templates/restarting.html.tmpl	leading-normal
-type-comes-from-roles	server/templates/restarting.html.tmpl	leading-tight
-type-comes-from-roles	server/templates/restarting.html.tmpl	leading-tight
-type-comes-from-roles	server/templates/restarting.html.tmpl	leading-tight
-type-comes-from-roles	server/templates/restarting.html.tmpl	text-2xl
-type-comes-from-roles	server/templates/restarting.html.tmpl	text-2xl
-type-comes-from-roles	server/templates/restarting.html.tmpl	text-2xl
-type-comes-from-roles	server/templates/restarting.html.tmpl	text-4xl
-type-comes-from-roles	server/templates/restarting.html.tmpl	text-sm
-type-comes-from-roles	server/templates/restarting.html.tmpl	text-sm
-type-comes-from-roles	server/templates/restarting.html.tmpl	text-xl
-type-comes-from-roles	server/templates/restarting.html.tmpl	tracking-tight
-type-comes-from-roles	server/templates/restarting.html.tmpl	tracking-tight
-type-comes-from-roles	server/templates/restarting.html.tmpl	tracking-tight
-type-comes-from-roles	server/templates/restarting.html.tmpl	tracking-tight
-type-comes-from-roles	server/templates/restarting.html.tmpl	tracking-tighter
-type-comes-from-roles	server/templates/upgrading.html.tmpl	font-sans
-type-comes-from-roles	server/templates/upgrading.html.tmpl	leading-normal
-type-comes-from-roles	server/templates/upgrading.html.tmpl	text-sm
-type-comes-from-roles	server/templates/upgrading.html.tmpl	text-sm
 type-comes-from-roles	widget/templates/actionbar.html.tmpl	text-sm
 type-comes-from-roles	widget/templates/badge.html.tmpl	font-medium
 type-comes-from-roles	widget/templates/badge.html.tmpl	font-medium

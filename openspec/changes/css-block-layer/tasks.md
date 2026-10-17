@@ -119,7 +119,7 @@
 - [x] 9.1 `nav`, `rail`, `actionbar`, `colophon`; the top bar is the `bar` block, the rail's drawer the `sidebar` block, the page's banner the notice's banner kind. View-transition names stay as they are (the guards read them as transition classes). The rail's state square is the mark block, which closes `live` (8.7). Verify: block done.
 - [x] 9.2 `modal` and `pending`: dialog and drawer boxes, motion, the confirm frame, the dialog title (`type-title`); the inner scroller's thumb is the `drawer-scrollbar` block; the pending row converted with the nav (9.1). Verify: block done, with an open confirm dialog in the parity run.
 - [x] 9.3 `stream` and `console`: stream release, shelf and pluck; console, notice and vt, in `verso-stream.js` too. Verify: block done on Logs, Firewall › Activity and Diagnostics.
-- [ ] 9.4 `takeover`: login (its top bar the `bar` block), restarting, upgrading, firmware-started (`type-headline`, the takeover `type-lede`), and the repeated step and heading bundles they share. Verify: block done against the 1.2 fixtures.
+- [x] 9.4 `takeover`: login (its top bar the `bar` block), restarting, upgrading, firmware-started (`type-headline`, the takeover `type-lede`), and the repeated step and heading bundles they share. Verify: block done against the 1.2 fixtures.
 - [ ] 9.5 `scroll-edge`, `glyph`, `arrival`, and any family the ratchet still lists. Verify: block done; the ratchet holds no `TestClassesAreBlocks`, `TestRulesLiveInBlocks` or `TestTypeComesFromRoles` line.
 
 ## 10. Close the ratchet

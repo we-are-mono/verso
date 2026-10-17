@@ -240,3 +240,20 @@ after; the SVG's fills, strokes and LED animations compared directly.
 | a line's tones | | three colour maps (bar, ink, summary) | `data-verso-tone` success, warning or danger |
 | a plucked value's × | | 14px on a 1 line | the chip role |
 | the shelf's Clear | | 14/500 utilities | the field-label role |
+
+### `takeover` and `login`
+
+| Copies | n | Difference | Became |
+|---|---|---|---|
+| the takeovers' page | 4 | Paper for signing in and restarting, white for installing firmware; each its own padding and measure (32rem, 36rem, 32rem flush left) | one takeover block on the page's Paper, its column 32rem in the middle of the window; the browser's bar colour follows |
+| the restarting nameplate | 1 | inside the column, mono 20/700 on a 20px line, "This device" in mono | the bar block's, as the sign-in page's: the nameplate on top, the words in sans |
+| the sign-in page's bar | 1 | utilities beside the app's bar block | the bar block |
+| the restarting state | 3 | the mark 7px down a 14px slot; the title 24/600 at 1.25; the lede the shared `verso-lede` | the takeover's state: its mark 6px down, the headline role, the takeover's lede |
+| the elapsed clock | 1 | mono 36/700 on a 36px line, tighter tracking | the figure role on its 40px line |
+| where the router answers next, the sign-in notice | 3 | a hand-written marigold strip on a 1.45 line | the notice block, warning tone |
+| a takeover's act | 2 | 36px under the state on restarting, 32px on firmware-started | 40px, the block step |
+| firmware-started's title and lede | 1 | 36/500; 16px on a 28px line | the headline role; the takeover's lede |
+| the sign-in status mark | 1 | its own square, pulsed by script | the mark block: green and live while the internet answers, crimson when not, hollow when unknown |
+| the sign-in verdict | 1 | full-chroma green or crimson words | the deep steps, as type always is |
+| the sign-in facts | 1 | a hand-written list, a rule over and under, its labels 128px | the facts block, divided and left-set |
+| the sign-in act | 1 | a hand-built primary and busy face | the button block, its busy face the button's own |

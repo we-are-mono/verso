@@ -45,6 +45,7 @@
 @import "./blocks/link.css" layer(components);
 @import "./blocks/list.css" layer(components);
 @import "./blocks/listing.css" layer(components);
+@import "./blocks/login.css" layer(components);
 @import "./blocks/mark.css" layer(components);
 @import "./blocks/menu.css" layer(components);
 @import "./blocks/meter.css" layer(components);
@@ -67,6 +68,7 @@
 @import "./blocks/steps.css" layer(components);
 @import "./blocks/table.css" layer(components);
 @import "./blocks/tabs.css" layer(components);
+@import "./blocks/takeover.css" layer(components);
 @import "./blocks/tip.css" layer(components);
 @import "./blocks/traffic.css" layer(components);
 @import "./blocks/waiting.css" layer(components);
@@ -413,7 +415,6 @@ html {
      it, so it stands at one height whether an act shares its line or the
      acts wrap to a line of their own under it. */
   .verso-page-heading { min-height: calc(var(--spacing) * 8); align-content: center; font-size: 1.5rem; font-weight: 600; letter-spacing: -0.025em; line-height: 1.1; color: var(--color-ink); }
-  .verso-lede { margin-top: 0.5rem; color: var(--color-body); }
 
   /* The running-fan glyph (customGlyphs["fan-spin"]) turns while a fan runs — a
      calm, unhurried rotation, stilled for reduced-motion. A stalled or absent
@@ -440,10 +441,9 @@ html {
   .verso-page-body > .verso-stack > .verso-console { margin-top: 0; }
   /* Sections, their air and their rules: sections.css. */
 
-  /* Takeover and section ledes share one reading role, including inside drawers.
-     Relative type and unitless leading let enlarged text and spacing overrides
-     grow the content naturally. */
-  .verso-lede,
+  /* A section's lede, including inside drawers. Relative type and unitless
+     leading let enlarged text and spacing overrides grow the content
+     naturally. */
   [data-verso-section-lede] {
     max-width: 60ch;
     font-size: var(--text-base);

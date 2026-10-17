@@ -113,7 +113,7 @@ func (s *Server) renderUpgrading(w http.ResponseWriter, r *http.Request) {
 
 	view := upgradingView{
 		Lang:       langAttr(lang),
-		Bars:       s.themeBars("canvas"),
+		Bars:       s.themeBars("ground"),
 		CSS:        s.currentCSS(),
 		Theme:      s.themeCSS(),
 		JSStrings:  jsCatalog(tr),

@@ -17,14 +17,14 @@
      because it is rendered straight through the page-template set, not renderPage.
      The person is held on the one outcome that matters until the upgrade finishes
      or a failure is released. */}}
-<body class="m-0 min-h-screen bg-canvas font-sans text-sm leading-normal text-ink">
-  <main class="flex min-h-screen items-center justify-center px-6 py-12 sm:px-8">
+<body class="verso-takeover">
+  <main class="verso-takeover__main">
     {{/* data-verso-upgrading marks the surface the shell's client drives; the
          initial state is the job's current phase, already painted server-side, so
          the first frame is right before any JS runs. The client swaps [hidden]
          between the working states as its poll moves, and reaches a failure by a
          reload so the server renders the tool's own words. */}}
-    <div class="w-full max-w-xl" data-verso-upgrading data-verso-upgrading-state="{{.Initial}}">
+    <div class="verso-takeover__column" data-verso-upgrading data-verso-upgrading-state="{{.Initial}}">
       <div data-verso-upgrading-surface="preparing"{{if ne .Initial "preparing"}} hidden{{end}}>{{.Preparing}}</div>
       <div data-verso-upgrading-surface="installing"{{if ne .Initial "installing"}} hidden{{end}}>{{.Installing}}</div>
       <div data-verso-upgrading-surface="restarting" hidden>{{.Restarting}}</div>
@@ -35,7 +35,7 @@
            stops waiting and opens a door. The client shows it only once the flash is
            under way (installing) and keeps it ticking locally while the router is
            gone; the number is driven client-side, the words localized here. */}}
-      <p data-verso-upgrading-countdown hidden class="mt-8 text-center text-sm text-meta">{{ t "You can check on it in" }} <span data-verso-upgrading-countdown-time class="tabular-nums text-ink">8:00</span></p>
+      <p data-verso-upgrading-countdown hidden class="verso-takeover__countdown">{{ t "You can check on it in" }} <span data-verso-upgrading-countdown-time class="verso-takeover__time" data-verso-figures>8:00</span></p>
     </div>
   </main>
 {{/* Strings the shell's client script writes into the page (verso.js T),

@@ -1,0 +1,13 @@
+<!-- SPDX-License-Identifier: GPL-2.0-only -->
+<!-- SPDX-FileCopyrightText: 2026 Mono Technologies Inc. -->
+{{/* takeover.bar: a takeover's top bar (blocks/bar.css) — the nameplate
+     alone, the hostname verbatim and who built the board, so the person
+     knows which router they are signing in to or waiting for. It holds no
+     acts: a takeover has nowhere else to go. */}}
+{{define "takeover.bar"}}
+<header class="verso-bar">
+  <span class="verso-bar__nameplate"{{if .Hostname}} title="{{.Hostname}}" data-verso-verbatim{{end}}>{{if .Hostname}}{{.Hostname}}{{else}}{{ t "This device" }}{{end}}</span>
+  {{if or .Maker .Model}}<span class="verso-bar__rule" aria-hidden="true"></span>
+  <span class="verso-bar__maker"><span class="type-subheading text-ink">{{.Maker}}</span>{{if and .Maker .Model}} · {{end}}{{.Model}}</span>{{end}}
+</header>
+{{end}}

@@ -1,0 +1,148 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/* SPDX-FileCopyrightText: 2026 Mono Technologies Inc. */
+
+/*
+ * login — the sign-in card, in the takeover's room: the router's public
+ * state on the sand beside the form, so whoever stands at the door sees
+ * whether the internet is up before they are asked for anything. One frame
+ * holds both halves, stacked on a phone and side by side from a laptop on.
+ *
+ * Variants: data-verso-internet  on the status half: up · down · unknown,
+ *                                which inks the verdict
+ * Elements: __status    the router's public state, on Quiet Sand
+ *           __live      the kicker over it: the state's mark and "Live"
+ *           __verdict   whether the internet is working, in the headline
+ *                       role, in its state's deep ink
+ *           __uptime    how long the router has been up
+ *           __facts     the facts list under them
+ *           __aside     what waits behind the password, at the half's foot
+ *           __sign-in   the form's half
+ *           __form      the form: its fields 24px apart
+ *           __field     a label over its input, 8px apart
+ *           __submit    the act, the form's width
+ *           __rest      the act's words while it rests
+ *           __busy      its waiting mark and words while the sign-in is in
+ *                       flight, as the button's own (data-verso-busy)
+ *           __attempts  the attempts left, at the half's foot
+ */
+
+.verso-login {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  overflow: hidden;
+  border: 1px solid var(--color-rule);
+  border-radius: var(--radius-xs);
+  background-color: var(--color-canvas);
+}
+@media (width >= 64rem) {
+  .verso-login {
+    flex-direction: row;
+    width: auto;
+  }
+}
+
+.verso-login__status,
+.verso-login__sign-in {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: calc(var(--spacing) * 6);
+}
+@media (width >= 40rem) {
+  .verso-login__status,
+  .verso-login__sign-in {
+    padding: calc(var(--spacing) * 8);
+  }
+}
+
+.verso-login__status {
+  gap: calc(var(--spacing) * 2);
+  border: 0 solid var(--color-rule);
+  border-bottom-width: 1px;
+  background-color: var(--color-quiet);
+}
+@media (width >= 64rem) {
+  .verso-login__status {
+    flex-shrink: 0;
+    min-width: 25rem;
+    max-width: calc(100vw - 28rem);
+    border-right-width: 1px;
+    border-bottom-width: 0;
+  }
+}
+
+.verso-login__live {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--spacing) * 2);
+  color: var(--color-meta);
+  @apply type-label;
+}
+
+.verso-login__verdict {
+  color: var(--color-body);
+  @apply type-headline;
+}
+.verso-login__verdict:where(.verso-login__status[data-verso-internet="up"] *) {
+  color: var(--color-green-deep);
+}
+.verso-login__verdict:where(.verso-login__status[data-verso-internet="down"] *) {
+  color: var(--color-crimson-deep);
+}
+
+.verso-login__uptime {
+  color: var(--color-meta);
+}
+
+.verso-login__facts {
+  margin-top: calc(var(--spacing) * 6);
+}
+
+.verso-login__aside {
+  margin-top: auto;
+  padding-top: calc(var(--spacing) * 6);
+  color: var(--color-meta);
+}
+
+.verso-login__sign-in {
+  gap: calc(var(--spacing) * 6);
+  width: 100%;
+}
+@media (width >= 64rem) {
+  .verso-login__sign-in {
+    flex-shrink: 0;
+    width: 25rem;
+  }
+}
+
+.verso-login__form {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--spacing) * 6);
+}
+
+.verso-login__field {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--spacing) * 2);
+}
+
+.verso-login__submit {
+  width: 100%;
+  margin-top: calc(var(--spacing) * 2);
+}
+.verso-login__busy {
+  display: none;
+}
+.verso-login__busy:where([data-verso-busy] > *) {
+  display: contents;
+}
+.verso-login__rest:where([data-verso-busy] > *) {
+  display: none;
+}
+
+.verso-login__attempts {
+  margin-top: auto;
+  color: var(--color-meta);
+}

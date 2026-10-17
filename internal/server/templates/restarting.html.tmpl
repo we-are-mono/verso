@@ -13,57 +13,53 @@
 <style id="verso-css">{{.CSS}}</style>
 <style id="verso-theme">{{.Theme}}</style>
 </head>
-{{/* The restarting takeover: chrome-less, one column, the router's nameplate on
-     top so the person knows which box they are waiting for. The three surfaces
-     are all painted here; verso-takeover.js only moves [hidden] between them as
-     its poll of the status endpoint moves, and ticks the clock. */}}
-<body class="m-0 min-h-screen bg-ground font-sans text-sm leading-normal text-ink">
-  <main class="flex min-h-screen flex-col items-center px-4 py-16 sm:px-11">
-    <div class="w-full max-w-[32rem]" data-verso-restarting data-verso-restarting-status="{{.Status}}" data-verso-restarting-budget="{{.Budget}}"{{with .Target}} data-verso-restarting-target="{{.}}"{{end}}>
-      <div class="flex min-w-0 items-center gap-4">
-        <span class="min-w-0 truncate font-mono text-xl leading-none font-bold tracking-tight text-ink">{{if .Hostname}}{{.Hostname}}{{else}}{{ t "This device" }}{{end}}</span>
-        {{if .Maker}}<span class="h-5 w-px shrink-0 bg-rule-strong"></span>
-        <span class="min-w-0 truncate text-sm font-light text-body"><span class="font-semibold text-ink">{{.Maker}}</span>{{if .Model}} · {{.Model}}{{end}}</span>{{end}}
-      </div>
-
+{{/* The restarting takeover (blocks/takeover.css): the router's nameplate in
+     the bar, so the person knows which box they are waiting for, and the one
+     column under it. The three surfaces are all painted here;
+     verso-takeover.js only moves [hidden] between them as its poll of the
+     status endpoint moves, and ticks the clock. */}}
+<body class="verso-takeover">
+  {{template "takeover.bar" .}}
+  <main class="verso-takeover__main">
+    <div class="verso-takeover__column" data-verso-restarting data-verso-restarting-status="{{.Status}}" data-verso-restarting-budget="{{.Budget}}"{{with .Target}} data-verso-restarting-target="{{.}}"{{end}}>
       <div data-verso-restarting-surface="working">
-        <div class="mt-11 flex items-start gap-3">
-          <span class="mt-1.75">{{template "verso-waiting" ""}}</span>
-          <div class="flex min-w-0 flex-1 flex-col gap-2">
-            <h1 class="text-2xl leading-tight font-semibold tracking-tight text-balance">{{.Title}}</h1>
-            <p class="verso-lede mt-0 text-body text-pretty">{{.Lede}}</p>
+        <div class="verso-takeover__state">
+          <span class="verso-takeover__mark">{{template "verso-waiting" ""}}</span>
+          <div class="verso-takeover__words">
+            <h1 class="verso-takeover__title">{{.Title}}</h1>
+            <p class="verso-takeover__lede">{{.Lede}}</p>
           </div>
         </div>
-        <div class="mt-7 flex items-baseline gap-4">
+        <div class="verso-takeover__reading">
           {{/* Elapsed, not remaining: the one number this screen can say honestly. */}}
-          <span data-verso-restarting-clock class="font-mono text-4xl leading-none font-bold tracking-tighter tabular-nums">0:00</span>
-          <span class="text-meta">{{.Estimate}}</span>
+          <span data-verso-restarting-clock class="verso-takeover__clock" data-verso-figures>0:00</span>
+          <span class="verso-takeover__estimate">{{.Estimate}}</span>
         </div>
-        {{if .Address}}<div class="mt-6 flex items-start gap-2 rounded-xs bg-marigold-soft px-3 py-2 leading-[1.45] text-marigold-deep"><span class="verso-mark mt-1.75" data-verso-tone="warning"></span><span>{{.Address}}</span></div>{{end}}
-        <p class="mt-6 text-meta text-pretty">{{ t "Stay on this page. It reconnects on its own and asks you to sign in." }}</p>
+        {{if .Address}}{{template "restarting.address" .Address}}{{end}}
+        <p class="verso-takeover__note">{{ t "Stay on this page. It reconnects on its own and asks you to sign in." }}</p>
       </div>
 
       <div data-verso-restarting-surface="back" hidden>
-        <div class="mt-11 flex items-start gap-3">
-          <span class="relative mt-1.75 block size-3.5 shrink-0"><span class="verso-mark absolute top-1 left-1" data-verso-tone="success"></span></span>
-          <div class="flex min-w-0 flex-1 flex-col gap-2">
-            <h1 class="text-2xl leading-tight font-semibold tracking-tight text-balance">{{ t "Back online" }}</h1>
-            <p class="verso-lede mt-0 text-body text-pretty">{{ t "It answered. Sign in again to carry on." }}</p>
+        <div class="verso-takeover__state">
+          <span class="verso-takeover__mark"><span class="verso-mark" data-verso-tone="success"></span></span>
+          <div class="verso-takeover__words">
+            <h1 class="verso-takeover__title">{{ t "Back online" }}</h1>
+            <p class="verso-takeover__lede">{{ t "It answered. Sign in again to carry on." }}</p>
           </div>
         </div>
-        <a href="/login" class="verso-button mt-9">{{ t "Sign in" }}</a>
+        <a href="/login" class="verso-button verso-takeover__act">{{ t "Sign in" }}</a>
       </div>
 
       <div data-verso-restarting-surface="stalled" hidden>
-        <div class="mt-11 flex items-start gap-3">
-          <span class="relative mt-1.75 block size-3.5 shrink-0"><span class="verso-mark absolute top-1 left-1" data-verso-tone="warning"></span></span>
-          <div class="flex min-w-0 flex-1 flex-col gap-2">
-            <h1 class="text-2xl leading-tight font-semibold tracking-tight text-balance">{{ t "This is taking longer than expected" }}</h1>
-            <p class="verso-lede mt-0 text-body text-pretty">{{ t "The router hasn't answered here yet. It may still be starting." }}</p>
+        <div class="verso-takeover__state">
+          <span class="verso-takeover__mark"><span class="verso-mark" data-verso-tone="warning"></span></span>
+          <div class="verso-takeover__words">
+            <h1 class="verso-takeover__title">{{ t "This is taking longer than expected" }}</h1>
+            <p class="verso-takeover__lede">{{ t "The router hasn't answered here yet. It may still be starting." }}</p>
           </div>
         </div>
-        {{if .Address}}<div class="mt-6 flex items-start gap-2 rounded-xs bg-marigold-soft px-3 py-2 leading-[1.45] text-marigold-deep"><span class="verso-mark mt-1.75" data-verso-tone="warning"></span><span>{{.Address}}</span></div>{{end}}
-        <a href="{{if .Target}}{{.Target}}{{else}}/{{end}}" class="verso-button mt-9" data-verso-style="secondary">{{ t "Try the router again" }}</a>
+        {{if .Address}}{{template "restarting.address" .Address}}{{end}}
+        <a href="{{if .Target}}{{.Target}}{{else}}/{{end}}" class="verso-button verso-takeover__act" data-verso-style="secondary">{{ t "Try the router again" }}</a>
       </div>
     </div>
   </main>
@@ -74,3 +70,9 @@
 <script src="/assets/verso-page.js" defer></script>
 </body>
 </html>
+{{/* restarting.address: where the router will answer next, when that is not
+     where this page was served from — a caution beside the state. */}}
+{{define "restarting.address"}}<div class="verso-notice verso-takeover__aside" data-verso-tone="warning">
+  <span aria-hidden="true" class="verso-mark verso-notice__mark" data-verso-tone="warning"></span>
+  <div class="verso-notice__words"><p>{{.}}</p></div>
+</div>{{end}}

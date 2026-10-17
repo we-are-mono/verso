@@ -2,10 +2,11 @@
 // SPDX-FileCopyrightText: 2026 Mono Technologies Inc.
 
 // The public sign-in page keeps native form submission. JavaScript supplies
-// only the busy state of the button — whose waiting mark is the stylesheet's
-// own motion (input.css), as everywhere else — and the small public status
-// refresh; it holds no credentials and never needs the authenticated shell's
-// client runtime.
+// only the busy state of the button — the button's own busy face
+// (blocks/button.css, blocks/login.css), its waiting mark the stylesheet's
+// own motion, as everywhere else — and the small public status refresh; it
+// holds no credentials and never needs the authenticated shell's client
+// runtime.
 (function () {
   "use strict";
   var form = document.querySelector("[data-login-form]");
@@ -13,7 +14,6 @@
   if (!form || !panel) return;
 
   var button = form.querySelector("[data-login-submit]");
-  var motion = window.matchMedia("(prefers-reduced-motion: reduce)");
 
   form.addEventListener("submit", function (event) {
     if (button.disabled) {
@@ -23,6 +23,7 @@
     button.disabled = true;
     button.setAttribute("aria-disabled", "true");
     button.setAttribute("aria-busy", "true");
+    button.setAttribute("data-verso-busy", "");
     form.setAttribute("aria-busy", "true");
   });
 
@@ -31,6 +32,7 @@
     button.disabled = false;
     button.setAttribute("aria-disabled", "false");
     button.removeAttribute("aria-busy");
+    button.removeAttribute("data-verso-busy");
     form.removeAttribute("aria-busy");
   });
 
@@ -45,24 +47,17 @@
   var received = performance.now();
   var lastRefresh = received;
   var refreshing = false;
-  var pulse;
 
-  function updateMotion() {
-    if (pulse) pulse.cancel();
-    pulse = null;
-    if (!motion.matches && panel.dataset.internet !== "unknown" && typeof mark.animate === "function") {
-      pulse = mark.animate([{ opacity: 1 }, { opacity: 0.28 }, { opacity: 1 }], {
-        duration: 2600, iterations: Infinity, easing: "ease-in-out",
-      });
-    }
-  }
-
+  // The state's mark: green and breathing while the internet answers, crimson
+  // when it does not, hollow when the router cannot say (blocks/mark.css).
   function setInternet(internet) {
     var state = internet === true ? "up" : internet === false ? "down" : "unknown";
-    panel.dataset.internet = state;
+    panel.dataset.versoInternet = state;
     verdict.textContent = panel.dataset[state + "Label"];
     live.textContent = state === "unknown" ? live.dataset.staleLabel : live.dataset.liveLabel;
-    updateMotion();
+    if (state === "unknown") mark.removeAttribute("data-verso-tone");
+    else mark.setAttribute("data-verso-tone", state === "up" ? "success" : "danger");
+    mark.toggleAttribute("data-verso-live", state === "up");
   }
 
   function tick() {
@@ -110,6 +105,4 @@
   document.addEventListener("visibilitychange", function () {
     if (!document.hidden) refresh();
   });
-  motion.addEventListener("change", updateMotion);
-  updateMotion();
 })();

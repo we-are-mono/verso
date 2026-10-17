@@ -1134,7 +1134,7 @@ func TestARailRowIsFetchedAsItIsPressed(t *testing.T) {
 // the bar stays the 56px the rail and every sticky offset under it count on.
 // The sign-in page's bar is the same bar.
 func TestTheTopBarIsItsLineAndItsAir(t *testing.T) {
-	const bar = `flex shrink-0 items-center gap-4 bg-canvas px-6 py-2.5 shadow-[inset_0_-1px_0_var(--color-rule)]`
+	const bar = `verso-bar`
 	app := get(t, newServer(t, fakeBackend{hn: "gdk-edge-01"}), "/").Body.String()
 	if !strings.Contains(app, `<header class="verso-bar">`) {
 		t.Errorf("the app's top bar is not its line and its air:\n%s", app[:min(len(app), 4000)])
@@ -3128,7 +3128,7 @@ func TestLoginNoticeOnExpiredMarker(t *testing.T) {
 	}
 	_, status, _ := strings.Cut(body, `<div role="status"`)
 	noticeMarkup, _, _ := strings.Cut(status, "</div>")
-	if !strings.Contains(noticeMarkup, "bg-marigold-soft") || !strings.Contains(noticeMarkup, "text-marigold-deep") {
+	if !strings.Contains(noticeMarkup, `class="verso-notice" data-verso-tone="warning"`) {
 		t.Errorf("the notice should carry the marigold warning tone")
 	}
 

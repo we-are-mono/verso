@@ -156,7 +156,7 @@ func TestFirmwareIsDeviceVerifiedThenInstalled(t *testing.T) {
 		t.Fatalf("install status = %d; body=%s", applied.Code, applied.Body.String())
 	}
 	// The way back is the page's control-height primary, the button block, not a button sized by its padding.
-	for _, want := range []string{"FIRMWARE INSTALLING", "Return to OpenWrt in about 5 minutes", `<a href="/" class="verso-button mt-8">`} {
+	for _, want := range []string{"FIRMWARE INSTALLING", "Return to OpenWrt in about 5 minutes", `<a href="/" class="verso-button verso-takeover__act">`} {
 		if !strings.Contains(applied.Body.String(), want) {
 			t.Errorf("firmware started page missing %q", want)
 		}

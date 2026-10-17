@@ -14,88 +14,74 @@
 <style id="verso-theme">{{ .Theme }}</style>
 <script src="/assets/verso-login.js" defer></script>
 </head>
-<body class="m-0 flex min-h-dvh flex-col bg-ground font-sans text-sm leading-normal text-ink">
-  <header class="flex shrink-0 items-center gap-4 bg-canvas px-6 py-2.5 shadow-[inset_0_-1px_0_var(--color-rule)]">
-    <span class="truncate font-mono text-xl leading-9 font-bold">{{if .Hostname}}{{ .Hostname }}{{else}}{{ t "This device" }}{{end}}</span>
-    {{if or .Maker .Model}}
-    <span class="h-5 w-px shrink-0 bg-rule-strong" aria-hidden="true"></span>
-    <span class="min-w-0 truncate font-light text-body"><span class="font-semibold text-ink">{{ .Maker }}</span>{{if and .Maker .Model}} · {{end}}{{ .Model }}</span>
-    {{end}}
-  </header>
+{{/* A takeover (blocks/takeover.css): the bar names the box, and the sign-in
+     card (blocks/login.css) stands in the room under it. */}}
+<body class="verso-takeover">
+  {{template "takeover.bar" .}}
 
-  <main class="flex flex-1 items-center justify-center px-4 py-12 sm:px-6">
-    <div class="flex w-full max-w-full flex-col lg:w-auto">
-      <div class="flex flex-col overflow-hidden rounded-xs border border-rule bg-canvas lg:flex-row">
-        {{/* Only public facts cross this boundary. The browser refreshes this
-             small status model; it never receives the authenticated overview. */}}
-        <section aria-label="{{ t "Router status" }}" data-login-status
-          data-internet="{{if .Status.Internet}}{{if .Status.InternetUp}}up{{else}}down{{end}}{{else}}unknown{{end}}"
-          data-up-label="{{ t "Internet is working" }}" data-down-label="{{ t "No internet connection" }}" data-unknown-label="{{ t "Internet status unavailable" }}"
-          class="group flex min-w-0 flex-col border-b border-rule bg-quiet p-6 sm:p-8 lg:min-w-100 lg:max-w-[calc(100vw-448px)] lg:shrink-0 lg:border-r lg:border-b-0">
-          <div class="flex flex-col gap-2">
-            <span class="flex items-center gap-2 text-xs font-medium tracking-[.08em] text-meta uppercase">
-              <span data-login-live-mark aria-hidden="true" class="size-1.5 shrink-0 rounded-[1px] border border-faint group-data-[internet=up]:border-transparent group-data-[internet=up]:bg-green group-data-[internet=down]:border-transparent group-data-[internet=down]:bg-crimson"></span>
-              <span data-login-live-label data-live-label="{{ t "Live" }}" data-stale-label="{{ t "Status unavailable" }}">{{if .Status.Internet}}{{ t "Live" }}{{else}}{{ t "Status unavailable" }}{{end}}</span>
-            </span>
-            <p data-login-verdict class="text-2xl leading-[1.1] font-semibold tracking-tight text-body group-data-[internet=up]:text-green group-data-[internet=down]:text-crimson">{{if .Status.Internet}}{{if .Status.InternetUp}}{{ t "Internet is working" }}{{else}}{{ t "No internet connection" }}{{end}}{{else}}{{ t "Internet status unavailable" }}{{end}}</p>
-            <p class="text-meta">{{ t "Uptime" }} <span data-login-uptime>{{ .Status.Uptime }}</span></p>
+  <main class="verso-takeover__main">
+    <div class="verso-login">
+      {{/* Only public facts cross this boundary. The browser refreshes this
+           small status model; it never receives the authenticated overview. */}}
+      <section aria-label="{{ t "Router status" }}" data-login-status class="verso-login__status"
+        data-verso-internet="{{if .Status.Internet}}{{if .Status.InternetUp}}up{{else}}down{{end}}{{else}}unknown{{end}}"
+        data-up-label="{{ t "Internet is working" }}" data-down-label="{{ t "No internet connection" }}" data-unknown-label="{{ t "Internet status unavailable" }}">
+        <span class="verso-login__live">
+          <span data-login-live-mark aria-hidden="true" class="verso-mark"{{if .Status.Internet}}{{if .Status.InternetUp}} data-verso-tone="success" data-verso-live{{else}} data-verso-tone="danger"{{end}}{{end}}></span>
+          <span data-login-live-label data-live-label="{{ t "Live" }}" data-stale-label="{{ t "Status unavailable" }}">{{if .Status.Internet}}{{ t "Live" }}{{else}}{{ t "Status unavailable" }}{{end}}</span>
+        </span>
+        <p data-login-verdict class="verso-login__verdict">{{if .Status.Internet}}{{if .Status.InternetUp}}{{ t "Internet is working" }}{{else}}{{ t "No internet connection" }}{{end}}{{else}}{{ t "Internet status unavailable" }}{{end}}</p>
+        <p class="verso-login__uptime">{{ t "Uptime" }} <span data-login-uptime data-verso-figures>{{ .Status.Uptime }}</span></p>
+
+        <dl class="verso-facts verso-login__facts" data-verso-style="divided" data-verso-align="left">
+          <div class="verso-facts__row">
+            <dt class="verso-facts__label">{{ t "Local time" }}</dt>
+            <dd class="verso-facts__value" data-verso-verbatim><span><time data-login-clock data-unix="{{ .Status.Unix }}" data-offset="{{ .Status.Offset }}">{{ .Status.Clock }}</time> <span data-login-zone class="type-body text-meta">{{ .Status.Zone }}</span></span></dd>
           </div>
-
-          <dl class="mt-7 border-t border-rule">
-            <div class="flex items-center gap-6 border-b border-mid py-2.5">
-              <dt class="w-32 shrink-0 truncate text-meta" title="{{ t "Local time" }}">{{ t "Local time" }}</dt>
-              <dd class="min-w-0 font-mono text-base font-medium">
-                <time data-login-clock data-unix="{{ .Status.Unix }}" data-offset="{{ .Status.Offset }}">{{ .Status.Clock }}</time>
-                <span data-login-zone class="font-sans text-sm font-normal text-meta">{{ .Status.Zone }}</span>
-              </dd>
-            </div>
-            <div class="flex items-center gap-6 border-b border-mid py-2.5">
-              <dt class="w-32 shrink-0 truncate text-meta" title="{{ t "Firmware" }}">{{ t "Firmware" }}</dt>
-              <dd class="min-w-0 font-mono text-base font-medium wrap-anywhere">{{if .Firmware}}{{ .Firmware }}{{else}}OpenWrt{{end}}</dd>
-            </div>
-            <div class="flex items-center gap-6 border-b border-mid py-2.5">
-              <dt class="w-32 shrink-0 truncate text-meta" title="{{ t "You are" }}">{{ t "You are" }}</dt>
-              <dd class="min-w-0 font-mono text-base font-medium wrap-anywhere">{{ .VisitorIP }}{{if .VisitorNetwork}} <span class="font-sans text-sm font-normal text-meta">{{ t "on" }}</span> {{ .VisitorNetwork }}{{end}}</dd>
-            </div>
-          </dl>
-          <p class="mt-auto pt-6 leading-relaxed text-meta">{{ t "Everything else — networks, devices, rules — waits behind your password." }}</p>
-        </section>
-
-        <section aria-labelledby="login-heading" class="flex w-full min-w-0 flex-col gap-6 p-6 sm:p-8 lg:w-100 lg:shrink-0">
-          {{if .Notice}}
-          <div role="status" class="flex items-start gap-2 rounded-xs bg-marigold-soft px-3 py-2 text-sm leading-[1.45] text-marigold-deep">
-            <span class="verso-mark mt-1.75" data-verso-tone="warning" aria-hidden="true"></span>
-            <span>{{ .Notice }}</span>
+          <div class="verso-facts__row">
+            <dt class="verso-facts__label">{{ t "Firmware" }}</dt>
+            <dd class="verso-facts__value" data-verso-verbatim>{{if .Firmware}}{{ .Firmware }}{{else}}OpenWrt{{end}}</dd>
           </div>
-          {{end}}
-          <h1 id="login-heading" class="mb-1 text-2xl leading-[1.1] font-semibold tracking-tight">{{ t "Sign in" }}</h1>
-          <form method="post" action="/login" data-login-form class="flex flex-col gap-6">
-            <div class="flex flex-col gap-2">
-              <label for="username" class="{{template "verso-field-label-class"}}">{{ t "Username" }}</label>
-              <input id="username" name="username" type="text" value="{{ .Username }}" autocomplete="username" autocapitalize="none" spellcheck="false"
-                class="{{template "verso-input-class"}} {{template "verso-input-border" ""}}">
-            </div>
-            <div class="flex flex-col gap-2">
-              <label for="password" class="{{template "verso-field-label-class"}}">{{ t "Password" }}</label>
-              <input id="password" name="password" type="password" autocomplete="current-password" autofocus
-                {{if .Error}}aria-invalid="true" aria-describedby="login-error"{{end}}
-                class="{{template "verso-input-words"}} {{template "verso-input-border" .Error}}">
-              {{if .Error}}
-              <p id="login-error" role="alert" class="{{template "verso-refusal-band"}}">{{template "verso-error-words" .Error}}</p>
-              {{end}}
-            </div>
-            <button type="submit" data-login-submit aria-disabled="false"
-              class="group mt-2 flex h-control w-full items-center justify-center rounded-xs border border-denim bg-denim text-sm font-semibold text-on-fill transition-colors enabled:hover:border-denim-deep enabled:hover:bg-denim-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim disabled:pointer-events-none disabled:transition-none disabled:border-rule-strong disabled:bg-quiet disabled:text-glyph">
-              <span class="group-disabled:hidden">{{ t "Sign in to router" }}</span>
-              <span role="status" class="hidden items-center gap-2 group-disabled:flex">
-                {{template "verso-waiting"}}
-                {{ t "Signing in…" }}
-              </span>
-            </button>
-          </form>
-          {{if .Attempts}}<p class="mt-auto leading-relaxed text-meta"><span class="text-crimson-deep">{{ .Attempts }}</span> {{ .AttemptPolicy }}</p>{{end}}
-        </section>
-      </div>
+          <div class="verso-facts__row">
+            <dt class="verso-facts__label">{{ t "You are" }}</dt>
+            <dd class="verso-facts__value" data-verso-verbatim><span>{{ .VisitorIP }}{{if .VisitorNetwork}} <span class="type-body text-meta">{{ t "on" }}</span> {{ .VisitorNetwork }}{{end}}</span></dd>
+          </div>
+        </dl>
+        <p class="verso-login__aside">{{ t "Everything else — networks, devices, rules — waits behind your password." }}</p>
+      </section>
+
+      <section aria-labelledby="login-heading" class="verso-login__sign-in">
+        {{if .Notice}}
+        <div role="status" class="verso-notice" data-verso-tone="warning">
+          <span aria-hidden="true" class="verso-mark verso-notice__mark" data-verso-tone="warning"></span>
+          <div class="verso-notice__words"><p>{{ .Notice }}</p></div>
+        </div>
+        {{end}}
+        <h1 id="login-heading" class="verso-takeover__title">{{ t "Sign in" }}</h1>
+        <form method="post" action="/login" data-login-form class="verso-login__form">
+          <div class="verso-login__field">
+            <label for="username" class="{{template "verso-field-label-class"}}">{{ t "Username" }}</label>
+            <input id="username" name="username" type="text" value="{{ .Username }}" autocomplete="username" autocapitalize="none" spellcheck="false"
+              class="{{template "verso-input-class"}} {{template "verso-input-border" ""}}">
+          </div>
+          <div class="verso-login__field">
+            <label for="password" class="{{template "verso-field-label-class"}}">{{ t "Password" }}</label>
+            <input id="password" name="password" type="password" autocomplete="current-password" autofocus
+              {{if .Error}}aria-invalid="true" aria-describedby="login-error"{{end}}
+              class="{{template "verso-input-words"}} {{template "verso-input-border" .Error}}">
+            {{if .Error}}
+            <p id="login-error" role="alert" class="{{template "verso-refusal-band"}}">{{template "verso-error-words" .Error}}</p>
+            {{end}}
+          </div>
+          {{/* The act, and its busy face while the sign-in is in flight
+               (verso-login.js): the button's own, its waiting mark and words. */}}
+          <button type="submit" data-login-submit aria-disabled="false" class="verso-button verso-login__submit">
+            <span class="verso-login__rest">{{ t "Sign in to router" }}</span>
+            <span role="status" class="verso-login__busy">{{template "verso-waiting"}}{{ t "Signing in…" }}</span>
+          </button>
+        </form>
+        {{if .Attempts}}<p class="verso-login__attempts"><span class="text-crimson-deep">{{ .Attempts }}</span> {{ .AttemptPolicy }}</p>{{end}}
+      </section>
     </div>
   </main>
 </body>
