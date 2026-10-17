@@ -837,8 +837,9 @@ func (s *Server) handleUCIApply(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleUCIConfirm disarms the pending rollback, keeping the applied
-// configuration. The drawer polls this inside the rollback window; an error
-// here means "not confirmed yet" to the poller, which retries.
+// configuration. The page polls this inside the rollback window; an error
+// here means "not confirmed yet" to the poller, which retries. It leaves no
+// notification: the page reads again as "Changes applied", which says it.
 func (s *Server) handleUCIConfirm(w http.ResponseWriter, r *http.Request) {
 	if err := s.backend.UCIConfirm(r.Context(), s.sessionSID(r)); err != nil {
 		log.Printf("verso: uci confirm failed: %v", err)
@@ -848,11 +849,6 @@ func (s *Server) handleUCIConfirm(w http.ResponseWriter, r *http.Request) {
 	// The stage is applied and kept: who staged what no longer describes it.
 	s.authors.forget(s.sessionSID(r))
 	s.confirmedApply(s.sessionSID(r))
-	// The page the apply was made on reads again and says so.
-	if end, ok := s.stageEnds.of(s.sessionSID(r)); ok && end.Kind == stageApplied {
-		_, t := s.localize(r)
-		s.flash(r, "success", i18n.Count(translatorOrIdentity(t), end.Count, "%d change applied.", "%d changes applied. (two)", "%d changes applied. (few)", "%d changes applied."))
-	}
 	// The running alerter takes up verso.alerts as the apply left it
 	// (ADR-020); procd records the command line only for the next start.
 	s.refreshAlerts(r.Context(), s.sessionSID(r))

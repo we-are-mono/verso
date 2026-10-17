@@ -62,6 +62,21 @@ func TestAConfirmedApplyIsRecorded(t *testing.T) {
 	}
 }
 
+// TestAKeptApplyLeavesNoNotification: the page an apply is kept on reads
+// again as "Changes applied" with how many and when, so a notification would
+// only say it twice.
+func TestAKeptApplyLeavesNoNotification(t *testing.T) {
+	s, _, _ := applyServer(t)
+	postPlugin(t, s, "/uci/apply", nil)
+	rec, token := postPluginRequest(t, s, "/uci/confirm", nil, nil)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("confirm = %d", rec.Code)
+	}
+	if variant, message := s.sessions.TakeFlash(token); message != "" {
+		t.Errorf("a kept apply leaves the %s notification %q", variant, message)
+	}
+}
+
 // TestAnApplyNobodyConfirmedIsRecordedAsRolledBack: the router reverted it,
 // because the browser could not reach it to confirm.
 func TestAnApplyNobodyConfirmedIsRecordedAsRolledBack(t *testing.T) {

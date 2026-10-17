@@ -102,7 +102,7 @@ Every task ends green under `make lint` and `make test`. A task that touches a t
 - [x] 8.1 Write the tests first in `scripts/`, then implement in `verso-commit.js` and verify:
   - Apply disables both acts and the save step reads Saving;
   - when the apply POST returns, the save step reads Saved, the reload step reads Started (and never a finish), and the check-in counts the rollback window down;
-  - a confirm sets the check-in to Kept and reads the page again, which shows "Changes applied" with the "N changes applied." notification and no rail row;
+  - a confirm sets the check-in to Kept and reads the page again, which shows "Changes applied" and no rail row, with no notification repeating it;
   - a timeout sets the check-in to Put back in crimson and reads the page again once the router has staged the changes anew, which opens with the rollback callout.
 - [x] 8.2 Write the tests first, then implement and verify:
   - Apply starts at once, with no confirmation, even with a flagged change;

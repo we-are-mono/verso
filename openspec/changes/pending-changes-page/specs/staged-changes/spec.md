@@ -114,11 +114,11 @@ Pressing Apply SHALL disable both acts and show each step's state only as far as
 - **THEN** step 3 shows the seconds left in the rollback window
 
 ### Requirement: A kept apply empties the page
-When the router keeps an apply, the page SHALL read "Changes applied", saying how many changes the router kept, when, and that what it reloaded can take a few more seconds to settle. The rail's row SHALL leave, and the top-right notification SHALL say how many changes were applied.
+When the router keeps an apply, the page SHALL read "Changes applied", saying how many changes the router kept, when, and that what it reloaded can take a few more seconds to settle. The rail's row SHALL leave. No notification SHALL repeat it, because the page already says it.
 
 #### Scenario: Twelve kept
 - **WHEN** the router keeps an apply of 12 changes at 15:42
-- **THEN** the page reads "Changes applied" and "The router kept 12 changes at 15:42", the Pending changes row leaves the rail, and a notification says "12 changes applied."
+- **THEN** the page reads "Changes applied" and "The router kept 12 changes at 15:42", the Pending changes row leaves the rail, and no notification appears
 
 ### Requirement: The way back leads to the page of the latest change
 When the page has nothing pending after an apply or a Discard all, it SHALL offer "Back to <page>", naming the page the most recent of those changes was made on, however the operator reached the Pending changes page. With no such change on record, it SHALL offer no way back.
