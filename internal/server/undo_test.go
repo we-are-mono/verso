@@ -293,6 +293,31 @@ func TestUndoThatFailsRestoresTheStage(t *testing.T) {
 	}
 }
 
+// TestUndoOfAReorderThatFailsRestoresTheOrder: undoing the section reorder
+// itself, with a replay that fails, stages the config again in the order the
+// stage held before the undo.
+func TestUndoOfAReorderThatFailsRestoresTheOrder(t *testing.T) {
+	f := newStageFake(map[string][][]string{"dhcp": {
+		{"order", "host_b", "0"},
+		{"set", "lan", "leasetime", "6h"},
+	}}, nil)
+	f.uci = map[string]map[string]any{"dhcp": {
+		"host_b": map[string]any{".index": int64(0)},
+		"host_a": map[string]any{".index": int64(1)},
+		"lan":    map[string]any{".index": int64(2)},
+	}}
+	s := newServerWith(t, f, &fakeTransport{}, []plugin.Manifest{dhcpManifest()})
+	id := rowIDs(t, s)["dhcp: order host_b 0"]
+	f.j.failOn = "set lan leasetime"
+
+	if _, err := s.undoRows(context.Background(), "test-sid", []string{id}); err == nil {
+		t.Fatal("an undo whose replay failed says it succeeded")
+	}
+	if want := []string{"dhcp: [host_b host_a lan]"}; !reflect.DeepEqual(f.j.orders, want) {
+		t.Errorf("orders = %v, want the staged order restored, %v", f.j.orders, want)
+	}
+}
+
 // TestPutBackStagesTheUndoneAgain: what an undo took out is staged again as
 // it was, with the time it was first staged.
 func TestPutBackStagesTheUndoneAgain(t *testing.T) {

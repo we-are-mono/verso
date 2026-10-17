@@ -151,12 +151,16 @@ func (s *Server) undoRows(ctx context.Context, sid string, ids []string) ([]repl
 			}
 		}
 		if uci {
-			order := s.stagedOrder(ctx, sid, config, keep)
+			staged := s.stagedOrder(ctx, sid, config, all)
+			var order []string
+			if reorders(keep) {
+				order = staged
+			}
 			if err := s.backend.UCIUnstage(ctx, sid, config); err != nil {
 				return taken, err
 			}
 			if err := s.replay(ctx, sid, config, keep, order); err != nil {
-				s.restage(ctx, sid, config, all, s.stagedOrderOf(order, all))
+				s.restage(ctx, sid, config, all, staged)
 				return taken, fmt.Errorf("undo in %s: %w", config, err)
 			}
 		}
@@ -231,10 +235,10 @@ func (s *Server) recorded(sid, config string, ch []string) replayOp {
 }
 
 // stagedOrder is the config's sections in the order the stage holds them,
-// read before the stage is let go of, where a kept change reorders them; nil
+// read before the stage is let go of, where one of ops reorders them; nil
 // where none does.
-func (s *Server) stagedOrder(ctx context.Context, sid, config string, keep []replayOp) []string {
-	if !slices.ContainsFunc(keep, func(op replayOp) bool { return op.tuple[0] == "order" }) {
+func (s *Server) stagedOrder(ctx context.Context, sid, config string, ops []replayOp) []string {
+	if !reorders(ops) {
 		return nil
 	}
 	sections, err := s.backend.UCIConfig(ctx, sid, config)
@@ -245,13 +249,9 @@ func (s *Server) stagedOrder(ctx context.Context, sid, config string, keep []rep
 	return sectionOrder(sections)
 }
 
-// stagedOrderOf is the order to restore a config to: the one read before the
-// undo, where the whole stage reorders it.
-func (s *Server) stagedOrderOf(order []string, all []replayOp) []string {
-	if slices.ContainsFunc(all, func(op replayOp) bool { return op.tuple[0] == "order" }) {
-		return order
-	}
-	return nil
+// reorders is whether one of ops is a section reorder.
+func reorders(ops []replayOp) bool {
+	return slices.ContainsFunc(ops, func(op replayOp) bool { return op.tuple[0] == "order" })
 }
 
 // replay stages ops into config through the calls a save makes, in order: a
