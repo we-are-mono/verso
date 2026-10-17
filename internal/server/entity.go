@@ -168,14 +168,14 @@ func slotOrder(kind string) map[string]int {
 	return order
 }
 
-// EntityRowActs is what a listing's row shows for one subject: one icon per slot
+// entityRowActs is what a listing's row shows for one subject: one icon per slot
 // the design gives this kind, in order, each either opening the panel (a claimed
 // tab), doing its thing (a claimed act), or standing empty. An unclaimed slot
 // still holds its place — the column must not change width because a plugin is
 // missing. Slots omitted from titles do not apply to this subject and are hidden.
 // A toggle posts what pressing it does — "on" while it is off for the subject,
 // "off" while engaged names it — and its title is the caller's for that state.
-func (s *Server) EntityRowActs(kind, id, subject string, titles map[string]string, engaged []string) []widget.TableRowAct {
+func (s *Server) entityRowActs(kind, id, subject string, titles map[string]string, engaged []string) []widget.TableRowAct {
 	tabs := map[string]bool{}
 	for _, t := range s.entityContributors(kind) {
 		tabs[t.Slot] = true
@@ -211,11 +211,11 @@ func (s *Server) EntityRowActs(kind, id, subject string, titles map[string]strin
 	return out
 }
 
-// EntityListingAct is where a listing's own forward act leads — the doorway that
+// entityListingAct is where a listing's own forward act leads — the doorway that
 // makes a new subject of this kind. It comes from whichever plugin claims the
 // kind's listing slot, so the shell never names a plugin: with none installed
 // there is nothing to make, and the bar simply carries no act.
-func (s *Server) EntityListingAct(kind string) string {
+func (s *Server) entityListingAct(kind string) string {
 	acts := s.entityActs(kind, "")
 	for _, slot := range entitySlots[kind] {
 		if slot.Listing {
@@ -234,13 +234,15 @@ func (s *Server) fetchEntity(ctx context.Context, r *http.Request, claim entityC
 	if !ok {
 		return nil, errNoSuchPlugin
 	}
-	req := plugin.Request{
-		Method: http.MethodGet,
-		Path:   entityPath + kind + "/" + id,
-		Query:  map[string][]string{},
-		UCI:    s.readSnapshot(ctx, m, s.sessionSID(r)),
-		Ubus:   s.readUbus(ctx, m, s.sessionSID(r)),
-	}
+	return s.sendEntity(ctx, m, s.sessionSID(r), kind, id, plugin.Request{Method: http.MethodGet, Query: map[string][]string{}})
+}
+
+// sendEntity sends req to m on the subject's reserved path, carrying the
+// plugin's declared reads under the session sid.
+func (s *Server) sendEntity(ctx context.Context, m plugin.Manifest, sid, kind, id string, req plugin.Request) (*plugin.Envelope, error) {
+	req.Path = entityPath + kind + "/" + id
+	req.UCI = s.readSnapshot(ctx, m, sid)
+	req.Ubus = s.readUbus(ctx, m, sid)
 	return s.transport.Fetch(ctx, m.Endpoint(), req)
 }
 
@@ -338,14 +340,24 @@ func (s *Server) handleEntity(w http.ResponseWriter, r *http.Request) {
 		s.entityPanelMissing(w, r, err, tr)
 		return
 	}
+	buf, ok := s.entityPanelHTML(w, lang, data)
+	if !ok {
+		return
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	_, _ = w.Write(buf)
+}
+
+// entityPanelHTML renders the panel template, answering a render failure with
+// a 500 itself.
+func (s *Server) entityPanelHTML(w http.ResponseWriter, lang string, data entityPanelData) ([]byte, bool) {
 	var buf bytes.Buffer
 	if err := s.pageSet(lang).ExecuteTemplate(&buf, "entity-panel.html.tmpl", data); err != nil {
 		log.Printf("verso: entity panel: %v", err)
 		http.Error(w, "render error", http.StatusInternalServerError)
-		return
+		return nil, false
 	}
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	_, _ = w.Write(buf.Bytes())
+	return buf.Bytes(), true
 }
 
 // entityRef splits "/entity/<kind>/<id>" into its two halves.
@@ -377,21 +389,21 @@ func (s *Server) entityPanel(r *http.Request, kind, id, active, lang string, tr 
 	case id == entityNew:
 		// A subject that does not exist yet has no facts to pin: the panel is
 		// the tabs that could bring it into being, and nothing else.
-		data.Title = newSubjectTitle(kind, tr)
+		// Making a device is reserving its address.
+		data.Title = tr("Reserve address")
 	case posted != nil && posted.Title != "":
 		// Removing the last limit can remove an offline device from the roster.
 		// Keep the subject of this successful submission visible until close.
 		data.Title = posted.Title
-	case kind == "device":
+	default:
+		// entityRef admits only the kinds entitySlots names, and a device is
+		// the one kind it names.
 		d, err := s.deviceByMAC(r, id)
 		if err != nil {
 			return data, err
 		}
 		data.Title = d.Name
 		shell = s.deviceTabs(r, d)
-
-	default:
-		return data, errNoSuchEntity
 	}
 
 	tabs := s.entityTabs(r.Context(), r, kind, id, active, posted, shell)
@@ -424,14 +436,6 @@ func (s *Server) entityPanel(r *http.Request, kind, id, active, lang string, tr 
 // entityNew is the id a panel wears while its subject does not exist yet:
 // making one is editing one that is not there, so it is the same panel.
 const entityNew = "new"
-
-// newSubjectTitle names the panel for a subject about to be made.
-func newSubjectTitle(kind string, tr func(string) string) string {
-	if kind == "device" {
-		return tr("Reserve address")
-	}
-	return tr("New")
-}
 
 // errNoSuchEntity is a panel asked for a subject this board does not have.
 var errNoSuchEntity = errors.New("verso: no such entity")
@@ -539,14 +543,7 @@ func (s *Server) handleEntitySave(w http.ResponseWriter, r *http.Request) {
 	}
 
 	sid := s.sessionSID(r)
-	env, err := s.transport.Fetch(r.Context(), m.Endpoint(), plugin.Request{
-		Method: http.MethodPost,
-		Path:   entityPath + kind + "/" + id,
-		Query:  r.URL.Query(),
-		Form:   r.PostForm,
-		UCI:    s.readSnapshot(r.Context(), m, sid),
-		Ubus:   s.readUbus(r.Context(), m, sid),
-	})
+	env, err := s.sendEntity(r.Context(), m, sid, kind, id, plugin.Request{Method: http.MethodPost, Query: r.URL.Query(), Form: r.PostForm})
 	if err != nil || env == nil {
 		log.Printf("verso: plugin %q unavailable: %v", m.ID, err)
 		s.entityNotice(w, http.StatusOK, fmt.Sprintf(ptr("%s isn’t answering just now, so nothing was saved."), m.Name))
@@ -554,25 +551,18 @@ func (s *Server) handleEntitySave(w http.ResponseWriter, r *http.Request) {
 	}
 	// A plugin that refused its own submission asks for no writes; one that
 	// accepted states them, and the shell performs them on the operator's behalf.
-	if env.Status != http.StatusUnprocessableEntity && len(env.Commit) > 0 {
-		// A panel's tab is the plugin's part of whichever page opened the
-		// panel; its changes are filed under the plugin's own page.
-		if body, status, ok := s.brokerStage(r.Context(), m, authorAt(m, "/"), sid, env.Commit, ptr); !ok {
-			w.Header().Set("Content-Type", "text/html; charset=utf-8")
-			w.WriteHeader(status)
-			_, _ = w.Write([]byte(body))
-			return
-		}
+	// A panel's tab is the plugin's part of whichever page opened the panel; its
+	// changes are filed under the plugin's own page.
+	if !s.stageEntityCommit(w, r, m, sid, env, ptr) {
+		return
 	}
 	data, err := s.entityPanel(r, kind, id, claim.Slot, lang, tr, &entityPost{Slot: claim.Slot, Env: env, Title: subjectTitle})
 	if err != nil {
 		s.entityPanelMissing(w, r, err, tr)
 		return
 	}
-	var buf bytes.Buffer
-	if err := s.pageSet(lang).ExecuteTemplate(&buf, "entity-panel.html.tmpl", data); err != nil {
-		log.Printf("verso: entity panel: %v", err)
-		http.Error(w, "render error", http.StatusInternalServerError)
+	buf, ok := s.entityPanelHTML(w, lang, data)
+	if !ok {
 		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -585,7 +575,7 @@ func (s *Server) handleEntitySave(w http.ResponseWriter, r *http.Request) {
 		// it closes, including a policy-only device whose last limit was removed.
 		w.Header().Set("HX-Trigger", "verso-entity-saved")
 	}
-	_, _ = w.Write(buf.Bytes())
+	_, _ = w.Write(buf)
 }
 
 // entityListings is the listing each kind of subject is pressed from, which a
@@ -630,29 +620,38 @@ func (s *Server) handleEntityAct(w http.ResponseWriter, r *http.Request, kind, i
 		return
 	}
 	sid := s.sessionSID(r)
-	env, err := s.transport.Fetch(r.Context(), m.Endpoint(), plugin.Request{
+	env, err := s.sendEntity(r.Context(), m, sid, kind, id, plugin.Request{
 		Method: http.MethodPost,
-		Path:   entityPath + kind + "/" + id,
 		Query:  map[string][]string{},
 		Form:   map[string][]string{"_act": {slot}, "to": {to}},
-		UCI:    s.readSnapshot(r.Context(), m, sid),
-		Ubus:   s.readUbus(r.Context(), m, sid),
 	})
 	if err != nil || env == nil {
 		log.Printf("verso: plugin %q unavailable: %v", m.ID, err)
 		back("danger", fmt.Sprintf(ptr("%s isn’t answering just now, so nothing was changed."), m.Name))
 		return
 	}
-	if env.Status != http.StatusUnprocessableEntity && len(env.Commit) > 0 {
-		if body, status, ok := s.brokerStage(r.Context(), m, authorAt(m, "/"), sid, env.Commit, ptr); !ok {
-			w.Header().Set("Content-Type", "text/html; charset=utf-8")
-			w.WriteHeader(status)
-			_, _ = w.Write([]byte(body))
-			return
-		}
+	if !s.stageEntityCommit(w, r, m, sid, env, ptr) {
+		return
 	}
 	flash := panelFlash(env.Notice)
 	back(flash.Variant, ptr(flash.Message))
+}
+
+// stageEntityCommit brokers the writes an accepted entity submission states
+// into the stage, filed under the plugin's own page; a refusal (422) asks for
+// none. A stage that fails is answered here with the broker's own body, and
+// reports false.
+func (s *Server) stageEntityCommit(w http.ResponseWriter, r *http.Request, m plugin.Manifest, sid string, env *plugin.Envelope, ptr func(string) string) bool {
+	if env.Status == http.StatusUnprocessableEntity || len(env.Commit) == 0 {
+		return true
+	}
+	body, status, ok := s.brokerStage(r.Context(), m, authorAt(m, "/"), sid, env.Commit, ptr)
+	if !ok {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.WriteHeader(status)
+		_, _ = w.Write([]byte(body))
+	}
+	return ok
 }
 
 // entityNotice answers a submission the panel could not carry out with the
