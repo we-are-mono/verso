@@ -270,7 +270,7 @@ func (s *Server) renderServices(w http.ResponseWriter, r *http.Request, errMsg s
 		children = append(children, &widget.Callout{Variant: "warning", Title: "Service table unavailable",
 			Body: fmt.Sprintf(tr("procd could not be read (%v)."), rcErr)})
 	} else {
-		table := servicesTable(s.pluginStates(rc), rc, owners).(*widget.Table)
+		table := servicesTable(s.pluginStates(rc), rc, owners)
 		for i := range table.Rows {
 			row := &table.Rows[i]
 			// The service identity stays verbatim; its lifecycle classification
@@ -300,7 +300,7 @@ func (s *Server) renderServices(w http.ResponseWriter, r *http.Request, errMsg s
 // lifecycle type, APK-reported package, live state, compact process runtime,
 // restart, and start/stop. No drawers — every fact and immediate action has its
 // own column. Runtime state is only claimed where procd can establish it.
-func servicesTable(states []pluginState, rc map[string]openwrt.RCState, owners map[string]string) widget.Widget {
+func servicesTable(states []pluginState, rc map[string]openwrt.RCState, owners map[string]string) *widget.Table {
 	cols := []widget.TableColumn{
 		{Label: "Order", Kind: "mono", Width: widget.MeasureCount},
 		{Label: "Service", Kind: "reference", Width: widget.MeasureLong},

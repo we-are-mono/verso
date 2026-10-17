@@ -108,7 +108,7 @@ func TestPackageNamesAreWrittenAsServicesWritesThem(t *testing.T) {
 	pkgs := []openwrt.Package{{Name: "htop", Version: "3.5.1-r1", Installed: true}}
 	for name, table := range map[string]*widget.Table{
 		"installed": packageListingTable(pkgs),
-		"discover":  discoverTable(pkgs, "htop").(*widget.Table),
+		"discover":  discoverTable(pkgs),
 	} {
 		if kind := table.Columns[0].Kind; kind != "reference" {
 			t.Errorf("%s Package column kind = %q, want reference", name, kind)
@@ -426,7 +426,7 @@ func TestDiscoverSearchRenders(t *testing.T) {
 // and no wider — the package, its version, its state, and Details as the
 // row's one act; what it does and where it is from are the drawer's to tell.
 func TestDiscoverResultsFitTheDrawer(t *testing.T) {
-	table := discoverTable([]openwrt.Package{{Name: "htop", Version: "3.5.1-r1", Feed: "packages", Description: "Process viewer"}}, "htop").(*widget.Table)
+	table := discoverTable([]openwrt.Package{{Name: "htop", Version: "3.5.1-r1", Feed: "packages", Description: "Process viewer"}})
 	var labels []string
 	for _, c := range table.Columns {
 		labels = append(labels, c.Label+":"+c.Kind)

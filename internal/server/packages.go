@@ -13,7 +13,6 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
-	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -68,6 +67,7 @@ func (s *Server) renderPackages(w http.ResponseWriter, r *http.Request, errMsg s
 	if err := packageUpgrade.takeFailure(); err != nil {
 		children = append(children, &widget.Callout{Variant: "danger", Compact: true, Body: fmt.Sprintf(tr("Package update failed: %v"), err)})
 	}
+	truth, _ := s.updateTruth()
 	if feedRefresh.running() {
 		children = append(children, refreshingInstead(
 			"The list returns as soon as the refresh finishes — reload the page in a moment."))
@@ -86,17 +86,11 @@ func (s *Server) renderPackages(w http.ResponseWriter, r *http.Request, errMsg s
 			children = append(children, &widget.Callout{Variant: "warning", Title: "Package list unavailable",
 				Body: fmt.Sprintf(tr("The package database could not be read (%v)."), pkgErr)})
 		}
-		var table *widget.Table
-		if all {
-			table = packageListingTable(pkgs)
-		} else {
-			table = packagesTable(pkgs).(*widget.Table)
+		if !all {
+			pkgs = installedOnly(pkgs)
 		}
-		truth, _ := s.updateTruth()
-		upgrades := map[string]string{}
-		for _, p := range truth.Packages {
-			upgrades[p.Name] = p.Available
-		}
+		table := packageListingTable(pkgs)
+		upgrades := upgradesByName(truth.Packages)
 		for i := range table.Rows {
 			row := &table.Rows[i]
 			if version := upgrades[row.ID]; version != "" && (!all || pkgs[i].Installed) {
@@ -111,7 +105,6 @@ func (s *Server) renderPackages(w http.ResponseWriter, r *http.Request, errMsg s
 		children = append(children, table)
 	}
 
-	truth, _ := s.updateTruth()
 	busy := feedRefresh.running()
 	// What the band narrows — the outcome, the rows, the index's pager — is
 	// one block under it, a cell apart within.
@@ -152,16 +145,8 @@ func (s *Server) renderPackages(w http.ResponseWriter, r *http.Request, errMsg s
 	if n := len(truth.Packages); n > 0 || packageUpgrade.running() {
 		acts = append(acts, packagesUpdateAct(n))
 	}
-	var lead strings.Builder
-	for _, act := range acts {
-		if err := s.widgets.RenderWithToken(&lead, act, s.sessionCSRF(r), lang, t); err != nil {
-			http.Error(w, "render error", http.StatusInternalServerError)
-			return
-		}
-	}
-	install := &widget.ActionBar{Heading: true, OpensPanel: true, Action: &widget.TableAction{Label: "Install", Href: "/system/packages/discover"}}
-	hdr := pageHeader{Heading: "Packages", Tone: "neutral", HeadingNote: &note,
-		HeadingAct: template.HTML(lead.String()) + s.headingAct(r, install, lang, t)} //nolint:gosec // rendered by the shell's own widgets
+	acts = append(acts, &widget.ActionBar{Heading: true, OpensPanel: true, Action: &widget.TableAction{Label: "Install", Href: "/system/packages/discover"}})
+	hdr := pageHeader{Heading: "Packages", Tone: "neutral", HeadingNote: &note, HeadingAct: s.headingActs(r, lang, t, acts...)}
 	s.renderPage(w, r, http.StatusOK, hdr, "wide", s.sectionPages("System", r.URL.Path), template.HTML(page.String()))
 }
 
@@ -218,17 +203,28 @@ func packagesRefreshAct(busy bool) widget.Widget {
 	}}
 }
 
-// packagesTable is the inventory roster: name, version, feed — files on disk,
-// no live state (that is the Services page's question). The drawer tells each
-// package's story and offers the Remove.
-func packagesTable(pkgs []openwrt.Package) widget.Widget {
+// installedOnly marks the installed set as installed: the inventory read
+// carries no such flag, every package in it being one.
+func installedOnly(pkgs []openwrt.Package) []openwrt.Package {
 	pkgs = append([]openwrt.Package(nil), pkgs...)
 	for i := range pkgs {
 		pkgs[i].Installed = true
 	}
-	return packageListingTable(pkgs)
+	return pkgs
 }
 
+// upgradesByName is each upgradable package's available version, by name.
+func upgradesByName(upgrades []openwrt.PackageUpgrade) map[string]string {
+	out := make(map[string]string, len(upgrades))
+	for _, u := range upgrades {
+		out[u.Name] = u.Available
+	}
+	return out
+}
+
+// packageListingTable is the inventory roster: name, version, feed — files on
+// disk, no live state (that is the Services page's question). The drawer tells
+// each package's story and offers the Remove.
 func packageListingTable(pkgs []openwrt.Package) *widget.Table {
 	cols := []widget.TableColumn{
 		// A package's name is verbatim (`apk add htop`): mono, as Services writes it.
@@ -644,7 +640,7 @@ func (s *Server) renderDiscover(w http.ResponseWriter, r *http.Request, errMsg s
 			"Results come from the feed index this refresh is rebuilding — reload the page in a moment to search it."))
 	} else if q == "" {
 		// Before a search the listing says what goes in it, in its one row.
-		table := discoverTable(nil, q).(*widget.Table)
+		table := discoverTable(nil)
 		table.EmptyText = "Enter a package name, then select Search. Matching packages will appear here."
 		children = append(children, table)
 	} else if pkgs, total, err := s.backend.PkgSearch(r.Context(), sid, q); err != nil {
@@ -652,7 +648,7 @@ func (s *Server) renderDiscover(w http.ResponseWriter, r *http.Request, errMsg s
 			Body: fmt.Sprintf(tr("The package index could not be read (%v). Refresh the feeds and try again."), err)})
 	} else if len(pkgs) == 0 {
 		// The row is plain text, so the query reads back exactly as typed.
-		table := discoverTable(nil, q).(*widget.Table)
+		table := discoverTable(nil)
 		table.EmptyText = fmt.Sprintf(tr("No available packages match “%s”. Check the spelling or refresh the package feeds."), q)
 		children = append(children, table)
 	} else {
@@ -660,17 +656,12 @@ func (s *Server) renderDiscover(w http.ResponseWriter, r *http.Request, errMsg s
 			children = append(children, &widget.Badge{Variant: "info", Icon: "info", Size: "lg", Text: fmt.Sprintf(
 				tr("Showing the first %d of %d matches — narrow the search to see the rest"), len(pkgs), total)})
 		}
-		table := discoverTable(pkgs, q).(*widget.Table)
+		table := discoverTable(pkgs)
 		truth, _ := s.updateTruth()
+		upgrades := upgradesByName(truth.Packages)
 		for i := range table.Rows {
-			if !pkgs[i].Installed {
-				continue
-			}
-			for _, upgrade := range truth.Packages {
-				if upgrade.Name == table.Rows[i].ID {
-					table.Rows[i].Drawer = packageDrawer(pkgs[i], upgrade.Available)
-					break
-				}
+			if version := upgrades[table.Rows[i].ID]; version != "" && pkgs[i].Installed {
+				table.Rows[i].Drawer = packageDrawer(pkgs[i], version)
 			}
 		}
 		children = append(children, table)
@@ -708,7 +699,7 @@ func packageIndexNote(checkedAt int64, err error, tr func(string) string) string
 // discoverTable lists Available matches at the drawer's width: name, version,
 // installed state, and Details (the shell's act for a name that opens) — the
 // drawer carries what it does, where it is from, and the act.
-func discoverTable(pkgs []openwrt.Package, q string) widget.Widget {
+func discoverTable(pkgs []openwrt.Package) *widget.Table {
 	cols := []widget.TableColumn{
 		{Label: "Package", Kind: "reference"},
 		{Label: "Version", Kind: "mono", Width: widget.MeasureWord},
@@ -726,16 +717,9 @@ func discoverTable(pkgs []openwrt.Package, q string) widget.Widget {
 			{Text: p.Version, Emphasis: true},
 			state,
 			{},
-		}, Drawer: discoverDrawer(p, q)})
+		}, Drawer: packageDrawer(p, "")})
 	}
 	return &widget.Table{Style: "flat", Columns: cols, Rows: rows}
-}
-
-// discoverDrawer is the act: what it is, where it is from, then Install — or
-// Remove for what is already here. The active query rides along so acting on
-// a result lands back on the same search — a shopping flow installs several.
-func discoverDrawer(p openwrt.Package, q string) *widget.RowDrawer {
-	return packageDrawer(p, "")
 }
 
 func packageActionForm(name, verb, label string) *widget.Form {
@@ -782,9 +766,7 @@ func (s *Server) handlePackagePanel(w http.ResponseWriter, r *http.Request) {
 	// row on Packages says.
 	available := ""
 	if truth, known := s.updateTruth(); known && p.Installed {
-		if i := slices.IndexFunc(truth.Packages, func(u openwrt.PackageUpgrade) bool { return u.Name == name }); i >= 0 {
-			available = truth.Packages[i].Available
-		}
+		available = upgradesByName(truth.Packages)[name]
 	}
 	row := packageRow(p)
 	row.Drawer = packageDrawer(p, available)
@@ -834,9 +816,7 @@ func (s *Server) handlePackageStatus(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-store")
 	_, t := s.localize(r)
 	tr := translatorOrIdentity(t)
-	feedRefresh.mu.Lock()
-	busy, failure := feedRefresh.active, feedRefresh.failure
-	feedRefresh.mu.Unlock()
+	busy, failure := feedRefresh.running(), feedRefresh.peekFailure()
 	message := ""
 	if failure != nil {
 		message = fmt.Sprintf(tr("The package feeds could not be refreshed (%v)."), failure)

@@ -446,10 +446,18 @@ func (s *Server) headingAct(r *http.Request, act *widget.ActionBar, lang string,
 	if act == nil {
 		return ""
 	}
+	return s.headingActs(r, lang, t, act)
+}
+
+// headingActs renders several acts side by side on the heading line, in order.
+// Any one failing to render leaves the heading line bare.
+func (s *Server) headingActs(r *http.Request, lang string, t func(string) string, acts ...widget.Widget) template.HTML {
 	var b strings.Builder
-	if err := s.widgets.RenderWithToken(&b, act, s.sessionCSRF(r), lang, t); err != nil {
-		log.Printf("verso: heading act render failed: %v", err)
-		return ""
+	for _, act := range acts {
+		if err := s.widgets.RenderWithToken(&b, act, s.sessionCSRF(r), lang, t); err != nil {
+			log.Printf("verso: heading act render failed: %v", err)
+			return ""
+		}
 	}
 	return template.HTML(b.String()) //nolint:gosec // rendered by the shell's own templates
 }
