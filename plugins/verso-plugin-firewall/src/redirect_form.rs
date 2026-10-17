@@ -32,11 +32,9 @@ use verso_plugin::{json, Form, Map, Section, Value};
 
 use crate::model;
 use crate::rule_form::{
-    bit, cleaned, family_value, join_mask, rate_unit, read_ipset, read_limit, read_log, split_mask,
-    split_words, valid_address, valid_count, valid_date, valid_limit, valid_mac, valid_mark,
-    valid_port, valid_protocol, valid_time, Errors, Inverted, Log, MarkMatch, RateLimit, Schedule,
-    SetMatch, Tokens, ADDRESS_HELP, HELPERS, MAC_HELP, MARK_HELP, PORT_HELP, PROTOCOL_HELP,
-    WEEKDAYS,
+    bit, cleaned, family_value, read_ipset, read_limit, read_log, split_words, valid_address,
+    valid_mac, valid_port, valid_protocol, Errors, Inverted, Log, MarkMatch, RateLimit, Schedule,
+    SetMatch, Tokens, ADDRESS_HELP, HELPERS, MAC_HELP, PORT_HELP, PROTOCOL_HELP,
 };
 
 /// OWNED is every option this editor writes. A save states all of them: the ones
@@ -176,8 +174,6 @@ impl RedirectForm {
     /// read fills the form from a redirect section, with firewall4's defaults
     /// where an option is absent.
     pub fn read(section: &Section) -> RedirectForm {
-        let mark = Inverted::read(section, "mark");
-        let (mark_value, mark_mask) = split_mask(&mark.value);
         RedirectForm {
             name: section.scalar("name"),
             enabled: model::flag(section, "enabled", true),
@@ -204,22 +200,9 @@ impl RedirectForm {
             src_mac: Tokens::read(section, "src_mac"),
             ipset: read_ipset(section),
             helper: section.scalar("helper"),
-            mark: MarkMatch {
-                mark: Inverted {
-                    negated: mark.negated,
-                    value: mark_value,
-                },
-                mask: mark_mask,
-            },
+            mark: MarkMatch::read(section),
             rate: read_limit(&section.scalar("limit"), &section.scalar("limit_burst")),
-            schedule: Schedule {
-                weekdays: model::values(section, "weekdays"),
-                start_date: section.scalar("start_date"),
-                stop_date: section.scalar("stop_date"),
-                start_time: section.scalar("start_time"),
-                stop_time: section.scalar("stop_time"),
-                utc: model::flag(section, "utc_time", false),
-            },
+            schedule: Schedule::read(section),
         }
     }
 
@@ -245,47 +228,16 @@ impl RedirectForm {
             },
             reflection_zones: cleaned(form.all("reflection_zone")),
             counter: !form.get("counter").is_empty(),
-            log: Log {
-                on: !form.get("log").is_empty(),
-                // Not trimmed, alone among the form's text: firewall4 writes this
-                // string in front of the packet it logs, so the space somebody
-                // put at the end of "guest-audit: " is the space between the
-                // prefix and the line. Trimming it silently reformatted every
-                // log line a rule wrote.
-                prefix: form.get("log_prefix"),
-                limit: form.get("log_limit").trim().to_string(),
-            },
+            log: Log::submitted(form),
             src_ip: Inverted::from_form(form, "src_ip", "src_ip_match"),
             src_dip: Inverted::from_form(form, "src_dip", "src_dip_match"),
             src_port: Inverted::from_form(form, "src_port", "src_port_match"),
             src_mac: Tokens::from_form(form, "src_mac"),
-            ipset: SetMatch {
-                set: Inverted::from_form(form, "ipset", "ipset_match"),
-                fields: [
-                    form.get("ipset_field_1"),
-                    form.get("ipset_field_2"),
-                    form.get("ipset_field_3"),
-                ],
-            },
+            ipset: SetMatch::submitted(form),
             helper: form.get("helper").trim().to_string(),
-            mark: MarkMatch {
-                mark: Inverted::from_form(form, "mark_value", "mark_match"),
-                mask: form.get("mark_mask").trim().to_string(),
-            },
-            rate: RateLimit {
-                over: form.get("limit_match") == "over",
-                count: form.get("limit").trim().to_string(),
-                unit: rate_unit(&form.get("limit_unit")),
-                burst: form.get("limit_burst").trim().to_string(),
-            },
-            schedule: Schedule {
-                weekdays: cleaned(form.all("weekdays")),
-                start_date: form.get("start_date").trim().to_string(),
-                stop_date: form.get("stop_date").trim().to_string(),
-                start_time: form.get("start_time").trim().to_string(),
-                stop_time: form.get("stop_time").trim().to_string(),
-                utc: form.get("time_basis") == "utc",
-            },
+            mark: MarkMatch::submitted(form),
+            rate: RateLimit::submitted(form),
+            schedule: Schedule::submitted(form),
         }
     }
 
@@ -350,7 +302,7 @@ impl RedirectForm {
         }
         self.reflection_values(&mut set);
         self.condition_values(&mut set);
-        self.log_values(&mut set);
+        self.log.write(&mut set);
 
         if existing {
             for option in OWNED {
@@ -398,73 +350,19 @@ impl RedirectForm {
             set("src_mac", json!(self.src_mac.option()));
         }
         if self.active("ipset") {
-            let fields: Vec<&str> = self
-                .ipset
-                .fields
-                .iter()
-                .map(String::as_str)
-                .filter(|field| !field.is_empty())
-                .collect();
-            let mut body = self.ipset.set.value.clone();
-            if !fields.is_empty() {
-                body = format!("{body} {}", fields.join(" "));
-            }
-            set("ipset", json!(self.ipset.set.option(&body)));
+            set("ipset", json!(self.ipset.option()));
         }
         if self.active("helper") {
             set("helper", json!(self.helper.clone()));
         }
         if self.active("mark") {
-            let body = join_mask(&self.mark.mark.value, &self.mark.mask);
-            set("mark", json!(self.mark.mark.option(&body)));
+            set("mark", json!(self.mark.option()));
         }
         if self.active("rate") {
-            let rate = format!("{}/{}", self.rate.count, self.rate.unit);
-            let limit = match self.rate.over {
-                true => format!("!{rate}"),
-                false => rate,
-            };
-            set("limit", json!(limit));
-            if !self.rate.burst.is_empty() {
-                set("limit_burst", json!(self.rate.burst.clone()));
-            }
+            self.rate.write(set);
         }
         if self.active("schedule") {
-            let schedule = &self.schedule;
-            if !schedule.weekdays.is_empty() {
-                // One value, not a uci list — see the same write on a rule.
-                set("weekdays", json!(schedule.weekdays.join(" ")));
-            }
-            for (option, value) in [
-                ("start_date", &schedule.start_date),
-                ("stop_date", &schedule.stop_date),
-                ("start_time", &schedule.start_time),
-                ("stop_time", &schedule.stop_time),
-            ] {
-                if !value.is_empty() {
-                    set(option, json!(value.clone()));
-                }
-            }
-            if schedule.utc {
-                set("utc_time", json!("1"));
-            }
-        }
-    }
-
-    /// log_values writes firewall4's `log`, which is one option doing two jobs: a
-    /// truth value turns logging on under the forward's own name, any other
-    /// string turns it on under that prefix.
-    fn log_values(&self, set: &mut impl FnMut(&str, Value)) {
-        if !self.log.on {
-            return;
-        }
-        let value = match self.log.prefix.is_empty() {
-            true => "1".to_string(),
-            false => self.log.prefix.clone(),
-        };
-        set("log", json!(value));
-        if !self.log.limit.is_empty() {
-            set("log_limit", json!(self.log.limit.clone()));
+            self.schedule.write(set);
         }
     }
 
@@ -475,10 +373,10 @@ impl RedirectForm {
         let mut errors = Errors::default();
         self.validate_path(zones, &mut errors);
         self.validate_conditions(sets, &mut errors);
-        self.validate_schedule(&mut errors);
-        if self.log.on && !self.log.limit.is_empty() && !valid_limit(&self.log.limit) {
-            errors.field("log_limit", "Write a rate like 10/minute.");
+        if self.active("schedule") {
+            self.schedule.check(&mut errors);
         }
+        self.log.check(&mut errors);
         errors
     }
 
@@ -552,50 +450,10 @@ impl RedirectForm {
             errors.field("helper", "Choose one of the offered connection helpers.");
         }
         if self.active("mark") {
-            if !valid_mark(&self.mark.mark.value) {
-                errors.field("mark_value", MARK_HELP);
-            }
-            if !self.mark.mask.is_empty() && !valid_mark(&self.mark.mask) {
-                errors.field("mark_mask", MARK_HELP);
-            }
+            self.mark.check(errors);
         }
         if self.active("rate") {
-            if !valid_count(&self.rate.count) {
-                errors.field("limit", "Write how many packets, as a whole number.");
-            }
-            if !self.rate.burst.is_empty() && !valid_count(&self.rate.burst) {
-                errors.field(
-                    "limit_burst",
-                    "Write the burst allowance as a whole number.",
-                );
-            }
-        }
-    }
-
-    fn validate_schedule(&self, errors: &mut Errors) {
-        if !self.active("schedule") {
-            return;
-        }
-        for (field, value) in [
-            ("start_date", &self.schedule.start_date),
-            ("stop_date", &self.schedule.stop_date),
-        ] {
-            if !value.is_empty() && !valid_date(value) {
-                errors.field(field, "Write a date as YYYY-MM-DD.");
-            }
-        }
-        for (field, value) in [
-            ("start_time", &self.schedule.start_time),
-            ("stop_time", &self.schedule.stop_time),
-        ] {
-            if !value.is_empty() && !valid_time(value) {
-                errors.field(field, "Write a time of day as HH:MM or HH:MM:SS.");
-            }
-        }
-        for day in &self.schedule.weekdays {
-            if !WEEKDAYS.contains(&day.as_str()) {
-                errors.field("weekdays", "Choose from the days offered.");
-            }
+            self.rate.check(errors);
         }
     }
 }
