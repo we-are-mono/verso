@@ -1,0 +1,1442 @@
+classes-are-blocks	verso-arrived
+classes-are-blocks	verso-box
+classes-are-blocks	verso-box-chevron
+classes-are-blocks	verso-box-input
+classes-are-blocks	verso-box-part
+classes-are-blocks	verso-box-select
+classes-are-blocks	verso-box-unit
+classes-are-blocks	verso-busy
+classes-are-blocks	verso-button-waiting
+classes-are-blocks	verso-chart
+classes-are-blocks	verso-chart--
+classes-are-blocks	verso-chart-area
+classes-are-blocks	verso-chart-axis
+classes-are-blocks	verso-chart-figure
+classes-are-blocks	verso-chart-fill-0
+classes-are-blocks	verso-chart-fill-1
+classes-are-blocks	verso-chart-frame
+classes-are-blocks	verso-chart-graph
+classes-are-blocks	verso-chart-head
+classes-are-blocks	verso-chart-legend
+classes-are-blocks	verso-chart-legend-peak
+classes-are-blocks	verso-chart-legend-series
+classes-are-blocks	verso-chart-line
+classes-are-blocks	verso-chart-mark--
+classes-are-blocks	verso-chart-mark--boot
+classes-are-blocks	verso-chart-peak
+classes-are-blocks	verso-chart-peak--
+classes-are-blocks	verso-chart-plot
+classes-are-blocks	verso-chart-series
+classes-are-blocks	verso-chart-tick
+classes-are-blocks	verso-chart-yl
+classes-are-blocks	verso-chip
+classes-are-blocks	verso-collection
+classes-are-blocks	verso-colophon-fact
+classes-are-blocks	verso-condition
+classes-are-blocks	verso-condition-list
+classes-are-blocks	verso-condition-name
+classes-are-blocks	verso-condition-single
+classes-are-blocks	verso-conditional
+classes-are-blocks	verso-conditional-body
+classes-are-blocks	verso-conditional-gate
+classes-are-blocks	verso-conditional-otherwise
+classes-are-blocks	verso-confirm
+classes-are-blocks	verso-console
+classes-are-blocks	verso-console-notice
+classes-are-blocks	verso-copy-inline
+classes-are-blocks	verso-disclosure
+classes-are-blocks	verso-drawer
+classes-are-blocks	verso-drawer-scrollbar
+classes-are-blocks	verso-empty-icon
+classes-are-blocks	verso-empty-icon--success
+classes-are-blocks	verso-field-act
+classes-are-blocks	verso-field-answer
+classes-are-blocks	verso-field-control
+classes-are-blocks	verso-field-label
+classes-are-blocks	verso-field-ledger
+classes-are-blocks	verso-field-plain
+classes-are-blocks	verso-field-question
+classes-are-blocks	verso-field-row
+classes-are-blocks	verso-field-set
+classes-are-blocks	verso-field-wide
+classes-are-blocks	verso-fold
+classes-are-blocks	verso-fold-hide
+classes-are-blocks	verso-fold-show
+classes-are-blocks	verso-form
+classes-are-blocks	verso-form-grid
+classes-are-blocks	verso-form-grid-fields
+classes-are-blocks	verso-glyph-`)
+classes-are-blocks	verso-inline-switch
+classes-are-blocks	verso-inline-switch-off
+classes-are-blocks	verso-inline-switch-on
+classes-are-blocks	verso-joined
+classes-are-blocks	verso-joined-part
+classes-are-blocks	verso-joined-word
+classes-are-blocks	verso-kicker
+classes-are-blocks	verso-landed
+classes-are-blocks	verso-lede
+classes-are-blocks	verso-live-dot
+classes-are-blocks	verso-menu-button
+classes-are-blocks	verso-meter-bar
+classes-are-blocks	verso-modal
+classes-are-blocks	verso-modal-motion
+classes-are-blocks	verso-outcome
+classes-are-blocks	verso-overview
+classes-are-blocks	verso-overview-body
+classes-are-blocks	verso-overview-card
+classes-are-blocks	verso-overview-chevron
+classes-are-blocks	verso-overview-col
+classes-are-blocks	verso-overview-cols
+classes-are-blocks	verso-overview-content
+classes-are-blocks	verso-overview-dragging
+classes-are-blocks	verso-overview-meters
+classes-are-blocks	verso-overview-slot
+classes-are-blocks	verso-overview-summary
+classes-are-blocks	verso-page-body
+classes-are-blocks	verso-page-full
+classes-are-blocks	verso-page-ground
+classes-are-blocks	verso-page-heading
+classes-are-blocks	verso-panel-art
+classes-are-blocks	verso-panel-chassis
+classes-are-blocks	verso-panel-face
+classes-are-blocks	verso-panel-generated
+classes-are-blocks	verso-pending-link
+classes-are-blocks	verso-port-body
+classes-are-blocks	verso-port-label
+classes-are-blocks	verso-port-mouth
+classes-are-blocks	verso-port-pins
+classes-are-blocks	verso-port-slit
+classes-are-blocks	verso-port-socket
+classes-are-blocks	verso-port-speed
+classes-are-blocks	verso-port-tip
+classes-are-blocks	verso-ports
+classes-are-blocks	verso-ports--
+classes-are-blocks	verso-ports-dot
+classes-are-blocks	verso-ports-key
+classes-are-blocks	verso-ports-legend
+classes-are-blocks	verso-ports-name
+classes-are-blocks	verso-preview-busy
+classes-are-blocks	verso-prose
+classes-are-blocks	verso-rail-link
+classes-are-blocks	verso-reorder-float
+classes-are-blocks	verso-reorder-placeholder
+classes-are-blocks	verso-reordering
+classes-are-blocks	verso-reveal
+classes-are-blocks	verso-reveal-act
+classes-are-blocks	verso-rhythm
+classes-are-blocks	verso-row-name
+classes-are-blocks	verso-scroll-edge
+classes-are-blocks	verso-stack
+classes-are-blocks	verso-staged-bar
+classes-are-blocks	verso-step
+classes-are-blocks	verso-step-mark
+classes-are-blocks	verso-switch-off
+classes-are-blocks	verso-switch-on
+classes-are-blocks	verso-switch-word
+classes-are-blocks	verso-table
+classes-are-blocks	verso-table-group
+classes-are-blocks	verso-table-seam-control
+classes-are-blocks	verso-table-seam-row
+classes-are-blocks	verso-time-input
+classes-are-blocks	verso-traffic
+classes-are-blocks	verso-unfold
+classes-are-blocks	verso-vt
+no-class-string-templates	server/templates/nav-row.html.tmpl	verso-nav-row-class
+no-class-string-templates	widget/templates/form.html.tmpl	form.submit-tone
+no-class-string-templates	widget/templates/list.html.tmpl	list.row-class
+no-class-string-templates	widget/templates/list.html.tmpl	list.value-class
+no-class-string-templates	widget/templates/modal.html.tmpl	modal.frame
+no-class-string-templates	widget/templates/properties.html.tmpl	verso-mark-hue
+no-class-string-templates	widget/templates/shared.html.tmpl	verso-act-quiet
+no-class-string-templates	widget/templates/shared.html.tmpl	verso-btn-act
+no-class-string-templates	widget/templates/shared.html.tmpl	verso-btn-box
+no-class-string-templates	widget/templates/shared.html.tmpl	verso-btn-caution
+no-class-string-templates	widget/templates/shared.html.tmpl	verso-btn-danger
+no-class-string-templates	widget/templates/shared.html.tmpl	verso-btn-icon
+no-class-string-templates	widget/templates/shared.html.tmpl	verso-btn-icon-look
+no-class-string-templates	widget/templates/shared.html.tmpl	verso-btn-primary
+no-class-string-templates	widget/templates/shared.html.tmpl	verso-btn-secondary
+no-class-string-templates	widget/templates/shared.html.tmpl	verso-btn-waiting
+no-class-string-templates	widget/templates/shared.html.tmpl	verso-chip-box
+no-class-string-templates	widget/templates/shared.html.tmpl	verso-chip-class
+no-class-string-templates	widget/templates/shared.html.tmpl	verso-chip-frame
+no-class-string-templates	widget/templates/shared.html.tmpl	verso-chip-mono
+no-class-string-templates	widget/templates/shared.html.tmpl	verso-chip-shape
+no-class-string-templates	widget/templates/shared.html.tmpl	verso-control-band-class
+no-class-string-templates	widget/templates/shared.html.tmpl	verso-copy-tip-class
+no-class-string-templates	widget/templates/shared.html.tmpl	verso-dialog-box
+no-class-string-templates	widget/templates/shared.html.tmpl	verso-dialog-on
+no-class-string-templates	widget/templates/shared.html.tmpl	verso-drawer-box
+no-class-string-templates	widget/templates/shared.html.tmpl	verso-drawer-ground
+no-class-string-templates	widget/templates/shared.html.tmpl	verso-drawer-inset
+no-class-string-templates	widget/templates/shared.html.tmpl	verso-drawer-width
+no-class-string-templates	widget/templates/shared.html.tmpl	verso-empty-slot-class
+no-class-string-templates	widget/templates/shared.html.tmpl	verso-error-line
+no-class-string-templates	widget/templates/shared.html.tmpl	verso-field-aria
+no-class-string-templates	widget/templates/shared.html.tmpl	verso-field-control-class
+no-class-string-templates	widget/templates/shared.html.tmpl	verso-field-desc-class
+no-class-string-templates	widget/templates/shared.html.tmpl	verso-field-label-attrs
+no-class-string-templates	widget/templates/shared.html.tmpl	verso-field-label-class
+no-class-string-templates	widget/templates/shared.html.tmpl	verso-field-row-class
+no-class-string-templates	widget/templates/shared.html.tmpl	verso-flash-class
+no-class-string-templates	widget/templates/shared.html.tmpl	verso-input-border
+no-class-string-templates	widget/templates/shared.html.tmpl	verso-input-box
+no-class-string-templates	widget/templates/shared.html.tmpl	verso-input-class
+no-class-string-templates	widget/templates/shared.html.tmpl	verso-input-fill
+no-class-string-templates	widget/templates/shared.html.tmpl	verso-input-words
+no-class-string-templates	widget/templates/shared.html.tmpl	verso-key-chip-class
+no-class-string-templates	widget/templates/shared.html.tmpl	verso-kicker-class
+no-class-string-templates	widget/templates/shared.html.tmpl	verso-message-hue
+no-class-string-templates	widget/templates/shared.html.tmpl	verso-press
+no-class-string-templates	widget/templates/shared.html.tmpl	verso-refusal-band
+no-class-string-templates	widget/templates/shared.html.tmpl	verso-remove-glyph-class
+no-class-string-templates	widget/templates/shared.html.tmpl	verso-section-band-class
+no-class-string-templates	widget/templates/shared.html.tmpl	verso-section-lede-class
+no-class-string-templates	widget/templates/shared.html.tmpl	verso-section-meta-class
+no-class-string-templates	widget/templates/shared.html.tmpl	verso-section-meta-label-class
+no-class-string-templates	widget/templates/shared.html.tmpl	verso-section-meta-value-class
+no-class-string-templates	widget/templates/shared.html.tmpl	verso-section-title-class
+no-class-string-templates	widget/templates/shared.html.tmpl	verso-segment-focus
+no-class-string-templates	widget/templates/shared.html.tmpl	verso-select-compact
+no-class-string-templates	widget/templates/shared.html.tmpl	verso-select-compact-chevron
+no-class-string-templates	widget/templates/shared.html.tmpl	verso-tip-below-class
+no-class-string-templates	widget/templates/shared.html.tmpl	verso-tip-class
+no-class-string-templates	widget/templates/shared.html.tmpl	verso-tip-look
+no-class-string-templates	widget/templates/shared.html.tmpl	verso-token-chip
+no-class-string-templates	widget/templates/shared.html.tmpl	verso-token-chip-remove
+no-class-string-templates	widget/templates/shared.html.tmpl	verso-tone-dot
+no-class-string-templates	widget/templates/shared.html.tmpl	verso-tone-text
+no-class-string-templates	widget/templates/table-interfaces.html.tmpl	table.interfaces-state-ink
+no-class-string-templates	widget/templates/table.html.tmpl	table.actbtn-class
+no-class-string-templates	widget/templates/table.html.tmpl	table.cellpad
+no-class-string-templates	widget/templates/table.html.tmpl	table.cellpad-detail
+no-class-string-templates	widget/templates/table.html.tmpl	table.name-ink
+no-repeated-bundles	-bottom-1 -top-1 absolute bg-crimson rounded-[1px] w-0.5
+no-repeated-bundles	-bottom-1 -top-1 absolute bg-marigold rounded-[1px] w-0.5
+no-repeated-bundles	-mx-10 bg-quiet flex-1 min-h-0 overflow-y-auto pb-6 pt-3 shadow-(--shadow-edge)
+no-repeated-bundles	-translate-y-1/2 absolute left-3 pointer-events-none whitespace-nowrap
+no-repeated-bundles	absolute bg-crimson bg-green bg-marigold inset-0
+no-repeated-bundles	absolute bg-sand-5 left-0 rounded-[1px] size-1.5 top-0
+no-repeated-bundles	absolute bg-sand-5 left-0 rounded-[1px] size-1.5 top-2
+no-repeated-bundles	absolute bg-sand-5 left-2 rounded-[1px] size-1.5 top-0
+no-repeated-bundles	absolute bg-sand-5 left-2 rounded-[1px] size-1.5 top-2
+no-repeated-bundles	absolute cursor-pointer inset-0 opacity-0 size-full
+no-repeated-bundles	absolute flex inset-y-0 items-center left-3 pointer-events-none text-glyph
+no-repeated-bundles	absolute flex inset-y-0 items-center pointer-events-none right-3 text-meta
+no-repeated-bundles	bg-canvas font-sans leading-normal m-0 min-h-screen text-ink text-sm
+no-repeated-bundles	bg-crimson bg-denim bg-green bg-marigold border border-faint rounded-[1px] shrink-0 size-1.5
+no-repeated-bundles	bg-denim border border-denim cursor-pointer flex focus-visible:outline-2 focus-visible:outline-denim-deep focus-visible:outline-offset-2 font-semibold gap-2 h-control hover:bg-denim-deep hover:border-denim-deep items-center px-4 rounded-xs shrink-0 text-on-fill text-sm transition-colors whitespace-nowrap
+no-repeated-bundles	bg-marigold mt-1.75 rounded-[1px] shrink-0 size-1.5
+no-repeated-bundles	bg-marigold-soft flex gap-2 items-start leading-[1.45] mt-6 px-3 py-2 rounded-xs text-marigold-deep
+no-repeated-bundles	bg-rule-strong h-5 shrink-0 w-px
+no-repeated-bundles	block mt-1.75 relative shrink-0 size-3.5
+no-repeated-bundles	block relative shrink-0 size-3.5
+no-repeated-bundles	border border-faint rounded-[1px] shrink-0 size-1.5
+no-repeated-bundles	border cursor-pointer flex font-semibold h-control items-center px-4 rounded-xs text-sm whitespace-nowrap
+no-repeated-bundles	border-b border-mid flex gap-6 items-center py-2.5
+no-repeated-bundles	border-b border-rule text-right whitespace-nowrap
+no-repeated-bundles	cursor-pointer focus-visible:outline-2 focus-visible:outline-denim focus-visible:outline-offset-2 font-medium gap-1.5 hover:text-denim-deep inline-flex items-center text-denim text-sm transition-colors
+no-repeated-bundles	flex flex-1 flex-col gap-2 min-w-0
+no-repeated-bundles	flex flex-none gap-6 overflow-x-auto shadow-[inset_0_-1px_0_var(--color-rule)]
+no-repeated-bundles	flex flex-wrap gap-2 items-center min-w-0
+no-repeated-bundles	flex font-medium hover:shadow-[inset_0_-2px_0_var(--color-inert)] hover:text-ink items-center leading-7 py-3.5 shadow-[inset_0_-2px_0_var(--color-denim-deep)] shrink-0 text-ink text-meta text-sm transition whitespace-nowrap
+no-repeated-bundles	flex font-semibold gap-2 items-center text-ink text-sm
+no-repeated-bundles	flex gap-1.5 items-center text-ink
+no-repeated-bundles	flex gap-3 items-center pr-6
+no-repeated-bundles	flex gap-3 items-start mt-11
+no-repeated-bundles	focus-visible:outline-2 focus-visible:outline-denim focus-visible:outline-offset-2 h-7 px-3.5 rounded-xs transition-colors
+no-repeated-bundles	font-medium font-mono min-w-0 text-base wrap-anywhere
+no-repeated-bundles	font-normal font-sans text-meta text-sm
+no-repeated-bundles	font-semibold leading-6 shrink-0 text-ink text-sm
+no-repeated-bundles	font-semibold leading-tight text-2xl text-balance tracking-tight
+no-repeated-bundles	font-semibold text-denim-deep underline underline-offset-2 whitespace-nowrap
+no-repeated-bundles	group-data-dragging/drop:text-denim mb-2 text-glyph transition-colors
+no-repeated-bundles	leading-6 py-row text-meta text-sm
+no-repeated-bundles	leading-6 text-meta text-pretty text-sm
+no-repeated-bundles	opacity-0 peer-checked:opacity-100 relative text-on-fill
+no-repeated-bundles	px-10 py-6 text-meta text-sm
+no-repeated-bundles	shrink-0 tabular-nums text-ink text-meta text-right w-16 whitespace-nowrap
+no-repeated-bundles	shrink-0 text-meta truncate w-32
+no-rules-in-markup	server/assets/verso-forms.js	border-crimson!
+no-rules-in-markup	server/assets/verso-tables.js	[&_td]:bg-ground
+no-rules-in-markup	server/assets/verso-tables.js	[&_td]:border-b-transparent
+no-rules-in-markup	server/assets/verso-tables.js	p-0!
+no-rules-in-markup	server/templates/diagnostics.html.tmpl	[&::-webkit-calendar-picker-indicator]:hidden!
+no-rules-in-markup	server/templates/login.html.tmpl	bg-ground!
+no-rules-in-markup	server/templates/nav-row.html.tmpl	[&::-webkit-details-marker]:hidden
+no-rules-in-markup	server/templates/page.html.tmpl	[&>.verso-flash]:mb-0
+no-rules-in-markup	server/templates/page.html.tmpl	[&>.verso-flash]:pr-12
+no-rules-in-markup	server/templates/page.html.tmpl	[&>.verso-flash]:shadow-(--shadow-float)
+no-rules-in-markup	widget/templates/chart.html.tmpl	stroke-2!
+no-rules-in-markup	widget/templates/chart.html.tmpl	stroke-[1.5]!
+no-rules-in-markup	widget/templates/conditions.html.tmpl	[&>div]:border-0
+no-rules-in-markup	widget/templates/disclosure.html.tmpl	[&::-webkit-details-marker]:hidden
+no-rules-in-markup	widget/templates/disclosure.html.tmpl	[&::-webkit-details-marker]:hidden
+no-rules-in-markup	widget/templates/disclosure.html.tmpl	[&_tbody_tr:last-child_td]:pb-0
+no-rules-in-markup	widget/templates/disclosure.html.tmpl	[&_thead_th]:pt-0
+no-rules-in-markup	widget/templates/empty.html.tmpl	[&_p]:mb-4
+no-rules-in-markup	widget/templates/form.html.tmpl	[&>.verso-field-row]:min-w-0
+no-rules-in-markup	widget/templates/form.html.tmpl	[&>.verso-field-row]:w-80
+no-rules-in-markup	widget/templates/form.html.tmpl	[&>div:not(:last-of-type)]:w-52
+no-rules-in-markup	widget/templates/form.html.tmpl	[&>div:not(:last-of-type)]:w-72
+no-rules-in-markup	widget/templates/form.html.tmpl	[&>div:not(:last-of-type)_input]:rounded-r-none
+no-rules-in-markup	widget/templates/form.html.tmpl	[&>p]:inline
+no-rules-in-markup	widget/templates/form.html.tmpl	[&>p]:inline
+no-rules-in-markup	widget/templates/form.html.tmpl	[&>p]:inline
+no-rules-in-markup	widget/templates/grid.html.tmpl	@2xl:[&>dl:not(:has(*))]:block
+no-rules-in-markup	widget/templates/grid.html.tmpl	@form-split:[&>div:last-child]:order-none
+no-rules-in-markup	widget/templates/grid.html.tmpl	@form-split:[&>div:last-child]:sticky
+no-rules-in-markup	widget/templates/grid.html.tmpl	@form-split:[&>div:last-child]:sticky
+no-rules-in-markup	widget/templates/grid.html.tmpl	@form-split:[&>div:last-child]:top-22
+no-rules-in-markup	widget/templates/grid.html.tmpl	@form-split:[&>div:last-child]:top-22
+no-rules-in-markup	widget/templates/grid.html.tmpl	@max-2xl:[&>dl+dl>div:first-child]:pt-1.75
+no-rules-in-markup	widget/templates/grid.html.tmpl	@max-2xl:[&>dl:has(+dl:has(*))>div:last-child]:border-b
+no-rules-in-markup	widget/templates/grid.html.tmpl	[&>:first-child]:max-w-form
+no-rules-in-markup	widget/templates/grid.html.tmpl	[&>div:first-child]:max-w-form
+no-rules-in-markup	widget/templates/grid.html.tmpl	[&>div:last-child]:order-first
+no-rules-in-markup	widget/templates/grid.html.tmpl	[&>div:last-child]:self-start
+no-rules-in-markup	widget/templates/grid.html.tmpl	[&>div:last-child]:self-start
+no-rules-in-markup	widget/templates/grid.html.tmpl	[&>div>span]:text-base
+no-rules-in-markup	widget/templates/grid.html.tmpl	[&>div]:border-t-0
+no-rules-in-markup	widget/templates/grid.html.tmpl	[&>div]:min-w-0
+no-rules-in-markup	widget/templates/grid.html.tmpl	[&>div]:mt-0
+no-rules-in-markup	widget/templates/grid.html.tmpl	[&>div]:pt-2
+no-rules-in-markup	widget/templates/grid.html.tmpl	[&>dl:not(:has(*))]:hidden
+no-rules-in-markup	widget/templates/grid.html.tmpl	[&_dd]:flex-1
+no-rules-in-markup	widget/templates/grid.html.tmpl	[&_dd]:justify-start
+no-rules-in-markup	widget/templates/grid.html.tmpl	[&_dd]:text-left
+no-rules-in-markup	widget/templates/grid.html.tmpl	[&_dl>div]:justify-start
+no-rules-in-markup	widget/templates/grid.html.tmpl	[&_dl]:divide-rule
+no-rules-in-markup	widget/templates/grid.html.tmpl	[&_dt]:w-24
+no-rules-in-markup	widget/templates/grid.html.tmpl	[&_input[name=name]]:font-sans
+no-rules-in-markup	widget/templates/grid.html.tmpl	[&_input[name=name]]:text-sm
+no-rules-in-markup	widget/templates/grid.html.tmpl	[&_input[type=password]]:font-sans
+no-rules-in-markup	widget/templates/grid.html.tmpl	[&_input[type=password]]:text-sm
+no-rules-in-markup	widget/templates/grid.html.tmpl	[&_input]:font-normal
+no-rules-in-markup	widget/templates/grid.html.tmpl	[&_section[id]>.verso-rhythm]:[--verso-rhythm:0rem]
+no-rules-in-markup	widget/templates/grid.html.tmpl	[&_select]:font-normal
+no-rules-in-markup	widget/templates/grid.html.tmpl	[&_textarea]:font-normal
+no-rules-in-markup	widget/templates/properties.html.tmpl	[&_*]:leading-6
+no-rules-in-markup	widget/templates/section.html.tmpl	[&>button]:-mb-px
+no-rules-in-markup	widget/templates/section.html.tmpl	[&>button]:gap-2
+no-rules-in-markup	widget/templates/section.html.tmpl	[&>button]:h-control
+no-rules-in-markup	widget/templates/section.html.tmpl	[&>button]:px-4
+no-rules-in-markup	widget/templates/settings.html.tmpl	[&::-webkit-details-marker]:hidden
+no-rules-in-markup	widget/templates/settings.html.tmpl	w-24!
+no-rules-in-markup	widget/templates/shared.html.tmpl	[&>section>div:first-child]:bg-quiet
+no-rules-in-markup	widget/templates/shared.html.tmpl	[&>section>div:first-child]:border-rule
+no-rules-in-markup	widget/templates/shared.html.tmpl	[&>section>div:first-child]:border-y
+no-rules-in-markup	widget/templates/shared.html.tmpl	[&>section>div:first-child]:mb-0
+no-rules-in-markup	widget/templates/shared.html.tmpl	[&>section>div:first-child]:px-(--verso-drawer-gutter)
+no-rules-in-markup	widget/templates/shared.html.tmpl	[&>section>div:first-child]:py-2
+no-rules-in-markup	widget/templates/shared.html.tmpl	[&>section]:pt-0
+no-rules-in-markup	widget/templates/shared.html.tmpl	[&_.overflow-x-auto]:!overflow-visible
+no-rules-in-markup	widget/templates/shared.html.tmpl	[&_.verso-rhythm>*]:!mt-0
+no-rules-in-markup	widget/templates/shared.html.tmpl	[&_h3]:font-medium
+no-rules-in-markup	widget/templates/shared.html.tmpl	[&_h3]:tracking-[.08em]
+no-rules-in-markup	widget/templates/shared.html.tmpl	[&_table]:min-w-0
+no-rules-in-markup	widget/templates/shared.html.tmpl	[&_tbody_tr:hover]:!bg-transparent
+no-rules-in-markup	widget/templates/shared.html.tmpl	[&_td:last-child]:!text-right
+no-rules-in-markup	widget/templates/shared.html.tmpl	[&_th:last-child]:!text-right
+no-rules-in-markup	widget/templates/shared.html.tmpl	w-measure-24!
+no-rules-in-markup	widget/templates/shared.html.tmpl	w-measure-32!
+no-rules-in-markup	widget/templates/shared.html.tmpl	w-measure-44!
+no-rules-in-markup	widget/templates/table-interfaces.html.tmpl	[&>td]:border-b
+no-rules-in-markup	widget/templates/table-interfaces.html.tmpl	[&>td]:border-rule
+no-rules-in-markup	widget/templates/table.html.tmpl	!p-0
+no-rules-in-markup	widget/templates/table.html.tmpl	[&::-webkit-details-marker]:hidden
+no-rules-in-markup	widget/templates/table.html.tmpl	[&_td:first-of-type]:pl-0
+no-rules-in-markup	widget/templates/table.html.tmpl	[&_td:first-of-type]:pl-2.75
+no-rules-in-markup	widget/templates/table.html.tmpl	[&_td:last-of-type]:pr-0
+no-rules-in-markup	widget/templates/table.html.tmpl	[&_td:last-of-type]:pr-4
+no-rules-in-markup	widget/templates/table.html.tmpl	[&_th:first-of-type]:pl-2.75
+no-rules-in-markup	widget/templates/table.html.tmpl	[&_th:last-of-type]:pr-4
+no-rules-in-markup	widget/templates/table.html.tmpl	pl-1.75!
+no-rules-in-markup	widget/templates/table.html.tmpl	pl-1.75!
+no-rules-in-markup	widget/templates/table.html.tmpl	pr-1.75!
+no-rules-in-markup	widget/templates/table.html.tmpl	pr-1.75!
+no-rules-in-markup	widget/templates/text.html.tmpl	[&>:is(p,ul,ol):not(:last-child)]:mb-4
+no-rules-in-markup	widget/templates/when.html.tmpl	!mt-0
+rules-live-in-blocks	forms.css	.verso-box
+rules-live-in-blocks	forms.css	.verso-box-chevron
+rules-live-in-blocks	forms.css	.verso-box-input
+rules-live-in-blocks	forms.css	.verso-box-input::placeholder
+rules-live-in-blocks	forms.css	.verso-box-part
+rules-live-in-blocks	forms.css	.verso-box-part + .verso-box-part
+rules-live-in-blocks	forms.css	.verso-box-part:has(.verso-box-unit) .verso-box-input
+rules-live-in-blocks	forms.css	.verso-box-part:has(> .verso-box-select)
+rules-live-in-blocks	forms.css	.verso-box-part[data-verso-measure="number"]
+rules-live-in-blocks	forms.css	.verso-box-part[data-verso-measure="secret"]
+rules-live-in-blocks	forms.css	.verso-box-select
+rules-live-in-blocks	forms.css	.verso-box-unit
+rules-live-in-blocks	forms.css	.verso-box:focus-within
+rules-live-in-blocks	forms.css	.verso-box:has([aria-invalid="true"])
+rules-live-in-blocks	forms.css	.verso-box:has([aria-invalid="true"]):focus-within
+rules-live-in-blocks	forms.css	.verso-box:has([aria-invalid="true"]):hover
+rules-live-in-blocks	forms.css	.verso-box:hover
+rules-live-in-blocks	forms.css	.verso-box[data-verso-stacked]
+rules-live-in-blocks	forms.css	.verso-box[data-verso-stacked] .verso-box-input
+rules-live-in-blocks	forms.css	.verso-box[data-verso-stacked] > .verso-box-part
+rules-live-in-blocks	forms.css	.verso-box[data-verso-stacked] > .verso-box-part + .verso-box-part
+rules-live-in-blocks	forms.css	.verso-condition + .verso-condition
+rules-live-in-blocks	forms.css	.verso-condition + .verso-condition::before
+rules-live-in-blocks	forms.css	.verso-condition > .verso-rhythm > * + *
+rules-live-in-blocks	forms.css	.verso-condition > .verso-rhythm > :first-child
+rules-live-in-blocks	forms.css	.verso-condition-list > .verso-condition:first-child
+rules-live-in-blocks	forms.css	.verso-condition-list > .verso-condition:last-child
+rules-live-in-blocks	forms.css	.verso-condition-list:has(> .verso-condition)
+rules-live-in-blocks	forms.css	.verso-condition-list:has(> .verso-condition) ~ [data-verso-condition-picker]
+rules-live-in-blocks	forms.css	.verso-condition-name
+rules-live-in-blocks	forms.css	.verso-condition-single > .verso-rhythm .verso-field-label
+rules-live-in-blocks	forms.css	.verso-condition:has(+ .verso-condition)
+rules-live-in-blocks	forms.css	.verso-condition:not(.verso-condition-single) > .verso-rhythm .verso-field-label > :first-child
+rules-live-in-blocks	forms.css	.verso-conditional:has(+ :is(.verso-field-row, .verso-conditional, .verso-field-set, [data-verso-rows])) > .verso-conditional-body > .verso-conditional:last-child > .verso-conditional-body > .verso-field-row:last-child
+rules-live-in-blocks	forms.css	.verso-conditional:has(+ :is(.verso-field-row, .verso-conditional, .verso-field-set, [data-verso-rows])) > .verso-conditional-body > .verso-conditional:last-child > .verso-conditional-gate
+rules-live-in-blocks	forms.css	.verso-conditional:has(+ :is(.verso-field-row, .verso-conditional, .verso-field-set, [data-verso-rows])) > .verso-conditional-body > .verso-field-row:last-child
+rules-live-in-blocks	forms.css	.verso-conditional:has(+ :is(.verso-field-row, .verso-conditional, .verso-field-set, [data-verso-rows])) > .verso-conditional-gate
+rules-live-in-blocks	forms.css	.verso-conditional:has(+ :is(.verso-field-row, .verso-conditional, .verso-field-set, [data-verso-rows])) > :is(.verso-conditional-body, .verso-conditional-otherwise):has(> :not(.verso-field-row, .verso-conditional, input[type="hidden"], [hidden], template):last-child)
+rules-live-in-blocks	forms.css	.verso-conditional:has(> .verso-conditional-gate input[data-verso-switch]:checked):has(> .verso-conditional-body > :not(input[type="hidden"], [hidden], template)) > .verso-conditional-gate
+rules-live-in-blocks	forms.css	.verso-conditional:not(:has(> .verso-conditional-gate input[data-verso-switch]:checked)):has(> .verso-conditional-otherwise > .verso-field-row) > .verso-conditional-gate
+rules-live-in-blocks	forms.css	.verso-field-act
+rules-live-in-blocks	forms.css	.verso-field-act ~ .verso-field-answer > [data-verso-slot]
+rules-live-in-blocks	forms.css	.verso-field-answer
+rules-live-in-blocks	forms.css	.verso-field-answer
+rules-live-in-blocks	forms.css	.verso-field-answer
+rules-live-in-blocks	forms.css	.verso-field-answer > :is([data-verso-error], [data-verso-field-note], [data-verso-inline-error])
+rules-live-in-blocks	forms.css	.verso-field-answer > [data-verso-in-form]
+rules-live-in-blocks	forms.css	.verso-field-answer:not(:has(> :is([data-verso-error], [data-verso-field-note], [data-verso-inline-error]:not([hidden]))))
+rules-live-in-blocks	forms.css	.verso-field-control
+rules-live-in-blocks	forms.css	.verso-field-ledger
+rules-live-in-blocks	forms.css	.verso-field-ledger
+rules-live-in-blocks	forms.css	.verso-field-ledger:has(> .verso-field-act)
+rules-live-in-blocks	forms.css	.verso-field-ledger:has(> .verso-field-act)
+rules-live-in-blocks	forms.css	.verso-field-ledger:has(> :is([data-verso-remove-field], [data-verso-remove-lane]))
+rules-live-in-blocks	forms.css	.verso-field-ledger:has(> :is([data-verso-remove-field], [data-verso-remove-lane]))
+rules-live-in-blocks	forms.css	.verso-field-ledger:not(:has(> .verso-field-question > *)) > .verso-field-answer
+rules-live-in-blocks	forms.css	.verso-field-plain > .verso-field-ledger
+rules-live-in-blocks	forms.css	.verso-field-plain > .verso-field-ledger > .verso-field-answer
+rules-live-in-blocks	forms.css	.verso-field-question
+rules-live-in-blocks	forms.css	.verso-field-row
+rules-live-in-blocks	forms.css	.verso-field-row + .verso-field-row
+rules-live-in-blocks	forms.css	.verso-field-row + input[type="hidden"] + .verso-field-row
+rules-live-in-blocks	forms.css	.verso-field-row + input[type="hidden"] + input[type="hidden"] + .verso-field-row
+rules-live-in-blocks	forms.css	.verso-field-row:has(+ :is(.verso-field-row, .verso-conditional, .verso-field-set, [data-verso-rows]))
+rules-live-in-blocks	forms.css	.verso-field-row:has(+ fieldset[data-verso-when])
+rules-live-in-blocks	forms.css	.verso-field-row:has(+ input[type="hidden"] + .verso-field-row)
+rules-live-in-blocks	forms.css	.verso-field-row:has(+ input[type="hidden"] + input[type="hidden"] + .verso-field-row)
+rules-live-in-blocks	forms.css	.verso-field-row:not(.verso-field-wide, .verso-field-plain) > .verso-field-ledger:has(> .verso-field-question > *) > .verso-field-answer > :is([data-verso-error], [data-verso-field-note], [data-verso-inline-error])
+rules-live-in-blocks	forms.css	.verso-field-set > .verso-field-row + .verso-field-row
+rules-live-in-blocks	forms.css	.verso-field-set > .verso-field-row:first-child
+rules-live-in-blocks	forms.css	.verso-field-wide > .verso-field-ledger > .verso-field-answer
+rules-live-in-blocks	forms.css	.verso-fold
+rules-live-in-blocks	forms.css	.verso-fold-hide
+rules-live-in-blocks	forms.css	.verso-fold-show
+rules-live-in-blocks	forms.css	.verso-form-grid
+rules-live-in-blocks	forms.css	.verso-form-grid-fields
+rules-live-in-blocks	forms.css	.verso-form-grid-fields > *
+rules-live-in-blocks	forms.css	.verso-form-grid-fields > .verso-field-row
+rules-live-in-blocks	forms.css	.verso-form-grid-fields:is([data-verso-columns="2"], [data-verso-columns="3"])
+rules-live-in-blocks	forms.css	.verso-form-grid-fields[data-verso-columns="3"]
+rules-live-in-blocks	forms.css	.verso-joined
+rules-live-in-blocks	forms.css	.verso-joined-part
+rules-live-in-blocks	forms.css	.verso-joined-part select
+rules-live-in-blocks	forms.css	.verso-joined-word
+rules-live-in-blocks	forms.css	.verso-reveal-act
+rules-live-in-blocks	forms.css	.verso-reveal:not([open])
+rules-live-in-blocks	forms.css	.verso-reveal[open] > .verso-reveal-act
+rules-live-in-blocks	forms.css	.verso-staged-bar > [aria-hidden]
+rules-live-in-blocks	forms.css	.verso-time-input::-webkit-calendar-picker-indicator
+rules-live-in-blocks	forms.css	:is(.verso-conditional, .verso-field-set, [data-verso-rows]) + .verso-field-row
+rules-live-in-blocks	forms.css	:is(.verso-conditional-body, .verso-conditional-otherwise) > .verso-conditional:not(:not(input[type="hidden"], [hidden], template) ~ *) > .verso-conditional-gate
+rules-live-in-blocks	forms.css	:is(.verso-conditional-body, .verso-conditional-otherwise) > .verso-field-row:not(:not(input[type="hidden"], [hidden], template) ~ *)
+rules-live-in-blocks	forms.css	:is(.verso-field-row, .verso-conditional, .verso-field-set, [data-verso-rows]) + .verso-conditional > .verso-conditional-gate
+rules-live-in-blocks	forms.css	:is(.verso-field-row, .verso-conditional, .verso-field-set, [data-verso-rows]) + :is(.verso-field-set, [data-verso-rows]) > .verso-field-row:first-child
+rules-live-in-blocks	forms.css	:is(.verso-field-row, .verso-conditional, .verso-field-set, [data-verso-rows], fieldset[data-verso-when]) + fieldset[data-verso-when] > .verso-field-row:first-child
+rules-live-in-blocks	forms.css	:is(.verso-field-set, [data-verso-rows]):has(+ :is(.verso-field-row, .verso-conditional, .verso-field-set, [data-verso-rows])) > .verso-field-row:last-child
+rules-live-in-blocks	forms.css	[data-verso-column]:has(> .verso-page-body [data-verso-field-desc]) > [data-verso-masthead] .verso-fold
+rules-live-in-blocks	forms.css	[data-verso-compact-form] .verso-field-answer
+rules-live-in-blocks	forms.css	[data-verso-compact-form] .verso-field-ledger
+rules-live-in-blocks	forms.css	[data-verso-compact-form] .verso-field-row
+rules-live-in-blocks	forms.css	[data-verso-control-measure="choice"] > :has(> select)
+rules-live-in-blocks	forms.css	[data-verso-control-measure="choice"] > :has(> select) > select
+rules-live-in-blocks	forms.css	[data-verso-control-measure="endpoint"]
+rules-live-in-blocks	forms.css	[data-verso-control-measure="prefix"]
+rules-live-in-blocks	forms.css	[data-verso-control-measure="secret"]
+rules-live-in-blocks	forms.css	[data-verso-descriptions="folded"] .verso-fold-hide
+rules-live-in-blocks	forms.css	[data-verso-descriptions="folded"] .verso-fold-show
+rules-live-in-blocks	forms.css	[data-verso-descriptions="folded"] [data-verso-field-desc]
+rules-live-in-blocks	forms.css	[data-verso-field-desc]
+rules-live-in-blocks	forms.css	[data-verso-field-desc]
+rules-live-in-blocks	forms.css	[data-verso-field-desc] > span
+rules-live-in-blocks	forms.css	[data-verso-gutter-line][data-verso-change="added"]
+rules-live-in-blocks	forms.css	[data-verso-gutter-line][data-verso-change="changed"]
+rules-live-in-blocks	forms.css	[data-verso-in-form] tbody > tr:last-child > td
+rules-live-in-blocks	forms.css	[data-verso-settings] .verso-field-row:has(+ details)
+rules-live-in-blocks	forms.css	dialog:has([data-verso-field-desc]) .verso-fold
+rules-live-in-blocks	forms.css	fieldset[data-verso-when] + .verso-conditional > .verso-conditional-gate
+rules-live-in-blocks	forms.css	fieldset[data-verso-when] + .verso-field-row
+rules-live-in-blocks	forms.css	fieldset[data-verso-when]:has(~ :is(.verso-field-row, .verso-conditional, .verso-field-set, [data-verso-rows])) > .verso-field-row:last-child
+rules-live-in-blocks	forms.css	label:has(input:checked) > .verso-switch-word > .verso-switch-off
+rules-live-in-blocks	forms.css	label:not(:has(input:checked)) > .verso-switch-word > .verso-switch-on
+rules-live-in-blocks	input.css	:root[data-verso-grid] [data-verso-drawer-body]
+rules-live-in-blocks	palette.css	[data-verso-off]
+rules-live-in-blocks	palette.css	[data-verso-off] .verso-chip
+rules-live-in-blocks	sections.css	.verso-drawer-scrollbar:not([data-verso-drawer-body])
+rules-live-in-blocks	sections.css	.verso-page-body :is([data-verso-listing] + [data-verso-table-legend]) ~ section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]):not(section section):is([data-verso-table-legend] + *)
+rules-live-in-blocks	sections.css	.verso-page-body > .verso-stack > *
+rules-live-in-blocks	sections.css	.verso-page-body > .verso-stack > * + .verso-stack:has(> section[data-verso-section]:first-child > [data-verso-section-band])
+rules-live-in-blocks	sections.css	.verso-page-body > .verso-stack > * + .verso-stack:has(> section[data-verso-section]:first-child > [data-verso-section-band])
+rules-live-in-blocks	sections.css	.verso-page-body > .verso-stack > * + [data-verso-cards]
+rules-live-in-blocks	sections.css	.verso-page-body > .verso-stack > * + section[data-verso-section]:has(> [data-verso-section-band])
+rules-live-in-blocks	sections.css	.verso-page-body > .verso-stack > .verso-stack > [data-verso-listing]
+rules-live-in-blocks	sections.css	.verso-page-body > .verso-stack > .verso-stack > [data-verso-listing]
+rules-live-in-blocks	sections.css	.verso-page-body > .verso-stack > [data-verso-actionbar] + .verso-stack > [data-verso-listing]:first-child
+rules-live-in-blocks	sections.css	.verso-page-body > .verso-stack > [data-verso-actionbar] + [data-verso-listing]
+rules-live-in-blocks	sections.css	.verso-page-body > .verso-stack > [data-verso-cards]:last-child
+rules-live-in-blocks	sections.css	.verso-page-body > .verso-stack > [data-verso-listing]
+rules-live-in-blocks	sections.css	.verso-page-body > .verso-stack > [data-verso-listing]
+rules-live-in-blocks	sections.css	.verso-page-body > .verso-stack > section:is([data-verso-section="ruled"], [data-verso-section="part"])
+rules-live-in-blocks	sections.css	.verso-page-body > .verso-stack > section[data-verso-section]:has(> [data-verso-section-band])
+rules-live-in-blocks	sections.css	.verso-page-body > .verso-stack > section[data-verso-section]:not([data-verso-section="ruled"], [data-verso-section="part"])
+rules-live-in-blocks	sections.css	.verso-page-body > [data-verso-listing]
+rules-live-in-blocks	sections.css	.verso-page-body > [data-verso-listing]
+rules-live-in-blocks	sections.css	.verso-page-body [data-verso-cards]
+rules-live-in-blocks	sections.css	.verso-page-body [data-verso-cards] > div
+rules-live-in-blocks	sections.css	.verso-page-body [data-verso-cards] > div
+rules-live-in-blocks	sections.css	.verso-page-body [data-verso-listing] + [data-verso-table-legend]
+rules-live-in-blocks	sections.css	.verso-page-body [data-verso-listing]:has(+ [data-verso-table-legend])
+rules-live-in-blocks	sections.css	.verso-page-body [data-verso-section-band]:not( .verso-page-body :not(input[type="hidden"], template, script, [hidden], :empty) ~ * [data-verso-section-band], .verso-page-body :not(input[type="hidden"], template, script, [hidden], :empty) ~ [data-verso-section-band] )
+rules-live-in-blocks	sections.css	:is(.verso-page-body > [data-verso-listing], .verso-page-body > .verso-stack > [data-verso-listing], .verso-page-body > .verso-stack > .verso-stack > [data-verso-listing]) .verso-table > tbody > tr:not([hidden]):not(:has(~ tr:not([hidden]))) > td
+rules-live-in-blocks	sections.css	:is(.verso-page-body > [data-verso-listing], .verso-page-body > .verso-stack > [data-verso-listing], .verso-page-body > .verso-stack > .verso-stack > [data-verso-listing]) > [data-verso-scroller] :is(td, th):last-of-type
+rules-live-in-blocks	sections.css	:is(.verso-page-body > [data-verso-listing], .verso-page-body > .verso-stack > [data-verso-listing], .verso-page-body > .verso-stack > .verso-stack > [data-verso-listing]) > [data-verso-scroller]:not([data-verso-inventory]) :is(td, th):first-child
+rules-live-in-blocks	sections.css	:is(.verso-page-body, .verso-page-body > .verso-stack, .verso-page-body > .verso-stack > .verso-stack:last-child, .verso-page-body [data-verso-form-column] > .verso-stack:last-child) >:is(section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]), [data-verso-listing], [data-verso-code-divider]):last-child
+rules-live-in-blocks	sections.css	:is(.verso-page-body, [data-verso-drawer-body]) .verso-table:not(:has(> thead))
+rules-live-in-blocks	sections.css	:is(.verso-page-body, [data-verso-drawer-body]) :is(section[data-verso-section]:not(section section) > .verso-rhythm > [data-verso-listing],.verso-page-body > [data-verso-listing], .verso-page-body > .verso-stack > [data-verso-listing], .verso-page-body > .verso-stack > .verso-stack > [data-verso-listing]) > [data-verso-scroller] > table > tbody > tr > td .font-medium:not(a, button)
+rules-live-in-blocks	sections.css	:is(.verso-page-body, [data-verso-drawer-body]) :is(section[data-verso-section]:not(section section) > .verso-rhythm > [data-verso-listing],.verso-page-body > [data-verso-listing], .verso-page-body > .verso-stack > [data-verso-listing], .verso-page-body > .verso-stack > .verso-stack > [data-verso-listing]) > [data-verso-scroller] > table > tbody > tr > td .font-semibold:not(a, button)
+rules-live-in-blocks	sections.css	:is(.verso-page-body, [data-verso-drawer-body]) :is(section[data-verso-section]:not(section section) > .verso-rhythm > [data-verso-listing],.verso-page-body > [data-verso-listing], .verso-page-body > .verso-stack > [data-verso-listing], .verso-page-body > .verso-stack > .verso-stack > [data-verso-listing]) > [data-verso-scroller] > table > tbody > tr > td.font-medium
+rules-live-in-blocks	sections.css	:is(.verso-page-body, [data-verso-drawer-body]) :is(section[data-verso-section]:not(section section) > .verso-rhythm > [data-verso-listing],.verso-page-body > [data-verso-listing], .verso-page-body > .verso-stack > [data-verso-listing], .verso-page-body > .verso-stack > .verso-stack > [data-verso-listing]) > [data-verso-scroller] > table > thead > tr > th
+rules-live-in-blocks	sections.css	:is(.verso-page-body, [data-verso-drawer-body]) :not(input[type="hidden"], template, script, [hidden]) ~ section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]):not(section section)
+rules-live-in-blocks	sections.css	:is(.verso-page-body, [data-verso-drawer-body]) [data-verso-code-divider]
+rules-live-in-blocks	sections.css	:is(.verso-page-body, [data-verso-drawer-body]) [data-verso-code-divider] > [data-verso-code-editor]
+rules-live-in-blocks	sections.css	:is(.verso-page-body, [data-verso-drawer-body]) [data-verso-form-actions][data-verso-rule]
+rules-live-in-blocks	sections.css	:is(.verso-page-body, [data-verso-drawer-body]) [data-verso-list].verso-table > tbody > tr:hover
+rules-live-in-blocks	sections.css	:is(.verso-page-body, [data-verso-drawer-body]) [data-verso-list]:is(td, th):first-of-type
+rules-live-in-blocks	sections.css	:is(.verso-page-body, [data-verso-drawer-body]) [data-verso-list]:is(td, th):last-of-type
+rules-live-in-blocks	sections.css	:is(.verso-page-body, [data-verso-drawer-body]) [data-verso-list][data-verso-detail] > span:first-child
+rules-live-in-blocks	sections.css	:is(.verso-page-body, [data-verso-drawer-body]) [data-verso-list]td:has(> [data-verso-detail]) > *
+rules-live-in-blocks	sections.css	:is(.verso-page-body, [data-verso-drawer-body]) [data-verso-list]td:has(> [data-verso-detail]) > :not([data-verso-detail])
+rules-live-in-blocks	sections.css	:is(.verso-page-body, [data-verso-drawer-body]) [data-verso-listing] [data-verso-table-legend]
+rules-live-in-blocks	sections.css	:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section] > .verso-rhythm > [data-verso-listing]:not(:last-child)
+rules-live-in-blocks	sections.css	:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section] > [data-verso-section-band] + .verso-rhythm > [data-verso-listing]:not([data-verso-list]):first-child .verso-table
+rules-live-in-blocks	sections.css	:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:has(> .verso-rhythm > [data-verso-listing]:not([data-verso-list]):last-child):not(section section)
+rules-live-in-blocks	sections.css	:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:has(> [data-verso-section-band]):not(section section) > .verso-rhythm > :not(input[type="hidden"], [hidden], template):not(:not(input[type="hidden"], [hidden], template) ~ *):is(.verso-field-row)
+rules-live-in-blocks	sections.css	:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:has(> [data-verso-section-band]):not(section section) > .verso-rhythm > :not(input[type="hidden"], [hidden], template):not(:not(input[type="hidden"], [hidden], template) ~ *):is(.verso-field-set, .verso-conditional, [data-verso-settings], [data-verso-rows], form:not([data-verso-compact-form])) > :not(input[type="hidden"], [hidden], template):not(:not(input[type="hidden"], [hidden], template) ~ *):is(.verso-field-row)
+rules-live-in-blocks	sections.css	:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]):not(section section)
+rules-live-in-blocks	sections.css	:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]):not(section section) > .verso-rhythm > .verso-conditional:last-child:has(> .verso-conditional-gate input[data-verso-switch]:checked) > .verso-conditional-body > .verso-field-row:last-child
+rules-live-in-blocks	sections.css	:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]):not(section section) > .verso-rhythm > .verso-conditional:last-child:not(:has(> .verso-conditional-gate input[data-verso-switch]:checked)) > .verso-conditional-otherwise > .verso-field-row:last-child
+rules-live-in-blocks	sections.css	:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]):not(section section) > .verso-rhythm > .verso-conditional:last-child:not(:has(> .verso-conditional-gate input[data-verso-switch]:checked)):not(:has(> .verso-conditional-otherwise)) > .verso-conditional-gate
+rules-live-in-blocks	sections.css	:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]):not(section section) > .verso-rhythm > :not(input[type="hidden"], [hidden], template):not(:has(~ :not(input[type="hidden"], [hidden], template))):is(.verso-field-row):not(.verso-field-wide:has(> .verso-field-ledger > .verso-field-answer > [data-verso-field-note]:last-child))
+rules-live-in-blocks	sections.css	:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]):not(section section) > .verso-rhythm > :not(input[type="hidden"], [hidden], template):not(:has(~ :not(input[type="hidden"], [hidden], template))):is(.verso-field-set, [data-verso-settings], [data-verso-rows], form:not([data-verso-compact-form])) > :not(input[type="hidden"], [hidden], template):not(:has(~ :not(input[type="hidden"], [hidden], template))):is(.verso-field-row):not(.verso-field-wide:has(> .verso-field-ledger > .verso-field-answer > [data-verso-field-note]:last-child))
+rules-live-in-blocks	sections.css	:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]):not(section section) > .verso-rhythm > dl:not(:has(~ :not(input[type="hidden"], [hidden], template))) > :last-child
+rules-live-in-blocks	sections.css	:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]):not(section section) > .verso-rhythm > dl:not(:not(input[type="hidden"], [hidden], template) ~ *) > :first-child
+rules-live-in-blocks	sections.css	:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]):not(section section) > .verso-rhythm > section[data-verso-section]:not(:has(~ :not(input[type="hidden"], [hidden], template))) > .verso-rhythm > [data-verso-facts]:not(:has(~ :not(input[type="hidden"], [hidden], template))) > dl > :last-child
+rules-live-in-blocks	sections.css	:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]):not(section section) > .verso-rhythm > section[data-verso-section]:not(:has(~ :not(input[type="hidden"], [hidden], template))) > .verso-rhythm > [data-verso-facts]:not(:has(~ :not(input[type="hidden"], [hidden], template))) > dl:last-child > :last-child
+rules-live-in-blocks	sections.css	:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]):not(section section) > .verso-rhythm > section[data-verso-section]:not(:has(~ :not(input[type="hidden"], [hidden], template))) > .verso-rhythm > dl:not(:has(~ :not(input[type="hidden"], [hidden], template))) > :last-child
+rules-live-in-blocks	sections.css	:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) .verso-field-row:not(.verso-field-row .verso-field-row, .verso-form-grid .verso-field-row)
+rules-live-in-blocks	sections.css	:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > .verso-rhythm > * + :is(.verso-field-row, .verso-form-grid, .verso-conditional, .verso-field-set, form:not([data-verso-compact-form]):has(.verso-field-row, .verso-form-grid, .verso-conditional), [data-verso-change-field], [data-verso-settings], [data-verso-rows]:has(> .verso-field-row:first-child))
+rules-live-in-blocks	sections.css	:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > .verso-rhythm > * + details.verso-disclosure:not(:only-child)
+rules-live-in-blocks	sections.css	:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > .verso-rhythm > * + section[data-verso-section]
+rules-live-in-blocks	sections.css	:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > .verso-rhythm > .verso-field-row:has(+ details.verso-disclosure:not(:only-child))
+rules-live-in-blocks	sections.css	:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > .verso-rhythm > [data-verso-conditions]:not(:has(~ :not(input[type="hidden"], [hidden], template))) > [data-verso-condition-picker]
+rules-live-in-blocks	sections.css	:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > .verso-rhythm > [data-verso-listing]:last-child .verso-table > tbody > tr:not([hidden]):not(:has(~ tr:not([hidden]))) > td
+rules-live-in-blocks	sections.css	:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > .verso-rhythm > [data-verso-listing]:not([data-verso-list])
+rules-live-in-blocks	sections.css	:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > .verso-rhythm > [data-verso-listing]:not([data-verso-list]) :is(td, th):first-child
+rules-live-in-blocks	sections.css	:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > .verso-rhythm > [data-verso-listing]:not([data-verso-list]) :is(td, th):last-of-type
+rules-live-in-blocks	sections.css	:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > .verso-rhythm > [data-verso-listing][data-verso-list] > [data-verso-scroller] > table > thead > tr > th
+rules-live-in-blocks	sections.css	:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > .verso-rhythm > details.verso-disclosure:not(:only-child)
+rules-live-in-blocks	sections.css	:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > .verso-rhythm > details.verso-disclosure:not(:only-child) > .verso-rhythm
+rules-live-in-blocks	sections.css	:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > .verso-rhythm > details.verso-disclosure:not(:only-child) > .verso-rhythm > .verso-field-row:first-child
+rules-live-in-blocks	sections.css	:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > .verso-rhythm > details.verso-disclosure:not(:only-child) > summary
+rules-live-in-blocks	sections.css	:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > .verso-rhythm > details.verso-disclosure:not(:only-child):not(:has(~ :not(input[type="hidden"], [hidden], template)))
+rules-live-in-blocks	sections.css	:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > .verso-rhythm > section[data-verso-section] > .verso-rhythm > [data-verso-facts]:not(:not(input[type="hidden"], [hidden], template) ~ *) > dl > :first-child
+rules-live-in-blocks	sections.css	:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > .verso-rhythm > section[data-verso-section] > .verso-rhythm > [data-verso-facts]:not(:not(input[type="hidden"], [hidden], template) ~ *) > dl:first-child > :first-child
+rules-live-in-blocks	sections.css	:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > .verso-rhythm > section[data-verso-section] > .verso-rhythm > dl:not(:not(input[type="hidden"], [hidden], template) ~ *) > :first-child
+rules-live-in-blocks	sections.css	:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > [data-verso-section-band]
+rules-live-in-blocks	sections.css	:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > [data-verso-section-band] + .verso-rhythm > [data-verso-listing]:not([data-verso-list]):first-child
+rules-live-in-blocks	sections.css	:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > [data-verso-section-band] + .verso-rhythm:not(:has(> [data-verso-listing]:not([data-verso-list]):first-child))
+rules-live-in-blocks	sections.css	:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > [data-verso-section-band] [data-verso-section-lede]
+rules-live-in-blocks	sections.css	:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > [data-verso-section-band] h2
+rules-live-in-blocks	sections.css	:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) [data-verso-conditions] > :first-child
+rules-live-in-blocks	sections.css	:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) [data-verso-conditions] > :first-child > :not(legend)
+rules-live-in-blocks	sections.css	:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) [data-verso-conditions] > :first-child > legend
+rules-live-in-blocks	sections.css	:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) [data-verso-conditions] > :first-child::before
+rules-live-in-blocks	sections.css	:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) [data-verso-settings] > details
+rules-live-in-blocks	sections.css	:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section][data-verso-headless][data-verso-ruled]:has(> .verso-rhythm > [data-verso-listing]:first-child):not(section section)
+rules-live-in-blocks	sections.css	:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section][data-verso-headless][data-verso-ruled]:not(section section)
+rules-live-in-blocks	sections.css	:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section][data-verso-headless][data-verso-ruled]:not(section section) > .verso-rhythm > :not(input[type="hidden"], [hidden], template):not(:not(input[type="hidden"], [hidden], template) ~ *):is(.verso-field-row)
+rules-live-in-blocks	sections.css	:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section][data-verso-headless][data-verso-ruled]:not(section section) > .verso-rhythm > :not(input[type="hidden"], [hidden], template):not(:not(input[type="hidden"], [hidden], template) ~ *):is(.verso-field-set, .verso-conditional, [data-verso-settings], [data-verso-rows], form:not([data-verso-compact-form])) > :not(input[type="hidden"], [hidden], template):not(:not(input[type="hidden"], [hidden], template) ~ *):is(.verso-field-row)
+rules-live-in-blocks	sections.css	:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section][data-verso-headless][data-verso-ruled]:not(section section) > .verso-rhythm > [data-verso-listing]:first-child
+rules-live-in-blocks	sections.css	:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section][data-verso-headless][data-verso-ruled]:not(section section) > .verso-rhythm > details.verso-disclosure:only-child
+rules-live-in-blocks	sections.css	:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section][data-verso-headless][data-verso-ruled]:not(section section) > .verso-rhythm > details.verso-disclosure:only-child > .verso-rhythm
+rules-live-in-blocks	sections.css	:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section][data-verso-headless][data-verso-ruled]:not(section section) > .verso-rhythm > details.verso-disclosure:only-child > .verso-rhythm > .verso-field-row:first-child
+rules-live-in-blocks	sections.css	:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section][data-verso-headless][data-verso-ruled]:not(section section) > .verso-rhythm > details.verso-disclosure:only-child > summary
+rules-live-in-blocks	sections.css	:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section][data-verso-headless][data-verso-ruled]:not(section section):has(> .verso-rhythm > details.verso-disclosure:only-child)
+rules-live-in-blocks	sections.css	:is([data-verso-code-divider], section[data-verso-section]:has(> .verso-rhythm > [data-verso-code-divider]:last-child)) ~ [data-verso-form-actions]
+rules-live-in-blocks	sections.css	:is([data-verso-form-column], [data-verso-drawer-body]) [data-verso-code-divider]
+rules-live-in-blocks	sections.css	:not(input[type="hidden"], template, [hidden]) + section[data-verso-section]:has(> [data-verso-section-band])
+rules-live-in-blocks	sections.css	[data-verso-beside]
+rules-live-in-blocks	sections.css	[data-verso-beside] > :last-child
+rules-live-in-blocks	sections.css	[data-verso-beside] > :not(:last-child)
+rules-live-in-blocks	sections.css	[data-verso-callout] + section[data-verso-section][data-verso-headless]
+rules-live-in-blocks	sections.css	[data-verso-code-divider]
+rules-live-in-blocks	sections.css	[data-verso-code-divider] + [data-verso-code-divider]
+rules-live-in-blocks	sections.css	[data-verso-drawer-body]
+rules-live-in-blocks	sections.css	[data-verso-drawer-body] .verso-stack > :has(+ :is(section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]), [data-verso-code-divider]))
+rules-live-in-blocks	sections.css	[data-verso-drawer-body] section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]):not(section section) ~ [data-verso-form-actions]
+rules-live-in-blocks	sections.css	[data-verso-headless] > .verso-rhythm > :is([data-verso-rows], .verso-conditional):not(input[type="hidden"], [hidden]):not(:not(input[type="hidden"], [hidden]) ~ *) > :not(input[type="hidden"], [hidden]):not(:not(input[type="hidden"], [hidden]) ~ *)
+rules-live-in-blocks	sections.css	[data-verso-headless] > .verso-rhythm > :not(input[type="hidden"], [hidden]):not(:not(input[type="hidden"], [hidden]) ~ *)
+rules-live-in-blocks	sections.css	[data-verso-headless] > .verso-rhythm > form.verso-form:not(:not(input[type="hidden"], [hidden]) ~ *) > :not(input[type="hidden"], [hidden]):not(:not(input[type="hidden"], [hidden]) ~ *)
+rules-live-in-blocks	sections.css	[data-verso-rule]
+rules-live-in-blocks	sections.css	[data-verso-section-band]
+rules-live-in-blocks	sections.css	[data-verso-section-band]
+rules-live-in-blocks	sections.css	[data-verso-section="ruled"]
+rules-live-in-blocks	sections.css	[data-verso-section][id]
+rules-live-in-blocks	sections.css	[data-verso-section][id]
+rules-live-in-blocks	sections.css	section[data-verso-section="continued"]
+rules-live-in-blocks	sections.css	section[data-verso-section="part"]
+rules-live-in-blocks	sections.css	section[data-verso-section="part"]:first-of-type
+rules-live-in-blocks	sections.css	section[data-verso-section="plain"]
+rules-live-in-blocks	sections.css	section[data-verso-section="plain"]:first-child
+rules-live-in-blocks	sections.css	section[data-verso-section="ruled"]
+rules-live-in-blocks	sections.css	section[data-verso-section="ruled"]:first-of-type
+rules-live-in-blocks	sections.css	section[data-verso-section] > .verso-rhythm > :last-child .verso-table > tbody > tr:last-child > td
+rules-live-in-blocks	sections.css	section[data-verso-section]:has(> [data-verso-section-band])
+rules-live-in-blocks	sections.css	section[data-verso-section]:has(> [data-verso-section-band]) > .verso-rhythm > :not(input[type="hidden"], [hidden]):not(:not(input[type="hidden"], [hidden]) ~ *):not(.verso-field-row, .verso-form-grid, .verso-conditional, .verso-field-set, form:not([data-verso-compact-form]):has(.verso-field-row, .verso-form-grid, .verso-conditional), [data-verso-change-field], [data-verso-settings], [data-verso-rows]:has(> .verso-field-row:first-child))
+short-class-lists	server/assets/verso-tables.js	verso-reorder-float fixed z-[70] overflow-hidden rounded-xs bg-ground ring-1 ring-rule-strong shadow-(--shadow-lifted) pointer-events-none origin-center scale-y-[1.01] opacity-[0.98] will-change-[top,transform] motion-reduce:transform-none [&_td]:border-b-transparent [&_td]:bg-ground
+short-class-lists	server/templates/diagnostics.html.tmpl	{{template "verso-input-words"}} {{template "verso-input-border" false}} cursor-pointer appearance-none pr-9 pl-9.5 disabled:cursor-default disabled:bg-quiet disabled:text-meta
+short-class-lists	server/templates/entity-panel.html.tmpl	flex h-control cursor-pointer items-center rounded-xs border border-denim bg-denim px-4 text-sm font-semibold whitespace-nowrap text-on-fill transition-colors hover:border-denim-deep hover:bg-denim-deep
+short-class-lists	server/templates/entity-panel.html.tmpl	flex h-control cursor-pointer items-center rounded-xs border px-4 text-sm font-semibold whitespace-nowrap {{template "verso-btn-secondary"}}
+short-class-lists	server/templates/entity-panel.html.tmpl	flex shrink-0 items-center py-3.5 text-sm leading-7 whitespace-nowrap transition {{if .Active}}font-medium text-ink shadow-[inset_0_-2px_0_var(--color-denim-deep)]{{else}}text-meta hover:text-ink hover:shadow-[inset_0_-2px_0_var(--color-inert)]{{end}}
+short-class-lists	server/templates/login.html.tmpl	flex items-start gap-2 rounded-xs bg-marigold-soft px-3 py-2 text-sm leading-[1.45] text-marigold-deep
+short-class-lists	server/templates/login.html.tmpl	flex w-full min-w-0 flex-col gap-6 p-6 sm:p-8 lg:w-100 lg:shrink-0
+short-class-lists	server/templates/login.html.tmpl	group flex min-w-0 flex-col border-b border-rule bg-quiet p-6 sm:p-8 lg:min-w-100 lg:max-w-[calc(100vw-448px)] lg:shrink-0 lg:border-r lg:border-b-0
+short-class-lists	server/templates/login.html.tmpl	group mt-2 flex h-control w-full items-center justify-center rounded-xs border border-denim bg-denim text-sm font-semibold text-on-fill transition-colors enabled:hover:border-denim-deep enabled:hover:bg-denim-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim disabled:pointer-events-none disabled:transition-none disabled:border-rule-strong disabled:bg-quiet disabled:text-glyph
+short-class-lists	server/templates/login.html.tmpl	m-0 flex min-h-dvh flex-col bg-ground font-sans text-sm leading-normal text-ink
+short-class-lists	server/templates/login.html.tmpl	size-1.5 shrink-0 rounded-[1px] border border-faint group-data-[internet=up]:border-transparent group-data-[internet=up]:bg-green group-data-[internet=down]:border-transparent group-data-[internet=down]:bg-crimson
+short-class-lists	server/templates/logs.html.tmpl	absolute inset-0 rounded-xs border border-choice-border bg-canvas shadow-(--shadow-field) peer-checked:border-choice peer-checked:bg-choice peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-denim-deep
+short-class-lists	server/templates/logs.html.tmpl	flex h-control cursor-pointer items-center gap-2 rounded-xs border px-4 text-sm font-semibold whitespace-nowrap {{template "verso-btn-secondary"}}
+short-class-lists	server/templates/logs.html.tmpl	flex h-control cursor-pointer items-center rounded-xs border px-4 text-sm font-semibold whitespace-nowrap {{template "verso-btn-secondary"}}
+short-class-lists	server/templates/logs.html.tmpl	flex h-control items-center rounded-xs border px-4 text-sm font-semibold whitespace-nowrap {{template "verso-btn-secondary"}}
+short-class-lists	server/templates/nav-row.html.tmpl	group/navrow relative flex items-center py-2 pr-6 pl-6 leading-6 transition-colors duration-150 {{if .Active}}font-semibold text-ink{{else}}text-body hover:text-ink{{end}}
+short-class-lists	server/templates/nav-row.html.tmpl	ml-auto flex min-w-0 items-center gap-2 text-sm font-medium tabular-nums {{if eq .Variant "info"}}text-denim{{else}}text-meta{{end}}
+short-class-lists	server/templates/nav-row.html.tmpl	size-1.25 shrink-0 rounded-[1px] {{if eq . "success"}}verso-live-dot bg-green{{else if eq . "danger"}}bg-crimson{{else if eq . "info"}}bg-denim{{else}}bg-glyph{{end}}
+short-class-lists	server/templates/nav-row.html.tmpl	verso-vt flex shrink-0 text-meta{{if .Group}} transition-transform duration-[360ms] ease-[cubic-bezier(0.22,1,0.36,1)] group-open/navgroup:rotate-90 motion-reduce:transition-none{{else if and .Active .Children}} rotate-90{{end}}{{if not .Detail}} ml-auto{{end}}
+short-class-lists	server/templates/nav-row.html.tmpl	verso-vt relative flex min-w-0 flex-1 items-center gap-4 transition-transform duration-150{{if not .Active}} group-hover/navrow:translate-x-1{{end}}
+short-class-lists	server/templates/nav-row.html.tmpl	verso-vt relative flex min-w-0 flex-1 items-center transition-transform duration-150{{if not .Active}} group-hover/navrow:translate-x-1{{end}}
+short-class-lists	server/templates/package-files.html.tmpl	max-h-80 overflow-auto rounded-xs border border-rule bg-quiet p-3 font-mono text-base text-body
+short-class-lists	server/templates/page.html.tmpl	@container outline-none flex min-w-0 flex-1 flex-col{{if eq .Width "full"}} h-[calc(100vh-3.5rem)] min-h-0{{end}}
+short-class-lists	server/templates/page.html.tmpl	absolute top-2 right-2 grid size-7 cursor-pointer place-items-center rounded-xs text-meta transition-colors hover:bg-mid/50 hover:text-ink focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-denim
+short-class-lists	server/templates/page.html.tmpl	flex h-7 cursor-pointer items-center gap-1 rounded-xs px-2 font-semibold transition-colors hover:bg-crimson-line/60 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-crimson-deep group-data-[ready]/refusals:hidden
+short-class-lists	server/templates/page.html.tmpl	flex h-8 cursor-pointer items-center gap-2 rounded-xs border border-transparent px-3 text-sm font-medium text-body transition-colors hover:border-rule-strong hover:bg-quiet hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim
+short-class-lists	server/templates/page.html.tmpl	flex max-w-[calc(var(--container-6xl)+5rem)] items-center gap-4 px-4 py-3.5 font-mono text-base leading-6 text-meta md:px-10
+short-class-lists	server/templates/page.html.tmpl	grid size-8 shrink-0 place-items-center rounded-xs text-faint transition-colors hover:bg-mid hover:text-ink
+short-class-lists	server/templates/page.html.tmpl	group/refusals fixed top-[4.25rem] left-1/2 z-20 flex h-control -translate-x-1/2 items-center gap-2 rounded-xs border border-crimson-line bg-crimson-soft pr-1 pl-3 text-sm font-normal whitespace-nowrap text-crimson-deep shadow-(--shadow-float) md:left-[calc(50%+9rem)] data-[ready]:border-green-line data-[ready]:bg-green-soft data-[ready]:text-green-deep
+short-class-lists	server/templates/page.html.tmpl	min-h-screen m-0 flex flex-col bg-ground font-sans text-sm leading-normal text-ink
+short-class-lists	server/templates/page.html.tmpl	pointer-events-auto flex h-7 min-w-0 items-center gap-2 rounded-xs border border-crimson bg-crimson-soft px-2.5 text-sm text-crimson-deep
+short-class-lists	server/templates/page.html.tmpl	pointer-events-auto flex h-7 min-w-0 items-center gap-2 rounded-xs border border-denim bg-denim-soft px-2.5 text-sm font-semibold text-denim-deep hover:border-denim-deep hover:bg-denim-soft/80
+short-class-lists	server/templates/page.html.tmpl	relative z-10 -mt-px flex items-start gap-2 border-y px-8 py-3 text-sm leading-7 {{if eq .Banner.Variant "danger"}}border-crimson-line bg-crimson-soft text-crimson-deep {{else if eq .Banner.Variant "warning"}}border-marigold-line bg-marigold-soft text-marigold-deep {{else}}border-denim-line bg-denim-soft text-denim-deep{{end}}
+short-class-lists	server/templates/page.html.tmpl	sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus:rounded-xs focus:bg-canvas focus:px-4 focus:py-2 focus:font-semibold focus:outline-2 focus:outline-denim
+short-class-lists	server/templates/page.html.tmpl	sticky top-0 z-30 flex shrink-0 items-center gap-4 bg-canvas px-6 py-2.5 shadow-[inset_0_-1px_0_var(--color-rule)]
+short-class-lists	server/templates/page.html.tmpl	verso-drawer fixed inset-y-0 left-0 z-40 flex h-screen w-72 shrink-0 flex-col border-r border-rule bg-ground md:sticky md:inset-y-auto md:top-14 md:left-auto md:z-auto md:h-[calc(100vh-3.5rem)]
+short-class-lists	server/templates/page.html.tmpl	verso-menu-button flex h-9 min-w-9 shrink-0 items-center justify-center gap-1.5 rounded-xs px-2 text-body transition-colors hover:bg-mid hover:text-ink md:hidden
+short-class-lists	server/templates/page.html.tmpl	verso-outcome fixed top-[4.5rem] right-4 left-4 z-40 sm:right-6 sm:left-auto sm:w-full sm:max-w-md
+short-class-lists	server/templates/page.html.tmpl	verso-page-heading{{if eq .Tone "info"}} text-denim-deep{{else if eq .Tone "success"}} text-green-deep{{else if eq .Tone "warning"}} text-marigold-deep{{else if eq .Tone "danger"}} text-crimson-deep{{end}}
+short-class-lists	server/templates/page.html.tmpl	{{if eq .Width "full"}}flex min-h-0 flex-1 flex-col px-(--verso-gutter) [--verso-gutter:--spacing(10)]{{else if .Overview}}px-4 pt-6 pb-20 md:px-10{{else if .Light}}px-(--verso-gutter) pb-10 [--verso-gutter:--spacing(10)]{{else}}px-4 pb-10 md:px-10{{end}}
+short-class-lists	server/templates/page.html.tmpl	{{if eq .Width "full"}}flex min-h-0 flex-1 flex-col{{else}}verso-page-ground{{end}}{{if not (or .Light (eq .Width "full"))}} bg-quiet{{end}}
+short-class-lists	server/templates/page.html.tmpl	{{if eq .Width "full"}}verso-page-full{{else}}{{if eq .Width "form"}}max-w-column-3xl{{else if eq .Width "narrow"}}max-w-column-4xl{{else if eq .Width "wide"}}max-w-column-6xl{{else}}max-w-column-5xl{{end}} w-column{{end}}
+short-class-lists	server/templates/pending.html.tmpl	-my-0.5 shrink-0 cursor-pointer font-semibold text-denim-deep underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-denim
+short-class-lists	server/templates/restarting.html.tmpl	mt-6 flex items-start gap-2 rounded-xs bg-marigold-soft px-3 py-2 leading-[1.45] text-marigold-deep
+short-class-lists	server/templates/restarting.html.tmpl	mt-6 flex items-start gap-2 rounded-xs bg-marigold-soft px-3 py-2 leading-[1.45] text-marigold-deep
+short-class-lists	server/templates/staged.html.tmpl	flex min-w-0 flex-1 items-center gap-4 transition-transform duration-150{{if not .Nav.PendingActive}} group-hover/navrow:translate-x-1{{end}}
+short-class-lists	server/templates/staged.html.tmpl	verso-pending-link group/navrow relative flex items-center bg-marigold-soft py-2 pr-6 pl-6 leading-6 font-semibold text-marigold-deep focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-marigold-deep
+short-class-lists	widget/templates/actionbar.html.tmpl	flex h-control shrink-0 cursor-pointer items-center gap-2 rounded-xs border border-denim bg-denim px-4 text-sm font-semibold whitespace-nowrap text-on-fill transition-colors hover:border-denim-deep hover:bg-denim-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim-deep {{template "verso-press"}}
+short-class-lists	widget/templates/actionbar.html.tmpl	flex h-control shrink-0 cursor-pointer items-center gap-2 rounded-xs border border-denim bg-denim px-4 text-sm font-semibold whitespace-nowrap text-on-fill transition-colors hover:border-denim-deep hover:bg-denim-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim-deep {{template "verso-press"}}
+short-class-lists	widget/templates/actionbar.html.tmpl	flex h-control shrink-0 cursor-pointer items-center gap-2 rounded-xs border border-denim bg-denim px-4 text-sm font-semibold whitespace-nowrap text-on-fill transition-colors hover:border-denim-deep hover:bg-denim-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim-deep {{template "verso-press"}}
+short-class-lists	widget/templates/actionbar.html.tmpl	flex h-control shrink-0 cursor-pointer items-center gap-2 rounded-xs border px-4 text-sm font-semibold whitespace-nowrap {{template "verso-btn-secondary"}}
+short-class-lists	widget/templates/actionbar.html.tmpl	flex h-control shrink-0 cursor-pointer items-center gap-2 rounded-xs border px-4 text-sm font-semibold whitespace-nowrap {{template "verso-btn-secondary"}} focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim
+short-class-lists	widget/templates/actionbar.html.tmpl	flex h-control shrink-0 items-center gap-2 rounded-xs border border-denim bg-denim px-4 text-sm font-semibold whitespace-nowrap text-on-fill transition-colors hover:border-denim-deep hover:bg-denim-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim-deep {{template "verso-press"}}
+short-class-lists	widget/templates/actionbar.html.tmpl	flex h-control shrink-0 items-center gap-2 rounded-xs border px-4 text-sm font-semibold whitespace-nowrap {{template "verso-btn-secondary"}} focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim
+short-class-lists	widget/templates/actionbar.html.tmpl	h-control w-full cursor-pointer appearance-none rounded-xs border border-rule-strong bg-canvas pr-9 pl-3 text-sm text-ink shadow-(--shadow-field) transition-colors hover:border-faint focus:border-denim focus:outline-none
+short-class-lists	widget/templates/badge.html.tmpl	{{if eq .Size "lg"}}inline-flex items-center gap-2 rounded-xs border px-3 py-3 text-sm font-medium{{else}}{{template "verso-chip-mono"}}{{end}} {{if eq .Variant "success"}}border-green-line bg-green-soft text-green-deep {{else if eq .Variant "warning"}}border-marigold-line bg-marigold-soft text-marigold-deep {{else if eq .Variant "danger"}}border-crimson-line bg-crimson-soft text-crimson-deep {{else if eq .Variant "info"}}border-denim-line bg-denim-soft text-denim-deep {{/* A pill with no hue — the firewall's drop, which says nothing at all rather than answering — is the neutral chip, like every chip without a hue. */}} {{else}}border-rule bg-quiet text-meta{{end}}
+short-class-lists	widget/templates/button.html.tmpl	inline-flex h-control items-center justify-center gap-2 rounded-xs border px-4 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 {{if .Loading}}verso-button-waiting{{else if .Disabled}}cursor-not-allowed opacity-70{{else}}cursor-pointer {{template "verso-press"}}{{end}} {{if eq .Style "secondary"}}border-rule-strong bg-transparent text-meta {{if not .Disabled}}hover:border-sand-5 hover:bg-rule hover:text-ink{{end}} focus-visible:outline-denim {{else if eq .Style "danger"}}border-crimson bg-crimson text-on-fill {{if not .Disabled}}hover:border-crimson-deep hover:bg-crimson-deep{{end}} focus-visible:outline-crimson-deep {{else}}border-denim bg-denim text-on-fill {{if not .Disabled}}hover:border-denim-deep hover:bg-denim-deep{{end}} focus-visible:outline-denim-deep{{end}}
+short-class-lists	widget/templates/callout.html.tmpl	absolute top-4 left-2.25 size-1.5 {{if eq .Variant "success"}}bg-green {{else if eq .Variant "warning"}}bg-marigold {{else if eq .Variant "danger"}}bg-crimson {{else if eq .Variant "neutral"}}bg-glyph {{else}}bg-denim{{end}}
+short-class-lists	widget/templates/callout.html.tmpl	mt-2 flex items-start border-t pt-1.75 leading-6 {{if eq .Variant "success"}}border-green-line{{else if eq .Variant "warning"}}border-marigold-line{{else if eq .Variant "danger"}}border-crimson-line{{else if eq .Variant "neutral"}}border-rule{{else}}border-denim-line{{end}}
+short-class-lists	widget/templates/callout.html.tmpl	relative flex w-full{{if .Compact}} max-w-(--container-3xl){{end}} items-start rounded-xs border pt-1.75 pr-3 pb-2 pl-5.75 text-left text-sm leading-6 {{if eq .Variant "success"}}border-green-line bg-green-soft text-green-deep {{else if eq .Variant "warning"}}border-marigold-line bg-marigold-soft text-marigold-deep {{else if eq .Variant "danger"}}border-crimson-line bg-crimson-soft text-crimson-deep {{else if eq .Variant "neutral"}}border-rule bg-quiet text-body {{else}}border-denim-line bg-denim-soft text-denim-deep{{end}}
+short-class-lists	widget/templates/callout.html.tmpl	verso-copy-inline group/copy relative -my-1 grid size-7 shrink-0 cursor-pointer place-items-center rounded-xs border border-transparent transition-colors hover:bg-canvas/50 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-current
+short-class-lists	widget/templates/code.html.tmpl	flex h-10 items-center gap-2 rounded-t-xs border-b border-rule bg-quiet pr-1 pb-px pl-3
+short-class-lists	widget/templates/code.html.tmpl	shrink-0 {{if or .Label .Copy}}rounded-bl-xs{{else}}rounded-l-xs{{end}} {{if gt (len .Lines) 99}}w-16{{else}}w-10{{end}} border-r border-rule bg-quiet pt-5.75 pb-6 text-right font-mono text-sm leading-6 tabular-nums text-faint select-none
+short-class-lists	widget/templates/code.html.tmpl	verso-drawer-scrollbar min-w-0 flex-1 overflow-x-auto px-3 pt-5.75 pb-6 font-mono text-base leading-6 font-medium whitespace-pre text-ink
+short-class-lists	widget/templates/code.html.tmpl	verso-drawer-scrollbar overflow-x-auto rounded-xs border border-rule bg-quiet py-3 pr-12 pl-3 font-mono text-base leading-relaxed font-medium whitespace-pre text-ink
+short-class-lists	widget/templates/conditions.html.tmpl	absolute top-full left-0 z-30 mt-2 w-[36rem] max-w-[calc(100vw-2rem)] rounded-xs border border-rule-strong bg-ground shadow-(--shadow-menu)
+short-class-lists	widget/templates/conditions.html.tmpl	flex w-full items-center gap-3 border-t border-rule px-4 py-2 text-left transition-colors first:border-t-0 enabled:cursor-pointer enabled:hover:bg-quiet/50 disabled:opacity-45
+short-class-lists	widget/templates/conditions.html.tmpl	h-6 min-w-0 flex-1 border-0 bg-transparent p-0 text-sm text-ink outline-none placeholder:font-normal placeholder:text-meta
+short-class-lists	widget/templates/confirm.html.tmpl	flex h-control shrink-0 cursor-pointer items-center rounded-xs px-3 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:-outline-offset-2 {{if $caution}}text-marigold-deep hover:bg-marigold-line/50 focus-visible:outline-marigold-deep{{else}}text-crimson-deep hover:bg-crimson-line/50 focus-visible:outline-crimson-deep{{end}}
+short-class-lists	widget/templates/confirm.html.tmpl	flex h-control w-fit cursor-pointer items-center justify-center rounded-xs border px-4 text-sm font-semibold transition-colors {{template "verso-press"}} focus-visible:outline-2 focus-visible:outline-offset-2 {{if $caution}}border-marigold-line bg-marigold-soft text-marigold-deep hover:border-marigold focus-visible:outline-marigold-deep{{else}}border-crimson-line bg-crimson-soft text-crimson-deep hover:border-crimson focus-visible:outline-crimson-deep{{end}}
+short-class-lists	widget/templates/confirm.html.tmpl	{{template "verso-btn-box"}} shrink-0 {{if $caution}}{{template "verso-btn-caution"}} focus-visible:outline-marigold-deep{{else}}{{template "verso-btn-danger"}} focus-visible:outline-crimson-deep{{end}}
+short-class-lists	widget/templates/device_limit_tip.html.tmpl	flex h-7 min-w-0 items-center justify-center rounded-xs border text-xs {{if .Active}}border-marigold-line bg-marigold-soft font-semibold text-marigold-deep{{else}}border-transparent bg-quiet text-meta{{end}}
+short-class-lists	widget/templates/device_limit_tip.html.tmpl	flex items-center justify-between gap-3 font-mono text-2xl leading-tight font-medium tabular-nums
+short-class-lists	widget/templates/device_limit_tip.html.tmpl	grid grid-cols-2 gap-4{{if .Title}} mt-4 border-t border-rule pt-3{{end}}
+short-class-lists	widget/templates/device_limit_tip.html.tmpl	mt-1 flex min-h-8 items-center {{if .Unit}}font-mono text-2xl font-medium tabular-nums{{else}}text-base font-medium{{end}} leading-tight
+short-class-lists	widget/templates/disclosure.html.tmpl	flex cursor-pointer items-center justify-between gap-2 select-none {{if eq .Style "condition"}}px-6 py-6 text-sm font-semibold text-ink{{else}}px-4 py-3 text-sm font-semibold text-body{{end}} [&::-webkit-details-marker]:hidden
+short-class-lists	widget/templates/disclosure.html.tmpl	verso-reveal-act inline-flex h-6 cursor-pointer items-center gap-1.5 rounded-xs text-sm leading-6 font-medium text-denim-deep select-none hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim [&::-webkit-details-marker]:hidden
+short-class-lists	widget/templates/disclosure.html.tmpl	verso-rhythm {{if eq .Style "condition"}}[--verso-rhythm:1.5rem] [--verso-form-width:100%] border-t border-rule px-6 py-6{{else}}[--verso-rhythm:1.5rem] border-t border-rule px-4 py-4{{end}} [&_thead_th]:pt-0 [&_tbody_tr:last-child_td]:pb-0
+short-class-lists	widget/templates/field.html.tmpl	flex h-7 flex-1 cursor-pointer items-center justify-center rounded-xs px-1 text-sm font-normal text-body transition-colors hover:text-ink has-checked:bg-choice has-checked:font-semibold has-checked:text-on-fill {{template "verso-segment-focus"}}
+short-class-lists	widget/templates/field.html.tmpl	flex h-control w-full cursor-help items-center gap-2 rounded-xs border border-rule bg-quiet text-body px-3 text-sm
+short-class-lists	widget/templates/field.html.tmpl	flex max-w-full cursor-pointer items-center gap-2 py-1 {{if $.Words}}font-sans text-sm font-normal{{else}}font-mono text-base font-normal{{end}} leading-6 text-body
+short-class-lists	widget/templates/field.html.tmpl	flex min-h-6 max-w-full cursor-pointer items-center gap-2 text-sm leading-6 text-body
+short-class-lists	widget/templates/field.html.tmpl	flex w-full max-w-full flex-wrap gap-0.5 self-start rounded-xs border border-rule-strong bg-quiet p-0.5
+short-class-lists	widget/templates/field.html.tmpl	grid h-control w-control shrink-0 cursor-pointer place-items-center rounded-xs border border-rule-strong text-glyph transition-colors hover:border-sand-5 hover:bg-rule hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim
+short-class-lists	widget/templates/field.html.tmpl	group/drop relative flex cursor-pointer flex-col items-center justify-center gap-1 rounded-xs border border-dashed {{if .Error}}border-crimson bg-crimson-soft{{else}}border-rule-strong bg-quiet hover:not-focus-within:border-sand-5 data-dragging:border-denim data-dragging:bg-denim-soft focus-within:border-denim{{end}} px-6 py-10 text-center transition-colors
+short-class-lists	widget/templates/field.html.tmpl	group/drop relative flex cursor-pointer flex-col items-center justify-center gap-1 rounded-xs border border-dashed {{if .Error}}border-crimson bg-crimson-soft{{else}}border-rule-strong bg-quiet hover:not-focus-within:border-sand-5 data-dragging:border-denim data-dragging:bg-denim-soft focus-within:border-denim{{end}} px-6 py-8 text-center transition-colors
+short-class-lists	widget/templates/field.html.tmpl	size-4 shrink-0 cursor-pointer rounded-xs border-choice-border accent-choice focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim-deep
+short-class-lists	widget/templates/field.html.tmpl	w-full resize-y rounded-xs border {{template "verso-input-border" .Error}} bg-ground p-3 font-mono text-sm leading-relaxed text-ink outline-none
+short-class-lists	widget/templates/form.html.tmpl	flex flex-wrap items-center {{if .Inline}}-ml-3 gap-3{{else if .JoinsCode}}mt-6 gap-4{{else if .Sectioned}}mt-6 gap-4{{else if .ClosesPage}}mt-9.75 gap-4 border-t border-rule pt-5.75{{else if .LoneAct}}mt-6 gap-4{{else}}mt-5.75 gap-4 border-t border-rule pt-5.75{{end}}
+short-class-lists	widget/templates/form.html.tmpl	mb-6 flex items-start gap-2 rounded-xs border border-crimson-line bg-crimson-soft px-3 py-2 text-sm leading-6 text-crimson-deep
+short-class-lists	widget/templates/form.html.tmpl	verso-form {{if .Search}}flex flex-wrap items-center gap-3{{else if .Inline}}flex flex-wrap items-end gap-3 {{if .Compact}}[&>div:not(:last-of-type)]:w-52{{else}}[&>div:not(:last-of-type)]:w-72{{end}} [&>div:not(:last-of-type)_input]:rounded-r-none{{else if not .Page}}verso-rhythm [--verso-rhythm:1.5rem]{{end}}
+short-class-lists	widget/templates/grid.html.tmpl	grid grid-cols-1 gap-10 @form-split:grid-cols-form [&>:first-child]:max-w-form [&>div:last-child]:self-start [&>div:last-child]:order-first @form-split:[&>div:last-child]:order-none @form-split:[&>div:last-child]:sticky @form-split:[&>div:last-child]:top-22
+short-class-lists	widget/templates/grid.html.tmpl	grid min-w-0 grid-cols-1 gap-10 @form-split:grid-cols-form [&>div:first-child]:max-w-form [&>div:last-child]:self-start @form-split:[&>div:last-child]:sticky @form-split:[&>div:last-child]:top-22 [&_section[id]>.verso-rhythm]:[--verso-rhythm:0rem]
+short-class-lists	widget/templates/grid.html.tmpl	grid min-w-0 grid-cols-1 gap-10 @form-split:grid-cols-form [&_input]:font-normal [&_select]:font-normal [&_textarea]:font-normal [&_input[name=name]]:font-sans [&_input[name=name]]:text-sm [&_input[type=password]]:font-sans [&_input[type=password]]:text-sm
+short-class-lists	widget/templates/grid.html.tmpl	grid min-w-0 grid-cols-1 gap-x-12 gap-y-0 @2xl:grid-cols-2 @2xl:gap-y-6 @max-2xl:[&>dl:has(+dl:has(*))>div:last-child]:border-b @max-2xl:[&>dl+dl>div:first-child]:pt-1.75 [&_dl]:divide-rule [&_dl>div]:justify-start [&_dt]:w-24 [&_dd]:flex-1 [&_dd]:justify-start [&_dd]:text-left [&>dl:not(:has(*))]:hidden @2xl:[&>dl:not(:has(*))]:block [&>div]:mt-0 [&>div]:min-w-0 [&>div]:border-t-0 [&>div]:pt-2 [&>div>span]:text-base
+short-class-lists	widget/templates/grid.html.tmpl	grid {{if le .Columns 1}}grid-cols-1{{else if eq .Columns 2}}grid-cols-2{{else if eq .Columns 3}}grid-cols-2 md:grid-cols-3{{else}}grid-cols-2 md:grid-cols-4{{end}} gap-8
+short-class-lists	widget/templates/link.html.tmpl	inline-flex items-center gap-1.5 text-sm font-medium text-denim underline underline-offset-2 transition-colors hover:text-denim-deep
+short-class-lists	widget/templates/link.html.tmpl	verso-rail-link @form-split:-ml-px flex items-center gap-1.5 border-l border-rule py-1 pl-4 text-sm leading-6 transition-colors
+short-class-lists	widget/templates/list.html.tmpl	flex min-h-control flex-wrap items-center gap-x-1 gap-y-4 rounded-xs border border-rule-strong {{template "verso-input-fill"}} p-0.75 transition-colors hover:not-focus-within:border-faint focus-within:border-denim
+short-class-lists	widget/templates/list.html.tmpl	flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left font-mono text-base font-medium text-ink transition-colors hover:bg-denim-soft hover:text-denim-deep aria-selected:bg-denim-soft aria-selected:text-denim-deep
+short-class-lists	widget/templates/list.html.tmpl	h-6 min-w-18 flex-1 border-0 bg-transparent px-1.5 font-mono text-base font-normal text-ink outline-none placeholder:font-sans placeholder:text-sm placeholder:font-normal placeholder:text-meta
+short-class-lists	widget/templates/list.html.tmpl	verso-drawer-scrollbar absolute top-full right-0 left-0 z-20 mt-1 max-h-56 overflow-y-auto rounded-xs border border-rule-strong bg-ground py-1 shadow-(--shadow-float)
+short-class-lists	widget/templates/meter.html.tmpl	grid grid-cols-[7rem_minmax(0,1fr)_6.5rem] sm:grid-cols-[9.5rem_minmax(0,1fr)_6.5rem] items-center gap-6 border-b border-rule py-row leading-6 first:pt-2 last:border-0
+short-class-lists	widget/templates/meter.html.tmpl	size-1.5 shrink-0 rounded-[1px] {{if .NoTrack}}bg-glyph{{else if eq .Tone "danger"}}bg-crimson{{else if eq .Tone "warning"}}bg-marigold{{else}}bg-green{{end}}
+short-class-lists	widget/templates/meter.html.tmpl	verso-meter-bar absolute inset-0 {{if eq .Tone "danger"}}bg-crimson{{else if eq .Tone "warning"}}bg-marigold{{else}}bg-green{{end}}
+short-class-lists	widget/templates/meter.html.tmpl	verso-meter-bar h-full rounded-full {{if .Role}}{{if eq .Role "sky"}}bg-denim{{else if eq .Role "violet"}}bg-amethyst{{else if eq .Role "emerald"}}bg-green{{else if eq .Role "amber"}}bg-marigold{{else}}bg-glyph{{end}}{{else if eq .Band "danger"}}bg-crimson{{else if eq .Band "warning"}}bg-marigold{{else if eq .Band "info"}}bg-denim{{else}}bg-green{{end}}
+short-class-lists	widget/templates/meter.html.tmpl	verso-meter-bar h-full w-full {{if eq .Tone "danger"}}bg-crimson{{else if eq .Tone "warning"}}bg-marigold{{else}}bg-green{{end}}
+short-class-lists	widget/templates/meter.html.tmpl	{{if eq .Role "sky"}}text-denim{{else if eq .Role "violet"}}text-amethyst{{else if eq .Role "emerald"}}text-green{{else if eq .Role "amber"}}text-marigold{{else}}text-faint{{end}}
+short-class-lists	widget/templates/modal.html.tmpl	inline-flex cursor-pointer items-center gap-1.5 rounded-xs text-sm font-medium text-meta transition-colors hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim
+short-class-lists	widget/templates/modal.html.tmpl	{{template "verso-btn-box"}} {{if eq .TriggerStyle "secondary"}}border {{template "verso-btn-secondary"}} focus-visible:outline-denim{{else}}{{template "verso-btn-primary"}} focus-visible:outline-denim-deep{{end}}
+short-class-lists	widget/templates/overview.html.tmpl	-my-1 ml-auto h-7 cursor-pointer rounded-xs px-2.5 font-medium text-denim-deep transition-colors hover:bg-denim-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim
+short-class-lists	widget/templates/overview.html.tmpl	flex min-w-0 cursor-pointer items-center gap-2 pt-2.75 pr-2.5 pb-3 pl-5.75 leading-6 select-none group-data-arranging/overview:cursor-grab group-data-arranging/overview:pl-1.5
+short-class-lists	widget/templates/overview.html.tmpl	flex shrink-0 items-center gap-2 text-sm leading-6 font-medium whitespace-nowrap text-body group-data-[tone=success]/card:text-green-deep group-data-[tone=warning]/card:text-marigold-deep group-data-[tone=danger]/card:text-crimson-deep
+short-class-lists	widget/templates/overview.html.tmpl	group/arrange relative grid {{template "verso-btn-icon"}} group-data-arranging/overview:border-denim group-data-arranging/overview:bg-denim group-data-arranging/overview:text-on-fill group-data-arranging/overview:hover:border-denim-deep group-data-arranging/overview:hover:bg-denim-deep group-data-arranging/overview:hover:text-on-fill
+short-class-lists	widget/templates/overview.html.tmpl	group/chip -my-1 inline-flex h-7 cursor-pointer items-center gap-2 rounded-xs border border-rule-strong bg-ground px-2.5 text-ink transition-colors hover:border-denim-line hover:bg-denim-soft hover:text-denim-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim
+short-class-lists	widget/templates/overview.html.tmpl	mt-6 -mb-px hidden flex-wrap items-center gap-x-2 gap-y-6 rounded-xs border border-dashed border-rule-strong bg-quiet px-3 pt-1.75 pb-2 text-sm leading-6 text-meta group-data-arranging/overview:flex
+short-class-lists	widget/templates/overview.html.tmpl	size-1.5 shrink-0 rounded-[1px] border border-faint group-data-[tone=success]/card:border-transparent group-data-[tone=success]/card:bg-green group-data-[tone=warning]/card:border-transparent group-data-[tone=warning]/card:bg-marigold group-data-[tone=danger]/card:border-transparent group-data-[tone=danger]/card:bg-crimson
+short-class-lists	widget/templates/overview.html.tmpl	size-1.5 shrink-0 rounded-[1px] border border-faint group-data-[tone=success]/chip:border-transparent group-data-[tone=success]/chip:bg-green group-data-[tone=warning]/chip:border-transparent group-data-[tone=warning]/chip:bg-marigold group-data-[tone=danger]/chip:border-transparent group-data-[tone=danger]/chip:bg-crimson
+short-class-lists	widget/templates/ports.html.tmpl	mb-3 inline-flex items-center gap-0.5 rounded-xs border border-rule-strong bg-quiet p-0.5 text-sm
+short-class-lists	widget/templates/properties.html.tmpl	basis-full {{if eq $.Align "left"}}sm:pl-30{{else}}text-right{{end}} text-sm leading-6 font-normal text-body
+short-class-lists	widget/templates/properties.html.tmpl	flex items-center {{if .Head.Value}}gap-x-6{{else}}gap-3{{end}} border-b border-rule-strong py-2 text-sm leading-6 font-semibold text-ink
+short-class-lists	widget/templates/properties.html.tmpl	flex min-w-0 flex-col {{if eq $.Align "left"}}items-start{{else}}items-end{{end}}{{if .Mono}} font-mono text-base font-medium{{end}}
+short-class-lists	widget/templates/properties.html.tmpl	flex {{if .Next}}items-start{{else}}items-center{{end}} justify-between gap-6 border-t border-mid py-2.5
+short-class-lists	widget/templates/properties.html.tmpl	flex {{if eq $.Align "left"}}flex-col items-start sm:flex-row {{if .Help}}sm:flex-wrap {{end}}gap-x-6{{else}}{{if .Help}}flex-wrap {{end}}items-start justify-between gap-x-6{{end}} text-sm{{if eq $.Style "plain"}}{{else}} border-b border-mid py-row leading-6 {{$first}} last:border-b-0{{end}}
+short-class-lists	widget/templates/properties.html.tmpl	min-w-0 wrap-anywhere text-balance{{if .Mono}} font-mono text-base font-medium{{end}}{{if .Duration}} tabular-nums{{end}}{{if .Variant}} {{template "verso-tone-text" .Variant}}{{end}}
+short-class-lists	widget/templates/properties.html.tmpl	relative flex min-w-0 items-start {{if eq $.Align "left"}}self-stretch sm:flex-1 sm:self-auto text-left{{else if .Span}}min-w-0 flex-1 text-left{{else}}justify-end text-right{{end}}{{if .Emphasis}} text-base{{end}} font-medium text-ink [&_*]:leading-6
+short-class-lists	widget/templates/properties.html.tmpl	{{if .Mono}}font-mono text-base font-medium{{end}}{{if .Duration}} tabular-nums{{end}}{{if .Variant}} {{template "verso-tone-text" .Variant}}{{end}}
+short-class-lists	widget/templates/properties.html.tmpl	{{if and .Mono .Emphasis}}text-lg font-semibold{{else}}font-medium{{end}} {{if .Variant}}{{template "verso-tone-text" .Variant}}{{else}}text-ink{{end}}{{if .Mono}} font-mono{{end}}
+short-class-lists	widget/templates/properties.html.tmpl	{{if eq $.Align "left"}}absolute -left-3.75 top-2.25{{else}}mt-2.25 mr-2 shrink-0{{end}} size-1.5 rounded-[1px] {{template "verso-mark-hue" .Dot}}
+short-class-lists	widget/templates/properties.html.tmpl	{{if eq $.Align "left"}}ml-auto pl-3{{else}}ml-2{{end}} inline-flex h-6 shrink-0 items-center
+short-class-lists	widget/templates/section.html.tmpl	ml-auto flex h-6 w-full items-center justify-end sm:w-auto [&>button]:h-control [&>button]:-mb-px [&>button]:gap-2 [&>button]:px-4
+short-class-lists	widget/templates/section.html.tmpl	{{if and .Sub (not $band)}}flex flex-wrap items-center justify-between gap-x-6{{else}}{{template "verso-section-band-class"}}{{end}}{{if .Kicker}} mb-6{{end}}
+short-class-lists	widget/templates/settings.html.tmpl	flex cursor-pointer items-center gap-1.5 px-3 pt-2.75 pb-3 leading-6 text-sm font-semibold text-denim-deep transition-colors select-none hover:bg-quiet hover:text-denim [&::-webkit-details-marker]:hidden
+short-class-lists	widget/templates/settings.html.tmpl	flex items-baseline justify-between gap-3 pt-1 pb-0.75 {{if not .Card}}border-b border-rule-strong {{end}}{{template "verso-kicker-class"}}
+short-class-lists	widget/templates/shared.html.tmpl	absolute left-0 z-30 w-80 rounded-xs border border-rule-strong bg-ground p-3 text-left font-normal whitespace-normal shadow-(--shadow-float)
+short-class-lists	widget/templates/shared.html.tmpl	absolute left-0 z-30 {{if .LimitTip}}w-72 p-4{{else}}w-max max-w-64 px-3 py-2{{end}} rounded-xs border border-rule-strong bg-ground text-left font-sans text-sm leading-tight font-normal {{if .LimitTip}}whitespace-normal{{else}}whitespace-pre-line{{end}} text-ink shadow-(--shadow-float)
+short-class-lists	widget/templates/shared.html.tmpl	flex items-center gap-2 border-t border-rule pt-2 font-mono text-sm font-medium text-meta
+short-class-lists	widget/templates/shared.html.tmpl	flex shrink-0 items-center py-3.5 text-sm leading-7 whitespace-nowrap transition {{if .Active}}font-medium text-ink shadow-[inset_0_-2px_0_var(--color-denim-deep)]{{else}}text-meta hover:text-ink hover:shadow-[inset_0_-2px_0_var(--color-inert)]{{end}}
+short-class-lists	widget/templates/shared.html.tmpl	flex w-full cursor-pointer items-baseline gap-3 px-3 py-1.5 text-left text-ink transition-colors hover:bg-denim-soft hover:text-denim-deep aria-selected:bg-denim-soft aria-selected:text-denim-deep
+short-class-lists	widget/templates/shared.html.tmpl	grid size-7 flex-none cursor-pointer place-items-center rounded-xs border border-transparent text-glyph transition-colors hover:border-sand-5 hover:bg-rule hover:text-ink focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-denim
+short-class-lists	widget/templates/shared.html.tmpl	grid size-7 shrink-0 cursor-pointer place-items-center rounded-xs text-meta transition-colors hover:bg-mid/50 hover:text-ink focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-denim
+short-class-lists	widget/templates/shared.html.tmpl	h-control w-80 max-w-full rounded-xs border border-rule-strong bg-canvas pr-3 pl-8.5 text-sm text-ink shadow-(--shadow-field) transition-colors placeholder:font-normal placeholder:text-meta hover:border-faint focus:border-denim focus:outline-none
+short-class-lists	widget/templates/shared.html.tmpl	size-1.5 shrink-0 rounded-[1px] {{if eq . "success"}}bg-green{{else if eq . "warning"}}bg-marigold{{else if eq . "danger"}}bg-crimson{{else if or (eq . "info") (eq . "accent")}}bg-denim{{else}}border border-faint{{end}}
+short-class-lists	widget/templates/shared.html.tmpl	verso-drawer-scrollbar absolute top-full left-0 z-20 mt-1 max-h-56 w-max min-w-full max-w-[min(32rem,calc(100vw-2rem))] overflow-y-auto rounded-xs border border-rule-strong bg-ground py-1 shadow-(--shadow-float)
+short-class-lists	widget/templates/shared.html.tmpl	verso-drawer-scrollbar min-h-0 flex-1 {{if not .Choices}}space-y-6 {{end}}overflow-x-hidden overflow-y-auto {{if .Choices}}space-y-0 pb-8 [&>section]:pt-0 [&>section>div:first-child]:mb-0 [&>section>div:first-child]:border-y [&>section>div:first-child]:border-rule [&>section>div:first-child]:bg-quiet [&>section>div:first-child]:px-(--verso-drawer-gutter) [&>section>div:first-child]:py-2 [&_h3]:font-medium [&_h3]:tracking-[.08em] [&_.verso-rhythm>*]:!mt-0{{else}}{{template "verso-drawer-ground"}}{{end}} [&_table]:min-w-0 [&_.overflow-x-auto]:!overflow-visible [&_tbody_tr:hover]:!bg-transparent [&_td:last-child]:!text-right [&_th:last-child]:!text-right
+short-class-lists	widget/templates/shared.html.tmpl	{{if .LocalizeLabel}}{{template "verso-chip-box"}} font-sans{{else}}{{template "verso-chip-mono"}}{{end}} {{if eq .Tone "accent"}}border-denim-line bg-denim-soft text-denim-deep{{else if eq .Tone "success"}}border-green-line bg-green-soft text-green-deep{{else if eq .Tone "warning"}}border-marigold-line bg-marigold-soft text-marigold-deep{{else if eq .Tone "danger"}}border-crimson-line bg-crimson-soft text-crimson-deep{{else}}border-rule bg-quiet text-meta{{end}}{{if .Title}} relative z-10 cursor-help focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim{{end}}
+short-class-lists	widget/templates/shared.html.tmpl	{{if .Mono}}font-mono text-base leading-6 font-medium text-ink{{else}}{{template "verso-field-label-class"}}{{end}}{{if .Explained}} relative cursor-help{{end}}
+short-class-lists	widget/templates/shared.html.tmpl	{{if .Words}}{{template "verso-input-words"}}{{else}}{{template "verso-input-class"}}{{end}} {{if and (eq .Measure "address") (ne .ControlMeasure "prefix")}}w-measure-44! max-w-full{{else if eq .Measure "number"}}w-measure-24! max-w-full{{else if eq .Measure "short"}}w-measure-32! max-w-full{{end}} {{template "verso-input-border" .Error}}
+short-class-lists	widget/templates/shared.html.tmpl	{{if .Words}}{{template "verso-input-words"}}{{else}}{{template "verso-input-class"}}{{end}} {{template "verso-input-border" .Error}} cursor-pointer appearance-none pr-9
+short-class-lists	widget/templates/shared.html.tmpl	{{if eq .Tone "accent"}}text-denim{{else if eq .Tone "success"}}text-green-deep{{else if eq .Tone "warning"}}text-marigold-deep{{else if eq .Tone "danger"}}text-crimson-deep{{else}}text-faint{{end}}
+short-class-lists	widget/templates/stack.html.tmpl	{{if eq .Width "compact"}}max-w-md {{end}}{{if .Inline}}flex flex-wrap items-center gap-x-3 gap-y-2 has-[.verso-act]:gap-y-3 has-[.verso-act]:py-0.5{{else if .Flush}}{{else if .Divided}}divide-y divide-rule{{else if .Compact}}space-y-3{{else if .Loose}}verso-stack space-y-10{{else}}verso-stack space-y-6{{end}}
+short-class-lists	widget/templates/switch.html.tmpl	absolute inset-0 rounded-xs border border-choice-border bg-canvas shadow-(--shadow-field) transition-colors peer-checked:border-choice peer-checked:bg-choice peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-denim-deep peer-disabled:border-inert peer-disabled:shadow-none peer-disabled:peer-checked:bg-inert
+short-class-lists	widget/templates/table-interfaces.html.tmpl	border-b border-rule-strong pt-0.5 pb-px text-xs leading-4 font-medium tracking-[.08em] text-meta uppercase {{if eq $i 0}}pl-29.25{{else if eq $i 5}}pr-4{{else}}max-sm:hidden{{end}}
+short-class-lists	widget/templates/table-interfaces.html.tmpl	grid size-7 shrink-0 place-items-center rounded-xs border border-rule-strong text-glyph group-aria-expanded/identity:border-denim group-aria-expanded/identity:bg-denim group-aria-expanded/identity:text-on-fill
+short-class-lists	widget/templates/table-interfaces.html.tmpl	group/identity flex w-full cursor-pointer items-start text-left focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-denim
+short-class-lists	widget/templates/table-interfaces.html.tmpl	py-row pr-2 align-top font-mono text-base leading-6 font-medium max-sm:hidden {{if eq $i 1}}text-body{{else if eq .Text "—"}}text-faint{{else}}text-ink{{end}}
+short-class-lists	widget/templates/table-interfaces.html.tmpl	size-1.5 shrink-0 rounded-[1px] {{if eq .Variant "success"}}bg-green{{else if eq .Variant "danger"}}bg-crimson{{else if eq .Variant "warning"}}bg-marigold{{else}}border border-inert{{end}}
+short-class-lists	widget/templates/table.html.tmpl	absolute inset-0 {{if eq .Variant "danger"}}bg-crimson{{else if eq .Variant "warning"}}bg-marigold{{else}}bg-green{{end}}
+short-class-lists	widget/templates/table.html.tmpl	border-b border-rule {{if .Dense}}py-row{{else}}px-3.5 py-row{{end}} text-sm leading-6 text-meta
+short-class-lists	widget/templates/table.html.tmpl	border-b border-rule {{template "table.cellpad" .}} font-mono text-base font-medium tabular-nums whitespace-nowrap {{if or .Muted .Sub}}text-meta{{else}}text-ink{{end}}
+short-class-lists	widget/templates/table.html.tmpl	border-b border-rule {{template "table.cellpad" .}} font-sans text-sm whitespace-nowrap text-faint{{if eq .Kind "num"}} text-right{{end}}
+short-class-lists	widget/templates/table.html.tmpl	border-b border-rule {{template "table.cellpad" .}} text-right tabular-nums {{if .Muted}}text-meta{{else}}text-ink{{end}}
+short-class-lists	widget/templates/table.html.tmpl	border-b border-rule {{template "table.cellpad" .}} whitespace-nowrap {{if .Ink}}font-medium{{else if .Muted}}text-meta{{else}}text-ink{{end}}
+short-class-lists	widget/templates/table.html.tmpl	border-b border-rule-strong {{if .LaneGap}}bg-[linear-gradient(transparent_calc(2.5rem_-_1px),var(--color-rule-strong)_calc(2.5rem_-_1px)_2.5rem,var(--color-quiet)_2.5rem)] pt-11.25{{else}}bg-quiet pt-1.25{{end}} pb-1.5 pr-1.75! text-left leading-7 font-normal
+short-class-lists	widget/templates/table.html.tmpl	flex h-control shrink-0 cursor-pointer items-center rounded-xs px-3 text-sm font-semibold text-crimson-deep transition-colors hover:bg-crimson-line/50 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-crimson-deep
+short-class-lists	widget/templates/table.html.tmpl	flex items-center gap-x-2 text-sm leading-6 whitespace-nowrap max-sm:flex-wrap max-sm:whitespace-normal text-meta
+short-class-lists	widget/templates/table.html.tmpl	font-medium {{if eq .Variant "success"}}text-green-deep{{else if eq .Variant "warning"}}text-marigold-deep{{else if eq .Variant "danger"}}text-crimson-deep{{else}}text-ink{{end}}
+short-class-lists	widget/templates/table.html.tmpl	grid size-6 cursor-grab touch-none place-items-center text-inert transition-colors select-none group-hover:text-glyph active:cursor-grabbing focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-denim
+short-class-lists	widget/templates/table.html.tmpl	group flex w-full cursor-pointer items-center justify-start gap-1.5 py-2 text-left text-sm font-semibold text-denim-deep transition-colors select-none hover:text-denim [&::-webkit-details-marker]:hidden
+short-class-lists	widget/templates/table.html.tmpl	group/add flex w-full items-center py-row pr-3.5 text-sm leading-6 font-semibold text-denim-deep transition-colors hover:bg-quiet focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-denim
+short-class-lists	widget/templates/table.html.tmpl	inline-flex cursor-pointer items-center gap-1.5 text-sm font-medium text-denim transition-colors hover:text-denim-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim
+short-class-lists	widget/templates/table.html.tmpl	inline-flex cursor-pointer items-center gap-1.5 text-sm font-medium text-denim transition-colors hover:text-denim-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim
+short-class-lists	widget/templates/table.html.tmpl	relative mr-4 inline-flex w-22 items-center justify-end gap-1 align-top tabular-nums last:mr-0{{if not .Text}} invisible{{end}}
+short-class-lists	widget/templates/table.html.tmpl	relative overflow-x-auto overflow-y-hidden {{if .InForm}}[&_td:first-of-type]:pl-0 [&_td:last-of-type]:pr-0{{else}}[&_td:first-of-type]:pl-2.75 [&_th:first-of-type]:pl-2.75 [&_td:last-of-type]:pr-4 [&_th:last-of-type]:pr-4{{end}} verso-scroll-edge
+short-class-lists	widget/templates/table.html.tmpl	size-1.5 shrink-0 rounded-[1px] {{if eq .Variant "success"}}bg-green{{else if eq .Variant "warning"}}bg-marigold{{else if eq .Variant "danger"}}bg-crimson{{else if eq .Variant "info"}}bg-denim{{else}}border border-faint{{end}}
+short-class-lists	widget/templates/table.html.tmpl	size-1.5 shrink-0 rounded-[1px] {{if eq .Variant "success"}}bg-green{{else if eq .Variant "warning"}}bg-marigold{{else if eq .Variant "danger"}}bg-crimson{{else if eq .Variant "info"}}bg-denim{{else}}border border-faint{{end}}
+short-class-lists	widget/templates/table.html.tmpl	truncate {{if eq .Kind "name"}}font-semibold {{else if eq .Kind "reference"}}font-mono text-base font-medium {{end}}{{template "table.name-ink" .}}
+short-class-lists	widget/templates/table.html.tmpl	verso-drawer-scrollbar min-h-0 flex-1 overflow-y-auto pt-3 pb-6 grid content-start grid-cols-[auto_4.5rem_5.5rem_minmax(min-content,max-content)_1.5rem_minmax(min-content,max-content)_6rem_minmax(12.75rem,1fr)] gap-x-3
+short-class-lists	widget/templates/table.html.tmpl	verso-modal verso-modal-motion mx-auto mt-auto mb-4 sm:mb-auto {{template "verso-dialog-box"}} rounded-xs bg-transparent shadow-(--shadow-dialog) text-left whitespace-normal focus:outline-none
+short-class-lists	widget/templates/table.html.tmpl	w-16 shrink-0 text-right tabular-nums whitespace-nowrap {{if .Muted}}text-meta{{else}}text-ink{{end}}
+short-class-lists	widget/templates/table.html.tmpl	w-16 shrink-0 text-right tabular-nums whitespace-nowrap {{if .Muted}}text-meta{{else}}text-ink{{end}}
+short-class-lists	widget/templates/table.html.tmpl	w-24 min-w-24 max-w-24 border-b border-rule {{template "table.cellpad" .}} text-left whitespace-nowrap tabular-nums text-meta
+short-class-lists	widget/templates/table.html.tmpl	whitespace-nowrap border-b border-rule-strong pt-1 pb-0.75 leading-4 {{if eq .Kind "reorder"}}{{if $.Dense}}w-8{{else}}w-10{{end}} pl-1.75! {{if $.Dense}}pr-2.25{{else}}pr-4.25{{end}}{{else}}{{if not $.Dense}}px-3.5{{end}}{{end}} text-xs font-medium tracking-[.08em] text-meta uppercase {{if eq .Kind "rate"}}w-24 min-w-24 max-w-24 text-left{{else if eq .Kind "num"}}text-right{{else if eq .Kind "actions"}}text-right{{else}}text-left{{end}}{{if and $.Dense (eq .Kind "endpoint")}} pl-[0.4375rem]{{end}}
+short-class-lists	widget/templates/table.html.tmpl	{{if .Dense}}w-8{{else}}w-10{{end}} border-b border-rule pt-1.75 pb-2 pl-1.75! {{if .Dense}}pr-2.25{{else}}pr-4.25{{end}}
+short-class-lists	widget/templates/table.html.tmpl	{{if .Variant}}text-ink{{else}}text-meta{{end}} underline underline-offset-2 hover:decoration-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim
+short-class-lists	widget/templates/table.html.tmpl	{{if .Variant}}text-ink{{else}}text-meta{{end}}{{if .Verbatim}} font-mono text-base font-medium{{end}}
+short-class-lists	widget/templates/table.html.tmpl	{{if eq .Indent "pl-6"}}pl-6{{else if eq .Indent "pl-12"}}pl-12{{else if eq .Indent "pl-18"}}pl-18{{end}} inline-flex items-center gap-2 font-mono text-base font-medium text-ink hover:text-denim focus-visible:outline-denim
+short-class-lists	widget/templates/table.html.tmpl	{{if eq .Kind "router"}}{{template "verso-chip-box"}} border-denim-line bg-denim-soft text-denim-deep{{else}}{{template "verso-chip-shape"}} border-transparent font-mono text-base font-medium tabular-nums text-ink{{end}}
+short-class-lists	widget/templates/table.html.tmpl	{{template "verso-chip-box"}} {{if eq .TagVariant "info"}}border-denim-line bg-denim-soft text-denim-deep{{else if eq .TagVariant "warning"}}border-marigold-line bg-marigold-soft text-marigold-deep{{else if eq .TagVariant "success"}}border-green-line bg-green-soft text-green-deep{{else if eq .TagVariant "danger"}}border-crimson-line bg-crimson-soft text-crimson-deep{{else}}border-rule bg-quiet text-meta{{end}}
+type-comes-from-roles	forms.css	.verso-box-input::placeholder	font-weight
+type-comes-from-roles	forms.css	.verso-box-select	font-family
+type-comes-from-roles	forms.css	.verso-box-select	font-size
+type-comes-from-roles	forms.css	.verso-box-unit	font-family
+type-comes-from-roles	forms.css	.verso-box-unit	font-size
+type-comes-from-roles	forms.css	.verso-box-unit	font-weight
+type-comes-from-roles	forms.css	.verso-box-unit	line-height
+type-comes-from-roles	forms.css	.verso-condition + .verso-condition::before	font-size
+type-comes-from-roles	forms.css	.verso-condition + .verso-condition::before	font-weight
+type-comes-from-roles	forms.css	.verso-condition + .verso-condition::before	letter-spacing
+type-comes-from-roles	forms.css	.verso-condition + .verso-condition::before	line-height
+type-comes-from-roles	forms.css	.verso-condition:not(.verso-condition-single) > .verso-rhythm .verso-field-label > :first-child	font-weight
+type-comes-from-roles	forms.css	.verso-joined-word	font-family
+type-comes-from-roles	forms.css	.verso-joined-word	font-size
+type-comes-from-roles	forms.css	.verso-joined-word	line-height
+type-comes-from-roles	forms.css	.verso-reveal-act	line-height
+type-comes-from-roles	sections.css	:is(.verso-page-body, [data-verso-drawer-body]) :is(section[data-verso-section]:not(section section) > .verso-rhythm > [data-verso-listing],.verso-page-body > [data-verso-listing], .verso-page-body > .verso-stack > [data-verso-listing], .verso-page-body > .verso-stack > .verso-stack > [data-verso-listing]) > [data-verso-scroller] > table > tbody > tr > td .font-semibold:not(a, button)	font-weight
+type-comes-from-roles	sections.css	:is(.verso-page-body, [data-verso-drawer-body]) :is(section[data-verso-section]:not(section section) > .verso-rhythm > [data-verso-listing],.verso-page-body > [data-verso-listing], .verso-page-body > .verso-stack > [data-verso-listing], .verso-page-body > .verso-stack > .verso-stack > [data-verso-listing]) > [data-verso-scroller] > table > tbody > tr > td.font-medium, :is(.verso-page-body, [data-verso-drawer-body]) :is(section[data-verso-section]:not(section section) > .verso-rhythm > [data-verso-listing],.verso-page-body > [data-verso-listing], .verso-page-body > .verso-stack > [data-verso-listing], .verso-page-body > .verso-stack > .verso-stack > [data-verso-listing]) > [data-verso-scroller] > table > tbody > tr > td .font-medium:not(a, button)	font-weight
+type-comes-from-roles	sections.css	:is(.verso-page-body, [data-verso-drawer-body]) :is(section[data-verso-section]:not(section section) > .verso-rhythm > [data-verso-listing],.verso-page-body > [data-verso-listing], .verso-page-body > .verso-stack > [data-verso-listing], .verso-page-body > .verso-stack > .verso-stack > [data-verso-listing]) > [data-verso-scroller] > table > thead > tr > th	font-size
+type-comes-from-roles	sections.css	:is(.verso-page-body, [data-verso-drawer-body]) :is(section[data-verso-section]:not(section section) > .verso-rhythm > [data-verso-listing],.verso-page-body > [data-verso-listing], .verso-page-body > .verso-stack > [data-verso-listing], .verso-page-body > .verso-stack > .verso-stack > [data-verso-listing]) > [data-verso-scroller] > table > thead > tr > th	font-weight
+type-comes-from-roles	sections.css	:is(.verso-page-body, [data-verso-drawer-body]) :is(section[data-verso-section]:not(section section) > .verso-rhythm > [data-verso-listing],.verso-page-body > [data-verso-listing], .verso-page-body > .verso-stack > [data-verso-listing], .verso-page-body > .verso-stack > .verso-stack > [data-verso-listing]) > [data-verso-scroller] > table > thead > tr > th	letter-spacing
+type-comes-from-roles	sections.css	:is(.verso-page-body, [data-verso-drawer-body]) :is(section[data-verso-section]:not(section section) > .verso-rhythm > [data-verso-listing],.verso-page-body > [data-verso-listing], .verso-page-body > .verso-stack > [data-verso-listing], .verso-page-body > .verso-stack > .verso-stack > [data-verso-listing]) > [data-verso-scroller] > table > thead > tr > th	line-height
+type-comes-from-roles	sections.css	:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > .verso-rhythm > [data-verso-listing][data-verso-list] > [data-verso-scroller] > table > thead > tr > th	line-height
+type-comes-from-roles	sections.css	:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > .verso-rhythm > details.verso-disclosure:not(:only-child) > summary	font-weight
+type-comes-from-roles	sections.css	:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > .verso-rhythm > details.verso-disclosure:not(:only-child) > summary	line-height
+type-comes-from-roles	sections.css	:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > [data-verso-section-band] [data-verso-section-lede]	font-weight
+type-comes-from-roles	sections.css	:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > [data-verso-section-band] h2	font-size
+type-comes-from-roles	sections.css	:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) [data-verso-conditions] > :first-child > legend	font-size
+type-comes-from-roles	sections.css	:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) [data-verso-conditions] > :first-child > legend	letter-spacing
+type-comes-from-roles	sections.css	:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) [data-verso-conditions] > :first-child > legend	line-height
+type-comes-from-roles	sections.css	:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section][data-verso-headless][data-verso-ruled]:not(section section) > .verso-rhythm > details.verso-disclosure:only-child > summary	font-size
+type-comes-from-roles	sections.css	:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section][data-verso-headless][data-verso-ruled]:not(section section) > .verso-rhythm > details.verso-disclosure:only-child > summary	line-height
+type-comes-from-roles	server/assets/verso-diagnostics.js	font-mono
+type-comes-from-roles	server/assets/verso-diagnostics.js	font-sans
+type-comes-from-roles	server/assets/verso-diagnostics.js	text-base
+type-comes-from-roles	server/assets/verso-diagnostics.js	text-sm
+type-comes-from-roles	server/assets/verso-system.js	leading-6
+type-comes-from-roles	server/assets/verso-system.js	text-sm
+type-comes-from-roles	server/assets/verso-tables.js	text-sm
+type-comes-from-roles	server/entity.go	leading-snug
+type-comes-from-roles	server/entity.go	text-sm
+type-comes-from-roles	server/restarting.go	font-mono
+type-comes-from-roles	server/restarting.go	text-base
+type-comes-from-roles	server/templates/diagnostics.html.tmpl	text-sm
+type-comes-from-roles	server/templates/entity-panel.html.tmpl	font-medium
+type-comes-from-roles	server/templates/entity-panel.html.tmpl	font-semibold
+type-comes-from-roles	server/templates/entity-panel.html.tmpl	font-semibold
+type-comes-from-roles	server/templates/entity-panel.html.tmpl	leading-7
+type-comes-from-roles	server/templates/entity-panel.html.tmpl	text-sm
+type-comes-from-roles	server/templates/entity-panel.html.tmpl	text-sm
+type-comes-from-roles	server/templates/entity-panel.html.tmpl	text-sm
+type-comes-from-roles	server/templates/firmware-started.html.tmpl	font-medium
+type-comes-from-roles	server/templates/firmware-started.html.tmpl	font-sans
+type-comes-from-roles	server/templates/firmware-started.html.tmpl	leading-7
+type-comes-from-roles	server/templates/firmware-started.html.tmpl	leading-normal
+type-comes-from-roles	server/templates/firmware-started.html.tmpl	text-4xl
+type-comes-from-roles	server/templates/firmware-started.html.tmpl	text-base
+type-comes-from-roles	server/templates/firmware-started.html.tmpl	text-sm
+type-comes-from-roles	server/templates/firmware-started.html.tmpl	text-sm
+type-comes-from-roles	server/templates/firmware-started.html.tmpl	tracking-tight
+type-comes-from-roles	server/templates/login.html.tmpl	font-bold
+type-comes-from-roles	server/templates/login.html.tmpl	font-light
+type-comes-from-roles	server/templates/login.html.tmpl	font-medium
+type-comes-from-roles	server/templates/login.html.tmpl	font-medium
+type-comes-from-roles	server/templates/login.html.tmpl	font-medium
+type-comes-from-roles	server/templates/login.html.tmpl	font-medium
+type-comes-from-roles	server/templates/login.html.tmpl	font-mono
+type-comes-from-roles	server/templates/login.html.tmpl	font-mono
+type-comes-from-roles	server/templates/login.html.tmpl	font-mono
+type-comes-from-roles	server/templates/login.html.tmpl	font-mono
+type-comes-from-roles	server/templates/login.html.tmpl	font-normal
+type-comes-from-roles	server/templates/login.html.tmpl	font-normal
+type-comes-from-roles	server/templates/login.html.tmpl	font-sans
+type-comes-from-roles	server/templates/login.html.tmpl	font-sans
+type-comes-from-roles	server/templates/login.html.tmpl	font-sans
+type-comes-from-roles	server/templates/login.html.tmpl	font-semibold
+type-comes-from-roles	server/templates/login.html.tmpl	font-semibold
+type-comes-from-roles	server/templates/login.html.tmpl	font-semibold
+type-comes-from-roles	server/templates/login.html.tmpl	font-semibold
+type-comes-from-roles	server/templates/login.html.tmpl	leading-9
+type-comes-from-roles	server/templates/login.html.tmpl	leading-[1.1]
+type-comes-from-roles	server/templates/login.html.tmpl	leading-[1.1]
+type-comes-from-roles	server/templates/login.html.tmpl	leading-[1.45]
+type-comes-from-roles	server/templates/login.html.tmpl	leading-normal
+type-comes-from-roles	server/templates/login.html.tmpl	leading-relaxed
+type-comes-from-roles	server/templates/login.html.tmpl	leading-relaxed
+type-comes-from-roles	server/templates/login.html.tmpl	text-2xl
+type-comes-from-roles	server/templates/login.html.tmpl	text-2xl
+type-comes-from-roles	server/templates/login.html.tmpl	text-base
+type-comes-from-roles	server/templates/login.html.tmpl	text-base
+type-comes-from-roles	server/templates/login.html.tmpl	text-base
+type-comes-from-roles	server/templates/login.html.tmpl	text-sm
+type-comes-from-roles	server/templates/login.html.tmpl	text-sm
+type-comes-from-roles	server/templates/login.html.tmpl	text-sm
+type-comes-from-roles	server/templates/login.html.tmpl	text-sm
+type-comes-from-roles	server/templates/login.html.tmpl	text-sm
+type-comes-from-roles	server/templates/login.html.tmpl	text-xl
+type-comes-from-roles	server/templates/login.html.tmpl	text-xs
+type-comes-from-roles	server/templates/login.html.tmpl	tracking-[.08em]
+type-comes-from-roles	server/templates/login.html.tmpl	tracking-tight
+type-comes-from-roles	server/templates/login.html.tmpl	tracking-tight
+type-comes-from-roles	server/templates/logs.html.tmpl	font-medium
+type-comes-from-roles	server/templates/logs.html.tmpl	font-semibold
+type-comes-from-roles	server/templates/logs.html.tmpl	font-semibold
+type-comes-from-roles	server/templates/logs.html.tmpl	font-semibold
+type-comes-from-roles	server/templates/logs.html.tmpl	text-sm
+type-comes-from-roles	server/templates/logs.html.tmpl	text-sm
+type-comes-from-roles	server/templates/logs.html.tmpl	text-sm
+type-comes-from-roles	server/templates/logs.html.tmpl	text-sm
+type-comes-from-roles	server/templates/logs.html.tmpl	text-sm
+type-comes-from-roles	server/templates/logs.html.tmpl	text-sm
+type-comes-from-roles	server/templates/nav-row.html.tmpl	font-medium
+type-comes-from-roles	server/templates/nav-row.html.tmpl	font-semibold
+type-comes-from-roles	server/templates/nav-row.html.tmpl	leading-6
+type-comes-from-roles	server/templates/nav-row.html.tmpl	text-sm
+type-comes-from-roles	server/templates/notice.html.tmpl	font-semibold
+type-comes-from-roles	server/templates/notice.html.tmpl	text-sm
+type-comes-from-roles	server/templates/notice.html.tmpl	text-sm
+type-comes-from-roles	server/templates/package-files.html.tmpl	font-mono
+type-comes-from-roles	server/templates/package-files.html.tmpl	font-semibold
+type-comes-from-roles	server/templates/package-files.html.tmpl	text-base
+type-comes-from-roles	server/templates/package-files.html.tmpl	text-sm
+type-comes-from-roles	server/templates/package-files.html.tmpl	text-sm
+type-comes-from-roles	server/templates/page.html.tmpl	focus:font-semibold
+type-comes-from-roles	server/templates/page.html.tmpl	font-bold
+type-comes-from-roles	server/templates/page.html.tmpl	font-medium
+type-comes-from-roles	server/templates/page.html.tmpl	font-medium
+type-comes-from-roles	server/templates/page.html.tmpl	font-medium
+type-comes-from-roles	server/templates/page.html.tmpl	font-mono
+type-comes-from-roles	server/templates/page.html.tmpl	font-mono
+type-comes-from-roles	server/templates/page.html.tmpl	font-mono
+type-comes-from-roles	server/templates/page.html.tmpl	font-normal
+type-comes-from-roles	server/templates/page.html.tmpl	font-normal
+type-comes-from-roles	server/templates/page.html.tmpl	font-normal
+type-comes-from-roles	server/templates/page.html.tmpl	font-sans
+type-comes-from-roles	server/templates/page.html.tmpl	font-semibold
+type-comes-from-roles	server/templates/page.html.tmpl	font-semibold
+type-comes-from-roles	server/templates/page.html.tmpl	font-semibold
+type-comes-from-roles	server/templates/page.html.tmpl	font-semibold
+type-comes-from-roles	server/templates/page.html.tmpl	font-semibold
+type-comes-from-roles	server/templates/page.html.tmpl	font-semibold
+type-comes-from-roles	server/templates/page.html.tmpl	font-semibold
+type-comes-from-roles	server/templates/page.html.tmpl	leading-6
+type-comes-from-roles	server/templates/page.html.tmpl	leading-7
+type-comes-from-roles	server/templates/page.html.tmpl	leading-9
+type-comes-from-roles	server/templates/page.html.tmpl	leading-[1.45]
+type-comes-from-roles	server/templates/page.html.tmpl	leading-normal
+type-comes-from-roles	server/templates/page.html.tmpl	text-base
+type-comes-from-roles	server/templates/page.html.tmpl	text-base
+type-comes-from-roles	server/templates/page.html.tmpl	text-base
+type-comes-from-roles	server/templates/page.html.tmpl	text-sm
+type-comes-from-roles	server/templates/page.html.tmpl	text-sm
+type-comes-from-roles	server/templates/page.html.tmpl	text-sm
+type-comes-from-roles	server/templates/page.html.tmpl	text-sm
+type-comes-from-roles	server/templates/page.html.tmpl	text-sm
+type-comes-from-roles	server/templates/page.html.tmpl	text-sm
+type-comes-from-roles	server/templates/page.html.tmpl	text-sm
+type-comes-from-roles	server/templates/page.html.tmpl	text-sm
+type-comes-from-roles	server/templates/page.html.tmpl	text-sm
+type-comes-from-roles	server/templates/page.html.tmpl	text-xl
+type-comes-from-roles	server/templates/page.html.tmpl	tracking-tight
+type-comes-from-roles	server/templates/pending.html.tmpl	font-semibold
+type-comes-from-roles	server/templates/pending.html.tmpl	leading-6
+type-comes-from-roles	server/templates/pending.html.tmpl	text-sm
+type-comes-from-roles	server/templates/restarting.html.tmpl	font-bold
+type-comes-from-roles	server/templates/restarting.html.tmpl	font-bold
+type-comes-from-roles	server/templates/restarting.html.tmpl	font-light
+type-comes-from-roles	server/templates/restarting.html.tmpl	font-mono
+type-comes-from-roles	server/templates/restarting.html.tmpl	font-mono
+type-comes-from-roles	server/templates/restarting.html.tmpl	font-sans
+type-comes-from-roles	server/templates/restarting.html.tmpl	font-semibold
+type-comes-from-roles	server/templates/restarting.html.tmpl	font-semibold
+type-comes-from-roles	server/templates/restarting.html.tmpl	font-semibold
+type-comes-from-roles	server/templates/restarting.html.tmpl	font-semibold
+type-comes-from-roles	server/templates/restarting.html.tmpl	leading-[1.45]
+type-comes-from-roles	server/templates/restarting.html.tmpl	leading-[1.45]
+type-comes-from-roles	server/templates/restarting.html.tmpl	leading-none
+type-comes-from-roles	server/templates/restarting.html.tmpl	leading-none
+type-comes-from-roles	server/templates/restarting.html.tmpl	leading-normal
+type-comes-from-roles	server/templates/restarting.html.tmpl	leading-tight
+type-comes-from-roles	server/templates/restarting.html.tmpl	leading-tight
+type-comes-from-roles	server/templates/restarting.html.tmpl	leading-tight
+type-comes-from-roles	server/templates/restarting.html.tmpl	text-2xl
+type-comes-from-roles	server/templates/restarting.html.tmpl	text-2xl
+type-comes-from-roles	server/templates/restarting.html.tmpl	text-2xl
+type-comes-from-roles	server/templates/restarting.html.tmpl	text-4xl
+type-comes-from-roles	server/templates/restarting.html.tmpl	text-sm
+type-comes-from-roles	server/templates/restarting.html.tmpl	text-sm
+type-comes-from-roles	server/templates/restarting.html.tmpl	text-xl
+type-comes-from-roles	server/templates/restarting.html.tmpl	tracking-tight
+type-comes-from-roles	server/templates/restarting.html.tmpl	tracking-tight
+type-comes-from-roles	server/templates/restarting.html.tmpl	tracking-tight
+type-comes-from-roles	server/templates/restarting.html.tmpl	tracking-tight
+type-comes-from-roles	server/templates/restarting.html.tmpl	tracking-tighter
+type-comes-from-roles	server/templates/staged.html.tmpl	font-semibold
+type-comes-from-roles	server/templates/staged.html.tmpl	font-semibold
+type-comes-from-roles	server/templates/staged.html.tmpl	leading-6
+type-comes-from-roles	server/templates/staged.html.tmpl	text-sm
+type-comes-from-roles	server/templates/upgrading.html.tmpl	font-sans
+type-comes-from-roles	server/templates/upgrading.html.tmpl	leading-normal
+type-comes-from-roles	server/templates/upgrading.html.tmpl	text-sm
+type-comes-from-roles	server/templates/upgrading.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/actionbar.html.tmpl	font-semibold
+type-comes-from-roles	widget/templates/actionbar.html.tmpl	font-semibold
+type-comes-from-roles	widget/templates/actionbar.html.tmpl	font-semibold
+type-comes-from-roles	widget/templates/actionbar.html.tmpl	font-semibold
+type-comes-from-roles	widget/templates/actionbar.html.tmpl	font-semibold
+type-comes-from-roles	widget/templates/actionbar.html.tmpl	font-semibold
+type-comes-from-roles	widget/templates/actionbar.html.tmpl	font-semibold
+type-comes-from-roles	widget/templates/actionbar.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/actionbar.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/actionbar.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/actionbar.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/actionbar.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/actionbar.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/actionbar.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/actionbar.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/badge.html.tmpl	font-medium
+type-comes-from-roles	widget/templates/badge.html.tmpl	font-medium
+type-comes-from-roles	widget/templates/badge.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/badge.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/button.html.tmpl	font-semibold
+type-comes-from-roles	widget/templates/button.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/callout.html.tmpl	font-medium
+type-comes-from-roles	widget/templates/callout.html.tmpl	font-mono
+type-comes-from-roles	widget/templates/callout.html.tmpl	font-semibold
+type-comes-from-roles	widget/templates/callout.html.tmpl	leading-6
+type-comes-from-roles	widget/templates/callout.html.tmpl	leading-6
+type-comes-from-roles	widget/templates/callout.html.tmpl	leading-6
+type-comes-from-roles	widget/templates/callout.html.tmpl	text-base
+type-comes-from-roles	widget/templates/callout.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/chart.html.tmpl	leading-6
+type-comes-from-roles	widget/templates/chart.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/code.html.tmpl	font-medium
+type-comes-from-roles	widget/templates/code.html.tmpl	font-medium
+type-comes-from-roles	widget/templates/code.html.tmpl	font-medium
+type-comes-from-roles	widget/templates/code.html.tmpl	font-medium
+type-comes-from-roles	widget/templates/code.html.tmpl	font-mono
+type-comes-from-roles	widget/templates/code.html.tmpl	font-mono
+type-comes-from-roles	widget/templates/code.html.tmpl	font-mono
+type-comes-from-roles	widget/templates/code.html.tmpl	font-mono
+type-comes-from-roles	widget/templates/code.html.tmpl	font-mono
+type-comes-from-roles	widget/templates/code.html.tmpl	leading-6
+type-comes-from-roles	widget/templates/code.html.tmpl	leading-6
+type-comes-from-roles	widget/templates/code.html.tmpl	leading-6
+type-comes-from-roles	widget/templates/code.html.tmpl	leading-relaxed
+type-comes-from-roles	widget/templates/code.html.tmpl	text-base
+type-comes-from-roles	widget/templates/code.html.tmpl	text-base
+type-comes-from-roles	widget/templates/code.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/code.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/code.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/code.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/collection.html.tmpl	font-medium
+type-comes-from-roles	widget/templates/collection.html.tmpl	font-mono
+type-comes-from-roles	widget/templates/collection.html.tmpl	font-mono
+type-comes-from-roles	widget/templates/collection.html.tmpl	leading-6
+type-comes-from-roles	widget/templates/collection.html.tmpl	leading-6
+type-comes-from-roles	widget/templates/collection.html.tmpl	text-base
+type-comes-from-roles	widget/templates/collection.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/conditions.html.tmpl	font-semibold
+type-comes-from-roles	widget/templates/conditions.html.tmpl	leading-snug
+type-comes-from-roles	widget/templates/conditions.html.tmpl	placeholder:font-normal
+type-comes-from-roles	widget/templates/conditions.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/conditions.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/conditions.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/conditions.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/confirm.html.tmpl	font-semibold
+type-comes-from-roles	widget/templates/confirm.html.tmpl	font-semibold
+type-comes-from-roles	widget/templates/confirm.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/confirm.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/device_limit_tip.html.tmpl	font-medium
+type-comes-from-roles	widget/templates/device_limit_tip.html.tmpl	font-medium
+type-comes-from-roles	widget/templates/device_limit_tip.html.tmpl	font-medium
+type-comes-from-roles	widget/templates/device_limit_tip.html.tmpl	font-medium
+type-comes-from-roles	widget/templates/device_limit_tip.html.tmpl	font-medium
+type-comes-from-roles	widget/templates/device_limit_tip.html.tmpl	font-mono
+type-comes-from-roles	widget/templates/device_limit_tip.html.tmpl	font-mono
+type-comes-from-roles	widget/templates/device_limit_tip.html.tmpl	font-mono
+type-comes-from-roles	widget/templates/device_limit_tip.html.tmpl	font-semibold
+type-comes-from-roles	widget/templates/device_limit_tip.html.tmpl	font-semibold
+type-comes-from-roles	widget/templates/device_limit_tip.html.tmpl	leading-tight
+type-comes-from-roles	widget/templates/device_limit_tip.html.tmpl	leading-tight
+type-comes-from-roles	widget/templates/device_limit_tip.html.tmpl	leading-tight
+type-comes-from-roles	widget/templates/device_limit_tip.html.tmpl	leading-tight
+type-comes-from-roles	widget/templates/device_limit_tip.html.tmpl	text-2xl
+type-comes-from-roles	widget/templates/device_limit_tip.html.tmpl	text-2xl
+type-comes-from-roles	widget/templates/device_limit_tip.html.tmpl	text-2xl
+type-comes-from-roles	widget/templates/device_limit_tip.html.tmpl	text-base
+type-comes-from-roles	widget/templates/device_limit_tip.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/device_limit_tip.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/device_limit_tip.html.tmpl	text-xl
+type-comes-from-roles	widget/templates/device_limit_tip.html.tmpl	text-xs
+type-comes-from-roles	widget/templates/device_limit_tip.html.tmpl	text-xs
+type-comes-from-roles	widget/templates/device_limit_tip.html.tmpl	text-xs
+type-comes-from-roles	widget/templates/device_limit_tip.html.tmpl	text-xs
+type-comes-from-roles	widget/templates/disclosure.html.tmpl	font-medium
+type-comes-from-roles	widget/templates/disclosure.html.tmpl	font-semibold
+type-comes-from-roles	widget/templates/disclosure.html.tmpl	font-semibold
+type-comes-from-roles	widget/templates/disclosure.html.tmpl	leading-6
+type-comes-from-roles	widget/templates/disclosure.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/disclosure.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/disclosure.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/empty.html.tmpl	font-semibold
+type-comes-from-roles	widget/templates/empty.html.tmpl	leading-10
+type-comes-from-roles	widget/templates/empty.html.tmpl	leading-6
+type-comes-from-roles	widget/templates/empty.html.tmpl	text-2xl
+type-comes-from-roles	widget/templates/empty.html.tmpl	tracking-[-0.025em]
+type-comes-from-roles	widget/templates/field.html.tmpl	font-medium
+type-comes-from-roles	widget/templates/field.html.tmpl	font-mono
+type-comes-from-roles	widget/templates/field.html.tmpl	font-mono
+type-comes-from-roles	widget/templates/field.html.tmpl	font-mono
+type-comes-from-roles	widget/templates/field.html.tmpl	font-mono
+type-comes-from-roles	widget/templates/field.html.tmpl	font-normal
+type-comes-from-roles	widget/templates/field.html.tmpl	font-normal
+type-comes-from-roles	widget/templates/field.html.tmpl	font-normal
+type-comes-from-roles	widget/templates/field.html.tmpl	font-sans
+type-comes-from-roles	widget/templates/field.html.tmpl	font-semibold
+type-comes-from-roles	widget/templates/field.html.tmpl	font-semibold
+type-comes-from-roles	widget/templates/field.html.tmpl	font-semibold
+type-comes-from-roles	widget/templates/field.html.tmpl	font-semibold
+type-comes-from-roles	widget/templates/field.html.tmpl	font-semibold
+type-comes-from-roles	widget/templates/field.html.tmpl	font-semibold
+type-comes-from-roles	widget/templates/field.html.tmpl	has-checked:font-semibold
+type-comes-from-roles	widget/templates/field.html.tmpl	leading-6
+type-comes-from-roles	widget/templates/field.html.tmpl	leading-6
+type-comes-from-roles	widget/templates/field.html.tmpl	leading-6
+type-comes-from-roles	widget/templates/field.html.tmpl	leading-6
+type-comes-from-roles	widget/templates/field.html.tmpl	leading-relaxed
+type-comes-from-roles	widget/templates/field.html.tmpl	leading-relaxed
+type-comes-from-roles	widget/templates/field.html.tmpl	text-base
+type-comes-from-roles	widget/templates/field.html.tmpl	text-base
+type-comes-from-roles	widget/templates/field.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/field.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/field.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/field.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/field.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/field.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/field.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/field.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/field.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/field.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/field.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/field.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/field.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/form.html.tmpl	leading-6
+type-comes-from-roles	widget/templates/form.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/form.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/form.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/form.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/form_switch.html.tmpl	font-medium
+type-comes-from-roles	widget/templates/form_switch.html.tmpl	leading-6
+type-comes-from-roles	widget/templates/form_switch.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/form_switch.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/grid.html.tmpl	[&>div>span]:text-base
+type-comes-from-roles	widget/templates/grid.html.tmpl	[&_input[name=name]]:font-sans
+type-comes-from-roles	widget/templates/grid.html.tmpl	[&_input[name=name]]:text-sm
+type-comes-from-roles	widget/templates/grid.html.tmpl	[&_input[type=password]]:font-sans
+type-comes-from-roles	widget/templates/grid.html.tmpl	[&_input[type=password]]:text-sm
+type-comes-from-roles	widget/templates/grid.html.tmpl	[&_input]:font-normal
+type-comes-from-roles	widget/templates/grid.html.tmpl	[&_select]:font-normal
+type-comes-from-roles	widget/templates/grid.html.tmpl	[&_textarea]:font-normal
+type-comes-from-roles	widget/templates/link.html.tmpl	font-medium
+type-comes-from-roles	widget/templates/link.html.tmpl	leading-6
+type-comes-from-roles	widget/templates/link.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/link.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/list.html.tmpl	font-medium
+type-comes-from-roles	widget/templates/list.html.tmpl	font-mono
+type-comes-from-roles	widget/templates/list.html.tmpl	font-mono
+type-comes-from-roles	widget/templates/list.html.tmpl	font-normal
+type-comes-from-roles	widget/templates/list.html.tmpl	placeholder:font-normal
+type-comes-from-roles	widget/templates/list.html.tmpl	placeholder:font-sans
+type-comes-from-roles	widget/templates/list.html.tmpl	placeholder:text-sm
+type-comes-from-roles	widget/templates/list.html.tmpl	text-base
+type-comes-from-roles	widget/templates/list.html.tmpl	text-base
+type-comes-from-roles	widget/templates/meter.html.tmpl	font-bold
+type-comes-from-roles	widget/templates/meter.html.tmpl	font-extrabold
+type-comes-from-roles	widget/templates/meter.html.tmpl	font-medium
+type-comes-from-roles	widget/templates/meter.html.tmpl	font-medium
+type-comes-from-roles	widget/templates/meter.html.tmpl	font-medium
+type-comes-from-roles	widget/templates/meter.html.tmpl	font-medium
+type-comes-from-roles	widget/templates/meter.html.tmpl	font-mono
+type-comes-from-roles	widget/templates/meter.html.tmpl	font-semibold
+type-comes-from-roles	widget/templates/meter.html.tmpl	leading-10
+type-comes-from-roles	widget/templates/meter.html.tmpl	leading-10
+type-comes-from-roles	widget/templates/meter.html.tmpl	leading-10
+type-comes-from-roles	widget/templates/meter.html.tmpl	leading-10
+type-comes-from-roles	widget/templates/meter.html.tmpl	leading-10
+type-comes-from-roles	widget/templates/meter.html.tmpl	leading-10
+type-comes-from-roles	widget/templates/meter.html.tmpl	leading-6
+type-comes-from-roles	widget/templates/meter.html.tmpl	leading-6
+type-comes-from-roles	widget/templates/meter.html.tmpl	leading-6
+type-comes-from-roles	widget/templates/meter.html.tmpl	leading-6
+type-comes-from-roles	widget/templates/meter.html.tmpl	leading-6
+type-comes-from-roles	widget/templates/meter.html.tmpl	text-4xl
+type-comes-from-roles	widget/templates/meter.html.tmpl	text-4xl
+type-comes-from-roles	widget/templates/meter.html.tmpl	text-base
+type-comes-from-roles	widget/templates/meter.html.tmpl	text-base
+type-comes-from-roles	widget/templates/meter.html.tmpl	text-base
+type-comes-from-roles	widget/templates/meter.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/meter.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/meter.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/meter.html.tmpl	text-xs
+type-comes-from-roles	widget/templates/meter.html.tmpl	text-xs
+type-comes-from-roles	widget/templates/meter.html.tmpl	tracking-[-.05em]
+type-comes-from-roles	widget/templates/meter.html.tmpl	tracking-[.08em]
+type-comes-from-roles	widget/templates/meter.html.tmpl	tracking-tight
+type-comes-from-roles	widget/templates/modal.html.tmpl	font-medium
+type-comes-from-roles	widget/templates/modal.html.tmpl	font-semibold
+type-comes-from-roles	widget/templates/modal.html.tmpl	font-semibold
+type-comes-from-roles	widget/templates/modal.html.tmpl	leading-6
+type-comes-from-roles	widget/templates/modal.html.tmpl	leading-[1.45]
+type-comes-from-roles	widget/templates/modal.html.tmpl	text-base
+type-comes-from-roles	widget/templates/modal.html.tmpl	text-base
+type-comes-from-roles	widget/templates/modal.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/modal.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/modal.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/overview.html.tmpl	font-medium
+type-comes-from-roles	widget/templates/overview.html.tmpl	font-medium
+type-comes-from-roles	widget/templates/overview.html.tmpl	font-semibold
+type-comes-from-roles	widget/templates/overview.html.tmpl	leading-6
+type-comes-from-roles	widget/templates/overview.html.tmpl	leading-6
+type-comes-from-roles	widget/templates/overview.html.tmpl	leading-6
+type-comes-from-roles	widget/templates/overview.html.tmpl	leading-6
+type-comes-from-roles	widget/templates/overview.html.tmpl	leading-6
+type-comes-from-roles	widget/templates/overview.html.tmpl	leading-6
+type-comes-from-roles	widget/templates/overview.html.tmpl	text-base
+type-comes-from-roles	widget/templates/overview.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/overview.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/overview.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/overview.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/overview.html.tmpl	tracking-tight
+type-comes-from-roles	widget/templates/ports.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/properties.html.tmpl	[&_*]:leading-6
+type-comes-from-roles	widget/templates/properties.html.tmpl	font-medium
+type-comes-from-roles	widget/templates/properties.html.tmpl	font-medium
+type-comes-from-roles	widget/templates/properties.html.tmpl	font-medium
+type-comes-from-roles	widget/templates/properties.html.tmpl	font-medium
+type-comes-from-roles	widget/templates/properties.html.tmpl	font-medium
+type-comes-from-roles	widget/templates/properties.html.tmpl	font-medium
+type-comes-from-roles	widget/templates/properties.html.tmpl	font-medium
+type-comes-from-roles	widget/templates/properties.html.tmpl	font-mono
+type-comes-from-roles	widget/templates/properties.html.tmpl	font-mono
+type-comes-from-roles	widget/templates/properties.html.tmpl	font-mono
+type-comes-from-roles	widget/templates/properties.html.tmpl	font-mono
+type-comes-from-roles	widget/templates/properties.html.tmpl	font-mono
+type-comes-from-roles	widget/templates/properties.html.tmpl	font-normal
+type-comes-from-roles	widget/templates/properties.html.tmpl	font-normal
+type-comes-from-roles	widget/templates/properties.html.tmpl	font-semibold
+type-comes-from-roles	widget/templates/properties.html.tmpl	font-semibold
+type-comes-from-roles	widget/templates/properties.html.tmpl	font-semibold
+type-comes-from-roles	widget/templates/properties.html.tmpl	leading-6
+type-comes-from-roles	widget/templates/properties.html.tmpl	leading-6
+type-comes-from-roles	widget/templates/properties.html.tmpl	leading-6
+type-comes-from-roles	widget/templates/properties.html.tmpl	leading-6
+type-comes-from-roles	widget/templates/properties.html.tmpl	leading-6
+type-comes-from-roles	widget/templates/properties.html.tmpl	leading-snug
+type-comes-from-roles	widget/templates/properties.html.tmpl	text-base
+type-comes-from-roles	widget/templates/properties.html.tmpl	text-base
+type-comes-from-roles	widget/templates/properties.html.tmpl	text-base
+type-comes-from-roles	widget/templates/properties.html.tmpl	text-base
+type-comes-from-roles	widget/templates/properties.html.tmpl	text-base
+type-comes-from-roles	widget/templates/properties.html.tmpl	text-base
+type-comes-from-roles	widget/templates/properties.html.tmpl	text-lg
+type-comes-from-roles	widget/templates/properties.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/properties.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/properties.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/properties.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/properties.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/properties.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/properties.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/properties.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/raw.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/section.html.tmpl	font-medium
+type-comes-from-roles	widget/templates/section.html.tmpl	font-medium
+type-comes-from-roles	widget/templates/section.html.tmpl	font-mono
+type-comes-from-roles	widget/templates/section.html.tmpl	font-semibold
+type-comes-from-roles	widget/templates/section.html.tmpl	font-semibold
+type-comes-from-roles	widget/templates/section.html.tmpl	font-semibold
+type-comes-from-roles	widget/templates/section.html.tmpl	leading-6
+type-comes-from-roles	widget/templates/section.html.tmpl	leading-6
+type-comes-from-roles	widget/templates/section.html.tmpl	leading-6
+type-comes-from-roles	widget/templates/section.html.tmpl	leading-6
+type-comes-from-roles	widget/templates/section.html.tmpl	leading-6
+type-comes-from-roles	widget/templates/section.html.tmpl	leading-6
+type-comes-from-roles	widget/templates/section.html.tmpl	text-base
+type-comes-from-roles	widget/templates/section.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/section.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/section.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/section.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/settings.html.tmpl	font-medium
+type-comes-from-roles	widget/templates/settings.html.tmpl	font-mono
+type-comes-from-roles	widget/templates/settings.html.tmpl	font-normal
+type-comes-from-roles	widget/templates/settings.html.tmpl	font-semibold
+type-comes-from-roles	widget/templates/settings.html.tmpl	leading-6
+type-comes-from-roles	widget/templates/settings.html.tmpl	leading-6
+type-comes-from-roles	widget/templates/settings.html.tmpl	text-base
+type-comes-from-roles	widget/templates/settings.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/settings.html.tmpl	text-xs
+type-comes-from-roles	widget/templates/shared.html.tmpl	[&_h3]:font-medium
+type-comes-from-roles	widget/templates/shared.html.tmpl	[&_h3]:tracking-[.08em]
+type-comes-from-roles	widget/templates/shared.html.tmpl	font-medium
+type-comes-from-roles	widget/templates/shared.html.tmpl	font-medium
+type-comes-from-roles	widget/templates/shared.html.tmpl	font-medium
+type-comes-from-roles	widget/templates/shared.html.tmpl	font-medium
+type-comes-from-roles	widget/templates/shared.html.tmpl	font-mono
+type-comes-from-roles	widget/templates/shared.html.tmpl	font-mono
+type-comes-from-roles	widget/templates/shared.html.tmpl	font-mono
+type-comes-from-roles	widget/templates/shared.html.tmpl	font-mono
+type-comes-from-roles	widget/templates/shared.html.tmpl	font-normal
+type-comes-from-roles	widget/templates/shared.html.tmpl	font-normal
+type-comes-from-roles	widget/templates/shared.html.tmpl	font-normal
+type-comes-from-roles	widget/templates/shared.html.tmpl	font-sans
+type-comes-from-roles	widget/templates/shared.html.tmpl	font-sans
+type-comes-from-roles	widget/templates/shared.html.tmpl	font-sans
+type-comes-from-roles	widget/templates/shared.html.tmpl	font-semibold
+type-comes-from-roles	widget/templates/shared.html.tmpl	leading-6
+type-comes-from-roles	widget/templates/shared.html.tmpl	leading-6
+type-comes-from-roles	widget/templates/shared.html.tmpl	leading-7
+type-comes-from-roles	widget/templates/shared.html.tmpl	leading-[1.45]
+type-comes-from-roles	widget/templates/shared.html.tmpl	leading-tight
+type-comes-from-roles	widget/templates/shared.html.tmpl	placeholder:font-normal
+type-comes-from-roles	widget/templates/shared.html.tmpl	text-base
+type-comes-from-roles	widget/templates/shared.html.tmpl	text-base
+type-comes-from-roles	widget/templates/shared.html.tmpl	text-base
+type-comes-from-roles	widget/templates/shared.html.tmpl	text-lg
+type-comes-from-roles	widget/templates/shared.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/shared.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/shared.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/shared.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/shared.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/shared.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/shared.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/shared.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/shared.html.tmpl	tracking-tight
+type-comes-from-roles	widget/templates/table-interfaces.html.tmpl	font-bold
+type-comes-from-roles	widget/templates/table-interfaces.html.tmpl	font-medium
+type-comes-from-roles	widget/templates/table-interfaces.html.tmpl	font-medium
+type-comes-from-roles	widget/templates/table-interfaces.html.tmpl	font-mono
+type-comes-from-roles	widget/templates/table-interfaces.html.tmpl	font-mono
+type-comes-from-roles	widget/templates/table-interfaces.html.tmpl	leading-4
+type-comes-from-roles	widget/templates/table-interfaces.html.tmpl	leading-6
+type-comes-from-roles	widget/templates/table-interfaces.html.tmpl	leading-6
+type-comes-from-roles	widget/templates/table-interfaces.html.tmpl	leading-6
+type-comes-from-roles	widget/templates/table-interfaces.html.tmpl	leading-6
+type-comes-from-roles	widget/templates/table-interfaces.html.tmpl	leading-6
+type-comes-from-roles	widget/templates/table-interfaces.html.tmpl	leading-6
+type-comes-from-roles	widget/templates/table-interfaces.html.tmpl	text-base
+type-comes-from-roles	widget/templates/table-interfaces.html.tmpl	text-base
+type-comes-from-roles	widget/templates/table-interfaces.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/table-interfaces.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/table-interfaces.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/table-interfaces.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/table-interfaces.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/table-interfaces.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/table-interfaces.html.tmpl	text-xs
+type-comes-from-roles	widget/templates/table-interfaces.html.tmpl	tracking-[.08em]
+type-comes-from-roles	widget/templates/table.html.tmpl	*:leading-6
+type-comes-from-roles	widget/templates/table.html.tmpl	*:leading-6
+type-comes-from-roles	widget/templates/table.html.tmpl	font-medium
+type-comes-from-roles	widget/templates/table.html.tmpl	font-medium
+type-comes-from-roles	widget/templates/table.html.tmpl	font-medium
+type-comes-from-roles	widget/templates/table.html.tmpl	font-medium
+type-comes-from-roles	widget/templates/table.html.tmpl	font-medium
+type-comes-from-roles	widget/templates/table.html.tmpl	font-medium
+type-comes-from-roles	widget/templates/table.html.tmpl	font-medium
+type-comes-from-roles	widget/templates/table.html.tmpl	font-medium
+type-comes-from-roles	widget/templates/table.html.tmpl	font-medium
+type-comes-from-roles	widget/templates/table.html.tmpl	font-medium
+type-comes-from-roles	widget/templates/table.html.tmpl	font-medium
+type-comes-from-roles	widget/templates/table.html.tmpl	font-medium
+type-comes-from-roles	widget/templates/table.html.tmpl	font-medium
+type-comes-from-roles	widget/templates/table.html.tmpl	font-medium
+type-comes-from-roles	widget/templates/table.html.tmpl	font-medium
+type-comes-from-roles	widget/templates/table.html.tmpl	font-mono
+type-comes-from-roles	widget/templates/table.html.tmpl	font-mono
+type-comes-from-roles	widget/templates/table.html.tmpl	font-mono
+type-comes-from-roles	widget/templates/table.html.tmpl	font-mono
+type-comes-from-roles	widget/templates/table.html.tmpl	font-mono
+type-comes-from-roles	widget/templates/table.html.tmpl	font-mono
+type-comes-from-roles	widget/templates/table.html.tmpl	font-mono
+type-comes-from-roles	widget/templates/table.html.tmpl	font-mono
+type-comes-from-roles	widget/templates/table.html.tmpl	font-mono
+type-comes-from-roles	widget/templates/table.html.tmpl	font-normal
+type-comes-from-roles	widget/templates/table.html.tmpl	font-sans
+type-comes-from-roles	widget/templates/table.html.tmpl	font-semibold
+type-comes-from-roles	widget/templates/table.html.tmpl	font-semibold
+type-comes-from-roles	widget/templates/table.html.tmpl	font-semibold
+type-comes-from-roles	widget/templates/table.html.tmpl	font-semibold
+type-comes-from-roles	widget/templates/table.html.tmpl	font-semibold
+type-comes-from-roles	widget/templates/table.html.tmpl	font-semibold
+type-comes-from-roles	widget/templates/table.html.tmpl	leading-4
+type-comes-from-roles	widget/templates/table.html.tmpl	leading-6
+type-comes-from-roles	widget/templates/table.html.tmpl	leading-6
+type-comes-from-roles	widget/templates/table.html.tmpl	leading-6
+type-comes-from-roles	widget/templates/table.html.tmpl	leading-6
+type-comes-from-roles	widget/templates/table.html.tmpl	leading-6
+type-comes-from-roles	widget/templates/table.html.tmpl	leading-6
+type-comes-from-roles	widget/templates/table.html.tmpl	leading-6
+type-comes-from-roles	widget/templates/table.html.tmpl	leading-6
+type-comes-from-roles	widget/templates/table.html.tmpl	leading-7
+type-comes-from-roles	widget/templates/table.html.tmpl	text-base
+type-comes-from-roles	widget/templates/table.html.tmpl	text-base
+type-comes-from-roles	widget/templates/table.html.tmpl	text-base
+type-comes-from-roles	widget/templates/table.html.tmpl	text-base
+type-comes-from-roles	widget/templates/table.html.tmpl	text-base
+type-comes-from-roles	widget/templates/table.html.tmpl	text-base
+type-comes-from-roles	widget/templates/table.html.tmpl	text-base
+type-comes-from-roles	widget/templates/table.html.tmpl	text-base
+type-comes-from-roles	widget/templates/table.html.tmpl	text-base
+type-comes-from-roles	widget/templates/table.html.tmpl	text-lg
+type-comes-from-roles	widget/templates/table.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/table.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/table.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/table.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/table.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/table.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/table.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/table.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/table.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/table.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/table.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/table.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/table.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/table.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/table.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/table.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/table.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/table.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/table.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/table.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/table.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/table.html.tmpl	text-xs
+type-comes-from-roles	widget/templates/table.html.tmpl	tracking-[.08em]
+type-comes-from-roles	widget/templates/table.html.tmpl	tracking-tight
+type-comes-from-roles	widget/templates/text.html.tmpl	leading-6
+type-comes-from-roles	widget/templates/text.html.tmpl	text-sm
+type-comes-from-roles	widget/templates/traffic.html.tmpl	font-medium
+type-comes-from-roles	widget/templates/traffic.html.tmpl	leading-6
+type-comes-from-roles	widget/templates/traffic.html.tmpl	text-sm

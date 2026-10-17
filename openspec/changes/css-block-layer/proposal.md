@@ -69,7 +69,7 @@ _None._ What `page-cards`, `layout-grid`, `form-fields` and the other UI capabil
   - The renderer (`internal/widget/renderer.go`, `section.go`) marks cards and the other roles the stylesheet used to infer.
 - **Tests:**
   - Markup tests that assert utility strings or inferred hooks assert block names instead.
-  - New guard tests live in `internal/server/assets_test.go`.
+  - New guard tests live in `internal/server/stylesheet_guards_test.go`, with their fixtures beside them.
   - New `scripts/layout-snapshot.js` and test-rendered fixtures for pages without a dev route (login, takeovers).
 - **Docs:**
   - CONTRIBUTING.md gains a short "Styling" section pointing at ADR-025.

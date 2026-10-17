@@ -16,7 +16,7 @@
 
 - [x] 1.1 Write `scripts/layout-snapshot.js` (Decision 10), recording boxes, spacing, colours and computed type. Verify: two snapshots of Firewall settings taken back to back in the dev container diff empty; a `mt-1` added by hand in the browser to one card makes the diff name exactly that card and the boxes below it; a `font-weight` changed by hand on one label makes it name that label.
 - [x] 1.2 Write the test-only fixture writer, behind a build tag, that renders the login page and the restarting, upgrading and firmware-started takeovers as self-contained HTML into `build/layout-fixtures/`. Serve them from the Playwright scratch server (bind 0.0.0.0, open via 10.0.0.232). Verify: each fixture opens and looks like the live page in a screenshot.
-- [ ] 1.3 Confirm that Tailwind's compile keeps each of these unchanged:
+- [x] 1.3 Confirm that Tailwind's compile keeps each of these unchanged:
   - `:nth-child(1 of S)` and `:nth-last-child(1 of S)`;
   - `@property` with `inherits: false`;
   - an `@utility` with a nested `&[data-…]` rule;
@@ -27,7 +27,7 @@
 
 ## 2. Contract and guards
 
-- [ ] 2.1 Write ADR-025 "Stylesheet blocks", with the reasons from design.md, covering:
+- [x] 2.1 Write ADR-025 "Stylesheet blocks", with the reasons from design.md, covering:
   - the three layers and the type roles;
   - naming and one file per block;
   - the role-marking rule;
@@ -36,7 +36,7 @@
   - the guards and their thresholds.
 
   Amend ADR-005 Decision 6 in place to point at it. Add a "Styling" section to CONTRIBUTING.md saying when a look becomes a block, when text needs a role, and where each goes. Verify: ADR-025 states the contract with no process wording, ADR-005 §6 and CONTRIBUTING link it, and `docs/ADR` numbering has no clash.
-- [ ] 2.2 Test first: write the eleven guards in `internal/server/assets_test.go` (Decision 4). Each guard first gets a table test over in-memory fixture sources that shows it failing on its violation and passing on the conforming form. Then generate `internal/server/testdata/stylesheet-ratchet.txt` from the real sources, and make each guard fail on an unlisted violation and on a listed line that no longer occurs. Verify: the fixture tests cover every guard; `make test` is green; adding `[&_td]:pt-0` to any template fails `TestNoRulesInMarkup` with the template's name; adding `text-xs` fails `TestTypeComesFromRoles`.
+- [x] 2.2 Test first: write the ten guards in `internal/server/stylesheet_guards_test.go` (Decision 4), with their fixture tests in `stylesheet_guards_fixtures_test.go`. Each guard first gets a table test over in-memory fixture sources that shows it failing on its violation and passing on the conforming form. Then generate `internal/server/testdata/stylesheet-ratchet.txt` from the real sources, and make each guard fail on an unlisted violation and on a listed line that no longer occurs. Verify: the fixture tests cover every guard; `make test` is green; adding `[&_td]:pt-0` to any template fails `TestNoRulesInMarkup` with the template's name; adding `text-xs` fails `TestTypeComesFromRoles`.
 - [ ] 2.3 Create `internal/server/assets/blocks/` and import it from `input.css` inside `@layer components`, after the current imports. Verify: `make css` builds and parity holds.
 
 ## 3. Type roles
@@ -118,7 +118,7 @@
 - [ ] 9.2 `modal` and `pending`: dialog and drawer boxes, motion, the confirm frame, the dialog title (`type-title`). Verify: block done, with an open confirm dialog in the parity run.
 - [ ] 9.3 `stream` and `console`: stream release, shelf and pluck; console, notice and vt, in `verso-stream.js` too. Verify: block done on Logs, Firewall › Activity and Diagnostics.
 - [ ] 9.4 `takeover`: login, restarting, upgrading, firmware-started (`type-headline`, the takeover `type-lede`), and the repeated step and heading bundles they share. Verify: block done against the 1.2 fixtures.
-- [ ] 9.5 `scroll-edge`, `glyph`, `arrival`, and any family the ratchet still lists. Verify: block done; the ratchet holds no `TestBlockNames`, `TestRulesLiveInBlocks` or `TestTypeComesFromRoles` line.
+- [ ] 9.5 `scroll-edge`, `glyph`, `arrival`, and any family the ratchet still lists. Verify: block done; the ratchet holds no `TestClassesAreBlocks`, `TestRulesLiveInBlocks` or `TestTypeComesFromRoles` line.
 
 ## 10. Close the ratchet
 

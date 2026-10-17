@@ -69,7 +69,11 @@ A look the shell draws SHALL be named as a block:
 - each named part carries `verso-<block>__<element>`;
 - each variant or state is a `data-verso-*` attribute on the root, never a class.
 
-No `verso-*` class SHALL use another form. Every name carries the `verso-` prefix, so none matches a Tailwind utility.
+No `verso-*` class SHALL use another form, except a name a published data contract carries (the board art's `verso-port-role`, profiles/README.md), which keeps its name so installed board profiles keep working. Every name carries the `verso-` prefix, so none matches a Tailwind utility.
+
+#### Scenario: A class the board art names
+- **WHEN** a board profile's art carries `class="verso-port-role"` on a port's role slot
+- **THEN** the shell styles it under that name and the block guard test passes
 
 #### Scenario: A part of a block
 - **WHEN** a chart draws its plot line

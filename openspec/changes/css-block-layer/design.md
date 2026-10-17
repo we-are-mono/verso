@@ -89,19 +89,18 @@ From the families in the stylesheets, the 21 class-string templates and the 47 r
 
 ### 4. Guards, and a ratchet so every commit is green
 
-The guards live in `internal/server/assets_test.go`. They read the sources: `assets/*.css`, `assets/blocks/*.css`, `widget/templates/*.tmpl`, `server/templates/*.tmpl`, `assets/verso*.js`, plus the Go files that write class strings.
+The guards live in `internal/server/stylesheet_guards_test.go`. Each is a pure function over the sources, and `stylesheet_guards_fixtures_test.go` shows each one catching its violation and passing the conforming form. They read the sources: `assets/*.css`, `assets/blocks/*.css`, `widget/templates/*.tmpl`, `server/templates/*.tmpl`, `assets/verso*.js`, plus the Go files that write class strings.
 
 | Guard | Fails when |
 |---|---|
 | `TestRulesLiveInBlocks` | a rule outside `blocks/` and `type.css` selects a `verso-*` class or `data-verso-*` attribute (`type.css` may select only `data-verso-verbatim` and `data-verso-figures`) |
 | `TestABlockStartsFromItself` | a selector's first compound in `blocks/<b>.css` is not `.verso-<b>` or `.verso-<b>__*` |
 | `TestCrossBlockRulesSetOnlyProperties` | a rule reaching `.verso-<other>` declares anything but `--*` |
-| `TestBlockNames` | a `verso-*` class has a form other than block, `__`element, or listed view-transition name |
+| `TestClassesAreBlocks` | a `verso-*` class is not `verso-<b>` or `verso-<b>__<el>` of a block with a file (a view-transition name and a published contract name such as the board art's `verso-port-role` aside), or a block file's class is never written |
 | `TestNoRepeatedBundles` | the same set of ≥4 utilities (template actions stripped, order ignored) is on two or more elements |
 | `TestShortClassLists` | an element carries more than 8 utilities |
 | `TestNoRulesInMarkup` | markup writes a `[&…]` arbitrary variant or a `!` utility |
 | `TestNoClassStringTemplates` | a `{{define}}`'s whole body is a class list |
-| `TestBlockClassesDefinedAndUsed` | a written `verso-*` class has no rule, or a ruled one is never written |
 | `TestTypeComesFromRoles` | markup writes `text-{xs…3xl,[…]}`, `font-{weight}`, `font-mono/sans`, `leading-*`, `tracking-*`, or a file other than `type.css` declares `font-size`, `font-weight`, `font-family`, `line-height`, `letter-spacing` |
 | `TestTypeRolesMatchDesign` | a `type-*` utility in `type.css` is not listed by class in DESIGN.md › Typography › Hierarchy, or a listed one is not defined |
 
