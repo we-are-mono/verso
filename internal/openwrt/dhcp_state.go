@@ -88,8 +88,6 @@ type dhcpInstance struct {
 	leaseFile                 string
 }
 
-func dhcpString(v any) string { s, _ := v.(string); return s }
-
 // dhcpScopeKeys are the directives that decide what a dnsmasq instance serves
 // and where else its configuration lives; nothing else in a config file is
 // read.
@@ -225,9 +223,9 @@ func readDHCPInstances(services map[string]any, read func(string) ([]byte, error
 		args, _ := v["command"].([]any)
 		path := ""
 		for i, rawArg := range args {
-			arg := dhcpString(rawArg)
+			arg := stringValue(rawArg)
 			if arg == "-C" && i+1 < len(args) {
-				path = dhcpString(args[i+1])
+				path = stringValue(args[i+1])
 			}
 			if strings.HasPrefix(arg, "--conf-file=") {
 				path = strings.TrimPrefix(arg, "--conf-file=")
@@ -252,7 +250,7 @@ func dhcpStates(config, services, dump map[string]any, readConfig, readLeases fu
 	entries, _ := dump["interface"].([]any)
 	for _, raw := range entries {
 		v, _ := raw.(map[string]any)
-		networks[dhcpString(v["interface"])] = v
+		networks[stringValue(v["interface"])] = v
 	}
 	out := map[string]dhcpNetworkState{}
 	for _, raw := range config {
@@ -260,20 +258,20 @@ func dhcpStates(config, services, dump map[string]any, readConfig, readLeases fu
 		if section[".type"] != "dhcp" {
 			continue
 		}
-		name := dhcpString(section["interface"])
+		name := stringValue(section["interface"])
 		if name == "" {
 			continue
 		}
 		live := networks[name]
-		tag := dhcpString(section["networkid"])
+		tag := stringValue(section["networkid"])
 		if tag == "" {
 			tag = name
 		}
 		enabled := section["ignore"] != "1" && section["dhcpv4"] != "disabled"
-		selected := dhcpString(section["instance"])
-		device := dhcpString(live["l3_device"])
+		selected := stringValue(section["instance"])
+		device := stringValue(live["l3_device"])
 		if device == "" {
-			device = dhcpString(live["device"])
+			device = stringValue(live["device"])
 		}
 		var matched []dhcpRange
 		leaseFiles := map[string]bool{}
@@ -439,7 +437,7 @@ func dhcpAddressOnNetwork(address string, live map[string]any) bool {
 	for _, raw := range entries {
 		v, _ := raw.(map[string]any)
 		mask := int(asInt64(v["mask"]))
-		router := net.ParseIP(dhcpString(v["address"])).To4()
+		router := net.ParseIP(stringValue(v["address"])).To4()
 		if router != nil && mask > 0 && mask <= 32 && (&net.IPNet{IP: router, Mask: net.CIDRMask(mask, 32)}).Contains(ip) {
 			return true
 		}

@@ -4,8 +4,8 @@
 package openwrt
 
 import (
+	"cmp"
 	"slices"
-	"sort"
 	"strconv"
 )
 
@@ -33,7 +33,6 @@ type kernelRoute struct {
 type netifdOwner struct {
 	name, device, transport string
 	uptime                  int64
-	status                  map[string]any
 }
 
 // KernelWAN is the uplink as the kernel's default routes alone show it. Route
@@ -97,7 +96,6 @@ func discoverWAN(dump map[string]any, kernel []kernelRoute) WANState {
 		owner := netifdOwner{
 			name: stringValue(status["interface"]), device: l3,
 			transport: stringValue(status["device"]), uptime: asInt64(status["uptime"]),
-			status: status,
 		}
 		owners[l3] = append(owners[l3], owner)
 		for _, route := range netifdDefaultRoutes(status) {
@@ -132,32 +130,25 @@ func discoverWAN(dump map[string]any, kernel []kernelRoute) WANState {
 		if len(device.Routes) == 0 {
 			continue
 		}
-		sort.Strings(device.Networks)
-		sort.Slice(device.Routes, func(i, j int) bool {
-			left, right := device.Routes[i], device.Routes[j]
-			if routeRank(left) != routeRank(right) {
-				return routeRank(left) < routeRank(right)
-			}
-			if left.Metric != right.Metric {
-				return left.Metric < right.Metric
-			}
-			if left.Table != right.Table {
-				return left.Table < right.Table
-			}
-			return left.Owner < right.Owner
+		slices.Sort(device.Networks)
+		slices.SortFunc(device.Routes, func(left, right WANRoute) int {
+			return cmp.Or(
+				cmp.Compare(routeRank(left), routeRank(right)),
+				cmp.Compare(left.Metric, right.Metric),
+				cmp.Compare(left.Table, right.Table),
+				cmp.Compare(left.Owner, right.Owner),
+			)
 		})
 		state.Devices = append(state.Devices, *device)
 	}
-	sort.Slice(state.Devices, func(i, j int) bool {
-		leftRank, leftMetric := deviceRank(state.Devices[i])
-		rightRank, rightMetric := deviceRank(state.Devices[j])
-		if leftRank != rightRank {
-			return leftRank < rightRank
-		}
-		if leftMetric != rightMetric {
-			return leftMetric < rightMetric
-		}
-		return state.Devices[i].Device < state.Devices[j].Device
+	slices.SortFunc(state.Devices, func(left, right WANDevice) int {
+		leftRank, leftMetric := deviceRank(left)
+		rightRank, rightMetric := deviceRank(right)
+		return cmp.Or(
+			cmp.Compare(leftRank, rightRank),
+			cmp.Compare(leftMetric, rightMetric),
+			cmp.Compare(left.Device, right.Device),
+		)
 	})
 	return state
 }
@@ -270,16 +261,10 @@ func stringValue(value any) string {
 	return valueString
 }
 
+// uintValue reads a number as ubus blobmsg decodes one: every integer width
+// arrives as int64 and a double as float64; a string reads as a decimal.
 func uintValue(value any) uint32 {
 	switch value := value.(type) {
-	case uint32:
-		return value
-	case uint64:
-		return uint32(value)
-	case int:
-		return uint32(value)
-	case int32:
-		return uint32(value)
 	case int64:
 		return uint32(value)
 	case float64:

@@ -1621,18 +1621,17 @@ func leaseV6Addrs(lease map[string]any) []string {
 // and target. Short distribution/version fields are only a compatibility
 // fallback for older board responses.
 func parseBoard(m map[string]any) Board {
-	str := func(v any) string { s, _ := v.(string); return s }
 	var b Board
-	b.BoardName = str(m["board_name"])
-	b.Model = str(m["model"])
-	b.System = str(m["system"])
-	if k := str(m["kernel"]); k != "" {
+	b.BoardName = stringValue(m["board_name"])
+	b.Model = stringValue(m["model"])
+	b.System = stringValue(m["system"])
+	if k := stringValue(m["kernel"]); k != "" {
 		b.Kernel = "Linux " + k
 	}
 	if rel, ok := m["release"].(map[string]any); ok {
-		b.Target = str(rel["target"])
-		b.Firmware = str(rel["description"])
-		dist, ver := str(rel["distribution"]), str(rel["version"])
+		b.Target = stringValue(rel["target"])
+		b.Firmware = stringValue(rel["description"])
+		dist, ver := stringValue(rel["distribution"]), stringValue(rel["version"])
 		switch {
 		case b.Firmware != "":
 		case dist != "" && ver != "":
@@ -2199,7 +2198,6 @@ func wanStatuses(dump map[string]any) (map[string]any, map[string]any) {
 // so the IPv4-selected status is also the fallback IPv6 source.
 func parseWANConn(v4, v6 map[string]any) WANConn {
 	var wc WANConn
-	str := func(v any) string { s, _ := v.(string); return s }
 	// addr formats ipv{4,6}-address[0] as "address/mask".
 	addr := func(m map[string]any, key string) string {
 		list, ok := m[key].([]any)
@@ -2210,7 +2208,7 @@ func parseWANConn(v4, v6 map[string]any) WANConn {
 		if !ok {
 			return ""
 		}
-		a := str(e["address"])
+		a := stringValue(e["address"])
 		if a == "" {
 			return ""
 		}
@@ -2227,8 +2225,8 @@ func parseWANConn(v4, v6 map[string]any) WANConn {
 		}
 		for _, r := range routes {
 			e, ok := r.(map[string]any)
-			if ok && str(e["target"]) == wantTarget && asInt64(e["mask"]) == 0 && routeTable(e["table"]) == mainRouteTable {
-				return str(e["nexthop"])
+			if ok && stringValue(e["target"]) == wantTarget && asInt64(e["mask"]) == 0 && routeTable(e["table"]) == mainRouteTable {
+				return stringValue(e["nexthop"])
 			}
 		}
 		return ""
@@ -2240,7 +2238,7 @@ func parseWANConn(v4, v6 map[string]any) WANConn {
 		}
 		out := make([]string, 0, len(list))
 		for _, d := range list {
-			if s := str(d); s != "" {
+			if s := stringValue(d); s != "" {
 				out = append(out, s)
 			}
 		}
@@ -2260,7 +2258,7 @@ func parseWANConn(v4, v6 map[string]any) WANConn {
 		return p
 	}
 
-	wc.V4Proto = proto(str(v4["proto"]))
+	wc.V4Proto = proto(stringValue(v4["proto"]))
 	wc.V4Addr = addr(v4, "ipv4-address")
 	wc.V4Gateway = gateway(v4, "0.0.0.0")
 	wc.V4DNS = dns(v4)
@@ -2270,13 +2268,13 @@ func parseWANConn(v4, v6 map[string]any) WANConn {
 		v6Source = v4
 	}
 	if v6Source != nil {
-		wc.V6Proto = proto(str(v6Source["proto"]))
+		wc.V6Proto = proto(stringValue(v6Source["proto"]))
 		wc.V6Addr = addr(v6Source, "ipv6-address")
 		wc.V6Gateway = gateway(v6Source, "::")
 		wc.V6DNS = dns(v6Source)
 		if pfx, ok := v6Source["ipv6-prefix"].([]any); ok && len(pfx) > 0 {
 			if e, ok := pfx[0].(map[string]any); ok {
-				if a := str(e["address"]); a != "" {
+				if a := stringValue(e["address"]); a != "" {
 					wc.V6Prefix = fmt.Sprintf("%s/%d", a, asInt64(e["mask"]))
 				}
 				wc.V6Valid = asInt64(e["valid"])
