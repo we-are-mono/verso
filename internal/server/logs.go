@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/we-are-mono/verso/internal/datatype"
 	"github.com/we-are-mono/verso/internal/openwrt"
 	"github.com/we-are-mono/verso/internal/widget"
 )
@@ -242,8 +243,7 @@ func (s *Server) handleLogSettings(w http.ResponseWriter, r *http.Request) {
 }
 
 func validateLogSettings(values map[string]any) error {
-	port, err := strconv.Atoi(uciString(values["log_port"]))
-	if err != nil || port < 1 || port > 65535 {
+	if datatype.Validate("port", uciString(values["log_port"])) != nil {
 		return fmt.Errorf("Enter a port from 1 to 65535.")
 	}
 	size, err := strconv.Atoi(uciString(values["log_buffer_size"]))

@@ -615,14 +615,7 @@ func percent(value, ceiling int) int {
 	if ceiling <= 0 {
 		return 0
 	}
-	p := value * 100 / ceiling
-	if p < 0 {
-		return 0
-	}
-	if p > 100 {
-		return 100
-	}
-	return p
+	return clampPct(value * 100 / ceiling)
 }
 
 func tempVariant(level string) string {
