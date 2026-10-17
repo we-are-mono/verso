@@ -157,6 +157,17 @@ func panelRequest(r *http.Request) bool {
 	return r.Header.Get("HX-Request") == "true"
 }
 
+// panelRedirect sends the browser on to to: a panel's request by htmx's
+// HX-Redirect, a page's by a 303.
+func panelRedirect(w http.ResponseWriter, r *http.Request, to string) {
+	if panelRequest(r) {
+		w.Header().Set("HX-Redirect", to)
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+	http.Redirect(w, r, to, http.StatusSeeOther)
+}
+
 // panelFlash is a plugin's outcome as a panel carries it for the notification —
 // the notice a page would have arrived with. A render with no notice carries
 // nothing.

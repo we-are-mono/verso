@@ -89,11 +89,7 @@ func (s *Server) handleAlerts(w http.ResponseWriter, r *http.Request) {
 			status, message, cfg = http.StatusBadGateway, "Alert settings could not be saved.", next
 		default:
 			// Staged, so not yet done: the chip says a change waits.
-			if panelRequest(r) {
-				w.Header().Set("HX-Redirect", eventsPath)
-				return
-			}
-			http.Redirect(w, r, eventsPath, http.StatusSeeOther)
+			panelRedirect(w, r, eventsPath)
 			return
 		}
 	}

@@ -146,12 +146,7 @@ func (s *Server) handleChangePanel(w http.ResponseWriter, r *http.Request) {
 			failed = s.changeAct(r.Context(), g, act, kept, full, tr)
 		}
 		if failed == "" {
-			if panelRequest(r) {
-				w.Header().Set("HX-Redirect", changesPath)
-				w.WriteHeader(http.StatusOK)
-				return
-			}
-			http.Redirect(w, r, changesPath, http.StatusSeeOther)
+			panelRedirect(w, r, changesPath)
 			return
 		}
 		since, status = act == "return", http.StatusConflict
@@ -237,20 +232,11 @@ func (s *Server) handleStartPanel(w http.ResponseWriter, r *http.Request) {
 			failed = tr("That is not something a change can do.")
 		case hidden:
 			failed = tr(partNotReadable)
-		case len(plan.Steps) == 0:
-			failed = tr("There is nothing to stage.")
-		case !mayStage(r.Context(), g, plan):
-			failed = tr(g.refusal(notWritable))
-		case !s.stagePlan(r.Context(), s.sessionSID(r), plan, tr):
-			failed = tr("The changes could not be staged. Some may have been: review or discard them from the staged changes.")
 		default:
-			s.relations.set(s.sessionSID(r), stageRelation{relation: "return", reverses: inForceAfter(all, history.Change{})})
-			if panelRequest(r) {
-				w.Header().Set("HX-Redirect", changesPath)
-				w.WriteHeader(http.StatusOK)
-				return
-			}
-			http.Redirect(w, r, changesPath, http.StatusSeeOther)
+			failed = s.stageAct(r.Context(), g, plan, stageRelation{relation: "return", reverses: inForceAfter(all, history.Change{})}, tr)
+		}
+		if failed == "" {
+			panelRedirect(w, r, changesPath)
 			return
 		}
 		status = http.StatusConflict

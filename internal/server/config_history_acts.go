@@ -545,6 +545,12 @@ func (s *Server) changeAct(ctx context.Context, g *sessionGrants, act string, c 
 	default:
 		return tr("That is not something a change can do.")
 	}
+	return s.stageAct(ctx, g, plan, rel, tr)
+}
+
+// stageAct stages an act's plan into g's session and remembers what the stage
+// is to history, rel, or says why it could not.
+func (s *Server) stageAct(ctx context.Context, g *sessionGrants, plan actPlan, rel stageRelation, tr func(string) string) string {
 	switch {
 	case plan.Unknown:
 		return tr("What it replaced was never recorded, so it cannot be put back.")

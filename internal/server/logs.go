@@ -183,11 +183,7 @@ func (s *Server) handleLogSettings(w http.ResponseWriter, r *http.Request) {
 			status, message, values = http.StatusBadGateway, "Log settings could not be saved.", input
 		} else {
 			// Staged, so not yet done: the chip says a change waits.
-			if panelRequest(r) {
-				w.Header().Set("HX-Redirect", "/system/logs")
-				return
-			}
-			http.Redirect(w, r, "/system/logs", http.StatusSeeOther)
+			panelRedirect(w, r, "/system/logs")
 			return
 		}
 	}
