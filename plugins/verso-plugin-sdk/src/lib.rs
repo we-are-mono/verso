@@ -41,6 +41,8 @@ pub use errors::Errors;
 pub mod files;
 mod sha256;
 pub use sha256::{sha256, sha256_hex};
+mod uci_bool;
+pub use uci_bool::uci_bool;
 /// What a config can hold, as the daemon that reads it defines — and the guard
 /// that every option is either rendered, deliberately left out, or unsupported
 /// upstream. See [`vocabulary`].
