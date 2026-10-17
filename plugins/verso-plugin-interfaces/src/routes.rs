@@ -69,8 +69,8 @@ impl Route {
         Route {
             v6: r.kind == "route6",
             text,
-            enabled: r.get("disabled") != "1",
-            onlink: r.get("onlink") == "1",
+            enabled: !r.flag("disabled", false),
+            onlink: r.flag("onlink", false),
         }
     }
     fn posted(v6: bool, f: &Form) -> Route {
@@ -994,6 +994,29 @@ mod tests {
             tables(&page)[0]["empty_text"],
             "No routes are configured or reported by the router."
         );
+    }
+
+    #[test]
+    fn a_routes_switches_read_as_netifd_reads_them() {
+        let route = |disabled: &str, onlink: &str| {
+            Route::read(&Record {
+                id: "r".into(),
+                anonymous: false,
+                kind: "route".into(),
+                values: json!({"disabled": disabled, "onlink": onlink})
+                    .as_object()
+                    .cloned()
+                    .unwrap_or_default(),
+            })
+        };
+        // netifd's uci reader takes 1/true and 0/false; any other spelling
+        // leaves the option unset, so the route stays in effect and off-link.
+        let r = route("true", "true");
+        assert!(!r.enabled && r.onlink);
+        let r = route("yes", "on");
+        assert!(r.enabled && !r.onlink);
+        let r = route("false", "0");
+        assert!(r.enabled && !r.onlink);
     }
 
     #[test]

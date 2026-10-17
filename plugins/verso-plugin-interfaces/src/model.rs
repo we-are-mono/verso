@@ -30,6 +30,16 @@ impl Record {
     pub fn list(&self, key: &str) -> Vec<String> {
         strings(self.values.get(key))
     }
+    /// flag reads a boolean option the way netifd does: uci's blob reader
+    /// takes `1`/`true` and `0`/`false` and drops any other spelling, which
+    /// leaves the option at `default`.
+    pub fn flag(&self, key: &str, default: bool) -> bool {
+        match self.get(key).as_str() {
+            "1" | "true" => true,
+            "0" | "false" => false,
+            _ => default,
+        }
+    }
 }
 pub fn strings(v: Option<&Value>) -> Vec<String> {
     match v {

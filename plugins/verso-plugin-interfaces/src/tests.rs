@@ -747,6 +747,42 @@ fn an_object_is_edited_in_a_drawer_over_the_listing() {
     assert!(!drawer.contains("Check the highlighted fields."));
 }
 #[test]
+fn the_editors_switches_read_as_netifd_reads_them() {
+    fn switch(v: &serde_json::Value, name: &str) -> Option<bool> {
+        match v {
+            serde_json::Value::Object(o)
+                if o.get("type") == Some(&json!("switch"))
+                    && o.get("name") == Some(&json!(name)) =>
+            {
+                Some(o.get("on") == Some(&json!(true)))
+            }
+            serde_json::Value::Object(o) => o.values().find_map(|x| switch(x, name)),
+            serde_json::Value::Array(a) => a.iter().find_map(|x| switch(x, name)),
+            _ => None,
+        }
+    }
+    let m = Model::read(&Request {
+        path: "/".into(),
+        query: Form::default(),
+        snapshot: Snapshot::from_value(json!({"network": {
+            "uplink": {".name": "uplink", ".type": "interface", "device": "eth1", "proto": "dhcp",
+                "auto": "false", "peerdns": "0", "defaultroute": "no"},
+            "br": {".name": "br", ".type": "device", "name": "br-lan", "type": "bridge",
+                "ports": ["eth0"], "stp": "yes", "igmp_snooping": "true"}
+        }})),
+        ubus: Ubus::from_value(json!({})),
+    });
+    // netifd's uci reader takes 1/true and 0/false; any other spelling leaves
+    // the option at netifd's default.
+    let uplink = serde_json::to_value(editor::edit(&m, "uplink", "")).unwrap();
+    assert_eq!(switch(&uplink, "auto"), Some(false));
+    assert_eq!(switch(&uplink, "peerdns"), Some(false));
+    assert_eq!(switch(&uplink, "defaultroute"), Some(true));
+    let bridge = serde_json::to_value(editor::edit(&m, "", "br-lan")).unwrap();
+    assert_eq!(switch(&bridge, "stp"), Some(false));
+    assert_eq!(switch(&bridge, "igmp_snooping"), Some(true));
+}
+#[test]
 fn every_way_into_the_editor_opens_it_in_place() {
     let m = Model::read(&request("/", ""));
     // A row's pencil is its panel, so the shell opens it over the listing.

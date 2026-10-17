@@ -102,6 +102,19 @@ fn defaults(m: &Model, kind: &str, network: &str, device: &str) -> Values {
                 v.set(k, s);
             }
         }
+        // The switches hold "1" or "0"; a section may spell its truth any way
+        // netifd reads one, or a way netifd leaves at its own default.
+        for (k, netifd_default) in [
+            ("auto", true),
+            ("peerdns", true),
+            ("defaultroute", true),
+            ("stp", false),
+            ("igmp_snooping", false),
+        ] {
+            if r.values.contains_key(k) {
+                v.set(k, if r.flag(k, netifd_default) { "1" } else { "0" });
+            }
+        }
         for k in ["ports", "dns"] {
             v.lists.insert(k.into(), r.list(k));
         }
@@ -118,7 +131,6 @@ fn defaults(m: &Model, kind: &str, network: &str, device: &str) -> Values {
                 v.set("peeraddr", r.get("peer6addr"));
             }
             v.set("zone", m.zone(network));
-            v.set("auto", if r.get("auto") == "0" { "0" } else { "1" });
         } else {
             v.set("device", r.get("ifname"));
             v.set("vlan_protocol", r.get("type"));
