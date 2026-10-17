@@ -18,7 +18,7 @@ func TestEveryLabelledRowIsOneFrame(t *testing.T) {
 	// The option chip beside a setting's name is 21px, 2px inside the name's
 	// 24px line over it and 1px under: nothing stands under a name now, its
 	// answer beside it.
-	key := `<span class="verso-chip mt-0.5 mb-px pt-px pb-0.5 inline-flex items-center align-top gap-1.5 rounded-xs border px-1.5 leading-4 whitespace-nowrap text-sm font-medium font-mono border-rule bg-quiet text-meta">opt</span>`
+	key := `<span class="verso-chip" data-verso-key data-verso-verbatim>opt</span>`
 	for name, w := range map[string]Widget{
 		"field":    &Field{Name: "opt", Label: "Option", Key: "opt", Staged: true},
 		"code":     &Field{Name: "opt", Label: "Option", Key: "opt", Style: "code", Staged: true},

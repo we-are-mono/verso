@@ -49,7 +49,7 @@ func TestChipMarkIsNoneAnIconOrThePacket(t *testing.T) {
 		"entity toned":  renderChipCell(t, r, TableChip{Label: "lan", Tone: "success"}),
 		"entity accent": renderChipCell(t, r, TableChip{Label: "lan", Tone: "accent"}),
 	} {
-		if !strings.Contains(got, chipMonoBox) || strings.Contains(got, "font-normal font-mono") {
+		if !strings.Contains(got, `class="verso-chip"`) || !strings.Contains(got, "data-verso-verbatim") {
 			t.Errorf("%s: a mono chip is the 500 box:\n%s", name, got)
 		}
 	}
@@ -88,7 +88,7 @@ func TestEveryCitationChipIsOneBox(t *testing.T) {
 	}{
 		"masthead protocol": {
 			render(t, r, &Overview{V4Proto: "DHCP", V4: []OverviewFact{{Label: "Address", Value: "172.30.1.171/24"}}}),
-			[]string{chipMonoBox + " border-rule bg-quiet text-meta\">dhcp"},
+			[]string{monoChip + "dhcp"},
 		},
 	} {
 		for _, want := range tc.want {

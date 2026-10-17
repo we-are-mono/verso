@@ -197,8 +197,7 @@ func TestRenderBadge(t *testing.T) {
 	for _, want := range []string{
 		// the state mark is the app's one mark: a 6px square, the packet
 		"Connected", `class="verso-mark" data-verso-tone="success"`,
-		"border-green-line bg-green-soft text-green-deep", // light treatment is unchanged
-		"rounded-xs border",
+		`<span class="verso-chip" data-verso-verbatim data-verso-tone="success">`, // the chip in its tone
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("success badge missing %q in: %s", want, got)
@@ -208,7 +207,7 @@ func TestRenderBadge(t *testing.T) {
 	// name. A pill with no hue — the firewall's drop — is the neutral chip, the
 	// same box and colours as every other chip without a hue.
 	neutral := render(t, r, &Badge{Variant: "neutral", Text: "Offline"})
-	if !strings.Contains(neutral, chipMonoBox+"\n  border-rule bg-quiet text-meta") {
+	if !strings.Contains(neutral, `<span class="verso-chip" data-verso-verbatim data-verso-tone="neutral">Offline`) {
 		t.Errorf("neutral badge should be the neutral chip: %s", neutral)
 	}
 	if strings.Contains(neutral, "verso-mark") {

@@ -1,0 +1,89 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/* SPDX-FileCopyrightText: 2026 Mono Technologies Inc. */
+
+/*
+ * chip — the one small bordered box that cites a thing: a verdict pill, an
+ * interface or zone in a row, a config value, a row's tag, an option's key.
+ * One height wherever it stands, because a reader who sees two heights reads
+ * two kinds of thing: 18px, a 16px line and the hairline over and under it,
+ * 3px inside the 24px line it rides on, so the line keeps its 24px and a chip
+ * in running text hangs from the line's top rather than pushing it taller.
+ * Its words take the chip role (type.css): sans for words, the verbatim form
+ * (mono, a step heavier) for a string the machine wrote.
+ *
+ * Elements: verso-chip__glyph  the Lucide glyph a chip may lead with, in its
+ *                               tone's ink (Faint when it has none)
+ * Variants: data-verso-tone      accent, info · success · warning · danger;
+ *                               none: the neutral chip, Hairline on Quiet Sand
+ *           data-verso-verbatim  its words are a machine string (type.css)
+ *           data-verso-key       the option chip beside a setting's name: 21px,
+ *                               2px inside the name's line over it and 1px
+ *                               under, a pixel more air over its word and two
+ *                               more under, so the word reads centred
+ *           data-verso-endpoint  an end of a traffic path that is out on the
+ *                               network: it draws no frame and its words are
+ *                               Ink, so an address reads as the row's own
+ *                               value; "any" leads with the quietest glyph
+ */
+
+.verso-chip {
+  display: inline-flex;
+  align-items: center;
+  vertical-align: top;
+  gap: calc(var(--spacing) * 1.5);
+  margin-block: calc(var(--spacing) * 0.75);
+  padding-inline: calc(var(--spacing) * 1.5);
+  border: 1px solid var(--verso-chip-edge, var(--color-rule));
+  border-radius: var(--radius-xs);
+  background-color: var(--verso-chip-ground, var(--color-quiet));
+  color: var(--verso-chip-ink, var(--color-meta));
+  white-space: nowrap;
+  @apply type-chip;
+}
+
+.verso-chip__glyph {
+  display: inline-flex;
+  flex-shrink: 0;
+  color: var(--verso-chip-glyph, var(--color-faint));
+}
+
+.verso-chip:is([data-verso-tone="accent"], [data-verso-tone="info"]) {
+  --verso-chip-edge: var(--color-denim-line);
+  --verso-chip-ground: var(--color-denim-soft);
+  --verso-chip-ink: var(--color-denim-deep);
+  --verso-chip-glyph: var(--color-denim);
+}
+.verso-chip[data-verso-tone="success"] {
+  --verso-chip-edge: var(--color-green-line);
+  --verso-chip-ground: var(--color-green-soft);
+  --verso-chip-ink: var(--color-green-deep);
+  --verso-chip-glyph: var(--color-green-deep);
+}
+.verso-chip[data-verso-tone="warning"] {
+  --verso-chip-edge: var(--color-marigold-line);
+  --verso-chip-ground: var(--color-marigold-soft);
+  --verso-chip-ink: var(--color-marigold-deep);
+  --verso-chip-glyph: var(--color-marigold-deep);
+}
+.verso-chip[data-verso-tone="danger"] {
+  --verso-chip-edge: var(--color-crimson-line);
+  --verso-chip-ground: var(--color-crimson-soft);
+  --verso-chip-ink: var(--color-crimson-deep);
+  --verso-chip-glyph: var(--color-crimson-deep);
+}
+
+.verso-chip[data-verso-key] {
+  margin-top: calc(var(--spacing) * 0.5);
+  margin-bottom: 1px;
+  padding-top: 1px;
+  padding-bottom: calc(var(--spacing) * 0.5);
+}
+
+.verso-chip[data-verso-endpoint] {
+  --verso-chip-edge: transparent;
+  --verso-chip-ground: transparent;
+  --verso-chip-ink: var(--color-ink);
+}
+.verso-chip[data-verso-endpoint="any"] {
+  --verso-chip-glyph: var(--color-sand-5);
+}

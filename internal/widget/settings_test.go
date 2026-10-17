@@ -125,9 +125,9 @@ func TestRenderSettings(t *testing.T) {
 	for _, want := range []string{
 		"Default policies", "What happens to traffic no zone claims.",
 		"in: reject", "out: accept", // policy pills render through the badge
-		"bg-marigold-soft",            // reject carries the warning palette
+		`data-verso-tone="warning"`,   // reject carries the warning tone
 		"synflood_protect",            // the underlying option is on the row
-		"font-mono",                   // …as a mono code chip
+		"data-verso-verbatim",         // …as a mono code chip
 		`type="checkbox"`,             // toggle rows carry the shared switch
 		`class="verso-field-row`,      // every row is a row of the ledger
 		`class="verso-field-question`, // …its title the question

@@ -97,10 +97,10 @@ func TestRenderTableEndpoints(t *testing.T) {
 		// this device rather than something out on the network, and the action
 		// colour is what says so. A chip, so the one chip box; sans, because
 		// "router" names a thing rather than a value someone could type.
-		chipBox + " border-denim-line bg-denim-soft text-denim-deep\">",
-		// Every other end reads verbatim, in the mono reading size, inside the
-		// same box drawn transparent so the column lines up.
-		"border-transparent font-mono text-base font-medium tabular-nums text-ink",
+		`<span ` + chipBox + ` data-verso-tone="accent">`,
+		// Every other end reads verbatim, inside the same box drawn without a
+		// frame so the column lines up.
+		`<span ` + chipBox + ` data-verso-endpoint="zone" data-verso-verbatim>`,
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("endpoints missing %q:\n%s", want, got)
@@ -136,7 +136,7 @@ func TestRenderEndpointTypeIsFixedByKind(t *testing.T) {
 			{Kind: "zone", Label: "guest"},
 		}}}}},
 	})
-	const want = "border-transparent font-mono text-base font-medium tabular-nums text-ink"
+	const want = `<span class="verso-chip" data-verso-endpoint="zone" data-verso-verbatim>`
 	if !strings.Contains(leading, want) || !strings.Contains(trailing, want) {
 		t.Errorf("an endpoint's treatment must not depend on its column:\n%s\n%s", leading, trailing)
 	}
@@ -405,10 +405,10 @@ func TestRenderTableNameAndPill(t *testing.T) {
 		},
 	})
 	for _, want := range []string{
-		"font-semibold text-ink",              // the identity column is emphasised ink, no icon
-		"bg-green-soft text-green-deep",       // accept pill through the badge palette
-		"bg-marigold-soft text-marigold-deep", // reject pill
-		"bg-denim-soft text-denim-deep",       // NAT carries the info accent
+		"font-semibold text-ink",    // the identity column is emphasised ink, no icon
+		`data-verso-tone="success"`, // accept pill through the badge palette
+		`data-verso-tone="warning"`, // reject pill
+		`data-verso-tone="info"`,    // NAT carries the info accent
 		`font-sans text-sm whitespace-nowrap text-faint"><span aria-hidden="true">—</span><span class="sr-only">None</span></td>`, // empty pill cell is the absence mark, said as "None"
 	} {
 		if !strings.Contains(got, want) {
@@ -435,7 +435,7 @@ func TestRenderTableReferenceWithZoneChip(t *testing.T) {
 	// One chip box everywhere — 14px in a 16px line, 2px padding, 1px hairline —
 	// so a reader never meets two heights of the same kind of thing; mono, so
 	// one step heavier.
-	if !strings.Contains(got, chipMonoBox+" border-rule bg-quiet text-meta") {
+	if !strings.Contains(got, `<span class="verso-chip" data-verso-verbatim>`) {
 		t.Errorf("reference chips should carry the one chip treatment:\n%s", got)
 	}
 }
@@ -1399,7 +1399,7 @@ func TestCellDetailStandsUnderItsValue(t *testing.T) {
 		">this browser</span>",
 		// the 20px chip fills the 20px detail line rather than making the line
 		// taller
-		"verso-chip my-0.75 " + chipBox,
+		`<span ` + chipBox,
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("want %s in:\n%s", want, got)
@@ -1421,27 +1421,26 @@ func TestCellDetailStandsUnderItsValue(t *testing.T) {
 	}
 }
 
-// chipBox is the one chip every citation wears, the Interfaces page's: 14px
-// regular words on a 16px line inside a 1px border, so the box is 18px, 3px
-// inside the 24px line it rides on either side, its words on that line.
-const chipBox = "inline-flex items-center align-top gap-1.5 rounded-xs border px-1.5 leading-4 whitespace-nowrap text-sm font-normal"
+// chipBox opens the one chip every citation wears (blocks/chip.css): 14px
+// words on a 16px line inside a 1px border, so the box is 18px, 3px inside the
+// 24px line it rides on either side, its words on that line.
+const chipBox = `class="verso-chip"`
 
-// chipMonoBox is the same box for a chip whose words the machine wrote: mono,
-// one step heavier (500), because mono at 400 reads a size smaller than the
-// sans beside it.
-const chipMonoBox = "inline-flex items-center align-top gap-1.5 rounded-xs border px-1.5 leading-4 whitespace-nowrap text-sm font-medium font-mono"
+// monoChip is the neutral chip whose words the machine wrote, which the chip
+// role sets in its verbatim form: mono, one step heavier (type.css).
+const monoChip = `<span class="verso-chip" data-verso-verbatim>`
 
 // TestTableTagAlwaysWearsItsHairline: a tag is a chip — the same box as every
 // other chip, with the hairline of its own hue — with or without an icon.
 func TestTableTagAlwaysWearsItsHairline(t *testing.T) {
 	for variant, tone := range map[string]string{
-		"":        "border-rule bg-quiet text-meta",
-		"info":    "border-denim-line bg-denim-soft text-denim-deep",
-		"warning": "border-marigold-line bg-marigold-soft text-marigold-deep",
-		"success": "border-green-line bg-green-soft text-green-deep",
-		"danger":  "border-crimson-line bg-crimson-soft text-crimson-deep",
+		"":        "",
+		"info":    ` data-verso-tone="info"`,
+		"warning": ` data-verso-tone="warning"`,
+		"success": ` data-verso-tone="success"`,
+		"danger":  ` data-verso-tone="danger"`,
 	} {
-		want := chipBox + " " + tone
+		want := `<span ` + chipBox + tone + `>`
 		for _, icon := range []string{"", "globe"} {
 			got := render(t, newRenderer(t), &Table{
 				Columns: []TableColumn{{Label: "Source", Kind: "reference"}},

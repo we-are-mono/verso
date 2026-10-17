@@ -228,7 +228,7 @@ func TestRenderSectionChip(t *testing.T) {
 	translateSchema(s, func(string) string { return "translated" })
 	got := render(t, newRenderer(t), s)
 	title := strings.Index(got, ">translated</h2>")
-	chip := strings.Index(got, `border-rule bg-quiet text-meta">xfi0</span>`)
+	chip := strings.Index(got, `<span class="verso-chip" data-verso-verbatim>xfi0</span>`)
 	if title < 0 || chip < title {
 		t.Errorf("the shell's chip should follow the title in the header, verbatim:\n%s", got)
 	}

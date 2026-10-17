@@ -163,32 +163,6 @@
      x-height reads as beside mono at 16. */}}
 {{define "verso-input-words"}}{{template "verso-input-box"}} font-sans text-sm font-normal{{end}}
 
-{{/* verso-chip-box: every chip's shape, stated once. A chip is one height
-     wherever it appears — beside a field's label, in a table's group band, on a
-     panel's tab, after a row's name — because a reader who sees two heights
-     reads two kinds of thing, and a chip is one kind of thing.
-
-     18px, and the arithmetic that gets there rather than a height anyone has to
-     honour by hand: a 14px value in a 16px line box and the 1px hairline above
-     and below. Retune it by moving the line box and the whole vocabulary
-     follows. */}}
-{{/* verso-chip-shape is that box with the type left out, for the one chip whose
-     words are not chip-sized — a traffic endpoint, which reads at the mono
-     reading size because it is an address someone could type. The 16px line box
-     is what holds every chip to one height whatever size its words are. */}}
-{{/* A chip is 18px, 3px inside the 24px line it rides on either side, so the
-     line keeps its 24px and the chip stands clear of a field under its label:
-     in running text it hangs from the line's top rather than its baseline,
-     which would push the line taller. Its words stay centred on the line, so
-     they share the baseline of the words beside them. */}}
-{{define "verso-chip-shape"}}verso-chip my-0.75 {{template "verso-chip-frame"}}{{end}}
-{{define "verso-chip-frame"}}inline-flex items-center align-top gap-1.5 rounded-xs border px-1.5 leading-4 whitespace-nowrap{{end}}
-{{/* verso-key-chip-class: the option chip beside a setting's name, 21px,
-     2px inside the name's 24px line over it and 1px under it, with a pixel
-     more air over its word and two more under it than a chip in a line of
-     prose, so the word reads centred in its box: nothing stands under a
-     setting's name, its answer stands beside it. */}}
-{{define "verso-key-chip-class"}}verso-chip mt-0.5 mb-px pt-px pb-0.5 {{template "verso-chip-frame"}} text-sm font-medium font-mono border-rule bg-quiet text-meta{{end}}
 
 {{/* One form geometry on pages and in drawers: labels above controls, with
      checkboxes beside their labels. forms.css owns spacing, content measures
@@ -215,7 +189,7 @@
 {{define "verso-field-label"}}
 <div class="verso-field-label flex min-w-0 flex-wrap items-center gap-2">
   {{if .Label}}{{if .Group}}<span{{template "verso-field-label-attrs" .}}>{{template "verso-field-label-text" .}}</span>{{else}}<label for="{{.For}}"{{template "verso-field-label-attrs" .}}>{{template "verso-field-label-text" .}}</label>{{end}}{{end}}
-  {{if .Key}}<span class="{{template "verso-key-chip-class"}}">{{.Key}}</span>{{end}}
+  {{if .Key}}<span class="verso-chip" data-verso-key data-verso-verbatim>{{.Key}}</span>{{end}}
   {{if .Staged}}{{template "verso-staged-row" .StagedAt}}{{end}}
 </div>
 {{end}}
@@ -378,22 +352,6 @@
 {{define "verso-box-part"}}<span class="verso-box-part" data-verso-measure="{{.Measure}}"{{if .Track}} data-verso-change-field data-verso-change-name="{{.Name}}" data-verso-change-label="{{.Label}}" data-verso-change-kind="{{.ChangeKind}}"{{with .Key}} data-verso-writes="{{.}}"{{end}}{{end}}>{{if eq .Kind "select"}}<select id="{{.Name}}" name="{{.Name}}"{{if .Named}} aria-label="{{.Label}}"{{end}}{{template "verso-field-aria" .}} class="verso-box-select">
       {{range .Options}}<option value="{{.Value}}"{{if eq .Value $.Value}} selected{{end}}>{{.Label}}</option>{{end}}
     </select><span aria-hidden="true" class="verso-box-chevron">{{icon "chevron-down" "size-4"}}</span>{{else}}<input id="{{.Name}}" name="{{.Name}}"{{if eq .Kind "password"}} type="password" autocomplete="{{if .Autocomplete}}{{.Autocomplete}}{{else}}new-password{{end}}"{{else}} value="{{.Value}}" type="text"{{end}}{{if .Named}} aria-label="{{.Label}}"{{end}}{{if eq .Measure "number"}} inputmode="numeric"{{end}}{{with .Placeholder}} placeholder="{{.}}"{{end}}{{if .Autofocus}} autofocus{{end}}{{with .Datatype}} data-datatype="{{.}}"{{end}}{{template "verso-field-aria" .}} class="verso-box-input {{if .Words}}font-sans text-sm{{else}}font-mono text-base{{end}} font-normal">{{with .Unit}}<span id="{{$.Name}}-unit" class="verso-box-unit">{{.}}</span>{{else}}{{if .Shown}}<span aria-hidden="true" class="verso-box-unit">{{.Label}}</span>{{end}}{{end}}{{end}}</span>{{end}}
-{{/* A chip's word is set at the regular weight. The box already separates it
-     from the prose around it, so weight on top of a border and a fill is one
-     emphasis too many — and a page of bolded chips reads as a page of shouting.
-     The endpoint chips are the exception and spell their own weight: what they
-     carry is an address someone will retype, and it holds the row's eye. */}}
-{{define "verso-chip-box"}}{{template "verso-chip-shape"}} text-sm font-normal{{end}}
-{{/* verso-chip-mono: the same box for a chip whose words the machine wrote —
-     mono, one step heavier (500), because mono at 400 reads a size smaller
-     than the sans beside it. */}}
-{{define "verso-chip-mono"}}{{template "verso-chip-shape"}} text-sm font-medium font-mono{{end}}
-
-{{/* verso-chip-class: the neutral category/reference chip — the one chip
-     treatment an entity cited inside another row wears everywhere. Mono,
-     because what it states is a machine string someone could type elsewhere. */}}
-{{define "verso-chip-class"}}{{template "verso-chip-mono"}} border-rule bg-quiet text-meta{{end}}
-
 {{/* verso-token-chip: the one chip that is not a citation. Every chip above
      states a fact somewhere in the page's prose and is sized to the words around
      it; this one is a value a person put inside a control and can take back out,
@@ -487,7 +445,7 @@
 {{/* verso-chip: the entity chip (an interface, a zone, a port) — the label
      names the one, led by one mark or none: a Lucide glyph naming the kind, or
      the packet square in the chip's tone. An icon wins. */}}
-{{define "verso-chip"}}<span{{if .Title}} data-verso-tip tabindex="0" aria-describedby="{{.TipID}}"{{end}}{{if not .LocalizeLabel}} data-verso-verbatim{{end}} class="{{if .LocalizeLabel}}{{template "verso-chip-box"}} font-sans{{else}}{{template "verso-chip-mono"}}{{end}} {{if eq .Tone "accent"}}border-denim-line bg-denim-soft text-denim-deep{{else if eq .Tone "success"}}border-green-line bg-green-soft text-green-deep{{else if eq .Tone "warning"}}border-marigold-line bg-marigold-soft text-marigold-deep{{else if eq .Tone "danger"}}border-crimson-line bg-crimson-soft text-crimson-deep{{else}}border-rule bg-quiet text-meta{{end}}{{if .Title}} relative z-10 cursor-help focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim{{end}}">{{if .Icon}}<span class="{{if eq .Tone "accent"}}text-denim{{else if eq .Tone "success"}}text-green-deep{{else if eq .Tone "warning"}}text-marigold-deep{{else if eq .Tone "danger"}}text-crimson-deep{{else}}text-faint{{end}}">{{icon .Icon "size-3.5"}}</span>{{else if .Dot}}{{template "verso-chip-packet" .Tone}}{{end}}{{.Label}}{{if .Title}}<span role="tooltip" id="{{.TipID}}" class="absolute left-0 z-30 {{if .LimitTip}}w-72 p-4{{else}}w-max max-w-64 px-3 py-2{{end}} rounded-xs border border-rule-strong bg-ground text-left font-sans text-sm leading-tight font-normal {{if .LimitTip}}whitespace-normal{{else}}whitespace-pre-line{{end}} text-ink shadow-(--shadow-float)">{{if .LimitTip}}<span class="sr-only">{{.Title}}</span>{{template "verso-device-limit-tip" .LimitTip}}{{else}}{{.Title}}{{end}}</span>{{end}}</span>{{end}}
+{{define "verso-chip"}}<span class="verso-chip{{if .Title}} relative z-10 cursor-help focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim{{end}}"{{if not .LocalizeLabel}} data-verso-verbatim{{end}}{{with .Tone}} data-verso-tone="{{.}}"{{end}}{{if .Title}} data-verso-tip tabindex="0" aria-describedby="{{.TipID}}"{{end}}>{{if .Icon}}<span class="verso-chip__glyph">{{icon .Icon "size-3.5"}}</span>{{else if .Dot}}{{template "verso-chip-packet" .Tone}}{{end}}{{.Label}}{{if .Title}}<span role="tooltip" id="{{.TipID}}" class="absolute left-0 z-30 {{if .LimitTip}}w-72 p-4{{else}}w-max max-w-64 px-3 py-2{{end}} rounded-xs border border-rule-strong bg-ground text-left font-sans text-sm leading-tight font-normal {{if .LimitTip}}whitespace-normal{{else}}whitespace-pre-line{{end}} text-ink shadow-(--shadow-float)">{{if .LimitTip}}<span class="sr-only">{{.Title}}</span>{{template "verso-device-limit-tip" .LimitTip}}{{else}}{{.Title}}{{end}}</span>{{end}}</span>{{end}}
 
 {{/* verso-dot: the status dot, a mark (blocks/mark.css) in a tone of the badge
      vocabulary, filled in Glyph for any other; success pulses, since it marks

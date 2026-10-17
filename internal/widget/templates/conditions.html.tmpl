@@ -78,7 +78,7 @@
                  but it is not an offer any more, so it is quiet and inert. */}}
             <button type="button" data-verso-condition-choose="{{.Key}}"{{if .Active}} disabled{{end}} class="flex w-full items-center gap-3 border-t border-rule px-4 py-2 text-left transition-colors first:border-t-0 enabled:cursor-pointer enabled:hover:bg-quiet/50 disabled:opacity-45">
               <span class="flex-none text-sm font-semibold text-ink">{{.Label}}</span>
-              <span class="{{template "verso-chip-class"}}">{{.Key}}</span>
+              <span class="verso-chip" data-verso-verbatim>{{.Key}}</span>
               {{if .Hint}}<span class="ml-auto flex-none text-sm text-meta">{{.Hint}}</span>{{end}}
             </button>
             {{end}}

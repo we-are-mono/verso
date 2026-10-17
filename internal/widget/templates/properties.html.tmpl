@@ -43,7 +43,7 @@
      and the values, set as the head of a table is. */}}
 {{define "properties.head"}}<div data-verso-properties-head class="flex items-center {{if .Head.Value}}gap-x-6{{else}}gap-3{{end}} border-b border-rule-strong py-2 text-sm leading-6 font-semibold text-ink">
   {{if .Head.Value}}<span class="shrink-0{{if eq .Align "left"}} sm:w-24{{end}}">{{.Head.Label}}</span><span{{if ne .Align "left"}} class="ml-auto"{{end}}>{{.Head.Value}}</span>
-  {{else}}<h3 class="text-sm leading-6 font-semibold text-ink">{{.Head.Label}}</h3>{{if .Head.Chip}}<span class="{{template "verso-chip-class"}}">{{.Head.Chip}}</span>{{end}}{{end}}
+  {{else}}<h3 class="text-sm leading-6 font-semibold text-ink">{{.Head.Label}}</h3>{{if .Head.Chip}}<span class="verso-chip" data-verso-verbatim>{{.Head.Chip}}</span>{{end}}{{end}}
 </div>{{end}}
 {{if .Head}}<section aria-label="{{.Head.Label}}" class="min-w-0">{{template "properties.head" .}}{{end}}
 {{/* No facts: the empty set's slot where the first row would stand, its
@@ -95,7 +95,7 @@
            right edge it leads the value on its line, 8px off. Either way it
            is centred on the value's 24px first line, 9px down. */}}
       {{if .Dot}}<span class="verso-mark {{if eq $.Align "left"}}absolute -left-3.75 top-2.25{{else}}mt-2.25 mr-2{{end}}" data-verso-tone="{{.Dot}}"{{if .Key}} data-verso-prop-dot="{{.Key}}"{{end}} aria-hidden="true"></span>{{end}}
-      {{if .Chip}}<span class="{{template "verso-chip-class"}}">{{.Value}}</span>{{else if .Next}}
+      {{if .Chip}}<span class="verso-chip" data-verso-verbatim>{{.Value}}</span>{{else if .Next}}
       {{/* What the value becomes, under what it is — as a table's cell says
            it: the value it was recedes to Meta, and what it becomes stands in
            Ink, led by the arrow turning down into it in the action colour. */}}

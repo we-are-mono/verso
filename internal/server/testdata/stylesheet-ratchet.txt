@@ -40,7 +40,6 @@ classes-are-blocks	verso-chart-series
 classes-are-blocks	verso-chart-tick
 classes-are-blocks	verso-chart-yl
 classes-are-blocks	verso-chevron
-classes-are-blocks	verso-chip
 classes-are-blocks	verso-collection
 classes-are-blocks	verso-colophon-fact
 classes-are-blocks	verso-condition
@@ -197,11 +196,6 @@ no-class-string-templates	widget/templates/shared.html.tmpl	verso-btn-icon-look
 no-class-string-templates	widget/templates/shared.html.tmpl	verso-btn-primary
 no-class-string-templates	widget/templates/shared.html.tmpl	verso-btn-secondary
 no-class-string-templates	widget/templates/shared.html.tmpl	verso-btn-waiting
-no-class-string-templates	widget/templates/shared.html.tmpl	verso-chip-box
-no-class-string-templates	widget/templates/shared.html.tmpl	verso-chip-class
-no-class-string-templates	widget/templates/shared.html.tmpl	verso-chip-frame
-no-class-string-templates	widget/templates/shared.html.tmpl	verso-chip-mono
-no-class-string-templates	widget/templates/shared.html.tmpl	verso-chip-shape
 no-class-string-templates	widget/templates/shared.html.tmpl	verso-control-band-class
 no-class-string-templates	widget/templates/shared.html.tmpl	verso-copy-tip-class
 no-class-string-templates	widget/templates/shared.html.tmpl	verso-dialog-box
@@ -221,7 +215,6 @@ no-class-string-templates	widget/templates/shared.html.tmpl	verso-input-box
 no-class-string-templates	widget/templates/shared.html.tmpl	verso-input-class
 no-class-string-templates	widget/templates/shared.html.tmpl	verso-input-fill
 no-class-string-templates	widget/templates/shared.html.tmpl	verso-input-words
-no-class-string-templates	widget/templates/shared.html.tmpl	verso-key-chip-class
 no-class-string-templates	widget/templates/shared.html.tmpl	verso-kicker-class
 no-class-string-templates	widget/templates/shared.html.tmpl	verso-press
 no-class-string-templates	widget/templates/shared.html.tmpl	verso-refusal-band
@@ -1049,7 +1042,7 @@ short-class-lists	widget/templates/actionbar.html.tmpl	flex h-control shrink-0 c
 short-class-lists	widget/templates/actionbar.html.tmpl	flex h-control shrink-0 items-center gap-2 rounded-xs border border-denim bg-denim px-4 text-sm font-semibold whitespace-nowrap text-on-fill transition-colors hover:border-denim-deep hover:bg-denim-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim-deep {{template "verso-press"}}
 short-class-lists	widget/templates/actionbar.html.tmpl	flex h-control shrink-0 items-center gap-2 rounded-xs border px-4 text-sm font-semibold whitespace-nowrap {{template "verso-btn-secondary"}} focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim
 short-class-lists	widget/templates/actionbar.html.tmpl	h-control w-full cursor-pointer appearance-none rounded-xs border border-rule-strong bg-canvas pr-9 pl-3 text-sm text-ink shadow-(--shadow-field) transition-colors hover:border-faint focus:border-denim focus:outline-none
-short-class-lists	widget/templates/badge.html.tmpl	{{if eq .Size "lg"}}inline-flex items-center gap-2 rounded-xs border px-3 py-3 text-sm font-medium{{else}}{{template "verso-chip-mono"}}{{end}} {{if eq .Variant "success"}}border-green-line bg-green-soft text-green-deep {{else if eq .Variant "warning"}}border-marigold-line bg-marigold-soft text-marigold-deep {{else if eq .Variant "danger"}}border-crimson-line bg-crimson-soft text-crimson-deep {{else if eq .Variant "info"}}border-denim-line bg-denim-soft text-denim-deep {{/* A pill with no hue — the firewall's drop, which says nothing at all rather than answering — is the neutral chip, like every chip without a hue. */}} {{else}}border-rule bg-quiet text-meta{{end}}
+short-class-lists	widget/templates/badge.html.tmpl	inline-flex items-center gap-2 rounded-xs border px-3 py-3 text-sm font-medium {{if eq .Variant "success"}}border-green-line bg-green-soft text-green-deep {{else if eq .Variant "warning"}}border-marigold-line bg-marigold-soft text-marigold-deep {{else if eq .Variant "danger"}}border-crimson-line bg-crimson-soft text-crimson-deep {{else if eq .Variant "info"}}border-denim-line bg-denim-soft text-denim-deep {{else}}border-rule bg-quiet text-meta{{end}}
 short-class-lists	widget/templates/button.html.tmpl	inline-flex h-control items-center justify-center gap-2 rounded-xs border px-4 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 {{if .Loading}}verso-button-waiting{{else if .Disabled}}cursor-not-allowed opacity-70{{else}}cursor-pointer {{template "verso-press"}}{{end}} {{if eq .Style "secondary"}}border-rule-strong bg-transparent text-meta {{if not .Disabled}}hover:border-sand-5 hover:bg-rule hover:text-ink{{end}} focus-visible:outline-denim {{else if eq .Style "danger"}}border-crimson bg-crimson text-on-fill {{if not .Disabled}}hover:border-crimson-deep hover:bg-crimson-deep{{end}} focus-visible:outline-crimson-deep {{else}}border-denim bg-denim text-on-fill {{if not .Disabled}}hover:border-denim-deep hover:bg-denim-deep{{end}} focus-visible:outline-denim-deep{{end}}
 short-class-lists	widget/templates/callout.html.tmpl	mt-2 flex items-start border-t pt-1.75 leading-6 {{if eq .Variant "success"}}border-green-line{{else if eq .Variant "warning"}}border-marigold-line{{else if eq .Variant "danger"}}border-crimson-line{{else if eq .Variant "neutral"}}border-rule{{else}}border-denim-line{{end}}
 short-class-lists	widget/templates/callout.html.tmpl	relative flex w-full{{if .Compact}} max-w-(--container-3xl){{end}} items-start rounded-xs border pt-1.75 pr-3 pb-2 pl-5.75 text-left text-sm leading-6 {{if eq .Variant "success"}}border-green-line bg-green-soft text-green-deep {{else if eq .Variant "warning"}}border-marigold-line bg-marigold-soft text-marigold-deep {{else if eq .Variant "danger"}}border-crimson-line bg-crimson-soft text-crimson-deep {{else if eq .Variant "neutral"}}border-rule bg-quiet text-body {{else}}border-denim-line bg-denim-soft text-denim-deep{{end}}
@@ -1133,11 +1126,9 @@ short-class-lists	widget/templates/shared.html.tmpl	grid size-7 shrink-0 cursor-
 short-class-lists	widget/templates/shared.html.tmpl	h-control w-80 max-w-full rounded-xs border border-rule-strong bg-canvas pr-3 pl-8.5 text-sm text-ink shadow-(--shadow-field) transition-colors placeholder:font-normal placeholder:text-meta hover:border-faint focus:border-denim focus:outline-none
 short-class-lists	widget/templates/shared.html.tmpl	verso-drawer-scrollbar absolute top-full left-0 z-20 mt-1 max-h-56 w-max min-w-full max-w-[min(32rem,calc(100vw-2rem))] overflow-y-auto rounded-xs border border-rule-strong bg-ground py-1 shadow-(--shadow-float)
 short-class-lists	widget/templates/shared.html.tmpl	verso-drawer-scrollbar min-h-0 flex-1 {{if not .Choices}}space-y-6 {{end}}overflow-x-hidden overflow-y-auto {{if .Choices}}space-y-0 pb-8 [&>section]:pt-0 [&>section>div:first-child]:mb-0 [&>section>div:first-child]:border-y [&>section>div:first-child]:border-rule [&>section>div:first-child]:bg-quiet [&>section>div:first-child]:px-(--verso-drawer-gutter) [&>section>div:first-child]:py-2 [&_h3]:font-medium [&_h3]:tracking-[.08em] [&_.verso-rhythm>*]:!mt-0{{else}}{{template "verso-drawer-ground"}}{{end}} [&_table]:min-w-0 [&_.overflow-x-auto]:!overflow-visible [&_tbody_tr:hover]:!bg-transparent [&_td:last-child]:!text-right [&_th:last-child]:!text-right
-short-class-lists	widget/templates/shared.html.tmpl	{{if .LocalizeLabel}}{{template "verso-chip-box"}} font-sans{{else}}{{template "verso-chip-mono"}}{{end}} {{if eq .Tone "accent"}}border-denim-line bg-denim-soft text-denim-deep{{else if eq .Tone "success"}}border-green-line bg-green-soft text-green-deep{{else if eq .Tone "warning"}}border-marigold-line bg-marigold-soft text-marigold-deep{{else if eq .Tone "danger"}}border-crimson-line bg-crimson-soft text-crimson-deep{{else}}border-rule bg-quiet text-meta{{end}}{{if .Title}} relative z-10 cursor-help focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim{{end}}
 short-class-lists	widget/templates/shared.html.tmpl	{{if .Mono}}font-mono text-base leading-6 font-medium text-ink{{else}}{{template "verso-field-label-class"}}{{end}}{{if .Explained}} relative cursor-help{{end}}
 short-class-lists	widget/templates/shared.html.tmpl	{{if .Words}}{{template "verso-input-words"}}{{else}}{{template "verso-input-class"}}{{end}} {{if and (eq .Measure "address") (ne .ControlMeasure "prefix")}}w-measure-44! max-w-full{{else if eq .Measure "number"}}w-measure-24! max-w-full{{else if eq .Measure "short"}}w-measure-32! max-w-full{{end}} {{template "verso-input-border" .Error}}
 short-class-lists	widget/templates/shared.html.tmpl	{{if .Words}}{{template "verso-input-words"}}{{else}}{{template "verso-input-class"}}{{end}} {{template "verso-input-border" .Error}} cursor-pointer appearance-none pr-9
-short-class-lists	widget/templates/shared.html.tmpl	{{if eq .Tone "accent"}}text-denim{{else if eq .Tone "success"}}text-green-deep{{else if eq .Tone "warning"}}text-marigold-deep{{else if eq .Tone "danger"}}text-crimson-deep{{else}}text-faint{{end}}
 short-class-lists	widget/templates/stack.html.tmpl	{{if eq .Width "compact"}}max-w-md {{end}}{{if .Inline}}flex flex-wrap items-center gap-x-3 gap-y-2 has-[.verso-act]:gap-y-3 has-[.verso-act]:py-0.5{{else if .Flush}}{{else if .Divided}}divide-y divide-rule{{else if .Compact}}space-y-3{{else if .Loose}}verso-stack space-y-10{{else}}verso-stack space-y-6{{end}}
 short-class-lists	widget/templates/switch.html.tmpl	absolute inset-0 rounded-xs border border-choice-border bg-canvas shadow-(--shadow-field) transition-colors peer-checked:border-choice peer-checked:bg-choice peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-denim-deep peer-disabled:border-inert peer-disabled:shadow-none peer-disabled:peer-checked:bg-inert
 short-class-lists	widget/templates/table-interfaces.html.tmpl	border-b border-rule-strong pt-0.5 pb-px text-xs leading-4 font-medium tracking-[.08em] text-meta uppercase {{if eq $i 0}}pl-29.25{{else if eq $i 5}}pr-4{{else}}max-sm:hidden{{end}}
@@ -1172,8 +1163,6 @@ short-class-lists	widget/templates/table.html.tmpl	{{if .Dense}}w-8{{else}}w-10{
 short-class-lists	widget/templates/table.html.tmpl	{{if .Variant}}text-ink{{else}}text-meta{{end}} underline underline-offset-2 hover:decoration-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim
 short-class-lists	widget/templates/table.html.tmpl	{{if .Variant}}text-ink{{else}}text-meta{{end}}{{if .Verbatim}} font-mono text-base font-medium{{end}}
 short-class-lists	widget/templates/table.html.tmpl	{{if eq .Indent "pl-6"}}pl-6{{else if eq .Indent "pl-12"}}pl-12{{else if eq .Indent "pl-18"}}pl-18{{end}} inline-flex items-center gap-2 font-mono text-base font-medium text-ink hover:text-denim focus-visible:outline-denim
-short-class-lists	widget/templates/table.html.tmpl	{{if eq .Kind "router"}}{{template "verso-chip-box"}} border-denim-line bg-denim-soft text-denim-deep{{else}}{{template "verso-chip-shape"}} border-transparent font-mono text-base font-medium tabular-nums text-ink{{end}}
-short-class-lists	widget/templates/table.html.tmpl	{{template "verso-chip-box"}} {{if eq .TagVariant "info"}}border-denim-line bg-denim-soft text-denim-deep{{else if eq .TagVariant "warning"}}border-marigold-line bg-marigold-soft text-marigold-deep{{else if eq .TagVariant "success"}}border-green-line bg-green-soft text-green-deep{{else if eq .TagVariant "danger"}}border-crimson-line bg-crimson-soft text-crimson-deep{{else}}border-rule bg-quiet text-meta{{end}}
 type-comes-from-roles	forms.css	.verso-box-input::placeholder	font-weight
 type-comes-from-roles	forms.css	.verso-box-select	font-family
 type-comes-from-roles	forms.css	.verso-box-select	font-size
@@ -1783,7 +1772,6 @@ type-comes-from-roles	widget/templates/shared.html.tmpl	font-normal
 type-comes-from-roles	widget/templates/shared.html.tmpl	font-normal
 type-comes-from-roles	widget/templates/shared.html.tmpl	font-sans
 type-comes-from-roles	widget/templates/shared.html.tmpl	font-sans
-type-comes-from-roles	widget/templates/shared.html.tmpl	font-sans
 type-comes-from-roles	widget/templates/shared.html.tmpl	font-semibold
 type-comes-from-roles	widget/templates/shared.html.tmpl	leading-6
 type-comes-from-roles	widget/templates/shared.html.tmpl	leading-6
@@ -1842,8 +1830,6 @@ type-comes-from-roles	widget/templates/table.html.tmpl	font-medium
 type-comes-from-roles	widget/templates/table.html.tmpl	font-medium
 type-comes-from-roles	widget/templates/table.html.tmpl	font-medium
 type-comes-from-roles	widget/templates/table.html.tmpl	font-medium
-type-comes-from-roles	widget/templates/table.html.tmpl	font-medium
-type-comes-from-roles	widget/templates/table.html.tmpl	font-mono
 type-comes-from-roles	widget/templates/table.html.tmpl	font-mono
 type-comes-from-roles	widget/templates/table.html.tmpl	font-mono
 type-comes-from-roles	widget/templates/table.html.tmpl	font-mono
@@ -1870,7 +1856,6 @@ type-comes-from-roles	widget/templates/table.html.tmpl	leading-6
 type-comes-from-roles	widget/templates/table.html.tmpl	leading-6
 type-comes-from-roles	widget/templates/table.html.tmpl	leading-6
 type-comes-from-roles	widget/templates/table.html.tmpl	leading-7
-type-comes-from-roles	widget/templates/table.html.tmpl	text-base
 type-comes-from-roles	widget/templates/table.html.tmpl	text-base
 type-comes-from-roles	widget/templates/table.html.tmpl	text-base
 type-comes-from-roles	widget/templates/table.html.tmpl	text-base

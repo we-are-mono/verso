@@ -45,7 +45,7 @@ already is the role; anything else is a convergence, its difference named.
 | mono 16/700 on 24 | 27 | interface chooser names, log level | `type-value` verbatim | 700 → 500 |
 | mono 14/500 on 16 | 272 | mono chips ("server") | `type-chip` verbatim | = |
 | mono 14/400 on 16 | 249 | mono chips ("daemon", rule names) | `type-chip` verbatim | 400 → 500 (DESIGN: a mono chip is 500) |
-| mono 16/400 on 16, tabular | 28 | zone chips ("wan") | `type-chip` verbatim | 16/400 → 14/500 |
+| mono 16/400 on 16, tabular | 28 | traffic endpoint chips ("wan") | `type-chip` verbatim | 16/400 → 14/500; a 16px line role for them would be a 22nd role, and the chip's 16px line is what keeps every chip 18px |
 | mono 14/500 on 24 | 18 | config file path strip | `type-chip` verbatim | line 24 → 16, the strip pads the 8px |
 | mono 14/400 on 24 | 8 | editor line count, gutter | `type-code` | 14 → 16 |
 | mono 14/400 on 24, tabular | 112 | editor line numbers | `type-code` + figures | 14 → 16 |
@@ -88,3 +88,12 @@ became, measured by the layout snapshot against the task before it.
 | the stream's live retone of an interface mark | | `info` drawn hollow | `info` drawn Denim, as the server draws it |
 
 The rail's 5px square stays as it is until the rail converts.
+
+### `chip`
+
+| Copies | n | Difference | Became |
+|---|---|---|---|
+| mono chips in tables and lists | ~440 | weight 400 (a table rule outranked the chip's 500) | 500, the chip role's verbatim form |
+| traffic endpoint chips (firewall rules) | ~60 | mono 16/400, tabular figures | the chip role's verbatim form, 14/500, no tabular figures (an address is not a count); 3px narrower |
+| a tag's or a pill's glyph | | Faint whatever the tone (tags), the words' ink (pills) | the tone's glyph ink, Faint when neutral |
+| a toned chip's words | | each site's own class list | one `data-verso-tone` per chip |
