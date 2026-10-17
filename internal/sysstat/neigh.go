@@ -6,6 +6,7 @@ package sysstat
 import (
 	"encoding/binary"
 	"fmt"
+	"iter"
 	"net"
 	"net/netip"
 	"syscall"
@@ -97,15 +98,10 @@ func BridgePorts() (map[string]string, error) {
 		}
 		ifindex := int(int32(binary.NativeEndian.Uint32(m.Data[4:8])))
 		mac := ""
-		for rest := m.Data[ndmsgLen:]; len(rest) >= 4; {
-			alen := int(binary.NativeEndian.Uint16(rest[0:2]))
-			if alen < 4 || alen > len(rest) {
-				break
+		for atype, value := range netlinkAttrs(m.Data[ndmsgLen:]) {
+			if atype == ndaLLAddr && len(value) == 6 {
+				mac = net.HardwareAddr(value).String()
 			}
-			if binary.NativeEndian.Uint16(rest[2:4]) == ndaLLAddr && alen == 10 {
-				mac = net.HardwareAddr(rest[4:10]).String()
-			}
-			rest = rest[(alen+3)&^3:]
 		}
 		if mac == "" {
 			continue
@@ -174,6 +170,24 @@ const (
 	ndaLLAddr = 2
 )
 
+// netlinkAttrs walks 4-aligned netlink attributes, yielding each one's type
+// and payload. It stops at a length shorter than the header or past the
+// buffer; a final attribute without its trailing pad is still yielded.
+func netlinkAttrs(data []byte) iter.Seq2[uint16, []byte] {
+	return func(yield func(uint16, []byte) bool) {
+		for len(data) >= 4 {
+			alen := int(binary.NativeEndian.Uint16(data[0:2]))
+			if alen < 4 || alen > len(data) {
+				return
+			}
+			if !yield(binary.NativeEndian.Uint16(data[2:4]), data[4:alen]) {
+				return
+			}
+			data = data[min((alen+3)&^3, len(data)):]
+		}
+	}
+}
+
 func parseNeighbors(msgs []syscall.NetlinkMessage) []Neighbor {
 	return parseNeighborsWithInterfaceName(msgs, func(index int) string {
 		if iface, err := net.InterfaceByIndex(index); err == nil {
@@ -199,21 +213,15 @@ func parseNeighborsWithInterfaceName(msgs []syscall.NetlinkMessage, resolve func
 			}
 			n.Interface = name
 		}
-		for rest := m.Data[ndmsgLen:]; len(rest) >= 4; {
-			alen := int(binary.NativeEndian.Uint16(rest[0:2]))
-			atype := binary.NativeEndian.Uint16(rest[2:4])
-			if alen < 4 || alen > len(rest) {
-				break
-			}
+		for atype, value := range netlinkAttrs(m.Data[ndmsgLen:]) {
 			switch {
-			case atype == ndaDST && alen == 8:
-				n.Addr = netip.AddrFrom4([4]byte(rest[4:8])).String()
-			case atype == ndaDST && alen == 20:
-				n.Addr = netip.AddrFrom16([16]byte(rest[4:20])).String()
-			case atype == ndaLLAddr && alen == 10:
-				n.MAC = net.HardwareAddr(rest[4:10]).String()
+			case atype == ndaDST && len(value) == 4:
+				n.Addr = netip.AddrFrom4([4]byte(value)).String()
+			case atype == ndaDST && len(value) == 16:
+				n.Addr = netip.AddrFrom16([16]byte(value)).String()
+			case atype == ndaLLAddr && len(value) == 6:
+				n.MAC = net.HardwareAddr(value).String()
 			}
-			rest = rest[(alen+3)&^3:]
 		}
 		if n.Addr != "" {
 			neigh = append(neigh, n)

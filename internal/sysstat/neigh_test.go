@@ -70,6 +70,44 @@ func TestParseNeighbors(t *testing.T) {
 	}
 }
 
+// TestParseNeighborsUnpaddedTail: a final attribute shorter than its aligned
+// length (a 6-byte MAC with no trailing pad) is read, and the walk stops
+// there instead of slicing past the message.
+func TestParseNeighborsUnpaddedTail(t *testing.T) {
+	m := neighMsg(7, 0x02, []byte{192, 168, 77, 138}, []byte{0xa2, 0xba, 0xa6, 0x35, 0x2b, 0xb8})
+	m.Data = m.Data[:len(m.Data)-2] // the NDA_LLADDR pad
+	neigh := parseNeighborsWithInterfaceName([]syscall.NetlinkMessage{m}, func(int) string { return "br-lan" })
+	if len(neigh) != 1 || neigh[0].MAC != "a2:ba:a6:35:2b:b8" || neigh[0].Addr != "192.168.77.138" {
+		t.Fatalf("got %+v, want the entry with its MAC", neigh)
+	}
+}
+
+// TestNetlinkAttrsBounds: the walk yields every well-formed attribute and
+// stops at a length that is short or overruns the buffer.
+func TestNetlinkAttrsBounds(t *testing.T) {
+	data := attr(nil, ndaDST, []byte{10, 0, 0, 1})
+	data = attr(data, ndaLLAddr, []byte{1, 2, 3, 4, 5, 6})
+	cases := map[string]struct {
+		data []byte
+		want int
+	}{
+		"padded":    {data, 2},
+		"unpadded":  {data[:len(data)-2], 2},
+		"truncated": {data[:len(data)-3], 1},
+		"short len": {append(attr(nil, ndaDST, []byte{10, 0, 0, 1}), 2, 0, 1, 0), 1},
+		"stub":      {[]byte{8, 0}, 0},
+	}
+	for name, c := range cases {
+		got := 0
+		for range netlinkAttrs(c.data) {
+			got++
+		}
+		if got != c.want {
+			t.Errorf("%s: %d attributes, want %d", name, got, c.want)
+		}
+	}
+}
+
 // TestNeighStateNames: detail views print the state the way `ip neigh` does.
 func TestNeighStateNames(t *testing.T) {
 	cases := map[uint16]string{0x02: "reachable", 0x04: "stale", 0x80: "permanent", 0x00: "none"}
