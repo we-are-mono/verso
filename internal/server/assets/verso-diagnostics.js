@@ -137,7 +137,7 @@
     versoPost("/system/diagnostics/stop", versoBody({ job: job }));
   });
   target.addEventListener("input", function () { refuse(""); sync(); });
-  tool.addEventListener("change", function () { form.setAttribute("data-verso-diag-picked", ""); sync(); });
+  tool.addEventListener("change", function () { form.setAttribute("data-verso-picked", ""); sync(); });
   via.addEventListener("change", sync);
   // Leaving the page ends the run it started rather than leave it running on
   // the router with no one reading it.

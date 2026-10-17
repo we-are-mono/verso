@@ -4,6 +4,7 @@
 package widget
 
 import (
+	"fmt"
 	"html/template"
 	"strings"
 )
@@ -170,8 +171,8 @@ type customGlyph struct {
 
 // customGlyphs hold the non-Lucide art the shell draws itself. The running fan is
 // the one icon the Hardware page carves out of the Lucide set: a multi-blade
-// impeller that rotates while the fan runs (the CSS class verso-glyph-fan-spin spins
-// it, honouring prefers-reduced-motion) — a stalled or absent header falls back to
+// impeller that rotates while the fan runs (the glyph block spins it, honouring
+// prefers-reduced-motion) — a stalled or absent header falls back to
 // the static Lucide "fan" instead. Its blades take currentColor; its ring is the
 // same colour at low opacity, so one ink drives the whole mark in light and dark.
 var customGlyphs = map[string]customGlyph{
@@ -183,16 +184,12 @@ var customGlyphs = map[string]customGlyph{
 }
 
 // customIcon wraps a shell-owned glyph in its own viewBox (no Lucide stroke
-// frame), tagging it verso-glyph-<name> so the stylesheet can animate it.
+// frame), naming it on the glyph block (blocks/glyph.css) so the stylesheet
+// can animate it.
 func customIcon(name string, g customGlyph, class string) template.HTML {
 	var b strings.Builder
-	b.WriteString(`<svg class="verso-glyph-`)
-	b.WriteString(name)
-	b.WriteByte(' ')
-	b.WriteString(template.HTMLEscapeString(class))
-	b.WriteString(`" viewBox="`)
-	b.WriteString(g.viewBox)
-	b.WriteString(`" aria-hidden="true">`)
+	fmt.Fprintf(&b, `<svg class="verso-glyph %s" data-verso-name="%s" viewBox="%s" aria-hidden="true">`,
+		template.HTMLEscapeString(class), template.HTMLEscapeString(name), g.viewBox)
 	b.WriteString(g.inner)
 	b.WriteString(`</svg>`)
 	return template.HTML(b.String())

@@ -82,6 +82,18 @@ function versoEl(tag, cls, text) {
   return node;
 }
 
+// versoArrive draws the eye to something that has just come onto the page
+// (blocks/arrival.css: "saved", "installed"), once, and lets go of it when
+// the motion ends, so it can arrive again.
+function versoArrive(node, how) {
+  node.classList.add("verso-arrival");
+  node.setAttribute("data-verso-arrival", how);
+  node.addEventListener("animationend", function () {
+    node.classList.remove("verso-arrival");
+    node.removeAttribute("data-verso-arrival");
+  }, { once: true });
+}
+
 // versoClock is the wall time a log line carries, HH:MM:SS in the browser's
 // own zone, so a line can be matched against any other log on the machine.
 function versoClock(date) {

@@ -5,6 +5,11 @@
  * drawer-scrollbar — an inner scroller's quiet thumb, in the shell's
  * palette: a drawer's body, a code block's lines, a console. The document's
  * own scrollbar deliberately stays native.
+ *
+ * Variants: data-verso-scroll="sand"  a scroller on a surface that is itself
+ *                                     quiet (a console, a drawer's sand): the
+ *                                     thumb sits in a track, or it would float
+ *                                     on the ground
  */
 
 .verso-drawer-scrollbar {
@@ -26,4 +31,15 @@
 }
 .verso-drawer-scrollbar::-webkit-scrollbar-thumb:hover {
   background-color: var(--color-glyph);
+}
+
+.verso-drawer-scrollbar[data-verso-scroll="sand"] {
+  scrollbar-color: var(--color-inert) var(--color-mid);
+}
+.verso-drawer-scrollbar[data-verso-scroll="sand"]::-webkit-scrollbar-track {
+  border-radius: var(--radius-xs);
+  background: var(--color-mid);
+}
+.verso-drawer-scrollbar[data-verso-scroll="sand"]::-webkit-scrollbar-thumb {
+  border-color: var(--color-mid);
 }

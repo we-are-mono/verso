@@ -785,8 +785,7 @@
   // landed washes the row a panel just saved in the action colour for a moment,
   // so the eye finds the row the outcome was about.
   function landed(row) {
-    row.classList.add("verso-landed");
-    row.addEventListener("animationend", function () { row.classList.remove("verso-landed"); }, { once: true });
+    versoArrive(row, "saved");
   }
 
   // settingsOf are the rows a section of settings holds, each known by what it
@@ -838,10 +837,7 @@
     }
     var control = fresh[0].querySelector("input:not([type=hidden]), select, textarea, button, a[href]");
     if (control) control.focus({ preventScroll: true });
-    fresh.forEach(function (row) {
-      row.classList.add("verso-arrived");
-      row.addEventListener("animationend", function () { row.classList.remove("verso-arrived"); }, { once: true });
-    });
+    fresh.forEach(function (row) { versoArrive(row, "installed"); });
   }
 
   // The panel's submission is done: the server said so by swapping nothing and
@@ -913,7 +909,7 @@
     if (!frame || !xhr || !xhr.responseText) return;
     var doc = versoParse(xhr.responseText);
     var notice = doc.body && doc.body.firstElementChild;
-    var scroller = frame.querySelector("[data-scroll]");
+    var scroller = frame.querySelector("[data-verso-scroll]");
     if (!notice || !scroller) return;
     var previous = scroller.querySelector("[data-verso-panel-notice]");
     if (previous) previous.remove();

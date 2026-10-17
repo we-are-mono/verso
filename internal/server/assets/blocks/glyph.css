@@ -1,0 +1,34 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/* SPDX-FileCopyrightText: 2026 Mono Technologies Inc. */
+
+/*
+ * glyph — a glyph that moves. The running fan the shell draws itself turns
+ * while the fan runs, calm and unhurried; a stalled or absent header draws
+ * the static Lucide fan instead, which never turns. A glyph a pick swaps in
+ * (a tool's, beside the dropdown that picked it) settles in from a little
+ * smaller, so the field answers the pick where the eye is; only a pick plays
+ * it, never the page's arrival. Both are stilled for a reader who asked for
+ * stillness.
+ *
+ * Variants: data-verso-name="fan-spin"  the running fan (widget.customIcon)
+ *           data-verso-settle           swapped in by a pick: it settles once
+ *                                       something around it has been picked
+ *                                       (data-verso-picked)
+ */
+
+@media (prefers-reduced-motion: no-preference) {
+  .verso-glyph[data-verso-name="fan-spin"] {
+    transform-origin: center;
+    animation: verso-glyph-spin 2.6s linear infinite;
+  }
+  .verso-glyph[data-verso-settle]:where([data-verso-picked] *) {
+    animation: verso-glyph-settle 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+}
+
+@keyframes verso-glyph-spin {
+  to { transform: rotate(360deg); }
+}
+@keyframes verso-glyph-settle {
+  from { opacity: 0; transform: scale(0.6); }
+}

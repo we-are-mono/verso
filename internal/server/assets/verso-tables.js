@@ -594,20 +594,23 @@ function versoAfterFold(detail, fold, then) {
 }
 // versoStagger hands each part of an unfolding row its moment: parts one
 // after another, and inside a part the ledger's name and act with the line,
-// then the facts under it one by one, then whatever stands beside them. The
-// delays are custom properties the stylesheet's animations read.
+// then the facts under it one by one, then whatever stands beside them. Each
+// is an arrival (blocks/arrival.css) whose delay the stylesheet's animation
+// reads.
 function versoStagger(detail) {
-  var rise = function (el, ms) {
-    el.setAttribute("data-verso-rise", "");
+  var arrive = function (el, how, ms) {
+    el.classList.add("verso-arrival");
+    el.setAttribute("data-verso-arrival", how);
     el.style.setProperty("--verso-stagger", ms + "ms");
   };
+  var rise = function (el, ms) { arrive(el, "rise", ms); };
   var parts = [].filter.call(detail.querySelectorAll("section"), function (part) {
     return part.querySelector(":scope > [data-verso-ledger]");
   });
   parts.forEach(function (part, i) {
     var base = 40 + i * 90;
     [].forEach.call(part.querySelector(":scope > [data-verso-ledger]").children, function (child) {
-      if (child.hasAttribute("aria-hidden")) child.style.setProperty("--verso-stagger", base + "ms");
+      if (child.hasAttribute("aria-hidden")) arrive(child, "draw", base);
       else rise(child, base);
     });
     part.querySelectorAll("dl > div").forEach(function (fact, j) { rise(fact, base + 60 + j * 30); });

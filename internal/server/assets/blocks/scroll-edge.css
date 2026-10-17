@@ -1,0 +1,33 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/* SPDX-FileCopyrightText: 2026 Mono Technologies Inc. */
+
+/*
+ * scroll-edge — a box that scrolls sideways (a table wider than its box)
+ * fades its trailing edge into the page while more of it waits to the right,
+ * so the cut reads as "there is more" rather than as the end of the row;
+ * scrolled to the end, the edge is solid again. The scroll itself drives the
+ * fade: a box with nothing to scroll has no timeline, and nothing fades. A
+ * browser without scroll timelines keeps the plain edge.
+ *
+ * Knobs: --verso-scroll-edge  how deep the fade is, animated by the scroll
+ *        (verso-page.js reads it to keep a row act's tip clear of it)
+ */
+
+@property --verso-scroll-edge {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
+
+@supports (animation-timeline: scroll()) {
+  .verso-scroll-edge {
+    mask-image: linear-gradient(to left, transparent, #000 var(--verso-scroll-edge));
+    animation: verso-scroll-edge linear both;
+    animation-timeline: scroll(self inline);
+  }
+}
+
+@keyframes verso-scroll-edge {
+  0%, 95% { --verso-scroll-edge: calc(var(--spacing) * 10); }
+  100% { --verso-scroll-edge: 0px; }
+}

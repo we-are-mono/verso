@@ -257,3 +257,11 @@ after; the SVG's fills, strokes and LED animations compared directly.
 | the sign-in verdict | 1 | full-chroma green or crimson words | the deep steps, as type always is |
 | the sign-in facts | 1 | a hand-written list, a rule over and under, its labels 128px | the facts block, divided and left-set |
 | the sign-in act | 1 | a hand-built primary and busy face | the button block, its busy face the button's own |
+
+### `arrival`, `glyph`, `scroll-edge` and the scroller's sand
+
+| Copies | n | Difference | Became |
+|---|---|---|---|
+| a saved row's wash, an installed setting's wash, an unfolding row's rise and line | 4 | two classes and two attributes the scripts set, each with its own keyframes | one arrival block, `data-verso-arrival` saved, installed, rise or draw; one helper (`versoArrive`) lets go of it; no motion changes |
+| the running fan, the diagnostics tool's glyph | 2 | a `verso-glyph-<name>` class; a rule keyed on the diagnostics form | the glyph block: `data-verso-name`, `data-verso-settle` under `data-verso-picked`; no motion changes |
+| a scroller on sand | 5 | `data-scroll="sand"`, a bare attribute rule | the scroller block's `data-verso-scroll="sand"`; no pixel changes |

@@ -3,7 +3,7 @@
 <div data-verso-diagnostics class="verso-console">
   {{/* The run's output fills the sand under the heading as a log does, each
        line as the router wrote it; until something runs, it says so. */}}
-  <div data-verso-diag-output data-scroll="sand" role="log" class="verso-console__rows verso-drawer-scrollbar">
+  <div data-verso-diag-output data-verso-scroll="sand" role="log" class="verso-console__rows verso-drawer-scrollbar">
     <p data-verso-diag-empty class="verso-console__waiting">{{t "Nothing run yet."}}</p>
   </div>
 </div>
@@ -19,9 +19,9 @@
        echo, traceroute's path, the lookup's search. */}}
   <div class="relative w-44">
     <span class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-glyph">
-      <span data-verso-diag-glyph="ping" class="flex">{{icon "radio" "size-4"}}</span>
-      <span data-verso-diag-glyph="traceroute" hidden class="flex">{{icon "route" "size-4"}}</span>
-      <span data-verso-diag-glyph="nslookup" hidden class="flex">{{icon "search" "size-4"}}</span>
+      <span data-verso-diag-glyph="ping" class="verso-glyph flex" data-verso-settle>{{icon "radio" "size-4"}}</span>
+      <span data-verso-diag-glyph="traceroute" hidden class="verso-glyph flex" data-verso-settle>{{icon "route" "size-4"}}</span>
+      <span data-verso-diag-glyph="nslookup" hidden class="verso-glyph flex" data-verso-settle>{{icon "search" "size-4"}}</span>
     </span>
     <select name="tool" aria-label="{{t "Tool"}}" class="{{template "verso-input-words"}} {{template "verso-input-border" false}} cursor-pointer appearance-none pr-9 pl-9.5">
       <option value="ping" selected>{{t "Ping"}}</option>
