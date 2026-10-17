@@ -97,5 +97,5 @@
      The row starts just past a column line: 6px in, the 6px packet sits in the
      middle of the first column, and 8px on the value starts at the next. */}}
 {{define "list.row-class"}}flex items-start gap-2 border-t border-rule py-row pr-3 pl-1.5 first:border-t-transparent @min-[36rem]/verso-field:first:-mt-1{{end}}
-{{define "list.packet"}}<span aria-hidden="true" class="mt-2.25 size-1.5 shrink-0 rounded-[1px] bg-meta"></span>{{end}}
+{{define "list.packet"}}<span aria-hidden="true" class="verso-mark mt-2.25" data-verso-tone="meta"></span>{{end}}
 {{define "list.value-class"}}min-w-0 flex-1 wrap-anywhere font-mono text-base leading-6 text-meta{{end}}

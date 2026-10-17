@@ -1,0 +1,53 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/* SPDX-FileCopyrightText: 2026 Mono Technologies Inc. */
+
+/*
+ * mark — the 6px state square: a state written as a mark, wherever a state
+ * stands (a row's verdict, a fact, a chip, a notice, a card's status). Filled
+ * in its tone's hue; hollow (a Faint edge) when it has no tone. Every mark has
+ * the one 1px edge, transparent when filled, so a filled and a hollow mark are
+ * the same box.
+ *
+ * Elements: none.
+ * Variants: data-verso-tone  success · warning, caution · danger · info, accent
+ *                             · muted (filled in Glyph) · meta (filled in Meta);
+ *                             any other or none: hollow
+ *           data-verso-live  a live mark breathes an expanding ring of its own
+ *                             shape, so "connected" reads at a glance
+ * Reads:    --verso-mark-fill, --verso-mark-edge  context: a container that
+ *           tones the marks inside it (a card's status) sets them; a mark's
+ *           own tone wins.
+ */
+
+.verso-mark {
+  width: calc(var(--spacing) * 1.5);
+  height: calc(var(--spacing) * 1.5);
+  flex-shrink: 0;
+  border-radius: 1px;
+  border: 1px solid var(--verso-mark-edge, var(--color-faint));
+  background-color: var(--verso-mark-fill, transparent);
+}
+
+.verso-mark[data-verso-tone="success"] { --verso-mark-fill: var(--color-green); --verso-mark-edge: transparent; }
+.verso-mark:is([data-verso-tone="warning"], [data-verso-tone="caution"]) { --verso-mark-fill: var(--color-marigold); --verso-mark-edge: transparent; }
+.verso-mark[data-verso-tone="danger"] { --verso-mark-fill: var(--color-crimson); --verso-mark-edge: transparent; }
+.verso-mark:is([data-verso-tone="info"], [data-verso-tone="accent"]) { --verso-mark-fill: var(--color-denim); --verso-mark-edge: transparent; }
+.verso-mark[data-verso-tone="muted"] { --verso-mark-fill: var(--color-glyph); --verso-mark-edge: transparent; }
+.verso-mark[data-verso-tone="meta"] { --verso-mark-fill: var(--color-meta); --verso-mark-edge: transparent; }
+
+.verso-mark[data-verso-live] { position: relative; }
+.verso-mark[data-verso-live]::after {
+  content: "";
+  position: absolute;
+  inset: -0.25rem;
+  border-radius: 0.125rem;
+  border: 0.125rem solid color-mix(in srgb, var(--color-green) 60%, transparent);
+  animation: verso-ring 2s ease-out infinite;
+}
+@keyframes verso-ring {
+  0%   { transform: scale(0.6); opacity: 1; }
+  100% { transform: scale(1.5); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .verso-mark[data-verso-live]::after { animation: none; }
+}

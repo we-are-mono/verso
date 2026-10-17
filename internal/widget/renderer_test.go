@@ -196,7 +196,7 @@ func TestRenderBadge(t *testing.T) {
 	got := render(t, r, &Badge{Variant: "success", Text: "Connected", Dot: true})
 	for _, want := range []string{
 		// the state mark is the app's one mark: a 6px square, the packet
-		"Connected", "size-1.5 shrink-0 rounded-[1px]",
+		"Connected", `class="verso-mark" data-verso-tone="success"`,
 		"border-green-line bg-green-soft text-green-deep", // light treatment is unchanged
 		"rounded-xs border",
 	} {
@@ -211,7 +211,7 @@ func TestRenderBadge(t *testing.T) {
 	if !strings.Contains(neutral, chipMonoBox+"\n  border-rule bg-quiet text-meta") {
 		t.Errorf("neutral badge should be the neutral chip: %s", neutral)
 	}
-	if strings.Contains(neutral, "size-1.5") {
+	if strings.Contains(neutral, "verso-mark") {
 		t.Errorf("badge without Dot should not render a dot: %s", neutral)
 	}
 }
@@ -241,7 +241,7 @@ func TestACompactNoteKeepsItsControlsMeasure(t *testing.T) {
 	if !strings.Contains(got, `flex w-full max-w-(--container-3xl) items-start rounded-xs`) {
 		t.Errorf("a compact note keeps the form's measure:\n%s", got)
 	}
-	if !strings.Contains(got, "absolute top-4 left-2.25 size-1.5") || !strings.Contains(got, "bg-marigold") {
+	if !strings.Contains(got, `verso-mark absolute top-4 left-2.25" data-verso-tone="warning"`) {
 		t.Errorf("a compact note leads with its tone's square:\n%s", got)
 	}
 }
@@ -253,7 +253,7 @@ func TestACompactNoteKeepsItsControlsMeasure(t *testing.T) {
 func TestEveryNoticeIsOneBand(t *testing.T) {
 	standing := render(t, newRenderer(t), &Callout{Variant: "warning", Title: "The internet can reach this web interface",
 		Body: "The firewall zone “mgmt” accepts every connection from the internet.", Link: &Link{Label: "Open Firewall", Href: "/plugins/firewall/"}})
-	for _, want := range []string{"absolute top-4 left-2.25 size-1.5", "bg-marigold", "pt-1.75 pr-3 pb-2 pl-5.75", "border-marigold-line bg-marigold-soft text-marigold-deep"} {
+	for _, want := range []string{`verso-mark absolute top-4 left-2.25" data-verso-tone="warning"`, "pt-1.75 pr-3 pb-2 pl-5.75", "border-marigold-line bg-marigold-soft text-marigold-deep"} {
 		if !strings.Contains(standing, want) {
 			t.Errorf("a standing notice is not the one band, missing %q:\n%s", want, standing)
 		}
@@ -368,7 +368,7 @@ func TestRenderBadgeDotIsStill(t *testing.T) {
 	r := newRenderer(t)
 	for _, variant := range []string{"success", "neutral"} {
 		got := render(t, r, &Badge{Variant: variant, Text: "Connected", Dot: true})
-		if strings.Contains(got, "verso-live-dot") {
+		if strings.Contains(got, "data-verso-live") {
 			t.Errorf("a %s chip's packet must not pulse: %s", variant, got)
 		}
 	}
@@ -576,7 +576,7 @@ func TestRenderConfirm(t *testing.T) {
 		// Both states stand on crimson's own soft ground inside its hairline,
 		// worded in the step of the hue that can carry words; the full-chroma
 		// value stays a mark, on the square.
-		"border-crimson-line bg-crimson-soft", "text-crimson-deep", "absolute top-4 left-2.25 size-1.5\n    bg-crimson",
+		"border-crimson-line bg-crimson-soft", "text-crimson-deep", `verso-mark absolute top-4 left-2.25" data-verso-tone="danger"`,
 		// The question is the compact callout in the act's tone: a row's
 		// height for a line, its words 24px in from the frame's edge.
 		`<div data-verso-callout class="relative flex w-full max-w-(--container-3xl) items-start rounded-xs border pt-1.75 pr-3 pb-2 pl-5.75`,
@@ -663,7 +663,7 @@ func TestRenderCallout(t *testing.T) {
 		t.Errorf("warning callout should use marigold: %s", warn)
 	}
 	neutral := render(t, r, &Callout{Variant: "neutral", Compact: true, Body: "Quiet context."})
-	if !strings.Contains(neutral, "bg-quiet text-body") || !strings.Contains(neutral, "bg-glyph") {
+	if !strings.Contains(neutral, "bg-quiet text-body") || !strings.Contains(neutral, `data-verso-tone="muted"`) {
 		t.Errorf("neutral callout should be the quiet band: %s", neutral)
 	}
 	// Compact is the note under a control: its words 24px in from the frame's
@@ -671,7 +671,7 @@ func TestRenderCallout(t *testing.T) {
 	// centre, framed one step darker than its ground as every band is, without
 	// the standing band's padding.
 	compact := render(t, r, &Callout{Compact: true, Body: "A short note."})
-	for _, want := range []string{"items-start", "pl-5.75", "pr-3", "pt-1.75 pr-3 pb-2", "border-denim-line", "absolute top-4 left-2.25 size-1.5", "bg-denim", "A short note."} {
+	for _, want := range []string{"items-start", "pl-5.75", "pr-3", "pt-1.75 pr-3 pb-2", "border-denim-line", `verso-mark absolute top-4 left-2.25" data-verso-tone="info"`, "A short note."} {
 		if !strings.Contains(compact, want) {
 			t.Errorf("compact callout missing %q in: %s", want, compact)
 		}

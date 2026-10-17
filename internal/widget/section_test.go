@@ -136,7 +136,7 @@ func TestListRowsTakeTheirHeightFromPadding(t *testing.T) {
 	// Each value leads with the packet in its words' ink, centred on its first
 	// line and in the grid's first column, the value starting at the next; the
 	// values are divided from each other, never from the label.
-	const packet = `<span aria-hidden="true" class="mt-2.25 size-1.5 shrink-0 rounded-[1px] bg-meta"></span>`
+	const packet = `<span aria-hidden="true" class="verso-mark mt-2.25" data-verso-tone="meta"></span>`
 	const value = `class="min-w-0 flex-1 wrap-anywhere font-mono text-base leading-6 text-meta"`
 	if strings.Count(got, packet) != 3 || strings.Count(got, value) != 3 {
 		t.Errorf("each value leads with the packet, its words quiet:\n%s", got)

@@ -18,7 +18,7 @@ func TestFactSheetRowCarriesItsMarkAndNote(t *testing.T) {
 	}})
 	for _, want := range []string{
 		// centred on the value's 24px first line: 9px over the 6px mark, 9px under
-		`<span class="absolute -left-3.75 top-2.25 size-1.5 rounded-[1px] bg-marigold" aria-hidden="true"></span>`,
+		`<span class="verso-mark absolute -left-3.75 top-2.25" data-verso-tone="warning" aria-hidden="true"></span>`,
 		`<dd class="relative flex min-w-0 items-start`,
 		// the note writes on the row's next 20px line
 		`<p class="basis-full sm:pl-30 text-sm leading-6 font-normal text-body">Browsers warn until you trust it.</p>`,
@@ -168,7 +168,7 @@ func TestALiveFactCarriesItsKey(t *testing.T) {
 	}})
 	for _, want := range []string{
 		`data-verso-prop="link"`,
-		`<span class="mt-2.25 mr-2 shrink-0 size-1.5 rounded-[1px] bg-green" data-verso-prop-dot="link" aria-hidden="true">`,
+		`<span class="verso-mark mt-2.25 mr-2" data-verso-tone="success" data-verso-prop-dot="link" aria-hidden="true">`,
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("want %s in:\n%s", want, got)

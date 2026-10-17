@@ -126,14 +126,14 @@ func TestMeterCompactNoTrack(t *testing.T) {
 	if strings.Contains(got, "data-verso-meter-bar") {
 		t.Errorf("a no-limits reading must draw no track:\n%s", got)
 	}
-	for _, want := range []string{"no limits reported", "bg-glyph"} {
+	for _, want := range []string{"no limits reported", `data-verso-tone="muted"`} {
 		if !strings.Contains(got, want) {
 			t.Errorf("no-track meter missing %q:\n%s", want, got)
 		}
 	}
 	// Where the track would be, the reason there is none reads at the row's
 	// 14px, led by the hollow square: a state with no hue of its own.
-	if !strings.Contains(got, `<span class="flex min-w-0 items-center gap-2 text-sm text-meta"><span class="size-1.5 shrink-0 rounded-[1px] border border-faint" aria-hidden="true"></span><span class="truncate">no limits reported</span></span>`) {
+	if !strings.Contains(got, `<span class="flex min-w-0 items-center gap-2 text-sm text-meta"><span class="verso-mark" aria-hidden="true"></span><span class="truncate">no limits reported</span></span>`) {
 		t.Errorf("the missing track is not said at 14px behind a hollow square:\n%s", got)
 	}
 	// In a page card on a phone the row keeps to the card: the name's column

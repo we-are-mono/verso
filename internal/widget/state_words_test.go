@@ -104,7 +104,7 @@ func TestStateMarksAreSquares(t *testing.T) {
 	} {
 		// (a meter's track is a pill, which is a track, not a mark)
 		got := render(t, newRenderer(t), w)
-		if !strings.Contains(got, `<span class="size-1.5 shrink-0 rounded-[1px]`) || strings.Contains(got, "size-2 shrink-0 rounded-full") || strings.Contains(got, "size-1.5 rounded-full") {
+		if !strings.Contains(got, `<span class="verso-mark"`) || strings.Contains(got, "size-2 shrink-0 rounded-full") || strings.Contains(got, "size-1.5 rounded-full") {
 			t.Errorf("%s: a state mark is a 6px square, not round:\n%s", name, got)
 		}
 	}

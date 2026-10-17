@@ -47,12 +47,7 @@
   {{else}}border-denim-line bg-denim-soft text-denim-deep{{end}}">
   {{/* The mark sits on the first line's optical centre, 9px down its 24px
        line (7px of air, then 9), and 9px after the border's pixel. */}}
-  <span aria-hidden="true" class="absolute top-4 left-2.25 size-1.5
-    {{if eq .Variant "success"}}bg-green
-    {{else if eq .Variant "warning"}}bg-marigold
-    {{else if eq .Variant "danger"}}bg-crimson
-    {{else if eq .Variant "neutral"}}bg-glyph
-    {{else}}bg-denim{{end}}"></span>
+  <span aria-hidden="true" class="verso-mark absolute top-4 left-2.25" data-verso-tone="{{if or (eq .Variant "success") (eq .Variant "warning") (eq .Variant "danger")}}{{.Variant}}{{else if eq .Variant "neutral"}}muted{{else}}info{{end}}"></span>
   <div class="min-w-0">
     {{/* As a dialog's face (Named), the title and words carry the ids the
          dialog is labelled and described by. */}}

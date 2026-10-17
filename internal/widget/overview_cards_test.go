@@ -227,7 +227,7 @@ func TestPortsAndTunnelsCardBodies(t *testing.T) {
 		{Name: "br-lan", Kind: "bridge", State: "up"},
 	}}
 	ports := cardBody(t, o, "ports")
-	if up := row(t, ports, "interface:eth0"); !strings.Contains(up, "wan") || !strings.Contains(up, "18\U0000202fMb/s") || !strings.Contains(up, "2.1\U0000202fMb/s") || !strings.Contains(up, "bg-green") || !strings.Contains(up, ">Up<") {
+	if up := row(t, ports, "interface:eth0"); !strings.Contains(up, "wan") || !strings.Contains(up, "18\U0000202fMb/s") || !strings.Contains(up, "2.1\U0000202fMb/s") || !strings.Contains(up, `data-verso-tone="success"`) || !strings.Contains(up, ">Up<") {
 		t.Errorf("an up port = %s", up)
 	}
 	if lost := row(t, ports, "interface:eth2"); !strings.Contains(lost, ">Down<") || !strings.Contains(lost, "lan") {
@@ -281,7 +281,7 @@ func TestInternetCardBodySaysWhatIsMissing(t *testing.T) {
 	if !strings.Contains(body, "192.0.2.1/24") || !strings.Contains(body, `x-data="copy"`) {
 		t.Error("the IPv4 address must be listed and copyable")
 	}
-	if !strings.Contains(body, "No prefix was delegated.") || !strings.Contains(body, "border-dashed") || !strings.Contains(body, "border border-faint") {
+	if !strings.Contains(body, "No prefix was delegated.") || !strings.Contains(body, "border-dashed") || !strings.Contains(body, `<span aria-hidden="true" class="verso-mark"></span>`) {
 		t.Errorf("an absent IPv6 needs the empty slot and its hollow packet: %s", body)
 	}
 }

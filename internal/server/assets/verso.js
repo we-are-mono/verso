@@ -62,7 +62,8 @@ function versoErrorLine(line, message) {
   }
   var mark = document.createElement("span");
   mark.setAttribute("aria-hidden", "true");
-  mark.className = "mt-2.25 size-1.5 shrink-0 rounded-[1px] bg-crimson";
+  mark.className = "verso-mark mt-2.25";
+  mark.setAttribute("data-verso-tone", "danger");
   var words = document.createElement("span");
   words.setAttribute("data-verso-error-text", "");
   words.textContent = message;

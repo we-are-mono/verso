@@ -10,8 +10,8 @@ import (
 
 // packet is the chip's packet square in a hue: the app's 6px state mark,
 // still (a chip states a fact; it does not mark something live).
-func packet(fill string) string {
-	return `<span class="size-1.5 shrink-0 rounded-[1px] ` + fill + `" aria-hidden="true"></span>`
+func packet(tone string) string {
+	return `<span class="verso-mark" data-verso-tone="` + tone + `" aria-hidden="true"></span>`
 }
 
 // TestChipMarkIsNoneAnIconOrThePacket: a chip leads with one of three
@@ -23,12 +23,12 @@ func TestChipMarkIsNoneAnIconOrThePacket(t *testing.T) {
 	for name, tc := range map[string]struct {
 		got, want string
 	}{
-		"pill packet":   {render(t, r, &Badge{Variant: "success", Text: "accept", Dot: true}), packet("bg-green")},
-		"pill hollow":   {render(t, r, &Badge{Variant: "neutral", Text: "drop", Dot: true}), packet("border border-faint")},
-		"entity packet": {renderChipCell(t, r, TableChip{Label: "lan", Tone: "warning", Dot: true}), packet("bg-marigold")},
-		"entity accent": {renderChipCell(t, r, TableChip{Label: "lan", Tone: "accent", Dot: true}), packet("bg-denim")},
-		"tag packet":    {renderTagCell(t, r, TableCell{Text: "x", Tag: "new", TagVariant: "danger", TagDot: true}), packet("bg-crimson")},
-		"tag neutral":   {renderTagCell(t, r, TableCell{Text: "x", Tag: "new", TagDot: true}), packet("border border-faint")},
+		"pill packet":   {render(t, r, &Badge{Variant: "success", Text: "accept", Dot: true}), packet("success")},
+		"pill hollow":   {render(t, r, &Badge{Variant: "neutral", Text: "drop", Dot: true}), packet("neutral")},
+		"entity packet": {renderChipCell(t, r, TableChip{Label: "lan", Tone: "warning", Dot: true}), packet("warning")},
+		"entity accent": {renderChipCell(t, r, TableChip{Label: "lan", Tone: "accent", Dot: true}), packet("accent")},
+		"tag packet":    {renderTagCell(t, r, TableCell{Text: "x", Tag: "new", TagVariant: "danger", TagDot: true}), packet("danger")},
+		"tag neutral":   {renderTagCell(t, r, TableCell{Text: "x", Tag: "new", TagDot: true}), packet("")},
 	} {
 		if !strings.Contains(tc.got, tc.want) {
 			t.Errorf("%s: want %s in:\n%s", name, tc.want, tc.got)
@@ -36,10 +36,10 @@ func TestChipMarkIsNoneAnIconOrThePacket(t *testing.T) {
 	}
 	// One mark only: an icon wins over the packet, and nothing means nothing.
 	both := render(t, r, &Badge{Variant: "success", Text: "accept", Dot: true, Icon: "check"})
-	if strings.Contains(both, "size-1.5 shrink-0 rounded-[1px]") || !strings.Contains(both, lucideIcons["check"]) {
+	if strings.Contains(both, "verso-mark") || !strings.Contains(both, lucideIcons["check"]) {
 		t.Errorf("an icon and a packet on one chip: the icon wins:\n%s", both)
 	}
-	if bare := render(t, r, &Badge{Variant: "success", Text: "accept"}); strings.Contains(bare, "rounded-[1px]") || strings.Contains(bare, "<svg") {
+	if bare := render(t, r, &Badge{Variant: "success", Text: "accept"}); strings.Contains(bare, "verso-mark") || strings.Contains(bare, "<svg") {
 		t.Errorf("a chip with no mark leads with nothing:\n%s", bare)
 	}
 	// A mono chip is one step heavier than a sans one, wherever it stands.
@@ -54,7 +54,7 @@ func TestChipMarkIsNoneAnIconOrThePacket(t *testing.T) {
 		}
 	}
 	// The packet in a chip is still: the pulse is for something live.
-	if live := render(t, r, &Badge{Variant: "success", Text: "accept", Dot: true}); strings.Contains(live, "verso-live-dot") {
+	if live := render(t, r, &Badge{Variant: "success", Text: "accept", Dot: true}); strings.Contains(live, "data-verso-live") {
 		t.Errorf("a chip's packet must not pulse:\n%s", live)
 	}
 }

@@ -57,19 +57,11 @@
     root.setAttribute("aria-label", (reading.label + " " + reading.value + " " + reading.unit).trim());
   }
   // The state dot a row carries, repainted. It is the dot the server rendered
-  // (table.html.tmpl): a fill in the palette for a state worth a colour, a hollow
-  // ring for one that is not. Both the fills and the ring have to come off before
-  // one goes on — this used to add a class beside whatever the render had left
-  // there, which is two fills arguing over the cascade, and it named colours from
-  // stock Tailwind that the render never uses. A live interface going down could
-  // therefore stay green.
-  var DOT_FILL = { success: "bg-green", warning: "bg-marigold", danger: "bg-crimson" };
-  var DOT_RING = ["border-[1.5px]", "border-faint"];
+  // (table.html.tmpl): the mark block (blocks/mark.css) draws the tone it is
+  // given, a fill for a state worth a colour, hollow for one that is not, so the
+  // live layer sets the same tone the render did and names no colour of its own.
   function paintDot(dot, variant) {
-    for (var tone in DOT_FILL) dot.classList.remove(DOT_FILL[tone]);
-    DOT_RING.forEach(function (c) { dot.classList.remove(c); });
-    if (DOT_FILL[variant]) dot.classList.add(DOT_FILL[variant]);
-    else DOT_RING.forEach(function (c) { dot.classList.add(c); });
+    dot.setAttribute("data-verso-tone", variant || "");
   }
 
   // applyPort relights a port on a router's panel: its link LED, its traffic

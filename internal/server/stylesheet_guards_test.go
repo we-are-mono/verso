@@ -187,7 +187,7 @@ var (
 	// utilityShaped is a token that can only be a class: a utility with a
 	// value or a variant (text-sm, md:px-10, [&>p]:inline) or one of the bare
 	// utilities.
-	utilityShaped = regexp.MustCompile(`^!?(?:[a-z0-9@:\[\]()./_%&>~*+=,#!-]*-[a-z0-9@:\[\]()./_%&>~*+=,#!-]*|flex|grid|block|inline|hidden|truncate|italic|uppercase|lowercase|relative|absolute|fixed|sticky|contents|invisible|underline|grow|shrink|border|rounded|shadow|outline|transition|static|isolate)!?$`)
+	utilityShaped = regexp.MustCompile(`^!?(?:[^\s:]+:)*(?:[a-z0-9@\[\]()./_%&>~*+=,#!-]*-[a-z0-9@\[\]()./_%&>~*+=,#!-]*|(?:group|peer)(?:/[\w-]+)?|flex|grid|block|inline|hidden|truncate|italic|uppercase|lowercase|relative|absolute|fixed|sticky|contents|invisible|underline|grow|shrink|border|rounded|shadow|outline|transition|static|isolate)!?$`)
 )
 
 // classish is a script's string literal that can only be a class list: two
@@ -201,6 +201,21 @@ func classish(s string) bool {
 	}
 	for _, t := range toks {
 		if !utilityShaped.MatchString(t) {
+			return false
+		}
+	}
+	return true
+}
+
+// allUtilityShaped reports whether every token of s is shaped like a class: a
+// template printing such tokens prints classes, where one printing a word (a
+// tone, a state) prints a value.
+func allUtilityShaped(s string) bool {
+	for _, t := range strings.Fields(s) {
+		if (strings.HasPrefix(t, "data-") || strings.HasPrefix(t, "aria-")) && !strings.Contains(t, ":") {
+			return false // an attribute's name; aria-invalid:border-crimson is a variant
+		}
+		if !utilityShaped.MatchString(t) && !strings.HasPrefix(t, "verso-") {
 			return false
 		}
 	}
@@ -718,7 +733,7 @@ func noClassStringTemplates(src styleSources) []violation {
 		}
 		for _, m := range templateDefine.FindAllStringSubmatch(src.markup[file], -1) {
 			body := strings.TrimSpace(goTemplateAction.ReplaceAllString(m[2], " "))
-			if body != "" && !strings.ContainsAny(body, "<>") && !strings.Contains(m[2], "{{define") {
+			if body != "" && !strings.ContainsAny(body, "<>") && !strings.Contains(body, `="`) && !strings.Contains(m[2], "{{define") && allUtilityShaped(body) {
 				out = append(out, violation{"no-class-string-templates", file + "\t" + m[1], file})
 			}
 		}

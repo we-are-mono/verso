@@ -124,7 +124,7 @@ func TestStylesheetGuardsCatchWhatTheyName(t *testing.T) {
 			name:  "a template that only prints classes",
 			guard: noClassStringTemplates,
 			bad:   styleSources{markup: map[string]string{"widget/templates/shared.html.tmpl": `{{define "verso-chip-class"}}inline-flex rounded-xs border px-1.5{{end}}`}},
-			good:  styleSources{markup: map[string]string{"widget/templates/shared.html.tmpl": `{{define "verso-chip"}}<span class="verso-chip">{{.}}</span>{{end}}{{define "label"}}{{t "Copy"}}{{end}}`}},
+			good:  styleSources{markup: map[string]string{"widget/templates/shared.html.tmpl": `{{define "verso-chip"}}<span class="verso-chip">{{.}}</span>{{end}}{{define "label"}}{{t "Copy"}}{{end}}{{define "verso-dot-tone"}}{{if eq . "success"}}success{{else}}muted{{end}}{{end}}`}},
 			want:  "verso-chip-class",
 		},
 		{

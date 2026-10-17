@@ -151,7 +151,7 @@ func TestCollectionSaysWhenEmpty(t *testing.T) {
 	got := renderCollection(t, empty, "")
 	for _, want := range []string{
 		`<div data-verso-slot class="flex w-full items-center gap-3 rounded-xs border border-dashed border-rule-strong bg-quiet px-4 pt-1.75 pb-2 leading-6">`,
-		`<span aria-hidden="true" class="size-1.5 shrink-0 rounded-[1px] border border-faint"></span>`,
+		`<span aria-hidden="true" class="verso-mark"></span>`,
 		`<p class="min-w-0 flex-1 text-sm leading-6 text-meta">No keys are authorized.</p>`,
 		`x-data="confirm" @keydown.escape="escape" class="pt-6 pb-1"`,
 	} {

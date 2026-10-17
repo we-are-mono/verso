@@ -244,7 +244,7 @@ func TestTheBoardCardsFacts(t *testing.T) {
 	in = dkInput()
 	in.facts.Disk.Wear = &machine.Wear{Band: 11, PreEOL: 3}
 	board = card(t, renderCards(t, in), "Mono Gateway Development Kit")
-	if !strings.Contains(board, ">29\U0000202fGiB eMMC · past its rated wear<") || !strings.Contains(board, "bg-crimson") {
+	if !strings.Contains(board, ">29\U0000202fGiB eMMC · past its rated wear<") || !strings.Contains(board, `data-verso-tone="danger"`) {
 		t.Errorf("a worn-out eMMC should say so, marked in danger:\n%s", board)
 	}
 }
@@ -274,7 +274,7 @@ func TestTheBootSlotAndClock(t *testing.T) {
 	}
 	in := dkInput()
 	in.hw.Clock.Battery = "low"
-	if board := card(t, renderCards(t, in), "Mono Gateway Development Kit"); !strings.Contains(board, "bg-marigold") {
+	if board := card(t, renderCards(t, in), "Mono Gateway Development Kit"); !strings.Contains(board, `data-verso-tone="warning"`) {
 		t.Errorf("a low clock battery should mark its row in the warning tone:\n%s", board)
 	}
 }
@@ -416,7 +416,7 @@ func TestCoolingListsEveryFan(t *testing.T) {
 	in.inv.Fans = in.inv.Fans[:1]
 	in.inv.Fans[0].State, in.inv.Fans[0].RPM = "fault", 0
 	cooling = card(t, renderCards(t, in), "Cooling")
-	if !strings.Contains(cooling, ">Stalled<") || !strings.Contains(cooling, "bg-marigold") {
+	if !strings.Contains(cooling, ">Stalled<") || !strings.Contains(cooling, `data-verso-tone="warning"`) {
 		t.Errorf("a stalled fan should read Stalled in the warning tone:\n%s", cooling)
 	}
 }

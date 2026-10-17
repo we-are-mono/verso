@@ -72,3 +72,19 @@ figure keeps its size) and `type-takeover-lede` (DESIGN gives a takeover's lede
 16px). The router's name takes `type-title`'s verbatim form, 20/700 at
 −0.025em, rather than a role of its own, and every takeover heading takes
 `type-headline`. 21 roles in all.
+
+## Blocks: convergences
+
+Each block conversion lists here what its copies differed in and what they
+became, measured by the layout snapshot against the task before it.
+
+### `mark` (the 6px state square)
+
+| Copies | n | Difference | Became |
+|---|---|---|---|
+| filled marks | ~250 | no border | a 1px transparent border, the fill under it: the same pixels, one box for every mark |
+| hollow marks on Interfaces | 24 | Inert edge | Faint edge, as every other hollow mark |
+| notice and confirm marks (callout) | ~12 | square corners | 1px corners, as every other mark |
+| the stream's live retone of an interface mark | | `info` drawn hollow | `info` drawn Denim, as the server draws it |
+
+The rail's 5px square stays as it is until the rail converts.

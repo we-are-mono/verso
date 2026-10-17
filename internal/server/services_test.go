@@ -153,7 +153,7 @@ func TestServicesTable(t *testing.T) {
 	}
 	// The state it does state, applied at boot, is no live state: the empty
 	// ring, which never stands before a dash.
-	if !regexp.MustCompile(`border border-faint"></span>\s*<span class="text-meta">applied at boot<`).MatchString(firewallRow) {
+	if !regexp.MustCompile(`class="verso-mark" data-verso-tone="[a-z]*"></span>\s*<span class="text-meta">applied at boot<`).MatchString(firewallRow) {
 		t.Errorf("applied at boot should wear the empty ring: %s", firewallRow)
 	}
 	if regexp.MustCompile(`border border-faint"></span>\s*<span[^>]*>—`).MatchString(firewallRow) {

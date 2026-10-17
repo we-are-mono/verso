@@ -88,7 +88,7 @@
 {{/* An interface's state as its column writes it: the packet, then the word
      in the variant's ink. */}}
 {{define "table.interfaces-state-ink"}}{{if eq .Variant "danger"}}text-crimson-deep{{else if eq .Variant "warning"}}text-marigold-deep{{else if eq .Variant "success"}}text-ink{{else}}text-meta{{end}}{{end}}
-{{define "table.interfaces-state-mark"}}<span aria-hidden="true" class="size-1.5 shrink-0 rounded-[1px] {{if eq .Variant "success"}}bg-green{{else if eq .Variant "danger"}}bg-crimson{{else if eq .Variant "warning"}}bg-marigold{{else}}border border-inert{{end}}"></span>{{end}}
+{{define "table.interfaces-state-mark"}}<span aria-hidden="true" class="verso-mark" data-verso-tone="{{.Variant}}"></span>{{end}}
 
 {{/* On a phone, where the state's column is left out, the state rides on the
      name's line after its networks, and wraps under them when the line is

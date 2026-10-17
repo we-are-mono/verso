@@ -7,7 +7,7 @@
      than out of metrics of its own: one height for every small bordered thing on
      the page, and one place to retune it. Only the tone is the badge's. The lg
      banner chip is not in a row and keeps its own, larger box. */}}
-{{if .Plain}}<span class="inline-flex items-center gap-1.5 text-sm font-medium text-body">{{if .Icon}}{{icon .Icon "size-4 shrink-0 text-faint"}}{{else if .Dot}}<span class="size-1.5 shrink-0 rounded-[1px] {{template "verso-tone-dot" .Variant}}"></span>{{end}}{{.Text}}</span>
+{{if .Plain}}<span class="inline-flex items-center gap-1.5 text-sm font-medium text-body">{{if .Icon}}{{icon .Icon "size-4 shrink-0 text-faint"}}{{else if .Dot}}{{template "verso-dot" .Variant}}{{end}}{{.Text}}</span>
 {{/* Each verdict on its own soft ground, worded in the step of that hue that can
      carry words — the full-chroma value stays a mark, on the dot. */}}
 {{else}}<span class="{{if eq .Size "lg"}}inline-flex items-center gap-2 rounded-xs border px-3 py-3 text-sm font-medium{{else}}{{template "verso-chip-mono"}}{{end}}
@@ -22,7 +22,7 @@
   {{/* A pill in a row is a chip, so it leads with one mark or none: an icon,
        or the still packet square in its hue (an icon wins). The lg banner
        keeps its own. */}}
-  {{if eq .Size "lg"}}{{if .Icon}}{{icon .Icon "size-4 shrink-0"}}{{end}}{{if .Dot}}<span class="size-1.5 shrink-0 rounded-[1px] {{template "verso-tone-dot" .Variant}}"></span>{{end}}
+  {{if eq .Size "lg"}}{{if .Icon}}{{icon .Icon "size-4 shrink-0"}}{{end}}{{if .Dot}}{{template "verso-dot" .Variant}}{{end}}
   {{else if .Icon}}{{icon .Icon "size-3.5 shrink-0"}}{{else if .Dot}}{{template "verso-chip-packet" .Variant}}{{end}}
   {{.Text}}
 </span>{{end}}

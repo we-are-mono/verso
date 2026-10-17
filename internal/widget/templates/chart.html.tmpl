@@ -18,7 +18,7 @@
 <div class="verso-chart-graph"{{if .ID}} id="{{.ID}}"{{end}} data-chart-place="{{.Place}}" data-chart-steps="{{.Steps}}" style="--chart-step: {{.Step}}">
   {{if .Empty}}
   {{/* Nothing to draw: the chart says so where its plot would stand. */}}
-  <p class="flex items-center gap-2 text-sm leading-6 text-meta" data-verso-chart-empty><span aria-hidden="true" class="size-1.5 shrink-0 rounded-[1px] border border-faint"></span>{{.Empty}}</p>
+  <p class="flex items-center gap-2 text-sm leading-6 text-meta" data-verso-chart-empty><span aria-hidden="true" class="verso-mark"></span>{{.Empty}}</p>
   {{else}}
   {{/* A legend line per series that has one, as the Overview's facts read:
        the series' packet, its name as the term, its figure as the value and

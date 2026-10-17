@@ -12,7 +12,7 @@ import (
 // crimson's own wash, the crimson square on its first 20px line, then the
 // words — the same band under a field, a key's box, or a list's box. Half a
 // cell inside at top and bottom keeps it whole cells of the notebook's grid.
-const refusalBand = `class="flex items-start gap-2 rounded-xs bg-crimson-soft px-3 py-2 text-sm leading-6 text-crimson-deep"><span aria-hidden="true" class="mt-2.25 size-1.5 shrink-0 rounded-[1px] bg-crimson"></span><span data-verso-error-text>`
+const refusalBand = `class="flex items-start gap-2 rounded-xs bg-crimson-soft px-3 py-2 text-sm leading-6 text-crimson-deep"><span aria-hidden="true" class="verso-mark mt-2.25" data-verso-tone="danger"></span><span data-verso-error-text>`
 
 // TestEveryRefusalUnderABoxIsOneBand: a password refused, a key the router
 // cannot read, a server that is not a host — each refusal under its box is

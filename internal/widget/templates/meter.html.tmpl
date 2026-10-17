@@ -32,7 +32,7 @@
 <div class="grid grid-cols-[7rem_minmax(0,1fr)_6.5rem] sm:grid-cols-[9.5rem_minmax(0,1fr)_6.5rem] items-center gap-6 border-b border-rule py-row leading-6 first:pt-2 last:border-0"{{if .Name}} data-verso-meter="{{.Name}}"{{end}} role="img" aria-label="{{.Label}} {{.Value}} {{.Unit}}">
   <span class="truncate text-sm font-medium text-ink">{{.Label}}</span>
   {{if .NoTrack}}
-  <span class="flex min-w-0 items-center gap-2 text-sm text-meta"><span class="size-1.5 shrink-0 rounded-[1px] border border-faint" aria-hidden="true"></span><span class="truncate">{{if .Detail}}{{.Detail}}{{else}}{{ t "no limits reported" }}{{end}}</span></span>
+  <span class="flex min-w-0 items-center gap-2 text-sm text-meta"><span class="verso-mark" aria-hidden="true"></span><span class="truncate">{{if .Detail}}{{.Detail}}{{else}}{{ t "no limits reported" }}{{end}}</span></span>
   {{else}}
   <span class="relative h-1.5 rounded-full bg-rule">
     <span class="verso-meter-bar absolute inset-0 {{if eq .Tone "danger"}}bg-crimson{{else if eq .Tone "warning"}}bg-marigold{{else}}bg-green{{end}}" style="clip-path: {{.Clip}}" data-verso-meter-bar></span>
@@ -44,7 +44,7 @@
   </span>
   {{end}}
   <span class="flex items-center justify-end gap-2 tabular-nums">
-    <span class="size-1.5 shrink-0 rounded-[1px] {{if .NoTrack}}bg-glyph{{else if eq .Tone "danger"}}bg-crimson{{else if eq .Tone "warning"}}bg-marigold{{else}}bg-green{{end}}"></span>
+    <span class="verso-mark" data-verso-tone="{{if .NoTrack}}muted{{else if eq .Tone "danger"}}danger{{else if eq .Tone "warning"}}warning{{else}}success{{end}}"></span>
     <span class="text-base leading-6 font-semibold text-ink"><span data-verso-meter-value>{{.Value}}</span>{{if .Unit}}&#x202F;<span class="font-medium text-meta" data-verso-meter-unit>{{.Unit}}</span>{{end}}</span>
   </span>
 </div>

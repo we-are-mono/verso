@@ -66,7 +66,7 @@
   <div class="flex {{if .Next}}items-start{{else}}items-center{{end}} justify-between gap-6 border-t border-mid py-2.5">
     <dt class="text-sm leading-6 text-meta">{{.Label}}</dt>
     <dd class="flex items-center text-sm font-medium text-ink">
-      {{if .Next}}{{/* what it becomes, under what it is, as a table's cell says it */}}<span data-verso-prop-next{{if .Mono}} data-verso-verbatim{{end}} class="flex flex-col items-end{{if .Mono}} font-mono text-base font-medium{{end}}"><span class="text-meta">{{.Value}}</span><span class="flex items-center gap-1.5 text-ink"><span role="img" aria-label="{{t "Available version"}}" title="{{t "Available version"}}" class="flex shrink-0 text-denim">{{icon "corner-down-right" "size-4"}}</span><span>{{.Next}}</span></span></span>{{else}}{{if .Dot}}<span class="mr-2 size-1.5 shrink-0 rounded-[1px] {{template "verso-tone-dot" .Dot}}"{{if .Key}} data-verso-prop-dot="{{.Key}}"{{end}}></span>{{end}}<span{{if .Key}} data-verso-prop="{{.Key}}"{{end}}{{if .Mono}} data-verso-verbatim{{end}}{{if .Figures}} data-verso-figures{{end}} class="{{if .Mono}}font-mono text-base font-medium{{end}}{{if .Duration}} tabular-nums{{end}}{{if .Variant}} {{template "verso-tone-text" .Variant}}{{end}}">{{.Value}}</span>{{if .Copy}}{{template "verso-copy-inline" .Value}}{{end}}{{end}}
+      {{if .Next}}{{/* what it becomes, under what it is, as a table's cell says it */}}<span data-verso-prop-next{{if .Mono}} data-verso-verbatim{{end}} class="flex flex-col items-end{{if .Mono}} font-mono text-base font-medium{{end}}"><span class="text-meta">{{.Value}}</span><span class="flex items-center gap-1.5 text-ink"><span role="img" aria-label="{{t "Available version"}}" title="{{t "Available version"}}" class="flex shrink-0 text-denim">{{icon "corner-down-right" "size-4"}}</span><span>{{.Next}}</span></span></span>{{else}}{{if .Dot}}<span class="verso-mark mr-2" data-verso-tone="{{template "verso-dot-tone" .Dot}}"{{if eq .Dot "success"}} data-verso-live{{end}}{{if .Key}} data-verso-prop-dot="{{.Key}}"{{end}}></span>{{end}}<span{{if .Key}} data-verso-prop="{{.Key}}"{{end}}{{if .Mono}} data-verso-verbatim{{end}}{{if .Figures}} data-verso-figures{{end}} class="{{if .Mono}}font-mono text-base font-medium{{end}}{{if .Duration}} tabular-nums{{end}}{{if .Variant}} {{template "verso-tone-text" .Variant}}{{end}}">{{.Value}}</span>{{if .Copy}}{{template "verso-copy-inline" .Value}}{{end}}{{end}}
     </dd>
   </div>
   {{else}}
@@ -94,7 +94,7 @@
            value starts where every other row's does; before a value on the
            right edge it leads the value on its line, 8px off. Either way it
            is centred on the value's 24px first line, 9px down. */}}
-      {{if .Dot}}<span class="{{if eq $.Align "left"}}absolute -left-3.75 top-2.25{{else}}mt-2.25 mr-2 shrink-0{{end}} size-1.5 rounded-[1px] {{template "verso-mark-hue" .Dot}}"{{if .Key}} data-verso-prop-dot="{{.Key}}"{{end}} aria-hidden="true"></span>{{end}}
+      {{if .Dot}}<span class="verso-mark {{if eq $.Align "left"}}absolute -left-3.75 top-2.25{{else}}mt-2.25 mr-2{{end}}" data-verso-tone="{{.Dot}}"{{if .Key}} data-verso-prop-dot="{{.Key}}"{{end}} aria-hidden="true"></span>{{end}}
       {{if .Chip}}<span class="{{template "verso-chip-class"}}">{{.Value}}</span>{{else if .Next}}
       {{/* What the value becomes, under what it is — as a table's cell says
            it: the value it was recedes to Meta, and what it becomes stands in

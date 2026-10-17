@@ -38,7 +38,7 @@
     <span class="mr-1">{{if .Hidden}}{{ t "Hidden" }}{{else}}{{ t "No hidden cards" }}{{end}}</span>
     {{range .Hidden}}
     <button type="button" data-overview-restore="{{.ID}}" data-tone="{{.Tone}}" class="group/chip -my-1 inline-flex h-7 cursor-pointer items-center gap-2 rounded-xs border border-rule-strong bg-ground px-2.5 text-ink transition-colors hover:border-denim-line hover:bg-denim-soft hover:text-denim-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim">
-      <span aria-hidden="true" class="size-1.5 shrink-0 rounded-[1px] border border-faint group-data-[tone=success]/chip:border-transparent group-data-[tone=success]/chip:bg-green group-data-[tone=warning]/chip:border-transparent group-data-[tone=warning]/chip:bg-marigold group-data-[tone=danger]/chip:border-transparent group-data-[tone=danger]/chip:bg-crimson"></span>{{icon "plus" "size-3.5"}}<span>{{.Title}}</span>
+      <span aria-hidden="true" class="verso-mark group-data-[tone=success]/chip:border-transparent group-data-[tone=success]/chip:bg-green group-data-[tone=warning]/chip:border-transparent group-data-[tone=warning]/chip:bg-marigold group-data-[tone=danger]/chip:border-transparent group-data-[tone=danger]/chip:bg-crimson"></span>{{icon "plus" "size-3.5"}}<span>{{.Title}}</span>
     </button>
     {{end}}
     <button type="button" data-overview-reset class="-my-1 ml-auto h-7 cursor-pointer rounded-xs px-2.5 font-medium text-denim-deep transition-colors hover:bg-denim-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim">{{ t "Reset layout" }}</button>
@@ -79,7 +79,7 @@
       <span data-overview-card-summary aria-hidden="{{if .Closed}}false{{else}}true{{end}}" class="verso-overview-summary min-w-0 truncate text-sm leading-6 text-meta tabular-nums">{{.Head.Summary}}</span>
     </div>
     <span data-overview-card-status class="flex shrink-0 items-center gap-2 text-sm leading-6 font-medium whitespace-nowrap text-body group-data-[tone=success]/card:text-green-deep group-data-[tone=warning]/card:text-marigold-deep group-data-[tone=danger]/card:text-crimson-deep"{{if not .Head.Status}} hidden{{end}}>
-      <span aria-hidden="true" class="size-1.5 shrink-0 rounded-[1px] border border-faint group-data-[tone=success]/card:border-transparent group-data-[tone=success]/card:bg-green group-data-[tone=warning]/card:border-transparent group-data-[tone=warning]/card:bg-marigold group-data-[tone=danger]/card:border-transparent group-data-[tone=danger]/card:bg-crimson"></span><span data-overview-card-word>{{.Head.Status}}</span>
+      <span aria-hidden="true" class="verso-mark group-data-[tone=success]/card:border-transparent group-data-[tone=success]/card:bg-green group-data-[tone=warning]/card:border-transparent group-data-[tone=warning]/card:bg-marigold group-data-[tone=danger]/card:border-transparent group-data-[tone=danger]/card:bg-crimson"></span><span data-overview-card-word>{{.Head.Status}}</span>
     </span>
     {{/* A choice that governs the whole card (the Traffic card's window) rides
          the header before its acts; choosing never opens or closes the card

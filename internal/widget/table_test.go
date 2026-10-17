@@ -795,7 +795,7 @@ func TestAnEmptyTableIsTheEmptySlot(t *testing.T) {
 	got := render(t, r, &Table{Columns: []TableColumn{{Label: "Name"}}, EmptyText: "No device has a reserved address."})
 	for _, want := range []string{
 		`<div data-verso-slot class="flex w-full items-center gap-3 rounded-xs border border-dashed border-rule-strong bg-quiet`,
-		`<span aria-hidden="true" class="size-1.5 shrink-0 rounded-[1px] border border-faint"></span>`,
+		`<span aria-hidden="true" class="verso-mark"></span>`,
 		`<p class="min-w-0 flex-1 text-sm leading-6 text-meta">No device has a reserved address.</p>`,
 	} {
 		if !strings.Contains(got, want) {
@@ -965,7 +965,7 @@ func TestRenderTableDirectAction(t *testing.T) {
 		`role="alertdialog"`, `>End this session?<`, "Anyone using it will be signed out.",
 		// the question is the confirm's own band: crimson wash in its hairline,
 		// the square at full chroma, the words in the deep step
-		"border-crimson-line bg-crimson-soft text-crimson-deep", "size-1.5", "bg-crimson",
+		"border-crimson-line bg-crimson-soft text-crimson-deep", "verso-mark", `data-verso-tone="danger"`,
 		`>End session<`, "border-crimson bg-crimson text-on-fill transition-colors", // the destructive act
 		// the way back speaks the question's hue, bare, never a sand Cancel
 		`>Keep it<`, "text-crimson-deep transition-colors hover:bg-crimson-line/50",

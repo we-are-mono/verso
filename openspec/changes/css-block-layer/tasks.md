@@ -4,6 +4,8 @@
 
 **Parity** means the geometry and type snapshot (design Decision 10) of the whole reference set, at 1440px and 390px, diffs against the previous task's snapshot such that every difference belongs to a convergence this task records in `drift.md`: drifted copies of a look becoming the block's or role's one form, and the boxes that shift after them.
 
+**Order of work:** leaf blocks (groups 7–9, then 5) convert before the surfaces. The stack, page, section, drawer and card (4.2–4.5 and 6) are one cascade today: `space-y` utilities, `@layer components` rules in `input.css`, `@layer utilities` rules and unlayered rules in `sections.css` all set the same margins. They convert together, after the blocks that stand in them, so no intermediate state has to reproduce that cascade.
+
 **A block is done** when all of these hold:
 1. A markup test written first in the widget's or page's `_test.go` asserts the block's root, elements and variant attributes, and fails before the conversion.
 2. The block's rules live in `internal/server/assets/blocks/<block>.css`, with a header listing its elements, variants, the custom properties it reads (with defaults), and those it sets on other blocks.
