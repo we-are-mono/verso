@@ -195,13 +195,7 @@ func (s *Server) directChange(ctx context.Context, reading configReading, before
 	for name, section := range before {
 		held[name] = section
 	}
-	committed := map[string]map[string]any{config: held}
-	for i := range change.Items {
-		for j := range change.Items[i].Ops {
-			op := &change.Items[i].Ops[j]
-			op.Old = replaced(committed, *op, secrets)
-		}
-	}
+	noteReplaced(&change, map[string]map[string]any{config: held}, secrets)
 	return change
 }
 

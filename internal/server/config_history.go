@@ -88,14 +88,20 @@ func (s *Server) stagedChangeOf(ctx context.Context, sid string, view stagedView
 		log.Printf("verso: what the apply replaces could not be read: %v", err)
 		return change
 	}
+	noteReplaced(&change, committed, secrets)
+	change.OldRead = true
+	return change
+}
+
+// noteReplaced keeps on each of change's ops what it replaced, as committed
+// held it.
+func noteReplaced(change *history.Change, committed map[string]map[string]any, secrets map[string]bool) {
 	for i := range change.Items {
 		for j := range change.Items[i].Ops {
 			op := &change.Items[i].Ops[j]
 			op.Old = replaced(committed, *op, secrets)
 		}
 	}
-	change.OldRead = true
-	return change
 }
 
 // scrubHistory takes every secret the shell knows out of config history:
