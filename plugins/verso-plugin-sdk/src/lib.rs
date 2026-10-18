@@ -215,14 +215,26 @@ where
         get(&request)
     };
 
-    let payload = serde_json::to_vec(&envelope).unwrap_or_default();
-    let head = format!(
-        "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
-        payload.len()
-    );
-    stream.write_all(head.as_bytes())?;
+    let payload = if envelope.nothing {
+        Vec::new()
+    } else {
+        serde_json::to_vec(&envelope).unwrap_or_default()
+    };
+    stream.write_all(response_head(&envelope, payload.len()).as_bytes())?;
     stream.write_all(&payload)?;
     stream.flush()
+}
+
+/// response_head is the status line and headers an envelope is answered
+/// with: 204 and no body for a contribution with nothing to show, else 200
+/// and its JSON's length.
+fn response_head(envelope: &Envelope, length: usize) -> String {
+    if envelope.nothing {
+        return "HTTP/1.1 204 No Content\r\nConnection: close\r\n\r\n".into();
+    }
+    format!(
+        "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {length}\r\nConnection: close\r\n\r\n"
+    )
 }
 
 // ---- what a handler answers ----
@@ -2884,6 +2896,35 @@ pub struct Envelope {
     /// [`Envelope::not_found`].
     #[serde(skip_serializing_if = "is_false")]
     pub not_found: bool,
+    /// An Overview card's header, when this answers a contribution to the
+    /// Overview's cards; `widget` is its body. Build it with
+    /// [`Envelope::overview_card`].
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub card: Option<OverviewCard>,
+    /// A contribution with nothing to show right now: answered 204, with no
+    /// body. Set it through [`Envelope::nothing`].
+    #[serde(skip)]
+    pub nothing: bool,
+}
+
+/// OverviewCard is a plugin's Overview card header (ADR-026), the shell
+/// card's anatomy: `status` is the word at its end and `cause` what is wrong as
+/// a sentence that stands alone, both empty while all is well; `summary` is the
+/// one reading a closed card says; `opens` is the page on this plugin its door
+/// leads to.
+#[derive(Serialize, Debug, Clone)]
+pub struct OverviewCard {
+    pub title: String,
+    pub icon: String,
+    pub tone: Tone,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub status: String,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub summary: String,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub cause: String,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub opens: String,
 }
 
 impl Envelope {
@@ -2926,7 +2967,26 @@ impl Envelope {
             commit: Vec::new(),
             commands: Vec::new(),
             not_found: false,
+            card: None,
+            nothing: false,
         }
+    }
+
+    /// nothing answers a contribution that has nothing to show right now (a
+    /// certificate source not set up): the shell draws nothing in its place
+    /// and logs nothing.
+    pub fn nothing() -> Envelope {
+        let mut envelope = Envelope::page("", Widget::text(""));
+        envelope.nothing = true;
+        envelope
+    }
+
+    /// overview_card answers a contribution to the Overview's cards: the
+    /// card's header, and its body, which reads and never asks.
+    pub fn overview_card(card: OverviewCard, body: Widget) -> Envelope {
+        let mut envelope = Envelope::page(&card.title.clone(), body);
+        envelope.card = Some(card);
+        envelope
     }
 
     /// immediate declares the page one of direct reads and commands rather
@@ -3079,6 +3139,42 @@ fn hex(c: u8) -> Option<u8> {
 
 #[cfg(test)]
 mod tests {
+    // A contribution with nothing to show answers 204 and no body (ADR-026);
+    // every other answer is a 200 with its envelope.
+    #[test]
+    fn a_contribution_with_nothing_to_show_answers_no_content() {
+        let nothing = super::Envelope::nothing();
+        assert_eq!(super::response_head(&nothing, 0), "HTTP/1.1 204 No Content\r\nConnection: close\r\n\r\n");
+        let page = super::Envelope::page("T", super::Widget::text("x"));
+        assert!(super::response_head(&page, 12).starts_with("HTTP/1.1 200 OK\r\n"));
+        assert!(super::response_head(&page, 12).contains("Content-Length: 12\r\n"));
+    }
+
+    // An Overview card's header rides the envelope beside its body.
+    #[test]
+    fn an_overview_card_carries_its_header_in_card() {
+        let card = super::Envelope::overview_card(
+            super::OverviewCard {
+                title: "Certificate".into(),
+                icon: "shield-check".into(),
+                tone: super::Tone::Warning,
+                status: "Renewal failed".into(),
+                summary: "expires in 20 d".into(),
+                cause: "The certificate could not be renewed".into(),
+                opens: "/".into(),
+            },
+            super::Widget::properties(vec![]),
+        );
+        let wire = serde_json::to_value(&card).unwrap();
+        assert_eq!(
+            wire["card"],
+            serde_json::json!({"title": "Certificate", "icon": "shield-check", "tone": "warning",
+                "status": "Renewal failed", "summary": "expires in 20 d",
+                "cause": "The certificate could not be renewed", "opens": "/"})
+        );
+        assert_eq!(wire["widget"]["type"], "properties");
+    }
+
     // An empty box's hint is typed: a default or an example, never a bare
     // value; and an empty field with a default reads as that default, the
     // value in force.
