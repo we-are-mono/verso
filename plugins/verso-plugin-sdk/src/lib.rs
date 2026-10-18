@@ -45,6 +45,7 @@ mod slots;
 pub use slots::{ShellSlot, SlotKind, ACCESS_BLOCKS, OVERVIEW_CARDS, SHELL_SLOTS};
 mod args;
 pub use args::{ArgKind, MAX_TEXT};
+pub mod netlink;
 pub mod root;
 pub mod registry;
 pub use registry::{
