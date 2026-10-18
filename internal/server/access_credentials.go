@@ -54,17 +54,6 @@ func (s *Server) readAccessCredentials(ctx context.Context, sid string) (json.Ra
 	return json.Marshal(map[string]any{"keys": keys, "certificate": cert})
 }
 
-// readACMEState is the helper's acmeState with acme's certificate given as the
-// facts the Access page says of a certificate, never as PEM, so a plugin reads
-// it as the Certificate card does.
-func (s *Server) readACMEState(ctx context.Context, sid string) (json.RawMessage, error) {
-	raw, err := s.backend.ACMEState(ctx, sid)
-	if err != nil {
-		return nil, err
-	}
-	return certificatesAsFacts(raw, []string{"certificate"})
-}
-
 // certificatesAsFacts replaces each named field of a read's result that holds a
 // PEM certificate with the facts the HTTPS certificate card shows (ADR-027 §8),
 // so no PEM reaches a plugin and the facts have one implementation. A field

@@ -259,9 +259,6 @@ type Backend interface {
 	NetworkState(ctx context.Context, sid string) (json.RawMessage, error)
 	WirelessState(ctx context.Context, sid string) (json.RawMessage, error)
 	DDNSState(ctx context.Context, sid string) (json.RawMessage, error)
-	// ACMEState is the trusted certificate as acme left it (ADR-017 §6): the
-	// last outcome, whether a request runs, and acme's certificate in PEM.
-	ACMEState(ctx context.Context, sid string) (json.RawMessage, error)
 	// DDNSUpdate has one ddns-scripts service send its address now.
 	DDNSUpdate(ctx context.Context, sid, section string) error
 	// PluginCommand runs a plugin's registered root command (ADR-027): a read's

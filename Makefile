@@ -23,7 +23,7 @@ PLUGINS := interfaces system firewall
 # (ADR-027): a version from before the move calls helper verbs this verso no
 # longer has, so apk moves it with verso or refuses both, never leaving them
 # mixed.
-PLUGIN_FLOORS := !verso-plugin-vpn<0.3.0-r2
+PLUGIN_FLOORS := !verso-plugin-vpn<0.3.0-r2 !verso-plugin-acme<0.1.0-r11
 plugin_manifest = plugins/verso-plugin-$(1)/Cargo.toml
 # Every Rust crate the tree tests and lints: the helper, the SDK, the plugins.
 CRATES := $(RPCD_MANIFEST) plugins/verso-plugin-sdk/Cargo.toml $(foreach p,$(PLUGINS),$(call plugin_manifest,$(p)))

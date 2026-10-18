@@ -9,9 +9,9 @@
 //! checked through native ubus `session.access` before any action runs.
 
 mod access;
-mod acme;
 mod args;
 mod arrival;
+mod certificate_event;
 mod paths;
 mod plugin_command;
 mod registry;
@@ -125,7 +125,7 @@ impl Failure {
 }
 
 fn main() {
-    if firewall_log::command_line() || acme::command_line() {
+    if firewall_log::command_line() {
         return;
     }
     let socket = socket_argument().unwrap_or_else(|message| {
@@ -357,7 +357,6 @@ fn dispatch(request: &Value, state: &State, uid: u32) -> Result<Value, Failure> 
         ),
         "accessCredentials" => access::state(),
         "ddnsState" => ddns::state(),
-        "acmeState" => acme::state(&acme::System, &acme::Places::router()),
         "ddnsUpdate" => ddns::update(argument(request, "section")?),
         // The caller's own sid, which the access check above already holds to.
         "refreshGrants" => grants::refresh(sid),
@@ -376,9 +375,10 @@ fn dispatch(request: &Value, state: &State, uid: u32) -> Result<Value, Failure> 
                 .maintenance
                 .lock()
                 .map_err(|_| Failure::unknown("credential-operation lock poisoned"))?;
-            // A pair installed by hand is the operator's: no renewal replaces it.
+            // A pair installed by hand is the operator's: whatever renews
+            // another hears so, and lets it be.
             let done = access::certificate(argument(request, "certificate")?, argument(request, "key")?)?;
-            acme::hand_over(&acme::System)?;
+            certificate_event::installed(&plugin_command::System);
             Ok(done)
         }
         "setWebListeners" => {
@@ -406,7 +406,7 @@ fn dispatch(request: &Value, state: &State, uid: u32) -> Result<Value, Failure> 
                 .lock()
                 .map_err(|_| Failure::unknown("credential-operation lock poisoned"))?;
             let done = access::make()?;
-            acme::hand_over(&acme::System)?;
+            certificate_event::installed(&plugin_command::System);
             Ok(done)
         }
         "setPassword" => {
@@ -1383,7 +1383,6 @@ mod tests {
         "setAuthorizedKeys",
         "setWebCertificate",
         "makeWebCertificate",
-        "acmeState",
         "setWebListeners",
         "setTheme",
         "setPassword",

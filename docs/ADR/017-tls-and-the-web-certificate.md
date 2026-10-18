@@ -255,8 +255,9 @@ unprivileged shell the DNS credentials.
   is a secret in config history.
 - **Delivery.** acme-common hands each outcome to `hotplug-call acme` as `ACTION`
   (`issued`, `renewed`, `issue-failed`, `renew-failed`), with the certificate's
-  name in `main_domain`. The plugin's `/etc/hotplug.d/acme/50-verso` runs
-  `verso-rpcd acme deliver "$ACTION"` as root. For `acme.verso`'s first domain,
+  name in `main_domain`. The plugin's `/etc/hotplug.d/acme/50-verso` runs its
+  own binary's root half, `verso-plugin-acme root deliver "$ACTION"`, as root
+  (ADR-027). For `acme.verso`'s first domain,
   while the section is on, `deliver` records the outcome in
   `/var/run/verso-acme/verso` and, unless acme said it failed, hands
   `/etc/ssl/acme/<domain>.fullchain.crt` and its key to `verso certificate
@@ -265,21 +266,23 @@ unprivileged shell the DNS credentials.
   with no session is granted two reads only (ADR-014), and widening that grant
   would hand every local root caller a write it does not need. The install runs in
   the Go binary because the pair check and the PKCS#8 conversion live there, and
-  acme.sh writes EC keys in SEC1. The shell knows nothing of ACME; the root-side
-  work lives in `verso-rpcd`, as OpenVPN's and DDNS's do.
+  acme.sh writes EC keys in SEC1. Neither the shell nor `verso-rpcd` knows
+  anything of ACME: the root-side work ships with the plugin, and a router
+  without it carries none.
 - **Catch-up.** acme.sh sends nothing when a renewal is not yet due, so a
   certificate already on disk would wait for one. The plugin's init script runs
-  `verso-rpcd acme deliver sync` before the plugin starts (before the shell at
+  `verso-plugin-acme root deliver sync` before the plugin starts (before the shell at
   boot) and on every change to the acme config: a missed event, or the section
   turned back on over a valid certificate, is served at once. `sync` records no
   outcome.
-- **State.** `acmeState` gives the plugin the recorded outcome and its time,
+- **State.** The plugin's registered read `acme.state` (ADR-027), answered by
+  its root half, gives its pages the recorded outcome and its time,
   whether acme's procd instance for the section runs (requesting), acme's
   certificate for the domain, which the shell turns into the facts the HTTPS
   certificate card shows, and whether it is the one served. The key is never
   read. No state comes from the log; an outcome recorded before a reboot is gone,
   and the certificate file still gives expiry and serving.
-- **The name on the LAN.** `acmeState` asks the router's own resolver for the
+- **The name on the LAN.** `acme.state` asks the router's own resolver for the
   domain and says whether the answer is one of the router's addresses (`lan`:
   `here`, `elsewhere`, `none`), the lookup bounded at 1.5 s. It asks rather than
   reads `/etc/config/dhcp`, because the LAN's names may be kept elsewhere
@@ -293,10 +296,14 @@ unprivileged shell the DNS credentials.
   pointing at a private address is refused by dnsmasq's rebind protection; the
   local record is not.
 - **One owner of the certificate.** Installing or making a certificate by hand
-  sets `acme.verso.enabled` to `0`, so a renewal never overwrites it:
-  `verso-rpcd` commits it, through root's own delta directory, after the pair is
-  written. The Install and Make drawers say so before the operator confirms when
-  the section is on. Turning it back on serves the certificate acme holds at once
+  sets `acme.verso.enabled` to `0`, so a renewal never overwrites it. Once the
+  pair is written, `verso-rpcd` announces it as `hotplug-call verso-certificate`
+  with `ACTION=installed`, and waits for the scripts that answer;
+  the plugin's `/etc/hotplug.d/verso-certificate/50-acme` runs
+  `verso-plugin-acme root hand-over`, which commits the change through root's
+  own delta directory, marked as Verso's own act for config history. Core names
+  no source of the certificate. The Install and Make drawers say so before the
+  operator confirms when the section is on. Turning it back on serves the certificate acme holds at once
   (Catch-up) and requests one when none is held.
 
 ### 7. Where the browser is sent

@@ -147,24 +147,16 @@ func TestCertificateFactsReadAsTheBrowserDoes(t *testing.T) {
 	}
 }
 
-// acmeFake answers acmeState as the helper does.
-type acmeFake struct {
-	fakeBackend
-	state string
-}
-
-func (b acmeFake) ACMEState(context.Context, string) (json.RawMessage, error) {
-	return json.RawMessage(b.state), nil
-}
-
-func TestTheTrustedCertificateReachesAPluginAsFactsNeverAsPEM(t *testing.T) {
+// TestACertificateFieldBecomesFactsNeverPEM: a field a registry names as a
+// certificate (ADR-027 §8) — acme's, here — reaches a plugin as the facts the
+// HTTPS certificate card shows; the rest of the answer stands as it was.
+func TestACertificateFieldBecomesFactsNeverPEM(t *testing.T) {
 	certPEM, _, err := tlscert.Generate([]string{"router.example.com"}, time.Now())
 	if err != nil {
 		t.Fatal(err)
 	}
 	answer, _ := json.Marshal(map[string]any{"domain": "router.example.com", "requesting": false, "outcome": "renewed", "at": 1759000000, "certificate": string(certPEM), "serving": true})
-	s := &Server{backend: acmeFake{state: string(answer)}}
-	raw, err := s.readACMEState(context.Background(), "sid")
+	raw, err := certificatesAsFacts(answer, []string{"certificate"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -189,14 +181,12 @@ func TestTheTrustedCertificateReachesAPluginAsFactsNeverAsPEM(t *testing.T) {
 	}
 
 	for _, plain := range []string{`{}`, `{"domain":"router.example.com","requesting":true}`} {
-		s := &Server{backend: acmeFake{state: plain}}
-		raw, err := s.readACMEState(context.Background(), "sid")
+		raw, err := certificatesAsFacts(json.RawMessage(plain), []string{"certificate"})
 		if err != nil || string(raw) != plain {
 			t.Errorf("an answer without a certificate became %s (%v), want %s", raw, err, plain)
 		}
 	}
-	s = &Server{backend: acmeFake{state: `{"domain":"router.example.com","certificate":"not a certificate","serving":false}`}}
-	raw, _ = s.readACMEState(context.Background(), "sid")
+	raw, _ = certificatesAsFacts(json.RawMessage(`{"domain":"router.example.com","certificate":"not a certificate","serving":false}`), []string{"certificate"})
 	if strings.Contains(string(raw), "not a certificate") || !strings.Contains(string(raw), `"serving":false`) {
 		t.Errorf("an unreadable certificate is dropped, the rest kept: %s", raw)
 	}
