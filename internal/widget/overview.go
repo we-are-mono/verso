@@ -163,7 +163,6 @@ type OverviewFact struct {
 type OverviewMeter struct {
 	Name   string
 	Label  string
-	Icon   string
 	Role   string
 	Band   string
 	Value  string
@@ -307,7 +306,7 @@ func (o *Overview) sysMeters() []*Meter {
 	out := make([]*Meter, 0, len(o.SysMetrics))
 	for _, m := range o.SysMetrics {
 		out = append(out, &Meter{
-			Name: m.Name, Icon: m.Icon, Overview: true, Tone: m.Band, Verbatim: true,
+			Name: m.Name, Overview: true, Tone: m.Band, Verbatim: true,
 			Label: m.Label, Value: m.Value, Unit: m.Unit, Fill: m.Fill, Detail: m.Detail,
 		})
 	}

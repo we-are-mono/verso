@@ -229,16 +229,6 @@
   font-variant-numeric: tabular-nums;
 }
 
-@utility type-figure-unit {
-  font-family: var(--font-sans);
-  font-size: 1rem;
-  line-height: 2.5rem;
-  font-weight: 400;
-  letter-spacing: normal;
-  text-transform: none;
-  font-variant-numeric: normal;
-}
-
 @utility type-axis {
   font-family: var(--font-sans);
   font-size: 0.75rem;

@@ -4,8 +4,6 @@
 package widget
 
 import (
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -47,22 +45,23 @@ func TestRenderMeter(t *testing.T) {
 		// so a live update repaints the bar without laying the page out again
 		"clip-path: inset(0 28% 0 0 round 9999px)",
 		meterBar("success"), // 72% is in the ordinary range: the canvas's green band
-		`<span class="verso-meter__figure" data-verso-meter-value>`,
+		`<span class="verso-meter__figure" data-verso-figures data-verso-meter-value>`,
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("meter missing %q:\n%s", want, got)
 		}
 	}
 	declaresBandFill(t, "success")
-	// The figure is the figure role, whose digits are tabular.
-	declares(t, "meter", ".verso-meter__figure", "@apply type-figure;")
-	typeCSS, err := os.ReadFile(filepath.Join("..", "server", "assets", "type.css"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !strings.Contains(cssRule(string(typeCSS), "@utility type-figure"), "font-variant-numeric: tabular-nums;") {
-		t.Error("the figure role's digits are not tabular")
-	}
+	// A gauge's figure leads its gauge without shouting: the headline's sans
+	// at 24px on a 32px line, its digits tabular by the mark, its unit a
+	// value's words beside it.
+	declares(t, "meter", ".verso-meter__figure", "@apply type-headline;")
+	declares(t, "meter", ".verso-meter__unit", "@apply type-value;")
+	declares(t, "meter", ".verso-meter__reading", "height: calc(var(--spacing) * 8);")
+	// A gauge's track is 4px, centred on a line of its own, so the bar
+	// carries the reading's band without outweighing the figure over it.
+	declares(t, "meter", `.verso-meter__track:where(.verso-meter:not([data-verso-place="row"], [data-verso-place="cell"]) *)`,
+		"height: calc(var(--spacing) * 1);", "margin-block: calc(var(--spacing) * 2.5);")
 }
 
 // TestMeterBands: the track colours itself from Fill (not from the displayed Value).

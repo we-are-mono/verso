@@ -1164,17 +1164,12 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	s.renderWidgetPage(w, r, http.StatusOK, pageHeader{}, "wide", nil, ov)
 }
 
-// sysMetricsToWidget maps the System readings onto the overview's gauge fields,
-// resolving each metric's icon by name.
+// sysMetricsToWidget maps the System readings onto the overview's gauge fields.
 func sysMetricsToWidget(rs []meterReading) []widget.OverviewMeter {
-	icons := map[string]string{
-		"sys-load": "activity", "sys-cpu": "settings",
-		"sys-memory": "memory-stick", "sys-storage": "hard-drive",
-	}
 	out := make([]widget.OverviewMeter, 0, len(rs))
 	for _, r := range rs {
 		out = append(out, widget.OverviewMeter{
-			Name: r.Name, Label: r.Label, Icon: icons[r.Name], Band: r.Band,
+			Name: r.Name, Label: r.Label, Band: r.Band,
 			Value: r.Value, Unit: r.Unit, Fill: r.Fill, Detail: r.Detail,
 		})
 	}

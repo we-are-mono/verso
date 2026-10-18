@@ -173,7 +173,7 @@ own and points at the decision that governs it; the rationale lives there, not h
 ## Stylesheet blocks (ADR-025, css-block-layer)
 
 Every look is a block in `internal/server/assets/blocks/`, every text one of
-the 21 type roles in `type.css`, and the guards in
+the type roles in `type.css`, and the guards in
 `internal/server/stylesheet_guards_test.go` hold both without exceptions.
 
 - **Release note: one look per thing.** Cards, lists, folds, badges and the

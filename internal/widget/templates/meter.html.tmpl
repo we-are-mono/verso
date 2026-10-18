@@ -10,8 +10,8 @@
      "info" forces the accent for a rate. */}}
 {{if .Overview}}
 <div data-verso-meter="{{.Name}}" data-overview-meter aria-label="{{.Label}} {{.Value}} {{.Unit}}" class="verso-meter" data-verso-place="overview">
-  <div class="verso-meter__head"><span class="verso-meter__label">{{.Label}}</span><span aria-hidden="true" class="verso-meter__glyph">{{icon .Icon "size-4"}}</span></div>
-  <div class="verso-meter__reading"><span class="verso-meter__figure" data-verso-meter-value>{{.Value}}</span><span class="verso-meter__unit" data-verso-meter-unit>{{.Unit}}</span></div>
+  <div class="verso-meter__head"><span class="verso-meter__label">{{.Label}}</span></div>
+  <div class="verso-meter__reading"><span class="verso-meter__figure" data-verso-figures data-verso-meter-value>{{.Value}}</span><span class="verso-meter__unit" data-verso-meter-unit>{{.Unit}}</span></div>
   <div class="verso-meter__track"><div class="verso-meter__bar"{{with .Tone}} data-verso-tone="{{.}}"{{end}} style="clip-path: {{.Clip}}" data-verso-meter-bar></div></div>
   <div class="verso-meter__detail" data-verso-meter-detail>{{.Detail}}</div>
 </div>
@@ -53,7 +53,7 @@
     <span class="verso-meter__label">{{.Label}}</span>
   </div>
   <div class="verso-meter__reading">
-    <span class="verso-meter__figure" data-verso-meter-value>{{.Value}}</span>
+    <span class="verso-meter__figure" data-verso-figures data-verso-meter-value>{{.Value}}</span>
     {{if or .Unit .Name}}<span class="verso-meter__unit" data-verso-meter-unit>{{.Unit}}</span>{{end}}
   </div>
   <div class="verso-meter__track">

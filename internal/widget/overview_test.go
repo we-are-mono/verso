@@ -21,7 +21,7 @@ func fullOverview() *Overview {
 		FirewallState: "active",
 		V4Proto:       "DHCP", V4: []OverviewFact{{Label: "Address", Value: "172.30.1.171/24", Copy: true}},
 		V6Proto: "DHCPv6 client", V6: []OverviewFact{{Label: "Prefix", Value: "fd42:7ea:aa00::/56", Copy: true}, {Label: "Expires", Duration: secs(480)}},
-		SysMetrics: []OverviewMeter{{Name: "sys-cpu", Label: "CPU", Icon: "cpu", Value: "27", Unit: "%", Fill: 27, Band: "success"}},
+		SysMetrics: []OverviewMeter{{Name: "sys-cpu", Label: "CPU", Value: "27", Unit: "%", Fill: 27, Band: "success"}},
 		Interfaces: []OverviewInterface{
 			{Name: "eth0", Kind: "port", State: "up", Physical: true, Networks: []string{"wan"}, RxBPS: 18_400_000, TxBPS: 2_100_000},
 			{Name: "eth4", Kind: "port", State: "down", Physical: true},
@@ -53,6 +53,21 @@ func TestAnOverviewCardsSeamIsItsFramesInk(t *testing.T) {
 		if body := cssRule(blockCSS(t, "overview"), rule); strings.Contains(body, "border") {
 			t.Errorf("blocks/overview.css draws a seam of its own on %s:\n%s", rule, body)
 		}
+	}
+}
+
+// TestAResourcesGaugeNamesItselfOnce: a Resources gauge is named by its
+// label alone; a glyph beside the label would say the same again, under the
+// card's own icon, and pull the eye from the figure.
+func TestAResourcesGaugeNamesItselfOnce(t *testing.T) {
+	got := render(t, newRenderer(t), fullOverview())
+	gauge := got[strings.Index(got, `data-verso-meter="sys-cpu"`):]
+	gauge = gauge[:strings.Index(gauge, "data-verso-meter-detail")]
+	if !strings.Contains(gauge, `<span class="verso-meter__label">CPU</span>`) {
+		t.Errorf("the gauge is not named by its label:\n%s", gauge)
+	}
+	if strings.Contains(gauge, "verso-meter__glyph") {
+		t.Errorf("the gauge draws a glyph beside its label:\n%s", gauge)
 	}
 }
 

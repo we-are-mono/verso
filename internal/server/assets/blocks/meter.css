@@ -9,7 +9,7 @@
  * the glide repaints the bar alone and never lays the page out again.
  *
  * A gauge (the default, and the Overview's) stands on the notebook's grid:
- * the label's 24px line, the figure centred in two cells, the 6px track
+ * the label's 24px line, the figure's 32px line, the 4px track
  * centred on a line of its own, the detail's line. A row (data-verso-place
  * "row", a headroom listing) is one dense row: the name, a track that fills
  * to the reading's own ceiling with its limits ticked across it, the value
@@ -22,8 +22,8 @@
  * Elements: __head     the label's line, and the glyph naming the metric
  *           __label    what is measured, the kicker
  *           __glyph    the metric's glyph; data-verso-role tints it
- *           __reading  the figure and its unit, two cells tall
- *           __figure   the reading, in the figure role
+ *           __reading  the figure and its unit, one line
+ *           __figure   the reading, in the headline's role
  *           __unit     its unit
  *           __track    the range
  *           __bar      the reading's fill; data-verso-tone (success,
@@ -106,17 +106,19 @@
 
 .verso-meter__reading {
   display: flex;
+  flex-wrap: wrap;
+  align-content: center;
   align-items: baseline;
-  gap: calc(var(--spacing) * 1.5);
-  height: calc(var(--spacing) * 10);
+  gap: calc(var(--spacing) * 1);
+  height: calc(var(--spacing) * 8);
 }
 .verso-meter__figure {
   color: var(--color-ink);
-  @apply type-figure;
+  @apply type-headline;
 }
 .verso-meter__unit {
   color: var(--color-meta);
-  @apply type-figure-unit;
+  @apply type-value;
 }
 
 .verso-meter__track {
@@ -125,7 +127,8 @@
   background-color: var(--color-rule);
 }
 .verso-meter__track:where(.verso-meter:not([data-verso-place="row"], [data-verso-place="cell"]) *) {
-  margin-block: calc(var(--spacing) * 2.25);
+  height: calc(var(--spacing) * 1);
+  margin-block: calc(var(--spacing) * 2.5);
   overflow: hidden;
 }
 .verso-meter__track:where(.verso-meter:is([data-verso-place="row"], [data-verso-place="cell"]) *) {
