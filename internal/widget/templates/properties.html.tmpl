@@ -35,6 +35,9 @@
 {{/* The head names the facts on a line of their own (blocks/facts-head.css).
      A group's title is a heading, its protocol a chip beside it; two column
      names (Part, Current) stand over the labels and the values. */}}
+{{/* properties.note: what a fact says under itself, its door closing the
+     words: a link to where the matter is read or settled, in their own ink. */}}
+{{define "properties.note"}}{{if or .Help .Door}}<p class="verso-facts__help">{{if and .Help .Door}}{{print .Help " "}}{{else}}{{.Help}}{{end}}{{.Door}}</p>{{end}}{{end}}
 {{define "properties.head"}}<div data-verso-properties-head class="verso-facts-head"{{if .Head.Value}} data-verso-columns{{if eq .Align "left"}} data-verso-align="left"{{end}}{{end}}>
   {{if .Head.Value}}<span class="verso-facts-head__label">{{.Head.Label}}</span><span class="verso-facts-head__value">{{.Head.Value}}</span>
   {{else}}<h3>{{.Head.Label}}</h3>{{if .Head.Chip}}<span class="verso-chip" data-verso-verbatim>{{.Head.Chip}}</span>{{end}}{{end}}
@@ -51,7 +54,7 @@
       <dt class="verso-facts__label">{{.Label}}:</dt>
       <dd class="verso-facts__value"{{if .Mono}} data-verso-verbatim{{end}}{{if .Figures}} data-verso-figures{{end}}{{if .Emphasis}} data-verso-emphasis{{end}}>{{.Value}}</dd>
     </div>
-    {{if .Help}}<p class="verso-facts__help">{{.Help}}</p>{{end}}
+    {{template "properties.note" .}}
   </div>
   {{else if eq $.Style "system"}}
   <div class="verso-facts__row"{{if .Next}} data-verso-next{{end}}>
@@ -64,7 +67,7 @@
   {{/* A live row carries its key, so the stream rewrites its value (and its
        mark) in place. Its value is a flex line, so a copy control or a badge
        rides the line rather than lifting it. */}}
-  <div class="verso-facts__row"{{if .Help}} data-verso-help{{end}}>
+  <div class="verso-facts__row"{{if or .Help .Door}} data-verso-help{{end}}>
     <dt class="verso-facts__label">{{.Label}}</dt>
     <dd class="verso-facts__value"{{if .Span}} data-verso-span{{end}}{{if .Emphasis}} data-verso-emphasis{{end}}>
       {{if .Span}}{{template "verso-prop-span" .Span}}{{else}}
@@ -81,7 +84,7 @@
       {{if .Status}}<span class="verso-facts__status">{{template "badge.html.tmpl" .Status}}</span>{{end}}
       {{end}}
     </dd>
-    {{if .Help}}<p class="verso-facts__help">{{.Help}}</p>{{end}}
+    {{template "properties.note" .}}
   </div>
   {{end}}
   {{end}}

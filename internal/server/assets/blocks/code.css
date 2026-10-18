@@ -146,6 +146,7 @@
   white-space: pre;
   color: var(--color-ink);
   @apply type-code;
+  font-weight: 500;
 }
 
 /* A line read in its grammar wears an ink per kind of token, a hue's deep

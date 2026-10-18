@@ -2096,6 +2096,11 @@ pub struct Property {
     /// the number, never the text.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub duration: Option<u64>,
+    /// The note's door: a link to where the matter is read or settled,
+    /// closing the note's words in their own ink. Set it with
+    /// [`Property::door`].
+    #[serde(rename = "link", skip_serializing_if = "Option::is_none")]
+    pub door: Option<PageAction>,
 }
 
 /// PropertiesHead is what a fact sheet's head says: a group's title (`label`),
@@ -2197,6 +2202,16 @@ impl Property {
     /// request made and not yet answered), never a state that has arrived.
     pub fn waiting(mut self) -> Property {
         self.dot = "waiting".into();
+        self
+    }
+
+    /// door closes the fact's note with a link to where the matter is read
+    /// or settled (a failure's lines in the log), in the note's own ink.
+    pub fn door(mut self, label: &str, href: &str) -> Property {
+        self.door = Some(PageAction {
+            label: label.into(),
+            href: href.into(),
+        });
         self
     }
 

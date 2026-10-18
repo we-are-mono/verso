@@ -4,6 +4,7 @@
 package widget
 
 import (
+	"bytes"
 	"fmt"
 	"html/template"
 	"io"
@@ -62,7 +63,13 @@ type Property struct {
 	// with the arrow. Machine data, so it is never translated.
 	Next string `json:"next,omitempty"`
 	Help string `json:"help,omitempty"` // optional explanation immediately beneath this fact
-	Mono bool   `json:"mono"`
+	// Link is the note's door: the link to where the matter is read or
+	// settled (a failure's lines in the log), closing the note's words in
+	// their own ink, as a notice's door closes its words.
+	Link *Link `json:"link,omitempty"`
+	// door is Link drawn, for the template.
+	door template.HTML
+	Mono bool `json:"mono"`
 	// Verbatim declares the value a machine string without the mono type
 	// treatment — a size, a rate, an identity set in sans. The localization
 	// walk leaves it exactly as authored (as it does Mono and Chip values);
@@ -126,9 +133,15 @@ func (p *Properties) children() []Widget {
 		if p.Items[i].Status != nil {
 			out = append(out, p.Items[i].Status)
 		}
+		if p.Items[i].Link != nil {
+			out = append(out, p.Items[i].Link)
+		}
 	}
 	return out
 }
+
+// Door is the fact's note's door, drawn, for the template.
+func (p Property) Door() template.HTML { return p.door }
 
 func (p *Properties) renderInto(r *Renderer, out io.Writer, _ string) error {
 	// Rates and durations are written on a copy: the plugin's widget keeps its
@@ -143,6 +156,13 @@ func (p *Properties) renderInto(r *Renderer, out io.Writer, _ string) error {
 		if item.Duration != nil {
 			view.Items[i].Value = units.Duration(*item.Duration)
 			view.Items[i].Mono, view.Items[i].Verbatim = false, true
+		}
+		if item.Link != nil {
+			var buf bytes.Buffer
+			if err := item.Link.renderDoor(r, &buf); err != nil {
+				return err
+			}
+			view.Items[i].door = template.HTML(buf.String()) //nolint:gosec // rendered by the shell's own templates
 		}
 	}
 	return r.execute(out, "properties.html.tmpl", &view)

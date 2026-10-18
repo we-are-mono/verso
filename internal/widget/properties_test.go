@@ -4,6 +4,7 @@
 package widget
 
 import (
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -215,6 +216,42 @@ func TestAFactThatIsUnderwayWearsTheWaitingMark(t *testing.T) {
 	}
 	declares(t, "facts", `.verso-facts__mark[data-verso-mark="waiting"]`, "margin-top: calc(var(--spacing) * 1.25);")
 	declares(t, "facts", `.verso-facts__mark[data-verso-mark="waiting"]:where(.verso-facts[data-verso-align="left"] *)`, "top: calc(var(--spacing) * 1.25);", "left: calc(var(--spacing) * -4.75);", "margin-top: 0;")
+}
+
+// TestAFactsNoteClosesWithItsDoor: a fact that went wrong says what to check
+// in its note, and the link to where the matter is read closes those words,
+// a door in their own ink, as a notice's does.
+func TestAFactsNoteClosesWithItsDoor(t *testing.T) {
+	// The raw render: the space between the note's words and its door is
+	// part of the sentence, which the comparison helper would fold away.
+	var b strings.Builder
+	if err := newRenderer(t).RenderWithToken(&b, &Properties{Align: "left", Items: []Property{
+		{Label: "Status", Value: "Request failed", Dot: "danger", Help: "Check the domain and the provider’s credentials.", Link: &Link{Label: "Open the log", Href: "/system/logs?q=hook"}},
+		{Label: "Expires", Value: "2027-01-01", Link: &Link{Label: "Renew", Href: "/x"}},
+	}}, "", "", nil); err != nil {
+		t.Fatal(err)
+	}
+	got := b.String()
+	closing := regexp.MustCompile(`<p class="verso-facts__help">Check the domain and the provider’s credentials\. \s*<a href="/system/logs\?q=hook" class="verso-link" data-verso-door>Open the log</a>\s*</p>`)
+	if !closing.MatchString(got) {
+		t.Errorf("want the door closing the note, a space after its words, in:\n%s", got)
+	}
+	alone := regexp.MustCompile(`<p class="verso-facts__help">\s*<a href="/x" class="verso-link" data-verso-door>Renew</a>\s*</p>`)
+	if !alone.MatchString(got) {
+		t.Errorf("a door with no note stands as the note:\n%s", got)
+	}
+}
+
+// TestAFormUnderOtherBlocksOpensOnItsRowsHairline: in a card, a form that
+// follows something else (the facts it is about, a notice) opens on its first
+// row's hairline, card edge to card edge, as rows meet one another; and a row
+// the form's preview follows closes on a hairline the same way, so the code
+// stands under a rule as the acts do.
+func TestAFormUnderOtherBlocksOpensOnItsRowsHairline(t *testing.T) {
+	declares(t, "field", `.verso-field:is(.verso-card__body > :not(input[type="hidden"], [hidden], template) ~ .verso-form > :nth-child(1 of :not(input[type="hidden"], [hidden], template)))`,
+		"--verso-field-rule: 1px;", "--verso-field-lead: calc(var(--spacing) * 3.75);", "margin-top: calc(var(--spacing) * 6);")
+	declares(t, "field", `.verso-field:is(.verso-card__body .verso-field):has(+ .verso-code)`,
+		"--verso-field-trail: calc(var(--spacing) * 3.75);", "border-bottom-width: 1px;")
 }
 
 // TestALiveFactCarriesItsKey: a row the stream keeps current carries its key

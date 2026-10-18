@@ -310,6 +310,14 @@ fn write_widget_fixtures() {
                     }
                     .waiting(),
                     Property {
+                        label: "Last result".into(),
+                        value: "Request failed".into(),
+                        ..Property::default()
+                    }
+                    .marked(Tone::Danger)
+                    .noted("Check the domain and the provider’s credentials.")
+                    .door("Open the log", "/system/logs?q=hook"),
+                    Property {
                         label: "Valid".into(),
                         ..Property::default()
                     }

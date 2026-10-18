@@ -81,6 +81,11 @@ func TestSDKWaitingMarkReachesTheShell(t *testing.T) {
 	if !ok || !slices.ContainsFunc(p.Items, func(i Property) bool { return i.Label == "Status" && i.Dot == "waiting" }) {
 		t.Errorf("the waiting mark lost its word across the wire: %+v", w)
 	}
+	if !slices.ContainsFunc(p.Items, func(i Property) bool {
+		return i.Label == "Last result" && i.Link != nil && i.Link.Label == "Open the log" && i.Link.Href == "/system/logs?q=hook"
+	}) {
+		t.Errorf("a fact's door lost its way across the wire: %+v", w)
+	}
 }
 
 // TestSDKRateReachesTheShell: a rate the SDK hands over as a number must arrive

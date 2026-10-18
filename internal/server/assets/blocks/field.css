@@ -137,6 +137,22 @@
 .verso-field:is(:is(.verso-field-set, [data-verso-rows]):has(+ .verso-form__acts[data-verso-close="flush"]) > :last-child) {
   --verso-field-trail: calc(var(--spacing) * 4);
 }
+/* In a card, a form that follows something else (the facts it acts on, a
+   notice) opens on its first row's hairline, card edge to card edge, as two
+   rows meet; a form that opens the card keeps none. The hairline keeps the
+   card's 24px under what stands over it, as ruled air does. */
+.verso-field:is(.verso-card__body > :not(input[type="hidden"], [hidden], template) ~ .verso-form > :nth-child(1 of :not(input[type="hidden"], [hidden], template))) {
+  --verso-field-rule: 1px;
+  --verso-field-lead: calc(var(--spacing) * 3.75);
+  margin-top: calc(var(--spacing) * 6);
+}
+/* A row the form's preview follows closes on a hairline, card edge to card
+   edge, so the code stands under a rule as the acts do: 15px under its last
+   line, then the line, giving the row's 16px back to the grid. */
+.verso-field:is(.verso-card__body .verso-field):has(+ .verso-code) {
+  --verso-field-trail: calc(var(--spacing) * 3.75);
+  border-bottom-width: 1px;
+}
 /* A hidden carrier between two rows (the object's address, posted with the
    form) draws nothing, so the rows still meet on a hairline across it. */
 .verso-field:is(.verso-field + input[type="hidden"] + *, .verso-field + input[type="hidden"] + input[type="hidden"] + *) {

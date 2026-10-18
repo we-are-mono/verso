@@ -15,6 +15,16 @@
       "dot": "waiting"
     },
     {
+      "label": "Last result",
+      "value": "Request failed",
+      "help": "Check the domain and the provider’s credentials.",
+      "dot": "danger",
+      "link": {
+        "label": "Open the log",
+        "href": "/system/logs?q=hook"
+      }
+    },
+    {
       "label": "Valid",
       "value": "",
       "span": {

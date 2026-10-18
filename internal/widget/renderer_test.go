@@ -1069,7 +1069,7 @@ func TestRenderCodeInUciGrammar(t *testing.T) {
 		t.Errorf("the gutter and the text are not the code block's: %s", got)
 	}
 	declares(t, "code", ".verso-code__gutter", "@apply type-code")
-	declares(t, "code", ".verso-code__text", "@apply type-code", "white-space: pre")
+	declares(t, "code", ".verso-code__text", "@apply type-code", "white-space: pre", "font-weight: 500")
 	typeCSS, err := os.ReadFile(filepath.Join("..", "server", "assets", "type.css"))
 	if err != nil {
 		t.Fatal(err)
