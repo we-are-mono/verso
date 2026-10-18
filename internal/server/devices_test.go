@@ -390,12 +390,39 @@ func TestDeviceActsFollowTheSlotVocabulary(t *testing.T) {
 // table reports no count at all rather than claiming nobody is here.
 func TestOnlineDevicesCountsFromTheNeighbourTable(t *testing.T) {
 	s := rosterServer(t)
-	if online, ok := s.onlineDevices(); !ok || online != 2 {
+	if online, ok := s.onlineDevices(t.Context(), s.grantsFor("test-sid")); !ok || online != 2 {
 		t.Errorf("online devices = %d (known %v), want the reachable and the stale device", online, ok)
 	}
 	s.neighbors = func() ([]sysstat.Neighbor, error) { return nil, errors.New("no netlink") }
-	if online, ok := s.onlineDevices(); ok || online != 0 {
+	if online, ok := s.onlineDevices(t.Context(), s.grantsFor("test-sid")); ok || online != 0 {
 		t.Errorf("online devices = %d (known %v), want no count", online, ok)
+	}
+}
+
+// TestOnlineDevicesNeedTheLeaseGrant: the count is the kernel's neighbour
+// table, read with the shell's own privilege, so a session rpcd refuses the
+// lease grant, or does not answer it for, is given no count, on the overview
+// or in its stream.
+func TestOnlineDevicesNeedTheLeaseGrant(t *testing.T) {
+	for _, c := range []struct {
+		name string
+		b    func(fakeBackend) fakeBackend
+	}{
+		{"refused", func(b fakeBackend) fakeBackend { b.grant = grantAllBut("ubus dhcp ipv6leases"); return b }},
+		{"unanswered", func(b fakeBackend) fakeBackend { b.accessErr = errors.New("rpcd gone"); return b }},
+	} {
+		s := rosterServer(t)
+		s.backend = c.b(rosterBackend())
+		if online, ok := s.onlineDevices(t.Context(), s.grantsFor("test-sid")); ok || online != 0 {
+			t.Errorf("%s: online devices = %d (known %v), want no count", c.name, online, ok)
+		}
+		if _, body := getSignedIn(t, s, "/"); strings.Contains(body, "devices connected") {
+			t.Errorf("%s: the overview counts the devices", c.name)
+		}
+	}
+	s := rosterServer(t)
+	if _, body := getSignedIn(t, s, "/"); !strings.Contains(body, "2 devices connected") {
+		t.Error("root's overview does not count the devices")
 	}
 }
 

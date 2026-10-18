@@ -1067,6 +1067,7 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	// Plugin destinations come from their manifests; no plugin markup crosses
 	// into this page. A failed source leaves an explicit unavailable state.
 	sid := s.sessionSID(r)
+	grants := s.grantsIn(r.Context(), sid)
 	_, catalog := s.localize(r)
 	tr := translatorOrIdentity(catalog)
 	now := clock.Now()
@@ -1098,7 +1099,9 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	snapshot, telemetryOK := s.telemetrySnapshot(r.Context())
 	ov.InterfacesKnown = telemetryOK
 	ov.WANDevice, ov.DownSeries, ov.UpSeries, ov.DownNow, ov.UpNow = s.wanMinute(r)
-	if s.historyStore != nil {
+	// A past window is history.db's, the shell's own store, so it is offered
+	// only under the grant that reads the uplink through rpcd.
+	if s.historyStore != nil && grants.may(r.Context(), interfaceGrant) {
 		ov.TrafficRangeURL = overviewTrafficPath
 	}
 	// The IPv4/IPv6 panel reads the uplink's live connection facts: the
@@ -1132,7 +1135,7 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 		ov.Panel = s.devicePanel(snapshot, wan, profile)
 	}
 	// Devices remain their own page; the Ports card carries their count.
-	ov.DevicesOnline, ov.DevicesKnown = s.onlineDevices()
+	ov.DevicesOnline, ov.DevicesKnown = s.onlineDevices(r.Context(), grants)
 	// The verdict counts a firewall that is not fully loaded, a web interface
 	// the internet can reach, and a service procd stopped restarting.
 	s.applyFirewallStatus(r.Context(), sid, ov)

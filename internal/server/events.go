@@ -80,7 +80,8 @@ func (s *Server) handleOverviewEvents(w http.ResponseWriter, r *http.Request) {
 		if !layout.Shows("ports") && !layout.Shows("tunnels") {
 			return true
 		}
-		liveOverview.DevicesOnline, liveOverview.DevicesKnown = s.onlineDevices()
+		// Each frame reads the table afresh, so it asks the grant afresh.
+		liveOverview.DevicesOnline, liveOverview.DevicesKnown = s.onlineDevices(r.Context(), s.grantsFor(sid))
 		return writeEvent(w, "", "interfaces", interfacesFrame(snapshot, catalog)) == nil
 	}
 	// The WAN throughput frame: sample the uplink device's counters once a

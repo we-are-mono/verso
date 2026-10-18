@@ -49,7 +49,7 @@ func getSignedIn(t *testing.T, s *Server, path string) (int, string) {
 // gaps where nothing was recorded, its figures the window's averages; the
 // minute is the live graph again; a window not offered is refused.
 func TestOverviewTrafficDrawsAPastWindowFromHistory(t *testing.T) {
-	s := newServer(t, fakeBackend{wan: openwrt.WANState{Devices: []openwrt.WANDevice{
+	s := newServer(t, fakeBackend{access: true, wan: openwrt.WANState{Devices: []openwrt.WANDevice{
 		{Device: "wan0", Routes: []openwrt.WANRoute{{Family: 4, Main: true}}},
 	}}})
 	store, err := history.Open(filepath.Join(t.TempDir(), "history.db"))
@@ -111,6 +111,67 @@ func TestOverviewTrafficDrawsAPastWindowFromHistory(t *testing.T) {
 	}
 	if status, _ := getSignedIn(t, s, "/overview/traffic?range=decade"); status != http.StatusBadRequest {
 		t.Errorf("an unknown window answered %d, want 400", status)
+	}
+}
+
+// TestOverviewPastTrafficNeedsTheInterfaceGrant: history.db's uplink traffic,
+// gateway loss and latency and its outages are the shell's own store, so a
+// session rpcd refuses the interface dump, or does not answer for, is offered
+// no past window and is refused one, while the live minute stays; the router
+// starting is marked only under the system grant, as on the events page.
+func TestOverviewPastTrafficNeedsTheInterfaceGrant(t *testing.T) {
+	now := time.Now().Truncate(time.Minute)
+	server := func(b fakeBackend) *Server {
+		b.wan = openwrt.WANState{Devices: []openwrt.WANDevice{{Device: "wan0", Routes: []openwrt.WANRoute{{Family: 4, Main: true}}}}}
+		s := newServer(t, b)
+		store, err := history.Open(filepath.Join(t.TempDir(), "history.db"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { _ = store.Close() })
+		s.historyStore = store
+		store.Add(history.Point{Series: "iface.wan0.rx", Time: now.Add(-10 * time.Minute), Average: 20e6, Peak: 30e6})
+		for _, e := range []history.Event{
+			{Time: now.Add(-40 * time.Minute), Kind: "boot"},
+			{Time: now.Add(-30 * time.Minute), Kind: "wan.down", Subject: "wan0"},
+			{Time: now.Add(-20 * time.Minute), Kind: "wan.up", Subject: "wan0", Detail: `{"after":600}`},
+		} {
+			if err := store.Record(t.Context(), e); err != nil {
+				t.Fatal(err)
+			}
+		}
+		return s
+	}
+	for _, c := range []struct {
+		name string
+		b    fakeBackend
+	}{
+		{"refused", fakeBackend{grant: grantAllBut("ubus network.interface dump")}},
+		{"unanswered", fakeBackend{accessErr: errors.New("rpcd gone")}},
+	} {
+		s := server(c.b)
+		if _, body := getSignedIn(t, s, "/"); strings.Contains(body, `name="range"`) {
+			t.Errorf("%s: the overview offers a past window", c.name)
+		}
+		if status, body := getSignedIn(t, s, "/overview/traffic?range=day"); status != http.StatusForbidden || strings.Contains(body, "verso-chart__mark") {
+			t.Errorf("%s: a past window answered %d:\n%s", c.name, status, body)
+		}
+		if _, live := getSignedIn(t, s, "/overview/traffic?range=minute"); !strings.Contains(live, `data-verso-live-chart="wan"`) {
+			t.Errorf("%s: the live minute is withheld", c.name)
+		}
+	}
+
+	s := server(fakeBackend{grant: grantAllBut("ubus system info")})
+	_, body := getSignedIn(t, s, "/overview/traffic?range=day")
+	if !strings.Contains(body, `data-verso-kind="outage"`) || strings.Contains(body, `data-verso-kind="boot"`) {
+		t.Errorf("refused the system grant, the graph's marks:\n%s", body)
+	}
+	s = server(fakeBackend{access: true})
+	if _, body := getSignedIn(t, s, "/"); !strings.Contains(body, `name="range"`) {
+		t.Error("root's overview offers no past window")
+	}
+	if _, body := getSignedIn(t, s, "/overview/traffic?range=day"); !strings.Contains(body, `data-verso-kind="boot"`) {
+		t.Error("root's graph does not mark the router starting")
 	}
 }
 

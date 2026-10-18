@@ -357,8 +357,13 @@ func reservedMACs(cfg map[string]any) map[string]bool {
 // reachable-only count reads one or two on a busy network. The neighbour dump
 // alone answers it — no leases, no config, no helper call — so the sidebar can
 // carry the number on every page. An unreadable table reports no count rather
-// than a zero, since "nobody is here" is a different statement.
-func (s *Server) onlineDevices() (int, bool) {
+// than a zero, since "nobody is here" is a different statement. The shell
+// reads the table with its own privilege, so a session rpcd does not grant
+// the lease read (leaseGrant) is given no count either.
+func (s *Server) onlineDevices(ctx context.Context, g *sessionGrants) (int, bool) {
+	if !g.may(ctx, leaseGrant) {
+		return 0, false
+	}
 	neigh, err := s.neighbors()
 	if err != nil {
 		log.Printf("verso: devices: neighbour table unavailable: %v", err)

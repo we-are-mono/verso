@@ -159,6 +159,18 @@ var (
 	}
 )
 
+// grantedEvents is the events of a kind eventGrants names whose grant rpcd
+// gives the session, in the order given.
+func grantedEvents(ctx context.Context, g *sessionGrants, events []history.Event) []history.Event {
+	var out []history.Event
+	for _, e := range events {
+		if grant, known := eventGrants[e.Kind]; known && (grant == nil || g.may(ctx, *grant)) {
+			out = append(out, e)
+		}
+	}
+	return out
+}
+
 // eventsView is what the events page may show a session: each event under
 // its kind's grant, and an apply's under its entry in config history.
 type eventsView struct {
