@@ -32,13 +32,17 @@
 
 ## 4. Acts started for an operator are theirs
 
-- [ ] 4.1 Test first, with a fake backend and a spool reading:
-  - choosing a theme while signed in as root from 192.0.2.10 makes the next `own` reading of `verso`, within the window, a change by root from 192.0.2.10 with the theme cause;
-  - after the window, the same reading is the router's;
-  - a reading that is not `own`, inside the window, still reads as edited directly.
+- [x] 4.1 Test first in `verso-rpcd`:
+  - `setTheme`, `setWebListeners` and `pkgInstall` mark their commits with the handle of the caller's session (the hex SHA-256 of its id), and the spooled record carries it as `by`;
+  - a root half's mark that holds a `by` has it ignored.
 
-  Then add authored expectations to `expectedWrites` and register one around `SetTheme` (design decision 3). Verify with `go test ./internal/server`.
-- [ ] 4.2 Test first: moving the web ports (`SetWebListeners`) and installing https-dns-proxy (`PkgInstall`) register authored expectations for `verso` and for the package's arrival configs. Then register them. Verify with `go test ./internal/server`.
+  Then pass the session id from dispatch and mark with its handle (design decision 3). Verify with `cargo test`.
+- [ ] 4.2 Test first in `internal/server`:
+  - an `own` reading whose `by` is the handle of a session signed in as root from 192.0.2.10 is a change by root from 192.0.2.10, with its cause;
+  - a handle no session matches, or none at all, is the router's;
+  - a reading that is not `own` is still edited directly.
+
+  Then match the handle against the shell's sessions in `takeReading`. Verify with `go test ./internal/server`.
 
 ## 5. The page
 

@@ -68,27 +68,41 @@ const OWN_WITHIN: Duration = Duration::from_secs(30);
 
 /// Own is a commit the router made itself (ADR-021): what caused it, one
 /// English sentence, and the plugin whose catalog words it, empty for the
-/// helper's own. A mark from a plugin built before causes carries neither.
+/// helper's own; and by, the handle of the operator's session whose act it
+/// was, empty for none. A mark from a plugin built before causes carries
+/// neither cause nor plugin, and a root half's mark never carries by.
 #[derive(Debug, Default, Clone, PartialEq, Eq, serde::Deserialize)]
 pub struct Own {
     #[serde(default)]
     pub plugin: String,
     #[serde(default)]
     pub cause: String,
+    #[serde(skip_deserializing)]
+    pub by: String,
 }
 
-/// Configs the helper is about to commit itself, when it said so, and why.
-static OWN: Mutex<Option<HashMap<String, (Instant, &'static str)>>> = Mutex::new(None);
+/// Configs the helper is about to commit itself: when it said so, why, and
+/// the handle of the operator whose act it is.
+#[allow(clippy::type_complexity)]
+static OWN: Mutex<Option<HashMap<String, (Instant, &'static str, String)>>> = Mutex::new(None);
 
 /// own_write says the helper is about to commit config itself (the web
 /// listeners, a package that just arrived), so its next reading is spooled
 /// as the router's own act, not an edit made outside it, with cause, an
-/// English sentence the shell's catalog words.
-pub fn own_write(config: &str, cause: &'static str) {
+/// English sentence the shell's catalog words, and by, the session_handle of
+/// the operator whose act it is.
+pub fn own_write(config: &str, cause: &'static str, by: &str) {
     if let Ok(mut own) = OWN.lock() {
         own.get_or_insert_with(HashMap::new)
-            .insert(config.to_owned(), (Instant::now(), cause));
+            .insert(config.to_owned(), (Instant::now(), cause, by.to_owned()));
     }
+}
+
+/// session_handle is the name a session goes by in the spool: the hex
+/// SHA-256 of its id. The shell, which holds the id, knows the session by it;
+/// whoever else reads the spool learns nothing to sign in with.
+pub fn session_handle(sid: &str) -> String {
+    hex(&sha256::sha256(sid.as_bytes()))
 }
 
 /// Where a plugin's root half marks a commit it is about to make as the
@@ -108,8 +122,8 @@ fn owned(config: &str) -> Option<Own> {
         .lock()
         .ok()
         .and_then(|mut own| own.as_mut()?.remove(config))
-        .filter(|(at, _)| at.elapsed() <= OWN_WITHIN)
-        .map(|(_, cause)| Own { plugin: String::new(), cause: cause.to_owned() });
+        .filter(|(at, _, _)| at.elapsed() <= OWN_WITHIN)
+        .map(|(_, cause, by)| Own { plugin: String::new(), cause: cause.to_owned(), by });
     mine.or_else(|| marked(Path::new(OWN_MARKS), config, SystemTime::now(), |uid| uid == 0))
 }
 
@@ -276,12 +290,15 @@ fn spool_config(spool: &Path, name: &str, written: u64, own: Option<Own>, key: &
     }
 }
 
-/// record is one reading as the shell takes it from the spool: own, the cause
-/// and the plugin whose words it is, empty where the router did not write the
-/// config itself or gave no cause.
+/// record is one reading as the shell takes it from the spool: own, the
+/// cause, the plugin whose words it is, and the handle of the operator whose
+/// act it was, each empty where the router did not write the config itself
+/// or said none.
 fn record(name: &str, written: u64, own: Option<&Own>, sections: Value) -> Value {
-    let (cause, plugin) = own.map(|o| (o.cause.as_str(), o.plugin.as_str())).unwrap_or_default();
-    json!({ "time": written, "config": name, "own": own.is_some(), "cause": cause, "plugin": plugin, "sections": sections })
+    let (cause, plugin, by) = own
+        .map(|o| (o.cause.as_str(), o.plugin.as_str(), o.by.as_str()))
+        .unwrap_or_default();
+    json!({ "time": written, "config": name, "own": own.is_some(), "cause": cause, "plugin": plugin, "by": by, "sections": sections })
 }
 
 /// secret_options is every config.option kept secret: the shared list and
@@ -873,26 +890,40 @@ mod tests {
     }
 
     #[test]
-    fn the_helpers_own_write_is_marked_once_with_its_cause() {
-        own_write("verso-test-own", "The theme was changed.");
-        assert_eq!(owned("verso-test-own"), Some(Own { plugin: String::new(), cause: "The theme was changed.".into() }));
+    fn the_helpers_own_write_is_marked_once_with_its_cause_and_operator() {
+        let by = session_handle("a-session");
+        own_write("verso-test-own", "The theme was changed.", &by);
+        assert_eq!(
+            owned("verso-test-own"),
+            Some(Own { plugin: String::new(), cause: "The theme was changed.".into(), by: by.clone() })
+        );
         assert_eq!(owned("verso-test-own"), None, "a mark names one write");
         assert_eq!(owned("verso-test-other"), None);
     }
 
+    /// A session's handle is the hex SHA-256 of its id: it names the session
+    /// to the shell, which holds the id, and opens nothing to whoever reads
+    /// the spool.
+    #[test]
+    fn a_sessions_handle_is_its_ids_digest() {
+        assert_eq!(session_handle("abc"), "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad");
+        assert!(!session_handle("abc").contains("abc"));
+    }
+
     /// The spool's record says whether the router made the commit itself,
-    /// what caused it and whose words the cause is: empty for none.
+    /// what caused it, whose words the cause is, and the handle of the
+    /// operator whose act it was: empty for none.
     #[test]
     fn a_spooled_record_carries_its_cause() {
         let sections = json!({"verso": {".type": "web"}});
-        let own = Own { plugin: "acme".into(), cause: "A certificate was installed by hand.".into() };
+        let own = Own { plugin: String::new(), cause: "The theme was changed.".into(), by: "h4ndle".into() };
         assert_eq!(
-            record("acme", 7, Some(&own), sections.clone()),
-            json!({"time": 7, "config": "acme", "own": true, "cause": "A certificate was installed by hand.", "plugin": "acme", "sections": sections})
+            record("verso", 7, Some(&own), sections.clone()),
+            json!({"time": 7, "config": "verso", "own": true, "cause": "The theme was changed.", "plugin": "", "by": "h4ndle", "sections": sections})
         );
         assert_eq!(
-            record("acme", 7, None, sections.clone()),
-            json!({"time": 7, "config": "acme", "own": false, "cause": "", "plugin": "", "sections": sections})
+            record("verso", 7, None, sections.clone()),
+            json!({"time": 7, "config": "verso", "own": false, "cause": "", "plugin": "", "by": "", "sections": sections})
         );
     }
 
@@ -909,7 +940,10 @@ mod tests {
         let cause = "A certificate was installed by hand.";
 
         fs::write(dir.join("acme"), json!({"plugin": "acme", "cause": cause}).to_string()).unwrap();
-        assert_eq!(marked(&dir, "acme", now, mine), Some(Own { plugin: "acme".into(), cause: cause.into() }));
+        assert_eq!(marked(&dir, "acme", now, mine), Some(Own { plugin: "acme".into(), cause: cause.into(), by: String::new() }));
+        // A root half signs no commit as an operator's.
+        fs::write(dir.join("acme"), json!({"plugin": "acme", "cause": cause, "by": session_handle("a-session")}).to_string()).unwrap();
+        assert_eq!(marked(&dir, "acme", now, mine).map(|o| o.by), Some(String::new()));
         for unread in [&b""[..], b"not json", &[b'x'; MARK_LIMIT + 1]] {
             fs::write(dir.join("acme"), unread).unwrap();
             assert_eq!(marked(&dir, "acme", now, mine), Some(Own::default()), "{}", String::from_utf8_lossy(&unread[..unread.len().min(8)]));

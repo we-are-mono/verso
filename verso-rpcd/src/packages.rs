@@ -301,12 +301,16 @@ fn parse_upgrade_line(line: &str) -> Option<Value> {
 }
 
 // install adds a package and turns off what it would switch on by itself, for
-// every package that landed with it (a dependency counts).
-pub fn install(name: &str) -> Result<String, String> {
+// every package that landed with it (a dependency counts). by is the
+// session_handle of the operator installing it, which config history names
+// (ADR-021).
+pub fn install(name: &str, by: &str) -> Result<String, String> {
     let absent = arrival::absent(arrival::installed);
     let output = command_ok("apk add", Command::new("apk").args(["add", name]))?;
     for due in arrival::due(&absent, arrival::installed) {
-        arrival::settle(due, arrival::run, arrival::pause, crate::config_watch::own_write)?;
+        arrival::settle(due, arrival::run, arrival::pause, |config, cause| {
+            crate::config_watch::own_write(config, cause, by)
+        })?;
     }
     Ok(output)
 }

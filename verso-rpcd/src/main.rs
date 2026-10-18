@@ -389,6 +389,7 @@ fn answer(method: &str, request: &Value, state: &State, sid: &str) -> Result<Val
                 text_argument(request, "https")?,
                 text_argument(request, "http")?,
                 text_argument(request, "redirect")?,
+                &config_watch::session_handle(sid),
             )
         }
         "setTheme" => {
@@ -397,7 +398,7 @@ fn answer(method: &str, request: &Value, state: &State, sid: &str) -> Result<Val
                 .maintenance
                 .lock()
                 .map_err(|_| Failure::unknown("credential-operation lock poisoned"))?;
-            access::set_theme(argument(request, "theme")?)
+            access::set_theme(argument(request, "theme")?, &config_watch::session_handle(sid))
         }
         "makeWebCertificate" => {
             let _guard = state
@@ -525,7 +526,7 @@ fn answer(method: &str, request: &Value, state: &State, sid: &str) -> Result<Val
                 }
             }
             let output = if method == "pkgInstall" {
-                packages::install(name)
+                packages::install(name, &config_watch::session_handle(sid))
             } else if method == "pkgUpgradeOne" {
                 packages::upgrade_one(name)
             } else {

@@ -167,8 +167,12 @@ fn uci(args: &[&str]) -> Result<bool, Failure> {
 /// own, so what a session stages elsewhere is left as it is. An empty value
 /// clears its option. procd then records the shell's new command line; the
 /// running shell already answers on the listeners (ADR-017 §1).
-pub fn web_listeners(https: &str, http: &str, redirect: &str) -> Result<Value, Failure> {
-    web_listeners_with(https, http, redirect, uci, crate::config_watch::own_write)?;
+/// by is the session_handle of the operator moving them, which config history
+/// names (ADR-021).
+pub fn web_listeners(https: &str, http: &str, redirect: &str, by: &str) -> Result<Value, Failure> {
+    web_listeners_with(https, http, redirect, uci, |config, cause| {
+        crate::config_watch::own_write(config, cause, by)
+    })?;
     let _ = Command::new("/etc/init.d/verso").arg("reload").status();
     Ok(json!({"result":true}))
 }
@@ -225,8 +229,10 @@ fn web_listeners_with(
 /// following the browser is the option's absence. The service is not reloaded:
 /// the running shell swaps its own theme, and the init script carries the
 /// option to the next start.
-pub fn set_theme(id: &str) -> Result<Value, Failure> {
-    set_theme_with(id, uci, crate::config_watch::own_write)?;
+/// by is the session_handle of the operator choosing it, which config history
+/// names (ADR-021).
+pub fn set_theme(id: &str, by: &str) -> Result<Value, Failure> {
+    set_theme_with(id, uci, |config, cause| crate::config_watch::own_write(config, cause, by))?;
     Ok(json!({"result": true}))
 }
 
@@ -326,8 +332,8 @@ mod tests {
         for bad in ["8443", "router:443", "0.0.0.0:443;reboot", "0.0.0.0:443 x", "a'b:1", ""] {
             assert!(!listener_shaped(bad), "{bad}");
         }
-        assert!(web_listeners("0.0.0.0:443;x", "", "").is_err());
-        assert!(web_listeners("", "", "yes").is_err());
+        assert!(web_listeners("0.0.0.0:443;x", "", "", "").is_err());
+        assert!(web_listeners("", "", "yes", "").is_err());
     }
 
     /// The uci commands set_theme_with runs for id, in order, and the mark it

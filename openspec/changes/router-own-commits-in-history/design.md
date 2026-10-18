@@ -57,18 +57,21 @@ A reading inside an apply's window is still absorbed, as today. A diff with no c
 
 ### 3. Acts the shell starts for an operator are that operator's
 
-Before calling `SetTheme`, `SetWebListeners` or a package install, the shell registers an **authored expectation**: the configs the act may commit, the operator's user and address, and a window ending `ownWriteSlack` after the act returns. It reuses `expectedWrites` with an author.
+The helper's verbs that commit for an operator (`setTheme`, `setWebListeners`, `pkgInstall`) are called with that operator's rpcd session id. The helper's mark carries a **handle** of it: the hex SHA-256 of the session id. The spooled reading carries the handle as `by`. The shell holds every signed-in session with its rpcd session id, username and address, so it finds the session whose id hashes to the handle and records the row as that operator's, from that address. The mark's cause stays in Notes.
 
 | Reading | Recorded as |
 |---|---|
-| `own`, within an authored window | that operator's row, with the mark's cause in Notes |
-| `own`, in no window | the router's row |
+| `own`, with a handle of a signed-in session | that operator's row, with the cause in Notes |
+| `own`, with no handle, or one no session matches | the router's row |
 | not `own` | unchanged: an apply's, or "Edited directly" |
 
-- **The configs each act may commit:**
-  - theme and ports: `verso`;
-  - a package: the configs its arrival steps commit (`arrival.rs` lists them per package).
-- **Why not have the helper look up the user.** The helper knows the session id but not the address, and the shell already holds both for applies.
+- **Why a handle, not the id.** The spool is the shell account's, and plugins share that account. A session id there could be read and used. A hash names the session to the shell, which holds the id, and opens nothing.
+- **Root halves give no handle.** A root half's mark file holds only `plugin` and `cause`. A `by` it wrote is ignored, so a root half cannot sign a commit as an operator.
+- **Alternative: an authored window**, registered by the shell around the act, and matched by config and time. Rejected:
+  - a package install runs up to 90 s, and any root-half commit in that window (an ACME renewal) would be filed under the operator;
+  - the shell can take the reading before it registers the window.
+
+  The handle names the exact act and needs no window.
 
 ### 4. The cause is stored in English and translated when shown
 
@@ -95,7 +98,7 @@ verso-plugin-acme's hand-over gives "A certificate was installed by hand.", with
 ## Risks / Trade-offs
 
 - **A mark taken by the wrong write.** A mark names the next settled write of its config within 30 s, as today. A hand edit landing in that span is folded into the router's row. → Unchanged from today, where it was folded into nothing. The window stays 30 s, and the mark is consumed once.
-- **An authored window catches another write.** → The window is the act's duration plus ten seconds, like an apply's slack. The reading must also be `own`, so an outside edit in the window still reads "Edited directly".
+- **The operator signs out before the reading is taken.** → No session matches the handle, and the row is the router's, with the cause still saying what happened. The reading is taken within seconds, so this is rare.
 - **An older acme marks with an empty file.** → It counts as own with no cause: a router's row with empty Notes, rather than a lost row.
 - **Rows the router left out before this change cannot be restored.** → Recording starts with this build. The first own reading after the upgrade is diffed against the last baseline, so a gap since then still shows as one row.
 
