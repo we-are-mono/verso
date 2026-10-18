@@ -68,15 +68,15 @@
 
 ## 9. verso-plugin-acme fills them
 
-- [ ] 9.1 Test first in `plugins/verso-plugin-acme`: `/slots/source` answers a properties list with one Source row (the domain and the last outcome). The row carries the waiting mark while a request runs and the danger mark after a failure. It answers 204 while the `verso` section is disabled. Then implement it. Verify with `cargo test`.
-- [ ] 9.2 Test first: `/slots/use` answers one "Use your domain" link to `/setup` with `panel: true`. `/slots/replace` answers the turn-off callout while the section is enabled, and 204 otherwise. Then implement them. Verify with `cargo test`.
-- [ ] 9.3 Test first: `/setup` serves the former Access part as a drawer page: the form, expiry and served state, and the LAN-record offer. Every trusted-certificate drawer scenario passes. Saving stages as before. Then move `page.rs` to it. Verify with `cargo test`.
-- [ ] 9.4 Test first: `/slots/card` answers the Certificate Overview card:
-  - its summary reads "expires in N d";
+- [x] 9.1 Test first in `plugins/verso-plugin-acme`: `/slots/source` answers a properties list with one Source row (the domain and the last outcome). The row carries the waiting mark while a request runs and the danger mark after a failure. It answers 204 while the `verso` section is disabled. Then implement it. Verify with `cargo test`.
+- [x] 9.2 Test first: `/slots/use` answers one "Use your domain" link to `/setup` with `panel: true`. `/slots/replace` answers the turn-off callout while the section is enabled, and 204 otherwise. Then implement them. Verify with `cargo test`.
+- [x] 9.3 Test first: `/setup` serves the former Access part as a drawer page: the form, expiry and served state, and the LAN-record offer. Every trusted-certificate drawer scenario passes. Saving stages as before. Then move `page.rs` to it. Verify with `cargo test`.
+- [x] 9.4 Test first: `/slots/card` answers the Certificate Overview card:
+  - its summary reads the domain, and its body gives the time left as a duration;
   - a failed renewal is its cause, in warning tone, turning danger at seven days or fewer;
   - it answers 204 while the section is disabled.
   Then implement it. Verify with `cargo test`.
-- [ ] 9.5 The manifest declares the four contributions and drops `system_access`. Document the slots acme fills in its README. Verify with the shell's manifest test against acme's manifest.
+- [x] 9.5 The manifest declares the four contributions and drops `system_access`. Document the slots acme fills in its README. Verify with the shell's manifest test against acme's manifest.
 
 ## 10. Integration on the lab and the DK
 

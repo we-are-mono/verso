@@ -114,11 +114,11 @@ When the router's own lookup of the domain answers with none of the router's add
 ## ADDED Requirements
 
 ### Requirement: The Certificate card stands on the Overview
-While the `verso` section is enabled, acme SHALL contribute a Certificate card to the Overview. Its summary says when the served certificate expires, its status says when a request or renewal failed, its body gives the domain and expiry, and it opens Access. A failed request or renewal SHALL be the card's cause, in the danger tone once the served certificate has seven days or fewer left and in the warning tone before that.
+While the `verso` section is enabled, acme SHALL contribute a Certificate card to the Overview. Its summary is the domain, its status says when a request or renewal failed, its body gives the certificate's time left, whether it is served and how long ago acme last did something, and it opens the setup. A failed request or renewal SHALL be the card's cause, in the danger tone once the served certificate has seven days or fewer left and in the warning tone before that.
 
 #### Scenario: A healthy certificate
 - **WHEN** acme serves a certificate that expires in 52 days
-- **THEN** the Overview shows a Certificate card whose closed summary reads "expires in 52 d" and which states no cause
+- **THEN** the Overview shows a Certificate card whose closed summary reads `router.example.com`, whose body gives 52 days left, and which states no cause
 
 #### Scenario: A failed renewal
 - **WHEN** acme's last renewal failed and the served certificate has 20 days left

@@ -192,6 +192,25 @@ func TestTheGuidesManifestLoads(t *testing.T) {
 	}
 }
 
+// Every plugin in the dev tree ships a manifest this shell loads whole: none
+// skipped, no contribution dropped. The tree is dev-only (ADR-006 §10), so a
+// checkout without it has nothing to check.
+func TestThePluginsInTheTreeLoad(t *testing.T) {
+	root := filepath.Join("..", "..", "plugins")
+	if _, err := os.Stat(root); err != nil {
+		t.Skip("no plugin tree")
+	}
+	got, problems := Discover(os.DirFS(root), "*/manifest.json")
+	if len(problems) != 0 {
+		t.Errorf("problems = %v", problems)
+	}
+	for _, m := range got {
+		if m.ID == "acme" && len(m.Contributes) != 4 {
+			t.Errorf("acme contributes %v, want its four slots", contributionIDs(m))
+		}
+	}
+}
+
 func contributionIDs(m Manifest) []string {
 	var ids []string
 	for _, c := range m.Contributions() {

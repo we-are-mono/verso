@@ -61,7 +61,7 @@ func overviewAs(t *testing.T, s *Server, token string) string {
 
 var renewalFailed = &plugin.OverviewCard{
 	Title: "Certificate", Icon: "shield-check", Tone: "warning", Status: "Renewal failed",
-	Summary: "expires in 20 d", Cause: "The certificate could not be renewed", Opens: "/",
+	Summary: "router.example.com", Cause: "The certificate could not be renewed", Opens: "/",
 }
 
 func TestAPluginsOverviewCardStandsWhereItsPositionPutsIt(t *testing.T) {

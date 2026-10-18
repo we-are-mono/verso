@@ -241,7 +241,7 @@ the envelope's `card`, and its body as the `widget`:
   "schema_version": 1,
   "card": {
     "title": "Certificate", "icon": "shield-check",
-    "tone": "warning", "status": "Renewal failed", "summary": "expires in 20 d",
+    "tone": "warning", "status": "Renewal failed", "summary": "router.example.com",
     "cause": "The certificate could not be renewed", "opens": "/"
   },
   "widget": { "type": "properties", "items": [ { "label": "Domain", "value": "router.example.com" } ] }
@@ -251,7 +251,9 @@ the envelope's `card`, and its body as the `widget`:
 - `title` and `icon` (a Lucide name) head the card.
 - `tone` is `success`, `warning`, `danger` or `neutral`.
 - `status` is the word at the header's end. Leave it out while all is well.
-- `summary` is the one reading a closed card says after its title.
+- `summary` is the one reading a closed card says after its title. It is words, never
+  a rate or a duration, which only the shell writes: give those as `rate` or
+  `duration` facts in the body.
 - `cause` is what is wrong, as a sentence that stands without the card. The Overview's
   heading says it when it is the one thing wrong, and counts it among the rest, whether
   the card is open, closed or hidden. Leave it out while all is well.

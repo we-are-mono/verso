@@ -14,7 +14,7 @@ import (
 func certificateCard() OverviewContribution {
 	return OverviewContribution{
 		ID: "acme.card", Title: "Certificate", Icon: "shield-check",
-		Tone: "success", Summary: "expires in 52 d",
+		Tone: "success", Summary: "router.example.com",
 		Href: "/plugins/acme/", Body: &Properties{Items: []Property{{Label: "Domain", Value: "router.example.com", Verbatim: true}}},
 	}
 }
@@ -41,7 +41,7 @@ func TestAPluginCardHasTheShellCardsAnatomy(t *testing.T) {
 	article := got[start:]
 	article = article[:strings.Index(article, "</article>")]
 	for _, want := range []string{
-		"Certificate", "expires in 52 d", "data-closed", `href="/plugins/acme/"`, `aria-label="Open Certificate"`,
+		"Certificate", "router.example.com", "data-closed", `href="/plugins/acme/"`, `aria-label="Open Certificate"`,
 		"data-overview-grip", "data-overview-hide", "router.example.com",
 	} {
 		if !strings.Contains(article, want) {
