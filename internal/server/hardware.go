@@ -45,8 +45,9 @@ func (s *Server) handleSystemHardware(w http.ResponseWriter, r *http.Request) {
 	_, t := s.localize(r)
 	tr := translatorOrIdentity(t)
 	// The page opens on the first reading's day, drawn here, so the graph
-	// needs no second request.
-	if choices := temperatureChoices(tr, in.inv); len(choices) > 0 {
+	// needs no second request; drawn only for a session that may read the
+	// history (mayReadTemperatures).
+	if choices := temperatureChoices(tr, in.inv); len(choices) > 0 && s.mayReadTemperatures(r.Context(), sid) {
 		in.tempGraph = s.temperatureGraph(r.Context(), tr, choices[0], historyWindows[0])
 	}
 	root := &widget.Stack{Children: hardwareCards(tr, in)}

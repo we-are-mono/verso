@@ -135,10 +135,23 @@ func (s *Server) sensorInventory(p *sensors.Profile) sensors.Inventory {
 	return sensors.ResolveAll(p, &sensors.Reader{})
 }
 
+// mayReadTemperatures reports whether rpcd grants sid the read history.db's
+// temperatures reach a session under (ADR-007): no rpcd read answers a
+// sensor, so it is the system info read, the router's own state, which the
+// router starting is shown under on the events page and on every graph.
+func (s *Server) mayReadTemperatures(ctx context.Context, sid string) bool {
+	return s.grantsIn(ctx, sid).may(ctx, systemGrant)
+}
+
 // handleTemperatureHistory answers the Temperatures graph for the reading and
-// window chosen in its field, in its place. Only a reading the board offers
-// and a window the field offers are read.
+// window chosen in its field, in its place. Only a session that may read the
+// history is answered, and only a reading the board offers and a window the
+// field offers are read.
 func (s *Server) handleTemperatureHistory(w http.ResponseWriter, r *http.Request) {
+	if !s.mayReadTemperatures(r.Context(), s.sessionSID(r)) {
+		http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
+		return
+	}
 	board, err := s.backend.Board(r.Context(), s.sessionSID(r))
 	if err != nil {
 		log.Printf("verso: hardware: board unavailable: %v", err)

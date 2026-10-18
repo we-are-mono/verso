@@ -4,6 +4,7 @@
 package server
 
 import (
+	"errors"
 	"net/http"
 	"strings"
 	"testing"
@@ -17,7 +18,7 @@ import (
 // 49.2 °C on average, the second touching 59.0 °C at its peak.
 func temperatureServer(t *testing.T) *Server {
 	t.Helper()
-	s := newServer(t, fakeBackend{})
+	s := newServer(t, fakeBackend{access: true})
 	s.inventory = func(*sensors.Profile) sensors.Inventory { return dkInventory() }
 	store, err := history.Open(history.Memory)
 	if err != nil {
@@ -103,5 +104,35 @@ func TestTheHardwarePageOpensOnTheCPUsDay(t *testing.T) {
 	}
 	if !strings.Contains(body, `<option value="temp.cluster-thermal" selected>`) || !strings.Contains(body, `<option value="day" selected>`) {
 		t.Error("the field does not open on the CPU's day")
+	}
+}
+
+// TestTheTemperatureHistoryNeedsTheSystemGrant: history.db's temperatures are
+// the shell's own store, so a session rpcd refuses the system info read, or
+// does not answer for, is drawn no graph and refused one, while the table of
+// what the sensors read now stays; the system grant is the one the events
+// page and the graphs mark the router starting under.
+func TestTheTemperatureHistoryNeedsTheSystemGrant(t *testing.T) {
+	for _, c := range []struct {
+		name string
+		b    fakeBackend
+	}{
+		{"refused", fakeBackend{grant: grantAllBut("ubus system info")}},
+		{"unanswered", fakeBackend{accessErr: errors.New("rpcd gone")}},
+	} {
+		s := temperatureServer(t)
+		s.backend = c.b
+		if status, body := getSignedIn(t, s, temperaturePath+"?sensor=temp.cluster-thermal&range=day"); status != http.StatusForbidden || strings.Contains(body, "°C") {
+			t.Errorf("%s: the graph answered %d:\n%s", c.name, status, body)
+		}
+		_, body := getSignedIn(t, s, "/system/hardware")
+		for _, never := range []string{`id="hardware-temperature-graph"`, ">Show chart for<", ">48.7\U0000202f°C<"} {
+			if strings.Contains(body, never) {
+				t.Errorf("%s: the page draws %q", c.name, never)
+			}
+		}
+		if !strings.Contains(body, ">cluster-thermal<") {
+			t.Errorf("%s: the page lists no reading", c.name)
+		}
 	}
 }
