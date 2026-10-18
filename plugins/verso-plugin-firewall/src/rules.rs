@@ -15,9 +15,9 @@
 //! between chains would change which packets it sees rather than when.
 
 use verso_plugin::{
-    commit, commit_delete, commit_new, ColumnWidth, Envelope, Form, HeadingAct, RowDrawer,
-    Snapshot, Table, TableCell, TableChip, TableColumn, TableGroup, TablePart, TableRow, Tone,
-    Widget, REMOVE_FIELD, RESHAPE,
+    commit, commit_delete, commit_new, pill_cell, text_cell, ColumnWidth, Envelope, Form,
+    HeadingAct, RowDrawer, Snapshot, Table, TableCell, TableChip, TableColumn, TableGroup,
+    TablePart, TableRow, Tone, Widget, REMOVE_FIELD, RESHAPE,
 };
 
 use crate::counters::Counters;
@@ -359,13 +359,15 @@ fn row(
             page::name_cell(&rule.name, door.clone()),
             page::endpoint_cell(&rule.src_ips, &rule.src),
             page::endpoint_cell(&rule.dest_ips, &rule.dest),
-            page::text_cell(&format::protocol(&rule.proto, &rule.family)),
+            text_cell(&format::protocol(&rule.proto, &rule.family)),
             page::mono_cell(&format::match_summary(
                 &rule.dest_ports,
                 &rule.icmp_types,
                 &rule.limit,
             )),
-            page::pill_cell(&rule.target, format::target_tone(&rule.target)),
+            // a verdict leads with the packet it decides about: filled in the
+            // verdict's hue, hollow for drop, where the packet is simply gone
+            pill_cell(&rule.target, format::target_tone(&rule.target)),
             page::hits_cell(counters.packets(&rule.chain, &rule.identity)),
             page::acts_cell(
                 &rule.section,

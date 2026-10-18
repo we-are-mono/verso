@@ -6,8 +6,8 @@ use serde_json::Value;
 use std::collections::{BTreeMap, BTreeSet};
 use std::net::Ipv6Addr;
 use verso_plugin::{
-    uci_text, Envelope, Grid, HeadingAct, Property, RowDrawer, SectionWidget, Table, TableCell,
-    TableChip, TableColumn, TableRow, TableRowAct, Tone, Widget,
+    pill_cell, uci_text, Envelope, Grid, HeadingAct, Property, RowDrawer, SectionWidget, Table,
+    TableCell, TableChip, TableColumn, TableRow, TableRowAct, Tone, Widget, EM_DASH,
 };
 
 fn text(v: Option<&Value>) -> String {
@@ -27,7 +27,7 @@ fn fact(label: &str, value: impl Into<String>) -> Property {
     Property {
         label: label.into(),
         value: if value.is_empty() {
-            "—".into()
+            EM_DASH.into()
         } else {
             value
         },
@@ -210,7 +210,7 @@ fn kind(m: &Model, name: &str, runtime: Option<&Value>) -> String {
     if !typ.is_empty() && typ != "Network device" {
         return typ.to_lowercase();
     }
-    "—".into()
+    EM_DASH.into()
 }
 fn state(
     m: &Model,
@@ -319,7 +319,7 @@ fn details(
             );
         }
         for p in read.iter_mut() {
-            p.copy = matches!(p.label.as_str(), "IPv4" | "IPv6" | "ULA") && p.value != "—";
+            p.copy = matches!(p.label.as_str(), "IPv4" | "IPv6" | "ULA") && p.value != EM_DASH;
         }
         let zones: Vec<_> = m
             .zones
@@ -450,7 +450,7 @@ pub fn dhcp_part(m: &Model, net: &str, over: bool) -> Option<Widget> {
                 &server
                     .leases
                     .map(|n| n.to_string())
-                    .unwrap_or_else(|| "—".into()),
+                    .unwrap_or_else(|| EM_DASH.into()),
             ));
         }
     }
@@ -702,17 +702,13 @@ fn inventory(m: &Model, drawer: Option<RowDrawer>) -> Envelope {
                 },
                 TableCell {
                     copy: !ipv4.is_empty(),
-                    ..cell(ipv4.first().cloned().unwrap_or_else(|| "—".into()))
+                    ..cell(ipv4.first().cloned().unwrap_or_else(|| EM_DASH.into()))
                 },
                 TableCell {
                     copy: !mac.is_empty(),
-                    ..cell(if mac.is_empty() { "—".into() } else { mac })
+                    ..cell(if mac.is_empty() { EM_DASH.into() } else { mac })
                 },
-                TableCell {
-                    variant: tone.into(),
-                    dot: true,
-                    ..cell(state)
-                },
+                pill_cell(state, tone),
                 TableCell {
                     actions,
                     ..Default::default()

@@ -20,8 +20,9 @@
 //! page posts on their own, one switch at a time.
 
 use verso_plugin::{
-    commit, commit_delete, commit_new, ColumnWidth, Envelope, Form, HeadingAct, RowDrawer,
-    Snapshot, Table, TableCell, TableChip, TableColumn, TableRow, Tone, Widget, REMOVE_FIELD,
+    commit, commit_delete, commit_new, pill_cell, text_cell, ColumnWidth, Envelope, Form,
+    HeadingAct, RowDrawer, Snapshot, Table, TableCell, TableChip, TableColumn, TableRow, Tone,
+    Widget, REMOVE_FIELD,
 };
 
 use crate::crossings::Crossings;
@@ -283,7 +284,7 @@ fn row(model: &Firewall, zone: &Zone, open: Option<&Open>) -> TableRow {
     // it rather than a pill — the pills in this row all answer the same kind of
     // question, and a fourth one that did not would read as a fourth policy.
     let nat = match zone.masq {
-        true => page::text_cell("on"),
+        true => text_cell("on"),
         false => TableCell::default(),
     };
     let reaches = model
@@ -316,9 +317,9 @@ fn row(model: &Firewall, zone: &Zone, open: Option<&Open>) -> TableRow {
             page::name_cell(&zone.name, door.clone()),
             page::chips_cell(membership(zone)),
             page::chips_cell(reaches),
-            page::pill_cell(&zone.input, format::target_tone(&zone.input)),
-            page::pill_cell(&zone.output, format::target_tone(&zone.output)),
-            page::pill_cell(&zone.forward, format::target_tone(&zone.forward)),
+            pill_cell(&zone.input, format::target_tone(&zone.input)),
+            pill_cell(&zone.output, format::target_tone(&zone.output)),
+            pill_cell(&zone.forward, format::target_tone(&zone.forward)),
             nat,
             // The row's trailing affordance reads the way the other two listings'
             // do, so one glyph opens an object everywhere in this plugin.

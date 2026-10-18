@@ -945,11 +945,15 @@ Column kinds, one treatment each (never mix them per row):
 - `"pill"` — an enum value as a status pill; the cell carries `text` plus a
   `variant` from the badge vocabulary (`success`/`warning`/`danger`/`info`/
   neutral) — e.g. `accept`→success, `reject`→warning, `drop`→danger. An empty
-  cell renders a faint dash, which is what keeps the pills meaningful.
+  cell renders a faint dash, which is what keeps the pills meaningful. The
+  SDK's `pill_cell(text, variant)` builds one.
 - `"endpoint"` — one or more traffic endpoints; each is `{ "kind", "label" }`
   where kind is `"zone"` (sans + shield), `"device"` (mono address + screen),
   `"router"` (this device, accented), or `"any"` (muted globe).
 - `"reorder"` — a drag handle, first column only; see **Reorderable rows** below.
+
+In the Rust SDK, `text_cell(text)` is a plain value or, when there is none, the
+quiet dash (`muted_cell(EM_DASH)`) every listing states a missing value with.
 
 A row's `id` is its stable handle — use the UCI section name.
 

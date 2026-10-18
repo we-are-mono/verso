@@ -7,14 +7,15 @@
 //! one heading, one subpage bar, and one width; only the lede and the content
 //! change. The cell constructors live here for the same reason: an endpoint, a
 //! hit count, and a switch mean the same thing on every page, and a listing that
-//! spelled one of them differently would read as a different kind of thing.
+//! spelled one of them differently would read as a different kind of thing. A
+//! plain value and a pill are every plugin's, and come from the SDK.
 
 use verso_plugin::{
-    Envelope, PageTab, TableCell, TableChip, TableEndpoint, TableRowAct, Widget, REMOVE_FIELD,
+    muted_cell, Envelope, PageTab, TableCell, TableChip, TableEndpoint, TableRowAct, Widget,
+    EM_DASH, REMOVE_FIELD,
 };
 
 use crate::format;
-use crate::format::EM_DASH;
 
 /// RULES, PORT_FORWARDS, ZONES and ACTIVITY are the sub-paths below this
 /// plugin's mount.
@@ -123,12 +124,12 @@ pub fn endpoint_cell(addresses: &[String], zone: &str) -> TableCell {
 /// zeroes does not compete with the rules that have actually fired.
 pub fn hits_cell(packets: Option<u64>) -> TableCell {
     match packets {
-        Some(0) => muted("0"),
+        Some(0) => muted_cell("0"),
         Some(packets) => TableCell {
             text: format::hits(packets),
             ..TableCell::default()
         },
-        None => muted(EM_DASH),
+        None => muted_cell(EM_DASH),
     }
 }
 
@@ -145,35 +146,11 @@ pub fn chips_cell(chips: Vec<TableChip>) -> TableCell {
 /// detail the row is scanned for; nothing to state reads as a quiet dash.
 pub fn mono_cell(text: &str) -> TableCell {
     if text.is_empty() {
-        return muted(EM_DASH);
+        return muted_cell(EM_DASH);
     }
     TableCell {
         text: text.into(),
         emphasis: true,
-        ..TableCell::default()
-    }
-}
-
-/// text_cell is a plain value, or a quiet dash when there is none.
-pub fn text_cell(text: &str) -> TableCell {
-    if text.is_empty() {
-        return muted(EM_DASH);
-    }
-    TableCell {
-        text: text.into(),
-        ..TableCell::default()
-    }
-}
-
-/// pill_cell is an enum value as a status pill. An empty value renders as the
-/// column's faint dash, which is what keeps the filled pills meaningful.
-pub fn pill_cell(text: &str, variant: &str) -> TableCell {
-    TableCell {
-        text: text.into(),
-        variant: variant.into(),
-        // a verdict leads with the packet it decides about: filled in the
-        // verdict's hue, hollow for drop, where the packet is simply gone
-        dot: true,
         ..TableCell::default()
     }
 }
@@ -268,14 +245,6 @@ pub fn name_cell(name: &str, href: String) -> TableCell {
 pub fn index_cell(position: u32) -> TableCell {
     TableCell {
         text: position.to_string(),
-        muted: true,
-        ..TableCell::default()
-    }
-}
-
-fn muted(text: &str) -> TableCell {
-    TableCell {
-        text: text.into(),
         muted: true,
         ..TableCell::default()
     }

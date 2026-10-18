@@ -15,10 +15,10 @@ use std::cmp::Reverse;
 use std::collections::BTreeMap;
 use std::net::{IpAddr, Ipv4Addr};
 use verso_plugin::{
-    commit, commit_delete, commit_new, select_field, text_field, uci_text, Change, ColumnWidth,
-    CommitOp, Description, Envelope, Errors, Form, HeadingAct, RowDrawer, SelectOption, Snapshot,
-    SubjectKind, Table, TableCell, TableChip, TableColumn, TableGroup, TableRow, TableRowAct, Tone,
-    Widget,
+    commit, commit_delete, commit_new, muted_cell, select_field, text_cell, text_field, uci_text,
+    Change, ColumnWidth, CommitOp, Description, Envelope, Errors, Form, HeadingAct, RowDrawer,
+    SelectOption, Snapshot, SubjectKind, Table, TableCell, TableChip, TableColumn, TableGroup,
+    TableRow, TableRowAct, Tone, Widget, EM_DASH,
 };
 
 const NEW: &str = "new";
@@ -361,19 +361,12 @@ fn lane(v6: bool) -> TableGroup {
     }
 }
 
-fn quiet(text: &str) -> TableCell {
-    TableCell {
-        text: text.into(),
-        muted: true,
-        ..Default::default()
-    }
-}
 /// gateway_cell is where the traffic goes next: the gateway, else straight out
 /// of the interface, else what a route that refuses traffic does with it.
 fn gateway_cell(gateway: &str, kind: &str) -> TableCell {
     match (gateway, kind) {
-        ("", "" | "unicast") => quiet("On-link"),
-        ("", kind) => quiet(kind),
+        ("", "" | "unicast") => muted_cell("On-link"),
+        ("", kind) => muted_cell(kind),
         (gw, _) => TableCell {
             text: gw.into(),
             copy: true,
@@ -383,20 +376,11 @@ fn gateway_cell(gateway: &str, kind: &str) -> TableCell {
 }
 fn interface_cell(name: &str) -> TableCell {
     if name.is_empty() {
-        return quiet("—");
+        return muted_cell(EM_DASH);
     }
     TableCell {
         chips: vec![TableChip::entity("network", name)],
         ..Default::default()
-    }
-}
-fn metric_cell(metric: &str) -> TableCell {
-    match metric {
-        "" => quiet("—"),
-        metric => TableCell {
-            text: metric.into(),
-            ..Default::default()
-        },
     }
 }
 
@@ -439,7 +423,7 @@ fn row(line: &Line, drawer: Option<RowDrawer>) -> TableRow {
             target,
             gateway_cell(&line.gateway, &line.kind),
             interface_cell(&line.interface),
-            metric_cell(&line.metric),
+            text_cell(&line.metric),
             TableCell {
                 chips: vec![TableChip {
                     label: line.origin.clone(),

@@ -23,7 +23,7 @@
 
 use verso_plugin::{
     commit, commit_delete, commit_new, json, text_field, uci_text, CommitOp, Form, Map,
-    SelectOption, Widget,
+    SelectOption, Widget, EM_DASH,
 };
 
 use crate::fields;
@@ -237,7 +237,7 @@ fn options(model: &Firewall, zone: &str, reaches: &[String]) -> Vec<SelectOption
 
 fn list_or_none(zones: &[String]) -> String {
     match zones.is_empty() {
-        true => "—".to_string(),
+        true => EM_DASH.to_string(),
         false => zones.join(" · "),
     }
 }

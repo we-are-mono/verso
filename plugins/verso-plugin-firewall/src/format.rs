@@ -9,9 +9,6 @@
 //! reads "WAN → Router" and shows `input_wan`; a protocol reads `tcp/udp` and a
 //! v4-only rule says so. Nothing here invents a value the config does not carry.
 
-/// EM_DASH stands for a value the config does not state.
-pub const EM_DASH: &str = "—";
-
 /// ACRONYMS are the zone-name words that are read as letters, not as a word. A
 /// token outside this set is simply capitalized, so an unknown zone name still
 /// reads as a name and never as a mangled acronym.

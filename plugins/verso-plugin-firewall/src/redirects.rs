@@ -13,8 +13,8 @@
 //! panel survives a reload and travels in a link.
 
 use verso_plugin::{
-    commit, commit_delete, commit_new, ColumnWidth, Envelope, Form, HeadingAct, RowDrawer,
-    Snapshot, Table, TableChip, TableColumn, TableRow, Tone, Widget, REMOVE_FIELD,
+    commit, commit_delete, commit_new, text_cell, ColumnWidth, Envelope, Form, HeadingAct,
+    RowDrawer, Snapshot, Table, TableChip, TableColumn, TableRow, Tone, Widget, REMOVE_FIELD,
 };
 
 use crate::counters::Counters;
@@ -266,7 +266,7 @@ fn row(
             page::chips_cell(arrives_from(redirect)),
             page::mono_cell(&redirect.src_dport),
             page::mono_cell(&sent_to(redirect)),
-            page::text_cell(&format::protocol(&redirect.proto, &redirect.family)),
+            text_cell(&format::protocol(&redirect.proto, &redirect.family)),
             page::hits_cell(counters.packets(&redirect.chain, &redirect.identity)),
             page::acts_cell(
                 &redirect.section,
