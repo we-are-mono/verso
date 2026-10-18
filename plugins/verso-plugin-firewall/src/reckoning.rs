@@ -15,7 +15,7 @@
 
 use std::collections::BTreeSet;
 
-use verso_plugin::vocabulary::{Composition, Omission};
+use crate::vocabulary::{Composition, Omission};
 
 /// COMPOSITIONS are the options several controls write between them.
 ///
@@ -72,7 +72,7 @@ pub const COMPOSITIONS: &[Composition] = &[
 ///
 /// A line here is a decision somebody made and signed. The reason is the point:
 /// the next person can disagree with it, but they cannot mistake it for an
-/// oversight. [`verso_plugin::vocabulary::stale_omissions`] deletes the lines that
+/// oversight. [`crate::vocabulary::stale_omissions`] deletes the lines that
 /// stop being true — an option firewall4 drops, or one we later grow a control
 /// for — so the table cannot rot into noise nobody trusts.
 pub const OMISSIONS: &[Omission] = &[
@@ -229,12 +229,11 @@ mod tests {
     use super::*;
     use crate::redirect_form::RedirectForm;
     use crate::rule_form::{Errors, RuleForm};
-    use crate::vocabulary::FIREWALL;
+    use crate::vocabulary::{
+        reckon, stale_compositions, stale_omissions, Cardinality, Provenance, FIREWALL,
+    };
     use crate::zone_form::ZoneForm;
     use crate::{crossings, fixture, redirects, rules, settings, zone_drawer, zones};
-    use verso_plugin::vocabulary::{
-        reckon, stale_compositions, stale_omissions, Cardinality, Provenance,
-    };
     use verso_plugin::Form;
 
     /// trees builds every screen that edits this config and hands back the widget
@@ -397,10 +396,17 @@ mod tests {
             .map(|(kind, name)| (*kind, name.as_str()))
             .collect();
 
+        // Each stale line carries the reason it was written with, so whoever
+        // deletes it reads the decision it undoes.
         let stale = stale_omissions(&FIREWALL, &borrowed, OMISSIONS);
         let report: Vec<String> = stale
             .iter()
-            .map(|(omission, why)| format!("  {}.{} {why}", omission.section, omission.key))
+            .map(|(omission, why)| {
+                format!(
+                    "  {}.{} {why}\n    left out because {}",
+                    omission.section, omission.key, omission.because
+                )
+            })
             .collect();
         assert!(
             stale.is_empty(),
@@ -416,7 +422,10 @@ mod tests {
         let report: Vec<String> = broken
             .iter()
             .map(|(composition, why)| {
-                format!("  {}.{} {why}", composition.section, composition.key)
+                format!(
+                    "  {}.{} {why}\n    composed because {}",
+                    composition.section, composition.key, composition.because
+                )
             })
             .collect();
         assert!(
@@ -432,27 +441,21 @@ mod tests {
     /// a measurement.
     #[test]
     fn the_vocabulary_states_what_it_was_read_from() {
-        match FIREWALL.provenance {
-            Provenance::Extracted {
-                upstream,
-                version,
-                sha256,
-                extractor,
-            } => {
-                assert_eq!(upstream, "firewall4");
-                assert!(!version.is_empty(), "the upstream version is unrecorded");
-                assert_eq!(
-                    sha256.len(),
-                    64,
-                    "the source hash is not a sha256: {sha256}"
-                );
-                assert!(sha256.chars().all(|c| c.is_ascii_hexdigit()));
-                assert!(!extractor.is_empty(), "the extractor is unrecorded");
-            }
-            Provenance::Declared { .. } => {
-                panic!("firewall4 publishes its own option table; this should be extracted")
-            }
-        }
+        let Provenance {
+            upstream,
+            version,
+            sha256,
+            extractor,
+        } = FIREWALL.provenance;
+        assert_eq!(upstream, "firewall4");
+        assert!(!version.is_empty(), "the upstream version is unrecorded");
+        assert_eq!(
+            sha256.len(),
+            64,
+            "the source hash is not a sha256: {sha256}"
+        );
+        assert!(sha256.chars().all(|c| c.is_ascii_hexdigit()));
+        assert!(!extractor.is_empty(), "the extractor is unrecorded");
     }
 
     /// The artifact describes one exact file, and this is where that claim is
@@ -475,12 +478,9 @@ mod tests {
             return;
         };
         let source = std::fs::read(&path).expect("read the fw4.uc named by VERSO_FW4");
-        let Provenance::Extracted {
+        let Provenance {
             sha256, version, ..
-        } = FIREWALL.provenance
-        else {
-            panic!("the firewall vocabulary is not an extracted one");
-        };
+        } = FIREWALL.provenance;
         assert_eq!(
             sha256,
             verso_plugin::sha256_hex(&source),

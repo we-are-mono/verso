@@ -88,7 +88,7 @@ fn main() -> ExitCode {
     println!("firewall4 version {version}");
 
     if args.iter().any(|a| a == "--write") {
-        let out = "src/vocabulary.rs";
+        let out = "src/vocabulary/firewall4.rs";
         if let Err(err) = std::fs::write(out, &artifact) {
             eprintln!("cannot write {out}: {err}");
             return ExitCode::FAILURE;
@@ -106,7 +106,6 @@ struct Spec {
     datatype: String,
     default: Option<String>,
     list: bool,
-    invertible: bool,
     support: &'static str,
 }
 
@@ -190,7 +189,6 @@ fn read_option(line: &str) -> Option<Spec> {
         datatype,
         default,
         list: flags.contains("PARSE_LIST"),
-        invertible: !flags.contains("NO_INVERT"),
         support: match () {
             _ if flags.contains("UNSUPPORTED") => "Unsupported",
             _ if flags.contains("DEPRECATED") => "Deprecated",
@@ -224,15 +222,13 @@ fn render(sections: &[(String, Vec<Spec>)], version: &str, digest: &str) -> Stri
          //!\n\
          //! A difference against this file is news to read, not a thing to apply. The\n\
          //! extractor prints the difference and writes nothing unless told to.\n\n\
-         use verso_plugin::vocabulary::{\n    \
-         Cardinality, OptionSpec, Provenance, SectionVocabulary, Support, Vocabulary,\n};\n\n",
+         use super::{Cardinality, OptionSpec, Provenance, SectionVocabulary, Support, Vocabulary};\n\n",
     );
     let _ = write!(
         out,
         "/// FIREWALL is every option firewall4 parses, by section type.\n\
          pub const FIREWALL: Vocabulary = Vocabulary {{\n    \
-         config: \"firewall\",\n    \
-         provenance: Provenance::Extracted {{\n        \
+         provenance: Provenance {{\n        \
          upstream: \"firewall4\",\n        \
          version: \"{version}\",\n        \
          sha256: \"{digest}\",\n        \
@@ -267,9 +263,8 @@ fn render(sections: &[(String, Vec<Spec>)], version: &str, digest: &str) -> Stri
             let _ = writeln!(
                 out,
                 "    OptionSpec {{ key: \"{}\", datatype: \"{}\", default: {default}, \
-                 cardinality: Cardinality::{cardinality}, invertible: {}, \
-                 support: Support::{} }},",
-                spec.key, spec.datatype, spec.invertible, spec.support
+                 cardinality: Cardinality::{cardinality}, support: Support::{} }},",
+                spec.key, spec.datatype, spec.support
             );
         }
         out.push_str("];\n");

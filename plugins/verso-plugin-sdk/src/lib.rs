@@ -51,10 +51,6 @@ mod sha256;
 pub use sha256::{sha256, sha256_hex};
 mod uci_bool;
 pub use uci_bool::uci_bool;
-/// What a config can hold, as the daemon that reads it defines — and the guard
-/// that every option is either rendered, deliberately left out, or unsupported
-/// upstream. See [`vocabulary`].
-pub mod vocabulary;
 
 /// serve binds `/var/run/verso/<id>.sock` (override with `VERSO_<ID>_SOCKET`) and
 /// serves forever: GET → `get`, POST → `post`. Both see the [`Request`] — the

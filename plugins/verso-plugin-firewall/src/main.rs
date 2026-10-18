@@ -38,12 +38,6 @@ mod rule_drawer;
 mod rule_form;
 mod rules;
 mod settings;
-// What firewall4 accepts, read out of its own parser. The guard beside it reads
-// this today; the forms and the config preview will derive from it rather than
-// restating it, which is the point of having it. Until they do, nothing in the
-// shipped binary looks at it.
-#[allow(dead_code)]
-mod vocabulary;
 mod zone_drawer;
 mod zone_form;
 mod zones;
@@ -51,10 +45,15 @@ mod zones;
 #[cfg(test)]
 mod fixture;
 // The reckoning: every option firewall4 supports is rendered, deliberately left
-// out with a reason, or unsupported upstream. It reads the widget trees the plugin
-// really builds, so it needs the serializer the tests have.
+// out with a reason, or unsupported upstream, and none is written as a list where
+// firewall4 reads one value. It reads the widget trees the plugin really builds,
+// so it needs the serializer the tests have.
 #[cfg(test)]
 mod reckoning;
+// What firewall4 accepts, read out of its own parser. The reckoning is its only
+// reader, so it is built with the tests and not into the shipped binary.
+#[cfg(test)]
+mod vocabulary;
 
 use counters::Counters;
 use model::{Firewall, CONFIG};

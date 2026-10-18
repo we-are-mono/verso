@@ -22,45 +22,36 @@
 //!
 //! # Where the list comes from
 //!
-//! [`Provenance`] says, in the artifact, how its contents were obtained — because
-//! a hand-written list and a list read out of the daemon's own source are worth
-//! different amounts, and nothing should be able to mistake one for the other.
-//! A daemon that declares its options can be extracted from; one that only
-//! validates can be asked; one that does neither leaves the plugin's own table as
-//! the whole of the truth, which is fine as long as it says so.
+//! firewall4 declares its options in its own parser, so the list is read out of
+//! it rather than written by hand: [`FIREWALL`] is generated from `fw4.uc` by
+//! `src/bin/vocabulary.rs`, and [`Provenance`] records what it was read from, so
+//! a firmware that moves under the artifact stops matching and says so.
 
 use std::collections::BTreeSet;
 
+mod firewall4;
+pub use firewall4::FIREWALL;
+
 /// Vocabulary is one config file's whole option set, as its daemon defines it.
 pub struct Vocabulary {
-    /// The config this describes, as uci names it: "firewall", "dhcp", "network".
-    pub config: &'static str,
     /// How this list was obtained, and from what.
     pub provenance: Provenance,
     pub sections: &'static [SectionVocabulary],
 }
 
-/// Provenance is where a vocabulary's contents came from. It is recorded in the
-/// artifact so a reader can tell a checked list from an asserted one.
-pub enum Provenance {
-    /// Read out of the daemon's own source by a tool, from a file whose hash is
-    /// recorded: the strongest kind, because a firmware that moves under us stops
-    /// matching and says so.
-    Extracted {
-        /// The upstream package the options were read from.
-        upstream: &'static str,
-        /// Its version, as the package declares it.
-        version: &'static str,
-        /// The SHA-256 of the file the options were read from, so the artifact and
-        /// the firmware it describes cannot silently come apart.
-        sha256: &'static str,
-        /// The tool that read it, and its version — a changed extractor is as
-        /// capable of changing this list as a changed daemon.
-        extractor: &'static str,
-    },
-    /// Written by hand, because the daemon publishes no list. Honest, and weaker:
-    /// the reason belongs here so nobody reads it as verified.
-    Declared { because: &'static str },
+/// Provenance is the daemon source a vocabulary was read out of by a tool,
+/// recorded with that file's hash.
+pub struct Provenance {
+    /// The upstream package the options were read from.
+    pub upstream: &'static str,
+    /// Its version, as the package declares it.
+    pub version: &'static str,
+    /// The SHA-256 of the file the options were read from, so the artifact and
+    /// the firmware it describes cannot silently come apart.
+    pub sha256: &'static str,
+    /// The tool that read it, and its version — a changed extractor is as
+    /// capable of changing this list as a changed daemon.
+    pub extractor: &'static str,
 }
 
 /// SectionVocabulary is one uci section type and every option it accepts.
@@ -83,8 +74,6 @@ pub struct OptionSpec {
     /// screen never mentioned unless the UI says so.
     pub default: Option<&'static str>,
     pub cardinality: Cardinality,
-    /// Whether the daemon accepts a leading "!" on the value.
-    pub invertible: bool,
     pub support: Support,
 }
 
