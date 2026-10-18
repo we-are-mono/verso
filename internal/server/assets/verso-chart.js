@@ -49,6 +49,14 @@
       });
       return best;
     },
+    // minute is a minute the router sampled, fitted to a graph of n points:
+    // its newest n, quiet before it where it holds fewer, as the server pads
+    // a minute only part sampled.
+    minute: function (vals, n) {
+      var out = vals.slice(-n);
+      while (out.length < n) out.unshift(0);
+      return out;
+    },
   };
   window.versoChartMath = math;
   if (typeof document === "undefined" || !window.matchMedia) return;
@@ -173,6 +181,8 @@
     // restarts it. A stream that has stopped (the tab hidden, the router gone,
     // the drawer closed) leaves nothing running.
     function frame(ts) {
+      // A minute taken up again has put the curves back where they stand.
+      if (lastCommit === null) { gliding = false; return; }
       var progress = Math.min(1, (ts - lastCommit) / INTERVAL);
       // A CSS transform, not the SVG attribute: the attribute re-lays the chart
       // out on every frame, the style only repaints it. In the SVG's own user
@@ -200,6 +210,22 @@
           gliding = true;
           requestAnimationFrame(frame);
         }
+      },
+      // The minute as the router sampled it, taken up when the stream opens
+      // again: whatever the graph missed while it was away (a hidden tab, a
+      // dropped stream) is drawn where it happened, and the curves stand
+      // still until the next sample, as on the first paint.
+      seed: function (nd, nu) {
+        if (!Array.isArray(nd) || !Array.isArray(nu)) return;
+        [nd, nu].forEach(function (vals, i) {
+          var l = lanes[i];
+          var fresh = math.minute(vals, N);
+          fresh.push(fresh[N - 1]);
+          l.vals.splice.apply(l.vals, [0, l.vals.length].concat(fresh));
+          l.draw();
+          if (l.figure) l.figure.textContent = rateText(fresh[N - 1]);
+        });
+        lastCommit = null;
       },
     };
     return host.__versoLive;
@@ -232,11 +258,20 @@
     (root || document).querySelectorAll("[data-verso-live-chart]").forEach(liveChart);
   }
 
-  // A stream's sample for the graph it names, wherever that graph stands now.
-  window.versoLiveSample = function (name, down, up) {
+  // The live graph a stream names, wherever it stands now.
+  function named(name) {
     var host = document.querySelector('[data-verso-live-chart="' + CSS.escape(name) + '"]');
-    var chart = host && liveChart(host);
+    return host && liveChart(host);
+  }
+  // A stream's sample for the graph it names.
+  window.versoLiveSample = function (name, down, up) {
+    var chart = named(name);
     if (chart) chart.sample(down, up);
+  };
+  // A stream's whole minute for the graph it names, sent as it opens.
+  window.versoLiveSeed = function (name, down, up) {
+    var chart = named(name);
+    if (chart) chart.seed(down, up);
   };
 
   setUp();

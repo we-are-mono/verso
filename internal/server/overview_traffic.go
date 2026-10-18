@@ -4,6 +4,7 @@
 package server
 
 import (
+	"context"
 	"fmt"
 	"math"
 	"net/http"
@@ -23,21 +24,32 @@ const overviewTrafficPath = "/overview/traffic"
 // stand in if sampling fails.
 func (s *Server) wanMinute(r *http.Request) (device string, down, up []float64, downNow, upNow float64) {
 	wan, err := s.wanStatus(r)
-	primary, ok := wan.Primary()
-	if err == nil && ok {
+	if primary, ok := wan.Primary(); err == nil && ok {
 		device = primary.Device
-		if snapshot, fresh := s.telemetrySnapshot(r.Context()); fresh {
-			if iface, found := snapshot.Interface(device); found {
-				down, up = telemetryInterfaceRates(iface.History)
-			}
-		}
 	}
-	if len(down) != 0 {
+	if down, up = s.sampledMinute(r.Context(), device); len(down) != 0 {
 		return device, down, up, down[len(down)-1], up[len(up)-1]
 	}
 	down, up = s.wanHist.Series()
 	downNow, upNow = s.wanHist.Latest()
 	return device, down, up, downNow, upNow
+}
+
+// sampledMinute is device's last minute as the process-wide sampler holds
+// it, in Mbit/s; nothing where the sampler has no fresh reading of it.
+func (s *Server) sampledMinute(ctx context.Context, device string) (down, up []float64) {
+	if device == "" {
+		return nil, nil
+	}
+	snapshot, fresh := s.telemetrySnapshot(ctx)
+	if !fresh {
+		return nil, nil
+	}
+	iface, found := snapshot.Interface(device)
+	if !found {
+		return nil, nil
+	}
+	return telemetryInterfaceRates(iface.History)
 }
 
 // handleOverviewTraffic answers the Internet graph for ?range=: the live

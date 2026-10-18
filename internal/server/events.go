@@ -88,6 +88,10 @@ func (s *Server) handleOverviewEvents(w http.ResponseWriter, r *http.Request) {
 	// device changes or its uptime starts over.
 	var addressDevice string
 	var addressUptime int64
+	// The connection's first frame carries the whole minute, so a graph that
+	// was away (its tab hidden, the stream dropped) takes the minute up where
+	// it stands now rather than gluing this second onto the last it saw.
+	minuteSent := false
 	sendWan := func() bool {
 		ws, err := s.backend.WANStatus(r.Context(), sid)
 		liveOverview.WANKnown, liveOverview.WANUp = err == nil, err == nil && ws.Up()
@@ -111,20 +115,24 @@ func (s *Server) handleOverviewEvents(w http.ResponseWriter, r *http.Request) {
 		if !layout.Shows("traffic") && !layout.Shows("internet") {
 			return true
 		}
-		write := func(down, up float64) bool {
+		write := func(down, up float64, minute func() ([]float64, []float64)) bool {
 			liveOverview.DownNow, liveOverview.UpNow = down, up
 			// connected is how long the uplink has held, written for the
 			// Internet card's row.
-			return writeEvent(w, "", "wan", map[string]any{"down": down, "up": up, "uptime": primary.Uptime, "connected": units.Duration(primary.Uptime)}) == nil
+			frame := map[string]any{"down": down, "up": up, "uptime": primary.Uptime, "connected": units.Duration(primary.Uptime)}
+			if !minuteSent && minute != nil {
+				if d, u := minute(); len(d) != 0 {
+					frame["minute"] = map[string][]float64{"down": d, "up": u}
+					minuteSent = true
+				}
+			}
+			return writeEvent(w, "", "wan", frame) == nil
 		}
 		if !found || primary.Device == "" {
-			return write(0, 0)
+			return write(0, 0, nil)
 		}
-		if snapshot, ok := s.telemetrySnapshot(r.Context()); ok {
-			if device, found := snapshot.Interface(primary.Device); found && len(device.History) != 0 {
-				point := device.History[len(device.History)-1]
-				return write(rateMbps(point.RxBPS), rateMbps(point.TxBPS))
-			}
+		if down, up := s.sampledMinute(r.Context(), primary.Device); len(down) != 0 {
+			return write(down[len(down)-1], up[len(up)-1], func() ([]float64, []float64) { return down, up })
 		}
 		// Without a telemetry sample, read the uplink's byte counters directly;
 		// an unreadable device counts as zero rather than failing the frame.
@@ -135,7 +143,7 @@ func (s *Server) handleOverviewEvents(w http.ResponseWriter, r *http.Request) {
 		}
 		s.wanHist.Observe(st.RxBytes, st.TxBytes)
 		down, up := s.wanHist.Latest()
-		return write(down, up)
+		return write(down, up, s.wanHist.Series)
 	}
 	// The board's sensors, for the Hardware card's rows and header and for the
 	// heading: the sampler reads them once per five seconds for every

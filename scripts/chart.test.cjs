@@ -41,3 +41,9 @@ test('a plot takes the most whole cells that cut into whole steps', () => {
   assert.deepEqual({...math.fit(12, [4, 6, 3])}, {cols: 12, step: 4}, 'a tie goes to the first offered');
   assert.deepEqual({...math.fit(29, [6, 3])}, {cols: 27, step: 3}, 'a month offers sixths and thirds');
 });
+
+test('a minute taken up again fills the graph\'s points, newest at the right', () => {
+  assert.deepEqual([...math.minute([1, 2, 3, 4, 5], 3)], [3, 4, 5], 'a longer minute keeps its newest');
+  assert.deepEqual([...math.minute([4, 5], 4)], [0, 0, 4, 5], 'a shorter one is quiet before it');
+  assert.deepEqual([...math.minute([7, 8, 9], 3)], [7, 8, 9], 'a minute as long is itself');
+});

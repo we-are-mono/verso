@@ -134,3 +134,38 @@ func TestOverviewStreamKeepsTheFirstPaintsTopology(t *testing.T) {
 		}
 	}
 }
+
+// A connection's first WAN frame carries the uplink's minute as the router
+// sampled it, so a graph that was away (a hidden tab, a dropped stream) takes
+// the minute up again where it truly stands instead of gluing the next
+// sample onto the one it saw last.
+func TestOverviewStreamOpensWithTheUplinksMinute(t *testing.T) {
+	srv := streamServer(t)
+	now := uint64(time.Now().UnixMilli())
+	srv.telemetry = fakeTelemetry{snapshot: telemetry.Snapshot{TimestampMS: now, Interfaces: []telemetry.Interface{
+		{Name: "eth0", Physical: true, Kind: "port", Operstate: "up", History: []telemetry.Point{
+			{TimestampMS: now - 2000, RxBPS: 10e6, TxBPS: 1e6},
+			{TimestampMS: now - 1000, RxBPS: 20e6, TxBPS: 2e6},
+		}},
+	}}}
+	var wan struct {
+		Down, Up float64
+		Minute   *struct{ Down, Up []float64 }
+	}
+	if err := json.Unmarshal([]byte(firstFrames(t, srv, "")["wan"]), &wan); err != nil {
+		t.Fatal(err)
+	}
+	if wan.Minute == nil {
+		t.Fatal("the first WAN frame carries no minute")
+	}
+	m := wan.Minute
+	if len(m.Down) != telemetrySeriesLen || len(m.Up) != telemetrySeriesLen {
+		t.Fatalf("minute = %d/%d points, want the full %d", len(m.Down), len(m.Up), telemetrySeriesLen)
+	}
+	if got := [2]float64{m.Down[len(m.Down)-2], m.Down[len(m.Down)-1]}; got != [2]float64{10, 20} || m.Up[len(m.Up)-1] != 2 {
+		t.Errorf("minute ends %v down, %v up; want the sampler's last two seconds", got, m.Up[len(m.Up)-1])
+	}
+	if wan.Down != 20 || wan.Up != 2 {
+		t.Errorf("now = %v/%v, want the minute's newest", wan.Down, wan.Up)
+	}
+}

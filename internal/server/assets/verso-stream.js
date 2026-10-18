@@ -196,11 +196,14 @@
   });
   listen(es, "interfaces", "interfaces", applyInterface);
   // The WAN throughput sample hands off to the Internet graph, if present, and
-  // the Internet card's row says how long the uplink has been connected.
+  // the Internet card's row says how long the uplink has been connected. A
+  // connection's first frame carries the whole minute, which the graph takes
+  // up in place of what it last saw, the newest sample at its end.
   es.addEventListener("wan", function (e) {
     var d;
     try { d = JSON.parse(e.data); } catch (err) { return; }
-    if (d && window.versoLiveSample) window.versoLiveSample("wan", d.down, d.up);
+    if (d && d.minute && window.versoLiveSeed) window.versoLiveSeed("wan", d.minute.down, d.minute.up);
+    else if (d && window.versoLiveSample) window.versoLiveSample("wan", d.down, d.up);
     if (d) writeSpan(document.querySelector('[data-verso-prop="wan-uptime"]'), d.connected);
   });
   // The Hardware card's readings, each row written in place by its key.
