@@ -51,13 +51,16 @@ func TestRadiosStandAControlTall(t *testing.T) {
 		t.Skip("radios disabled by the shared policy")
 	}
 	got := render(t, newRenderer(t), &Field{Name: "policy", Label: "Policy", Kind: "select", Value: "0", Options: choiceOptions(2)})
-	if !strings.Contains(got, `class="flex min-w-0 flex-wrap items-start gap-x-4">`) {
+	if !strings.Contains(got, `class="verso-choice__group" data-verso-kind="radios">`) {
 		t.Errorf("the run stands across the answer:\n%s", got)
 	}
-	want := `<label class="flex max-w-full cursor-pointer items-center gap-2 py-1 `
+	declares(t, "choice", `.verso-choice__group[data-verso-kind="radios"]`, "display: flex", "flex-wrap: wrap", "align-items: flex-start")
+	want := `<label class="verso-choice__option"`
 	if strings.Count(got, want) != 2 {
-		t.Errorf("each radio is 32px, its 24px line and 4px over and under, want %q:\n%s", want, got)
+		t.Errorf("each radio is the choice block's option, want %q:\n%s", want, got)
 	}
+	declares(t, "choice", ".verso-choice__option", "min-height: calc(var(--spacing) * 6)")
+	declares(t, "choice", `.verso-choice__option:where(.verso-choice__group[data-verso-kind="radios"] *)`, "padding-block: var(--spacing)")
 }
 
 func TestRadiosPreserveSingleSelectDefaults(t *testing.T) {
@@ -173,9 +176,10 @@ func TestRenderFieldChecks(t *testing.T) {
 	if strings.Contains(got, "grid-cols") {
 		t.Errorf("a set of boxes is one column, not a grid:\n%s", got)
 	}
-	if !strings.Contains(got, `class="flex min-w-0 flex-col items-start"`) || !strings.Contains(got, `<label class="flex min-h-6 max-w-full cursor-pointer items-center gap-2 text-sm leading-6 text-body">`) {
+	if !strings.Contains(got, `class="verso-choice__group" data-verso-kind="checks"`) || strings.Count(got, `<label class="verso-choice__option">`) != 3 {
 		t.Errorf("a set of boxes takes the radio set's rows:\n%s", got)
 	}
+	declares(t, "choice", `.verso-choice__group[data-verso-kind="checks"]`, "flex-direction: column", "align-items: flex-start")
 }
 
 func TestRenderFieldDateTimeLocal(t *testing.T) {
@@ -259,11 +263,17 @@ func TestRadioChoicesRunAcrossTheirRow(t *testing.T) {
 		Name: "input", Label: "Traffic to this router", Kind: "select", Value: "reject",
 		Options: []Option{{Value: "accept", Label: "accept"}, {Value: "reject", Label: "reject"}, {Value: "drop", Label: "drop"}},
 	})
-	if !strings.Contains(got, `aria-labelledby="input-label" class="flex min-w-0 flex-wrap items-start gap-x-4"`) {
+	if !strings.Contains(got, `aria-labelledby="input-label" class="verso-choice__group" data-verso-kind="radios"`) {
 		t.Errorf("the choices do not run across their row:\n%s", got)
 	}
-	if strings.Contains(got, "flex-col items-start") {
-		t.Errorf("the choices still run down the column:\n%s", got)
+	radios := cssRule(blockCSS(t, "choice"), `.verso-choice__group[data-verso-kind="radios"]`)
+	for _, want := range []string{"flex-wrap: wrap", "column-gap: calc(var(--spacing) * 4)"} {
+		if !strings.Contains(radios, want) {
+			t.Errorf("the choices do not run across their row, 16px apart (%s):\n%s", want, radios)
+		}
+	}
+	if strings.Contains(radios, "flex-direction: column") {
+		t.Errorf("the choices still run down the column:\n%s", radios)
 	}
 	accept, reject, drop := strings.Index(got, ">accept<"), strings.Index(got, ">reject<"), strings.Index(got, ">drop<")
 	if accept < 0 || accept > reject || reject > drop {

@@ -6,11 +6,10 @@
      (verso-field) holding switch.row; the inline style sits beside a section
      heading and draws its own words. */}}
 {{if eq .Style "inline"}}
-<label class="verso-inline-switch inline-flex cursor-pointer items-center text-sm font-medium"{{if .Name}} data-verso-change-field data-verso-change-name="{{.Name}}" data-verso-change-label="{{.Label}}" data-verso-change-kind="toggle"{{end}}>
-  <span aria-hidden="true" class="size-1 rounded-full bg-inert"></span>
-  <span class="ml-3 inline-flex translate-y-px">{{template "switch.control" .Control}}</span>
-  <span class="verso-inline-switch-on ml-2 translate-y-px text-ink">{{.Label}}</span>
-  <span class="verso-inline-switch-off ml-2 translate-y-px text-ink">{{ t "Disabled" }}</span>
+<label class="verso-choice__row" data-verso-kind="inline"{{if .Name}} data-verso-change-field data-verso-change-name="{{.Name}}" data-verso-change-label="{{.Label}}" data-verso-change-kind="toggle"{{end}}>
+  <span aria-hidden="true" class="verso-choice__dot"></span>
+  {{template "switch.control" .Control}}
+  <span class="verso-choice__word"><span class="verso-choice__on">{{.Label}}</span><span class="verso-choice__off">{{ t "Disabled" }}</span></span>
 </label>
 {{end}}
 
@@ -23,4 +22,4 @@
      screen reader, so the words are hidden from it. The row's name points at
      the same input by id, which is what makes the setting's name clickable
      too. */}}
-{{define "switch.row"}}<label class="flex w-fit cursor-pointer items-center">{{template "switch.control" .}}<span aria-hidden="true" class="verso-switch-word ml-2 text-sm leading-6 text-body"><span class="verso-switch-on">{{t "On"}}</span><span class="verso-switch-off">{{t "Off"}}</span></span></label>{{end}}
+{{define "switch.row"}}<label class="verso-choice__row">{{template "switch.control" .}}<span aria-hidden="true" class="verso-choice__word"><span class="verso-choice__on">{{t "On"}}</span><span class="verso-choice__off">{{t "Off"}}</span></span></label>{{end}}

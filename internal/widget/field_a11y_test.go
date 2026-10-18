@@ -109,7 +109,7 @@ func TestOptionSetsAreNamedGroups(t *testing.T) {
 	}
 	if RadioOptionLimit > 0 {
 		for _, want := range []string{`<span id="family-label"`, `role="radiogroup" aria-labelledby="family-label"`,
-			`aria-required="true"`, `aria-describedby="family-desc family-error"`, `aria-invalid="true"`, "focus-visible:outline-2"} {
+			`aria-required="true"`, `aria-describedby="family-desc family-error"`, `aria-invalid="true"`, `class="verso-choice__native"`} {
 			if !strings.Contains(choice, want) {
 				t.Errorf("radios must keep group naming, validation and visible focus (%s):\n%s", want, choice)
 			}
@@ -118,10 +118,14 @@ func TestOptionSetsAreNamedGroups(t *testing.T) {
 			t.Errorf("each radio needs its own option label and validation state:\n%s", choice)
 		}
 	}
+	declares(t, "choice", ".verso-choice__native:focus-visible",
+		"outline: 2px solid var(--color-denim-deep)", "outline-offset: 2px")
 	// A segment's input is screen-reader-only, so the segment shows focus.
-	if !strings.Contains(strip, "has-focus-visible:outline-2") {
-		t.Errorf("a segment must show keyboard focus:\n%s", strip)
+	if !strings.Contains(strip, `<label class="verso-choice__segment">`) {
+		t.Errorf("a segment must be the choice block's segment:\n%s", strip)
 	}
+	declares(t, "choice", ".verso-choice__segment:has(:focus-visible)",
+		"outline: 2px solid var(--color-denim)", "outline-offset: 2px")
 }
 
 // TestListValuesAreNamed: every box in a list is one value of the setting its
@@ -267,13 +271,15 @@ func TestSelectIsAChoiceUnlessItHoldsAMachineString(t *testing.T) {
 	host := render(t, newRenderer(t), &Field{Name: "server", Label: "Server", Kind: "select", Datatype: "hostname",
 		Options: []Option{{Value: "0.pool.ntp.org", Label: "0.pool.ntp.org"}}})
 	for name, got := range map[string]string{"policy": policy, "timezone": zone} {
-		if !strings.Contains(got, "font-sans text-sm font-normal") || strings.Contains(got, "font-mono text-base") {
+		if !strings.Contains(got, `<label class="verso-choice__option">`) || strings.Contains(got, "data-verso-verbatim") {
 			t.Errorf("%s: an enumerated choice is words:\n%s", name, got)
 		}
 	}
-	if !strings.Contains(host, "font-mono text-base font-normal") {
+	if !strings.Contains(host, `<label class="verso-choice__option" data-verso-verbatim>`) {
 		t.Errorf("a select of machine strings is mono:\n%s", host)
 	}
+	// The option sets its words in the input role, whose verbatim form is mono.
+	declares(t, "choice", ".verso-choice__option", "@apply type-input")
 }
 
 // TestCoarseCutsAreOneCountedDropdown: a control surface cuts by a dropdown,

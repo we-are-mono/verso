@@ -235,8 +235,13 @@ func TestRenderBadge(t *testing.T) {
 func TestAFocusedBoxStaysFocusedUnderThePointer(t *testing.T) {
 	r := newRenderer(t)
 	file := render(t, r, &Field{Name: "backup", Kind: "file"})
-	if !strings.Contains(file, "hover:not-focus-within:border-") || !strings.Contains(file, "focus-within:border-denim") {
-		t.Errorf("file: hover must not outrank focus:\n%s", file)
+	if !strings.Contains(file, `class="verso-drop__area"`) {
+		t.Errorf("file: the area is not the drop block's:\n%s", file)
+	}
+	declares(t, "drop", ".verso-drop__area:hover:not(:focus-within)", "border-color: var(--color-sand-5);")
+	declares(t, "drop", ".verso-drop__area:focus-within", "border-color: var(--color-denim);")
+	if cssRule(blockCSS(t, "drop"), ".verso-drop__area:hover") != "" {
+		t.Errorf("file: a bare hover rule would outrank focus")
 	}
 	tokens := render(t, r, &List{Name: "proto", Label: "Protocol", Style: "tokens"})
 	if !strings.Contains(tokens, `class="verso-tokens"`) {
@@ -313,28 +318,32 @@ func TestRenderMultipleChoiceChips(t *testing.T) {
 	days := render(t, r, &Field{Name: "days", Label: "Days", Kind: "checks", Style: "segmented", Values: []string{"mon"},
 		Options: []Option{{Value: "mon", Label: "Mon"}, {Value: "tue", Label: "Tue"}}})
 	for _, want := range []string{
-		`class="flex w-full max-w-full flex-wrap gap-0.5 self-start rounded-xs border border-rule-strong bg-quiet p-0.5">`,
-		`<label class="flex h-7 flex-1 cursor-pointer items-center justify-center rounded-xs px-1 text-sm font-normal text-body transition-colors hover:text-ink has-checked:bg-choice has-checked:font-semibold has-checked:text-on-fill has-focus-visible:outline-2`,
+		`class="verso-choice__group" data-verso-kind="segments">`,
+		`<label class="verso-choice__segment">`,
 	} {
 		if !strings.Contains(days, want) {
 			t.Errorf("segmented field missing %q:\n%s", want, days)
 		}
 	}
-	if strings.Contains(days, "has-checked:bg-body") {
-		t.Errorf("a selected chip must use the shared choice colour:\n%s", days)
-	}
+	declares(t, "choice", `.verso-choice__group[data-verso-kind="segments"]`, "flex-wrap: wrap", "width: 100%",
+		"border: 1px solid var(--color-rule-strong)", "background-color: var(--color-quiet)")
+	// a selected chip uses the shared choice colour
+	declares(t, "choice", ".verso-choice__segment:has(:checked)", "background-color: var(--color-choice)",
+		"color: var(--color-on-fill)", "@apply type-button")
 	if !strings.Contains(days, `type="checkbox" name="days" value="mon" checked`) {
 		t.Errorf("a day in the set is a checked box:\n%s", days)
 	}
 	// Checking a chip thickens its word, and a thicker word is a wider one:
 	// every chip holds its semibold width from the start, a hidden twin in the
 	// same cell, so checking one never nudges the rest along the strip.
-	for _, want := range []string{
-		`<span class="grid"><span class="col-start-1 row-start-1">Tue</span><span aria-hidden="true" class="invisible col-start-1 row-start-1 font-semibold">Tue</span></span>`,
-	} {
-		if !strings.Contains(days, want) {
-			t.Errorf("segmented chip does not hold its checked width %q:\n%s", want, days)
-		}
+	want := `<span class="verso-choice__stack"><span class="verso-choice__words">Tue</span><span aria-hidden="true" class="verso-choice__twin">Tue</span></span>`
+	if !strings.Contains(days, want) {
+		t.Errorf("segmented chip does not hold its checked width %q:\n%s", want, days)
+	}
+	declares(t, "choice", ".verso-choice__stack", "display: grid")
+	declares(t, "choice", ".verso-choice__words,\n.verso-choice__twin", "grid-area: 1 / 1")
+	if twin := ".verso-choice__twin {\n  visibility: hidden;\n  @apply type-button;\n}"; !strings.Contains(blockCSS(t, "choice"), twin) {
+		t.Errorf("the twin is not the hidden semibold width:\n%s", twin)
 	}
 }
 

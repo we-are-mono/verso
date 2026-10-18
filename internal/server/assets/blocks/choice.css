@@ -1,0 +1,239 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/* SPDX-FileCopyrightText: 2026 Mono Technologies Inc. */
+
+/*
+ * choice — what is ticked or picked: on/off is a switch, drawn as a checkbox
+ * (nothing in this app flips live — every state is staged for the commit, and
+ * a toggle's knob would promise that it had); membership in a set is a
+ * checkbox; one of a few is a radio; a short set shown whole is a strip of
+ * segments.
+ *
+ * The switch is a 16px white box with a contrasting outline; checked, the
+ * shared choice colour with a white check; keyboard focus a separate outline.
+ * A fixed state (disabled) keeps its shape and its check in the inert sand,
+ * so it reads as stated rather than as a choice not yet made. The checkbox it
+ * is made of is screen-reader-only (__input), driving the drawn box (__face)
+ * and its check (__check).
+ *
+ * Elements: __input    the native checkbox under the drawn box
+ *           __face     the drawn box
+ *           __check    its check
+ *           __row      a row's answer: the box and the word for its state
+ *                      (__word: __on or __off, whichever the box is in), the
+ *                      label around both so pressing either flips it;
+ *                      data-verso-kind="inline": a section heading's switch,
+ *                      its dot (__dot), the box and the state's own words, a
+ *                      field label's role · "label": a box and its label ·
+ *                      "bare": the box alone, in a cell's line
+ *           __group    a set: data-verso-kind radios (read across, 16px
+ *                      apart, each 32px: its 24px line and 4px over and
+ *                      under, centred on the name's line as a control is) ·
+ *                      checks (read down, one option a line) · segments (a
+ *                      strip of chips filling its answer, sharing its width)
+ *           __option   one radio or checkbox and its words, in the input role
+ *                      (verbatim for a machine string)
+ *           __native   a native radio or checkbox, in the choice colour
+ *           __segment  one segment: its words (__words) and their semibold
+ *                      twin (__twin) laid over each other in a __stack, the
+ *                      twin holding the checked width from the start, so
+ *                      checking one never nudges those after it
+ */
+
+.verso-choice {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: calc(var(--spacing) * 4);
+  height: calc(var(--spacing) * 4);
+  cursor: pointer;
+}
+
+.verso-choice__input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.verso-choice__face {
+  position: absolute;
+  inset: 0;
+  border: 1px solid var(--color-choice-border);
+  border-radius: var(--radius-xs);
+  background-color: var(--color-canvas);
+  box-shadow: var(--shadow-field);
+  transition-property: color, background-color, border-color;
+  transition-duration: 150ms;
+}
+.verso-choice__face:is(.verso-choice__input:checked + *) {
+  border-color: var(--color-choice);
+  background-color: var(--color-choice);
+}
+.verso-choice__face:is(.verso-choice__input:focus-visible + *) {
+  outline: 2px solid var(--color-denim-deep);
+  outline-offset: 2px;
+}
+.verso-choice__face:is(.verso-choice__input:disabled + *) {
+  border-color: var(--color-inert);
+  box-shadow: none;
+}
+.verso-choice__face:is(.verso-choice__input:disabled:checked + *) {
+  background-color: var(--color-inert);
+}
+
+.verso-choice__check {
+  position: relative;
+  display: flex;
+  color: var(--color-on-fill);
+  opacity: 0;
+}
+.verso-choice__check:is(.verso-choice__input:checked ~ *) {
+  opacity: 1;
+}
+.verso-choice__check svg {
+  stroke-width: 3;
+}
+
+.verso-choice__row {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--spacing) * 2);
+  width: fit-content;
+  cursor: pointer;
+}
+.verso-choice__row[data-verso-kind="bare"] {
+  display: inline-flex;
+}
+.verso-choice__row[data-verso-kind="inline"] {
+  display: inline-flex;
+  gap: 0;
+  color: var(--color-ink);
+  @apply type-field-label;
+}
+.verso-choice__row[data-verso-kind="label"] {
+  color: var(--color-ink);
+  @apply type-field-label;
+}
+.verso-choice:where(.verso-choice__row[data-verso-kind="inline"] *) {
+  margin-left: calc(var(--spacing) * 3);
+  translate: 0 1px;
+}
+.verso-choice__dot {
+  width: var(--spacing);
+  height: var(--spacing);
+  border-radius: calc(infinity * 1px);
+  background-color: var(--color-inert);
+}
+.verso-choice__word {
+  color: var(--color-body);
+  @apply type-body;
+}
+.verso-choice__word:where(.verso-choice__row[data-verso-kind="inline"] *) {
+  margin-left: calc(var(--spacing) * 2);
+  color: var(--color-ink);
+  translate: 0 1px;
+  @apply type-field-label;
+}
+.verso-choice__on:where(.verso-choice__row:not(:has(.verso-choice__input:checked)) *),
+.verso-choice__off:where(.verso-choice__row:has(.verso-choice__input:checked) *) {
+  display: none;
+}
+
+.verso-choice__group[data-verso-kind="radios"] {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  column-gap: calc(var(--spacing) * 4);
+  min-width: 0;
+}
+.verso-choice__group[data-verso-kind="checks"] {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+}
+.verso-choice__group[data-verso-kind="segments"] {
+  display: flex;
+  flex-wrap: wrap;
+  align-self: flex-start;
+  gap: calc(var(--spacing) * 0.5);
+  width: 100%;
+  max-width: 100%;
+  padding: calc(var(--spacing) * 0.5);
+  border: 1px solid var(--color-rule-strong);
+  border-radius: var(--radius-xs);
+  background-color: var(--color-quiet);
+}
+
+.verso-choice__option {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--spacing) * 2);
+  max-width: 100%;
+  min-height: calc(var(--spacing) * 6);
+  color: var(--color-body);
+  cursor: pointer;
+  @apply type-input;
+}
+.verso-choice__option:where(.verso-choice__group[data-verso-kind="radios"] *) {
+  padding-block: var(--spacing);
+}
+.verso-choice__option > :last-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.verso-choice__native {
+  flex-shrink: 0;
+  width: calc(var(--spacing) * 4);
+  height: calc(var(--spacing) * 4);
+  border-radius: var(--radius-xs);
+  accent-color: var(--color-choice);
+  cursor: pointer;
+}
+.verso-choice__native:focus-visible {
+  outline: 2px solid var(--color-denim-deep);
+  outline-offset: 2px;
+}
+
+.verso-choice__segment {
+  display: flex;
+  flex: 1 1 0%;
+  align-items: center;
+  justify-content: center;
+  height: calc(var(--spacing) * 7);
+  padding-inline: var(--spacing);
+  border-radius: var(--radius-xs);
+  color: var(--color-body);
+  cursor: pointer;
+  transition-property: color, background-color;
+  transition-duration: 150ms;
+  @apply type-body;
+}
+.verso-choice__segment:hover {
+  color: var(--color-ink);
+}
+.verso-choice__segment:has(:checked) {
+  background-color: var(--color-choice);
+  color: var(--color-on-fill);
+  @apply type-button;
+}
+.verso-choice__segment:has(:focus-visible) {
+  outline: 2px solid var(--color-denim);
+  outline-offset: 2px;
+}
+.verso-choice__stack {
+  display: grid;
+}
+.verso-choice__words,
+.verso-choice__twin {
+  grid-area: 1 / 1;
+}
+.verso-choice__twin {
+  visibility: hidden;
+  @apply type-button;
+}

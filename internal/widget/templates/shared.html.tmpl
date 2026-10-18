@@ -50,9 +50,6 @@
 {{/* verso-none: the dash a cell shows when it has no value. The dash is for
      the eye; a screen reader is told "None" instead of hearing a dash read out. */}}
 {{define "verso-none"}}<span aria-hidden="true">—</span><span class="sr-only">{{ t "None" }}</span>{{end}}
-{{/* verso-segment-focus: a segment's input is screen-reader-only, so the
-     segment it sits in draws the keyboard focus ring for it. */}}
-{{define "verso-segment-focus"}}has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-denim{{end}}
 
 {{/* verso-field-aria: what a field's control says about itself beyond its
      label — what describes it (its help, its refusal), whether it was refused,

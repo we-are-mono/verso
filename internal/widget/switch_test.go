@@ -16,7 +16,7 @@ func TestDecodeAndRenderSwitch(t *testing.T) {
 	got := render(t, newRenderer(t), w)
 	for _, want := range []string{
 		`type="checkbox"`, `data-verso-switch`, `value="1"`, `name="enabled"`, " checked",
-		"Enabled", "peer-checked:bg-choice",
+		"Enabled", `class="verso-choice__input"`,
 		// A switch row is a field row like any other: its name is the
 		// question and its box the answer.
 		`class="verso-field-row max-w-form"`,
@@ -24,7 +24,7 @@ func TestDecodeAndRenderSwitch(t *testing.T) {
 		"verso-field-control verso-field-answer",
 		// The input is screen-reader-only, so the visible box has to be inside
 		// a label: without one, pressing the control does nothing at all.
-		`<label class="flex w-fit cursor-pointer items-center"><span class="relative inline-flex size-4`,
+		`<label class="verso-choice__row"><span class="verso-choice">`,
 		// And its help is its description under its name, as a field's is,
 		// and the box is read with it.
 		`<p id="enabled-desc" data-verso-field-desc class="text-sm leading-6 text-pretty text-body"><span>Applies immediately.</span></p>`,
@@ -42,10 +42,23 @@ func TestDecodeAndRenderSwitch(t *testing.T) {
 		t.Errorf("the switch's name comes before its box in DOM order: %s", got)
 	}
 	inline := render(t, newRenderer(t), &Switch{Name: "enabled", Label: "Enabled", Style: "inline", On: true})
-	for _, want := range []string{"verso-inline-switch inline-flex cursor-pointer", "size-1 rounded-full bg-inert", "ml-3 inline-flex translate-y-px", "verso-inline-switch-on", "Enabled", "verso-inline-switch-off", "Disabled", "text-ink"} {
+	for _, want := range []string{
+		`<label class="verso-choice__row" data-verso-kind="inline"`,
+		`<span aria-hidden="true" class="verso-choice__dot"></span><span class="verso-choice">`,
+		`<span class="verso-choice__word"><span class="verso-choice__on">Enabled</span><span class="verso-choice__off">Disabled</span></span></label>`,
+	} {
 		if !strings.Contains(inline, want) {
 			t.Errorf("inline switch missing %q: %s", want, inline)
 		}
+	}
+	// A heading's switch: its inert dot, the box 12px after it a pixel down,
+	// and the state's own words in ink in the field label's role.
+	choice := blockCSS(t, "choice")
+	declares(t, "choice", ".verso-choice__dot", "width: var(--spacing)", "border-radius: calc(infinity * 1px)", "background-color: var(--color-inert)")
+	declares(t, "choice", `.verso-choice:where(.verso-choice__row[data-verso-kind="inline"] *)`, "margin-left: calc(var(--spacing) * 3)", "translate: 0 1px")
+	declares(t, "choice", `.verso-choice__word:where(.verso-choice__row[data-verso-kind="inline"] *)`, "color: var(--color-ink)", "@apply type-field-label")
+	if !strings.Contains(choice, ".verso-choice__on:where(.verso-choice__row:not(:has(.verso-choice__input:checked)) *),\n.verso-choice__off:where(.verso-choice__row:has(.verso-choice__input:checked) *) {\n  display: none;") {
+		t.Errorf("the inline switch does not show the words for its state:\n%s", choice)
 	}
 }
 
@@ -57,13 +70,15 @@ func TestDecodeAndRenderSwitch(t *testing.T) {
 func TestAFormSwitchSaysOnOrOff(t *testing.T) {
 	r := newRenderer(t)
 	got := render(t, r, &Switch{Name: "wmm", Label: "WMM", On: true})
-	word := `<span aria-hidden="true" class="verso-switch-word ml-2 text-sm leading-6 text-body"><span class="verso-switch-on">On</span><span class="verso-switch-off">Off</span></span></label>`
+	word := `<span aria-hidden="true" class="verso-choice__word"><span class="verso-choice__on">On</span><span class="verso-choice__off">Off</span></span></label>`
 	if !strings.Contains(got, word) {
 		t.Errorf("a form switch does not say its state beside its box:\n%s", got)
 	}
-	if box := strings.Index(got, "data-verso-switch"); box < 0 || box > strings.Index(got, "verso-switch-word") {
+	if box := strings.Index(got, "data-verso-switch"); box < 0 || box > strings.Index(got, "verso-choice__word") {
 		t.Errorf("the word follows the box:\n%s", got)
 	}
+	declares(t, "choice", ".verso-choice__row", "gap: calc(var(--spacing) * 2)")
+	declares(t, "choice", ".verso-choice__word", "color: var(--color-body)", "@apply type-body")
 }
 
 // TestSwitchControlIsACheckbox: the on/off control is a checkbox, never a
@@ -73,18 +88,32 @@ func TestAFormSwitchSaysOnOrOff(t *testing.T) {
 func TestSwitchControlIsACheckbox(t *testing.T) {
 	got := render(t, newRenderer(t), &Switch{Name: "enabled", Label: "Enabled", On: true})
 	for _, want := range []string{
-		`<span class="relative inline-flex size-4 shrink-0 cursor-pointer items-center justify-center">`,
-		`class="absolute inset-0 rounded-xs border border-choice-border bg-canvas shadow-(--shadow-field) transition-colors peer-checked:border-choice peer-checked:bg-choice peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-denim-deep peer-disabled:border-inert peer-disabled:shadow-none peer-disabled:peer-checked:bg-inert"`,
-		`<span class="relative text-on-fill opacity-0 peer-checked:opacity-100">`, lucideIcons["check"], "[stroke-width:3]",
+		`<span class="verso-choice"><input type="checkbox" data-verso-switch`,
+		`class="verso-choice__input" value="1" checked><span class="verso-choice__face"></span><span class="verso-choice__check">`,
+		lucideIcons["check"],
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("checkbox missing %q:\n%s", want, got)
 		}
 	}
-	for _, absent := range []string{"rounded-full", "translate-x-5", "peer-checked:bg-body", "hover:border", "hover:bg"} {
+	declares(t, "choice", ".verso-choice", "width: calc(var(--spacing) * 4)", "height: calc(var(--spacing) * 4)")
+	declares(t, "choice", ".verso-choice__face", "border: 1px solid var(--color-choice-border)",
+		"border-radius: var(--radius-xs)", "background-color: var(--color-canvas)", "box-shadow: var(--shadow-field)")
+	declares(t, "choice", ".verso-choice__face:is(.verso-choice__input:checked + *)",
+		"border-color: var(--color-choice)", "background-color: var(--color-choice)")
+	declares(t, "choice", ".verso-choice__face:is(.verso-choice__input:focus-visible + *)",
+		"outline: 2px solid var(--color-denim-deep)", "outline-offset: 2px")
+	declares(t, "choice", ".verso-choice__check", "color: var(--color-on-fill)", "opacity: 0")
+	declares(t, "choice", ".verso-choice__check:is(.verso-choice__input:checked ~ *)", "opacity: 1")
+	declares(t, "choice", ".verso-choice__check svg", "stroke-width: 3")
+	for _, absent := range []string{"rounded-full", "translate-x-5", "hover:border", "hover:bg"} {
 		if strings.Contains(got, absent) {
 			t.Errorf("a checkbox keeps its square shape and shared choice colour; found %q:\n%s", absent, got)
 		}
+	}
+	face := cssRule(blockCSS(t, "choice"), ".verso-choice__face")
+	if strings.Contains(face, "9999px") || strings.Contains(face, "infinity") || strings.Contains(face, "--color-body") {
+		t.Errorf("a checkbox keeps its square shape and shared choice colour:\n%s", face)
 	}
 }
 

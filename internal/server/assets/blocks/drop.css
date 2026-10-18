@@ -1,0 +1,104 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/* SPDX-FileCopyrightText: 2026 Mono Technologies Inc. */
+
+/*
+ * drop — a file to drop, its form's whole subject, so its area fills the
+ * width: the app's place-marking dashed hairline on sand, the upload glyph,
+ * what to drop and the other way to choose one, and under it what fits. The
+ * native input covers the area invisibly (__picker), so a drop works without
+ * the page's script and a press opens the system's picker. A file dragged
+ * over it answers in Denim (data-dragging, set by verso-forms.js); a refused
+ * one is crimson's wash.
+ *
+ * Variants: data-verso-refused  the file was refused
+ * Elements: __area    the area: 40px of air over and under its words
+ *           __picker  the invisible native input over it
+ *           __glyph   the upload glyph, 8px over the words
+ *           __prompt  what to drop, in the subheading role
+ *           __chosen  the file already chosen, verbatim
+ *           __or      the other way, in the body role, its __door the
+ *                     action colour, underlined
+ *           __help    what fits, under the area in Meta
+ */
+
+.verso-drop {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--spacing) * 2);
+}
+
+.verso-drop__area {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing);
+  padding: calc(var(--spacing) * 10) calc(var(--spacing) * 6);
+  border: 1px dashed var(--color-rule-strong);
+  border-radius: var(--radius-xs);
+  background-color: var(--color-quiet);
+  text-align: center;
+  cursor: pointer;
+  transition-property: color, background-color, border-color;
+  transition-duration: 150ms;
+}
+.verso-drop__area:hover:not(:focus-within) {
+  border-color: var(--color-sand-5);
+}
+.verso-drop__area:focus-within {
+  border-color: var(--color-denim);
+}
+.verso-drop__area[data-dragging] {
+  border-color: var(--color-denim);
+  background-color: var(--color-denim-soft);
+}
+.verso-drop__area:where(.verso-drop[data-verso-refused] *) {
+  border-color: var(--color-crimson);
+  background-color: var(--color-crimson-soft);
+}
+
+.verso-drop__picker {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.verso-drop__glyph {
+  margin-bottom: calc(var(--spacing) * 2);
+  color: var(--color-glyph);
+  transition-property: color;
+  transition-duration: 150ms;
+}
+.verso-drop__glyph:where(.verso-drop__area[data-dragging] *) {
+  color: var(--color-denim);
+}
+
+.verso-drop__prompt {
+  color: var(--color-ink);
+  @apply type-subheading;
+}
+.verso-drop__chosen {
+  color: var(--color-ink);
+  @apply type-value;
+}
+.verso-drop__or {
+  color: var(--color-body);
+  @apply type-body;
+}
+.verso-drop__door {
+  color: var(--color-denim-deep);
+  white-space: nowrap;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  @apply type-subheading;
+}
+
+.verso-drop__help {
+  color: var(--color-meta);
+  text-wrap: pretty;
+  @apply type-body;
+}

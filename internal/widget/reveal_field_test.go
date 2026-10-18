@@ -23,12 +23,13 @@ func TestRevealPasswordShowsTheKeyOnRequest(t *testing.T) {
 		`@click="toggle"`,
 		`:aria-pressed="pressed"`,
 		`aria-label="Show password"`,
-		"h-control w-control", // a control's square beside the field
+		`class="verso-button" data-verso-style="secondary" data-verso-size="square"`, // a control's square beside the field
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("reveal field missing %q:\n%s", want, got)
 		}
 	}
+	declares(t, "button", `.verso-button[data-verso-size="square"]`, "width: var(--spacing-control)", "padding: 0")
 
 	plain := render(t, r, &Field{Name: "password", Label: "Password", Kind: "password", Value: "hunter2"})
 	if strings.Contains(plain, "hunter2") || strings.Contains(plain, `x-data="reveal"`) {

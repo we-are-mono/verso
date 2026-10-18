@@ -32,11 +32,11 @@
      is folded in. The page's script keeps it in step with the log
      (verso-listing.js). */}}
 {{define "logs.view"}}
-<label class="mb-6 flex cursor-pointer items-center gap-2 text-sm font-medium text-ink">
-  <span class="relative inline-flex size-4 shrink-0 items-center justify-center">
-    <input type="checkbox" data-log-include-firewall class="peer sr-only">
-    <span class="absolute inset-0 rounded-xs border border-choice-border bg-canvas shadow-(--shadow-field) peer-checked:border-choice peer-checked:bg-choice peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-denim-deep"></span>
-    <span class="relative text-on-fill opacity-0 peer-checked:opacity-100">{{icon "check" "size-3 [stroke-width:3]"}}</span>
+<label class="verso-choice__row mb-6" data-verso-kind="label">
+  <span class="verso-choice">
+    <input type="checkbox" data-log-include-firewall class="verso-choice__input">
+    <span class="verso-choice__face"></span>
+    <span class="verso-choice__check">{{icon "check" "size-3"}}</span>
   </span>
   {{t "Include firewall traffic"}}
 </label>

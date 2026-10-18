@@ -86,11 +86,14 @@ func TestAGroupedSwitchWearsItsOwnMark(t *testing.T) {
 // as the checkbox it would be, set and inert, and posts nothing.
 func TestALockedSwitchStatesAFixedState(t *testing.T) {
 	got := render(t, newRenderer(t), &Switch{Name: "always", Label: "/etc/nftables.d/", Style: "locked", On: true, Verbatim: true})
-	for _, want := range []string{`data-verso-switch id="always"`, " disabled", " checked", "peer-disabled:"} {
+	for _, want := range []string{`data-verso-switch id="always"`, " disabled", " checked", `class="verso-choice__input"`} {
 		if !strings.Contains(got, want) {
 			t.Errorf("locked switch missing %q:\n%s", want, got)
 		}
 	}
+	// Set and inert: the box keeps its shape and its check in the inert sand.
+	declares(t, "choice", ".verso-choice__face:is(.verso-choice__input:disabled + *)", "border-color: var(--color-inert)", "box-shadow: none")
+	declares(t, "choice", ".verso-choice__face:is(.verso-choice__input:disabled:checked + *)", "background-color: var(--color-inert)")
 	if strings.Contains(got, "data-verso-change-field") || strings.Contains(got, `name="always"`) {
 		t.Errorf("a locked switch posts nothing and tracks no change:\n%s", got)
 	}

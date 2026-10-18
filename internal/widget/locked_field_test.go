@@ -18,9 +18,9 @@ func TestLockedFieldShowsAValueThatCannotChange(t *testing.T) {
 		Help: "The mode is fixed once written — remove the network and add a new one to change it.",
 	})
 	for _, want := range []string{
-		`<label for="mode"`,              // the row's label still names the control
-		`<output id="mode"`,              // a labelable element that submits nothing
-		"border-rule bg-quiet text-body", // the canvas's locked box
+		`<label for="mode"`, // the row's label still names the control
+		`<output id="mode"`, // a labelable element that submits nothing
+		`class="verso-input">Access point<span class="verso-input__lock">`, // the input block's locked box
 		">Access point<",
 		`title="The mode is fixed once written`,
 		lucideIcons["lock"],
@@ -30,6 +30,11 @@ func TestLockedFieldShowsAValueThatCannotChange(t *testing.T) {
 			t.Errorf("locked field missing %q:\n%s", want, got)
 		}
 	}
+	// The canvas's locked box: a quiet hairline box in body ink, no lift, the
+	// padlock pushed to its far edge.
+	declares(t, "input", ".verso-input:is(output)", "border-color: var(--color-rule)",
+		"background-color: var(--color-quiet)", "box-shadow: none", "color: var(--color-body)", "cursor: help")
+	declares(t, "input", ".verso-input__lock", "margin-left: auto", "color: var(--color-faint)")
 	for _, never := range []string{"<input", "<select", `name="mode"`} {
 		if strings.Contains(got, never) {
 			t.Errorf("a locked field posts nothing, found %q:\n%s", never, got)

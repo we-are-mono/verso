@@ -220,10 +220,6 @@
     margin-top: calc(var(--spacing) * 2);
     margin-bottom: -1px;
   }
-  /* A switch says its state beside its box: the word for the state the box
-     is in. */
-  label:not(:has(input:checked)) > .verso-switch-word > .verso-switch-on,
-  label:has(input:checked) > .verso-switch-word > .verso-switch-off { display: none; }
   /* Descriptions fold away, every one on the page at once, for someone who
      knows the settings (form-fields): under a folded root each closes its
      one track from its words' height to none as it fades, so the rows close

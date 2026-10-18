@@ -23,9 +23,6 @@ classes-are-blocks	verso-field-wide
 classes-are-blocks	verso-form
 classes-are-blocks	verso-form-grid
 classes-are-blocks	verso-form-grid-fields
-classes-are-blocks	verso-inline-switch
-classes-are-blocks	verso-inline-switch-off
-classes-are-blocks	verso-inline-switch-on
 classes-are-blocks	verso-kicker
 classes-are-blocks	verso-overview
 classes-are-blocks	verso-overview-body
@@ -40,9 +37,6 @@ classes-are-blocks	verso-overview-slot
 classes-are-blocks	verso-overview-summary
 classes-are-blocks	verso-reveal
 classes-are-blocks	verso-reveal-act
-classes-are-blocks	verso-switch-off
-classes-are-blocks	verso-switch-on
-classes-are-blocks	verso-switch-word
 no-class-string-templates	widget/templates/shared.html.tmpl	verso-error-line
 no-class-string-templates	widget/templates/shared.html.tmpl	verso-field-control-class
 no-class-string-templates	widget/templates/shared.html.tmpl	verso-field-desc-class
@@ -56,15 +50,9 @@ no-class-string-templates	widget/templates/shared.html.tmpl	verso-section-meta-c
 no-class-string-templates	widget/templates/shared.html.tmpl	verso-section-meta-label-class
 no-class-string-templates	widget/templates/shared.html.tmpl	verso-section-meta-value-class
 no-class-string-templates	widget/templates/shared.html.tmpl	verso-section-title-class
-no-class-string-templates	widget/templates/shared.html.tmpl	verso-segment-focus
 no-class-string-templates	widget/templates/shared.html.tmpl	verso-tone-text
-no-repeated-bundles	absolute cursor-pointer inset-0 opacity-0 size-full
 no-repeated-bundles	flex gap-1.5 items-center text-ink
 no-repeated-bundles	font-semibold leading-6 shrink-0 text-ink text-sm
-no-repeated-bundles	font-semibold text-denim-deep underline underline-offset-2 whitespace-nowrap
-no-repeated-bundles	group-data-dragging/drop:text-denim mb-2 text-glyph transition-colors
-no-repeated-bundles	leading-6 text-meta text-pretty text-sm
-no-repeated-bundles	opacity-0 peer-checked:opacity-100 relative text-on-fill
 no-rules-in-markup	server/assets/verso-forms.js	border-crimson!
 no-rules-in-markup	server/templates/login.html.tmpl	bg-ground!
 no-rules-in-markup	widget/templates/conditions.html.tmpl	[&>div]:border-0
@@ -179,16 +167,10 @@ rules-live-in-blocks	forms.css	[data-verso-settings] .verso-field-row:has(+ deta
 rules-live-in-blocks	forms.css	fieldset[data-verso-when] + .verso-conditional > .verso-conditional-gate
 rules-live-in-blocks	forms.css	fieldset[data-verso-when] + .verso-field-row
 rules-live-in-blocks	forms.css	fieldset[data-verso-when]:has(~ :is(.verso-field-row, .verso-conditional, .verso-field-set, [data-verso-rows])) > .verso-field-row:last-child
-rules-live-in-blocks	forms.css	label:has(input:checked) > .verso-switch-word > .verso-switch-off
-rules-live-in-blocks	forms.css	label:not(:has(input:checked)) > .verso-switch-word > .verso-switch-on
 rules-live-in-blocks	input.css	.verso-conditional-body
 rules-live-in-blocks	input.css	.verso-conditional-otherwise
 rules-live-in-blocks	input.css	.verso-conditional:has(> .verso-conditional-gate input[data-verso-switch]:checked) > .verso-conditional-body
 rules-live-in-blocks	input.css	.verso-conditional:has(> .verso-conditional-gate input[data-verso-switch]:checked) > .verso-conditional-otherwise
-rules-live-in-blocks	input.css	.verso-inline-switch-off
-rules-live-in-blocks	input.css	.verso-inline-switch-on
-rules-live-in-blocks	input.css	.verso-inline-switch:has(input[data-verso-switch]:checked) .verso-inline-switch-off
-rules-live-in-blocks	input.css	.verso-inline-switch:has(input[data-verso-switch]:checked) .verso-inline-switch-on
 rules-live-in-blocks	input.css	.verso-kicker
 rules-live-in-blocks	input.css	.verso-overview
 rules-live-in-blocks	input.css	.verso-overview > .verso-overview-cols:has(> [data-overview-col])
@@ -363,7 +345,6 @@ rules-live-in-blocks	sections.css	section[data-verso-section] > .verso-rhythm > 
 rules-live-in-blocks	sections.css	section[data-verso-section]:has(> [data-verso-section-band])
 rules-live-in-blocks	sections.css	section[data-verso-section]:has(> [data-verso-section-band]) > .verso-rhythm > :not(input[type="hidden"], [hidden]):not(:not(input[type="hidden"], [hidden]) ~ *):not(.verso-field-row, .verso-form-grid, .verso-conditional, .verso-field-set, form:not([data-verso-compact-form]):has(.verso-field-row, .verso-form-grid, .verso-conditional), [data-verso-change-field], [data-verso-settings], [data-verso-rows]:has(> .verso-field-row:first-child))
 short-class-lists	server/templates/entity-panel.html.tmpl	flex h-control cursor-pointer items-center rounded-xs border border-denim bg-denim px-4 text-sm font-semibold whitespace-nowrap text-on-fill transition-colors hover:border-denim-deep hover:bg-denim-deep
-short-class-lists	server/templates/logs.html.tmpl	absolute inset-0 rounded-xs border border-choice-border bg-canvas shadow-(--shadow-field) peer-checked:border-choice peer-checked:bg-choice peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-denim-deep
 short-class-lists	server/templates/package-files.html.tmpl	max-h-80 overflow-auto rounded-xs border border-rule bg-quiet p-3 font-mono text-base text-body
 short-class-lists	server/templates/page.html.tmpl	flex h-7 cursor-pointer items-center gap-1 rounded-xs px-2 font-semibold transition-colors hover:bg-crimson-line/60 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-crimson-deep group-data-[ready]/refusals:hidden
 short-class-lists	server/templates/page.html.tmpl	group/refusals fixed top-[4.25rem] left-1/2 z-20 flex h-control -translate-x-1/2 items-center gap-2 rounded-xs border border-crimson-line bg-crimson-soft pr-1 pl-3 text-sm font-normal whitespace-nowrap text-crimson-deep shadow-(--shadow-float) md:left-[calc(50%+9rem)] data-[ready]:border-green-line data-[ready]:bg-green-soft data-[ready]:text-green-deep
@@ -377,15 +358,6 @@ short-class-lists	widget/templates/device_limit_tip.html.tmpl	flex items-center 
 short-class-lists	widget/templates/device_limit_tip.html.tmpl	mt-1 flex min-h-8 items-center {{if .Unit}}font-mono text-2xl font-medium tabular-nums{{else}}text-base font-medium{{end}} leading-tight
 short-class-lists	widget/templates/disclosure.html.tmpl	flex cursor-pointer items-center justify-between gap-2 select-none {{if eq .Style "condition"}}px-6 py-6 text-sm font-semibold text-ink{{else}}px-4 py-3 text-sm font-semibold text-body{{end}} [&::-webkit-details-marker]:hidden
 short-class-lists	widget/templates/disclosure.html.tmpl	verso-reveal-act flex w-fit h-6 cursor-pointer items-center gap-1.5 rounded-xs text-sm leading-6 font-medium text-denim-deep select-none hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim [&::-webkit-details-marker]:hidden
-short-class-lists	widget/templates/field.html.tmpl	flex h-7 flex-1 cursor-pointer items-center justify-center rounded-xs px-1 text-sm font-normal text-body transition-colors hover:text-ink has-checked:bg-choice has-checked:font-semibold has-checked:text-on-fill {{template "verso-segment-focus"}}
-short-class-lists	widget/templates/field.html.tmpl	flex h-control w-full cursor-help items-center gap-2 rounded-xs border border-rule bg-quiet text-body px-3 text-sm
-short-class-lists	widget/templates/field.html.tmpl	flex max-w-full cursor-pointer items-center gap-2 py-1 {{if $.Words}}font-sans text-sm font-normal{{else}}font-mono text-base font-normal{{end}} leading-6 text-body
-short-class-lists	widget/templates/field.html.tmpl	flex min-h-6 max-w-full cursor-pointer items-center gap-2 text-sm leading-6 text-body
-short-class-lists	widget/templates/field.html.tmpl	flex w-full max-w-full flex-wrap gap-0.5 self-start rounded-xs border border-rule-strong bg-quiet p-0.5
-short-class-lists	widget/templates/field.html.tmpl	grid h-control w-control shrink-0 cursor-pointer place-items-center rounded-xs border border-rule-strong text-glyph transition-colors hover:border-sand-5 hover:bg-rule hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim
-short-class-lists	widget/templates/field.html.tmpl	group/drop relative flex cursor-pointer flex-col items-center justify-center gap-1 rounded-xs border border-dashed {{if .Error}}border-crimson bg-crimson-soft{{else}}border-rule-strong bg-quiet hover:not-focus-within:border-sand-5 data-dragging:border-denim data-dragging:bg-denim-soft focus-within:border-denim{{end}} px-6 py-10 text-center transition-colors
-short-class-lists	widget/templates/field.html.tmpl	group/drop relative flex cursor-pointer flex-col items-center justify-center gap-1 rounded-xs border border-dashed {{if .Error}}border-crimson bg-crimson-soft{{else}}border-rule-strong bg-quiet hover:not-focus-within:border-sand-5 data-dragging:border-denim data-dragging:bg-denim-soft focus-within:border-denim{{end}} px-6 py-8 text-center transition-colors
-short-class-lists	widget/templates/field.html.tmpl	size-4 shrink-0 cursor-pointer rounded-xs border-choice-border accent-choice focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim-deep
 short-class-lists	widget/templates/form.html.tmpl	mb-6 flex items-start gap-2 rounded-xs border border-crimson-line bg-crimson-soft px-3 py-2 text-sm leading-6 text-crimson-deep
 short-class-lists	widget/templates/overview.html.tmpl	-my-1 ml-auto h-7 cursor-pointer rounded-xs px-2.5 font-medium text-denim-deep transition-colors hover:bg-denim-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim
 short-class-lists	widget/templates/overview.html.tmpl	flex min-w-0 cursor-pointer items-center gap-2 pt-2.75 pr-2.5 pb-3 pl-5.75 leading-6 select-none group-data-arranging/overview:cursor-grab group-data-arranging/overview:pl-1.5
@@ -396,7 +368,6 @@ short-class-lists	widget/templates/section.html.tmpl	ml-auto flex h-6 w-full ite
 short-class-lists	widget/templates/settings.html.tmpl	flex cursor-pointer items-center gap-1.5 px-3 pt-2.75 pb-3 leading-6 text-sm font-semibold text-denim-deep transition-colors select-none hover:bg-quiet hover:text-denim [&::-webkit-details-marker]:hidden
 short-class-lists	widget/templates/settings.html.tmpl	flex items-baseline justify-between gap-3 pt-1 pb-0.75 {{if not .Card}}border-b border-rule-strong {{end}}{{template "verso-kicker-class"}}
 short-class-lists	widget/templates/shared.html.tmpl	verso-drawer-scrollbar min-h-0 flex-1 overflow-x-hidden overflow-y-auto space-y-0 pb-8 [&>section]:pt-0 [&>section>div:first-child]:mb-0 [&>section>div:first-child]:border-y [&>section>div:first-child]:border-rule [&>section>div:first-child]:bg-quiet [&>section>div:first-child]:px-(--verso-drawer-gutter) [&>section>div:first-child]:py-2 [&_h3]:font-medium [&_h3]:tracking-[.08em] [&_.verso-rhythm>*]:!mt-0
-short-class-lists	widget/templates/switch.html.tmpl	absolute inset-0 rounded-xs border border-choice-border bg-canvas shadow-(--shadow-field) transition-colors peer-checked:border-choice peer-checked:bg-choice peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-denim-deep peer-disabled:border-inert peer-disabled:shadow-none peer-disabled:peer-checked:bg-inert
 type-comes-from-roles	forms.css	.verso-condition + .verso-condition::before	font-size
 type-comes-from-roles	forms.css	.verso-condition + .verso-condition::before	font-weight
 type-comes-from-roles	forms.css	.verso-condition + .verso-condition::before	letter-spacing
@@ -447,8 +418,6 @@ type-comes-from-roles	server/restarting.go	font-mono
 type-comes-from-roles	server/restarting.go	text-base
 type-comes-from-roles	server/templates/entity-panel.html.tmpl	font-semibold
 type-comes-from-roles	server/templates/entity-panel.html.tmpl	text-sm
-type-comes-from-roles	server/templates/logs.html.tmpl	font-medium
-type-comes-from-roles	server/templates/logs.html.tmpl	text-sm
 type-comes-from-roles	server/templates/package-files.html.tmpl	font-mono
 type-comes-from-roles	server/templates/package-files.html.tmpl	font-semibold
 type-comes-from-roles	server/templates/package-files.html.tmpl	text-base
@@ -503,46 +472,11 @@ type-comes-from-roles	widget/templates/disclosure.html.tmpl	leading-6
 type-comes-from-roles	widget/templates/disclosure.html.tmpl	text-sm
 type-comes-from-roles	widget/templates/disclosure.html.tmpl	text-sm
 type-comes-from-roles	widget/templates/disclosure.html.tmpl	text-sm
-type-comes-from-roles	widget/templates/field.html.tmpl	font-medium
-type-comes-from-roles	widget/templates/field.html.tmpl	font-mono
-type-comes-from-roles	widget/templates/field.html.tmpl	font-mono
-type-comes-from-roles	widget/templates/field.html.tmpl	font-normal
-type-comes-from-roles	widget/templates/field.html.tmpl	font-normal
-type-comes-from-roles	widget/templates/field.html.tmpl	font-normal
-type-comes-from-roles	widget/templates/field.html.tmpl	font-sans
-type-comes-from-roles	widget/templates/field.html.tmpl	font-semibold
-type-comes-from-roles	widget/templates/field.html.tmpl	font-semibold
-type-comes-from-roles	widget/templates/field.html.tmpl	font-semibold
-type-comes-from-roles	widget/templates/field.html.tmpl	font-semibold
-type-comes-from-roles	widget/templates/field.html.tmpl	font-semibold
-type-comes-from-roles	widget/templates/field.html.tmpl	font-semibold
-type-comes-from-roles	widget/templates/field.html.tmpl	has-checked:font-semibold
-type-comes-from-roles	widget/templates/field.html.tmpl	leading-6
-type-comes-from-roles	widget/templates/field.html.tmpl	leading-6
-type-comes-from-roles	widget/templates/field.html.tmpl	leading-6
-type-comes-from-roles	widget/templates/field.html.tmpl	leading-6
-type-comes-from-roles	widget/templates/field.html.tmpl	text-base
-type-comes-from-roles	widget/templates/field.html.tmpl	text-base
-type-comes-from-roles	widget/templates/field.html.tmpl	text-sm
-type-comes-from-roles	widget/templates/field.html.tmpl	text-sm
-type-comes-from-roles	widget/templates/field.html.tmpl	text-sm
-type-comes-from-roles	widget/templates/field.html.tmpl	text-sm
-type-comes-from-roles	widget/templates/field.html.tmpl	text-sm
-type-comes-from-roles	widget/templates/field.html.tmpl	text-sm
-type-comes-from-roles	widget/templates/field.html.tmpl	text-sm
-type-comes-from-roles	widget/templates/field.html.tmpl	text-sm
-type-comes-from-roles	widget/templates/field.html.tmpl	text-sm
-type-comes-from-roles	widget/templates/field.html.tmpl	text-sm
-type-comes-from-roles	widget/templates/field.html.tmpl	text-sm
 type-comes-from-roles	widget/templates/form.html.tmpl	leading-6
 type-comes-from-roles	widget/templates/form.html.tmpl	text-sm
 type-comes-from-roles	widget/templates/form.html.tmpl	text-sm
 type-comes-from-roles	widget/templates/form.html.tmpl	text-sm
 type-comes-from-roles	widget/templates/form.html.tmpl	text-sm
-type-comes-from-roles	widget/templates/form_switch.html.tmpl	font-medium
-type-comes-from-roles	widget/templates/form_switch.html.tmpl	leading-6
-type-comes-from-roles	widget/templates/form_switch.html.tmpl	text-sm
-type-comes-from-roles	widget/templates/form_switch.html.tmpl	text-sm
 type-comes-from-roles	widget/templates/overview.html.tmpl	font-medium
 type-comes-from-roles	widget/templates/overview.html.tmpl	font-medium
 type-comes-from-roles	widget/templates/overview.html.tmpl	font-semibold

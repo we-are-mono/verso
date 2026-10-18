@@ -28,6 +28,7 @@
  *           data-verso-trail    a glyph (a chevron, a clock) ends it
  *           data-verso-kind="code"  a file's text typed in place
  * Elements: __count  a code box's line count, under it at the right
+ *           __lock   a fixed value's padlock (an <output> box)
  */
 
 .verso-input {
@@ -82,6 +83,23 @@
 .verso-input:is(textarea) {
   height: auto;
   padding-block: calc(var(--spacing) * 2);
+}
+/* A value fixed once written: a quiet box on the hairline, the padlock at its
+   end with the reason on it, and nothing typed or posted. */
+.verso-input:is(output) {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--spacing) * 2);
+  border-color: var(--color-rule);
+  background-color: var(--color-quiet);
+  box-shadow: none;
+  color: var(--color-body);
+  cursor: help;
+}
+.verso-input__lock {
+  display: flex;
+  margin-left: auto;
+  color: var(--color-faint);
 }
 /* A file's text, typed in place: the code role on Paper, 12px in, as tall
    as the reader drags it. Its line count stands under it at the right. */

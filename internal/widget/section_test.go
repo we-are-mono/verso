@@ -247,7 +247,7 @@ func TestRenderSectionControl(t *testing.T) {
 		t.Fatalf("decode section control: %v", err)
 	}
 	got := render(t, r, w)
-	for _, want := range []string{"Rule", "Enabled", "Disabled", `name="enabled"`, "verso-inline-switch inline-flex", "size-1 rounded-full", "gap-3"} {
+	for _, want := range []string{"Rule", "Enabled", "Disabled", `name="enabled"`, `class="verso-choice__row" data-verso-kind="inline"`, `class="verso-choice__dot"`, "gap-3"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("section control missing %q:\n%s", want, got)
 		}

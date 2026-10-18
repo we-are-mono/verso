@@ -304,3 +304,14 @@ after; the SVG's fills, strokes and LED animations compared directly.
 | a file's text typed in place | 1 | mono 14 on a 1.625 line | the code role (mono 16 on 24); its line count words with figures |
 | a box of fused values, a sentence of fields | | rules in forms.css under hyphenated names | the box and joined blocks; no pixel changes |
 | a token box and its chips | 2 | a class-string template and utility strings | the tokens block; no pixel changes |
+
+### `choice` and `drop`
+
+| Copies | n | Difference | Became |
+|---|---|---|---|
+| the switch's drawn box | 3 | `peer-*` utilities written out at each site (the log's settings drew its own) | the choice block's box; no pixel changes |
+| a switch's word, the inline switch's words | 2 | rules in forms.css and input.css under hyphenated names | the choice row's `__on`/`__off`; no pixel changes |
+| radios, checkboxes, segments | 3 | utility strings, the option's face by a `Words` branch of utilities | the choice group's kinds, its options in the input role |
+| a shared secret's eye | 1 | a hand-built control-height square: Glyph, a hairline, the hairline wash under the pointer | the button block's secondary act at its square size |
+| a value fixed once written | 1 | utilities | the input block's `<output>` box and its padlock |
+| a file to drop | 2 | utility strings; a profile's area 32px of air, a file's 40px | the drop block, 40px of air for both |

@@ -25,7 +25,10 @@
  *                               the secondary dress with an act's words ·
  *                               icon: a glyph-only act, a 28px square in Glyph
  *                               on no border · glyph: the same look at the size
- *                               of its place (a field's 20px remove glyph)
+ *                               of its place (a field's 20px remove glyph) ·
+ *                               square: a glyph act a control tall and as
+ *                               wide, beside a field it acts on (a shared
+ *                               secret's eye)
  *           data-verso-glyph    an act led by a glyph: 8px before it, 10px
  *                               after the words
  *           data-verso-standby  a primary with nothing to act on yet (a form's
@@ -166,6 +169,12 @@
 }
 .verso-button[data-verso-size="glyph"] {
   height: auto;
+}
+.verso-button[data-verso-size="square"] {
+  flex-shrink: 0;
+  width: var(--spacing-control);
+  margin-bottom: -1px;
+  padding: 0;
 }
 
 .verso-button[data-verso-standby]:disabled {

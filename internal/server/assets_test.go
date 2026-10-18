@@ -716,13 +716,9 @@ func TestWhatFollowsAControlStandsOnALine(t *testing.T) {
 // TestASwitchShowsTheWordForItsState: a form switch holds both words and the
 // stylesheet shows the one its box is in, with no script (form-fields).
 func TestASwitchShowsTheWordForItsState(t *testing.T) {
-	raw, err := os.ReadFile("assets/forms.css")
-	if err != nil {
-		t.Fatal(err)
-	}
-	want := "label:not(:has(input:checked)) > .verso-switch-word > .verso-switch-on,\n  label:has(input:checked) > .verso-switch-word > .verso-switch-off { display: none; }"
-	if !strings.Contains(string(raw), want) {
-		t.Errorf("forms.css does not show a switch's word for its state:\n%s", want)
+	want := ".verso-choice__on:where(.verso-choice__row:not(:has(.verso-choice__input:checked)) *),\n.verso-choice__off:where(.verso-choice__row:has(.verso-choice__input:checked) *) {\n  display: none;\n}"
+	if !strings.Contains(blockSheet(t, "choice"), want) {
+		t.Errorf("the choice block does not show a switch's word for its state:\n%s", want)
 	}
 }
 

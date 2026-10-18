@@ -40,16 +40,19 @@ func TestFileFieldIsTheWholeDropArea(t *testing.T) {
 	got := render(t, newRenderer(t), &Field{Name: "firmware_image", Kind: "file", Accept: ".bin", Required: true,
 		Prompt: "Drop a sysupgrade image here", Help: "Built for Mono Gateway Development Kit · .bin, up to 128 MiB"})
 	for _, want := range []string{
-		`data-verso-drop`, "border-dashed border-rule-strong bg-quiet",
+		`<div class="verso-drop">`, `data-verso-drop class="verso-drop__area"`,
 		`id="firmware_image" name="firmware_image" type="file" accept=".bin" required`,
 		">Drop a sysupgrade image here<", "choose one from your computer",
-		`<p id="firmware_image-help" class="text-sm leading-6 text-pretty text-meta">Built for Mono Gateway Development Kit · .bin, up to 128 MiB</p>`,
+		`<p id="firmware_image-help" class="verso-drop__help">Built for Mono Gateway Development Kit · .bin, up to 128 MiB</p>`,
 		`aria-describedby="firmware_image-help"`,
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("want %s in:\n%s", want, got)
 		}
 	}
+	declares(t, "drop", ".verso-drop__area", "border: 1px dashed var(--color-rule-strong)",
+		"background-color: var(--color-quiet)", "padding: calc(var(--spacing) * 10) calc(var(--spacing) * 6)")
+	declares(t, "drop", ".verso-drop__help", "color: var(--color-meta)", "@apply type-body")
 	for _, gone := range []string{"sm:w-64", "border-dotted", "border-2"} {
 		if strings.Contains(got, gone) {
 			t.Errorf("the drop area is not a settings row's control (%s):\n%s", gone, got)
