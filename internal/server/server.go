@@ -181,6 +181,9 @@ type Server struct {
 	// (time.AfterFunc, which tests hold to run by hand).
 	webMoves      webMoves
 	afterRollback func(time.Duration, func())
+	// bodyWait is how long a request without a session has to send its body
+	// (bodyDeadline).
+	bodyWait time.Duration
 	// pages is the page-template cache, one parsed set per installed language
 	// with "" the English (identity) set, its {{ t }} bound at parse time
 	// (ADR-012). Swapped atomically on a catalog rescan; the request selects
@@ -303,6 +306,7 @@ func New(
 	s := &Server{
 		mux:            http.NewServeMux(),
 		afterRollback:  func(d time.Duration, f func()) { time.AfterFunc(d, f) },
+		bodyWait:       signInBodyWait,
 		widgets:        widgets,
 		backend:        backend,
 		transport:      transport,
@@ -684,7 +688,17 @@ func (s *Server) Handler() http.Handler {
 		}
 		next.ServeHTTP(w, r)
 	})
-	return securityHeaders(bounded)
+	// A body before sign-in is read by a deadline; peeking at the session
+	// counts no activity, which requireAuth's own read does.
+	signedIn := func(r *http.Request) bool {
+		cookie, err := r.Cookie(sessionCookie)
+		if err != nil {
+			return false
+		}
+		_, ok := s.sessions.peek(cookie.Value)
+		return ok
+	}
+	return securityHeaders(bodyDeadline(s.bodyWait, signedIn, bounded))
 }
 
 // assets serves the shell's embedded client-side JS (ADR-004) under /assets. The
