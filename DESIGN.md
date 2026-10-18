@@ -113,6 +113,10 @@ components:
   button-secondary-hover:
     backgroundColor: "{colors.quiet}"
     textColor: "{colors.ink}"
+  button-disabled:
+    backgroundColor: "{colors.quiet}"
+    borderColor: "{colors.quiet}"
+    textColor: "{colors.meta}"
   button-danger:
     backgroundColor: "{colors.crimson}"
     textColor: "{colors.on-fill}"
@@ -423,7 +427,7 @@ Plain and exact.
 - **No explanations beside acts:** a row of acts carries its buttons and nothing else. What an act does is its label's job, and what happens after is the product's (a save stages, the Pending changes row counts it). A line beside the acts is kept only for a fact someone must know before pressing and cannot learn anywhere else; a status reading that belongs to the controls ("Index refreshed 2 days ago") is not an explanation.
 - **Shape:** gently squared (2px), 32px tall (`h-control`, the one height every field and button shares), 16px side padding, 14px/600 text.
 - **Primary:** Denim fill, white words, and always a leading 16px plus glyph, unless the act leads elsewhere and names its own (download, upload, open-out). It lives on the heading line, one per page.
-- **Secondary:** the subsection act's colours at any size: transparent, Meta words, Strong Hairline border; on hover the border turns Parked, the fill Hairline, the words Ink. Every quiet button answers the pointer alike (a list's Add, Cancel, a log's Live · Download · Settings, a row button). Words only; no decorative icons.
+- **Secondary:** transparent, Ink words, Strong Hairline border: its edge and its words say it can be pressed, where a disabled button has lost both; on hover the border turns Parked and the fill Hairline. A 28px act keeps its Meta words. Every quiet button answers the pointer alike (a list's Add, Cancel, a log's Live · Download · Settings, a row button). Words only; no decorative icons.
 - **Links out:** a link that opens in a new tab leaves the router, and says so: the Lucide external-link glyph, 16px, leads its words ("Project website"), and a screen reader hears "(opens in a new tab)" after them. A link that names its own glyph keeps it; the words still tell a screen reader.
 - **Danger:** Crimson fill, white words, for the confirmation step only: the inline question's act, always beside its way back (see Confirmation), or the act a typed key unlocks.
 - **Subsection acts:** the acts on a part of a section: "+ Add a key", and a certificate's Install · Make a new one · Download. One dress for all of them:
@@ -435,7 +439,8 @@ Plain and exact.
 - **Row buttons:** 28px, 12px side padding, the same secondary dress. Every icon-only act wears one dress, wherever it stands (a row's edit or remove, a list's remove ×, a copy beside a value or on a code box): a 28px square with a 16px glyph in Glyph on no border, taking a Parked border, the Hairline fill and Ink on hover, with a tooltip. Beside a line of text it keeps the line's height.
 - **Copy controls:** an inline copy sits 4px after its value, with no extra parent gap. Its 28px hit area centers on the first text line without increasing the line height. Copy tooltips use the UI sans face, including beside mono values. A check and “Copied” appear only after a successful copy; the check is green on neutral surfaces and keeps the warning hue inside a warning. Failure is shown and announced with a manual-copy fallback. Keyboard focus stays on the control. Code cards keep the copy control in their top-right corner; the colophon copies its complete bug report.
 - **Press:** every enabled button nudges down 1px and drops its shadow while pressed, including icon-only actions, drawer controls and client-created buttons. `input.css` owns the shared rule for native buttons, button inputs and `role="button"`; button-styled links join it through `verso-press`. Disabled and busy controls do not press. Reduced motion suppresses the movement. A button with an enlarged hit area moves only its `verso-press-content` child, preserving the click target. The effect changes no layout dimensions.
-- **Resting:** a settings form's Save before anything in it has changed is disabled in Quiet Sand, a Strong Hairline border and Meta words, and turns denim the moment something changes. A page with no primary act and nothing changed therefore shows no denim.
+- **Disabled:** a button that cannot be pressed loses its edge, whatever its dress: a slab of Quiet Sand, its words in Meta, so an edge always means a button can be pressed (Faint is never text, so the edge is what changes, not a paler word). An icon or quiet act, which never had an edge, fades instead.
+- **Resting:** a settings form's Save before anything in it has changed is that disabled slab, with no forbidding pointer, and turns denim the moment something changes. A page with no primary act and nothing changed therefore shows no denim.
 - **Waiting:** a button busy with a slow act keeps its footprint, goes Quiet Sand with Parked words, shows the four-square waiting mark and a present-participle label with a real ellipsis ("Applying…"). Disable it immediately and mark it busy until the request finishes; repeated clicks or Enter must not submit again. Restore its original label, icon and availability after a refusal or connection failure. The same behavior applies to actions in drawers opened from any page. A button whose press starts work the page then waits on names its busy words (`busy`, "Checking…"), and the shell swaps them in on the press. The look is one rule (`verso-button-waiting`) laid over the style's own dress, whether the server draws a button busy or the script makes it so, so either wait ends by taking the rule off. Under reduced motion, the four squares remain visible and still.
 
 ### Confirmation

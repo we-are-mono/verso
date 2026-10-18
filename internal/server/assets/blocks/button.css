@@ -9,8 +9,12 @@
  * it. Its words take the button role; a glyph leads them 6px off, the
  * component's own step.
  *
+ * A button that cannot be pressed (disabled) loses its edge, whatever its
+ * dress: a slab of Quiet Sand, its words in Meta.
+ *
  * Variants: data-verso-style    primary (the default) · secondary, the quiet
- *                               bordered act · danger, the destructive act ·
+ *                               bordered act, its words in Ink · danger, the
+ *                               destructive act ·
  *                               caution, the act a caution confirm asks for:
  *                               white on the deep marigold, since white on full
  *                               marigold fails the 4.5 floor, darkening by a
@@ -33,8 +37,9 @@
  *                               after the words
  *           data-verso-standby  a primary with nothing to act on yet (a form's
  *                               Save before anything changed): while disabled
- *                               it rests in sand, and takes Denim the moment
- *                               it is spoken for
+ *                               it rests as the sand slab, with no forbidding
+ *                               pointer, and takes Denim the moment it is
+ *                               spoken for
  *           data-verso-busy     an act in flight: one look whatever its style,
  *                               sand ground, strong hairline, Glyph words, on
  *                               the same footprint, the waiting mark 10px
@@ -91,6 +96,11 @@
   --verso-button-ground: transparent;
   --verso-button-ink: var(--color-meta);
   --verso-button-ring: var(--color-denim);
+}
+/* A secondary speaks in Ink: its edge and its words say it can be pressed,
+   where a disabled button has lost both. An act keeps its Meta words. */
+.verso-button[data-verso-style="secondary"]:not([data-verso-size]) {
+  --verso-button-ink: var(--color-ink);
 }
 .verso-button:is([data-verso-style="secondary"], [data-verso-size="act"], [data-verso-size="icon"], [data-verso-size="glyph"]):not(:disabled, [aria-disabled="true"]):hover {
   --verso-button-edge: var(--color-sand-5);
@@ -177,16 +187,24 @@
   padding: 0;
 }
 
-.verso-button[data-verso-standby]:disabled {
-  cursor: default;
-  --verso-button-edge: var(--color-rule-strong);
+/* A button that cannot be pressed loses its edge and rests as a slab of
+   Quiet Sand, its words in Meta, whatever its dress: the edge is what says a
+   button can be pressed, and Faint is never text, so the edge is what
+   changes. A glyph or a quiet act never had an edge to lose, so it fades. */
+.verso-button:is(:disabled, [aria-disabled="true"]):not([data-verso-busy], [data-verso-size="icon"], [data-verso-size="glyph"], [data-verso-style="quiet"]) {
+  --verso-button-edge: var(--color-quiet);
   --verso-button-ground: var(--color-quiet);
   --verso-button-ink: var(--color-meta);
 }
-
+.verso-button:disabled:is([data-verso-size="icon"], [data-verso-size="glyph"], [data-verso-style="quiet"]) {
+  opacity: 0.7;
+}
+/* A standby is waiting, not refused: it takes no forbidding pointer. */
+.verso-button[data-verso-standby]:disabled {
+  cursor: default;
+}
 .verso-button:disabled:not([data-verso-busy], [data-verso-standby]) {
   cursor: not-allowed;
-  opacity: 0.7;
 }
 .verso-button[data-verso-busy] {
   pointer-events: none;

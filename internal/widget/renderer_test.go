@@ -942,6 +942,19 @@ func TestRenderButton(t *testing.T) {
 	if !regexp.MustCompile(`\.verso-button:disabled:not\(\[data-verso-busy\], \[data-verso-standby\]\) \{\s*cursor: not-allowed;`).Match(css) {
 		t.Error("a disabled button does not take the not-allowed pointer")
 	}
+	// Whether a button can be pressed reads at a glance: one that can wears
+	// an edge, a secondary's words in Ink; one that cannot loses its edge
+	// and rests as a slab of Quiet Sand, its words in Meta, whatever its
+	// dress. Faint is never text, so it is the edge, not a paler word, that
+	// tells them apart. An act keeps its Meta words, and a glyph or a quiet
+	// act, which never had an edge to lose, only fades.
+	declares(t, "button", `.verso-button[data-verso-style="secondary"]:not([data-verso-size])`, "--verso-button-ink: var(--color-ink);")
+	declares(t, "button", `.verso-button:is(:disabled, [aria-disabled="true"]):not([data-verso-busy], [data-verso-size="icon"], [data-verso-size="glyph"], [data-verso-style="quiet"])`,
+		"--verso-button-edge: var(--color-quiet);", "--verso-button-ground: var(--color-quiet);", "--verso-button-ink: var(--color-meta);")
+	declares(t, "button", `.verso-button:disabled:is([data-verso-size="icon"], [data-verso-size="glyph"], [data-verso-style="quiet"])`, "opacity: 0.7;")
+	if rule := cssRule(blockCSS(t, "button"), `.verso-button:disabled:not([data-verso-busy], [data-verso-standby])`); strings.Contains(rule, "opacity") {
+		t.Errorf("a disabled button with an edge to lose fades as well:\n%s", rule)
+	}
 }
 
 // TestRenderLiveButton: the live state is the spinner without the surrender —
