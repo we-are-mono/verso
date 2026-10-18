@@ -167,3 +167,51 @@ func TestDNSLists(t *testing.T) {
 		}
 	}
 }
+
+// TestArgumentKinds holds the datatypes an act's argument kind shares with the
+// shell to the samples the SDK and the privileged helper are held to
+// (plugins/verso-plugin-sdk/testdata/argument-kinds.json, ADR-027), so a value
+// the shell accepts in a form is the value the helper accepts at root.
+func TestArgumentKinds(t *testing.T) {
+	raw, err := os.ReadFile("../../plugins/verso-plugin-sdk/testdata/argument-kinds.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var doc struct {
+		Kinds []struct {
+			Kind struct {
+				Kind string `json:"kind"`
+			} `json:"kind"`
+			Accept []string `json:"accept"`
+			Refuse []struct {
+				Value string `json:"value"`
+				Why   string `json:"why"`
+			} `json:"refuse"`
+		} `json:"kinds"`
+	}
+	if err := json.Unmarshal(raw, &doc); err != nil {
+		t.Fatal(err)
+	}
+	shared := map[string]string{"hostname": "hostname", "ipv4": "ip4addr", "ipv6": "ip6addr", "ip": "ipaddr", "port": "port"}
+	seen := 0
+	for _, k := range doc.Kinds {
+		name, ok := shared[k.Kind.Kind]
+		if !ok {
+			continue
+		}
+		seen++
+		for _, v := range k.Accept {
+			if err := Validate(name, v); err != nil {
+				t.Errorf("Validate(%s, %q) = %v, want ok", name, v, err)
+			}
+		}
+		for _, c := range k.Refuse {
+			if Validate(name, c.Value) == nil {
+				t.Errorf("Validate(%s, %q) = nil, want a refusal: %s", name, c.Value, c.Why)
+			}
+		}
+	}
+	if seen != len(shared) {
+		t.Errorf("the samples cover %d of the %d shared kinds", seen, len(shared))
+	}
+}

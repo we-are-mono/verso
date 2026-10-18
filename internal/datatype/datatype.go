@@ -96,7 +96,7 @@ func ip4addr(v string) error {
 
 func ip6addr(v string) error {
 	a, err := netip.ParseAddr(v)
-	if err != nil || !a.Is6() || a.Is4In6() {
+	if err != nil || !a.Is6() || a.Is4In6() || a.Zone() != "" {
 		return fmt.Errorf("must be a valid IPv6 address")
 	}
 	return nil
@@ -127,9 +127,11 @@ func host(v string) error {
 	return fmt.Errorf("must be a hostname or IP address")
 }
 
+// port is plain digits, as the browser's check and an act's argument kind
+// read it: Atoi alone would take a sign.
 func port(v string) error {
 	n, err := strconv.Atoi(v)
-	if err != nil || n < 1 || n > 65535 {
+	if err != nil || strings.ContainsAny(v[:1], "+-") || n < 1 || n > 65535 {
 		return fmt.Errorf("must be a port number (1–65535)")
 	}
 	return nil

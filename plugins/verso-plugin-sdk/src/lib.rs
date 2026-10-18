@@ -43,6 +43,13 @@ mod errors;
 pub use errors::Errors;
 mod slots;
 pub use slots::{ShellSlot, SlotKind, ACCESS_BLOCKS, OVERVIEW_CARDS, SHELL_SLOTS};
+mod args;
+pub use args::{ArgKind, MAX_TEXT};
+pub mod registry;
+pub use registry::{
+    ArgSpec, Command, CommandKind, Family, FamilyDir, FamilyWords, FileNames, Registry,
+    REGISTRY_SCHEMA_VERSION,
+};
 mod fields;
 pub use fields::{from_panel, panel_form, select_field, text_field, PANEL_FIELD, REMOVE_FIELD};
 /// Hand-edited files a page lists and edits in place. See [`files`].

@@ -1,0 +1,114 @@
+{
+  "about": "Accepted and refused samples for every argument kind an act may declare in commands.json (ADR-027). The SDK (src/args.rs), the privileged helper (verso-rpcd) and the shell's datatype package (for hostname, ipv4, ipv6, ip and port, which its ip4addr, ip6addr, ipaddr, hostname and port check) are all held to these cases.",
+  "kinds": [
+    {
+      "kind": {"kind": "uci-name"},
+      "accept": ["home", "wan6", "cfg01a2b3", "DDNS_home", "a"],
+      "refuse": [
+        {"value": "", "why": "empty"},
+        {"value": "home; reboot", "why": "a space and a semicolon"},
+        {"value": "my-home", "why": "a section name holds no hyphen"},
+        {"value": "a.b", "why": "a dot separates config, section and option"},
+        {"value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "why": "65 characters"}
+      ]
+    },
+    {
+      "kind": {"kind": "hostname"},
+      "accept": ["router", "router.example.com", "a-b.example", "xn--bcher-kva.example", "1.example"],
+      "refuse": [
+        {"value": "", "why": "empty"},
+        {"value": "-router", "why": "a label starts with a hyphen"},
+        {"value": "router-.example", "why": "a label ends with a hyphen"},
+        {"value": "a..b", "why": "an empty label"},
+        {"value": "under_score.example", "why": "an underscore"},
+        {"value": "router.example.com.", "why": "a trailing dot is an empty label"},
+        {"value": "host name", "why": "a space"}
+      ]
+    },
+    {
+      "kind": {"kind": "ipv4"},
+      "accept": ["192.168.1.1", "0.0.0.0", "255.255.255.255", "10.0.0.1"],
+      "refuse": [
+        {"value": "", "why": "empty"},
+        {"value": "256.1.1.1", "why": "an octet over 255"},
+        {"value": "10.0.0", "why": "three octets"},
+        {"value": "010.0.0.1", "why": "a leading zero reads as octal elsewhere"},
+        {"value": "10.0.0.1/24", "why": "a prefix length"},
+        {"value": "::1", "why": "an IPv6 address"}
+      ]
+    },
+    {
+      "kind": {"kind": "ipv6"},
+      "accept": ["::1", "2001:db8::1", "fd00::", "fe80::1"],
+      "refuse": [
+        {"value": "", "why": "empty"},
+        {"value": "fe80::1%eth0", "why": "a zone"},
+        {"value": "::ffff:192.168.1.1", "why": "an IPv4-mapped address is an IPv4 address"},
+        {"value": "2001:db8::/64", "why": "a prefix length"},
+        {"value": "192.168.1.1", "why": "an IPv4 address"},
+        {"value": "2001:db8:::1", "why": "three colons"}
+      ]
+    },
+    {
+      "kind": {"kind": "ip"},
+      "accept": ["192.168.1.1", "2001:db8::1"],
+      "refuse": [
+        {"value": "", "why": "empty"},
+        {"value": "router", "why": "a host name"},
+        {"value": "fe80::1%eth0", "why": "a zone"}
+      ]
+    },
+    {
+      "kind": {"kind": "port"},
+      "accept": ["1", "53", "8443", "65535"],
+      "refuse": [
+        {"value": "", "why": "empty"},
+        {"value": "0", "why": "below 1"},
+        {"value": "65536", "why": "above 65535"},
+        {"value": "+80", "why": "a sign"},
+        {"value": " 80", "why": "a space"},
+        {"value": "80a", "why": "a letter"}
+      ]
+    },
+    {
+      "kind": {"kind": "int", "min": -10, "max": 300},
+      "accept": ["-10", "0", "42", "300"],
+      "refuse": [
+        {"value": "", "why": "empty"},
+        {"value": "301", "why": "above max"},
+        {"value": "-11", "why": "below min"},
+        {"value": "+5", "why": "a plus sign"},
+        {"value": "4.2", "why": "a fraction"},
+        {"value": "-", "why": "a sign alone"},
+        {"value": "99999999999999999999", "why": "beyond a 64-bit integer"}
+      ]
+    },
+    {
+      "kind": {"kind": "enum", "values": ["up", "down", "restart"]},
+      "accept": ["up", "down", "restart"],
+      "refuse": [
+        {"value": "", "why": "empty"},
+        {"value": "Up", "why": "case differs"},
+        {"value": "up ", "why": "a trailing space"}
+      ]
+    },
+    {
+      "kind": {"kind": "bool"},
+      "accept": ["0", "1"],
+      "refuse": [
+        {"value": "", "why": "empty"},
+        {"value": "true", "why": "uci writes 0 or 1"},
+        {"value": "01", "why": "two digits"}
+      ]
+    },
+    {
+      "kind": {"kind": "text", "max": 8},
+      "accept": ["", "a b; c", "one\ntwo", "été"],
+      "refuse": [
+        {"value": "123456789", "why": "nine bytes"},
+        {"value": "nul\u0000", "why": "a NUL"},
+        {"value": "éééé1", "why": "nine bytes in four letters and a digit"}
+      ]
+    }
+  ]
+}

@@ -894,3 +894,71 @@ fn write_phrase_fixture() {
     let json = serde_json::to_vec_pretty(&table).unwrap();
     fs::write(format!("{dir}/widget-table-phrase.json"), json).unwrap();
 }
+
+// The command registry (ADR-027): a registry holding every kind of command, an
+// act with every argument kind, a family with a transform, and a certificate
+// field, written as commands.json holds it. The helper's tests read it back.
+#[test]
+fn write_commands_fixture() {
+    use verso_plugin::{ArgKind, ArgSpec, Command, Family, FamilyDir, FamilyWords, FileNames, Registry};
+    const EXEC: &str = "/usr/bin/verso-plugin-example";
+    let registry = Registry::new()
+        .command(Command::read("state", 1, EXEC))
+        .command(
+            Command::act("update", EXEC)
+                .timeout(30)
+                .arg("section", ArgSpec::required(ArgKind::UciName))
+                .arg("host", ArgSpec::optional(ArgKind::Hostname))
+                .arg("address", ArgSpec::optional(ArgKind::Ip))
+                .arg("port", ArgSpec::optional(ArgKind::Port))
+                .arg("count", ArgSpec::optional(ArgKind::Int { min: 1, max: 10 }))
+                .arg("way", ArgSpec::optional(ArgKind::Enum { values: vec!["up".into(), "down".into()] }))
+                .arg("force", ArgSpec::optional(ArgKind::Bool))
+                .arg("note", ArgSpec::optional(ArgKind::Text { max: 256 })),
+        )
+        .command(Command::transform("files", EXEC))
+        .family(Family {
+            name: "example".into(),
+            config: "example".into(),
+            files: vec!["/etc/example.conf".into()],
+            dir: Some(FamilyDir {
+                path: "/etc/example.d".into(),
+                suffixes: vec![".conf".into()],
+                names: FileNames::Plain,
+            }),
+            mode: "0600".into(),
+            words: FamilyWords {
+                too_large: "Example files must be at most 32 KiB.".into(),
+                invalid: "Invalid example file.".into(),
+                over_limit: "Example files exceed the editor size limit.".into(),
+            },
+            check: vec!["/usr/sbin/example".into(), "--test".into()],
+            reload: vec!["/etc/init.d/example".into(), "reload".into()],
+            transform: Some("files".into()),
+        })
+        .certificate("state", "certificate");
+    let json = registry.to_json().expect("the sample registry is valid");
+    let dir = concat!(env!("CARGO_MANIFEST_DIR"), "/testdata");
+    fs::create_dir_all(dir).unwrap();
+    fs::write(format!("{dir}/commands.json"), json).unwrap();
+}
+
+// Every sample in argument-kinds.json is accepted or refused as it says.
+#[test]
+fn argument_kinds_match_the_samples() {
+    use verso_plugin::ArgKind;
+    let path = concat!(env!("CARGO_MANIFEST_DIR"), "/testdata/argument-kinds.json");
+    let doc: serde_json::Value = serde_json::from_slice(&fs::read(path).unwrap()).unwrap();
+    for entry in doc["kinds"].as_array().unwrap() {
+        let kind: ArgKind = serde_json::from_value(entry["kind"].clone()).unwrap();
+        kind.check().expect("each sample kind is a valid declaration");
+        for value in entry["accept"].as_array().unwrap() {
+            let v = value.as_str().unwrap();
+            assert!(kind.accepts(v), "{kind:?} refused {v:?}");
+        }
+        for refused in entry["refuse"].as_array().unwrap() {
+            let v = refused["value"].as_str().unwrap();
+            assert!(!kind.accepts(v), "{kind:?} accepted {v:?}: {}", refused["why"]);
+        }
+    }
+}

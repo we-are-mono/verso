@@ -1,0 +1,107 @@
+{
+  "schema_version": 1,
+  "commands": [
+    {
+      "name": "state",
+      "kind": "read",
+      "version": 1,
+      "exec": "/usr/bin/verso-plugin-example",
+      "argv": [
+        "root"
+      ]
+    },
+    {
+      "name": "update",
+      "kind": "act",
+      "exec": "/usr/bin/verso-plugin-example",
+      "argv": [
+        "root"
+      ],
+      "timeout": 30,
+      "args": {
+        "address": {
+          "kind": "ip",
+          "optional": true
+        },
+        "count": {
+          "kind": "int",
+          "min": 1,
+          "max": 10,
+          "optional": true
+        },
+        "force": {
+          "kind": "bool",
+          "optional": true
+        },
+        "host": {
+          "kind": "hostname",
+          "optional": true
+        },
+        "note": {
+          "kind": "text",
+          "max": 256,
+          "optional": true
+        },
+        "port": {
+          "kind": "port",
+          "optional": true
+        },
+        "section": {
+          "kind": "uci-name"
+        },
+        "way": {
+          "kind": "enum",
+          "values": [
+            "up",
+            "down"
+          ],
+          "optional": true
+        }
+      }
+    },
+    {
+      "name": "files",
+      "kind": "transform",
+      "exec": "/usr/bin/verso-plugin-example",
+      "argv": [
+        "root"
+      ]
+    }
+  ],
+  "families": [
+    {
+      "name": "example",
+      "config": "example",
+      "files": [
+        "/etc/example.conf"
+      ],
+      "dir": {
+        "path": "/etc/example.d",
+        "suffixes": [
+          ".conf"
+        ],
+        "names": "plain"
+      },
+      "mode": "0600",
+      "words": {
+        "too_large": "Example files must be at most 32 KiB.",
+        "invalid": "Invalid example file.",
+        "over_limit": "Example files exceed the editor size limit."
+      },
+      "check": [
+        "/usr/sbin/example",
+        "--test"
+      ],
+      "reload": [
+        "/etc/init.d/example",
+        "reload"
+      ],
+      "transform": "files"
+    }
+  ],
+  "certificates": {
+    "state": [
+      "certificate"
+    ]
+  }
+}
