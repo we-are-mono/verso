@@ -105,7 +105,7 @@ A contribution to `shell.overview.cards` SHALL answer with a card's title, Lucid
 
 #### Scenario: A body outside the vocabulary
 - **WHEN** a plugin card's body holds a form
-- **THEN** the shell draws the card's contained unavailable state and logs a compatibility warning naming the plugin and the contribution
+- **THEN** the Overview draws without the card, the card keeps its place in the layout, and the shell logs a compatibility warning naming the plugin and the contribution
 
 ### Requirement: A plugin card reads as of the page's load
 The shell SHALL fetch each plugin card once each time it draws the Overview, hidden cards included, so their causes reach the verdict. The Overview's live stream SHALL NOT dial plugins.

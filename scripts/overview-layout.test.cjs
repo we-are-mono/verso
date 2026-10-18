@@ -10,7 +10,7 @@ const path = require('node:path');
 const vm = require('node:vm');
 
 function model() {
-  const context = vm.createContext({window: {}, document: {querySelector: () => null}});
+  const context = vm.createContext({window: {}, document: {querySelector: () => null}, btoa});
   vm.runInContext(fs.readFileSync(path.join(__dirname, '../internal/server/assets/verso-overview.js'), 'utf8'), context);
   return context.window.versoOverviewLayout;
 }
@@ -22,13 +22,20 @@ const base = () => ({
 });
 const plain = value => JSON.parse(JSON.stringify(value));
 
+// Version 2 is base64url JSON, which can name a plugin's card by its full id.
+const decode = value => {
+  assert.ok(value.startsWith('2.'), value);
+  assert.doesNotMatch(value, /[+/=]/);
+  return JSON.parse(Buffer.from(value.slice(2), 'base64url').toString());
+};
+
 test('encode writes what the shell reads', () => {
-  assert.equal(L.encode(base()), '1.internet-firewall-ports-tunnels.traffic-resources-hardware-firmware..');
+  assert.deepEqual(decode(L.encode(base())), plain(base()));
   const l = base();
   l.closed = ['firmware', 'internet'];
-  l.hidden = ['resources'];
-  l.cols[1] = ['traffic', 'hardware', 'firmware'];
-  assert.equal(L.encode(l), '1.internet-firewall-ports-tunnels.traffic-hardware-firmware.firmware-internet.resources');
+  l.hidden = ['resources', 'acme.card'];
+  l.cols[1] = ['traffic', 'acme-x.card', 'hardware', 'firmware'];
+  assert.deepEqual(decode(L.encode(l)), plain(l));
 });
 
 test('move places a card anywhere in either column', () => {

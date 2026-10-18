@@ -137,6 +137,24 @@ type Envelope struct {
 	// Empty says the plugin answered 204: a contribution with nothing to show
 	// right now, which draws nothing and is no failure.
 	Empty bool `json:"-"`
+	// Card is an Overview card's header, when this envelope answers a
+	// contribution to the Overview's cards (ADR-026); Widget is its body.
+	Card *OverviewCard `json:"card,omitempty"`
+}
+
+// OverviewCard is a plugin's Overview card header, the shell card's
+// anatomy: its title and Lucide icon, its tone and status word, the one
+// reading a closed card says (Summary), what is wrong as a sentence that
+// stands alone for the page's heading (Cause, empty while all is well), and
+// the page on the plugin its door opens (Opens, a path under its mount).
+type OverviewCard struct {
+	Title   string `json:"title"`
+	Icon    string `json:"icon"`
+	Tone    string `json:"tone"`
+	Status  string `json:"status,omitempty"`
+	Summary string `json:"summary,omitempty"`
+	Cause   string `json:"cause,omitempty"`
+	Opens   string `json:"opens,omitempty"`
 }
 
 // EntitySummary keeps configured subjects findable in the shell's roster.

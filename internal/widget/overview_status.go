@@ -51,6 +51,12 @@ func (o *Overview) causes(tr func(string) string) []cause {
 			out = append(out, cause{h.Cause, h.Tone})
 		}
 	}
+	// A plugin's card states its own cause, in its own words.
+	for _, c := range o.Contributed {
+		if c.Cause != "" {
+			out = append(out, cause{c.Cause, c.Tone})
+		}
+	}
 	return out
 }
 
@@ -124,6 +130,9 @@ func (o *Overview) LiveStatus(tr func(string) string) OverviewStatus {
 		if layout.IsHidden(spec.ID) || slices.Contains(layout.Cols[0], spec.ID) || slices.Contains(layout.Cols[1], spec.ID) {
 			status.Cards = append(status.Cards, overviewCardStatus{ID: spec.ID, cardHead: spec.head(o, tr)})
 		}
+	}
+	for _, c := range o.Contributed {
+		status.Cards = append(status.Cards, overviewCardStatus{ID: c.ID, cardHead: c.head()})
 	}
 	return status
 }

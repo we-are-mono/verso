@@ -1097,7 +1097,13 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	zone, _ := now.Zone()
 	// The browser's card layout is read before anything renders, so the page
 	// arrives arranged (ADR-022).
-	ov := &widget.Overview{Clock: now.Format("15:04:05"), Zone: zone, Layout: s.layouts.Layout(r)}
+	ov := &widget.Overview{Clock: now.Format("15:04:05"), Zone: zone, Layout: s.layouts.Layout(r, s.overviewPlacements()...)}
+	// The plugins' cards are asked once, as the page is drawn; the session
+	// keeps their headers for its stream, which never asks a plugin.
+	ov.Contributed, ov.Kept = s.overviewContributions(r)
+	if cookie, err := r.Cookie(sessionCookie); err == nil {
+		s.sessions.SetOverviewCards(cookie.Value, cardHeads(ov.Contributed))
+	}
 	board, boardErr := s.backend.Board(r.Context(), sid)
 	if boardErr == nil {
 		ov.Firmware, ov.Kernel, ov.Model = board.Firmware, board.Kernel, board.Model

@@ -21,7 +21,8 @@ const formerOverviewLayoutCookie = "verso_overview"
 
 // layoutSource is where the Overview's card layout comes from for a request.
 type layoutSource interface {
-	Layout(*http.Request) widget.OverviewLayout
+	// Layout is the request's layout, knowing the installed plugins' cards.
+	Layout(r *http.Request, plugins ...widget.OverviewPlacement) widget.OverviewLayout
 }
 
 // cookieLayout keeps the layout per browser, in a cookie (ADR-022). It is the
@@ -31,12 +32,12 @@ type cookieLayout struct{ hardware bool }
 
 // Layout reads the request's layout cookie as untrusted input; with none, or
 // one it cannot read, the request gets the default layout.
-func (c cookieLayout) Layout(r *http.Request) widget.OverviewLayout {
-	l := widget.DefaultOverviewLayout()
+func (c cookieLayout) Layout(r *http.Request, plugins ...widget.OverviewPlacement) widget.OverviewLayout {
+	l := widget.DefaultOverviewLayout(plugins...)
 	if cookie, err := r.Cookie(overviewLayoutCookie); err == nil {
-		l = widget.ParseOverviewLayout(cookie.Value)
+		l = widget.ParseOverviewLayout(cookie.Value, plugins...)
 	} else if cookie, err := r.Cookie(formerOverviewLayoutCookie); err == nil {
-		l = widget.ParseOverviewLayout(cookie.Value)
+		l = widget.ParseOverviewLayout(cookie.Value, plugins...)
 	}
 	if !c.hardware {
 		l = l.Without("hardware")

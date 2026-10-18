@@ -34,8 +34,13 @@ func (s *Server) handleOverviewEvents(w http.ResponseWriter, r *http.Request) {
 	sid := s.sessionSID(r)
 	_, catalog := s.localize(r)
 	tr := translatorOrIdentity(catalog)
-	layout := s.layouts.Layout(r)
+	layout := s.layouts.Layout(r, s.overviewPlacements()...)
 	liveOverview := &widget.Overview{Layout: layout}
+	// The plugins' card headers are those the page read; the stream never
+	// asks a plugin (ADR-026).
+	if cookie, err := r.Cookie(sessionCookie); err == nil {
+		liveOverview.Contributed = s.sessions.OverviewCards(cookie.Value)
+	}
 
 	// What a connection reads once: the board, and the interfaces' topology,
 	// which changes only with an apply, after which the page is read anew.

@@ -4,6 +4,7 @@
 package widget
 
 import (
+	"encoding/base64"
 	"reflect"
 	"testing"
 )
@@ -17,8 +18,9 @@ func TestOverviewLayoutDefault(t *testing.T) {
 	if len(got.Closed) != 0 || len(got.Hidden) != 0 {
 		t.Fatalf("default layout closes or hides cards: %+v", got)
 	}
-	if got.Encode() != "1.internet-ports-tunnels.traffic-resources-system-hardware.." {
-		t.Fatalf("default encodes as %q", got.Encode())
+	// The page writes version 2: base64url JSON of the layout.
+	if want := "2." + base64.RawURLEncoding.EncodeToString([]byte(`{"cols":[["internet","ports","tunnels"],["traffic","resources","system","hardware"]],"closed":[],"hidden":[]}`)); got.Encode() != want {
+		t.Fatalf("default encodes as %q, want %q", got.Encode(), want)
 	}
 }
 
@@ -101,9 +103,14 @@ func TestParseOverviewLayout(t *testing.T) {
 }
 
 func TestOverviewLayoutRoundTrips(t *testing.T) {
-	value := "1.traffic-internet.ports-tunnels-system-hardware.internet-system.resources"
-	if got := ParseOverviewLayout(value).Encode(); got != value {
-		t.Fatalf("round trip = %q, want %q", got, value)
+	// A layout written in version 1 reads as it always did, and writes back
+	// as version 2 that reads the same.
+	first := ParseOverviewLayout("1.traffic-internet.ports-tunnels-system-hardware.internet-system.resources")
+	if want := [2][]string{{"traffic", "internet"}, {"ports", "tunnels", "system", "hardware"}}; !reflect.DeepEqual(first.Cols, want) || !first.IsClosed("system") || !first.IsHidden("resources") {
+		t.Fatalf("version 1 reads as %+v", first)
+	}
+	if again := ParseOverviewLayout(first.Encode()); !reflect.DeepEqual(again, first) {
+		t.Fatalf("round trip = %+v, want %+v", again, first)
 	}
 }
 

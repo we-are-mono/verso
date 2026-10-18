@@ -23,8 +23,8 @@ func TestCookieLayout(t *testing.T) {
 	saved := httptest.NewRequest(http.MethodGet, "/", nil)
 	value := "1.traffic-internet-hardware.ports-tunnels-resources-system.system."
 	saved.AddCookie(&http.Cookie{Name: overviewLayoutCookie, Value: value})
-	if got := source.Layout(saved).Encode(); got != value {
-		t.Errorf("saved layout = %q, want %q", got, value)
+	if got, want := source.Layout(saved), widget.ParseOverviewLayout(value); !reflect.DeepEqual(got, want) {
+		t.Errorf("saved layout = %+v, want %+v", got, want)
 	}
 
 	garbled := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -37,15 +37,15 @@ func TestCookieLayout(t *testing.T) {
 	// the page writes the current one, which then wins.
 	former := httptest.NewRequest(http.MethodGet, "/", nil)
 	former.AddCookie(&http.Cookie{Name: formerOverviewLayoutCookie, Value: value})
-	if got := source.Layout(former).Encode(); got != value {
-		t.Errorf("former cookie = %q, want %q", got, value)
+	if got, want := source.Layout(former), widget.ParseOverviewLayout(value); !reflect.DeepEqual(got, want) {
+		t.Errorf("former cookie = %+v, want %+v", got, want)
 	}
 	both := httptest.NewRequest(http.MethodGet, "/", nil)
 	both.AddCookie(&http.Cookie{Name: formerOverviewLayoutCookie, Value: value})
 	current := "1.internet-ports-tunnels.traffic-resources-system-hardware..resources"
 	both.AddCookie(&http.Cookie{Name: overviewLayoutCookie, Value: current})
-	if got := source.Layout(both).Encode(); got != "1.internet-ports-tunnels.traffic-system-hardware..resources" {
-		t.Errorf("both cookies = %q, want the current cookie's layout", got)
+	if got, want := source.Layout(both), widget.ParseOverviewLayout(current); !reflect.DeepEqual(got, want) {
+		t.Errorf("both cookies = %+v, want the current cookie's layout %+v", got, want)
 	}
 
 	// A board with no profile has no Hardware card, whatever the cookie says.
@@ -53,7 +53,18 @@ func TestCookieLayout(t *testing.T) {
 	if got := unprofiled.Layout(bare); slices.Contains(got.Cols[1], "hardware") {
 		t.Errorf("no profile, default = %+v, want no Hardware", got)
 	}
-	if got := unprofiled.Layout(saved).Encode(); got != "1.traffic-internet.ports-tunnels-resources-system.system." {
-		t.Errorf("no profile, saved = %q, want Hardware dropped and the rest in place", got)
+	if got, want := unprofiled.Layout(saved), widget.ParseOverviewLayout("1.traffic-internet.ports-tunnels-resources-system.system.").Without("hardware"); !reflect.DeepEqual(got, want) {
+		t.Errorf("no profile, saved = %+v, want Hardware dropped and the rest in place", got)
+	}
+
+	// An installed plugin's card is known to the layout: a cookie naming it
+	// keeps it where it put it.
+	acme := widget.OverviewPlacement{ID: "acme.card"}
+	placed := widget.DefaultOverviewLayout(acme).Without("acme.card")
+	placed.Cols[0] = append([]string{"acme.card"}, placed.Cols[0]...)
+	withCard := httptest.NewRequest(http.MethodGet, "/", nil)
+	withCard.AddCookie(&http.Cookie{Name: overviewLayoutCookie, Value: placed.Encode()})
+	if got := source.Layout(withCard, acme); got.Cols[0][0] != "acme.card" {
+		t.Errorf("plugin card = %+v, want it first on the left", got)
 	}
 }

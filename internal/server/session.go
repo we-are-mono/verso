@@ -9,6 +9,8 @@ import (
 	"encoding/hex"
 	"sync"
 	"time"
+
+	"github.com/we-are-mono/verso/internal/widget"
 )
 
 const (
@@ -90,8 +92,12 @@ type session struct {
 // to the held session; sessions expire on idle and at an absolute cap (VS-03).
 // The clock is injected so expiry is testable without sleeping (ADR-003).
 type Sessions struct {
-	mu       sync.Mutex
-	items    map[string]session
+	mu    sync.Mutex
+	items map[string]session
+	// cards are the plugins' Overview card headers as each session's last
+	// Overview read them (ADR-026), by token, which its live stream says
+	// again without asking the plugins.
+	cards    map[string][]widget.OverviewContribution
 	now      func() time.Time
 	idle     time.Duration
 	absolute time.Duration
@@ -216,6 +222,35 @@ func (s *Sessions) SetFlash(token, variant, message string) {
 	}
 	sess.flash, sess.flashVariant = message, variant
 	s.items[token] = sess
+}
+
+// SetOverviewCards keeps the plugins' Overview card headers the session's
+// Overview drew, for its stream.
+// Those of sessions that have ended go with it.
+func (s *Sessions) SetOverviewCards(token string, cards []widget.OverviewContribution) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.cards == nil {
+		s.cards = map[string][]widget.OverviewContribution{}
+	}
+	for kept := range s.cards {
+		if _, live := s.items[kept]; !live {
+			delete(s.cards, kept)
+		}
+	}
+	if _, live := s.items[token]; live {
+		s.cards[token] = cards
+	}
+}
+
+// OverviewCards are the headers the session's last Overview drew.
+func (s *Sessions) OverviewCards(token string) []widget.OverviewContribution {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if _, live := s.items[token]; !live {
+		return nil
+	}
+	return s.cards[token]
 }
 
 // TakeFlash returns and clears the session's flash — each message shows once.

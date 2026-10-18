@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"path"
 	"strings"
 	"sync"
 
@@ -51,6 +52,9 @@ type pluginCall struct {
 	// facts receives a fact contribution's rows, in its own plugin's words,
 	// instead of a rendering.
 	facts *[]widget.Property
+	// card receives an Overview card contribution, header and body, in its
+	// own plugin's words, for the Overview to draw as its own.
+	card *widget.OverviewContribution
 }
 
 // contributionOutcome is what the contribution a page's form posted to
@@ -89,6 +93,15 @@ func takesKind(kind string, w widget.Widget) bool {
 	case "notice":
 		_, ok := w.(*widget.Callout)
 		return ok
+	case "overview-card":
+		// A card's body reads; it never asks, so it holds no form.
+		form := false
+		widget.Walk(w, func(n widget.Widget) {
+			if _, ok := n.(*widget.Form); ok {
+				form = true
+			}
+		})
+		return !form
 	}
 	return false
 }
@@ -99,6 +112,7 @@ type slotJob struct {
 	placement slotPlacement
 	html      template.HTML
 	rows      []widget.Property
+	card      widget.OverviewContribution
 }
 
 // fillOpenedSlots fills each slot the opener's page opens with what plugins
@@ -193,8 +207,12 @@ func (s *Server) askContribution(r *http.Request, job *slotJob, call pluginCall)
 		depth: call.depth + 1, slot: job.slot.Name, kind: job.slot.Kind,
 		page: call.page, name: name, post: call.post, outcome: call.outcome,
 	}
-	if job.slot.Kind == "fact" {
+	var card widget.OverviewContribution
+	switch job.slot.Kind {
+	case "fact":
 		sub.facts = &rows
+	case "overview-card":
+		sub.card = &card
 	}
 	var hdr pageHeader
 	var width string
@@ -211,11 +229,12 @@ func (s *Server) askContribution(r *http.Request, job *slotJob, call pluginCall)
 	case hdr.Unreachable && !s.probe(m.Endpoint()):
 		// The plugin is not running: it leaves no trace on the page.
 		return
-	case hdr.Unreachable && (job.slot.Kind == "act" || job.slot.Kind == "fact"):
-		// No notice fits an act row or a facts list; the failure is the log's.
+	case hdr.Unreachable && job.slot.Kind != "block" && job.slot.Kind != "notice":
+		// No notice fits an act row, a facts list or a card's place; the
+		// failure is the log's.
 		return
 	}
-	job.html, job.rows = body, rows
+	job.html, job.rows, job.card = body, rows, card
 }
 
 // contributionPost is the page's own request and its call. A form that
@@ -276,16 +295,45 @@ const (
 
 // inspectContribution checks a contribution's answer against its slot's
 // kind, and lifts a fact's rows out in its own plugin's words.
-func inspectContribution(m plugin.Manifest, call pluginCall, w widget.Widget, t func(string) string) answerFate {
-	if !takesKind(call.kind, w) {
+func inspectContribution(m plugin.Manifest, call pluginCall, w widget.Widget, card *plugin.OverviewCard, t func(string) string) answerFate {
+	if !takesKind(call.kind, w) || (call.kind == "overview-card" && (card == nil || card.Title == "")) {
 		log.Printf("verso: compatibility: plugin %q contribution %q answered what %s (%s) does not take; it is not drawn", m.ID, call.name, call.slot, call.kind)
 		return answerRefused
 	}
-	if call.facts != nil {
+	switch {
+	case call.facts != nil:
 		facts := w.(*widget.Properties)
 		widget.Translate(facts, t)
 		*call.facts = facts.Items
 		return answerLifted
+	case call.card != nil:
+		widget.Translate(w, t)
+		tr := translatorOrIdentity(t)
+		*call.card = widget.OverviewContribution{
+			ID: call.name, Title: tr(card.Title), Icon: card.Icon,
+			Tone: overviewTone(card.Tone), Status: tr(card.Status), Summary: tr(card.Summary), Cause: tr(card.Cause),
+			Href: cardDoor(m.ID, card.Opens), Body: w,
+		}
+		return answerLifted
 	}
 	return answerDrawn
+}
+
+// overviewTone is a card's tone from the shell's vocabulary, neutral for
+// any other word.
+func overviewTone(tone string) string {
+	switch tone {
+	case "success", "warning", "danger":
+		return tone
+	}
+	return "neutral"
+}
+
+// cardDoor is where a plugin card's door leads, a path under its plugin's
+// mount, or nowhere for none or for one that steps out of it.
+func cardDoor(id, opens string) string {
+	if opens == "" || !strings.HasPrefix(opens, "/") || strings.ContainsAny(opens, "\\") || path.Clean(opens) != opens {
+		return ""
+	}
+	return pluginHref(id, opens)
 }

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"html/template"
 	"io"
+	"slices"
 	"strings"
 )
 
@@ -25,6 +26,10 @@ type Overview struct {
 	// Layout is where the cards stand, read from the browser (ADR-022); the
 	// zero value is the default layout.
 	Layout OverviewLayout
+	// Contributed are the plugins' cards this render drew (ADR-026), and Kept
+	// the ids of installed plugins' cards that did not, whose places hold.
+	Contributed []OverviewContribution
+	Kept        []string
 
 	Firmware string
 	Kernel   string
@@ -218,11 +223,15 @@ type overviewCardView struct {
 	Closed          bool
 	Href, OpenLabel string
 	Body            template.HTML
+	// Kept is a plugin's card that did not draw this time: only its place.
+	Kept bool
 }
 
 // overviewShelfView is a hidden card on the Arrange shelf, wearing its tone.
+// A kept one holds a hidden card's place for a plugin card that did not draw.
 type overviewShelfView struct {
 	ID, Title, Tone string
+	Kept            bool
 }
 
 // overviewView is the page's layout model: the verdict, the two columns of
@@ -235,12 +244,37 @@ type overviewView struct {
 	Blank   overviewShelfView
 }
 
+// OverviewContribution is a card a plugin contributes to the Overview
+// (ADR-026), as its plugin answered it: already in its own plugin's words,
+// so no pass of the shell's translates it again. Href is its door, empty for
+// none; Body is drawn in the card's body like a shell card's.
+type OverviewContribution struct {
+	ID, Title, Icon              string
+	Tone, Status, Summary, Cause string
+	Href                         string
+	Body                         Widget
+}
+
+// head is the contributed card's header as the shell's cards carry theirs.
+func (c OverviewContribution) head() cardHead {
+	return cardHead{Tone: c.Tone, Status: c.Status, Summary: c.Summary, Cause: c.Cause}
+}
+
 // layout is the browser's layout, or the default where none was read.
 func (o *Overview) layout() OverviewLayout {
 	if len(o.Layout.Cols[0])+len(o.Layout.Cols[1]) == 0 {
 		return DefaultOverviewLayout()
 	}
 	return o.Layout
+}
+
+// contributed is the plugin card of that id this render drew.
+func (o *Overview) contributed(id string) (OverviewContribution, bool) {
+	i := slices.IndexFunc(o.Contributed, func(c OverviewContribution) bool { return c.ID == id })
+	if i < 0 {
+		return OverviewContribution{}, false
+	}
+	return o.Contributed[i], true
 }
 
 func (o *Overview) renderInto(r *Renderer, out io.Writer, csrf string) error {
@@ -252,7 +286,22 @@ func (o *Overview) renderInto(r *Renderer, out io.Writer, csrf string) error {
 	v := overviewView{Verdict: o.verdict(r.tr)}
 	for col, ids := range layout.Cols {
 		for _, id := range ids {
-			card, err := o.card(r, specs[id], layout.IsClosed(id), csrf)
+			var card overviewCardView
+			var err error
+			spec, shell := specs[id]
+			contribution, drawn := o.contributed(id)
+			switch {
+			case shell:
+				card, err = o.card(r, spec, layout.IsClosed(id), csrf)
+			case drawn:
+				card, err = contributedCard(r, contribution, layout.IsClosed(id), csrf)
+			case slices.Contains(o.Kept, id):
+				// An installed plugin's card that did not draw keeps its
+				// place, so the page's next write of the layout keeps it too.
+				card = overviewCardView{ID: id, Kept: true, Closed: layout.IsClosed(id)}
+			default:
+				continue
+			}
 			if err != nil {
 				return err
 			}
@@ -260,10 +309,32 @@ func (o *Overview) renderInto(r *Renderer, out io.Writer, csrf string) error {
 		}
 	}
 	for _, id := range layout.Hidden {
-		spec := specs[id]
-		v.Hidden = append(v.Hidden, overviewShelfView{ID: id, Title: r.tr(spec.Title), Tone: spec.head(o, r.tr).Tone})
+		if spec, shell := specs[id]; shell {
+			v.Hidden = append(v.Hidden, overviewShelfView{ID: id, Title: r.tr(spec.Title), Tone: spec.head(o, r.tr).Tone})
+		} else if c, drawn := o.contributed(id); drawn {
+			v.Hidden = append(v.Hidden, overviewShelfView{ID: id, Title: c.Title, Tone: c.Tone})
+		} else if slices.Contains(o.Kept, id) {
+			v.Hidden = append(v.Hidden, overviewShelfView{ID: id, Kept: true})
+		}
 	}
 	return r.execute(out, "overview.html.tmpl", v)
+}
+
+// contributedCard is a plugin's card as the page draws it, its body in the
+// card-body pass a shell card's takes, never translated again.
+func contributedCard(r *Renderer, c OverviewContribution, closed bool, csrf string) (overviewCardView, error) {
+	var body template.HTML
+	if c.Body != nil {
+		var err error
+		if body, err = renderToHTML(r.cardBody(), c.Body, csrf); err != nil {
+			return overviewCardView{}, fmt.Errorf("overview card %s: %w", c.ID, err)
+		}
+	}
+	v := overviewCardView{ID: c.ID, Title: c.Title, Icon: c.Icon, Head: c.head(), Closed: closed, Body: body, Href: c.Href}
+	if v.Href != "" {
+		v.OpenLabel = fmt.Sprintf(r.tr("Open %s"), c.Title)
+	}
+	return v, nil
 }
 
 // card builds one shown card: its header from its head, its body from its

@@ -414,7 +414,7 @@ func (s *Server) pluginBodyFor(r *http.Request, m plugin.Manifest, pluginPath st
 	// words rather than as a rendering.
 	if call.kind != "" {
 		s.withdrawLinksToAbsentPlugins(wdg)
-		switch inspectContribution(m, call, wdg, t) {
+		switch inspectContribution(m, call, wdg, env.Card, t) {
 		case answerRefused:
 			return "", http.StatusNoContent
 		case answerLifted:

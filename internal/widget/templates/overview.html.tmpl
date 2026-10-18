@@ -30,7 +30,7 @@
 
   <div data-overview-shelf class="verso-overview__shelf">
     <span data-overview-shelf-label data-hidden-label="{{ t "Hidden" }}" class="verso-overview__shelf-label">{{if .Hidden}}{{ t "Hidden" }}{{else}}{{ t "No hidden cards" }}{{end}}</span>
-    {{range .Hidden}}{{template "overview.chip" .}}{{end}}
+    {{range .Hidden}}{{if .Kept}}<span data-overview-kept-hidden="{{.ID}}" hidden></span>{{else}}{{template "overview.chip" .}}{{end}}{{end}}
     <button type="button" data-overview-reset class="verso-overview__reset">{{ t "Reset layout" }}</button>
     {{/* The blank chip the page clones when it hides a card in place. */}}
     <template data-overview-chip>{{template "overview.chip" .Blank}}</template>
@@ -39,7 +39,7 @@
 
   <div class="verso-overview__cols">
     {{range $i, $col := .Cols}}
-    <div data-overview-col="{{$i}}" class="verso-overview__col">{{range $col}}{{template "overview.card" .}}{{end}}</div>
+    <div data-overview-col="{{$i}}" class="verso-overview__col">{{range $col}}{{if .Kept}}<div data-overview-kept="{{.ID}}"{{if .Closed}} data-closed{{end}} hidden></div>{{else}}{{template "overview.card" .}}{{end}}{{end}}</div>
     {{end}}
   </div>
   <div class="sr-only" aria-live="polite" data-overview-say></div>

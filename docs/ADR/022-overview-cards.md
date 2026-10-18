@@ -48,8 +48,17 @@ its header (`head`), its body (`body`) and the page it opens. A card's header
 carries no control: a choice of what a card shows (the Traffic card's window)
 stands in its body over the graph it chooses, and folds away with the card,
 which a choice in the header would outlive.
-The registry is the shell's. A plugin contributes no card: a plugin card would need a contract
-of its own, as the entity panel's tabs have, and is a decision of its own.
+The registry is the shell's. A plugin adds a card by contributing to the slot
+`shell.overview.cards` (ADR-026). It answers with the card's header in the
+shell card's anatomy (title, Lucide icon, tone, status, summary, cause, the page
+its door opens) and a body in the closed vocabulary, with no form, since a card
+reads and never asks. The shell draws the header, the folds, the door and
+Arrange's grip and hide exactly as for its own cards. A plugin card's cause
+counts in the heading like any card's, hidden or not, so every installed
+plugin's card is asked once each time the page is drawn. The stream never asks a
+plugin: the session keeps the headers the page read, and every frame says them
+again. A card that answers nothing (204), fails, or holds a form is not drawn,
+and its place in the layout holds while its plugin is installed.
 
 Bodies compose the existing widgets (`Properties`, `Meter`, `Traffic`,
 `Table`, `Ports`). The Ports and Tunnels listings key their rows `interface:<name>` with
@@ -114,9 +123,16 @@ announced with its column and position.
 
 ### The layout is kept per browser, in a cookie
 
-The layout is one first-party cookie, `verso_cards`, valued
-`1.<left>.<right>.<closed>.<hidden>`, each field card ids joined by `-`
-(`Path=/`, `SameSite=Lax`, kept 400 days). It is never `Secure`: a router
+The layout is one first-party cookie, `verso_cards`, valued `2.` and the
+base64url JSON `{"cols":[[…],[…]],"closed":[…],"hidden":[…]}`, at most 3 KB
+(`Path=/`, `SameSite=Lax`, kept 400 days). A card's id is a shell card's
+(`traffic`) or a plugin card's full contribution id (`acme.card`); JSON carries
+the plugin's id, whose hyphens version 1's separator could not. Version 1,
+`1.<left>.<right>.<closed>.<hidden>` with shell ids joined by `-`, is still read
+and is never written. The page keeps the place of an installed plugin's card
+that did not draw this time (a hidden `data-overview-kept` mark where it stood),
+so its next write keeps it; a card of a plugin no longer installed is unknown and
+dropped. It is never `Secure`: a router
 answers over HTTP and HTTPS alike, and a `Secure` cookie written over HTTPS is
 one an HTTP page of the same router can neither read nor overwrite, so its
 layout would stop saving. The layout was kept as `verso_overview`, `Secure`

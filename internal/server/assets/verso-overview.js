@@ -16,7 +16,7 @@
   // The name the layout was kept under while it was Secure over HTTPS, which
   // an HTTP page can never overwrite; every write drops it where it may.
   var FORMER = "verso_overview";
-  var VERSION = "1";
+  var VERSION = "2";
   // 400 days, the longest a browser keeps a cookie.
   var MAX_AGE = 34560000;
 
@@ -34,9 +34,12 @@
     return null;
   }
 
-  // encode writes the layout as the shell reads it: 1.<left>.<right>.<closed>.<hidden>.
+  // encode writes the layout as the shell reads it: 2.<base64url JSON>, which
+  // names a plugin's card by its full id (<plugin>.<card>). Ids are ASCII, so
+  // btoa takes the JSON as it is.
   function encode(l) {
-    return [VERSION, l.cols[0].join("-"), l.cols[1].join("-"), l.closed.join("-"), l.hidden.join("-")].join(".");
+    var json = JSON.stringify({ cols: [l.cols[0], l.cols[1]], closed: l.closed, hidden: l.hidden });
+    return VERSION + "." + btoa(json).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
   }
   // The cookie is never Secure: a router answers over HTTP and HTTPS alike, and
   // a Secure cookie written over one is one the other can neither read nor
@@ -113,11 +116,22 @@
   function idOf(card) {
     return card.getAttribute("data-overview-card");
   }
-  // read is the layout the page shows now.
+  // placesIn is a column's cards and the kept places of plugin cards that did
+  // not draw this time (data-overview-kept), in page order.
+  function placesIn(col) {
+    return Array.prototype.filter.call(col.children, function (el) {
+      return el.hasAttribute("data-overview-card") || el.hasAttribute("data-overview-kept");
+    }).map(function (el) { return el.getAttribute("data-overview-card") || el.getAttribute("data-overview-kept"); });
+  }
+  // read is the layout the page shows now, with every kept place, so a plugin
+  // card that is back next time stands where it stood.
   function read() {
-    var cols = columns().map(function (col) { return cardsIn(col).map(idOf); });
-    var closed = Array.prototype.map.call(root.querySelectorAll("[data-overview-card][data-closed]"), idOf);
+    var cols = columns().map(placesIn);
+    var closed = Array.prototype.map.call(root.querySelectorAll("[data-overview-card][data-closed], [data-overview-kept][data-closed]"), function (el) {
+      return el.getAttribute("data-overview-card") || el.getAttribute("data-overview-kept");
+    });
     var hidden = Array.prototype.map.call(root.querySelectorAll("[data-overview-restore]"), function (el) { return el.getAttribute("data-overview-restore"); });
+    Array.prototype.forEach.call(root.querySelectorAll("[data-overview-kept-hidden]"), function (el) { hidden.push(el.getAttribute("data-overview-kept-hidden")); });
     return { cols: cols, closed: closed, hidden: hidden };
   }
   function persist(l) {

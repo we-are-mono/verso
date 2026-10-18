@@ -228,6 +228,43 @@ anchors are the contributions in them, since your own items are not addressable.
 its part. A manifest that also contributes to `shell.access.blocks` is read from
 `contributes` alone.
 
+### Overview cards
+
+Contribute to `shell.overview.cards` to stand a card on the Overview. Its anchors are
+the shell's cards (`internet`, `ports`, `tunnels`, `traffic`, `resources`, `system`,
+`hardware`); a position places it in the default layout, and once an operator
+arranges the page, the card stays where they put it. Answer with the card's header in
+the envelope's `card`, and its body as the `widget`:
+
+```json
+{
+  "schema_version": 1,
+  "card": {
+    "title": "Certificate", "icon": "shield-check",
+    "tone": "warning", "status": "Renewal failed", "summary": "expires in 20 d",
+    "cause": "The certificate could not be renewed", "opens": "/"
+  },
+  "widget": { "type": "properties", "items": [ { "label": "Domain", "value": "router.example.com" } ] }
+}
+```
+
+- `title` and `icon` (a Lucide name) head the card.
+- `tone` is `success`, `warning`, `danger` or `neutral`.
+- `status` is the word at the header's end. Leave it out while all is well.
+- `summary` is the one reading a closed card says after its title.
+- `cause` is what is wrong, as a sentence that stands without the card. The Overview's
+  heading says it when it is the one thing wrong, and counts it among the rest, whether
+  the card is open, closed or hidden. Leave it out while all is well.
+- `opens` is the page on your plugin the card's door leads to.
+
+The body reads and never asks, so it holds no form. A card answered with one is not
+drawn.
+
+Every installed plugin's card is asked for once each time the Overview is drawn,
+hidden ones too, because their causes reach the heading. The Overview's live stream
+never asks: it says again what the page read. A card with nothing to show answers
+`204` and keeps its place in the operator's layout.
+
 ### What the shell speaks
 
 Every request the shell sends a plugin carries `X-Verso-Features`: the contract
