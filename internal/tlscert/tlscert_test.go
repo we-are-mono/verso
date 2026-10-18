@@ -11,11 +11,13 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
+	"errors"
 	"math/big"
 	"net"
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"syscall"
 	"testing"
 	"time"
@@ -144,6 +146,112 @@ func TestAKeyThatCannotBeGivenToItsOwnerLeavesThePairAsItWas(t *testing.T) {
 	entries, _ := os.ReadDir(dir)
 	if len(entries) != 2 {
 		t.Errorf("directory holds %d entries, want the pair alone", len(entries))
+	}
+}
+
+// A certificate that cannot take its place puts the old key back, so the pair
+// on disk always matches.
+func TestACertificateThatCannotTakeItsPlaceLeavesTheOldPair(t *testing.T) {
+	dir := t.TempDir()
+	first, firstKey, _ := Generate([]string{"first"}, time.Now())
+	if err := Write(dir, first, firstKey, os.Getuid()); err != nil {
+		t.Fatal(err)
+	}
+	rename = func(from, to string) error {
+		if filepath.Base(to) == CertFile {
+			return errors.New("no room")
+		}
+		return os.Rename(from, to)
+	}
+	t.Cleanup(func() { rename = os.Rename })
+	second, secondKey, _ := Generate([]string{"second"}, time.Now())
+	if err := Write(dir, second, secondKey, os.Getuid()); err == nil {
+		t.Fatal("a pair whose certificate never landed was reported written")
+	}
+	pair, err := tls.LoadX509KeyPair(filepath.Join(dir, CertFile), filepath.Join(dir, KeyFile))
+	if err != nil {
+		t.Fatalf("the pair on disk no longer matches: %v", err)
+	}
+	if pair.Leaf.Subject.CommonName != "first" {
+		t.Errorf("the pair on disk is %q", pair.Leaf.Subject.CommonName)
+	}
+	if info, _ := os.Stat(filepath.Join(dir, KeyFile)); info.Mode().Perm() != 0o600 {
+		t.Errorf("the restored key's mode is %v", info.Mode().Perm())
+	}
+	entries, _ := os.ReadDir(dir)
+	if len(entries) != 2 {
+		t.Errorf("directory holds %d entries, want the pair alone", len(entries))
+	}
+}
+
+// With no pair before it, a certificate that cannot land takes its key with it.
+func TestAFirstPairWhoseCertificateCannotLandLeavesNothing(t *testing.T) {
+	dir := t.TempDir()
+	rename = func(from, to string) error {
+		if filepath.Base(to) == CertFile {
+			return errors.New("no room")
+		}
+		return os.Rename(from, to)
+	}
+	t.Cleanup(func() { rename = os.Rename })
+	cert, key, _ := Generate([]string{"router"}, time.Now())
+	if err := Write(dir, cert, key, os.Getuid()); err == nil {
+		t.Fatal("reported written")
+	}
+	if entries, _ := os.ReadDir(dir); len(entries) != 0 {
+		t.Errorf("directory holds %d entries, want none", len(entries))
+	}
+}
+
+// sec1 re-encodes a PKCS#8 EC key the way acme.sh writes one: SEC1, "EC PRIVATE KEY".
+func sec1(t *testing.T, keyPEM []byte) []byte {
+	t.Helper()
+	block, _ := pem.Decode(keyPEM)
+	key, err := x509.ParsePKCS8PrivateKey(block.Bytes)
+	if err != nil {
+		t.Fatal(err)
+	}
+	der, err := x509.MarshalECPrivateKey(key.(*ecdsa.PrivateKey))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: der})
+}
+
+func TestAValidPairComesBackWithItsKeyInPKCS8(t *testing.T) {
+	cert, key := signedBy(t, "router.example.com")
+	gotCert, gotKey, err := Validate(string(cert), string(sec1(t, key)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.HasPrefix(gotKey, "-----BEGIN PRIVATE KEY-----") {
+		t.Errorf("key = %q, want PKCS#8", gotKey)
+	}
+	if _, err := tls.X509KeyPair([]byte(gotCert), []byte(gotKey)); err != nil {
+		t.Errorf("the pair given back does not load: %v", err)
+	}
+}
+
+func TestAPairThatCannotBeServedIsRefusedInWords(t *testing.T) {
+	cert, key := signedBy(t, "router.example.com")
+	_, otherKey := signedBy(t, "other.example.com")
+	stale, staleKey, _ := Generate([]string{"router"}, time.Now().AddDate(-3, 0, 0))
+	early, earlyKey, _ := Generate([]string{"router"}, time.Now().Add(time.Hour))
+	huge := strings.Repeat("A", 64*1024+1)
+	for name, c := range map[string]struct {
+		cert, key string
+		want      string
+	}{
+		"mismatched": {string(cert), string(otherKey), "The certificate and private key do not match."},
+		"expired":    {string(stale), string(staleKey), "The certificate is not currently valid."},
+		"not yet":    {string(early), string(earlyKey), "The certificate is not currently valid."},
+		"too large":  {huge, string(key), "The certificate or key is too large."},
+	} {
+		_, _, err := Validate(c.cert, c.key)
+		var refused InvalidPair
+		if !errors.As(err, &refused) || err.Error() != c.want {
+			t.Errorf("%s: err = %v, want InvalidPair %q", name, err, c.want)
+		}
 	}
 }
 

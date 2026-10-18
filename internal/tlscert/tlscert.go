@@ -79,6 +79,38 @@ func Generate(names []string, now time.Time) (certPEM, keyPEM []byte, err error)
 		pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: pk}), nil
 }
 
+// InvalidPair is why a pair cannot be served, in words fit for the operator.
+type InvalidPair string
+
+func (e InvalidPair) Error() string { return string(e) }
+
+// maxPEM bounds what Validate reads of either file: a chain of a few
+// certificates fits many times over.
+const maxPEM = 64 * 1024
+
+// Validate checks that a certificate and key make a pair Verso can serve now:
+// they match, and the certificate is within its validity period. It gives the
+// certificate back with one trailing newline and the key in PKCS#8, whatever
+// form it came in (acme.sh writes EC keys in SEC1).
+func Validate(cert, key string) (string, string, error) {
+	if len(cert) > maxPEM || len(key) > maxPEM {
+		return "", "", InvalidPair("The certificate or key is too large.")
+	}
+	pair, err := tls.X509KeyPair([]byte(cert), []byte(key))
+	if err != nil {
+		return "", "", InvalidPair("The certificate and private key do not match.")
+	}
+	now := time.Now()
+	if now.Before(pair.Leaf.NotBefore) || !now.Before(pair.Leaf.NotAfter) {
+		return "", "", InvalidPair("The certificate is not currently valid.")
+	}
+	pk, err := x509.MarshalPKCS8PrivateKey(pair.PrivateKey)
+	if err != nil {
+		return "", "", err
+	}
+	return strings.TrimSpace(cert) + "\n", string(pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: pk})), nil
+}
+
 // LANNames keeps, in order and once each, the candidates a visit from the LAN
 // can use: hostnames, IPv4 addresses and IPv6 unique local addresses. A global
 // IPv6 address comes from the upstream's delegated prefix and changes with it;
@@ -107,12 +139,32 @@ func LANNames(candidates []string) []string {
 // plugin runs in the shell's group too. Each file is written aside, given its
 // owner and mode before a byte of it, and renamed into place, so a reader
 // never meets half a file and nobody else ever meets the key.
+//
+// The key goes first. A certificate that then cannot take its place puts the
+// old key back, or takes the new one away when there was none, so the pair on
+// disk always matches.
 func Write(dir string, certPEM, keyPEM []byte, keyOwner int) error {
-	if err := replace(filepath.Join(dir, KeyFile), keyPEM, 0o600, keyOwner); err != nil {
+	keyPath := filepath.Join(dir, KeyFile)
+	oldKey, err := os.ReadFile(keyPath)
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
 		return err
 	}
-	return replace(filepath.Join(dir, CertFile), certPEM, 0o644, -1)
+	if err := replace(keyPath, keyPEM, 0o600, keyOwner); err != nil {
+		return err
+	}
+	if err := replace(filepath.Join(dir, CertFile), certPEM, 0o644, -1); err != nil {
+		if oldKey == nil {
+			_ = os.Remove(keyPath)
+		} else {
+			_ = replace(keyPath, oldKey, 0o600, keyOwner)
+		}
+		return err
+	}
+	return nil
 }
+
+// rename is os.Rename, a seam for the test of a certificate that cannot land.
+var rename = os.Rename
 
 // replace writes data to path for owner, or the writer itself when owner is -1.
 func replace(path string, data []byte, mode os.FileMode, owner int) error {
@@ -141,7 +193,7 @@ func replace(path string, data []byte, mode os.FileMode, owner int) error {
 	if err := f.Close(); err != nil {
 		return err
 	}
-	return os.Rename(tmp, path)
+	return rename(tmp, path)
 }
 
 // SelfSigned reports whether c vouches for itself: issued by its own subject,

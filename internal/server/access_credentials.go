@@ -5,11 +5,11 @@ package server
 import (
 	"context"
 	"crypto/sha256"
-	"crypto/tls"
 	"crypto/x509"
 	"encoding/hex"
 	"encoding/json"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"net/http"
 	"slices"
@@ -150,23 +150,15 @@ func (s *Server) credentialCommand(ctx context.Context, m plugin.Manifest, sid s
 	}
 	return fmt.Errorf("unknown credential command")
 }
+
+// validateWebCertificate is tlscert.Validate with its refusals made the form's
+// feedback.
 func validateWebCertificate(cert, key string) (string, string, error) {
-	if len(cert) > 64*1024 || len(key) > 64*1024 {
-		return "", "", commandValidationError("The certificate or key is too large.")
+	cert, key, err := tlscert.Validate(cert, key)
+	if refused, ok := errors.AsType[tlscert.InvalidPair](err); ok {
+		return "", "", commandValidationError(refused)
 	}
-	pair, err := tls.X509KeyPair([]byte(cert), []byte(key))
-	if err != nil {
-		return "", "", commandValidationError("The certificate and private key do not match.")
-	}
-	leaf, err := x509.ParseCertificate(pair.Certificate[0])
-	if err != nil || time.Now().Before(leaf.NotBefore) || !time.Now().Before(leaf.NotAfter) {
-		return "", "", commandValidationError("The certificate is not currently valid.")
-	}
-	pk, err := x509.MarshalPKCS8PrivateKey(pair.PrivateKey)
-	if err != nil {
-		return "", "", err
-	}
-	return strings.TrimSpace(cert) + "\n", string(pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: pk})), nil
+	return cert, key, err
 }
 func (s *Server) handleCertificateDownload(w http.ResponseWriter, r *http.Request) {
 	data, err := s.backend.AccessCredentials(r.Context(), s.sessionSID(r))
