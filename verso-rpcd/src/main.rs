@@ -949,11 +949,10 @@ fn run_bounded_with_stdin(
         .spawn()
         .map_err(|error| Failure::unknown(format!("{name}: {error}")))?;
     let group = child.id() as i32;
-    let kill_group = |child: &mut std::process::Child| {
+    let kill_group = move || {
         // SAFETY: kill takes plain integers; a negative pid names the group the
         // child leads, which process_group(0) made before it ran.
         unsafe { kill(-group, SIGKILL) };
-        let _ = child.kill();
     };
     if let (Some(bytes), Some(mut pipe)) = (stdin, child.stdin.take()) {
         // A child that never reads its stdin must not stall this thread: the
@@ -975,6 +974,7 @@ fn run_bounded_with_stdin(
                     .read_to_end(&mut buffer);
                 if buffer.len() > max_stdout {
                     over.store(true, Ordering::Release);
+                    kill_group();
                 }
             }
             buffer
@@ -987,30 +987,30 @@ fn run_bounded_with_stdin(
         }
         buffer
     });
-    let deadline = std::time::Instant::now() + timeout;
+    // The child is waited on, not polled: its end is answered the moment it
+    // comes, and the deadline is the wait's own timeout. Output past the cap
+    // has its reader kill the group, which ends the wait too.
+    let (ended, waited) = std::sync::mpsc::channel();
+    let waiter = std::thread::spawn(move || {
+        let _ = ended.send(child.wait());
+    });
     let mut timed_out = false;
-    let status = loop {
-        if over.load(Ordering::Acquire) {
-            kill_group(&mut child);
-            break child
-                .wait()
-                .map_err(|error| Failure::unknown(format!("{name}: {error}")))?;
+    let status = match waited.recv_timeout(timeout) {
+        Ok(status) => status,
+        Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {
+            kill_group();
+            timed_out = true;
+            waited
+                .recv()
+                .map_err(|_| Failure::unknown(format!("{name}: the wait was lost")))?
         }
-        match child.try_wait() {
-            Ok(Some(status)) => break status,
-            Ok(None) => {
-                if std::time::Instant::now() >= deadline {
-                    kill_group(&mut child);
-                    timed_out = true;
-                    break child
-                        .wait()
-                        .map_err(|error| Failure::unknown(format!("{name}: {error}")))?;
-                }
-                std::thread::sleep(Duration::from_millis(50));
-            }
-            Err(error) => return Err(Failure::unknown(format!("{name}: {error}"))),
+        Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => {
+            kill_group();
+            return Err(Failure::unknown(format!("{name}: the wait was lost")));
         }
-    };
+    }
+    .map_err(|error| Failure::unknown(format!("{name}: {error}")))?;
+    let _ = waiter.join();
     let stdout = stdout_reader.join().unwrap_or_default();
     let stderr = stderr_reader.join().unwrap_or_default();
     if timed_out {

@@ -346,6 +346,30 @@ mod tests {
         assert!(started.elapsed() < Duration::from_secs(5));
     }
 
+    // Every page read runs a root half, so a command that ends at once is
+    // answered at once: the runner waits on the child, never on a poll that
+    // would add its own interval to every read.
+    #[test]
+    fn the_real_runner_answers_as_soon_as_the_command_ends() {
+        let quick = Run {
+            exec: PathBuf::from("/bin/sh"),
+            argv: vec!["-c".into(), "echo '{}'".into()],
+            env: vec![("PATH".into(), PATH.into())],
+            dir: PathBuf::from("/"),
+            stdin: vec![],
+            timeout: Duration::from_secs(10),
+        };
+        let fastest = (0..5)
+            .map(|_| {
+                let started = std::time::Instant::now();
+                assert_eq!(System.run(&quick).unwrap().stdout, b"{}\n");
+                started.elapsed()
+            })
+            .min()
+            .unwrap();
+        assert!(fastest < Duration::from_millis(30), "{fastest:?}");
+    }
+
     #[test]
     fn the_real_runner_refuses_oversized_output_and_passes_stdin() {
         let big = Run {
