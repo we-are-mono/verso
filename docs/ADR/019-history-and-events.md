@@ -113,7 +113,9 @@ the file with `VACUUM INTO`, WAL and all, into `history.db-moving`, private
 from the start, which takes the name `history.db` once whole, carries the
 clean-stop mark, and then removes the history's files where it was, so the
 router keeps one history. A directory that holds a history already is never
-written over: both stay, and the shell says so in its log. A move that fails
+written over: both stay, and the shell says so in its log. That history may
+be another router's, on a stick moved between them, and a history written
+over cannot come back, while one left behind is removed by hand. A move that fails
 leaves the history whole where it was.
 
 A directory that cannot be written is warned about, never refused. The shell
