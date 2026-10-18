@@ -630,15 +630,25 @@ func TestATableAmongFieldsKeepsItsActOnTheLine(t *testing.T) {
 	}
 }
 
-// TestAChooserKeepsItsOwnLayout: a choice of what a page shows stands as its
-// name over its controls, not a question and an answer, at every width.
+// TestAChooserKeepsItsOwnLayout: a choice of what a page shows reads as a
+// sentence, its name then its controls ("Show chart for [CPU ▾] over …"),
+// wrapping under the name where the line runs out, not a question and an
+// answer; an inline or search form's field stands as it always has, a label
+// over its box.
 func TestAChooserKeepsItsOwnLayout(t *testing.T) {
 	css := blockSheet(t, "field")
-	// A chooser (data-verso-plain) and an inline or search form's field share
-	// one rule each: an inline or search form is a toolbar, not a list of
-	// settings, so its fields stand as they always have, a label over its box.
-	if !strings.Contains(cssBlock(t, css, ".verso-field__ledger:is(.verso-field[data-verso-plain] > *, [data-verso-compact-form] *) {"), "display: block;") {
-		t.Error("a chooser or a compact form's field is laid out as a ledger")
+	sentence := cssBlock(t, css, ".verso-field__ledger:is(.verso-field[data-verso-plain] > *) {")
+	for _, want := range []string{"display: flex;", "flex-wrap: wrap;", "align-items: center;", "gap: calc(var(--spacing) * 2) calc(var(--spacing) * 3);"} {
+		if !strings.Contains(sentence, want) {
+			t.Errorf("a chooser does not read as a sentence: lacks %s in %s", want, sentence)
+		}
+	}
+	if !strings.Contains(cssBlock(t, css, ".verso-field__answer:is(.verso-field[data-verso-plain] > * > *) {"), "width: auto;") {
+		t.Error("a chooser's controls take the row's width instead of standing after its name")
+	}
+	// An inline or search form is a toolbar, not a list of settings.
+	if !strings.Contains(cssBlock(t, css, ".verso-field__ledger:is([data-verso-compact-form] *) {"), "display: block;") {
+		t.Error("a compact form's field is laid out as a ledger")
 	}
 	if !strings.Contains(cssBlock(t, css, ".verso-field__answer:is(.verso-field[data-verso-plain] > * > *, [data-verso-compact-form] *) {"), "margin-block: 0;") {
 		t.Error("a chooser's or a compact form's controls are pulled over its name's band")
@@ -822,9 +832,10 @@ func TestAChipVariesOnlyInItsColour(t *testing.T) {
 // card's left border to its right, its words still the card's 23px in, so the
 // hairlines between rows touch both borders (form-fields), on a page and in a
 // drawer alike. A row inside another row or a field set's cell stays in its
-// column.
+// column, and a choice of what the card shows is no row and keeps to the
+// inset.
 func TestFieldRowsRunToACardsBorders(t *testing.T) {
-	block := cssBlock(t, blockSheet(t, "card"), ".verso-card__body .verso-field:not(.verso-field .verso-field, .verso-form-grid .verso-field),\n.verso-card__body .verso-settings__fold,\n.verso-card__body .verso-form__acts {")
+	block := cssBlock(t, blockSheet(t, "card"), ".verso-card__body .verso-field:not(.verso-field .verso-field, .verso-form-grid .verso-field, [data-verso-plain]),\n.verso-card__body .verso-settings__fold,\n.verso-card__body .verso-form__acts {")
 	if !strings.Contains(block, "--verso-field-bleed: var(--spacing-side);") {
 		t.Errorf("a card's field row does not run to its borders: %s", block)
 	}

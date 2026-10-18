@@ -3,7 +3,7 @@
 {{/* traffic: a traffic graph in two lanes, download over upload, 24px apart,
      each a chart (chart.html.tmpl) with its own legend, scale and peak, and one
      time axis under the upload. Whatever it stands in names it, and offers its
-     window (traffic.window). The live layer (verso-chart.js) finds the graph by
+     window over it. The live layer (verso-chart.js) finds the graph by
      data-verso-live-chart, seeds both lanes from data-verso-live-seed, and
      glides each lane it finds by data-verso-live-lane; a past window carries
      none of the live attributes, and its figures are averages. */}}
@@ -12,16 +12,3 @@
   <div class="verso-traffic__lane" data-verso-live-lane="up">{{.Up}}</div>
   {{if .Latency}}<p class="verso-traffic__latency"><span>{{ t "Gateway" }}</span><span class="type-value text-ink" data-verso-figures>{{.Latency}}&#x202F;ms</span><span>{{ t "on average" }}</span></p>{{end}}
 </section>
-
-{{/* traffic.window: a traffic graph's window, the compact dropdown that
-     fetches the window chosen into the graph's place (Target), so the graph
-     that comes back is that window's and the dropdown keeps the choice. The
-     Overview's Traffic card carries it in its header. */}}
-{{define "traffic.window"}}
-<div class="verso-control shrink-0" data-verso-size="compact">
-  <select name="range" aria-label="{{ t "Window" }}" hx-get="{{.URL}}" hx-trigger="change" hx-target="{{.Target}}" hx-swap="outerHTML" class="verso-input" data-verso-size="compact">
-    {{range .Ranges}}<option value="{{.Value}}"{{if eq .Value $.Range}} selected{{end}}>{{.Label}}</option>{{end}}
-  </select>
-  <span class="verso-control__trail">{{icon "chevron-down" "size-3.5"}}</span>
-</div>
-{{end}}

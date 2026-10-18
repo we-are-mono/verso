@@ -151,8 +151,9 @@
   padding: 0;
 }
 
-/* Rows run border to border. */
-.verso-card__body .verso-field:not(.verso-field .verso-field, .verso-form-grid .verso-field),
+/* Rows run border to border; a choice of what the card shows is no row, so
+   its hairline keeps to the inset, as the view it chooses does. */
+.verso-card__body .verso-field:not(.verso-field .verso-field, .verso-form-grid .verso-field, [data-verso-plain]),
 .verso-card__body .verso-settings__fold,
 .verso-card__body .verso-form__acts {
   --verso-field-bleed: var(--spacing-side);

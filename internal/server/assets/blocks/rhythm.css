@@ -19,8 +19,8 @@
  *                           from the rhythm's top edge (unset: flush), which
  *                           the surface around the rhythm sets (24px under a
  *                           heading, a row's pull onto a card's frame)
- * Sets:     --verso-step    0 on a row-like after a row-like; a group's step
- *                           on a chart under the field that chooses it
+ * Sets:     --verso-step    0 on a row-like after a row-like; a row's 15px
+ *                           on the view under the choice that chooses it
  */
 
 @property --verso-step {
@@ -41,10 +41,11 @@
   --verso-step: 0;
 }
 
-/* A graph stands a group's step under the field that chooses what it shows
-   ("Show chart for …"): the two are one block. */
-.verso-rhythm > .verso-field + .verso-chart {
-  --verso-step: var(--spacing-inset);
+/* What a choice shows ("Show chart for …") stands 15px after the hairline
+   that rules the choice off, as the next row's name does: the two are one
+   block. */
+.verso-rhythm > .verso-field[data-verso-plain] + * {
+  --verso-step: calc(var(--spacing) * 4 - 1px);
 }
 
 /* Hidden carriers are not blocks: the first child a reader sees takes no gap

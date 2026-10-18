@@ -44,11 +44,10 @@ verdict names ("The firewall is not running"). The rule count, and the UCI read
 behind it every second, are gone.
 
 A card is built by its own functions in `internal/widget/overview_cards.go`:
-its header (`head`), its body (`body`), the page it opens, and, where a choice
-governs the whole card, the control its header carries (`control`): the Traffic
-card's window, the compact dropdown before the open-close act, which fetches the
-window into the graph's place and never opens or closes the card. A choice that
-governs one graph within a card stands over that graph as a form field instead.
+its header (`head`), its body (`body`) and the page it opens. A card's header
+carries no control: a choice of what a card shows (the Traffic card's window)
+stands in its body over the graph it chooses, and folds away with the card,
+which a choice in the header would outlive.
 The registry is the shell's. A plugin contributes no card: a plugin card would need a contract
 of its own, as the entity panel's tabs have, and is a decision of its own.
 

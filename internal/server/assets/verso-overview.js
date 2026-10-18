@@ -89,10 +89,10 @@
     return next;
   }
   // togglesFrom is whether a click that starts at t, in a card's header, opens
-  // or closes the card: the card's own control (the Traffic card's window),
-  // its door and any button but the toggle keep their own click.
+  // or closes the card: its door and any button but the toggle keep their own
+  // click.
   function togglesFrom(t) {
-    if (t.closest("[data-overview-card-control], a, select, input")) return false;
+    if (t.closest("a")) return false;
     return !(t.closest("button") && !t.closest("[data-overview-toggle]"));
   }
 

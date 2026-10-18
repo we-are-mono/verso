@@ -99,9 +99,7 @@ test('the moves leave the layout they were given alone', () => {
 // answers whether any selector in a list matches it or an ancestor.
 const at = (...matches) => ({closest: list => list.split(',').some(sel => matches.includes(sel.trim())) || null});
 
-test('choosing in a card\'s header control never opens or closes the card', () => {
-  assert.equal(L.togglesFrom(at('[data-overview-card-control]')), false, 'the control\'s own padding');
-  assert.equal(L.togglesFrom(at('select', '[data-overview-card-control]')), false, 'the window\'s dropdown');
+test('only the header itself and its toggle open or close the card', () => {
   assert.equal(L.togglesFrom(at('a')), false, 'the door');
   assert.equal(L.togglesFrom(at('button')), false, 'another button');
   assert.equal(L.togglesFrom(at('button', '[data-overview-toggle]')), true, 'the toggle');

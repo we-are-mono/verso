@@ -27,8 +27,9 @@
  * Variants: data-verso-wide   its answer is a page of text (a code or text
  *                             area), standing under the question at the
  *                             row's full width
- *           data-verso-plain  a choice of what a page shows, no setting: its
- *                             name over its controls at every width
+ *           data-verso-plain  a choice of what a page shows, no setting: a
+ *                             sentence, its name then its controls, ruled
+ *                             off from the view it chooses
  * Elements: __ledger    the question, the answer, and the remove after them
  *           __question  the label and what it is for
  *           __label     the name, the option's key chip, the stage's mark
@@ -91,6 +92,13 @@
   padding: var(--verso-edge-air, var(--verso-field-lead, var(--spacing-inset))) max(var(--verso-field-bleed, 0px), calc(100% - var(--verso-form-width, 40rem) + var(--verso-field-bleed, 0px) * 3)) var(--verso-field-trail, 0px) var(--verso-field-bleed, 0px);
   border: 0 solid var(--color-rule);
   border-top-width: var(--verso-field-rule, 0px);
+}
+
+/* A choice of what a page shows is ruled off from the view it chooses, as
+   two rows meet: 16px under its controls, then its hairline on the grid. */
+.verso-field[data-verso-plain] {
+  --verso-field-trail: calc(var(--spacing) * 4);
+  border-bottom-width: 1px;
 }
 
 /* A form's grid of fields owns their air. */
@@ -227,8 +235,16 @@
 .verso-field__ledger:has(> .verso-field__act) {
   grid-template-columns: minmax(0, 1fr) auto;
 }
-.verso-field__ledger:is(.verso-field[data-verso-plain] > *, [data-verso-compact-form] *) {
+.verso-field__ledger:is([data-verso-compact-form] *) {
   display: block;
+}
+/* A choice of what a page shows reads as a sentence: its name, then its
+   controls, wrapping under the name where the line runs out. */
+.verso-field__ledger:is(.verso-field[data-verso-plain] > *) {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: calc(var(--spacing) * 2) calc(var(--spacing) * 3);
 }
 
 .verso-field__question {
@@ -349,6 +365,10 @@
 }
 .verso-field__answer:is(.verso-field[data-verso-plain] > * > *, [data-verso-compact-form] *) {
   margin-block: 0;
+}
+/* A chooser's controls stand after its name, as wide as they are. */
+.verso-field__answer:is(.verso-field[data-verso-plain] > * > *) {
+  width: auto;
 }
 
 .verso-field__remove {

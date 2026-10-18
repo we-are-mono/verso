@@ -40,9 +40,6 @@ type overviewCardSpec struct {
 	href  func(*Overview) string
 	head  func(*Overview, func(string) string) cardHead
 	body  func(*Overview, *Renderer, string) (template.HTML, error)
-	// control, where a choice governs the whole card, is what its header
-	// carries before the open-close control: the Traffic card's window.
-	control func(*Overview, *Renderer) (template.HTML, error)
 }
 
 // overviewCardSpecs are the Overview's cards, in the default layout's order.
@@ -51,7 +48,7 @@ func overviewCardSpecs() []overviewCardSpec {
 		{ID: "internet", Title: "Internet", Icon: "globe", Opens: "Interfaces", href: func(o *Overview) string { return o.InterfacesHref }, head: (*Overview).internetHead, body: (*Overview).internetBody},
 		{ID: "ports", Title: "Ports", Icon: "ethernet-port", Opens: "Interfaces", href: func(o *Overview) string { return o.InterfacesHref }, head: (*Overview).portsHead, body: (*Overview).portsBody},
 		{ID: "tunnels", Title: "Tunnels", Icon: "lock", Opens: "VPN", href: (*Overview).tunnelsHref, head: (*Overview).tunnelsHead, body: (*Overview).tunnelsBody},
-		{ID: "traffic", Title: "Traffic", Icon: "activity", head: (*Overview).trafficHead, body: (*Overview).trafficBody, control: (*Overview).trafficWindow},
+		{ID: "traffic", Title: "Traffic", Icon: "activity", head: (*Overview).trafficHead, body: (*Overview).trafficBody},
 		{ID: "resources", Title: "Resources", Icon: "gauge", head: (*Overview).resourcesHead, body: (*Overview).resourcesBody},
 		{ID: "system", Title: "System", Icon: "router", Opens: "Services", href: (*Overview).systemHref, head: (*Overview).systemHead, body: (*Overview).systemBody},
 		{ID: "hardware", Title: "Hardware", Icon: "cpu", Opens: "Hardware", href: func(*Overview) string { return "/system/hardware" }, head: (*Overview).hardwareHead, body: (*Overview).hardwareBody},
@@ -351,40 +348,51 @@ func (o *Overview) trafficHead(tr func(string) string) cardHead {
 	return cardHead{Tone: "neutral", Summary: fmt.Sprintf(tr("%s down · %s up"), down, up)}
 }
 
-// trafficBody is the Internet graph, live over the last minute; the card's
-// header names it, so the graph draws no title of its own. Where the session
-// may not see the history behind it, the card says so under the graph.
+// trafficBody is the Internet graph, live over the last minute, under its
+// window where history stands behind it; the card's header names it, so the
+// graph draws no title of its own. Where the session may not see the history
+// behind it, the card says so under the graph.
 func (o *Overview) trafficBody(r *Renderer, csrf string) (template.HTML, error) {
 	down, up := o.DownSeries, o.UpSeries
 	if len(down) < 2 || len(up) < 2 {
 		down, up = make([]float64, wanSeriesFallback), make([]float64, wanSeriesFallback)
 	}
+	var body template.HTML
+	if window := o.trafficWindow(); window != nil {
+		html, err := o.renderWidget(r, window, csrf)
+		if err != nil {
+			return "", err
+		}
+		body = html
+	}
 	graph, err := renderToHTML(r, InternetTraffic(o.DownNow, o.UpNow, down, up, ""), csrf)
-	if err != nil || o.TrafficWithheld == "" {
-		return graph, err
+	if err != nil {
+		return "", err
+	}
+	body += graph
+	if o.TrafficWithheld == "" {
+		return body, nil
 	}
 	note, err := r.fragment("overview.withheld", o.TrafficWithheld)
-	return graph + note, err
+	return body + note, err
 }
 
-// trafficWindowView is the Traffic card's window, the compact dropdown in its
-// header that fetches the window chosen into the graph's place.
-type trafficWindowView struct {
-	URL, Target, Range string
-	Ranges             []TrafficRange
-}
-
-// trafficWindow is the Traffic card's window, where history stands behind the
-// graph (ADR-019); the live minute is chosen when the page opens.
-func (o *Overview) trafficWindow(r *Renderer) (template.HTML, error) {
+// trafficWindow is the graph's window, where history stands behind it
+// (ADR-019): a choice of what the card shows, so its name stands over its
+// dropdown, and each window chosen is fetched into the graph's place. The
+// live minute is chosen when the page opens.
+func (o *Overview) trafficWindow() Widget {
 	if o.TrafficRangeURL == "" {
-		return "", nil
+		return nil
 	}
-	v := trafficWindowView{URL: o.TrafficRangeURL, Target: "#" + InternetTrafficID, Range: TrafficRanges[0].Value}
+	options := make([]Option, 0, len(TrafficRanges))
 	for _, option := range TrafficRanges {
-		v.Ranges = append(v.Ranges, TrafficRange{Value: option.Value, Label: r.tr(option.Label)})
+		options = append(options, Option{Value: option.Value, Label: option.Label})
 	}
-	return r.fragment("traffic.window", v)
+	return &Field{
+		Name: "range", Label: "Show chart for", Kind: "select", Value: TrafficRanges[0].Value, Options: options,
+		Fetch: &FieldFetch{URL: o.TrafficRangeURL, Target: "#" + InternetTrafficID},
+	}
 }
 
 // ── Resources ──

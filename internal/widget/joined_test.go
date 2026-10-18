@@ -40,7 +40,7 @@ func TestAFetchingChoiceFetchesAViewAndStagesNothing(t *testing.T) {
 	for want, n := range map[string]int{
 		`hx-get="/system/hardware/temperature"`:                      2,
 		`hx-target="#hardware-temperature-graph"`:                    2,
-		`hx-include="closest .verso-joined"`:                         2,
+		`hx-include="closest .verso-field__answer"`:                  2,
 		`hx-trigger="change"`:                                        2,
 		`hx-swap="outerHTML"`:                                        2,
 		`name="sensor"`:                                              1,
@@ -62,7 +62,7 @@ func TestAFetchingChoiceFetchesAViewAndStagesNothing(t *testing.T) {
 }
 
 // TestAChooserIsNotALedgerRow: a choice of what a page shows is not a setting
-// (form-fields): it keeps its own layout, its name over its controls, whatever
+// (form-fields): it keeps its own layout, its name then its controls, whatever
 // its options measure, and a lone fetching choice does too. A setting's row
 // stays a row of the ledger.
 func TestAChooserIsNotALedgerRow(t *testing.T) {
@@ -79,6 +79,15 @@ func TestAChooserIsNotALedgerRow(t *testing.T) {
 	if setting := render(t, newRenderer(t), path()); strings.Contains(setting, "data-verso-plain") {
 		t.Errorf("a setting's row is drawn as a chooser:\n%s", setting)
 	}
+}
+
+// TestAChooserIsRuledOffFromWhatItShows: a chooser stands over the view it
+// chooses (a graph) ruled off by a hairline, met as two rows meet: 16px under
+// its controls, the line on the grid, and the view 15px after it. The line
+// keeps to the view's width, never running to the card's frame.
+func TestAChooserIsRuledOffFromWhatItShows(t *testing.T) {
+	declares(t, "field", ".verso-field[data-verso-plain]", "--verso-field-trail: calc(var(--spacing) * 4);", "border-bottom-width: 1px;")
+	declares(t, "rhythm", ".verso-rhythm > .verso-field[data-verso-plain] + *", "--verso-step: calc(var(--spacing) * 4 - 1px);")
 }
 
 // TestAFetchIsTheShellsOwn: a plugin cannot ask a field to fetch: Fetch never

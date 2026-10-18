@@ -317,37 +317,37 @@ func TestOverviewLiveStatusCarriesEveryCard(t *testing.T) {
 	}
 }
 
-// TestTheTrafficCardsWindowRidesItsHeader: the window governs the whole card,
-// so it is the compact dropdown in the card's header, before the open-close
-// control and hidden while arranging, fetching the window into the graph's
-// place; no other card carries a control, and the graph carries none of its
-// own. With no history behind the graph there is no window to offer.
-func TestTheTrafficCardsWindowRidesItsHeader(t *testing.T) {
+// TestTheTrafficCardsWindowStandsOverItsGraph: the window governs the graph
+// alone, so it is a choice of what the card shows standing over the graph in
+// the card's body, its name then its dropdown (a plain field), and folds away
+// with the card; it fetches the window into the graph's place. The card's
+// header carries no control, and the graph none of its own. With no history
+// behind the graph there is no window to offer.
+func TestTheTrafficCardsWindowStandsOverItsGraph(t *testing.T) {
 	got := render(t, newRenderer(t), &Overview{TrafficRangeURL: "/overview/traffic"})
-	head := between(got, `data-overview-card="traffic"`, `</header>`)
+	card := between(got, `data-overview-card="traffic"`, `</article>`)
+	head := between(card, "", `</header>`)
+	if strings.Contains(head, "<select") {
+		t.Errorf("the Traffic card's header carries a control:\n%s", head)
+	}
+	body := card[strings.Index(card, "</header>"):]
 	for _, want := range []string{
-		`<span data-overview-card-control class="verso-overview__control">`,
-		`<select name="range"`, `hx-get="/overview/traffic"`, `hx-target="#overview-traffic-graph"`, `hx-swap="outerHTML"`,
+		`<div class="verso-field" data-verso-plain>`, `<label for="range" id="range-label" class="verso-field__name">Show chart for</label>`,
+		`name="range"`, `hx-get="/overview/traffic"`, `hx-trigger="change"`, `hx-include="closest .verso-field__answer"`, `hx-target="#overview-traffic-graph"`, `hx-swap="outerHTML"`,
 		`<option value="minute" selected>Last minute</option>`, `<option value="day">Last 24 hours</option>`,
 		`<option value="week">Last 7 days</option>`, `<option value="month">Last 30 days</option>`, `<option value="year">Last year</option>`,
-		`<div class="verso-control shrink-0" data-verso-size="compact">`,
-		`class="verso-input" data-verso-size="compact">`,
 	} {
-		if !strings.Contains(head, want) {
-			t.Errorf("the Traffic card's header missing %q:\n%s", want, head)
+		if !strings.Contains(body, want) {
+			t.Errorf("the Traffic card's body missing %q:\n%s", want, body)
 		}
 	}
-	// Arrange mode hides it with the acts.
-	declares(t, "overview", ":is(.verso-overview__control, .verso-overview__act):is(.verso-overview[data-arranging] *)", "display: none;")
-	// the compact dropdown rides the header's line of words: 24px, no shadow
-	declares(t, "input", `.verso-input[data-verso-size="compact"]`, "height: calc(var(--spacing) * 6);", "box-shadow: none;")
-	if strings.Index(head, "data-overview-card-control") > strings.Index(head, "data-overview-toggle") {
-		t.Error("the window stands after the open-close control")
+	if strings.Index(body, `name="range"`) > strings.Index(body, `id="overview-traffic-graph"`) {
+		t.Error("the window stands under the graph")
 	}
-	if strings.Count(got, "data-overview-card-control") != 1 || strings.Count(got, `name="range"`) != 1 {
-		t.Error("a control stands in more than the Traffic card's header")
+	if strings.Count(got, `name="range"`) != 1 {
+		t.Error("a window stands in more than the Traffic card")
 	}
-	if bare := render(t, newRenderer(t), &Overview{}); strings.Contains(bare, "data-overview-card-control") {
+	if bare := render(t, newRenderer(t), &Overview{}); strings.Contains(bare, `name="range"`) {
 		t.Error("with no history behind it, the Traffic card offers a window")
 	}
 }

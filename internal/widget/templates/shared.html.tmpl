@@ -135,7 +135,7 @@
      hugs the border and can't follow the theme. A part of a joined row is
      named on its own; a lone field is named by its row's label. */}}
 {{define "verso-select"}}<div class="verso-control">
-    <select id="{{.Name}}"{{if .Theme}} data-verso-theme{{else}} name="{{.Name}}"{{end}}{{with .Fetch}} hx-get="{{.URL}}" hx-trigger="change" hx-include="closest .verso-joined" hx-target="{{.Target}}" hx-swap="outerHTML"{{end}}{{if .Reshapes}} data-verso-reshape{{end}}{{if .Named}} aria-label="{{.Label}}"{{end}}{{template "verso-field-aria" .}} class="verso-input"{{if not .Words}} data-verso-verbatim{{end}} data-verso-trail>
+    <select id="{{.Name}}"{{if .Theme}} data-verso-theme{{else}} name="{{.Name}}"{{end}}{{with .Fetch}} hx-get="{{.URL}}" hx-trigger="change" hx-include="closest .verso-field__answer" hx-target="{{.Target}}" hx-swap="outerHTML"{{end}}{{if .Reshapes}} data-verso-reshape{{end}}{{if .Named}} aria-label="{{.Label}}"{{end}}{{template "verso-field-aria" .}} class="verso-input"{{if not .Words}} data-verso-verbatim{{end}} data-verso-trail>
       {{range .Options}}<option value="{{.Value}}"{{if eq .Value $.Value}} selected{{end}}>{{.Label}}</option>{{end}}
     </select>
     <span class="verso-control__trail">{{icon "chevron-down" "size-4"}}</span>

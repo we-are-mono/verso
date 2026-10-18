@@ -70,10 +70,6 @@
     <span data-overview-card-status class="verso-overview__status"{{if not .Head.Status}} hidden{{end}}>
       <span aria-hidden="true" class="verso-mark"></span><span data-overview-card-word>{{.Head.Status}}</span>
     </span>
-    {{/* A choice that governs the whole card (the Traffic card's window) rides
-         the head before its acts; choosing never opens or closes the card
-         (verso-overview.js), and Arrange mode hides it with the acts. */}}
-    {{if .Control}}<span data-overview-card-control class="verso-overview__control">{{.Control}}</span>{{end}}
     {{if .Href}}<a href="{{.Href}}" data-overview-go aria-label="{{.OpenLabel}}" title="{{.OpenLabel}}" data-verso-size="icon" class="verso-button verso-overview__act">{{icon "arrow-up-right" "size-4"}}</a>{{end}}
     <button type="button" data-overview-toggle aria-expanded="{{if .Closed}}false{{else}}true{{end}}" aria-controls="overview-card-body-{{.ID}}" aria-label="{{if .Closed}}{{printf (t "Open %s") .Title}}{{else}}{{printf (t "Close %s") .Title}}{{end}}" data-open-label="{{printf (t "Open %s") .Title}}" data-close-label="{{printf (t "Close %s") .Title}}" data-verso-size="icon" class="verso-button verso-overview__act"><span class="verso-overview__chevron">{{icon "chevron-down" "size-4"}}</span></button>
     <button type="button" data-overview-hide aria-label="{{printf (t "Hide %s") .Title}}" title="{{t "Hide"}}" data-verso-size="icon" class="verso-button verso-overview__hide">{{icon "x" "size-4"}}</button>

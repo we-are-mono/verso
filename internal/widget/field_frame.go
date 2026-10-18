@@ -50,7 +50,7 @@ type fieldFrame struct {
 	// question's line at the row's end, at every width.
 	Act template.HTML
 	// Plain is a row that is no setting — a choice of what a page shows —
-	// which keeps its own layout, its name over its controls, rather than
+	// which reads as a sentence, its name then its controls, rather than
 	// standing as a question and an answer.
 	Plain bool
 }

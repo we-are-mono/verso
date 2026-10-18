@@ -46,7 +46,6 @@
  *           __title      the title, on one line
  *           __summary    the closed card's reading, fading in as it closes
  *           __status     the card's word and its mark, in its tone's deep step
- *           __control    a choice that governs the whole card
  *           __act        the door and the fold's toggle
  *           __chevron    the toggle's glyph, turned while closed
  *           __fold       the body's track, easing to nothing as it closes
@@ -339,15 +338,10 @@
   --verso-mark-fill: var(--color-crimson);
   --verso-mark-edge: transparent;
 }
-.verso-overview__control {
-  display: flex;
-  flex-shrink: 0;
-  align-items: center;
-}
 .verso-overview__act {
   margin-block: calc(var(--spacing) * -1);
 }
-:is(.verso-overview__control, .verso-overview__act):is(.verso-overview[data-arranging] *) {
+.verso-overview__act:is(.verso-overview[data-arranging] *) {
   display: none;
 }
 .verso-overview__chevron {
