@@ -9,7 +9,7 @@ use super::{GROUP, SNAPLEN};
 use crate::{command_failure, run_bounded_with_stdin, run_bounded_within, Failure};
 use serde_json::{json, Value};
 use std::io::Write;
-use std::process::{Command, Stdio};
+use std::process::Command;
 
 const LOG: &str = "log prefix ";
 const NFLOG: &str = "log group 4242 snaplen 256 queue-threshold 1 prefix ";
@@ -160,27 +160,20 @@ pub(super) fn apply(enable: bool) -> Result<(), Failure> {
         return Ok(());
     }
     let input = serde_json::to_vec(&commands).map_err(|e| Failure::unknown(e.to_string()))?;
-    // Feed nft through a pipe, not a file a peer could replace in /tmp. A writer
-    // thread lets the existing bounded runner enforce its process timeout.
-    let (mut writer, reader) =
-        std::os::unix::net::UnixStream::pair().map_err(|e| Failure::unknown(e.to_string()))?;
-    let writing = std::thread::spawn(move || writer.write_all(&input));
+    // Feed nft through its stdin, not a file a peer could replace in /tmp; the
+    // bounded runner writes it and enforces the process timeout.
     let mut command = Command::new("/usr/sbin/nft");
     command.args(["-j", "-f", "-"]);
-    let result = run_bounded_with_stdin(
+    let output = run_bounded_with_stdin(
         command,
         "route firewall logging",
         64 * 1024,
         std::time::Duration::from_secs(5),
-        Stdio::from(std::os::fd::OwnedFd::from(reader)),
-    );
-    let written = writing.join();
-    let output = result?;
+        Some(input),
+        &[],
+    )?;
     if !output.status.success() {
         return Err(command_failure("route firewall logging", output));
     }
-    written
-        .map_err(|_| Failure::unknown("firewall log transaction writer stopped"))?
-        .map_err(|e| Failure::unknown(format!("write firewall log transaction: {e}")))?;
     Ok(())
 }

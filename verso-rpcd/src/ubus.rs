@@ -71,12 +71,18 @@ struct Attr<'a> {
 /// Reports whether `sid` may invoke `verso.<method>` according to rpcd's ACLs.
 /// Every error fails closed at the caller.
 pub fn access(sid: &str, method: &str) -> Result<bool, Error> {
+    access_to(sid, "ubus", "verso", method)
+}
+
+/// access_to asks rpcd whether the session holds one grant of any scope: a
+/// plugin's root command is granted as `verso-plugin <plugin> <command>`.
+pub fn access_to(sid: &str, scope: &str, object: &str, function: &str) -> Result<bool, Error> {
     if sid.is_empty() {
         return Ok(false);
     }
     let mut client = Client::connect(DEFAULT_SOCKET)?;
     let session = client.lookup("session")?;
-    client.invoke_access(session, sid, method)
+    client.invoke_access(session, sid, scope, object, function)
 }
 
 impl Client {
@@ -133,12 +139,19 @@ impl Client {
         }
     }
 
-    fn invoke_access(&mut self, object_id: u32, sid: &str, method: &str) -> Result<bool, Error> {
+    fn invoke_access(
+        &mut self,
+        object_id: u32,
+        sid: &str,
+        scope: &str,
+        object: &str,
+        function: &str,
+    ) -> Result<bool, Error> {
         let table = encode_string_table(&[
             ("ubus_rpc_session", sid),
-            ("scope", "ubus"),
-            ("object", "verso"),
-            ("function", method),
+            ("scope", scope),
+            ("object", object),
+            ("function", function),
         ]);
         let mut message = Message::default();
         message.put_u32(ATTR_OBJ_ID, object_id);

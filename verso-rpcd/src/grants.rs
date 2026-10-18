@@ -239,6 +239,23 @@ mod tests {
         assert_eq!(got.len(), 9);
     }
 
+    // A plugin's registered commands are granted under their own scope
+    // (ADR-027), and a refresh hands them over as a login would: a read-only
+    // login takes the reads and none of the acts.
+    #[test]
+    fn plugin_command_grants_refresh_under_their_scope() {
+        let vpn = json!({ "verso-plugin-vpn": {
+            "read": { "verso-plugin": { "vpn": ["state"] } },
+            "write": { "verso-plugin": { "vpn": ["restart"] } }
+        }});
+        let got = acl_grants(std::slice::from_ref(&vpn), &login(&["*"], &["*"]));
+        assert!(got.contains(&g("verso-plugin", "vpn", "state")));
+        assert!(got.contains(&g("verso-plugin", "vpn", "restart")));
+        let reader = acl_grants(&[vpn], &login(&["verso-plugin-*"], &[]));
+        assert!(reader.contains(&g("verso-plugin", "vpn", "state")));
+        assert!(!reader.contains(&g("verso-plugin", "vpn", "restart")));
+    }
+
     #[test]
     fn a_limited_user_gets_only_the_groups_its_lists_name() {
         let got = acl_grants(&[ddns(), luci()], &login(&["luci-*"], &[]));

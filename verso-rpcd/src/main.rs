@@ -10,7 +10,11 @@
 
 mod access;
 mod acme;
+mod args;
 mod arrival;
+mod paths;
+mod plugin_command;
+mod registry;
 mod config_files;
 mod ddns;
 mod grants;
@@ -291,13 +295,21 @@ fn zero_session_grants(uid: u32, method: &str) -> bool {
     uid == 0 && matches!(method, "pkgUpgradable" | "firmwareCheck")
 }
 
+fn denied() -> Failure {
+    Failure {
+        status: STATUS_PERMISSION_DENIED,
+        message: "permission denied".into(),
+    }
+}
+
+/// The verb that runs a plugin's registered root command (ADR-027). It is not
+/// granted as `ubus verso pluginCommand`: each command is granted on its own,
+/// as `verso-plugin <plugin> <command>`, and checked where it runs.
+const PLUGIN_COMMAND: &str = "pluginCommand";
+
 fn dispatch(request: &Value, state: &State, uid: u32) -> Result<Value, Failure> {
     let method = field(request, "method")?;
     let sid = field(request, "sid")?;
-    let denied = || Failure {
-        status: STATUS_PERMISSION_DENIED,
-        message: "permission denied".into(),
-    };
     if sid == ZERO_SID {
         // rpcd holds no session to consult for the zero sid — asking it would deny
         // every verb, including the two this path exists for. The peer's kernel-
@@ -305,6 +317,16 @@ fn dispatch(request: &Value, state: &State, uid: u32) -> Result<Value, Failure> 
         if !zero_session_grants(uid, method) {
             return Err(denied());
         }
+    } else if method == PLUGIN_COMMAND {
+        let empty = serde_json::Map::new();
+        let args = request.get("args").and_then(Value::as_object).unwrap_or(&empty);
+        return plugin_command::for_session(
+            &plugin_command::Rpcd,
+            registry::load_installed,
+            &plugin_command::System,
+            sid,
+            args,
+        );
     } else {
         match ubus::access(sid, method) {
             Ok(true) => {}
@@ -918,24 +940,52 @@ fn run_bounded_within(
     max_stdout: usize,
     timeout: Duration,
 ) -> Result<std::process::Output, Failure> {
-    run_bounded_with_stdin(command, name, max_stdout, timeout, Stdio::null())
+    run_bounded_with_stdin(command, name, max_stdout, timeout, None, &[])
 }
 
+unsafe extern "C" {
+    fn kill(pid: i32, signal: i32) -> i32;
+}
+const SIGKILL: i32 = 9;
+
+// run_bounded_with_stdin is run_bounded_within with `stdin` written to the child
+// (a plugin's root command reads its request there) and `env` as its whole
+// environment. The child leads a process group of its own, and a deadline or an
+// overflow kills the whole group, so a command that started children of its own
+// leaves none behind.
 fn run_bounded_with_stdin(
     mut command: Command,
     name: &str,
     max_stdout: usize,
     timeout: Duration,
-    stdin: Stdio,
+    stdin: Option<Vec<u8>>,
+    env: &[(String, String)],
 ) -> Result<std::process::Output, Failure> {
+    use std::os::unix::process::CommandExt;
     command
         .env_clear()
-        .stdin(stdin)
+        .envs(env.iter().map(|(k, v)| (k, v)))
+        .process_group(0)
+        .stdin(if stdin.is_some() { Stdio::piped() } else { Stdio::null() })
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
     let mut child = command
         .spawn()
         .map_err(|error| Failure::unknown(format!("{name}: {error}")))?;
+    let group = child.id() as i32;
+    let kill_group = |child: &mut std::process::Child| {
+        // SAFETY: kill takes plain integers; a negative pid names the group the
+        // child leads, which process_group(0) made before it ran.
+        unsafe { kill(-group, SIGKILL) };
+        let _ = child.kill();
+    };
+    if let (Some(bytes), Some(mut pipe)) = (stdin, child.stdin.take()) {
+        // A child that never reads its stdin must not stall this thread: the
+        // writer gives up when the pipe closes.
+        std::thread::spawn(move || {
+            let _ = pipe.write_all(&bytes);
+        });
+    }
     let mut child_stdout = child.stdout.take();
     let mut child_stderr = child.stderr.take();
     let over = Arc::new(AtomicBool::new(false));
@@ -965,7 +1015,7 @@ fn run_bounded_with_stdin(
     let mut timed_out = false;
     let status = loop {
         if over.load(Ordering::Acquire) {
-            let _ = child.kill();
+            kill_group(&mut child);
             break child
                 .wait()
                 .map_err(|error| Failure::unknown(format!("{name}: {error}")))?;
@@ -974,7 +1024,7 @@ fn run_bounded_with_stdin(
             Ok(Some(status)) => break status,
             Ok(None) => {
                 if std::time::Instant::now() >= deadline {
-                    let _ = child.kill();
+                    kill_group(&mut child);
                     timed_out = true;
                     break child
                         .wait()
@@ -1460,6 +1510,28 @@ mod tests {
         let request = json!({"method": "pkgUpgradable", "sid": ZERO_SID});
         let failure = dispatch(&request, &state, VERSO_UID).expect_err("denied");
         assert_eq!(failure.status, STATUS_PERMISSION_DENIED);
+    }
+
+    // Unattended callers never reach a plugin's root commands: the zero sid is
+    // refused before any registry is read or any grant asked for (ADR-014 §3).
+    #[test]
+    fn the_zero_session_reaches_no_plugin_command() {
+        let state = State {
+            firewall_log: firewall_log::Collector::new(),
+            usage: usage::Reader::default(),
+            diagnostics: diagnostics::Jobs::default(),
+            packages: Mutex::new(()),
+            maintenance: Mutex::new(()),
+        };
+        let request = json!({
+            "method": PLUGIN_COMMAND,
+            "sid": ZERO_SID,
+            "args": {"plugin": "ddns", "name": "update", "args": {"section": "home"}},
+        });
+        for uid in [0, VERSO_UID] {
+            let failure = dispatch(&request, &state, uid).expect_err("denied");
+            assert_eq!(failure.status, STATUS_PERMISSION_DENIED);
+        }
     }
 
     // The upgrade tool's own files are the only ones this helper will flash from:

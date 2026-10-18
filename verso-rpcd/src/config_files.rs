@@ -240,17 +240,10 @@ fn reload_all(families: &[Family]) {
     }
 }
 fn check_path(path: &Path) -> Result<(), Failure> {
-    for p in path.ancestors() {
-        match fs::symlink_metadata(p) {
-            Ok(m) if m.file_type().is_symlink() => {
-                return Err(Failure::invalid("Symbolic links are not editable."))
-            }
-            Ok(_) => {}
-            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
-            Err(e) => return Err(failure(e)),
-        }
-    }
-    Ok(())
+    crate::paths::no_links(&crate::paths::System, path).map_err(|refused| match refused {
+        crate::paths::Refused::Link => Failure::invalid("Symbolic links are not editable."),
+        crate::paths::Refused::Unreadable(why) => failure(why),
+    })
 }
 fn read(path: &Path) -> Result<Option<String>, Failure> {
     check_path(path)?;

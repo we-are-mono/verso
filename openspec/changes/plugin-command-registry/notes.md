@@ -51,3 +51,41 @@ the deploy order follow from this.
 
 The test packages were removed afterwards: `apk info` and `/etc/apk/world` name no
 `vtest` package.
+
+## 3.4 `pluginCommand` against the real rpcd
+
+Tested 2026-10-18 in the lab container, with the helper `make dev` deployed. The
+throwaway plugin `regtest` had:
+- a root-owned `commands.json` declaring a read `state`, an act `poke` (with argument
+  `section: uci-name`) and a transform `files`;
+- `/usr/libexec/verso-regtest` (0755), which echoes its request, and refuses `poke`
+  with exit 3;
+- an rpcd ACL granting `verso-plugin regtest` `state` under `read`, and `poke` and
+  `files` under `write`.
+
+The session was root's login after an `rpcd reload`. rpcd accepts the free-form
+`verso-plugin` scope in `acl.d` and answers `session.access` for it.
+
+```
+== read
+{"result":{"dir":"/","path":"/usr/sbin:/usr/bin:/sbin:/bin","request":{"args":{},"command":"state"},"uid":"0"},"status":0}
+== act refused by its root half
+{"error":"Nothing to poke.","status":2}
+== act with a bad argument
+{"error":"argument \"section\" is not a valid uci name","status":2}
+== transform through the verb
+{"error":"regtest registers no command \"files\"","status":3}
+== ungranted command
+{"error":"permission denied","status":6}
+== zero session
+{"error":"permission denied","status":6}
+== world-writable executable
+{"error":"regtest's commands are unavailable","status":9}
+```
+
+The container's `/usr` and `/usr/share` are `0775 root:root`: its image was built
+with umask 002. The ownership walk therefore treats a group write by group root as
+root's alone, and refuses any world write and any group write by another group.
+
+Everything was removed afterwards: the registry, the executable, the ACL and the
+session, followed by an rpcd reload.

@@ -14,9 +14,9 @@
 
 ## 3. Helper: registry, runner and the generic verb
 
-- [ ] 3.1 Test first in `verso-rpcd`, with a fake `Owner` table: the registry loader refuses a file or executable that is not uid 0, that has a group or other write bit (on it or on any ancestor), that is a link, or that is not a regular file. Each refusal logs the failing path, and other plugins load. Fold `config_files::check_path` into the same walk. Verify with `cargo test` in `verso-rpcd`.
-- [ ] 3.2 Test first: the argument checker passes and refuses exactly as `testdata/argument-kinds.json` says, refuses unknown and missing arguments, and refuses any argument to a read. Then implement it. Verify with `cargo test`.
-- [ ] 3.3 Test first, with a fake `Runner`:
+- [x] 3.1 Test first in `verso-rpcd`, with a fake `Owner` table: the registry loader refuses a file or executable that is not uid 0, that another account may write (a world write bit, or a group write bit for a group other than root's, on it or on any ancestor), that is a link, or that is not a regular file. Each refusal logs the failing path, and other plugins load. Fold `config_files::check_path` into the same walk. Verify with `cargo test` in `verso-rpcd`.
+- [x] 3.2 Test first: the argument checker passes and refuses exactly as `testdata/argument-kinds.json` says, refuses unknown and missing arguments, and refuses any argument to a read. Then implement it. Verify with `cargo test`.
+- [x] 3.3 Test first, with a fake `Runner`:
   - the child gets `exec` plus `argv`, `PATH` alone, cwd `/`, and `{"command","args"}` on stdin;
   - a hang is killed with its group at the declared timeout (default 10 s, capped at 120 s);
   - stdout over 1 MiB fails;
@@ -25,14 +25,14 @@
   - any other end is an unknown failure with stderr logged.
 
   Then generalize the existing child runner. Verify with `cargo test`.
-- [ ] 3.4 Test first in `dispatch`:
+- [x] 3.4 Test first in `dispatch`:
   - `pluginCommand` asks `session.access` for `{verso-plugin, <plugin>, <name>}`, not `{ubus, verso, pluginCommand}`;
   - the zero session is denied before any lookup;
   - a `transform` command is refused through the verb;
   - an unknown plugin or command answers not found.
 
   Then implement it. Verify with `cargo test`, then on the lab container with `make dev`: one fixture plugin's read answers through `ubus call`.
-- [ ] 3.5 Test first in `grants.rs`: a group with `"verso-plugin": {"vpn": ["state"]}` under `read` grants `(verso-plugin, vpn, state)` on refresh. Verify with `cargo test`.
+- [x] 3.5 Test first in `grants.rs`: a group with `"verso-plugin": {"vpn": ["state"]}` under `read` grants `(verso-plugin, vpn, state)` on refresh. Verify with `cargo test`.
 - [ ] 3.6 Write ADR-027 (plugin root halves and the command registry) from design decisions 1–8. Amend ADR-007 §5 and its implementation notes in place: one generic registry-bound path, and the closed broker set becomes the registry. Amend ADR-014 §3: the registry is unreachable with the zero session. Verify that every cross-reference resolves (`grep -n 'ADR-027' docs/ADR/*.md`).
 
 ## 4. Shell: generic reads and acts
