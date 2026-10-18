@@ -22,7 +22,8 @@ import (
 func (s *Server) deviceTabs(r *http.Request, d widget.Device) []entityTab {
 	body := widget.Widgets{deviceFacts(d)}
 	g := s.grantsIn(r.Context(), s.sessionSID(r))
-	if s.readUsageHistory(r.Context(), g) {
+	switch {
+	case s.readUsageHistory(r.Context(), g):
 		// The graph opens on the minute the roster's stream has watched, and
 		// the stream feeds it from there; nothing here reads the router again.
 		// That minute is the live read's, so only its grant draws the graph.
@@ -33,6 +34,11 @@ func (s *Server) deviceTabs(r *http.Request, d widget.Device) []entityTab {
 		}
 		_, t := s.localize(r)
 		body = append(body, deviceUsage(units.For(t), d, down, up, s.usageHistory.Periods())...)
+	case g.answer(r.Context(), usageDaysGrant) == unchecked:
+		// Usage may be the session's to see: the heading stands, saying so.
+		body = append(body, &widget.Section{Title: "Usage", Hairline: true, Children: widget.Widgets{
+			&widget.Callout{Variant: "warning", Compact: true, Body: permissionsUnchecked},
+		}})
 	}
 	return []entityTab{{
 		Slot: "details", Label: "Details",

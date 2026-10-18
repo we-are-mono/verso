@@ -195,6 +195,40 @@ func TestUsageIsShownOnlyUnderTheReadersGrant(t *testing.T) {
 	}
 }
 
+// TestUsageUncheckedSaysSo: an rpcd that answers the lease grant but not
+// usageDays withholds usage as a refusal does, and the roster says the
+// permissions could not be checked over its rows, and a device's panel under
+// its Usage heading, rather than drawing the roster as if usage were off.
+// Granted, neither says so.
+func TestUsageUncheckedSaysSo(t *testing.T) {
+	var received uint64 = 1_000_000
+	s, _ := usageServer(t, &received)
+	for _, path := range []string{"/devices", "/entity/device/42:e6:ad:ff:b7:af"} {
+		if body := get(t, s, path).Body.String(); strings.Contains(body, permissionsUnchecked) {
+			t.Errorf("%s says the permissions could not be checked with every grant answered", path)
+		}
+	}
+	unchecked := s.backend.(fakeBackend)
+	unchecked.unanswered = []string{"ubus verso usageDays"}
+	s.backend = unchecked
+
+	body := get(t, s, "/devices").Body.String()
+	if strings.Contains(body, ">This month<") || strings.Contains(body, ">3.5\U0000202fGiB<") {
+		t.Error("an unchecked grant still shows usage")
+	}
+	if !strings.Contains(body, permissionsUnchecked) || !strings.Contains(body, "toms-iphone") {
+		t.Error("the roster drops usage without saying the permissions could not be checked")
+	}
+	panel := get(t, s, "/entity/device/42:e6:ad:ff:b7:af").Body.String()
+	if strings.Contains(panel, ">2\U0000202fGiB<") || strings.Contains(panel, "data-verso-live-chart") {
+		t.Error("an unchecked grant still shows the device's usage")
+	}
+	usage := strings.Index(panel, ">Usage<")
+	if usage < 0 || !strings.Contains(panel[usage:], permissionsUnchecked) {
+		t.Error("the device's panel drops usage without saying the permissions could not be checked")
+	}
+}
+
 // TestUsageHeldStandsOnlyForAGrantedReader: a granted session whose read
 // fails on the way keeps the month already held; one the helper itself
 // refuses is refused what is held too.

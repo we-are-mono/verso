@@ -43,10 +43,10 @@ var (
 	usageLiveGrant = aclProbe{"ubus", "verso", "usageLive"}
 )
 
-// readUsage reads the roster's usage under the operator's session: the
-// history first, since it says whether usage is on, then the live rates.
-func (s *Server) readUsage(ctx context.Context, sid string, roster []widget.Device, nums units.Numbers) rosterUsage {
-	g := s.grantsFor(sid)
+// readUsage reads the roster's usage under the operator's session, as g
+// answers its grants: the history first, since it says whether usage is on,
+// then the live rates.
+func (s *Server) readUsage(ctx context.Context, g *sessionGrants, roster []widget.Device, nums units.Numbers) rosterUsage {
 	u := rosterUsage{on: s.readUsageHistory(ctx, g), nums: nums}
 	if !u.on {
 		return u

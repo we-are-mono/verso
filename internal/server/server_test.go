@@ -147,9 +147,11 @@ type fakeBackend struct {
 	diag *fakeDiag
 	// grant, when set, answers session.access per probe in place of access —
 	// a restricted rpcd login that may do some things and not others. probes
-	// records every probe asked, as "scope object function".
-	grant  func(scope, object, function string) bool
-	probes *[]string
+	// records every probe asked, as "scope object function". unanswered names
+	// the probes rpcd leaves unanswered, as an rpcd that stops mid-page does.
+	grant      func(scope, object, function string) bool
+	probes     *[]string
+	unanswered []string
 }
 
 type fakeDiag struct {
@@ -235,6 +237,9 @@ func (f fakeBackend) Hostname(context.Context, string) (string, error) {
 func (f fakeBackend) Access(_ context.Context, _, scope, object, function string) (bool, error) {
 	if f.probes != nil {
 		*f.probes = append(*f.probes, scope+" "+object+" "+function)
+	}
+	if slices.Contains(f.unanswered, scope+" "+object+" "+function) {
+		return false, errors.New("rpcd did not answer")
 	}
 	if f.grant != nil {
 		return f.grant(scope, object, function), f.accessErr

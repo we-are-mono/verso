@@ -33,11 +33,15 @@ const devicesPath = "/devices"
 // failure is a real 500 rather than a contained notice; every reading behind it
 // degrades on its own (an unreadable source drops its facts, never the page).
 func (s *Server) handleDevices(w http.ResponseWriter, r *http.Request) {
+	// One set of grants for the page: the roster's and its usage's, each
+	// asked once, and what rpcd left unanswered said once.
+	g := s.grantsFor(s.sessionSID(r))
+	r = withGrants(r, g)
 	roster, access := s.connectedDevices(r.Context(), s.sessionSID(r), clientIP(r))
 	configured, limitsOffered, limitsAvailable := s.deviceLimits(r)
 	roster = mergeDeviceLimits(roster, configured)
 	lang, t := s.localize(r)
-	used := s.readUsage(r.Context(), s.sessionSID(r), roster, units.For(t))
+	used := s.readUsage(r.Context(), g, roster, units.For(t))
 	if used.on {
 		used.apply(roster)
 	}
@@ -51,6 +55,9 @@ func (s *Server) handleDevices(w http.ResponseWriter, r *http.Request) {
 	table := widget.DevicesTable(roster, func(d widget.Device) []widget.TableRowAct {
 		return s.entityRowActs("device", d.MAC, d.Name, widget.DeviceActTitles(d), d.Engaged)
 	}, used.on)
+	// A grant rpcd did not answer, the usage's as well as the roster's, is
+	// said over the rows kept, or in place of the empty roster's words.
+	notices := uncheckedNotice(g, table)
 	// Empty because rpcd refuses the reader the lease read, or did not answer
 	// it, not because nothing is here.
 	switch access {
@@ -59,17 +66,17 @@ func (s *Server) handleDevices(w http.ResponseWriter, r *http.Request) {
 	case unchecked:
 		table.EmptyText = permissionsUnchecked
 	}
-	// The roster is read whole, banded by network: no bar cuts or narrows it.
-	page := &widget.Stack{Children: []widget.Widget{table}}
 	if !limitsAvailable {
 		table.Note = "Offline devices stay listed until their lease expires."
 		if limitsOffered {
-			page.Children = []widget.Widget{&widget.Callout{
+			notices = append(notices, &widget.Callout{
 				Variant: "warning", Compact: true,
 				Body: "Device limits couldn’t be loaded. Some offline devices may be missing. Reload to try again.",
-			}, table}
+			})
 		}
 	}
+	// The roster is read whole, banded by network: no bar cuts or narrows it.
+	page := &widget.Stack{Children: append(notices, table)}
 	s.renderWidgetPage(w, r, http.StatusOK, pageHeader{
 		Heading:    "Devices",
 		HeadingAct: s.headingAct(r, act, lang, t),
