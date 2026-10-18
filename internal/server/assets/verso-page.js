@@ -416,9 +416,11 @@ window.versoRoll = function (value, from, to, frame, warm) {
   var STEP = 16; // the ripple's step from one row to the next
   var REACH = 8; // how many rows away the ripple still waits
 
-  function cookie(shown, protocol) {
-    var secure = protocol === "https:" ? "; Secure" : "";
-    return COOKIE + "=" + (shown ? "shown; Path=/; Max-Age=" + MAX_AGE : "; Path=/; Max-Age=0") + "; SameSite=Strict" + secure;
+  // The cookie is never Secure: a router answers over HTTP and HTTPS alike,
+  // and a Secure cookie written over one is one the other can neither read
+  // nor overwrite.
+  function cookie(shown) {
+    return COOKIE + "=" + (shown ? "shown; Path=/; Max-Age=" + MAX_AGE : "; Path=/; Max-Age=0") + "; SameSite=Strict";
   }
 
   function still() {
@@ -539,7 +541,7 @@ window.versoRoll = function (value, from, to, frame, warm) {
       if (shown) root.setAttribute("data-verso-help", "shown");
       else root.removeAttribute("data-verso-help");
     };
-    document.cookie = cookie(shown, window.location.protocol);
+    document.cookie = cookie(shown);
     if (!row) { change(); return; }
     var wait = shown && !still() ? ripple(all, row) : 0;
     hold(row, change, still() ? 0 : GLIDE + wait);
