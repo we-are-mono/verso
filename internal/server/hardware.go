@@ -314,7 +314,7 @@ func temperaturesCard(tr func(string) string, in hardwareInput) widget.Widget {
 				{Label: "Reading", Kind: "name", Width: widget.MeasureName},
 				{Label: "Source", Kind: "mono", Width: widget.MeasureAddress},
 				{Label: "Temperature", Kind: "meter"},
-				{Label: "Limits", Kind: "comment"},
+				{Label: "Limits", Kind: "detail"},
 			},
 			Rows: rows,
 		}),

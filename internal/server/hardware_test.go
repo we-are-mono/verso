@@ -358,7 +358,8 @@ func TestATemperatureShowsItsHeadroom(t *testing.T) {
 		// 48 of 95, warning at 85 of 95; the protect limit is the track's end
 		`<span class="verso-meter__track" style="--verso-meter-fill: 50; --verso-meter-warn: 89">`,
 		">48.0\U0000202f°C<",
-		">warns 85\U0000202f°C · protects 95\U0000202f°C<",
+		// the limits in words, their figures a step heavier
+		`>warns <span class="verso-meter__number">85</span>` + "\U0000202f°C · protects " + `<span class="verso-meter__number">95</span>` + "\U0000202f°C<",
 	} {
 		if !strings.Contains(temps, want) {
 			t.Errorf("Temperatures missing %q", want)

@@ -138,6 +138,32 @@ func TestMeterCellFigureHoldsAReadingWithItsUnit(t *testing.T) {
 	declares(t, "meter", `.verso-meter[data-verso-place="cell"]`, "gap: calc(var(--spacing) * 3);")
 }
 
+// TestDetailCellWeighsItsFigures: a detail column says a reading's facts in
+// words ("warns 81 °C · protects 85 °C"), its figures heavier than the
+// words around them, as a gauge's caption does; a comment stays one weight,
+// since a person's own words or a package's description carry no figures to
+// read by.
+func TestDetailCellWeighsItsFigures(t *testing.T) {
+	r := newRenderer(t)
+	table := func(kind, text string) *Table {
+		return &Table{
+			Columns: []TableColumn{{Label: "Limits", Kind: kind}},
+			Rows:    []TableRow{{ID: "a", Cells: []TableCell{{Text: text, Verbatim: true}}}},
+		}
+	}
+	got := renderRaw(t, r, table("detail", "warns 81 °C · protects 85 °C"))
+	want := `warns <span class="verso-meter__number">81</span>` + " °C · protects " + `<span class="verso-meter__number">85</span>` + " °C"
+	if !strings.Contains(got, want) {
+		t.Errorf("a detail cell does not weigh its figures, want %q in:\n%s", want, got)
+	}
+	if !strings.Contains(got, `title="warns 81`+" "+`°C · protects 85`+" "+`°C"`) {
+		t.Errorf("a detail cell's whole words are not its title:\n%s", got)
+	}
+	if plain := renderRaw(t, r, table("comment", "Network time protocol 4")); strings.Contains(plain, "verso-meter__number") {
+		t.Errorf("a comment weighs a figure:\n%s", plain)
+	}
+}
+
 // TestTextCellCarriesItsChip: a plain word can cite the config value it stands
 // for — "WPA3" beside the `sae` it writes — in the same chip a name cell uses.
 func TestTextCellCarriesItsChip(t *testing.T) {

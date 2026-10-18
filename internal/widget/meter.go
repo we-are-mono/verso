@@ -131,7 +131,7 @@ var (
 )
 
 // meterDetail cuts a caption where its figures start and end, so the figures
-// can stand a step heavier than the words around them. verso-stream.js cuts
+// can stand heavier than the words around them. verso-stream.js cuts
 // a live caption the same way.
 func meterDetail(detail string) []meterRun {
 	var runs []meterRun

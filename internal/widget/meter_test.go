@@ -179,7 +179,7 @@ func TestMeterDetailWeighsItsFigures(t *testing.T) {
 			}
 		}
 	}
-	declares(t, "meter", ".verso-meter__number", "@apply type-value;")
+	declares(t, "meter", ".verso-meter__number", "@apply type-subheading;")
 }
 
 // TestMeterWarnZone: a reading with a warn limit shades the blocks past it,

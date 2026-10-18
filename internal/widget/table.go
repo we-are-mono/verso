@@ -33,6 +33,9 @@ import (
 //	             icmpv6, A, CNAME): mono, because they are strings someone
 //	             could type back into the config, at the secondary step
 //	"comment"  — optional free text (e.g. a UCI name), muted, blank when absent
+//	"detail"   — a reading's facts in words ("warns 81 °C · protects 85 °C"),
+//	             muted, its figures heavier, as a gauge's caption
+//	             weighs them
 //	"num"      — right-aligned tabular figures (counters); muted
 //	"rate"     — fixed-width, left-aligned live rate; tabular and non-wrapping
 //	"runtime"  — compact process facts; sans, muted, tabular and non-wrapping
@@ -865,6 +868,9 @@ type tableCellView struct {
 	// FiguresShown is whether any of a figures cell's figures has a number,
 	// so the dash stands only for a cell with none.
 	FiguresShown bool
+	// DetailRuns is a detail cell's Text cut where its figures start and end,
+	// the meter's own (meterDetail).
+	DetailRuns []meterRun
 	TableCell
 	Chips     []tableChipView
 	Phrase    []tablePartView
@@ -1541,6 +1547,9 @@ func (t *Table) rowViews(r *Renderer, csrf string, rows []TableRow, hasDetail bo
 				}
 				if kind == "meter" && cv.Text != "" && cv.Text != "—" && !cv.NoTrack {
 					cv.Track = meterTrack(cv.Fill, cv.WarnMark)
+				}
+				if kind == "detail" {
+					cv.DetailRuns = meterDetail(cv.Text)
 				}
 				if kind == "figures" {
 					for _, f := range cv.Figures {

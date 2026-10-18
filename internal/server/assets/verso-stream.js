@@ -24,7 +24,7 @@
     var el = root.querySelector(selector);
     if (el) el.textContent = text;
   }
-  // setDetail writes a gauge's caption with its figures a step heavier than
+  // setDetail writes a gauge's caption with its figures heavier than
   // the words around them, cut as widget.meterDetail cuts it: a word of
   // digits alone (its decimals after "." or ",") is a figure, "1-minute" a
   // word, and a narrow space parts a figure from its unit.

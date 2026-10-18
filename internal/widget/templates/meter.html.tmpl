@@ -60,7 +60,7 @@
   {{if or .Detail .Name}}<div class="verso-meter__detail" data-verso-meter-detail>{{template "meter.detail" .DetailRuns}}</div>{{end}}
 </div>
 {{end}}
-{{/* meter.detail: a gauge's caption, its figures a step heavier than the
+{{/* meter.detail: a gauge's caption, its figures heavier than the
      words around them (widget.meterDetail; verso-stream.js cuts a live
      caption the same way). */}}
 {{define "meter.detail"}}{{range .}}{{if .Figure}}<span class="verso-meter__number">{{.Text}}</span>{{else}}{{.Text}}{{end}}{{end}}{{end}}

@@ -323,6 +323,10 @@
         <td data-verso-figures class="verso-table__cell whitespace-nowrap text-meta">{{.Text}}</td>
         {{else if eq .Kind "comment"}}
         <td class="verso-table__cell max-w-[24rem] text-meta"><span class="line-clamp-1" title="{{.Text}}">{{.Text}}</span></td>
+        {{else if eq .Kind "detail"}}
+        {{/* a reading's facts in words, its figures heavier, as a
+             gauge's caption weighs them (meter.detail) */}}
+        <td class="verso-table__cell max-w-[24rem] text-meta"><span class="line-clamp-1" title="{{.Text}}">{{template "meter.detail" .DetailRuns}}</span></td>
         {{else if eq .Kind "rate"}}
         {{/* a rate's longest is "999 Mb/s" or "1.2 Gb/s" (internal/units) */}}
         <td data-verso-figures class="verso-table__cell w-24 min-w-24 max-w-24 whitespace-nowrap text-meta"{{if .Key}} data-verso-cell="{{.Key}}"{{end}}>{{.Text}}</td>
