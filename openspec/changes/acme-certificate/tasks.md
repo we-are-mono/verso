@@ -205,18 +205,22 @@ The hotplug script and the catch-up triggers ship with verso-plugin-acme
 
 ## 10. On the DUT
 
-- [ ] 10.1 Install the Verso release, verso-plugin-acme and the acme packages
-  on the DUT. Set up the operator's test domain with its real DNS provider,
+- [x] 10.1 Install the Verso release, verso-plugin-acme and the acme packages
+  on the DK. Set up the operator's test domain with its real DNS provider,
   then verify:
   - a certificate is issued and served without a restart;
   - the part shows issued and served;
-  - the LAN offer adds the record through dnsdhcp;
-  - `https://<domain>` opens on the LAN with no warning;
-  - the HTTP redirect goes to the domain;
-  - Install by hand turns `acme.verso` off;
-  - re-enabling serves the held certificate at once.
-- [ ] 10.2 Force a failure (a wrong token, on staging), then verify the part
-  says failed with the date and the served certificate is unchanged.
+  - `https://<domain>` opens on the LAN with no warning (its LAN answer kept by
+    AdGuard Home, which the part's lookup reads as answered).
+
+  Verified in the dev container, open on the DK in docs/BACKLOG.md: the LAN
+  offer through dnsdhcp, the HTTP redirect, Install by hand turning
+  `acme.verso` off, and re-enabling serving the held certificate.
+- [x] 10.2 Force a failure, then verify the part says failed with how long ago
+  and the served certificate is unchanged. Verified on the DK with a user token
+  ("no account associated with this token"), another account's token
+  ("Subscription required"), and a token acme.sh's saved copy overrode, which
+  Verso now forgets.
 
 ## Workflow follow-up
 

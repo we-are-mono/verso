@@ -25,7 +25,21 @@ own and points at the decision that governs it; the rationale lives there, not h
     turning it back on serving the held certificate;
   - the outcome as the top-right notification, the part refreshing itself while
     a request runs (a new widget behaviour, the owner's call), and a Request now
-    act.
+    act;
+  - the HTTPS certificate and Trusted certificate cards describe the served
+    certificate twice and compete over replacing it: one card, the source a
+    row and an act in it, waits on the certificate-source contract below.
+- **Plugin contracts: certificate sources.** Core is coupled to ACME:
+  `verso-rpcd/src/acme.rs` (deliver, `acmeState`, acme.sh's `account.conf`),
+  `setWebCertificate`/`makeWebCertificate` turning `acme.verso` off, the shell's
+  `acmeState` broker and its PEM transform, and verso-plugin-system reading
+  `uci acme`. The direction: a source's root half ships with its plugin (a
+  root-only binary run by its hotplug and init, installing through `verso
+  certificate install`); one generic `verso-rpcd` verb hands a plugin the state
+  file its root half writes; a hand install raises `hotplug-call
+  verso-certificate` (`ACTION=installed`) for any source to act on; a manifest
+  declares a certificate source (act, drawer, facts path) and the shell fills
+  a slot in the HTTPS certificate card with it. Core then names no source.
 - **An image without uhttpd.** The Mono image still ships `uhttpd`,
   `uhttpd-mod-ubus` and `px5g-mbedtls`; drop them from the build (Gateway repo)
   so Verso holds the router's ports from first boot.
