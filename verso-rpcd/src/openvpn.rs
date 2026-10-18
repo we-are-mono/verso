@@ -150,27 +150,33 @@ pub fn fold(text: &str) -> String {
 /// in the original (exposure): where it stands, OpenVPN no longer reads the
 /// block inline (an opener moved off the first line loses its BOM's pass, or
 /// a block the editor opened closes inside it), so fold would show it, or it
-/// sits among a <connection> block's options, read out with them.
+/// sits among a <connection> block's options, read out with them. None too is
+/// an edit that has a line of a block open a block it did not open in the
+/// original (a block the editor opened above, closed by a hidden `</name>`):
+/// the line stays hidden, but its `<name>` names the new block's placeholder,
+/// shown on the next fold.
 pub fn unfold(edited: &str, original: &str) -> Option<String> {
     let lines: Vec<&str> = original.lines().collect();
-    // How far each original line leaves, read from its lines as they go back.
+    // How far each original line leaves, and whether it opens a block, read
+    // from its lines as they go back.
     let mut rejoined = lines.join("\n");
     if original.ends_with('\n') {
         rejoined.push('\n');
     }
     let was = exposure(&rejoined);
+    let opened = openers(&rejoined);
     // Each placeholder's blocks, in the order they stood.
     let mut blocks: HashMap<String, VecDeque<(usize, usize)>> = HashMap::new();
     for span in spans(original) {
         blocks.entry(span.placeholder()).or_default().push_back((span.start, span.end));
     }
     let mut out = Vec::new();
-    // Each restored line: where it lands in out, and how far it left before.
+    // Each restored line: where it lands in out, and the original line it is.
     let mut restored = Vec::new();
     for line in edited.lines() {
         match blocks.get_mut(line.trim()).and_then(VecDeque::pop_front) {
             Some((start, end)) => {
-                restored.extend((start..end).map(|from| (out.len() + from - start, was[from])));
+                restored.extend((start..end).map(|from| (out.len() + from - start, from)));
                 out.extend_from_slice(&lines[start..end]);
             }
             None => out.push(line),
@@ -180,12 +186,28 @@ pub fn unfold(edited: &str, original: &str) -> Option<String> {
     if edited.ends_with('\n') {
         out.push('\n');
     }
-    // A blank last line the join leaves out holds nothing to show.
+    // A blank last line the join leaves out holds nothing to show, and opens
+    // nothing.
     let now = exposure(&out);
+    let opens = openers(&out);
     restored
         .iter()
-        .all(|(at, was)| now.get(*at).copied().unwrap_or(Exposure::Hidden) <= *was)
+        .all(|(at, from)| {
+            now.get(*at).copied().unwrap_or(Exposure::Hidden) <= was[*from]
+                && opens.get(*at).into_iter().flatten().all(|name| opened[*from].contains(name))
+        })
         .then_some(out)
+}
+
+/// openers is, for each of a profile's lines, the blocks that open on it.
+fn openers(text: &str) -> Vec<Vec<String>> {
+    let mut out = vec![Vec::new(); text.split_inclusive('\n').count()];
+    for span in spans(text) {
+        for (at, name) in span.openers.iter().zip(span.names) {
+            out[*at].push(name);
+        }
+    }
+    out
 }
 
 /// Exposure is how much of a profile line leaves the helper, least first.
@@ -218,11 +240,13 @@ fn exposure(text: &str) -> Vec<Exposure> {
 /// Span is a run of a profile's lines OpenVPN reads as inline content: the
 /// line that opens a block through the line that closes it, by index into
 /// the profile's lines. A line OpenVPN reads in several pieces can close one
-/// block and open the next, so a span names every block it holds.
+/// block and open the next, so a span names every block it holds, and the
+/// line each opens on.
 struct Span {
     start: usize,
     end: usize,
     names: Vec<String>,
+    openers: Vec<usize>,
     closed: bool,
 }
 
@@ -272,8 +296,15 @@ fn read_spans(text: &str, bom: bool) -> Vec<Span> {
                     let read = if first { read.strip_prefix(BOM).unwrap_or(read) } else { read };
                     if let Some(name) = opens(read) {
                         closing = Some(format!("</{name}>").into_bytes());
-                        let span = current.get_or_insert(Span { start: at, end: at, names: Vec::new(), closed: false });
+                        let span = current.get_or_insert(Span {
+                            start: at,
+                            end: at,
+                            names: Vec::new(),
+                            openers: Vec::new(),
+                            closed: false,
+                        });
                         span.names.push(name);
+                        span.openers.push(at);
                     }
                 }
             }
@@ -1079,6 +1110,32 @@ mod folding {
         // moved into a block the editor opened, it stays out of sight
         let inside = "client\n<ca>\n<key> … 1 line … </key>\n";
         assert!(!fold(&unfold(inside, original).unwrap()).contains("SECRET"));
+    }
+
+    /// A line hidden inside a block that a save makes open a block of its
+    /// own would stay hidden, but its `<name>` would become that block's
+    /// placeholder, shown on the next fold: a block the editor opens above
+    /// the placeholder, closed by a hidden `</x>`, does so. That save is
+    /// refused; the same lines left where they were open nothing new.
+    #[test]
+    fn a_hidden_line_put_back_as_a_blocks_opener_is_refused() {
+        let original = "client\n<ca>\n</x>\n<s3cr3t>\nKEY\n</ca>\n";
+        let placeholder = "<ca> … 3 lines … </ca>";
+        assert_eq!(fold(original), format!("client\n{placeholder}\n"));
+        let opened = format!("client\n<x>\n{placeholder}\n");
+        assert_eq!(unfold(&opened, original), None);
+        assert_eq!(
+            unfold(&format!("dev tun\n{placeholder}\n"), original),
+            Some("dev tun\n<ca>\n</x>\n<s3cr3t>\nKEY\n</ca>\n".to_owned())
+        );
+        // a block's opener put back as an opener opens what it opened before
+        let reopened = format!(
+            "client\n<key>\n{}</key>{}<tls-crypt>\n</key>\nSECRET\n</tls-crypt>\n",
+            "A".repeat(255),
+            " ".repeat(249),
+        );
+        let moved = format!("dev tun\n{}", fold(&reopened).replace("client\n", ""));
+        assert!(unfold(&moved, &reopened).is_some(), "{moved}");
     }
 
     /// A <connection> block's own options are read out as the profile's
