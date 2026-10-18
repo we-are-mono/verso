@@ -14,12 +14,12 @@
 
 ## 3. Slot resolution and ordering
 
-- [ ] 3.1 Test first, in a new `internal/server/slots_test.go`, collecting slots from a tree:
+- [x] 3.1 Test first, in a new `internal/server/slots_test.go`, collecting slots from a tree:
   - a plugin slot is named `<opener>.<id>`;
   - `appearance` still fills with the shell's block;
-  - slots inside an embedded contribution are not collected.
+  - slots inside an embedded contribution are not collected; the fetcher (4.1) fills a contribution's own slots, two levels deep.
   Then implement the collector, generalizing `fillSlots`. Verify with `make test`.
-- [ ] 3.2 Test first, ordering:
+- [x] 3.2 Test first, ordering:
   - order is position, then `order`, then plugin id, then contribution id;
   - an anchor to another contribution resolves;
   - a missing anchor or a cycle lands at `last` and is logged once per load;
@@ -28,7 +28,7 @@
 
 ## 4. Fetching, kind checks, containment and posting
 
-- [ ] 4.1 Test first with the fake transport:
+- [x] 4.1 Test first with the fake transport:
   - only slots on the drawn tree are fetched;
   - fetches run in parallel (three 200 ms fakes finish in under 400 ms);
   - each request carries `X-Verso-Slot`, `X-Verso-Features: slots`, `X-Verso-Plugins` and the brokered reads;
@@ -37,13 +37,13 @@
   - a hang or a bad answer draws the contained unavailable state;
   - the page answers 200.
   Then implement the contribution fetcher behind the `Transport` seam. Verify with `make test`.
-- [ ] 4.2 Test first: kind checks. A `section` in an act slot is dropped and logged. A `link` with an icon fills an act slot after the host's acts. `properties` rows join the host list's rows. A `callout` fills a notice slot. A `section`, `card` or `table` fills a block slot. Then implement the checker as one function per kind behind one interface. Verify with `make test`.
-- [ ] 4.3 Test first: posting. `?contribution=<plugin>.<id>` reaches only that plugin, behind its write gate (refused without dialing when the grant is missing). Other contributions are read as GETs. A staged save or a command redirects with its notice. A preview answers with the fragment alone. `?plugin=<id>` still reaches a legacy Access part. Then lift this logic out of `renderAccess` into the shared contribution renderer. Verify with `make test`.
-- [ ] 4.4 Test first: the reader's language reaches each contribution, and its words are translated with the contributor's catalogue. Then wire the language in. Verify with `make test`.
+- [x] 4.2 Test first: kind checks. A `section` in an act slot is dropped and logged. A `link` with an icon fills an act slot after the host's acts. `properties` rows join the host list's rows. A `callout` fills a notice slot. A `section`, `card` or `table` fills a block slot. Then implement the checker as one function per kind behind one interface. Verify with `make test`.
+- [x] 4.3 Test first: posting. `?contribution=<plugin>.<id>` reaches only that plugin, behind its write gate (refused without dialing when the grant is missing). Other contributions are read as GETs. A staged save or a command redirects with its notice. A preview answers with the fragment alone. `?plugin=<id>` still reaches a legacy Access part. Then lift this logic out of `renderAccess` into the shared contribution renderer. Verify with `make test`.
+- [x] 4.4 Test first: the reader's language reaches each contribution, and its words are translated with the contributor's catalogue. Then wire the language in. Verify with `make test`.
 
 ## 5. Shell pages publish their slots
 
-- [ ] 5.1 Test first: Access publishes `shell.access.blocks` with anchors `password`, `sessions`, `web` and `luci`, matching `slots.json`. `accessParts` and its `system`-first rule are gone. A legacy `system_access` part stands before `web`. Then rebuild `renderAccess` on the slot renderer. Verify with `make test`.
+- [x] 5.1 Test first: Access publishes `shell.access.blocks` with anchors `password`, `sessions`, `web` and `luci`, matching `slots.json`. `accessParts` and its `system`-first rule are gone. A legacy `system_access` part stands before `web`. Then rebuild `renderAccess` on the slot renderer. Verify with `make test`.
 - [ ] 5.2 Test first: every other shell-owned page publishes `shell.<page>.blocks`, with its sections as anchors, matching `slots.json`. The catalogue test fails on any mismatch. Then add the slots to each page. Verify with `make test`.
 - [ ] 5.3 Test first: a contribution-only plugin with no `nav` loads and fills a shell slot. The manifest load check counts `contributes`. Verify with `make test` and `make lint`.
 
@@ -57,7 +57,7 @@
 
 ## 7. Features header and ADRs
 
-- [ ] 7.1 Test first in `internal/plugin/transport_test.go`: every plugin request carries `X-Verso-Features` from the one features list. Then implement it. Verify with `make test`.
+- [x] 7.1 Test first in `internal/plugin/transport_test.go`: every plugin request carries `X-Verso-Features` from the one features list. Then implement it. Verify with `make test`.
 - [ ] 7.2 Write ADR-026, the slots decision and its reasons, from design.md decisions 1–9. Amend ADR-006 in place: the manifest gains `contributes`, `system_access` becomes an alias, the hooks section is struck, and `X-Verso-Features` is added. Amend ADR-005 in place for the slot widget's two uses. Verify that every ADR cross-reference resolves (`grep -n 'ADR-026' docs/ADR/*.md`).
 
 ## 8. verso-plugin-system opens the certificate slots

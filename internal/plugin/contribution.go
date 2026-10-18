@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"path/filepath"
+	"slices"
 	"strings"
 )
 
@@ -145,8 +146,7 @@ type rawContribution struct {
 }
 
 // readContributes fills m.Contributes from the manifest's contributes list,
-// skipping each entry that is not one with its reason, then reads a
-// system_access part as the contribution to Access it is.
+// skipping each entry that is not one with its reason.
 func (m *Manifest) readContributes(data []byte) (problems []error) {
 	var list struct {
 		Contributes []json.RawMessage `json:"contributes"`
@@ -167,7 +167,6 @@ func (m *Manifest) readContributes(data []byte) (problems []error) {
 		seen[c.ID] = true
 		m.Contributes = append(m.Contributes, c)
 	}
-	m.readSystemAccess()
 	return problems
 }
 
@@ -196,21 +195,22 @@ func readContribution(raw json.RawMessage) (Contribution, error) {
 	return Contribution{ID: r.ID, Slot: r.Slot, Path: r.Path, Position: pos, Order: order}, nil
 }
 
-// readSystemAccess reads a manifest's system_access as the contribution to
-// Access's blocks it is, standing where plugin parts of Access stand: before
-// the web interface's section. A manifest that also contributes to Access
-// directly is read from contributes alone.
-func (m *Manifest) readSystemAccess() {
-	if m.SystemAccess == "" || !localPath(m.SystemAccess) {
-		return
+// AccessAlias is the id of the contribution a manifest's system_access is
+// read as.
+const AccessAlias = "access"
+
+// Contributions are everything the plugin puts in slots: its contributes,
+// and its system_access read as the contribution to Access's blocks it is,
+// standing where plugin parts of Access stand, before the web interface's
+// section. A manifest that also contributes to Access directly is read from
+// contributes alone.
+func (m Manifest) Contributions() []Contribution {
+	out := slices.Clone(m.Contributes)
+	if m.SystemAccess == "" || !localPath(m.SystemAccess) || slices.ContainsFunc(out, func(c Contribution) bool { return c.Slot == AccessBlocks }) {
+		return out
 	}
-	for _, c := range m.Contributes {
-		if c.Slot == AccessBlocks {
-			return
-		}
-	}
-	m.Contributes = append(m.Contributes, Contribution{
-		ID: "access", Slot: AccessBlocks, Path: m.SystemAccess,
+	return append(out, Contribution{
+		ID: AccessAlias, Slot: AccessBlocks, Path: m.SystemAccess,
 		Position: Position{Where: Before, Anchor: "web"}, Order: DefaultOrder,
 	})
 }

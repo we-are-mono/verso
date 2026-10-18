@@ -78,7 +78,7 @@ func TestAuthorLeadsToItsSubpage(t *testing.T) {
 // TestAccessAuthorLeadsToAccess: a change a plugin stages from its part of
 // System › Access is filed under Access and leads back there.
 func TestAccessAuthorLeadsToAccess(t *testing.T) {
-	m := plugin.Manifest{ID: "system", Name: "System", SystemAccess: "access"}
+	m := plugin.Manifest{ID: "system", Name: "System", SystemAccess: "/access"}
 	who := authorAt(m, "/access")
 	if who.Page != "Access" || who.Href != "/system/access" {
 		t.Errorf("author = %+v, want Access at /system/access", who)

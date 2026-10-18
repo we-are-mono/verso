@@ -15,6 +15,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -448,6 +449,52 @@ func TestSocketTransportNamesTheInstalledPlugins(t *testing.T) {
 	}
 	if env.Title != "acme,dnsdhcp,system" {
 		t.Errorf("X-Verso-Plugins = %q", env.Title)
+	}
+}
+
+// Every request says which contract features the shell speaks, so a plugin
+// knows whether the slots its page opens will be filled.
+func TestSocketTransportNamesTheFeaturesTheShellSpeaks(t *testing.T) {
+	sock := serveUnix(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		envelopeJSON(w, http.StatusOK, fmt.Sprintf(
+			`{"schema_version":1,"title":%q,"widget":{"type":"card"}}`, r.Header.Get(HeaderFeatures)))
+	}))
+	env, err := testTransport().Fetch(context.Background(), at(sock), Request{Method: http.MethodGet, Path: "/"})
+	if err != nil {
+		t.Fatalf("Fetch: %v", err)
+	}
+	if env.Title != strings.Join(Features, ",") || !strings.Contains(env.Title, "slots") {
+		t.Errorf("X-Verso-Features = %q, want %q", env.Title, strings.Join(Features, ","))
+	}
+}
+
+// A contribution is asked for with the slot it fills, so one endpoint can
+// answer several slots.
+func TestSocketTransportNamesTheSlotAContributionFills(t *testing.T) {
+	sock := serveUnix(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		envelopeJSON(w, http.StatusOK, fmt.Sprintf(
+			`{"schema_version":1,"title":%q,"widget":{"type":"card"}}`, r.Header.Get(HeaderSlot)))
+	}))
+	env, err := testTransport().Fetch(context.Background(), at(sock), Request{Method: http.MethodGet, Path: "/slots/use", Slot: "system.certificate.acts"})
+	if err != nil {
+		t.Fatalf("Fetch: %v", err)
+	}
+	if env.Title != "system.certificate.acts" {
+		t.Errorf("X-Verso-Slot = %q", env.Title)
+	}
+}
+
+// A contribution with nothing to show answers 204: no envelope, no error.
+func TestSocketTransportReadsNoContentAsNothingToShow(t *testing.T) {
+	sock := serveUnix(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	env, err := testTransport().Fetch(context.Background(), at(sock), Request{Method: http.MethodGet, Path: "/slots/source", Slot: "system.certificate.source"})
+	if err != nil {
+		t.Fatalf("Fetch: %v", err)
+	}
+	if !env.Empty {
+		t.Errorf("env = %+v, want Empty", env)
 	}
 }
 

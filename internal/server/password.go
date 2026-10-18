@@ -6,7 +6,6 @@ package server
 import (
 	"context"
 	"fmt"
-	"io"
 	"log"
 	"net/http"
 	"slices"
@@ -211,12 +210,13 @@ func (s *Server) handlePassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if id := r.URL.Query().Get("plugin"); id != "" {
-		if m, ok := s.manifestByID(id); !ok || m.SystemAccess == "" {
+	if q := r.URL.Query(); q.Get("plugin") != "" || q.Get(contributionQuery) != "" {
+		post, ok := s.accessPost(r)
+		if !ok {
 			s.renderAccess(w, r, http.StatusBadRequest, nil, "These settings are no longer available. Reload the page.")
 			return
 		}
-		s.renderAccess(w, r, http.StatusOK, nil, "")
+		s.renderAccess(w, post, http.StatusOK, nil, "")
 		return
 	}
 
@@ -298,29 +298,38 @@ func (s *Server) handleEndSession(w http.ResponseWriter, r *http.Request, id str
 	http.Redirect(w, r, "/system/access", http.StatusSeeOther)
 }
 
-// accessParts is the plugins that add a part to Access, in the order the page
-// stacks them: the bundled system plugin first, whose SSH and HTTPS
-// certificate are the page's own subjects, then the rest by id, so a part that
-// builds on one of them (the trusted certificate) stands after it.
-func accessParts(manifests []plugin.Manifest) []plugin.Manifest {
-	var parts []plugin.Manifest
-	for _, m := range manifests {
-		if m.SystemAccess != "" {
-			parts = append(parts, m)
+// accessContribution is the plugin's part of Access: its contribution to
+// Access's blocks, a system_access part among them.
+func accessContribution(m plugin.Manifest) (plugin.Contribution, bool) {
+	for _, c := range m.Contributions() {
+		if c.Slot == plugin.AccessBlocks {
+			return c, true
 		}
 	}
-	slices.SortStableFunc(parts, func(a, b plugin.Manifest) int {
-		switch {
-		case a.ID == b.ID:
-			return 0
-		case a.ID == "system":
-			return -1
-		case b.ID == "system":
-			return 1
+	return plugin.Contribution{}, false
+}
+
+// accessPost names, on a post to Access, the contribution it goes to. A part
+// written before slots posts naming its plugin (?plugin=<id>), which is read
+// as that plugin's part of Access. It reports false for a post to a part that
+// is not there.
+func (s *Server) accessPost(r *http.Request) (*http.Request, bool) {
+	q := r.URL.Query()
+	if id := q.Get("plugin"); id != "" && q.Get(contributionQuery) == "" {
+		m, ok := s.manifestByID(id)
+		c, part := accessContribution(m)
+		if !ok || !part {
+			return r, false
 		}
-		return strings.Compare(a.ID, b.ID)
-	})
-	return parts
+		q.Set(contributionQuery, c.Name(id))
+		r = r.Clone(r.Context())
+		r.URL.RawQuery = q.Encode()
+	}
+	name := q.Get(contributionQuery)
+	if name == "" {
+		return r, true
+	}
+	return r, slices.ContainsFunc(s.slotFills(plugin.AccessBlocks), func(p slotPlacement) bool { return p.Name() == name })
 }
 
 func validatePassword(password, confirm string) map[string]string {
@@ -353,65 +362,34 @@ func (s *Server) renderAccess(w http.ResponseWriter, r *http.Request, status int
 	access := accessBody(hasPassword, username, fieldErrs, formErr, s.accessSessions(r, g), g, translatorOrIdentity(t))
 	hdr := pageHeader{Heading: "Access", Tone: "neutral"}
 	r = withStageMemo(r)
-	for _, manifest := range accessParts(s.manifestList()) {
-		request := r.Clone(r.Context())
-		if r.URL.Query().Get("plugin") != manifest.ID {
-			request.Method = http.MethodGet
-			request.Body = nil
-			request.Form = nil
-			request.PostForm = nil
-		}
-		var pluginHeader pageHeader
-		var pluginWidth string
-		var pluginPages []pageTab
-		contribution, code := s.pluginBodyAt(request, manifest, manifest.SystemAccess, &pluginHeader, &pluginWidth, &pluginPages)
-		if !safeMethod(r.Method) && r.URL.Query().Get("plugin") == manifest.ID {
-			// A reading of a form being typed answers with the reading alone:
-			// the page around the box is already on screen.
-			if previewRequest(r) {
-				w.Header().Set("Content-Type", "text/html; charset=utf-8")
-				w.WriteHeader(code)
-				_, _ = io.WriteString(w, string(contribution))
-				return
-			}
-			// A command changed what the page shows (a key added or removed):
-			// read the page again from the router, saying once what happened.
-			// A command changed what the page shows, or a save staged a change:
-			// either way Access is read again rather than drawn as the answer to
-			// the post, so a reload never posts it a second time.
-			if pluginHeader.CommandDone || (pluginHeader.StagedCommit && code < http.StatusBadRequest) {
-				s.flashNotice(r, pluginHeader.Notice)
-				http.Redirect(w, r, "/system/access", http.StatusSeeOther)
-				return
-			}
-		}
-		// A plugin's part of Access continues the page's subjects: it is one more
-		// block of the page's stack, which stands its first section's rule two
-		// cells under the part before it as it does any section's.
-		access.Children = append(access.Children, &widget.Embed{HTML: contribution})
-		if code >= http.StatusBadRequest {
-			status = code
-		}
-		if pluginHeader.Notice != nil {
-			hdr.Notice = pluginHeader.Notice
-		}
-	}
-	// The web interface's own subjects follow its certificate: where it
-	// answers, opened by whether the internet reaches it, then LuCI's part,
-	// where LuCI stands beside it.
+	// The web interface's own subjects: where it answers, opened by whether
+	// the internet reaches it, then LuCI's part, where LuCI stands beside it.
 	web := s.webSettingsSection(r, fieldErrs)
 	if warn := s.exposureCallout(r, translatorOrIdentity(t)); warn != nil {
 		if section, ok := web.(*widget.Section); ok {
 			section.Children = append([]widget.Widget{warn}, section.Children...)
 		} else {
-			access.Children = append(access.Children, warn)
+			web = warn
 		}
 	}
-	if web != nil {
-		access.Children = append(access.Children, web)
-	}
+	own := map[string]widget.Widget{"password": access.Children[0], "sessions": access.Children[1], "web": web}
 	if luci := s.luciSection(r); luci != nil {
-		access.Children = append(access.Children, luci)
+		own["luci"] = luci
+	}
+	// Access's blocks are a slot (ADR-026): each plugin's part stands where
+	// its position puts it, one more block of the page's stack, which stands
+	// its first section's rule two cells under the block before it.
+	page, call := contributionPost(r)
+	call.page = "/system/access"
+	access.Children = s.shellSlotBlocks(page, call, plugin.AccessBlocks, own)
+	if s.answerContributionPost(w, r, call.outcome) {
+		return
+	}
+	if o := call.outcome; o != nil && o.posted {
+		if o.code >= http.StatusBadRequest {
+			status = o.code
+		}
+		hdr.Notice = o.hdr.Notice
 	}
 
 	s.renderWidgetPage(w, r, status, hdr, "form", s.sectionPages("System", r.URL.Path), access)

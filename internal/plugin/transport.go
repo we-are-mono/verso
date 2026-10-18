@@ -34,6 +34,17 @@ const HeaderUbus = "X-Verso-Ubus"
 // to add) only where that plugin is there to carry it.
 const HeaderPlugins = "X-Verso-Plugins"
 
+// HeaderFeatures names the contract features the shell speaks, comma
+// separated, on every request: a plugin whose page opens slots learns from it
+// whether they will be filled (ADR-026).
+const HeaderFeatures = "X-Verso-Features"
+
+// Features are the contract features this shell speaks.
+var Features = []string{"slots"}
+
+// HeaderSlot names the slot a contribution is asked for to fill.
+const HeaderSlot = "X-Verso-Slot"
+
 // HeaderDescribe marks a request as a describe call rather than a page render: the
 // plugin answers the shell's pending-change list with plain-language descriptions
 // of its own changes for the review drawer, not a widget envelope. A plugin
@@ -59,6 +70,8 @@ type Request struct {
 	UCI     UCI
 	Ubus    Ubus
 	Plugins []string
+	// Slot is the slot a contribution is asked for to fill, empty for a page.
+	Slot string
 }
 
 // UCI is the read snapshot the shell injects into a plugin request (ADR-007):
@@ -121,6 +134,9 @@ type Envelope struct {
 	// shell answers with its own page for an address with nothing at it, and
 	// the widget beside it is what a shell that does not read this field shows.
 	NotFound bool `json:"not_found,omitempty"`
+	// Empty says the plugin answered 204: a contribution with nothing to show
+	// right now, which draws nothing and is no failure.
+	Empty bool `json:"-"`
 }
 
 // EntitySummary keeps configured subjects findable in the shell's roster.
@@ -357,11 +373,15 @@ func (t *SocketTransport) Fetch(ctx context.Context, target Endpoint, req Reques
 	}
 
 	var env Envelope
-	// Both a 200 and a 422 carry a renderable schema envelope.
+	// Both a 200 and a 422 carry a renderable schema envelope; a 204 is a
+	// contribution with nothing to show.
 	renderable := func(status int) bool {
-		return status == http.StatusOK || status == http.StatusUnprocessableEntity
+		return status == http.StatusOK || status == http.StatusUnprocessableEntity || status == http.StatusNoContent
 	}
 	status, err := roundTrip(client, httpReq, socket, renderable, "fetch", "", "envelope", &env)
+	if status == http.StatusNoContent {
+		return &Envelope{Empty: true, Status: status}, nil
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -381,6 +401,9 @@ func roundTrip(client *http.Client, req *http.Request, socket string, accept fun
 	defer resp.Body.Close()
 	if !accept(resp.StatusCode) {
 		return 0, fmt.Errorf("plugin: %s%s returned status %d", prefix, socket, resp.StatusCode)
+	}
+	if resp.StatusCode == http.StatusNoContent {
+		return resp.StatusCode, nil
 	}
 	data, err := io.ReadAll(io.LimitReader(resp.Body, maxEnvelopeBytes))
 	if err != nil {
@@ -537,6 +560,10 @@ func (t *SocketTransport) buildRequest(ctx context.Context, req Request) (*http.
 	}
 	if len(req.Plugins) > 0 {
 		httpReq.Header.Set(HeaderPlugins, strings.Join(req.Plugins, ","))
+	}
+	httpReq.Header.Set(HeaderFeatures, strings.Join(Features, ","))
+	if req.Slot != "" {
+		httpReq.Header.Set(HeaderSlot, req.Slot)
 	}
 	return httpReq, nil
 }

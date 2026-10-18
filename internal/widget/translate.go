@@ -26,6 +26,16 @@ func translateSchema(w Widget, t func(string) string) {
 	Walk(w, func(n Widget) { translateFields(n, t) })
 }
 
+// Translate localizes w's prose in place with t, as a render would: for a
+// part the shell lifts out of one plugin's tree into another's (a fact a
+// plugin contributes to another's list, ADR-026), which must read in its
+// own plugin's words before it joins a tree its host's catalog translates.
+func Translate(w Widget, t func(string) string) {
+	if t != nil {
+		translateSchema(w, t)
+	}
+}
+
 // translateFields localizes one widget's own prose fields; nested widgets are
 // reached by translateSchema's walk, never from a case here.
 func translateFields(w Widget, t func(string) string) {

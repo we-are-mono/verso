@@ -45,23 +45,57 @@ func TestPasswordFormRenders(t *testing.T) {
 // The password form holds Change password until something is typed, and names
 // the account it changes for the browser's password manager, which otherwise
 // cannot tell whose new password it is saving.
-// The bundled system plugin's part (SSH, the HTTPS certificate) is Access's
-// own subject and comes first; a part another plugin adds follows it, in id
-// order, so the trusted certificate stands after the certificate it replaces.
-func TestAccessPartsStartWithTheSystemPlugin(t *testing.T) {
-	part := func(id string) plugin.Manifest {
-		m := demoManifest()
-		m.ID, m.SystemAccess = id, "/access"
-		return m
+// Access's blocks are a slot: its own sections stand as anchors, and each
+// plugin's part where its position puts it, by order then id. The shell names
+// no plugin; a part written before slots stands before the web interface.
+func TestAccessBlocksStandWhereTheirPositionsPutThem(t *testing.T) {
+	section := func(title string) string {
+		return `{"type":"section","title":"` + title + `","children":[]}`
 	}
-	none := demoManifest()
-	none.ID = "dnsdhcp"
-	var got []string
-	for _, m := range accessParts([]plugin.Manifest{part("acme"), none, part("system"), part("backup")}) {
-		got = append(got, m.ID)
+	tr := &slotTransport{answers: map[string]answer{
+		"/run/system.sock /access": {widget: section("System part")},
+		"/run/backup.sock /access": {widget: section("Backup part")},
+		"/run/top.sock /top":       {widget: section("Top part")},
+	}}
+	system := slotPlugin("system", false, plugin.Contribution{ID: "part", Slot: plugin.AccessBlocks, Path: "/access", Position: plugin.Position{Where: plugin.Before, Anchor: "web"}, Order: 10})
+	backup := slotPlugin("backup", false)
+	backup.SystemAccess = "/access"
+	top := slotPlugin("top", false, contribution("top", plugin.AccessBlocks, "first"))
+	s := slotServer(t, tr, backup, system, top)
+	body := get(t, s, "/system/access").Body.String()
+	order := []string{"Top part", "Router password", "Signed in now", "System part", "Backup part"}
+	at := -1
+	for _, title := range order {
+		i := strings.Index(body, title)
+		if i < 0 || i < at {
+			t.Fatalf("Access does not read %v in order:\n%s", order, body)
+		}
+		at = i
 	}
-	if strings.Join(got, ",") != "system,acme,backup" {
-		t.Errorf("Access parts = %v, want system,acme,backup", got)
+}
+
+// A part's form posts to Access naming its contribution, and a part written
+// before slots still answers the address it always posted to.
+func TestAccessPartFormsPostNamingTheirContribution(t *testing.T) {
+	form := `{"type":"section","title":"Part","children":[{"type":"form","style":"page","fields":[{"type":"field","name":"x","label":"X"}]}]}`
+	tr := &slotTransport{answers: map[string]answer{
+		"/run/backup.sock /access": {widget: form, notice: &plugin.Notice{Level: "success", Text: "Saved."}, commit: []plugin.CommitOp{{Config: "backup", Section: "main", Values: map[string]any{"x": "1"}}}},
+	}}
+	backup := slotPlugin("backup", false)
+	backup.SystemAccess = "/access"
+	backup.ACL.Write = []plugin.ACLScope{{Scope: "uci", Object: "backup", Function: "write"}}
+	s := slotServer(t, tr, backup)
+	if body := get(t, s, "/system/access").Body.String(); !strings.Contains(body, `action="/system/access?contribution=backup.access"`) {
+		t.Fatalf("the part's form does not post naming its contribution:\n%s", body)
+	}
+	for _, address := range []string{"/system/access?contribution=backup.access", "/system/access?plugin=backup"} {
+		rec := postPlugin(t, s, address, url.Values{"x": {"1"}})
+		if rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != "/system/access" {
+			t.Errorf("%s answers %d → %q, want Access read again", address, rec.Code, rec.Header().Get("Location"))
+		}
+		if got := tr.asked("/run/backup.sock")["/access"].Method; got != http.MethodPost {
+			t.Errorf("%s reached the part with %s", address, got)
+		}
 	}
 }
 

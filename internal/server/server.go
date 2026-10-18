@@ -159,6 +159,8 @@ type Server struct {
 	manifestsMu sync.RWMutex
 	manifests   []plugin.Manifest
 	pluginByID  map[string]plugin.Manifest
+	// slots is every plugin's contributions by the slot each fills (ADR-026).
+	slots slotIndex
 	// rescan re-reads the manifest directory (wired by cmd/verso; nil in
 	// tests that never install). Its result replaces the served set.
 	rescan   func() []plugin.Manifest
@@ -316,6 +318,7 @@ func New(
 		transport:      transport,
 		manifests:      manifests,
 		pluginByID:     indexByID(manifests),
+		slots:          loadSlots(manifests),
 		auth:           auth,
 		sessions:       newSessions(),
 		layouts:        cookieLayout{hardware: boardSensors != nil},
@@ -617,6 +620,7 @@ func (s *Server) Rescan() {
 	s.manifestsMu.Lock()
 	s.manifests = manifests
 	s.pluginByID = indexByID(manifests)
+	s.slots = loadSlots(manifests)
 	s.manifestsMu.Unlock()
 	// A plugin installed while operators are signed in ships access lists
 	// their sessions never received; each session is given, with its own sid,
@@ -646,6 +650,14 @@ const rescanScrubTimeout = 2 * time.Minute
 
 // manifestList is the served manifest set; manifestByID resolves one plugin.
 // Both take the read lock so a concurrent rescan swaps atomically underneath.
+// slotFills is the contributions to the named slot, as the plugins last
+// loaded them.
+func (s *Server) slotFills(name string) []slotPlacement {
+	s.manifestsMu.RLock()
+	defer s.manifestsMu.RUnlock()
+	return s.slots[name]
+}
+
 func (s *Server) manifestList() []plugin.Manifest {
 	s.manifestsMu.RLock()
 	defer s.manifestsMu.RUnlock()
@@ -864,6 +876,9 @@ type pageHeader struct {
 	// it is synced in place instead of redirected.
 	CommandDone  bool
 	StagedCommit bool
+	// Unreachable records that the plugin could not be asked: whatever it
+	// was, the body is the shell's unavailable state.
+	Unreachable bool
 	// Arrival is an outcome the shell drew itself, with an act in it, said
 	// by the notification in the flash's place (pageData.Arrival).
 	Arrival template.HTML

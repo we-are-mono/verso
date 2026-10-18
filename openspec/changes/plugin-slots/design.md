@@ -101,7 +101,7 @@ documented in its README.
 
 | kind | the answer is | draws as |
 |---|---|---|
-| `block` | one `section`, `card` or `table` (a section may hold a form) | a block of the page's stack |
+| `block` | what a page holds: a `section`, `card`, `table`, `form`, a `stack` of them, a `collection` | a block of the page's stack |
 | `act` | one `link` with an `icon` (`panel: true` opens the contributor's page in a drawer) | an act after the host's own in its act row |
 | `fact` | one `properties` | its rows, appended to the host's facts list |
 | `notice` | one `callout` | a notice where the slot stands |
@@ -147,10 +147,12 @@ documented in its README.
   - `X-Verso-Features`.
 - **Answer.** An ordinary envelope. `204 No Content` means nothing to show at this
   moment.
-- **One level.** Slots inside a contributed answer are not filled. This bounds the
-  fan-out of one page to its own slots, and it rules out loops (a fills b fills a).
-  The drawer a contributed act opens is the contributor's own page, so it is a fresh
-  level.
+- **Two levels.** The page's own slots are filled, and so are the slots of a
+  contribution standing in them, because a plugin's part of a shell page (the system
+  plugin's Access part) is itself a contribution whose card opens slots. Slots in an
+  answer standing in those are not filled. This bounds the fan-out of one page and
+  rules out loops (a fills b fills a). The drawer a contributed act opens is the
+  contributor's own page, so it starts again at the first level.
 - **No cache.** The Overview's plugin cards are fetched once per render and never by the
   stream (ADR-004's stream stays plugin-free). A cache can be added behind the fetcher
   without a contract change if the Overview's render cost ever needs one.

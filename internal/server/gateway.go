@@ -97,7 +97,14 @@ func (s *Server) handlePlugin(w http.ResponseWriter, r *http.Request) {
 	hdr := pageHeader{Heading: m.Name}
 	width := ""
 	var pages []pageTab
-	body, status := s.pluginBodyAt(r, m, r.PathValue("path"), &hdr, &width, &pages)
+	page, call := contributionPost(r)
+	body, status := s.pluginBodyFor(page, m, r.PathValue("path"), &hdr, &width, &pages, call)
+	if s.answerContributionPost(w, r, call.outcome) {
+		return
+	}
+	if call.outcome != nil && call.outcome.posted && call.outcome.code >= http.StatusBadRequest {
+		status = call.outcome.code
+	}
 	if status == http.StatusNotFound {
 		s.notFound(w, r)
 		return
@@ -293,16 +300,20 @@ func actRequest(r *http.Request) bool {
 	return r.Header.Get("X-Verso-Interaction") == "act"
 }
 
-// pluginBody returns the rendered page body for a plugin request, or a contained
+// pluginBodyFor returns the rendered page body for a plugin request, or a contained
 // notice. Every plugin-side failure — unsupported schema version, transport
 // error, undecodable schema, render error — resolves to a styled notice and a
 // 200, so a third-party plugin can never 500 the shell or take it down
 // (ADR-006 §7). The shell's own failures (e.g. the page template) still 500.
-// pluginBody returns the rendered body and the HTTP status to send the browser.
+// It returns the rendered body and the HTTP status to send the browser.
 // Notices (version mismatch, unavailable) are 200 — the shell is fine, it is
 // just reporting. A plugin's own 422 (a validation failure) is propagated, so
 // the HTTP semantics stay honest; everything else is 200.
-func (s *Server) pluginBodyAt(r *http.Request, m plugin.Manifest, pluginPath string, hdr *pageHeader, width *string, pages *[]pageTab) (template.HTML, int) {
+//
+// call says what is asked: the page itself, or a contribution to a slot on
+// it (ADR-026), which is asked with the slot's name, checked against the
+// slot's kind, and posts back to the page.
+func (s *Server) pluginBodyFor(r *http.Request, m plugin.Manifest, pluginPath string, hdr *pageHeader, width *string, pages *[]pageTab, call pluginCall) (template.HTML, int) {
 	// The request's language, negotiated once. This is a plugin render, so the
 	// translator is the plugin's catalog overlaid on base (ADR-012 §5): t localizes
 	// the widget tree at render, and tr localizes the envelope the shell copies out
@@ -370,11 +381,17 @@ func (s *Server) pluginBodyAt(r *http.Request, m plugin.Manifest, pluginPath str
 	req.UCI = s.readSnapshot(r.Context(), m, s.sessionSID(r))
 	req.Ubus = s.readUbus(r.Context(), m, s.sessionSID(r))
 	req.Plugins = s.pluginIDs()
+	req.Slot = call.slot
 
 	env, err := s.transport.Fetch(r.Context(), m.Endpoint(), req)
 	if err != nil {
 		log.Printf("verso: plugin %q unavailable: %v", m.ID, err)
+		hdr.Unreachable = true
 		return s.unavailable(m, tr), http.StatusOK
+	}
+	// A contribution with nothing to show right now draws nothing.
+	if env.Empty {
+		return "", http.StatusNoContent
 	}
 	// The plugin has nothing at this path: the caller answers with the shell's
 	// own page for an address with nothing at it (notFound).
@@ -392,20 +409,33 @@ func (s *Server) pluginBodyAt(r *http.Request, m plugin.Manifest, pluginPath str
 		log.Printf("verso: plugin %q returned an undecodable act: %v", m.ID, err)
 		return s.unavailable(m, tr), http.StatusOK
 	}
+	// A contribution is the kind its slot takes, or it is not drawn; a fact's
+	// rows join another plugin's list, so they leave here in this plugin's
+	// words rather than as a rendering.
+	if call.kind != "" {
+		s.withdrawLinksToAbsentPlugins(wdg)
+		switch inspectContribution(m, call, wdg, t) {
+		case answerRefused:
+			return "", http.StatusNoContent
+		case answerLifted:
+			return "", http.StatusOK
+		}
+	}
 	// The act rides in front of the page until the heading line is drawn, so
 	// every pass below reaches its blank panel as it reaches a row's.
 	wdg = widget.WithHeading(act, wdg)
 	s.withdrawLinksToAbsentPlugins(wdg)
 
-	// A composed access form returns through its shell host. The plugin still
-	// owns the schema, validation, ACL and commit intents.
-	if r.URL.Path == "/system/access" && m.SystemAccess == pluginPath {
+	// A contribution's forms return through the page it stands on, naming it.
+	// The plugin still owns the schema, validation, ACL and commit intents.
+	if call.kind != "" {
+		action := call.postBack()
 		widget.Walk(wdg, func(n widget.Widget) {
 			switch n := n.(type) {
 			case *widget.Form:
-				n.Action = "/system/access?plugin=" + m.ID
+				n.Action = action
 			case *widget.Collection:
-				n.Action = "/system/access?plugin=" + m.ID
+				n.Action = action
 			}
 		})
 	}
@@ -625,6 +655,8 @@ func (s *Server) pluginBodyAt(r *http.Request, m plugin.Manifest, pluginPath str
 	// A slot the plugin left for the shell takes the shell's block, in the
 	// shell's own words (the base catalog under the plugin's).
 	s.fillSlots(wdg, tr)
+	// The slots the page opens for other plugins take what they contribute.
+	s.fillOpenedSlots(r, m.ID, wdg, call)
 	var b strings.Builder
 	if err := s.widgets.RenderWithToken(&b, wdg, s.sessionCSRF(r), lang, t); err != nil {
 		log.Printf("verso: plugin %q render failed: %v", m.ID, err)

@@ -76,7 +76,8 @@ func pageLabel(m plugin.Manifest, pluginPath string) string {
 
 // accessPart reports whether a plugin path is the plugin's part of Access.
 func accessPart(m plugin.Manifest, pluginPath string) bool {
-	access := strings.Trim(m.SystemAccess, "/")
+	part, _ := accessContribution(m)
+	access := strings.Trim(part.Path, "/")
 	current := strings.Trim(pluginPath, "/")
 	return access != "" && (current == access || strings.HasPrefix(current, access+"/"))
 }

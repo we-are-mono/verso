@@ -163,7 +163,7 @@ The id `shell` is reserved, and no plugin may take it.
 
 | kind | answer with | it stands |
 |---|---|---|
-| `block` | one `section`, `card` or `table` (a section may hold a form) | as a block of the page |
+| `block` | what a page holds: a `section`, `card`, `table`, `form`, a `stack` of them, a `collection` | as a block of the page |
 | `act` | one `link` with an `icon`; `panel: true` opens your page in a drawer | after the host's own acts in its act row |
 | `fact` | one `properties` | its rows after the host list's own, in the same column |
 | `notice` | one `callout` | where the slot stands |
@@ -190,8 +190,10 @@ nothing is logged.
 
 **Only what is drawn is asked for.** The shell asks only the contributions to slots on
 the page or drawer it is drawing, all at once, each within the plugin timeout. A
-drawer's slots are asked for when it opens. Slots inside a contributed answer are not
-filled. The drawer your contributed act opens is your own page, so its slots are.
+drawer's slots are asked for when it opens. The slots your contributed answer opens
+are filled too, as the system plugin's part of Access opens the certificate card's.
+Slots in an answer standing in those are not filled. The drawer your contributed act
+opens is your own page, so its slots are filled.
 
 **Forms.** A contributed block's form posts to the page it stands on, and only your
 plugin receives the post, behind your declared write gate. A save that stages, or a
@@ -199,8 +201,10 @@ command that ran, reads the page again with your notice in the top-right notific
 Every other plugin on the page is asked for its piece as on any visit.
 
 **Failure.** A contribution whose plugin is not running leaves no trace on the page.
-One that times out, fails or answers what the shell cannot read is drawn as the
-shell's unavailable state, and the rest of the page draws. A contribution to a shell
+A block or notice that times out, fails or answers what the shell cannot read is
+drawn as the shell's unavailable state. An act or fact that does is left out and
+logged, since no notice fits an act row or a facts list. Either way the rest of the
+page draws. A contribution to a shell
 slot the list does not name, or to a slot whose opener is not installed, is logged
 once when the plugins load. Removing your package removes every contribution and
 every slot of yours from every page, and nothing about them is kept on the router.

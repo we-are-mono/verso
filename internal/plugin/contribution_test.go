@@ -117,8 +117,8 @@ func TestSystemAccessReadsAsAContribution(t *testing.T) {
 		t.Fatalf("got=%v problems=%v", got, problems)
 	}
 	want := Contribution{ID: "access", Slot: AccessBlocks, Path: "/access", Position: Position{Where: Before, Anchor: "web"}, Order: DefaultOrder}
-	if len(got[0].Contributes) != 1 || got[0].Contributes[0] != want {
-		t.Errorf("contributes = %+v, want %+v", got[0].Contributes, want)
+	if c := got[0].Contributions(); len(c) != 1 || c[0] != want {
+		t.Errorf("contributions = %+v, want %+v", c, want)
 	}
 }
 
@@ -194,7 +194,7 @@ func TestTheGuidesManifestLoads(t *testing.T) {
 
 func contributionIDs(m Manifest) []string {
 	var ids []string
-	for _, c := range m.Contributes {
+	for _, c := range m.Contributions() {
 		ids = append(ids, c.ID)
 	}
 	return ids

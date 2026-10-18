@@ -33,7 +33,7 @@ A slot opened by a plugin's page SHALL be named `<plugin id>.<name>`, the shell 
 - **THEN** the shell loads none of it and logs the reason
 
 ### Requirement: A slot takes one kind of contribution
-Every slot SHALL take exactly one kind: `block` (a section, card or table standing in a page's stack), `act` (one act in an act row, which may open the contributor's drawer), `fact` (rows in a facts list), `notice` (a callout) or `overview-card`. The shell SHALL check each contribution's answer against its slot's kind and SHALL NOT draw an answer of another kind.
+Every slot SHALL take exactly one kind: `block` (what a page holds, standing in a page's stack as one of its own blocks would), `act` (one act in an act row, which may open the contributor's drawer), `fact` (rows in a facts list), `notice` (a callout) or `overview-card`. The shell SHALL check each contribution's answer against its slot's kind and SHALL NOT draw an answer of another kind.
 
 #### Scenario: A block where an act belongs
 - **WHEN** a contribution to `system.certificate.acts` answers with a section
@@ -103,15 +103,19 @@ A contribution SHALL be able to answer that it has nothing to show at this momen
 - **THEN** the certificate card's facts end with the system plugin's own rows, and the shell logs nothing about it
 
 ### Requirement: A failing contribution is contained
-A contribution whose plugin is not running SHALL leave no placeholder. A running plugin whose contribution times out, fails or answers what the shell cannot decode SHALL be drawn as the shell's contained unavailable state in its place, and the rest of the page SHALL draw. The page SHALL answer 200.
+A contribution whose plugin is not running SHALL leave no placeholder. A running plugin's block or notice that times out, fails or cannot be decoded SHALL be drawn as the shell's unavailable state in its place. Such an act or fact SHALL be left out and logged, as no notice fits an act row or facts list. The rest of the page SHALL draw, and it SHALL answer 200.
 
 #### Scenario: The plugin is stopped
 - **WHEN** verso-plugin-acme's service is stopped
 - **THEN** the certificate card shows no Source row from acme and no "Use your domain" act, and draws no placeholder
 
 #### Scenario: The plugin hangs
-- **WHEN** the plugin accepts the request and never answers
-- **THEN** after the transport's timeout its place shows the unavailable state, and the rest of the page is drawn
+- **WHEN** a plugin whose block stands on Access accepts the request and never answers
+- **THEN** after the transport's timeout the block's place shows the unavailable state, and the rest of the page is drawn
+
+#### Scenario: A failing act
+- **WHEN** acme is running and its "Use your domain" contribution fails
+- **THEN** the certificate card's act row draws its own acts alone, and the shell logs the failure
 
 ### Requirement: A contribution's form posts to its own plugin
 A contributed block that holds a form SHALL post to the page it stands on, naming the contribution. The shell SHALL pass the post only to that contribution's plugin, behind that plugin's write gate. It SHALL read every other contribution afresh as on a GET. A post that stages a change or runs a command SHALL be answered by reading the page again with the outcome as the top-right notification.
@@ -131,12 +135,16 @@ A properties list and an act row in a plugin's widget tree SHALL each be able to
 - **WHEN** the certificate card's facts name the slot `certificate.source` and acme contributes a Source row
 - **THEN** Source is a row of the card's one facts list, read in the same column as Issued to and Expires
 
-### Requirement: A contribution's own slots are not filled
-The shell SHALL fill slots in a page's or drawer's own widget tree. It SHALL NOT fill a slot inside a contributed answer. A drawer that a contributed act opens is the contributor's own page, and its slots SHALL be filled.
+### Requirement: Slots are filled two levels deep
+The shell SHALL fill slots in a page's or drawer's own widget tree, and slots in a contribution standing in them. It SHALL NOT fill a slot inside a contribution that itself stands in a contribution. A drawer that a contributed act opens is the contributor's own page, and its slots SHALL be filled.
 
 #### Scenario: A slot in a contribution
-- **WHEN** acme's Source row answer holds a slot
-- **THEN** the slot draws nothing, and the shell makes no further fetch for it
+- **WHEN** verso-plugin-system's part of Access, a contribution to `shell.access.blocks`, opens `certificate.acts`, and acme contributes "Use your domain" to it
+- **THEN** the act stands in the certificate card's act row
+
+#### Scenario: A slot two contributions deep
+- **WHEN** acme's contribution to `system.certificate.acts` holds a slot that a third plugin fills
+- **THEN** the slot draws nothing, and the shell makes no fetch for it
 
 #### Scenario: A slot in a contributed drawer
 - **WHEN** acme's drawer, opened from "Use your domain", holds a slot that another plugin fills
