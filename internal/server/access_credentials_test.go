@@ -147,6 +147,61 @@ func TestCertificateFactsReadAsTheBrowserDoes(t *testing.T) {
 	}
 }
 
+// acmeFake answers acmeState as the helper does.
+type acmeFake struct {
+	fakeBackend
+	state string
+}
+
+func (b acmeFake) ACMEState(context.Context, string) (json.RawMessage, error) {
+	return json.RawMessage(b.state), nil
+}
+
+func TestTheTrustedCertificateReachesAPluginAsFactsNeverAsPEM(t *testing.T) {
+	certPEM, _, err := tlscert.Generate([]string{"router.example.com"}, time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	answer, _ := json.Marshal(map[string]any{"domain": "router.example.com", "requesting": false, "outcome": "renewed", "at": 1759000000, "certificate": string(certPEM), "serving": true})
+	s := &Server{backend: acmeFake{state: string(answer)}}
+	raw, err := s.readACMEState(context.Background(), "sid")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(raw), "BEGIN CERTIFICATE") {
+		t.Errorf("PEM passed through: %s", raw)
+	}
+	var got struct {
+		Domain      string            `json:"domain"`
+		Outcome     string            `json:"outcome"`
+		At          int64             `json:"at"`
+		Serving     bool              `json:"serving"`
+		Certificate map[string]string `json:"certificate"`
+	}
+	if err := json.Unmarshal(raw, &got); err != nil {
+		t.Fatal(err)
+	}
+	if got.Domain != "router.example.com" || got.Outcome != "renewed" || got.At != 1759000000 || !got.Serving {
+		t.Errorf("the helper's facts were lost: %s", raw)
+	}
+	if got.Certificate["subject"] != "router.example.com" || got.Certificate["until"] == "" || got.Certificate["days_left"] == "" {
+		t.Errorf("certificate facts = %v", got.Certificate)
+	}
+
+	for _, plain := range []string{`{}`, `{"domain":"router.example.com","requesting":true}`} {
+		s := &Server{backend: acmeFake{state: plain}}
+		raw, err := s.readACMEState(context.Background(), "sid")
+		if err != nil || string(raw) != plain {
+			t.Errorf("an answer without a certificate became %s (%v), want %s", raw, err, plain)
+		}
+	}
+	s = &Server{backend: acmeFake{state: `{"domain":"router.example.com","certificate":"not a certificate","serving":false}`}}
+	raw, _ = s.readACMEState(context.Background(), "sid")
+	if strings.Contains(string(raw), "not a certificate") || !strings.Contains(string(raw), `"serving":false`) {
+		t.Errorf("an unreadable certificate is dropped, the rest kept: %s", raw)
+	}
+}
+
 func TestCertificateCommandsValidatePairAndExposeOnlyPublicMaterial(t *testing.T) {
 	certPEM, keyPEM, err := tlscert.Generate([]string{"router.lan"}, time.Now())
 	if err != nil {

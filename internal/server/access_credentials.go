@@ -54,6 +54,36 @@ func (s *Server) readAccessCredentials(ctx context.Context, sid string) (json.Ra
 	return json.Marshal(map[string]any{"keys": keys, "certificate": cert})
 }
 
+// readACMEState is the helper's acmeState with acme's certificate given as the
+// facts the Access page says of a certificate, never as PEM, so a plugin reads
+// it as the Certificate card does. A certificate that does not parse is left
+// out; the rest of the answer stands.
+func (s *Server) readACMEState(ctx context.Context, sid string) (json.RawMessage, error) {
+	raw, err := s.backend.ACMEState(ctx, sid)
+	if err != nil {
+		return nil, err
+	}
+	var state map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &state); err != nil {
+		return nil, err
+	}
+	held, ok := state["certificate"]
+	if !ok {
+		return raw, nil
+	}
+	delete(state, "certificate")
+	var text string
+	if json.Unmarshal(held, &text) == nil {
+		if block, _ := pem.Decode([]byte(text)); block != nil {
+			if c, err := x509.ParseCertificate(block.Bytes); err == nil {
+				facts, _ := json.Marshal(certificateFacts(c, time.Now()))
+				state["certificate"] = facts
+			}
+		}
+	}
+	return json.Marshal(state)
+}
+
 // certificateFacts is what the Access page says about the web certificate. The
 // fingerprint is written as a browser's certificate viewer writes it (SHA-256
 // of the DER, upper-case hex pairs), so the one a "not secure" page shows can

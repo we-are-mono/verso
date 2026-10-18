@@ -4,6 +4,7 @@ package openwrt
 
 import (
 	"context"
+	"encoding/json"
 	"strings"
 )
 
@@ -27,6 +28,13 @@ func (b *NativeBackend) SetWebCertificate(ctx context.Context, sid, cert, key st
 }
 func (b *NativeBackend) MakeWebCertificate(ctx context.Context, sid string) error {
 	return callHelper(ctx, b.helperSocket, "makeWebCertificate", sid, nil, nil)
+}
+
+// ACMEState is what the helper says of the trusted certificate (ADR-017 §6).
+func (b *NativeBackend) ACMEState(ctx context.Context, sid string) (json.RawMessage, error) {
+	var state json.RawMessage
+	err := callHelper(ctx, b.helperSocket, "acmeState", sid, nil, &state)
+	return state, err
 }
 func (b *NativeBackend) SetWebListeners(ctx context.Context, sid string, https, http []string, redirect string) error {
 	return callHelper(ctx, b.helperSocket, "setWebListeners", sid, map[string]string{

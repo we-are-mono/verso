@@ -621,6 +621,10 @@ func (fakeBackend) DDNSState(context.Context, string) (json.RawMessage, error) {
 	return nil, errNoHelper
 }
 
+func (fakeBackend) ACMEState(context.Context, string) (json.RawMessage, error) {
+	return nil, errNoHelper
+}
+
 func (fakeBackend) DDNSUpdate(context.Context, string, string) error {
 	return errNoHelper
 }
