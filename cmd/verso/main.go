@@ -7,9 +7,12 @@ package main
 import (
 	"context"
 	"crypto/tls"
+	"crypto/x509"
+	"encoding/pem"
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"net/netip"
@@ -43,9 +46,10 @@ func main() {
 		return
 	}
 	// `verso certificate generate` is the init script's, run as root before the
-	// shell starts when it has no certificate to serve (ADR-017 §5).
+	// shell starts when it has no certificate to serve (ADR-017 §5); `install`
+	// is verso-rpcd's, run as root to serve a certificate acme issued (§6).
 	if len(os.Args) > 1 && os.Args[1] == "certificate" {
-		if err := certificate(os.Args[2:], shellUID); err != nil {
+		if err := certificate(os.Args[2:], shellUID, os.Stdout); err != nil {
 			fmt.Fprintf(os.Stderr, "verso: certificate: %v\n", err)
 			os.Exit(1)
 		}
@@ -58,21 +62,57 @@ func main() {
 // VERSO_UID in verso-rpcd: the one account besides root that reads the key.
 const shellUID = 6000
 
-// certificate makes a self-signed pair in dir for the names given that a LAN
-// visit can use, the key keyOwner's alone.
-func certificate(args []string, keyOwner int) error {
-	if len(args) < 2 || args[0] != "generate" {
-		return errors.New("usage: verso certificate generate DIR NAME...")
+const certificateUsage = "usage: verso certificate generate DIR NAME...\n       verso certificate install DIR CERT KEY"
+
+// certificate puts a pair in dir, the key keyOwner's alone: `generate` makes a
+// self-signed one for the names given that a LAN visit can use; `install`
+// takes one issued elsewhere, checked as a pasted pair is, its key stored in
+// PKCS#8. It writes the files only: whoever runs it tells the shell to serve
+// them, or the shell's next start reads them.
+func certificate(args []string, keyOwner int, out io.Writer) error {
+	if len(args) < 2 {
+		return errors.New(certificateUsage)
 	}
-	names := tlscert.LANNames(args[2:])
-	cert, key, err := tlscert.Generate(names, time.Now())
+	switch {
+	case args[0] == "generate":
+		names := tlscert.LANNames(args[2:])
+		cert, key, err := tlscert.Generate(names, time.Now())
+		if err != nil {
+			return err
+		}
+		if err := tlscert.Write(args[1], cert, key, keyOwner); err != nil {
+			return err
+		}
+		fmt.Fprintf(out, "verso: certificate made for %s\n", strings.Join(names, " "))
+		return nil
+	case args[0] == "install" && len(args) == 4:
+		return install(args[1], args[2], args[3], keyOwner, out)
+	}
+	return errors.New(certificateUsage)
+}
+
+func install(dir, certPath, keyPath string, keyOwner int, out io.Writer) error {
+	certPEM, err := os.ReadFile(certPath)
 	if err != nil {
 		return err
 	}
-	if err := tlscert.Write(args[1], cert, key, keyOwner); err != nil {
+	keyPEM, err := os.ReadFile(keyPath)
+	if err != nil {
 		return err
 	}
-	fmt.Printf("verso: certificate made for %s\n", strings.Join(names, " "))
+	cert, key, err := tlscert.Validate(string(certPEM), string(keyPEM))
+	if err != nil {
+		return err
+	}
+	if err := tlscert.Write(dir, []byte(cert), []byte(key), keyOwner); err != nil {
+		return err
+	}
+	block, _ := pem.Decode([]byte(cert))
+	leaf, err := x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		return err
+	}
+	fmt.Fprintf(out, "verso: certificate installed for %s, valid until %s\n", leaf.Subject.CommonName, leaf.NotAfter.UTC().Format("2006-01-02"))
 	return nil
 }
 

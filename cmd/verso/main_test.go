@@ -7,9 +7,16 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
 	"crypto/tls"
+	"crypto/x509"
+	"crypto/x509/pkix"
+	"encoding/pem"
 	"fmt"
 	"io"
+	"math/big"
 	"net"
 	"net/http"
 	"os"
@@ -260,7 +267,7 @@ func TestAListenerThatIsNoAddressStopsTheShell(t *testing.T) {
 
 func TestCertificateGenerateNamesWhatTheLANUses(t *testing.T) {
 	dir := t.TempDir()
-	if err := certificate([]string{"generate", dir, "verso-lab", "verso-lab.lan", "192.168.1.1", "2a02:1::1", "fd00::1"}, os.Getuid()); err != nil {
+	if err := certificate([]string{"generate", dir, "verso-lab", "verso-lab.lan", "192.168.1.1", "2a02:1::1", "fd00::1"}, os.Getuid(), io.Discard); err != nil {
 		t.Fatal(err)
 	}
 	info, err := os.Stat(filepath.Join(dir, tlscert.KeyFile))
@@ -277,8 +284,95 @@ func TestCertificateGenerateNamesWhatTheLANUses(t *testing.T) {
 	if fmt.Sprint(pair.Leaf.DNSNames, pair.Leaf.IPAddresses) != "[verso-lab verso-lab.lan] [192.168.1.1 fd00::1]" {
 		t.Errorf("names: %v %v", pair.Leaf.DNSNames, pair.Leaf.IPAddresses)
 	}
-	if err := certificate([]string{"generate"}, os.Getuid()); err == nil {
+	if err := certificate([]string{"generate"}, os.Getuid(), io.Discard); err == nil {
 		t.Error("a generate with no directory succeeded")
+	}
+}
+
+// issued is a certificate for name from a throwaway authority, its key in SEC1
+// as acme.sh writes one, saved to dir as name.fullchain.crt and name.key.
+func issued(t *testing.T, dir, name string) (certPath, keyPath string, leaf *x509.Certificate) {
+	t.Helper()
+	caKey, _ := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	ca := &x509.Certificate{SerialNumber: big.NewInt(1), Subject: pkix.Name{CommonName: "Test CA"}, NotBefore: time.Now().Add(-time.Hour), NotAfter: time.Now().Add(90 * 24 * time.Hour), IsCA: true, BasicConstraintsValid: true, KeyUsage: x509.KeyUsageCertSign}
+	key, _ := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	tmpl := &x509.Certificate{SerialNumber: big.NewInt(2), Subject: pkix.Name{CommonName: name}, DNSNames: []string{name}, NotBefore: ca.NotBefore, NotAfter: ca.NotAfter}
+	der, err := x509.CreateCertificate(rand.Reader, tmpl, ca, &key.PublicKey, caKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ec, _ := x509.MarshalECPrivateKey(key)
+	certPath, keyPath = filepath.Join(dir, name+".fullchain.crt"), filepath.Join(dir, name+".key")
+	if err := os.WriteFile(certPath, pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der}), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(keyPath, pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: ec}), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	leaf, _ = x509.ParseCertificate(der)
+	return certPath, keyPath, leaf
+}
+
+func TestCertificateInstallServesAnIssuedPairWithItsKeyInPKCS8(t *testing.T) {
+	dir, from := t.TempDir(), t.TempDir()
+	certPath, keyPath, leaf := issued(t, from, "router.example.com")
+	var out bytes.Buffer
+	if err := certificate([]string{"install", dir, certPath, keyPath}, os.Getuid(), &out); err != nil {
+		t.Fatal(err)
+	}
+	key, err := os.ReadFile(filepath.Join(dir, tlscert.KeyFile))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.HasPrefix(key, []byte("-----BEGIN PRIVATE KEY-----")) {
+		t.Errorf("key stored as %q, want PKCS#8", key[:min(len(key), 32)])
+	}
+	info, _ := os.Stat(filepath.Join(dir, tlscert.KeyFile))
+	if info.Mode().Perm() != 0o600 || int(info.Sys().(*syscall.Stat_t).Uid) != os.Getuid() {
+		t.Errorf("key mode %v owner %d, want 0600 for its owner", info.Mode().Perm(), info.Sys().(*syscall.Stat_t).Uid)
+	}
+	pair, err := tls.LoadX509KeyPair(filepath.Join(dir, tlscert.CertFile), filepath.Join(dir, tlscert.KeyFile))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(pair.Leaf.Raw, leaf.Raw) {
+		t.Error("the installed certificate is not the one given")
+	}
+	want := fmt.Sprintf("verso: certificate installed for router.example.com, valid until %s\n", leaf.NotAfter.UTC().Format("2006-01-02"))
+	if out.String() != want {
+		t.Errorf("said %q, want %q", out.String(), want)
+	}
+}
+
+func TestCertificateInstallRefusesAPairThatCannotBeServed(t *testing.T) {
+	dir, from := t.TempDir(), t.TempDir()
+	if err := certificate([]string{"generate", dir, "router"}, os.Getuid(), io.Discard); err != nil {
+		t.Fatal(err)
+	}
+	before := func() map[string][]byte {
+		files := map[string][]byte{}
+		for _, f := range []string{tlscert.CertFile, tlscert.KeyFile} {
+			files[f], _ = os.ReadFile(filepath.Join(dir, f))
+		}
+		return files
+	}
+	was := before()
+	certPath, _, _ := issued(t, from, "router.example.com")
+	_, otherKey, _ := issued(t, t.TempDir(), "other.example.com")
+	err := certificate([]string{"install", dir, certPath, otherKey}, os.Getuid(), io.Discard)
+	if err == nil || !strings.Contains(err.Error(), "do not match") {
+		t.Errorf("err = %v, want the mismatch named", err)
+	}
+	if err := certificate([]string{"install", dir, certPath, filepath.Join(from, "absent.key")}, os.Getuid(), io.Discard); err == nil {
+		t.Error("an absent key was installed")
+	}
+	if err := certificate([]string{"install", dir, certPath}, os.Getuid(), io.Discard); err == nil {
+		t.Error("an install with no key succeeded")
+	}
+	for f, b := range before() {
+		if !bytes.Equal(b, was[f]) {
+			t.Errorf("%s changed after a refused install", f)
+		}
 	}
 }
 
