@@ -604,14 +604,6 @@ func (f fakeBackend) WirelessState(context.Context, string) (json.RawMessage, er
 	return f.wireless, f.wirelessErr
 }
 
-func (fakeBackend) DDNSState(context.Context, string) (json.RawMessage, error) {
-	return nil, errNoHelper
-}
-
-func (fakeBackend) DDNSUpdate(context.Context, string, string) error {
-	return errNoHelper
-}
-
 func (fakeBackend) RefreshGrants(context.Context, string) error {
 	return errNoHelper
 }

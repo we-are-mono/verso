@@ -16,7 +16,6 @@ mod paths;
 mod plugin_command;
 mod registry;
 mod config_files;
-mod ddns;
 mod families;
 mod grants;
 mod dhcp;
@@ -356,8 +355,6 @@ fn dispatch(request: &Value, state: &State, uid: u32) -> Result<Value, Failure> 
             argument(request, "config").ok(),
         ),
         "accessCredentials" => access::state(),
-        "ddnsState" => ddns::state(),
-        "ddnsUpdate" => ddns::update(argument(request, "section")?),
         // The caller's own sid, which the access check above already holds to.
         "refreshGrants" => grants::refresh(sid),
         "setAuthorizedKeys" => {

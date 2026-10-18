@@ -1356,8 +1356,6 @@ func (s *Server) coreRead(function string) func(context.Context, string) (json.R
 		}
 	case "wirelessState":
 		read = s.backend.WirelessState
-	case "ddnsState":
-		read = s.backend.DDNSState
 	}
 	return read
 }

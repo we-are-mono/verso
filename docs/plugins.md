@@ -542,7 +542,6 @@ functions in its own closed set:
 | `accessCredentials` | Public SSH key comments/fingerprints and public web-certificate metadata. No authorized-key options, private keys, or router passwords are included. |
 | `wirelessState` | `{"radios": {"radio0": {"up": true, "channel": 6, "txpower": 20, "busy": 61, "hardware": "NXP 88W9098"}}, "networks": {"default_radio0": {"up": true, "clients": 3}}}` — what the radios are doing now, keyed by `wireless` config section. netifd's `network.wireless status` says whether each radio and network is up and which kernel interface a network became; iwinfo reads that interface for the channel and transmit power (dBm) in use, the in-use channel's busy share (whole percent of active airtime) and the associated clients. A number that could not be read is absent, never zero. The operator's grant must cover `network.wireless status`, and `iwinfo info`/`assoclist`/`survey` for the numbers. |
 | `configFiles` | `{"files": [{"path": "/etc/nftables.d/10-custom.nft", "family": "fw4", "content": "...", "version": "...", "pending": false, "exists": true}], "families": [{"name": "fw4", "config": "firewall", "plugin": "firewall"}]}` — the files of the families whose config you read, as they will read once staged changes are applied, and those families (see [Hand-edited files](#hand-edited-files)). A file listed by its path alone carries an `error` in place of its `content` and `version`. |
-| `ddnsState` | `{"services": {"home": {"address": "203.0.113.7", "running": true, "updated": 200, "next": 100}}}` — each ddns-scripts service with files in `/var/run/ddns`, keyed by section. `address` is what the name resolved to at the updater's last check, every address one per line (empty when it did not resolve); `updated` is seconds since an update was last sent and `next` seconds until the next check, both absent when the updater has not written them; `running` is whether the pid file names a live `dynamic_dns_updater`. No state is read from the log. |
 | `dhcpLeases` | `{"leases": [{"hostname", "mac", "ipv4", "ipv6s", "expires_at"}]}` — who holds an address right now, in address order. dnsmasq's DHCPv4 lease file is the list; odhcpd's DHCPv6 table adds `ipv6s` to the device it belongs to, joined by the link-layer address its DUID embeds or by the hostname both tables recorded. `hostname` is empty when the device offered none, `expires_at` is an epoch second (render the countdown against your own clock), and a DHCPv6 lease that joins no DHCPv4 lease is left out — it carries no MAC, which is the identity a reservation is keyed by. The shell reads the lease file itself, so it answers only an operator whose grant covers `dhcp ipv6leases`. |
 
 
@@ -752,8 +751,7 @@ its grant. Its arguments are text.
   `ssh-key-remove` (`ubus verso setAuthorizedKeys`), `certificate-generate` and
   `certificate-install` (`ubus verso makeWebCertificate`, `setWebCertificate`),
   `interface-up`, `interface-down` and `interface-restart` (`ubus
-  network.interface up`, `down`, `restart`), `ddns-update` (`ubus verso
-  ddnsUpdate`), and `config-file-stage` (below).
+  network.interface up`, `down`, `restart`), and `config-file-stage` (below).
 - **A registered act** is `<plugin>.<name>`, a command your registry declares (see
   [Root work](#root-work-the-command-registry)), granted as `verso-plugin <plugin>
   <name>`.

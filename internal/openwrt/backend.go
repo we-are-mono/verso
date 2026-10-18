@@ -258,9 +258,6 @@ type Backend interface {
 	DNSState(ctx context.Context, sid string) (json.RawMessage, error)
 	NetworkState(ctx context.Context, sid string) (json.RawMessage, error)
 	WirelessState(ctx context.Context, sid string) (json.RawMessage, error)
-	DDNSState(ctx context.Context, sid string) (json.RawMessage, error)
-	// DDNSUpdate has one ddns-scripts service send its address now.
-	DDNSUpdate(ctx context.Context, sid, section string) error
 	// PluginCommand runs a plugin's registered root command (ADR-027): a read's
 	// result, or an act's, as the command answered it. A refusal carries the
 	// words the operator reads as its ValidationMessage.

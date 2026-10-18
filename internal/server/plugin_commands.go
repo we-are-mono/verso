@@ -93,13 +93,6 @@ func (s *Server) coreAct(ctx context.Context, m plugin.Manifest, sid string, cmd
 			return s.backend.NetworkSetUp(ctx, sid, name, method == "up")
 		}
 		return s.backend.NetworkRestart(ctx, sid, name)
-	case "ddns-update":
-		allowed := slices.Contains(m.ACL.Write, plugin.ACLScope{Scope: "ubus", Object: "verso", Function: "ddnsUpdate"})
-		section := cmd.Args["section"]
-		if !allowed || len(cmd.Args) != 1 || len(section) > 64 || !plugin.UCIName(section, false) {
-			return fmt.Errorf("invalid ddns update command")
-		}
-		err = s.backend.DDNSUpdate(ctx, sid, section)
 	default:
 		return fmt.Errorf("unknown command")
 	}

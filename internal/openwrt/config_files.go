@@ -51,20 +51,6 @@ func (b *NativeBackend) DNSState(ctx context.Context, sid string) (json.RawMessa
 	return state, err
 }
 
-// DDNSState is what ddns-scripts last did for each service: the address its
-// name resolves to, when it last sent an update, and whether its updater runs.
-func (b *NativeBackend) DDNSState(ctx context.Context, sid string) (json.RawMessage, error) {
-	var state json.RawMessage
-	err := callHelper(ctx, b.helperSocket, "ddnsState", sid, nil, &state)
-	return state, err
-}
-
-// DDNSUpdate has the helper restart one ddns-scripts service's updater with no
-// record of a last update, so it sends its address at once.
-func (b *NativeBackend) DDNSUpdate(ctx context.Context, sid, section string) error {
-	return callHelper(ctx, b.helperSocket, "ddnsUpdate", sid, map[string]string{"section": section}, nil)
-}
-
 // PluginCommand runs a plugin's registered root command through the helper
 // (ADR-027), which checks the session's grant `verso-plugin <plugin> <name>`
 // and the arguments against the registry before anything runs.
