@@ -47,5 +47,6 @@
   min-width: 0;
   overflow-wrap: anywhere;
   color: var(--color-meta);
-  @apply type-body;
+  /* Meta reads thin at 400, so the value is written at 500. */
+  @apply type-value;
 }

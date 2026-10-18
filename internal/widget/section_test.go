@@ -178,7 +178,8 @@ func TestListRowsTakeTheirHeightFromPadding(t *testing.T) {
 	if strings.Count(got, packet) != 3 || strings.Count(got, value) != 3 {
 		t.Errorf("each value leads with the packet, its words quiet:\n%s", got)
 	}
-	declares(t, "list", ".verso-list__value", "color: var(--color-meta);", "@apply type-body;")
+	// Meta reads thin at 400, so a value is written at the value role's 500.
+	declares(t, "list", ".verso-list__value", "color: var(--color-meta);", "@apply type-value;")
 	if strings.Contains(got, "min-h-8") || strings.Contains(blockCSS(t, "list"), "height:") {
 		t.Errorf("no fixed row floor:\n%s", got)
 	}
