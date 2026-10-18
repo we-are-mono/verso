@@ -473,7 +473,8 @@ func TestAFieldRowIsALedger(t *testing.T) {
 	// A row's air and hairline are its knobs, read once by the row itself.
 	row := cssBlock(t, css, "\n.verso-field {")
 	for _, want := range []string{
-		"padding: var(--verso-edge-air, var(--verso-field-lead, var(--spacing-inset))) var(--verso-field-bleed, 0px) var(--verso-field-trail, 0px);",
+		"padding: var(--verso-edge-air, var(--verso-field-lead, var(--spacing-inset))) max(",
+		"var(--verso-field-trail, 0px) var(--verso-field-bleed, 0px);",
 		"border-top-width: var(--verso-field-rule, 0px);",
 	} {
 		if !strings.Contains(row, want) {
@@ -846,15 +847,21 @@ func TestFieldRowsRunToACardsBorders(t *testing.T) {
 	}
 	// The row reads the bleed: out past its column by it, its words back in.
 	row := cssBlock(t, blockSheet(t, "field"), "\n.verso-field {")
+	// It spans what it stands in, so its hairline reaches the far border of
+	// a card wider than the form's measure; the padding at its end takes up
+	// what the measure leaves, so its words keep it.
 	for _, want := range []string{
 		"margin-inline: calc(var(--verso-field-bleed, 0px) * -1);",
-		"var(--verso-field-bleed, 0px) var(--verso-field-trail, 0px);",
+		"max(var(--verso-field-bleed, 0px), calc(100% - var(--verso-form-width, 40rem) + var(--verso-field-bleed, 0px) * 3)) var(--verso-field-trail, 0px) var(--verso-field-bleed, 0px);",
 	} {
 		if !strings.Contains(row, want) {
 			t.Errorf("a row does not run by its bleed: missing %s in %s", want, row)
 		}
 	}
 }
+	if strings.Contains(row, "max-width") {
+		t.Errorf("a row is capped, so its hairline stops short of a wide card's border: %s", row)
+	}
 
 // cssBlock is the body of the first rule that opens with head, up to its
 // first closing brace: enough for a rule that nests nothing.

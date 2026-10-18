@@ -86,10 +86,12 @@
   --verso-field-width-endpoint: calc(var(--spacing) * 128 + 1px);
   container: verso-field / inline-size;
   position: relative;
-  max-width: var(--verso-form-width, 40rem);
   margin-inline: calc(var(--verso-field-bleed, 0px) * -1);
   margin-bottom: var(--verso-edge-trail, 0px);
-  padding: var(--verso-edge-air, var(--verso-field-lead, var(--spacing-inset))) var(--verso-field-bleed, 0px) var(--verso-field-trail, 0px);
+  /* The row spans what it stands in, so its hairline reaches the far border
+     of a card wider than the form; its words keep the form's measure, the
+     padding at its end taking up whatever the measure leaves. */
+  padding: var(--verso-edge-air, var(--verso-field-lead, var(--spacing-inset))) max(var(--verso-field-bleed, 0px), calc(100% - var(--verso-form-width, 40rem) + var(--verso-field-bleed, 0px) * 3)) var(--verso-field-trail, 0px) var(--verso-field-bleed, 0px);
   border: 0 solid var(--color-rule);
   border-top-width: var(--verso-field-rule, 0px);
 }

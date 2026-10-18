@@ -37,8 +37,9 @@ func TestDecodeAndRenderSwitch(t *testing.T) {
 	if strings.Contains(got, "data-verso-tip") || strings.Contains(got, "enabled-tip") {
 		t.Errorf("a switch's name raises no tooltip:\n%s", got)
 	}
-	// The row keeps the form's measure, and its name the field-label role.
-	declares(t, "field", ".verso-field", "max-width: var(--verso-form-width, 40rem);")
+	// The row's words keep the form's measure, and its name the field-label
+	// role.
+	declares(t, "field", ".verso-field", "max(var(--verso-field-bleed, 0px), calc(100% - var(--verso-form-width, 40rem) + var(--verso-field-bleed, 0px) * 3))")
 	declares(t, "field", ".verso-field__name", "color: var(--color-ink);", "@apply type-field-label;")
 	// DOM and visual order agree: the question, then the answer.
 	if label, control := strings.Index(got, ">Enabled"), strings.Index(got, "data-verso-switch"); label < 0 || control < 0 || label > control {
