@@ -937,10 +937,12 @@ func TestRenderButton(t *testing.T) {
 			t.Errorf("disabled button missing %q: %s", want, disabled)
 		}
 	}
-	// The button block marks a plain disabled button with the not-allowed
-	// pointer.
-	if !regexp.MustCompile(`\.verso-button:disabled:not\(\[data-verso-busy\], \[data-verso-standby\]\) \{\s*cursor: not-allowed;`).Match(css) {
-		t.Error("a disabled button does not take the not-allowed pointer")
+	// A disabled button keeps the plain arrow, as a native one does: its look
+	// already says it cannot be pressed, and a forbidding pointer would scold
+	// someone who has only moved the mouse.
+	declares(t, "button", `.verso-button:is(:disabled, [aria-disabled="true"])`, "cursor: default;")
+	if strings.Contains(string(css), "not-allowed") {
+		t.Error("a disabled button takes the forbidding pointer")
 	}
 	// Whether a button can be pressed reads at a glance: one that can wears
 	// an edge, a secondary's words in Ink; one that cannot loses its edge
