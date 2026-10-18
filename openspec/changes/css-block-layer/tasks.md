@@ -90,7 +90,7 @@
 - [x] 6.2 Add `cards` to the `Renderer` handle (Decision 5) and return `card` from `sectionView.Kind()`. Emit the card classes in `section.html.tmpl`, and turn `cards` off for the choices drawer and the Overview card body. Verify: the 6.1 tests pass, and parity holds with the card rules still in `sections.css` re-keyed to `[data-verso-section="card"]`.
 - [x] 6.3 `card`: frame, inset, head seam, title (`type-card-title`), body. The row bleed and edge handoff are property settings only, and visible edges use `:nth-child(1 of S)`. Delete every `:is(.verso-page-body, [data-verso-drawer-body]) section…` rule. Verify: block done; that pattern no longer appears in any stylesheet (search is empty).
 - [x] 6.4 `overview-card` and `overview`: the article takes `verso-card verso-overview-card`, the header `verso-card__head`, the title `verso-card__title`, the content `verso-card__body`. The Overview card's own frame and type utilities come off, and collapse, arrange, tone, summary and slot go to its block. Verify: block done; Arrange and collapse work in the dev container; the reference set's closed card and Arrange states hold parity.
-- [ ] 6.5 Spec scenario checks in the dev container, never committed:
+- [x] 6.5 Spec scenario checks in the dev container, never committed:
   - swap the border token in `card.css`;
   - swap `type-card-title`'s weight in `type.css`.
 
@@ -124,8 +124,8 @@
 
 ## 10. Close the ratchet
 
-- [ ] 10.1 Delete `forms.css` and `sections.css`, reduce `input.css` to its entry role (Decision 1), and remove the `@theme` text overrides the roles supersede (`--text-sm--line-height`). Verify: `TestRulesLiveInBlocks` passes with no ratchet lines, and parity holds.
-- [ ] 10.2 Confirm that the ratchet list is empty, then delete it and the guards' ratchet-reading code, so every guard is unconditional. Verify: the file is gone; `make test` green; every guard passes with no exceptions.
+- [x] 10.1 Delete `forms.css` and `sections.css`, reduce `input.css` to its entry role (Decision 1), and remove the `@theme` text overrides the roles supersede (`--text-sm--line-height`). Verify: `TestRulesLiveInBlocks` passes with no ratchet lines, and parity holds.
+- [x] 10.2 Confirm that the ratchet list is empty, then delete it and the guards' ratchet-reading code, so every guard is unconditional. Verify: the file is gone; `make test` green; every guard passes with no exceptions.
 
 ## 11. Integration
 

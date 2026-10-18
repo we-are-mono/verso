@@ -438,13 +438,13 @@ func TestAFieldRowMeasuresOnTheEightPixelGrid(t *testing.T) {
 	if !strings.Contains(css, "--spacing-answer: 17rem;") {
 		t.Error("the theme does not name the answer column: missing --spacing-answer: 17rem;")
 	}
-	block := cssBlock(t, css, "@utility py-field")
+	field := blockSheet(t, "field")
 	for _, want := range []string{
-		"padding-top: calc(var(--spacing) * 3.75);",
-		"padding-bottom: calc(var(--spacing) * 4);",
+		"--verso-field-lead: calc(var(--spacing) * 3.75);",
+		"--verso-field-trail: calc(var(--spacing) * 4);",
 	} {
-		if !strings.Contains(block, want) {
-			t.Errorf("py-field does not put the name on its band: missing %s in %s", want, block)
+		if !strings.Contains(field, want) {
+			t.Errorf("a field row does not put its name on its band: blocks/field.css is missing %s", want)
 		}
 	}
 }

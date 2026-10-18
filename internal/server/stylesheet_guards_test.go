@@ -4,7 +4,6 @@
 package server
 
 import (
-	"bufio"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -20,13 +19,8 @@ import (
 // The stylesheet guards hold the block contract (ADR-025): every look a named
 // block defined once in its own file, every text a type role, the markup naming
 // both instead of repeating them. Each guard is a pure function over the
-// shell's style sources, so its fixture test shows it catching what it names;
-// the test that runs it over the real tree compares what it finds with the
-// ratchet (testdata/stylesheet-ratchet.txt), which lists what the tree has not
-// yet converted: a finding not on the list fails, and so does a listed line
-// that no longer occurs, so the list only shrinks.
-//
-// STYLESHEET_RATCHET=write rewrites the list from what the guards find.
+// shell's style sources, so its fixture test shows it catching what it names,
+// and the test that runs it over the real tree fails on anything it finds.
 
 // styleSources is everything that styles the shell or writes its classes:
 // stylesheets keyed by their path under internal/server/assets, markup
@@ -38,9 +32,8 @@ type styleSources struct {
 	design string
 }
 
-// violation is one finding: the guard that found it, the key the ratchet
-// lists it by (content, never a line number, so an edit elsewhere in a file
-// does not move it), and where it is, for a person reading the failure.
+// violation is one finding: the guard that found it, what it found (content,
+// never a line number), and where it is, for a person reading the failure.
 type violation struct {
 	guard, key, where string
 }
@@ -929,124 +922,61 @@ func TestEveryRoleIsWhole(t *testing.T) {
 	}
 }
 
-// ── the ratchet ────────────────────────────────────────────────────────────
+// ── over the real tree ─────────────────────────────────────────────────────
 
-const ratchetFile = "testdata/stylesheet-ratchet.txt"
-
-var ratchetMu sync.Mutex
-
-// readRatchet is the listed findings of one guard, as a multiset of keys.
-func readRatchet(t *testing.T, guard string) map[string]int {
-	t.Helper()
-	f, err := os.Open(ratchetFile)
-	if os.IsNotExist(err) {
-		return map[string]int{}
-	}
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer f.Close()
-	out := map[string]int{}
-	sc := bufio.NewScanner(f)
-	sc.Buffer(make([]byte, 1<<20), 1<<20)
-	for sc.Scan() {
-		if g, key, ok := strings.Cut(sc.Text(), "\t"); ok && g == guard {
-			out[key]++
-		}
-	}
-	return out
-}
-
-// writeRatchet replaces one guard's lines in the list with what it found.
-func writeRatchet(t *testing.T, guard string, found []violation) {
-	t.Helper()
-	ratchetMu.Lock()
-	defer ratchetMu.Unlock()
-	var lines []string
-	if b, err := os.ReadFile(ratchetFile); err == nil {
-		for _, l := range strings.Split(strings.TrimRight(string(b), "\n"), "\n") {
-			if g, _, ok := strings.Cut(l, "\t"); ok && g != guard {
-				lines = append(lines, l)
-			}
-		}
-	}
-	for _, v := range found {
-		lines = append(lines, guard+"\t"+v.key)
-	}
-	sort.Strings(lines)
-	if err := os.WriteFile(ratchetFile, []byte(strings.Join(lines, "\n")+"\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-}
-
-// holdTheRatchet runs one guard over the real tree and compares its findings
-// with the list.
-func holdTheRatchet(t *testing.T, guard string, check func(styleSources) []violation) {
+// holdTheContract runs one guard over the real tree: whatever it finds breaks
+// the block contract.
+func holdTheContract(t *testing.T, guard string, check func(styleSources) []violation) {
 	t.Helper()
 	src, err := loadStyleSources()
 	if err != nil {
 		t.Fatal(err)
 	}
-	found := check(src)
-	if os.Getenv("STYLESHEET_RATCHET") == "write" {
-		writeRatchet(t, guard, found)
-		return
-	}
-	listed := readRatchet(t, guard)
-	for _, v := range found {
-		if listed[v.key] > 0 {
-			listed[v.key]--
-			continue
-		}
+	for _, v := range check(src) {
 		t.Errorf("%s: %s (at %s) breaks the block contract (ADR-025)", guard, strings.ReplaceAll(v.key, "\t", " · "), v.where)
-	}
-	for _, k := range keys(listed) {
-		if listed[k] > 0 {
-			t.Errorf("%s: the ratchet lists %q, which no longer occurs; delete its line from %s", guard, strings.ReplaceAll(k, "\t", " · "), ratchetFile)
-		}
 	}
 }
 
 func TestRulesLiveInBlocks(t *testing.T) {
-	holdTheRatchet(t, "rules-live-in-blocks", rulesLiveInBlocks)
+	holdTheContract(t, "rules-live-in-blocks", rulesLiveInBlocks)
 }
 
 func TestABlockStartsFromItself(t *testing.T) {
-	holdTheRatchet(t, "a-block-starts-from-itself", aBlockStartsFromItself)
+	holdTheContract(t, "a-block-starts-from-itself", aBlockStartsFromItself)
 }
 
 func TestCrossBlockRulesSetOnlyProperties(t *testing.T) {
-	holdTheRatchet(t, "cross-block-rules-set-only-properties", crossBlockRulesSetOnlyProperties)
+	holdTheContract(t, "cross-block-rules-set-only-properties", crossBlockRulesSetOnlyProperties)
 }
 
 func TestClassesAreBlocks(t *testing.T) {
-	holdTheRatchet(t, "classes-are-blocks", classesAreBlocks)
+	holdTheContract(t, "classes-are-blocks", classesAreBlocks)
 }
 
 func TestNoRepeatedBundles(t *testing.T) {
-	holdTheRatchet(t, "no-repeated-bundles", noRepeatedBundles)
+	holdTheContract(t, "no-repeated-bundles", noRepeatedBundles)
 }
 
 func TestShortClassLists(t *testing.T) {
-	holdTheRatchet(t, "short-class-lists", shortClassLists)
+	holdTheContract(t, "short-class-lists", shortClassLists)
 }
 
 func TestNoRulesInMarkup(t *testing.T) {
-	holdTheRatchet(t, "no-rules-in-markup", noRulesInMarkup)
+	holdTheContract(t, "no-rules-in-markup", noRulesInMarkup)
 }
 
 func TestNoClassStringTemplates(t *testing.T) {
-	holdTheRatchet(t, "no-class-string-templates", noClassStringTemplates)
+	holdTheContract(t, "no-class-string-templates", noClassStringTemplates)
 }
 
 func TestTypeComesFromRoles(t *testing.T) {
-	holdTheRatchet(t, "type-comes-from-roles", typeComesFromRoles)
+	holdTheContract(t, "type-comes-from-roles", typeComesFromRoles)
 }
 
 func TestEveryBlockIsImported(t *testing.T) {
-	holdTheRatchet(t, "every-block-is-imported", everyBlockIsImported)
+	holdTheContract(t, "every-block-is-imported", everyBlockIsImported)
 }
 
 func TestTypeRolesMatchDesign(t *testing.T) {
-	holdTheRatchet(t, "type-roles-match-design", typeRolesMatchDesign)
+	holdTheContract(t, "type-roles-match-design", typeRolesMatchDesign)
 }
