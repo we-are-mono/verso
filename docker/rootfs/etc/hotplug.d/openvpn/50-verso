@@ -14,9 +14,13 @@
 # running now. A profile that drops privileges (user nobody) runs its first up,
 # and route-up unless a non-pulling profile delays its routes, as root and the
 # hooks after as that user, so the directory takes anyone's file but lets no one
-# replace another's (1733). The hook carries over only a record its own user
-# wrote, a file and no link, and the reader trusts a record only when it is
-# owned by the user the instance runs as.
+# replace another's (1733). Root writes the record under the instance's name,
+# the user it drops to under the name and its uid (proton.65534), which no
+# instance's name can be. Each run carries over its own user's record of this
+# PID or, for that user, root's: a file and no link, owned by the user named.
+# The reader trusts the instance's user's record, and then root's, the same way;
+# where another account stood an entry at the user's name first, the user's
+# hooks write nothing and root's record is the last word.
 
 case "$INSTANCE" in
 	'' | *[!A-Za-z0-9_-]*) exit 0 ;;
@@ -33,21 +37,38 @@ esac
 
 dir=/var/run/verso-openvpn
 [ -d "$dir" ] || { mkdir -p "$dir" && chmod 1733 "$dir"; } || exit 0
+uid=$(id -u) || exit 0
 record="$dir/$INSTANCE"
+[ "$uid" = 0 ] || record="$record.$uid"
+
+# owner is the uid that owns the file at $1, as ls reads it (OpenWrt's busybox
+# has no stat).
+owner() {
+	set -- $(ls -lnd "$1" 2>/dev/null) && echo "$3"
+}
+
+# carry takes since, address, server, device and, where this run names no
+# state, the state from the record at $1 when uid $2 wrote it for this PID.
+# No one but its writer can replace a file here, so the file read is the one
+# checked.
+carry() {
+	[ -f "$1" ] && [ ! -L "$1" ] && [ "$(owner "$1")" = "$2" ] || return 1
+	{
+		IFS='=' read -r key value && [ "$key" = pid ] && [ "$value" = "$PPID" ] || return 1
+		while IFS='=' read -r key value; do
+			case "$key" in
+				state) [ -n "$state" ] || state=$value ;;
+				since) since=$value ;;
+				address) address=$value ;;
+				server) server=$value ;;
+				device) device=$value ;;
+			esac
+		done
+	} < "$1"
+}
 
 since= address= server= device=
-if [ -f "$record" ] && [ ! -L "$record" ] && [ -O "$record" ]; then
-	while IFS='=' read -r key value; do
-		case "$key" in
-			pid) [ "$value" = "$PPID" ] || break ;;
-			state) [ -n "$state" ] || state=$value ;;
-			since) since=$value ;;
-			address) address=$value ;;
-			server) server=$value ;;
-			device) device=$value ;;
-		esac
-	done < "$record"
-fi
+carry "$record" "$uid" || { [ "$uid" != 0 ] && carry "$dir/$INSTANCE" 0; }
 
 [ -n "$dev" ] && device=$dev
 [ -n "$ifconfig_local" ] && address=$ifconfig_local

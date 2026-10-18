@@ -72,12 +72,22 @@ func openvpnRecords(t *testing.T) (string, string) {
 func busyboxPath(t *testing.T, busybox string) string {
 	t.Helper()
 	bin := t.TempDir()
-	for _, applet := range []string{"chmod", "date", "mkdir", "mkfifo", "mktemp", "mv", "rm", "stat"} {
+	for _, applet := range []string{"chmod", "cp", "date", "id", "ls", "mkdir", "mkfifo", "mktemp", "mv", "rm", "stat"} {
 		if err := os.Symlink(busybox, filepath.Join(bin, applet)); err != nil {
 			t.Fatal(err)
 		}
 	}
 	return bin
+}
+
+// recordOf is the name the hook writes instance's record under when it runs
+// as uid: the instance's name for root, the name and the uid for the user
+// an OpenVPN drops to.
+func recordOf(instance string, uid int) string {
+	if uid == 0 {
+		return instance
+	}
+	return instance + "." + strconv.Itoa(uid)
 }
 
 // planted is what the harness stood in the record directory: its name and
@@ -147,7 +157,8 @@ func TestOpenVPNHookWritesItsRecordPastWhatOthersPlant(t *testing.T) {
 			dir, hook := openvpnRecords(t)
 			stood := runOpenVPNHook(t, busybox, dir, hook, plant)
 
-			record := filepath.Join(dir, "vpn1")
+			name := recordOf("vpn1", os.Getuid())
+			record := filepath.Join(dir, name)
 			info, err := os.Lstat(record)
 			if err != nil || !info.Mode().IsRegular() {
 				t.Fatalf("record %v (%v), want a regular file", info, err)
@@ -170,7 +181,7 @@ func TestOpenVPNHookWritesItsRecordPastWhatOthersPlant(t *testing.T) {
 				t.Fatal(err)
 			}
 			for _, e := range entries {
-				if e.Name() != "vpn1" && e.Name() != stood.name {
+				if e.Name() != name && e.Name() != stood.name {
 					t.Errorf("the hook left %s behind", e.Name())
 				}
 			}
@@ -188,7 +199,8 @@ func TestOpenVPNHookRemovesItsTemporaryWhenTheRecordCannotBeReplaced(t *testing.
 		t.Skip("the hook runs under busybox sh, which is not installed")
 	}
 	dir, hook := openvpnRecords(t)
-	stood := filepath.Join(dir, "vpn1")
+	name := recordOf("vpn1", os.Getuid())
+	stood := filepath.Join(dir, name)
 	if err := os.Mkdir(stood, 0o777); err != nil {
 		t.Fatal(err)
 	}
@@ -197,8 +209,8 @@ func TestOpenVPNHookRemovesItsTemporaryWhenTheRecordCannotBeReplaced(t *testing.
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(entries) != 1 || entries[0].Name() != "vpn1" {
-		t.Errorf("record directory holds %v, want only vpn1", entries)
+	if len(entries) != 1 || entries[0].Name() != name {
+		t.Errorf("record directory holds %v, want only %s", entries, name)
 	}
 	inside, err := os.ReadDir(stood)
 	if err != nil {
@@ -229,6 +241,29 @@ fi || exit 1
 ( . "$HOOK" )
 `
 
+// userNamespace is the unshare and setpriv a test runs the hook with as root
+// of a user namespace that maps uids 1001 and 1002 too, and the unshare
+// arguments that make one; the test is skipped where there is none.
+func userNamespace(t *testing.T) (unshare, setpriv string, userns []string) {
+	t.Helper()
+	unshare, err := exec.LookPath("unshare")
+	if err != nil {
+		t.Skip("another account's record needs unshare, which is not installed")
+	}
+	setpriv, err = exec.LookPath("setpriv")
+	if err != nil {
+		t.Skip("another account's record needs setpriv, which is not installed")
+	}
+	userns = []string{"--map-root-user", "--map-auto"}
+	for _, uid := range []string{"1001", "1002"} {
+		probe := exec.Command(unshare, append(userns, setpriv, "--reuid", uid, "--regid", uid, "--clear-groups", "true")...)
+		if out, err := probe.CombinedOutput(); err != nil {
+			t.Skipf("no user namespace mapping uid %s: %v: %s", uid, err, out)
+		}
+	}
+	return unshare, setpriv, userns
+}
+
 // TestOpenVPNHookCarriesOverOnlyItsOwnRecord: what an instance carries from
 // one hook to the next (since, address, server) comes only from a record the
 // hook's own user wrote. A record another account stood at the instance's
@@ -240,19 +275,7 @@ func TestOpenVPNHookCarriesOverOnlyItsOwnRecord(t *testing.T) {
 	if err != nil {
 		t.Skip("the hook runs under busybox sh, which is not installed")
 	}
-	unshare, err := exec.LookPath("unshare")
-	if err != nil {
-		t.Skip("another account's record needs unshare, which is not installed")
-	}
-	setpriv, err := exec.LookPath("setpriv")
-	if err != nil {
-		t.Skip("another account's record needs setpriv, which is not installed")
-	}
-	userns := []string{"--map-root-user", "--map-auto"}
-	probe := exec.Command(unshare, append(userns, setpriv, "--reuid", "1001", "--regid", "1001", "--clear-groups", "true")...)
-	if out, err := probe.CombinedOutput(); err != nil {
-		t.Skipf("no user namespace mapping a second uid: %v: %s", err, out)
-	}
+	unshare, setpriv, userns := userNamespace(t)
 
 	for _, tc := range []struct {
 		name, planter, target string
@@ -300,6 +323,127 @@ func TestOpenVPNHookCarriesOverOnlyItsOwnRecord(t *testing.T) {
 			for _, line := range append([]string{"state=connecting"}, append(tc.carried, "device=tun0")...) {
 				if !strings.Contains(string(text), "\n"+line+"\n") {
 					t.Errorf("record %q holds no %q", text, line)
+				}
+			}
+		})
+	}
+}
+
+// openvpnHookDropped runs the hook as an OpenVPN that drops to uid 1001
+// runs it, every run a child of this shell so each carries its PID: as root
+// for route-up, as 1001 for route-pre-down and an ipchange after. Given
+// $PLANTER, root's route-up does not run and that account stands a record at
+// the instance's name first, carrying the PID and a server of its choosing.
+const openvpnHookDropped = `D=$1 HOOK=$2
+PATH=$HOOKPATH
+cd "$D" || exit 1
+hook='. "$1"'
+if [ -n "$PLANTER" ]; then
+	"$SETPRIV" --reuid "$PLANTER" --regid "$PLANTER" --clear-groups "$BUSYBOX" sh -c \
+		'printf "pid=%s\nstate=connected\nsince=1\naddress=6.6.6.6\nserver=evil.example:443\n" "$1" >vpn1' sh "$$" || exit 1
+else
+	ACTION=route-up dev=tun0 ifconfig_local=10.8.0.2 trusted_ip=192.0.2.1 trusted_port=1194 \
+		"$BUSYBOX" sh -c "$hook" sh "$HOOK" || exit 1
+fi
+as1001() { "$SETPRIV" --reuid 1001 --regid 1001 --clear-groups "$BUSYBOX" env "$@" "$BUSYBOX" sh -c "$hook" sh "$HOOK"; }
+as1001 ACTION=route-pre-down || exit 1
+cp vpn1.1001 "$OUT/pre-down" || exit 1
+as1001 ACTION=ipchange trusted_ip=192.0.2.9 trusted_port=1194 || exit 1
+`
+
+// TestOpenVPNHookAfterDroppingPrivilegesCarriesRootsRecord: an OpenVPN with
+// a profile's user runs route-up as root and the hooks after as that user,
+// which cannot replace root's record in the 1733 directory. The user's hooks
+// write the instance's record under its name and their uid, carrying over
+// since, address and server from root's record of the same run, so a
+// reconnect and a server change still reach the reader. A record at root's
+// name that another account wrote is carried over by no one.
+func TestOpenVPNHookAfterDroppingPrivilegesCarriesRootsRecord(t *testing.T) {
+	busybox, err := exec.LookPath("busybox")
+	if err != nil {
+		t.Skip("the hook runs under busybox sh, which is not installed")
+	}
+	unshare, setpriv, userns := userNamespace(t)
+
+	for _, tc := range []struct {
+		name, planter      string
+		preDown, ipchanged []string
+	}{
+		{
+			"root's", "",
+			[]string{"state=connecting", "address=10.8.0.2", "server=192.0.2.1:1194", "device=tun0"},
+			[]string{"state=connecting", "address=10.8.0.2", "server=192.0.2.9:1194", "device=tun0"},
+		},
+		{
+			"another account's", "1002",
+			[]string{"state=connecting", "since=", "address=", "server=", "device="},
+			[]string{"state=connecting", "since=", "address=", "server=192.0.2.9:1194", "device="},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			dir, hook := openvpnRecords(t)
+			// The user OpenVPN drops to reaches the hook and the record
+			// directory by their paths, as on the router.
+			for at := filepath.Dir(dir); at != filepath.Dir(filepath.Dir(filepath.Dir(dir))); at = filepath.Dir(at) {
+				if err := os.Chmod(at, 0o711); err != nil {
+					t.Fatal(err)
+				}
+			}
+			out := t.TempDir()
+			ctx, cancel := context.WithTimeout(context.Background(), hookTimeout)
+			defer cancel()
+			args := append(append([]string{}, userns...), busybox, "sh", "-c", openvpnHookDropped, "sh", dir, hook)
+			cmd := exec.CommandContext(ctx, unshare, args...)
+			cmd.Env = []string{
+				"PATH=" + os.Getenv("PATH"),
+				"HOOKPATH=" + busyboxPath(t, busybox),
+				"BUSYBOX=" + busybox,
+				"SETPRIV=" + setpriv,
+				"PLANTER=" + tc.planter,
+				"OUT=" + out,
+				"INSTANCE=vpn1",
+			}
+			cmd.WaitDelay = time.Second
+			if out, err := cmd.CombinedOutput(); err != nil || ctx.Err() != nil {
+				t.Fatalf("hook: %v (%v): %s", err, ctx.Err(), out)
+			}
+
+			roots, err := os.ReadFile(filepath.Join(dir, "vpn1"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			since := ""
+			for _, line := range strings.Split(string(roots), "\n") {
+				if s, ok := strings.CutPrefix(line, "since="); ok {
+					since = s
+				}
+			}
+			if tc.planter == "" {
+				if !strings.Contains(string(roots), "\nstate=connected\n") || since == "" {
+					t.Fatalf("root's route-up record %q", roots)
+				}
+				tc.preDown = append(tc.preDown, "since="+since)
+				tc.ipchanged = append(tc.ipchanged, "since="+since)
+			}
+			info, err := os.Lstat(filepath.Join(dir, "vpn1.1001"))
+			if err != nil || !info.Mode().IsRegular() {
+				t.Fatalf("the user's record %v (%v), want a regular file", info, err)
+			}
+			if uid := info.Sys().(*syscall.Stat_t).Uid; uid == uint32(os.Getuid()) {
+				t.Errorf("the user's record is owned by root of the namespace (%d)", uid)
+			}
+			for file, want := range map[string][]string{filepath.Join(out, "pre-down"): tc.preDown, filepath.Join(dir, "vpn1.1001"): tc.ipchanged} {
+				text, err := os.ReadFile(file)
+				if err != nil {
+					t.Fatal(err)
+				}
+				for _, line := range want {
+					if !strings.Contains(string(text), "\n"+line+"\n") {
+						t.Errorf("%s: record %q holds no %q", filepath.Base(file), text, line)
+					}
+				}
+				if strings.Contains(string(text), "evil") {
+					t.Errorf("%s: record %q carried another account's", filepath.Base(file), text)
 				}
 			}
 		})

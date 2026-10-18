@@ -585,21 +585,41 @@ fn parse_record(text: &str) -> Record {
     record
 }
 
+/// The user OpenVPN starts as, which runs its first hooks.
+const ROOT: u32 = 0;
+
 /// read_record is an instance's record, trusted only as the running process's
-/// own: a file the process's user wrote (anyone may write in the directory, no
-/// one may replace another's) carrying that process's PID, so a record from
-/// an earlier run, or one planted by someone else, is not read as this one.
+/// own. OpenVPN runs its first hooks as root, which writes under the
+/// instance's name, and those after as the user a profile drops to, which
+/// cannot replace root's file and writes under the name and its uid. The
+/// user's is the later word, so it is read first, then root's.
 fn read_record(dir: &Path, name: &str, process: &Process) -> Option<Record> {
+    read_record_as(dir, name, process, ROOT)
+}
+
+/// read_record_as is read_record with root the user the process started as.
+fn read_record_as(dir: &Path, name: &str, process: &Process, root: u32) -> Option<Record> {
     if name.is_empty() || !name.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'_' || b == b'-') {
         return None;
     }
-    let path = dir.join(name);
-    let meta = fs::symlink_metadata(&path).ok()?;
-    if !meta.is_file() || meta.uid() != process.uid {
+    let users = (process.uid != root).then(|| (dir.join(format!("{name}.{}", process.uid)), process.uid));
+    users
+        .into_iter()
+        .chain([(dir.join(name), root)])
+        .find_map(|(path, owner)| written_by(&path, owner, process.pid))
+}
+
+/// written_by is the record at path when owner wrote it for the process pid:
+/// a file and no link (anyone may write in the directory, no one may replace
+/// another's), so a record from an earlier run, or one planted by someone
+/// else, is not read as this one.
+fn written_by(path: &Path, owner: u32, pid: u32) -> Option<Record> {
+    let meta = fs::symlink_metadata(path).ok()?;
+    if !meta.is_file() || meta.uid() != owner {
         return None;
     }
     let record = parse_record(&fs::read_to_string(path).ok()?);
-    (record.pid == process.pid).then_some(record)
+    (record.pid == pid).then_some(record)
 }
 
 /// instance_state is what the page is told of an instance: what OpenVPN last
@@ -860,25 +880,60 @@ mod tests {
         dir
     }
 
-    fn me(pid: u32) -> Process {
-        let uid = effective_uid(&fs::read_to_string("/proc/self/status").expect("status")).expect("uid");
-        Process { pid, uid, device: None }
+    fn my_uid() -> u32 {
+        effective_uid(&fs::read_to_string("/proc/self/status").expect("status")).expect("uid")
     }
 
+    fn me(pid: u32) -> Process {
+        Process { pid, uid: my_uid(), device: None }
+    }
+
+    /// Someone neither the instance's user nor root.
+    const OTHER: u32 = u32::MAX - 1;
+
+    /// This test's user stands in for root, the user OpenVPN starts as.
     #[test]
     fn a_record_is_trusted_only_as_the_running_processs_own() {
         let dir = scratch("trust");
+        let root = my_uid();
         fs::write(dir.join("proton"), "pid=812\nstate=connected\n").expect("record");
-        assert_eq!(read_record(&dir, "proton", &me(812)).map(|r| r.state), Some("connected".into()));
+        assert_eq!(read_record_as(&dir, "proton", &me(812), root).map(|r| r.state), Some("connected".into()));
         // an earlier run's record
-        assert_eq!(read_record(&dir, "proton", &me(900)), None);
-        // a record some other user wrote
-        assert_eq!(read_record(&dir, "proton", &Process { uid: u32::MAX - 1, ..me(812) }), None);
+        assert_eq!(read_record_as(&dir, "proton", &me(900), root), None);
+        // a record at root's name some other user wrote
+        let other = Process { uid: OTHER, ..me(812) };
+        assert_eq!(read_record_as(&dir, "proton", &other, OTHER), None);
         // a name that would leave the directory
-        assert_eq!(read_record(&dir, "../proton", &me(812)), None);
+        assert_eq!(read_record_as(&dir, "../proton", &me(812), root), None);
         // a link to somewhere else
         std::os::unix::fs::symlink(dir.join("proton"), dir.join("other")).expect("symlink");
-        assert_eq!(read_record(&dir, "other", &me(812)), None);
+        assert_eq!(read_record_as(&dir, "other", &me(812), root), None);
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    /// OpenVPN runs up and route-up as root and the hooks after as the user
+    /// a profile drops to, which writes under the name and its uid. Its own
+    /// record of this run is read, else root's; one at either name in anyone
+    /// else's hands is not.
+    #[test]
+    fn an_instance_that_drops_privileges_reads_its_users_record_then_roots() {
+        let dir = scratch("dropped");
+        let uid = my_uid();
+        // the instance runs as this test's user, root is someone else
+        fs::write(dir.join(format!("proton.{uid}")), "pid=812\nstate=connecting\n").expect("record");
+        assert_eq!(read_record_as(&dir, "proton", &me(812), OTHER).map(|r| r.state), Some("connecting".into()));
+        assert_eq!(read_record_as(&dir, "proton", &me(900), OTHER), None);
+        // the instance's user's file at root's name is not root's record
+        fs::remove_file(dir.join(format!("proton.{uid}"))).expect("remove");
+        fs::write(dir.join("proton"), "pid=812\nstate=connected\n").expect("record");
+        assert_eq!(read_record_as(&dir, "proton", &me(812), OTHER), None);
+        // this test's user is root, the instance runs as someone else who
+        // has written nothing yet: root's record of this run
+        let dropped = Process { uid: OTHER, ..me(812) };
+        assert_eq!(read_record_as(&dir, "proton", &dropped, uid).map(|r| r.state), Some("connected".into()));
+        // a file at the user's name someone else wrote is not the user's
+        fs::write(dir.join(format!("proton.{OTHER}")), "pid=812\nstate=stopped\n").expect("record");
+        assert_eq!(read_record_as(&dir, "proton", &dropped, uid).map(|r| r.state), Some("connected".into()));
         let _ = fs::remove_dir_all(&dir);
     }
 
@@ -890,7 +945,9 @@ mod tests {
     /// The hook itself, run as OpenWrt's hotplug-call runs it, against a
     /// scratch directory: route-up records the session, ipchange keeps it,
     /// route-pre-down turns it to connecting, and the record carries the PID
-    /// of the process that ran it (this test, standing in for OpenVPN).
+    /// of the process that ran it (this test, standing in for OpenVPN), read
+    /// back as the reader reads it, under whichever name the test's user
+    /// writes.
     #[test]
     fn the_hotplug_hook_records_each_transition() {
         // The records stand one level inside this test's own directory, so a
@@ -912,7 +969,7 @@ mod tests {
                 .status()
                 .expect("sh");
             assert!(status.success());
-            parse_record(&fs::read_to_string(dir.join("proton")).expect("record"))
+            read_record(&dir, "proton", &me(std::process::id())).expect("a record the reader trusts")
         };
         let up = run(
             "route-up",
