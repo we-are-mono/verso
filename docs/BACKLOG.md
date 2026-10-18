@@ -12,26 +12,12 @@ own and points at the decision that governs it; the rationale lives there, not h
 
 ## Certificates and listeners (ADR-017)
 
-- **Step 4: `verso-plugin-acme`.** A trusted certificate for a domain the
-  operator controls, by DNS-01 only, over OpenWrt's `acme` package (§6):
-  - a non-core plugin in a repository of its own, `we-are-mono/verso-plugin-acme`,
-    laid out like `verso-plugin-dnsdhcp` (SDK pinned by a verso tag, its own
-    Makefile and apk), added to `NONCORE_PLUGINS` in `local.mk`
-  - a Rust plugin, its own apk depending on `verso`, `acme-acmesh` and
-    `acme-acmesh-dnsapi`, owning `/etc/config/acme`; Verso's certificate is the
-    `config cert 'verso'` section;
-  - its part of Access beside Certificate (`system_access`): the domain, a
-    curated set of DNS providers with named credential fields, and **Other**
-    for the raw `credentials` list; credentials are write-only in the UI;
-  - an offer to answer the domain on the LAN with the router's address, as a
-    `config domain` in `/etc/config/dhcp` (dnsmasq's rebind protection refuses
-    a public record pointing at a private address);
-  - delivery from `/etc/hotplug.d/acme/50-verso` on `issued`/`renewed`. The hook
-    runs as root without a session, and the helper's zero-session grant is two
-    reads (ADR-014), so it needs a root-local way in — e.g. a
-    `verso certificate install` command — rather than `setWebCertificate`;
-  - installing or making a certificate by hand sets `acme.verso.enabled` to 0,
-    said in the Install and Make drawers before confirming while it is on.
+- **`verso-plugin-acme` on the DK.** The plugin (§6, `plugins/verso-plugin-acme`,
+  a repository of its own) is verified in the dev container on Let's Encrypt
+  staging; a real issue over a real DNS provider on the DK is open, then:
+  - the repository on GitHub as `we-are-mono/verso-plugin-acme`;
+  - its SDK pinned by the verso tag that carries `Request::plugins` (it builds
+    against the SDK in this tree), and its `verso>=` raised to that release.
 - **An image without uhttpd.** The Mono image still ships `uhttpd`,
   `uhttpd-mod-ubus` and `px5g-mbedtls`; drop them from the build (Gateway repo)
   so Verso holds the router's ports from first boot.

@@ -178,8 +178,10 @@ restored backup brought back would hand the `verso` account what it names.
 The certificate file holds the leaf followed by its chain. The key is the one file
 under `/etc` the shell opens directly: it is credential material Verso must hold
 to serve, not configuration, so the brokered-read rule of ADR-007 and ADR-013 does
-not apply to it. The shell never writes it: the `verso` init script makes the
-pair, as root, and `verso-rpcd` replaces it.
+not apply to it. The serving shell never writes it. Root does: the `verso` init
+script makes the pair with `verso certificate generate`, `verso-rpcd` replaces it
+with a pasted one, and `verso certificate install`, run by `verso-rpcd` as root,
+puts acme's certificate in its place (§6).
 
 The package installs `/lib/upgrade/keep.d/verso` naming `/etc/verso/`, so the
 certificate survives sysupgrade with the configs.
@@ -196,7 +198,10 @@ changes no part of it.
 
 The shell validates a pasted pair before passing it on: the certificate and key
 must match, the certificate must be within its validity period, and the key is
-normalised to PKCS#8.
+normalised to PKCS#8. `verso certificate install` runs the same check
+(`tlscert.Validate`) on a pair read from files, and writes through `tlscert.Write`,
+which, like `verso-rpcd`'s write, puts the old key back when the certificate
+cannot take its place; it sends no signal, and whoever runs it signals the shell.
 
 ### 5. A self-signed certificate from first boot
 
@@ -223,33 +228,71 @@ matches the certificate once the operator trusts it on their device.
 `verso-plugin-acme` (Rust) obtains a certificate for a domain the operator
 controls, by DNS-01 challenge only. It ships as its own package, depending on
 `verso`, `acme-acmesh` and `acme-acmesh-dnsapi`; an operator without a domain does
-not install acme.sh, `wget-ssl`, `openssl-util` or `socat`.
+not install acme.sh, `wget-ssl`, `openssl-util` or `socat`, and a router without
+the plugin carries no ACME hook. OpenWrt's acme package does the ACME work: its
+config trigger starts a request on a change, and its nightly cron line renews.
+Verso adds no ACME client: one in the plugin would make every DNS provider's API
+Verso's to maintain, and one in the shell would add tens of MB to it and hand the
+unprivileged shell the DNS credentials.
 
 - **Config.** The plugin owns `/etc/config/acme` (ADR-006). The certificate Verso
   serves is the section `config cert 'verso'`: `domains`, `validation_method dns`,
-  `dns` (an acme.sh provider name such as `dns_cf`) and `credentials`. `uci show
-  acme` reads as the page does.
-- **Place.** The plugin contributes its part of Access through `system_access`,
-  beside the Certificates card.
-- **Providers.** A curated set of common DNS providers is offered with named
-  credential fields. **Other** edits the raw `credentials` list, so any acme.sh
-  provider remains usable.
+  `dns` (an acme.sh provider name such as `dns_cf`) and `credentials`, each a
+  `NAME="value"` entry acme-common passes to acme.sh. The account's contact is
+  `config acme`'s `account_email`, which acme-common requires; the
+  `email@example.org` it ships is one Let's Encrypt refuses, so the form asks for
+  a real one. `uci show acme` reads as the page does.
+- **Place.** The plugin contributes its part of Access through `system_access`.
+  Access stacks the system plugin's part first, so the trusted certificate stands
+  after the HTTPS certificate it replaces.
+- **Providers.** Cloudflare, DNSimple, deSEC, DuckDNS and dynv6 are offered with
+  named credential fields, each a variable that provider's acme.sh script reads.
+  **Another acme.sh provider** takes a script's name and `NAME=value` lines, so any
+  acme.sh provider remains usable. A value may not hold `"`, `\`, `$` or a
+  backtick, which would end or expand the quotes acme-common reads it from as root.
 - **Secrets.** DNS API credentials are write-only in the UI: the form shows that a
-  credential is set and offers to replace it, never its value.
-- **Delivery.** The plugin installs `/etc/hotplug.d/acme/50-verso`. On
-  `ACTION=issued` or `ACTION=renewed`, running as root, it reads `acme.verso`'s
-  first domain and hands `/etc/ssl/acme/<domain>.fullchain.crt` and its key to
-  `ubus call verso setWebCertificate`, the same path as a pasted certificate.
-  The shell knows nothing of ACME.
-- **The name on the LAN.** The plugin offers to answer the domain on the LAN with
-  the router's address, writing a `config domain` section in `/etc/config/dhcp`
-  (the record LuCI calls a hostname). A public A record pointing at a private
-  address is refused by dnsmasq's rebind protection; the local record is not.
+  credential is set and offers to replace it, never its value; `acme.credentials`
+  is a secret in config history.
+- **Delivery.** acme-common hands each outcome to `hotplug-call acme` as `ACTION`
+  (`issued`, `renewed`, `issue-failed`, `renew-failed`), with the certificate's
+  name in `main_domain`. The plugin's `/etc/hotplug.d/acme/50-verso` runs
+  `verso-rpcd acme deliver "$ACTION"` as root. For `acme.verso`'s first domain,
+  while the section is on, `deliver` records the outcome in
+  `/var/run/verso-acme/verso` and, unless acme said it failed, hands
+  `/etc/ssl/acme/<domain>.fullchain.crt` and its key to `verso certificate
+  install` when it differs from the served certificate, then signals the shell if
+  it runs. The pasted-certificate path (`setWebCertificate`) is not used: a caller
+  with no session is granted two reads only (ADR-014), and widening that grant
+  would hand every local root caller a write it does not need. The install runs in
+  the Go binary because the pair check and the PKCS#8 conversion live there, and
+  acme.sh writes EC keys in SEC1. The shell knows nothing of ACME; the root-side
+  work lives in `verso-rpcd`, as OpenVPN's and DDNS's do.
+- **Catch-up.** acme.sh sends nothing when a renewal is not yet due, so a
+  certificate already on disk would wait for one. The plugin's init script runs
+  `verso-rpcd acme deliver sync` before the plugin starts (before the shell at
+  boot) and on every change to the acme config: a missed event, or the section
+  turned back on over a valid certificate, is served at once. `sync` records no
+  outcome.
+- **State.** `acmeState` gives the plugin the recorded outcome and its time,
+  whether acme's procd instance for the section runs (requesting), acme's
+  certificate for the domain, which the shell turns into the facts the HTTPS
+  certificate card shows, and whether it is the one served. The key is never
+  read. No state comes from the log; an outcome recorded before a reboot is gone,
+  and the certificate file still gives expiry and serving.
+- **The name on the LAN.** When no record in `/etc/config/dhcp` answers the
+  domain, the plugin offers to add one: with verso-plugin-dnsdhcp installed (the
+  shell names the installed plugins on every request), it opens that plugin's New
+  record page filled in with the domain and the router's LAN address, and staging
+  the record stays its Save; without it, the part names the record. The plugin
+  writes nothing in `/etc/config/dhcp`, which dnsdhcp owns. A public A record
+  pointing at a private address is refused by dnsmasq's rebind protection; the
+  local record is not.
 - **One owner of the certificate.** Installing or making a certificate by hand
-  sets `acme.verso.enabled` to `0`, so a renewal never overwrites it. The
-  Install and Make drawers say so before the operator confirms when the section is
-  enabled. Re-enabling it on the plugin's part of Access requests a certificate at
-  once.
+  sets `acme.verso.enabled` to `0`, so a renewal never overwrites it:
+  `verso-rpcd` commits it, through root's own delta directory, after the pair is
+  written. The Install and Make drawers say so before the operator confirms when
+  the section is on. Turning it back on serves the certificate acme holds at once
+  (Catch-up) and requests one when none is held.
 
 ### 7. Where the browser is sent
 
