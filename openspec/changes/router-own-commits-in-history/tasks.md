@@ -66,7 +66,7 @@
 
 ## 8. Checks on a running router
 
-- [ ] 8.1 On `make dev`, with Playwright:
+- [x] 8.1 On `make dev`, with Playwright:
   - choose a theme, and the row names this browser's operator with its cause;
   - install a certificate by hand with `acme.verso` on, and the row reads "The router" with "A certificate was installed by hand.";
   - install https-dns-proxy from Packages, and its row says it arrived switched off.
