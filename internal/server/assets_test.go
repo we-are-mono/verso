@@ -652,17 +652,21 @@ func TestAChooserKeepsItsOwnLayout(t *testing.T) {
 	}
 }
 
-// TestDescriptionsFoldAway: under a folded root every description folds to
-// nothing over 200ms, its one grid track going from its words' height to none
-// as it fades, and at once where motion is reduced; the fold's act says the
-// word for what pressing it does, and stands only where there is a
-// description to fold, in its page's body or its drawer (form-fields).
-func TestDescriptionsFoldAway(t *testing.T) {
+// TestHelpOpensOnRequest: every description stands folded to nothing until
+// the root shows help or its own row opens it, then opens over 200ms, its one
+// grid track going from none to its words' height as it fades in, and at
+// once where motion is reduced; the row's help glyph stands aside while the
+// page's help shows. The help act says the words for what pressing it does,
+// and stands only where there is help to show, in its page's body or its
+// drawer, on the heading line ending where the form's cards do
+// (form-fields).
+func TestHelpOpensOnRequest(t *testing.T) {
 	css := blockSheet(t, "field")
 	for head, wants := range map[string][]string{
-		"\n.verso-field__desc {":                                           {"display: grid;", "grid-template-rows: 1fr;", "200ms"},
-		"\n.verso-field__desc > span {":                                    {"min-height: 0;", "overflow: hidden;"},
-		`.verso-field__desc:where([data-verso-descriptions="folded"] *) {`: {"grid-template-rows: 0fr;", "opacity: 0;", "visibility: hidden;"},
+		"\n.verso-field__desc {":                                 {"display: grid;", "grid-template-rows: 0fr;", "opacity: 0;", "visibility: hidden;", "200ms", "var(--verso-help-delay, 0ms)"},
+		"\n.verso-field__desc > span {":                          {"min-height: 0;", "overflow: hidden;"},
+		`.verso-field__desc:where([data-verso-help="shown"] *),`: {"grid-template-rows: 1fr;", "opacity: 1;", "visibility: visible;"},
+		`.verso-field__help:is([data-verso-help="shown"] *) {`:   {"display: none;"},
 	} {
 		block := cssBlock(t, css, head)
 		for _, want := range wants {
@@ -671,14 +675,15 @@ func TestDescriptionsFoldAway(t *testing.T) {
 			}
 		}
 	}
-	fold := blockSheet(t, "fold")
+	help := blockSheet(t, "help")
 	for head, wants := range map[string][]string{
-		".verso-fold {": {"display: none;"},
-		".verso-fold:is(.verso-page__column:has(> .verso-page__body [data-verso-field-desc]) > .verso-page__masthead *, dialog:has([data-verso-field-desc]) *) {": {"display: flex;"},
-		`.verso-fold__show:is([data-verso-descriptions="folded"] *) {`:                                                                                            {"display: inline-flex;"},
-		`.verso-fold__hide:is([data-verso-descriptions="folded"] *) {`:                                                                                            {"display: none;"},
+		".verso-help {": {"display: none;"},
+		".verso-help:is(.verso-page__column:has(> .verso-page__body [data-verso-field-desc]) > .verso-page__masthead *, dialog:has([data-verso-field-desc]) *) {": {"display: flex;"},
+		`.verso-help__show:where([data-verso-help="shown"] *) {`:                                                               {"display: none;"},
+		`.verso-help__hide:where([data-verso-help="shown"] *) {`:                                                               {"display: inline;"},
+		".verso-help:where(.verso-page__column:has(> .verso-page__body [data-verso-form-column]) > .verso-page__masthead *) {": {"min(var(--verso-column), var(--verso-form-width))"},
 	} {
-		block := cssBlock(t, fold, head)
+		block := cssBlock(t, help, head)
 		for _, want := range wants {
 			if !strings.Contains(block, want) {
 				t.Errorf("%s lacks %s: %s", head, want, block)
@@ -1239,8 +1244,8 @@ func TestMastheadEndsUnderLogOut(t *testing.T) {
 		},
 		// the page's room is the size container the masthead measures against
 		"\n.verso-page__main {":   {"container-type: inline-size;"},
-		"\n.verso-page__column {": {"width: calc(round(down, 100% - 1px, 0.5rem) + 1px);"},
-		"\n.verso-page__column:where(.verso-page__main[data-verso-width=\"wide\"] *) {": {"max-width: calc(var(--container-6xl) + 1px);"},
+		"\n.verso-page__column {": {"width: calc(round(down, 100% - 1px, 0.5rem) + 1px);", "max-width: var(--verso-column-max);"},
+		"\n.verso-page__column:where(.verso-page__main[data-verso-width=\"wide\"] *) {": {"--verso-column-max: calc(var(--container-6xl) + 1px);"},
 	} {
 		rule := cssBlock(t, page, head)
 		for _, want := range wants {

@@ -1,0 +1,45 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/* SPDX-FileCopyrightText: 2026 Mono Technologies Inc. */
+
+/*
+ * help — the one act that shows every setting's help on the page, or hides
+ * it again. Help stays folded until a reader asks for it
+ * (data-verso-help="shown" on the root, the reader's choice). Its glyph is
+ * help itself, whichever way it goes; its words say what pressing it does.
+ * It stands only where there is help to show: in a page's heading line when
+ * its body holds a description, in a drawer that holds one.
+ *
+ * On the heading line the act ends where the cards under it end, not where
+ * Log out does: a page of settings keeps the form's measure inside a wider
+ * column (a settings split, its rail beside it), and an act at the window's
+ * edge stood over empty sand. The act reads its column's measure the way the
+ * column computes it, from the page's size container (page.css), and gives
+ * back what lies between that edge and the masthead's own (--verso-measure).
+ *
+ * Context: --verso-column-max  the column's widest measure (page.css)
+ * Elements: verso-help__show  the act's words while help is folded
+ *           verso-help__hide  the act's words while it shows
+ */
+
+.verso-help {
+  display: none;
+}
+.verso-help:is(.verso-page__column:has(> .verso-page__body [data-verso-field-desc]) > .verso-page__masthead *, dialog:has([data-verso-field-desc]) *) {
+  display: flex;
+}
+
+.verso-help:where(.verso-page__masthead *) {
+  --verso-column: min(calc(round(down, round(100cqw, 1px) - var(--verso-gutter) * 2 - 1px, 0.5rem) + 1px), var(--verso-column-max));
+  margin-right: calc(var(--verso-measure) - var(--verso-column));
+}
+.verso-help:where(.verso-page__column:has(> .verso-page__body [data-verso-form-column]) > .verso-page__masthead *) {
+  margin-right: calc(var(--verso-measure) - min(var(--verso-column), var(--verso-form-width)));
+}
+
+.verso-help__hide,
+.verso-help__show:where([data-verso-help="shown"] *) {
+  display: none;
+}
+.verso-help__hide:where([data-verso-help="shown"] *) {
+  display: inline;
+}

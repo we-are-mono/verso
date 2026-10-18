@@ -60,12 +60,12 @@
 @import "./blocks/field.css" layer(components);
 @import "./blocks/field-set.css" layer(components);
 @import "./blocks/files.css" layer(components);
-@import "./blocks/fold.css" layer(components);
 @import "./blocks/form.css" layer(components);
 @import "./blocks/form-grid.css" layer(components);
 @import "./blocks/glyph.css" layer(components);
 @import "./blocks/grid.css" layer(components);
 @import "./blocks/heading.css" layer(components);
+@import "./blocks/help.css" layer(components);
 @import "./blocks/input.css" layer(components);
 @import "./blocks/joined.css" layer(components);
 @import "./blocks/limits.css" layer(components);

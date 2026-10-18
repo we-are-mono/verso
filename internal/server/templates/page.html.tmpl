@@ -1,7 +1,7 @@
 <!-- SPDX-License-Identifier: GPL-2.0-only -->
 <!-- SPDX-FileCopyrightText: 2026 Mono Technologies Inc. -->
 <!doctype html>
-<html lang="{{ .Lang }}"{{if .Folded}} data-verso-descriptions="folded"{{end}}>
+<html lang="{{ .Lang }}"{{if .HelpShown}} data-verso-help="shown"{{end}}>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -152,10 +152,10 @@
            pixel. */}}
       <div class="verso-page__line">
         <h1 class="verso-page__heading"{{if or (eq .Tone "info") (eq .Tone "success") (eq .Tone "warning") (eq .Tone "danger")}} data-verso-tone="{{.Tone}}"{{end}}>{{.Heading}}{{if and .HeadingDetail (not .Tone)}}<span class="verso-page__detail"> — {{.HeadingDetail}}</span>{{end}}</h1>
-        {{/* The descriptions' fold leads the acts, then a standing note,
-             the group as one on the line, its wrapped lines 40px apart. */}}
+        {{/* Help leads the acts, then a standing note, the group as one on
+             the line, its wrapped lines 40px apart. */}}
         <div class="verso-page__acts">
-          {{template "verso-fold-act" ""}}
+          {{template "verso-help-act" ""}}
           {{if .HeadingNote}}<span data-verso-heading-note class="verso-page__note" aria-live="polite">{{.HeadingNote}}</span>{{end}}
           {{.HeadingAct}}
         </div>

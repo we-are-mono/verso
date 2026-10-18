@@ -2,7 +2,7 @@
 
 ## Purpose
 
-How a form's fields are laid out and what each field row shows: its question, its description, its answer, its refusal and its staged mark, as one ledger on every page, drawer and dialog, with descriptions an operator can fold away.
+How a form's fields are laid out and what each field row shows: its question, its description, its answer, its refusal and its staged mark, as one ledger on every page, drawer and dialog, with help an operator opens when they want it.
 
 ## Requirements
 
@@ -204,7 +204,7 @@ Every sentence a field says about itself, what it is or what changing it does, S
 
 #### Scenario: A stacked row
 - **WHEN** an operator opens a field whose answer is a text area
-- **THEN** what the field is for stands under its name, over the text area, and folds with the page's descriptions
+- **THEN** what the field is for stands under its name, over the text area, and opens with the page's help
 
 ### Requirement: A refusal stands under the control it refuses
 A field's refusal SHALL stand as its band under the control in the answer column, 8px under the control's line, or under a wide answer at the row's full width.
@@ -226,44 +226,63 @@ A field whose change waits on the stage SHALL wear a bar in the stage's marigold
 - **THEN** a marigold bar runs down the left edge of that field's row, inside the card's border
 - **AND** a screen reader hears "staged" beside the field's name
 
-### Requirement: Descriptions fold with one act
-Every page and drawer that shows at least one description SHALL carry one act, "Hide descriptions", on a page's heading line or in a drawer's header. Pressing it SHALL fold every description on the page and in its drawers together, and the act SHALL then read "Show descriptions" and bring them back. A page or drawer with no description SHALL carry no such act.
+### Requirement: Help shows with one act
+A row's description is its help. Help SHALL stay folded until asked for. Every page and drawer that holds at least one description SHALL carry one act, "Show help", on a page's heading line or in a drawer's header, led by a help glyph that is the same whichever way the act goes. Pressing it, or the `?` key outside a box being typed in, SHALL show every description on the page and in its drawers together, and the act SHALL then read "Hide help" and fold them again. On a page the act SHALL end where the cards under it end. A page or drawer with no description SHALL carry no such act.
 
-#### Scenario: Folding on Firewall settings
-- **WHEN** an operator presses "Hide descriptions" on Firewall settings
-- **THEN** every description on the page folds away together, each row closing to its name's line
-- **AND** the act reads "Show descriptions"
+#### Scenario: Showing help on Firewall settings
+- **WHEN** an operator presses "Show help" on Firewall settings
+- **THEN** every description on the page opens together, under each row's name
+- **AND** the act reads "Hide help"
 
-#### Scenario: The act's glyph
-- **WHEN** descriptions are shown
-- **THEN** "Hide descriptions" is led by a glyph of rows folding together
-- **AND** once they are folded, "Show descriptions" is led by a glyph of rows folding apart
+#### Scenario: The act's place on a settings page
+- **WHEN** an operator opens System › General on a wide window
+- **THEN** "Show help" ends on the same line as the cards' right border, not under Log out
+
+#### Scenario: The key
+- **WHEN** an operator presses `?` with a checkbox focused on Firewall settings
+- **THEN** help shows, as if the act were pressed
+- **AND** pressing `?` while typing in a box types the character
 
 #### Scenario: A drawer over a listing
 - **WHEN** an operator opens a zone's drawer from the Zones listing
-- **THEN** the drawer's header carries "Hide descriptions"
+- **THEN** the drawer's header carries "Show help"
 
 #### Scenario: A page without descriptions
 - **WHEN** an operator opens Devices
-- **THEN** the heading line carries no descriptions act
+- **THEN** the heading line carries no help act
 
 #### Scenario: Reduced motion
-- **WHEN** an operator whose system asks for reduced motion presses "Hide descriptions"
-- **THEN** the descriptions fold at once, without moving
+- **WHEN** an operator whose system asks for reduced motion presses "Show help"
+- **THEN** the descriptions open at once, without moving
 
-### Requirement: The browser keeps the fold
-The fold SHALL be kept per browser and SHALL apply to every page and drawer that browser opens, from the first paint, until it is pressed again. A browser that never pressed it SHALL see descriptions. The fold SHALL NOT be staged and SHALL NOT be written to the router.
+### Requirement: The row being read holds still
+When help opens or folds page-wide, the row being read (the one holding focus while in view, else the first whose name is in view) SHALL keep its place on screen while the page scrolls with the help around it, until the motion ends or the operator scrolls.
 
-#### Scenario: Another page after folding
-- **WHEN** an operator who folded descriptions on Firewall settings opens Network › DNS
-- **THEN** the DNS page paints with its descriptions folded and its act reads "Show descriptions"
+#### Scenario: Showing help halfway down a page
+- **WHEN** an operator scrolled halfway down Firewall settings presses `?`
+- **THEN** the row at the top of the view stays where it was while the help above it opens
+
+### Requirement: A row's own help
+While help is folded, every row with a description SHALL carry a help glyph after its name and key that opens that row's description alone and folds it again. The glyph SHALL show under the pointer, with keyboard focus, while its help is open, and always on a device without hover. It SHALL be reachable by keyboard and say whether its help is open.
+
+#### Scenario: One checkbox's help
+- **WHEN** an operator presses the help glyph on "Spread packet handling over all cores"
+- **THEN** that row's description opens under its name and no other row's does
+- **AND** the checkbox is not changed
+
+### Requirement: The browser keeps help
+Shown help SHALL be kept per browser and SHALL apply to every page and drawer that browser opens, from the first paint, until it is pressed again. A browser that never pressed it SHALL see help folded. It SHALL NOT be staged and SHALL NOT be written to the router.
+
+#### Scenario: Another page after showing help
+- **WHEN** an operator who showed help on Firewall settings opens Network › DNS
+- **THEN** the DNS page paints with its help shown and its act reads "Hide help"
 
 #### Scenario: Another browser
 - **WHEN** a second operator signs in from another browser
-- **THEN** they see every description
+- **THEN** they see help folded
 
 #### Scenario: The stage
-- **WHEN** an operator folds descriptions with changes staged
+- **WHEN** an operator shows help with changes staged
 - **THEN** the staged count is unchanged
 
 ### Requirement: Folding hides descriptions alone

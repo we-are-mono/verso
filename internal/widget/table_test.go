@@ -727,11 +727,11 @@ func TestRenderTableRowDrawerTitleBand(t *testing.T) {
 		"padding: var(--verso-drawer-gutter) var(--verso-drawer-gutter) calc(var(--spacing) * 10);")
 }
 
-// TestEveryDrawerOffersTheFold: a drawer's header carries the one act that
-// folds every description away and back (form-fields), before its close: both
-// words with their Lucide glyphs, the stylesheet showing the one the page's
-// state calls for.
-func TestEveryDrawerOffersTheFold(t *testing.T) {
+// TestEveryDrawerOffersHelp: a drawer's header carries the one act that
+// shows every setting's help and folds it again (form-fields), before its
+// close: help's one Lucide glyph and both words, the stylesheet showing the
+// one the page's state calls for.
+func TestEveryDrawerOffersHelp(t *testing.T) {
 	tbl := redirectsTable()
 	tbl.Rows[0].Drawer = &RowDrawer{Title: "Edit redirect"}
 	got := render(t, newRenderer(t), tbl)
@@ -741,13 +741,13 @@ func TestEveryDrawerOffersTheFold(t *testing.T) {
 		t.Fatalf("no drawer header:\n%s", got)
 	}
 	band := got[header:end]
-	fold, closer := strings.Index(band, "data-verso-fold"), strings.Index(band, `aria-label="Close"`)
-	if fold < 0 || closer < fold {
-		t.Errorf("the fold does not stand before the drawer's close:\n%s", band)
+	help, closer := strings.Index(band, "data-verso-help-toggle"), strings.Index(band, `aria-label="Close"`)
+	if help < 0 || closer < help {
+		t.Errorf("help does not stand before the drawer's close:\n%s", band)
 	}
-	for _, want := range []string{">Hide descriptions<", ">Show descriptions<", `<path d="m15 19-3-3-3 3"`, `<path d="m15 19-3 3-3-3"`} {
+	for _, want := range []string{">Show help<", ">Hide help<", `<path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"`} {
 		if !strings.Contains(band, want) {
-			t.Errorf("the fold lacks %q:\n%s", want, band)
+			t.Errorf("help lacks %q:\n%s", want, band)
 		}
 	}
 }

@@ -397,28 +397,175 @@ window.versoRoll = function (value, from, to, frame, warm) {
   if (ink) warm.animate([{ color: ink }, { color: ink, offset: 0.35 }, {}], { duration: 1600, easing: "ease-out" });
 };
 
-// The descriptions' fold (form-fields): the act on a page's heading line and
-// in every drawer's header folds every description on the page away, for
-// someone who knows the settings, and brings them back. The root carries the
-// state, so the stylesheet folds them all at once and shows the act's other
-// word; a cookie keeps it for this browser, which the shell reads back so the
-// next page arrives as this one was left.
+// Help (form-fields): every setting's help stays folded until a reader asks
+// for it. The act on a page's heading line and in every drawer's header, or
+// the ? key, shows all of it and hides it again; the root carries the state,
+// so the stylesheet opens every description at once and shows the act's
+// other words, and a cookie keeps it for this browser, which the shell reads
+// back so the next page arrives as this one was left. While it is folded,
+// the glyph after a row's name opens that row's help alone.
+//
+// The row being read holds still through it all: help above it opens or
+// closes, and the page scrolls with it frame by frame, so the row stays
+// where the eye left it. Shown, help opens outward from that row, the rows
+// nearest it first.
 (function () {
-  var COOKIE = "verso_descriptions";
+  var COOKIE = "verso_help";
   var MAX_AGE = 31536000; // a year
+  var GLIDE = 200; // a description's glide (blocks/field.css)
+  var STEP = 16; // the ripple's step from one row to the next
+  var REACH = 8; // how many rows away the ripple still waits
 
-  function cookie(folded, protocol) {
+  function cookie(shown, protocol) {
     var secure = protocol === "https:" ? "; Secure" : "";
-    return COOKIE + "=" + (folded ? "folded; Path=/; Max-Age=" + MAX_AGE : "; Path=/; Max-Age=0") + "; SameSite=Strict" + secure;
+    return COOKIE + "=" + (shown ? "shown; Path=/; Max-Age=" + MAX_AGE : "; Path=/; Max-Age=0") + "; SameSite=Strict" + secure;
+  }
+
+  function still() {
+    return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  }
+
+  // scope is where help is being read: the open drawer, else the page.
+  function scope() {
+    return document.querySelector("dialog[open]") || document.querySelector("main") || document.body;
+  }
+
+  // scroller is the box that scrolls a row: a drawer's body, or the page.
+  function scroller(el) {
+    for (var node = el.parentElement; node && node !== document.body; node = node.parentElement) {
+      var y = getComputedStyle(node).overflowY;
+      if ((y === "auto" || y === "scroll") && node.scrollHeight > node.clientHeight) return node;
+    }
+    return document.scrollingElement || document.documentElement;
+  }
+
+  // view is the part of the scroller a reader sees, under the top bar on a
+  // page.
+  function view(box) {
+    if (box === document.scrollingElement || box === document.documentElement) {
+      var bar = document.querySelector("body > header");
+      return { top: bar ? Math.max(0, bar.getBoundingClientRect().bottom) : 0, bottom: window.innerHeight };
+    }
+    var r = box.getBoundingClientRect();
+    return { top: r.top, bottom: r.bottom };
+  }
+
+  function rows(within) {
+    return [].filter.call(within.querySelectorAll(".verso-field"), function (row) {
+      return row.getClientRects().length > 0;
+    });
+  }
+
+  // reading is the row the eye is on: the one holding focus while it is in
+  // view, else the first whose name is in view.
+  function reading(all) {
+    if (!all.length) return null;
+    var seen = view(scroller(all[0]));
+    var focused = document.activeElement && document.activeElement.closest && document.activeElement.closest(".verso-field");
+    if (focused && all.indexOf(focused) >= 0) {
+      var f = focused.getBoundingClientRect();
+      if (f.bottom > seen.top && f.top < seen.bottom) return focused;
+    }
+    for (var i = 0; i < all.length; i++) {
+      if (all[i].getBoundingClientRect().top >= seen.top) return all[i];
+    }
+    return all[all.length - 1];
+  }
+
+  // hold makes a change and keeps the row where it stood while the help
+  // around it glides, until the glide ends or the reader scrolls on their
+  // own. The browser's own scroll anchoring stands aside meanwhile, so the
+  // page is corrected once, not twice.
+  function hold(row, change, lasting) {
+    var box = scroller(row);
+    var was = row.getBoundingClientRect().top;
+    var anchoring = box.style.overflowAnchor;
+    var left = false;
+    var leave = function () { left = true; };
+    box.style.overflowAnchor = "none";
+    window.addEventListener("wheel", leave, { passive: true, once: true });
+    window.addEventListener("touchmove", leave, { passive: true, once: true });
+    change();
+    var until = performance.now() + lasting + 40;
+    (function frame() {
+      if (!left) {
+        var drift = row.getBoundingClientRect().top - was;
+        if (drift) box.scrollTop += drift;
+      }
+      if (!left && performance.now() < until) { requestAnimationFrame(frame); return; }
+      box.style.overflowAnchor = anchoring;
+      window.removeEventListener("wheel", leave);
+      window.removeEventListener("touchmove", leave);
+    })();
+  }
+
+  // ripple waits each description in view by how far its row stands from
+  // the one being read, so help opens outward from it; it returns how long
+  // the last one waits, and clears the waits once all have opened.
+  function ripple(all, row) {
+    var seen = view(scroller(row));
+    var at = all.indexOf(row);
+    var longest = 0;
+    var waited = [];
+    all.forEach(function (other, i) {
+      var r = other.getBoundingClientRect();
+      if (r.bottom < seen.top || r.top > seen.bottom) return;
+      var desc = other.querySelector(":scope > .verso-field__ledger > .verso-field__question > .verso-field__desc");
+      if (!desc) return;
+      var wait = Math.min(Math.abs(i - at), REACH) * STEP;
+      desc.style.setProperty("--verso-help-delay", wait + "ms");
+      waited.push(desc);
+      longest = Math.max(longest, wait);
+    });
+    setTimeout(function () {
+      waited.forEach(function (desc) { desc.style.removeProperty("--verso-help-delay"); });
+    }, GLIDE + longest + 40);
+    return longest;
+  }
+
+  function closeRow(row) {
+    row.removeAttribute("data-verso-help-open");
+    var act = row.querySelector("[data-verso-help-row]");
+    if (act) act.setAttribute("aria-expanded", "false");
+  }
+
+  function toggle() {
+    var root = document.documentElement;
+    var shown = root.getAttribute("data-verso-help") !== "shown";
+    var all = rows(scope());
+    var row = reading(all);
+    var change = function () {
+      [].forEach.call(document.querySelectorAll("[data-verso-help-open]"), closeRow);
+      if (shown) root.setAttribute("data-verso-help", "shown");
+      else root.removeAttribute("data-verso-help");
+    };
+    document.cookie = cookie(shown, window.location.protocol);
+    if (!row) { change(); return; }
+    var wait = shown && !still() ? ripple(all, row) : 0;
+    hold(row, change, still() ? 0 : GLIDE + wait);
   }
 
   document.addEventListener("click", function (event) {
-    var act = event.target && event.target.closest && event.target.closest("[data-verso-fold]");
+    var target = event.target && event.target.closest ? event.target : null;
+    if (!target) return;
+    if (target.closest("[data-verso-help-toggle]")) { toggle(); return; }
+    var act = target.closest("[data-verso-help-row]");
     if (!act) return;
-    var root = document.documentElement;
-    var folded = root.getAttribute("data-verso-descriptions") !== "folded";
-    if (folded) root.setAttribute("data-verso-descriptions", "folded");
-    else root.removeAttribute("data-verso-descriptions");
-    document.cookie = cookie(folded, window.location.protocol);
+    var row = act.closest(".verso-field");
+    if (row.hasAttribute("data-verso-help-open")) { closeRow(row); return; }
+    row.setAttribute("data-verso-help-open", "");
+    act.setAttribute("aria-expanded", "true");
+  });
+
+  // The ? key presses help wherever there is help to show, except while
+  // the reader is typing.
+  document.addEventListener("keydown", function (event) {
+    if (event.key !== "?" || event.ctrlKey || event.metaKey || event.altKey || event.defaultPrevented) return;
+    var target = event.target;
+    if (target && target.closest && target.closest('textarea, select, [contenteditable]:not([contenteditable="false"]), input:not([type="checkbox"], [type="radio"], [type="button"], [type="submit"], [type="reset"])')) return;
+    var act = scope().querySelector("[data-verso-help-toggle]");
+    if (!act || !act.getClientRects().length) return;
+    event.preventDefault();
+    toggle();
   });
 })();

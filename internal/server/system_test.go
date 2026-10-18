@@ -161,7 +161,7 @@ func TestPageContentAppearsWithoutEntranceAnimation(t *testing.T) {
 	if column < frame {
 		t.Error("the content measure must sit inside that air")
 	}
-	if !strings.Contains(cssBlock(t, page, "\n.verso-page__column {"), "max-width: calc(var(--container-5xl) + 1px);") {
+	if !strings.Contains(cssBlock(t, page, "\n.verso-page__column {"), "--verso-column-max: calc(var(--container-5xl) + 1px);") {
 		t.Error("the content measure is not capped")
 	}
 }

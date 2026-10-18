@@ -136,17 +136,18 @@
 }
 
 .verso-page__column {
+  --verso-column-max: calc(var(--container-5xl) + 1px);
   width: calc(round(down, 100% - 1px, 0.5rem) + 1px);
-  max-width: calc(var(--container-5xl) + 1px);
+  max-width: var(--verso-column-max);
 }
 .verso-page__column:where(.verso-page__main[data-verso-width="form"] *) {
-  max-width: calc(var(--container-3xl) + 1px);
+  --verso-column-max: calc(var(--container-3xl) + 1px);
 }
 .verso-page__column:where(.verso-page__main[data-verso-width="narrow"] *) {
-  max-width: calc(var(--container-4xl) + 1px);
+  --verso-column-max: calc(var(--container-4xl) + 1px);
 }
 .verso-page__column:where(.verso-page__main[data-verso-width="wide"] *) {
-  max-width: calc(var(--container-6xl) + 1px);
+  --verso-column-max: calc(var(--container-6xl) + 1px);
 }
 
 /* A full page hands its height down the chain to the one thing that wants

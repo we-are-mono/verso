@@ -29,17 +29,25 @@
  *                             row's full width
  *           data-verso-plain  a choice of what a page shows, no setting: its
  *                             name over its controls at every width
+ *           data-verso-help-open  its own help opened while the page's is
+ *                                 folded
  * Elements: __ledger    the question, the answer, and the lane after them
  *           __question  the label and what it is for
- *           __label     the name, the option's key chip, the stage's mark
+ *           __label     the name, the option's key chip, the help glyph,
+ *                       the stage's mark
  *           __name      the name, in the field-label role (the value role's
  *                       verbatim form for a machine string); a name that
  *                       explains itself (data-verso-tip) takes the help
  *                       cursor
- *           __desc      what the row is for: it folds away with every other
- *                       on the page (data-verso-descriptions="folded" on the
- *                       root), closing its one track as it fades, so rows
- *                       close up by whole lines
+ *           __help      the glyph that opens this row's help alone while
+ *                       the page's is folded: 4px after the key, its 28px
+ *                       square centred on the name's line, shown under the
+ *                       pointer, with focus, while open, and always where
+ *                       nothing hovers
+ *           __desc      the row's help: folded until the page's help shows
+ *                       (data-verso-help="shown" on the root) or the row's
+ *                       own opens, opening its one track as it fades in, so
+ *                       rows open by whole lines
  *           __note      the detail that says which thing an item of a group
  *                       is, under its name; it never folds
  *           __act       an act on the whole answer (a set's add), on the
@@ -280,21 +288,47 @@
 }
 .verso-field__desc {
   display: grid;
-  grid-template-rows: 1fr;
-  transition: grid-template-rows 200ms ease, opacity 200ms ease, visibility 200ms;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  visibility: hidden;
+  transition: grid-template-rows 200ms cubic-bezier(0.22, 1, 0.36, 1), opacity 200ms ease, visibility 200ms;
+  transition-delay: var(--verso-help-delay, 0ms);
 }
 .verso-field__desc > span {
   min-height: 0;
   overflow: hidden;
 }
-.verso-field__desc:where([data-verso-descriptions="folded"] *) {
-  grid-template-rows: 0fr;
-  opacity: 0;
-  visibility: hidden;
+.verso-field__desc:where([data-verso-help="shown"] *),
+.verso-field[data-verso-help-open] > .verso-field__ledger > .verso-field__question > .verso-field__desc {
+  grid-template-rows: 1fr;
+  opacity: 1;
+  visibility: visible;
 }
 @media (prefers-reduced-motion: reduce) {
   .verso-field__desc {
     transition: none;
+  }
+}
+
+.verso-field__help {
+  margin-block: calc(var(--spacing) * -0.5);
+  margin-inline: calc(var(--spacing) * -2.5) calc(var(--spacing) * -1.5);
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+.verso-field__help:is([data-verso-help="shown"] *) {
+  display: none;
+}
+.verso-field__help:is(:focus-visible, [aria-expanded="true"]),
+.verso-field__help:where(:is(.verso-field__ledger:hover, .verso-field__ledger:focus-within) > .verso-field__question > .verso-field__label > *) {
+  opacity: 1;
+}
+.verso-field__help[aria-expanded="true"] {
+  --verso-button-ink: var(--color-ink);
+}
+@media (hover: none) {
+  .verso-field__help {
+    opacity: 1;
   }
 }
 

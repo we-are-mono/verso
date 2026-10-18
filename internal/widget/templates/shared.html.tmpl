@@ -58,6 +58,10 @@
 <div class="verso-field__label">
   {{if .Label}}{{if .Group}}<span{{template "verso-field-label-attrs" .}}>{{template "verso-field-label-text" .}}</span>{{else}}<label for="{{.For}}"{{template "verso-field-label-attrs" .}}>{{template "verso-field-label-text" .}}</label>{{end}}{{end}}
   {{if .Key}}<span class="verso-chip" data-verso-verbatim>{{.Key}}</span>{{end}}
+  {{/* While the page's help is hidden, the row's own help is a press away:
+       the glyph after its name and key opens it under the name and closes
+       it again (verso-page.js), for this row alone. */}}
+  {{if .Help}}<button type="button" data-verso-help-row aria-expanded="false"{{with .For}} aria-controls="{{.}}-desc" aria-describedby="{{.}}-label"{{end}} aria-label="{{t "Help"}}" class="verso-button verso-field__help group/act relative" data-verso-size="icon">{{icon "circle-help" "size-4"}}</button>{{end}}
   {{if .Staged}}{{template "verso-staged-row" .StagedAt}}{{end}}
 </div>
 {{end}}
@@ -87,12 +91,12 @@
 {{define "verso-field"}}<div class="verso-field{{with .Class}} {{.}}{{end}}"{{if .Wide}} data-verso-wide{{end}}{{if .Plain}} data-verso-plain{{end}}{{with .Change}}{{if .Track}} data-verso-change-field data-verso-change-name="{{.Name}}" data-verso-change-label="{{.Label}}" data-verso-change-kind="{{.Kind}}"{{with .Writes}} data-verso-writes="{{.}}"{{end}}{{end}}{{end}}>
   <div class="verso-field__ledger">
     <div class="verso-field__question">
-      {{if .ShowsLabel}}{{template "verso-field-label" .Label}}{{end}}
+      {{if .ShowsLabel}}{{template "verso-field-label" .Question}}{{end}}
       {{with .Detail}}<p{{with $.DetailID}} id="{{.}}"{{end}} data-verso-field-detail class="verso-field__note">{{.}}</p>{{end}}
-      {{/* A description folds away with every other on the page
-           (blocks/field.css): its words stand in a span of their own, the
-           one track that closes. Every row says it here, under its name,
-           a wide one too. */}}
+      {{/* A description is the row's help, folded away with every other on
+           the page until help is shown (blocks/field.css): its words stand
+           in a span of their own, the one track that opens. Every row says
+           it here, under its name, a wide one too. */}}
       {{with .Desc}}<p{{with $.DescID}} id="{{.}}"{{end}} data-verso-field-desc class="verso-field__desc"><span>{{with $.DescHTML}}{{.}}{{else}}{{.}}{{end}}</span></p>{{end}}
     </div>
     {{/* An act on the whole answer (a set's add) stands on the question's
@@ -370,14 +374,15 @@
 {{/* A drawer's gutter, chrome and ground are the modal block's
      (blocks/modal.css: --verso-drawer-gutter, __head, __ground). */}}
 
-{{/* verso-fold-act: the one act that folds every description on the page
-     away and brings them back (form-fields), on the page's heading line and
-     in every drawer's header, given its place's own classes. It holds both
-     words; the stylesheet shows the one the page's state calls for, and
-     shows the act only where there is a description to fold, through a
+{{/* verso-help-act: the one act that shows every setting's help on the
+     page and hides it again (form-fields), on the page's heading line and in
+     every drawer's header, given its place's own classes; the ? key presses
+     it. Its glyph is help itself, whichever way it goes; its words say what
+     pressing it does, the stylesheet showing the one the page's state calls
+     for, and showing the act only where there is help to show, through a
      wrapper whose display no utility sets (verso-page.js keeps the
      state). */}}
-{{define "verso-fold-act"}}<span class="verso-fold {{.}}"><button type="button" data-verso-fold class="verso-button group/act relative" data-verso-size="act" data-verso-style="quiet" data-verso-glyph><span class="verso-fold__hide">{{icon "fold-vertical" "size-4"}}<span>{{t "Hide descriptions"}}</span></span><span class="verso-fold__show">{{icon "unfold-vertical" "size-4"}}<span>{{t "Show descriptions"}}</span></span></button></span>{{end}}
+{{define "verso-help-act"}}<span class="verso-help {{.}}"><button type="button" data-verso-help-toggle aria-keyshortcuts="?" class="verso-button group/act relative" data-verso-size="act" data-verso-style="quiet" data-verso-glyph>{{icon "circle-help" "size-4"}}<span class="verso-help__show">{{t "Show help"}}</span><span class="verso-help__hide">{{t "Hide help"}}</span></button></span>{{end}}
 
 {{/* The band is 56px as the top bar is, and built the same way: its 28px
      line and 14px of air either side, the hairline drawn inside it. It is
@@ -387,9 +392,9 @@
 {{define "verso-drawer-header"}}
 <header class="verso-modal__head">
   <h2 class="verso-modal__title">{{.}}</h2>
-  {{/* The fold stands with the close, before it, at the band's end. */}}
+  {{/* Help stands with the close, before it, at the band's end. */}}
   <div class="verso-modal__acts">
-    {{template "verso-fold-act" ""}}
+    {{template "verso-help-act" ""}}
     {{template "verso-close-btn"}}
   </div>
 </header>

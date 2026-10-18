@@ -240,6 +240,9 @@ type fieldLabel struct {
 	// waits to be applied. StagedAt names the mark by the option's address.
 	Staged   bool
 	StagedAt string
+	// Help draws the glyph that opens the row's own help while the page's
+	// is hidden; the row sets it where it has a description (Question).
+	Help bool
 }
 
 // LabelView is this field's question: its name, its key and its mark. What

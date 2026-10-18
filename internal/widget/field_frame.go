@@ -96,6 +96,14 @@ func (f fieldFrame) DetailID() string {
 	return f.Label.For + "-detail"
 }
 
+// Question is the row's label as the question draws it: with the glyph that
+// opens the row's own help where it has a description to open.
+func (f fieldFrame) Question() fieldLabel {
+	label := f.Label
+	label.Help = f.Desc != ""
+	return label
+}
+
 // ShowsLabel reports whether the row has a label column at all. A bare
 // control (a field with neither a name nor a key) is still one row.
 func (f fieldFrame) ShowsLabel() bool { return f.Label.Label != "" || f.Label.Key != "" }
