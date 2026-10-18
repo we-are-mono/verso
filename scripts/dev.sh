@@ -13,7 +13,7 @@ cd "$(dirname "$0")/.."
 CONTAINER=verso
 CMD=./cmd/verso
 BIN=build/verso
-CSS_IN=internal/server/assets/input.css
+CSS_DIR=internal/server/assets # input.css, the palette, the type roles and blocks/*.css it imports
 CSS_OUT=internal/server/assets/verso.css
 DEV_CSS=/usr/share/verso/verso-dev.css # in-container drop file the shell reads live (dev only; not /tmp — that's a tmpfs docker cp can't write)
 ACL_SRC=docker/rootfs/usr/share/acl.d
@@ -287,11 +287,12 @@ sync_all() {
 }
 
 # Signatures exclude build outputs and test-only files: running checks must not
-# restart services. input.css has its own fast path, while a shell rebuild
-# recompiles it before embedding assets.
+# restart services. Every stylesheet source has its own fast path, so a block
+# edit hot-swaps without restarting the shell, while a shell rebuild recompiles
+# the stylesheet before embedding assets.
 shell_sig() {
 	{
-		find cmd internal -type f ! -name '*_test.go' ! -path '*/testdata/*' ! -path "$CSS_IN" ! -path "$CSS_OUT" -printf '%T@ %p\n'
+		find cmd internal -type f ! -name '*_test.go' ! -path '*/testdata/*' ! -path "$CSS_DIR/*.css" -printf '%T@ %p\n'
 		find docker/rootfs/etc/init.d/verso -printf '%T@ %p\n'
 	} 2>/dev/null | sha1sum
 }
@@ -313,7 +314,7 @@ plugins_sig() {
 acl_sig() { find "$ACL_SRC" "$RPCD_ACL_SRC" -name '*.json' -printf '%T@ %p\n' 2>/dev/null | sha1sum; }
 i18n_sig() { find i18n -name '*.json' -printf '%T@ %p\n' 2>/dev/null | sha1sum; }
 themes_sig() { find themes -name '*.json' -printf '%T@ %p\n' 2>/dev/null | sha1sum; }
-css_sig() { find "$CSS_IN" -printf '%T@\n' 2>/dev/null | sha1sum; }
+css_sig() { find "$CSS_DIR" -name '*.css' ! -path "$CSS_OUT" -printf '%T@ %p\n' 2>/dev/null | sha1sum; }
 
 ensure_container
 # Capture the baseline before the initial synchronization. If a source changes
