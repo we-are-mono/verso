@@ -216,6 +216,9 @@ deploy_plugins() {
 				docker exec "$CONTAINER" sh -c "chown -R root:root /usr/share/verso/plugins/$id/i18n; find /usr/share/verso/plugins/$id/i18n -type f -exec chmod 0644 {} +"
 			fi
 			docker exec "$CONTAINER" sh -c "chown root:root /usr/bin/.$name.new /etc/init.d/.$name.new /usr/share/verso/plugins/$id/.manifest.json.new; chmod 0755 /usr/bin/.$name.new /etc/init.d/.$name.new; chmod 0644 /usr/share/verso/plugins/$id/.manifest.json.new; mv /usr/bin/.$name.new /usr/bin/$name; mv /etc/init.d/.$name.new /etc/init.d/$name; mv /usr/share/verso/plugins/$id/.manifest.json.new /usr/share/verso/plugins/$id/manifest.json; /etc/init.d/$name enable; /etc/init.d/$name start"
+			# The shell re-reads the manifests on SIGHUP, as a plugin package's
+			# install hook has it do, so a changed manifest takes effect now.
+			docker exec "$CONTAINER" ubus call service signal '{"name":"verso","signal":1}' >/dev/null 2>&1 || true
 			log "$name reloaded"
 		else
 			log "$name build failed — keeping the running plugin"

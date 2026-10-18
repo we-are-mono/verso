@@ -90,6 +90,64 @@ root's alone, and refuses any world write and any group write by another group.
 Everything was removed afterwards: the registry, the executable, the ACL and the
 session, followed by an rpcd reload.
 
+## 11.1 The pages on `make dev`
+
+Checked 2026-10-19 in the lab container at v0.9.0-60, with headless Chromium
+(playwright-core 1.56.1). Screenshots are in `~/Share/screenshots/registry`.
+The page emulates reduced motion: the cross-document view transition holds
+headless Chromium's frames, so no screenshot completes without it.
+
+For the run, the lab got a DDNS name (router.example.com, Cloudflare, a dummy
+token), OpenVPN 2.7.7 with a `lab` profile holding a `<ca>` and a `<tls-crypt>`
+block, and a rule file. All were removed afterwards.
+
+- **Reads.** Each registered read answered through `pluginCommand` from its
+  plugin's root half: `vpn.state`, `ddns.state`, `dnsdhcp.dhcp-state`,
+  `dnsdhcp.dns-state`, `firewall.state` and `acme.state`.
+  - The DHCP page says lan is Serving with one lease.
+  - Interfaces' DHCP chip reads "DHCP server is running."
+  - The firewall rules carry their hit counts.
+  - DNS shows the resolver's settings and `/etc/dnsmasq.conf`.
+  - DDNS says "private address": the lab's WAN is private.
+  - VPN lists the `lab` profile.
+  - The `files` transform cannot be reached through the verb.
+- **The container hides socket owners.** Docker withholds `CAP_SYS_PTRACE`, so
+  even root cannot read another process's socket links there, and `dns-state`
+  lists no listeners (`netstat -p` shows `-` too). The router's root has the
+  capability.
+- **DDNS Update.** Update now answered "Sending the address now.", and the
+  updater restarted (pid 1732911, then 1733489).
+- **A rule file.**
+  - Saving `20-lab-registry.nft` staged it.
+  - Applying it with no check-in rolled it back after 30 s: the file was gone
+    and fw4 dropped its chain.
+  - The rollback kept the stage, as before this change.
+  - Applying again with the page open kept it ("The router kept 1 change").
+- **A profile.**
+  - The profile tab showed `<ca> … 3 lines … </ca>` and
+    `<tls-crypt> … 2 lines … </tls-crypt>`, and no key line reached the page.
+  - Saving it with `verb 3` added staged the real blocks again (journal
+    `0600 root`, file mode 0600).
+  - Applying with no check-in rolled it back to the original.
+  - Applying again kept it, with both key lines intact.
+  - Config history holds the edit folded and no key line.
+- **Removing ddns.** The package's own steps were followed: pre-deinstall,
+  removing its files, then post-deinstall's SIGHUP to the shell.
+  - `/plugins/ddns/` answered 404, and the nav lost Dynamic DNS.
+  - `pluginCommand ddns state` answered "ddns registers no command" (status 3).
+  - Redeploying brought all three back.
+
+Found and fixed during the check:
+- The firewall's Files band listed `/etc/dnsmasq.conf`. The firewall reads
+  `dhcp`, so it is handed dnsmasq's family too. `FileSet` now names its family,
+  and VPN keeps only `openvpn` files as profiles and taken names.
+- The Interfaces DHCP chip read "could not be verified" until the shell
+  restarted. The shell reads manifests at start and on SIGHUP, and the dev
+  deploy of a changed manifest sends neither. The packages' install hooks do.
+- `acme.state` was denied once for a session opened before acme's ACL gained the
+  `verso-plugin` grant. Sessions take grants at login, and a fresh one was
+  granted.
+
 ## 10.2 verso's conflicts, as packaged
 
 `make apk APK_GOARCH=arm64` at v0.9.0-59 built `verso-0.9.0-r59.apk`. Its

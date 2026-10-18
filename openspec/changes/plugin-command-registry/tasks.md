@@ -113,7 +113,7 @@
 
 ## 11. Integration on the lab and the DK
 
-- [ ] 11.1 On `make dev`, check with Playwright: VPN, DDNS, DNS & DHCP, Firewall and Interfaces render their state; a DDNS Update runs; a rule file and a profile save, apply and roll back; removing ddns leaves its pages and reads gone. Save screenshots to ~/Share/screenshots.
+- [x] 11.1 On `make dev`, check with Playwright: VPN, DDNS, DNS & DHCP, Firewall and Interfaces render their state; a DDNS Update runs; a rule file and a profile save, apply and roll back; removing ddns leaves its pages and reads gone. Save screenshots to ~/Share/screenshots.
 - [ ] 11.2 On the DK, with local apks (`deploy-verso` "Local release"), keep an OpenVPN tunnel up and a rule file staged, then upgrade verso and the four plugins together. Check that:
   - the VPN page shows the tunnel connected with its connected time;
   - the staged file still applies;
