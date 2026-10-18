@@ -39,7 +39,7 @@ func carriesTheTheme(t *testing.T, page, body string) {
 		t.Errorf("%s does not carry the theme block %s", page, mochaBlock)
 		return
 	}
-	if css := strings.Index(body, "<style"); css < 0 || css >= at {
+	if css := strings.Index(body, `<link rel="stylesheet"`); css < 0 || css >= at {
 		t.Errorf("%s carries the theme block before the stylesheet", page)
 	}
 }

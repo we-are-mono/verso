@@ -65,7 +65,7 @@ func firmwareTakeoverActive() bool {
 type upgradingView struct {
 	Lang       string
 	Bars       []theme.Bar // the browser bar's colours: the takeover's ground, Canvas, under the theme
-	CSS        template.CSS
+	Stylesheet string
 	Theme      template.CSS
 	JSStrings  template.JS
 	Initial    string // "preparing" | "installing" | "failed"
@@ -114,7 +114,7 @@ func (s *Server) renderUpgrading(w http.ResponseWriter, r *http.Request) {
 	view := upgradingView{
 		Lang:       langAttr(lang),
 		Bars:       s.themeBars("ground"),
-		CSS:        s.currentCSS(),
+		Stylesheet: s.stylesheetHref(),
 		Theme:      s.themeCSS(),
 		JSStrings:  jsCatalog(tr),
 		Initial:    initial,

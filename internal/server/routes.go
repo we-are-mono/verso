@@ -10,9 +10,11 @@ func (s *Server) routes() {
 
 	// Shell client-side JS (htmx, Alpine, verso.js), served static and public.
 	s.mux.Handle("GET /assets/", s.assets())
-	// The stylesheet at a stable URL (more specific than /assets/, so it wins): the
-	// page inlines CSS for first paint, and the dev hot-reload script re-fetches this.
-	s.mux.HandleFunc("GET /assets/verso.css", s.handleCSS)
+	// The build's stylesheet at the address naming its content, kept by the
+	// browser for good, and the live one a dev session links instead (both more
+	// specific than /assets/, so they win).
+	s.mux.HandleFunc("GET "+s.sheet.href, s.handleStylesheet)
+	s.mux.HandleFunc("GET "+devStylesheetPath, s.handleDevStylesheet)
 	s.mux.HandleFunc("GET /favicon.ico", s.handleFavicon)
 	// The rail's press-time fetch rules, which a page names in its headers.
 	s.mux.HandleFunc("GET "+speculationRulesPath, s.handleSpeculationRules)

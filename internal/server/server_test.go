@@ -3435,8 +3435,7 @@ func TestNoPasswordWarningStandsInTheTopBarOnEveryPage(t *testing.T) {
 	warn := newServerFull(t, fakeBackend{rootNoPassword: true}, tr, []plugin.Manifest{demoManifest()}, fakeAuth{sid: "s"})
 	for _, path := range []string{"/", "/plugins/demo/access"} {
 		body := get(t, warn, path).Body.String()
-		// Index from the top bar on: the compiled stylesheet is inlined above it
-		// and carries every class name the page could mention.
+		// Index from the top bar on, between it and the page's main.
 		bar := body[strings.Index(body, "data-verso-session"):]
 		main := bar[strings.Index(bar, "<main "):]
 		bar = bar[:strings.Index(bar, "<main ")]

@@ -16,7 +16,8 @@ import (
 // script-src is 'self' — no 'unsafe-inline' and no 'unsafe-eval' (Alpine's CSP
 // build needs neither), which keeps injected or plugin-supplied markup unable to
 // execute: html/template escaping blocks tag injection, the CSP blocks inline and
-// external scripts. Styles are the embedded stylesheet (inline); images allow
+// external scripts. Styles are the shell's linked stylesheet ('self') and its
+// inline theme and style attributes (a meter's share); images allow
 // data: and https: for the raw bridge. frame-ancestors + X-Frame-Options block
 // clickjacking of a root panel.
 //
@@ -24,7 +25,7 @@ import (
 // web interface's ports answers its form there (ADR-017 §1). Only a Host that
 // is a plain name or IPv4 address is written into the policy.
 func securityHeaders(next http.Handler) http.Handler {
-	const csp = "default-src 'self'; script-src 'self'; style-src 'unsafe-inline'; " +
+	const csp = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; " +
 		"img-src 'self' data: https:; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		h := w.Header()

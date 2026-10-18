@@ -16,9 +16,10 @@ import (
 
 // TestWriteLayoutFixtures writes the pages the dev container cannot be asked
 // for — the takeovers, which stand only while the router restarts or flashes —
-// as the shell renders them, self-contained (each inlines its stylesheet), for
-// the layout snapshot to record beside the live pages (make layout-snapshot).
-// Each is its first surface; the client moves [hidden] between the rest.
+// as the shell renders them, with the stylesheet they link written beside them
+// at its address, for the layout snapshot to record beside the live pages (make
+// layout-snapshot). Each is its first surface; the client moves [hidden]
+// between the rest.
 func TestWriteLayoutFixtures(t *testing.T) {
 	_, here, _, _ := runtime.Caller(0)
 	dir := filepath.Join(filepath.Dir(here), "..", "..", "build", "layout-fixtures")
@@ -32,6 +33,13 @@ func TestWriteLayoutFixtures(t *testing.T) {
 		if err := os.WriteFile(filepath.Join(dir, name+".html"), []byte(body), 0o644); err != nil {
 			t.Fatal(err)
 		}
+	}
+	sheet := filepath.Join(dir, filepath.FromSlash(s.sheet.href))
+	if err := os.MkdirAll(filepath.Dir(sheet), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(sheet, s.sheet.text, 0o644); err != nil {
+		t.Fatal(err)
 	}
 
 	for name, plan := range map[string]restartPlan{

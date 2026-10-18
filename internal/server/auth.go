@@ -226,8 +226,8 @@ func validCSRF(r *http.Request, want string) bool {
 // long it has been up, and the visitor's own address and subnet. No network
 // inventory or configuration crosses this boundary, and no rpcd session is used.
 type loginData struct {
-	Lang           string // negotiated language for <html lang>, "en" when English
-	CSS            template.CSS
+	Lang           string       // negotiated language for <html lang>, "en" when English
+	Stylesheet     string       // the address the stylesheet is linked at (stylesheetHref)
 	Theme          template.CSS // the theme in force, after the stylesheet (ADR-024)
 	Error          string
 	Notice         string // a statement about how the visitor got here, shown in a marigold notice
@@ -433,7 +433,7 @@ func (s *Server) renderLogin(w http.ResponseWriter, r *http.Request, status int,
 	}
 	var buf bytes.Buffer
 	if err := s.pageSet(lang).ExecuteTemplate(&buf, "login.html.tmpl", loginData{
-		Lang: langAttr(lang), CSS: s.currentCSS(), Theme: s.themeCSS(), Error: tr(errMsg), Notice: tr(s.expiryNotice(r)),
+		Lang: langAttr(lang), Stylesheet: s.stylesheetHref(), Theme: s.themeCSS(), Error: tr(errMsg), Notice: tr(s.expiryNotice(r)),
 		Version: Version, Firmware: loginFirmware(),
 		Hostname: hostname, Maker: hw.Maker, Model: hw.Model,
 		Status: s.readLoginStatus(tr), Username: username,

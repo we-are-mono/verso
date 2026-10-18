@@ -211,8 +211,9 @@ func (s *Server) renderFirmwareStarted(w http.ResponseWriter, r *http.Request) {
 	if err := s.pageSet(lang).ExecuteTemplate(&body, "firmware-started.html.tmpl", struct {
 		Lang       string
 		Bars       []theme.Bar
-		CSS, Theme template.CSS
-	}{Lang: langAttr(lang), Bars: s.themeBars("ground"), CSS: s.currentCSS(), Theme: s.themeCSS()}); err != nil {
+		Stylesheet string
+		Theme      template.CSS
+	}{Lang: langAttr(lang), Bars: s.themeBars("ground"), Stylesheet: s.stylesheetHref(), Theme: s.themeCSS()}); err != nil {
 		http.Error(w, "firmware started page error", http.StatusInternalServerError)
 		return
 	}

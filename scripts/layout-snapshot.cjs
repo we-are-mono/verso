@@ -158,19 +158,22 @@ async function discover(page) {
   return { pages: [...pages].sort(), drawers: [...drawers.values()].sort() };
 }
 
-// fixtures serves build/layout-fixtures, passing /assets/ through to the dev
+// fixtures serves build/layout-fixtures (the pages, and the stylesheet they
+// link, written beside them), passing the rest of /assets/ through to the dev
 // container so a fixture's fonts and icons are the app's own.
 function fixtures() {
   if (!fs.existsSync(FIXTURES)) return null;
+  const types = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8' };
   const server = http.createServer((req, res) => {
-    if (req.url.startsWith('/assets/')) {
+    const file = path.join(FIXTURES, path.normalize(req.url).replace(/^(\.\.[/\\])+/, ''));
+    const local = file.startsWith(FIXTURES) && fs.existsSync(file) && fs.statSync(file).isFile();
+    if (!local && req.url.startsWith('/assets/')) {
       http.get(BASE + req.url, (up) => { res.writeHead(up.statusCode, up.headers); up.pipe(res); })
         .on('error', () => { res.writeHead(502); res.end(); });
       return;
     }
-    const file = path.join(FIXTURES, path.normalize(req.url).replace(/^(\.\.[/\\])+/, ''));
-    if (!file.startsWith(FIXTURES) || !fs.existsSync(file)) { res.writeHead(404); res.end(); return; }
-    res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
+    if (!local) { res.writeHead(404); res.end(); return; }
+    res.writeHead(200, { 'content-type': types[path.extname(file)] || 'application/octet-stream' });
     fs.createReadStream(file).pipe(res);
   });
   return new Promise((resolve) => server.listen(0, '127.0.0.1', () => resolve(server)));

@@ -85,10 +85,10 @@ var scriptFS embed.FS
 const faviconPath = "assets/icons/favicon.ico"
 
 // devCSSPath is the hot-reload stylesheet drop point. When scripts/dev.sh is driving a
-// session it compiles the CSS here, and the shell reads it fresh on every render (and
-// serves it at /assets/verso.css for the in-place swap) — so a CSS edit lands with no
-// rebuild. The file exists only under dev.sh; every real deployment has no such file and
-// uses the embedded stylesheet. (Not under /tmp: the dev container mounts /tmp as tmpfs,
+// session it compiles the CSS here, and the shell serves it fresh at
+// devStylesheetPath, which every page links in place of the build's — so a CSS edit
+// lands with no rebuild. The file exists only under dev.sh; every real deployment has
+// no such file and links the embedded stylesheet. (Not under /tmp: the dev container mounts /tmp as tmpfs,
 // which `docker cp` cannot write into.)
 const devCSSPath = "/usr/share/verso/verso-dev.css"
 
@@ -193,7 +193,7 @@ type Server struct {
 	// the language and translate. Immutable after load; a rescan swaps the
 	// pointer atomically (ADR-012).
 	bundle atomic.Pointer[i18n.Bundle]
-	css    template.CSS
+	sheet  stylesheet
 	// palette is the palette's colours, read once from the embedded palette.css,
 	// for what the shell writes outside the stylesheet; tokens is every colour
 	// token it declares, the keys a theme may set.
@@ -206,7 +206,7 @@ type Server struct {
 	themesFS fs.FS
 
 	devCSS string // dev hot-reload stylesheet path, "" in a normal build
-	bootID string // per-process id handleCSS exposes in dev, so the hot-reload script detects a redeploy
+	bootID string // per-process id handleDevStylesheet exposes, so the hot-reload script detects a redeploy
 	// keptSessions is where Close leaves the sessions and New takes them back,
 	// "" outside a dev session (devSessionsPath).
 	keptSessions string
@@ -318,7 +318,7 @@ func New(
 		boardSensors:   boardSensors,
 		loginLimiter:   newLoginLimiter(time.Now),
 		loginInternet:  openwrt.InternetAvailable,
-		css:            template.CSS(cssText),
+		sheet:          newStylesheet(cssText),
 		palette:        colours,
 		tokens:         palette.TokenNames(paletteText),
 		probe:          func(at plugin.Endpoint) bool { return transport.Alive(at) },
@@ -586,18 +586,6 @@ func (s *Server) Close() {
 	s.pendingFirmwares.clear()
 }
 
-// currentCSS is the stylesheet to inline: the live dev file (read fresh each render) in
-// a hot-reload session, otherwise the embedded copy. A missing or empty dev file falls
-// back to embedded, so a mid-write read never blanks the page.
-func (s *Server) currentCSS() template.CSS {
-	if s.devCSS != "" {
-		if b, err := os.ReadFile(s.devCSS); err == nil && len(b) > 0 {
-			return template.CSS(b)
-		}
-	}
-	return s.css
-}
-
 func indexByID(manifests []plugin.Manifest) map[string]plugin.Manifest {
 	byID := make(map[string]plugin.Manifest, len(manifests))
 	for _, m := range manifests {
@@ -710,11 +698,12 @@ func (s *Server) assets() http.Handler {
 		return http.NotFoundHandler()
 	}
 	// No per-asset cache headers: securityHeaders sets Cache-Control: no-store on
-	// every response, so assets (JS, CSS, fonts) are refetched each load. Verso is
-	// a LAN-local app where a fetch is effectively free, and never caching means a
-	// redeployed binary is always what the browser shows (no stale asset, no hash
-	// in the URL to bust). The one cost is a possible font re-fetch flash on
-	// navigation; on a local network it is negligible.
+	// every response, so these assets (JS, fonts, icons) are refetched each load.
+	// Verso is a LAN-local app where a fetch is effectively free, and never caching
+	// means a redeployed binary is always what the browser shows. The one cost is a
+	// possible font re-fetch flash on navigation; on a local network it is
+	// negligible. The stylesheet is the exception (stylesheet.go): its address names
+	// its content, so it is kept for good without ever going stale.
 	files := http.StripPrefix("/assets/", http.FileServerFS(sub))
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// The web app manifest's type, which Go's table and a router's lack of
@@ -738,19 +727,6 @@ func (s *Server) handleHealth(w http.ResponseWriter, _ *http.Request) {
 	_, _ = w.Write([]byte("ok\n"))
 }
 
-// handleCSS serves the current stylesheet at a stable URL. The page still inlines the
-// CSS for first paint; this is what the dev hot-reload script re-fetches to swap the
-// <style> in place. Fresh from disk in a dev session, embedded otherwise.
-func (s *Server) handleCSS(w http.ResponseWriter, _ *http.Request) {
-	if s.devCSS != "" {
-		// A CSS swap cannot show a template edit (templates are embedded), so the
-		// dev script compares this id and reloads the page when the shell restarts.
-		w.Header().Set("X-Verso-Boot", s.bootID)
-	}
-	w.Header().Set("Content-Type", "text/css; charset=utf-8")
-	_, _ = w.Write([]byte(s.currentCSS()))
-}
-
 type pageData struct {
 	Overview      bool
 	UpdateNotice  string
@@ -764,8 +740,8 @@ type pageData struct {
 	HeadingAct    template.HTML // a listing's lone act, rendered beside the heading (pageHeader.HeadingAct)
 	HeadingNote   *string       // the standing fact before the acts (pageHeader.HeadingNote)
 	Width         string        // content-column width preset: "form" (768px) | "narrow" | "normal" (default) | "wide"
-	CSS           template.CSS
-	Theme         template.CSS // the theme in force, after the stylesheet (ADR-024)
+	Stylesheet    string        // the address the stylesheet is linked at (stylesheetHref)
+	Theme         template.CSS  // the theme in force, after the stylesheet (ADR-024)
 	Nav           navModel
 	Body          template.HTML
 	NoPassword    bool
@@ -1034,7 +1010,7 @@ func (s *Server) renderPage(w http.ResponseWriter, r *http.Request, status int, 
 		HeadingAct:    hdr.HeadingAct,
 		HeadingNote:   hdr.HeadingNote,
 		Width:         width,
-		CSS:           s.currentCSS(),
+		Stylesheet:    s.stylesheetHref(),
 		Theme:         s.themeCSS(),
 		Nav:           s.buildSidebar(r.URL.Path, tr, pluginTr, localizedPages),
 		Body:          body,

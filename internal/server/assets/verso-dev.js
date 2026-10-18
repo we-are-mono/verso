@@ -2,13 +2,15 @@
 // SPDX-FileCopyrightText: 2026 Mono Technologies Inc.
 //
 // Dev-only stylesheet hot-reload. The shell injects this script only during a
-// scripts/dev.sh session (page.Dev), never in a real deployment. It polls the live
-// stylesheet and swaps the inlined <style> in place, so a CSS edit appears in ~1s with
-// no rebuild and no full page refresh (scroll and widget state are kept). A template
-// edit cannot land that way — templates are embedded in the binary — so the response
-// also carries the shell's per-process id (X-Verso-Boot), and a change there means the
-// shell was redeployed: reload the whole page. CSP-safe: a same-origin fetch and an
-// inline <style> edit, no eval, no new script.
+// scripts/dev.sh session (page.Dev), never in a real deployment, and a dev page
+// links the live stylesheet at its stable address. The script polls it and, when
+// it changes, links the new one beside the old and drops the old once the new has
+// loaded, so a CSS edit appears in ~1s with no rebuild, no full page refresh (scroll
+// and widget state are kept) and no unstyled frame between. A template edit cannot
+// land that way — templates are embedded in the binary — so the response also
+// carries the shell's per-process id (X-Verso-Boot), and a change there means the
+// shell was redeployed: reload the whole page. CSP-safe: a same-origin fetch and a
+// same-origin stylesheet, no eval, no new script.
 //
 // A redeploy that lands while a form holds unsaved work waits for it: the reload is
 // held until the work is saved or undone, so a redeploy never throws the browser's
@@ -16,13 +18,31 @@
 // (Server.Close), so the save still goes through on the new build.
 (function () {
   var url = "/assets/verso.css";
-  var style = document.getElementById("verso-css");
-  if (!style) return;
-  // The served stylesheet and the inlined one are the same currentCSS() bytes, so
-  // the first paint itself is the exact baseline — no first-fetch race.
-  var last = style.textContent;
+  var link = document.querySelector('link[rel="stylesheet"][href="' + url + '"]');
+  if (!link) return;
+  // The first poll's stylesheet is the baseline: a change lands from the next.
+  var last = null;
+  var version = 0;
   var boot = null;
   var redeployed = false;
+
+  // swap links the new stylesheet after the one in force and drops the old
+  // once the new has loaded, so the page is never without one. A change that
+  // lands while the last is still loading takes its place.
+  var pending = null;
+  function swap() {
+    if (pending) pending.remove();
+    var next = link.cloneNode();
+    next.href = url + "?v=" + (++version);
+    pending = next;
+    next.addEventListener("load", function () {
+      if (pending !== next) return;
+      link.remove();
+      link = next;
+      pending = null;
+    }, { once: true });
+    link.after(next);
+  }
 
   function unsaved() {
     return !!(window.versoDirtyState && window.versoDirtyState.dirty());
@@ -48,8 +68,9 @@
       })
       .then(function (css) {
         if (css === null || css === last) return;
+        var first = last === null;
         last = css;
-        style.textContent = css;
+        if (!first) swap();
       })
       .catch(function () { /* server mid-reload; try again next tick */ });
   }

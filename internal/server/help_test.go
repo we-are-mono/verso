@@ -35,7 +35,7 @@ func TestShownHelpArrivesShown(t *testing.T) {
 }
 
 // rootTag is a page's <html> tag: the page's own state, apart from the
-// stylesheet inlined under it, which names every state it styles.
+// markup under it.
 func rootTag(body string) string {
 	at := strings.Index(body, "<html")
 	if at < 0 {

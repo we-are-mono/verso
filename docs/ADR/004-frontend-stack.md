@@ -37,7 +37,14 @@ deliberately tiny (plugins emit a widget schema, not markup or JS).
    (a deliberate exception to "no framework"), not an SPA runtime — rendering stays
    server-side and shell-owned.
 5. **CSP: `script-src 'self'` — no `unsafe-inline`, no `unsafe-eval` on scripts**
-   (`style-src` keeps `unsafe-inline` for the inlined first-paint stylesheet). The shell
+   (`style-src 'self' 'unsafe-inline'`: the compiled stylesheet is linked from the
+   router, and the theme block and style attributes such as a meter's share are
+   inline). The stylesheet is linked rather than inlined: its address names a hash
+   of its content (`/assets/verso.<hash>.css`) and it is served gzipped with
+   `Cache-Control: immutable`, so the router writes it once per browser per build
+   instead of into every page, the browser parses it once, and a new build is a new
+   address, so no browser shows a stale one. A linked stylesheet in `<head>` blocks
+   rendering as an inline one does, so the first frame is styled either way. The shell
    serves its own JS from `/assets`; injected or plugin-supplied markup still
    cannot execute (html/template escaping blocks tag injection, the CSP blocks
    inline and external scripts). This replaced the earlier `script-src 'none'`

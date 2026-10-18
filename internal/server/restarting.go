@@ -81,7 +81,8 @@ type restartingView struct {
 	Lang, Title, Lede, Estimate, Status string
 	Hostname, Maker, Model, Target      string
 	Bars                                []theme.Bar // the browser bar's colours: the takeover's ground, Paper, under the theme
-	CSS, Theme                          template.CSS
+	Stylesheet                          string
+	Theme                               template.CSS
 	Budget                              int
 	Address                             template.HTML
 }
@@ -95,7 +96,7 @@ func (s *Server) restartingPage(r *http.Request, plan restartPlan) (string, erro
 	tr := translatorOrIdentity(t)
 	hw := board()
 	view := restartingView{
-		Lang: langAttr(lang), Bars: s.themeBars("ground"), CSS: s.currentCSS(), Theme: s.themeCSS(), Status: restartStatusPath,
+		Lang: langAttr(lang), Bars: s.themeBars("ground"), Stylesheet: s.stylesheetHref(), Theme: s.themeCSS(), Status: restartStatusPath,
 		Title: plan.Title, Lede: plan.Lede, Estimate: plan.Estimate,
 		Hostname: s.nameplate(r), Maker: hw.Maker, Model: hw.Model,
 		Budget: int(plan.Budget / time.Second), Target: plan.Target,

@@ -14,7 +14,7 @@ import (
 
 // TestWriteWidgetLayoutFixtures writes the widgets the dev container has no
 // page for — a router's panel, which only a board with ports draws — as the
-// shell renders them, self-contained (the page inlines the stylesheet), for
+// shell renders them, self-contained (the fixture inlines the stylesheet), for
 // the layout snapshot to record beside the live pages (make layout-snapshot):
 // a generated panel with every port state, a board's art, and a board with
 // both faces.
