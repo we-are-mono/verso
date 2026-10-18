@@ -45,6 +45,14 @@
  *                                 the head, every cell under it and its width
  *           data-verso-lifted     the copy of a row a drag lifts off the
  *                                 listing (blocks/reorder.css): no hairline
+ *           data-verso-tree       the interface inventory: a tree down its
+ *                                 first column, its columns' widths held,
+ *                                 its rows unfolding in place; on a phone
+ *                                 the tree, the name, the state and the acts
+ *           data-verso-filtered   (set in the browser) a tree a search or a
+ *                                 cut narrows: its branches are left out
+ * Row state: data-verso-expanded  (set in the browser) a tree's row that
+ *                                 stands unfolded, on Quiet Sand
  * Elements: __head      a column's head, the kicker: medium, spaced, quiet
  *           __row       a row; data-verso-off marks a switched-off one
  *           __cell      a value's cell
@@ -79,6 +87,16 @@
  *           __summary   the fold's words
  *           __sheet     what an unfolded row shows, under it
  *           __unfold    the track an inventory row unfolds in
+ *           __tree      a tree's first cell: the tree, then the identity
+ *           __branch    a row's piece of the tree in its first 40px
+ *           __trunk     the trunks that run on past a row's first 40px, and
+ *                       down the sheet it unfolds
+ *           __node      the identity's node on the tree, and its __knot
+ *           __hinge     the line the unfold box stands on, a row's 40px
+ *           __actions   a tree row's acts, one run of slots, so each act
+ *                       stands in its own column down the rows
+ *           __parts     the sections an unfolded tree row shows, as wide as
+ *                       their own container
  */
 
 .verso-table {
@@ -346,6 +364,18 @@
   background-color: var(--color-denim);
   color: var(--color-on-fill);
 }
+/* Its chevron turns down as the row opens. */
+.verso-table__toggle > svg {
+  transition: rotate 200ms ease-out;
+}
+.verso-table__toggle:is([aria-expanded="true"] *) > svg {
+  rotate: 90deg;
+}
+@media (prefers-reduced-motion: reduce) {
+  .verso-table__toggle > svg {
+    transition: none;
+  }
+}
 
 /* A state as its column writes it: the packet, then the word in the
    state's ink: the deep step of a warning or a fault, Ink for a link that
@@ -544,6 +574,142 @@
 @media (prefers-reduced-motion: reduce) {
   .verso-table__unfold {
     transition: none;
+  }
+}
+
+/* A tree: the interface inventory. Its columns hold their widths, so the
+   tree, the names and the acts stand in one place down every row, and the
+   whole is never narrower than 66rem: a window narrower scrolls it. The
+   name's column takes the rest. */
+.verso-table[data-verso-tree] {
+  min-width: 66rem;
+  table-layout: fixed;
+  text-align: left;
+}
+.verso-table[data-verso-tree] > colgroup > col:nth-child(2) {
+  width: calc(var(--spacing) * 30);
+}
+.verso-table[data-verso-tree] > colgroup > col:nth-child(3) {
+  width: calc(var(--spacing) * 44);
+}
+.verso-table[data-verso-tree] > colgroup > col:nth-child(4) {
+  width: calc(var(--spacing) * 50);
+}
+.verso-table[data-verso-tree] > colgroup > col:nth-child(5) {
+  width: calc(var(--spacing) * 32);
+}
+.verso-table[data-verso-tree] > colgroup > col:nth-child(6) {
+  width: calc(var(--spacing) * 39);
+}
+/* The first head stands over the names, after the tree's 66px, the unfold
+   box's 28px and the name's 12px lead-in. A fact's cell keeps 8px after
+   it, and the acts their slots' own lead-in. */
+.verso-table[data-verso-tree] .verso-table__head:first-of-type {
+  padding-inline-start: calc(var(--spacing) * 29.25);
+}
+.verso-table[data-verso-tree] .verso-table__cell {
+  padding-inline-end: calc(var(--spacing) * 2);
+}
+.verso-table[data-verso-tree] .verso-table__acts {
+  padding-inline-start: 0;
+}
+.verso-table__row[data-verso-expanded="true"] {
+  background-color: var(--color-quiet);
+}
+
+/* The tree's cell holds the tree from the table's 11px edge, and the
+   identity over it; the tree is drawn on the cell's own box, not inset. */
+.verso-table[data-verso-tree] .verso-table__tree {
+  position: relative;
+  padding: 0 0 0 calc(var(--spacing) * 2.75);
+}
+.verso-table__branch {
+  position: absolute;
+  top: 0;
+  left: calc(var(--spacing) * 2.75);
+  height: calc(var(--spacing) * 10);
+  color: var(--color-faint);
+  pointer-events: none;
+}
+.verso-table__trunk {
+  position: absolute;
+  top: calc(var(--spacing) * 10);
+  bottom: 0;
+  left: calc(var(--spacing) * 2.75);
+  color: var(--color-faint);
+  pointer-events: none;
+}
+.verso-table__trunk:is(.verso-table__sheet *) {
+  top: 0;
+  height: 100%;
+}
+/* A narrowed tree is a list of matches, not a tree: its branches and its
+   nodes are left out, the names standing where they stood. */
+:is(.verso-table__branch, .verso-table__trunk, .verso-table__knot):is(.verso-table[data-verso-filtered="true"] *) {
+  display: none;
+}
+.verso-table__node {
+  position: relative;
+  flex-shrink: 0;
+  margin-bottom: -1px;
+  overflow: visible;
+  color: var(--color-glyph);
+}
+.verso-table__knot > * {
+  fill: var(--color-ground);
+}
+/* The unfold box centred on the row's 40px: its 28px, 6px over and under. */
+.verso-table__hinge {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  margin-bottom: -1px;
+  padding-block: calc(var(--spacing) * 1.5);
+}
+/* The name's line in a tree wraps its networks' chips under the name, 4px
+   apart, on the row's own air around its 24px lines. */
+.verso-table__title:where(.verso-table[data-verso-tree] *) {
+  flex-wrap: wrap;
+  column-gap: var(--spacing);
+  min-width: 0;
+  padding: calc(var(--spacing) * 1.75) calc(var(--spacing) * 3) calc(var(--spacing) * 2);
+}
+.verso-table__actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  width: calc(var(--spacing) * 35);
+  margin-left: auto;
+}
+/* An unfolded tree row's sheet: Paper, the trunk running down its left, its
+   parts lined up under the names. */
+.verso-table[data-verso-tree] .verso-table__sheet {
+  position: relative;
+  padding: calc(var(--spacing) * 6) calc(var(--spacing) * 4) calc(var(--spacing) * 8) calc(var(--spacing) * 26.25);
+  background-color: var(--color-ground);
+}
+.verso-table__parts {
+  container-type: inline-size;
+  min-width: 0;
+}
+/* On a phone the state rides on the name's line; elsewhere it has its own
+   column. */
+@media (width >= 40rem) {
+  .verso-table__state:is(.verso-table__title *) {
+    display: none;
+  }
+}
+@media (width < 40rem) {
+  .verso-table[data-verso-tree] {
+    min-width: auto;
+    table-layout: auto;
+  }
+  .verso-table[data-verso-tree] > :is(thead, tbody) > tr > :nth-child(n+2):nth-child(-n+5),
+  .verso-table[data-verso-tree] > colgroup > col:nth-child(n+2):nth-child(-n+5) {
+    display: none;
+  }
+  .verso-table__actions {
+    width: auto;
   }
 }
 

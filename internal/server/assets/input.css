@@ -213,15 +213,6 @@
   --container-form-split: 62.5rem;
 }
 
-/* A row's own air around its 24px lines: 7px over the first, after the
-   hairline it stands under, and 8px under the last, so its lines fill whole
-   bands of the grid, the next hairline lands on a line, and a row of one line
-   is 40px and one of two is 64px however its values wrap. */
-@utility py-row {
-  padding-top: calc(var(--spacing) * 1.75);
-  padding-bottom: calc(var(--spacing) * 2);
-}
-
 @layer base {
   html {
     background-color: var(--color-canvas);

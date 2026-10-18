@@ -460,7 +460,7 @@ document.addEventListener(
   function apply() {
     var tag = cut ? cut.value : "";
     var needle = field ? (field.value || "").trim().toLowerCase() : "";
-    if (table.closest("[data-verso-inventory]")) table.dataset.filtered = String(!!(needle || tag));
+    if (table.closest("[data-verso-inventory]")) table.dataset.versoFiltered = String(!!(needle || tag));
 
     var band = null;
     var bandKept = 0;
@@ -542,7 +542,7 @@ function versoExpandRow(button, open, animate) {
   var row = button.closest("tr");
   var detail = row && row.nextElementSibling;
   if (!detail || !detail.hasAttribute("data-verso-expanded-row")) return;
-  row.dataset.expanded = String(open);
+  row.dataset.versoExpanded = String(open);
   button.setAttribute("aria-expanded", String(open));
   var chevron = button.querySelector("[data-verso-expand-chevron] svg") || button.querySelector("svg");
   if (chevron && !row.closest("[data-verso-inventory]")) chevron.classList.toggle("rotate-90", open);

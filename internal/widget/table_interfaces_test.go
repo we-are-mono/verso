@@ -50,19 +50,22 @@ func TestInterfaceTreeKeepsBranchesThroughExpandedDescendants(t *testing.T) {
 	// The tree starts 11px in, where every listing's first content does, the
 	// first column's head over the names after it.
 	for _, want := range []string{
-		`<td class="verso-table__cell relative py-0 pr-0 pl-2.75">`,
-		`class="pointer-events-none absolute top-0 left-2.75 h-10`,
-		`class="pointer-events-none absolute top-10 bottom-0 left-2.75`,
-		`pl-29.25`,
+		`<table class="verso-table" data-verso-dense data-verso-tree>`,
+		`<td class="verso-table__cell verso-table__tree">`,
+		`class="verso-table__branch"`, `class="verso-table__trunk"`,
 		`preserveAspectRatio="none"`, `vector-effect="non-scaling-stroke"`,
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("want %s in:\n%s", want, got)
 		}
 	}
+	declares(t, "table", ".verso-table[data-verso-tree] .verso-table__tree", "position: relative", "padding: 0 0 0 calc(var(--spacing) * 2.75)")
+	declares(t, "table", ".verso-table__branch", "top: 0", "height: calc(var(--spacing) * 10)")
+	declares(t, "table", ".verso-table__trunk", "top: calc(var(--spacing) * 10)", "bottom: 0")
+	declares(t, "table", ".verso-table[data-verso-tree] .verso-table__head:first-of-type", "padding-inline-start: calc(var(--spacing) * 29.25)")
 	// Every cell of a row stands at its top: each is the table block's, and
 	// the block stands every cell of its table at the row's top.
-	if !strings.Contains(got, `<table class="verso-table `) {
+	if !strings.Contains(got, `<table class="verso-table"`) {
 		t.Errorf("the inventory is not the table block:\n%s", got)
 	}
 	if n := strings.Count(got, `<td class="verso-table__`); n < 7 {
@@ -108,15 +111,24 @@ func TestInterfaceInventoryOnAPhoneKeepsTheNameStateAndActs(t *testing.T) {
 	}}
 	got := render(t, newRenderer(t), table)
 	for _, want := range []string{
-		`sm:min-w-[66rem]`,
-		`<col class="w-30 max-sm:hidden">`, `<col class="w-44 max-sm:hidden">`, `<col class="w-50 max-sm:hidden">`, `<col class="w-32 max-sm:hidden">`,
-		`max-sm:hidden">Type</th>`, `max-sm:hidden">State</th>`,
-		`<span data-verso-inventory-state class="verso-table__state sm:hidden" data-verso-tone="success">`,
+		`data-verso-tree`,
+		`<colgroup><col><col><col><col><col><col></colgroup>`,
+		`<span class="verso-table__title"><span class="break-words type-value text-ink" data-verso-verbatim>br-lan</span><span data-verso-inventory-state class="verso-table__state" data-verso-tone="success">`,
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("want %s in:\n%s", want, got)
 		}
 	}
+	// The tree holds its columns' widths and is never narrower than 66rem
+	// beside a phone; on a phone the type, the address, the MAC and the
+	// state's own column are left out, heads and widths with them, and the
+	// state stands on the name's line only there.
+	declares(t, "table", ".verso-table[data-verso-tree]", "min-width: 66rem")
+	for col, width := range map[string]string{"2": "30", "3": "44", "4": "50", "5": "32", "6": "39"} {
+		declares(t, "table", ".verso-table[data-verso-tree] > colgroup > col:nth-child("+col+")", "width: calc(var(--spacing) * "+width+")")
+	}
+	declares(t, "table", ".verso-table[data-verso-tree] > :is(thead, tbody) > tr > :nth-child(n+2):nth-child(-n+5),\n  .verso-table[data-verso-tree] > colgroup > col:nth-child(n+2):nth-child(-n+5)", "display: none")
+	declares(t, "table", ".verso-table__state:is(.verso-table__title *)", "display: none")
 	// The state is its packet and its word on one line, a link that is up
 	// written in Ink.
 	declares(t, "table", ".verso-table__state", "display: flex", "gap: calc(var(--spacing) * 2)")
