@@ -361,7 +361,7 @@ func TestARelationIsANoteBesideTheChange(t *testing.T) {
 	first.ID = 1
 	undo := turnedOff(now)
 	undo.ID, undo.Relation, undo.Related, undo.Note = 2, "undo", 1, "Ping back on"
-	table := changesTable([]history.Change{undo, first}, time.Time{}, now, "", identity)
+	table := changesTable([]history.Change{undo, first}, time.Time{}, now, "", identity, func(string) func(string) string { return identity })
 	if table.Columns[2].Label != "Notes" || table.Columns[2].Kind != "comment" {
 		t.Fatalf("third column = %+v, want Notes", table.Columns[2])
 	}
@@ -372,6 +372,89 @@ func TestARelationIsANoteBesideTheChange(t *testing.T) {
 	}
 	if table.Rows[1].Cells[2].Text != "" {
 		t.Errorf("a change with no relation or note has notes %q", table.Rows[1].Cells[2].Text)
+	}
+}
+
+// TestTheRoutersOwnChangeNamesItselfAndItsCause: a change the router made
+// itself reads "The router" in By, never edited directly; Notes read the
+// relation, then the cause, then the note; a cause reads in the viewer's
+// language from the catalog of the plugin that wrote it, the shell's own from
+// the shell's, and one no catalog holds as written (ADR-021, ADR-012).
+func TestTheRoutersOwnChangeNamesItselfAndItsCause(t *testing.T) {
+	now := time.Now()
+	first := turnedOff(now.Add(-2 * time.Minute))
+	first.ID = 1
+	handOver := turnedOff(now.Add(-time.Minute))
+	handOver.ID, handOver.User, handOver.Address, handOver.Own = 2, "", "", true
+	handOver.Cause, handOver.CausePlugin = "A certificate was installed by hand.", "acme"
+	handOver.Relation, handOver.Related, handOver.Note = "undo", 1, "kept"
+	theme := turnedOff(now)
+	theme.ID, theme.Own, theme.Cause = 3, true, "The theme was changed."
+	older := turnedOff(now)
+	older.ID, older.User, older.Address, older.Own = 4, "", "", true
+	unknown := turnedOff(now)
+	unknown.ID, unknown.User, unknown.Address, unknown.Own, unknown.Cause, unknown.CausePlugin = 5, "", "", true, "Something else.", "acme"
+
+	slovenian := map[string]string{"The theme was changed.": "Tema je bila spremenjena.", "The router": "Usmerjevalnik"}
+	tr := func(s string) string {
+		if t, ok := slovenian[s]; ok {
+			return t
+		}
+		return s
+	}
+	pluginTr := func(id string) func(string) string {
+		return func(s string) string {
+			if id == "acme" && s == "A certificate was installed by hand." {
+				return "Potrdilo je bilo nameščeno ročno."
+			}
+			return tr(s)
+		}
+	}
+	table := changesTable([]history.Change{unknown, older, theme, handOver, first}, time.Time{}, now, "", tr, pluginTr)
+	row := func(id string) widget.TableRow {
+		for _, r := range table.Rows {
+			if r.ID == id {
+				return r
+			}
+		}
+		t.Fatalf("no row %s", id)
+		return widget.TableRow{}
+	}
+	if got := row("2").Cells[3].Text; got != "Usmerjevalnik" {
+		t.Errorf("the router's By = %q", got)
+	}
+	want := "undo of " + eventTime(first.Time, now) + " · Potrdilo je bilo nameščeno ročno. · kept"
+	if got := row("2").Cells[2].Text; got != want {
+		t.Errorf("notes %q, want %q", got, want)
+	}
+	if got := row("3").Cells[2].Text; got != "Tema je bila spremenjena." {
+		t.Errorf("the shell's cause reads %q", got)
+	}
+	if got := row("3").Cells[3].Text; got != theme.User {
+		t.Errorf("an operator's act names %q in By, want %q", got, theme.User)
+	}
+	if by, notes := row("4").Cells[3].Text, row("4").Cells[2].Text; by != "Usmerjevalnik" || notes != "" {
+		t.Errorf("an older plugin's commit: By %q, notes %q", by, notes)
+	}
+	if got := row("5").Cells[2].Text; got != "Something else." {
+		t.Errorf("a cause no catalog holds reads %q", got)
+	}
+	if got := row("1").Cells[3].Text; got == "Usmerjevalnik" || got == "Edited directly" {
+		t.Errorf("an apply's By = %q", got)
+	}
+}
+
+// TestTheDrawerSaysWhatCausedTheChange: the drawer holds the cause the row's
+// one line may cut short, before the note.
+func TestTheDrawerSaysWhatCausedTheChange(t *testing.T) {
+	s, store := changesServer(t)
+	c := turnedOff(time.Now())
+	c.User, c.Address, c.Own, c.Cause, c.Note = "", "", true, "The theme was changed.", "a note"
+	id := record(t, store, c)
+	body := getPanel(t, s, fmt.Sprintf("%s/%d", changesPath, id)).Body.String()
+	cause, note := strings.Index(body, "The theme was changed."), strings.Index(body, "a note")
+	if cause < 0 || note < 0 || cause > note {
+		t.Errorf("the drawer should hold the cause before the note:\n%s", body)
 	}
 }
 

@@ -46,14 +46,14 @@
 
 ## 5. The page
 
-- [ ] 5.1 Test first in `config_history_page_test.go`:
+- [x] 5.1 Test first in `config_history_page_test.go`:
   - a change with a cause and no user reads "The router" in By;
   - Notes read the relation, then the cause, then the note;
   - a Slovenian viewer sees acme's cause from acme's catalog, and the shell's cause from the shell's;
   - a cause no catalog holds reads as written.
 
   Then extend `changeBy` and the Notes cell (design decisions 4 and 5). Verify with `go test ./internal/server`.
-- [ ] 5.2 Add the shell's three causes and "The router" to the shell's Slovenian catalog. Verify with `make i18n-audit`.
+- [x] 5.2 Add the shell's three causes and "The router" to the shell's Slovenian catalog. Verify with `make i18n-audit`.
 
 ## 6. verso-plugin-acme
 

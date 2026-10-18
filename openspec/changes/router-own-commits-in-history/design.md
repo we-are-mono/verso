@@ -83,7 +83,7 @@ Notes read in this order: the relation (Undoes…), then the cause, then the ope
 
 ### 5. By for the router
 
-`changeBy` gains a third case: a change that is `Own` and has no user reads `tr("The router")`, as words with the router's icon chip. Like "Edited directly", it names the channel and never "Verso" (copy rule).
+`changeBy` gains a third case: a change that is `Own` and has no user reads `tr("The router")`, in words as "Edited directly" is. Like "Edited directly", it names the channel and never "Verso" (copy rule). The change's drawer holds the cause before the note, as it holds what the row's one line may cut short.
 
 ### 6. The causes the helper gives
 

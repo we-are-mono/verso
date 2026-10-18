@@ -73,7 +73,7 @@ func (s *Server) handleChanges(w http.ResponseWriter, r *http.Request) {
 			startAt = start.Time
 		}
 	}
-	table := changesTable(changes, startAt, time.Now(), clientIP(r), tr)
+	table := changesTable(changes, startAt, time.Now(), clientIP(r), tr, s.pluginTranslators(r))
 	notices := uncheckedNotice(g, table)
 	if h := s.historyStore.Health(); !h.OK {
 		notices = append(notices, &widget.Callout{Variant: "warning", Compact: true, Verbatim: h.Cause,
@@ -156,7 +156,8 @@ func (s *Server) handleChangePanel(w http.ResponseWriter, r *http.Request) {
 		offered = "return"
 	}
 	hidden := !readableWhole(r.Context(), g, actSpan(offered, full, kept))
-	s.writeChangeDrawer(w, r, strconv.FormatInt(id, 10), changeDrawer(c, all, since, hidden, time.Now(), tr), failed, status, lang, t)
+	cause := changeCause(c, tr, s.pluginTranslators(r))
+	s.writeChangeDrawer(w, r, strconv.FormatInt(id, 10), changeDrawer(c, all, since, hidden, time.Now(), cause, tr), failed, status, lang, t)
 }
 
 // actSpan is the entries an act on c stages from: every one in force since
@@ -288,7 +289,7 @@ func (s *Server) readStartAndNow(ctx context.Context) (startReading, map[string]
 //
 // The starting point closes the listing where history has one (startAt is
 // its moment): the configs as they stood before the oldest entry kept.
-func changesTable(changes []history.Change, startAt, now time.Time, viewer string, tr func(string) string) *widget.Table {
+func changesTable(changes []history.Change, startAt, now time.Time, viewer string, tr func(string) string, pluginTr func(string) func(string) string) *widget.Table {
 	table := &widget.Table{
 		Columns: []widget.TableColumn{
 			{Label: "When", Width: widget.MeasureShort},
@@ -307,7 +308,7 @@ func changesTable(changes []history.Change, startAt, now time.Time, viewer strin
 	rows := make([]widget.TableRow, 0, len(changes)+1)
 	times := make([]time.Time, 0, len(changes)+1)
 	for _, c := range changes {
-		rows, times = append(rows, changeRow(c, when, now, viewer, tr)), append(times, c.Time)
+		rows, times = append(rows, changeRow(c, when, now, viewer, tr, pluginTr)), append(times, c.Time)
 	}
 	if !startAt.IsZero() {
 		rows, times = append(rows, startRow(startAt, tr)), append(times, startAt)
@@ -344,9 +345,10 @@ func startRow(at time.Time, tr func(string) string) widget.TableRow {
 }
 
 // changeRow is one entry in the listing.
-func changeRow(c history.Change, when map[int64]time.Time, now time.Time, viewer string, tr func(string) string) widget.TableRow {
+func changeRow(c history.Change, when map[int64]time.Time, now time.Time, viewer string, tr func(string) string, pluginTr func(string) func(string) string) widget.TableRow {
 	parts, plain := changePhrase(c, tr)
-	// Notes is what the entry is to another, then the operator's own note.
+	// Notes is what the entry is to another, then what caused it, then the
+	// operator's own note.
 	var notes []string
 	if c.Relation == "return" && c.Related == 0 {
 		notes = append(notes, tr("back to the starting point"))
@@ -359,6 +361,9 @@ func changeRow(c history.Change, when map[int64]time.Time, now time.Time, viewer
 		case "again":
 			notes = append(notes, fmt.Sprintf(tr("again, from %s"), eventTime(related, now)))
 		}
+	}
+	if cause := changeCause(c, tr, pluginTr); cause != "" {
+		notes = append(notes, cause)
 	}
 	if c.Note != "" {
 		notes = append(notes, c.Note)
@@ -391,9 +396,26 @@ func changeStatus(status string) (string, string) {
 	return "Undone", ""
 }
 
+// changeCause is what made the router commit an entry, in the viewer's
+// language: from the catalog of the plugin that said it, or the shell's for
+// its own (ADR-012); a cause no catalog holds reads as written.
+func changeCause(c history.Change, tr func(string) string, pluginTr func(string) func(string) string) string {
+	if c.Cause == "" {
+		return ""
+	}
+	if c.CausePlugin != "" {
+		return pluginTr(c.CausePlugin)(c.Cause)
+	}
+	return tr(c.Cause)
+}
+
 // changeBy is who applied an entry and from where: this browser's own
-// applies say so; an edit written straight to the config has no one.
+// applies say so; a commit the router made itself is the router's, unless an
+// operator's act made it; an edit written straight to the config has no one.
 func changeBy(c history.Change, viewer string, tr func(string) string) widget.TableCell {
+	if c.User == "" && c.Own {
+		return widget.TableCell{Text: tr("The router"), Parts: []widget.TablePart{{Words: tr("The router")}}, Verbatim: true}
+	}
 	if c.User == "" {
 		return widget.TableCell{Text: tr("Edited directly"), Parts: []widget.TablePart{{Words: tr("Edited directly")}}, Verbatim: true}
 	}
@@ -584,8 +606,9 @@ func oldValue(old json.RawMessage) (string, bool) {
 
 // changeDrawer is an entry's drawer, on one of its two tabs: what it changed,
 // or what has changed since. hidden says the tab's act would reach configs
-// the reader may not read, so it is not offered.
-func changeDrawer(c history.Change, all []history.Change, since, hidden bool, now time.Time, tr func(string) string) *widget.RowDrawer {
+// the reader may not read, so it is not offered. cause is what made the
+// router commit it, already in the reader's language (changeCause).
+func changeDrawer(c history.Change, all []history.Change, since, hidden bool, now time.Time, cause string, tr func(string) string) *widget.RowDrawer {
 	path := fmt.Sprintf("%s/%d", changesPath, c.ID)
 	d := &widget.RowDrawer{
 		Title: changeTitle(c.Time, now, tr), Verbatim: true,
@@ -597,17 +620,20 @@ func changeDrawer(c history.Change, all []history.Change, since, hidden bool, no
 	if since {
 		d.Children = sinceThenTab(c, all, path, hidden, tr)
 	} else {
-		d.Children = whatChangedTab(c, all, path, now, hidden, tr)
+		d.Children = whatChangedTab(c, all, path, now, hidden, cause, tr)
 	}
 	return d
 }
 
-// whatChangedTab is what its row cannot hold, its note, then every uci
-// change it made, and the act that takes it back or puts it back: Undo for
-// one in force, Stage again for one rolled back or undone. Neither is offered
-// on an entry the reader sees only in part.
-func whatChangedTab(c history.Change, all []history.Change, path string, now time.Time, hidden bool, tr func(string) string) widget.Widgets {
+// whatChangedTab is what its row cannot hold, what caused it and its note,
+// then every uci change it made, and the act that takes it back or puts it
+// back: Undo for one in force, Stage again for one rolled back or undone.
+// Neither is offered on an entry the reader sees only in part.
+func whatChangedTab(c history.Change, all []history.Change, path string, now time.Time, hidden bool, cause string, tr func(string) string) widget.Widgets {
 	var children widget.Widgets
+	if cause != "" {
+		children = append(children, &widget.Text{Markdown: markdownLiteral(cause), Translated: true})
+	}
 	if c.Note != "" {
 		children = append(children, &widget.Text{Markdown: markdownLiteral(c.Note), Translated: true})
 	}
