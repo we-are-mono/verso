@@ -19,7 +19,12 @@
 use serde::Deserialize;
 use serde_json::{json, Map, Value};
 use std::collections::BTreeMap;
+use std::fs;
 use std::io::{Read, Write};
+use std::os::unix::fs::{DirBuilderExt, OpenOptionsExt, PermissionsExt};
+use std::path::{Path, PathBuf};
+
+pub mod uci;
 
 /// The exit code of a refusal.
 pub const EXIT_REFUSED: i32 = 3;
@@ -117,6 +122,76 @@ pub fn effective_uid() -> Option<u32> {
 /// init subcommands check it before they act.
 pub fn is_root() -> bool {
     effective_uid() == Some(0)
+}
+
+/// Where a root half marks a commit it is about to make as Verso's own act, so
+/// config history says Verso made it rather than that it was edited directly
+/// (ADR-021, ADR-027). The helper reads and removes the mark.
+pub const OWN_MARKS: &str = "/tmp/run/verso-own";
+
+/// own_write marks config as about to be committed by this root half: call it
+/// just before `uci commit`. A mark counts for one commit, within 30 seconds.
+pub fn own_write(config: &str) -> Result<(), String> {
+    own_write_in(Path::new(OWN_MARKS), config)
+}
+
+fn own_write_in(dir: &Path, config: &str) -> Result<(), String> {
+    if !uci::config_name(config) {
+        return Err(format!("{config:?} is not a uci config name"));
+    }
+    match fs::DirBuilder::new().mode(0o700).create(dir) {
+        Ok(()) => {}
+        Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {}
+        Err(e) => return Err(format!("{}: {e}", dir.display())),
+    }
+    fs::set_permissions(dir, fs::Permissions::from_mode(0o700)).map_err(|e| e.to_string())?;
+    let mark = dir.join(config);
+    let _ = fs::remove_file(&mark);
+    fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .mode(0o600)
+        .open(&mark)
+        .map(|_| ())
+        .map_err(|e| format!("{}: {e}", mark.display()))
+}
+
+/// signal_shell tells the running shell, through procd, to read what changed
+/// again — a new certificate pair on disk, for one (ADR-017 §4).
+pub fn signal_shell() -> Result<(), String> {
+    let status = std::process::Command::new("/bin/ubus")
+        .args(["call", "service", "signal", r#"{"name":"verso","signal":1}"#])
+        .stdin(std::process::Stdio::null())
+        .status()
+        .map_err(|e| e.to_string())?;
+    if !status.success() {
+        return Err("the web interface could not be told".into());
+    }
+    Ok(())
+}
+
+/// write_new writes value beside path under a private name, its mode set
+/// before a byte is written, and answers that name for the caller to rename
+/// into place: the file is never readable by anyone it is not meant for.
+pub fn write_new(path: &Path, value: &[u8], mode: u32) -> Result<PathBuf, String> {
+    let mut name = path.file_name().ok_or("no file name")?.to_os_string();
+    name.push(format!(".verso-{}", std::process::id()));
+    let tmp = path.with_file_name(name);
+    let mut f = fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .mode(mode & 0o600)
+        .open(&tmp)
+        .map_err(|e| format!("{}: {e}", tmp.display()))?;
+    let written = f
+        .set_permissions(fs::Permissions::from_mode(mode))
+        .and_then(|_| f.write_all(value))
+        .and_then(|_| f.sync_all());
+    if let Err(e) = written {
+        let _ = fs::remove_file(&tmp);
+        return Err(e.to_string());
+    }
+    Ok(tmp)
 }
 
 /// run answers the helper's request on stdin and ends the process.
@@ -230,5 +305,28 @@ mod tests {
     #[test]
     fn the_effective_uid_is_read() {
         assert!(effective_uid().is_some());
+    }
+
+    #[test]
+    fn a_mark_is_one_private_file_per_config() {
+        let dir = std::env::temp_dir().join(format!("verso-sdk-marks-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        own_write_in(&dir, "acme").unwrap();
+        own_write_in(&dir, "acme").unwrap();
+        assert_eq!(fs::metadata(&dir).unwrap().permissions().mode() & 0o777, 0o700);
+        assert!(dir.join("acme").is_file());
+        assert!(own_write_in(&dir, "../shadow").is_err());
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn a_new_file_is_private_until_it_is_whole() {
+        let dir = std::env::temp_dir().join(format!("verso-sdk-write-{}", std::process::id()));
+        fs::create_dir_all(&dir).unwrap();
+        let tmp = write_new(&dir.join("record"), b"event=renewed\n", 0o644).unwrap();
+        assert_eq!(fs::read(&tmp).unwrap(), b"event=renewed\n");
+        assert_eq!(fs::metadata(&tmp).unwrap().permissions().mode() & 0o777, 0o644);
+        assert!(write_new(&dir.join("record"), b"again", 0o644).is_err(), "a name in use is never reused");
+        let _ = fs::remove_dir_all(&dir);
     }
 }

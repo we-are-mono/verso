@@ -79,13 +79,46 @@ pub fn own_write(config: &str) {
     }
 }
 
-/// owned takes the mark of the helper's own write to config, if one is
-/// fresh enough to name the write just seen.
+/// Where a plugin's root half marks a commit it is about to make as Verso's
+/// own act (ADR-027): one empty file per config, in a directory only root may
+/// write. The SDK's `root::own_write` makes the mark.
+const OWN_MARKS: &str = "/tmp/run/verso-own";
+
+/// owned takes the mark of the helper's own write to config, or of a plugin's
+/// root half, if one is fresh enough to name the write just seen.
 fn owned(config: &str) -> bool {
-    OWN.lock()
+    let mine = OWN
+        .lock()
         .ok()
         .and_then(|mut own| own.as_mut()?.remove(config))
-        .is_some_and(|at| at.elapsed() <= OWN_WITHIN)
+        .is_some_and(|at| at.elapsed() <= OWN_WITHIN);
+    mine || marked(Path::new(OWN_MARKS), config, SystemTime::now(), |uid| uid == 0)
+}
+
+/// marked takes a root half's mark of config from dir: a regular file, in a
+/// directory root alone may write, written by an account rooted says is root
+/// within OWN_WITHIN of now. A mark names one write, so it is removed.
+fn marked(dir: &Path, config: &str, now: SystemTime, rooted: impl Fn(u32) -> bool) -> bool {
+    if !uci_committed::config_name(config) {
+        return false;
+    }
+    let Ok(folder) = fs::symlink_metadata(dir) else {
+        return false;
+    };
+    if !folder.is_dir() || !rooted(folder.uid()) || folder.mode() & 0o077 != 0 {
+        return false;
+    }
+    let path = dir.join(config);
+    let Ok(mark) = fs::symlink_metadata(&path) else {
+        return false;
+    };
+    let _ = fs::remove_file(&path);
+    let fresh = mark
+        .modified()
+        .ok()
+        .and_then(|at| now.duration_since(at).ok())
+        .is_some_and(|age| age <= OWN_WITHIN);
+    mark.file_type().is_file() && rooted(mark.uid()) && fresh
 }
 
 /// watchdog runs the watch for as long as the helper does.
@@ -808,6 +841,38 @@ mod tests {
         assert!(owned("verso-test-own"));
         assert!(!owned("verso-test-own"), "a mark names one write");
         assert!(!owned("verso-test-other"));
+    }
+
+    /// A root half marks a commit it is about to make (ADR-027): the mark
+    /// counts once, fresh, from root, in a directory only root may write.
+    #[test]
+    fn a_root_halfs_mark_names_one_fresh_write() {
+        let dir = std::env::temp_dir().join(format!("verso-own-marks-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::DirBuilder::new().mode(0o700).create(&dir).unwrap();
+        let me = fs::metadata(&dir).unwrap().uid();
+        let mine = |uid: u32| uid == me;
+        let now = SystemTime::now();
+
+        fs::write(dir.join("acme"), b"").unwrap();
+        assert!(marked(&dir, "acme", now, mine));
+        assert!(!marked(&dir, "acme", now, mine), "a mark names one write");
+
+        fs::write(dir.join("acme"), b"").unwrap();
+        assert!(!marked(&dir, "acme", now + OWN_WITHIN + Duration::from_secs(1), mine), "a stale mark");
+        assert!(!dir.join("acme").exists(), "a stale mark is taken away");
+
+        fs::write(dir.join("acme"), b"").unwrap();
+        assert!(!marked(&dir, "acme", now, |_| false), "a mark not root's");
+
+        fs::write(dir.join("acme"), b"").unwrap();
+        fs::set_permissions(&dir, fs::Permissions::from_mode(0o777)).unwrap();
+        assert!(!marked(&dir, "acme", now, mine), "a directory others may write");
+        fs::set_permissions(&dir, fs::Permissions::from_mode(0o700)).unwrap();
+
+        assert!(!marked(&dir, "../acme", now, mine), "a name that is no config");
+        assert!(!marked(&dir.join("absent"), "acme", now, mine));
+        let _ = fs::remove_dir_all(&dir);
     }
 
     #[test]
