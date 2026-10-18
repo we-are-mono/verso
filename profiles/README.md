@@ -18,7 +18,12 @@ profiles/
   mono_gateway-dk/
     profile.json     # the sensor / port map (below)
     back.svg         # optional rear-panel artwork (see "Back panel")
+    board.png        # optional photograph of the board (see "Photograph")
 ```
+
+How to contribute a profile — the steps, and what each file must be — is in
+[CONTRIBUTING.md § Adding a board profile](../CONTRIBUTING.md#adding-a-board-profile),
+where the Hardware page links a board that has none.
 
 A board with **no matching folder needs none** — the fallback is auto-detection, not
 a file (below).
@@ -217,7 +222,7 @@ fan.
 ## Back panel (optional)
 
 A board folder may carry a **`back.svg`** — artwork of the device's rear that the
-Overview's Ports card and the Hardware page show in place of the panel the shell
+Overview's Ports card shows in place of the panel the shell
 generates. It is a **skin over the live ports layer, not a static picture**, and the
 shell lights it exactly as it does the generated panel — no code per board. No
 `back.svg` → the generated panel is drawn instead, its ports in the order `ports`
@@ -255,6 +260,21 @@ only, no `<script>`, no event handlers (`on*`), no remote refs (`href`/`<image>`
 no `<foreignObject>`, no `url()` in CSS — an allowlist of elements and attributes,
 the same posture as the `raw` widget but a larger surface. The validator checks
 the tagged `data-verso-port` ids against the board's real interfaces.
+
+## Photograph (optional)
+
+A board folder may carry a **`board.png`** — a photograph of the board that
+System › Hardware shows beside what the box is made of, at 30% of the card's row.
+The board alone on a transparent background, cropped to its edges, about 800px wide
+(no more: the tests hold that) and reduced to a 256-colour palette, since it ships
+inside the firmware. The shell serves it at an address naming its content, kept by
+the browser for good, and sets its height on the 8px grid at whatever width it stands;
+the transparent ground takes up the difference. No `board.png` → the page says there is
+no photo of the board and links to the contributing guide.
+
+`mono_gateway-dk/board.png` is the Development Kit's photograph from the Armbian
+project's board images (github.com/armbian/armbian.github.io, GPL-2.0), cropped,
+resized to 800px and reduced to a palette.
 
 ## Authoring a profile
 

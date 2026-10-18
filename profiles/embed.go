@@ -9,10 +9,12 @@ package profiles
 
 import "embed"
 
-// FS holds every board's profile.json and its optional panel artwork, addressed
-// as "<board_name>/profile.json" and "<board_name>/back.svg" (or front.svg). The
-// panel art is first-party content shipped in the binary, so the Hardware page
-// renders it as trusted core content.
+// FS holds every board's profile.json, its optional panel artwork and its
+// optional photograph, addressed as "<board_name>/profile.json",
+// "<board_name>/back.svg" (or front.svg) and "<board_name>/board.png". The
+// panel art is first-party content shipped in the binary, so the Overview
+// renders it as trusted core content; the photograph stands beside the facts
+// of the box on the Hardware page.
 //
-//go:embed */profile.json */*.svg
+//go:embed */profile.json */*.svg */board.png
 var FS embed.FS

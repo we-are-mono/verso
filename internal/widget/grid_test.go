@@ -88,9 +88,14 @@ func TestGridFigureStandsBesideItsFacts(t *testing.T) {
 	if row < 0 || list < row || ports < list {
 		t.Errorf("the facts should open the row, then the figure:\n%s", got)
 	}
-	declares(t, "grid", `.verso-grid__track:where(.verso-grid[data-verso-style="figure"] > *)`, "display: flex;", "flex-wrap: wrap;")
-	declares(t, "grid", `.verso-grid__cell:not(:last-child):where(.verso-grid[data-verso-style="figure"] *)`, "flex: 1 1 22rem;")
-	declares(t, "grid", `.verso-grid__cell:last-child:where(.verso-grid[data-verso-style="figure"] *)`, "flex: 0 1 var(--art-w, auto);")
+	// The cells reach the row's foot, so a figure can fill its height.
+	declares(t, "grid", `.verso-grid__track:where(.verso-grid[data-verso-style="figure"] > *)`, "display: flex;", "flex-wrap: wrap;", "align-items: stretch;")
+	// What is said takes the row's slack, so a figure keeps its share beside
+	// it; a figure that may grow (a picture) takes its own line whole once
+	// it stands under.
+	declares(t, "grid", `.verso-grid__cell:not(:last-child):where(.verso-grid[data-verso-style="figure"] *)`, "flex: 999 1 22rem;")
+	declares(t, "grid", `.verso-grid__cell:last-child:where(.verso-grid[data-verso-style="figure"] *)`, "flex: var(--art-grow, 0) 1 var(--art-w, auto);")
+	declares(t, "grid", ".verso-grid__cell:has(> .verso-figure)", "--art-grow: 1;")
 	// The row's hook is its own: a listing's live figures (a device's Now
 	// cell) carry data-verso-figure, and a rule aimed at that would stack
 	// them and stretch every row.

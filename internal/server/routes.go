@@ -15,6 +15,8 @@ func (s *Server) routes() {
 	// specific than /assets/, so they win).
 	s.mux.HandleFunc("GET "+s.sheet.href, s.handleStylesheet)
 	s.mux.HandleFunc("GET "+devStylesheetPath, s.handleDevStylesheet)
+	// The boards' photographs, each kept for good at an address naming it.
+	s.mux.HandleFunc("GET "+boardPhotoPrefix+"{file}", s.handleBoardPhoto)
 	s.mux.HandleFunc("GET /favicon.ico", s.handleFavicon)
 	// The rail's press-time fetch rules, which a page names in its headers.
 	s.mux.HandleFunc("GET "+speculationRulesPath, s.handleSpeculationRules)

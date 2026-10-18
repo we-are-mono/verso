@@ -78,6 +78,9 @@ func translateFields(w Widget, t func(string) string) {
 	case *Empty:
 		n.Title = t(n.Title)
 		n.Body = t(n.Body)
+	case *Figure:
+		// Why there is no picture is prose; what the picture shows is a name.
+		n.Note = t(n.Note)
 	case *Field:
 		n.Label = t(n.Label)
 		n.Prompt = t(n.Prompt)

@@ -16,10 +16,7 @@
 // which closes the client for good.
 (function () {
   if (!window.EventSource) return;
-  if (!document.querySelector("[data-overview]") && !document.querySelector("[data-verso-meter]") && !document.querySelector("[data-verso-row]") && !document.querySelector('[data-verso-live-chart="wan"]') && !document.querySelector("[data-verso-prop]") && !document.querySelector("[data-verso-port]")) return;
-  // A page whose only live part is the router's panel (System › Hardware)
-  // reads the interfaces and nothing else of the Overview's stream.
-  var panelOnly = !document.querySelector("[data-overview]") && !document.querySelector("[data-verso-meter]") && !document.querySelector("[data-verso-row]") && !document.querySelector('[data-verso-live-chart="wan"]') && !document.querySelector("[data-verso-prop]");
+  if (!document.querySelector("[data-overview]") && !document.querySelector("[data-verso-meter]") && !document.querySelector("[data-verso-row]") && !document.querySelector('[data-verso-live-chart="wan"]') && !document.querySelector("[data-verso-prop]")) return;
   function setText(root, selector, text) {
     var el = root.querySelector(selector);
     if (el) el.textContent = text;
@@ -134,7 +131,7 @@
   var es = null;
   function connect() {
     if (es) return;
-    es = new EventSource(panelOnly ? "/overview/events?reads=interfaces" : "/overview/events");
+    es = new EventSource("/overview/events");
     wire(es);
   }
   function disconnect() {

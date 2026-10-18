@@ -194,6 +194,9 @@ type Server struct {
 	// pointer atomically (ADR-012).
 	bundle atomic.Pointer[i18n.Bundle]
 	sheet  stylesheet
+	// boardPhotos is each profile's photograph of its board, keyed by the
+	// profile's folder (board_photo.go).
+	boardPhotos map[string]boardPhoto
 	// palette is the palette's colours, read once from the embedded palette.css,
 	// for what the shell writes outside the stylesheet; tokens is every colour
 	// token it declares, the keys a theme may set.
@@ -319,6 +322,7 @@ func New(
 		loginLimiter:   newLoginLimiter(time.Now),
 		loginInternet:  openwrt.InternetAvailable,
 		sheet:          newStylesheet(cssText),
+		boardPhotos:    loadBoardPhotos(profiles.FS),
 		palette:        colours,
 		tokens:         palette.TokenNames(paletteText),
 		probe:          func(at plugin.Endpoint) bool { return transport.Alive(at) },

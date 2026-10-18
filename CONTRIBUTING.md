@@ -138,6 +138,47 @@ into `build/apk/aarch64_generic/` by default, `APK_GOARCH=amd64` into
 dev-box-specific step — it writes to `VERSO_REPO_DIR` (default `/srv/verso`). See
 [docs/building.md](docs/building.md) for the full runbook and the router-side install.
 
+## Adding a board profile
+
+A board profile teaches the shell one device: which sensor is its CPU temperature, which
+order its ports sit in, what its rear panel looks like and what the board itself looks
+like. It is data, not code: one folder in `profiles/`, picked up by the build with no code
+change. A board without one still works (the shell shows whatever the kernel exposes); a
+profile makes it read the way its maker would name it.
+
+The folder holds up to three files:
+
+1. **`profile.json` (required)** — the board's identity and its sensor and port map.
+   Its `id` is the board's `board_name` exactly as `ubus call system board` prints it
+   (`mono,gateway-dk`; on x86 the DMI-derived `supermicro-h13sae-mf`), and `name` is what
+   the Hardware page titles the board with. `processor`, `ports`, `thermal`, `power` and
+   `fans` are optional; [`profiles/README.md`](profiles/README.md) documents each key and
+   how to read the right values off the device.
+2. **`back.svg` (optional)** — the rear panel the Overview's Ports card draws and lights
+   live: one group per port with its outline and two LEDs, drawn at its own size on the
+   8px grid. The contract (the groups, classes and sizes the shell relies on) is in
+   [`profiles/README.md` § Back panel](profiles/README.md#back-panel-optional);
+   `profiles/mono_gateway-dk/back.svg` is a worked example.
+3. **`board.png` (optional)** — a photograph of the board, shown on System › Hardware
+   beside what the box is made of. Make it:
+   - the board alone, on a **transparent background**, cropped to its edges;
+   - about **800 px wide** (it shows at up to a third of a page, sharp on a high-density
+     screen);
+   - small: it ships inside the firmware, so reduce it to a **256-colour palette** (a
+     board photo stays sharp and lands near 150 KB);
+   - a photograph you have the right to share under the project's licence (GPL-2.0).
+
+   Without one the page says the board has no photo and links here.
+
+To contribute one:
+
+1. Fork the repository and add `profiles/<a-plain-folder-name>/` with the files above
+   (the folder name is only storage; `id` is what matches the board).
+2. Run `make test`: the profile tests check the panel art's contract and that every
+   profile and photo loads.
+3. Open a pull request with a screenshot of System › Hardware and the Overview's Ports
+   card on the board.
+
 ## Running OpenWrt in Docker — safety
 
 The dev container boots real OpenWrt (procd) so the shell can reach live ubus/uci.

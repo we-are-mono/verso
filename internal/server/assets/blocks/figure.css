@@ -1,0 +1,57 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/* SPDX-FileCopyrightText: 2026 Mono Technologies Inc. */
+
+/*
+ * figure — a picture standing beside what it shows (a board's photograph
+ * beside the facts of the box): in a figure grid's cell it takes 30% of the
+ * row (the cell's --art-w), never under 256px, never wider than its room. Its
+ * height is its proportions at the width it stands, rounded down to a whole
+ * 8px line, the picture held within it, so a photograph taller than the facts
+ * beside it keeps the card on the grid; a photograph's transparent ground
+ * takes up the difference. With no picture, the place-marking frame every
+ * empty place wears (the slot's: a dashed Strong Hairline on Quiet Sand)
+ * fills the picture's room, across its cell and down to the foot of what
+ * stands beside it (rows on the grid, so the box is too; never under 160px), and
+ * holds the sentence that says why, centred, with the link to how to give it
+ * one 8px under it, so the card keeps its shape and the reader learns what is
+ * missing and what to do about it.
+ *
+ * Variants: data-verso-empty  no picture: the dashed box
+ * Elements: __image  the picture
+ *           __note   why there is none
+ * Sets: --verso-figure-ratio  the picture's height over its width, from the
+ *                      figure's own style
+ */
+
+.verso-figure {
+  container-type: inline-size;
+  width: 100%;
+  min-width: calc(var(--spacing) * 64);
+  max-width: 100%;
+  margin: 0;
+}
+.verso-figure[data-verso-empty] {
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: calc(var(--spacing) * 2);
+  height: 100%;
+  min-height: calc(var(--spacing) * 40);
+  padding: calc(var(--spacing) * 6);
+  border: 1px dashed var(--color-rule-strong);
+  border-radius: var(--radius-xs);
+  background-color: var(--color-quiet);
+}
+
+.verso-figure__image {
+  display: block;
+  width: 100%;
+  height: round(down, 100cqi * var(--verso-figure-ratio), var(--spacing) * 2);
+  object-fit: contain;
+}
+
+.verso-figure__note {
+  color: var(--color-meta);
+  @apply type-body;
+  text-align: center;
+}

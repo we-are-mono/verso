@@ -4,9 +4,12 @@
 package server
 
 import (
+	"bytes"
 	"encoding/xml"
 	"fmt"
 	"io"
+	"io/fs"
+	"net/http"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -20,6 +23,7 @@ import (
 	"github.com/we-are-mono/verso/internal/openwrt"
 	"github.com/we-are-mono/verso/internal/sensors"
 	"github.com/we-are-mono/verso/internal/widget"
+	"github.com/we-are-mono/verso/profiles"
 )
 
 // dkInventory is a Mono Gateway DK-shaped inventory as ResolveAll gives it on
@@ -80,7 +84,7 @@ func dkInput() hardwareInput {
 		inv:     dkInventory(),
 		facts:   machine.Facts{Cores: 4, MaxKHz: 1600000, MemoryBytes: 8070316 * 1024, Disk: &machine.Disk{Bytes: 61071360 * 512, Kind: "eMMC", Wear: &machine.Wear{Band: 1, PreEOL: 1}}, Flash: &machine.Flash{Part: "n25q512a", Bytes: 64 << 20}, Root: "/dev/mmcblk0p4"},
 		hw:      openwrt.HardwareState{Clock: &openwrt.Clock{Part: "pcf2131", Battery: "good"}, Boot: dkBootEnv()},
-		panel:   &widget.Ports{Items: []widget.PortItem{{Label: "eth0", Iface: "eth0"}}},
+		photo:   &boardPhoto{href: "/assets/boards/0123456789ab.png", width: 800, height: 592},
 	}
 }
 
@@ -98,7 +102,6 @@ func unprofiledInput() hardwareInput {
 		board: openwrt.Board{Model: "Supermicro H13SAE-MF", BoardName: "supermicro-h13sae-mf", System: "AMD Ryzen 7 7700 8-Core Processor"},
 		inv:   unprofiledInventory(),
 		facts: machine.Facts{Cores: 16, MemoryBytes: 32 << 30},
-		panel: &widget.Ports{Items: []widget.PortItem{{Label: "eth0", Iface: "eth0"}}},
 	}
 }
 
@@ -173,7 +176,7 @@ func TestEachReadingAppearsOnce(t *testing.T) {
 }
 
 // The board card is titled with the profile's name, else the model, else
-// "Ports", so the panel never stands under an empty heading.
+// "Board", so the card never stands under an empty heading.
 func TestTheBoardCardsTitle(t *testing.T) {
 	if got := cardTitles(renderCards(t, dkInput()))[0]; got != "Mono Gateway Development Kit" {
 		t.Errorf("profiled title %q", got)
@@ -183,7 +186,7 @@ func TestTheBoardCardsTitle(t *testing.T) {
 	}
 	in := unprofiledInput()
 	in.board = openwrt.Board{}
-	if got := cardTitles(renderCards(t, in))[0]; got != "Ports" {
+	if got := cardTitles(renderCards(t, in))[0]; got != "Board" {
 		t.Errorf("a board that says nothing of itself is titled %q", got)
 	}
 }
@@ -193,7 +196,8 @@ func TestTheBoardCardsTitle(t *testing.T) {
 func TestTheBoardCardsFacts(t *testing.T) {
 	board := card(t, renderCards(t, dkInput()), "Mono Gateway Development Kit")
 	for _, want := range []string{
-		"verso-ports", // the panel
+		// the board's photograph, named by the board
+		`<img class="verso-figure__image" src="/assets/boards/0123456789ab.png" alt="Mono Gateway Development Kit" width="800" height="592"`,
 		">NXP LS1046A · 4 cores · 1.6\U0000202fGHz<", // the profile's chip, the kernel's cores and clock
 		">7.7\U0000202fGiB<",
 		">29\U0000202fGiB eMMC · 0–10\U0000202f% worn<", // whole GiB from ten up, then the eMMC's own wear estimate
@@ -206,10 +210,14 @@ func TestTheBoardCardsFacts(t *testing.T) {
 			t.Errorf("board card missing %q:\n%s", want, board)
 		}
 	}
-	// The facts stand at the left, the panel beside them on the right.
-	figure, list, panel := strings.Index(board, `<div class="verso-grid" data-verso-style="figure"`), strings.Index(board, "<dl"), strings.Index(board, "verso-ports")
-	if figure < 0 || list < figure || panel < list {
-		t.Errorf("the facts should stand beside the panel, the facts first:\n%s", board)
+	// The facts stand at the left, the photograph beside them on the right;
+	// the router's panel is the Overview's, not the board card's.
+	figure, list, photo := strings.Index(board, `<div class="verso-grid" data-verso-style="figure"`), strings.Index(board, "<dl"), strings.Index(board, "verso-figure")
+	if figure < 0 || list < figure || photo < list {
+		t.Errorf("the facts should stand beside the photograph, the facts first:\n%s", board)
+	}
+	if strings.Contains(board, "verso-ports") {
+		t.Errorf("the board card draws the router's panel:\n%s", board)
 	}
 	// One list, read down: Processor, Memory, Storage, Boot slot, NOR flash,
 	// Clock, Board ID.
@@ -511,6 +519,75 @@ func TestTheHeadingSaysWhatNeedsAttention(t *testing.T) {
 		hw := openwrt.HardwareState{Clock: &openwrt.Clock{Part: "pcf2131", Battery: battery}}
 		if h := hardwareHeading(identityTranslator, dkInventory(), hardwareAlerts(machine.Facts{}, hw)); h.Heading != words {
 			t.Errorf("a %s battery: heading %q, want %q", battery, h.Heading, words)
+		}
+	}
+}
+
+// A board with no profile says so where its photograph would stand, and a
+// profile with no photograph says that, so the card keeps its shape; each
+// links to the guide to adding a board's profile, its panel art and its
+// photograph.
+func TestABoardWithoutAPhotoSaysWhy(t *testing.T) {
+	guide := `<a href="https://github.com/we-are-mono/verso/blob/main/CONTRIBUTING.md#adding-a-board-profile" class="verso-link" target="_blank" rel="noopener noreferrer">`
+	for name, tc := range map[string]struct {
+		in    hardwareInput
+		title string
+		note  string
+	}{
+		"an unprofiled board":     {unprofiledInput(), "Supermicro H13SAE-MF", "No profile for this board"},
+		"a profile with no photo": {func() hardwareInput { in := dkInput(); in.photo = nil; return in }(), "Mono Gateway Development Kit", "No photo of this board"},
+	} {
+		board := card(t, renderCards(t, tc.in), tc.title)
+		note := `<figure class="verso-figure" data-verso-empty><figcaption class="verso-figure__note">` + tc.note + `</figcaption>`
+		at := strings.Index(board, note)
+		if at < 0 || !strings.Contains(board[at:], guide) || !strings.Contains(board[at:], "How to add one<") {
+			t.Errorf("%s does not say %q with the guide under it:\n%s", name, tc.note, board)
+		}
+	}
+}
+
+// The DK's profile ships its photograph, served at an address naming its
+// content and kept by the browser for good, as the stylesheet is.
+func TestTheBoardPhotoIsKeptForever(t *testing.T) {
+	s := newServer(t, fakeBackend{})
+	photo := s.boardPhotos["mono_gateway-dk"]
+	if photo.href == "" || photo.width != 800 || photo.height != 592 {
+		t.Fatalf("the DK's photo = %+v, want it at 800 by 592", photo)
+	}
+	want, err := fs.ReadFile(profiles.FS, "mono_gateway-dk/board.png")
+	if err != nil {
+		t.Fatal(err)
+	}
+	rec := fetchPublic(t, s, photo.href, nil)
+	if rec.Code != http.StatusOK || !bytes.Equal(rec.Body.Bytes(), want) {
+		t.Fatalf("GET %s = %d, %d bytes", photo.href, rec.Code, rec.Body.Len())
+	}
+	if got := rec.Header().Get("Content-Type"); got != "image/png" {
+		t.Errorf("Content-Type = %q", got)
+	}
+	if got := rec.Header().Get("Cache-Control"); got != "public, max-age=31536000, immutable" {
+		t.Errorf("Cache-Control = %q, want the photo kept for good", got)
+	}
+	if stale := fetchPublic(t, s, "/assets/boards/000000000000.png", nil); stale.Code != http.StatusNotFound {
+		t.Errorf("another build's photo = %d, want 404", stale.Code)
+	}
+}
+
+// Every profile's photograph is a PNG the page can show, at no more than the
+// 800px a third of a page needs on a high-density screen, so none is left
+// out at run time or ships heavier than it shows.
+func TestEveryBoardPhotoLoads(t *testing.T) {
+	files, err := fs.Glob(profiles.FS, "*/board.png")
+	if err != nil {
+		t.Fatal(err)
+	}
+	photos := loadBoardPhotos(profiles.FS)
+	if len(photos) != len(files) {
+		t.Errorf("%d of %d board photos load", len(photos), len(files))
+	}
+	for dir, photo := range photos {
+		if photo.width > 800 {
+			t.Errorf("%s/board.png is %dpx wide, want no more than 800", dir, photo.width)
 		}
 	}
 }

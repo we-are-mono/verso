@@ -23,8 +23,11 @@
  *                             about
  *                             · figure: what is said of a figure at the
  *                             left, taking the row, the figure 40px on at
- *                             its own width (--art-w); narrow, the figure
- *                             stands under it, 24px down
+ *                             its own width (--art-w; a picture, the figure
+ *                             block, takes 30% of the row, never under
+ *                             256px, what is said taking the slack);
+ *                             narrow, the figure stands under it, 24px
+ *                             down, a picture taking its line whole
  *                             · cards: cards of one kind side by side on
  *                             the Overview's column measure: each column its
  *                             share rounded down to 8px and a pixel more, the
@@ -120,14 +123,18 @@
 .verso-grid__track:where(.verso-grid[data-verso-style="figure"] > *) {
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-start;
+  align-items: stretch;
   gap: var(--spacing-inset) calc(var(--spacing) * 10);
 }
 .verso-grid__cell:not(:last-child):where(.verso-grid[data-verso-style="figure"] *) {
-  flex: 1 1 22rem;
+  flex: 999 1 22rem;
 }
 .verso-grid__cell:last-child:where(.verso-grid[data-verso-style="figure"] *) {
-  flex: 0 1 var(--art-w, auto);
+  flex: var(--art-grow, 0) 1 var(--art-w, auto);
+}
+.verso-grid__cell:has(> .verso-figure) {
+  --art-w: max(30%, calc(var(--spacing) * 64));
+  --art-grow: 1;
 }
 
 /* cards */

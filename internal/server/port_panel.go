@@ -4,16 +4,36 @@
 package server
 
 import (
+	"io/fs"
+
 	"github.com/we-are-mono/verso/internal/openwrt"
 	"github.com/we-are-mono/verso/internal/ports"
 	"github.com/we-are-mono/verso/internal/sensors"
 	"github.com/we-are-mono/verso/internal/telemetry"
 	"github.com/we-are-mono/verso/internal/widget"
+	"github.com/we-are-mono/verso/profiles"
 )
 
 // portKinds says which connector a port is: "sfp" or "rj45" (ports.Kinds).
 type portKinds interface {
 	Kind(iface string) string
+}
+
+// readPanel loads a profile folder's embedded panel artwork, empty when the folder
+// ships none. The art is first-party content compiled into the binary, so the
+// Overview renders it as trusted core content (the runtime-contribution
+// sanitizer the profile README specifies is only needed once profiles arrive at
+// runtime). dir is the profile's own folder (LoadProfile records it), so the art
+// travels with the profile, not with the raw board_name.
+func readPanel(dir, file string) string {
+	if dir == "" {
+		return ""
+	}
+	data, err := fs.ReadFile(profiles.FS, dir+"/"+file)
+	if err != nil {
+		return ""
+	}
+	return string(data)
 }
 
 // devicePanel is the router's panel, as the Overview's Ports card and the

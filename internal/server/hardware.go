@@ -5,7 +5,6 @@ package server
 
 import (
 	"fmt"
-	"io/fs"
 	"log"
 	"math"
 	"net/http"
@@ -20,12 +19,11 @@ import (
 )
 
 // handleSystemHardware renders the Hardware page: the board card (its name,
-// its panel, what it is made of), then one card per kind of reading the board
-// has: Temperatures, Power and Cooling, then a card per fiber module, each
-// reading once. It
-// reads local sysfs and procfs only (no network, no blocking), so it renders
-// fresh on each load, with no cache. The panel stays live from the overview
-// stream's interfaces frame; the readings are as loaded.
+// what it is made of, its photograph), then one card per kind of reading the
+// board has: Temperatures, Power and Cooling, then a card per fiber module,
+// each reading once. It reads local sysfs and procfs only (no network, no
+// blocking), so it renders fresh on each load, with no cache; the readings
+// are as loaded.
 func (s *Server) handleSystemHardware(w http.ResponseWriter, r *http.Request) {
 	sid := s.sessionSID(r)
 	board, boardErr := s.backend.Board(r.Context(), sid)
@@ -39,7 +37,7 @@ func (s *Server) handleSystemHardware(w http.ResponseWriter, r *http.Request) {
 		inv:     s.sensorInventory(profile),
 		facts:   (&machine.Reader{}).Read(),
 		hw:      s.hardwareState(r.Context(), sid),
-		panel:   s.hardwarePanel(r, profile),
+		photo:   s.photoFor(profile),
 	}
 
 	_, t := s.localize(r)
@@ -68,7 +66,7 @@ type hardwareInput struct {
 	inv     sensors.Inventory
 	facts   machine.Facts
 	hw      openwrt.HardwareState // what only root may read: the clock's battery, U-Boot's slot
-	panel   widget.Widget         // nil for a box with no ports
+	photo   *boardPhoto           // the profile's photograph of the board; nil without one
 	// tempGraph is the Temperatures graph as the page opens on it: the first
 	// reading (the CPU) over the last 24 hours. Without it the card is its
 	// table alone.
@@ -107,61 +105,43 @@ func hardwareCards(tr func(string) string, in hardwareInput) []widget.Widget {
 	return out
 }
 
-// hardwarePanel renders the router's panel (port_panel.go). A box with no
-// ports shows nothing.
-func (s *Server) hardwarePanel(r *http.Request, profile *sensors.Profile) widget.Widget {
-	snapshot, _ := s.telemetrySnapshot(r.Context())
-	wan, _ := s.wanStatus(r)
-	if panel := s.devicePanel(snapshot, wan, profile); panel != nil {
-		return panel
-	}
-	return nil
-}
-
-// readPanel loads a profile folder's embedded panel artwork, empty when the folder
-// ships none. The art is first-party content compiled into the binary, so the
-// Hardware page renders it as trusted core content (the runtime-contribution
-// sanitizer the profile README specifies is only needed once profiles arrive at
-// runtime). dir is the profile's own folder (LoadProfile records it), so the art
-// travels with the profile, not with the raw board_name.
-func readPanel(dir, file string) string {
-	if dir == "" {
-		return ""
-	}
-	data, err := fs.ReadFile(profiles.FS, dir+"/"+file)
-	if err != nil {
-		return ""
-	}
-	return string(data)
-}
-
 // --- the board card --------------------------------------------------------
 
 // boardCard names the router (the profile's name, else its model, else
-// "Ports", so the panel never stands under an empty heading) and holds what
-// it is made of at the left, its panel beside it on the right.
+// "Board", so the card never stands under an empty heading) and holds what it
+// is made of at the left, its photograph beside it on the right: the
+// profile's, or a square saying why there is none.
 func boardCard(tr func(string) string, nums units.Numbers, in hardwareInput) widget.Widget {
-	title := "Ports"
+	title := "Board"
 	switch {
 	case in.profile != nil && in.profile.Name != "":
 		title = in.profile.Name
 	case in.board.Model != "":
 		title = in.board.Model
 	}
-	var children []widget.Widget
+	var photo *widget.Figure
+	switch {
+	case in.photo != nil:
+		photo = &widget.Figure{Src: in.photo.href, Alt: title, Width: in.photo.width, Height: in.photo.height}
+	case in.profile != nil:
+		photo = &widget.Figure{Note: "No photo of this board", Link: profileGuide()}
+	default:
+		photo = &widget.Figure{Note: "No profile for this board", Link: profileGuide()}
+	}
+	children := []widget.Widget{photo}
 	if facts := machineFacts(tr, nums, in); facts != nil {
-		children = append(children, facts)
-	}
-	if in.panel != nil {
-		children = append(children, in.panel)
-	}
-	switch len(children) {
-	case 0:
-		return nil
-	case 2:
-		children = []widget.Widget{&widget.Grid{Style: "figure", Children: children}}
+		children = []widget.Widget{&widget.Grid{Style: "figure", Children: []widget.Widget{facts, photo}}}
 	}
 	return &widget.Section{Title: title, Children: children}
+}
+
+// profileGuideHref is the guide to adding a board's profile, its panel art
+// and its photograph, where a contributor reads it.
+const profileGuideHref = "https://github.com/we-are-mono/verso/blob/main/CONTRIBUTING.md#adding-a-board-profile"
+
+// profileGuide is the link to that guide, in a new tab: it leaves the router.
+func profileGuide() *widget.Link {
+	return &widget.Link{Label: "How to add one", Href: profileGuideHref, NewTab: true}
 }
 
 // machineFacts is what the box is made of, one list read down: Processor,

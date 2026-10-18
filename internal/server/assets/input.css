@@ -59,6 +59,7 @@
 @import "./blocks/facts-head.css" layer(components);
 @import "./blocks/field.css" layer(components);
 @import "./blocks/field-set.css" layer(components);
+@import "./blocks/figure.css" layer(components);
 @import "./blocks/files.css" layer(components);
 @import "./blocks/form.css" layer(components);
 @import "./blocks/form-grid.css" layer(components);

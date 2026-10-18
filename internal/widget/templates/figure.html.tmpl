@@ -1,0 +1,7 @@
+<!-- SPDX-License-Identifier: GPL-2.0-only -->
+<!-- SPDX-FileCopyrightText: 2026 Mono Technologies Inc. -->
+{{/* figure: a picture at its own proportions, its height on the 8px grid
+     and its size declared so the page keeps its place while it loads, or —
+     with no picture — a dashed box holding the sentence that says why and,
+     under it, the link to how to give it one (blocks/figure.css). */}}
+{{if .Src}}<figure class="verso-figure" style="{{.Ratio}}"><img class="verso-figure__image" src="{{.Src}}" alt="{{.Alt}}" width="{{.Width}}" height="{{.Height}}" decoding="async"></figure>{{else}}<figure class="verso-figure" data-verso-empty><figcaption class="verso-figure__note">{{.Note}}</figcaption>{{.RenderedLink}}</figure>{{end}}
