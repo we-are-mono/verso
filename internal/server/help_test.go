@@ -69,7 +69,7 @@ func TestTheHeadingLineOffersHelp(t *testing.T) {
 	if err := json.Unmarshal(raw, &catalog); err != nil {
 		t.Fatal(err)
 	}
-	for en, sl := range map[string]string{"Show help": "Prikaži pomoč", "Hide help": "Skrij pomoč", "Help": "Pomoč"} {
+	for en, sl := range map[string]string{"Show help": "Prikaži pomoč", "Hide help": "Skrij pomoč"} {
 		if catalog[en] != sl {
 			t.Errorf("the Slovenian catalog says %q for %q, want %q", catalog[en], en, sl)
 		}

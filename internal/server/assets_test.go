@@ -653,20 +653,18 @@ func TestAChooserKeepsItsOwnLayout(t *testing.T) {
 }
 
 // TestHelpOpensOnRequest: every description stands folded to nothing until
-// the root shows help or its own row opens it, then opens over 200ms, its one
-// grid track going from none to its words' height as it fades in, and at
-// once where motion is reduced; the row's help glyph stands aside while the
-// page's help shows. The help act says the words for what pressing it does,
+// the root shows help, then opens over 200ms, its one grid track going from
+// none to its words' height as it fades in, and at once where motion is
+// reduced. The help act says the words for what pressing it does,
 // and stands only where there is help to show, in its page's body or its
 // drawer, on the heading line ending where the form's cards do
 // (form-fields).
 func TestHelpOpensOnRequest(t *testing.T) {
 	css := blockSheet(t, "field")
 	for head, wants := range map[string][]string{
-		"\n.verso-field__desc {":                                 {"display: grid;", "grid-template-rows: 0fr;", "opacity: 0;", "visibility: hidden;", "200ms", "var(--verso-help-delay, 0ms)"},
-		"\n.verso-field__desc > span {":                          {"min-height: 0;", "overflow: hidden;"},
-		`.verso-field__desc:where([data-verso-help="shown"] *),`: {"grid-template-rows: 1fr;", "opacity: 1;", "visibility: visible;"},
-		`.verso-field__help:is([data-verso-help="shown"] *) {`:   {"display: none;"},
+		"\n.verso-field__desc {":                                  {"display: grid;", "grid-template-rows: 0fr;", "opacity: 0;", "visibility: hidden;", "200ms", "var(--verso-help-delay, 0ms)"},
+		"\n.verso-field__desc > span {":                           {"min-height: 0;", "overflow: hidden;"},
+		`.verso-field__desc:where([data-verso-help="shown"] *) {`: {"grid-template-rows: 1fr;", "opacity: 1;", "visibility: visible;"},
 	} {
 		block := cssBlock(t, css, head)
 		for _, want := range wants {

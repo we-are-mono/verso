@@ -262,13 +262,12 @@ When help opens or folds page-wide, the row being read (the one holding focus wh
 - **WHEN** an operator scrolled halfway down Firewall settings presses `?`
 - **THEN** the row at the top of the view stays where it was while the help above it opens
 
-### Requirement: A row's own help
-While help is folded, every row with a description SHALL carry a help glyph after its name and key that opens that row's description alone and folds it again. The glyph SHALL show under the pointer, with keyboard focus, while its help is open, and always on a device without hover. It SHALL be reachable by keyboard and say whether its help is open.
+### Requirement: Help has one act
+A row's description SHALL open and fold only with the page's or drawer's help act and the `?` key. A row SHALL NOT carry a help act of its own, and nothing SHALL hold a place after a row's name for one.
 
-#### Scenario: One checkbox's help
-- **WHEN** an operator presses the help glyph on "Spread packet handling over all cores"
-- **THEN** that row's description opens under its name and no other row's does
-- **AND** the checkbox is not changed
+#### Scenario: A long name
+- **WHEN** a row's name runs nearly the width of its question
+- **THEN** the name and its key chip stand on one line with nothing reserved after them
 
 ### Requirement: The browser keeps help
 Shown help SHALL be kept per browser and SHALL apply to every page and drawer that browser opens, from the first paint, until it is pressed again. A browser that never pressed it SHALL see help folded. It SHALL NOT be staged and SHALL NOT be written to the router.

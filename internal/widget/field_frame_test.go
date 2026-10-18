@@ -43,28 +43,23 @@ func TestEveryLabelledRowIsOneFrame(t *testing.T) {
 	}
 }
 
-// TestARowWithHelpOffersItsOwn: a row with a description carries the glyph
-// that opens that row's help alone while the page's is folded, on its label
-// after the key, closed, pointing at the description it opens and named by
-// the setting; a row with nothing to say carries none (form-fields).
-func TestARowWithHelpOffersItsOwn(t *testing.T) {
+// TestARowsHelpIsThePagesAct: a row's description opens with the page's
+// help act alone; the row carries no help act of its own, whose reserved
+// place broke a long name onto a second line around a glyph that showed
+// only under the pointer (form-fields).
+func TestARowsHelpIsThePagesAct(t *testing.T) {
 	r := newRenderer(t)
 	for name, w := range map[string]Widget{
 		"field":  &Field{Name: "opt", Label: "Option", Key: "opt", Help: "What it does."},
 		"switch": &Switch{Name: "opt", Label: "Option", Key: "opt", Help: "What it does."},
 	} {
 		got := render(t, r, w)
-		glyph := regexp.MustCompile(`<button type="button" data-verso-help-row aria-expanded="false" aria-controls="opt-desc" aria-describedby="opt-label" aria-label="Help" class="verso-button verso-field__help`)
-		if !glyph.MatchString(got) {
-			t.Errorf("%s: no closed help glyph for the row:\n%s", name, got)
+		if strings.Contains(got, "data-verso-help-row") || strings.Contains(got, "verso-field__help") {
+			t.Errorf("%s: the row carries a help act of its own:\n%s", name, got)
 		}
-		key, help, desc := strings.Index(got, `class="verso-chip"`), strings.Index(got, "data-verso-help-row"), strings.Index(got, `id="opt-desc"`)
-		if key < 0 || help < key || desc < help {
-			t.Errorf("%s: the glyph does not stand after the key and before the help it opens:\n%s", name, got)
+		if !strings.Contains(got, `id="opt-desc"`) || !strings.Contains(got, "What it does.") {
+			t.Errorf("%s: the row's description is gone:\n%s", name, got)
 		}
-	}
-	if got := render(t, r, &Field{Name: "opt", Label: "Option", Key: "opt"}); strings.Contains(got, "data-verso-help-row") {
-		t.Errorf("a row with no help offers some:\n%s", got)
 	}
 }
 

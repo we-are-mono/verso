@@ -58,10 +58,6 @@
 <div class="verso-field__label">
   {{if .Label}}{{if .Group}}<span{{template "verso-field-label-attrs" .}}>{{template "verso-field-label-text" .}}</span>{{else}}<label for="{{.For}}"{{template "verso-field-label-attrs" .}}>{{template "verso-field-label-text" .}}</label>{{end}}{{end}}
   {{if .Key}}<span class="verso-chip" data-verso-verbatim>{{.Key}}</span>{{end}}
-  {{/* While the page's help is hidden, the row's own help is a press away:
-       the glyph after its name and key opens it under the name and closes
-       it again (verso-page.js), for this row alone. */}}
-  {{if .Help}}<button type="button" data-verso-help-row aria-expanded="false"{{with .For}} aria-controls="{{.}}-desc" aria-describedby="{{.}}-label"{{end}} aria-label="{{t "Help"}}" class="verso-button verso-field__help group/act relative" data-verso-size="icon">{{icon "circle-help" "size-4"}}</button>{{end}}
   {{if .Staged}}{{template "verso-staged-row" .StagedAt}}{{end}}
 </div>
 {{end}}

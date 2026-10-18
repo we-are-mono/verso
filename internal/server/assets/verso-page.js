@@ -402,8 +402,7 @@ window.versoRoll = function (value, from, to, frame, warm) {
 // the ? key, shows all of it and hides it again; the root carries the state,
 // so the stylesheet opens every description at once and shows the act's
 // other words, and a cookie keeps it for this browser, which the shell reads
-// back so the next page arrives as this one was left. While it is folded,
-// the glyph after a row's name opens that row's help alone.
+// back so the next page arrives as this one was left.
 //
 // The row being read holds still through it all: help above it opens or
 // closes, and the page scrolls with it frame by frame, so the row stays
@@ -525,19 +524,12 @@ window.versoRoll = function (value, from, to, frame, warm) {
     return longest;
   }
 
-  function closeRow(row) {
-    row.removeAttribute("data-verso-help-open");
-    var act = row.querySelector("[data-verso-help-row]");
-    if (act) act.setAttribute("aria-expanded", "false");
-  }
-
   function toggle() {
     var root = document.documentElement;
     var shown = root.getAttribute("data-verso-help") !== "shown";
     var all = rows(scope());
     var row = reading(all);
     var change = function () {
-      [].forEach.call(document.querySelectorAll("[data-verso-help-open]"), closeRow);
       if (shown) root.setAttribute("data-verso-help", "shown");
       else root.removeAttribute("data-verso-help");
     };
@@ -550,13 +542,7 @@ window.versoRoll = function (value, from, to, frame, warm) {
   document.addEventListener("click", function (event) {
     var target = event.target && event.target.closest ? event.target : null;
     if (!target) return;
-    if (target.closest("[data-verso-help-toggle]")) { toggle(); return; }
-    var act = target.closest("[data-verso-help-row]");
-    if (!act) return;
-    var row = act.closest(".verso-field");
-    if (row.hasAttribute("data-verso-help-open")) { closeRow(row); return; }
-    row.setAttribute("data-verso-help-open", "");
-    act.setAttribute("aria-expanded", "true");
+    if (target.closest("[data-verso-help-toggle]")) toggle();
   });
 
   // The ? key presses help wherever there is help to show, except while

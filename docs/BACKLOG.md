@@ -152,9 +152,8 @@ own and points at the decision that governs it; the rationale lives there, not h
 
 - **Release note: forms are ledgers.** Every form reads as its questions on
   the left and its answers on one edge, with help on what each setting does
-  a press away: "Show help" (or the ? key) opens it under every name, the
-  glyph beside one name opens that one alone, and the browser keeps the
-  choice. A setting whose change waits to be applied
+  a press away: "Show help" (or the ? key) opens it under every name, and
+  the browser keeps the choice. A setting whose change waits to be applied
   is marked by a marigold bar down its row's left edge. Installed plugins
   need no upgrade.
 - **Help written for a tooltip.** The plugins in their own repos (ddns,
