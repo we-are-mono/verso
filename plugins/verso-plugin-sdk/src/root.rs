@@ -124,21 +124,39 @@ pub fn is_root() -> bool {
     effective_uid() == Some(0)
 }
 
-/// Where a root half marks a commit it is about to make as Verso's own act, so
-/// config history says Verso made it rather than that it was edited directly
-/// (ADR-021, ADR-027). The helper reads and removes the mark.
+/// Where a root half marks a commit it is about to make as the router's own
+/// act, so config history records it as the router's, with its cause, rather
+/// than as edited directly (ADR-021, ADR-027). The helper reads and removes
+/// the mark.
 pub const OWN_MARKS: &str = "/tmp/run/verso-own";
+
+/// The longest cause a mark carries.
+const CAUSE_LIMIT: usize = 512;
 
 /// own_write marks config as about to be committed by this root half: call it
 /// just before `uci commit`. A mark counts for one commit, within 30 seconds.
-pub fn own_write(config: &str) -> Result<(), String> {
-    own_write_in(Path::new(OWN_MARKS), config)
+/// cause is one English sentence saying what made the commit ("A certificate
+/// was installed by hand."); config history shows it translated from plugin's
+/// own catalog (ADR-012), so it is written as a key of that catalog.
+pub fn own_write(plugin: &str, config: &str, cause: &str) -> Result<(), String> {
+    own_write_in(Path::new(OWN_MARKS), plugin, config, cause)
 }
 
-fn own_write_in(dir: &Path, config: &str) -> Result<(), String> {
+fn own_write_in(dir: &Path, plugin: &str, config: &str, cause: &str) -> Result<(), String> {
     if !uci::config_name(config) {
         return Err(format!("{config:?} is not a uci config name"));
     }
+    if plugin.is_empty()
+        || plugin.len() > 64
+        || !plugin.bytes().all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'-' || b == b'_')
+    {
+        return Err(format!("{plugin:?} is not a plugin id"));
+    }
+    if cause.is_empty() || cause.len() > CAUSE_LIMIT || cause.contains(['\n', '\r']) {
+        return Err("a cause is one line of at most 512 bytes".into());
+    }
+    let body = serde_json::to_vec(&json!({"plugin": plugin, "cause": cause}))
+        .map_err(|e| e.to_string())?;
     match fs::DirBuilder::new().mode(0o700).create(dir) {
         Ok(()) => {}
         Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {}
@@ -152,7 +170,7 @@ fn own_write_in(dir: &Path, config: &str) -> Result<(), String> {
         .create_new(true)
         .mode(0o600)
         .open(&mark)
-        .map(|_| ())
+        .and_then(|mut f| f.write_all(&body))
         .map_err(|e| format!("{}: {e}", mark.display()))
 }
 
@@ -307,15 +325,25 @@ mod tests {
         assert!(effective_uid().is_some());
     }
 
+    // A mark is one private file per config, saying whose words its cause is
+    // and the cause itself, for config history to show (ADR-021).
     #[test]
-    fn a_mark_is_one_private_file_per_config() {
+    fn a_mark_is_one_private_file_per_config_with_its_cause() {
         let dir = std::env::temp_dir().join(format!("verso-sdk-marks-{}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);
-        own_write_in(&dir, "acme").unwrap();
-        own_write_in(&dir, "acme").unwrap();
+        let cause = "A certificate was installed by hand.";
+        own_write_in(&dir, "acme", "acme", cause).unwrap();
+        own_write_in(&dir, "acme", "acme", cause).unwrap();
         assert_eq!(fs::metadata(&dir).unwrap().permissions().mode() & 0o777, 0o700);
-        assert!(dir.join("acme").is_file());
-        assert!(own_write_in(&dir, "../shadow").is_err());
+        let mark = dir.join("acme");
+        assert_eq!(fs::metadata(&mark).unwrap().permissions().mode() & 0o777, 0o600);
+        let written: Value = serde_json::from_slice(&fs::read(&mark).unwrap()).unwrap();
+        assert_eq!(written, json!({"plugin": "acme", "cause": cause}));
+        assert!(own_write_in(&dir, "acme", "../shadow", cause).is_err(), "a config that is no uci name");
+        assert!(own_write_in(&dir, "Acme!", "acme", cause).is_err(), "a plugin that is no plugin id");
+        assert!(own_write_in(&dir, "acme", "acme", "two\nlines").is_err(), "a cause of more than one line");
+        assert!(own_write_in(&dir, "acme", "acme", &"x".repeat(513)).is_err(), "a cause over 512 bytes");
+        assert!(own_write_in(&dir, "acme", "acme", "").is_err(), "no cause");
         let _ = fs::remove_dir_all(&dir);
     }
 

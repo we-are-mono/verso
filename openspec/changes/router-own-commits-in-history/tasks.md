@@ -2,7 +2,7 @@
 
 ## 1. The mark carries its cause
 
-- [ ] 1.1 Test first in `plugins/verso-plugin-sdk/src/root.rs`: `own_write_in(dir, "acme", "acme", "A certificate was installed by hand.")` writes `{"plugin":"acme","cause":"A certificate was installed by hand."}`, 0600, in a 0700 directory. A config that is no uci name is refused, and so is a cause over 512 bytes or holding a newline. Then change `own_write` to `own_write(plugin, config, cause)`. Verify with `cargo test` in the SDK.
+- [x] 1.1 Test first in `plugins/verso-plugin-sdk/src/root.rs`: `own_write_in(dir, "acme", "acme", "A certificate was installed by hand.")` writes `{"plugin":"acme","cause":"A certificate was installed by hand."}`, 0600, in a 0700 directory. A config that is no uci name is refused, and so is a cause over 512 bytes or holding a newline. Then change `own_write` to `own_write(plugin, config, cause)`. Verify with `cargo test` in the SDK.
 - [ ] 1.2 Test first in `verso-rpcd/src/config_watch.rs`:
   - `marked` returns the mark's plugin and cause from a JSON mark;
   - an empty mark, or one that does not parse, returns own with no cause;
