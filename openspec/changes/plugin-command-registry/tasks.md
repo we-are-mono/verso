@@ -109,7 +109,7 @@
 ## 10. Core packaging and the empty verb list
 
 - [x] 10.1 Test first in `verso-rpcd`: the dispatch table names none of `vpnState`, `openvpnFiles`, `ddnsState`, `ddnsUpdate`, `dhcpState`, `dnsState`, `firewallCounters`, `firewallFiles` or `acmeState`, and `grep -rn 'acme\|openvpn\|ddns' verso-rpcd/src` finds nothing. Verify with `cargo test`.
-- [ ] 10.2 Add the versioned conflicts on the pre-registry acme, vpn, ddns and dnsdhcp versions to `verso`'s `depends` in the `Makefile` (the syntax found in 1.1), and drop `replaces:verso-plugin-vpn`. Verify by building with `make apk APK_GOARCH=arm64` and reading the apk's `.PKGINFO`.
+- [x] 10.2 Add the versioned conflicts on the pre-registry acme, vpn, ddns and dnsdhcp versions to `verso`'s `depends` in the `Makefile` (the syntax found in 1.1), and drop `replaces:verso-plugin-vpn`. Verify by building with `make apk APK_GOARCH=arm64` and reading the apk's `.PKGINFO`.
 
 ## 11. Integration on the lab and the DK
 

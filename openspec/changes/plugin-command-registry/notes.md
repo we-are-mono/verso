@@ -90,6 +90,28 @@ root's alone, and refuses any world write and any group write by another group.
 Everything was removed afterwards: the registry, the executable, the ACL and the
 session, followed by an rpcd reload.
 
+## 10.2 verso's conflicts, as packaged
+
+`make apk APK_GOARCH=arm64` at v0.9.0-59 built `verso-0.9.0-r59.apk`. Its
+`apk adbdump` lists these under `depends`:
+
+```
+- ca-bundle
+- firewall4
+- kmod-nfnetlink-log
+- nlbwmon
+- '!verso-plugin-acme<0.1.0-r11'
+- '!verso-plugin-ddns<0.2.0-r2'
+- '!verso-plugin-dnsdhcp<0.3.1-r2'
+- '!verso-plugin-vpn<0.3.0-r2'
+```
+
+The package has no `replaces` and no `provides`, and no path under it is a
+plugin's (no hotplug script, no OpenVPN, acme, ddns or dnsmasq file). Each
+floor is the version of the plugin's own commit that took its root work over:
+vpn c7de0a5, acme r11, ddns r2, dnsdhcp 9a3da55. Each plugin depends on the
+verso that no longer does that work itself (r53, r56, r57, r58).
+
 ## 10.1 The helper names no plugin
 
 `main.rs`'s `no_verb_does_a_plugins_root_work` holds the verb table (`answer`,
