@@ -53,7 +53,7 @@
       {{/* A kicker names the group under it and nothing more, so it is set
            in the label role rather than as a heading — a second heading
            beside a rail's list of headings would read as one of them. */}}
-      {{if .Title}}{{if .Kicker}}<h2 class="verso-heading__kicker">{{.Title}}</h2>{{else}}<h2 class="verso-heading__title">{{.Title}}</h2>{{end}}{{end}}
+      {{if .Title}}{{if .Kicker}}<h2 class="verso-heading__kicker">{{.Title}}</h2>{{else}}<h2 class="{{if $card}}verso-card__title{{else}}verso-heading__title{{end}}">{{.Title}}</h2>{{end}}{{end}}
       {{if .Chip}}<span class="verso-chip" data-verso-verbatim>{{.Chip}}</span>{{end}}
       {{/* the meta value carries a stable hook: a section whose content is
            live (a streaming listing) has the shell rewrite this one string —

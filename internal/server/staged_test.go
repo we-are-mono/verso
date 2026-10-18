@@ -330,7 +330,7 @@ func TestPendingPageGroupsByPage(t *testing.T) {
 	body := get(t, s, pendingPath).Body.String()
 	for _, want := range []string{
 		// The plugin's page, then the shell's, each a card.
-		`<h2 class="verso-heading__title">Demo Plugin</h2>`, `<h2 class="verso-heading__title">System</h2>`,
+		`<h2 class="verso-card__title">Demo Plugin</h2>`, `<h2 class="verso-card__title">System</h2>`,
 		// A new section is added, and every one of its lines is new with it;
 		// a section going is removed, its line going with it.
 		// (The plus reaches the page as its entity, which html/template writes
@@ -342,7 +342,7 @@ func TestPendingPageGroupsByPage(t *testing.T) {
 			t.Errorf("page missing %q", want)
 		}
 	}
-	if i, j := strings.Index(body, `<h2 class="verso-heading__title">Demo Plugin</h2>`), strings.Index(body, `<h2 class="verso-heading__title">System</h2>`); i < 0 || j < 0 || i > j {
+	if i, j := strings.Index(body, `<h2 class="verso-card__title">Demo Plugin</h2>`), strings.Index(body, `<h2 class="verso-card__title">System</h2>`); i < 0 || j < 0 || i > j {
 		t.Errorf("pages follow the order their changes first appear in (plugin=%d shell=%d)", i, j)
 	}
 }
@@ -376,12 +376,12 @@ func TestPendingPageFilesAChangeUnderThePageThatMadeIt(t *testing.T) {
 		t.Fatalf("stage answered %d", rec.Code)
 	}
 	body := get(t, s, pendingPath).Body.String()
-	for _, unwanted := range []string{`<h2 class="verso-heading__title">Interfaces</h2>`, `<h2 class="verso-heading__title">System</h2>`} {
+	for _, unwanted := range []string{`<h2 class="verso-card__title">Interfaces</h2>`, `<h2 class="verso-card__title">System</h2>`} {
 		if strings.Contains(body, unwanted) {
 			t.Errorf("filed under %s, not the page that made it", unwanted)
 		}
 	}
-	if !strings.Contains(body, `<h2 class="verso-heading__title">General</h2>`) {
+	if !strings.Contains(body, `<h2 class="verso-card__title">General</h2>`) {
 		t.Error("the change is filed under the page that made it, General")
 	}
 	if got := pageLabel(general, "/"); got != "General" {

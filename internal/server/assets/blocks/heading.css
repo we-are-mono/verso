@@ -10,10 +10,11 @@
  * they wrap under the title, centred on the title's 24px line so the title
  * stays on its line whatever stands beside it.
  *
- * Variants: data-verso-size="card"  a card's head: its title in the card
- *                                   title's role, its lede in the body role,
- *                                   a step heavier than a lede elsewhere so it
- *                                   holds its own beside the title
+ * Variants: data-verso-size="card"  a card's head (its title the card's,
+ *                                   blocks/card.css): its lede in the body
+ *                                   role, a step heavier than a lede
+ *                                   elsewhere so it holds its own beside the
+ *                                   title
  * Elements: __line        the title and what stands on its line, 12px apart
  *           __glyph       what the section is, in Glyph
  *           __title       the title, in the section title's role
@@ -55,9 +56,6 @@
 .verso-heading__title {
   color: var(--color-ink);
   @apply type-section-title;
-}
-.verso-heading__title:where(.verso-heading[data-verso-size="card"] *) {
-  @apply type-card-title;
 }
 
 .verso-heading__kicker {

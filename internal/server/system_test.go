@@ -151,8 +151,11 @@ func TestPageContentAppearsWithoutEntranceAnimation(t *testing.T) {
 	}
 	// Its h1 is every page's heading, on a control's line, and the cards
 	// stand 24px under it as they do under any heading line.
-	if !strings.Contains(body, `<h1 class="verso-page__heading text-balance">`) || !strings.Contains(body, `<div class="verso-overview-cols mt-6">`) {
+	if !strings.Contains(body, `<h1 class="verso-page__heading text-balance">`) || !strings.Contains(body, `<div class="verso-overview__cols">`) {
 		t.Error("the homepage's heading is not every page's heading")
+	}
+	if !strings.Contains(cssBlock(t, blockSheet(t, "overview"), "\n.verso-overview__cols:not(:first-child) {"), "margin-top: var(--spacing-inset);") {
+		t.Error("the cards do not stand 24px under the heading line")
 	}
 	column := strings.Index(body, `<div data-verso-column class="verso-page__column">`)
 	if column < frame {

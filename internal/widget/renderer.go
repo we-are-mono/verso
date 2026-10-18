@@ -69,7 +69,8 @@ type Renderer struct {
 	// cards says the surface this handle renders onto stands its subjects on
 	// cards (a page's body, a drawer's): a top-level titled or ruled section
 	// is a card there (sectionView.Kind). A chooser's list, a dialog and an
-	// Overview card's body are not such surfaces.
+	// Overview card's body are not such surfaces: an Overview card's body is
+	// a card's body itself (cardBody).
 	cards bool
 	// inCard says what this handle renders stands straight in a card's body:
 	// a listing there runs to the card's edges (Table.view). A section deeper
@@ -81,6 +82,15 @@ type Renderer struct {
 // not cards.
 func (r *Renderer) withoutCards() *Renderer {
 	return &Renderer{tmpl: r.tmpl, t: r.t, md: r.md, seq: r.seq, depth: r.depth, headed: r.headed, inForm: r.inForm}
+}
+
+// cardBody is the pass a card that is not a section renders its body with
+// (an Overview card): what it renders stands straight in a card's body, and
+// its sections are not cards of their own.
+func (r *Renderer) cardBody() *Renderer {
+	pass := r.withoutCards()
+	pass.inCard = true
+	return pass
 }
 
 // nested is the handle a section renders its contents with: the same pass,

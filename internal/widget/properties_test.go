@@ -145,9 +145,11 @@ func TestAHeadNamesAGroupOrItsColumns(t *testing.T) {
 			t.Errorf("want %s in:\n%s", want, group)
 		}
 	}
-	declares(t, "facts-head", ".verso-facts-head", "padding-block: calc(var(--spacing) * 2);", "border: 0 solid var(--color-rule-strong);", "@apply type-subheading;")
-	// A card the list opens may take that air back (--verso-facts-lead).
-	declares(t, "facts", `.verso-facts__row:where(.verso-facts[data-verso-style="divided"][data-verso-headed] *):first-child`, "padding-top: var(--verso-facts-lead, calc(var(--spacing) * 1.75));")
+	// The head's air over its line is what a card the list opens may take
+	// back (--verso-facts-lead); the first fact under it stands a fixed 7px
+	// after its hairline.
+	declares(t, "facts-head", ".verso-facts-head", "padding-block: var(--verso-facts-lead, calc(var(--spacing) * 2)) calc(var(--spacing) * 2);", "border: 0 solid var(--color-rule-strong);", "@apply type-subheading;")
+	declares(t, "facts", `.verso-facts__row:where(.verso-facts[data-verso-style="divided"][data-verso-headed] *):first-child`, "padding-top: calc(var(--spacing) * 1.75);")
 	declares(t, "facts", `.verso-facts__row:where(.verso-facts[data-verso-style="divided"] *):first-child`, "padding-top: var(--verso-facts-lead, calc(var(--spacing) * 2));")
 	columns := render(t, newRenderer(t), &Properties{Align: "left", Head: &PropertiesHead{Label: "Part", Value: "Current"}, Items: []Property{{Label: "Kernel", Value: "6.12", Mono: true}}})
 	for _, want := range []string{

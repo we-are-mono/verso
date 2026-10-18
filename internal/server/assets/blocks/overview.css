@@ -1,0 +1,431 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/* SPDX-FileCopyrightText: 2026 Mono Technologies Inc. */
+
+/*
+ * overview — the landing page (ADR-022, DESIGN.md "Overview cards"): one
+ * verdict over two columns of cards, each holding one kind of reading. A
+ * card is the card block (blocks/card.css) that folds and moves: its head is
+ * its status and its door, and its body folds away behind the seam, which
+ * folds with it. Two columns stack their cards at their own heights, 23px
+ * apart, one column when the page is narrower than two cards want. Arrange
+ * is a mode on the root (data-arranging): each column ruled off as a place
+ * to drop into, a card's grip and hide in place of its door and chevron, the
+ * card in hand floating over the page with the dialog's shadow and leaving a
+ * slot where it stood.
+ *
+ * Variants: data-arranging       on the root: Arrange mode
+ *           data-overview-tone   on the root: warning · danger, the verdict
+ *                                naming what is wrong in its tone's deep step
+ * Elements: __top        the heading line and the shelf, across the columns
+ *           __masthead   the verdict on a control's line, Arrange at its end
+ *           __lead, __accent, __tail  the verdict's three parts (the stream
+ *                        rewrites them); the accent in Deep Green
+ *           __acts       Arrange's place at the line's end
+ *           __arrange    Arrange, a glyph; filled in denim while arranging,
+ *                        its glyph and tip saying Done
+ *           __idle, __arranging  what shows outside Arrange and in it
+ *           __shelf      the hidden cards, while arranging: a dashed frame on
+ *                        Quiet Sand, 24px under the heading line, its words
+ *                        on one 24px line, 7px after its top edge and 8px
+ *                        over its bottom, giving that border's pixel back
+ *           __shelf-label  what the shelf holds
+ *           __restore    a hidden card, put back by a press: its 28px chip
+ *                        riding the line, its mark in the card's tone
+ *           __reset      Reset layout, at the shelf's end
+ *           __cols       the columns: each its share rounded down to 8px and
+ *                        a pixel more, so a card's borders are lines
+ *           __col        one column; data-overview-col
+ *           __card       a card (mixed with the card block): the size
+ *                        container "card"; data-tone, data-closed,
+ *                        data-lifted while in hand
+ *           __head       its head (the card's): picked up while arranging
+ *           __grip, __hide  Arrange's handle and hide, in its head
+ *           __glyph      what the card reads, in Glyph
+ *           __line       the title and the closed card's reading on one 24px
+ *                        line, sharing their baseline
+ *           __title      the title, on one line
+ *           __summary    the closed card's reading, fading in as it closes
+ *           __status     the card's word and its mark, in its tone's deep step
+ *           __control    a choice that governs the whole card
+ *           __act        the door and the fold's toggle
+ *           __chevron    the toggle's glyph, turned while closed
+ *           __fold       the body's track, easing to nothing as it closes
+ *           __clip       what the track clips
+ *           __content    the body (the card's), hidden once folded
+ *           __slot       where a card in hand would land
+ *           __meters     Resources' gauges, a hairline between rows: two to a
+ *                        row once the card has room, the left gauge carrying
+ *                        its hairline across the 40px between them
+ *           __none       a card's single line when it has nothing to read
+ * Sets: --verso-head-start, --verso-head-end  its head's insets: its acts
+ *                        bring their own, and Arrange's grip leads it
+ *       --verso-button-edge, --verso-button-ground, --verso-button-ink  on
+ *                        Arrange while arranging, and on hide under the
+ *                        pointer
+ *       --verso-mark-fill, --verso-mark-edge  a card's status and a hidden
+ *                        card's chip, in the card's tone
+ */
+
+.verso-overview {
+  container: overview / inline-size;
+}
+
+.verso-overview__top {
+  grid-column: 1 / -1;
+  min-width: 0;
+}
+.verso-overview__masthead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: calc(var(--spacing) * 2) calc(var(--spacing) * 6);
+  min-height: calc(var(--spacing) * 8);
+}
+.verso-overview__lead:where(.verso-overview[data-overview-tone="warning"] *) {
+  color: var(--color-marigold-deep);
+}
+.verso-overview__lead:where(.verso-overview[data-overview-tone="danger"] *) {
+  color: var(--color-crimson-deep);
+}
+.verso-overview__accent {
+  color: var(--color-green-deep);
+}
+.verso-overview__acts {
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+}
+.verso-overview__arrange:is(.verso-overview[data-arranging] *) {
+  --verso-button-edge: var(--color-denim);
+  --verso-button-ground: var(--color-denim);
+  --verso-button-ink: var(--color-on-fill);
+}
+.verso-overview__arrange:is(.verso-overview[data-arranging] *):hover {
+  --verso-button-edge: var(--color-denim-deep);
+  --verso-button-ground: var(--color-denim-deep);
+  --verso-button-ink: var(--color-on-fill);
+}
+.verso-overview__idle {
+  display: contents;
+}
+.verso-overview__arranging {
+  display: none;
+}
+.verso-overview__idle:where(.verso-overview[data-arranging] *) {
+  display: none;
+}
+.verso-overview__arranging:where(.verso-overview[data-arranging] *) {
+  display: contents;
+}
+
+.verso-overview__shelf {
+  display: none;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: calc(var(--spacing) * 6) calc(var(--spacing) * 2);
+  margin-top: var(--spacing-inset);
+  margin-bottom: -1px;
+  padding: calc(var(--spacing) * 1.75) calc(var(--spacing) * 3) calc(var(--spacing) * 2);
+  border: 1px dashed var(--color-rule-strong);
+  border-radius: var(--radius-xs);
+  background-color: var(--color-quiet);
+  color: var(--color-meta);
+  @apply type-body;
+}
+.verso-overview__shelf:where(.verso-overview[data-arranging] *) {
+  display: flex;
+}
+.verso-overview__shelf-label {
+  margin-right: var(--spacing);
+}
+.verso-overview__restore {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--spacing) * 2);
+  height: var(--spacing-act);
+  margin-block: calc(var(--spacing) * -1);
+  padding-inline: calc(var(--spacing) * 2.5);
+  border: 1px solid var(--color-rule-strong);
+  border-radius: var(--radius-xs);
+  background-color: var(--color-ground);
+  color: var(--color-ink);
+  cursor: pointer;
+  transition-property: color, background-color, border-color;
+  transition-duration: 150ms;
+}
+.verso-overview__restore:hover {
+  border-color: var(--color-denim-line);
+  background-color: var(--color-denim-soft);
+  color: var(--color-denim-deep);
+}
+.verso-overview__reset {
+  height: var(--spacing-act);
+  margin-block: calc(var(--spacing) * -1);
+  margin-left: auto;
+  padding-inline: calc(var(--spacing) * 2.5);
+  border-radius: var(--radius-xs);
+  color: var(--color-denim-deep);
+  cursor: pointer;
+  transition-property: background-color;
+  transition-duration: 150ms;
+  @apply type-field-label;
+}
+.verso-overview__reset:hover {
+  background-color: var(--color-denim-soft);
+}
+:is(.verso-overview__restore, .verso-overview__reset):focus-visible {
+  outline: 2px solid var(--color-denim);
+  outline-offset: 2px;
+}
+
+/* On the grid: each column is its share rounded down to 8px and a pixel
+   more, so a card's left and right borders are both lines, and the next
+   column stands 24px on less that pixel. A card's top border is a line and
+   its bottom border the line its content ends on, so the next card stands
+   24px on less that pixel (blocks/card.css) and its frame lands on a line
+   down the column. */
+.verso-overview__cols {
+  display: grid;
+  grid-template-columns: calc(round(down, 100% - 1px, 8px) + 1px);
+  column-gap: calc(var(--spacing-inset) - 1px);
+  row-gap: calc(var(--spacing-inset) - 1px);
+  align-items: start;
+}
+@container overview (min-width: 52rem) {
+  .verso-overview__cols {
+    grid-template-columns: repeat(2, calc(round(down, calc((100% - var(--spacing-inset) - 1px) / 2), 8px) + 1px));
+  }
+}
+.verso-overview__cols:not(:first-child) {
+  margin-top: var(--spacing-inset);
+}
+/* The cards give their last bottom pixel back, as the page's last card
+   does, so the colophon's hairline under them lands on a line. */
+.verso-overview__cols:has(> .verso-overview__col) {
+  margin-bottom: -1px;
+}
+.verso-overview__col {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 4rem;
+  border-radius: var(--radius-xs);
+}
+/* Arranging rules each column off 8px outside it, a dashed frame of its own
+   rather than an outline, so its corners keep a card's 2px and its four
+   sides land on lines: the column is a multiple of 8px and a pixel, as tall
+   and as wide as its cards, and an empty one keeps that measure too. */
+.verso-overview__col:where(.verso-overview[data-arranging] *) {
+  position: relative;
+  min-height: calc(4rem + 1px);
+}
+.verso-overview__col:where(.verso-overview[data-arranging] *)::before {
+  content: "";
+  position: absolute;
+  inset: calc(var(--spacing) * -2);
+  border: 1px dashed var(--color-rule-strong);
+  border-radius: var(--radius-xs);
+  pointer-events: none;
+}
+
+.verso-overview__card {
+  container: card / inline-size;
+  min-width: 0;
+}
+.verso-overview__card[data-lifted] {
+  position: fixed;
+  z-index: 50;
+  pointer-events: none;
+  box-shadow: var(--shadow-dialog);
+}
+.verso-overview__slot {
+  border: 1px dashed var(--color-rule-strong);
+  border-radius: var(--radius-xs);
+  background-color: var(--color-quiet);
+}
+.verso-overview__slot:not(:first-child) {
+  margin-top: calc(var(--spacing-inset) - 1px);
+}
+
+.verso-overview__head {
+  --verso-head-end: calc(var(--spacing) * 2.5);
+  display: flex;
+  align-items: center;
+  gap: calc(var(--spacing) * 2);
+  min-width: 0;
+  cursor: pointer;
+  user-select: none;
+}
+.verso-overview__head:where(.verso-overview[data-arranging] *) {
+  --verso-head-start: calc(var(--spacing) * 1.5);
+  cursor: grab;
+}
+/* Its acts are buttons (blocks/button.css), so what shows in each mode is
+   said at a button's own weight. */
+:is(.verso-overview__grip, .verso-overview__hide):is(.verso-button) {
+  display: none;
+  margin-block: calc(var(--spacing) * -1);
+}
+.verso-overview__grip {
+  cursor: grab;
+}
+:is(.verso-overview__grip, .verso-overview__hide):is(.verso-overview[data-arranging] *) {
+  display: grid;
+}
+.verso-overview__hide:is(.verso-button):not(:disabled, [aria-disabled="true"]):hover {
+  --verso-button-edge: var(--color-crimson-line);
+  --verso-button-ground: var(--color-crimson-soft);
+  --verso-button-ink: var(--color-crimson-deep);
+}
+.verso-overview__glyph {
+  display: flex;
+  flex-shrink: 0;
+  color: var(--color-glyph);
+}
+/* The title and the closed card's reading share their baseline on one 24px
+   line; the line holds the row's height, since aligning a 16px and a 14px
+   baseline stands one half a pixel lower in some engines. */
+.verso-overview__line {
+  display: flex;
+  flex: 1 1 0%;
+  align-items: baseline;
+  gap: calc(var(--spacing) * 3);
+  height: calc(var(--spacing) * 6);
+  min-width: 0;
+}
+.verso-overview__title {
+  white-space: nowrap;
+}
+.verso-overview__summary {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--color-meta);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 200ms ease-out;
+  @apply type-body;
+}
+.verso-overview__summary:where(.verso-overview__card[data-closed] *) {
+  opacity: 1;
+}
+.verso-overview__status {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: calc(var(--spacing) * 2);
+  color: var(--color-body);
+  white-space: nowrap;
+  @apply type-field-label;
+}
+.verso-overview__status:where(.verso-overview__card[data-tone="success"] *) {
+  --verso-mark-fill: var(--color-green);
+  --verso-mark-edge: transparent;
+  color: var(--color-green-deep);
+}
+.verso-overview__status:where(.verso-overview__card[data-tone="warning"] *) {
+  --verso-mark-fill: var(--color-marigold);
+  --verso-mark-edge: transparent;
+  color: var(--color-marigold-deep);
+}
+.verso-overview__status:where(.verso-overview__card[data-tone="danger"] *) {
+  --verso-mark-fill: var(--color-crimson);
+  --verso-mark-edge: transparent;
+  color: var(--color-crimson-deep);
+}
+.verso-overview__restore[data-tone="success"] {
+  --verso-mark-fill: var(--color-green);
+  --verso-mark-edge: transparent;
+}
+.verso-overview__restore[data-tone="warning"] {
+  --verso-mark-fill: var(--color-marigold);
+  --verso-mark-edge: transparent;
+}
+.verso-overview__restore[data-tone="danger"] {
+  --verso-mark-fill: var(--color-crimson);
+  --verso-mark-edge: transparent;
+}
+.verso-overview__control {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+}
+.verso-overview__act {
+  margin-block: calc(var(--spacing) * -1);
+}
+:is(.verso-overview__control, .verso-overview__act):is(.verso-overview[data-arranging] *) {
+  display: none;
+}
+.verso-overview__chevron {
+  display: flex;
+  transition: transform 250ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.verso-overview__chevron:where(.verso-overview__card[data-closed] *) {
+  transform: rotate(-90deg);
+}
+
+/* A card closes by easing its body's row to nothing; the line it shows
+   closed fades in where its body was. The seam is the body's, so it folds
+   away with it. */
+.verso-overview__fold {
+  display: grid;
+  grid-template-rows: 1fr;
+  transition: grid-template-rows 300ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.verso-overview__fold:where(.verso-overview__card[data-closed] > *) {
+  grid-template-rows: 0fr;
+}
+.verso-overview__clip {
+  min-height: 0;
+  overflow: hidden;
+}
+.verso-overview__content:where(.verso-overview__card[data-closed] *) {
+  visibility: hidden;
+  transition: visibility 0s linear 300ms;
+}
+
+/* Resources' gauges stand in rows with a hairline between them, 24px of air
+   either side: the gap over it and 23px under it, so the hairline and the
+   gauge after it land on lines. */
+.verso-overview__meters {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--spacing-inset);
+}
+.verso-overview__meters > * + * {
+  position: relative;
+  padding-top: calc(var(--spacing) * 5.75);
+  border-top: 1px solid var(--color-rule);
+}
+@container card (min-width: 28rem) {
+  .verso-overview__meters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: calc(var(--spacing) * 10);
+  }
+  .verso-overview__meters > :nth-child(2) {
+    padding-top: 0;
+    border-top-width: 0;
+  }
+  .verso-overview__meters > :nth-child(2n + 3)::before {
+    content: "";
+    position: absolute;
+    top: -1px;
+    left: 100%;
+    width: calc(var(--spacing) * 10);
+    height: 1px;
+    background-color: var(--color-rule);
+  }
+}
+.verso-overview__none {
+  color: var(--color-meta);
+  @apply type-body;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .verso-overview__fold,
+  .verso-overview__summary,
+  .verso-overview__chevron,
+  .verso-overview__content:where(.verso-overview__card[data-closed] *) {
+    transition: none;
+  }
+}

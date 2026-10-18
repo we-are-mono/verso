@@ -349,3 +349,15 @@ after; the SVG's fills, strokes and LED animations compared directly.
 | a fact list's first and last rows in a card | | unlayered rules zeroing the rows' padding | the facts block's `--verso-facts-lead`/`-trail`, which the card sets |
 | the configuration card and the page's Save | 2 | `data-verso-code-divider` rules and a reach on `data-verso-rule`, both overridden on every surface that showed them | the code block's `data-verso-place="card"`; the acts under a card stand 23px on with no rule, by the form block |
 | every type role | | case unstated, so a role laid over the label role kept its capitals | every role states its case |
+
+### `overview` and the card it shares
+
+| Copies | n | Difference | Became |
+|---|---|---|---|
+| an Overview card's frame, head, title and body | every card | its own `rounded-xs border border-rule-strong bg-ground`, paddings and title utilities, beside the page card's rules | the card block: the frame holds no air, its head and body keep theirs, the seam is the body's top edge, so the Overview's body folds away seam and all; the head's insets are knobs the Overview sets for its acts; no pixel changes |
+| a card's title | 2 | the heading's title at a card size on a page, utilities on the Overview | the card block's `__title` |
+| the Overview's arrange mode, tones and fold | | Tailwind `group-data-*` utilities and input.css rules | the overview block, reading `data-arranging`, `data-tone`, `data-closed`; marks take their tone through the mark's knobs; no pixel changes |
+| a list in a card (a few facts: who is signed in; the Overview's Ports and Tunnels) | 3 | on a page its heads lost to the card heads' rule's colour, its first and last columns kept their indent and its rows a tint, by rules that matched nothing; on the Overview the same intent written again as content rules | one list: its words in line with the card's, no row tint, its heads a fact list's heading on the Strong Hairline, giving up their air when the list opens the card. The Access list's heads stand 8px higher |
+| a fact list's head opening a card | | kept its 8px over its line on a page; gave it up on the Overview | gives it up, as a fact list's first row does |
+| a listing's rates in a narrow card | 2 | the Overview hid the third and fourth columns of any table in a narrow card | the listing's secondary columns (`Secondary`), which a card under 31rem leaves out as a phone does |
+| a card in hand, the page's grabbing cursor | 1 | a class on the body | the page block's `data-verso-dragging` |

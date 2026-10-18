@@ -19,7 +19,8 @@ func TestHeadingsFollowThePage(t *testing.T) {
 		w    Widget
 		want string
 	}{
-		"section": {&Section{Title: "Privacy"}, `<h2 class="verso-heading__title">Privacy</h2>`},
+		"section": {&Section{Title: "Privacy"}, `<h2 class="verso-card__title">Privacy</h2>`},
+		"dialog":  {&Modal{Title: "Upload", Trigger: "Upload", Children: []Widget{&Section{Title: "File"}}}, `<h2 class="verso-heading__title">File</h2>`},
 		"kicker":  {&Section{Title: "On this page", Kicker: true}, `<h2 class="verso-heading__kicker">On this page</h2>`},
 		"band":    {&Table{Title: "Leases", Columns: []TableColumn{{Label: "Name"}}}, `<h2 class="verso-listing__title">Leases</h2>`},
 		"drawer":  {&Table{Columns: []TableColumn{{Label: "Name"}}, Rows: []TableRow{{Cells: []TableCell{{Text: "Rule"}}, Drawer: &RowDrawer{Title: "Edit rule", Open: true}}}}, `<h2 class="verso-modal__title">Edit rule</h2>`},
@@ -34,8 +35,10 @@ func TestHeadingsFollowThePage(t *testing.T) {
 			t.Errorf("%s: no h3 at this level:\n%s", name, got)
 		}
 	}
-	// A section's title is the section title's role in Ink; a kicker's words
-	// are the label role in Meta.
+	// A page's section is a card, titled in the card title's role in Ink;
+	// a section on no card is titled in the section title's role; a
+	// kicker's words are the label role in Meta.
+	declares(t, "card", ".verso-card__title", "color: var(--color-ink);", "@apply type-card-title;")
 	declares(t, "heading", ".verso-heading__title", "color: var(--color-ink);", "@apply type-section-title;")
 	declares(t, "heading", ".verso-heading__kicker", "color: var(--color-meta);", "@apply type-label;")
 	// A table's band title is the listing block's: the title role in Body.
@@ -122,7 +125,7 @@ func TestNestedSectionIsASubheading(t *testing.T) {
 		}},
 	}})
 	for _, want := range []string{
-		`<h2 class="verso-heading__title">SSH</h2>`,
+		`<h2 class="verso-card__title">SSH</h2>`,
 		`<h3 class="verso-section__part-title">Authorized keys</h3>`,
 	} {
 		if !strings.Contains(got, want) {
@@ -165,7 +168,7 @@ func TestDrawerSectionsStartTheirOwnHierarchy(t *testing.T) {
 			r := newRenderer(t)
 			got := render(t, r, tree)
 			for _, want := range []string{
-				`<h2 class="verso-heading__title">Security</h2>`,
+				`<h2 class="verso-card__title">Security</h2>`,
 				`<h3 class="verso-section__part-title">Encryption</h3>`,
 				`<h3 class="verso-section__part-title">Page subsection</h3>`,
 			} {
@@ -178,7 +181,7 @@ func TestDrawerSectionsStartTheirOwnHierarchy(t *testing.T) {
 			if err != nil || !found {
 				t.Fatalf("open panel: found=%v, err=%v", found, err)
 			}
-			if !strings.Contains(fragment.String(), `<h2 class="verso-heading__title">Security</h2>`) || !strings.Contains(fragment.String(), `<h3 class="verso-section__part-title">Encryption</h3>`) {
+			if !strings.Contains(fragment.String(), `<h2 class="verso-card__title">Security</h2>`) || !strings.Contains(fragment.String(), `<h3 class="verso-section__part-title">Encryption</h3>`) {
 				t.Errorf("panel fragment hierarchy differs from the full page:\n%s", fragment.String())
 			}
 		})

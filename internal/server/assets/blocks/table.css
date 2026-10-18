@@ -129,8 +129,9 @@
   @apply type-column-head;
 }
 .verso-table__head:where(.verso-listing[data-verso-place][data-verso-list] > .verso-listing__scroller > .verso-table > thead > tr > *) {
-  padding-block: calc(var(--spacing) * 2);
+  padding-block: var(--verso-facts-lead, calc(var(--spacing) * 2)) calc(var(--spacing) * 2);
   border-top-width: 0;
+  border-bottom-color: var(--color-rule-strong);
   @apply type-subheading;
 }
 
@@ -138,7 +139,7 @@
   transition-property: background-color;
   transition-duration: 150ms;
 }
-.verso-table__row:where(.verso-table:not([data-verso-in-form]) *):hover {
+.verso-table__row:where(.verso-listing:not([data-verso-list]) .verso-table:not([data-verso-in-form]) *):hover {
   background-color: color-mix(in srgb, var(--color-quiet) 50%, transparent);
 }
 
@@ -649,6 +650,18 @@
   .verso-table[data-verso-narrow~="14"] > :is(thead, tbody) > tr > :nth-child(14), .verso-table[data-verso-narrow~="14"] > colgroup > col:nth-child(14),
   .verso-table[data-verso-narrow~="15"] > :is(thead, tbody) > tr > :nth-child(15), .verso-table[data-verso-narrow~="15"] > colgroup > col:nth-child(15),
   .verso-table[data-verso-narrow~="16"] > :is(thead, tbody) > tr > :nth-child(16), .verso-table[data-verso-narrow~="16"] > colgroup > col:nth-child(16) {
+    display: none;
+  }
+}
+/* A card too narrow for a listing's secondary columns (an Overview card two
+   to a row, under about 31rem: a port, its networks' chips, two 6rem rates
+   and the state) leaves them out as a phone does; the state stays. */
+@container card (width <= 31rem) {
+  .verso-table[data-verso-narrow~="2"] > :is(thead, tbody) > tr > :nth-child(2), .verso-table[data-verso-narrow~="2"] > colgroup > col:nth-child(2),
+  .verso-table[data-verso-narrow~="3"] > :is(thead, tbody) > tr > :nth-child(3), .verso-table[data-verso-narrow~="3"] > colgroup > col:nth-child(3),
+  .verso-table[data-verso-narrow~="4"] > :is(thead, tbody) > tr > :nth-child(4), .verso-table[data-verso-narrow~="4"] > colgroup > col:nth-child(4),
+  .verso-table[data-verso-narrow~="5"] > :is(thead, tbody) > tr > :nth-child(5), .verso-table[data-verso-narrow~="5"] > colgroup > col:nth-child(5),
+  .verso-table[data-verso-narrow~="6"] > :is(thead, tbody) > tr > :nth-child(6), .verso-table[data-verso-narrow~="6"] > colgroup > col:nth-child(6) {
     display: none;
   }
 }

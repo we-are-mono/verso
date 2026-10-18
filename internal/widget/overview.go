@@ -263,7 +263,7 @@ func (o *Overview) renderInto(r *Renderer, out io.Writer, csrf string) error {
 // card builds one shown card: its header from its head, its body from its
 // builder, and its door from the live registry.
 func (o *Overview) card(r *Renderer, spec overviewCardSpec, closed bool, csrf string) (overviewCardView, error) {
-	body, err := spec.body(o, r.withoutCards(), csrf)
+	body, err := spec.body(o, r.cardBody(), csrf)
 	if err != nil {
 		return overviewCardView{}, fmt.Errorf("overview card %s: %w", spec.ID, err)
 	}

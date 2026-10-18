@@ -41,18 +41,25 @@ func cardOrder(page string) []string {
 
 // TestAnOverviewCardsSeamIsItsFramesInk: the line between a card's header
 // and its body is drawn in the frame's own ink, as a page card's is, so the
-// header reads as the card's and the lines inside it as its contents'.
+// header reads as the card's and the lines inside it as its contents'. The
+// body is the card block's, which draws that seam.
 func TestAnOverviewCardsSeamIsItsFramesInk(t *testing.T) {
 	got := render(t, newRenderer(t), fullOverview())
-	if n := strings.Count(got, `class="verso-overview-content border-t border-rule-strong`); n == 0 || n != strings.Count(got, "verso-overview-content") {
-		t.Errorf("an Overview card's seam is not its frame's ink in %d of its cards:\n%s", strings.Count(got, "verso-overview-content")-n, got)
+	if n := strings.Count(got, `<div class="verso-card__body verso-rhythm verso-overview__content">`); n == 0 || n != strings.Count(got, "verso-overview__content") {
+		t.Errorf("an Overview card's body is not the card's in %d of its cards:\n%s", strings.Count(got, "verso-overview__content")-n, got)
+	}
+	declares(t, "card", ".verso-card__body", "border: 0 solid var(--color-rule-strong);", "border-top-width: 1px;")
+	for _, rule := range []string{".verso-overview__content", ".verso-overview__content:where(.verso-overview__card[data-closed] *)"} {
+		if body := cssRule(blockCSS(t, "overview"), rule); strings.Contains(body, "border") {
+			t.Errorf("blocks/overview.css draws a seam of its own on %s:\n%s", rule, body)
+		}
 	}
 }
 
 func TestRenderOverviewCards(t *testing.T) {
 	got := render(t, newRenderer(t), fullOverview())
 	for _, want := range []string{
-		`data-overview`, `data-overview-tone="success"`, "Your network is", `data-overview-accent class="text-green-deep">online`, "14:52:07", "CEST",
+		`data-overview`, `data-overview-tone="success"`, "Your network is", `data-overview-accent class="verso-overview__accent">online`, "14:52:07", "CEST",
 		`aria-label="Arrange cards"`, ">Arrange cards<", ">Done<", "Reset layout",
 		// Internet
 		"Connected", "IPv4", "dhcp", "172.30.1.171/24", "IPv6", "dhcpv6", "fd42:7ea:aa00::/56", `x-data="copy"`, written("8", "min"),
@@ -101,6 +108,8 @@ func TestRenderOverviewCards(t *testing.T) {
 	if strings.Contains(got, "Firewall") {
 		t.Error("the Overview has no Firewall card")
 	}
+	// The verdict's accent is the green's deep step.
+	declares(t, "overview", ".verso-overview__accent", "color: var(--color-green-deep);")
 }
 
 func TestRenderOverviewFollowsTheLayout(t *testing.T) {
@@ -265,7 +274,7 @@ func TestTheTrafficCardsWindowRidesItsHeader(t *testing.T) {
 	got := render(t, newRenderer(t), &Overview{TrafficRangeURL: "/overview/traffic"})
 	head := between(got, `data-overview-card="traffic"`, `</header>`)
 	for _, want := range []string{
-		"data-overview-card-control", "group-data-arranging/overview:hidden",
+		`<span data-overview-card-control class="verso-overview__control">`,
 		`<select name="range"`, `hx-get="/overview/traffic"`, `hx-target="#overview-traffic-graph"`, `hx-swap="outerHTML"`,
 		`<option value="minute" selected>Last minute</option>`, `<option value="day">Last 24 hours</option>`,
 		`<option value="week">Last 7 days</option>`, `<option value="month">Last 30 days</option>`, `<option value="year">Last year</option>`,
@@ -276,6 +285,8 @@ func TestTheTrafficCardsWindowRidesItsHeader(t *testing.T) {
 			t.Errorf("the Traffic card's header missing %q:\n%s", want, head)
 		}
 	}
+	// Arrange mode hides it with the acts.
+	declares(t, "overview", ":is(.verso-overview__control, .verso-overview__act):is(.verso-overview[data-arranging] *)", "display: none;")
 	// the compact dropdown rides the header's line of words: 24px, no shadow
 	declares(t, "input", `.verso-input[data-verso-size="compact"]`, "height: calc(var(--spacing) * 6);", "box-shadow: none;")
 	if strings.Index(head, "data-overview-card-control") > strings.Index(head, "data-overview-toggle") {

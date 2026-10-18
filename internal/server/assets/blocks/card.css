@@ -2,11 +2,14 @@
 /* SPDX-FileCopyrightText: 2026 Mono Technologies Inc. */
 
 /*
- * card — a page's subject, and a drawer's: Paper in a Strong Hairline frame,
- * its heading the card's head behind a hairline, its rules reaching the
- * card's edges. The renderer says which sections are cards (a top-level
+ * card — a page's subject, a drawer's, and each of the Overview's readings:
+ * Paper in a Strong Hairline frame, its head over a seam, its rules reaching
+ * the card's edges. The renderer says which sections are cards (a top-level
  * titled or ruled section on a surface of cards); a form's untitled run of
- * fields is a card with no head, so no field stands loose on the sand.
+ * fields is a card with no head, so no field stands loose on the sand. The
+ * frame holds no air of its own: its head and its body keep theirs, so an
+ * Overview card folds its body away (blocks/overview.css) and is still the
+ * same card.
  *
  * Cards stand 24px apart, their words 24px in. A frame's edges are lines of
  * the grid: its top border lands on a line and the air after it is a pixel
@@ -16,6 +19,9 @@
  * does too. Across, the same: its words stand 23px after the left border and
  * 23px before the right one (--spacing-side), so a box that starts the body
  * or ends it, or runs across it, has its borders on lines.
+ *
+ * The card is the size container "card", so what it holds can answer to
+ * the room the card has rather than the window's.
  *
  * Context: --verso-reach-start, --verso-reach-end  the card's edges, which
  *                          its ruled parts reach
@@ -28,7 +34,7 @@
  *                          15px after the head's seam (or the headless
  *                          frame), as a name stands after the hairline
  *                          between rows; on one that opens on anything else
- *                          under a head: 24px
+ *                          under a head: 24px from the seam's line
  *          --verso-edge-air  0 on a headless card's first block
  *          --verso-edge-trail  on a body that ends on a row: the card closes
  *                          16px under its last words, as a row stands over
@@ -50,24 +56,36 @@
  *                          opens or closes the body (or its first or last
  *                          part): its first and last lines the block's 24px
  *                          from the frame, as its words are from the sides
- * Elements: __head  the heading (blocks/heading.css, its card size), running
- *                   border to border, 48px from the frame's line to its
- *                   hairline's: 11px after the frame, the title's 24px line,
- *                   12px under it; the hairline the frame's own ink, so the
- *                   head reads as the card's and the fainter lines under it
- *                   as what it holds. A lede belongs to the head, its lines
- *                   under the title's
- *           __body  what the card holds (verso-rhythm), taking the head's
- *                   seam pixel back so what stands first starts on the grid
- *                   (a listing that opens it stands straight on the seam)
+ * Knobs:   --verso-head-start, --verso-head-end  the head's inset at either
+ *                          side (default the card's 23px): a head whose acts
+ *                          bring their own inset keeps less
+ * Elements: __head  the heading (blocks/heading.css, its card size), 48px
+ *                   from the frame's line to the seam's: 11px after the
+ *                   frame, the title's 24px line, 12px over the seam. A lede
+ *                   belongs to the head, its lines under the title's
+ *           __title the card's title, in the card title's role
+ *           __body  what the card holds (verso-rhythm), behind the seam, the
+ *                   frame's own ink, so the head reads as the card's and the
+ *                   fainter lines under it as what it holds (a listing that
+ *                   opens it stands straight on the seam); in a headless
+ *                   card, 23px after the frame's pixel
  */
+
+@property --verso-head-start {
+  syntax: "*";
+  inherits: false;
+}
+@property --verso-head-end {
+  syntax: "*";
+  inherits: false;
+}
 
 .verso-card {
   --verso-reach-start: var(--spacing-side);
   --verso-reach-end: var(--spacing-side);
   --verso-rhythm: var(--spacing-inset);
+  container: card / inline-size;
   margin: 0;
-  padding: 0 var(--spacing-side) var(--spacing-inset);
   border: 1px solid var(--color-rule-strong);
   border-radius: var(--radius-xs);
   background-color: var(--color-ground);
@@ -79,9 +97,6 @@
   .verso-card[id] {
     scroll-margin-top: 0;
   }
-}
-.verso-card[data-verso-headless] {
-  padding-top: calc(var(--spacing-inset) - 1px);
 }
 /* A card stands 23px under whatever is before it: the frame's pixel, then
    the 24px every card keeps from the next. */
@@ -100,29 +115,39 @@
 .verso-card:last-child:where(.verso-page__body > *, .verso-page__body > .verso-stack > *, .verso-page__body > .verso-stack > .verso-stack:last-child > *, .verso-page__body [data-verso-form-column] > .verso-stack:last-child > *) {
   margin-bottom: -1px;
 }
+.verso-card__head {
+  padding: calc(var(--spacing) * 2.75) var(--verso-head-end, var(--spacing-side)) calc(var(--spacing) * 3) var(--verso-head-start, var(--spacing-side));
+}
+
+.verso-card__title {
+  color: var(--color-ink);
+  @apply type-card-title;
+}
+
+/* The body stands behind the seam, the frame's own ink, so the head reads
+   as the card's and the fainter lines under it as what it holds; with no
+   head it stands straight in the frame, 23px after its pixel. */
+.verso-card__body {
+  padding: 0 var(--spacing-side) var(--spacing-inset);
+  border: 0 solid var(--color-rule-strong);
+  border-top-width: 1px;
+}
+.verso-card__body:is(.verso-card[data-verso-headless] > *) {
+  padding-top: calc(var(--spacing-inset) - 1px);
+  border-top-width: 0;
+}
 /* A listing that ends the body closes on the frame; a headless card that
    opens on one stands it on the frame. */
-.verso-card:has(> .verso-card__body > .verso-listing:not([data-verso-list]):last-child) {
+.verso-card__body:has(> .verso-listing:not([data-verso-list]):last-child) {
   padding-bottom: 0;
 }
-.verso-card[data-verso-headless]:has(> .verso-card__body > .verso-listing:first-child) {
+.verso-card__body:is(.verso-card[data-verso-headless] > *):has(> .verso-listing:first-child) {
   padding-top: 0;
 }
 /* A fold that is all a headless card holds is the card itself
    (blocks/disclosure.css), with no air of the card's own. */
-.verso-card[data-verso-headless]:has(> .verso-card__body > .verso-disclosure:only-child) {
+.verso-card__body:is(.verso-card[data-verso-headless] > *):has(> .verso-disclosure:only-child) {
   padding: 0;
-}
-
-.verso-card__head {
-  margin-inline: calc(var(--spacing-side) * -1);
-  padding: calc(var(--spacing) * 2.75) var(--spacing-side) calc(var(--spacing) * 3);
-  border: 0 solid var(--color-rule-strong);
-  border-bottom-width: 1px;
-}
-
-.verso-card__body:is(.verso-card__head + *):not(:has(> .verso-listing:not([data-verso-list]):first-child)) {
-  margin-top: -1px;
 }
 
 /* Rows run border to border. */
@@ -132,16 +157,16 @@
 }
 
 /* The edges a body opens and ends on. */
-.verso-card:not([data-verso-headless]) > .verso-card__body > :nth-child(1 of :not(input[type="hidden"], [hidden], template)):is(.verso-field, :is(.verso-field-set, .verso-conditional, .verso-settings, [data-verso-rows], .verso-form:not([data-verso-compact-form])):has(> :nth-child(1 of :not(input[type="hidden"], [hidden], template)).verso-field)) {
+.verso-card__body:not(.verso-card[data-verso-headless] > *) > :nth-child(1 of :not(input[type="hidden"], [hidden], template)):is(.verso-field, :is(.verso-field-set, .verso-conditional, .verso-settings, [data-verso-rows], .verso-form:not([data-verso-compact-form])):has(> :nth-child(1 of :not(input[type="hidden"], [hidden], template)).verso-field)) {
   --verso-edge-lead: calc(var(--spacing) * -2 - 1px);
 }
-.verso-card[data-verso-headless] > .verso-card__body > :nth-child(1 of :not(input[type="hidden"], [hidden], template)):is(.verso-field, :is(.verso-field-set, .verso-conditional, .verso-settings, [data-verso-rows], .verso-form:not([data-verso-compact-form])):has(> :nth-child(1 of :not(input[type="hidden"], [hidden], template)).verso-field)) {
+.verso-card__body:is(.verso-card[data-verso-headless] > *) > :nth-child(1 of :not(input[type="hidden"], [hidden], template)):is(.verso-field, :is(.verso-field-set, .verso-conditional, .verso-settings, [data-verso-rows], .verso-form:not([data-verso-compact-form])):has(> :nth-child(1 of :not(input[type="hidden"], [hidden], template)).verso-field)) {
   --verso-edge-lead: calc(var(--spacing) * -2);
 }
-.verso-card:not([data-verso-headless]) > .verso-card__body > :nth-child(1 of :not(input[type="hidden"], [hidden], template)):not(.verso-field, .verso-form-grid, .verso-conditional, .verso-field-set, .verso-form:not([data-verso-compact-form]):has(.verso-field, .verso-form-grid, .verso-conditional), [data-verso-change-field], .verso-settings, [data-verso-rows]:has(> .verso-field:first-child), .verso-listing:not([data-verso-list])) {
-  --verso-edge-lead: var(--spacing-inset);
+.verso-card__body:not(.verso-card[data-verso-headless] > *) > :nth-child(1 of :not(input[type="hidden"], [hidden], template)):not(.verso-field, .verso-form-grid, .verso-conditional, .verso-field-set, .verso-form:not([data-verso-compact-form]):has(.verso-field, .verso-form-grid, .verso-conditional), [data-verso-change-field], .verso-settings, [data-verso-rows]:has(> .verso-field:first-child), .verso-listing:not([data-verso-list])) {
+  --verso-edge-lead: calc(var(--spacing-inset) - 1px);
 }
-.verso-card[data-verso-headless] > .verso-card__body > :nth-child(1 of :not(input[type="hidden"], [hidden], template)) {
+.verso-card__body:is(.verso-card[data-verso-headless] > *) > :nth-child(1 of :not(input[type="hidden"], [hidden], template)) {
   --verso-edge-air: 0px;
 }
 .verso-card__body > :nth-last-child(1 of :not(input[type="hidden"], [hidden], template)) {
@@ -171,7 +196,7 @@
 .verso-card__body > .verso-listing:first-child {
   --verso-head-top: 0px;
 }
-.verso-card:not([data-verso-headless]) > .verso-card__body > .verso-listing:not([data-verso-list]):first-child {
+.verso-card__body:not(.verso-card[data-verso-headless] > *) > .verso-listing:not([data-verso-list]):first-child {
   --verso-table-lead: 0px;
 }
 .verso-card__body > .verso-listing:last-child {
@@ -181,17 +206,17 @@
   --verso-listing-trail: -1px;
 }
 
-/* A fact list that opens the body, or its first part under its line and
-   lede, gives its first row's air up; one that closes the card (on its own
-   or as the end of its last part) gives up its last row's. Facts in columns
-   are one list while they stand one column; side by side, each column
-   starts and ends the block. */
-.verso-card__body > .verso-facts:nth-child(1 of :not(input[type="hidden"], [hidden], template)),
+/* A fact list that opens the body (its head, when it has one, or a list's
+   heads), or its first part under its line and lede, gives its first line's
+   air up; one that closes the card (on its own or as the end of its last
+   part) gives up its last row's. Facts in columns are one list while they
+   stand one column; side by side, each column starts and ends the block. */
+.verso-card__body > :nth-child(1 of :not(input[type="hidden"], [hidden], template)):is(.verso-facts, .verso-listing[data-verso-list], :has(> .verso-facts-head:first-child)),
 .verso-card__body > .verso-section > .verso-section__body > .verso-facts:nth-child(1 of :not(input[type="hidden"], [hidden], template)),
 .verso-card__body > .verso-section > .verso-section__body > .verso-grid:nth-child(1 of :not(input[type="hidden"], [hidden], template)) > .verso-grid__track > .verso-facts:first-child {
   --verso-facts-lead: 0px;
 }
-.verso-card__body > .verso-facts:nth-last-child(1 of :not(input[type="hidden"], [hidden], template)),
+.verso-card__body > :nth-last-child(1 of :not(input[type="hidden"], [hidden], template)):is(.verso-facts, :has(> .verso-facts-head:first-child)),
 .verso-card__body > .verso-section:nth-last-child(1 of :not(input[type="hidden"], [hidden], template)) > .verso-section__body > .verso-facts:nth-last-child(1 of :not(input[type="hidden"], [hidden], template)),
 .verso-card__body > .verso-section:nth-last-child(1 of :not(input[type="hidden"], [hidden], template)) > .verso-section__body > .verso-grid:nth-last-child(1 of :not(input[type="hidden"], [hidden], template)) > .verso-grid__track > .verso-facts:last-child {
   --verso-facts-trail: 0px;

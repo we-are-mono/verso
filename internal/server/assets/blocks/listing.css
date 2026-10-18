@@ -46,8 +46,12 @@
  *                             flow. Either way its column heads are a row of
  *                             the card's Paper across it (blocks/table.css)
  *           data-verso-list   a few facts about the page's subject, standing
- *                             in the card's inset, its heads a fact list's
- *                             heading
+ *                             in the card's inset as a fact list does: its
+ *                             first and last columns take no indent of their
+ *                             own, so its words stand in line with the
+ *                             card's and its hairlines stop at them; its rows
+ *                             keep no tint, which would run past its words;
+ *                             its heads a fact list's heading
  *           data-verso-in-form  a set among a form's fields, the row's
  *                               answer: its first line 8px under the
  *                               question's words, on its own hairline, and
@@ -79,6 +83,10 @@
 .verso-listing {
   margin-inline: calc(var(--verso-listing-bleed, 0px) * -1);
   margin-bottom: var(--verso-listing-trail, 0px);
+}
+.verso-listing[data-verso-list] {
+  --verso-edge-start: 0px;
+  --verso-edge-end: 0px;
 }
 .verso-listing[data-verso-in-form] {
   margin-top: calc(var(--spacing) * 1.75);

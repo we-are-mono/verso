@@ -10,13 +10,15 @@
  *
  * Variants: data-verso-columns  two column names (Part, Current) over the
  *                               labels and the values, set as a table's head
+ * Context:  --verso-facts-lead  the air over its line, which a card the list
+ *                               opens gives up (blocks/card.css)
  */
 
 .verso-facts-head {
   display: flex;
   align-items: center;
   gap: calc(var(--spacing) * 3);
-  padding-block: calc(var(--spacing) * 2);
+  padding-block: var(--verso-facts-lead, calc(var(--spacing) * 2)) calc(var(--spacing) * 2);
   border: 0 solid var(--color-rule-strong);
   border-bottom-width: 1px;
   color: var(--color-ink);

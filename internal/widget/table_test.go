@@ -2091,7 +2091,7 @@ func TestATableAmongFieldsIsALedgerRow(t *testing.T) {
 	// Its first and last words keep to the row's gutters, and its rows draw
 	// no tint under the pointer.
 	declares(t, "table", ".verso-table[data-verso-in-form]", "--verso-table-start: 0px", "--verso-table-end: 0px")
-	declares(t, "table", ".verso-table__row:where(.verso-table:not([data-verso-in-form]) *):hover", "background-color")
+	declares(t, "table", ".verso-table__row:where(.verso-listing:not([data-verso-list]) .verso-table:not([data-verso-in-form]) *):hover", "background-color")
 }
 
 // TestATableOutsideAFormKeepsItsBand: the same table on a page is a listing

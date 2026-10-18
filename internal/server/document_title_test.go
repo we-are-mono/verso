@@ -125,7 +125,7 @@ func TestMaintenanceSectionsUsePageBands(t *testing.T) {
 func TestMaintenanceHeadingsAreSectionHeadings(t *testing.T) {
 	body := get(t, passwordServer(t, fakeBackend{}), "/system/maintenance").Body.String()
 	band := `<div class="verso-card__head verso-heading" data-verso-section-band data-verso-size="card">`
-	title := `<h2 class="verso-heading__title">`
+	title := `<h2 class="verso-card__title">`
 	lede := `<div data-verso-section-lede class="verso-heading__lede verso-prose">`
 	for want, n := range map[string]int{band: 4, title: 4, lede: 2} {
 		if got := strings.Count(body, want); got < n {

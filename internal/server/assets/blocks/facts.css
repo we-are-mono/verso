@@ -24,9 +24,11 @@
  *                              stands over its value, which takes the width
  *           data-verso-headed  a head stands over the list (facts-head)
  * Context:  --verso-facts-lead, --verso-facts-trail  the air over its first
- *                              row and under its last, which a surface whose
+ *                              line and under its last, which a surface whose
  *                              own edge already keeps that air gives up (a
- *                              card the list opens or closes)
+ *                              card the list opens or closes); under a head
+ *                              the head's line is the first
+ *                              (blocks/facts-head.css)
  * Elements: __row     one fact; data-verso-help when a note follows it,
  *                     data-verso-next when its value says what it becomes
  *           __pair    an identity fact's label and value on one line
@@ -80,7 +82,7 @@
   padding-top: var(--verso-facts-lead, calc(var(--spacing) * 2));
 }
 .verso-facts__row:where(.verso-facts[data-verso-style="divided"][data-verso-headed] *):first-child {
-  padding-top: var(--verso-facts-lead, calc(var(--spacing) * 1.75));
+  padding-top: calc(var(--spacing) * 1.75);
 }
 .verso-facts__row:where(.verso-facts[data-verso-style="divided"] *):last-child {
   padding-bottom: var(--verso-facts-trail, calc(var(--spacing) * 2));

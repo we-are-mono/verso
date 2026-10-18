@@ -223,8 +223,10 @@ func TestRenderSectionSub(t *testing.T) {
 	const brings = `.verso-field, .verso-form-grid, .verso-conditional, .verso-field-set, .verso-form:not([data-verso-compact-form]):has(.verso-field, .verso-form-grid, .verso-conditional), [data-verso-change-field], .verso-settings, [data-verso-rows]:has(> .verso-field:first-child)`
 	declares(t, "section", `.verso-section:has(> .verso-section__head[data-verso-section-band]) > .verso-section__body > :nth-child(1 of :not(input[type="hidden"], [hidden], template)):not(`+brings+`)`,
 		"--verso-edge-lead: var(--spacing-inset);")
-	declares(t, "card", `.verso-card:not([data-verso-headless]) > .verso-card__body > :nth-child(1 of :not(input[type="hidden"], [hidden], template)):not(`+brings+`, .verso-listing:not([data-verso-list]))`,
-		"--verso-edge-lead: var(--spacing-inset);")
+	// Under a card's head the cell is measured from the seam's line: the
+	// body's border is that line's pixel, so the block stands 23px after it.
+	declares(t, "card", `.verso-card__body:not(.verso-card[data-verso-headless] > *) > :nth-child(1 of :not(input[type="hidden"], [hidden], template)):not(`+brings+`, .verso-listing:not([data-verso-list]))`,
+		"--verso-edge-lead: calc(var(--spacing-inset) - 1px);")
 	declares(t, "rhythm", `.verso-rhythm > :nth-child(1 of :not(input[type="hidden"], [hidden], template))`,
 		"margin-top: var(--verso-edge-lead, 0px);")
 

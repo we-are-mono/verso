@@ -288,25 +288,32 @@ func TestACardMeasuresOnTheEightPixelGrid(t *testing.T) {
 	}
 	css := blockSheet(t, "card")
 	for head, wants := range map[string][]string{
-		// the reach of its rules matches the inset; the body ends on a line,
-		// so the full 24px under it
+		// the frame alone: the reach of its rules matches the inset, and it
+		// is the size container what it holds measures against
 		"\n.verso-card {": {
 			"--verso-reach-start: var(--spacing-side);",
 			"--verso-reach-end: var(--spacing-side);",
-			"padding: 0 var(--spacing-side) var(--spacing-inset);",
+			"container: card / inline-size;",
 			"border: 1px solid var(--color-rule-strong);",
 		},
-		// a pixel short after the frame or the header's hairline, so its
-		// lines fill whole bands of the grid
-		"\n.verso-card[data-verso-headless] {": {"padding-top: calc(var(--spacing-inset) - 1px);"},
-		"\n.verso-card__body:is(.verso-card__head + *):not(:has(> .verso-listing:not([data-verso-list]):first-child)) {": {"margin-top: -1px;"},
 		// the header: 11px after the frame, its 24px line, 12px under, then
-		// its seam in the frame's own ink, the title centred on the header's
-		// middle line
+		// the body's seam in the frame's own ink, the title centred on the
+		// header's middle line
 		"\n.verso-card__head {": {
-			"padding: calc(var(--spacing) * 2.75) var(--spacing-side) calc(var(--spacing) * 3);",
+			"padding: calc(var(--spacing) * 2.75) var(--verso-head-end, var(--spacing-side)) calc(var(--spacing) * 3) var(--verso-head-start, var(--spacing-side));",
+		},
+		// the body ends on a line, so the full 24px under it, its words the
+		// inset in from each side; it draws the seam under the head
+		"\n.verso-card__body {": {
+			"padding: 0 var(--spacing-side) var(--spacing-inset);",
 			"border: 0 solid var(--color-rule-strong);",
-			"border-bottom-width: 1px;",
+			"border-top-width: 1px;",
+		},
+		// with no head it stands straight in the frame, a pixel short of
+		// 24px after it, so its lines fill whole bands of the grid
+		"\n.verso-card__body:is(.verso-card[data-verso-headless] > *) {": {
+			"padding-top: calc(var(--spacing-inset) - 1px);",
+			"border-top-width: 0;",
 		},
 		// the air between cards, less the frame's pixel so the next frame
 		// lands on a line
@@ -318,6 +325,15 @@ func TestACardMeasuresOnTheEightPixelGrid(t *testing.T) {
 				t.Errorf("a card does not measure on the 8px grid; blocks/card.css %s lacks %s", strings.TrimSpace(head), want)
 			}
 		}
+	}
+	// The frame is the frame only: the head and the body keep the air, and
+	// the head draws no seam of its own beside the body's.
+	frame := cssBlock(t, css, "\n.verso-card {")
+	if strings.Contains(frame, "padding") {
+		t.Errorf("the card's frame keeps air of its own: %s", frame)
+	}
+	if head := cssBlock(t, css, "\n.verso-card__head {"); strings.Contains(head, "border") || strings.Contains(head, "margin") {
+		t.Errorf("the card's head draws a seam or reaches past the frame: %s", head)
 	}
 	// the column-head row: its 16px line 15px after the edge over it, 16px
 	// over its own hairline
@@ -687,11 +703,14 @@ func TestACardsRowsKeepARowsAirAtItsEdges(t *testing.T) {
 	css := blockSheet(t, "card")
 	// A body that opens on a row, or on a block whose first visible child is
 	// one.
-	const opensOnARow = `> .verso-card__body > :nth-child(1 of :not(input[type="hidden"], [hidden], template)):is(.verso-field, :is(.verso-field-set, .verso-conditional, .verso-settings, [data-verso-rows], .verso-form:not([data-verso-compact-form])):has(> :nth-child(1 of :not(input[type="hidden"], [hidden], template)).verso-field)) {`
+	const opensOnARow = ` > :nth-child(1 of :not(input[type="hidden"], [hidden], template)):is(.verso-field, :is(.verso-field-set, .verso-conditional, .verso-settings, [data-verso-rows], .verso-form:not([data-verso-compact-form])):has(> :nth-child(1 of :not(input[type="hidden"], [hidden], template)).verso-field)) {`
 	for head, want := range map[string]string{
-		// under a header, the pull counts in the seam's pixel the body took back
-		".verso-card:not([data-verso-headless]) " + opensOnARow: "--verso-edge-lead: calc(var(--spacing) * -2 - 1px);",
-		".verso-card[data-verso-headless] " + opensOnARow:       "--verso-edge-lead: calc(var(--spacing) * -2);",
+		// under a header, straight on the seam, the row's own 24px of air
+		// pulled 9px back stands its name 15px after the seam's pixel
+		".verso-card__body:not(.verso-card[data-verso-headless] > *)" + opensOnARow: "--verso-edge-lead: calc(var(--spacing) * -2 - 1px);",
+		// with no head the row's air is the body's own 23px after the frame,
+		// pulled 8px back
+		".verso-card__body:is(.verso-card[data-verso-headless] > *)" + opensOnARow: "--verso-edge-lead: calc(var(--spacing) * -2);",
 		// a body that ends on a row closes 16px under its last words
 		".verso-card__body > :nth-last-child(1 of :not(input[type=\"hidden\"], [hidden], template)) {": "--verso-edge-trail: calc(var(--spacing) * -2);",
 	} {
@@ -1064,17 +1083,18 @@ func TestARuledSectionStandsByItsRulesAir(t *testing.T) {
 // is a message about now, so it reads in its tone's deep step (the masthead
 // tone contract); the live stream retones it by its attribute alone.
 func TestTheOverviewHeadingSpeaksInItsTone(t *testing.T) {
-	raw, err := os.ReadFile("assets/input.css")
-	if err != nil {
-		t.Fatalf("read stylesheet: %v", err)
-	}
-	for _, want := range []string{
-		`[data-overview-tone="warning"] [data-overview-lead] { color: var(--color-marigold-deep); }`,
-		`[data-overview-tone="danger"] [data-overview-lead] { color: var(--color-crimson-deep); }`,
+	css := blockSheet(t, "overview")
+	for head, want := range map[string]string{
+		`.verso-overview__lead:where(.verso-overview[data-overview-tone="warning"] *) {`: "color: var(--color-marigold-deep);",
+		`.verso-overview__lead:where(.verso-overview[data-overview-tone="danger"] *) {`:  "color: var(--color-crimson-deep);",
 	} {
-		if !strings.Contains(string(raw), want) {
-			t.Errorf("stylesheet is missing %s", want)
+		if !strings.Contains(cssBlock(t, css, head), want) {
+			t.Errorf("blocks/overview.css %s lacks %s", head, want)
 		}
+	}
+	// The stream retones the root's attribute, which the rules read.
+	if !strings.Contains(readAsset(t, "assets/verso-stream.js"), "root.dataset.overviewTone = d.tone;") {
+		t.Error("the live stream does not retone the Overview's heading by its attribute")
 	}
 }
 
@@ -1095,7 +1115,7 @@ func TestASectionKeepsTheMastheadsAirAndNoMore(t *testing.T) {
 	for _, want := range []string{
 		// the headless section hands its first visible box no air …
 		`.verso-section[data-verso-headless]>.verso-section__body>:nth-child(1 of :not(input[type=hidden],[hidden],template)){--verso-edge-air:0px}`,
-		`.verso-card[data-verso-headless]>.verso-card__body>:nth-child(1 of :not(input[type=hidden],[hidden],template)){--verso-edge-air:0px}`,
+		`.verso-card__body:is(.verso-card[data-verso-headless]>*)>:nth-child(1 of :not(input[type=hidden],[hidden],template)){--verso-edge-air:0px}`,
 		// … which a run of rows, a reveal and a form forward to their own
 		// first row …
 		`.verso-stack[data-verso-rows]>:nth-child(1 of :not(input[type=hidden],[hidden],template)){--verso-edge-air:inherit}`,

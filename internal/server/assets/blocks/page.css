@@ -26,6 +26,8 @@
  *          --verso-reach-start, --verso-reach-end  how far a section's rule
  *          runs past the content (blocks/section.css): 40px into the page's
  *          gutter, to the rail, and none past the column's end
+ * Variants: data-verso-dragging  something is in hand (an Overview card):
+ *                                the grabbing hand everywhere until it drops
  * Variants (on __main): data-verso-width   full · form · narrow · wide; none
  *                                          is the default measure
  *                       data-verso-light   the light masthead, for a page
@@ -68,6 +70,11 @@
   .verso-page {
     --verso-gutter: calc(var(--spacing) * 10);
   }
+}
+
+.verso-page[data-verso-dragging],
+.verso-page[data-verso-dragging] * {
+  cursor: grabbing !important;
 }
 
 .verso-page__skip {

@@ -215,14 +215,14 @@
   function lift(e) {
     var card = drag.card, r = card.getBoundingClientRect();
     var slot = document.createElement("div");
-    slot.className = "verso-overview-slot";
+    slot.className = "verso-overview__slot";
     slot.style.height = r.height + "px";
     card.before(slot);
     card.style.width = r.width + "px";
     card.style.left = r.left + "px";
     card.style.top = r.top + "px";
     card.setAttribute("data-lifted", "");
-    document.body.classList.add("verso-overview-dragging");
+    document.body.setAttribute("data-verso-dragging", "");
     drag.slot = slot;
     drag.dx = e.clientX - r.left;
     drag.dy = e.clientY - r.top;
@@ -258,7 +258,7 @@
     d.slot.replaceWith(d.card);
     d.card.removeAttribute("data-lifted");
     d.card.style.width = d.card.style.left = d.card.style.top = "";
-    document.body.classList.remove("verso-overview-dragging");
+    document.body.removeAttribute("data-verso-dragging");
     persist(read());
     announce(d.card);
   }

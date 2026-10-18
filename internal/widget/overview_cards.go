@@ -193,14 +193,19 @@ func normalState(state string) string {
 	return strings.ToUpper(state[:1]) + state[1:]
 }
 
+// overviewRates are the Ports and Tunnels lists' secondary columns, their two
+// rates: a card two to a row, or a phone, leaves them out and keeps the
+// state.
+var overviewRates = []int{2, 3}
+
 // portsBody is the router's panel over the list of its ports: the network each
 // carries, what moves on it now, and its link, status last. The list follows
 // the panel's left-to-right order, so the card has one order.
 func (o *Overview) portsBody(r *Renderer, csrf string) (template.HTML, error) {
-	t := &Table{Columns: []TableColumn{
+	t := &Table{Style: "list", Columns: []TableColumn{
 		{Label: "Port", Kind: "mono"}, {Label: "Network", Kind: "entity"},
 		{Label: "Receive", Kind: "rate"}, {Label: "Transmit", Kind: "rate"}, {Label: "Status", Kind: "status"},
-	}, EmptyText: "No physical ports were found."}
+	}, Secondary: overviewRates, EmptyText: "No physical ports were found."}
 	for _, n := range o.portsInPanelOrder() {
 		// A spare port carries no network and moves nothing, so it shows no
 		// rate; its link stays live like any port's.
@@ -323,10 +328,10 @@ func (o *Overview) tunnelsHead(tr func(string) string) cardHead {
 
 // tunnelsBody lists every tunnel someone brought up, with its kind.
 func (o *Overview) tunnelsBody(r *Renderer, csrf string) (template.HTML, error) {
-	t := &Table{Columns: []TableColumn{
+	t := &Table{Style: "list", Columns: []TableColumn{
 		{Label: "Tunnel", Kind: "mono"}, {Label: "Kind", Kind: "keyword"},
 		{Label: "Receive", Kind: "rate"}, {Label: "Transmit", Kind: "rate"}, {Label: "Status", Kind: "status"},
-	}, EmptyText: "No tunnel is up."}
+	}, Secondary: overviewRates, EmptyText: "No tunnel is up."}
 	for _, n := range o.Interfaces {
 		if n.tunnel() {
 			t.Rows = append(t.Rows, interfaceRow(r.numbers(), n, TableCell{Text: n.Proto, Verbatim: true}))

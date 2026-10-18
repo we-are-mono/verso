@@ -1,62 +1,10 @@
 classes-are-blocks	verso-busy
 classes-are-blocks	verso-confirm
-classes-are-blocks	verso-overview
-classes-are-blocks	verso-overview-body
-classes-are-blocks	verso-overview-card
-classes-are-blocks	verso-overview-chevron
-classes-are-blocks	verso-overview-col
-classes-are-blocks	verso-overview-cols
-classes-are-blocks	verso-overview-content
-classes-are-blocks	verso-overview-dragging
-classes-are-blocks	verso-overview-meters
-classes-are-blocks	verso-overview-slot
-classes-are-blocks	verso-overview-summary
 no-class-string-templates	widget/templates/shared.html.tmpl	verso-tone-text
 no-repeated-bundles	flex gap-1.5 items-center text-ink
 no-rules-in-markup	server/assets/verso-forms.js	border-crimson!
 no-rules-in-markup	server/templates/login.html.tmpl	bg-ground!
 no-rules-in-markup	widget/templates/when.html.tmpl	!mt-0
-rules-live-in-blocks	input.css	.verso-overview
-rules-live-in-blocks	input.css	.verso-overview > .verso-overview-cols:has(> [data-overview-col])
-rules-live-in-blocks	input.css	.verso-overview-body
-rules-live-in-blocks	input.css	.verso-overview-body
-rules-live-in-blocks	input.css	.verso-overview-card table :is(th, td):nth-child(3)
-rules-live-in-blocks	input.css	.verso-overview-card table :is(th, td):nth-child(4)
-rules-live-in-blocks	input.css	.verso-overview-card[data-lifted]
-rules-live-in-blocks	input.css	.verso-overview-chevron
-rules-live-in-blocks	input.css	.verso-overview-chevron
-rules-live-in-blocks	input.css	.verso-overview-col
-rules-live-in-blocks	input.css	.verso-overview-cols
-rules-live-in-blocks	input.css	.verso-overview-cols
-rules-live-in-blocks	input.css	.verso-overview-content > [data-verso-listing]:first-child thead th
-rules-live-in-blocks	input.css	.verso-overview-content > div:first-child > div:first-child > dl:first-child > div:first-child
-rules-live-in-blocks	input.css	.verso-overview-content > div:first-child > section:first-child > :first-child
-rules-live-in-blocks	input.css	.verso-overview-content > div:last-child > section:last-child > dl:last-child > div:last-child
-rules-live-in-blocks	input.css	.verso-overview-content > div:last-child > section:last-child > dl:last-child > div:last-child
-rules-live-in-blocks	input.css	.verso-overview-content > dl:first-child > div:first-child
-rules-live-in-blocks	input.css	.verso-overview-content > dl:last-child > div:last-child
-rules-live-in-blocks	input.css	.verso-overview-content > dl:last-child > div:last-child
-rules-live-in-blocks	input.css	.verso-overview-content [data-verso-listing-empty]
-rules-live-in-blocks	input.css	.verso-overview-content [data-verso-listing-empty]
-rules-live-in-blocks	input.css	.verso-overview-content [data-verso-listing] :is(td, th):first-of-type
-rules-live-in-blocks	input.css	.verso-overview-content [data-verso-listing] :is(td, th):last-of-type
-rules-live-in-blocks	input.css	.verso-overview-content tbody > tr:last-child > td
-rules-live-in-blocks	input.css	.verso-overview-content thead th
-rules-live-in-blocks	input.css	.verso-overview-dragging
-rules-live-in-blocks	input.css	.verso-overview-dragging *
-rules-live-in-blocks	input.css	.verso-overview-meters > * + *
-rules-live-in-blocks	input.css	.verso-overview-meters > :nth-child(2)
-rules-live-in-blocks	input.css	.verso-overview-meters > :nth-child(2n + 3)::before
-rules-live-in-blocks	input.css	.verso-overview-slot
-rules-live-in-blocks	input.css	.verso-overview-summary
-rules-live-in-blocks	input.css	.verso-overview-summary
-rules-live-in-blocks	input.css	[data-arranging] .verso-overview-col
-rules-live-in-blocks	input.css	[data-arranging] .verso-overview-col::before
-rules-live-in-blocks	input.css	[data-closed] .verso-overview-chevron
-rules-live-in-blocks	input.css	[data-closed] .verso-overview-summary
-rules-live-in-blocks	input.css	[data-closed] > .verso-overview-body
-rules-live-in-blocks	input.css	[data-closed] > .verso-overview-body > div > div
-rules-live-in-blocks	input.css	[data-closed] > .verso-overview-body > div > div
 rules-live-in-blocks	palette.css	[data-verso-off]
 rules-live-in-blocks	palette.css	[data-verso-off] .verso-chip
 short-class-lists	server/templates/entity-panel.html.tmpl	flex h-control cursor-pointer items-center rounded-xs border border-denim bg-denim px-4 text-sm font-semibold whitespace-nowrap text-on-fill transition-colors hover:border-denim-deep hover:bg-denim-deep
@@ -68,15 +16,6 @@ short-class-lists	widget/templates/badge.html.tmpl	inline-flex items-center gap-
 short-class-lists	widget/templates/device_limit_tip.html.tmpl	flex h-7 min-w-0 items-center justify-center rounded-xs border text-xs {{if .Active}}border-marigold-line bg-marigold-soft font-semibold text-marigold-deep{{else}}border-transparent bg-quiet text-meta{{end}}
 short-class-lists	widget/templates/device_limit_tip.html.tmpl	flex items-center justify-between gap-3 font-mono text-2xl leading-tight font-medium tabular-nums
 short-class-lists	widget/templates/device_limit_tip.html.tmpl	mt-1 flex min-h-8 items-center {{if .Unit}}font-mono text-2xl font-medium tabular-nums{{else}}text-base font-medium{{end}} leading-tight
-short-class-lists	widget/templates/overview.html.tmpl	-my-1 ml-auto h-7 cursor-pointer rounded-xs px-2.5 font-medium text-denim-deep transition-colors hover:bg-denim-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim
-short-class-lists	widget/templates/overview.html.tmpl	flex min-w-0 cursor-pointer items-center gap-2 pt-2.75 pr-2.5 pb-3 pl-5.75 leading-6 select-none group-data-arranging/overview:cursor-grab group-data-arranging/overview:pl-1.5
-short-class-lists	widget/templates/overview.html.tmpl	flex shrink-0 items-center gap-2 text-sm leading-6 font-medium whitespace-nowrap text-body group-data-[tone=success]/card:text-green-deep group-data-[tone=warning]/card:text-marigold-deep group-data-[tone=danger]/card:text-crimson-deep
-short-class-lists	widget/templates/overview.html.tmpl	group/chip -my-1 inline-flex h-7 cursor-pointer items-center gap-2 rounded-xs border border-rule-strong bg-ground px-2.5 text-ink transition-colors hover:border-denim-line hover:bg-denim-soft hover:text-denim-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim
-short-class-lists	widget/templates/overview.html.tmpl	mt-6 -mb-px hidden flex-wrap items-center gap-x-2 gap-y-6 rounded-xs border border-dashed border-rule-strong bg-quiet px-3 pt-1.75 pb-2 text-sm leading-6 text-meta group-data-arranging/overview:flex
-type-comes-from-roles	input.css	.verso-overview-content thead th	font-size
-type-comes-from-roles	input.css	.verso-overview-content thead th	font-weight
-type-comes-from-roles	input.css	.verso-overview-content thead th	letter-spacing
-type-comes-from-roles	input.css	.verso-overview-content thead th	line-height
 type-comes-from-roles	input.css	::marker	font-family
 type-comes-from-roles	server/assets/verso-forms.js	font-medium
 type-comes-from-roles	server/assets/verso-forms.js	font-mono
@@ -129,18 +68,3 @@ type-comes-from-roles	widget/templates/device_limit_tip.html.tmpl	text-xs
 type-comes-from-roles	widget/templates/device_limit_tip.html.tmpl	text-xs
 type-comes-from-roles	widget/templates/device_limit_tip.html.tmpl	text-xs
 type-comes-from-roles	widget/templates/device_limit_tip.html.tmpl	text-xs
-type-comes-from-roles	widget/templates/overview.html.tmpl	font-medium
-type-comes-from-roles	widget/templates/overview.html.tmpl	font-medium
-type-comes-from-roles	widget/templates/overview.html.tmpl	font-semibold
-type-comes-from-roles	widget/templates/overview.html.tmpl	leading-6
-type-comes-from-roles	widget/templates/overview.html.tmpl	leading-6
-type-comes-from-roles	widget/templates/overview.html.tmpl	leading-6
-type-comes-from-roles	widget/templates/overview.html.tmpl	leading-6
-type-comes-from-roles	widget/templates/overview.html.tmpl	leading-6
-type-comes-from-roles	widget/templates/overview.html.tmpl	leading-6
-type-comes-from-roles	widget/templates/overview.html.tmpl	text-base
-type-comes-from-roles	widget/templates/overview.html.tmpl	text-sm
-type-comes-from-roles	widget/templates/overview.html.tmpl	text-sm
-type-comes-from-roles	widget/templates/overview.html.tmpl	text-sm
-type-comes-from-roles	widget/templates/overview.html.tmpl	text-sm
-type-comes-from-roles	widget/templates/overview.html.tmpl	tracking-tight

@@ -73,7 +73,7 @@ func TestPendingPageHeadsTheStage(t *testing.T) {
 		"When you apply", "Saves 3 changes.", "Reloads DNS &amp; DHCP and Firewall.",
 		"Keeps them if this page checks in within 30 s.",
 		`name="note"`,
-		`<h2 class="verso-heading__title">DHCP</h2>`, `<h2 class="verso-heading__title">Firewall rules</h2>`,
+		`<h2 class="verso-card__title">DHCP</h2>`, `<h2 class="verso-card__title">Firewall rules</h2>`,
 		`href="/plugins/dnsdhcp/"`, `href="/plugins/dnsdhcp/rules"`, "Open page", "Discard these",
 	)
 	// The note's question stands over its box, which takes the row's width.
@@ -85,7 +85,7 @@ func TestPendingPageHeadsTheStage(t *testing.T) {
 	if row = row[:strings.Index(row, ">")]; !strings.HasPrefix(row, `<div class="verso-field"`) || !strings.Contains(row, "data-verso-wide") {
 		t.Errorf("the note's label does not stand over its box: %s", row)
 	}
-	apply, dhcp, rules := strings.Index(body, "When you apply"), strings.Index(body, `<h2 class="verso-heading__title">DHCP</h2>`), strings.Index(body, `<h2 class="verso-heading__title">Firewall rules</h2>`)
+	apply, dhcp, rules := strings.Index(body, "When you apply"), strings.Index(body, `<h2 class="verso-card__title">DHCP</h2>`), strings.Index(body, `<h2 class="verso-card__title">Firewall rules</h2>`)
 	if apply < 0 || dhcp < apply || rules < apply {
 		t.Errorf("When you apply stands at %d, the cards at %d and %d: it comes first", apply, dhcp, rules)
 	}
