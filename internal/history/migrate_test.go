@@ -149,6 +149,43 @@ func TestEveryFileAShellWroteReachesTheLatestWithAllItHeld(t *testing.T) {
 	}
 }
 
+// TestAChangeRecordedBeforeCausesKeepsItsPlace: a file a shell wrote at
+// version 9 steps to 10 with every change it held, each read back with no
+// cause (ADR-021).
+func TestAChangeRecordedBeforeCausesKeepsItsPlace(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "history.db")
+	db, err := sql.Open(driver, path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := migrate(db, 0, steps[:9]); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`INSERT INTO changes (time, status, user, address, note, relation, old_read) VALUES (60, 'applied', 'root', '10.0.0.12', 'kept', '', 1)`); err != nil {
+		t.Fatal(err)
+	}
+	if got := versionOf(t, db); got != 9 {
+		t.Fatalf("the file is at version %d, want 9", got)
+	}
+	_ = db.Close()
+
+	store, err := Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = store.Close() }()
+	if got := versionOf(t, store.db); got != latest || latest < 10 {
+		t.Fatalf("the file is at version %d, want %d (at least 10)", got, latest)
+	}
+	list, err := store.Changes(ctx, 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(list) != 1 || list[0].User != "root" || list[0].Note != "kept" || list[0].Cause != "" || list[0].CausePlugin != "" {
+		t.Fatalf("changes after the step: %+v", list)
+	}
+}
+
 // TestOpeningAMigratedFileAgainChangesNothing: the steps run once; a file
 // already at the latest version is opened as it is.
 func TestOpeningAMigratedFileAgainChangesNothing(t *testing.T) {
@@ -238,16 +275,28 @@ func TestStepsMustBeNumberedOneByOne(t *testing.T) {
 // valued at the series' id, and any extra rows setup adds.
 func beforeKernelNames(t *testing.T, names []string, extra string) string {
 	t.Helper()
-	setup := `CREATE TABLE series (id INTEGER PRIMARY KEY, name TEXT NOT NULL UNIQUE);
-CREATE TABLE points (series_id INTEGER NOT NULL REFERENCES series (id), resolution INTEGER NOT NULL, time INTEGER NOT NULL, average REAL NOT NULL, peak REAL NOT NULL, PRIMARY KEY (series_id, resolution, time)) WITHOUT ROWID;
-`
+	// A file as a shell at version 8 wrote it: every table the first eight
+	// steps make, so the steps after 9 find what they change.
+	path := filepath.Join(t.TempDir(), "history.db")
+	db, err := sql.Open(driver, path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = db.Close() }()
+	if err := migrate(db, 0, steps[:8]); err != nil {
+		t.Fatal(err)
+	}
+	setup := ""
 	for i, name := range names {
 		setup += fmt.Sprintf("INSERT INTO series (id, name) VALUES (%d, '%s');\n", i+1, name)
 		for m := range 3 {
 			setup += fmt.Sprintf("INSERT INTO points VALUES (%d, 60, %d, %d, %d);\n", i+1, minute(m).Unix(), i+1, i+1)
 		}
 	}
-	return fileAt(t, 8, setup+extra)
+	if _, err := db.Exec(setup + extra); err != nil {
+		t.Fatal(err)
+	}
+	return path
 }
 
 func averages(t *testing.T, store *Store, series string) []float64 {

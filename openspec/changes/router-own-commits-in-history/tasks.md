@@ -15,8 +15,8 @@
 
 ## 2. history.db keeps the cause
 
-- [ ] 2.1 Test first in `internal/history/migrate_test.go`: a file written at version 9 (`testdata`) steps to 10, keeps every change, and reads back with empty `Cause` and `CausePlugin`. A build at 10 refuses a file at 11. Then add `migrations/010_change_cause.sql`. Verify with `go test ./internal/history`.
-- [ ] 2.2 Test first in `internal/history/changes_test.go`: `RecordChange` stores `Cause` and `CausePlugin`, and the change list reads them back. Then add the fields to `history.Change` and its queries. Verify with `go test ./internal/history`.
+- [x] 2.1 Test first in `internal/history/migrate_test.go`: a file written at version 9 (`testdata`) steps to 10, keeps every change, and reads back with empty `Cause` and `CausePlugin`. A build at 10 refuses a file at 11. Then add `migrations/010_change_cause.sql`. Verify with `go test ./internal/history`.
+- [x] 2.2 Test first in `internal/history/changes_test.go`: `RecordChange` stores `Cause` and `CausePlugin`, and the change list reads them back. Then add the fields to `history.Change` and its queries. Verify with `go test ./internal/history`.
 
 ## 3. The shell records the router's own commits
 
