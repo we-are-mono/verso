@@ -140,14 +140,14 @@
    the rest. The group draws nothing of its own, so its first row meets the
    row before it on a hairline and the row after it meets its last; a group
    the choice hides draws nothing and is passed over. */
-.verso-field:is(:is(.verso-field, .verso-conditional, .verso-field-set, [data-verso-rows], fieldset[data-verso-when]) + fieldset[data-verso-when] > :first-child),
-.verso-field:is(fieldset[data-verso-when] + *),
-.verso-field:is(fieldset[data-verso-when] + .verso-conditional > .verso-conditional__gate) {
+.verso-field:is(:is(.verso-field, .verso-conditional, .verso-field-set, [data-verso-rows], .verso-when) + .verso-when > :first-child),
+.verso-field:is(.verso-when + *),
+.verso-field:is(.verso-when + .verso-conditional > .verso-conditional__gate) {
   --verso-field-rule: 1px;
   --verso-field-lead: calc(var(--spacing) * 3.75);
 }
-.verso-field:has(+ fieldset[data-verso-when]),
-.verso-field:is(fieldset[data-verso-when]:has(~ :is(.verso-field, .verso-conditional, .verso-field-set, [data-verso-rows])) > :last-child) {
+.verso-field:has(+ .verso-when),
+.verso-field:is(.verso-when:has(~ :is(.verso-field, .verso-conditional, .verso-field-set, [data-verso-rows])) > :last-child) {
   --verso-field-trail: calc(var(--spacing) * 4);
 }
 /* A settings list's fold draws its own hairline over its summary; the row

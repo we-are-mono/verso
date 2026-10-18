@@ -1,0 +1,77 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/* SPDX-FileCopyrightText: 2026 Mono Technologies Inc. */
+
+/*
+ * refusals — the refusal navigator: while settings on the page stand
+ * refused, how many, and the way to the next one (verso-forms.js). It pins
+ * itself under the bar, centred over the content column, on crimson's wash
+ * in its deep step, a control's height, and counts down as each refusal is
+ * corrected, until it says the form is ready to save, in green, and folds
+ * away.
+ *
+ * Variants: data-ready  every refusal corrected: green, and no Next
+ * Elements: __count  how many stand refused
+ *           __next   the way to the next one, an act riding the band
+ * Sets:     --verso-mark-fill, --verso-mark-edge  its mark, in its tone
+ */
+
+.verso-refusals {
+  --verso-mark-fill: var(--color-crimson);
+  --verso-mark-edge: transparent;
+  position: fixed;
+  top: calc(var(--spacing) * 17);
+  left: 50%;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: calc(var(--spacing) * 2);
+  height: var(--spacing-control);
+  padding: 0 var(--spacing) 0 calc(var(--spacing) * 3);
+  border: 1px solid var(--color-crimson-line);
+  border-radius: var(--radius-xs);
+  background-color: var(--color-crimson-soft);
+  color: var(--color-crimson-deep);
+  white-space: nowrap;
+  box-shadow: var(--shadow-float);
+  translate: -50% 0;
+  @apply type-body;
+}
+@media (width >= 48rem) {
+  .verso-refusals {
+    left: calc(50% + 9rem);
+  }
+}
+.verso-refusals[data-ready] {
+  --verso-mark-fill: var(--color-green);
+  border-color: var(--color-green-line);
+  background-color: var(--color-green-soft);
+  color: var(--color-green-deep);
+}
+
+.verso-refusals__count {
+  display: inline-block;
+  padding-right: calc(var(--spacing) * 2);
+}
+
+.verso-refusals__next {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing);
+  height: var(--spacing-act);
+  padding-inline: calc(var(--spacing) * 2);
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+  transition-property: background-color;
+  transition-duration: 150ms;
+  @apply type-button;
+}
+.verso-refusals__next:hover {
+  background-color: color-mix(in srgb, var(--color-crimson-line) 60%, transparent);
+}
+.verso-refusals__next:focus-visible {
+  outline: 2px solid var(--color-crimson-deep);
+  outline-offset: -2px;
+}
+.verso-refusals__next:where(.verso-refusals[data-ready] *) {
+  display: none;
+}

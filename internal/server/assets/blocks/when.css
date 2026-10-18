@@ -1,0 +1,21 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/* SPDX-FileCopyrightText: 2026 Mono Technologies Inc. */
+
+/*
+ * when — the rows a choice shows for one of its values (a provider's own
+ * fields, a protocol's addresses): rows of the form like the rest
+ * (blocks/field.css draws their hairlines across it), so the group draws
+ * nothing and takes no step of its own; a group the choice hides is passed
+ * over.
+ *
+ * Sets: --verso-step, --verso-edge-lead  0: the rows in it bring their air
+ */
+
+.verso-when {
+  --verso-step: 0px;
+  --verso-edge-lead: 0px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}

@@ -1,0 +1,64 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/* SPDX-FileCopyrightText: 2026 Mono Technologies Inc. */
+
+/*
+ * badge — a status that stands on its own rather than in a row (a pill in a
+ * row is the chip block). The plugin names a verdict, never a colour
+ * (ADR-005): each verdict on its own soft ground inside its hairline, worded
+ * in the step of that hue that can carry words; the full-chroma value stays
+ * a mark.
+ *
+ * Variants: data-verso-tone   success · warning · danger · info; none: the
+ *                             neutral Quiet Sand
+ *           data-verso-plain  a resting status line, not a pill: its mark
+ *                             or glyph and its words in Body, no ground
+ * Elements: __glyph  what leads the words: a glyph, in Faint on a plain
+ *                    line
+ */
+
+.verso-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--spacing) * 2);
+  padding: calc(var(--spacing) * 3);
+  border: 1px solid var(--color-rule);
+  border-radius: var(--radius-xs);
+  background-color: var(--color-quiet);
+  color: var(--color-meta);
+  @apply type-field-label;
+}
+.verso-badge[data-verso-tone="success"] {
+  border-color: var(--color-green-line);
+  background-color: var(--color-green-soft);
+  color: var(--color-green-deep);
+}
+.verso-badge[data-verso-tone="warning"] {
+  border-color: var(--color-marigold-line);
+  background-color: var(--color-marigold-soft);
+  color: var(--color-marigold-deep);
+}
+.verso-badge[data-verso-tone="danger"] {
+  border-color: var(--color-crimson-line);
+  background-color: var(--color-crimson-soft);
+  color: var(--color-crimson-deep);
+}
+.verso-badge[data-verso-tone="info"] {
+  border-color: var(--color-denim-line);
+  background-color: var(--color-denim-soft);
+  color: var(--color-denim-deep);
+}
+.verso-badge[data-verso-plain] {
+  gap: calc(var(--spacing) * 1.5);
+  padding: 0;
+  border-width: 0;
+  background-color: transparent;
+  color: var(--color-body);
+}
+
+.verso-badge__glyph {
+  display: flex;
+  flex-shrink: 0;
+}
+.verso-badge__glyph:where(.verso-badge[data-verso-plain] *) {
+  color: var(--color-faint);
+}

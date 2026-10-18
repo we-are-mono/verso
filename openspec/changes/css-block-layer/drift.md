@@ -361,3 +361,20 @@ after; the SVG's fills, strokes and LED animations compared directly.
 | a fact list's head opening a card | | kept its 8px over its line on a page; gave it up on the Overview | gives it up, as a fact list's first row does |
 | a listing's rates in a narrow card | 2 | the Overview hid the third and fourth columns of any table in a narrow card | the listing's secondary columns (`Secondary`), which a card under 31rem leaves out as a phone does |
 | a card in hand, the page's grabbing cursor | 1 | a class on the body | the page block's `data-verso-dragging` |
+
+### the last families: `limits`, `badge`, `files`, `refusals`, `confirm`, `when`, and what scripts and Go wrote
+
+| Copies | n | Difference | Became |
+|---|---|---|---|
+| a device's limits in its tip | 1 | utility strings: a 24px mono figure at 500, 12px words, a 30px day | the limits block on the closed roles: a figure in the title's verbatim form (20px), the words in the axis role, a day an act's 28px |
+| a badge, plain or the large banner pill | 2 | utility strings and a tone chain written out per site | the badge block on `data-verso-tone`; the pill's words in the field-label role |
+| a value's tone in a fact list | 3 | a class-string template choosing a text colour | `data-verso-tone` the facts block reads; no pixel changes |
+| what a value becomes, a status beside it | 2 | two copies of the same utility bundle | the facts block's `__next` and `__status` |
+| a package's files | 1 | utility strings, the paths in mono at 16px on a 1.5 line | the files block, the paths in the code role |
+| the refusal navigator | 1 | utilities and group-data variants, its mark retoned by a utility | the refusals block, its mark toned by the mark's knobs |
+| the "Show" dropdown over a listing | 1 | a hand-written dropdown | the input and control blocks, the app's one dropdown |
+| an entity panel's commit and its failure | 2 | a hand-written primary button; a crimson sentence in its own paddings | the button block's primary; a refusal on the drawer's ground |
+| a confirm, a choice's rows | 2 | `contents`/`flow-root` and `!mt-0` utilities | the confirm and when blocks |
+| a switched-off row's neutral palette | 1 | a rule in palette.css matching any `data-verso-off` | the table block's switched-off row |
+| a busy inline field, a refused list entry, an upload's progress | 3 | classes a script added (one naming no block, one `border-crimson!`) | `aria-busy`, `aria-invalid` (which the input block draws), and the drop block's upload |
+| the sign-in page's overscroll | 1 | Paper behind the page, unlike every other takeover | the canvas every page shows |

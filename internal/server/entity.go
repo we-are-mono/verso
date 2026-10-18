@@ -656,9 +656,10 @@ func (s *Server) stageEntityCommit(w http.ResponseWriter, r *http.Request, m plu
 
 // entityNotice answers a submission the panel could not carry out with the
 // sentence saying so, in the panel's own frame — the drawer stays open and says
-// what happened rather than closing on a blank swap.
+// what happened rather than closing on a blank swap. It is a refusal as any
+// field's is (blocks/refusal.css), on the drawer's ground.
 func (s *Server) entityNotice(w http.ResponseWriter, status int, text string) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(status)
-	_, _ = fmt.Fprintf(w, `<div class="px-10 py-6"><p class="text-sm leading-snug text-crimson-deep">%s</p></div>`, template.HTMLEscapeString(text))
+	_, _ = fmt.Fprintf(w, `<div class="verso-modal__ground"><p data-verso-error class="verso-refusal"><span aria-hidden="true" class="verso-mark mt-2.25" data-verso-tone="danger"></span><span data-verso-error-text>%s</span></p></div>`, template.HTMLEscapeString(text))
 }

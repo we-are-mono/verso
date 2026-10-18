@@ -292,10 +292,6 @@
 {{define "verso-dot"}}<span class="verso-mark" data-verso-tone="{{template "verso-dot-tone" .}}"{{if eq . "success"}} data-verso-live{{end}}></span>{{end}}
 {{define "verso-dot-tone"}}{{if or (eq . "success") (eq . "warning") (eq . "danger") (eq . "info")}}{{.}}{{else}}muted{{end}}{{end}}
 
-{{/* verso-tone-text: a tone worn as ink rather than as a pill — the badge's own
-     text treatment, light and dark. A tone outside the vocabulary emits nothing,
-     so the element keeps whatever colour it already carries. */}}
-{{define "verso-tone-text"}}{{if eq . "success"}}text-green-deep{{else if eq . "warning"}}text-marigold-deep{{else if eq . "danger"}}text-crimson-deep{{else if eq . "info"}}text-denim-deep{{end}}{{end}}
 
 {{/* verso-dialog-on: how an overlay of the shell's modal component answers
      the browser — Escape (its cancel event) and a press on its scrim close it

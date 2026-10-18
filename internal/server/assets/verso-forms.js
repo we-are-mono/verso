@@ -974,9 +974,9 @@
     if (message) { showError(field, message); return Promise.resolve(false); }
     clearError(field);
     el.value = value;
-    field.classList.add("verso-busy");
+    field.setAttribute("aria-busy", "true");
     var p = versoPost(window.location.pathname, versoBody([[el.name, value]]), "field").then(function (res) {
-      field.classList.remove("verso-busy");
+      field.removeAttribute("aria-busy");
       if (res.ok || res.redirected) {
         return res.text().then(function (html) {
           el.dataset.committed = value; // this is the saved baseline now
@@ -987,7 +987,7 @@
       showError(field, T("Couldn’t save that just now — try again."));
       return false;
     }).catch(function () {
-      field.classList.remove("verso-busy");
+      field.removeAttribute("aria-busy");
       showError(field, T("Couldn’t save that just now — try again."));
       return false;
     });
@@ -1101,21 +1101,26 @@
   function uploadInDialog(form, file, dialog) {
     var scope = window.Alpine ? window.Alpine.$data(dialog) : null;
     var el = versoEl;
-    var row = el("div", "space-y-2");
+    var row = el("div", "verso-drop__upload");
     row.setAttribute("data-verso-upload", "");
-    var line = el("div", "flex items-baseline justify-between gap-4");
-    line.appendChild(el("span", "min-w-0 font-mono text-base font-medium wrap-anywhere text-ink", file.name));
-    line.appendChild(el("span", "shrink-0 text-sm tabular-nums text-meta", mebibytes(file.size) + window.versoUnits.space + "MiB"));
-    var track = el("div", "h-1.5 overflow-hidden rounded-[1px] bg-rule");
+    var line = el("div", "verso-drop__file");
+    var name = el("span", "verso-drop__name", file.name);
+    name.setAttribute("data-verso-verbatim", "");
+    line.appendChild(name);
+    var size = el("span", "verso-drop__size", mebibytes(file.size) + window.versoUnits.space + "MiB");
+    size.setAttribute("data-verso-figures", "");
+    line.appendChild(size);
+    var track = el("div", "verso-drop__track");
     track.setAttribute("role", "progressbar");
     track.setAttribute("aria-label", T("Uploading…"));
     track.setAttribute("aria-valuemin", "0");
     track.setAttribute("aria-valuemax", "100");
     track.setAttribute("aria-valuenow", "0");
     // The bar fills by scaling, so each step repaints the bar alone.
-    var fill = el("div", "h-full origin-left scale-x-0 bg-denim transition-transform duration-200 ease-out motion-reduce:transition-none");
+    var fill = el("div", "verso-drop__fill");
     track.appendChild(fill);
-    var note = el("p", "text-sm tabular-nums text-meta", T("Uploading…"));
+    var note = el("p", "verso-drop__note", T("Uploading…"));
+    note.setAttribute("data-verso-figures", "");
     row.appendChild(line);
     row.appendChild(track);
     row.appendChild(note);
@@ -1578,7 +1583,8 @@ window.versoValidate = function (datatype, value) {
     if (!value) return;
     var error = window.versoValidate && input.dataset.datatype ? window.versoValidate(input.dataset.datatype, value) : "";
     input.setCustomValidity(error || "");
-    input.classList.toggle("border-crimson!", !!error);
+    if (error) input.setAttribute("aria-invalid", "true");
+    else input.removeAttribute("aria-invalid");
     if (error) { input.reportValidity(); return; }
     var duplicate = Array.from(list.querySelectorAll("input[type=hidden]")).some(function (i) { return i.value === value; });
     if (!duplicate) {
@@ -1609,7 +1615,7 @@ window.versoValidate = function (datatype, value) {
   document.addEventListener("keydown", function (e) {
     if (e.key === "Enter" && e.target.matches("[data-verso-list-input]")) { e.preventDefault(); add(e.target.closest("[data-verso-list]")); }
   });
-  document.addEventListener("input", function (e) { if (e.target.matches("[data-verso-list-input]")) { e.target.setCustomValidity(""); e.target.classList.remove("border-crimson!"); } });
+  document.addEventListener("input", function (e) { if (e.target.matches("[data-verso-list-input]")) { e.target.setCustomValidity(""); e.target.removeAttribute("aria-invalid"); } });
 })();
 
 // A clock command carries the computer's UTC wall time, sampled at the click.

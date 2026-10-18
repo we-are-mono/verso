@@ -225,10 +225,10 @@
      save and folds away (verso-forms.js). The fields themselves are the
      truth: the shell counts their refusals, so no plugin writes a sentence
      telling you to look for them. */}}
-<div id="verso-refusals" hidden role="status" class="group/refusals fixed top-[4.25rem] left-1/2 z-20 flex h-control -translate-x-1/2 items-center gap-2 rounded-xs border border-crimson-line bg-crimson-soft pr-1 pl-3 text-sm font-normal whitespace-nowrap text-crimson-deep shadow-(--shadow-float) md:left-[calc(50%+9rem)] data-[ready]:border-green-line data-[ready]:bg-green-soft data-[ready]:text-green-deep">
-  <span aria-hidden="true" class="verso-mark group-data-[ready]/refusals:bg-green" data-verso-tone="danger"></span>
-  <span data-verso-refusals-count class="inline-block pr-2"></span>
-  <button type="button" data-verso-refusals-next class="flex h-7 cursor-pointer items-center gap-1 rounded-xs px-2 font-semibold transition-colors hover:bg-crimson-line/60 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-crimson-deep group-data-[ready]/refusals:hidden">{{ t "Next" }}{{icon "arrow-down" "size-3.5"}}</button>
+<div id="verso-refusals" hidden role="status" class="verso-refusals">
+  <span aria-hidden="true" class="verso-mark"></span>
+  <span data-verso-refusals-count class="verso-refusals__count"></span>
+  <button type="button" data-verso-refusals-next class="verso-refusals__next">{{ t "Next" }}{{icon "arrow-down" "size-3.5"}}</button>
 </div>
 {{/* The session ending: a minute before this page's session runs out, the
      page stops what it is doing and says so (verso-commit.js). An alert

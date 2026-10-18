@@ -6,6 +6,15 @@
      ("plain"), the System page's ruled rows ("system"), or a label and its
      value on one line ("identity"). A row may offer an inline copy button
      (shell-owned "copy", verso.js); icons from icons.go. */}}
+{{/* properties.tone: a tone worn as ink rather than as a pill (the facts
+     block reads it); a tone outside the vocabulary says nothing, so the
+     value keeps its own ink. */}}
+{{define "properties.tone"}}{{if or (eq . "success") (eq . "warning") (eq . "danger") (eq . "info")}} data-verso-tone="{{.}}"{{end}}{{end}}
+{{/* properties.next: what a value becomes, under what it is — as a table's
+     cell says it: the value it was recedes to Meta, and what it becomes
+     stands in Ink, led by the arrow turning down into it in the action
+     colour. */}}
+{{define "properties.next"}}<span data-verso-prop-next{{if .Mono}} data-verso-verbatim{{end}} class="verso-facts__next"><span class="verso-facts__was">{{.Value}}</span><span class="verso-facts__becomes"><span role="img" aria-label="{{t "Available version"}}" title="{{t "Available version"}}" class="verso-facts__arrow">{{icon "corner-down-right" "size-4"}}</span><span>{{.Next}}</span></span></span>{{end}}
 {{/* verso-copy-inline: the icon-sized copy control beside a value — context is the
      text to copy. Shared by properties rows and mono table cells. */}}
 {{/* The control is a 28px square that only fills on hover, so a column of them
@@ -44,7 +53,7 @@
   <div class="verso-facts__row">
     <div class="verso-facts__pair">
       <dt class="verso-facts__label">{{.Label}}:</dt>
-      <dd class="verso-facts__value{{if .Variant}} {{template "verso-tone-text" .Variant}}{{end}}"{{if .Mono}} data-verso-verbatim{{end}}{{if .Figures}} data-verso-figures{{end}}{{if .Emphasis}} data-verso-emphasis{{end}}>{{.Value}}</dd>
+      <dd class="verso-facts__value"{{template "properties.tone" .Variant}}{{if .Mono}} data-verso-verbatim{{end}}{{if .Figures}} data-verso-figures{{end}}{{if .Emphasis}} data-verso-emphasis{{end}}>{{.Value}}</dd>
     </div>
     {{if .Help}}<p class="verso-facts__help">{{.Help}}</p>{{end}}
   </div>
@@ -52,7 +61,7 @@
   <div class="verso-facts__row"{{if .Next}} data-verso-next{{end}}>
     <dt class="verso-facts__label">{{.Label}}</dt>
     <dd class="verso-facts__value">
-      {{if .Next}}{{/* what it becomes, under what it is, as a table's cell says it */}}<span data-verso-prop-next{{if .Mono}} data-verso-verbatim{{end}} class="flex flex-col items-end{{if .Mono}} type-value{{end}}"><span class="text-meta">{{.Value}}</span><span class="flex items-center gap-1.5 text-ink"><span role="img" aria-label="{{t "Available version"}}" title="{{t "Available version"}}" class="flex shrink-0 text-denim">{{icon "corner-down-right" "size-4"}}</span><span>{{.Next}}</span></span></span>{{else}}{{if .Dot}}<span class="verso-mark verso-facts__mark" data-verso-tone="{{template "verso-dot-tone" .Dot}}"{{if eq .Dot "success"}} data-verso-live{{end}}{{if .Key}} data-verso-prop-dot="{{.Key}}"{{end}}></span>{{end}}<span{{if .Key}} data-verso-prop="{{.Key}}"{{end}}{{if .Mono}} data-verso-verbatim{{end}}{{if .Figures}} data-verso-figures{{end}} class="{{if .Mono}}type-value{{end}}{{if .Duration}} tabular-nums{{end}}{{if .Variant}} {{template "verso-tone-text" .Variant}}{{end}}">{{.Value}}</span>{{if .Copy}}{{template "verso-copy-inline" .Value}}{{end}}{{end}}
+      {{if .Next}}{{/* what it becomes, under what it is, as a table's cell says it */}}{{template "properties.next" .}}{{else}}{{if .Dot}}<span class="verso-mark verso-facts__mark" data-verso-tone="{{template "verso-dot-tone" .Dot}}"{{if eq .Dot "success"}} data-verso-live{{end}}{{if .Key}} data-verso-prop-dot="{{.Key}}"{{end}}></span>{{end}}<span{{if .Key}} data-verso-prop="{{.Key}}"{{end}}{{if .Mono}} data-verso-verbatim{{end}}{{if or .Figures .Duration}} data-verso-figures{{end}} class="verso-facts__text"{{template "properties.tone" .Variant}}>{{.Value}}</span>{{if .Copy}}{{template "verso-copy-inline" .Value}}{{end}}{{end}}
     </dd>
   </div>
   {{else}}
@@ -68,10 +77,10 @@
       {{/* What the value becomes, under what it is — as a table's cell says
            it: the value it was recedes to Meta, and what it becomes stands in
            Ink, led by the arrow turning down into it in the action colour. */}}
-      <span{{if .Mono}} data-verso-verbatim{{end}} class="flex min-w-0 flex-col {{if eq $.Align "left"}}items-start{{else}}items-end{{end}}{{if .Mono}} type-value{{end}}"><span class="wrap-anywhere text-meta">{{.Value}}</span><span class="flex items-center gap-1.5 text-ink"><span role="img" aria-label="{{t "Available version"}}" title="{{t "Available version"}}" class="flex shrink-0 text-denim">{{icon "corner-down-right" "size-4"}}</span><span class="wrap-anywhere">{{.Next}}</span></span></span>
-      {{else}}<span{{if .Key}} data-verso-prop="{{.Key}}"{{end}}{{if .Mono}} data-verso-verbatim{{end}}{{if .Figures}} data-verso-figures{{end}} class="min-w-0 wrap-anywhere text-balance{{if .Mono}} type-value{{end}}{{if .Duration}} tabular-nums{{end}}{{if .Variant}} {{template "verso-tone-text" .Variant}}{{end}}">{{.Value}}</span>{{end}}
+      {{template "properties.next" .}}
+      {{else}}<span{{if .Key}} data-verso-prop="{{.Key}}"{{end}}{{if .Mono}} data-verso-verbatim{{end}}{{if or .Figures .Duration}} data-verso-figures{{end}} class="verso-facts__text"{{template "properties.tone" .Variant}}>{{.Value}}</span>{{end}}
       {{if .Copy}}{{template "verso-copy-inline" .Value}}{{end}}
-      {{if .Status}}<span class="{{if eq $.Align "left"}}ml-auto pl-3{{else}}ml-2{{end}} inline-flex h-6 shrink-0 items-center">{{template "badge.html.tmpl" .Status}}</span>{{end}}
+      {{if .Status}}<span class="verso-facts__status">{{template "badge.html.tmpl" .Status}}</span>{{end}}
       {{end}}
     </dd>
     {{if .Help}}<p class="verso-facts__help">{{.Help}}</p>{{end}}

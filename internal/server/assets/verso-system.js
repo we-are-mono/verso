@@ -62,7 +62,8 @@
       error = document.createElement("p");
       error.setAttribute("data-verso-reboot-error", "");
       error.setAttribute("role", "alert");
-      error.className = "w-full flex items-start gap-2 text-sm leading-6 text-crimson-deep";
+      error.className = "verso-refusal w-full";
+      error.setAttribute("data-verso-kind", "line");
       reboot.appendChild(error);
     }
     error.hidden = true;

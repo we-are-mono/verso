@@ -1,24 +1,13 @@
 <!-- SPDX-License-Identifier: GPL-2.0-only -->
 <!-- SPDX-FileCopyrightText: 2026 Mono Technologies Inc. -->
-{{/* badge: a status pill. The shell maps the semantic variant to a tone; the
-     plugin never names a colour (ADR-005). Plain drops the pill chrome to a
-     tone dot + plain-ink words — a resting status line, not a chip. */}}
+{{/* badge: a status. The shell maps the semantic variant to a tone; the
+     plugin never names a colour (ADR-005). Plain drops the pill to a tone
+     dot + plain words — a resting status line, not a chip. The lg banner
+     pill is not in a row and keeps its own, larger box (blocks/badge.css). */}}
 {{/* A pill in a row is a chip (blocks/chip.css): one height for every small
-     bordered thing on the page, and one place to retune it. Only the tone is
-     the badge's. The lg banner chip is not in a row and keeps its own, larger
-     box. */}}
-{{if .Plain}}<span class="inline-flex items-center gap-1.5 text-sm font-medium text-body">{{if .Icon}}{{icon .Icon "size-4 shrink-0 text-faint"}}{{else if .Dot}}{{template "verso-dot" .Variant}}{{end}}{{.Text}}</span>
-{{/* Each verdict on its own soft ground, worded in the step of that hue that can
-     carry words — the full-chroma value stays a mark, on the dot. */}}
-{{else if eq .Size "lg"}}<span class="inline-flex items-center gap-2 rounded-xs border px-3 py-3 text-sm font-medium
-  {{if eq .Variant "success"}}border-green-line bg-green-soft text-green-deep
-  {{else if eq .Variant "warning"}}border-marigold-line bg-marigold-soft text-marigold-deep
-  {{else if eq .Variant "danger"}}border-crimson-line bg-crimson-soft text-crimson-deep
-  {{else if eq .Variant "info"}}border-denim-line bg-denim-soft text-denim-deep
-  {{else}}border-rule bg-quiet text-meta{{end}}">
-  {{if .Icon}}{{icon .Icon "size-4 shrink-0"}}{{end}}{{if .Dot}}{{template "verso-dot" .Variant}}{{end}}
-  {{.Text}}
-</span>
+     bordered thing on the page, and one place to retune it. */}}
+{{if .Plain}}<span class="verso-badge" data-verso-plain>{{if .Icon}}<span class="verso-badge__glyph">{{icon .Icon "size-4"}}</span>{{else if .Dot}}{{template "verso-dot" .Variant}}{{end}}{{.Text}}</span>
+{{else if eq .Size "lg"}}<span class="verso-badge"{{if or (eq .Variant "success") (eq .Variant "warning") (eq .Variant "danger") (eq .Variant "info")}} data-verso-tone="{{.Variant}}"{{end}}>{{if .Icon}}<span class="verso-badge__glyph">{{icon .Icon "size-4"}}</span>{{end}}{{if .Dot}}{{template "verso-dot" .Variant}}{{end}}{{.Text}}</span>
 {{/* A pill with no hue — the firewall's drop, which says nothing at all rather
      than answering — is the neutral chip, like every chip without a hue. It
      leads with one mark or none: an icon, or the still packet square in its

@@ -1,0 +1,26 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/* SPDX-FileCopyrightText: 2026 Mono Technologies Inc. */
+
+/*
+ * confirm — a consequential act and the question that guards it, in one
+ * place (confirm.go, verso.js): the trigger, and in its place while asking
+ * the compact callout in the act's tone (blocks/notice.css). It holds its
+ * own floats, so the question never runs into what follows.
+ *
+ * Variants: data-verso-in-row  an item's act: the confirm lays itself into
+ *                              the item's row, so the question drops full
+ *                              width under it, 12px down (__question)
+ * Elements: __question  the question while it is asked
+ */
+
+.verso-confirm {
+  display: flow-root;
+}
+.verso-confirm[data-verso-in-row] {
+  display: contents;
+}
+
+.verso-confirm__question:where(.verso-confirm[data-verso-in-row] > *) {
+  flex-basis: 100%;
+  margin-top: calc(var(--spacing) * 3);
+}

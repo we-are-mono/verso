@@ -1,0 +1,41 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/* SPDX-FileCopyrightText: 2026 Mono Technologies Inc. */
+
+/*
+ * files — the files a package installed, in its panel: a name over a box of
+ * paths on Quiet Sand, one path to a line, written as the device wrote them
+ * and broken anywhere rather than scrolled sideways; the box scrolls past
+ * 320px.
+ *
+ * Elements: __title  the list's name, in the subheading role
+ *           __list   the paths, in the code role
+ *           __path   one path
+ *           __none   what stands when the package recorded none
+ */
+
+.verso-files {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--spacing) * 3);
+}
+.verso-files__title {
+  color: var(--color-ink);
+  @apply type-subheading;
+}
+.verso-files__list {
+  max-height: calc(var(--spacing) * 80);
+  overflow: auto;
+  padding: calc(var(--spacing) * 3);
+  border: 1px solid var(--color-rule);
+  border-radius: var(--radius-xs);
+  background-color: var(--color-quiet);
+  color: var(--color-body);
+  @apply type-code;
+}
+.verso-files__path {
+  word-break: break-all;
+}
+.verso-files__none {
+  color: var(--color-meta);
+  @apply type-body;
+}

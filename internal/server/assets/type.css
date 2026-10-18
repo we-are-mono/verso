@@ -21,6 +21,15 @@
  * is a ratio sets it unitless.
  */
 
+/* A list's bullet is set in its item's face: Firefox's own bullet font
+   stands taller than the item's 24px line and grows it by half a pixel, so a
+   list would push everything under it off the grid. */
+@layer base {
+  ::marker {
+    font-family: inherit;
+  }
+}
+
 @utility type-headline {
   font-family: var(--font-sans);
   font-size: 1.5rem;

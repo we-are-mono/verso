@@ -452,8 +452,11 @@ func TestMaintenanceFirmwareRungs(t *testing.T) {
 				// runs recedes and the build it becomes stands under it, led by
 				// the arrow; a part a sysupgrade cannot change says so under
 				// its value, and one the server did not report says nothing.
-				if fact := ledgerFact(t, body, ">25.12.5 r33051<"); !strings.Contains(fact, `aria-label="Available version"`) || !strings.Contains(fact, `text-meta">25.12.4 r32933<`) {
+				if fact := ledgerFact(t, body, ">25.12.5 r33051<"); !strings.Contains(fact, `aria-label="Available version"`) || !strings.Contains(fact, `<span class="verso-facts__was">25.12.4 r32933</span><span class="verso-facts__becomes">`) {
 					t.Errorf("the changed build should stand under what runs, led by the arrow:\n%s", fact)
+				}
+				if !strings.Contains(cssBlock(t, blockSheet(t, "facts"), "\n.verso-facts__was {"), "color: var(--color-meta);") {
+					t.Error("what runs does not recede under the build it becomes")
 				}
 				if !strings.Contains(body, ">Stays as it is</p>") {
 					t.Errorf("an unchanged part should say it stays as it is:\n%s", body)

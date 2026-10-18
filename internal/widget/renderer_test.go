@@ -439,11 +439,13 @@ func TestRenderProperties(t *testing.T) {
 		{Label: "Tunnel address", Value: "10.7.0.2", Mono: true},
 		{Label: "Server key", Value: "KEY==", Copy: true},
 	}})
-	for _, want := range []string{"<dl", "Can reach", "My whole home network", "Tunnel address", `data-verso-verbatim class="min-w-0 wrap-anywhere text-balance type-value">10.7.0.2<`} {
+	for _, want := range []string{"<dl", "Can reach", "My whole home network", "Tunnel address", `<span data-verso-verbatim class="verso-facts__text">10.7.0.2</span>`} {
 		if !strings.Contains(got, want) {
 			t.Errorf("properties missing %q in: %s", want, got)
 		}
 	}
+	// A verbatim value is the value role in its verbatim form.
+	declares(t, "facts", ".verso-facts__text:is([data-verso-verbatim], [data-verso-figures]),\n.verso-facts__next[data-verso-verbatim]", "@apply type-value;")
 	// A non-mono value is not verbatim on its own row.
 	if strings.Count(got, "data-verso-verbatim") != 1 {
 		t.Errorf("only the mono value should be monospaced: %s", got)
@@ -510,7 +512,7 @@ func TestRenderPropertiesStyles(t *testing.T) {
 	}})
 	for _, want := range []string{
 		`data-verso-style="system"`, `<dt class="verso-facts__label">`, `<dd class="verso-facts__value">`,
-		`data-verso-verbatim class="type-value">Linux 6.12<`,
+		`<span data-verso-verbatim class="verso-facts__text">Linux 6.12</span>`,
 	} {
 		if !strings.Contains(system, want) {
 			t.Errorf("system properties missing %q:\n%s", want, system)
@@ -530,7 +532,7 @@ func TestRenderPropertiesStyles(t *testing.T) {
 	for _, want := range []string{
 		`<dt class="verso-facts__label">Installed</dt>`,
 		`<dd class="verso-facts__value" data-verso-emphasis>`,
-		`data-verso-verbatim class="min-w-0 wrap-anywhere text-balance type-value">aarch64_generic</span>`,
+		`<span data-verso-verbatim class="verso-facts__text">aarch64_generic</span>`,
 	} {
 		if !strings.Contains(emphasised, want) {
 			t.Errorf("emphasised properties missing %q:\n%s", want, emphasised)
@@ -550,34 +552,37 @@ func TestRenderPropertyVariantTonesTheValue(t *testing.T) {
 		{Label: "Available build", Value: "25.12.5", Mono: true, Emphasis: true, Variant: "success"},
 	}})
 	for _, want := range []string{
-		`data-verso-verbatim class="type-value text-marigold-deep">25.12.4</span>`,
-		`data-verso-verbatim class="type-value text-green-deep">25.12.5</span>`,
+		`<span data-verso-verbatim class="verso-facts__text" data-verso-tone="warning">25.12.4</span>`,
+		`<span data-verso-verbatim class="verso-facts__text" data-verso-tone="success">25.12.5</span>`,
 	} {
 		if !strings.Contains(toned, want) {
 			t.Errorf("toned system properties missing %q:\n%s", want, toned)
 		}
 	}
+	if strings.Contains(toned, `<dt class="verso-facts__label" data-verso-tone`) {
+		t.Errorf("the tone rides the value, not the label:\n%s", toned)
+	}
 	// The whole vocabulary resolves, in the default row shape too.
 	// A tone carries words in the step of its hue that can carry them — the
 	// full-chroma value stays a mark.
-	for variant, want := range map[string]string{
-		"success": "text-green-deep",
-		"warning": "text-marigold-deep",
-		"danger":  "text-crimson-deep",
-		"info":    "text-denim-deep",
+	for variant, ink := range map[string]string{
+		"success": "--color-green-deep",
+		"warning": "--color-marigold-deep",
+		"danger":  "--color-crimson-deep",
+		"info":    "--color-denim-deep",
 	} {
 		got := render(t, r, &Properties{Items: []Property{{Label: "State", Value: "x", Variant: variant}}})
-		if !strings.Contains(got, want) {
-			t.Errorf("the %q tone should render %q:\n%s", variant, want, got)
+		if !strings.Contains(got, `<span class="verso-facts__text" data-verso-tone="`+variant+`">x</span>`) {
+			t.Errorf("the %q tone should ride the value:\n%s", variant, got)
 		}
+		sel := `.verso-facts__value[data-verso-tone="` + variant + `"],` + "\n" + `.verso-facts__text[data-verso-tone="` + variant + `"]`
+		declares(t, "facts", sel, "color: var("+ink+");")
 	}
 	// No variant, and an unknown one, both keep the ordinary ink.
 	for _, variant := range []string{"", "chartreuse"} {
 		got := render(t, r, &Properties{Items: []Property{{Label: "State", Value: "x", Variant: variant}}})
-		for _, unwanted := range []string{"text-green-deep", "text-marigold-deep", "text-crimson-deep", "text-denim-deep"} {
-			if strings.Contains(got, unwanted) {
-				t.Errorf("variant %q should tint nothing, found %q:\n%s", variant, unwanted, got)
-			}
+		if strings.Contains(got, "data-verso-tone") {
+			t.Errorf("variant %q should tint nothing:\n%s", variant, got)
 		}
 	}
 }
@@ -620,14 +625,17 @@ func TestRenderConfirmCaution(t *testing.T) {
 func TestRenderConfirmInARowOfActs(t *testing.T) {
 	r := newRenderer(t)
 	got := render(t, r, &Confirm{Trigger: "Remove", Icon: "trash-2", Message: "Remove this key?", Confirm: "Remove", Cancel: "Keep it"})
-	for _, want := range []string{`class="verso-confirm contents"`, `x-cloak class="mt-3 basis-full"`, `aria-label="Remove"`} {
+	for _, want := range []string{`<div class="verso-confirm" data-verso-in-row x-data="confirm"`, `x-cloak class="verso-confirm__question"`, `aria-label="Remove"`} {
 		if !strings.Contains(got, want) {
 			t.Errorf("in-row confirm missing %q in: %s", want, got)
 		}
 	}
-	if alone := render(t, r, &Confirm{Trigger: "Reboot now", Message: "Reboot?"}); strings.Contains(alone, "basis-full") || !strings.Contains(alone, "verso-confirm flow-root") {
+	declares(t, "confirm", ".verso-confirm[data-verso-in-row]", "display: contents;")
+	declares(t, "confirm", ".verso-confirm__question:where(.verso-confirm[data-verso-in-row] > *)", "flex-basis: 100%;", "margin-top: calc(var(--spacing) * 3);")
+	if alone := render(t, r, &Confirm{Trigger: "Reboot now", Message: "Reboot?"}); strings.Contains(alone, "data-verso-in-row") || !strings.Contains(alone, `<div class="verso-confirm" x-data="confirm"`) {
 		t.Errorf("a confirm standing alone keeps its own block: %s", alone)
 	}
+	declares(t, "confirm", ".verso-confirm", "display: flow-root;")
 }
 
 func TestRenderConfirm(t *testing.T) {

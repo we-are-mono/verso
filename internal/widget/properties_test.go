@@ -49,12 +49,13 @@ func TestLeftFactsStackOnAPhone(t *testing.T) {
 	for _, want := range []string{
 		`data-verso-align="left"`,
 		`<dt class="verso-facts__label">`,
-		"text-balance",
+		`class="verso-facts__text">F5 3C B1<`,
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("want %s in:\n%s", want, got)
 		}
 	}
+	declares(t, "facts", ".verso-facts__text", "min-width: 0;", "overflow-wrap: anywhere;", "text-wrap: balance;")
 	css := blockCSS(t, "facts")
 	stack := `.verso-facts__row:where(.verso-facts[data-verso-align="left"] *)`
 	if rule := cssRule(css, stack); !strings.Contains(rule, "flex-direction: column;") {
@@ -83,12 +84,14 @@ func TestRowsHangFromTheirFirstLine(t *testing.T) {
 	for _, want := range []string{
 		`<div class="verso-facts__row">`,
 		`<dd class="verso-facts__value">`,
-		`inline-flex h-6 shrink-0 items-center`,
+		`<span class="verso-facts__status">`,
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("want %s in:\n%s", want, got)
 		}
 	}
+	// The pill rides the value's first 24px line.
+	declares(t, "facts", ".verso-facts__status", "display: inline-flex;", "flex-shrink: 0;", "align-items: center;", "height: calc(var(--spacing) * 6);")
 	declares(t, "facts", ".verso-facts__row", "align-items: flex-start;", "justify-content: space-between;", "column-gap: calc(var(--spacing) * 6);")
 	declares(t, "facts", `.verso-facts__value:where(.verso-facts:is([data-verso-style="divided"], [data-verso-style="plain"]) *)`,
 		"position: relative;", "min-width: 0;", "align-items: flex-start;")

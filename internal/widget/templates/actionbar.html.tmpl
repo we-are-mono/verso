@@ -21,12 +21,11 @@
        them itself as lines arrive, from each option's own label. An option
        that is another listing carries its address (data-href), and the
        shell's listing script loads it rather than narrowing. */}}
-  <div class="verso-actionbar__cut">
-    <select{{if not .Paged}} data-verso-listing-cut{{end}} aria-label="{{t "Show"}}"
-      class="h-control w-full cursor-pointer appearance-none rounded-xs border border-rule-strong bg-canvas pr-9 pl-3 text-sm text-ink shadow-(--shadow-field) transition-colors hover:border-faint focus:border-denim focus:outline-none">
+  <div class="verso-actionbar__cut verso-control">
+    <select{{if not .Paged}} data-verso-listing-cut{{end}} aria-label="{{t "Show"}}" class="verso-input" data-verso-trail>
       {{range .Tabs}}<option value="{{.Match}}" data-label="{{.Label}}"{{with .Href}} data-href="{{.}}"{{end}}{{if .Active}} selected{{end}}>{{.Label}}{{if not .Uncounted}} · {{.Count}}{{end}}</option>{{end}}
     </select>
-    <span class="pointer-events-none absolute right-3 flex text-meta">{{icon "chevron-down" "size-4"}}</span>
+    <span class="verso-control__trail">{{icon "chevron-down" "size-4"}}</span>
   </div>
   {{end}}
   <div class="verso-actionbar__end">

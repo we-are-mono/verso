@@ -119,7 +119,7 @@ func writeRestarting(w http.ResponseWriter, page string) {
 // verbatimIn sets a machine string inside a translated sentence: the sentence
 // stays one catalog entry with a %s, and the value rides in mono, escaped.
 func verbatimIn(format, value string) template.HTML {
-	mono := `<span class="font-mono text-base">` + template.HTMLEscapeString(value) + `</span>`
+	mono := `<span class="type-body" data-verso-verbatim>` + template.HTMLEscapeString(value) + `</span>`
 	return template.HTML(fmt.Sprintf(template.HTMLEscapeString(format), mono))
 }
 

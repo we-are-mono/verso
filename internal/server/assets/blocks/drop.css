@@ -19,6 +19,10 @@
  *           __or      the other way, in the body role, its __door the
  *                     action colour, underlined
  *           __help    what fits, under the area in Meta
+ *           __upload  a file going up (verso-forms.js): its __file line
+ *                     (the __name verbatim, its __size in figures), the
+ *                     __track its __fill grows along by scaling, so each
+ *                     step repaints the bar alone, and its __note
  */
 
 .verso-drop {
@@ -101,4 +105,48 @@
   color: var(--color-meta);
   text-wrap: pretty;
   @apply type-body;
+}
+
+.verso-drop__upload {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--spacing) * 2);
+}
+.verso-drop__file {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: calc(var(--spacing) * 4);
+}
+.verso-drop__name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--color-ink);
+  @apply type-value;
+}
+.verso-drop__size,
+.verso-drop__note {
+  color: var(--color-meta);
+  @apply type-body;
+}
+.verso-drop__size {
+  flex-shrink: 0;
+}
+.verso-drop__track {
+  height: calc(var(--spacing) * 1.5);
+  overflow: hidden;
+  border-radius: 1px;
+  background-color: var(--color-rule);
+}
+.verso-drop__fill {
+  height: 100%;
+  background-color: var(--color-denim);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 200ms ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .verso-drop__fill {
+    transition: none;
+  }
 }

@@ -1,0 +1,137 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/* SPDX-FileCopyrightText: 2026 Mono Technologies Inc. */
+
+/*
+ * limits — a device's configured limits at a glance, in its tip
+ * (blocks/tip.css, the limit kind): the week it is held to, the window of
+ * the day, and its two rates. The figures are read before the words: a time
+ * or a rate in the title's verbatim form, what it qualifies under it in the
+ * axis role, quiet.
+ *
+ * Elements: __title     what is limited, in the subheading role, led by
+ *                       __glyph in Deep Marigold
+ *           __days      the week, seven to a row, 4px apart
+ *           __day       one day: Quiet Sand, its name quiet;
+ *                       data-verso-active, a day it is held: Marigold
+ *           __when      the window, 12px under the week
+ *           __range     from and until, the arrow between them in Faint
+ *                       (__arrow)
+ *           __qualifier what a lone from or until means ("from", "until")
+ *           __figure    a time or a rate, verbatim, in figures
+ *           __hours     the window said in words
+ *           __note      the clock the window keeps, a rate's unit, a rate's
+ *                       name: the axis role, quiet
+ *           __rates     the two rates side by side, 16px apart, ruled off
+ *                       from the window above them
+ *           __rate      one rate: its __note name, its __value, its unit
+ *           __value     a rate's value, on a control's line
+ */
+
+.verso-limits {
+  display: block;
+}
+
+.verso-limits__title {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--spacing) * 2);
+  color: var(--color-ink);
+  @apply type-subheading;
+}
+.verso-limits__glyph {
+  display: flex;
+  color: var(--color-marigold-deep);
+}
+
+.verso-limits__days {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: var(--spacing);
+  margin-top: calc(var(--spacing) * 3);
+}
+.verso-limits__day {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: var(--spacing-act);
+  min-width: 0;
+  border: 1px solid transparent;
+  border-radius: var(--radius-xs);
+  background-color: var(--color-quiet);
+  color: var(--color-meta);
+  @apply type-axis;
+}
+.verso-limits__day[data-verso-active] {
+  border-color: var(--color-marigold-line);
+  background-color: var(--color-marigold-soft);
+  color: var(--color-marigold-deep);
+}
+
+.verso-limits__when {
+  display: block;
+  margin-top: calc(var(--spacing) * 3);
+}
+.verso-limits__range {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(var(--spacing) * 3);
+}
+.verso-limits__arrow {
+  display: flex;
+  color: var(--color-faint);
+}
+.verso-limits__range:has(> .verso-limits__qualifier) {
+  justify-content: flex-start;
+  align-items: baseline;
+  gap: calc(var(--spacing) * 2);
+}
+.verso-limits__qualifier {
+  color: var(--color-meta);
+  @apply type-body;
+}
+.verso-limits__figure {
+  color: var(--color-ink);
+  @apply type-title;
+}
+.verso-limits__hours {
+  color: var(--color-ink);
+  @apply type-title;
+}
+.verso-limits__note {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--spacing) * 1.5);
+  color: var(--color-meta);
+  @apply type-axis;
+}
+.verso-limits__note:is(.verso-limits__when > *) {
+  margin-top: var(--spacing);
+}
+
+.verso-limits__rates {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: calc(var(--spacing) * 4);
+}
+.verso-limits__rates:is(.verso-limits__when + *) {
+  margin-top: calc(var(--spacing) * 4);
+  padding-top: calc(var(--spacing) * 3);
+  border-top: 1px solid var(--color-rule);
+}
+.verso-limits__rate {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.verso-limits__value {
+  display: flex;
+  align-items: center;
+  min-height: calc(var(--spacing) * 8);
+  margin-top: var(--spacing);
+  color: var(--color-ink);
+  @apply type-card-title;
+}
+.verso-limits__value[data-verso-verbatim] {
+  @apply type-title;
+}

@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -122,11 +123,17 @@ func TestThePendingRowCountsTheStage(t *testing.T) {
 		`id="verso-pending-row" data-count="1"`,
 		pendingRowSays(1), // the undeclared config is filtered out
 		`<a href="/pending"`, ">Pending changes</span>",
-		// The caveat colour: a fact about the device, not an alarm.
-		"bg-marigold-soft", "text-marigold-deep",
+		`class="verso-nav__row" data-verso-stage>`,
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("the Pending changes row is missing %q", want)
+		}
+	}
+	// The caveat colour: a fact about the device, not an alarm.
+	wash := cssBlock(t, blockSheet(t, "nav"), ".verso-nav__row[data-verso-stage],\n.verso-nav__row[data-verso-stage]:hover {")
+	for _, want := range []string{"background-color: var(--color-marigold-soft);", "color: var(--color-marigold-deep);"} {
+		if !strings.Contains(wash, want) {
+			t.Errorf("the Pending changes row's wash lacks %s", want)
 		}
 	}
 	if strings.Contains(body, pendingRowHidden) {
@@ -335,11 +342,18 @@ func TestPendingPageGroupsByPage(t *testing.T) {
 		// a section going is removed, its line going with it.
 		// (The plus reaches the page as its entity, which html/template writes
 		// for text it cannot know is safe.)
-		">Added<", "bg-green", "&#43; system: new rule section cfg99", "&#43; system: cfg99.name = Allow DNS",
-		">Removed<", "bg-crimson", "- verso: remove updates",
+		">Added<", "&#43; system: new rule section cfg99", "&#43; system: cfg99.name = Allow DNS",
+		">Removed<", "- verso: remove updates",
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("page missing %q", want)
+		}
+	}
+	// What happened is marked in its tone: an addition green, a removal
+	// crimson.
+	for word, tone := range map[string]string{"Added": "success", "Removed": "danger"} {
+		if !regexp.MustCompile(`<span class="verso-mark" data-verso-tone="` + tone + `"></span>\s*<span[^>]*>` + word + `</span>`).MatchString(body) {
+			t.Errorf("%s is not marked in the %s tone", word, tone)
 		}
 	}
 	if i, j := strings.Index(body, `<h2 class="verso-card__title">Demo Plugin</h2>`), strings.Index(body, `<h2 class="verso-card__title">System</h2>`); i < 0 || j < 0 || i > j {
