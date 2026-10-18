@@ -178,6 +178,15 @@ func TestListRowsTakeTheirHeightFromPadding(t *testing.T) {
 		t.Errorf("the set's rows start on the line under the label, and the add box stands 8px under them:\n%s", got)
 	}
 	declares(t, "list", ".verso-list__items:has(> .verso-list__row)", "padding-bottom: calc(var(--spacing) * 2);")
+	// Beside its question an answer is pulled 4px over the name's line and
+	// gives 4px back under itself, as a 32px control centred on that line
+	// does. A set's first row takes the top pull itself; its add box, 8px
+	// under the rows, stands on the rows' lines, so the set gives the 4px
+	// back under it too and the row ends on a line. An empty set's add box
+	// stands on the name's line as a control does, and keeps the pull.
+	if rule := cssRuleWithin(blockCSS(t, "list"), "@container verso-field (width >= 36rem)", ".verso-list:has(.verso-list__row)"); !strings.Contains(rule, "padding-bottom: var(--spacing);") {
+		t.Errorf("a set beside its question does not give back the answer's 4px under its add box:\n%s", rule)
+	}
 }
 
 // TestRenderSectionSub: the description belongs to the heading band and keeps

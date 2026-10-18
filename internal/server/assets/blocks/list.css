@@ -36,9 +36,18 @@
 .verso-list__row:first-child {
   border-top-color: transparent;
 }
+/* Beside the question the answer is pulled 4px over the name's line and
+   gives 4px back under itself, for a control centred on that line. The
+   first row takes the top pull itself; the add box under the rows stands on
+   the rows' lines, so the set gives the 4px back under it as well and the
+   row ends on a line. An empty set's add box stands on the name's line, as a
+   control does, and keeps the pull. */
 @container verso-field (width >= 36rem) {
   .verso-list__row:first-child {
     margin-top: calc(var(--spacing) * -1);
+  }
+  .verso-list:has(.verso-list__row) {
+    padding-bottom: var(--spacing);
   }
 }
 
