@@ -15,7 +15,7 @@
   <div class="verso-meter__head"><span class="verso-meter__label">{{.Label}}</span></div>
   <div class="verso-meter__reading"><span class="verso-meter__figure" data-verso-figures data-verso-meter-value>{{.Value}}</span><span class="verso-meter__unit" data-verso-meter-unit>{{.Unit}}</span></div>
   <div class="verso-meter__lane"><div class="verso-meter__track" style="{{.Track}}"><div class="verso-meter__bar"{{with .Tone}} data-verso-tone="{{.}}"{{end}} data-verso-meter-bar></div></div></div>
-  <div class="verso-meter__detail" data-verso-meter-detail>{{.Detail}}</div>
+  <div class="verso-meter__detail" data-verso-meter-detail>{{template "meter.detail" .DetailRuns}}</div>
 </div>
 {{else if .Compact}}
 {{/* compact: one dense row — name · ten blocks lit 0→this reading's own
@@ -56,6 +56,10 @@
       <div class="verso-meter__bar"{{if .Role}} data-verso-role="{{.Role}}"{{else}} data-verso-tone="{{.Band}}"{{end}} data-verso-meter-bar></div>
     </div>
   </div>
-  {{if or .Detail .Name}}<div class="verso-meter__detail" data-verso-meter-detail>{{.Detail}}</div>{{end}}
+  {{if or .Detail .Name}}<div class="verso-meter__detail" data-verso-meter-detail>{{template "meter.detail" .DetailRuns}}</div>{{end}}
 </div>
 {{end}}
+{{/* meter.detail: a gauge's caption, its figures a step heavier than the
+     words around them (widget.meterDetail; verso-stream.js cuts a live
+     caption the same way). */}}
+{{define "meter.detail"}}{{range .}}{{if .Figure}}<span class="verso-meter__number">{{.Text}}</span>{{else}}{{.Text}}{{end}}{{end}}{{end}}

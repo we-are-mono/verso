@@ -51,6 +51,7 @@
  *                      dashboard assigns instead
  *           __room     a cell's track's room, where it has no track
  *           __detail   the one fact worth acting on
+ *           __number   a figure in the detail, a step heavier than its words
  *           __name     a row's name
  *           __note     a row's words where it has no track: no limits
  *           __value    a row's value and its packet
@@ -307,6 +308,10 @@
   white-space: nowrap;
   color: var(--color-meta);
   @apply type-body;
+}
+
+.verso-meter__number {
+  @apply type-value;
 }
 
 .verso-meter__name {

@@ -34,6 +34,17 @@ func declaresBandFill(t *testing.T, band string) {
 	declares(t, "meter", fill.sel, fill.decl)
 }
 
+// renderRaw renders w as the page receives it, the spaces between a caption's
+// words and its figures kept (render normalizes them away).
+func renderRaw(t *testing.T, r *Renderer, w Widget) string {
+	t.Helper()
+	var b strings.Builder
+	if err := r.RenderWithToken(&b, w, "", "", nil); err != nil {
+		t.Fatalf("RenderWithToken: %v", err)
+	}
+	return b.String()
+}
+
 // The gauge's rule: every meter that is neither a listing's row nor its cell.
 const meterGauge = `.verso-meter:not([data-verso-place="row"], [data-verso-place="cell"])`
 
@@ -43,7 +54,7 @@ func TestRenderMeter(t *testing.T) {
 	r := newRenderer(t)
 	got := render(t, r, &Meter{Label: "Storage", Value: "23", Unit: "GB", Fill: 72, Detail: "9 GB free"})
 	for _, want := range []string{
-		"Storage", ">23<", ">GB<", "9 GB free",
+		"Storage", ">23<", ">GB<", `<span class="verso-meter__number">9</span>`,
 		"data-verso-meter-bar", // the fill element
 		// The track carries the share it lights; the block turns it into
 		// whole blocks, so a live reading changes one property and the page
@@ -147,6 +158,28 @@ func TestAGaugeFillsItsLane(t *testing.T) {
 	}
 }
 
+// TestMeterDetailWeighsItsFigures: in a gauge's caption a figure stands a
+// step heavier than the words around it, so "34.1 of 60.4 GiB" is read by its
+// numbers; a word with a digit in it ("1-minute") and a unit stay words.
+func TestMeterDetailWeighsItsFigures(t *testing.T) {
+	r := newRenderer(t)
+	for detail, want := range map[string]string{
+		"34.1 of 60.4 GiB · 26.3 GiB free": `<span class="verso-meter__number">34.1</span> of <span class="verso-meter__number">60.4</span>` + " GiB · " + `<span class="verso-meter__number">26.3</span>` + " GiB free",
+		"1-minute average · 32 threads":    `1-minute average · <span class="verso-meter__number">32</span> threads`,
+		"34,1 od 60,4 GiB":                 `<span class="verso-meter__number">34,1</span> od <span class="verso-meter__number">60,4</span>` + " GiB",
+	} {
+		for _, m := range []*Meter{
+			{Label: "Memory", Value: "56", Unit: "%", Fill: 56, Detail: detail},
+			{Overview: true, Name: "sys-memory", Label: "Memory", Value: "56", Unit: "%", Fill: 56, Detail: detail},
+		} {
+			if got := renderRaw(t, r, m); !strings.Contains(got, "data-verso-meter-detail>"+want+"</div>") {
+				t.Errorf("caption %q does not weigh its figures, want %q in:\n%s", detail, want, got)
+			}
+		}
+	}
+	declares(t, "meter", ".verso-meter__number", "@apply type-value;")
+}
+
 // TestMeterWarnZone: a reading with a warn limit shades the blocks past it,
 // so the track says where trouble starts before the reading gets there.
 func TestMeterWarnZone(t *testing.T) {
@@ -169,7 +202,7 @@ func TestMeterWarnZone(t *testing.T) {
 func TestMeterInfoVariant(t *testing.T) {
 	r := newRenderer(t)
 	got := render(t, r, &Meter{Label: "Speed", Value: "300", Unit: "Mbps", Fill: 30, Variant: "info", Detail: "24 Mbps up"})
-	for _, want := range []string{">300<", ">Mbps<", meterBar("info"), "24 Mbps up"} {
+	for _, want := range []string{">300<", ">Mbps<", meterBar("info"), `<span class="verso-meter__number">24</span>Mbps up`} {
 		if !strings.Contains(got, want) {
 			t.Errorf("speed meter missing %q:\n%s", want, got)
 		}

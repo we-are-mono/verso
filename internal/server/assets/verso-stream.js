@@ -24,12 +24,34 @@
     var el = root.querySelector(selector);
     if (el) el.textContent = text;
   }
+  // setDetail writes a gauge's caption with its figures a step heavier than
+  // the words around them, cut as widget.meterDetail cuts it: a word of
+  // digits alone (its decimals after "." or ",") is a figure, "1-minute" a
+  // word, and a narrow space parts a figure from its unit.
+  function setDetail(root, text) {
+    var el = root.querySelector("[data-verso-meter-detail]");
+    if (!el) return;
+    var runs = [];
+    (text.match(/[^  ]+|[  ]+/g) || []).forEach(function (word) {
+      var figure = /^\d+(?:[.,]\d+)*$/.test(word);
+      var last = runs[runs.length - 1];
+      if (last && !figure && !last.figure) last.text += word;
+      else runs.push({ text: word, figure: figure });
+    });
+    el.replaceChildren.apply(el, runs.map(function (run) {
+      if (!run.figure) return document.createTextNode(run.text);
+      var number = document.createElement("span");
+      number.className = "verso-meter__number";
+      number.textContent = run.text;
+      return number;
+    }));
+  }
   function applyMeter(reading) {
     var root = document.querySelector('[data-verso-meter="' + CSS.escape(reading.name) + '"]');
     if (!root) return;
     setText(root, "[data-verso-meter-value]", reading.value);
     setText(root, "[data-verso-meter-unit]", reading.unit);
-    setText(root, "[data-verso-meter-detail]", reading.detail);
+    setDetail(root, reading.detail || "");
     var fill = Math.min(100, Math.max(0, reading.fill));
     var bar = root.querySelector("[data-verso-meter-bar]");
     if (bar) {

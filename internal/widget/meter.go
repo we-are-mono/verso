@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"html/template"
 	"io"
+	"regexp"
 )
 
 // Meter is a gauge for a single metric — memory, disk, CPU, a link speed, a
@@ -72,9 +73,11 @@ type meterView struct {
 	Unit     string
 	Detail   string
 	Name     string
-	Icon     string
-	Role     string // decorative accent for the track + icon; "" colours by band
-	Band     string // the tone vocabulary: "success" | "warning" | "danger" | "info"
+	// DetailRuns is Detail cut where its figures start and end (meterDetail).
+	DetailRuns []meterRun
+	Icon       string
+	Role       string // decorative accent for the track + icon; "" colours by band
+	Band       string // the tone vocabulary: "success" | "warning" | "danger" | "info"
 	// Track is the track's share and warn limit (meterTrack): the meter block
 	// turns them into whole blocks, so a live reading changes one property
 	// and never lays the page out again.
@@ -112,11 +115,42 @@ func meterTrack(fill, warn int) template.CSS {
 	return template.CSS(style) //nolint:gosec // built here from clamped integers, never from input
 }
 
+// meterRun is a stretch of a meter's caption: a figure, or the words between.
+type meterRun struct {
+	Text   string
+	Figure bool
+}
+
+var (
+	// A caption's words and the spaces between them; a unit stands after its
+	// figure across a narrow space, so the narrow space parts them too.
+	meterWord = regexp.MustCompile(`[^ \x{202f}]+|[ \x{202f}]+`)
+	// A figure is a word of digits alone, its decimals after either mark a
+	// language writes them with; "1-minute" is a word.
+	meterFigure = regexp.MustCompile(`^\d+(?:[.,]\d+)*$`)
+)
+
+// meterDetail cuts a caption where its figures start and end, so the figures
+// can stand a step heavier than the words around them. verso-stream.js cuts
+// a live caption the same way.
+func meterDetail(detail string) []meterRun {
+	var runs []meterRun
+	for _, word := range meterWord.FindAllString(detail, -1) {
+		figure := meterFigure.MatchString(word)
+		if n := len(runs); n > 0 && !figure && !runs[n-1].Figure {
+			runs[n-1].Text += word
+			continue
+		}
+		runs = append(runs, meterRun{Text: word, Figure: figure})
+	}
+	return runs
+}
+
 func (m *Meter) renderInto(r *Renderer, out io.Writer, _ string) error {
 	fill := min(max(m.Fill, 0), 100)
 	return r.execute(out, "meter.html.tmpl", meterView{
 		Overview: m.Overview,
-		Label:    m.Label, Value: m.Value, Unit: m.Unit, Detail: m.Detail,
+		Label:    m.Label, Value: m.Value, Unit: m.Unit, Detail: m.Detail, DetailRuns: meterDetail(m.Detail),
 		Name: m.Name, Icon: m.Icon, Role: m.Role, Band: MeterBand(fill, m.Variant),
 		Track:   meterTrack(fill, m.WarnMark),
 		Compact: m.Compact, Tone: m.Tone, NoTrack: m.NoTrack,
