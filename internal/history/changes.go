@@ -21,8 +21,10 @@ const (
 // Change is one apply, one edit written straight to the config, or one commit
 // the router made itself (ADR-021). User and Address are empty for a direct
 // edit and for the router's own commit, unless an operator's act made it.
-// Cause is what made the router commit, in English, and CausePlugin the
-// plugin whose catalog words it, empty for the shell's words. Related is the
+// Own says the router committed it itself. Cause is what made the router
+// commit, in English, and CausePlugin the plugin whose catalog words it,
+// empty for the shell's words; both are empty for a commit an older plugin
+// marked with no cause. Related is the
 // change that Relation names; UndoneBy the change that undid this one; 0 is
 // none. OldRead says what each change replaced was read before the apply, so
 // Old is what was there, nil included; without it Old knows nothing.
@@ -37,6 +39,7 @@ type Change struct {
 	Related     int64
 	UndoneBy    int64
 	OldRead     bool
+	Own         bool
 	Cause       string
 	CausePlugin string
 	Items       []ChangeItem
@@ -82,8 +85,8 @@ func (s *Store) RecordChange(ctx context.Context, c Change) (int64, error) {
 	}
 	defer func() { _ = tx.Rollback() }()
 	result, err := tx.ExecContext(ctx,
-		`INSERT INTO changes (time, status, user, address, note, relation, related, undone_by, old_read, cause, cause_plugin) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		c.Time.Unix(), c.Status, c.User, c.Address, c.Note, c.Relation, nullID(c.Related), nullID(c.UndoneBy), c.OldRead, c.Cause, c.CausePlugin)
+		`INSERT INTO changes (time, status, user, address, note, relation, related, undone_by, old_read, own, cause, cause_plugin) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		c.Time.Unix(), c.Status, c.User, c.Address, c.Note, c.Relation, nullID(c.Related), nullID(c.UndoneBy), c.OldRead, c.Own, c.Cause, c.CausePlugin)
 	if err != nil {
 		return 0, err
 	}
@@ -146,7 +149,7 @@ func (s *Store) Change(ctx context.Context, id int64) (Change, bool, error) {
 // changes reads the changes the query's tail selects, in its order, with
 // their rows and each row's uci changes.
 func (s *Store) changes(ctx context.Context, tail string, args ...any) ([]Change, error) {
-	rows, err := s.db.QueryContext(ctx, `SELECT id, time, status, user, address, note, relation, related, undone_by, old_read, cause, cause_plugin FROM changes `+tail, args...)
+	rows, err := s.db.QueryContext(ctx, `SELECT id, time, status, user, address, note, relation, related, undone_by, old_read, own, cause, cause_plugin FROM changes `+tail, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -157,7 +160,7 @@ func (s *Store) changes(ctx context.Context, tail string, args ...any) ([]Change
 		var c Change
 		var at int64
 		var related, undoneBy sql.NullInt64
-		if err := rows.Scan(&c.ID, &at, &c.Status, &c.User, &c.Address, &c.Note, &c.Relation, &related, &undoneBy, &c.OldRead, &c.Cause, &c.CausePlugin); err != nil {
+		if err := rows.Scan(&c.ID, &at, &c.Status, &c.User, &c.Address, &c.Note, &c.Relation, &related, &undoneBy, &c.OldRead, &c.Own, &c.Cause, &c.CausePlugin); err != nil {
 			_ = rows.Close()
 			return nil, err
 		}

@@ -72,7 +72,7 @@ Before calling `SetTheme`, `SetWebListeners` or a package install, the shell reg
 
 ### 4. The cause is stored in English and translated when shown
 
-Migration `010_change_cause.sql` adds `cause TEXT NOT NULL DEFAULT ''` and `cause_plugin TEXT NOT NULL DEFAULT ''` to `changes`. The page translates the cause with the shell's translator when `cause_plugin` is empty, or with that plugin's travelling catalog otherwise (ADR-012). A sentence no catalog holds shows as written.
+Migration `010_change_cause.sql` adds `cause TEXT NOT NULL DEFAULT ''` and `cause_plugin TEXT NOT NULL DEFAULT ''` to `changes`. Migration `011_change_own.sql` adds `own INTEGER NOT NULL DEFAULT 0`: an older plugin's mark carries no cause, so a change with no operator and no cause could be the router's or one made outside Verso, and only the flag tells them apart. It is a step of its own because a dev shell had already written shape 10, and every shape a shell has written is a step (`migrate.go`). The page translates the cause with the shell's translator when `cause_plugin` is empty, or with that plugin's travelling catalog otherwise (ADR-012). A sentence no catalog holds shows as written.
 
 Notes read in this order: the relation (Undoes…), then the cause, then the operator's own note.
 
@@ -80,7 +80,7 @@ Notes read in this order: the relation (Undoes…), then the cause, then the ope
 
 ### 5. By for the router
 
-`changeBy` gains a third case: a change with a cause and no user reads `tr("The router")`, as words with the router's icon chip. Like "Edited directly", it names the channel and never "Verso" (copy rule).
+`changeBy` gains a third case: a change that is `Own` and has no user reads `tr("The router")`, as words with the router's icon chip. Like "Edited directly", it names the channel and never "Verso" (copy rule).
 
 ### 6. The causes the helper gives
 
@@ -101,6 +101,6 @@ verso-plugin-acme's hand-over gives "A certificate was installed by hand.", with
 
 ## Migration Plan
 
-- history.db steps to 010 at the shell's first start. A build before 010 refuses a file at 010 and keeps its history in memory (`shape` in `migrate.go`), so a downgrade leaves the file for the next upgrade to read again.
+- history.db steps to 011 at the shell's first start. A build before 010 refuses a file at 010 or later and keeps its history in memory (`shape` in `migrate.go`), so a downgrade leaves the file for the next upgrade to read again.
 - Ship verso and verso-plugin-acme together. Acme's new `own_write` needs the SDK of this verso tag; the old acme keeps working on the new verso.
 - To roll back, reinstall the earlier verso. Rows recorded meanwhile keep their causes in columns the old shell ignores.

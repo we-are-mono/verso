@@ -78,7 +78,7 @@ func TestChangesAreListedNewestFirst(t *testing.T) {
 func TestTheRoutersOwnChangeKeepsItsCause(t *testing.T) {
 	store, _ := open(t)
 	c := applied(minute(1))
-	c.User, c.Address = "", ""
+	c.User, c.Address, c.Own = "", "", true
 	c.Cause, c.CausePlugin = "A certificate was installed by hand.", "acme"
 	id, err := store.RecordChange(ctx, c)
 	if err != nil {
@@ -89,7 +89,7 @@ func TestTheRoutersOwnChangeKeepsItsCause(t *testing.T) {
 		t.Fatalf("read\n%+v\nwant\n%+v", got, c)
 	}
 	listed, err := store.Changes(ctx, 1)
-	if err != nil || len(listed) != 1 || listed[0].Cause != c.Cause || listed[0].CausePlugin != "acme" {
+	if err != nil || len(listed) != 1 || !listed[0].Own || listed[0].Cause != c.Cause || listed[0].CausePlugin != "acme" {
 		t.Fatalf("listed %+v, %v", listed, err)
 	}
 }

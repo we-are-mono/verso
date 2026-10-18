@@ -150,8 +150,8 @@ func TestEveryFileAShellWroteReachesTheLatestWithAllItHeld(t *testing.T) {
 }
 
 // TestAChangeRecordedBeforeCausesKeepsItsPlace: a file a shell wrote at
-// version 9 steps to 10 with every change it held, each read back with no
-// cause (ADR-021).
+// version 9 steps to the latest with every change it held, each read back
+// with no cause and not the router's own (ADR-021).
 func TestAChangeRecordedBeforeCausesKeepsItsPlace(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "history.db")
 	db, err := sql.Open(driver, path)
@@ -174,14 +174,14 @@ func TestAChangeRecordedBeforeCausesKeepsItsPlace(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() { _ = store.Close() }()
-	if got := versionOf(t, store.db); got != latest || latest < 10 {
-		t.Fatalf("the file is at version %d, want %d (at least 10)", got, latest)
+	if got := versionOf(t, store.db); got != latest || latest < 11 {
+		t.Fatalf("the file is at version %d, want %d (at least 11)", got, latest)
 	}
 	list, err := store.Changes(ctx, 10)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(list) != 1 || list[0].User != "root" || list[0].Note != "kept" || list[0].Cause != "" || list[0].CausePlugin != "" {
+	if len(list) != 1 || list[0].User != "root" || list[0].Note != "kept" || list[0].Own || list[0].Cause != "" || list[0].CausePlugin != "" {
 		t.Fatalf("changes after the step: %+v", list)
 	}
 }

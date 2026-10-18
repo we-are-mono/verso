@@ -17,17 +17,18 @@
 
 - [x] 2.1 Test first in `internal/history/migrate_test.go`: a file written at version 9 (`testdata`) steps to 10, keeps every change, and reads back with empty `Cause` and `CausePlugin`. A build at 10 refuses a file at 11. Then add `migrations/010_change_cause.sql`. Verify with `go test ./internal/history`.
 - [x] 2.2 Test first in `internal/history/changes_test.go`: `RecordChange` stores `Cause` and `CausePlugin`, and the change list reads them back. Then add the fields to `history.Change` and its queries. Verify with `go test ./internal/history`.
+- [x] 2.3 Test first: `RecordChange` stores `Own`, the change list reads it back, and a change recorded before step 11 reads as not the router's own. Then add `migrations/011_change_own.sql` and the field (design decision 4). Verify with `go test ./internal/history`.
 
 ## 3. The shell records the router's own commits
 
-- [ ] 3.1 Test first in `internal/server/config_history_direct_test.go`:
+- [x] 3.1 Test first in `internal/server/config_history_direct_test.go`:
   - an `own` reading of `acme` that turns `acme.verso.enabled` from 1 to 0 records one applied change, with no user, `Cause` "A certificate was installed by hand.", `CausePlugin` "acme", and items in acme's words;
   - an `own` reading with no difference records nothing;
   - an `own` reading inside an apply's window records nothing.
 
   Then record own readings in `takeReading` (design decision 2). Verify with `go test ./internal/server`.
-- [ ] 3.2 Test first: an `own` reading of a secret option's change records the option as changed with neither value. Verify with the existing secrets tests and `go test ./internal/server`.
-- [ ] 3.3 Test first: an `own` mark from an earlier plugin (no cause) records a change with no user and empty cause. Verify with `go test ./internal/server`.
+- [x] 3.2 Test first: an `own` reading of a secret option's change records the option as changed with neither value. Verify with the existing secrets tests and `go test ./internal/server`.
+- [x] 3.3 Test first: an `own` mark from an earlier plugin (no cause) records a change with no user and empty cause. Verify with `go test ./internal/server`.
 
 ## 4. Acts started for an operator are theirs
 
