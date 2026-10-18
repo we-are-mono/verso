@@ -64,6 +64,8 @@
   "Encrypted with this router’s own certificate — your browser will call it untrusted, and that is expected on a local device.": "Šifrirano z lastnim potrdilom tega usmerjevalnika — vaš brskalnik ga bo označil za nezaupanja vrednega, kar je na krajevni napravi pričakovano.",
   "Failed sign-ins from your address: %d. After %d, this address waits a minute.": "Neuspelih prijav z vašega naslova: %d. Po %d ta naslov počaka minuto.",
   "You were signed out after a period of inactivity.": "Zaradi nedejavnosti ste bili odjavljeni.",
+  "You were signed out from another browser.": "Odjavljeni ste bili iz drugega brskalnika.",
+  "You were signed out because the password was changed.": "Odjavljeni ste bili, ker je bilo geslo spremenjeno.",
   "ALL GOOD": "VSE V REDU",
   "Your network is ": "Vaše omrežje je ",
   "healthy": "zdravo",

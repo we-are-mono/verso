@@ -61,8 +61,8 @@ func (s *Server) requireAuth(next http.Handler) http.Handler {
 // loginRedirect is where a request without a live session goes. A browser that
 // presents a session cookie was signed in and is not any more — the sign-in ran
 // out of time, or was ended on Access or by a password change — so its login
-// page carries the marker, which words the sign-out as inactivity, its common
-// cause. A browser presenting no cookie was never signed in and is told
+// page carries the marker, and says which of those it was (expiryNotice). A
+// browser presenting no cookie was never signed in and is told
 // nothing; a deliberate sign-out clears the cookie before it redirects, and so
 // lands there too. Both POST and GET take this exit: once the session is gone
 // the work is lost either way, and a redirect is the honest outcome.
@@ -331,12 +331,22 @@ func attemptsNote(tr func(string) string, failures int) string {
 }
 
 // expiryNotice is the login page's statement for a visitor the middleware sent
-// here: the sign-in ran out of time. It is a fact about the session, not a
-// failure of this visit, so it reads plainly and wears the info tone. Empty
-// unless the redirect marked the request.
-func expiryNotice(r *http.Request) string {
+// here: why the session the browser still presents ended — revoked from
+// another browser, ended by a password change, or, as the store remembers
+// nothing else, out of time. It is a fact about the session, not a failure of
+// this visit, so it reads plainly. Empty unless the redirect marked the
+// request.
+func (s *Server) expiryNotice(r *http.Request) string {
 	if r.URL.Query().Get("expired") != "1" {
 		return ""
+	}
+	if cookie, err := r.Cookie(sessionCookie); err == nil {
+		switch s.sessions.endedBecause(cookie.Value) {
+		case endedRevoked:
+			return "You were signed out from another browser."
+		case endedPassword:
+			return "You were signed out because the password was changed."
+		}
 	}
 	return "You were signed out after a period of inactivity."
 }
@@ -423,7 +433,7 @@ func (s *Server) renderLogin(w http.ResponseWriter, r *http.Request, status int,
 	}
 	var buf bytes.Buffer
 	if err := s.pageSet(lang).ExecuteTemplate(&buf, "login.html.tmpl", loginData{
-		Lang: langAttr(lang), CSS: s.currentCSS(), Theme: s.themeCSS(), Error: tr(errMsg), Notice: tr(expiryNotice(r)),
+		Lang: langAttr(lang), CSS: s.currentCSS(), Theme: s.themeCSS(), Error: tr(errMsg), Notice: tr(s.expiryNotice(r)),
 		Version: Version, Firmware: loginFirmware(),
 		Hostname: hostname, Maker: hw.Maker, Model: hw.Model,
 		Status: s.readLoginStatus(tr), Username: username,

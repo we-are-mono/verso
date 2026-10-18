@@ -20,7 +20,41 @@ const (
 	// (RPC_DEFAULT_SESSION_TIMEOUT, 300 s) so a sid never lapses mid-session
 	// (ADR-007 §7); 60 s leaves a 5× margin against a missed tick.
 	sessionRenewInterval = 60 * time.Second
+	// endingsKept is how many ended sessions' reasons the store remembers, the
+	// most recent: enough for every browser a revoke or a password change signs
+	// out at once, few enough that ending sessions never grows memory.
+	endingsKept = 64
 )
+
+// endReason is why a session ended before its browser asked, as its sign-in
+// page says it. The zero value says nothing beyond the common cause, running
+// out of time, which is also what a token never issued reads.
+type endReason int
+
+const (
+	endedUnsaid endReason = iota
+	// endedRevoked: ended on Access from another browser.
+	endedRevoked
+	// endedPassword: ended by a change of its account's password.
+	endedPassword
+)
+
+func (r endReason) String() string {
+	switch r {
+	case endedRevoked:
+		return "revoked"
+	case endedPassword:
+		return "password"
+	}
+	return "unsaid"
+}
+
+// ending is a remembered end: why, and when, so it lasts no longer than a
+// sign-in could have.
+type ending struct {
+	reason endReason
+	at     time.Time
+}
 
 // sidKeeper renews and tears down the rpcd session behind a Verso session. The
 // rpcd sid runs on rpcd's own inactivity clock (300 s), far shorter than a Verso
@@ -66,6 +100,9 @@ type Sessions struct {
 	// have ended, queued under the lock and drained by the renewer outside it.
 	keeper      sidKeeper
 	pendingKill []string
+	// endings remember, by the token its browser still presents, why a session
+	// ended elsewhere (endedBecause), the endingsKept most recent.
+	endings map[string]ending
 	// renewCancel and renewDone are the renewer goroutine's handle, guarded by mu:
 	// non-nil renewCancel means a renewer is running. Both start (once, with a
 	// keeper) and stop are idempotent, and stop before start is a safe no-op.
@@ -78,6 +115,7 @@ func newSessions() *Sessions { return newSessionsClock(time.Now) }
 func newSessionsClock(now func() time.Time) *Sessions {
 	return &Sessions{
 		items:    make(map[string]session),
+		endings:  make(map[string]ending),
 		now:      now,
 		idle:     sessionIdleTimeout,
 		absolute: sessionAbsoluteTimeout,
@@ -194,12 +232,16 @@ func (s *Sessions) TakeFlash(token string) (variant, message string) {
 	return variant, message
 }
 
+// destroy ends the session its own browser presents (signing out, or in
+// again), which has nothing to be told, so any ending remembered for the
+// token goes with it.
 func (s *Sessions) destroy(token string) {
 	s.mu.Lock()
 	if sess, ok := s.items[token]; ok {
 		delete(s.items, token)
 		s.killSID(sess.sid)
 	}
+	delete(s.endings, token)
 	s.mu.Unlock()
 }
 
@@ -227,7 +269,9 @@ func (s *Sessions) byID(id string) (session, bool) {
 	return session{}, false
 }
 
-// destroyID removes the session carrying a non-secret management id.
+// destroyID removes the session carrying a non-secret management id: a
+// revoke on Access, made from another browser, which the ended one's sign-in
+// page then says.
 func (s *Sessions) destroyID(id string) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -235,6 +279,7 @@ func (s *Sessions) destroyID(id string) bool {
 		if sess.id == id {
 			delete(s.items, token)
 			s.killSID(sess.sid)
+			s.remember(token, endedRevoked)
 			return true
 		}
 	}
@@ -243,7 +288,8 @@ func (s *Sessions) destroyID(id string) bool {
 
 // destroyAccountExcept removes every session of username but the one carrying
 // keepID, queuing each one's sid for teardown: what a password change does to
-// the sessions signed in with the password it replaced.
+// the sessions signed in with the password it replaced, whose sign-in pages
+// then say so.
 func (s *Sessions) destroyAccountExcept(username, keepID string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -251,8 +297,45 @@ func (s *Sessions) destroyAccountExcept(username, keepID string) {
 		if sess.username == username && sess.id != keepID {
 			delete(s.items, token)
 			s.killSID(sess.sid)
+			s.remember(token, endedPassword)
 		}
 	}
+}
+
+// remember keeps why the session behind token ended, for as long as a sign-in
+// lasts at most, and only the endingsKept most recent: the oldest goes to
+// make room. The caller holds the lock.
+func (s *Sessions) remember(token string, reason endReason) {
+	now := s.now()
+	oldest := ""
+	for t, e := range s.endings {
+		if now.Sub(e.at) > s.absolute {
+			delete(s.endings, t)
+			continue
+		}
+		if oldest == "" || e.at.Before(s.endings[oldest].at) {
+			oldest = t
+		}
+	}
+	if len(s.endings) >= endingsKept {
+		delete(s.endings, oldest)
+	}
+	s.endings[token] = ending{reason: reason, at: now}
+}
+
+// endedBecause is why the session behind token ended, as remembered: what
+// its browser's sign-in page says. A token that ran out of time, was never
+// issued, or whose ending is forgotten reads endedUnsaid, so the answer tells
+// the cookie's holder nothing they did not have: only a browser that held the
+// session learns it was ended elsewhere.
+func (s *Sessions) endedBecause(token string) endReason {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	e, ok := s.endings[token]
+	if !ok || s.now().Sub(e.at) > s.absolute {
+		return endedUnsaid
+	}
+	return e.reason
 }
 
 func (s *Sessions) expired(sess session, now time.Time) bool {

@@ -221,6 +221,75 @@ func TestRenewerStopBeforeStart(t *testing.T) {
 	}
 }
 
+// TestASessionEndedElsewhereRemembersWhy: a session revoked on Access or
+// ended by a password change is remembered by its token, so its browser's
+// sign-in page can say why; one that ran out of time, one signed out here, and
+// a token never issued are told apart from neither, so the answer says
+// nothing about a token beyond what its holder already had (ADR-007 §7).
+func TestASessionEndedElsewhereRemembersWhy(t *testing.T) {
+	clk := &fakeClock{t: time.Unix(1_000_000, 0)}
+	s := newSessionsClock(clk.now)
+	revoked := s.CreateWithMetadata("a", "root", "", "")
+	changed := s.CreateWithMetadata("b", "root", "", "")
+	changer := s.CreateWithMetadata("c", "root", "", "")
+	other := s.CreateWithMetadata("d", "admin", "", "")
+	out := s.CreateWithMetadata("e", "root", "", "")
+	idle := s.CreateWithMetadata("f", "guest", "", "")
+
+	byToken := func(token string) session { sess, _ := s.peek(token); return sess }
+	if !s.destroyID(byToken(revoked).id) {
+		t.Fatal("the revoke ended nothing")
+	}
+	s.destroyAccountExcept("root", byToken(changer).id)
+	s.destroy(out)
+	for token, want := range map[string]endReason{
+		revoked: endedRevoked, changed: endedPassword, out: endedUnsaid,
+		"a-token-this-shell-never-issued": endedUnsaid,
+	} {
+		if got := s.endedBecause(token); got != want {
+			t.Errorf("endedBecause(%s) = %v, want %v", token, got, want)
+		}
+	}
+	for _, live := range []string{changer, other} {
+		if _, ok := s.peek(live); !ok || s.endedBecause(live) != endedUnsaid {
+			t.Errorf("a session the change kept ended, or says it did")
+		}
+	}
+	clk.advance(s.idle + time.Minute)
+	if _, ok := s.get(idle); ok || s.endedBecause(idle) != endedUnsaid {
+		t.Error("a session that ran out of time is remembered as ended elsewhere")
+	}
+	// the reason lasts as long as a sign-in could, and no longer
+	clk.advance(s.absolute)
+	if got := s.endedBecause(revoked); got != endedUnsaid {
+		t.Errorf("a reason older than a sign-in lasts is still told: %v", got)
+	}
+}
+
+// TestRememberedEndingsAreBounded: however many sessions end, the store keeps
+// only the most recent endings, so memory stays bounded.
+func TestRememberedEndingsAreBounded(t *testing.T) {
+	clk := &fakeClock{t: time.Unix(1_000_000, 0)}
+	s := newSessionsClock(clk.now)
+	var tokens []string
+	for i := 0; i < endingsKept+10; i++ {
+		token := s.CreateWithMetadata("sid", "root", "", "")
+		sess, _ := s.peek(token)
+		clk.advance(time.Second)
+		s.destroyID(sess.id)
+		tokens = append(tokens, token)
+	}
+	s.mu.Lock()
+	n := len(s.endings)
+	s.mu.Unlock()
+	if n != endingsKept {
+		t.Errorf("remembered %d endings, want %d", n, endingsKept)
+	}
+	if s.endedBecause(tokens[0]) != endedUnsaid || s.endedBecause(tokens[len(tokens)-1]) != endedRevoked {
+		t.Error("the oldest ending is kept over the newest")
+	}
+}
+
 func TestSessionSweepOnCreate(t *testing.T) {
 	clk := &fakeClock{t: time.Unix(1_000_000, 0)}
 	s := newSessionsClock(clk.now)

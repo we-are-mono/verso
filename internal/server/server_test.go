@@ -3162,6 +3162,37 @@ func TestLoginNoticeOnExpiredMarker(t *testing.T) {
 	}
 }
 
+// TestLoginNoticeSaysWhyTheSessionEnded: a browser whose session was revoked
+// on Access, or ended by a password change, is told so by its sign-in page,
+// read from the cookie it still presents; one that ran out of time, or
+// presents a token never issued, reads the inactivity line (ADR-007 §7).
+func TestLoginNoticeSaysWhyTheSessionEnded(t *testing.T) {
+	srv := newServer(t, fakeBackend{})
+	revoked := srv.sessions.CreateWithMetadata("a", "root", "", "")
+	changed := srv.sessions.CreateWithMetadata("b", "root", "", "")
+	changer := srv.sessions.CreateWithMetadata("c", "root", "", "")
+	sess, _ := srv.sessions.peek(revoked)
+	srv.sessions.destroyID(sess.id)
+	keep, _ := srv.sessions.peek(changer)
+	srv.sessions.destroyAccountExcept("root", keep.id)
+	for token, want := range map[string]string{
+		revoked:        "You were signed out from another browser.",
+		changed:        "You were signed out because the password was changed.",
+		"never-issued": "You were signed out after a period of inactivity.",
+		"":             "You were signed out after a period of inactivity.",
+	} {
+		req := httptest.NewRequest(http.MethodGet, "/login?expired=1", nil)
+		if token != "" {
+			req.AddCookie(&http.Cookie{Name: sessionCookie, Value: token})
+		}
+		rec := httptest.NewRecorder()
+		srv.Handler().ServeHTTP(rec, req)
+		if !strings.Contains(rec.Body.String(), want) {
+			t.Errorf("token %q: the sign-in page does not say %q", token, want)
+		}
+	}
+}
+
 func TestLoginPageIsPublic(t *testing.T) {
 	srv := newServer(t, fakeBackend{})
 	req := httptest.NewRequest(http.MethodGet, "/login", nil)
