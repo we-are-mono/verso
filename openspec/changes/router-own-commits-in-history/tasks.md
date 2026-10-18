@@ -37,7 +37,7 @@
   - a root half's mark that holds a `by` has it ignored.
 
   Then pass the session id from dispatch and mark with its handle (design decision 3). Verify with `cargo test`.
-- [ ] 4.2 Test first in `internal/server`:
+- [x] 4.2 Test first in `internal/server`:
   - an `own` reading whose `by` is the handle of a session signed in as root from 192.0.2.10 is a change by root from 192.0.2.10, with its cause;
   - a handle no session matches, or none at all, is the router's;
   - a reading that is not `own` is still edited directly.

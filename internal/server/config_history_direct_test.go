@@ -4,8 +4,11 @@
 package server
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -219,6 +222,56 @@ func TestTheRoutersOwnCommitIsAnEntryWithItsCause(t *testing.T) {
 	op := c.Items[0].Ops[0]
 	if c.Items[0].Page != "Demo Plugin" || op.Option != "target" || *op.Value != "DROP" || string(op.Old) != `"ACCEPT"` {
 		t.Errorf("item %+v op %+v", c.Items[0], op)
+	}
+}
+
+// TestACommitMadeForAnOperatorIsTheirs: a commit the router made as part of
+// an operator's act names that operator and where they acted from, by the
+// handle of their session; a handle no session holds, or none, is the
+// router's; a reading not the router's own is still edited directly
+// (ADR-021).
+func TestACommitMadeForAnOperatorIsTheirs(t *testing.T) {
+	s, store, dir := spoolServer(t)
+	s.sessions.CreateWithMetadata("rpcd-sid-of-root", "root", "192.0.2.10", "test")
+	digest := sha256.Sum256([]byte("rpcd-sid-of-root"))
+	handle := hex.EncodeToString(digest[:])
+
+	spool(t, dir, "1-firewall.json", firewallReading(1000, "ACCEPT"))
+	s.takeSpool(t.Context(), store, dir)
+	steps := []struct {
+		at     int64
+		target string
+		own    bool
+		by     string
+	}{
+		{1010, "DROP", true, handle},
+		{1020, "REJECT", true, strings.Repeat("0", 64)},
+		{1030, "ACCEPT", true, ""},
+		{1040, "DROP", false, handle},
+	}
+	for i, step := range steps {
+		r := firewallReading(step.at, step.target)
+		r.Own, r.Cause, r.By = step.own, "The theme was changed.", step.by
+		spool(t, dir, fmt.Sprintf("%d-firewall.json", i+2), r)
+		s.takeSpool(t.Context(), store, dir)
+	}
+
+	got := entries(t, store)
+	if len(got) != 4 {
+		t.Fatalf("entries = %+v, want four", got)
+	}
+	// Newest first.
+	byOperator, unknown, none, direct := got[3], got[2], got[1], got[0]
+	if byOperator.User != "root" || byOperator.Address != "192.0.2.10" || !byOperator.Own || byOperator.Cause != "The theme was changed." {
+		t.Errorf("the operator's commit = %+v", byOperator)
+	}
+	for name, c := range map[string]history.Change{"an unknown handle": unknown, "no handle": none} {
+		if c.User != "" || c.Address != "" || !c.Own {
+			t.Errorf("%s = %+v, want the router's", name, c)
+		}
+	}
+	if direct.User != "" || direct.Own {
+		t.Errorf("a reading not the router's own = %+v", direct)
 	}
 }
 

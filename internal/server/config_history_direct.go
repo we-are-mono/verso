@@ -5,6 +5,9 @@ package server
 
 import (
 	"context"
+	"crypto/sha256"
+	"crypto/subtle"
+	"encoding/hex"
 	"encoding/json"
 	"log"
 	"os"
@@ -37,15 +40,33 @@ const spoolEvery = 2 * time.Second
 const ownWriteSlack = 10 * time.Second
 
 // configReading is one config as verso-rpcd read it: when it was written,
-// whether the router wrote it itself, what caused that and whose words the
-// cause is, and its sections, a secret's value a {"secret": fingerprint}.
+// whether the router wrote it itself, what caused that, whose words the cause
+// is, the handle of the session whose act it was (By), and its sections, a
+// secret's value a {"secret": fingerprint}.
 type configReading struct {
 	Time     int64                     `json:"time"`
 	Config   string                    `json:"config"`
 	Own      bool                      `json:"own"`
 	Cause    string                    `json:"cause"`
 	Plugin   string                    `json:"plugin"`
+	By       string                    `json:"by"`
 	Sections map[string]map[string]any `json:"sections"`
+}
+
+// sessionByHandle is the signed-in session whose rpcd session id the handle
+// names: the hex SHA-256 of that id, as the helper spools it, so no id
+// reaches the spool.
+func (s *Server) sessionByHandle(handle string) (session, bool) {
+	if handle == "" {
+		return session{}, false
+	}
+	for _, sess := range s.sessions.list() {
+		digest := sha256.Sum256([]byte(sess.sid))
+		if subtle.ConstantTimeCompare([]byte(hex.EncodeToString(digest[:])), []byte(handle)) == 1 {
+			return sess, true
+		}
+	}
+	return session{}, false
 }
 
 // expectedWrites is when each config's writes are an apply's own: from the
@@ -210,6 +231,10 @@ func (s *Server) directChange(ctx context.Context, reading configReading, before
 	change := history.Change{Time: time.Unix(reading.Time, 0), Status: history.ChangeApplied, OldRead: true,
 		Own: reading.Own, Cause: reading.Cause, CausePlugin: reading.Plugin,
 		Items: stagedItems(stagedView{Groups: groups}, secrets)}
+	// A commit the router made for an operator's act is that operator's.
+	if sess, ok := s.sessionByHandle(reading.By); ok && reading.Own {
+		change.User, change.Address = sess.username, sess.address
+	}
 	held := map[string]any{}
 	for name, section := range before {
 		held[name] = section
