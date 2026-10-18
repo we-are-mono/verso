@@ -4,7 +4,7 @@ use crate::sshkey;
 use std::collections::BTreeMap;
 use verso_plugin::{
     ApplyAction, CollectionAdd, CollectionItem, CollectionRemove, Envelope, Field, Form,
-    HeadingAct, Property, RemoveConfirm, Request, RowDrawer, Tone, Widget,
+    HeadingAct, Property, RemoveConfirm, Request, RowDrawer, SlotKind, Tone, Widget,
 };
 fn property(label: &str, value: &str, copy: bool) -> Property {
     Property {
@@ -177,8 +177,10 @@ pub fn certificate(r: &Request) -> Widget {
     {
         if !value(cert, "fingerprint").is_empty() {
             let mut facts = Widget::properties(certificate_facts(cert));
-            if let Widget::Properties { align, .. } = &mut facts {
+            // A certificate source's Source row joins these facts (ADR-026).
+            if let Widget::Properties { align, slot, .. } = &mut facts {
                 *align = "left".into();
+                *slot = "certificate.source".into();
             }
             children.push(facts);
         } else {
@@ -186,8 +188,8 @@ pub fn certificate(r: &Request) -> Widget {
         }
     }
     // A certificate issued elsewhere is installed like any other, so there is
-    // one way in for it; one the router obtains for the operator's own domain
-    // is verso-plugin-acme's part of Access, beside this card.
+    // one way in for it; a source that obtains one for the router (its own
+    // domain's, say) adds its act after these, in the slot the card opens.
     // Its acts are acts on a part of the section, in the dress the key set's
     // add wears, each led by the glyph of what it does. The two that replace
     // the certificate open their forms in a drawer over Access; Download is a
@@ -214,6 +216,7 @@ pub fn certificate(r: &Request) -> Widget {
             true,
         ),
         act("Download", "/system/access/certificate", "download", false),
+        Widget::open_slot("certificate.acts", SlotKind::Act),
     ]);
     if let Widget::Stack { inline, .. } = &mut actions {
         *inline = true;
@@ -237,20 +240,6 @@ fn textarea(name: &str, label: &str, value: &str) -> Widget {
     field
 }
 
-/// TURNS_OFF is said in both acts that replace the certificate while a trusted
-/// certificate from the operator's domain is on: the router turns it off with
-/// the act, so a renewal never puts it back over the one chosen (ADR-017 §6).
-const TURNS_OFF: &str = "This also turns off the trusted certificate from your domain, so a renewal never replaces this one.";
-
-/// trusted_on is whether acme's `verso` cert section is on; acme-common takes
-/// an absent `enabled` as on.
-fn trusted_on(r: &Request) -> bool {
-    r.snapshot
-        .sections_of_type("acme", "cert")
-        .iter()
-        .any(|s| s.name() == "verso" && !matches!(s.scalar("enabled").as_str(), "0" | "no" | "off" | "false"))
-}
-
 // route answers a certificate's act that replaces it: its form, in the drawer
 // the act opens over Access. The act runs at once, so its button names it.
 // A valid submission carries the command with the drawer still open, so a
@@ -258,7 +247,10 @@ fn trusted_on(r: &Request) -> bool {
 // shell closes it on Access read again.
 pub fn route(r: &Request, form: Option<&Form>) -> Envelope {
     let path = r.path.trim_end_matches('/');
-    let mut fields = vec![];
+    // A certificate source says over the form what replacing the certificate
+    // costs it (ADR-026): the router turns a trusted certificate off with the
+    // act, so a renewal never puts it back over the one chosen.
+    let mut fields = vec![Widget::open_slot("certificate.notices", SlotKind::Notice)];
     let mut error = String::new();
     let mut command = None;
     let (title, submit, done);
@@ -314,9 +306,6 @@ pub fn route(r: &Request, form: Option<&Form>) -> Envelope {
             return Envelope::page("Access", Widget::text("This page does not exist."))
                 .with_back("Access", "/system/access")
         }
-    }
-    if trusted_on(r) {
-        fields.push(Widget::text(TURNS_OFF));
     }
     let drawer = RowDrawer {
         title: title.into(),

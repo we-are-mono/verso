@@ -62,9 +62,9 @@
 
 ## 8. verso-plugin-system opens the certificate slots
 
-- [ ] 8.1 Test first in `plugins/verso-plugin-system/src/tests.rs`: the HTTPS certificate card's facts carry `slot: certificate.source`. Its act row holds `{slot certificate.acts, kind act}` after Install, Make and Download. The Install and Make drawers open `{slot certificate.notices, kind notice}` at their top. Then implement it. Verify with `cargo test`.
-- [ ] 8.2 Test first: no read of `uci acme` and no `TURNS_OFF` sentence remain. Then remove `trusted_on`, the manifest's `acme` read and `acme` in the rpcd ACL file. The manifest moves `system_access` to `contributes` (`before:web`, `order: 10`). Verify with `cargo test`, and check that `grep -rn acme plugins/verso-plugin-system` finds nothing.
-- [ ] 8.3 Document the plugin's three slots in its README. Verify that the README's slot names match the test fixtures.
+- [x] 8.1 Test first in `plugins/verso-plugin-system/src/tests.rs`: the HTTPS certificate card's facts carry `slot: certificate.source`. Its act row holds `{slot certificate.acts, kind act}` after Install, Make and Download. The Install and Make drawers open `{slot certificate.notices, kind notice}` at their top. Then implement it. Verify with `cargo test`.
+- [x] 8.2 Test first: no read of `uci acme` and no `TURNS_OFF` sentence remain. Then remove `trusted_on`, the manifest's `acme` read and `acme` in the rpcd ACL file. The manifest moves `system_access` to `contributes` (`before:web`, `order: 10`). Verify with `cargo test`, and check that `grep -rn acme plugins/verso-plugin-system` finds nothing.
+- [x] 8.3 Document the plugin's three slots in its README. Verify that the README's slot names match the test fixtures.
 
 ## 9. verso-plugin-acme fills them
 

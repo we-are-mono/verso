@@ -762,36 +762,57 @@ fn a_certificate_act_runs_its_command_and_keeps_its_drawer_for_a_refusal() {
     );
 }
 
-// While a trusted certificate from the operator's domain is on, both acts that
-// replace the certificate say before the confirm that they turn it off (the
-// router does so with the act, ADR-017 §6); with it off or absent they say
-// nothing of it.
+// The certificate card opens its places to certificate sources (ADR-026): a
+// Source row joins its facts, and a source's act stands after its own, so the
+// card is the one card about the certificate whoever obtains it.
 #[test]
-fn a_certificate_act_says_it_turns_off_the_trusted_certificate_while_it_is_on() {
-    const TURNS_OFF: &str = "This also turns off the trusted certificate from your domain, so a renewal never replaces this one.";
-    let at = |path: &str, acme: serde_json::Value| {
-        let mut r = request();
-        r.path = path.into();
-        r.snapshot = Snapshot::from_value(json!({ "acme": acme }));
-        serde_json::to_value(get(&r)).unwrap()
-    };
-    let verso = |enabled: Option<&str>| {
-        let mut s = json!({".name": "verso", ".type": "cert", "domains": ["router.example.com"]});
-        if let Some(e) = enabled {
-            s["enabled"] = json!(e);
-        }
-        json!({ "verso": s })
-    };
+fn the_certificate_card_opens_its_facts_and_acts_to_certificate_sources() {
+    let cert = json!({"fingerprint": "AB:CD", "subject": "router.lan", "issuer": "router.lan", "self_signed": "1", "days_left": "700", "days_total": "730", "from": "1 Jan 2026", "until": "1 Jan 2028", "file": "/etc/verso/tls.crt"});
+    // The answer as sent, its keys in the SDK's order.
+    let text = access_with(json!([]), cert);
+    assert!(
+        text.contains(r#""slot":"certificate.source""#),
+        "the facts open no source slot: {text}"
+    );
+    let acts = text.find("\"label\":\"Download\"").expect("Download");
+    let slot = text
+        .find(r#"{"type":"slot","id":"certificate.acts","kind":"act"}"#)
+        .expect("an act slot in the card");
+    assert!(slot > acts, "a source's act stands after the card's own");
+}
+
+// Both acts that replace the certificate open a notice slot over their form,
+// where a certificate source says what the act costs it. The system plugin
+// knows no source: it reads no source's config.
+#[test]
+fn a_certificate_act_opens_a_notice_slot_for_what_replacing_costs() {
     for path in ["/access/certificate/install", "/access/certificate/new"] {
-        for on in [verso(None), verso(Some("1"))] {
-            let page = at(path, on).to_string();
-            assert!(page.contains(TURNS_OFF), "{path}: {page}");
-        }
-        for off in [verso(Some("0")), json!({}), json!({"verso": {".name": "verso", ".type": "acme"}})] {
-            let page = at(path, off).to_string();
-            assert!(!page.contains("trusted certificate from your domain"), "{path}: {page}");
-        }
+        let (_, j) = certificate_act(path, None);
+        let drawer = drawer_of(&j["act"]).unwrap_or_else(|| panic!("a drawer at {path}: {j}"));
+        let fields = &drawer["children"][0]["fields"];
+        assert_eq!(
+            fields[0],
+            json!({"type": "slot", "id": "certificate.notices", "kind": "notice"}),
+            "{path}: {fields}"
+        );
+        assert!(!j.to_string().contains("trusted certificate from your domain"), "{path}: {j}");
     }
+}
+
+#[test]
+fn the_system_plugin_reads_no_certificate_sources_config() {
+    for file in [
+        include_str!("../manifest.json"),
+        include_str!("../rootfs/usr/share/rpcd/acl.d/verso-plugin-system.json"),
+    ] {
+        assert!(!file.contains("acme"), "{file}");
+    }
+    let manifest: serde_json::Value = serde_json::from_str(include_str!("../manifest.json")).unwrap();
+    assert!(manifest.get("system_access").is_none(), "{manifest}");
+    assert_eq!(
+        manifest["contributes"],
+        json!([{"id": "access", "slot": "shell.access.blocks", "path": "/access", "position": "before:web", "order": 10}])
+    );
 }
 
 // The router's time is read in the zone /etc/TZ names, its name beside it, as

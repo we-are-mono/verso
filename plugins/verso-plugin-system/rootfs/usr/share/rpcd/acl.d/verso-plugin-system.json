@@ -5,8 +5,7 @@
       "uci": [
         "system",
         "network",
-        "dropbear",
-        "acme"
+        "dropbear"
       ],
       "ubus": {
         "verso": [

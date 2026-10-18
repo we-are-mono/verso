@@ -99,6 +99,5 @@
   "This key no longer exists. Reload the page.": "Ta ključ ne obstaja več. Znova naložite stran.",
   "The certificate or key is too large.": "Potrdilo ali ključ je prevelik.",
   "The certificate and private key do not match.": "Potrdilo in zasebni ključ se ne ujemata.",
-  "The certificate is not currently valid.": "Potrdilo trenutno ni veljavno.",
-  "This also turns off the trusted certificate from your domain, so a renewal never replaces this one.": "S tem izklopite tudi zaupanja vredno potrdilo vaše domene, tako da obnovitev nikoli ne nadomesti tega potrdila."
+  "The certificate is not currently valid.": "Potrdilo trenutno ni veljavno."
 }

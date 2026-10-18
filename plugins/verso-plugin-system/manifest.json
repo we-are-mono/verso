@@ -28,11 +28,6 @@
         "function": "read"
       },
       {
-        "scope": "uci",
-        "object": "acme",
-        "function": "read"
-      },
-      {
         "scope": "ubus",
         "object": "verso",
         "function": "accessCredentials"
@@ -76,5 +71,13 @@
       }
     ]
   },
-  "system_access": "/access"
+  "contributes": [
+    {
+      "id": "access",
+      "slot": "shell.access.blocks",
+      "path": "/access",
+      "position": "before:web",
+      "order": 10
+    }
+  ]
 }
