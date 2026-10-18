@@ -195,12 +195,12 @@ The hotplug script and the catch-up triggers ship with verso-plugin-acme
 
 ## 9. Documents (shell)
 
-- [ ] 9.1 Amend ADR-017 §6 in place: the decisions of design.md §2–§8 (delivery
+- [x] 9.1 Amend ADR-017 §6 in place: the decisions of design.md §2–§8 (delivery
   path, `verso certificate install`, the record and its catch-up, one owner in
   `verso-rpcd`, the hand-off to dnsdhcp, the provider set). Update §3–§4
   wherever they name the writers. Verify: §6 no longer names
   `ubus call verso setWebCertificate` from the hook.
-- [ ] 9.2 Update `docs/BACKLOG.md`'s step 4 entry to what landed and what
+- [x] 9.2 Update `docs/BACKLOG.md`'s step 4 entry to what landed and what
   stays open. Verify: the entry matches the merged code.
 
 ## 10. On the DUT
