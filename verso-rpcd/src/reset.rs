@@ -24,7 +24,7 @@ use std::ffi::{OsStr, OsString};
 use std::fs;
 use std::io::ErrorKind;
 use std::os::fd::AsRawFd;
-use std::os::unix::ffi::{OsStrExt, OsStringExt};
+use std::os::unix::ffi::OsStrExt;
 use std::os::unix::fs::{MetadataExt, OpenOptionsExt};
 use std::path::{Component, Path, PathBuf};
 use std::process::Command;
@@ -37,6 +37,9 @@ use crate::Failure;
 /// Names says whether a file bears a name a writer of the history gives the
 /// files it keeps.
 type Names = fn(&OsStr) -> bool;
+
+/// Mount says which mount a directory held open is on.
+type Mount = fn(&fs::File) -> std::io::Result<u64>;
 
 /// Where history is kept without a choice of the operator's, on a router
 /// with /data and on one without: the shell's, and nlbwmon's as usage-setup
@@ -102,7 +105,7 @@ pub fn start(erase: bool) -> Result<(), Failure> {
         superuser: 0,
         chosen,
         device,
-        mounts: mounted,
+        mount: mount_id,
     };
     reset(history, Device, GONE_WITHIN)
 }
@@ -417,8 +420,8 @@ struct History {
     chosen: Vec<PathBuf>,
     /// device says which device a path is on.
     device: fn(&Path) -> std::io::Result<u64>,
-    /// mounts are the places filesystems are mounted at.
-    mounts: fn() -> std::io::Result<Vec<PathBuf>>,
+    /// mount says which mount a directory held open is on, as it stands then.
+    mount: Mount,
 }
 
 /// Emptying is how a directory reached is emptied.
@@ -454,21 +457,16 @@ impl History {
     /// before any is emptied, so a place that cannot be reached leaves the
     /// history whole, and the first place that fails is the answer.
     fn erase(&self) -> Result<(), String> {
-        let mounts = (self.mounts)().map_err(unreadable_mounts)?;
-        let found: Vec<Found> = self.find(&mounts).into_iter().collect::<Result<_, _>>()?;
-        found.iter().try_for_each(|found| found.empty(&mounts))
+        let found: Vec<Found> = self.find().into_iter().collect::<Result<_, _>>()?;
+        found.iter().try_for_each(|found| found.empty(self.mount))
     }
 
     /// erase_what_it_can empties every place it can, and says why each of
     /// the others could not be.
     fn erase_what_it_can(&self) -> Vec<String> {
-        let mounts = match (self.mounts)() {
-            Ok(mounts) => mounts,
-            Err(error) => return vec![unreadable_mounts(error)],
-        };
-        self.find(&mounts)
+        self.find()
             .into_iter()
-            .filter_map(|found| found.and_then(|found| found.empty(&mounts)).err())
+            .filter_map(|found| found.and_then(|found| found.empty(self.mount)).err())
             .collect()
     }
 
@@ -483,7 +481,7 @@ impl History {
     /// root say, beside the owner's own files. A chosen directory inside a
     /// default emptied whole is gone by its turn, and one a link there led
     /// to is emptied where it leads.
-    fn find(&self, mounts: &[PathBuf]) -> Vec<Result<Found, String>> {
+    fn find(&self) -> Vec<Result<Found, String>> {
         let defaults = DEFAULTS
             .into_iter()
             .map(|(place, names)| (PathBuf::from(place), names, true));
@@ -494,7 +492,7 @@ impl History {
         defaults
             .chain(chosen)
             .filter_map(|(place, names, default)| {
-                let reached = match self.reach(&place, mounts) {
+                let reached = match self.reach(&place) {
                     Ok(reached) => reached?,
                     Err(error) => return Some(Err(refused(&place, &error))),
                 };
@@ -521,13 +519,13 @@ impl History {
     /// directory must be, or too many links.
     ///
     /// It is its own, to empty whole, only when reached through no link, no
-    /// mount's root, by its device or the mount table, which shows a bind
-    /// mount on the same filesystem too, and in a directory only the
-    /// superuser may change, where no other account can have put it. The
-    /// directory it was is emptied, held open, whatever its path names by
-    /// then, so one reached through a link or in a directory others may
-    /// rearrange loses no more than its writer's files.
-    fn reach(&self, path: &Path, mounts: &[PathBuf]) -> Result<Option<Reached>, String> {
+    /// mount's root, by its device or its mount, which tells a bind mount on
+    /// the same filesystem too, and in a directory only the superuser may
+    /// change, where no other account can have put it. The directory it was
+    /// is emptied, held open, whatever its path names by then, so one
+    /// reached through a link or in a directory others may rearrange loses
+    /// no more than its writer's files.
+    fn reach(&self, path: &Path) -> Result<Option<Reached>, String> {
         let mut at = self.root.clone();
         let mut ahead: Vec<OsString> = names(&cleaned(path)).rev().collect();
         let mut links = 0;
@@ -566,7 +564,7 @@ impl History {
             _ => &self.root,
         };
         let device = |dir: &Path| (self.device)(dir).map_err(|e| e.to_string());
-        let mount = device(&at)? != device(above)? || mounts.contains(&at);
+        let mount = device(&at)? != device(above)? || self.mount_at(&at)? != self.mount_at(above)?;
         let meta = fs::symlink_metadata(&at).map_err(|e| e.to_string())?;
         Ok(Some(Reached {
             own: links == 0 && !mount && self.root_only(above)?,
@@ -574,6 +572,17 @@ impl History {
             owner: meta.uid(),
             dir: at,
         }))
+    }
+
+    /// mount_at is the mount the directory at dir is on, held open through
+    /// no link at its last name.
+    fn mount_at(&self, dir: &Path) -> Result<u64, String> {
+        let open = fs::OpenOptions::new()
+            .read(true)
+            .custom_flags(crate::O_DIRECTORY | crate::O_NOFOLLOW)
+            .open(dir)
+            .map_err(|e| e.to_string())?;
+        (self.mount)(&open).map_err(|e| e.to_string())
     }
 
     /// root_only says whether only the superuser may change what dir holds.
@@ -587,12 +596,12 @@ impl Found {
     /// empty empties the directory reached, held open, so what is removed
     /// is removed there whatever its path names by then. One gone since was
     /// inside a default emptied whole.
-    fn empty(&self, mounts: &[PathBuf]) -> Result<(), String> {
+    fn empty(&self, mount: Mount) -> Result<(), String> {
         let dir = &self.reached.dir;
         let emptied = match Pinned::open(dir, self.reached.id) {
             Ok(None) => Ok(()),
             Ok(Some(open)) => match self.emptying {
-                Emptying::Whole => clear(&open, dir, mounts).map(drop),
+                Emptying::Whole => clear(open, dir, mount).map(drop),
                 Emptying::Named(names) => remove_files(&open, dir, names),
             },
             Err(error) => Err(error),
@@ -609,16 +618,12 @@ fn refused(place: &Path, error: &str) -> String {
     )
 }
 
-fn unreadable_mounts(error: std::io::Error) -> String {
-    format!("the history cannot be found: the mount table cannot be read: {error}")
-}
-
 /// Pinned is a directory held open. Its names are reached through the open,
 /// in /proc/self/fd, so what is removed in it is removed there, whatever its
 /// path names by then.
 struct Pinned {
     open: fs::File,
-    dev: u64,
+    id: (u64, u64),
 }
 
 impl Pinned {
@@ -639,10 +644,7 @@ impl Pinned {
         if (meta.dev(), meta.ino()) != id {
             return Err("it was replaced after it was reached".into());
         }
-        Ok(Some(Self {
-            open,
-            dev: meta.dev(),
-        }))
+        Ok(Some(Self { open, id }))
     }
 
     /// here is the directory, through its open.
@@ -721,92 +723,154 @@ fn device(path: &Path) -> std::io::Result<u64> {
     fs::metadata(path).map(|meta| meta.dev())
 }
 
-/// mounted are the places filesystems are mounted at, as the kernel's mount
-/// table lists them.
-fn mounted() -> std::io::Result<Vec<PathBuf>> {
-    fs::read("/proc/self/mountinfo").map(|table| mount_points(&table))
+/// mount_id is the mount a file held open is on, as the kernel writes it into
+/// the file's fdinfo: a bind mount of a directory on the same filesystem is a
+/// mount of its own too.
+fn mount_id(open: &fs::File) -> std::io::Result<u64> {
+    fs::read_to_string(format!("/proc/self/fdinfo/{}", open.as_raw_fd()))?
+        .lines()
+        .find_map(|line| line.strip_prefix("mnt_id:"))
+        .and_then(|id| id.trim().parse().ok())
+        .ok_or_else(|| std::io::Error::other("its fdinfo names no mount"))
 }
 
-/// mount_points reads a mountinfo table, where each line's fifth field is a
-/// place a filesystem is mounted at, a space, a tab, a newline or a
-/// backslash in it written as an octal escape.
-fn mount_points(table: &[u8]) -> Vec<PathBuf> {
-    table
-        .split(|byte| *byte == b'\n')
-        .filter_map(|line| line.split(|byte| *byte == b' ').nth(4))
-        .map(|field| PathBuf::from(OsString::from_vec(unescaped(field))))
-        .collect()
-}
-
-/// unescaped reads a mountinfo field's octal escapes back.
-fn unescaped(field: &[u8]) -> Vec<u8> {
-    let mut out = Vec::with_capacity(field.len());
-    let mut rest = field;
-    while let Some((&byte, after)) = rest.split_first() {
-        let escaped = after
-            .get(..3)
-            .filter(|digits| byte == b'\\' && digits.iter().all(|d| (b'0'..=b'7').contains(d)))
-            .and_then(|digits| {
-                let value = digits.iter().fold(0u32, |n, d| n * 8 + u32::from(d - b'0'));
-                u8::try_from(value).ok()
-            });
-        match escaped {
-            Some(value) => {
-                out.push(value);
-                rest = &after[3..];
-            }
-            None => {
-                out.push(byte);
-                rest = after;
-            }
-        }
-    }
-    out
+/// Level is a directory clear is inside: the name it has in the directory
+/// above, the directory it is, by device and inode, the names in it still
+/// to go through, and whether anything in it is kept.
+struct Level {
+    name: OsString,
+    id: (u64, u64),
+    ahead: Vec<OsString>,
+    kept: bool,
 }
 
 /// clear removes everything a directory held open holds and keeps it,
 /// saying whether it kept anything. A link in it is removed, never followed;
 /// a directory in it is held open in turn, emptied the same way and removed.
-/// A filesystem mounted in it, on a device of its own or in the mount table,
-/// is left with all it holds, and so is the directory it is in. path is
-/// where the directory was reached, to name what is in it.
-fn clear(dir: &Pinned, path: &Path, mounts: &[PathBuf]) -> Result<bool, String> {
-    let mut kept = false;
-    for name in dir
-        .names()
-        .map_err(|e| format!("{}: {e}", path.display()))?
-    {
-        let (at, path) = (dir.at(&name), path.join(&name));
-        let failed = |error: std::io::Error| format!("{}: {error}", path.display());
+/// One on a mount other than the directory's, a filesystem mounted there or
+/// a bind mount, as the mounts stand when it is held, is left with all it
+/// holds, and so is every directory it is in. Only the directory being gone
+/// through is held: the walk climbs back through "..", going on only in the
+/// directory it came down from, so a tree of any depth is emptied with two
+/// descriptors at most. path is where the directory was reached, to name
+/// what is in it.
+fn clear(dir: Pinned, path: &Path, mount: Mount) -> Result<bool, String> {
+    let failed = |error: std::io::Error| format!("{}: {error}", path.display());
+    let on = mount(&dir.open).map_err(failed)?;
+    let first = Level::of(&dir, OsStr::new("")).map_err(failed)?;
+    let mut walk = Walk {
+        path,
+        levels: vec![first],
+        held: dir,
+    };
+    loop {
+        match walk.levels.last_mut().and_then(|level| level.ahead.pop()) {
+            Some(name) => walk.step(name, on, mount)?,
+            None => {
+                if let Some(kept) = walk.climb()? {
+                    return Ok(kept);
+                }
+            }
+        }
+    }
+}
+
+impl Level {
+    /// of is the level of a directory held open, named so in the one above,
+    /// its names still all ahead.
+    fn of(held: &Pinned, name: &OsStr) -> std::io::Result<Self> {
+        let mut ahead = held.names()?;
+        ahead.reverse();
+        Ok(Self {
+            name: name.to_owned(),
+            id: held.id,
+            ahead,
+            kept: false,
+        })
+    }
+}
+
+/// Walk is clear going through a directory: where it began, the levels down
+/// to the directory it is in, and that directory, held open.
+struct Walk<'a> {
+    path: &'a Path,
+    levels: Vec<Level>,
+    held: Pinned,
+}
+
+impl Walk<'_> {
+    /// named is where a name in the directory the walk is in was reached,
+    /// to say what it is; made only when it is said.
+    fn named(&self, name: &OsStr) -> PathBuf {
+        let mut path = self.path.to_path_buf();
+        path.extend(self.levels.iter().skip(1).map(|level| &level.name));
+        path.join(name)
+    }
+
+    /// step removes what is at name, or goes down into the directory there,
+    /// unless it is on a mount other than the walk's, which is kept.
+    fn step(&mut self, name: OsString, on: u64, mount: Mount) -> Result<(), String> {
+        let at = self.held.at(&name);
+        let failed = |walk: &Self, error: &dyn std::fmt::Display| {
+            format!("{}: {error}", walk.named(&name).display())
+        };
         let meta = match fs::symlink_metadata(&at) {
             Ok(meta) => meta,
-            Err(error) if error.kind() == ErrorKind::NotFound => continue,
-            Err(error) => return Err(failed(error)),
+            Err(error) if error.kind() == ErrorKind::NotFound => return Ok(()),
+            Err(error) => return Err(failed(self, &error)),
         };
         if !meta.is_dir() {
-            fs::remove_file(&at).or_else(already_gone).map_err(failed)?;
-            continue;
+            return fs::remove_file(&at)
+                .or_else(already_gone)
+                .map_err(|error| failed(self, &error));
         }
-        if meta.dev() != dir.dev || mounts.contains(&path) {
+        let Some(inner) =
+            Pinned::open(&at, (meta.dev(), meta.ino())).map_err(|error| failed(self, &error))?
+        else {
+            return Ok(());
+        };
+        if mount(&inner.open).map_err(|error| failed(self, &error))? != on {
             eprintln!(
                 "verso-rpcd: reset: {} left as it is: a filesystem is mounted there",
-                path.display()
+                self.named(&name).display()
             );
-            kept = true;
-            continue;
+            if let Some(level) = self.levels.last_mut() {
+                level.kept = true;
+            }
+            return Ok(());
         }
-        let Some(inner) = Pinned::open(&at, (meta.dev(), meta.ino()))
-            .map_err(|error| format!("{}: {error}", path.display()))?
-        else {
-            continue;
-        };
-        if clear(&inner, &path, mounts)? {
-            kept = true;
-            continue;
-        }
-        fs::remove_dir(&at).or_else(already_gone).map_err(failed)?;
+        let level = Level::of(&inner, &name).map_err(|error| failed(self, &error))?;
+        self.levels.push(level);
+        self.held = inner;
+        Ok(())
     }
-    Ok(kept)
+
+    /// climb leaves the directory the walk is in, gone through, for the one
+    /// it came down from, held again through ".." only if it is that one,
+    /// and removes it there unless it kept anything. Leaving the directory
+    /// the walk began in, it answers whether anything was kept.
+    fn climb(&mut self) -> Result<Option<bool>, String> {
+        let done = self.levels.pop().expect("the walk is in a directory");
+        let Some(above) = self.levels.last() else {
+            return Ok(Some(done.kept));
+        };
+        let failed = |walk: &Self, error: &dyn std::fmt::Display| {
+            format!("{}: {error}", walk.named(&done.name).display())
+        };
+        self.held = Pinned::open(&self.held.at(OsStr::new("..")), above.id)
+            .map_err(|error| failed(self, &error))?
+            .ok_or_else(|| failed(self, &"it was moved after it was reached"))?;
+        if done.kept {
+            if let Some(above) = self.levels.last_mut() {
+                above.kept = true;
+            }
+            return Ok(None);
+        }
+        fs::remove_dir(self.held.at(&done.name))
+            .or_else(already_gone)
+            .map_err(|error| failed(self, &error))?;
+        Ok(None)
+    }
 }
 
 /// remove_files removes from a directory held open, which the history
@@ -926,7 +990,7 @@ mod tests {
                 superuser: self.me,
                 chosen: chosen.into_iter().map(PathBuf::from).collect(),
                 device,
-                mounts: || Ok(Vec::new()),
+                mount: mount_id,
             }
         }
     }
@@ -1540,7 +1604,7 @@ mod tests {
             stand.file("/mnt/sda1/photos/history.db", "the operator's own");
             stand.file("/mnt/sda1/photos/a.jpg", "the operator's");
             let history = stand.history(Some("/tmp/verso"));
-            let found = history.find(&[]);
+            let found = history.find();
             fs::rename(stand.at("/tmp/verso"), stand.at("/tmp/verso.old")).unwrap();
             let (photos, verso) = (stand.at("/mnt/sda1/photos"), stand.at("/tmp/verso"));
             match name {
@@ -1549,7 +1613,7 @@ mod tests {
             }
             .unwrap();
             let chosen = found.last().unwrap().as_ref().unwrap();
-            let error = chosen.empty(&[]).unwrap_err();
+            let error = chosen.empty(history.mount).unwrap_err();
             assert!(
                 error.starts_with("the history in /tmp/verso cannot be emptied: "),
                 "{name}: {error}"
@@ -1573,13 +1637,7 @@ mod tests {
         stand.file("/data/nlbwmon/old/20261001.db", "usage");
         stand.file("/data/nlbwmon/gone/c", "usage");
         let history = History {
-            mounts: || {
-                let base = fs::canonicalize(Stand::base("mounted-inside"))?;
-                Ok(vec![
-                    base.join("data/nlbwmon/usb"),
-                    base.join("data/nlbwmon/old/usb"),
-                ])
-            },
+            mount: |dir| bound(dir, &["data/nlbwmon/usb", "data/nlbwmon/old/usb"]),
             ..stand.history(None)
         };
         history.erase().unwrap();
@@ -1590,17 +1648,14 @@ mod tests {
     }
 
     #[test]
-    fn a_default_the_mount_table_lists_loses_only_the_history_files() {
+    fn a_default_on_a_bind_mount_loses_only_the_history_files() {
         // A bind mount of a directory on /data at /data/verso is on /data's
-        // device; the mount table shows it is the owner's.
+        // device; its mount shows it is the owner's.
         let stand = Stand::new("bound-default");
         stand.file("/data/verso/history.db", "the shell's");
         stand.file("/data/verso/photos.jpg", "the owner's");
         let history = History {
-            mounts: || {
-                let base = fs::canonicalize(Stand::base("bound-default"))?;
-                Ok(vec![base.join("data/verso")])
-            },
+            mount: |dir| bound(dir, &["data/verso"]),
             ..stand.history(None)
         };
         history.erase().unwrap();
@@ -1608,30 +1663,140 @@ mod tests {
     }
 
     #[test]
-    fn a_mount_table_that_cannot_be_read_is_answered() {
-        let stand = Stand::new("no-mount-table");
+    fn a_mount_that_cannot_be_read_is_answered() {
+        let stand = Stand::new("no-mount");
         stand.file("/data/verso/history.db", "x");
         let history = History {
-            mounts: || Err(std::io::Error::other("no /proc")),
+            mount: |_| Err(std::io::Error::other("no fdinfo")),
             ..stand.history(None)
         };
         assert_eq!(
             history.erase().unwrap_err(),
-            "the history cannot be found: the mount table cannot be read: no /proc"
+            "the history in /data/verso cannot be emptied: no fdinfo"
         );
         assert_eq!(stand.entries("/data/verso"), 1);
     }
 
     #[test]
-    fn the_mount_table_is_read_with_its_escapes() {
-        let table = b"22 1 0:20 / /proc rw,nosuid shared:12 - proc proc rw\n\
-            36 25 8:1 / /mnt/my\\040stick rw,noatime shared:1 - vfat /dev/sda1 rw\n\
-            37 25 8:2 /verso /data/verso rw - ext4 /dev/sda2 rw\n\
-            38 25 8:3 / /mnt/a\\134b\\0119 rw - ext4 /dev/sda3 rw\n";
-        assert_eq!(
-            mount_points(table),
-            ["/proc", "/mnt/my stick", "/data/verso", "/mnt/a\\b\t9"].map(PathBuf::from)
-        );
+    fn a_directorys_mount_is_read_from_its_open() {
+        let stand = Stand::new("mount-id");
+        stand.dir("/data/verso");
+        let open = |path: &str| fs::File::open(stand.at(path)).unwrap();
+        let mount = mount_id(&open("/data/verso")).unwrap();
+        assert_eq!(mount_id(&open("/data")).unwrap(), mount, "one filesystem, one mount");
+        assert_ne!(mount_id(&fs::File::open("/proc").unwrap()).unwrap(), mount, "/proc is a mount of its own");
+    }
+
+    /// bound stands in for a bind mount at each of places, on the same
+    /// device: a directory held open there is on a mount of its own.
+    fn bound(dir: &fs::File, places: &[&str]) -> std::io::Result<u64> {
+        let path = fs::read_link(format!("/proc/self/fd/{}", dir.as_raw_fd()))?;
+        let mount = mount_id(dir)?;
+        Ok(mount + u64::from(places.iter().any(|place| path.ends_with(place))))
+    }
+
+    /// CHILD names the test a child of the test binary runs, in a namespace
+    /// or under a limit the parent cannot put itself in.
+    const CHILD: &str = "VERSO_RESET_TEST_CHILD";
+
+    /// in_child says whether this is the child running test, which runs its
+    /// body. Otherwise it runs this binary's test again behind wrapper and
+    /// asserts it passed, or says why it could not where wrapper cannot run
+    /// here, answering false either way.
+    fn in_child(test: &str, wrapper: &[&str]) -> bool {
+        if std::env::var(CHILD).as_deref() == Ok(test) {
+            return true;
+        }
+        let probe = Command::new(wrapper[0]).args(&wrapper[1..]).arg("true").output();
+        if !probe.as_ref().is_ok_and(|out| out.status.success()) {
+            eprintln!("{test}: not run, {} cannot run here: {probe:?}", wrapper[0]);
+            return false;
+        }
+        let out = Command::new(wrapper[0])
+            .args(&wrapper[1..])
+            .arg(std::env::current_exe().unwrap())
+            .args(["--exact", &format!("reset::tests::{test}"), "--nocapture", "--test-threads=1"])
+            .env(CHILD, test)
+            .output()
+            .unwrap();
+        let said = String::from_utf8_lossy(&out.stdout);
+        assert!(out.status.success(), "{said}{}", String::from_utf8_lossy(&out.stderr));
+        assert!(said.contains("1 passed"), "the child ran no test: {said}");
+        false
+    }
+
+    /// A bind mount of a directory on the same filesystem, made inside a
+    /// default after the places were reached, is told by its mount as the
+    /// walk holds it, and left with all it holds. Run as root of a user and
+    /// mount namespace of its own, with a real bind mount.
+    #[test]
+    fn a_bind_mount_made_after_the_places_were_reached_is_left_whole() {
+        let unshare = ["unshare", "--map-root-user", "--mount", "--propagation", "private"];
+        if !in_child("a_bind_mount_made_after_the_places_were_reached_is_left_whole", &unshare) {
+            return;
+        }
+        let stand = Stand::new("bound-later");
+        stand.file("/data/nlbwmon/20261015.db.gz", "usage");
+        stand.file("/data/nlbwmon/old/20261001.db", "usage");
+        stand.dir("/data/nlbwmon/old/usb");
+        stand.file("/photos/a.jpg", "the owner's");
+        let history = stand.history(None);
+        let found: Vec<Found> = history.find().into_iter().map(Result::unwrap).collect();
+        let mount = |args: &[&Path]| assert!(Command::new("mount").args(args).status().unwrap().success());
+        let usb = stand.at("/data/nlbwmon/old/usb");
+        mount(&[Path::new("--bind"), &stand.at("/photos"), &usb]);
+        let emptied = found.iter().try_for_each(|found| found.empty(history.mount));
+        let kept = (names(&stand.at("/data/nlbwmon")), names(&stand.at("/data/nlbwmon/old")));
+        assert!(Command::new("umount").arg(&usb).status().unwrap().success());
+        emptied.unwrap();
+        assert_eq!(kept, (vec!["old".to_owned()], vec!["usb".to_owned()]));
+        assert!(stand.at("/photos/a.jpg").exists(), "never walked into");
+    }
+
+    /// The walk climbs back through "..", which names wherever the directory
+    /// it is in stands by then: one moved out of the default while the walk
+    /// is in it leads to no directory but the one the walk came down from,
+    /// and nothing in the one it now stands in is removed by the names the
+    /// default held.
+    #[test]
+    fn a_directory_moved_away_while_the_walk_is_in_it_leads_nowhere_else() {
+        let stand = Stand::new("moved-away");
+        stand.file("/data/verso/a/history.db", "the shell's");
+        stand.file("/data/verso/b", "the shell's");
+        stand.file("/outside/b", "the owner's");
+        let history = History {
+            // the walk holds a, and a is moved to /outside then
+            mount: |dir| {
+                let path = fs::read_link(format!("/proc/self/fd/{}", dir.as_raw_fd()))?;
+                if path.ends_with("data/verso/a") {
+                    let base = fs::canonicalize(Stand::base("moved-away"))?;
+                    fs::rename(base.join("data/verso/a"), base.join("outside/a"))?;
+                }
+                mount_id(dir)
+            },
+            ..stand.history(None)
+        };
+        let error = history.erase().unwrap_err();
+        assert!(error.ends_with("/data/verso/a: it was replaced after it was reached"), "{error}");
+        assert_eq!(fs::read_to_string(stand.at("/outside/b")).unwrap(), "the owner's");
+        assert!(stand.at("/outside/a").is_dir());
+    }
+
+    /// The walk holds only the directory it is in, so a tree deeper than the
+    /// descriptors a process may hold is emptied all the same. Run under a
+    /// limit of 64.
+    #[test]
+    fn a_tree_deeper_than_the_descriptor_limit_is_emptied() {
+        let prlimit = ["prlimit", "--nofile=64:64"];
+        if !in_child("a_tree_deeper_than_the_descriptor_limit_is_emptied", &prlimit) {
+            return;
+        }
+        let stand = Stand::new("deep");
+        let deep = format!("/data/verso{}", "/d".repeat(300));
+        stand.file(&format!("{deep}/history.db"), "the shell's");
+        stand.history(None).erase().unwrap();
+        assert!(stand.at("/data/verso").is_dir());
+        assert_eq!(stand.entries("/data/verso"), 0);
     }
 
     #[test]
@@ -1724,7 +1889,7 @@ mod tests {
         let stand = Stand::new("failing");
         stand.file("/data/verso/history.db", "x");
         let history = History {
-            mounts: || Err(std::io::Error::other("no /proc")),
+            mount: |_| Err(std::io::Error::other("no fdinfo")),
             ..stand.history(None)
         };
         let steps = Steps::default();

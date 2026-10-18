@@ -318,9 +318,10 @@ is reached as the shell reaches it: made clean as Go's `filepath.Clean` makes
 it, from `/` where it is relative (procd starts the shell there), then
 followed through its links. A default that is a directory of its own, the
 `verso` user's or root's in a directory only root may change, reached through
-no link and no mount's root (by its device, or the mount table, which shows a
-bind mount too), holds the history alone and is emptied whole; a filesystem
-mounted inside it is left with all it holds. Everywhere else the history
+no link and no mount's root (by its device, or its mount, which tells a bind
+mount too), holds the history alone and is emptied whole; a filesystem or a
+bind mount inside it, told by its mount as the walk holds it, is left with all
+it holds. Everywhere else the history
 shares its directory with whatever its owner keeps there, so only its
 writer's files go, each a file by its name, never following a link or going
 into a directory, whoever owns the directory: the shell's `history.db`, the
@@ -345,7 +346,8 @@ directory reached, so a directory replaced since, through a link or in a
 directory others may change, is left as it is and its place answered as a
 failure; one gone from its place since leaves nothing there to empty. Each
 directory inside a default emptied whole is held open the same way as it is
-emptied. A chosen directory inside a default emptied whole is gone with it;
+emptied, one at a time, so a tree of any depth is emptied; the walk climbs
+back through `..` only into the directory it came down from. A chosen directory inside a default emptied whole is gone with it;
 one a link there leads to is emptied where it leads.
 
 The helper empties the history before it answers, reaching every place
