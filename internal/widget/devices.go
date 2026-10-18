@@ -93,16 +93,6 @@ func UsageNowCell(u DeviceUsage) TableCell {
 	return cell
 }
 
-// usageLegend says what each load's ink stands for, in the ink itself, with
-// the rates that bound it: the reader learns the scale where the colours are.
-func usageLegend() []TableLegend {
-	return []TableLegend{
-		{Variant: "success", Ink: true, Label: "light", Detail: "under 10\U0000202fMb/s"},
-		{Variant: "warning", Ink: true, Label: "medium", Detail: "10 to 100\U0000202fMb/s"},
-		{Variant: "danger", Ink: true, Label: "heavy", Detail: "100\U0000202fMb/s and over"},
-	}
-}
-
 // UsageMonthCell is a device's calendar month so far.
 func UsageMonthCell(u DeviceUsage) TableCell {
 	return TableCell{Key: "usage-month", Figures: []TableFigure{{Text: u.Month}}}
@@ -205,15 +195,6 @@ func DevicesTable(devices []Device, acts func(d Device) []TableRowAct, usage boo
 		}
 		rows = append(rows, row)
 	}
-	// The filled mark is the kernel's word, as presenceCell reads it: a lease
-	// outlives a device that left, so it never stands for being here.
-	legend := []TableLegend{
-		{Variant: "success", Label: "seen on the network now"},
-		{Label: "known, not present"},
-	}
-	if usage {
-		legend = append(legend, usageLegend()...)
-	}
 	return &Table{
 		Style: "flat",
 		// Every column but the device's own is fixed, so the grid holds its shape
@@ -221,7 +202,6 @@ func DevicesTable(devices []Device, acts func(d Device) []TableRowAct, usage boo
 		// one device's address is.
 		Columns:   devicesColumns(usage),
 		Rows:      rows,
-		Legend:    legend,
 		Note:      "Devices with saved limits stay listed when offline. Open a device to edit its limits.",
 		EmptyText: "Nothing has joined this network yet.",
 	}

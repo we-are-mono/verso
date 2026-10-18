@@ -68,9 +68,8 @@ func TestRenderDevicesTable(t *testing.T) {
 		"Intel",                    // the maker, beside the name it qualifies
 		"reserved", "this browser", // the chips that qualify a name
 		"Online", "Offline",
-		"Reserve address",                               // the act that leads somewhere
-		"Edit limits",                                   // one that is drawn and inert
-		"seen on the network now", "known, not present", // the legend for the marks
+		"Reserve address", // the act that leads somewhere
+		"Edit limits",     // one that is drawn and inert
 		"Devices with saved limits stay listed when offline. Open a device to edit its limits.",
 		`data-verso-entity-url="/entity/device/a4:83:e7:2b:19:0c"`, // the row points at the shell's panel
 	} {
@@ -93,6 +92,11 @@ func TestRenderDevicesTable(t *testing.T) {
 	// now, or it does not.
 	if strings.Contains(got, ">Idle<") {
 		t.Error("the roster states two presences, not three")
+	}
+	// The marks read by themselves, the dot beside its word in the Status
+	// column, so the listing carries no legend restating them.
+	if strings.Contains(got, "verso-listing__key") {
+		t.Error("the roster carries no legend")
 	}
 }
 
@@ -123,7 +127,7 @@ func TestRenderDevicesRowsCarryNoPanel(t *testing.T) {
 // green, medium marigold, heavy crimson, each in its Deep step), drawn only on
 // a busy row; an idle row is the empty dash, its figures kept in place for the
 // stream to fill. Nothing draws a meter: the router knows no ceiling for a
-// rate, and the legend says what each ink stands for. This month is the
+// rate, and the figures carry the size the ink repeats. This month is the
 // calendar month's total alone. The MAC gives up its column to them; the
 // panel carries it.
 func TestRenderDevicesUsage(t *testing.T) {
@@ -137,20 +141,16 @@ func TestRenderDevicesUsage(t *testing.T) {
 		`data-verso-cell="usage-now"`, `data-verso-cell="usage-month"`,
 		">38 Mb/s<", ">1.1 Mb/s<", ">212 GiB<", ">41 GiB<",
 		`data-verso-ink="danger"`,
-		// The legend says what each ink stands for, in the ink itself.
-		">light<", ">under 10\U0000202fMb/s<", ">medium<", ">10 to 100\U0000202fMb/s<", ">heavy<", ">100\U0000202fMb/s and over<",
-		`<span class="verso-listing__ink" data-verso-tone="success">light</span>`,
-		`<span class="verso-listing__ink" data-verso-tone="warning">medium</span>`,
-		`<span class="verso-listing__ink" data-verso-tone="danger">heavy</span>`,
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("usage roster missing %q", want)
 		}
 	}
-	// Each ink is written in its tone's Deep step, as the figures are.
-	declares(t, "listing", `.verso-listing__ink[data-verso-tone="success"]`, "color: var(--color-green-deep);")
-	declares(t, "listing", `.verso-listing__ink[data-verso-tone="warning"]`, "color: var(--color-marigold-deep);")
-	declares(t, "listing", `.verso-listing__ink[data-verso-tone="danger"]`, "color: var(--color-crimson-deep);")
+	// The figures carry the load the ink repeats, so no legend spells out
+	// the bands.
+	if strings.Contains(got, "verso-listing__key") || strings.Contains(got, ">light<") {
+		t.Error("the usage roster carries no legend")
+	}
 	for _, unwanted := range []string{"data-verso-figure-meter", "clip-path", "verso-meter__bar"} {
 		if strings.Contains(got, unwanted) {
 			t.Errorf("Now draws no meter, found %q", unwanted)
@@ -199,9 +199,6 @@ func TestRenderDevicesUsage(t *testing.T) {
 	off := render(t, newRenderer(t), DevicesTable(roster(), testActs, false))
 	if strings.Contains(off, "usage-now") || !strings.Contains(off, ">MAC address<") {
 		t.Error("with usage off the roster keeps its MAC column and draws no usage")
-	}
-	if strings.Contains(off, "Mbit/s and over") {
-		t.Error("with usage off the legend says nothing about load")
 	}
 }
 

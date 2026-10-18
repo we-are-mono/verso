@@ -106,7 +106,6 @@ func TestDevicesPageRendersTheRoster(t *testing.T) {
 	for _, want := range []string{
 		">Devices<",                        // the page heading
 		"toms-iphone", "42:e6:ad:ff:b7:af", // a leaseholder, by name and MAC
-		"seen on the network now",             // the legend under the listing
 		"192.168.77.102", "Online", "Offline", // its address and the presence words
 		`data-verso-entity-url="/entity/device/42:e6:ad:ff:b7:af"`, // the row points at its panel
 	} {

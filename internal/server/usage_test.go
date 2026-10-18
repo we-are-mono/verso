@@ -257,8 +257,7 @@ func TestUsageSpeaksSlovenian(t *testing.T) {
 	}
 	s.SetBundle(bundle)
 	roster := getLang(t, s, "/devices", "sl")
-	for _, want := range []string{">Zdaj<", ">Ta mesec<", ">prenos<", ">nalaganje<", ">3,5\U0000202fGiB<",
-		">majhna<", ">pod 10\U0000202fMb/s<", ">srednja<", ">10 do 100\U0000202fMb/s<", ">velika<", ">100\U0000202fMb/s in več<"} {
+	for _, want := range []string{">Zdaj<", ">Ta mesec<", ">prenos<", ">nalaganje<", ">3,5\U0000202fGiB<"} {
 		if !strings.Contains(roster, want) {
 			t.Errorf("Slovenian roster missing %q", want)
 		}

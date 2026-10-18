@@ -121,7 +121,7 @@ inked by the device's load, both ways together, read from what the rate is
 enough for: light under 10 Mb/s (browsing, a video call, an HD film) in
 green, medium to 100 Mb/s (a 4K film or a few HD ones, a cloud sync) in
 marigold, heavy past it (a download, an update, a backup) in crimson, each in
-its Deep step; the roster's legend states the three bands.
+its Deep step; the figures carry the size, so no legend restates the bands.
 Nothing is drawn as a share: the router knows no line speed, and a share of the
 WAN's current total says only who else is busy, so a device alone on the line
 would read as full at any rate. Idle rows show the empty dash. The device panel
