@@ -9,7 +9,7 @@
 use crate::netlink::{self, Link};
 use crate::Failure;
 use serde_json::{json, Map, Value};
-use std::collections::{BTreeMap, HashMap, VecDeque};
+use std::collections::{BTreeMap, BTreeSet, HashMap, VecDeque};
 use std::fs;
 use std::io::Read;
 use std::os::unix::fs::MetadataExt;
@@ -65,6 +65,12 @@ pub fn state() -> Result<Value, Failure> {
         instances.insert(name.clone(), Value::Object(instance));
     }
     Ok(json!({"instances": instances, "tunnels": tunnels(&devices, &links)}))
+}
+
+/// profiles is every profile file an `openvpn` section names as its `config`:
+/// the files OpenVPN reads as profiles, and so the only ones shown folded.
+pub fn profiles() -> BTreeSet<String> {
+    uci_sections(&run("/sbin/uci", &["-q", "show", "openvpn"])).into_values().collect()
 }
 
 fn run(program: &str, args: &[&str]) -> String {

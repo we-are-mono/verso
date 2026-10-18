@@ -5,6 +5,8 @@
 use crate::Failure;
 use serde_json::{json, Value};
 use std::{
+    cell::OnceCell,
+    collections::BTreeSet,
     fs,
     io::{Read, Write},
     os::unix::fs::{OpenOptionsExt, PermissionsExt},
@@ -441,11 +443,17 @@ pub fn state() -> Result<Value, Failure> {
     }
     let mut files = vec![];
     let mut total = 0;
+    let profiles = OnceCell::new();
     for path in paths {
         let key = path.to_string_lossy();
         let Some(family) = Family::of(&key) else {
             continue;
         };
+        let pending = j["files"].get(key.as_ref()).is_some();
+        if withheld(family, &key, pending, || profiles.get_or_init(crate::openvpn::profiles)) {
+            files.push(unnamed(&key));
+            continue;
+        }
         let active = match read(&path) {
             Ok(body) => body,
             Err(e) if j["files"].get(key.as_ref()).is_none() => {
@@ -463,12 +471,31 @@ pub fn state() -> Result<Value, Failure> {
             files.push(json!({"path":key,"family":family.name(),"error":family.over_limit()}));
             continue;
         }
-        let pending = j["files"].get(key.as_ref()).is_some();
         files.push(listed(&key, family, body.as_deref(), pending, version));
     }
     Ok(
         json!({"files":files,"active":j["active"],"uci":j["uci"],"uci_confirmed":j["uci_confirmed"]}),
     )
+}
+/// withheld is whether a file is listed by its path alone, never opened: an
+/// OpenVPN file no instance reads as its profile (`config`) and none staged.
+/// Any other file in /etc/openvpn may hold a secret fold does not hide, a
+/// sign-in file (a username and a password) above all, whatever it is named
+/// and whichever option or profile line names it. profiles is the paths the
+/// instances read, asked for only when an OpenVPN file is listed.
+fn withheld<'a>(
+    family: Family,
+    path: &str,
+    pending: bool,
+    profiles: impl FnOnce() -> &'a BTreeSet<String>,
+) -> bool {
+    family == Family::Openvpn && !pending && !profiles().contains(path)
+}
+/// unnamed is how state reports a withheld file: by its path, which a new
+/// profile's name must not take, with no content and no version, so no save
+/// can be checked against it.
+fn unnamed(path: &str) -> Value {
+    json!({"path":path,"family":Family::Openvpn.name(),"error":"No OpenVPN instance reads this file as its profile."})
 }
 /// listed is how state reports one file. A profile is reported folded, keys
 /// left in the helper; its version is the whole file's, keyed, which is what
@@ -875,6 +902,25 @@ mod tests {
         ] {
             assert_eq!(Family::of(p), None, "{p}");
         }
+    }
+    /// A file in /etc/openvpn is a profile only when an instance reads it as
+    /// one: a sign-in file saved as `.conf` there (a username and password,
+    /// nothing folded) is listed by its path, never opened, so its name is
+    /// still taken and nothing in it leaves the helper. A file staged is the
+    /// page's own, listed as staged.
+    #[test]
+    fn an_openvpn_file_no_instance_names_is_listed_by_its_path_alone() {
+        let named: BTreeSet<String> = ["/etc/openvpn/proton.ovpn".to_string()].into();
+        let profiles = || &named;
+        assert!(!withheld(Family::Openvpn, "/etc/openvpn/proton.ovpn", false, profiles));
+        assert!(withheld(Family::Openvpn, "/etc/openvpn/proton.conf", false, profiles));
+        assert!(!withheld(Family::Openvpn, "/etc/openvpn/new.ovpn", true, profiles));
+        assert!(!withheld(Family::Dnsmasq, "/etc/dnsmasq.d/x.conf", false, || panic!("uci read for dnsmasq")));
+        let listed = unnamed("/etc/openvpn/proton.conf");
+        assert_eq!(
+            listed,
+            json!({"path":"/etc/openvpn/proton.conf","family":"openvpn","error":"No OpenVPN instance reads this file as its profile."})
+        );
     }
     #[test]
     fn a_change_names_every_family_it_touches_once() {
