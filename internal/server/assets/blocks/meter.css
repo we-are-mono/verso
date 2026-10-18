@@ -2,50 +2,87 @@
 /* SPDX-FileCopyrightText: 2026 Mono Technologies Inc. */
 
 /*
- * meter — a reading against its range: a thin track filled to the reading,
- * coloured by its band (ADR-005), never restating the fill in words. The
- * bar spans the whole track and a clip shows the reading (widget.MeterClip);
- * a live reading lands as a change of that clip, which the bar eases to, so
- * the glide repaints the bar alone and never lays the page out again.
+ * meter — a reading against its range: a track of blocks lit to the reading,
+ * coloured by its band (ADR-005), never restating the fill in words.
  *
- * A gauge (the default, and the Overview's) stands on the notebook's grid:
- * the label's 24px line, the figure's 32px line, the 4px track
- * centred on a line of its own, the detail's line. A row (data-verso-place
- * "row", a headroom listing) is one dense row: the name, a track that fills
- * to the reading's own ceiling with its limits ticked across it, the value
- * with its state's packet; a row of the grid, 7px after the hairline over it
- * and 8px over its own. A cell (data-verso-place "cell") is the row's track
- * and figure inside a listing's cell, the figure in a slot of one width so a
- * column of bars ends together.
+ * Every meter's block is one block: 10px by 16px, 3px apart, square-cornered,
+ * so a gauge on the Overview and a cell in a listing read as the same thing.
+ * A place says only how many blocks its track holds, and the track is as
+ * long as its blocks, never stretched, so a column of bars ends together by
+ * construction. The block is the one measure off the 8px grid: a 4px gap
+ * would leave no room for 25 blocks on an Overview card.
+ *
+ * The track carries the reading's share (--verso-meter-fill) and, where it
+ * has one, its warn limit (--verso-meter-warn), each a percent of the track.
+ * A lit block is a whole block: the share rounds to the nearest and a reading
+ * above nothing lights one. The blocks from the first that reaches past the
+ * warn limit are shaded Strong Hairline, the rest Rule, so the track says
+ * where trouble starts before the reading gets there; the track's end is the
+ * protect limit. The bar spans the track and a clip at a block's edge shows
+ * the reading; a mask cuts range and bar into blocks. A live reading changes
+ * the share alone, so the bar eases a block at a time, repainting itself and
+ * never laying the page out again.
+ *
+ * A gauge (the default, and the Overview's) is one line: the label in a
+ * fact's label role in an 80px column, the lane 24px after it, the figure at
+ * the line's end on the control's 32px line, the detail under the lane. Its
+ * track holds as many blocks as its lane has room for, 10 to 25, so the lane
+ * is filled to within a block at every width and the share rounds to
+ * whichever it holds; on a phone's card the gauge stacks, the label and
+ * figure on a line and the lane under them. A row
+ * (data-verso-place "row", a headroom listing) is one dense row: the name,
+ * ten blocks, the value with its state's packet; a row of the grid, 7px after
+ * the hairline over it and 8px over its own. A cell (data-verso-place "cell")
+ * is the row's ten blocks and the figure inside a listing's cell, 12px after
+ * them in a slot of one width; a cell with no track keeps the track's room.
  *
  * Variants: data-verso-place  overview · row · cell; none is the gauge
  * Elements: __head     the label's line, and the glyph naming the metric
- *           __label    what is measured, the kicker
+ *           __label    what is measured
  *           __glyph    the metric's glyph; data-verso-role tints it
  *           __reading  the figure and its unit, one line
- *           __figure   the reading, in the headline's role
+ *           __figure   the reading, in the title's role
  *           __unit     its unit
- *           __track    the range
- *           __bar      the reading's fill; data-verso-tone (success,
+ *           __lane     a gauge's room for its track, which counts its blocks
+ *           __track    the range, in blocks
+ *           __bar      the reading's lit blocks; data-verso-tone (success,
  *                      warning, danger, info) is its band, data-verso-role
  *                      (sky, violet, emerald, amber) a fixed accent a
  *                      dashboard assigns instead
- *           __tick     a limit on a row's track (data-verso-tone warning or
- *                      danger), reaching past the track above and below
+ *           __room     a cell's track's room, where it has no track
  *           __detail   the one fact worth acting on
  *           __name     a row's name
  *           __note     a row's words where it has no track: no limits
  *           __value    a row's value and its packet
  *           __amount   a cell's figure
+ * Sets: --verso-meter-block, --verso-meter-gap, --verso-meter-step  the block
+ *       --verso-meter-blocks  how many a track holds: ten, or as many as a
+ *                      gauge's lane has room for
+ *       --verso-meter-lit, --verso-meter-zone  the lit blocks and the first
+ *                      shaded one, from the track's --verso-meter-fill and
+ *                      --verso-meter-warn
  */
 
-.verso-meter:where(:not([data-verso-place])) {
+.verso-meter {
+  --verso-meter-block: calc(var(--spacing) * 2.5);
+  --verso-meter-gap: calc(var(--spacing) * 0.75);
+  --verso-meter-step: calc(var(--verso-meter-block) + var(--verso-meter-gap));
+  --verso-meter-blocks: 10;
+  min-width: 0;
+}
+.verso-meter:not([data-verso-place="row"], [data-verso-place="cell"]) {
+  display: grid;
+  grid-template-columns: calc(var(--spacing) * 20) minmax(0, 1fr) calc(var(--spacing) * 16);
+  grid-template-areas: "head lane reading" ". detail detail";
+  column-gap: calc(var(--spacing) * 6);
+  align-items: center;
   text-align: left;
 }
-.verso-meter[data-verso-place="overview"] {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
+@container card (width < 25rem) {
+  .verso-meter:not([data-verso-place="row"], [data-verso-place="cell"]) {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: "head reading" "lane lane" "detail detail";
+  }
 }
 .verso-meter[data-verso-place="row"] {
   display: grid;
@@ -76,17 +113,19 @@
 }
 
 .verso-meter__head {
+  grid-area: head;
   display: flex;
   align-items: center;
   gap: calc(var(--spacing) * 2);
+  min-width: 0;
   min-height: calc(var(--spacing) * 6);
 }
-.verso-meter__head:where(.verso-meter[data-verso-place="overview"] *) {
-  justify-content: space-between;
-}
 .verso-meter__label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   color: var(--color-meta);
-  @apply type-label;
+  @apply type-row-label;
 }
 .verso-meter__glyph {
   color: var(--color-faint);
@@ -105,16 +144,20 @@
 }
 
 .verso-meter__reading {
+  grid-area: reading;
+  justify-self: end;
   display: flex;
-  flex-wrap: wrap;
-  align-content: center;
   align-items: baseline;
+  align-content: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   gap: calc(var(--spacing) * 1);
   height: calc(var(--spacing) * 8);
+  white-space: nowrap;
 }
 .verso-meter__figure {
   color: var(--color-ink);
-  @apply type-headline;
+  @apply type-title;
 }
 .verso-meter__unit {
   color: var(--color-meta);
@@ -122,33 +165,109 @@
 }
 
 .verso-meter__track {
-  height: calc(var(--spacing) * 1.5);
-  border-radius: calc(infinity * 1px);
-  background-color: var(--color-rule);
-}
-.verso-meter__track:where(.verso-meter:not([data-verso-place="row"], [data-verso-place="cell"]) *) {
-  height: calc(var(--spacing) * 1);
-  margin-block: calc(var(--spacing) * 2.5);
-  overflow: hidden;
-}
-.verso-meter__track:where(.verso-meter:is([data-verso-place="row"], [data-verso-place="cell"]) *) {
+  --verso-meter-lit: max(round(nearest, var(--verso-meter-fill, 0) * var(--verso-meter-blocks) / 100, 1), min(1, var(--verso-meter-fill, 0)));
+  --verso-meter-zone: round(down, var(--verso-meter-warn, 100) * var(--verso-meter-blocks) / 100, 1);
   position: relative;
+  flex: none;
+  width: calc(var(--verso-meter-blocks) * var(--verso-meter-step) - var(--verso-meter-gap));
+  height: calc(var(--spacing) * 4);
+  background-image: linear-gradient(to right, var(--color-rule) calc(var(--verso-meter-zone) * var(--verso-meter-step)), var(--color-rule-strong) 0);
+  mask-image: repeating-linear-gradient(to right, var(--color-ink) 0 var(--verso-meter-block), transparent 0 var(--verso-meter-step));
 }
-.verso-meter__track:where(.verso-meter[data-verso-place="cell"] *) {
-  flex: 1 1 0%;
-  min-width: calc(var(--spacing) * 16);
+.verso-meter__lane {
+  grid-area: lane;
+  container: verso-meter-lane / inline-size;
+  min-width: 0;
+  padding-block: calc(var(--spacing) * 1);
+}
+/* A lane holds n blocks from n steps less one gap wide (13n − 3px); under
+   eleven's room it holds the ten every track starts from. */
+@container verso-meter-lane (width >= 8.75rem) {
+  .verso-meter__track {
+    --verso-meter-blocks: 11;
+  }
+}
+@container verso-meter-lane (width >= 9.5625rem) {
+  .verso-meter__track {
+    --verso-meter-blocks: 12;
+  }
+}
+@container verso-meter-lane (width >= 10.375rem) {
+  .verso-meter__track {
+    --verso-meter-blocks: 13;
+  }
+}
+@container verso-meter-lane (width >= 11.1875rem) {
+  .verso-meter__track {
+    --verso-meter-blocks: 14;
+  }
+}
+@container verso-meter-lane (width >= 12rem) {
+  .verso-meter__track {
+    --verso-meter-blocks: 15;
+  }
+}
+@container verso-meter-lane (width >= 12.8125rem) {
+  .verso-meter__track {
+    --verso-meter-blocks: 16;
+  }
+}
+@container verso-meter-lane (width >= 13.625rem) {
+  .verso-meter__track {
+    --verso-meter-blocks: 17;
+  }
+}
+@container verso-meter-lane (width >= 14.4375rem) {
+  .verso-meter__track {
+    --verso-meter-blocks: 18;
+  }
+}
+@container verso-meter-lane (width >= 15.25rem) {
+  .verso-meter__track {
+    --verso-meter-blocks: 19;
+  }
+}
+@container verso-meter-lane (width >= 16.0625rem) {
+  .verso-meter__track {
+    --verso-meter-blocks: 20;
+  }
+}
+@container verso-meter-lane (width >= 16.875rem) {
+  .verso-meter__track {
+    --verso-meter-blocks: 21;
+  }
+}
+@container verso-meter-lane (width >= 17.6875rem) {
+  .verso-meter__track {
+    --verso-meter-blocks: 22;
+  }
+}
+@container verso-meter-lane (width >= 18.5rem) {
+  .verso-meter__track {
+    --verso-meter-blocks: 23;
+  }
+}
+@container verso-meter-lane (width >= 19.3125rem) {
+  .verso-meter__track {
+    --verso-meter-blocks: 24;
+  }
+}
+@container verso-meter-lane (width >= 20.125rem) {
+  .verso-meter__track {
+    --verso-meter-blocks: 25;
+  }
+}
+.verso-meter__room {
+  flex: none;
+  width: calc(var(--verso-meter-blocks) * var(--verso-meter-step) - var(--verso-meter-gap));
 }
 
 .verso-meter__bar {
-  width: 100%;
-  height: 100%;
-  border-radius: calc(infinity * 1px);
-  background-color: var(--color-green);
-  transition: clip-path 600ms ease;
-}
-.verso-meter__bar:where(.verso-meter:is([data-verso-place="row"], [data-verso-place="cell"]) *) {
   position: absolute;
   inset: 0;
+  background-color: var(--color-green);
+  clip-path: inset(0 max(0px, calc(100% - var(--verso-meter-lit) * var(--verso-meter-step))) 0 0);
+  transition: clip-path 600ms ease;
 }
 .verso-meter__bar[data-verso-tone="warning"] {
   background-color: var(--color-marigold);
@@ -180,19 +299,8 @@
   }
 }
 
-.verso-meter__tick {
-  position: absolute;
-  top: calc(var(--spacing) * -1);
-  bottom: calc(var(--spacing) * -1);
-  width: calc(var(--spacing) * 0.5);
-  border-radius: 1px;
-  background-color: var(--color-marigold);
-}
-.verso-meter__tick[data-verso-tone="danger"] {
-  background-color: var(--color-crimson);
-}
-
 .verso-meter__detail {
+  grid-area: detail;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;

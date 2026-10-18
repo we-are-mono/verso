@@ -9,21 +9,21 @@ import (
 	"io"
 )
 
-// Meter is a horizontal gauge for a single metric — memory, disk, CPU, a link
-// speed, a data cap: the label (with an optional icon), the big value in its
-// native unit, a thin track filled to Fill, and the caption below. It is a
-// generic primitive that names no metric.
+// Meter is a gauge for a single metric — memory, disk, CPU, a link speed, a
+// data cap: the label (with an optional icon), a track of blocks lit to Fill,
+// the value in its native unit, and the caption below. It is a generic
+// primitive that names no metric.
 //
 // The track and the number carry different information, on purpose: the track
-// fills by Fill (a 0–100% proportion), and the value shows the reading in its
+// lights by Fill (a 0–100% proportion), and the value shows the reading in its
 // native Unit. So the track is the "how full" and the number never restates it —
 // a storage meter reads "23 GB" over a ~72%-full track, not "72%" over
 // "23 GB of 32 GB". Fill can differ from Value (Value "23" GB with Fill 72), or
-// match it (a CPU reading of "18" %, Fill 18). The shell colours the track by
-// how full it is (emerald/amber/red); Variant "info" overrides that with the
-// accent, for a rate like speed that has no "getting full".
+// match it (a CPU reading of "18" %, Fill 18). The shell colours the lit blocks
+// by how full the track is (emerald/amber/red); Variant "info" overrides that
+// with the accent, for a rate like speed that has no "getting full".
 type Meter struct {
-	Overview bool   `json:"-"` // shell landing-page typography; the live hooks are shared
+	Overview bool   `json:"-"` // the Overview's gauge: its live hooks are the landing page's
 	Label    string `json:"label"`
 	// Verbatim declares the label an identity (a sensor's kernel channel name)
 	// rather than prose — the localization walk leaves it exactly as authored.
@@ -43,15 +43,15 @@ type Meter struct {
 	// (plus per-part hooks) so the shell's client script can stream fresh
 	// readings into the track and text in place. A nameless meter is static.
 	Name string `json:"name,omitempty"`
-	// Compact renders the meter as one dense row — the label, a thin track, and
-	// the value with a status dot — for a headroom listing where many readings
-	// stack. The track fills 0→the reading's own ceiling, so each row measures
-	// against its own limit rather than a shared scale.
+	// Compact renders the meter as one dense row — the label, a track of ten
+	// blocks, and the value with a status dot — for a headroom listing where
+	// many readings stack. The track fills 0→the reading's own ceiling, so each
+	// row measures against its own limit rather than a shared scale.
 	Compact bool `json:"compact,omitempty"`
-	// WarnMark and CritMark place tick marks on the compact track as a percent of
-	// its length (0 = no mark); the critical mark sits at the track's end.
+	// WarnMark is the reading's warn limit as a percent of its track (0 = none):
+	// the blocks past it are shaded, so the track says where trouble starts
+	// before the reading gets there. The track's end is its ceiling.
 	WarnMark int `json:"warn_mark,omitempty"`
-	CritMark int `json:"crit_mark,omitempty"`
 	// Tone colours the compact fill and its status dot by state — "success" |
 	// "warning" | "danger" — since a temperature grades against its own limits,
 	// not the fill band. "" leaves the fill on the calm accent.
@@ -75,16 +75,13 @@ type meterView struct {
 	Icon     string
 	Role     string // decorative accent for the track + icon; "" colours by band
 	Band     string // the tone vocabulary: "success" | "warning" | "danger" | "info"
-	// Clip shows the fill: the bar spans the whole track and this clips it to
-	// the reading, rounded at its end, e.g. "inset(0 28% 0 0 round 9999px)".
-	// A live reading changes the clip rather than the bar's width, so the
-	// glide repaints the bar and never lays the page out again.
-	Clip     template.CSS
-	Compact  bool
-	WarnMark string // tick position on the compact track, e.g. "89%"; "" hides it
-	CritMark string
-	Tone     string // compact fill + dot colour: "success" | "warning" | "danger" | ""
-	NoTrack  bool
+	// Track is the track's share and warn limit (meterTrack): the meter block
+	// turns them into whole blocks, so a live reading changes one property
+	// and never lays the page out again.
+	Track   template.CSS
+	Compact bool
+	Tone    string // compact fill + dot colour: "success" | "warning" | "danger" | ""
+	NoTrack bool
 }
 
 // MeterBand is the track's colour band for a fill, in the tone vocabulary:
@@ -103,34 +100,25 @@ func MeterBand(fill int, variant string) string {
 	return "success"
 }
 
-// MeterClip is the clip that shows a fill of pct percent on a full-width bar.
-// verso-stream.js writes the same shape when a live reading lands.
-func MeterClip(pct int) string {
-	return fmt.Sprintf("inset(0 %d%% 0 0 round 9999px)", 100-pct)
-}
-
-// meterMark places a tick at pct percent of a track, as a CSS position; no
-// tick at all for zero or less, and none past the track's end.
-func meterMark(pct int) string {
-	if pct <= 0 {
-		return ""
+// meterTrack is the style a meter's track carries: the share it lights and,
+// where the reading has one, its warn limit, each a percent of the track
+// clamped to it. verso-stream.js writes the same share when a live reading
+// lands.
+func meterTrack(fill, warn int) template.CSS {
+	style := fmt.Sprintf("--verso-meter-fill: %d", min(max(fill, 0), 100))
+	if warn > 0 {
+		style += fmt.Sprintf("; --verso-meter-warn: %d", min(warn, 100))
 	}
-	return fmt.Sprintf("%d%%", min(pct, 100))
+	return template.CSS(style) //nolint:gosec // built here from clamped integers, never from input
 }
 
 func (m *Meter) renderInto(r *Renderer, out io.Writer, _ string) error {
-	fill := m.Fill
-	if fill < 0 {
-		fill = 0
-	} else if fill > 100 {
-		fill = 100
-	}
+	fill := min(max(m.Fill, 0), 100)
 	return r.execute(out, "meter.html.tmpl", meterView{
 		Overview: m.Overview,
 		Label:    m.Label, Value: m.Value, Unit: m.Unit, Detail: m.Detail,
 		Name: m.Name, Icon: m.Icon, Role: m.Role, Band: MeterBand(fill, m.Variant),
-		Clip:    template.CSS(MeterClip(fill)), //nolint:gosec // built here from a clamped integer, never from input
-		Compact: m.Compact, WarnMark: meterMark(m.WarnMark), CritMark: meterMark(m.CritMark),
-		Tone: m.Tone, NoTrack: m.NoTrack,
+		Track:   meterTrack(fill, m.WarnMark),
+		Compact: m.Compact, Tone: m.Tone, NoTrack: m.NoTrack,
 	})
 }

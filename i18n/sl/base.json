@@ -669,7 +669,7 @@
   "online": "povezano",
   "1-minute average · %d threads": "1-minutno povprečje · %d niti",
   "%d threads": "%d niti",
-  "%s of %s GiB": "%s od %s GiB",
+  "%s of %s GiB · %s GiB free": "%s od %s GiB · %s GiB prosto",
   "%s available": "Na voljo je %s",
   "Firmware update available": "Na voljo je posodobitev vdelane programske opreme",
   "1 package update available": "Na voljo je posodobitev 1 paketa",

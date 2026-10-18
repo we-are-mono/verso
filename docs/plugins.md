@@ -942,14 +942,14 @@ Column kinds, one treatment each (never mix them per row):
 - `"keyword"` — closed-vocabulary words (`tcp`, `udp`, `icmpv6`): sans, muted.
 - `"comment"` — optional free text such as a UCI `name`; muted, blank when absent.
 - `"num"` — right-aligned tabular figures (counters); muted.
-- `"meter"` — a share of something: a 6px bar filled to the cell's `fill`
+- `"meter"` — a share of something: ten blocks lit to the cell's `fill`
   (0–100) with `text` as the figure beside it (`"61 %"`). `variant` bands the
-  fill — `warning` marigold, `danger` crimson, anything else green — so the
-  listing sets its own thresholds. A headroom (a temperature against the
-  point the hardware protects itself) ticks its limits on the bar:
-  `warn_mark` and `crit_mark` place a tick at that percent of the bar, the
-  critical tick's right edge on its point; 0 draws none. A cell that sends
-  neither draws no tick, so a share keeps the bar it has always had. A reading with no
+  lit blocks — `warning` marigold, `danger` crimson, anything else green — so
+  the listing sets its own thresholds. A headroom (a temperature against the
+  point the hardware protects itself) runs its bar to its protect limit and
+  sends `warn_mark`, its warn limit as a percent of the bar: the blocks past
+  it are shaded; 0 shades none. A cell that sends none draws a plain bar, so a
+  share keeps the bar it has always had. A reading with no
   ceiling sets `no_track`: its `text` stands in the figure's place and no bar
   is drawn, never a bar against a guessed ceiling. A cell with no `text` is
   the faint dash.

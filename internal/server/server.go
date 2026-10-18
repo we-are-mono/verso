@@ -1175,7 +1175,7 @@ func sysMetricsToWidget(rs []meterReading) []widget.OverviewMeter {
 	for _, r := range rs {
 		out = append(out, widget.OverviewMeter{
 			Name: r.Name, Label: r.Label, Band: r.Band,
-			Value: r.Value, Unit: r.Unit, Fill: r.Fill, Detail: r.Detail,
+			Value: r.Value, Unit: r.Unit, Fill: r.Fill, Warn: r.Warn, Detail: r.Detail,
 		})
 	}
 	return out

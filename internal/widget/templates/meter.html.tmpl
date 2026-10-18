@@ -1,41 +1,36 @@
 <!-- SPDX-License-Identifier: GPL-2.0-only -->
 <!-- SPDX-FileCopyrightText: 2026 Mono Technologies Inc. -->
 {{/* meter: a reading against its range, the meter block (blocks/meter.css).
-     The label sits over the value in its own unit, a thin track carries the
-     fill (coloured by band, ADR-005), and the caption holds the one fact
-     worth acting on. The number never restates the fill — a storage meter
-     reads "23 GB" over a ~72%-full track. A named meter is live
-     (data-verso-meter*): the shell's client script streams fresh
-     value/unit/detail, a new clip and its band into place (verso-stream.js);
-     "info" forces the accent for a rate. */}}
+     A gauge is one line: the label, a lane holding as many blocks as fit,
+     lit to the share (coloured by band, ADR-005), and the value in its own
+     unit, the caption under the lane holding the one fact worth acting on. The number never
+     restates the fill — a storage meter reads "23 GB" over a ~72%-full
+     track. The track carries its share and warn limit as properties the
+     block turns into whole blocks. A named meter is live (data-verso-meter*):
+     the shell's client script streams fresh value/unit/detail, a new share
+     and its band into place (verso-stream.js); "info" forces the accent for a
+     rate. */}}
 {{if .Overview}}
 <div data-verso-meter="{{.Name}}" data-overview-meter aria-label="{{.Label}} {{.Value}} {{.Unit}}" class="verso-meter" data-verso-place="overview">
   <div class="verso-meter__head"><span class="verso-meter__label">{{.Label}}</span></div>
   <div class="verso-meter__reading"><span class="verso-meter__figure" data-verso-figures data-verso-meter-value>{{.Value}}</span><span class="verso-meter__unit" data-verso-meter-unit>{{.Unit}}</span></div>
-  <div class="verso-meter__track"><div class="verso-meter__bar"{{with .Tone}} data-verso-tone="{{.}}"{{end}} style="clip-path: {{.Clip}}" data-verso-meter-bar></div></div>
+  <div class="verso-meter__lane"><div class="verso-meter__track" style="{{.Track}}"><div class="verso-meter__bar"{{with .Tone}} data-verso-tone="{{.}}"{{end}} data-verso-meter-bar></div></div></div>
   <div class="verso-meter__detail" data-verso-meter-detail>{{.Detail}}</div>
 </div>
 {{else if .Compact}}
-{{/* compact: one dense row — name · a thin track that fills 0→this reading's own
-     critical, with warn/critical tick marks · the value with a status dot. A
-     reading with no limits drops the track (never a guessed threshold) and keeps
-     a neutral dot. Colour is reserved for state (the fill + dot tone): green in
-     the ordinary range, marigold past the warn trip, crimson past critical. On
-     a phone the name's column narrows and the track's gives way, so the row
-     keeps to its card. */}}
+{{/* compact: one dense row — name · ten blocks lit 0→this reading's own
+     ceiling, shaded past its warn limit · the value with a status dot. A
+     reading with no limits drops the track (never a guessed threshold) and
+     keeps a neutral dot. Colour is reserved for state (the fill + dot tone):
+     green in the ordinary range, marigold past the warn trip, crimson past
+     critical. On a phone the name's column narrows, so the row keeps to its
+     card. */}}
 <div class="verso-meter" data-verso-place="row"{{if .Name}} data-verso-meter="{{.Name}}"{{end}} role="img" aria-label="{{.Label}} {{.Value}} {{.Unit}}">
   <span class="verso-meter__name">{{.Label}}</span>
   {{if .NoTrack}}
   <span class="verso-meter__note"><span class="verso-mark" aria-hidden="true"></span><span class="truncate">{{if .Detail}}{{.Detail}}{{else}}{{ t "no limits reported" }}{{end}}</span></span>
   {{else}}
-  <span class="verso-meter__track">
-    <span class="verso-meter__bar"{{with .Tone}} data-verso-tone="{{.}}"{{end}} style="clip-path: {{.Clip}}" data-verso-meter-bar></span>
-    {{/* The warn tick never stands at or past the critical one: at the same
-         limit it stands 2px before it, so a column of rows reads marigold,
-         then crimson; with no critical tick it ends on the track's end. */}}
-    {{if .WarnMark}}<span class="verso-meter__tick" data-verso-tone="warning" style="left: min({{.WarnMark}}, calc(100% - {{if .CritMark}}0.375rem{{else}}0.125rem{{end}}))"></span>{{end}}
-    {{if .CritMark}}<span class="verso-meter__tick" data-verso-tone="danger" style="left: calc({{.CritMark}} - 0.125rem)"></span>{{end}}
-  </span>
+  <span class="verso-meter__track" style="{{.Track}}"><span class="verso-meter__bar"{{with .Tone}} data-verso-tone="{{.}}"{{end}} data-verso-meter-bar></span></span>
   {{end}}
   <span class="verso-meter__value">
     <span class="verso-mark" data-verso-tone="{{if .NoTrack}}muted{{else if eq .Tone "danger"}}danger{{else if eq .Tone "warning"}}warning{{else}}success{{end}}"></span>
@@ -56,8 +51,10 @@
     <span class="verso-meter__figure" data-verso-figures data-verso-meter-value>{{.Value}}</span>
     {{if or .Unit .Name}}<span class="verso-meter__unit" data-verso-meter-unit>{{.Unit}}</span>{{end}}
   </div>
-  <div class="verso-meter__track">
-    <div class="verso-meter__bar"{{if .Role}} data-verso-role="{{.Role}}"{{else}} data-verso-tone="{{.Band}}"{{end}} style="clip-path: {{.Clip}}" data-verso-meter-bar></div>
+  <div class="verso-meter__lane">
+    <div class="verso-meter__track" style="{{.Track}}">
+      <div class="verso-meter__bar"{{if .Role}} data-verso-role="{{.Role}}"{{else}} data-verso-tone="{{.Band}}"{{end}} data-verso-meter-bar></div>
+    </div>
   </div>
   {{if or .Detail .Name}}<div class="verso-meter__detail" data-verso-meter-detail>{{.Detail}}</div>{{end}}
 </div>

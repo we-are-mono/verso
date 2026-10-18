@@ -33,9 +33,9 @@
     var fill = Math.min(100, Math.max(0, reading.fill));
     var bar = root.querySelector("[data-verso-meter-bar]");
     if (bar) {
-      // The same clip the server draws (widget.MeterClip): the bar spans the
-      // track and the clip shows the reading.
-      bar.style.clipPath = "inset(0 " + (100 - fill) + "% 0 0 round 9999px)";
+      // The same share the server draws (widget.meterTrack): the meter block
+      // (blocks/meter.css) lights whole blocks from it.
+      bar.parentElement.style.setProperty("--verso-meter-fill", fill);
       // A role-accented bar keeps its fixed colour (a dashboard hue, not a health
       // band); only a band-coloured bar recolours with its reading, by the
       // band the meter block (blocks/meter.css) draws, as the first paint does.

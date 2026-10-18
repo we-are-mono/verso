@@ -327,21 +327,20 @@
         {{/* a rate's longest is "999 Mb/s" or "1.2 Gb/s" (internal/units) */}}
         <td data-verso-figures class="verso-table__cell w-24 min-w-24 max-w-24 whitespace-nowrap text-meta"{{if .Key}} data-verso-cell="{{.Key}}"{{end}}>{{.Text}}</td>
         {{else if eq .Kind "meter"}}
-        {{/* the meter widget at a row's scale: the 6px track filled to the
-             share, the figure hard beside it in a slot of one width, so the
-             bars of a column end together. A headroom's limits tick the track
-             as the compact meter ticks them, reaching past it above and below,
-             so the track does not clip (the fill clips itself). The track keeps
-             a floor, so a narrow window scrolls the listing rather than
-             shrinking it to a stub. A reading with no ceiling keeps its figure
-             and draws no track; a thing with no reading is the faint dash — an
-             empty track would say "idle", which is a fact. */}}
+        {{/* the meter widget at a row's scale: ten blocks lit to the share,
+             the figure 12px after them in a slot of one width, so the bars of
+             a column end together. A headroom shades its blocks past its warn
+             limit, the track's end its protect limit. A reading with no
+             ceiling keeps its figure and draws no track, the track's room
+             kept so its figure stands with the others; a thing with no
+             reading is the faint dash — an empty track would say "idle",
+             which is a fact. */}}
         <td class="verso-table__cell">
-          {{if .Clip}}<span class="verso-meter" data-verso-place="cell">
-            <span class="verso-meter__track"><span class="verso-meter__bar"{{if or (eq .Variant "danger") (eq .Variant "warning")}} data-verso-tone="{{.Variant}}"{{end}} style="clip-path: {{.Clip}}"></span>{{if .WarnAt}}<span class="verso-meter__tick" data-verso-tone="warning" style="left: min({{.WarnAt}}, calc(100% - {{if .CritAt}}0.375rem{{else}}0.125rem{{end}}))"></span>{{end}}{{if .CritAt}}<span class="verso-meter__tick" data-verso-tone="danger" style="left: calc({{.CritAt}} - 0.125rem)"></span>{{end}}</span>
+          {{if .Track}}<span class="verso-meter" data-verso-place="cell">
+            <span class="verso-meter__track" style="{{.Track}}"><span class="verso-meter__bar"{{if or (eq .Variant "danger") (eq .Variant "warning")}} data-verso-tone="{{.Variant}}"{{end}}></span></span>
             <span data-verso-figures class="verso-meter__amount {{if .Muted}}text-meta{{else}}text-ink{{end}}">{{.Text}}</span>
           </span>{{else if and .NoTrack .Text (ne .Text "—")}}<span class="verso-meter" data-verso-place="cell">
-            <span class="min-w-16 flex-1"></span>
+            <span class="verso-meter__room"></span>
             <span data-verso-figures class="verso-meter__amount {{if .Muted}}text-meta{{else}}text-ink{{end}}">{{.Text}}</span>
           </span>{{else}}<span class="text-inert">{{template "verso-none"}}</span>{{end}}
         </td>

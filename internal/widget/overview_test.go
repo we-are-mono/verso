@@ -21,7 +21,7 @@ func fullOverview() *Overview {
 		FirewallState: "active",
 		V4Proto:       "DHCP", V4: []OverviewFact{{Label: "Address", Value: "172.30.1.171/24", Copy: true}},
 		V6Proto: "DHCPv6 client", V6: []OverviewFact{{Label: "Prefix", Value: "fd42:7ea:aa00::/56", Copy: true}, {Label: "Expires", Duration: secs(480)}},
-		SysMetrics: []OverviewMeter{{Name: "sys-cpu", Label: "CPU", Value: "27", Unit: "%", Fill: 27, Band: "success"}},
+		SysMetrics: []OverviewMeter{{Name: "sys-cpu", Label: "CPU", Value: "27", Unit: "%", Fill: 27, Warn: 70, Band: "success"}},
 		Interfaces: []OverviewInterface{
 			{Name: "eth0", Kind: "port", State: "up", Physical: true, Networks: []string{"wan"}, RxBPS: 18_400_000, TxBPS: 2_100_000},
 			{Name: "eth4", Kind: "port", State: "down", Physical: true},
@@ -68,6 +68,22 @@ func TestAResourcesGaugeNamesItselfOnce(t *testing.T) {
 	}
 	if strings.Contains(gauge, "verso-meter__glyph") {
 		t.Errorf("the gauge draws a glyph beside its label:\n%s", gauge)
+	}
+}
+
+// TestResourcesGaugesStandOnePerLine: each Resources gauge is one line of
+// the card, its track shaded past the reading's own warn limit, a Hairline
+// between the gauges with 16px of air either side.
+func TestResourcesGaugesStandOnePerLine(t *testing.T) {
+	got := render(t, newRenderer(t), fullOverview())
+	if !strings.Contains(got, `<div class="verso-meter__track" style="--verso-meter-fill: 27; --verso-meter-warn: 70">`) {
+		t.Errorf("the CPU gauge does not shade past its own warn limit:\n%s", got)
+	}
+	css := blockCSS(t, "overview")
+	declares(t, "overview", ".verso-overview__meters", "display: grid;", "grid-template-columns: minmax(0, 1fr);", "gap: calc(var(--spacing) * 4);")
+	declares(t, "overview", ".verso-overview__meters > * + *", "padding-top: calc(var(--spacing) * 4 - 1px);", "border-top: 1px solid var(--color-rule);")
+	if strings.Contains(css, ".verso-overview__meters > :nth-child") {
+		t.Error("the Resources gauges still stand two to a row")
 	}
 }
 

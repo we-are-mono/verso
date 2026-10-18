@@ -745,9 +745,8 @@ fn write_subject_kinds_fixture() {
     fs::write(format!("{dir}/subject-kinds.json"), json).unwrap();
 }
 
-// A meter cell's limits: one headroom with its warn and protect ticks, one
-// reading with no ceiling, and one share that sends neither and serializes as
-// it always has.
+// A meter cell's limits: one headroom with its warn limit, one reading with no
+// ceiling, and one share that sends neither and serializes as it always has.
 #[test]
 fn write_meter_marks_fixture() {
     let cells = vec![
@@ -755,7 +754,6 @@ fn write_meter_marks_fixture() {
             text: "48.0 °C".into(),
             fill: 50,
             warn_mark: 89,
-            crit_mark: 100,
             ..Default::default()
         },
         TableCell {

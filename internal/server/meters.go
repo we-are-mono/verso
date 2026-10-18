@@ -31,16 +31,26 @@ type statSource interface {
 
 // meterReading is one meter's worth of truth, shaped for both the widget and
 // the live-update JSON (the band rides along so the client never re-derives
-// the colour rule).
+// the colour rule). Warn is the share past which the reading warns, where
+// its gauge's track is shaded from.
 type meterReading struct {
 	Name   string `json:"name"`
 	Label  string `json:"label"`
 	Value  string `json:"value"`
 	Unit   string `json:"unit"`
 	Fill   int    `json:"fill"`
+	Warn   int    `json:"warn"`
 	Band   string `json:"band"`
 	Detail string `json:"detail"`
 }
+
+// The shares each resource warns and turns critical at.
+const (
+	loadWarn, loadCritical       = 60, 85
+	cpuWarn, cpuCritical         = 70, 90
+	memoryWarn, memoryCritical   = 75, 90
+	storageWarn, storageCritical = 80, 90
+)
 
 // systemMeters assembles the System panel's four bar gauges — load, CPU,
 // memory, storage — as live readings with resource-specific health bands.
@@ -61,7 +71,7 @@ func (s *Server) systemMeters(ctx context.Context, sid string, tr func(string) s
 		}
 		out = append(out, meterReading{
 			Name: "sys-load", Label: tr("Load"), Value: formatLoad(si.Load[0]),
-			Fill: clampPct(fill), Detail: fmt.Sprintf(tr("1-minute average · %d threads"), cores), Band: systemMeterBand(fill, 60, 85),
+			Fill: clampPct(fill), Warn: loadWarn, Detail: fmt.Sprintf(tr("1-minute average · %d threads"), cores), Band: systemMeterBand(fill, loadWarn, loadCritical),
 		})
 	}
 
@@ -70,7 +80,7 @@ func (s *Server) systemMeters(ctx context.Context, sid string, tr func(string) s
 	} else {
 		out = append(out, meterReading{
 			Name: "sys-cpu", Label: tr("CPU"), Value: strings.TrimSuffix(strconv.FormatFloat(pct, 'f', 1, 64), ".0"), Unit: "%",
-			Fill: clampPct(int(math.Round(pct))), Detail: fmt.Sprintf(tr("%d threads"), cores), Band: systemMeterBand(int(pct), 70, 90),
+			Fill: clampPct(int(math.Round(pct))), Warn: cpuWarn, Detail: fmt.Sprintf(tr("%d threads"), cores), Band: systemMeterBand(int(pct), cpuWarn, cpuCritical),
 		})
 	}
 
@@ -79,7 +89,8 @@ func (s *Server) systemMeters(ctx context.Context, sid string, tr func(string) s
 		pct := int(used * 100 / si.Memory.Total)
 		out = append(out, meterReading{
 			Name: "sys-memory", Label: tr("Memory"), Value: strconv.Itoa(pct), Unit: "%",
-			Fill: clampPct(pct), Detail: fmt.Sprintf(tr("%s of %s\U0000202fGiB"), gb(used), gb(si.Memory.Total)), Band: systemMeterBand(pct, 75, 90),
+			Fill: clampPct(pct), Warn: memoryWarn, Band: systemMeterBand(pct, memoryWarn, memoryCritical),
+			Detail: fmt.Sprintf(tr("%s of %s\U0000202fGiB · %s\U0000202fGiB free"), gb(used), gb(si.Memory.Total), gb(si.Memory.Available)),
 		})
 	}
 
@@ -89,7 +100,8 @@ func (s *Server) systemMeters(ctx context.Context, sid string, tr func(string) s
 		pct := int(st.Used * 100 / total)
 		out = append(out, meterReading{
 			Name: "sys-storage", Label: tr("Storage"), Value: strconv.Itoa(pct), Unit: "%",
-			Fill: clampPct(pct), Detail: fmt.Sprintf(tr("%s of %s\U0000202fGiB"), gb(st.Used), gb(total)), Band: systemMeterBand(pct, 80, 90),
+			Fill: clampPct(pct), Warn: storageWarn, Band: systemMeterBand(pct, storageWarn, storageCritical),
+			Detail: fmt.Sprintf(tr("%s of %s\U0000202fGiB · %s\U0000202fGiB free"), gb(st.Used), gb(total), gb(st.Free)),
 		})
 	}
 	return out

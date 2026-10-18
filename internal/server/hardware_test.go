@@ -350,16 +350,13 @@ func TestTemperaturesChartOneReadingAtATime(t *testing.T) {
 	}
 }
 
-// Each row's bar runs to its protect limit with ticks at both limits, and its
-// Limits say them.
+// Each row's bar runs to its protect limit, the blocks past its warn limit
+// shaded, and its Limits say them.
 func TestATemperatureShowsItsHeadroom(t *testing.T) {
 	temps := card(t, renderCards(t, dkInput()), "Temperatures")
 	for _, want := range []string{
-		// warns at 85 of 95
-		`class="verso-meter__tick" data-verso-tone="warning" style="left: min(89%, calc(100% - 0.375rem))"`,
-		// protects at the bar's end
-		`class="verso-meter__tick" data-verso-tone="danger" style="left: calc(100% - 0.125rem)"`,
-		`clip-path: inset(0 50% 0 0 round 9999px)`, // 48 of 95
+		// 48 of 95, warning at 85 of 95; the protect limit is the track's end
+		`<span class="verso-meter__track" style="--verso-meter-fill: 50; --verso-meter-warn: 89">`,
 		">48.0\U0000202f°C<",
 		">warns 85\U0000202f°C · protects 95\U0000202f°C<",
 	} {
@@ -367,18 +364,16 @@ func TestATemperatureShowsItsHeadroom(t *testing.T) {
 			t.Errorf("Temperatures missing %q", want)
 		}
 	}
-	// The ticks are drawn in the warn and protect bands' own hues.
+	if strings.Contains(temps, "verso-meter__tick") {
+		t.Error("a temperature ticks its limits; the warn zone says them")
+	}
+	// The warn zone is the range's Strong Hairline, past the Rule of the rest.
 	css, err := os.ReadFile(filepath.Join("assets", "blocks", "meter.css"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{
-		".verso-meter__tick {\n  position: absolute;\n  top: calc(var(--spacing) * -1);\n  bottom: calc(var(--spacing) * -1);\n  width: calc(var(--spacing) * 0.5);\n  border-radius: 1px;\n  background-color: var(--color-marigold);\n}",
-		".verso-meter__tick[data-verso-tone=\"danger\"] {\n  background-color: var(--color-crimson);\n}",
-	} {
-		if !strings.Contains(string(css), want) {
-			t.Errorf("blocks/meter.css does not draw the ticks:\nwant %s", want)
-		}
+	if want := "background-image: linear-gradient(to right, var(--color-rule) calc(var(--verso-meter-zone) * var(--verso-meter-step)), var(--color-rule-strong) 0);"; !strings.Contains(string(css), want) {
+		t.Errorf("blocks/meter.css does not shade the warn zone:\nwant %s", want)
 	}
 }
 

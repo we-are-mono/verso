@@ -163,18 +163,18 @@ type OverviewFact struct {
 	Duration *int64
 }
 
-// OverviewMeter is one live System gauge — a named bar-layout meter with its
-// health band, big value, fill, and caption. The Name lets the overview
-// stream update it in place.
+// OverviewMeter is one live System gauge — a named meter with its health
+// band, value, fill, the share past which it warns, and caption. The Name
+// lets the overview stream update it in place.
 type OverviewMeter struct {
 	Name   string
 	Label  string
-	Role   string
 	Band   string
 	Value  string
 	Unit   string
 	Detail string
 	Fill   int
+	Warn   int
 }
 
 // InternetTraffic is the overview's Internet graph of the uplink device, in
@@ -313,7 +313,7 @@ func (o *Overview) sysMeters() []*Meter {
 	for _, m := range o.SysMetrics {
 		out = append(out, &Meter{
 			Name: m.Name, Overview: true, Tone: m.Band, Verbatim: true,
-			Label: m.Label, Value: m.Value, Unit: m.Unit, Fill: m.Fill, Detail: m.Detail,
+			Label: m.Label, Value: m.Value, Unit: m.Unit, Fill: m.Fill, WarnMark: m.Warn, Detail: m.Detail,
 		})
 	}
 	return out

@@ -4,15 +4,16 @@
 package widget
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 )
 
 // meterBar is the opening of a meter's bar in band (or, with no band, in the
-// block's own green), up to its clip.
+// block's own green, a bar with nothing after its class).
 func meterBar(band string) string {
 	if band == "" {
-		return `class="verso-meter__bar" style="clip-path:`
+		return `class="verso-meter__bar"></span>`
 	}
 	return `class="verso-meter__bar" data-verso-tone="` + band + `"`
 }
@@ -33,17 +34,21 @@ func declaresBandFill(t *testing.T, band string) {
 	declares(t, "meter", fill.sel, fill.decl)
 }
 
-// TestRenderMeter: the horizontal gauge — the value over its unit, a track
-// filled to Fill%, and the caption.
+// The gauge's rule: every meter that is neither a listing's row nor its cell.
+const meterGauge = `.verso-meter:not([data-verso-place="row"], [data-verso-place="cell"])`
+
+// TestRenderMeter: the gauge — its label, the track lit to Fill, the value in
+// its own unit beside it, and the caption under the track.
 func TestRenderMeter(t *testing.T) {
 	r := newRenderer(t)
 	got := render(t, r, &Meter{Label: "Storage", Value: "23", Unit: "GB", Fill: 72, Detail: "9 GB free"})
 	for _, want := range []string{
 		"Storage", ">23<", ">GB<", "9 GB free",
 		"data-verso-meter-bar", // the fill element
-		// filled by Fill: the bar spans the track and a clip shows the reading,
-		// so a live update repaints the bar without laying the page out again
-		"clip-path: inset(0 28% 0 0 round 9999px)",
+		// The track carries the share it lights; the block turns it into
+		// whole blocks, so a live reading changes one property and the page
+		// is never laid out again.
+		`class="verso-meter__track" style="--verso-meter-fill: 72"`,
 		meterBar("success"), // 72% is in the ordinary range: the canvas's green band
 		`<span class="verso-meter__figure" data-verso-figures data-verso-meter-value>`,
 	} {
@@ -51,29 +56,108 @@ func TestRenderMeter(t *testing.T) {
 			t.Errorf("meter missing %q:\n%s", want, got)
 		}
 	}
+	if strings.Contains(got, "clip-path") {
+		t.Errorf("the reading rides on the track, not on a clip the template writes:\n%s", got)
+	}
 	declaresBandFill(t, "success")
-	// A gauge's figure leads its gauge without shouting: the headline's sans
-	// at 24px on a 32px line, its digits tabular by the mark, its unit a
-	// value's words beside it.
-	declares(t, "meter", ".verso-meter__figure", "@apply type-headline;")
+	// A gauge is one line: its label at the start, the track and the figure
+	// at the end, the caption under the track. Its label is a fact's label
+	// and its figure the title's role, so the reading reads as a fact in a
+	// list rather than a headline over a calm card.
+	declares(t, "meter", meterGauge,
+		"display: grid;",
+		"grid-template-columns: calc(var(--spacing) * 20) minmax(0, 1fr) calc(var(--spacing) * 16);",
+		`grid-template-areas: "head lane reading" ". detail detail";`,
+		"column-gap: calc(var(--spacing) * 6);",
+		"align-items: center;")
+	declares(t, "meter", ".verso-meter__label", "color: var(--color-meta);", "@apply type-row-label;")
+	declares(t, "meter", ".verso-meter__figure", "@apply type-title;")
 	declares(t, "meter", ".verso-meter__unit", "@apply type-value;")
 	declares(t, "meter", ".verso-meter__reading", "height: calc(var(--spacing) * 8);")
-	// A gauge's track is 4px, centred on a line of its own, so the bar
-	// carries the reading's band without outweighing the figure over it.
-	declares(t, "meter", `.verso-meter__track:where(.verso-meter:not([data-verso-place="row"], [data-verso-place="cell"]) *)`,
-		"height: calc(var(--spacing) * 1);", "margin-block: calc(var(--spacing) * 2.5);")
 }
 
-// TestMeterBands: the track colours itself from Fill (not from the displayed Value).
-func TestMeterBands(t *testing.T) {
-	r := newRenderer(t)
-	cases := map[int]string{45: "success", 85: "warning", 95: "danger"}
-	for fill, band := range cases {
-		got := render(t, r, &Meter{Label: "x", Value: "x", Fill: fill})
-		if !strings.Contains(got, meterBar(band)) {
-			t.Errorf("fill %d: want the %s band in:\n%s", fill, band, got)
+// TestMeterIsBlocks: every meter's track is one block, 10px by 16px and 3px
+// apart, wherever it stands: ten in a listing's row or cell, as many as fit
+// in a gauge. The track is as long as its blocks, never stretched, so a
+// column of bars ends together by construction.
+func TestMeterIsBlocks(t *testing.T) {
+	declares(t, "meter", ".verso-meter",
+		"--verso-meter-block: calc(var(--spacing) * 2.5);",
+		"--verso-meter-gap: calc(var(--spacing) * 0.75);",
+		"--verso-meter-step: calc(var(--verso-meter-block) + var(--verso-meter-gap));",
+		"--verso-meter-blocks: 10;")
+	declares(t, "meter", ".verso-meter__track",
+		"position: relative;",
+		"flex: none;",
+		"width: calc(var(--verso-meter-blocks) * var(--verso-meter-step) - var(--verso-meter-gap));",
+		"height: calc(var(--spacing) * 4);",
+		// The range in Rule, its warn zone in Strong Hairline, both cut into
+		// blocks by the mask.
+		"background-image: linear-gradient(to right, var(--color-rule) calc(var(--verso-meter-zone) * var(--verso-meter-step)), var(--color-rule-strong) 0);",
+		"mask-image: repeating-linear-gradient(to right, var(--color-ink) 0 var(--verso-meter-block), transparent 0 var(--verso-meter-step));")
+	// A lit block is a whole block: the share rounds to the nearest, and any
+	// reading above nothing lights one. The warn zone starts at the first
+	// block that reaches past the warn limit; with no limit it has none.
+	declares(t, "meter", ".verso-meter__track",
+		"--verso-meter-lit: max(round(nearest, var(--verso-meter-fill, 0) * var(--verso-meter-blocks) / 100, 1), min(1, var(--verso-meter-fill, 0)));",
+		"--verso-meter-zone: round(down, var(--verso-meter-warn, 100) * var(--verso-meter-blocks) / 100, 1);")
+	declares(t, "meter", ".verso-meter__bar",
+		"position: absolute;",
+		"inset: 0;",
+		"clip-path: inset(0 max(0px, calc(100% - var(--verso-meter-lit) * var(--verso-meter-step))) 0 0);")
+	// The blocks stand square: no pill, and no ticks — the warn zone says the
+	// limit, and the track's end is the protect limit.
+	css := blockCSS(t, "meter")
+	for _, gone := range []string{"verso-meter__tick", "9999px", "infinity"} {
+		if strings.Contains(css, gone) {
+			t.Errorf("blocks/meter.css still draws %q", gone)
 		}
-		declaresBandFill(t, band)
+	}
+}
+
+// TestAGaugeFillsItsLane: a gauge's track holds as many blocks as its lane
+// has room for, 10 to 25, so the label, the blocks and the figure stand the
+// same distance apart at every width; on a phone's card the lane takes a
+// line of its own under the label and figure.
+func TestAGaugeFillsItsLane(t *testing.T) {
+	got := render(t, newRenderer(t), &Meter{Label: "Storage", Value: "51", Unit: "%", Fill: 51})
+	if !strings.Contains(got, `<div class="verso-meter__lane">`) {
+		t.Errorf("the gauge's track does not stand in a lane:\n%s", got)
+	}
+	declares(t, "meter", ".verso-meter__lane", "grid-area: lane;", "container: verso-meter-lane / inline-size;", "min-width: 0;")
+	css := blockCSS(t, "meter")
+	// n blocks take n steps less one gap: 13n − 3px.
+	for n := 11; n <= 25; n++ {
+		at := fmt.Sprintf("@container verso-meter-lane (width >= %grem)", float64(13*n-3)/16)
+		if !strings.Contains(cssRuleWithin(css, at, ".verso-meter__track"), fmt.Sprintf("--verso-meter-blocks: %d;", n)) {
+			t.Errorf("%s: the lane does not hold %d blocks", at, n)
+		}
+	}
+	if strings.Contains(css, "(width >= 20.9375rem)") {
+		t.Error("a lane holds no more than 25 blocks")
+	}
+	stacked := cssRuleWithin(css, "@container card (width < 25rem)", meterGauge)
+	for _, want := range []string{
+		"grid-template-columns: minmax(0, 1fr) auto;",
+		`grid-template-areas: "head reading" "lane lane" "detail detail";`,
+	} {
+		if !strings.Contains(stacked, want) {
+			t.Errorf("a phone's gauge does not stack: missing %q in\n%s", want, stacked)
+		}
+	}
+}
+
+// TestMeterWarnZone: a reading with a warn limit shades the blocks past it,
+// so the track says where trouble starts before the reading gets there.
+func TestMeterWarnZone(t *testing.T) {
+	r := newRenderer(t)
+	got := render(t, r, &Meter{Label: "Memory", Value: "56", Unit: "%", Fill: 56, WarnMark: 75})
+	if !strings.Contains(got, `style="--verso-meter-fill: 56; --verso-meter-warn: 75"`) {
+		t.Errorf("the gauge does not carry its warn limit:\n%s", got)
+	}
+	plain := render(t, r, &Meter{Label: "Speed", Value: "300", Unit: "Mbps", Fill: 30, Variant: "info"})
+	if strings.Contains(plain, "--verso-meter-warn") {
+		t.Errorf("a reading with no warn limit shades no zone:\n%s", plain)
 	}
 }
 
@@ -107,7 +191,7 @@ func TestMeterInfoVariant(t *testing.T) {
 
 // TestMeterLiveHooks: a named meter carries the handle and per-part hooks the
 // shell's client script streams fresh readings into, and its bar eases to a
-// new clip so a reading glides rather than snaps.
+// new block so a reading steps rather than snaps.
 func TestMeterLiveHooks(t *testing.T) {
 	r := newRenderer(t)
 	got := render(t, r, &Meter{Name: "memory", Label: "Memory", Value: "1.2", Unit: "GB", Fill: 60})
@@ -136,33 +220,29 @@ func TestMeterNamelessIsStatic(t *testing.T) {
 	}
 }
 
-// TestMeterCompact: the dense headroom row — a track that fills to the reading's
-// own critical, warn/critical tick marks, and a tone-coloured status dot.
+// TestMeterCompact: the dense headroom row — ten blocks lit to the reading's
+// own ceiling, the warn zone shaded past its warn limit, and a tone-coloured
+// status dot.
 func TestMeterCompact(t *testing.T) {
 	r := newRenderer(t)
-	got := render(t, r, &Meter{Compact: true, Label: "Memory", Value: "47.0", Unit: "°C", Fill: 49, WarnMark: 89, CritMark: 100, Tone: "success"})
+	got := render(t, r, &Meter{Compact: true, Label: "Memory", Value: "47.0", Unit: "°C", Fill: 49, WarnMark: 89, Tone: "success"})
 	for _, want := range []string{
 		"Memory", ">47.0<", "°C",
-		"clip-path: inset(0 51% 0 0 round 9999px)", // fills to the reading's own ceiling
-		// A reading in its ordinary range is green, bar and dot alike — the
-		// canvas's meter band — on a 6px track.
+		// lit to the reading's own ceiling, its warn limit shading the zone
+		`<span class="verso-meter__track" style="--verso-meter-fill: 49; --verso-meter-warn: 89">`,
+		// A reading in its ordinary range is green, bar and dot alike.
 		`class="verso-meter" data-verso-place="row"`,
-		`<span class="verso-meter__track">`,
 		meterBar("success"),
 		`<span class="verso-mark" data-verso-tone="success">`,
-		// the warn tick, in the warn band's own hue, never past the critical one
-		`class="verso-meter__tick" data-verso-tone="warning" style="left: min(89%, calc(100% - 0.375rem))"`,
-		// the critical tick
-		`class="verso-meter__tick" data-verso-tone="danger"`,
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("compact meter missing %q:\n%s", want, got)
 		}
 	}
-	declares(t, "meter", ".verso-meter__track", "height: calc(var(--spacing) * 1.5);", "border-radius: calc(infinity * 1px);", "background-color: var(--color-rule);")
+	if strings.Contains(got, "verso-meter__tick") {
+		t.Errorf("the warn zone says the limit; the row draws no tick:\n%s", got)
+	}
 	declaresBandFill(t, "success")
-	declares(t, "meter", ".verso-meter__tick", "background-color: var(--color-marigold);")
-	declares(t, "meter", `.verso-meter__tick[data-verso-tone="danger"]`, "background-color: var(--color-crimson);")
 }
 
 // TestMeterCompactNoTrack: a reading with no limits shows no track and a neutral
@@ -202,7 +282,7 @@ func TestMeterCompactNoTrack(t *testing.T) {
 // dot together, and stops reading as an ordinary quantity.
 func TestMeterCompactWarnTone(t *testing.T) {
 	r := newRenderer(t)
-	got := render(t, r, &Meter{Compact: true, Label: "SoC", Value: "88", Unit: "°C", Fill: 92, WarnMark: 89, CritMark: 100, Tone: "warning"})
+	got := render(t, r, &Meter{Compact: true, Label: "SoC", Value: "88", Unit: "°C", Fill: 92, WarnMark: 89, Tone: "warning"})
 	for _, want := range []string{meterBar("warning"), `<span class="verso-mark" data-verso-tone="warning">`} {
 		if !strings.Contains(got, want) {
 			t.Errorf("warm reading should tint marigold, missing %q:\n%s", want, got)
@@ -223,7 +303,7 @@ func TestMeterCompactWarnTone(t *testing.T) {
 func TestMeterUsesThePalette(t *testing.T) {
 	r := newRenderer(t)
 	for _, m := range []*Meter{
-		{Compact: true, Label: "Memory", Value: "47", Unit: "°C", Fill: 49, WarnMark: 89, CritMark: 100, Tone: "success"},
+		{Compact: true, Label: "Memory", Value: "47", Unit: "°C", Fill: 49, WarnMark: 89, Tone: "success"},
 		{Compact: true, Label: "Tctl", Value: "78", Unit: "°C", NoTrack: true},
 		{Label: "Storage", Value: "2.1", Unit: "GB", Fill: 62},
 	} {
@@ -236,11 +316,12 @@ func TestMeterUsesThePalette(t *testing.T) {
 	}
 }
 
-// TestMeterClampsFill: a Fill over 100 fills the whole track, not past it.
+// TestMeterClampsFill: a Fill over 100 lights the whole track, not past it,
+// and a warn limit past the track's end shades nothing.
 func TestMeterClampsFill(t *testing.T) {
 	r := newRenderer(t)
-	got := render(t, r, &Meter{Label: "x", Value: "x", Fill: 150})
-	if !strings.Contains(got, "clip-path: inset(0 0% 0 0 round 9999px)") {
-		t.Errorf("fill>100 should fill the whole track:\n%s", got)
+	got := render(t, r, &Meter{Label: "x", Value: "x", Fill: 150, WarnMark: 140})
+	if !strings.Contains(got, `style="--verso-meter-fill: 100; --verso-meter-warn: 100"`) {
+		t.Errorf("fill>100 should light the whole track:\n%s", got)
 	}
 }

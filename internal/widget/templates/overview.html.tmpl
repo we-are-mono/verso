@@ -102,8 +102,8 @@
      session may not see the rest (ADR-007 §9). */}}
 {{define "overview.withheld"}}<p class="verso-overview__none">{{ t . }}</p>{{end}}
 
-{{/* overview.meters: the Resources card's gauges, two to a row where the
-     card is wide enough, a hairline between the rows. */}}
+{{/* overview.meters: the Resources card's gauges, one to a line, a
+     hairline between them. */}}
 {{define "overview.meters"}}
 {{if .}}<div class="verso-overview__meters">{{range .}}{{.}}{{end}}</div>{{else}}<p class="verso-overview__none">{{ t "System readings unavailable" }}</p>{{end}}
 {{end}}

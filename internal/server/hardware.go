@@ -360,8 +360,9 @@ func tempSource(t *sensors.TempReading) string {
 }
 
 // tempMeter fills a reading's bar to its own protect limit (its warn limit
-// when that is all it has), ticked at each; a reading with no limit has no
-// bar, never one against a guessed ceiling, and a faulted channel no reading.
+// when that is all it has), the blocks past its warn limit shaded; a reading
+// with no limit has no bar, never one against a guessed ceiling, and a
+// faulted channel no reading.
 func tempMeter(t *sensors.TempReading) widget.TableCell {
 	if t.Fault {
 		return widget.TableCell{Text: "—", Muted: true}
@@ -378,9 +379,6 @@ func tempMeter(t *sensors.TempReading) widget.TableCell {
 	cell.Fill = percent(t.MilliC, ceiling)
 	if t.Warn > 0 {
 		cell.WarnMark = percent(t.Warn, ceiling)
-	}
-	if t.Crit > 0 {
-		cell.CritMark = 100
 	}
 	switch t.Level {
 	case "warn":

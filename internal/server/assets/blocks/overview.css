@@ -53,9 +53,8 @@
  *           __clip       what the track clips
  *           __content    the body (the card's), hidden once folded
  *           __slot       where a card in hand would land
- *           __meters     Resources' gauges, a hairline between rows: two to a
- *                        row once the card has room, the left gauge carrying
- *                        its hairline across the 40px between them
+ *           __meters     Resources' gauges, one to a line, a hairline between
+ *                        them with 16px of air either side
  *           __none       a card's single line when it has nothing to read
  * Sets: --verso-head-start, --verso-head-end  its head's insets: its acts
  *                        bring their own, and Arrange's grip leads it
@@ -385,31 +384,11 @@
 .verso-overview__meters {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: var(--spacing-inset);
+  gap: calc(var(--spacing) * 4);
 }
 .verso-overview__meters > * + * {
-  position: relative;
-  padding-top: calc(var(--spacing) * 5.75);
+  padding-top: calc(var(--spacing) * 4 - 1px);
   border-top: 1px solid var(--color-rule);
-}
-@container card (min-width: 28rem) {
-  .verso-overview__meters {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    column-gap: calc(var(--spacing) * 10);
-  }
-  .verso-overview__meters > :nth-child(2) {
-    padding-top: 0;
-    border-top-width: 0;
-  }
-  .verso-overview__meters > :nth-child(2n + 3)::before {
-    content: "";
-    position: absolute;
-    top: -1px;
-    left: 100%;
-    width: calc(var(--spacing) * 10);
-    height: 1px;
-    background-color: var(--color-rule);
-  }
 }
 .verso-overview__none {
   color: var(--color-meta);

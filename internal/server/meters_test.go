@@ -128,6 +128,37 @@ func TestOverviewEventsStream(t *testing.T) {
 	}
 }
 
+// TestSystemMetersCarryTheirLimits: each reading carries the share past which
+// it warns, the same limit its band turns marigold at, so the gauge shades
+// its track from there; memory and storage say what is left as well as what
+// is used.
+func TestSystemMetersCarryTheirLimits(t *testing.T) {
+	s := newServer(t, metersBackend())
+	s.stats = fakeStats{cpu: 18, root: sysstat.Storage{Used: 23 << 30, Free: 9 << 30}}
+	readings := s.systemMeters(context.Background(), "test-sid", func(s string) string { return s })
+	want := map[string]struct {
+		warn   int
+		detail string
+	}{
+		"sys-load":    {60, ""},
+		"sys-cpu":     {70, ""},
+		"sys-memory":  {75, "1.2 of 2\U0000202fGiB · 0.8\U0000202fGiB free"},
+		"sys-storage": {80, "23 of 32\U0000202fGiB · 9\U0000202fGiB free"},
+	}
+	if len(readings) != len(want) {
+		t.Fatalf("readings = %+v", readings)
+	}
+	for _, r := range readings {
+		w := want[r.Name]
+		if r.Warn != w.warn {
+			t.Errorf("%s warns at %d, want %d", r.Name, r.Warn, w.warn)
+		}
+		if w.detail != "" && r.Detail != w.detail {
+			t.Errorf("%s detail = %q, want %q", r.Name, r.Detail, w.detail)
+		}
+	}
+}
+
 func TestIndexCPUPercentPrecision(t *testing.T) {
 	for _, tc := range []struct {
 		cpu  float64

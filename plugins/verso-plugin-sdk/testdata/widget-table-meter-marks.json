@@ -12,8 +12,7 @@
         {
           "text": "48.0 °C",
           "fill": 50,
-          "warn_mark": 89,
-          "crit_mark": 100
+          "warn_mark": 89
         }
       ]
     },

@@ -2395,14 +2395,10 @@ pub struct TableCell {
     /// `variant` its band.
     #[serde(skip_serializing_if = "is_zero")]
     pub fill: u32,
-    /// A meter cell's warn limit, a tick at this percent of the track; 0
-    /// draws none.
+    /// A meter cell's warn limit as a percent of the track: the blocks past it
+    /// are shaded, the track's end its protect limit; 0 shades none.
     #[serde(skip_serializing_if = "is_zero")]
     pub warn_mark: u32,
-    /// A meter cell's protect limit, a tick at this percent of the track with
-    /// its right edge on the point; 0 draws none.
-    #[serde(skip_serializing_if = "is_zero")]
-    pub crit_mark: u32,
     /// A meter cell with no ceiling to measure against: `text` alone, with
     /// no track.
     #[serde(skip_serializing_if = "is_false")]
