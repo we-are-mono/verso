@@ -76,6 +76,9 @@
   display: flex;
   align-items: center;
   gap: calc(var(--spacing) * 2);
+  /* The mark hangs in the margin, its width and the gap out, so "Live"
+     stands on the verdict's left edge. */
+  margin-inline-start: calc(var(--spacing) * -3.5);
   color: var(--color-meta);
   @apply type-label;
 }
