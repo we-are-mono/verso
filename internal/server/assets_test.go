@@ -477,13 +477,13 @@ func TestAFieldRowIsALedger(t *testing.T) {
 			t.Errorf("a row does not read its air from its knobs: missing %s in %s", want, row)
 		}
 	}
-	between := cssBlock(t, css, "\n.verso-field:is(.verso-field + *),")
+	between := cssBlock(t, css, "\n.verso-field:is(.verso-field + *):not(:where(.verso-form[data-verso-questions=\"short\"] *)),")
 	for _, want := range []string{"--verso-field-rule: 1px;", "--verso-field-lead: calc(var(--spacing) * 3.75);"} {
 		if !strings.Contains(between, want) {
 			t.Errorf("rows do not meet on a hairline 15px over the name: missing %s in %s", want, between)
 		}
 	}
-	before := cssBlock(t, css, "\n.verso-field:has(+ :is(.verso-field, .verso-conditional, .verso-field-set, [data-verso-rows])) {")
+	before := cssBlock(t, css, "\n.verso-field:has(+ :is(.verso-field, .verso-conditional, .verso-field-set, [data-verso-rows])):not(:where(.verso-form[data-verso-questions=\"short\"] *)) {")
 	if !strings.Contains(before, "--verso-field-trail: calc(var(--spacing) * 4);") {
 		t.Errorf("a row followed by a row keeps 16px under its last line: %s", before)
 	}
@@ -843,7 +843,7 @@ func TestFieldRowsRunToACardsBorders(t *testing.T) {
 	// runs by the same bleed, and the buttons stand 24px under it as the
 	// card's edge stands 24px under them, so ruled air holds them alike on
 	// both sides. The row over them keeps a row's 16px.
-	acts := cssBlock(t, blockSheet(t, "form"), `.verso-form__acts[data-verso-close="flush"]:is(:is(.verso-field, .verso-conditional, .verso-field-set, [data-verso-rows]) + *) {`)
+	acts := cssBlock(t, blockSheet(t, "form"), `.verso-form__acts[data-verso-close="flush"]:is(:is(.verso-field, .verso-conditional, .verso-field-set, [data-verso-rows]) + *):not(:where(.verso-form[data-verso-questions="short"] *)) {`)
 	for _, want := range []string{
 		"margin-inline: calc(var(--verso-field-bleed, 0px) * -1);",
 		"padding: calc(var(--spacing) * 5.75) var(--verso-field-bleed, 0px) 0;",
@@ -853,7 +853,7 @@ func TestFieldRowsRunToACardsBorders(t *testing.T) {
 			t.Errorf("a form's acts under its rows do not meet them on a hairline: missing %s in %s", want, acts)
 		}
 	}
-	if !strings.Contains(blockSheet(t, "field"), `.verso-field:has(+ .verso-form__acts[data-verso-close="flush"]),`) {
+	if !strings.Contains(blockSheet(t, "field"), `.verso-field:has(+ .verso-form__acts[data-verso-close="flush"]):not(:where(.verso-form[data-verso-questions="short"] *)),`) {
 		t.Error("the row over a form's acts does not keep a row's 16px over their hairline")
 	}
 	// The row reads the bleed: out past its column by it, its words back in.

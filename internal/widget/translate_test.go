@@ -232,6 +232,19 @@ func TestTranslateHonorsVerbatimDeclarations(t *testing.T) {
 		t.Errorf("prose busy body = %q, want translated", idle.BusyBody)
 	}
 
+	// And a notice's words the shell composed around a count (the failed
+	// sign-ins standing against an address).
+	counted := &Callout{Body: "Online", BodyVerbatim: true}
+	said := &Callout{Body: "Online"}
+	translateSchema(counted, tr)
+	translateSchema(said, tr)
+	if counted.Body != "Online" {
+		t.Errorf("verbatim callout body = %q, must stay verbatim", counted.Body)
+	}
+	if said.Body != "Povezano" {
+		t.Errorf("prose callout body = %q, want translated", said.Body)
+	}
+
 	// And a chart whose description and series the shell composed (a
 	// sensor's name in its sentence).
 	described := &Chart{Label: "Online", Series: []ChartSeries{{Label: "Online"}}, Verbatim: true}

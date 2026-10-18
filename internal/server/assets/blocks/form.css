@@ -104,8 +104,10 @@
    row over them on its hairline and run border to border as a row does.
    The buttons stand 24px under the hairline, as the card's edge stands 24px
    under them: between two rules the air reads less than it measures, so a
-   row's 16px would look cramped where a field's unruled 16px does not. */
-.verso-form__acts[data-verso-close="flush"]:is(:is(.verso-field, .verso-conditional, .verso-field-set, [data-verso-rows]) + *) {
+   row's 16px would look cramped where a field's unruled 16px does not.
+   Under a stack of fields (a form of names alone) there is no ledger: the
+   acts stand 24px under the last box with no hairline. */
+.verso-form__acts[data-verso-close="flush"]:is(:is(.verso-field, .verso-conditional, .verso-field-set, [data-verso-rows]) + *):not(:where(.verso-form[data-verso-questions="short"] *)) {
   --verso-acts-after: 0px;
   margin-inline: calc(var(--verso-field-bleed, 0px) * -1);
   padding: calc(var(--spacing) * 5.75) var(--verso-field-bleed, 0px) 0;

@@ -248,7 +248,7 @@ func TestAFactsNoteClosesWithItsDoor(t *testing.T) {
 // the form's preview follows closes on a hairline the same way, so the code
 // stands under a rule as the acts do.
 func TestAFormUnderOtherBlocksOpensOnItsRowsHairline(t *testing.T) {
-	declares(t, "field", `.verso-field:is(.verso-card__body > :not(input[type="hidden"], [hidden], template) ~ .verso-form > :nth-child(1 of :not(input[type="hidden"], [hidden], template)))`,
+	declares(t, "field", `.verso-field:is(.verso-card__body > :not(input[type="hidden"], [hidden], template) ~ .verso-form > :nth-child(1 of :not(input[type="hidden"], [hidden], template))):not(:where(.verso-form[data-verso-questions="short"] *))`,
 		"--verso-field-rule: 1px;", "--verso-field-lead: calc(var(--spacing) * 3.75);", "margin-top: calc(var(--spacing) * 6);")
 	declares(t, "field", `.verso-field:is(.verso-card__body .verso-field):has(+ .verso-code)`,
 		"--verso-field-trail: calc(var(--spacing) * 3.75);", "border-bottom-width: 1px;")

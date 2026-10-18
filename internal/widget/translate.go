@@ -47,7 +47,9 @@ func translateFields(w Widget, t func(string) string) {
 		n.Busy = t(n.Busy)
 	case *Callout:
 		n.Title = t(n.Title)
-		n.Body = t(n.Body)
+		if !n.BodyVerbatim {
+			n.Body = t(n.Body)
+		}
 	case *Chart:
 		if n.Verbatim {
 			break

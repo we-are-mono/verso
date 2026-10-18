@@ -427,13 +427,19 @@ func (s *Server) renderLogin(w http.ResponseWriter, r *http.Request, status int,
 		username = r.PostForm.Get("username")
 	}
 	live := s.readLoginStatus(tr)
-	attempts := attemptsNote(tr, s.loginLimiter.failures(clientIP(r)))
-	if attempts != "" {
-		attempts += " " + fmt.Sprintf(tr("After %d, this address waits a minute."), loginMaxFailures)
+	// What is worth a look before anything is typed, in one notice: how the
+	// last session ended, then the failed sign-ins standing against this
+	// address and what the router does about them.
+	var warning []string
+	if notice := s.expiryNotice(r); notice != "" {
+		warning = append(warning, tr(notice))
+	}
+	if attempts := attemptsNote(tr, s.loginLimiter.failures(clientIP(r))); attempts != "" {
+		warning = append(warning, attempts, fmt.Sprintf(tr("After %d, this address waits a minute."), loginMaxFailures))
 	}
 	var card bytes.Buffer
 	if err := s.widgets.RenderWithToken(&card, loginCard(signIn{
-		Notice: s.expiryNotice(r), Refusal: refusal, Username: username, Attempts: attempts,
+		Warning: strings.Join(warning, " "), Refusal: refusal, Username: username,
 		Status: live, Firmware: loginFirmware(),
 		VisitorIP: clientIP(r), VisitorNetwork: visitorNetwork(clientIP(r)),
 	}), "", lang, t); err != nil {

@@ -27,7 +27,7 @@ func TestLoginPageIsTheSharedSignInCard(t *testing.T) {
 	for _, want := range []string{
 		`<section class="verso-card" data-verso-section="card">`,
 		`<h2 class="verso-card__title">Sign in</h2>`,
-		`<form method="post" action="/login" class="verso-form verso-rhythm">`,
+		`<form method="post" action="/login" data-verso-questions="short" class="verso-form verso-rhythm">`,
 		`<label for="username" id="username-label" class="verso-field__name">Username</label>`,
 		`<label for="password" id="password-label" class="verso-field__name">Password</label>`,
 		`type="password" autocomplete="current-password" autofocus`,
@@ -51,6 +51,16 @@ func TestLoginPageIsTheSharedSignInCard(t *testing.T) {
 	}
 	if ground := cssBlock(t, string(sheet), `.verso-takeover[data-verso-surface="cards"] {`); !strings.Contains(ground, "background-color: var(--color-quiet);") {
 		t.Errorf("a takeover of cards is not on Quiet Sand:\n%s", ground)
+	}
+	// The card is as narrow as its form of names allows: a fact list's 96px
+	// label column, the gap and the answer column inside its gutters, 440px,
+	// so the answers start where the facts' values do.
+	login, err := os.ReadFile("assets/blocks/login.css")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if measure := cssBlock(t, string(login), ".verso-login {"); !strings.Contains(measure, "max-width: calc(var(--spacing) * 110);") {
+		t.Errorf("the sign-in card is not 440px:\n%s", measure)
 	}
 	// The page's own outline: the router is the page, signing in its card.
 	if !strings.Contains(body, `<h1 class="sr-only">`) {
@@ -111,6 +121,20 @@ func TestLoginRefusalsStandWhereTheirCauseIs(t *testing.T) {
 	wrong := postForm(t, srv, "/login", bad).Body.String()
 	if !strings.Contains(wrong, `<span id="password-error" data-verso-error class="verso-refusal">`) {
 		t.Error("wrong credentials are not refused under the password")
+	}
+	// The failed sign-ins standing against the address are worth a look
+	// before anything is typed: the marigold notice opening the card, over
+	// Username, and no note beside the act.
+	const warning = `<div data-verso-callout class="verso-notice" data-verso-tone="warning">`
+	before, after, found := strings.Cut(wrong, warning)
+	if !found || !strings.Contains(after, "1 failed sign-in from your address. After 5, this address waits a minute.") {
+		t.Error("the failed sign-ins are not the card's marigold notice")
+	}
+	if strings.Contains(before, `id="username"`) {
+		t.Error("the marigold notice does not stand over Username")
+	}
+	if strings.Contains(wrong, "verso-form__note") {
+		t.Error("the failed sign-ins still stand beside the act")
 	}
 	if strings.Contains(wrong, notice) {
 		t.Error("wrong credentials open the form with a notice")

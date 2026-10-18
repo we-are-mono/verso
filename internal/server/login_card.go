@@ -15,14 +15,13 @@ type loginRefusal struct {
 }
 
 // signIn is what the sign-in card says, in English source strings the
-// renderer translates: why the visitor is here, what was refused, and the
-// router's public facts. Attempts is already in the reader's words, its count
-// composed into the sentence.
+// renderer translates: what is worth a look before signing in, what was
+// refused, and the router's public facts. Warning is already in the reader's
+// words, its count composed into the sentence.
 type signIn struct {
-	Notice         string // how the visitor got here: a session that ended (expiryNotice)
+	Warning        string // a session that ended (expiryNotice), the failed sign-ins standing against the address
 	Refusal        loginRefusal
 	Username       string
-	Attempts       string
 	Status         loginStatus
 	Firmware       string
 	VisitorIP      string
@@ -30,18 +29,17 @@ type signIn struct {
 }
 
 // loginCard is the sign-in page's one card, built from the shell's own
-// widgets so it reads as every other card does: the form's rows, its
-// refusals and its act as the ledger's last row, then the router's public
-// facts as a part of the card.
+// widgets so it reads as every other card does: what is worth a look before
+// signing in, the form's rows, its refusals and its act as the ledger's last
+// row, then the router's public facts as a part of the card.
 func loginCard(in signIn) widget.Widget {
 	var children []widget.Widget
-	if in.Notice != "" {
-		children = append(children, &widget.Callout{Variant: "warning", Body: in.Notice})
+	if in.Warning != "" {
+		children = append(children, &widget.Callout{Variant: "warning", Body: in.Warning, BodyVerbatim: true})
 	}
 	children = append(children,
 		&widget.Form{
-			Action: "/login", Submit: "Sign in", Error: in.Refusal.Form,
-			Note: in.Attempts, NoteVerbatim: true,
+			Action: "/login", Submit: "Sign in", Error: in.Refusal.Form, ShortQuestions: true,
 			Fields: []widget.Widget{
 				&widget.Field{Name: "username", Label: "Username", Value: in.Username, Autocomplete: "username"},
 				&widget.Field{Name: "password", Label: "Password", Kind: "password", Autocomplete: "current-password", Autofocus: true, Error: in.Refusal.Field},

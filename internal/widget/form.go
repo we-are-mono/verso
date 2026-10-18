@@ -25,14 +25,19 @@ type Form struct {
 	// plugin's own open panel, which posts to the page's own address — the one
 	// the address bar already names, because an open panel is a place. Empty
 	// everywhere else, which is an ordinary form that posts its page.
-	Frame      string `json:"-"`
-	Panel      string `json:"-"`
-	Multipart  bool   `json:"-"`               // shell-owned file-transfer encoding
-	NoSubmit   bool   `json:"-"`               // shell-owned forms may be driven by a child control
-	AutoSubmit bool   `json:"-"`               // submit when a file is selected
-	Style      string `json:"style,omitempty"` // "" (stacked) | "inline" | "inline-compact" | "search" (one search field, its submit beside it) | "page"
-	Icon       string `json:"icon,omitempty"`  // optional leading icon on the submit button, by Lucide name
-	Note       string `json:"note,omitempty"`  // quiet annotation beside the buttons (inline) or under them (stacked); Markdown, sanitized like text
+	Frame     string `json:"-"`
+	Panel     string `json:"-"`
+	Multipart bool   `json:"-"` // shell-owned file-transfer encoding
+	NoSubmit  bool   `json:"-"` // shell-owned forms may be driven by a child control
+	// ShortQuestions says every question is a name alone, with no
+	// description (signing in): the form is a stack of fields, each name over
+	// its box, with no ledger hairlines between them or over the act. Shell
+	// only.
+	ShortQuestions bool   `json:"-"`
+	AutoSubmit     bool   `json:"-"`               // submit when a file is selected
+	Style          string `json:"style,omitempty"` // "" (stacked) | "inline" | "inline-compact" | "search" (one search field, its submit beside it) | "page"
+	Icon           string `json:"icon,omitempty"`  // optional leading icon on the submit button, by Lucide name
+	Note           string `json:"note,omitempty"`  // quiet annotation beside the buttons (inline) or under them (stacked); Markdown, sanitized like text
 	// Target is where the options this form's controls write live,
 	// "config.section", when the form writes one uci section — said once here
 	// rather than on each control (MarkStaged).
@@ -119,6 +124,7 @@ type formView struct {
 	Search     bool
 	Page       bool
 	Dirty      bool
+	Short      bool // every question a name alone (Form.ShortQuestions)
 	// Sectioned is a form that commits one section of a page rather than the
 	// page: its Save stands under its fields with no rule, because the next
 	// section's rule is the line that closes it.
@@ -181,7 +187,7 @@ func (f *Form) renderInto(r *Renderer, out io.Writer, csrf string) error {
 	page := f.Style == "page" || f.Style == "settings"
 	return r.execute(out, "form.html.tmpl", formView{
 		ID: f.ID, CancelHref: f.CancelHref, Action: f.Action, Frame: f.Frame, Panel: f.Panel, Multipart: f.Multipart, AutoSubmit: f.AutoSubmit,
-		Inline: f.Style == "inline" || f.Style == "inline-compact", Compact: f.Style == "inline-compact", Search: f.Style == "search", Page: page, Dirty: f.Style == "settings",
+		Inline: f.Style == "inline" || f.Style == "inline-compact", Compact: f.Style == "inline-compact", Search: f.Style == "search", Page: page, Dirty: f.Style == "settings", Short: f.ShortQuestions,
 		Sectioned: r.depth > 0 && f.Frame == "", ClosesPage: page && r.depth == 0 && f.Frame == "", Icon: f.Icon, Note: note,
 		JoinsCode: EndsWithCode(f), LoneAct: loneAct(f),
 		Submit: submit, Tone: f.Tone, Error: f.Error, CSRFToken: csrf,

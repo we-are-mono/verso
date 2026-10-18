@@ -18,8 +18,12 @@ type Callout struct {
 	Variant string `json:"variant"` // "info" (default) | "neutral" | "success" | "warning" | "danger"
 	Title   string `json:"title"`
 	Body    string `json:"body"`
-	Compact bool   `json:"compact,omitempty"` // tighter, body-only treatment for a short contextual note
-	Link    *Link  `json:"link,omitempty"`
+	// BodyVerbatim declares Body already in the reader's words, composed by
+	// the shell around a count (the failed sign-ins standing against an
+	// address), so the localization walk leaves it as it is.
+	BodyVerbatim bool  `json:"-"`
+	Compact      bool  `json:"compact,omitempty"` // tighter, body-only treatment for a short contextual note
+	Link         *Link `json:"link,omitempty"`
 	// Verbatim is what a tool reported, in its own words: it rides inside the
 	// band under a hairline of the band's tone, in mono, with a copy control,
 	// because a message cut short or paraphrased is a message withheld.

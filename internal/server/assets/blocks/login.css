@@ -4,14 +4,16 @@
 /*
  * login — the sign-in card's place in the takeover's room. The card is the
  * shell's own (blocks/card.css, its form's rows blocks/field.css, its facts
- * blocks/facts.css), so this block holds only its measure: the narrowest at
- * which a form's rows stand question beside answer — their 36rem inside the
- * card's 23px gutters and its frame, 624px — and a pixel more, so its right
- * border lands on a line as its left one does. On a phone it takes the room's
- * width and its rows stack, as every form's do.
+ * blocks/facts.css), so this block holds only its measure: 440px, a fact
+ * list's 96px label column, the gap and a form's 272px answer column inside
+ * the card's 23px gutters and its frame, so its facts read on their lines and
+ * its stack of two fields (a form of names alone) is no wider than it needs.
+ * It stands centred in the room rather than on the page's grid, so it keeps
+ * no pixel for a right border to land on a line. On a phone it takes the
+ * room's width.
  */
 
 .verso-login {
   width: 100%;
-  max-width: calc(var(--spacing) * 156 + 1px);
+  max-width: calc(var(--spacing) * 110);
 }

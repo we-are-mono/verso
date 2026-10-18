@@ -32,6 +32,39 @@ func TestFormActionsFinishTheirConfigurationCard(t *testing.T) {
 	}
 }
 
+// A form whose questions are names alone (signing in) is a stack of fields at
+// every width: each name over its box, the box the form's width, the rows
+// 24px apart with no hairline between them or over the first. Its rows answer
+// to a container of their own, so the ledger's measures never reach them, and
+// the ledger's hairlines pass them by.
+func TestShortQuestionsStandAsAStackOfFields(t *testing.T) {
+	r := newRenderer(t)
+	fields := []Widget{&Field{Name: "username", Label: "Username"}}
+	if got := render(t, r, &Form{Action: "/login", Submit: "Sign in", ShortQuestions: true, Fields: fields}); !strings.Contains(got, `<form method="post" action="/login" data-verso-questions="short" class="verso-form verso-rhythm">`) {
+		t.Errorf("a form of short questions does not say so:\n%s", got)
+	}
+	if got := render(t, r, &Form{Submit: "Save", Fields: fields}); strings.Contains(got, "data-verso-questions") {
+		t.Errorf("a form of described questions claims short ones:\n%s", got)
+	}
+	const short = `.verso-form[data-verso-questions="short"] *`
+	declares(t, "field", `.verso-field:where(`+short+`)`, "container-name: verso-field-stack")
+	declares(t, "field", `.verso-field__ledger:is(`+short+`)`, "grid-template-columns: minmax(0, 1fr)")
+	declares(t, "field", `.verso-field__answer:is(`+short+`)`, "grid-column: 1")
+	css := blockCSS(t, "field")
+	// Rows meeting on a hairline, the trail over the next row, a form opening
+	// on a hairline under what stands over it in a card, the row's 16px over
+	// the acts; and the acts' own hairline.
+	if n := strings.Count(css, `:not(:where(`+short+`))`); n != 4 {
+		t.Errorf("the ledger's hairlines pass a stack of fields by in %d rules, want 4", n)
+	}
+	if !strings.Contains(blockCSS(t, "form"), `[data-verso-rows]) + *):not(:where(`+short+`)) {`) {
+		t.Error("the acts under a stack of fields draw the ledger's hairline")
+	}
+	if strings.Contains(css, "@container verso-field-stack") {
+		t.Error("a stack of fields takes a measure of the ledger's")
+	}
+}
+
 func TestFormDecodesActions(t *testing.T) {
 	w, err := Decode([]byte(`{"type":"form","submit":"Save",` +
 		`"actions":[{"label":"Generate keypair","action":"generate-keypair"}],"fields":[]}`))

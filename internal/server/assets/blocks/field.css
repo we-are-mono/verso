@@ -30,6 +30,10 @@
  *           data-verso-plain  a choice of what a page shows, no setting: a
  *                             sentence, its name then its controls, ruled
  *                             off from the view it chooses
+ * Context:  data-verso-questions="short" on its form: every question a name
+ *           alone (signing in), so the form is a stack of fields at every
+ *           width — each name over its box, the box the form's width, the
+ *           rows 24px apart on no hairline
  * Elements: __ledger    the question, the answer, and the remove after them
  *           __question  the label and what it is for
  *           __label     the name, the option's key chip, the stage's mark
@@ -112,15 +116,16 @@
    15px after it, a band of the grid. A gate's row is the first of its block,
    and the row after a gate follows whatever the gate last shows. A run of
    rows (a flush stack, data-verso-rows) meets the rows beside it the same
-   way, through its own first and last. */
-.verso-field:is(.verso-field + *),
+   way, through its own first and last. A stack of fields (a form of names
+   alone) meets on no hairline. */
+.verso-field:is(.verso-field + *):not(:where(.verso-form[data-verso-questions="short"] *)),
 .verso-field:is(:is(.verso-conditional, .verso-field-set, [data-verso-rows]) + *),
 .verso-field:is(:is(.verso-field, .verso-conditional, .verso-field-set, [data-verso-rows]) + .verso-conditional > .verso-conditional__gate),
 .verso-field:is(:is(.verso-field, .verso-conditional, .verso-field-set, [data-verso-rows]) + :is(.verso-field-set, [data-verso-rows]) > :first-child) {
   --verso-field-rule: 1px;
   --verso-field-lead: calc(var(--spacing) * 3.75);
 }
-.verso-field:has(+ :is(.verso-field, .verso-conditional, .verso-field-set, [data-verso-rows])) {
+.verso-field:has(+ :is(.verso-field, .verso-conditional, .verso-field-set, [data-verso-rows])):not(:where(.verso-form[data-verso-questions="short"] *)) {
   --verso-field-trail: calc(var(--spacing) * 4);
 }
 .verso-field:is(.verso-conditional:has(+ :is(.verso-field, .verso-conditional, .verso-field-set, [data-verso-rows])) > .verso-conditional__gate),
@@ -130,8 +135,9 @@
   --verso-field-trail: calc(var(--spacing) * 4);
 }
 /* A form's acts under its rows are the ledger's last row (blocks/form.css):
-   the row over them keeps a row's 16px over their hairline. */
-.verso-field:has(+ .verso-form__acts[data-verso-close="flush"]),
+   the row over them keeps a row's 16px over their hairline. Under a stack of
+   fields the acts draw none, and stand on the acts' own 24px. */
+.verso-field:has(+ .verso-form__acts[data-verso-close="flush"]):not(:where(.verso-form[data-verso-questions="short"] *)),
 .verso-field:is(.verso-conditional:has(+ .verso-form__acts[data-verso-close="flush"]) > .verso-conditional__gate),
 .verso-field:is(.verso-conditional:has(+ .verso-form__acts[data-verso-close="flush"]) > .verso-conditional__body > :last-child),
 .verso-field:is(:is(.verso-field-set, [data-verso-rows]):has(+ .verso-form__acts[data-verso-close="flush"]) > :last-child) {
@@ -140,8 +146,9 @@
 /* In a card, a form that follows something else (the facts it acts on, a
    notice) opens on its first row's hairline, card edge to card edge, as two
    rows meet; a form that opens the card keeps none. The hairline keeps the
-   card's 24px under what stands over it, as ruled air does. */
-.verso-field:is(.verso-card__body > :not(input[type="hidden"], [hidden], template) ~ .verso-form > :nth-child(1 of :not(input[type="hidden"], [hidden], template))) {
+   card's 24px under what stands over it, as ruled air does. A stack of
+   fields keeps the field's own 24px instead, with no hairline. */
+.verso-field:is(.verso-card__body > :not(input[type="hidden"], [hidden], template) ~ .verso-form > :nth-child(1 of :not(input[type="hidden"], [hidden], template))):not(:where(.verso-form[data-verso-questions="short"] *)) {
   --verso-field-rule: 1px;
   --verso-field-lead: calc(var(--spacing) * 3.75);
   margin-top: calc(var(--spacing) * 6);
@@ -417,4 +424,19 @@
   .verso-field__answer[data-verso-control-measure="endpoint"] {
     width: var(--verso-field-width-endpoint);
   }
+}
+
+/* A form of names alone is a stack of fields at every width: each name over
+   its box, straight under its line, the box the form's width. Its rows answer
+   to a container of their own, so the ledger's measures never reach them;
+   they keep the 24px a field brings over itself and meet on no hairline (the
+   rules above pass them by). */
+.verso-field:where(.verso-form[data-verso-questions="short"] *) {
+  container-name: verso-field-stack;
+}
+.verso-field__ledger:is(.verso-form[data-verso-questions="short"] *) {
+  grid-template-columns: minmax(0, 1fr);
+}
+.verso-field__answer:is(.verso-form[data-verso-questions="short"] *) {
+  grid-column: 1;
 }
