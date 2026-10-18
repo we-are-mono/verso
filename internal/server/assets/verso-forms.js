@@ -1453,6 +1453,9 @@ window.versoValidate = function (datatype, value) {
   if (datatype==="dnsserver" && !server(value) || datatype==="dnsaddress" && !scoped(value,true) || datatype==="dnsforward" && !scoped(value,false)) return T("Enter a valid DNS address or domain/server entry.");
   if (datatype==="ip4addr" && !ipv4(value)) return T("Enter a valid IPv4 address.");
   if (datatype==="ipaddr" && !ip(value)) return T("Enter a valid IP address.");
+  // An address and its prefix length: 32 bits at most for IPv4, 128 for IPv6.
+  function cidr(v) { var m=/^([^/]+)\/(0|[1-9][0-9]{0,2})$/.exec(v); return !!m && ip(m[1]) && Number(m[2]) <= (ipv4(m[1]) ? 32 : 128); }
+  if (datatype==="cidr" && !cidr(value)) return T("Enter an IP address with its prefix length, such as 10.0.0.1/24.");
   return "";
 };
 

@@ -1,0 +1,28 @@
+{
+  "about": "The cidr datatype: an IPv4 or IPv6 address and its prefix length, as a WireGuard interface's addresses and a peer's allowed IPs are written. The address may carry host bits (10.0.0.1/24 is an interface address). The shell (datatype.go) and a list's add (verso-forms.js) are both held to these cases.",
+  "accept": [
+    "10.0.0.1/24",
+    "10.0.0.0/8",
+    "0.0.0.0/0",
+    "192.168.1.1/32",
+    "2001:db8::1/64",
+    "::/0",
+    "fd00::/128"
+  ],
+  "refuse": [
+    {"value": "10.0.0.1", "why": "a bare address has no prefix length"},
+    {"value": "2001:db8::1", "why": "a bare address has no prefix length"},
+    {"value": "10.0.0.1/33", "why": "past an IPv4 address's 32 bits"},
+    {"value": "2001:db8::/129", "why": "past an IPv6 address's 128 bits"},
+    {"value": "10.0.0.1/", "why": "no length after the slash"},
+    {"value": "10.0.0.1/-1", "why": "a length is never negative"},
+    {"value": "10.0.0.1/024", "why": "a length is written without leading zeros"},
+    {"value": "10.0.0.1/255.255.255.0", "why": "a netmask is not a prefix length"},
+    {"value": "010.0.0.1/24", "why": "an IPv4 part is written without leading zeros"},
+    {"value": "fe80::1%eth0/64", "why": "a zone names no network"},
+    {"value": "host.lan/24", "why": "a name is not an address"},
+    {"value": "10.0.0.1/24/8", "why": "one length only"},
+    {"value": " 10.0.0.1/24", "why": "no surrounding space"},
+    {"value": "", "why": "empty"}
+  ]
+}

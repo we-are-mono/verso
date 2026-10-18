@@ -829,6 +829,7 @@
   "Last seen": "Zadnjič opaženo",
   "Enter a valid hostname or IP address.": "Vnesite veljavno ime gostitelja ali naslov IP.",
   "Enter a valid IP address.": "Vnesite veljaven naslov IP.",
+  "Enter an IP address with its prefix length, such as 10.0.0.1/24.": "Vnesite naslov IP z dolžino predpone, na primer 10.0.0.1/24.",
   "Commands cannot be combined with staged changes.": "Ukazov ni mogoče združiti s pripravljenimi spremembami.",
   "The router could not complete the action. Try again.": "Usmerjevalnik dejanja ni mogel dokončati. Poskusite znova.",
   "Copied": "Kopirano",

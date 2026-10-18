@@ -1641,6 +1641,7 @@ it. They are LuCI's names, so OpenWrt authors already know them.
 | `ip4addr` | an IPv4 address — `192.168.1.1` |
 | `ip6addr` | an IPv6 address — `2001:db8::1` |
 | `ipaddr` | an IPv4 or IPv6 address |
+| `cidr` | an IPv4 or IPv6 address and its prefix length — `10.0.0.1/24`, `2001:db8::/64`; the length is required, and the address may carry host bits (a WireGuard interface's `addresses`, a peer's `allowed_ips`) |
 | `host` | a hostname or an IP address |
 | `port` | a port number, 1–65535 |
 

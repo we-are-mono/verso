@@ -28,6 +28,7 @@ var registry = map[string]Validator{
 	"ip4addr":      ip4addr,
 	"ip6addr":      ip6addr,
 	"ipaddr":       ipaddr,
+	"cidr":         cidr,
 	"host":         host,
 	"port":         port,
 	"timehhmmss":   timehhmmss,
@@ -106,6 +107,17 @@ func ipaddr(v string) error {
 		return nil
 	}
 	return fmt.Errorf("must be a valid IP address")
+}
+
+// cidr is an IPv4 or IPv6 address and its prefix length (10.0.0.1/24,
+// 2001:db8::/64), as a WireGuard interface's addresses and a peer's allowed IPs
+// are written. LuCI's name: the length is required, and the address may carry
+// host bits, since an interface's address names the network it sits in.
+func cidr(v string) error {
+	if _, err := netip.ParsePrefix(v); err != nil {
+		return fmt.Errorf("must be an IP address with its prefix length (e.g. 10.0.0.1/24)")
+	}
+	return nil
 }
 
 func host(v string) error {

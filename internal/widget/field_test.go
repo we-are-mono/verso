@@ -360,6 +360,14 @@ func TestAnEmptyBoxSaysWhatItsHintIs(t *testing.T) {
 // A forward's address and ports are typed back verbatim, so their boxes are
 // mono at a machine measure: the address's, and a short one for a port that
 // may be a range (8000-8010), which a numeric keypad could not type.
+// An address with its prefix length (cidr) is typed back verbatim at the
+// address's measure, whatever option it writes.
+func TestACIDRIsAnAddress(t *testing.T) {
+	if f := (&Field{Name: "allowed_ips", Kind: "text", Datatype: "cidr"}); f.Measure() != "address" || f.Words() {
+		t.Errorf("a cidr field measure = %q words = %v, want address in mono", f.Measure(), f.Words())
+	}
+}
+
 func TestAForwardsAddressAndPortsAreMachineStrings(t *testing.T) {
 	for key, want := range map[string]string{"dest_ip": "address", "dest_port": "short", "src_dport": "short"} {
 		f := &Field{Name: key, Kind: "text", Key: key}

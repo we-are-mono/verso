@@ -890,6 +890,7 @@ type pageHeader struct {
 func jsCatalog(tr func(string) string) template.JS {
 	keys := []string{
 		"Enter a valid hostname or IP address.", "Enter a valid IP address.",
+		"Enter an IP address with its prefix length, such as 10.0.0.1/24.",
 		// What a keyboard reorder says once the row has moved, and what a copy
 		// button says once the value is on the clipboard.
 		"Moved to position %d of %d", "Copied",

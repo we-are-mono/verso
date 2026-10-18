@@ -425,7 +425,7 @@ func (f *Field) grammarMeasure() string {
 		return "full"
 	}
 	switch f.Datatype {
-	case "ip4addr", "ip6addr", "ipaddr":
+	case "ip4addr", "ip6addr", "ipaddr", "cidr":
 		return "address"
 	case "port":
 		return "number"

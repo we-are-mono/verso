@@ -3,7 +3,11 @@
 
 package datatype
 
-import "testing"
+import (
+	"encoding/json"
+	"os"
+	"testing"
+)
 
 func TestValidate(t *testing.T) {
 	cases := []struct {
@@ -94,6 +98,35 @@ func TestValidate(t *testing.T) {
 		}
 		if !c.ok && err == nil {
 			t.Errorf("Validate(%q, %q) = nil, want error", c.name, c.value)
+		}
+	}
+}
+
+// TestCIDR holds the cidr datatype to the cases a list's add in the browser is
+// held to as well (testdata/cidr.json), so the two never disagree.
+func TestCIDR(t *testing.T) {
+	raw, err := os.ReadFile("testdata/cidr.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var cases struct {
+		Accept []string `json:"accept"`
+		Refuse []struct {
+			Value string `json:"value"`
+			Why   string `json:"why"`
+		} `json:"refuse"`
+	}
+	if err := json.Unmarshal(raw, &cases); err != nil {
+		t.Fatal(err)
+	}
+	for _, v := range cases.Accept {
+		if err := Validate("cidr", v); err != nil {
+			t.Errorf("Validate(cidr, %q) = %v, want ok", v, err)
+		}
+	}
+	for _, c := range cases.Refuse {
+		if Validate("cidr", c.Value) == nil {
+			t.Errorf("Validate(cidr, %q) = nil, want a refusal: %s", c.Value, c.Why)
 		}
 	}
 }
