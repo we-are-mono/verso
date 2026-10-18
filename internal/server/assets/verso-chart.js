@@ -7,8 +7,10 @@
 // (data-verso-live-seed) and then FLOWS left continuously as fresh samples
 // arrive from its stream, named by data-verso-live-chart ("wan",
 // "usage:<mac>"). Each frame the curves translate by a fraction of one sample;
-// when a sample lands the value is committed and the translate resets — a
-// seamless treadmill drawing the same smooth curve the server drew. Each lane
+// every interval the next sample is committed and the translate resets — a
+// seamless treadmill drawing the same smooth curve the server drew, paced by
+// a steady clock one sample behind the stream, so a sample that lands late
+// or early never shows as a pause or a jump (math.player). Each lane
 // keeps its own round scale, figure and peak. The grid stands still under the
 // curve, so each time label under the plot keeps its line. A clip hides what
 // scrolls past the edges. Reduced motion still updates, just in discrete steps
@@ -56,6 +58,45 @@
       var out = vals.slice(-n);
       while (out.length < n) out.unshift(0);
       return out;
+    },
+    // player paces a live graph by a steady clock instead of by when its
+    // samples land. Samples arrive a second apart only on average: the router
+    // sends one late when a read holds it, and the next one early. Gliding
+    // each in as it landed made the graph stop short for a late one and jump
+    // for an early one, so the player keeps one sample in hand and lets the
+    // next glide in every interval: a sample up to a second late or early
+    // lands in hand before it is wanted. Its tick says, for a frame at ts,
+    // which samples to commit now, how far the glide toward the newest has
+    // gone (0 to 1), and whether it stands waiting for a sample.
+    player: function (interval) {
+      var queue = [], start = null, primed = false;
+      return {
+        add: function (s) { queue.push(s); },
+        reset: function () { queue = []; start = null; primed = false; },
+        tick: function (ts) {
+          var commits = [];
+          if (start === null) {
+            // Moving first waits for a sample in hand behind the one that
+            // glides; after a stall the late one glides in as it lands.
+            if (queue.length < (primed ? 1 : 2)) return { commits: commits, progress: primed ? 1 : 0, idle: true };
+            primed = true;
+            start = ts;
+            commits.push(queue.shift());
+          }
+          while (ts - start >= interval) {
+            if (!queue.length) {
+              start = null;
+              return { commits: commits, progress: 1, idle: true };
+            }
+            start += interval;
+            commits.push(queue.shift());
+          }
+          // More than two in hand is a backlog (a page that was away): it
+          // lands at once, so the graph never falls behind the router.
+          while (queue.length > 2) commits.push(queue.shift());
+          return { commits: commits, progress: (ts - start) / interval, idle: false };
+        },
+      };
     },
   };
   window.versoChartMath = math;
@@ -174,49 +215,62 @@
     var lanes = [lane(downEl, down, step), lane(upEl, up, step)].filter(Boolean);
     if (lanes.length < 2) return null;
 
-    var lastCommit = null;
-    var gliding = false;
-    // One glide per sample: the curves slide one step left over the sample
-    // interval, and once they have arrived the loop stops until the next sample
-    // restarts it. A stream that has stopped (the tab hidden, the router gone,
-    // the drawer closed) leaves nothing running.
-    function frame(ts) {
-      // A minute taken up again has put the curves back where they stand.
-      if (lastCommit === null) { gliding = false; return; }
-      var progress = Math.min(1, (ts - lastCommit) / INTERVAL);
-      // A CSS transform, not the SVG attribute: the attribute re-lays the chart
-      // out on every frame, the style only repaints it. In the SVG's own user
-      // units, which is what px means inside a viewBox.
+    // commit takes one sample into the lanes: the newest down/up stands
+    // off-right, the oldest drops, and the figures say it.
+    function commit(sample) {
+      sample.forEach(function (v, i) {
+        var l = lanes[i];
+        l.vals.push(v); l.vals.shift();
+        l.draw();
+        if (l.figure) l.figure.textContent = rateText(v);
+      });
+    }
+    // slide moves the curves the glide's share of one step left. A CSS
+    // transform, not the SVG attribute: the attribute re-lays the chart out
+    // on every frame, the style only repaints it. In the SVG's own user
+    // units, which is what px means inside a viewBox.
+    function slide(progress) {
       var tf = "translateX(" + (-progress * step).toFixed(2) + "px)";
       lanes.forEach(function (l) { l.slide(tf); });
-      if (progress < 1) requestAnimationFrame(frame);
-      else gliding = false;
+    }
+    // The player paces the glide (math.player): the loop runs while it has a
+    // sample to glide in and stops when it waits for one, so a stream that
+    // has stopped (the tab hidden, the router gone, the drawer closed) leaves
+    // nothing running.
+    var player = math.player(INTERVAL);
+    var looping = false;
+    function frame(ts) {
+      var at = player.tick(ts);
+      at.commits.forEach(commit);
+      slide(at.progress);
+      if (at.idle) looping = false;
+      else requestAnimationFrame(frame);
     }
 
     lanes.forEach(function (l) { l.draw(); });
     host.__versoLive = {
-      // A fresh sample: commit the newest down/up, drop the oldest, redraw, and
-      // start the glide toward it if one is not already running.
+      // A fresh sample goes to the player, which glides it in on its beat;
+      // under reduced motion it lands at once, a step and no glide.
       sample: function (nd, nu) {
         if (typeof nd !== "number" || typeof nu !== "number") return;
-        [nd, nu].forEach(function (v, i) {
-          var l = lanes[i];
-          l.vals.push(v); l.vals.shift();
-          l.draw();
-          if (l.figure) l.figure.textContent = rateText(v);
-        });
-        lastCommit = performance.now();
-        if (!reduce && !gliding) {
-          gliding = true;
+        if (reduce) {
+          commit([nd, nu]);
+          return;
+        }
+        player.add([nd, nu]);
+        if (!looping) {
+          looping = true;
           requestAnimationFrame(frame);
         }
       },
       // The minute as the router sampled it, taken up when the stream opens
       // again: whatever the graph missed while it was away (a hidden tab, a
-      // dropped stream) is drawn where it happened, and the curves stand
-      // still until the next sample, as on the first paint.
+      // dropped stream) is drawn where it happened, what the player held
+      // goes, and the curves stand still until it has a sample in hand
+      // again, as on the first paint.
       seed: function (nd, nu) {
         if (!Array.isArray(nd) || !Array.isArray(nu)) return;
+        player.reset();
         [nd, nu].forEach(function (vals, i) {
           var l = lanes[i];
           var fresh = math.minute(vals, N);
@@ -225,7 +279,6 @@
           l.draw();
           if (l.figure) l.figure.textContent = rateText(fresh[N - 1]);
         });
-        lastCommit = null;
       },
     };
     return host.__versoLive;
