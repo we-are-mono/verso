@@ -326,7 +326,7 @@ test('package refresh stays locked through polling and unlocks after a network f
     '[data-package-error]': error,
   })[selector] || null;
   env.window.location = new URL('http://verso.test/system/packages');
-  env.selectors.set('.verso-page-body > .verso-stack', root);
+  env.selectors.set('.verso-page__body > .verso-stack', root);
   env.selectors.set('[data-verso-masthead] form[action="/system/packages/discover"] button', button);
   env.selectors.set('[data-verso-heading-note]', new Element());
   env.context.Event = class {};
