@@ -19,9 +19,10 @@ own and points at the decision that governs it; the rationale lives there, not h
   - its SDK pinned by the verso tag that carries `Request::plugins`,
     `with_door`, `Property::door` and `Property::waiting` (it builds against the
     SDK in this tree), and its `verso>=` raised to that release;
-  - on the DK: the LAN record through dnsdhcp's offer, `https://<domain>` with no
-    warning and the HTTP redirect to it, a hand install turning `acme.verso`
-    off, and turning it back on serving the held certificate;
+  - on the DK (where `https://<domain>` already opens with no warning, its LAN
+    answer kept by AdGuard Home): the LAN record through dnsdhcp's offer, the
+    HTTP redirect to the domain, a hand install turning `acme.verso` off, and
+    turning it back on serving the held certificate;
   - the outcome as the top-right notification, the part refreshing itself while
     a request runs (a new widget behaviour, the owner's call), and a Request now
     act.
