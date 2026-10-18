@@ -457,15 +457,16 @@ things you need:
 - **`acl.read`** — what the shell reads and hands you. A `uci` scope names a config,
   which arrives as your snapshot (see
   [Reading config](#reading-config-the-read-snapshot)); a `ubus` scope on object
-  `verso` names one of the privileged helper's read functions, which arrives beside
-  it (see [Reading live state](#reading-live-state-brokered-helper-reads)).
+  `verso` names one of the privileged helper's read functions, and a `verso-plugin`
+  scope a read a plugin's registry declares, each of which arrives beside it (see
+  [Reading live state](#reading-live-state-brokered-helper-reads)).
 - **`acl.write`** — the configs a save changes.
 
 ```json
 "acl": {
-  "read":  [ { "scope": "uci",  "object": "system", "function": "read"  },
-             { "scope": "ubus", "object": "verso",  "function": "firewallCounters" } ],
-  "write": [ { "scope": "uci",  "object": "system", "function": "write" } ]
+  "read":  [ { "scope": "uci",          "object": "firewall", "function": "read"  },
+             { "scope": "verso-plugin", "object": "firewall", "function": "state" } ],
+  "write": [ { "scope": "uci",          "object": "firewall", "function": "write" } ]
 }
 ```
 
@@ -539,7 +540,6 @@ functions in its own closed set:
 | `dhcpState` | `{"networks": {"lan": {"enabled": true, "state": "running", "pool": "192.168.1.100–192.168.1.249", "lease_time": "12h", "leases": 12}}}` — DHCPv4 service observations from procd, generated dnsmasq ranges, netifd and unexpired leases. `enabled` comes from applied configuration, not the operator’s staged changes. States are `running`, `warning`, `stopped` and `disabled`; optional `reason` distinguishes failures, unavailable readings and full pools. Missing lease counts stay unknown. |
 | `networkState` | `{"interfaces": [...], "devices": {...}, "protocols": {...}, "routes": [...]}` — netifd logical-interface dump, kernel-device state, installed protocol handlers (when available), and the kernel's main routing table as `ip route` lists it (`family`, `target` in CIDR, `gateway`, `device`, `metric`, `proto`, `type` when not unicast, `source`; local, broadcast, multicast and cached entries left out). The shell adds physical-port and parent relationships from its existing topology reader. |
 | `accessCredentials` | Public SSH key comments/fingerprints and public web-certificate metadata. No authorized-key options, private keys, or router passwords are included. |
-| `firewallCounters` | `{"counters": [{"chain", "name", "packets", "bytes"}]}` — fw4's live nftables hit counters, one entry per (chain, rule name), summed across the several nft rules a single UCI section can render into. |
 | `wirelessState` | `{"radios": {"radio0": {"up": true, "channel": 6, "txpower": 20, "busy": 61, "hardware": "NXP 88W9098"}}, "networks": {"default_radio0": {"up": true, "clients": 3}}}` — what the radios are doing now, keyed by `wireless` config section. netifd's `network.wireless status` says whether each radio and network is up and which kernel interface a network became; iwinfo reads that interface for the channel and transmit power (dBm) in use, the in-use channel's busy share (whole percent of active airtime) and the associated clients. A number that could not be read is absent, never zero. The operator's grant must cover `network.wireless status`, and `iwinfo info`/`assoclist`/`survey` for the numbers. |
 | `configFiles` | `{"files": [{"path": "/etc/nftables.d/10-custom.nft", "family": "fw4", "content": "...", "version": "...", "pending": false, "exists": true}], "families": [{"name": "fw4", "config": "firewall", "plugin": "firewall"}]}` — the files of the families whose config you read, as they will read once staged changes are applied, and those families (see [Hand-edited files](#hand-edited-files)). A file listed by its path alone carries an `error` in place of its `content` and `version`. |
 | `ddnsState` | `{"services": {"home": {"address": "203.0.113.7", "running": true, "updated": 200, "next": 100}}}` — each ddns-scripts service with files in `/var/run/ddns`, keyed by section. `address` is what the name resolved to at the updater's last check, every address one per line (empty when it did not resolve); `updated` is seconds since an update was last sent and `next` seconds until the next check, both absent when the updater has not written them; `running` is whether the pid file names a live `dynamic_dns_updater`. No state is read from the log. |

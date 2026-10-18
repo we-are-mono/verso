@@ -85,13 +85,6 @@ func (b *NativeBackend) RefreshGrants(ctx context.Context, sid string) error {
 	return callHelper(ctx, b.helperSocket, "refreshGrants", sid, nil, nil)
 }
 
-// FirewallFiles is the rule files fw4 reads from its own folder, as they will
-// read once staged changes are applied.
-func (b *NativeBackend) FirewallFiles(ctx context.Context, sid string) (json.RawMessage, error) {
-	var state json.RawMessage
-	err := callHelper(ctx, b.helperSocket, "firewallFiles", sid, nil, &state)
-	return state, err
-}
 func (b *NativeBackend) configFileState(ctx context.Context, sid string) (configFileState, error) {
 	var state configFileState
 	err := callHelper(ctx, b.helperSocket, "configFiles", sid, nil, &state)

@@ -1,5 +1,5 @@
 {
-  "firewallCounters": {
+  "firewall.state": {"version": 1, "result": {
     "counters": [
       { "chain": "input_wan", "name": "Allow-DHCP-Renew", "packets": 0, "bytes": 0 },
       { "chain": "input_wan", "name": "Allow-Ping", "packets": 1400, "bytes": 117600 },
@@ -13,5 +13,5 @@
       { "chain": "dstnat_wan", "name": "HTTPS-to-NAS", "packets": 1200, "bytes": 96000 },
       { "chain": "dstnat_wan", "name": "HTTPS-to-NAS (reflection)", "packets": 3, "bytes": 240 }
     ]
-  }
+  }}
 }

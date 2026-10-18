@@ -705,13 +705,6 @@ fn udp_listeners(table: &str) -> Vec<(String, u16)> {
         })
         .collect()
 }
-/// firewall_state is the rule files fw4 reads from its own folder, as they
-/// will read once staged changes are applied.
-pub fn firewall_state() -> Result<Value, Failure> {
-    let mut result = only(state()?, "fw4");
-    result["fw4"] = json!(Path::new("/sbin/fw4").is_file());
-    Ok(result)
-}
 
 /// only narrows a state to one family's files, so a page never lists — and
 /// so never offers to edit — another daemon's.

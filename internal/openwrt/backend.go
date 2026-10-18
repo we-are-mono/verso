@@ -235,12 +235,6 @@ type Backend interface {
 	// (network.device status), sid-gated likewise. A throughput reading is the
 	// delta between two of these.
 	DeviceStats(ctx context.Context, sid, device string) (DeviceStats, error)
-	// FirewallCounters reads fw4's live nftables hit counters — one entry per
-	// (chain, rule name) with packets and bytes — through the privileged helper,
-	// which lists the ruleset as root and self-gates on the sid. The result stays
-	// raw JSON: the shell brokers it to a declaring plugin (ADR-007) and the plugin,
-	// not the shell, owns what a firewall counter means.
-	FirewallCounters(ctx context.Context, sid string) (json.RawMessage, error)
 	// FirewallStatus reports fw4's loaded kernel state, independently of staged
 	// configuration or whether its settings plugin is available.
 	FirewallStatus(ctx context.Context, sid string) (FirewallStatus, error)
@@ -257,13 +251,11 @@ type Backend interface {
 	// are the same thing right now.
 	NetworkInterfaces(ctx context.Context, sid string) ([]NetIface, error)
 	// The helper's raw state reads the shell brokers to a declaring plugin
-	// (ADR-007), sid-gated: DHCP and DNS service state, fw4's rule files,
-	// netifd's network state, what the radios are doing and what the tunnels
-	// are doing. Each stays raw JSON; the plugin, not the shell, owns what it
-	// means.
+	// (ADR-007), sid-gated: DHCP and DNS service state, netifd's network state
+	// and what the radios are doing. Each stays raw JSON; the plugin, not the
+	// shell, owns what it means.
 	DHCPState(ctx context.Context, sid string) (json.RawMessage, error)
 	DNSState(ctx context.Context, sid string) (json.RawMessage, error)
-	FirewallFiles(ctx context.Context, sid string) (json.RawMessage, error)
 	NetworkState(ctx context.Context, sid string) (json.RawMessage, error)
 	WirelessState(ctx context.Context, sid string) (json.RawMessage, error)
 	DDNSState(ctx context.Context, sid string) (json.RawMessage, error)
@@ -1070,20 +1062,6 @@ func (b *NativeBackend) FirmwareCheck(ctx context.Context, sid string) (Firmware
 // this router has anything to download.
 func (b *NativeBackend) FirmwareUpgrade(ctx context.Context, sid string) error {
 	return callHelperWithin(ctx, b.helperSocket, "firmwareUpgrade", sid, nil, nil, firmwareUpgradeTimeout)
-}
-
-// FirewallCounters reads fw4's per-rule nftables counters through the privileged
-// `verso-rpcd` helper, gated by the sid. Listing an nftables table needs
-// CAP_NET_ADMIN, which the shell does not hold (ADR-007), so the helper lists
-// it as root and self-gates on session.access. The result crosses as raw JSON —
-// the shell forwards it to the plugin that declared the read without reading
-// it itself.
-func (b *NativeBackend) FirewallCounters(ctx context.Context, sid string) (json.RawMessage, error) {
-	var result json.RawMessage
-	if err := callHelper(ctx, b.helperSocket, "firewallCounters", sid, nil, &result); err != nil {
-		return nil, err
-	}
-	return result, nil
 }
 
 // LogRead reads the tail of logd's ring through the `log` object, sid-gated by

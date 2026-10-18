@@ -17,8 +17,8 @@
       { "scope": "uci", "object": "firewall", "function": "read" },
       { "scope": "uci", "object": "network", "function": "read" },
       { "scope": "uci", "object": "dhcp", "function": "read" },
-      { "scope": "ubus", "object": "verso", "function": "firewallCounters" },
-      { "scope": "ubus", "object": "verso", "function": "firewallFiles" }
+      { "scope": "verso-plugin", "object": "firewall", "function": "state" },
+      { "scope": "ubus", "object": "verso", "function": "configFiles" }
     ],
     "write": [
       { "scope": "uci", "object": "firewall", "function": "write" },

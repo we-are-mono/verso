@@ -1,0 +1,14 @@
+{
+	"verso-plugin-firewall": {
+		"description": "Session grants for Verso's Firewall pages: the firewall config, and the network and dhcp configs its zones and rules name; this plugin's own root read of each rule's hit counters (ADR-027); the helper's listing of fw4's rule files; and staging a rule file through the helper's file journal. The shell holds the operator's session and performs these on the plugin's behalf (ADR-007), so this file is what makes the manifest's declared acl grantable at rpcd — the plugin itself holds no session and no privilege.",
+		"read": {
+			"uci": [ "firewall", "network", "dhcp" ],
+			"ubus": { "verso": [ "configFiles" ] },
+			"verso-plugin": { "firewall": [ "state" ] }
+		},
+		"write": {
+			"uci": [ "firewall" ],
+			"ubus": { "verso": [ "stageConfigFile" ] }
+		}
+	}
+}

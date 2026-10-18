@@ -1342,12 +1342,8 @@ func (s *Server) coreRead(function string) func(context.Context, string) (json.R
 		read = s.backend.DHCPState
 	case "dnsState":
 		read = s.backend.DNSState
-	case "firewallFiles":
-		read = s.backend.FirewallFiles
 	case "accessCredentials":
 		read = s.readAccessCredentials
-	case "firewallCounters":
-		read = s.backend.FirewallCounters
 	case "dhcpLeases":
 		read = s.dhcpLeases
 	case "networkState":

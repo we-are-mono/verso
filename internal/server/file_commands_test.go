@@ -14,31 +14,6 @@ import (
 	"github.com/we-are-mono/verso/internal/widget"
 )
 
-type ruleFilesBackend struct {
-	fakeBackend
-	files json.RawMessage
-}
-
-func (b ruleFilesBackend) FirewallFiles(context.Context, string) (json.RawMessage, error) {
-	return b.files, nil
-}
-
-// TestFirewallRuleFilesAreBrokeredToTheirPlugin: the rule files fw4 reads are
-// a helper read a plugin declares, handed down verbatim beside its snapshot.
-func TestFirewallRuleFilesAreBrokeredToTheirPlugin(t *testing.T) {
-	files := json.RawMessage(`{"files":[{"path":"/etc/nftables.d/10-a.nft","family":"fw4","content":"","version":"v"}],"fw4":true}`)
-	tr := &fakeTransport{env: &plugin.Envelope{SchemaVersion: 1, Title: "Firewall", Widget: json.RawMessage(`{"type":"card"}`)}}
-	m := demoManifest()
-	m.ACL = plugin.ACL{Read: []plugin.ACLScope{{Scope: "ubus", Object: "verso", Function: "firewallFiles"}}}
-	s := newServerWith(t, ruleFilesBackend{files: files}, tr, []plugin.Manifest{m})
-	if rec := get(t, s, "/plugins/demo/"); rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, want 200", rec.Code)
-	}
-	if got := tr.lastReq.Ubus["firewallFiles"]; string(got) != string(files) {
-		t.Errorf("brokered read = %s, want the helper's JSON verbatim", got)
-	}
-}
-
 // TestAPluginRequestNamesTheInstalledPlugins: every plugin request carries the
 // ids of the installed plugins, in order, its own among them.
 func TestAPluginRequestNamesTheInstalledPlugins(t *testing.T) {

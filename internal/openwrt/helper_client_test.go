@@ -178,49 +178,6 @@ func TestPackageDetailAndBrowseVerbsCarrySessionAndExactArguments(t *testing.T) 
 	}
 }
 
-// TestFirewallCountersPassesResultThrough: the counters verb carries the operator's
-// sid and no arguments, and the helper's result reaches the caller as raw JSON —
-// the shell brokers firewall state without interpreting it (ADR-007).
-func TestFirewallCountersPassesResultThrough(t *testing.T) {
-	socket := filepath.Join(t.TempDir(), "helper.sock")
-	listener := listenAsHelper(t, socket)
-	defer listener.Close()
-
-	done := make(chan error, 1)
-	go func() {
-		conn, err := listener.Accept()
-		if err != nil {
-			done <- err
-			return
-		}
-		defer conn.Close()
-		var request helperRequest
-		if err := json.NewDecoder(conn).Decode(&request); err != nil {
-			done <- err
-			return
-		}
-		if request.Method != "firewallCounters" || request.SID != "good-sid" || len(request.Args) != 0 {
-			done <- errors.New("unexpected helper request")
-			return
-		}
-		_, err = conn.Write([]byte(
-			`{"status":0,"result":{"counters":[{"chain":"input_wan","name":"Allow-Ping","packets":12,"bytes":1008}]}}` + "\n"))
-		done <- err
-	}()
-
-	result, err := (&NativeBackend{helperSocket: socket}).FirewallCounters(context.Background(), "good-sid")
-	if err != nil {
-		t.Fatal(err)
-	}
-	want := `{"counters":[{"chain":"input_wan","name":"Allow-Ping","packets":12,"bytes":1008}]}`
-	if string(result) != want {
-		t.Errorf("result = %s, want the helper's JSON verbatim %s", result, want)
-	}
-	if err := <-done; err != nil {
-		t.Fatal(err)
-	}
-}
-
 // helperReplying answers one request with a canned body, after checking that the
 // verb arrived under the operator's sid with no arguments — the shape every read
 // verb shares.

@@ -124,10 +124,10 @@ type fakeBackend struct {
 	wanCalls *int
 	devStats *[]openwrt.DeviceStats
 	devErr   error
-	// The helper's brokered firewall read (ADR-007): the canned counters payload the
-	// shell forwards to a declaring plugin, and the failure that degrades it away.
-	fwCounters  json.RawMessage
-	fwErr       error
+	// A core brokered read (ADR-007): the canned wireless payload the shell
+	// forwards to a declaring plugin, and the failure that degrades it away.
+	wireless    json.RawMessage
+	wirelessErr error
 	fwStatus    openwrt.FirewallStatus
 	fwStatusErr error
 	// The device's log ring and netifd's logical/device join — what the live
@@ -559,10 +559,6 @@ func (f fakeBackend) Restart(ctx context.Context, sid string) error {
 	return nil
 }
 
-func (f fakeBackend) FirewallCounters(context.Context, string) (json.RawMessage, error) {
-	return f.fwCounters, f.fwErr
-}
-
 func (f fakeBackend) FirewallStatus(context.Context, string) (openwrt.FirewallStatus, error) {
 	return f.fwStatus, f.fwStatusErr
 }
@@ -597,16 +593,15 @@ func (fakeBackend) DNSState(context.Context, string) (json.RawMessage, error) {
 	return nil, errNoHelper
 }
 
-func (fakeBackend) FirewallFiles(context.Context, string) (json.RawMessage, error) {
-	return nil, errNoHelper
-}
-
 func (fakeBackend) NetworkState(context.Context, string) (json.RawMessage, error) {
 	return nil, errNoHelper
 }
 
-func (fakeBackend) WirelessState(context.Context, string) (json.RawMessage, error) {
-	return nil, errNoHelper
+func (f fakeBackend) WirelessState(context.Context, string) (json.RawMessage, error) {
+	if f.wireless == nil && f.wirelessErr == nil {
+		return nil, errNoHelper
+	}
+	return f.wireless, f.wirelessErr
 }
 
 func (fakeBackend) DDNSState(context.Context, string) (json.RawMessage, error) {
@@ -1227,11 +1222,11 @@ func demoReadManifest() plugin.Manifest {
 	return m
 }
 
-func demoCountersManifest() plugin.Manifest {
+func demoWirelessManifest() plugin.Manifest {
 	m := demoManifest()
 	m.ACL = plugin.ACL{Read: []plugin.ACLScope{
-		{Scope: "uci", Object: "firewall", Function: "read"},
-		{Scope: "ubus", Object: "verso", Function: "firewallCounters"},
+		{Scope: "uci", Object: "wireless", Function: "read"},
+		{Scope: "ubus", Object: "verso", Function: "wirelessState"},
 	}}
 	return m
 }
@@ -1425,20 +1420,20 @@ func TestPluginNoReadACLGetsNoSnapshot(t *testing.T) {
 // acl.read receives that helper's result in its request, read with the operator's
 // sid (ADR-007) — live state the plugin cannot reach itself.
 func TestPluginUbusReadBrokered(t *testing.T) {
-	counters := json.RawMessage(`{"counters":[{"chain":"input_wan","name":"Allow-Ping","packets":12,"bytes":1008}]}`)
+	radios := json.RawMessage(`{"radios":{"radio0":{"up":true,"channel":6}},"networks":{}}`)
 	tr := &fakeTransport{env: &plugin.Envelope{
-		SchemaVersion: 1, Title: "Firewall", Widget: json.RawMessage(`{"type":"card"}`),
+		SchemaVersion: 1, Title: "Wi-Fi", Widget: json.RawMessage(`{"type":"card"}`),
 	}}
-	s := newServerWith(t, fakeBackend{fwCounters: counters}, tr, []plugin.Manifest{demoCountersManifest()})
+	s := newServerWith(t, fakeBackend{wireless: radios}, tr, []plugin.Manifest{demoWirelessManifest()})
 
 	if rec := get(t, s, "/plugins/demo/"); rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200", rec.Code)
 	}
-	got, ok := tr.lastReq.Ubus["firewallCounters"]
+	got, ok := tr.lastReq.Ubus["wirelessState"]
 	if !ok {
 		t.Fatalf("forwarded request carried no brokered read: %+v", tr.lastReq.Ubus)
 	}
-	if string(got) != string(counters) {
+	if string(got) != string(radios) {
 		t.Errorf("brokered read = %s, want the helper's JSON verbatim", got)
 	}
 }
@@ -1459,7 +1454,7 @@ func TestPluginUndeclaredUbusReadNotBrokered(t *testing.T) {
 		tr := &fakeTransport{env: &plugin.Envelope{
 			SchemaVersion: 1, Title: "Demo", Widget: json.RawMessage(`{"type":"card"}`),
 		}}
-		backend := fakeBackend{fwCounters: json.RawMessage(`{"counters":[]}`)}
+		backend := fakeBackend{wireless: json.RawMessage(`{"radios":{}}`)}
 		s := newServerWith(t, backend, tr, []plugin.Manifest{m})
 
 		if rec := get(t, s, "/plugins/demo/"); rec.Code != http.StatusOK {
@@ -1476,10 +1471,10 @@ func TestPluginUndeclaredUbusReadNotBrokered(t *testing.T) {
 // the uci snapshot takes.
 func TestPluginUbusReadDegradesOnBackendError(t *testing.T) {
 	tr := &fakeTransport{env: &plugin.Envelope{
-		SchemaVersion: 1, Title: "Firewall", Widget: json.RawMessage(`{"type":"card"}`),
+		SchemaVersion: 1, Title: "Wi-Fi", Widget: json.RawMessage(`{"type":"card"}`),
 	}}
-	backend := fakeBackend{fwErr: errors.New("helper unavailable")}
-	s := newServerWith(t, backend, tr, []plugin.Manifest{demoCountersManifest()})
+	backend := fakeBackend{wirelessErr: errors.New("helper unavailable")}
+	s := newServerWith(t, backend, tr, []plugin.Manifest{demoWirelessManifest()})
 
 	rec := get(t, s, "/plugins/demo/")
 	if rec.Code != http.StatusOK {

@@ -73,8 +73,10 @@ broken socket.**
    **writes** the plugin's declarative `commit` intent — refusing anything outside
    the plugin's declared, session-authorized scopes. A read scope also reaches past
    config: a `ubus` scope on object `verso` names one of the helper's read functions
-   (`firewallCounters`), so a page can show live kernel state — nftables counters —
-   that neither the plugin nor the de-privileged shell may read for itself. Plugins
+   (`wirelessState`), and a `verso-plugin` scope names a read a plugin's registry
+   declares (the firewall's nftables counters, ADR-027), so a page can show live
+   kernel state that neither the plugin nor the de-privileged shell may read for
+   itself. Plugins
    gain a *declared* privilege surface instead of ambient root, and never read
    `/etc/config` or hold a write path.
 

@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "commands": [
+    { "name": "state", "kind": "read", "version": 1,
+      "exec": "/usr/bin/verso-plugin-firewall", "argv": ["root"] }
+  ],
+  "families": [
+    {
+      "name": "fw4",
+      "config": "firewall",
+      "dir": { "path": "/etc/nftables.d", "suffixes": [".nft"], "names": "plain" },
+      "mode": "0644",
+      "words": {
+        "too_large": "Rule files must be at most 32 KiB.",
+        "invalid": "Invalid rule file.",
+        "over_limit": "Rule files exceed the editor size limit."
+      },
+      "check": ["/sbin/fw4", "check"],
+      "reload": ["/sbin/fw4", "-q", "restart"]
+    }
+  ]
+}

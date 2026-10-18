@@ -182,14 +182,16 @@ APK_OUT     := $(APK_DIR)/verso-$(VER).apk
 POSTINST    := packaging/apk/post-install.sh
 
 # package_plugin lays one core plugin into the payload: its binary, init script
-# and manifest, its travelling catalogs (ADR-012), and the rpcd acl.d file a
-# plugin with uci scopes ships (ADR-007). A canned recipe, like cargo_plugin.
+# and manifest, its travelling catalogs (ADR-012), the rpcd acl.d file a plugin
+# with uci scopes ships (ADR-007), and the command registry of a plugin with a
+# root half (ADR-027). A canned recipe, like cargo_plugin.
 define package_plugin
 install -Dm755 $(BUILDDIR)/verso-plugin-$(1)-$(APK_GOARCH) $(APK_PAYLOAD)/usr/bin/verso-plugin-$(1)
 install -Dm755 plugins/verso-plugin-$(1)/rootfs/etc/init.d/verso-plugin-$(1) $(APK_PAYLOAD)/etc/init.d/verso-plugin-$(1)
 install -Dm644 plugins/verso-plugin-$(1)/manifest.json $(APK_PAYLOAD)/usr/share/verso/plugins/$(1)/manifest.json
 $(foreach f,$(wildcard plugins/verso-plugin-$(1)/i18n/*.json),$(call install_data,$(f),$(APK_PAYLOAD)/usr/share/verso/plugins/$(1)/i18n/$(notdir $(f))))
 $(foreach f,$(wildcard plugins/verso-plugin-$(1)/rootfs/usr/share/rpcd/acl.d/*.json),$(call install_data,$(f),$(APK_PAYLOAD)/usr/share/rpcd/acl.d/$(notdir $(f))))
+$(foreach f,$(wildcard plugins/verso-plugin-$(1)/rootfs/usr/share/verso/plugins/$(1)/commands.json),$(call install_data,$(f),$(APK_PAYLOAD)/usr/share/verso/plugins/$(1)/commands.json))
 
 endef
 

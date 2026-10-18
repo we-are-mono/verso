@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-only
 // SPDX-FileCopyrightText: 2026 Mono Technologies Inc.
 
-//! The kernel's own hit counts, brokered to this plugin by the shell.
+//! The kernel's own hit counts: this plugin's `state` read, which its root
+//! half answers (`ruleset`, ADR-027) and the shell brokers back to its pages.
 //!
 //! firewall4 stamps every rule it renders with a counter and a comment naming
 //! the section it came from, so a section's hits are the entry under its
@@ -17,8 +18,8 @@
 use std::collections::HashMap;
 use verso_plugin::{Ubus, Value};
 
-/// FUNCTION is the brokered helper read this plugin declares in its manifest.
-pub const FUNCTION: &str = "firewallCounters";
+/// STATE is the brokered read this plugin declares in its manifest: its own.
+pub const STATE: &str = "firewall.state";
 
 /// Counters is one render's hit counts, keyed by (chain, firewall4 identity).
 #[derive(Default)]
@@ -31,7 +32,7 @@ impl Counters {
     /// shaped differently than the helper documents, indexes nothing.
     pub fn read(ubus: &Ubus) -> Counters {
         let entries = ubus
-            .get(FUNCTION)
+            .read(STATE, &[crate::root::STATE_VERSION])
             .and_then(|result| result.get("counters"))
             .and_then(Value::as_array)
             .map(Vec::as_slice)
@@ -67,13 +68,13 @@ mod tests {
 
     fn counters() -> Counters {
         Counters::read(&Ubus::from_value(json!({
-            "firewallCounters": {"counters": [
+            "firewall.state": {"version": 1, "result": {"counters": [
                 {"chain": "input_wan", "name": "Allow-Ping", "packets": 1400, "bytes": 117600},
                 {"chain": "forward_wan", "name": "Allow-Ping", "packets": 7, "bytes": 588},
                 {"chain": "dstnat_wan", "name": "HTTPS-to-NAS", "packets": 1200, "bytes": 96000},
                 {"chain": "dstnat_wan", "name": "HTTPS-to-NAS (reflection)", "packets": 3, "bytes": 240},
                 {"chain": "input_wan", "name": "@rule[6]", "packets": 0, "bytes": 0}
-            ]}
+            ]}}
         })))
     }
 
@@ -96,12 +97,16 @@ mod tests {
         let absent = Counters::read(&Ubus::from_value(Value::Null));
         assert_eq!(absent.packets("input_wan", "Allow-Ping"), None);
 
-        let unexpected = Counters::read(&Ubus::from_value(json!({"firewallCounters": 12})));
+        let unexpected = Counters::read(&Ubus::from_value(json!({"firewall.state": {"version": 1, "result": 12}})));
         assert_eq!(unexpected.packets("input_wan", "Allow-Ping"), None);
 
         let incomplete = Counters::read(&Ubus::from_value(
-            json!({"firewallCounters": {"counters": [{"chain": "input_wan"}]}}),
+            json!({"firewall.state": {"version": 1, "result": {"counters": [{"chain": "input_wan"}]}}}),
         ));
         assert_eq!(incomplete.packets("input_wan", "Allow-Ping"), None);
+
+        let later = Counters::read(&Ubus::from_value(json!({"firewall.state": {"version": 2, "result":
+            {"counters": [{"chain": "input_wan", "name": "Allow-Ping", "packets": 1400, "bytes": 1}]}}})));
+        assert_eq!(later.packets("input_wan", "Allow-Ping"), None, "a version this plugin does not know");
     }
 }

@@ -35,8 +35,10 @@ mod redirect_form;
 mod redirects;
 mod rename;
 mod rule_drawer;
+mod root;
 mod rule_form;
 mod rules;
+mod ruleset;
 mod settings;
 mod zone_drawer;
 mod zone_form;
@@ -59,6 +61,9 @@ use counters::Counters;
 use model::{Firewall, CONFIG};
 
 fn main() {
+    if std::env::args().nth(1).as_deref() == Some("root") {
+        root::run();
+    }
     serve_described("firewall", get, post, describe::describe);
 }
 
@@ -334,7 +339,7 @@ mod tests {
     #[test]
     fn a_rule_file_is_edited_under_the_settings() {
         let mut saving = request("/settings/files/new");
-        saving.ubus = Ubus::from_value(serde_json::json!({"firewallFiles": {"files": []}}));
+        saving.ubus = Ubus::from_value(serde_json::json!({"configFiles": {"files": []}}));
         let body = serde_json::to_value(post(
             &saving,
             &Form::parse("filename=20-x&content=chain+x+%7B%7D&expected=af63bd4c8601b7df"),

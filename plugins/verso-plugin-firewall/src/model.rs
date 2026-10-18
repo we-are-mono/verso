@@ -306,7 +306,7 @@ impl Firewall {
 
     /// with_rule_files adds the rule files the request's brokered read carries.
     pub fn with_rule_files(mut self, ubus: &Ubus) -> Firewall {
-        self.rule_files = files::files(ubus.get("firewallFiles"));
+        self.rule_files = files::files(ubus.get("configFiles"));
         self
     }
 

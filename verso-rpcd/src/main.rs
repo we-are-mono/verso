@@ -341,7 +341,6 @@ fn dispatch(request: &Value, state: &State, uid: u32) -> Result<Value, Failure> 
     match method {
         "dhcpState" => dhcp::state(),
         "dnsState" => config_files::dns_state(),
-        "firewallFiles" => config_files::firewall_state(),
         "configFiles" => config_files::state(),
         "uciCommitted" => uci_committed::committed(argument(request, "configs")?),
         "stageConfigFile" => config_files::stage(
@@ -538,7 +537,6 @@ fn dispatch(request: &Value, state: &State, uid: u32) -> Result<Value, Failure> 
         }
         "rootHasPassword" => Ok(json!({"has_password": root_has_password()})),
         "hardwareState" => Ok(hardware::state()),
-        "firewallCounters" => firewall_counters(),
         "firewallStatus" => firewall_status(),
         "firewallLog" => state.firewall_log.read(&request["args"]),
         "usageLive" => state
@@ -621,20 +619,6 @@ fn root_has_password() -> bool {
         Ok(shadow) => shadow_root_has_password(&shadow),
         Err(_) => true, // fail safe: an unreadable /etc/shadow reads as "has one"
     }
-}
-
-// firewall_counters reads fw4's live nftables ruleset and reduces it to per-rule
-// hit counters. Listing a table needs CAP_NET_ADMIN, which the de-privileged shell
-// does not hold (ADR-007), so the read is brokered here; nft is executed directly,
-// never through a shell, and the listing is a read with no arguments to validate.
-fn firewall_counters() -> Result<Value, Failure> {
-    let mut command = Command::new("/usr/sbin/nft");
-    command.args(["-j", "list", "table", "inet", "fw4"]);
-    let output = run_bounded(command, "list firewall counters", 4 * 1024 * 1024)?;
-    if !output.status.success() {
-        return Err(command_failure("list firewall counters", output));
-    }
-    firewall::counters(&output.stdout).map_err(Failure::unknown)
 }
 
 fn firewall_status() -> Result<Value, Failure> {
@@ -1420,7 +1404,6 @@ mod tests {
         "pkgRemove",
         "rootHasPassword",
         "hardwareState",
-        "firewallCounters",
         "firewallStatus",
         "firewallLog",
         "usageLive",
