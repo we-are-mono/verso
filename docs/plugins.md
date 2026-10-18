@@ -589,7 +589,11 @@ raw tuple's length:
 
 A removed section is already gone from the injected snapshot (which reflects the
 staged config), so a `remove-section` can be named only as far as its handle
-allows — leave it to the raw line otherwise. The describe hook never writes and
+allows — leave it to the raw line otherwise. Two SDK helpers do what every hook
+starts with: `group_changes(changes, key)` gathers the changes into runs by the
+key each maps to (a section, a setting), in the order the keys first appear, and
+`section_type(changes, snapshot, config, section)` is a section's type, read off
+the `add-section` change that made it or the snapshot. The describe hook never writes and
 never answers with a page; it only turns changes into words, though it may build
 one of its own pages to read a control's words from it.
 

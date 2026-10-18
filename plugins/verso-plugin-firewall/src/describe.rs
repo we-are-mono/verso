@@ -10,9 +10,7 @@
 //! snapshot) it simply does not cover, and the shell keeps that change's raw uci
 //! line.
 
-use std::collections::HashMap;
-
-use verso_plugin::{Change, Description, Snapshot, SubjectKind};
+use verso_plugin::{group_changes, section_type, Change, Description, Snapshot, SubjectKind};
 
 use crate::model::{Firewall, CONFIG};
 use crate::settings;
@@ -20,39 +18,19 @@ use crate::settings;
 /// describe answers the shell's pending-change list with one sentence per changed
 /// firewall object, in first-seen order.
 pub fn describe(changes: &[Change], snapshot: &Snapshot) -> Vec<Description> {
-    // Group each change's position by the section it touches, keeping the order
-    // the sections first appear so the drawer reads top-to-bottom as staged.
-    let mut order: Vec<String> = Vec::new();
-    let mut groups: HashMap<String, Vec<usize>> = HashMap::new();
-    for (i, c) in changes.iter().enumerate() {
-        if c.config != CONFIG || c.section.is_empty() {
-            continue;
-        }
-        if !groups.contains_key(&c.section) {
-            order.push(c.section.clone());
-        }
-        groups.entry(c.section.clone()).or_default().push(i);
-    }
-
+    let runs = group_changes(changes, |c| {
+        (c.config == CONFIG && !c.section.is_empty()).then_some(c.section.as_str())
+    });
     let mut out = Vec::new();
-    for section in &order {
-        if is_defaults(section, &groups[section], changes, snapshot) {
-            out.extend(describe_defaults(&groups[section], changes, snapshot));
-        } else if let Some(d) = describe_section(section, &groups[section], changes, snapshot) {
+    for (section, idxs) in runs {
+        let typ = section_type(changes, snapshot, CONFIG, section);
+        if typ == "defaults" {
+            out.extend(describe_defaults(&idxs, changes, snapshot));
+        } else if let Some(d) = describe_section(section, &typ, &idxs, changes, snapshot) {
             out.push(d);
         }
     }
     out
-}
-
-/// is_defaults says whether a section is the global defaults: by the type its
-/// add-section change carries, or the staged snapshot's.
-fn is_defaults(section: &str, idxs: &[usize], changes: &[Change], snapshot: &Snapshot) -> bool {
-    idxs.iter()
-        .find(|&&i| changes[i].op == "add-section")
-        .map(|&i| changes[i].option.clone())
-        .or_else(|| snapshot.section(CONFIG, section).map(|s| s.scalar(".type")))
-        .is_some_and(|typ| typ == "defaults")
 }
 
 /// describe_defaults says each change to the global defaults as its row on
@@ -87,10 +65,12 @@ fn describe_defaults(idxs: &[usize], changes: &[Change], snapshot: &Snapshot) ->
     out
 }
 
-/// describe_section names what happened to one section, or returns None to leave
-/// its changes as raw lines when the object cannot be named.
+/// describe_section names what happened to one section of type `typ`, or
+/// returns None to leave its changes as raw lines when the object cannot be
+/// named — a removed section is already gone from the snapshot and has no type.
 fn describe_section(
     section: &str,
+    typ: &str,
     idxs: &[usize],
     changes: &[Change],
     snapshot: &Snapshot,
@@ -98,23 +78,14 @@ fn describe_section(
     let added = idxs.iter().any(|&i| changes[i].op == "add-section");
     let removed = idxs.iter().any(|&i| changes[i].op == "remove-section");
 
-    // A new section's type rides its add-section change; an existing one's comes
-    // from the staged snapshot. A removed section is already gone from the
-    // snapshot, so it has neither — and stays a raw line.
     let sec = snapshot.section(CONFIG, section);
-    let typ = idxs
-        .iter()
-        .find(|&&i| changes[i].op == "add-section")
-        .map(|&i| changes[i].option.clone())
-        .or_else(|| sec.as_ref().map(|s| s.scalar(".type")))
-        .unwrap_or_default();
-    let (kind, about) = kind_label(&typ)?;
+    let (kind, about) = kind_label(typ)?;
 
     // A crossing carries no name of its own — what it is, is the two zones it
     // joins — so it is named by those rather than by the `name` option every
     // other section type identifies itself with: "lan to wan" in a sentence,
     // "lan → wan" as what config history calls it.
-    let (name, called) = match (typ.as_str(), sec.as_ref()) {
+    let (name, called) = match (typ, sec.as_ref()) {
         ("forwarding", Some(s)) => {
             let (src, dest) = (s.scalar("src"), s.scalar("dest"));
             (format!("{src} to {dest}"), format!("{src} \u{2192} {dest}"))
@@ -125,7 +96,7 @@ fn describe_section(
             (name.clone(), name)
         }
     };
-    let subject = match typ.as_str() {
+    let subject = match typ {
         "forwarding" if !name.is_empty() => format!("the crossing from {name}"),
         _ => subject(kind, &name),
     };

@@ -9,9 +9,7 @@
 //! (network's globals), a time zone written with its name, each server added
 //! to or taken from the list. A change it does not know keeps its raw line.
 
-use std::collections::BTreeMap;
-
-use verso_plugin::{Change, Description, Snapshot, SubjectKind};
+use verso_plugin::{group_changes, section_type, Change, Description, Snapshot, SubjectKind};
 
 /// How a setting's value reads.
 #[derive(Clone, Copy)]
@@ -130,17 +128,8 @@ const SETTINGS: &[Setting] = &[
 /// describe answers the shell's pending-change list with one sentence per
 /// changed setting, in first-seen order.
 pub fn describe(changes: &[Change], snapshot: &Snapshot) -> Vec<Description> {
-    // The type a section has, from the snapshot or the change that made it.
-    let kind_of = |config: &str, section: &str| -> String {
-        changes
-            .iter()
-            .find(|c| c.op == "add-section" && c.config == config && c.section == section)
-            .map(|c| c.option.clone())
-            .or_else(|| snapshot.section(config, section).map(|s| s.scalar(".type")))
-            .unwrap_or_default()
-    };
     let setting_of = |c: &Change| -> Option<&'static Setting> {
-        let kind = kind_of(&c.config, &c.section);
+        let kind = section_type(changes, snapshot, &c.config, &c.section);
         SETTINGS.iter().find(|s| {
             s.config == c.config
                 && s.kind == kind
@@ -148,45 +137,36 @@ pub fn describe(changes: &[Change], snapshot: &Snapshot) -> Vec<Description> {
         })
     };
 
-    // Each setting's run of changes, keyed by where it lives, in first-seen order.
-    let mut order: Vec<(String, String, &'static str)> = Vec::new();
-    let mut runs: BTreeMap<(String, String, &'static str), Vec<usize>> = BTreeMap::new();
-    for (i, c) in changes.iter().enumerate() {
+    // Each setting's run of changes, keyed by where it lives.
+    let runs = group_changes(changes, |c| {
         if c.op == "add-section" || c.op == "remove-section" {
-            continue;
+            return None;
         }
-        let Some(setting) = setting_of(c) else {
-            continue;
-        };
-        let key = (c.config.clone(), c.section.clone(), setting.option);
-        if !runs.contains_key(&key) {
-            order.push(key.clone());
-        }
-        runs.entry(key).or_default().push(i);
-    }
+        let setting = setting_of(c)?;
+        Some((c.config.as_str(), c.section.as_str(), setting.option))
+    });
 
     // A section made for a setting folds into the first setting's sentence in it.
     let mut out = Vec::new();
-    let mut folded_sections: Vec<(String, String)> = Vec::new();
-    for key in &order {
-        let (config, section, option) = key;
+    let mut folded_sections: Vec<(&str, &str)> = Vec::new();
+    for ((config, section, option), run) in runs {
         let setting = SETTINGS
             .iter()
-            .find(|s| s.config == config && s.option == *option)
+            .find(|s| s.config == config && s.option == option)
             .expect("a run is keyed by a known setting");
-        let mut covers = runs[key].clone();
-        let place = (config.clone(), section.clone());
+        let mut covers = run.to_vec();
+        let place = (config, section);
         if !folded_sections.contains(&place) {
             if let Some(made) = changes
                 .iter()
-                .position(|c| c.op == "add-section" && &c.config == config && &c.section == section)
+                .position(|c| c.op == "add-section" && c.config == config && c.section == section)
             {
                 covers.push(made);
             }
             folded_sections.push(place);
         }
         covers.sort_unstable();
-        let now = reading(setting, config, section, &runs[key], changes, snapshot);
+        let now = reading(setting, config, section, &run, changes, snapshot);
         let said = Description::setting(setting.label, &now, setting.option, covers)
             .about(SubjectKind::Setting, setting.label);
         // A flag reads in words; a name, an address or a list of servers is

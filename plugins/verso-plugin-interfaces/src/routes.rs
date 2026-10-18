@@ -15,10 +15,10 @@ use std::cmp::Reverse;
 use std::collections::BTreeMap;
 use std::net::{IpAddr, Ipv4Addr};
 use verso_plugin::{
-    commit, commit_delete, commit_new, muted_cell, select_field, text_cell, text_field, uci_text,
-    Change, ColumnWidth, CommitOp, Description, Envelope, Errors, Form, HeadingAct, RowDrawer,
-    SelectOption, Snapshot, SubjectKind, Table, TableCell, TableChip, TableColumn, TableGroup,
-    TableRow, TableRowAct, Tone, Widget, EM_DASH,
+    commit, commit_delete, commit_new, group_changes, muted_cell, select_field, text_cell,
+    text_field, uci_text, Change, ColumnWidth, CommitOp, Description, Envelope, Errors, Form,
+    HeadingAct, RowDrawer, SelectOption, Snapshot, SubjectKind, Table, TableCell, TableChip,
+    TableColumn, TableGroup, TableRow, TableRowAct, Tone, Widget, EM_DASH,
 };
 
 const NEW: &str = "new";
@@ -706,26 +706,17 @@ fn write(existing: Option<&Record>, route: &Route) -> CommitOp {
 /// covering every change to it. A removed route is gone from the staged
 /// snapshot, so its change keeps its raw line.
 pub fn describe(changes: &[Change], s: &Snapshot) -> Vec<Description> {
-    let mut order: Vec<&str> = vec![];
-    let mut groups: BTreeMap<&str, Vec<usize>> = BTreeMap::new();
-    for (i, c) in changes.iter().enumerate() {
+    let runs = group_changes(changes, |c| {
         let typ = s
             .section("network", &c.section)
             .map(|s| s.scalar(".type"))
             .unwrap_or_default();
-        if c.config != "network" || !matches!(typ.as_str(), "route" | "route6") {
-            continue;
-        }
-        if !groups.contains_key(c.section.as_str()) {
-            order.push(&c.section);
-        }
-        groups.entry(&c.section).or_default().push(i);
-    }
-    order
-        .into_iter()
-        .filter_map(|section| {
+        (c.config == "network" && matches!(typ.as_str(), "route" | "route6"))
+            .then_some(c.section.as_str())
+    });
+    runs.into_iter()
+        .filter_map(|(section, covers)| {
             let sec = s.section("network", section)?;
-            let covers = groups.remove(section)?;
             let to = target(&sec.scalar("target"), &sec.scalar("netmask"));
             let plain = if covers.iter().any(|&i| changes[i].op == "add-section") {
                 match sec.scalar("gateway").as_str() {

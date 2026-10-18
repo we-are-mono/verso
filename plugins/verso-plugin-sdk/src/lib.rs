@@ -45,6 +45,8 @@ mod fields;
 pub use fields::{from_panel, panel_form, select_field, text_field, PANEL_FIELD, REMOVE_FIELD};
 /// Hand-edited files a page lists and edits in place. See [`files`].
 pub mod files;
+mod pending;
+pub use pending::{group_changes, section_type};
 mod sha256;
 pub use sha256::{sha256, sha256_hex};
 mod uci_bool;
