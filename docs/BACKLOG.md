@@ -12,12 +12,19 @@ own and points at the decision that governs it; the rationale lives there, not h
 
 ## Certificates and listeners (ADR-017)
 
-- **`verso-plugin-acme` on the DK.** The plugin (§6, `plugins/verso-plugin-acme`,
-  a repository of its own) is verified in the dev container on Let's Encrypt
-  staging; a real issue over a real DNS provider on the DK is open, then:
+- **`verso-plugin-acme`.** The plugin (§6, `plugins/verso-plugin-acme`, a
+  repository of its own) issues a real certificate on the DK over DNSimple.
+  Open:
   - the repository on GitHub as `we-are-mono/verso-plugin-acme`;
-  - its SDK pinned by the verso tag that carries `Request::plugins` (it builds
-    against the SDK in this tree), and its `verso>=` raised to that release.
+  - its SDK pinned by the verso tag that carries `Request::plugins`,
+    `with_door`, `Property::door` and `Property::waiting` (it builds against the
+    SDK in this tree), and its `verso>=` raised to that release;
+  - on the DK: the LAN record through dnsdhcp's offer, `https://<domain>` with no
+    warning and the HTTP redirect to it, a hand install turning `acme.verso`
+    off, and turning it back on serving the held certificate;
+  - the outcome as the top-right notification, the part refreshing itself while
+    a request runs (a new widget behaviour, the owner's call), and a Request now
+    act.
 - **An image without uhttpd.** The Mono image still ships `uhttpd`,
   `uhttpd-mod-ubus` and `px5g-mbedtls`; drop them from the build (Gateway repo)
   so Verso holds the router's ports from first boot.
