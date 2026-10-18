@@ -37,9 +37,9 @@ fn now() -> u64 {
 }
 
 /// check_live checks the daemon's whole configuration with the written files in
-/// place, by the program its family names. A family that names none (OpenVPN:
-/// a profile it cannot read shows as a tunnel that does not come up) is not
-/// checked. The family's directory exists while it is checked, so a check that
+/// place, by the program its family names. A family that names none (its
+/// daemon has no check, and a file it cannot read shows in what the daemon
+/// then does) is not checked. The family's directory exists while it is checked, so a check that
 /// names it reads an empty one rather than failing on a missing one.
 fn check_live(family: &Family) -> Result<(), Failure> {
     let Some((program, args)) = family.declared.check.split_first() else {

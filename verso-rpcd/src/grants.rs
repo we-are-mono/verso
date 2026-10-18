@@ -211,8 +211,12 @@ mod tests {
     fn ddns() -> Value {
         json!({ "verso-plugin-ddns": {
             "description": "ignored",
-            "read": { "uci": ["ddns", "network"], "ubus": { "verso": ["ddnsState"] } },
-            "write": { "uci": ["ddns"], "ubus": { "verso": ["ddnsUpdate"] } }
+            "read": {
+                "uci": ["ddns", "network"],
+                "ubus": { "verso": ["networkState"] },
+                "verso-plugin": { "ddns": ["state"] }
+            },
+            "write": { "uci": ["ddns"], "verso-plugin": { "ddns": ["update"] } }
         }})
     }
 
@@ -226,9 +230,10 @@ mod tests {
         for want in [
             g("uci", "ddns", "read"),
             g("uci", "network", "read"),
-            g("ubus", "verso", "ddnsState"),
+            g("ubus", "verso", "networkState"),
+            g("verso-plugin", "ddns", "state"),
             g("uci", "ddns", "write"),
-            g("ubus", "verso", "ddnsUpdate"),
+            g("verso-plugin", "ddns", "update"),
             g("access-group", "verso-plugin-ddns", "read"),
             g("access-group", "verso-plugin-ddns", "write"),
             g("ubus", "luci", "getVersion"),
@@ -236,7 +241,7 @@ mod tests {
         ] {
             assert!(got.contains(&want), "missing {want:?}");
         }
-        assert_eq!(got.len(), 9);
+        assert_eq!(got.len(), 10);
     }
 
     // A plugin's registered commands are granted under their own scope

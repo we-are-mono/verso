@@ -180,10 +180,10 @@ echo unsupported > /usr/share/firewall4/templates/rule.uc
           lambda result: result.returncode == 0, "routing failure disabled the helper")
     assert not read()["result"]["available"]
     inside("ubus", "call", "session", "grant", json.dumps({
-        "ubus_rpc_session": sid, "objects": [["verso", "firewallCounters"]]}))
-    counters = json.loads(inside("/usr/bin/nflog-test-client", data=json.dumps({
-        "method": "firewallCounters", "sid": sid})).stdout)
-    assert counters["status"] == 0
+        "ubus_rpc_session": sid, "objects": [["verso", "configFiles"]]}))
+    files = json.loads(inside("/usr/bin/nflog-test-client", data=json.dumps({
+        "method": "configFiles", "sid": sid})).stdout)
+    assert files["status"] == 0
     shell('''mv /usr/share/firewall4/templates/rule.backup /usr/share/firewall4/templates/rule.uc
 /usr/libexec/verso/firewall-logging-setup''')
     until(read, lambda r: r["result"]["available"], "routing failure did not recover")

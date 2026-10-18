@@ -3,9 +3,8 @@
 //! The announcement of a certificate installed or made by hand (ADR-017 §6,
 //! ADR-027): `hotplug-call verso-certificate` with `ACTION=installed`, run as
 //! root once the pair is written. Whatever owns another source of the
-//! certificate answers it from its own hotplug script — acme turns its section
-//! off, so no renewal replaces the operator's choice. Core names no such
-//! source.
+//! certificate answers it from its own hotplug script, turning that source off
+//! so no renewal replaces the operator's choice. Core names no such source.
 
 use crate::plugin_command::{Run, Runner};
 use std::path::PathBuf;

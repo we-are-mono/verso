@@ -3592,18 +3592,18 @@ mod tests {
     }
 
     // The shell's X-Verso-Ubus header for
-    // {"firewallCounters":{"counters":[{"chain":"input_wan","name":"Allow-Ping",
-    //   "packets":12,"bytes":1008}]}}
-    const COUNTERS_HEADER: &str = "eyJmaXJld2FsbENvdW50ZXJzIjp7ImNvdW50ZXJzIjpbeyJjaGFpbiI6ImlucHV0X3dhbiIsIm5hbWUiOiJBbGxvdy1QaW5nIiwicGFja2V0cyI6MTIsImJ5dGVzIjoxMDA4fV19fQ==";
+    // {"firewall.state":{"version":1,"result":{"counters":[{"chain":"input_wan",
+    //   "name":"Allow-Ping","packets":12,"bytes":1008}]}}}
+    const COUNTERS_HEADER: &str = "eyJmaXJld2FsbC5zdGF0ZSI6eyJ2ZXJzaW9uIjoxLCJyZXN1bHQiOnsiY291bnRlcnMiOlt7ImNoYWluIjoiaW5wdXRfd2FuIiwibmFtZSI6IkFsbG93LVBpbmciLCJwYWNrZXRzIjoxMiwiYnl0ZXMiOjEwMDh9XX19fQ==";
 
     #[test]
-    fn brokered_reads_arrive_under_their_function_name() {
+    fn brokered_reads_arrive_under_their_key() {
         let head =
             format!("POST /port-forwards HTTP/1.1\r\nX-Verso-Ubus: {COUNTERS_HEADER}\r\n\r\n");
         let (_, _, headers) = parse_head(&head);
         let ubus = Ubus::from_b64(header(&headers, "x-verso-ubus"));
 
-        let counters = ubus.get("firewallCounters").expect("brokered read");
+        let counters = ubus.read("firewall.state", &[1]).expect("brokered read");
         assert_eq!(counters["counters"][0]["name"], "Allow-Ping");
         assert_eq!(counters["counters"][0]["packets"], 12);
         assert!(ubus.get("somethingElse").is_none());
@@ -3648,14 +3648,14 @@ mod tests {
     fn an_unbrokered_read_is_absent_rather_than_an_error() {
         let (_, _, headers) = parse_head("GET / HTTP/1.1\r\nX-Verso-UCI: e30=\r\n\r\n");
         assert!(Ubus::from_b64(header(&headers, "x-verso-ubus"))
-            .get("firewallCounters")
+            .get("firewall.state")
             .is_none());
         // A header the shell could not have sent decodes to nothing, never a panic.
         assert!(Ubus::from_b64("not base64 at all!")
-            .get("firewallCounters")
+            .get("firewall.state")
             .is_none());
         assert!(Ubus::from_b64("bm90IGpzb24=")
-            .get("firewallCounters")
+            .get("firewall.state")
             .is_none());
     }
 

@@ -335,7 +335,12 @@ fn dispatch(request: &Value, state: &State, uid: u32) -> Result<Value, Failure> 
             }
         }
     }
+    answer(method, request, state, sid)
+}
 
+/// answer runs a verb whose caller dispatch has already let through. Core's own
+/// root work is all it names: a plugin's runs through PLUGIN_COMMAND (ADR-027).
+fn answer(method: &str, request: &Value, state: &State, sid: &str) -> Result<Value, Failure> {
     match method {
         "configFiles" => config_files::state(),
         "uciCommitted" => uci_committed::committed(argument(request, "configs")?),
@@ -1500,6 +1505,39 @@ mod tests {
         for uid in [0, VERSO_UID] {
             let failure = dispatch(&request, &state, uid).expect_err("denied");
             assert_eq!(failure.status, STATUS_PERMISSION_DENIED);
+        }
+    }
+
+    // A plugin's root work is its own root half's (ADR-027): the verbs that
+    // once did it here are unknown to the helper, and the access list the
+    // shell's sessions are granted names none of them.
+    #[test]
+    fn no_verb_does_a_plugins_root_work() {
+        const MOVED: [&str; 9] = [
+            "vpnState",
+            "openvpnFiles",
+            "ddnsState",
+            "ddnsUpdate",
+            "dhcpState",
+            "dnsState",
+            "firewallCounters",
+            "firewallFiles",
+            "acmeState",
+        ];
+        let state = State {
+            firewall_log: firewall_log::Collector::new(),
+            usage: usage::Reader::default(),
+            diagnostics: diagnostics::Jobs::default(),
+            packages: Mutex::new(()),
+            maintenance: Mutex::new(()),
+        };
+        for method in MOVED {
+            let failure = answer(method, &json!({}), &state, "sid").expect_err(method);
+            assert_eq!(failure.status, STATUS_METHOD_NOT_FOUND, "{method}");
+        }
+        let acl = include_str!("../../docker/rootfs/usr/share/rpcd/acl.d/verso-helper.json");
+        for method in MOVED {
+            assert!(!acl.contains(&format!("\"{method}\"")), "{method}");
         }
     }
 

@@ -89,3 +89,16 @@ root's alone, and refuses any world write and any group write by another group.
 
 Everything was removed afterwards: the registry, the executable, the ACL and the
 session, followed by an rpcd reload.
+
+## 10.1 The helper names no plugin
+
+`main.rs`'s `no_verb_does_a_plugins_root_work` holds the verb table (`answer`,
+split out of `dispatch` so the table answers without an rpcd to ask) and
+`verso-helper.json` to none of the nine moved verbs.
+
+The grep for `acme`, `openvpn` and `ddns` runs over the helper's code above each
+file's tests, and finds nothing. The tests do name them: a registry, a family or
+a grant needs a plugin to belong to, and the plugins that exist are the plainest
+samples. `arrival.rs` names https-dns-proxy and dnsmasq. That is core's own
+package handling (a package installed through Verso has its takeover of dnsmasq
+undone), and no plugin's root work.

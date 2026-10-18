@@ -100,7 +100,7 @@ func TestSocketTransportRefusesAnotherAccountsListener(t *testing.T) {
 				Method: http.MethodPost, Path: "/access",
 				Form: url.Values{"authorized_key": {"what the operator typed"}},
 				UCI:  UCI{"wireless": {"default_radio0": map[string]any{".type": "wifi-iface", "key": "not-a-real-psk"}}},
-				Ubus: Ubus{"firewallCounters": json.RawMessage(`{"counters":[]}`)},
+				Ubus: Ubus{"firewall.state": json.RawMessage(`{"version":1,"result":{"counters":[]}}`)},
 			})
 			return err
 		},
@@ -405,25 +405,28 @@ func TestSocketTransportInjectsBrokeredReads(t *testing.T) {
 			http.Error(w, "bad json", http.StatusBadRequest)
 			return
 		}
-		var counters struct {
-			Counters []struct {
-				Name    string `json:"name"`
-				Packets int    `json:"packets"`
-			} `json:"counters"`
+		var state struct {
+			Result struct {
+				Counters []struct {
+					Name    string `json:"name"`
+					Packets int    `json:"packets"`
+				} `json:"counters"`
+			} `json:"result"`
 		}
-		if err := json.Unmarshal(reads["firewallCounters"], &counters); err != nil {
+		if err := json.Unmarshal(reads["firewall.state"], &state); err != nil || len(state.Result.Counters) == 0 {
 			http.Error(w, "bad counters", http.StatusBadRequest)
 			return
 		}
+		counters := state.Result.Counters
 		envelopeJSON(w, http.StatusOK, fmt.Sprintf(
 			`{"schema_version":1,"title":"%s=%d","widget":{"type":"card"}}`,
-			counters.Counters[0].Name, counters.Counters[0].Packets))
+			counters[0].Name, counters[0].Packets))
 	}))
 
 	env, err := testTransport().Fetch(context.Background(), at(sock), Request{
 		Method: http.MethodGet, Path: "/",
-		Ubus: Ubus{"firewallCounters": json.RawMessage(
-			`{"counters":[{"chain":"input_wan","name":"Allow-Ping","packets":12}]}`)},
+		Ubus: Ubus{"firewall.state": json.RawMessage(
+			`{"version":1,"result":{"counters":[{"chain":"input_wan","name":"Allow-Ping","packets":12}]}}`)},
 	})
 	if err != nil {
 		t.Fatalf("Fetch: %v", err)
