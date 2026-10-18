@@ -148,6 +148,66 @@ Found and fixed during the check:
   `verso-plugin` grant. Sessions take grants at login, and a fresh one was
   granted.
 
+## 4.4 What a registered read costs
+
+**In the lab, through the helper.** Each read was timed 20 times from inside
+the container: `socat` to the helper socket, under `ucode`'s clock. A
+throwaway registered read, a two-line shell script that prints `{}`, measured
+the run itself. A command the plugin does not register measured the rest: the
+helper, the grant check and the registry load. Times are medians.
+
+| Read | v0.9.0-r63 | v0.9.0-r65 |
+|---|---|---|
+| not registered (refused) | 0.7 ms | 0.7 ms |
+| the `{}` script | 51.9 ms | 0.9 ms |
+| `vpn.state` | 52.1 ms | 1.4 ms |
+| `ddns.state` | 51.7 ms | 0.9 ms |
+| `dnsdhcp.dhcp-state` | 51.5 ms | 2.3 ms |
+| `dnsdhcp.dns-state` | 51.6 ms | 1.8 ms |
+| `firewall.state` | 51.8 ms | 3.6 ms |
+| `acme.state` | 51.7 ms | 1.9 ms |
+
+At r63 every run cost 50 ms whatever it did, because `run_bounded_with_stdin`
+slept 50 ms between `try_wait` polls. At r65 the child is waited on (53a3d74).
+Running a plugin's root half now adds 0.2 ms over a refused call, plus its own
+work.
+
+**On a Mono Gateway in service.** Each page was requested 20 times through a
+signed-in session, as plain GETs. Times are the server's answers.
+
+| Page | r63 median | r63 p90 | r65 median | r65 p90 |
+|---|---|---|---|---|
+| VPN | 260 ms | 265 ms | 50 ms | 57 ms |
+| Interfaces | 299 ms | 358 ms | 139 ms | 164 ms |
+
+The pre-registry build was no longer on the router, so this compares r63 with
+r65. The 50 ms poll was older than this change, in every bounded helper verb.
+It made a read run as a child cost 50 ms more than one done in the helper.
+
+## 11.3 A hand install across a restart, in the lab
+
+The DUT was unavailable, so this ran in the lab container (2026-10-19), with a
+`docker restart` in place of a reboot.
+
+1. `acme.verso.enabled` was set to 1 with the command-line `uci commit`, which
+   sends no ubus event, so acme issued nothing.
+2. A self-signed P-256 pair for router.example.com was installed through Access,
+   "Install a certificate". The notice read "The router is serving the
+   installed certificate."
+3. acme's `/etc/hotplug.d/verso-certificate/50-acme` turned `acme.verso.enabled`
+   to 0, and :8443 served the installed certificate (by its SHA-256
+   fingerprint).
+4. After the restart, :8443 served the same certificate, and
+   `acme.verso.enabled` was still 0.
+
+Still to run on the DUT: the reboot on hardware, and a forced acme renew served
+with no one signed in.
+
+Config history recorded no row for the turn-off. A commit marked as the router's
+own only moves the baseline (`config_history_direct.go`), as ADR-021 has it for
+the helper's own writes. The core hand-over this replaced was marked the same
+way.
+
 ## 11.2 The upgrade on a router in service
 
 On 2026-10-19 a Mono Gateway in daily use (Mono 25.12.5, layerscape/armv8_64b)

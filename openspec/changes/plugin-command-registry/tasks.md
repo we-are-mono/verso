@@ -51,7 +51,7 @@
   - an act beside a uci commit is refused as not permitted, with nothing staged.
 
   Then implement it, keeping core's own acts (`config-file-stage`, SSH keys, certificate generate and install, `set-system-time`, interface up/down/restart). Verify with `make test`.
-- [ ] 4.4 Measure on the DK: render the VPN and Interfaces pages 20 times each, and compare the time added per read against the current build. Record the numbers in the change's notes. Verify that the notes hold both builds' numbers.
+- [x] 4.4 Measure on the DK: render the VPN and Interfaces pages 20 times each, and compare the time added per read against the current build. Record the numbers in the change's notes. Verify that the notes hold both builds' numbers.
 - [x] 4.5 Rewrite `docs/plugins.md`'s "Privileged post-apply actions" as "Acts": one per POST, run at once, never beside staged changes, the file stage the one exception. Introduce registered reads above the brokered-read table; each plugin row of the table leaves with its verb (6.2, 7.3, 8.3, 9.3). Amend ADR-006 in place to match. Verify by checking that `grep -n '"apply"' docs/plugins.md docs/ADR/006-plugin-contract.md` finds nothing.
 
 ## 5. File families from the registries
