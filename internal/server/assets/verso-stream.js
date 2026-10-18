@@ -124,6 +124,12 @@
     if (document.hidden) disconnect();
     else connect();
   });
+  // The stream reads the Overview's layout once per connection, so a card
+  // hidden in place asks for a new one that leaves the card's readings out.
+  window.versoStreamReconnect = function () {
+    disconnect();
+    if (!document.hidden) connect();
+  };
   if (!document.hidden) connect();
 
   // A stretch of time the stream sends written (internal/units). It is

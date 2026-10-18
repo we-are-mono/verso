@@ -122,14 +122,34 @@
       else window.sessionStorage.removeItem(ARRANGING);
     } catch (e) { /* storage refused: Arrange simply ends with the reload */ }
   }
-  // reload asks the shell for the page in its new layout: a hidden card is not
-  // rendered, a restored one has to be, and the stream follows the layout from
-  // its next connection. Arrange carries over.
+  // reload asks the shell for the page in its new layout: a restored card has
+  // to be rendered, and the stream follows the layout from its next
+  // connection. Arrange carries over.
   function reload(l) {
     if (l) persist(l);
     else document.cookie = forget(window.location.protocol);
     remember(true);
     window.location.reload();
+  }
+  // shelve hides a card where it stands: the card leaves its column and its
+  // chip, cloned from the shelf's blank one, joins the shelf in the card's
+  // tone, which the stream keeps current. Focus lands on the chip, so the way
+  // back is where the card was let go.
+  function shelve(card) {
+    var id = idOf(card);
+    var next = hide(read(), id);
+    var shelf = root.querySelector("[data-overview-shelf]");
+    var chip = shelf.querySelector("template[data-overview-chip]").content.firstElementChild.cloneNode(true);
+    chip.setAttribute("data-overview-restore", id);
+    chip.setAttribute("data-tone", card.getAttribute("data-tone"));
+    chip.querySelector("[data-overview-chip-title]").textContent = card.querySelector("h2").textContent;
+    shelf.insertBefore(chip, shelf.querySelector("[data-overview-reset]"));
+    var label = shelf.querySelector("[data-overview-shelf-label]");
+    label.textContent = label.getAttribute("data-hidden-label");
+    card.remove();
+    chip.focus();
+    persist(next);
+    if (window.versoStreamReconnect) window.versoStreamReconnect();
   }
   var say = root.querySelector("[data-overview-say]");
   function announce(card) {
@@ -182,7 +202,7 @@
     if (t.closest("[data-overview-reset]")) return reload(null);
     var card = t.closest("[data-overview-card]");
     if (!card) return;
-    if (t.closest("[data-overview-hide]")) return reload(hide(read(), idOf(card)));
+    if (t.closest("[data-overview-hide]")) return shelve(card);
     if (root.hasAttribute("data-arranging") || !t.closest("[data-overview-card-head]")) return;
     // The door and any other control in the header keep their own click.
     if (!togglesFrom(t)) return;

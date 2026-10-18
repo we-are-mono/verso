@@ -139,6 +139,27 @@ func TestRenderOverviewFollowsTheLayout(t *testing.T) {
 	}
 }
 
+// TestOverviewShelfHoldsTheChipAHideClones: the page hides a card where it
+// stands, so the shelf carries a blank chip to clone and the word it says once
+// it holds one.
+func TestOverviewShelfHoldsTheChipAHideClones(t *testing.T) {
+	got := render(t, newRenderer(t), fullOverview())
+	if !strings.Contains(got, `data-overview-shelf-label data-hidden-label="Hidden"`) || !strings.Contains(got, "No hidden cards") {
+		t.Error("an empty shelf says so, and carries the word it says once a card is hidden")
+	}
+	start := strings.Index(got, "<template data-overview-chip>")
+	if start < 0 {
+		t.Fatal("the shelf must carry a blank chip")
+	}
+	chip := got[start:]
+	chip = chip[:strings.Index(chip, "</template>")]
+	for _, want := range []string{`data-overview-restore=""`, `class="verso-overview__restore"`, `class="verso-mark"`, "<svg", "data-overview-chip-title></span>"} {
+		if !strings.Contains(chip, want) {
+			t.Errorf("blank chip missing %q", want)
+		}
+	}
+}
+
 func TestOverviewDegradesWithoutInventingState(t *testing.T) {
 	r := newRenderer(t)
 	bare := render(t, r, &Overview{})

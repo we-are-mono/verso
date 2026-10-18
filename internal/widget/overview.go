@@ -222,11 +222,13 @@ type overviewShelfView struct {
 }
 
 // overviewView is the page's layout model: the verdict, the two columns of
-// cards in the browser's order, and the hidden cards.
+// cards in the browser's order, and the hidden cards. Blank is the chip with
+// nothing in it, which the page clones when it hides a card in place.
 type overviewView struct {
 	Verdict overviewVerdictView
 	Cols    [2][]overviewCardView
 	Hidden  []overviewShelfView
+	Blank   overviewShelfView
 }
 
 // layout is the browser's layout, or the default where none was read.

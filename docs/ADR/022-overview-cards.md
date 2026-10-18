@@ -136,8 +136,9 @@ The overview stream reads the layout once per connection. It sends no frame
 only hidden cards would read (`meters` for Resources, `wan` for Traffic and
 Internet, `interfaces` for Ports and Tunnels, `sensors` for Hardware) and takes
 no reading only such a frame needs; it always sends `clock` and `overview`,
-and takes the readings the verdict counts. Hiding, restoring or resetting
-reloads the page, which reconnects the stream on the new layout.
+and takes the readings the verdict counts. Hiding a card takes it off the
+page in place and reconnects the stream on the new layout; restoring or
+resetting reloads the page, which renders the card and reconnects it too.
 
 Most of a board's sensors are i2c transactions behind a mux, and the bus is
 slow and shared. One read of them serves every page render and every stream
@@ -155,8 +156,8 @@ second's states and rates onto it, so its card heads are the first paint's.
   Overview's own.
 - A layout does not follow an operator to another browser, and a private
   window keeps it only while it is open.
-- The page reloads when a card is hidden or comes back; Arrange carries over
-  the reload in `sessionStorage`.
+- The page reloads when a card comes back, since the shell renders it; Arrange
+  carries over the reload in `sessionStorage`. A hidden card leaves in place.
 - A layout cookie rides every request to the router; it is under 200 bytes.
 - A change of interface topology reaches the stream's card heads at the next
   connection, which an apply's reload makes.

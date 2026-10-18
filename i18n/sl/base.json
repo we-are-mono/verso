@@ -974,6 +974,7 @@
   "Close %s": "Zapri %s",
   "Move %s. Arrow keys move it.": "Premakni %s. Premaknete jo s puščičnimi tipkami.",
   "No hidden cards": "Ni skritih kartic",
+  "Hidden": "Skrite",
   "Reset layout": "Ponastavi razporeditev",
   "%s: left column, position %d.": "%s: levi stolpec, mesto %d.",
   "%s: right column, position %d.": "%s: desni stolpec, mesto %d.",

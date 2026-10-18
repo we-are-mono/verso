@@ -29,13 +29,11 @@
   </div>
 
   <div data-overview-shelf class="verso-overview__shelf">
-    <span class="verso-overview__shelf-label">{{if .Hidden}}{{ t "Hidden" }}{{else}}{{ t "No hidden cards" }}{{end}}</span>
-    {{range .Hidden}}
-    <button type="button" data-overview-restore="{{.ID}}" data-tone="{{.Tone}}" class="verso-overview__restore">
-      <span aria-hidden="true" class="verso-mark"></span>{{icon "plus" "size-3.5"}}<span>{{.Title}}</span>
-    </button>
-    {{end}}
+    <span data-overview-shelf-label data-hidden-label="{{ t "Hidden" }}" class="verso-overview__shelf-label">{{if .Hidden}}{{ t "Hidden" }}{{else}}{{ t "No hidden cards" }}{{end}}</span>
+    {{range .Hidden}}{{template "overview.chip" .}}{{end}}
     <button type="button" data-overview-reset class="verso-overview__reset">{{ t "Reset layout" }}</button>
+    {{/* The blank chip the page clones when it hides a card in place. */}}
+    <template data-overview-chip>{{template "overview.chip" .Blank}}</template>
   </div>
   </div></div>
 
@@ -46,6 +44,13 @@
   </div>
   <div class="sr-only" aria-live="polite" data-overview-say></div>
 </div>
+
+{{/* overview.chip: a hidden card on the shelf, wearing its card's tone. */}}
+{{define "overview.chip"}}
+<button type="button" data-overview-restore="{{.ID}}" data-tone="{{.Tone}}" class="verso-overview__restore">
+  <span aria-hidden="true" class="verso-mark"></span>{{icon "plus" "size-3.5"}}<span data-overview-chip-title>{{.Title}}</span>
+</button>
+{{end}}
 
 {{/* overview.card: one card, the card block (blocks/card.css) that folds and
      moves. The head is the card's status — its word and packet at the end,
