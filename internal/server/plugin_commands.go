@@ -36,6 +36,33 @@ func (s *Server) runPluginCommands(ctx context.Context, m plugin.Manifest, sid s
 	}
 	cmd := commands[0]
 	var err error // a helper refusal whose message the operator reads
+	if owner, name, registered := strings.Cut(cmd.Name, "."); registered {
+		err = s.registeredAct(ctx, m, sid, owner, name, cmd.Args)
+	} else {
+		err = s.coreAct(ctx, m, sid, cmd)
+	}
+	var validation interface{ ValidationMessage() string }
+	if errors.As(err, &validation) && validation.ValidationMessage() != "" {
+		return commandValidationError(validation.ValidationMessage())
+	}
+	return err
+}
+
+// registeredAct runs a plugin's registered act, `<plugin>.<name>` (ADR-027),
+// only when the posting plugin declares it in acl.write. The helper checks the
+// session's grant and the arguments against the registry; the shell adds no
+// check of its own that could disagree with it.
+func (s *Server) registeredAct(ctx context.Context, m plugin.Manifest, sid, owner, name string, args map[string]string) error {
+	if !slices.Contains(m.ACL.Write, plugin.ACLScope{Scope: "verso-plugin", Object: owner, Function: name}) {
+		return fmt.Errorf("act %s.%s lacks declared scope", owner, name)
+	}
+	_, err := s.backend.PluginCommand(ctx, sid, owner, name, args)
+	return err
+}
+
+// coreAct runs one of the shell's own acts.
+func (s *Server) coreAct(ctx context.Context, m plugin.Manifest, sid string, cmd plugin.ApplyAction) error {
+	var err error
 	switch cmd.Name {
 	case "config-file-stage":
 		// A file belongs to the daemon that reads it, and is staged only by a
@@ -79,10 +106,6 @@ func (s *Server) runPluginCommands(ctx context.Context, m plugin.Manifest, sid s
 		err = s.backend.DDNSUpdate(ctx, sid, section)
 	default:
 		return fmt.Errorf("unknown command")
-	}
-	var validation interface{ ValidationMessage() string }
-	if errors.As(err, &validation) && validation.ValidationMessage() != "" {
-		return commandValidationError(validation.ValidationMessage())
 	}
 	return err
 }

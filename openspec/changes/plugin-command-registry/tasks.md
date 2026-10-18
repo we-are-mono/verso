@@ -44,7 +44,7 @@
 
   Then implement it beside the core functions in `brokeredUbusRead`, and add `PluginCommand` to the `Backend` seam and `internal/openwrt`. Verify with `make test`.
 - [x] 4.2 Test first: a read whose registry entry names `certificates` has those fields replaced by `certificateFacts`, and an unparsable one is dropped. No PEM reaches the plugin. Then generalize `readACMEState` into this transform, reading the registry from `/usr/share/verso/plugins/<id>/commands.json`. Verify with `make test`.
-- [ ] 4.3 Test first in `plugin_commands_test.go`:
+- [x] 4.3 Test first in `plugin_commands_test.go`:
   - an act declared as `verso-plugin` in `acl.write` runs through `PluginCommand` with its arguments;
   - an undeclared act is refused without a backend call;
   - a refusal's text reaches the notice through the plugin's catalogue;
