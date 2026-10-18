@@ -102,8 +102,6 @@ own and points at the decision that governs it; the rationale lives there, not h
   `Widget::Link` with `desc`/`code`/`act`, which the SDK no longer has; it
   compiles against v0.8.0 and the shell ignores the keys, so bumping its pin
   needs those three lines dropped.
-- **A stale comment in wireless.** The wireless `Cargo.toml` comment names
-  `wire.rs`/`serve.rs`, which do not exist.
 
 ## Overview cards (ADR-022)
 
@@ -144,9 +142,6 @@ own and points at the decision that governs it; the rationale lives there, not h
   every answer stands in one column beside its question, and the rows a
   switch reveals read as rows like the rest. Installed plugins need no
   upgrade.
-- **The route drawer's Delete route.** The interfaces plugin stands "Delete
-  route" under Save in a route's drawer; removal belongs to the listing's
-  trash act (DESIGN.md › Drawers), so the drawer drops it.
 
 ## Forms as ledgers (forms-ledger)
 

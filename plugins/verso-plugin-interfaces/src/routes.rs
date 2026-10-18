@@ -18,11 +18,12 @@ use verso_plugin::{
     commit, commit_delete, commit_new, group_changes, muted_cell, select_field, text_cell,
     text_field, uci_text, Change, ColumnWidth, CommitOp, Description, Envelope, Errors, Form,
     HeadingAct, RowDrawer, SelectOption, Snapshot, SubjectKind, Table, TableCell, TableChip,
-    TableColumn, TableGroup, TableRow, TableRowAct, Tone, Widget, EM_DASH,
+    TableColumn, TableGroup, TableRow, TableRowAct, Tone, Widget, EM_DASH, REMOVE_FIELD,
 };
 
 const NEW: &str = "new";
-const DELETE: &str = "_delete";
+const DELETE_MESSAGE: &str =
+    "Traffic for this network follows the remaining routes once you apply.";
 /// TEXT is every option the form writes as typed; `disabled` and `onlink` are
 /// its two switches, and `netmask` rides `target` where the section states one.
 const TEXT: [&str; 9] = [
@@ -124,16 +125,22 @@ pub fn page(m: &Model, open: &str, family: &str) -> Envelope {
     listing(m, open, drawer)
 }
 
-/// post answers the open drawer: its save, or its confirmed delete.
+/// post answers the open drawer's save, or a delete confirmed on a row.
 pub fn post(m: &Model, open: &str, f: &Form) -> Envelope {
-    let existing = m.routes.iter().find(|r| r.id == open);
-    if open != NEW && existing.is_none() {
+    let removal = f.get(REMOVE_FIELD);
+    let section = if removal.is_empty() {
+        open
+    } else {
+        removal.as_str()
+    };
+    let existing = m.routes.iter().find(|r| r.id == section);
+    if (section != NEW || !removal.is_empty()) && existing.is_none() {
         return listing(m, "", None).with_notice(
             Tone::Danger,
             "This route no longer exists, so nothing was saved.",
         );
     }
-    if let (Some(r), "1") = (existing, f.get(DELETE).as_str()) {
+    if let (Some(r), false) = (existing, removal.is_empty()) {
         return listing(m, "", None)
             .with_commit(vec![commit_delete("network", &r.id)])
             .with_notice(Tone::Success, "Route removed.");
@@ -410,12 +417,30 @@ fn row(line: &Line, drawer: Option<RowDrawer>) -> TableRow {
             target.tag_variant = "warning".into();
         }
     }
-    let edit = line.custom.map(|_| TableRowAct {
-        icon: "square-pen".into(),
-        title: "Edit".into(),
-        href: door.clone(),
-        ..Default::default()
-    });
+    let acts: Vec<TableRowAct> = line
+        .custom
+        .map(|r| {
+            vec![
+                TableRowAct {
+                    icon: "square-pen".into(),
+                    title: "Edit".into(),
+                    href: door.clone(),
+                    ..Default::default()
+                },
+                // Deleting is asked on the row itself, and only then posted.
+                TableRowAct {
+                    icon: "trash-2".into(),
+                    title: "Delete route".into(),
+                    name: REMOVE_FIELD.into(),
+                    value: r.id.clone(),
+                    confirm_title: "Delete route “%s”?".into(),
+                    confirm: DELETE_MESSAGE.into(),
+                    confirm_cancel: "Keep route".into(),
+                    ..Default::default()
+                },
+            ]
+        })
+        .unwrap_or_default();
     TableRow {
         id: line.custom.map(|r| r.id.clone()).unwrap_or_default(),
         muted: line.state == "off",
@@ -433,7 +458,7 @@ fn row(line: &Line, drawer: Option<RowDrawer>) -> TableRow {
                 ..Default::default()
             },
             TableCell {
-                actions: edit.into_iter().collect(),
+                actions: acts,
                 ..Default::default()
             },
         ],
@@ -530,28 +555,6 @@ fn drawer(m: &Model, existing: Option<&Record>, route: &Route, e: &Errors) -> Ro
             values.as_object().unwrap_or(&Map::new()),
         ),
     ));
-    let mut children = vec![Widget::form("Save route", fields)];
-    if existing.is_some() {
-        children.push(Widget::Form {
-            style: String::new(),
-            submit: String::new(),
-            error: String::new(),
-            note: String::new(),
-            target: String::new(),
-            fields: vec![
-                Widget::hidden(DELETE, "1"),
-                Widget::Confirm {
-                    trigger: "Delete route".into(),
-                    title: String::new(),
-                    message:
-                        "Traffic for this network follows the remaining routes once you apply."
-                            .into(),
-                    confirm: "Delete route".into(),
-                    cancel: String::new(),
-                },
-            ],
-        });
-    }
     RowDrawer {
         title: match existing {
             Some(_) => route.get("target").into(),
@@ -559,7 +562,7 @@ fn drawer(m: &Model, existing: Option<&Record>, route: &Route, e: &Errors) -> Ro
         },
         closed: listing_href(),
         open: true,
-        children,
+        children: vec![Widget::form("Save route", fields)],
         ..Default::default()
     }
 }
@@ -867,6 +870,19 @@ mod tests {
         assert_eq!(cells[4]["chips"][0]["tone"], "accent");
         // In effect, so it says nothing about its state.
         assert!(cells[0].get("tag").is_none());
+        // Deleting is asked on the row itself, and only then posted.
+        assert_eq!(
+            cells[5]["actions"][1],
+            json!({
+                "icon": "trash-2",
+                "title": "Delete route",
+                "name": REMOVE_FIELD,
+                "value": "cfg02",
+                "confirm_title": "Delete route “%s”?",
+                "confirm": DELETE_MESSAGE,
+                "confirm_cancel": "Keep route"
+            })
+        );
 
         let default = &rows[4];
         assert!(default.get("panel").is_none() && default.get("id").is_none());
@@ -1003,8 +1019,8 @@ mod tests {
         assert_eq!(control(&open, "enabled")["on"], true);
         // The family is the section's type, fixed once it exists.
         assert_eq!(control(&open, "family")["style"], "locked");
-        // Delete is a guarded act in the drawer.
-        assert!(find(&open, &|v| v["type"] == "confirm").is_some());
+        // Removal is the row's trash act, never repeated in the drawer.
+        assert!(find(&open, &|v| v["type"] == "confirm").is_none());
         for key in [
             "table", "source", "mtu", "onlink", "type", "proto", "metric",
         ] {
@@ -1115,14 +1131,14 @@ mod tests {
 
     #[test]
     fn delete_removes_the_section_and_a_stale_one_removes_nothing() {
-        let e = post(&model(), "cfg03", &Form::parse("_delete=1"));
+        let e = post(&model(), "", &Form::parse("_remove=cfg03"));
         assert_eq!(
             commit(&e),
             json!([{"config": "network", "section": "cfg03", "delete": true}])
         );
         let page = json_of(e);
         assert!(find(&page, &|v| v["open"] == true && v.get("children").is_some()).is_none());
-        let stale = post(&model(), "gone", &Form::parse("_delete=1"));
+        let stale = post(&model(), "", &Form::parse("_remove=gone"));
         assert!(stale.commit.is_empty());
         assert_eq!(json_of(stale)["notice"]["level"], "danger");
     }
