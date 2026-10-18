@@ -592,6 +592,14 @@ func (s *Server) pluginBodyFor(r *http.Request, m plugin.Manifest, pluginPath st
 		hdr.Notice = stagedOutcome(hdr.Notice)
 	}
 
+	// A slot the plugin left for the shell takes the shell's block, in the
+	// shell's own words (the base catalog under the plugin's), and the slots
+	// the page opens for other plugins take what they contribute. Both are
+	// filled before a drawer is taken out of the page below, so a drawer asked
+	// for on its own is filled as it would be in the page.
+	s.fillSlots(wdg, tr)
+	s.fillOpenedSlots(r, m.ID, wdg, call)
+
 	// A request for one panel is not a request for a page: the frame is already
 	// on screen and only what it holds is being replaced. The plugin was asked
 	// nothing different — it answers an address naming an open panel with that
@@ -652,11 +660,6 @@ func (s *Server) pluginBodyFor(r *http.Request, m plugin.Manifest, pluginPath st
 		hdr.Light = true
 	}
 	hdr.HeadingAct = s.headingAct(r, head, lang, t)
-	// A slot the plugin left for the shell takes the shell's block, in the
-	// shell's own words (the base catalog under the plugin's).
-	s.fillSlots(wdg, tr)
-	// The slots the page opens for other plugins take what they contribute.
-	s.fillOpenedSlots(r, m.ID, wdg, call)
 	var b strings.Builder
 	if err := s.widgets.RenderWithToken(&b, wdg, s.sessionCSRF(r), lang, t); err != nil {
 		log.Printf("verso: plugin %q render failed: %v", m.ID, err)

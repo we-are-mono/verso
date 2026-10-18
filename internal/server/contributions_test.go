@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"strings"
 	"sync"
@@ -27,6 +28,7 @@ type answer struct {
 	delay  time.Duration
 	notice *plugin.Notice
 	commit []plugin.CommitOp
+	act    string // the page's heading act, its drawer and all
 }
 
 // slotTransport answers by socket and path, as several plugins would, and
@@ -61,7 +63,11 @@ func (f *slotTransport) Fetch(ctx context.Context, target plugin.Endpoint, req p
 	case a.empty:
 		return &plugin.Envelope{Empty: true, Status: http.StatusNoContent}, nil
 	}
-	return &plugin.Envelope{SchemaVersion: 1, Title: "T", Widget: json.RawMessage(a.widget), Notice: a.notice, Commit: a.commit, Status: http.StatusOK}, nil
+	env := &plugin.Envelope{SchemaVersion: 1, Title: "T", Widget: json.RawMessage(a.widget), Notice: a.notice, Commit: a.commit, Status: http.StatusOK}
+	if a.act != "" {
+		env.Act = json.RawMessage(a.act)
+	}
+	return env, nil
 }
 
 func (f *slotTransport) Describe(context.Context, plugin.Endpoint, []plugin.DescribeChange, plugin.UCI) ([]plugin.Description, error) {
@@ -314,6 +320,28 @@ func TestContributionsSpeakTheReadersLanguage(t *testing.T) {
 	}
 	if strings.Contains(body, "Gostitelj") {
 		t.Error("acme's row was read in the host's words")
+	}
+}
+
+// A drawer asked for on its own, over the page that opened it, has its slots
+// filled as a page does: the Install drawer's notice slot takes a source's
+// word on what replacing the certificate costs.
+func TestADrawersSlotsAreFilledWhenItOpens(t *testing.T) {
+	drawer := `{"label":"Install certificate","href":"/plugins/system/install","drawer":{"title":"Install a certificate","open":true,"closed":"/system/access","children":[
+		{"type":"form","submit":"Install certificate","fields":[{"type":"slot","id":"certificate.notices","kind":"notice"},{"type":"field","name":"certificate","label":"Certificate"}]}]}}`
+	tr := &slotTransport{answers: map[string]answer{
+		"/run/system.sock /install": {widget: `{"type":"stack","children":[]}`, act: drawer},
+		"/run/acme.sock /warn":      {widget: `{"type":"callout","variant":"warning","body":"Replacing it turns off the trusted certificate."}`},
+	}}
+	s := slotServer(t, tr, slotPlugin("system", true), slotPlugin("acme", false, contribution("warn", "system.certificate.notices", "")))
+	req := httptest.NewRequest(http.MethodGet, "/plugins/system/install", nil)
+	req.Header.Set("HX-Request", "true")
+	body := serve(t, s, req).Body.String()
+	if !strings.Contains(body, "Install a certificate") {
+		t.Fatalf("no drawer:\n%s", body)
+	}
+	if !strings.Contains(body, "turns off the trusted certificate") {
+		t.Errorf("the drawer's notice slot is not filled:\n%s", body)
 	}
 }
 
