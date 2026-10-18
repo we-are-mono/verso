@@ -67,10 +67,11 @@ unsafe extern "C" {
 const OWN_WITHIN: Duration = Duration::from_secs(30);
 
 /// Own is a commit the router made itself (ADR-021): what caused it, one
-/// English sentence, and the plugin whose catalog words it, empty for the
-/// helper's own; and by, the handle of the operator's session whose act it
-/// was, empty for none. A mark from a plugin built before causes carries
-/// neither cause nor plugin, and a root half's mark never carries by.
+/// English sentence, its arguments where the sentence has `%s` in it, and the
+/// plugin whose catalog words it, empty for the helper's own; and by, the
+/// handle of the operator's session whose act it was, empty for none. A mark
+/// from a plugin built before causes carries neither cause nor plugin, and a
+/// root half's mark never carries arguments or by.
 #[derive(Debug, Default, Clone, PartialEq, Eq, serde::Deserialize)]
 pub struct Own {
     #[serde(default)]
@@ -78,7 +79,83 @@ pub struct Own {
     #[serde(default)]
     pub cause: String,
     #[serde(skip_deserializing)]
+    pub args: Vec<String>,
+    #[serde(skip_deserializing)]
     pub by: String,
+}
+
+/// The causes of a package operation, the package their one argument.
+pub const INSTALLED: &str = "Changed by %s as it was installed.";
+pub const REMOVED: &str = "Changed by %s as it was removed.";
+pub const UPGRADED: &str = "Changed by %s as it was upgraded.";
+/// The cause of an upgrade of every package, which names none.
+pub const ALL_UPGRADED: &str = "Changed as packages were upgraded.";
+
+/// How long an ended package operation is kept: a reading is spooled two
+/// seconds after its last write, and taken by the watch soon after.
+const OPERATION_KEPT: u64 = 60;
+
+/// Operation is a package operation the helper runs for an operator (design
+/// decision 7): from its first second to its last, or still running, every
+/// unmarked commit is its own.
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct Operation {
+    id: u64,
+    from: u64,
+    to: Option<u64>,
+    cause: &'static str,
+    args: Vec<String>,
+    by: String,
+}
+
+/// The package operations running, and those ended within OPERATION_KEPT.
+static OPERATIONS: Mutex<Vec<Operation>> = Mutex::new(Vec::new());
+static NEXT_OPERATION: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
+
+/// Running is a package operation under way; it ends when dropped.
+pub struct Running(u64);
+
+impl Drop for Running {
+    fn drop(&mut self) {
+        let mut ops = OPERATIONS.lock().unwrap_or_else(PoisonError::into_inner);
+        if let Some(op) = ops.iter_mut().find(|op| op.id == self.0) {
+            op.to = Some(now_secs());
+        }
+    }
+}
+
+/// operation begins a package operation for the operator whose handle is by,
+/// with cause and its arguments; it lasts as long as what it returns.
+pub fn operation(cause: &'static str, args: Vec<String>, by: &str) -> Running {
+    let id = NEXT_OPERATION.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    let mut ops = OPERATIONS.lock().unwrap_or_else(PoisonError::into_inner);
+    let held = std::mem::take(&mut *ops);
+    *ops = kept(held, now_secs());
+    ops.push(Operation { id, from: now_secs(), to: None, cause, args, by: by.to_owned() });
+    Running(id)
+}
+
+/// operated is the package operation a commit written at written belongs to.
+fn operated(written: u64) -> Option<Own> {
+    let mut ops = OPERATIONS.lock().unwrap_or_else(PoisonError::into_inner);
+    let held = std::mem::take(&mut *ops);
+    *ops = kept(held, now_secs());
+    operated_in(&ops, written)
+}
+
+/// operated_in is the operation among ops a commit written at written
+/// belongs to: one that had begun and not yet ended.
+fn operated_in(ops: &[Operation], written: u64) -> Option<Own> {
+    ops.iter()
+        .find(|op| op.from <= written && op.to.is_none_or(|to| written <= to))
+        .map(|op| Own { plugin: String::new(), cause: op.cause.to_owned(), args: op.args.clone(), by: op.by.clone() })
+}
+
+/// kept is ops less those ended more than OPERATION_KEPT before now.
+fn kept(ops: Vec<Operation>, now: u64) -> Vec<Operation> {
+    ops.into_iter()
+        .filter(|op| op.to.is_none_or(|to| now <= to + OPERATION_KEPT))
+        .collect()
 }
 
 /// Configs the helper is about to commit itself: when it said so, why, and
@@ -123,7 +200,7 @@ fn owned(config: &str) -> Option<Own> {
         .ok()
         .and_then(|mut own| own.as_mut()?.remove(config))
         .filter(|(at, _, _)| at.elapsed() <= OWN_WITHIN)
-        .map(|(_, cause, by)| Own { plugin: String::new(), cause: cause.to_owned(), by });
+        .map(|(_, cause, by)| Own { cause: cause.to_owned(), by, ..Own::default() });
     mine.or_else(|| marked(Path::new(OWN_MARKS), config, SystemTime::now(), |uid| uid == 0))
 }
 
@@ -221,7 +298,9 @@ fn watch() -> Result<(), String> {
             .collect();
         for (name, written) in settled {
             pending.remove(&name);
-            spool_config(&name, written, owned(&name));
+            // A mark names its own act; an unmarked commit made while a
+            // package operation ran is that operation's.
+            spool_config(&name, written, owned(&name).or_else(|| operated(written)));
         }
         std::thread::sleep(POLL);
     }
@@ -298,7 +377,8 @@ fn record(name: &str, written: u64, own: Option<&Own>, sections: Value) -> Value
     let (cause, plugin, by) = own
         .map(|o| (o.cause.as_str(), o.plugin.as_str(), o.by.as_str()))
         .unwrap_or_default();
-    json!({ "time": written, "config": name, "own": own.is_some(), "cause": cause, "plugin": plugin, "by": by, "sections": sections })
+    let args: &[String] = own.map(|o| o.args.as_slice()).unwrap_or_default();
+    json!({ "time": written, "config": name, "own": own.is_some(), "cause": cause, "args": args, "plugin": plugin, "by": by, "sections": sections })
 }
 
 /// secret_options is every config.option kept secret: the shared list and
@@ -895,10 +975,56 @@ mod tests {
         own_write("verso-test-own", "The theme was changed.", &by);
         assert_eq!(
             owned("verso-test-own"),
-            Some(Own { plugin: String::new(), cause: "The theme was changed.".into(), by: by.clone() })
+            Some(Own { cause: "The theme was changed.".into(), by: by.clone(), ..Own::default() })
         );
         assert_eq!(owned("verso-test-own"), None, "a mark names one write");
         assert_eq!(owned("verso-test-other"), None);
+    }
+
+    /// A package operation owns the unmarked commits written while it runs:
+    /// its handle, cause and arguments. One written before it, or after it
+    /// ended, is not its own; an ended operation is forgotten after a minute
+    /// (design decision 7).
+    #[test]
+    fn a_package_operation_owns_what_commits_while_it_runs() {
+        let op = Operation {
+            id: 1,
+            from: 100,
+            to: Some(110),
+            cause: INSTALLED,
+            args: vec!["https-dns-proxy".into()],
+            by: "h4ndle".into(),
+        };
+        let ops = vec![op];
+        let own = operated_in(&ops, 105).expect("a commit while it ran");
+        assert_eq!(
+            own,
+            Own { plugin: String::new(), cause: INSTALLED.into(), args: vec!["https-dns-proxy".into()], by: "h4ndle".into() }
+        );
+        assert_eq!(operated_in(&ops, 100).map(|o| o.by), Some("h4ndle".into()), "its first second");
+        assert_eq!(operated_in(&ops, 110).map(|o| o.by), Some("h4ndle".into()), "its last second");
+        assert!(operated_in(&ops, 99).is_none(), "before it began");
+        assert!(operated_in(&ops, 111).is_none(), "after it ended");
+        let running = vec![Operation { to: None, ..ops[0].clone() }];
+        assert!(operated_in(&running, 500).is_some(), "while it still runs");
+
+        assert_eq!(kept(ops.clone(), 170).len(), 1, "a minute after it ended");
+        assert!(kept(ops, 171).is_empty(), "forgotten after a minute");
+        assert_eq!(kept(running, 10_000).len(), 1, "never while it runs");
+    }
+
+    /// The operation is held from start to the guard's end; a mark with a
+    /// cause of its own still names its own act.
+    #[test]
+    fn an_operation_runs_as_long_as_its_guard() {
+        let started = now_secs();
+        let by = session_handle("operation-test");
+        {
+            let _running = operation(INSTALLED, vec!["adblock".into()], &by);
+            assert!(operated(started).is_some_and(|o| o.by == by && o.args == ["adblock"]));
+        }
+        // Ended: a commit after its last second is no longer its own.
+        assert!(operated(now_secs() + 2).is_none_or(|o| o.by != by));
     }
 
     /// A session's handle is the hex SHA-256 of its id: it names the session
@@ -916,14 +1042,19 @@ mod tests {
     #[test]
     fn a_spooled_record_carries_its_cause() {
         let sections = json!({"verso": {".type": "web"}});
-        let own = Own { plugin: String::new(), cause: "The theme was changed.".into(), by: "h4ndle".into() };
+        let own = Own {
+            plugin: String::new(),
+            cause: INSTALLED.into(),
+            args: vec!["https-dns-proxy".into()],
+            by: "h4ndle".into(),
+        };
         assert_eq!(
-            record("verso", 7, Some(&own), sections.clone()),
-            json!({"time": 7, "config": "verso", "own": true, "cause": "The theme was changed.", "plugin": "", "by": "h4ndle", "sections": sections})
+            record("dhcp", 7, Some(&own), sections.clone()),
+            json!({"time": 7, "config": "dhcp", "own": true, "cause": INSTALLED, "args": ["https-dns-proxy"], "plugin": "", "by": "h4ndle", "sections": sections})
         );
         assert_eq!(
             record("verso", 7, None, sections.clone()),
-            json!({"time": 7, "config": "verso", "own": false, "cause": "", "plugin": "", "by": "", "sections": sections})
+            json!({"time": 7, "config": "verso", "own": false, "cause": "", "args": [], "plugin": "", "by": "", "sections": sections})
         );
     }
 
@@ -940,7 +1071,7 @@ mod tests {
         let cause = "A certificate was installed by hand.";
 
         fs::write(dir.join("acme"), json!({"plugin": "acme", "cause": cause}).to_string()).unwrap();
-        assert_eq!(marked(&dir, "acme", now, mine), Some(Own { plugin: "acme".into(), cause: cause.into(), by: String::new() }));
+        assert_eq!(marked(&dir, "acme", now, mine), Some(Own { plugin: "acme".into(), cause: cause.into(), ..Own::default() }));
         // A root half signs no commit as an operator's.
         fs::write(dir.join("acme"), json!({"plugin": "acme", "cause": cause, "by": session_handle("a-session")}).to_string()).unwrap();
         assert_eq!(marked(&dir, "acme", now, mine).map(|o| o.by), Some(String::new()));

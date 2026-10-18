@@ -76,7 +76,7 @@
 
 ## 9. A package operation owns what commits while it runs
 
-- [ ] 9.1 Test first in `verso-rpcd/src/config_watch.rs`:
+- [x] 9.1 Test first in `verso-rpcd/src/config_watch.rs`:
   - a reading written between an operation's start and end, with no mark, is the operation's: its handle, its cause and its arguments;
   - one written before it or after it ended is not;
   - a mark with a cause of its own wins over the operation;
@@ -84,7 +84,7 @@
   - the spooled record carries `args`.
 
   Then keep operations in the helper (design decision 7). Verify with `cargo test`.
-- [ ] 9.2 Test first: `pkgInstall`, `pkgRemove`, `pkgUpgradeOne` and `pkgUpgrade` each run inside an operation with their cause and the package as its argument. Then wrap them in `main.rs`. Verify with `cargo test`.
+- [x] 9.2 Test first: `pkgInstall`, `pkgRemove`, `pkgUpgradeOne` and `pkgUpgrade` each run inside an operation with their cause and the package as its argument. Then wrap them in `main.rs`. Verify with `cargo test`.
 - [ ] 9.3 Test first in `internal/history`: a file at version 11 steps to 12 with every change kept and no arguments; `RecordChange` stores `CauseArgs` and reads them back. Then add `migrations/012_change_cause_args.sql` and the field. Verify with `go test ./internal/history`.
 - [ ] 9.4 Test first in `internal/server`:
   - an `own` reading with arguments records them;

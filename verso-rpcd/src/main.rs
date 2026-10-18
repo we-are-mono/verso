@@ -439,6 +439,8 @@ fn answer(method: &str, request: &Value, state: &State, sid: &str) -> Result<Val
         }
         "pkgUpgrade" => {
             let _guard = package_guard(state)?;
+            let (cause, args) = package_cause(method, "");
+            let _running = config_watch::operation(cause, args, &config_watch::session_handle(sid));
             let output = packages::upgrade().map_err(Failure::unknown)?;
             Ok(json!({"result": true, "output": output}))
         }
@@ -525,6 +527,10 @@ fn answer(method: &str, request: &Value, state: &State, sid: &str) -> Result<Val
                     )));
                 }
             }
+            // What the package's own scripts commit while this runs is the
+            // operation's (ADR-021).
+            let (cause, args) = package_cause(method, name);
+            let _running = config_watch::operation(cause, args, &config_watch::session_handle(sid));
             let output = if method == "pkgInstall" {
                 packages::install(name, &config_watch::session_handle(sid))
             } else if method == "pkgUpgradeOne" {
@@ -1250,6 +1256,18 @@ fn package_guard(state: &State) -> Result<std::sync::MutexGuard<'_, ()>, Failure
         .map_err(|_| Failure::unknown("package-operation lock poisoned"))
 }
 
+/// package_cause is what config history says about a commit a package
+/// operation makes while it runs, and its arguments (ADR-021): method is the
+/// verb, package the one it names, empty for an upgrade of all.
+fn package_cause(method: &str, package: &str) -> (&'static str, Vec<String>) {
+    match method {
+        "pkgInstall" => (config_watch::INSTALLED, vec![package.to_owned()]),
+        "pkgRemove" => (config_watch::REMOVED, vec![package.to_owned()]),
+        "pkgUpgradeOne" => (config_watch::UPGRADED, vec![package.to_owned()]),
+        _ => (config_watch::ALL_UPGRADED, Vec::new()),
+    }
+}
+
 fn field<'a>(request: &'a Value, name: &str) -> Result<&'a str, Failure> {
     request
         .get(name)
@@ -1507,6 +1525,20 @@ mod tests {
             let failure = dispatch(&request, &state, uid).expect_err("denied");
             assert_eq!(failure.status, STATUS_PERMISSION_DENIED);
         }
+    }
+
+    // Each package verb runs inside an operation whose cause names what
+    // happened to the package; an upgrade of all names none.
+    #[test]
+    fn a_package_operation_says_what_happened_to_its_package() {
+        assert_eq!(package_cause("pkgInstall", "adblock"), (config_watch::INSTALLED, vec!["adblock".to_owned()]));
+        assert_eq!(package_cause("pkgRemove", "adblock"), (config_watch::REMOVED, vec!["adblock".to_owned()]));
+        assert_eq!(package_cause("pkgUpgradeOne", "adblock"), (config_watch::UPGRADED, vec!["adblock".to_owned()]));
+        assert_eq!(package_cause("pkgUpgrade", ""), (config_watch::ALL_UPGRADED, vec![]));
+        for cause in [config_watch::INSTALLED, config_watch::REMOVED, config_watch::UPGRADED] {
+            assert_eq!(cause.matches("%s").count(), 1, "{cause}");
+        }
+        assert!(!config_watch::ALL_UPGRADED.contains('%'));
     }
 
     // A plugin's root work is its own root half's (ADR-027): the verbs that
