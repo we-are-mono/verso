@@ -98,9 +98,9 @@ func TestServerPagesNameEachThingOnce(t *testing.T) {
 
 // TestMaintenanceSectionsUsePageBands: the masthead stands on the sand, and
 // Maintenance is the shell's widgets alone — its sections the section widget's
-// ruled sections, drawn by no hand-built template — so each band's rule stands
-// two cells under the content before it, as its title stands two cells under
-// the rule.
+// cards, the later ones ruled, drawn by no hand-built template — so each band's
+// rule stands two cells under the content before it, as its title stands two
+// cells under the rule.
 func TestMaintenanceSectionsUsePageBands(t *testing.T) {
 	body := get(t, passwordServer(t, fakeBackend{}), "/system/maintenance").Body.String()
 	if !strings.Contains(body, `<div data-verso-masthead class="verso-page__masthead">`) {
@@ -108,11 +108,11 @@ func TestMaintenanceSectionsUsePageBands(t *testing.T) {
 	}
 	// With nothing to say, nothing stands before Firmware: the section opens
 	// the work column right under the masthead's line.
-	if !regexp.MustCompile(`data-verso-form-column class="verso-grid__cell">\s*<div class="verso-stack">\s*<section data-verso-section="plain" id="section-firmware">`).MatchString(body) {
+	if !regexp.MustCompile(`data-verso-form-column class="verso-grid__cell">\s*<div class="verso-stack">\s*<section data-verso-section="card" class="verso-card" id="section-firmware">`).MatchString(body) {
 		t.Error("something stands before Firmware with nothing to say")
 	}
 	for _, id := range []string{"back-up-and-restore", "reboot", "factory-reset"} {
-		want := `<section data-verso-section="ruled" id="section-` + id + `" data-verso-ruled data-verso-section-divider>`
+		want := `<section data-verso-section="card" class="verso-card" id="section-` + id + `" data-verso-ruled data-verso-section-divider>`
 		if !strings.Contains(body, want) {
 			t.Errorf("want %s", want)
 		}
@@ -127,7 +127,7 @@ func TestMaintenanceSectionsUsePageBands(t *testing.T) {
 // lede — so the two cannot drift apart.
 func TestMaintenanceHeadingsAreSectionHeadings(t *testing.T) {
 	body := get(t, passwordServer(t, fakeBackend{}), "/system/maintenance").Body.String()
-	band := `<div data-verso-section-band class="flex flex-wrap items-center justify-between gap-x-6">`
+	band := `<div data-verso-section-band class="verso-card__head flex flex-wrap items-center justify-between gap-x-6">`
 	title := `<h2 class="text-lg leading-6 font-semibold tracking-[-0.025em] text-ink">`
 	lede := `<div class="w-full"><div data-verso-section-lede class="verso-prose text-body">`
 	for want, n := range map[string]int{band: 4, title: 4, lede: 2} {

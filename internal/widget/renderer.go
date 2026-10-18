@@ -66,6 +66,17 @@ type Renderer struct {
 	// a widget that is also drawn on its own (a table) takes its place as a
 	// row of the form's ledger.
 	inForm bool
+	// cards says the surface this handle renders onto stands its subjects on
+	// cards (a page's body, a drawer's): a top-level titled or ruled section
+	// is a card there (sectionView.Kind). A chooser's list, a dialog and an
+	// Overview card's body are not such surfaces.
+	cards bool
+}
+
+// withoutCards is the same pass rendering onto a surface whose sections are
+// not cards.
+func (r *Renderer) withoutCards() *Renderer {
+	return &Renderer{tmpl: r.tmpl, t: r.t, md: r.md, seq: r.seq, depth: r.depth, headed: r.headed, inForm: r.inForm}
 }
 
 // nested is the handle a section renders its contents with: the same pass,
@@ -77,13 +88,13 @@ func (r *Renderer) nested(titled bool) *Renderer {
 	if titled {
 		headed++
 	}
-	return &Renderer{tmpl: r.tmpl, t: r.t, md: r.md, seq: r.seq, depth: r.depth + 1, headed: headed, inForm: r.inForm}
+	return &Renderer{tmpl: r.tmpl, t: r.t, md: r.md, seq: r.seq, depth: r.depth + 1, headed: headed, inForm: r.inForm, cards: r.cards}
 }
 
 // amongFields is the handle a form renders its fields with: the same pass,
 // what it draws standing among the form's fields.
 func (r *Renderer) amongFields() *Renderer {
-	return &Renderer{tmpl: r.tmpl, t: r.t, md: r.md, seq: r.seq, depth: r.depth, headed: r.headed, inForm: true}
+	return &Renderer{tmpl: r.tmpl, t: r.t, md: r.md, seq: r.seq, depth: r.depth, headed: r.headed, inForm: true, cards: r.cards}
 }
 
 // renderSeqs are the monotonic id counters that keep generated element ids
@@ -168,7 +179,7 @@ func (r *Renderer) RenderWithToken(out io.Writer, w Widget, csrfToken, lang stri
 	if t != nil {
 		translateSchema(w, t)
 	}
-	pass := &Renderer{tmpl: r.setFor(lang), t: t, md: r.md, seq: r.seq}
+	pass := &Renderer{tmpl: r.setFor(lang), t: t, md: r.md, seq: r.seq, cards: true}
 	return pass.render(out, w, csrfToken)
 }
 

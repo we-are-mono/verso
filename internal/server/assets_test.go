@@ -725,7 +725,7 @@ func TestFieldRowsRunToACardsBorders(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	block := cssBlock(t, string(raw), ":is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) .verso-field:not(.verso-field .verso-field, .verso-form-grid .verso-field) {")
+	block := cssBlock(t, string(raw), ".verso-card .verso-field:not(.verso-field .verso-field, .verso-form-grid .verso-field) {")
 	for _, want := range []string{
 		"margin-inline: calc(var(--verso-side) * -1);",
 		"padding-inline: var(--verso-side);",

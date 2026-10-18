@@ -36,7 +36,7 @@ type drawerPanelView struct {
 // listing has the same headings as one rendered on its own after a form post.
 // The trigger keeps the enclosing page's depth; only the body starts afresh.
 func (r *Renderer) drawer() *Renderer {
-	return &Renderer{tmpl: r.tmpl, t: r.t, md: r.md, seq: r.seq}
+	return &Renderer{tmpl: r.tmpl, t: r.t, md: r.md, seq: r.seq, cards: true}
 }
 
 // renderPanel draws a row drawer into the one panel view every open panel is
@@ -51,10 +51,12 @@ func (r *Renderer) renderPanel(d *RowDrawer, csrf string, flash Flash) (drawerPa
 	// A chooser is a list of choices on the drawer's own Paper; every other
 	// panel's body stands on cards (drawer_cards.go).
 	children := d.Children
+	pass := r.drawer().withoutCards()
 	if d.Size != "choices" {
 		children = onCards(children)
+		pass = r.drawer()
 	}
-	body, err := r.drawer().renderChildren(children, csrf)
+	body, err := pass.renderChildren(children, csrf)
 	if err != nil {
 		return drawerPanelView{}, err
 	}

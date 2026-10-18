@@ -31,7 +31,8 @@
      air, its rule, how far the rule reaches on this surface — so a page and a
      drawer draw it by one definition. */}}
 {{$band := and .Title (not .Nested) (not .Kicker)}}
-<section data-verso-section="{{.Kind}}"{{if not (or .Title .Meta .Control)}} data-verso-headless{{end}}{{if .Anchor}} id="{{.Anchor}}"{{end}}{{if and .Hairline (not .Flush)}} data-verso-ruled{{if not .Nested}} data-verso-section-divider{{end}}{{end}}>
+{{$card := eq .Kind "card"}}
+<section data-verso-section="{{.Kind}}"{{if $card}} class="verso-card"{{end}}{{if not (or .Title .Meta .Control)}} data-verso-headless{{end}}{{if .Anchor}} id="{{.Anchor}}"{{end}}{{if and .Hairline (not .Flush)}} data-verso-ruled{{if not .Nested}} data-verso-section-divider{{end}}{{end}}>
   {{if and .Nested .Title (not .Kicker)}}
   {{/* A section inside a section is a part of its subject, and it stands on
        a ledger line: its name at the label's size and a hairline running on
@@ -57,7 +58,7 @@
   </div>
   {{else if or .Title .Meta .Control}}
   {{/* A kicker's list stands 24px under it. */}}
-  <div{{if $band}} data-verso-section-band{{end}} class="{{if and .Sub (not $band)}}flex flex-wrap items-center justify-between gap-x-6{{else}}{{template "verso-section-band-class"}}{{end}}{{if .Kicker}} mb-6{{end}}">
+  <div{{if $band}} data-verso-section-band{{end}} class="{{if $card}}verso-card__head {{end}}{{if and .Sub (not $band)}}flex flex-wrap items-center justify-between gap-x-6{{else}}{{template "verso-section-band-class"}}{{end}}{{if .Kicker}} mb-6{{end}}">
     <div class="flex flex-wrap items-center gap-3 leading-6">
       {{/* On a page the band is a card's header, led by the glyph of what the
            section is, as the Overview's cards are. */}}
@@ -85,5 +86,5 @@
   {{if and .Sub (not $band)}}<div data-verso-section-lede class="{{template "verso-section-lede-class"}} mb-6">{{.Sub}}</div>{{end}}
   {{/* Blocks stand off from each other; form rows sit flush. The rule is named
        in input.css, where the two declarations can be ordered deliberately. */}}
-  <div class="verso-rhythm">{{range .Children}}{{.}}{{end}}</div>
+  <div class="{{if $card}}verso-card__body {{end}}verso-rhythm">{{range .Children}}{{.}}{{end}}</div>
 </section>

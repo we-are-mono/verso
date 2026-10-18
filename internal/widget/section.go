@@ -126,18 +126,31 @@ type sectionView struct {
 	Flush      bool
 	// Nested marks a section inside another section: a part of that subject,
 	// titled at h3 on a ledger line, not a second heading beside its parent's.
-	Nested   bool
+	Nested bool
+	// OnCards says the surface it stands on stands its subjects on cards
+	// (Renderer.cards).
+	OnCards  bool
 	Control  template.HTML
 	Children []template.HTML
 }
 
+// Headless is a section with nothing over its content: no title, no meta, no
+// act.
+func (v sectionView) Headless() bool {
+	return v.Title == "" && v.Meta == "" && v.Control == ""
+}
+
 // Kind is what the section is to the surface it stands on, which is all the
-// markup says; sections.css turns it into air and a rule. A ruled section is
-// one of the surface's subjects, a part is a ruled section inside another, a
-// continued one is more of the rows above (its rule always drawn), a plain one
-// is an unruled block, and a bare one — nested or flush — adds no air.
+// markup says; its block turns it into air and a rule. On a surface of cards
+// a subject with a heading, or a ruled one with none, is a card. A ruled
+// section is one of the surface's subjects, a part is a ruled section inside
+// another, a continued one is more of the rows above (its rule always drawn),
+// a plain one is an unruled block, and a bare one — nested or flush — adds no
+// air.
 func (v sectionView) Kind() string {
 	switch {
+	case v.OnCards && !v.Nested && ((v.Title != "" && !v.Kicker) || (v.Headless() && v.Hairline && !v.Flush)):
+		return "card"
 	case v.Hairline && v.Flush:
 		return "continued"
 	case v.Hairline && v.Nested:
@@ -189,6 +202,7 @@ func (s *Section) renderInto(r *Renderer, out io.Writer, csrf string) error {
 	}
 	v := sectionView{
 		Nested:     r.depth > 0,
+		OnCards:    r.cards,
 		Level:      min(2+r.headed, 4),
 		Title:      s.Title,
 		Icon:       s.Icon,

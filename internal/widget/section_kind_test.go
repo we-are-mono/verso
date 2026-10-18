@@ -70,13 +70,30 @@ func TestRowsNeverTrimTheirOwnEdges(t *testing.T) {
 func TestASectionSaysWhatItIsNotHowItStands(t *testing.T) {
 	r := newRenderer(t)
 	child := []Widget{&Text{Markdown: "x"}}
-	for kind, s := range map[string]*Section{
-		"ruled":     {Title: "Time", Hairline: true, Children: child},
-		"continued": {Hairline: true, Flush: true, Children: child},
-		"plain":     {Title: "Time", Children: child},
-		"bare":      {Title: "Time", Flush: true, Children: child},
+	// Off cards (a dialog's contents, an Overview card's body) a section says
+	// the kind it stands as; on a page or in a drawer a titled or ruled
+	// subject is a card.
+	offCards := func(s *Section) string {
+		t.Helper()
+		pass := &Renderer{tmpl: r.setFor(""), md: r.md, seq: r.seq}
+		var b strings.Builder
+		if err := pass.render(&b, s, ""); err != nil {
+			t.Fatal(err)
+		}
+		return normalizeHTML(b.String())
+	}
+	onPage := func(s *Section) string { return render(t, r, s) }
+	for kind, c := range map[string]struct {
+		s    *Section
+		draw func(*Section) string
+	}{
+		"ruled":     {&Section{Title: "Time", Hairline: true, Children: child}, offCards},
+		"continued": {&Section{Hairline: true, Flush: true, Children: child}, onPage},
+		"plain":     {&Section{Title: "Time", Children: child}, offCards},
+		"bare":      {&Section{Title: "Time", Flush: true, Children: child}, offCards},
+		"card":      {&Section{Title: "Time", Hairline: true, Children: child}, onPage},
 	} {
-		got := render(t, r, s)
+		got := c.draw(c.s)
 		if !strings.Contains(got, `data-verso-section="`+kind+`"`) {
 			t.Errorf("%s: section must say its kind:\n%s", kind, got)
 		}

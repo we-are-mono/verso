@@ -57,7 +57,8 @@ type modalStep struct {
 }
 
 func (m *Modal) view(r *Renderer, csrf string) (modalView, error) {
-	children, err := r.renderChildren(m.Children, csrf)
+	// A dialog is a card already: what it holds stands on its Paper.
+	children, err := r.withoutCards().renderChildren(m.Children, csrf)
 	if err != nil {
 		return modalView{}, err
 	}

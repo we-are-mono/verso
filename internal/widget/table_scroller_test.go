@@ -89,8 +89,8 @@ func TestPageSpacingIsThePagesNotTheBlocks(t *testing.T) {
 // opens with draws neither rule nor gap.
 func TestRuledSectionStandsFortyAboveAndBelowItsRule(t *testing.T) {
 	got := render(t, newRenderer(t), &Section{Title: "Time", Hairline: true, Children: []Widget{&Text{Markdown: "x"}}})
-	// The numbers are sections.css's; the section says it is ruled.
-	want := `<section data-verso-section="ruled" data-verso-ruled data-verso-section-divider>`
+	// The numbers are sections.css's; the section says it is a ruled card.
+	want := `<section data-verso-section="card" class="verso-card" data-verso-ruled data-verso-section-divider>`
 	if !strings.Contains(got, want) {
 		t.Errorf("ruled section should carry %q:\n%s", want, got)
 	}

@@ -257,8 +257,10 @@ func TestRenderSectionControl(t *testing.T) {
 	}
 }
 
+// A flush section that is none of the page's subjects (no heading, no rule)
+// is bare; a titled one on a page is a card all the same.
 func TestRenderSectionFlush(t *testing.T) {
-	got := render(t, newRenderer(t), &Section{Title: "Rule", Flush: true})
+	got := render(t, newRenderer(t), &Section{Flush: true, Children: []Widget{&Text{Markdown: "x"}}})
 	if !strings.Contains(got, `data-verso-section="bare"`) {
 		t.Errorf("flush section must rely on its parent's inset: %s", got)
 	}
@@ -276,7 +278,7 @@ func TestRenderSectionAnchor(t *testing.T) {
 	got := render(t, r, &Section{Title: "Speed", Anchor: "speed"})
 	// Its stop short of the viewport's edge is the stylesheet's, for every
 	// section with an id (sections.css).
-	if !strings.Contains(got, `data-verso-section="plain" id="section-speed"`) {
+	if !strings.Contains(got, `data-verso-section="card" class="verso-card" id="section-speed"`) {
 		t.Errorf("anchored section missing its id:\n%s", got)
 	}
 	plain := render(t, r, &Section{Title: "Speed"})
@@ -305,7 +307,7 @@ func TestRenderSectionKicker(t *testing.T) {
 func TestRenderSectionHairline(t *testing.T) {
 	r := newRenderer(t)
 	plain := render(t, r, &Section{Title: "Default", Children: []Widget{&Text{Markdown: "body"}}})
-	if strings.Contains(plain, "border-t border-rule") {
+	if strings.Contains(plain, "border-t border-rule") || strings.Contains(plain, "data-verso-ruled") {
 		t.Errorf("section should omit its hairline by default:\n%s", plain)
 	}
 
@@ -314,7 +316,7 @@ func TestRenderSectionHairline(t *testing.T) {
 		Hairline: true,
 		Children: []Widget{&Text{Markdown: "body"}},
 	})
-	if !strings.Contains(divided, `data-verso-section="ruled"`) {
+	if !strings.Contains(divided, `<section data-verso-section="card" class="verso-card" data-verso-ruled data-verso-section-divider>`) {
 		t.Errorf("section with hairline=true should include divider styling:\n%s", divided)
 	}
 }
