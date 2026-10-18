@@ -795,9 +795,25 @@ func TestASwitchShowsTheWordForItsState(t *testing.T) {
 // drawer alike. A row inside another row or a field set's cell stays in its
 // column.
 func TestFieldRowsRunToACardsBorders(t *testing.T) {
-	block := cssBlock(t, blockSheet(t, "card"), ".verso-card__body .verso-field:not(.verso-field .verso-field, .verso-form-grid .verso-field),\n.verso-card__body .verso-settings__fold {")
+	block := cssBlock(t, blockSheet(t, "card"), ".verso-card__body .verso-field:not(.verso-field .verso-field, .verso-form-grid .verso-field),\n.verso-card__body .verso-settings__fold,\n.verso-card__body .verso-form__acts {")
 	if !strings.Contains(block, "--verso-field-bleed: var(--spacing-side);") {
 		t.Errorf("a card's field row does not run to its borders: %s", block)
+	}
+	// A form's acts under its rows are the ledger's last row: their hairline
+	// runs by the same bleed, 15px over the buttons, and the row over them
+	// keeps a row's 16px.
+	acts := cssBlock(t, blockSheet(t, "form"), `.verso-form__acts[data-verso-close="flush"]:is(:is(.verso-field, .verso-conditional, .verso-field-set, [data-verso-rows]) + *) {`)
+	for _, want := range []string{
+		"margin-inline: calc(var(--verso-field-bleed, 0px) * -1);",
+		"padding: calc(var(--spacing) * 3.75) var(--verso-field-bleed, 0px) 0;",
+		"border-top-width: 1px;",
+	} {
+		if !strings.Contains(acts, want) {
+			t.Errorf("a form's acts under its rows do not meet them on a hairline: missing %s in %s", want, acts)
+		}
+	}
+	if !strings.Contains(blockSheet(t, "field"), `.verso-field:has(+ .verso-form__acts[data-verso-close="flush"]),`) {
+		t.Error("the row over a form's acts does not keep a row's 16px over their hairline")
 	}
 	// The row reads the bleed: out past its column by it, its words back in.
 	row := cssBlock(t, blockSheet(t, "field"), "\n.verso-field {")

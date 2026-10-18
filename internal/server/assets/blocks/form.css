@@ -32,6 +32,8 @@
  *           __note    what the acts cost, read last at the row's end
  *           __glued   an inline form's submit, glued to its field: its left
  *                     corners square
+ * Reads:    --verso-field-bleed  on acts under the form's rows: how far
+ *                     their hairline runs past the column, as a row's does
  * Sets:     --verso-rhythm  24px, on a form of settings
  *           --verso-edge-air, --verso-edge-trail  forwarded to its first and
  *                     last visible child
@@ -97,6 +99,15 @@
   --verso-acts-after: var(--spacing-inset);
   padding-top: 0;
   border-top-width: 0;
+}
+/* Under the form's rows the acts are the ledger's last row: they meet the
+   row over them on its hairline, run border to border as a row does, and
+   stand 15px after it, so the buttons land on a line. */
+.verso-form__acts[data-verso-close="flush"]:is(:is(.verso-field, .verso-conditional, .verso-field-set, [data-verso-rows]) + *) {
+  --verso-acts-after: 0px;
+  margin-inline: calc(var(--verso-field-bleed, 0px) * -1);
+  padding: calc(var(--spacing) * 3.75) var(--verso-field-bleed, 0px) 0;
+  border-top-width: 1px;
 }
 .verso-form__acts[data-verso-close="inline"] {
   --verso-acts-after: 0px;

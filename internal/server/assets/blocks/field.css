@@ -125,6 +125,14 @@
 .verso-field:is(:is(.verso-field-set, [data-verso-rows]):has(+ :is(.verso-field, .verso-conditional, .verso-field-set, [data-verso-rows])) > :last-child) {
   --verso-field-trail: calc(var(--spacing) * 4);
 }
+/* A form's acts under its rows are the ledger's last row (blocks/form.css):
+   the row over them keeps a row's 16px over their hairline. */
+.verso-field:has(+ .verso-form__acts[data-verso-close="flush"]),
+.verso-field:is(.verso-conditional:has(+ .verso-form__acts[data-verso-close="flush"]) > .verso-conditional__gate),
+.verso-field:is(.verso-conditional:has(+ .verso-form__acts[data-verso-close="flush"]) > .verso-conditional__body > :last-child),
+.verso-field:is(:is(.verso-field-set, [data-verso-rows]):has(+ .verso-form__acts[data-verso-close="flush"]) > :last-child) {
+  --verso-field-trail: calc(var(--spacing) * 4);
+}
 /* A hidden carrier between two rows (the object's address, posted with the
    form) draws nothing, so the rows still meet on a hairline across it. */
 .verso-field:is(.verso-field + input[type="hidden"] + *, .verso-field + input[type="hidden"] + input[type="hidden"] + *) {
