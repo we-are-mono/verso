@@ -336,6 +336,40 @@ func TestRenderFieldCurrentPasswordAutocomplete(t *testing.T) {
 	}
 }
 
+// A sign-in's password is the one box its page is for, so it takes the caret
+// when the page opens, as a text field asked to does.
+func TestRenderFieldPasswordAutofocus(t *testing.T) {
+	r := newRenderer(t)
+	got := render(t, r, &Field{Name: "password", Label: "Password", Kind: "password", Autocomplete: "current-password", Autofocus: true})
+	if !strings.Contains(got, `autocomplete="current-password" autofocus`) {
+		t.Errorf("a password asked to take the caret does not:\n%s", got)
+	}
+	if got := render(t, r, &Field{Name: "password", Label: "Password", Kind: "password"}); strings.Contains(got, "autofocus") {
+		t.Errorf("a password nobody asked to focus takes the caret:\n%s", got)
+	}
+}
+
+// An account name is matched letter for letter, as an address is: it is set
+// verbatim, names its purpose to the password manager, and a phone neither
+// capitalizes nor corrects it. Every machine string a person types is kept
+// from the phone's capitals and corrections; words keep both.
+func TestTypedMachineStringsAreKeptAsTyped(t *testing.T) {
+	r := newRenderer(t)
+	account := render(t, r, &Field{Name: "username", Label: "Username", Value: "root", Autocomplete: "username"})
+	for _, want := range []string{`autocomplete="username"`, `autocapitalize="none" spellcheck="false"`, `data-verso-verbatim`} {
+		if !strings.Contains(account, want) {
+			t.Errorf("an account name is missing %s:\n%s", want, account)
+		}
+	}
+	if address := render(t, r, &Field{Name: "ipaddr", Label: "Address", Datatype: "ipaddr"}); !strings.Contains(address, `autocapitalize="none" spellcheck="false"`) {
+		t.Errorf("a typed address is left to the phone's capitals:\n%s", address)
+	}
+	words := render(t, r, &Field{Name: "description", Label: "Description"})
+	if strings.Contains(words, "autocapitalize") || strings.Contains(words, "spellcheck") || strings.Contains(words, "autocomplete") {
+		t.Errorf("a field of words loses the phone's help:\n%s", words)
+	}
+}
+
 // An empty box never shows what could pass for a value it holds: the value
 // the daemon falls back to reads "default 150", a value of the field's kind
 // reads "e.g. 1.1.1.1", worded by the shell in the reader's language. A

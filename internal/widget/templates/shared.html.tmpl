@@ -159,8 +159,10 @@
      the sans, a machine string in mono, as wide as its grammar needs: an
      address, a number, a clock time or a date its own measure, anything else
      the column. A part of a joined row is named on its own; a lone field is
-     named by its row's label. */}}
-{{define "verso-text-input"}}<input id="{{.Name}}" name="{{.Name}}" value="{{.Value}}" type="text"{{if .Named}} aria-label="{{.Label}}"{{end}}{{if eq .Measure "number"}} inputmode="numeric"{{end}}{{if .Placeholder}} placeholder="{{.Placeholder}}"{{end}}{{if .Autofocus}} autofocus{{end}}{{if .Datatype}} data-datatype="{{.Datatype}}"{{end}}{{if .Suggests}} data-verso-suggest-input role="combobox" aria-expanded="false" aria-autocomplete="list" aria-controls="{{.Name}}-options" autocomplete="off"{{end}}{{template "verso-field-aria" .}} class="verso-input"{{if not .Words}} data-verso-verbatim{{end}}{{if and (eq .Measure "address") (ne .ControlMeasure "prefix")}} data-verso-measure="address"{{else if or (eq .Measure "number") (eq .Measure "short")}} data-verso-measure="{{.Measure}}"{{end}}>{{end}}
+     named by its row's label. A machine string is kept as typed: a phone
+     neither capitalizes nor corrects it. A declared autofill purpose (an
+     account's name) is said to the password manager. */}}
+{{define "verso-text-input"}}<input id="{{.Name}}" name="{{.Name}}" value="{{.Value}}" type="text"{{if .Named}} aria-label="{{.Label}}"{{end}}{{if eq .Measure "number"}} inputmode="numeric"{{end}}{{if .Placeholder}} placeholder="{{.Placeholder}}"{{end}}{{if .Autofocus}} autofocus{{end}}{{if .Datatype}} data-datatype="{{.Datatype}}"{{end}}{{if .Suggests}} data-verso-suggest-input role="combobox" aria-expanded="false" aria-autocomplete="list" aria-controls="{{.Name}}-options" autocomplete="off"{{else}}{{with .Autocomplete}} autocomplete="{{.}}"{{end}}{{end}}{{if not .Words}} autocapitalize="none" spellcheck="false"{{end}}{{template "verso-field-aria" .}} class="verso-input"{{if not .Words}} data-verso-verbatim{{end}}{{if and (eq .Measure "address") (ne .ControlMeasure "prefix")}} data-verso-measure="address"{{else if or (eq .Measure "number") (eq .Measure "short")}} data-verso-measure="{{.Measure}}"{{end}}>{{end}}
 
 {{/* verso-suggest-input: a typed value (a boxPart) with the values worth
      offering under its box — a device's address and its name. They are a

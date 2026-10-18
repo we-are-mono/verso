@@ -456,7 +456,8 @@ func (f *Field) Words() bool {
 	case "password", "textarea":
 		return true
 	case "", "text":
-		return f.Datatype == "" && f.Unit == "" && f.Measure() == "full"
+		// An account's name is matched letter for letter, as an address is.
+		return f.Datatype == "" && f.Unit == "" && f.Measure() == "full" && f.Autocomplete != "username"
 	case "select":
 		// A select is an enumerated choice, and a choice is words (a timezone,
 		// a policy, a protocol), however its labels are spelled. Only a field

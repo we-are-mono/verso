@@ -134,7 +134,7 @@
   </span>
   {{else if eq .Kind "password"}}
   {{/* Never reflect a submitted password back into the value attribute. */}}
-  <input id="{{.Name}}" name="{{.Name}}" type="password" autocomplete="{{if .Autocomplete}}{{.Autocomplete}}{{else}}new-password{{end}}"{{template "verso-field-aria" .}} class="verso-input">
+  <input id="{{.Name}}" name="{{.Name}}" type="password" autocomplete="{{if .Autocomplete}}{{.Autocomplete}}{{else}}new-password{{end}}"{{if .Autofocus}} autofocus{{end}}{{template "verso-field-aria" .}} class="verso-input">
   {{else if eq .Kind "textarea"}}
   <textarea id="{{.Name}}" name="{{.Name}}" rows="5"{{template "verso-field-aria" .}} class="verso-input">{{.Value}}</textarea>
   {{else if eq .Kind "datetime-local"}}
