@@ -74,13 +74,6 @@ type Property struct {
 	// Chip renders the value as the small category chip — the same treatment
 	// a zone gets everywhere else, so one fact never wears two dresses.
 	Chip bool `json:"chip,omitempty"`
-	// Variant tones the value with the badge vocabulary — "success",
-	// "warning", "danger", "info" — for a fact whose reading is also a
-	// verdict: the build a router runs beside the build it could run. It
-	// names a meaning, never a colour (ADR-005); the shell maps it to the
-	// same text treatment a badge of that tone wears, in both themes. Empty
-	// — and any word the vocabulary does not hold — keeps the ordinary ink.
-	Variant string `json:"variant,omitempty"`
 	// Status hangs a trailing state pill after the value — the same badge
 	// vocabulary rows and pill cells speak.
 	Status *Badge `json:"status,omitempty"`

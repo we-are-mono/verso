@@ -40,8 +40,8 @@ type fieldFrame struct {
 	// Errors are the refusals under the control, one band each, each named by
 	// the id its own input points at.
 	Errors []fieldError
-	// Lane reserves the trailing remove glyph's width; Removable draws it.
-	Lane, Removable bool
+	// Removable draws the trailing glyph that takes the row out of its set.
+	Removable bool
 	// Wide stands the answer under its question at the row's full width, for
 	// a control the answer column cannot hold. Each widget decides it, since
 	// each knows its control.

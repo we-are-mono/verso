@@ -540,53 +540,6 @@ func TestRenderPropertiesStyles(t *testing.T) {
 	}
 }
 
-// TestRenderPropertyVariantTonesTheValue: a row may declare a semantic tone on
-// its value — the badge vocabulary, never a colour (ADR-005) — and the shell
-// maps it to the same text treatment a badge of that tone wears, in both
-// themes. The tone rides the value, not the row: the label stays quiet ink.
-// A tone the vocabulary does not hold renders plainly, mechanically.
-func TestRenderPropertyVariantTonesTheValue(t *testing.T) {
-	r := newRenderer(t)
-	toned := render(t, r, &Properties{Style: "system", Items: []Property{
-		{Label: "Installed build", Value: "25.12.4", Mono: true, Emphasis: true, Variant: "warning"},
-		{Label: "Available build", Value: "25.12.5", Mono: true, Emphasis: true, Variant: "success"},
-	}})
-	for _, want := range []string{
-		`<span data-verso-verbatim class="verso-facts__text" data-verso-tone="warning">25.12.4</span>`,
-		`<span data-verso-verbatim class="verso-facts__text" data-verso-tone="success">25.12.5</span>`,
-	} {
-		if !strings.Contains(toned, want) {
-			t.Errorf("toned system properties missing %q:\n%s", want, toned)
-		}
-	}
-	if strings.Contains(toned, `<dt class="verso-facts__label" data-verso-tone`) {
-		t.Errorf("the tone rides the value, not the label:\n%s", toned)
-	}
-	// The whole vocabulary resolves, in the default row shape too.
-	// A tone carries words in the step of its hue that can carry them — the
-	// full-chroma value stays a mark.
-	for variant, ink := range map[string]string{
-		"success": "--color-green-deep",
-		"warning": "--color-marigold-deep",
-		"danger":  "--color-crimson-deep",
-		"info":    "--color-denim-deep",
-	} {
-		got := render(t, r, &Properties{Items: []Property{{Label: "State", Value: "x", Variant: variant}}})
-		if !strings.Contains(got, `<span class="verso-facts__text" data-verso-tone="`+variant+`">x</span>`) {
-			t.Errorf("the %q tone should ride the value:\n%s", variant, got)
-		}
-		sel := `.verso-facts__value[data-verso-tone="` + variant + `"],` + "\n" + `.verso-facts__text[data-verso-tone="` + variant + `"]`
-		declares(t, "facts", sel, "color: var("+ink+");")
-	}
-	// No variant, and an unknown one, both keep the ordinary ink.
-	for _, variant := range []string{"", "chartreuse"} {
-		got := render(t, r, &Properties{Items: []Property{{Label: "State", Value: "x", Variant: variant}}})
-		if strings.Contains(got, "data-verso-tone") {
-			t.Errorf("variant %q should tint nothing:\n%s", variant, got)
-		}
-	}
-}
-
 // TestRenderConfirmCaution: an act that is disruptive but wanted asks in the same
 // one-hue shape, in marigold. White on full marigold fails the 4.5 floor, so the
 // act is white on the deep step; no crimson appears anywhere in it.

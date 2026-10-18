@@ -403,7 +403,7 @@
      one row across every column, the listing's inset, meta words. It gives up
      its hairline to whatever closes the table (the table's own, or the
      section's rule when the table ends its section). */}}
-{{define "table.empty-row"}}<tr{{if .Stream}} data-verso-stream-empty{{end}}><td colspan="{{.ColumnSpan}}" class="verso-table__cell text-meta">{{.EmptyText}}</td></tr>{{end}}
+{{define "table.empty-row"}}<tr><td colspan="{{.ColumnSpan}}" class="verso-table__cell text-meta">{{.EmptyText}}</td></tr>{{end}}
 {{define "table.head"}}
     <thead>
       <tr>
@@ -473,11 +473,9 @@
     {{if .Action}}<a href="{{.Action.Href}}" class="verso-link verso-listing__act">{{.Action.Label}}</a>{{end}}
   </div>
   {{end}}
-  {{/* a live listing states its source and its ring on the table itself. The
-       shell's stream client draws arriving rows as a console (style
-       "console", above); a grid carries the declaration and stays as it was
-       rendered. */}}
-  <table{{if .Reorderable}} data-verso-reorder-table data-verso-reorder-config="{{.ReorderConfig}}"{{end}}{{if .Stream}} data-verso-stream="{{.StreamSource}}" data-verso-stream-ring="{{.StreamRing}}"{{end}} class="verso-table"{{if .Dense}} data-verso-dense{{end}}{{if .InForm}} data-verso-in-form{{end}}{{with .Narrow}} data-verso-narrow="{{.}}"{{end}}>
+  {{/* The shell's stream client draws arriving rows as a console (style
+       "console", above); a live grid stays as it was rendered. */}}
+  <table{{if .Reorderable}} data-verso-reorder-table data-verso-reorder-config="{{.ReorderConfig}}"{{end}} class="verso-table"{{if .Dense}} data-verso-dense{{end}}{{if .InForm}} data-verso-in-form{{end}}{{with .Narrow}} data-verso-narrow="{{.}}"{{end}}>
     {{/* fit columns squeeze to their content through a colgroup width; the
          table's slack collects in the growing columns, so a huddle of fit
          columns sits together at the edge instead of drifting apart. */}}
@@ -491,8 +489,8 @@
            and the usual hairline. Every listing says its nothing this way,
            whether it is the whole page or one section of it; the toolbar's
            primary is the way in, so the row holds words only. */}}
-      {{/* a live listing keeps its heads and marks this row: it is the wait,
-           not the absence, and the first event that arrives removes it. */}}
+      {{/* a live listing keeps its heads and says it waits: it is the wait,
+           not the absence. */}}
       {{template "table.empty-row" .}}
       {{else}}
 {{template "table.rows" .Rows}}

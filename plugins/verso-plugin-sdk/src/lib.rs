@@ -1084,10 +1084,7 @@ pub struct Field {
     pub unit: String,
     /// The row's trailing remove affordance, for a form whose rows are a set
     /// someone adds to and takes from rather than a fixed list of settings:
-    /// "yes" draws the glyph that clears this row, "lane" reserves its width
-    /// on a row that cannot be removed, "" draws neither. Set "lane" on the
-    /// fixed rows of such a form — without it their controls sit 28px left
-    /// of the removable ones.
+    /// "yes" draws the glyph that clears this row, and "" draws none.
     #[serde(skip_serializing_if = "String::is_empty")]
     pub remove: String,
     /// The control's compact face where its option set is short enough to
@@ -1199,7 +1196,7 @@ pub struct List {
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub options: Vec<SelectOption>,
     /// The row's trailing remove affordance, as a field's: "yes" draws the
-    /// glyph that clears the row, "lane" reserves its width.
+    /// glyph that clears the row.
     #[serde(skip_serializing_if = "String::is_empty")]
     pub remove: String,
 }

@@ -48,14 +48,13 @@ type List struct {
 	// remember what the daemon happens to call things.
 	Options []Option `json:"options,omitempty"`
 	// Remove is the row's trailing remove affordance, as a field's is: "yes"
-	// draws the glyph that clears the row, "lane" reserves its width.
+	// draws the glyph that clears the row.
 	Remove string `json:"remove,omitempty"`
 }
 
-// Removable and Lane mirror a field's, so a list sits in a set of rows the same
-// way every other row does.
+// Removable mirrors a field's, so a list sits in a set of rows the same way
+// every other row does.
 func (l *List) Removable() bool { return l.Remove == "yes" }
-func (l *List) Lane() bool      { return l.Remove != "" }
 
 // ControlMeasure gives network lists the same editing measure as a single
 // value, including their values, remove buttons and add control.
@@ -91,7 +90,7 @@ func (l *List) renderInto(r *Renderer, out io.Writer, _ string) error {
 	return r.renderFrame(out, "list.control", l, fieldFrame{
 		Label:   l.LabelView(),
 		Change:  fieldChange{Track: true, Name: l.Name, Label: l.Label, Kind: "list"},
-		Measure: l.ControlMeasure(), Lane: l.Lane(), Removable: l.Removable(),
+		Measure: l.ControlMeasure(), Removable: l.Removable(),
 		// Rows of values and a box of chips grow down the answer column, a
 		// row or a line of chips at a time, as any answer stands.
 		Desc: l.description(),

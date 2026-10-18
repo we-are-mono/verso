@@ -462,9 +462,9 @@ func TestAFieldRowIsALedger(t *testing.T) {
 			t.Errorf("the ledger lacks %s: %s", want, ledger)
 		}
 	}
-	lane := cssBlock(t, css, "\n.verso-field__ledger:has(> :is(.verso-field__remove, .verso-field__lane)) {")
-	if !strings.Contains(lane, "grid-template-columns: minmax(0, 1fr) var(--spacing-answer) var(--spacing-act);") {
-		t.Errorf("a removable row's lane is not the ledger's third column: %s", lane)
+	removable := cssBlock(t, css, "\n.verso-field__ledger:has(> .verso-field__remove) {")
+	if !strings.Contains(removable, "grid-template-columns: minmax(0, 1fr) var(--spacing-answer) var(--spacing-act);") {
+		t.Errorf("a removable row's remove is not the ledger's third column: %s", removable)
 	}
 	// A row's air and hairline are its knobs, read once by the row itself.
 	row := cssBlock(t, css, "\n.verso-field {")

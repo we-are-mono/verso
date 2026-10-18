@@ -40,8 +40,7 @@
  *                     left-set list, so a marked value starts where every
  *                     other does; leading the value on the right, 8px off.
  *                     Either way centred on the value's first line
- *           __text    a value's words; data-verso-tone (on it or on the
- *                     value) a tone worn as ink, in its deep step
+ *           __text    a value's words
  *           __next    what a value becomes under what it is: __was in
  *                     Meta, __becomes in Ink led by its __arrow
  *           __status  a badge riding the value's line
@@ -190,8 +189,7 @@
   }
 }
 
-/* A value's words, and a tone worn as ink rather than as a pill, in the
-   tone's deep step. */
+/* A value's words. */
 .verso-facts__text {
   min-width: 0;
   overflow-wrap: anywhere;
@@ -200,22 +198,6 @@
 .verso-facts__text:is([data-verso-verbatim], [data-verso-figures]),
 .verso-facts__next[data-verso-verbatim] {
   @apply type-value;
-}
-.verso-facts__value[data-verso-tone="success"],
-.verso-facts__text[data-verso-tone="success"] {
-  color: var(--color-green-deep);
-}
-.verso-facts__value[data-verso-tone="warning"],
-.verso-facts__text[data-verso-tone="warning"] {
-  color: var(--color-marigold-deep);
-}
-.verso-facts__value[data-verso-tone="danger"],
-.verso-facts__text[data-verso-tone="danger"] {
-  color: var(--color-crimson-deep);
-}
-.verso-facts__value[data-verso-tone="info"],
-.verso-facts__text[data-verso-tone="info"] {
-  color: var(--color-denim-deep);
 }
 
 /* What a value becomes, under what it is, as a table's cell says it: the

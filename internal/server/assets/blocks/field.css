@@ -31,7 +31,7 @@
  *                             name over its controls at every width
  *           data-verso-help-open  its own help opened while the page's is
  *                                 folded
- * Elements: __ledger    the question, the answer, and the lane after them
+ * Elements: __ledger    the question, the answer, and the remove after them
  *           __question  the label and what it is for
  *           __label     the name, the option's key chip, the help glyph,
  *                       the stage's mark
@@ -56,7 +56,6 @@
  *                       column (data-verso-control-measure: its measure where
  *                       the row stacks)
  *           __remove    the glyph that takes the row out of its set
- *           __lane      the place a row that cannot be taken out keeps
  */
 
 @property --verso-field-lead {
@@ -230,7 +229,7 @@
   align-items: start;
   column-gap: var(--spacing-inset);
 }
-.verso-field__ledger:has(> :is(.verso-field__remove, .verso-field__lane)) {
+.verso-field__ledger:has(> .verso-field__remove) {
   grid-template-columns: minmax(0, 1fr) var(--spacing-answer) var(--spacing-act);
 }
 .verso-field__ledger:has(> .verso-field__act) {
@@ -386,11 +385,6 @@
 .verso-field__remove {
   margin-top: var(--spacing);
 }
-.verso-field__lane {
-  flex: none;
-  width: calc(var(--spacing) * 7);
-  height: calc(var(--spacing) * 7);
-}
 
 /* A row narrower than a question and an answer side by side stacks: the
    question, then the answer straight under it, at the row's width. Each
@@ -399,7 +393,7 @@
   .verso-field__ledger {
     grid-template-columns: minmax(0, 1fr);
   }
-  .verso-field__ledger:has(> :is(.verso-field__remove, .verso-field__lane)) {
+  .verso-field__ledger:has(> .verso-field__remove) {
     grid-template-columns: minmax(0, 1fr) var(--spacing-act);
   }
   .verso-field__ledger:has(> .verso-field__act) {

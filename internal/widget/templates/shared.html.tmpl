@@ -109,9 +109,7 @@
       {{.Control}}
       {{range .Errors}}<span id="{{.ID}}" data-verso-error class="verso-refusal">{{template "verso-error-words" .Text}}</span>{{else}}{{if .Inline}}<span id="{{.ErrorID}}" data-verso-inline-error hidden class="verso-refusal"></span>{{end}}{{end}}
     </div>{{end}}
-    {{/* A row that cannot be taken out of the set still reserves the glyph's
-         width, so every control in the group begins and ends in one place. */}}
-    {{if .Lane}}{{if .Removable}}{{template "verso-row-remove" .Change}}{{else}}<span data-verso-remove-lane class="verso-field__lane" aria-hidden="true"></span>{{end}}{{end}}
+    {{if .Removable}}{{template "verso-row-remove" .Change}}{{end}}
   </div>
 </div>{{end}}
 

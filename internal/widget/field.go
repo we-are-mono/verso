@@ -103,11 +103,7 @@ type Field struct {
 	Unit string `json:"unit,omitempty"`
 	// Remove is the row's trailing remove affordance, for a form whose rows are
 	// a set someone adds to and takes from rather than a fixed list of settings:
-	// "yes" draws the glyph that clears this row, "lane" reserves its width on a
-	// row that cannot be removed, and "" draws neither. The lane matters as much
-	// as the glyph — without it the rows that cannot be removed put their
-	// controls 28px left of the ones that can, and a column that nearly lines up
-	// reads worse than one that plainly does not.
+	// "yes" draws the glyph that clears this row, and "" draws none.
 	Remove string `json:"remove,omitempty"`
 	// Style is the control's compact face where its option set is short enough
 	// to show whole: "" is the ordinary control; "segmented" draws a kind
@@ -161,11 +157,8 @@ func (f *Field) SelectedIndex() int {
 // follows UseRadios, including schemas that still request the old strip.
 func (f *Field) Segmented() bool { return f.Kind == "checks" && f.Style == "segmented" }
 
-// Removable reports whether this row draws the glyph that clears it, and Lane
-// whether it reserves that glyph's width either way. A removable row reserves it
-// by being it, which is why the two are asked separately.
+// Removable reports whether this row draws the glyph that clears it.
 func (f *Field) Removable() bool { return f.Remove == "yes" }
-func (f *Field) Lane() bool      { return f.Remove != "" }
 
 // DescribedBy is what the control is described by: the description under its
 // name, then the refusal under it, its note and its unit. A screen reader reads
@@ -344,7 +337,7 @@ func (f *Field) frame() fieldFrame {
 	}
 	frame := fieldFrame{
 		Label: f.LabelView(), Change: change, Measure: f.ControlMeasure(),
-		Lane: f.Lane(), Removable: f.Removable(), Desc: f.description(), Wide: f.wide(),
+		Removable: f.Removable(), Desc: f.description(), Wide: f.wide(),
 		Plain: f.Fetch != nil,
 	}
 	if f.Error != "" {

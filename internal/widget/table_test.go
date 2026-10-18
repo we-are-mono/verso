@@ -924,7 +924,7 @@ func TestAnEmptyTableIsTheEmptySlot(t *testing.T) {
 		t.Errorf("an empty listing draws no table:\n%s", got)
 	}
 	live := render(t, r, &Table{Columns: []TableColumn{{Label: "Name"}}, Stream: &TableStream{Source: StreamSourceFirewallLog}})
-	if strings.Contains(live, "data-verso-slot") || !strings.Contains(live, "data-verso-stream-empty") {
+	if strings.Contains(live, "data-verso-slot") || !strings.Contains(live, "Waiting for the first event…") {
 		t.Errorf("a live listing keeps its waiting row:\n%s", live)
 	}
 }
@@ -1213,18 +1213,24 @@ func streamTable() *Table {
 	}
 }
 
-// TestRenderStreamTableWiresItsSource: a live listing states the source and the
-// ring on the table itself — that pair is the whole contract the client reads.
+// TestRenderStreamTableWiresItsSource: a live console states the source and the
+// ring on itself — that pair is the whole contract the stream client reads. A
+// grid is not what the client draws into, so it carries neither.
 func TestRenderStreamTableWiresItsSource(t *testing.T) {
 	r := newRenderer(t)
-	got := render(t, r, streamTable())
+	console := streamTable()
+	console.Style = "console"
+	got := render(t, r, console)
 	for _, want := range []string{
 		`data-verso-stream="firewall-log"`,
 		`data-verso-stream-ring="200"`, // the default ring, since none was declared
 	} {
 		if !strings.Contains(got, want) {
-			t.Errorf("stream table missing %q:\n%s", want, got)
+			t.Errorf("stream console missing %q:\n%s", want, got)
 		}
+	}
+	if got := render(t, r, streamTable()); strings.Contains(got, "data-verso-stream") {
+		t.Errorf("a live grid carries stream wiring nothing reads:\n%s", got)
 	}
 }
 
@@ -1259,13 +1265,12 @@ func TestAConsoleLaysItsLinesOnOneGrid(t *testing.T) {
 // TestRenderStreamTableKeepsItsHeadWhileWaiting: an ordinary empty table drops
 // its column heads (chrome over no data); a live one keeps them, because they
 // name what is about to arrive and the first event must not shift the layout.
-// The quiet sentence row is marked so that first event can replace it.
+// The quiet sentence row says it waits.
 func TestRenderStreamTableKeepsItsHeadWhileWaiting(t *testing.T) {
 	r := newRenderer(t)
 	got := render(t, r, streamTable())
 	for _, want := range []string{
 		"<thead>", ">Verdict<", ">Rule<",
-		"data-verso-stream-empty",
 		"Waiting for the first logged event…",
 	} {
 		if !strings.Contains(got, want) {
@@ -1314,15 +1319,16 @@ func TestStreamRingIsClamped(t *testing.T) {
 }
 
 // TestUnknownStreamSourceRendersStill: the source set is closed. A table naming
-// a feed nobody wrote renders as an ordinary listing — no wiring, no dead
-// EventSource, and no head over an empty body either.
+// a feed nobody wrote renders as an ordinary listing — no head over an empty
+// body, and no waiting for an event that will never come.
 func TestUnknownStreamSourceRendersStill(t *testing.T) {
 	r := newRenderer(t)
 	tb := streamTable()
 	tb.Stream = &TableStream{Source: "syslog"}
+	tb.EmptyText = ""
 	got := render(t, r, tb)
-	if strings.Contains(got, "data-verso-stream") {
-		t.Errorf("an unknown source must not be wired:\n%s", got)
+	if strings.Contains(got, "Waiting for the first event…") {
+		t.Errorf("an unknown source must not wait:\n%s", got)
 	}
 	if strings.Contains(got, "<thead>") {
 		t.Errorf("an unwired table is a still empty table:\n%s", got)
