@@ -15,10 +15,10 @@ import (
 // while its change waits — drawn by the one label, never by hand.
 func TestEveryLabelledRowIsOneFrame(t *testing.T) {
 	r := newRenderer(t)
-	// The option chip beside a setting's name is 21px, 2px inside the name's
-	// 24px line over it and 1px under: nothing stands under a name now, its
-	// answer beside it.
-	key := `<span class="verso-chip" data-verso-key data-verso-verbatim>opt</span>`
+	// The option chip beside a setting's name is the one chip, verbatim, riding
+	// the name's 24px line: nothing stands under a name now, its answer beside
+	// it.
+	key := `<span class="verso-chip" data-verso-verbatim>opt</span>`
 	for name, w := range map[string]Widget{
 		"field":    &Field{Name: "opt", Label: "Option", Key: "opt", Staged: true},
 		"code":     &Field{Name: "opt", Label: "Option", Key: "opt", Style: "code", Staged: true},

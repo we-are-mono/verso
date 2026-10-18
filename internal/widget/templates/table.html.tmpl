@@ -178,8 +178,8 @@
                into the rule. */}}
           <span class="flex flex-wrap items-center gap-x-3 gap-y-1">
             {{range .Endpoints}}
-            <span class="verso-chip"{{if eq .Kind "router"}} data-verso-tone="accent"{{else}} data-verso-endpoint="{{.Kind}}" data-verso-verbatim{{end}}>
-              <span class="verso-chip__glyph">{{icon .Icon "size-4"}}</span>{{.Label}}
+            <span class="verso-chip"{{if eq .Kind "router"}} data-verso-tone="accent"{{else}} data-verso-tone="ink" data-verso-verbatim{{end}}>
+              <span class="verso-chip__glyph"{{if eq .Kind "any"}} data-verso-quiet{{end}}>{{icon .Icon "size-4"}}</span>{{.Label}}
             </span>
             {{end}}
           </span>

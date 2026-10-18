@@ -57,7 +57,7 @@
 {{define "verso-field-label"}}
 <div class="verso-field__label">
   {{if .Label}}{{if .Group}}<span{{template "verso-field-label-attrs" .}}>{{template "verso-field-label-text" .}}</span>{{else}}<label for="{{.For}}"{{template "verso-field-label-attrs" .}}>{{template "verso-field-label-text" .}}</label>{{end}}{{end}}
-  {{if .Key}}<span class="verso-chip" data-verso-key data-verso-verbatim>{{.Key}}</span>{{end}}
+  {{if .Key}}<span class="verso-chip" data-verso-verbatim>{{.Key}}</span>{{end}}
   {{if .Staged}}{{template "verso-staged-row" .StagedAt}}{{end}}
 </div>
 {{end}}

@@ -789,6 +789,35 @@ func TestASwitchShowsTheWordForItsState(t *testing.T) {
 	}
 }
 
+// TestAChipVariesOnlyInItsColour: a chip is one box wherever it stands, so a
+// reader never reads two sizes as two kinds of thing. A variant chooses the
+// chip's colour (its tone's edge, ground, words and glyph); its face comes
+// from the type role's verbatim form and its glyph from the glyph element.
+// No variant writes the box: no margin, padding, height or border width.
+func TestAChipVariesOnlyInItsColour(t *testing.T) {
+	css := blockSheet(t, "chip")
+	for _, rule := range strings.Split(css, "}") {
+		open := strings.Index(rule, "{")
+		if open < 0 {
+			continue
+		}
+		sel, body := rule[:open], rule[open+1:]
+		if !strings.Contains(sel, "[data-verso-") {
+			continue
+		}
+		for _, decl := range strings.Split(body, ";") {
+			prop, _, ok := strings.Cut(strings.TrimSpace(decl), ":")
+			if !ok {
+				continue
+			}
+			prop = strings.TrimSpace(prop)
+			if !strings.HasPrefix(prop, "--verso-chip-") && prop != "color" {
+				t.Errorf("a chip variant writes %q (%s): a variant chooses only the chip's colour", prop, strings.TrimSpace(sel))
+			}
+		}
+	}
+}
+
 // TestFieldRowsRunToACardsBorders: in a page card a field row runs from the
 // card's left border to its right, its words still the card's 23px in, so the
 // hairlines between rows touch both borders (form-fields), on a page and in a

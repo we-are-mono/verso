@@ -161,8 +161,8 @@ func TestRenderTableEndpoints(t *testing.T) {
 		// "router" names a thing rather than a value someone could type.
 		`<span ` + chipBox + ` data-verso-tone="accent">`,
 		// Every other end reads verbatim, inside the same box drawn without a
-		// frame so the column lines up.
-		`<span ` + chipBox + ` data-verso-endpoint="zone" data-verso-verbatim>`,
+		// frame (the ink tone) so the column lines up.
+		`<span ` + chipBox + ` data-verso-tone="ink" data-verso-verbatim>`,
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("endpoints missing %q:\n%s", want, got)
@@ -198,7 +198,7 @@ func TestRenderEndpointTypeIsFixedByKind(t *testing.T) {
 			{Kind: "zone", Label: "guest"},
 		}}}}},
 	})
-	const want = `<span class="verso-chip" data-verso-endpoint="zone" data-verso-verbatim>`
+	const want = `<span class="verso-chip" data-verso-tone="ink" data-verso-verbatim>`
 	if !strings.Contains(leading, want) || !strings.Contains(trailing, want) {
 		t.Errorf("an endpoint's treatment must not depend on its column:\n%s\n%s", leading, trailing)
 	}
