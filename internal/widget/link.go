@@ -74,8 +74,8 @@ func (l *Link) draw(r *Renderer, out io.Writer, door bool) error {
 	// A link to a place on a page — this one, or one it opens (an expanded
 	// row's act into the editor's DHCP section) — is a link to a section,
 	// whose id the shell namespaces (SectionID); the plugin names it by its
-	// anchor.
-	if at := strings.IndexByte(href, '#'); at != -1 && at < len(href)-1 {
+	// anchor. A link to another site keeps the anchor that site wrote.
+	if at := strings.IndexByte(href, '#'); at != -1 && at < len(href)-1 && !strings.Contains(href[:at], "://") {
 		href = href[:at+1] + SectionID(href[at+1:])
 	}
 	return r.execute(out, "link.html.tmpl", linkView{

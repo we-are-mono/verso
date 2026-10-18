@@ -8,6 +8,19 @@ import (
 	"testing"
 )
 
+// TestALinkElsewhereKeepsItsAnchor: a link to a section of a page in the
+// shell names it by the shell's section id; a link to another site keeps the
+// anchor that site wrote.
+func TestALinkElsewhereKeepsItsAnchor(t *testing.T) {
+	r := newRenderer(t)
+	if got := render(t, r, &Link{Label: "Guide", Href: "https://example.org/guide#adding-a-board"}); !strings.Contains(got, `href="https://example.org/guide#adding-a-board"`) {
+		t.Errorf("a link elsewhere lost its anchor:\n%s", got)
+	}
+	if got := render(t, r, &Link{Label: "DHCP", Href: "/plugins/interfaces/#dhcp"}); !strings.Contains(got, `href="/plugins/interfaces/#`+SectionID("dhcp")+`"`) {
+		t.Errorf("a link to a section in the shell is not its section id:\n%s", got)
+	}
+}
+
 // TestALinkIsTheLinkBlock: a link that stands on its own is the link block
 // (blocks/link.css), in the action colour; one that closes a notice's words or
 // stands in a row's value is a door, which the shell marks so it takes the
