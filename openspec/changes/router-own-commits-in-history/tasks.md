@@ -72,4 +72,24 @@
   - install https-dns-proxy from Packages, and its row says it arrived switched off.
 
   Save the screenshots to `~/Share/screenshots`, and record what was seen in the change's notes.
-- [ ] 8.2 On the DUT, with local apks: upgrade verso and verso-plugin-acme, check that history.db steps to 10 with every earlier row kept, and repeat the hand install. Record it in the notes.
+- [ ] 8.2 On the DUT, with local apks: upgrade verso and verso-plugin-acme, check that history.db steps to 12 with every earlier row kept, and repeat the hand install. Record it in the notes.
+
+## 9. A package operation owns what commits while it runs
+
+- [ ] 9.1 Test first in `verso-rpcd/src/config_watch.rs`:
+  - a reading written between an operation's start and end, with no mark, is the operation's: its handle, its cause and its arguments;
+  - one written before it or after it ended is not;
+  - a mark with a cause of its own wins over the operation;
+  - an operation is forgotten a minute after it ends;
+  - the spooled record carries `args`.
+
+  Then keep operations in the helper (design decision 7). Verify with `cargo test`.
+- [ ] 9.2 Test first: `pkgInstall`, `pkgRemove`, `pkgUpgradeOne` and `pkgUpgrade` each run inside an operation with their cause and the package as its argument. Then wrap them in `main.rs`. Verify with `cargo test`.
+- [ ] 9.3 Test first in `internal/history`: a file at version 11 steps to 12 with every change kept and no arguments; `RecordChange` stores `CauseArgs` and reads them back. Then add `migrations/012_change_cause_args.sql` and the field. Verify with `go test ./internal/history`.
+- [ ] 9.4 Test first in `internal/server`:
+  - an `own` reading with arguments records them;
+  - the page translates the format and fills in the arguments as written;
+  - a format whose `%s` count differs from its arguments reads as written.
+
+  Then carry `args` from the spool and fill the cause in `changeCause`. Add the Slovenian for the four causes. Verify with `go test ./internal/server` and `make i18n-audit`.
+- [ ] 9.5 On `make dev`: install https-dns-proxy from Packages, and the `dhcp` row its service writes names this browser's operator with "Changed by https-dns-proxy as it was installed."; remove it, and any row it leaves says it was removed. Record it in the notes, with screenshots.

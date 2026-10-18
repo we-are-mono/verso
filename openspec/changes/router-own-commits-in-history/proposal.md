@@ -15,7 +15,8 @@ History then shows a state the router no longer holds, with nothing to say why. 
   - A mark from an older plugin (an empty file) still counts. Its row has no cause.
 - The helper's own writes give their causes: theme, web ports, a package arriving switched off.
 - History keeps the cause in English and shows it in the viewer's language, from the shell's catalog or from the plugin's (ADR-012).
-- history.db gains the cause in migration 010.
+- What a package's own scripts commit while Verso installs, removes or upgrades it is part of that operation, by that operator. Notes name the package, for example "Changed by https-dns-proxy as it was installed." A cause can carry arguments, such as a package's name, which stay as written when the rest is translated.
+- history.db gains the cause in migrations 010–012 (the cause, the router's own flag, the cause's arguments).
 - verso-plugin-acme's hand-over gives its cause: "A certificate was installed by hand."
 - Readings inside an apply's window stay the apply's, as today.
 

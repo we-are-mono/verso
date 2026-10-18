@@ -95,7 +95,33 @@ Notes read in this order: the relation (Undoes…), then the cause, then the ope
 
 verso-plugin-acme's hand-over gives "A certificate was installed by hand.", with its Slovenian in acme's `i18n/sl.json`. The shell's sentences go in its catalog, and `make i18n-audit` holds them.
 
+### 7. A package operation owns what commits while it runs
+
+`apk add`, `apk del` and `apk upgrade` run each package's own scripts, such as its uci-defaults and its service start. Those scripts commit configs that no mark names. The helper runs every package operation under one lock and knows exactly when it starts and ends. While it runs, the helper keeps the operation: its start, its end once over, the operator's handle, and a cause with the package as its argument:
+- "Changed by %s as it was installed.";
+- "Changed by %s as it was removed.";
+- "Changed by %s as it was upgraded.";
+- "Changed as packages were upgraded." for an upgrade of all.
+
+A reading is checked in this order:
+
+| The reading | Is recorded as |
+|---|---|
+| marked with a cause of its own (an arrival's, a root half's) | that mark's act, as before |
+| unmarked, written between an operation's start and end | the operation's own, with its handle and cause |
+| anything else | as before |
+
+Operations are kept for a minute after they end, because a reading is spooled two seconds after its last write.
+
+- **The cause keeps its argument apart.** The spool and history.db hold the English format and its arguments, `cause_args` (a JSON list, migration `012_change_cause_args.sql`). The page translates the format, then fills it, so the package's name stays as written. A format whose `%s` count does not match its arguments shows as written.
+
+*Alternatives:*
+- **Leave the package's writes as "Edited directly".** Rejected: many OpenWrt packages commit configs as they install, so every install from Packages would leave rows that look like edits made behind Verso.
+- **Mark the configs a package is known to touch.** Rejected: it is a guess per package. https-dns-proxy's own takeover happens inside `apk add`, before the arrival's steps run.
+
 ## Risks / Trade-offs
+
+- **A hand edit during a package operation is filed under it.** → The window is exactly the operation, which the helper knows to the second. Applies and marked commits still take precedence. A hand edit during those seconds is rare, and the row still shows what it changed.
 
 - **A mark taken by the wrong write.** A mark names the next settled write of its config within 30 s, as today. A hand edit landing in that span is folded into the router's row. → Unchanged from today, where it was folded into nothing. The window stays 30 s, and the mark is consumed once.
 - **The operator signs out before the reading is taken.** → No session matches the handle, and the row is the router's, with the cause still saying what happened. The reading is taken within seconds, so this is rare.

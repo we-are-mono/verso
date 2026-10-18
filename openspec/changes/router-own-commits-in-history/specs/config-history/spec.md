@@ -48,6 +48,21 @@ A commit the router makes through its own helper as part of an act an operator s
 - **WHEN** one operator moves the web interface's ports while another is signed in
 - **THEN** the row names the operator who moved them
 
+### Requirement: What a package changes as Verso installs it is the install's
+Every change to a declared config committed while the router installs, removes or upgrades packages for an operator SHALL be recorded as part of that operation: by that operator, from their address, with Notes naming the package and what happened to it. This covers what the package's own scripts commit. A commit the router marks with a cause of its own during the operation (a package arriving switched off) SHALL keep that cause. The same package changed outside Verso SHALL still read "Edited directly".
+
+#### Scenario: A package's own scripts during an install
+- **WHEN** an operator installs https-dns-proxy from Packages, and its service rewrites dnsmasq's servers as it starts
+- **THEN** the `dhcp` row names that operator and their browser in By, and its Notes read "Changed by https-dns-proxy as it was installed."
+
+#### Scenario: A removal
+- **WHEN** an operator removes a package from Packages, and its scripts commit a config as it goes
+- **THEN** that row's Notes read that the package changed it as it was removed
+
+#### Scenario: Notes in the viewer's language
+- **WHEN** a viewer reading in Slovenian opens the row
+- **THEN** the Notes read in Slovenian, the package's name as written
+
 ### Requirement: A mark without a cause still counts
 A commit an older plugin marks as the router's own, with no cause, SHALL be recorded as the router's act with empty Notes, never as "Edited directly" and never skipped.
 
