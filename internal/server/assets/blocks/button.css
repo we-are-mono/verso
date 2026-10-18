@@ -189,10 +189,13 @@
 /* A button that cannot be pressed loses its edge and rests as a slab of
    Quiet Sand, its words in Meta, whatever its dress: the edge is what says a
    button can be pressed, and Faint is never text, so the edge is what
-   changes. A glyph or a quiet act never had an edge to lose, so it fades. */
+   changes. On a ground that is itself Quiet Sand (a page's, a drawer's, a
+   form's Save under its last card) the slab is Mid Sand, a step darker, so
+   it still reads as a button rather than loose words (--verso-button-slab).
+   A glyph or a quiet act never had an edge to lose, so it fades. */
 .verso-button:is(:disabled, [aria-disabled="true"]):not([data-verso-busy], [data-verso-size="icon"], [data-verso-size="glyph"], [data-verso-style="quiet"]) {
-  --verso-button-edge: var(--color-quiet);
-  --verso-button-ground: var(--color-quiet);
+  --verso-button-edge: var(--verso-button-slab, var(--color-quiet));
+  --verso-button-ground: var(--verso-button-slab, var(--color-quiet));
   --verso-button-ink: var(--color-meta);
 }
 .verso-button:disabled:is([data-verso-size="icon"], [data-verso-size="glyph"], [data-verso-style="quiet"]) {

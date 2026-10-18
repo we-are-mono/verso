@@ -117,6 +117,7 @@
 }
 
 .verso-page__ground {
+  --verso-button-slab: var(--color-mid);
   flex: 1 0 auto;
   background-color: var(--color-quiet);
 }

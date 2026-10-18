@@ -84,6 +84,7 @@
   --verso-reach-start: var(--spacing-side);
   --verso-reach-end: var(--spacing-side);
   --verso-rhythm: var(--spacing-inset);
+  --verso-button-slab: var(--color-quiet);
   container: card / inline-size;
   margin: 0;
   border: 1px solid var(--color-rule-strong);

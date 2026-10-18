@@ -214,6 +214,7 @@
   min-height: 0;
   overflow-x: hidden;
   overflow-y: auto;
+  --verso-button-slab: var(--color-mid);
   padding: var(--verso-drawer-gutter) var(--verso-drawer-gutter) calc(var(--spacing) * 10);
   background-color: var(--color-quiet);
 }
