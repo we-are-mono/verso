@@ -9,9 +9,10 @@ import (
 )
 
 // Heading actions align to the section's right content edge, including when
-// wrapped below the title. They keep a field's height, giving back its bottom
-// border's pixel, centred on the title's 24px line and reaching past it, so
-// their borders land on lines and the title stays on its line.
+// wrapped below the title, and keep the compact act's size wherever they
+// stand. A fact on the heading belongs to its act (when it was checked, the
+// clock it sets), so it stands right in front of it, with no dot after the
+// title; a heading with no act keeps its fact beside the title.
 func TestSectionControlAlignsToContentEdge(t *testing.T) {
 	got := render(t, newRenderer(t), &Section{
 		Title: "Time", Meta: "2026-09-23 12:00", MetaPosition: "inline",
@@ -25,39 +26,29 @@ func TestSectionControlAlignsToContentEdge(t *testing.T) {
 	}
 	title := strings.Index(got, "</h2>")
 	meta := strings.Index(got, "data-verso-section-meta")
-	if !(title < meta && meta < at) || !strings.Contains(got[at:], "Use my computer") {
-		t.Errorf("title and meta lead, followed by the heading action:\n%s", got)
+	button := strings.Index(got, "Use my computer")
+	if !(title < at && at < meta && meta < button) {
+		t.Errorf("the title leads; the fact stands in the act, in front of its button:\n%s", got)
+	}
+	if strings.Contains(got, "verso-heading__sep") {
+		t.Errorf("a fact standing in front of the act keeps no dot after the title:\n%s", got)
+	}
+	bare := render(t, newRenderer(t), &Section{Title: "Time", Meta: "2026-09-23 12:00", MetaPosition: "inline"})
+	if !strings.Contains(bare, "verso-heading__sep") || strings.Contains(bare, "verso-heading__act") {
+		t.Errorf("a heading with no act keeps its fact beside the title:\n%s", bare)
 	}
 	// At the line's end, the full width when it wraps under the title, its
-	// own width beside it; on the title's 24px line.
+	// own width beside it; on the title's 24px line, the fact 12px in front
+	// of the button.
 	declares(t, "heading", ".verso-heading__act",
-		"justify-content: flex-end;", "width: 100%;", "height: calc(var(--spacing) * 6);", "margin-left: auto;")
+		"justify-content: flex-end;", "gap: calc(var(--spacing) * 3);", "width: 100%;", "height: calc(var(--spacing) * 6);", "margin-left: auto;")
 	if rule := cssRuleWithin(blockCSS(t, "heading"), "@media (width >= 40rem)", ".verso-heading__act"); !strings.Contains(rule, "width: auto;") {
 		t.Errorf("a heading's act beside the title keeps its own width:\n%s", rule)
 	}
-	// The act's button is a field's height less the bottom border's pixel it
-	// gives back, so it reaches 4px past the title's line either side.
-	if !sheetSizesTheHeadingsButton(blockCSS(t, "button")) {
-		t.Error("blocks/button.css gives a heading act's button no field's height (var(--spacing-control), a pixel given back under it)")
+	// No rule grows a heading's button past the compact act it is.
+	if strings.Contains(blockCSS(t, "button"), "verso-heading__act") {
+		t.Error("blocks/button.css resizes a heading act's button")
 	}
-}
-
-// sheetSizesTheHeadingsButton reports whether css holds a rule aimed at a
-// button standing in a heading's act that sets it a field's height and gives
-// its bottom border's pixel back.
-func sheetSizesTheHeadingsButton(css string) bool {
-	for _, block := range strings.Split(css, "}") {
-		open := strings.Index(block, "{")
-		if open < 0 {
-			continue
-		}
-		sel, body := block[:open], block[open+1:]
-		if strings.Contains(sel, "verso-heading__act") && strings.Contains(sel, "verso-button") &&
-			strings.Contains(body, "height: var(--spacing-control)") && strings.Contains(body, "margin-bottom: -1px") {
-			return true
-		}
-	}
-	return false
 }
 
 // TestSectionActPostsWithTheSectionsForm: a card that saves itself holds its

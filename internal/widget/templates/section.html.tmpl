@@ -55,14 +55,12 @@
            beside a rail's list of headings would read as one of them. */}}
       {{if .Title}}{{if .Kicker}}<h2 class="verso-heading__kicker">{{.Title}}</h2>{{else}}<h2 class="{{if $card}}verso-card__title{{else}}verso-heading__title{{end}}">{{.Title}}</h2>{{end}}{{end}}
       {{if .Chip}}<span class="verso-chip" data-verso-verbatim>{{.Chip}}</span>{{end}}
-      {{/* the meta value carries a stable hook: a section whose content is
-           live (a streaming listing) has the shell rewrite this one string —
-           how many events are shown, how fast they arrive — and nothing
-           else. */}}
-      {{if and .Meta .MetaInline}}<span class="verso-heading__sep" aria-hidden="true">·</span><span class="verso-heading__meta" data-verso-inline>{{if .MetaLabel}}<span>{{.MetaLabel}}</span>{{end}}<span data-verso-section-meta class="verso-heading__meta-value">{{.Meta}}</span></span>{{end}}
+      {{if and .Meta .MetaInline (not .Control)}}<span class="verso-heading__sep" aria-hidden="true">·</span>{{template "section.meta" .}}{{end}}
     </div>
-    {{if and .Meta (not .MetaInline)}}<span class="verso-heading__meta">{{if .MetaLabel}}<span class="verso-heading__meta-label">{{.MetaLabel}}</span>{{end}}<span data-verso-section-meta class="verso-heading__meta-value">{{.Meta}}</span></span>{{end}}
-    {{if .Control}}<span class="verso-heading__act">{{.Control}}</span>{{end}}
+    {{if and .Meta (not .MetaInline) (not .Control)}}{{template "section.meta" .}}{{end}}
+    {{/* A fact on a heading with an act belongs to the act (when it was
+         checked, the clock it sets), so it stands right in front of it. */}}
+    {{if .Control}}<span class="verso-heading__act">{{if .Meta}}{{template "section.meta" .}}{{end}}{{.Control}}</span>{{end}}
     {{if and .Sub $band}}<div data-verso-section-lede class="verso-heading__lede verso-prose">{{.Sub}}</div>{{end}}
   </div>
   {{end}}
@@ -70,3 +68,8 @@
   {{/* Blocks stand off from each other; form rows sit flush (verso-rhythm). */}}
   <div class="{{if $card}}verso-card__body{{else}}verso-section__body{{end}} verso-rhythm">{{range .Children}}{{.}}{{end}}</div>
 </section>
+{{/* section.meta: the heading's fact. Its value carries a stable hook: a
+     section whose content is live (a streaming listing) has the shell
+     rewrite this one string — how many events are shown, how fast they
+     arrive — and nothing else. */}}
+{{define "section.meta"}}{{if .MetaInline}}<span class="verso-heading__meta" data-verso-inline>{{if .MetaLabel}}<span>{{.MetaLabel}}</span>{{end}}<span data-verso-section-meta class="verso-heading__meta-value">{{.Meta}}</span></span>{{else}}<span class="verso-heading__meta">{{if .MetaLabel}}<span class="verso-heading__meta-label">{{.MetaLabel}}</span>{{end}}<span data-verso-section-meta class="verso-heading__meta-value">{{.Meta}}</span></span>{{end}}{{end}}

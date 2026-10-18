@@ -26,7 +26,9 @@
  *                         __meta-value (data-verso-section-meta, rewritten
  *                         live) a step heavier; data-verso-inline: riding the
  *                         title's group
- *           __act         what acts on the section, at the line's end
+ *           __act         what acts on the section, at the line's end, the
+ *                         compact act wherever it stands; the heading's
+ *                         fact, which belongs to it, 12px in front of it
  *           __lede        the section's one or two sentences, in the lede
  *                         role, 16px between its paragraphs, on a line of
  *                         its own
@@ -98,6 +100,7 @@
   display: flex;
   align-items: center;
   justify-content: flex-end;
+  gap: calc(var(--spacing) * 3);
   width: 100%;
   height: calc(var(--spacing) * 6);
   margin-left: auto;

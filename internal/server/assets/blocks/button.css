@@ -128,15 +128,6 @@
 .verso-button[data-verso-size="act"][data-verso-glyph] {
   padding-left: calc(var(--spacing) * 2);
 }
-/* An act on a heading's line keeps a field's height, giving back its bottom
-   border's pixel, centred on the title's 24px line and reaching 4px past it
-   either side, so its borders land on lines. */
-.verso-button:is(.verso-heading__act > .verso-button) {
-  gap: calc(var(--spacing) * 2);
-  height: var(--spacing-control);
-  margin-bottom: -1px;
-  padding-inline: calc(var(--spacing) * 4);
-}
 .verso-button:is([data-verso-size="act"], [data-verso-size="icon"], [data-verso-size="glyph"]):focus-visible {
   outline-offset: -2px;
 }
