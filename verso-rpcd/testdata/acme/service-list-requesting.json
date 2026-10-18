@@ -1,0 +1,25 @@
+{
+	"acme": {
+		"instances": {
+			"verso": {
+				"running": true,
+				"pid": 2210,
+				"command": [
+					"/usr/lib/acme/client/hook.sh",
+					"get"
+				],
+				"term_timeout": 5,
+				"env": {
+					"main_domain": "router.example.com",
+					"validation_method": "dns",
+					"dns": "dns_cf"
+				}
+			},
+			"nas": {
+				"running": false,
+				"term_timeout": 5,
+				"exit_code": 0
+			}
+		}
+	}
+}

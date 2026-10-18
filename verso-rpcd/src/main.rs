@@ -9,6 +9,7 @@
 //! checked through native ubus `session.access` before any action runs.
 
 mod access;
+mod acme;
 mod arrival;
 mod config_files;
 mod ddns;
@@ -120,7 +121,7 @@ impl Failure {
 }
 
 fn main() {
-    if firewall_log::command_line() {
+    if firewall_log::command_line() || acme::command_line() {
         return;
     }
     let socket = socket_argument().unwrap_or_else(|message| {
@@ -342,6 +343,7 @@ fn dispatch(request: &Value, state: &State, uid: u32) -> Result<Value, Failure> 
         "accessCredentials" => access::state(),
         "vpnState" => openvpn::state(),
         "ddnsState" => ddns::state(),
+        "acmeState" => acme::state(&acme::System, &acme::Places::router()),
         "ddnsUpdate" => ddns::update(argument(request, "section")?),
         // The caller's own sid, which the access check above already holds to.
         "refreshGrants" => grants::refresh(sid),
@@ -360,7 +362,10 @@ fn dispatch(request: &Value, state: &State, uid: u32) -> Result<Value, Failure> 
                 .maintenance
                 .lock()
                 .map_err(|_| Failure::unknown("credential-operation lock poisoned"))?;
-            access::certificate(argument(request, "certificate")?, argument(request, "key")?)
+            // A pair installed by hand is the operator's: no renewal replaces it.
+            let done = access::certificate(argument(request, "certificate")?, argument(request, "key")?)?;
+            acme::hand_over(&acme::System)?;
+            Ok(done)
         }
         "setWebListeners" => {
             let _guard = state
@@ -386,7 +391,9 @@ fn dispatch(request: &Value, state: &State, uid: u32) -> Result<Value, Failure> 
                 .maintenance
                 .lock()
                 .map_err(|_| Failure::unknown("credential-operation lock poisoned"))?;
-            access::make()
+            let done = access::make()?;
+            acme::hand_over(&acme::System)?;
+            Ok(done)
         }
         "setPassword" => {
             let username = argument(request, "username")?;
@@ -1349,6 +1356,7 @@ mod tests {
         "setAuthorizedKeys",
         "setWebCertificate",
         "makeWebCertificate",
+        "acmeState",
         "setWebListeners",
         "setTheme",
         "setPassword",

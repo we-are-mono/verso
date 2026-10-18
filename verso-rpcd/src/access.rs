@@ -59,7 +59,7 @@ pub fn state() -> Result<Value, Failure> {
 // write_new writes value beside path under a private name, with mode and, when
 // given, owner (uid, gid) set before a byte is written: the file is never
 // readable by anyone it is not meant for, even before it is renamed into place.
-fn write_new(path: &Path, value: &[u8], mode: u32, owner: Option<(u32, u32)>) -> Result<PathBuf, Failure> {
+pub(crate) fn write_new(path: &Path, value: &[u8], mode: u32, owner: Option<(u32, u32)>) -> Result<PathBuf, Failure> {
     let mut filename = path
         .file_name()
         .ok_or_else(|| Failure::invalid("invalid destination"))?
@@ -251,7 +251,7 @@ pub fn make() -> Result<Value, Failure> {
 // announce tells the running shell a new pair is on disk. procd delivers the
 // signal; the shell reads the pair again and serves it from the next
 // handshake, keeping every connection (ADR-017 §4).
-fn announce() -> Result<Value, Failure> {
+pub(crate) fn announce() -> Result<Value, Failure> {
     let status = Command::new("/bin/ubus")
         .args(["call", "service", "signal", r#"{"name":"verso","signal":1}"#])
         .status()
