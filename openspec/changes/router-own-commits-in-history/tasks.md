@@ -92,4 +92,4 @@
   - a format whose `%s` count differs from its arguments reads as written.
 
   Then carry `args` from the spool and fill the cause in `changeCause`. Add the Slovenian for the four causes. Verify with `go test ./internal/server` and `make i18n-audit`.
-- [ ] 9.5 On `make dev`: install https-dns-proxy from Packages, and the `dhcp` row its service writes names this browser's operator with "Changed by https-dns-proxy as it was installed."; remove it, and any row it leaves says it was removed. Record it in the notes, with screenshots.
+- [x] 9.5 On `make dev`: install https-dns-proxy from Packages, and the `dhcp` row its service writes names this browser's operator with "Changed by https-dns-proxy as it was installed."; remove it, and any row it leaves says it was removed. Record it in the notes, with screenshots.

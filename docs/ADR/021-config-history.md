@@ -127,7 +127,11 @@ written. Its rows are the changes `uci changes` would have listed had it been
 staged, described by the plugin that writes the config, with what each
 replaced. The entry is by one of three:
 - **An operator**: a commit the router made for that operator's act, found by
-  the handle among the signed-in sessions. Its cause is in Notes.
+  the handle among the signed-in sessions. Its cause is in Notes. While the
+  helper installs, removes or upgrades packages for an operator, every
+  unmarked commit, the packages' own scripts' included, is that operation's.
+  Its cause names the package ("Changed by %s as it was installed."), the
+  name kept apart so the sentence translates.
 - **The router**: any other commit the router made itself. Its cause is in
   Notes, read from the catalog of the plugin that gave it. A mark from a plugin
   built before causes gives none, and still makes the entry the router's.

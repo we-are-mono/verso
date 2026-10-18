@@ -8,7 +8,8 @@ Drafts for the GitHub releases of the tags that carry this change: Verso's secti
 
 - **History shows every change the router makes by itself.** Installing a certificate by hand, a package arriving switched off, choosing a theme and moving the web interface's ports each leave a row in System › Changes. Before, the router took these in without a row, so history could show a setting the router no longer held.
 - **History names who caused each change.** A change you started (a theme, the ports, a package from Packages) reads as yours, from your browser. One the router made on its own reads "The router". Notes say what caused it, for example "A certificate was installed by hand."
-- **history.db takes two steps (10 and 11) at the first start.** Every earlier row is kept. A Verso from before this release refuses the newer file and keeps its history in memory, so a downgrade never deletes it.
+- **What a package changes as it installs is part of the install.** A package's own scripts often change settings as it installs, is removed or is upgraded. https-dns-proxy, for one, takes over dnsmasq's servers as it starts. When you do this from Packages, those changes read as yours, with Notes naming the package: "Changed by https-dns-proxy as it was installed."
+- **history.db takes three steps (10 to 12) at the first start.** Every earlier row is kept. A Verso from before this release refuses the newer file and keeps its history in memory, so a downgrade never deletes it.
 
 ### For plugin authors
 

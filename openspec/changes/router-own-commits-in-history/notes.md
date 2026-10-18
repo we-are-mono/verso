@@ -15,3 +15,17 @@ The `acme.verso` turn-on before the hand install was made with the command-line 
 **Seen beside the arrival.** A `dhcp` row, "Edited directly", landed in the same minute as the https-dns-proxy row. https-dns-proxy's own init script rewrites dnsmasq's servers when the arrival stops and starts the service, and nothing marks that commit. It reads as made outside Verso, which is true of the package's script.
 
 **Restored afterwards.** The lab's own certificate and theme were put back, and https-dns-proxy was removed.
+
+## 9.5 What a package's scripts commit during an install
+
+The `dhcp` row seen beside the arrival is a package operation's own (design decision 7). The check was repeated at v0.9.0-r76 on `make dev`:
+
+| Changed | Notes | By |
+|---|---|---|
+| `https-dns-proxy.config changed, https-dns-proxy.cfg032d79 removed` | The package arrived switched off, so it changes nothing until it is turned on. | root, this browser |
+| `dhcp.cfg01411c changed` | Changed by https-dns-proxy as it was installed. | root, this browser |
+| `dhcp.cfg01411c changed` | Changed by https-dns-proxy as it was installed. | root, this browser |
+
+The two `dhcp` rows are the package's own service taking dnsmasq over as it started, and handing it back when the arrival stopped it. The arrival's commit kept its own cause.
+
+Removing the package from Packages answered "https-dns-proxy removed." and left no row. With the arrival's settings, the package's stop leaves dnsmasq alone, so nothing declared changed. The removal's cause is held by the unit tests. Screenshot: `package-removal.png`.
