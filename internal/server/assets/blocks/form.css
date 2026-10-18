@@ -101,12 +101,14 @@
   border-top-width: 0;
 }
 /* Under the form's rows the acts are the ledger's last row: they meet the
-   row over them on its hairline, run border to border as a row does, and
-   stand 15px after it, so the buttons land on a line. */
+   row over them on its hairline and run border to border as a row does.
+   The buttons stand 24px under the hairline, as the card's edge stands 24px
+   under them: between two rules the air reads less than it measures, so a
+   row's 16px would look cramped where a field's unruled 16px does not. */
 .verso-form__acts[data-verso-close="flush"]:is(:is(.verso-field, .verso-conditional, .verso-field-set, [data-verso-rows]) + *) {
   --verso-acts-after: 0px;
   margin-inline: calc(var(--verso-field-bleed, 0px) * -1);
-  padding: calc(var(--spacing) * 3.75) var(--verso-field-bleed, 0px) 0;
+  padding: calc(var(--spacing) * 5.75) var(--verso-field-bleed, 0px) 0;
   border-top-width: 1px;
 }
 .verso-form__acts[data-verso-close="inline"] {

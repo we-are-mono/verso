@@ -830,12 +830,13 @@ func TestFieldRowsRunToACardsBorders(t *testing.T) {
 		t.Errorf("a card's field row does not run to its borders: %s", block)
 	}
 	// A form's acts under its rows are the ledger's last row: their hairline
-	// runs by the same bleed, 15px over the buttons, and the row over them
-	// keeps a row's 16px.
+	// runs by the same bleed, and the buttons stand 24px under it as the
+	// card's edge stands 24px under them, so ruled air holds them alike on
+	// both sides. The row over them keeps a row's 16px.
 	acts := cssBlock(t, blockSheet(t, "form"), `.verso-form__acts[data-verso-close="flush"]:is(:is(.verso-field, .verso-conditional, .verso-field-set, [data-verso-rows]) + *) {`)
 	for _, want := range []string{
 		"margin-inline: calc(var(--verso-field-bleed, 0px) * -1);",
-		"padding: calc(var(--spacing) * 3.75) var(--verso-field-bleed, 0px) 0;",
+		"padding: calc(var(--spacing) * 5.75) var(--verso-field-bleed, 0px) 0;",
 		"border-top-width: 1px;",
 	} {
 		if !strings.Contains(acts, want) {
@@ -846,10 +847,10 @@ func TestFieldRowsRunToACardsBorders(t *testing.T) {
 		t.Error("the row over a form's acts does not keep a row's 16px over their hairline")
 	}
 	// The row reads the bleed: out past its column by it, its words back in.
-	row := cssBlock(t, blockSheet(t, "field"), "\n.verso-field {")
 	// It spans what it stands in, so its hairline reaches the far border of
 	// a card wider than the form's measure; the padding at its end takes up
 	// what the measure leaves, so its words keep it.
+	row := cssBlock(t, blockSheet(t, "field"), "\n.verso-field {")
 	for _, want := range []string{
 		"margin-inline: calc(var(--verso-field-bleed, 0px) * -1);",
 		"max(var(--verso-field-bleed, 0px), calc(100% - var(--verso-form-width, 40rem) + var(--verso-field-bleed, 0px) * 3)) var(--verso-field-trail, 0px) var(--verso-field-bleed, 0px);",
@@ -858,10 +859,10 @@ func TestFieldRowsRunToACardsBorders(t *testing.T) {
 			t.Errorf("a row does not run by its bleed: missing %s in %s", want, row)
 		}
 	}
-}
 	if strings.Contains(row, "max-width") {
 		t.Errorf("a row is capped, so its hairline stops short of a wide card's border: %s", row)
 	}
+}
 
 // cssBlock is the body of the first rule that opens with head, up to its
 // first closing brace: enough for a rule that nests nothing.
