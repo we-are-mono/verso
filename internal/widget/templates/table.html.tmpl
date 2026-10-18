@@ -327,17 +327,18 @@
         {{/* a rate's longest is "999 Mb/s" or "1.2 Gb/s" (internal/units) */}}
         <td data-verso-figures class="verso-table__cell w-24 min-w-24 max-w-24 whitespace-nowrap text-meta"{{if .Key}} data-verso-cell="{{.Key}}"{{end}}>{{.Text}}</td>
         {{else if eq .Kind "meter"}}
-        {{/* the meter widget at a row's scale: ten blocks lit to the share,
-             the figure 12px after them in a slot of one width, so the bars of
-             a column end together. A headroom shades its blocks past its warn
+        {{/* the meter widget at a row's scale: as many blocks as the column
+             has room for (never fewer than ten) lit to the share, the figure
+             12px after the lane in a slot of one width, so the bars of a
+             column end together. A headroom shades its blocks past its warn
              limit, the track's end its protect limit. A reading with no
-             ceiling keeps its figure and draws no track, the track's room
+             ceiling keeps its figure and draws no track, the lane's room
              kept so its figure stands with the others; a thing with no
              reading is the faint dash — an empty track would say "idle",
              which is a fact. */}}
         <td class="verso-table__cell">
           {{if .Track}}<span class="verso-meter" data-verso-place="cell">
-            <span class="verso-meter__track" style="{{.Track}}"><span class="verso-meter__bar"{{if or (eq .Variant "danger") (eq .Variant "warning")}} data-verso-tone="{{.Variant}}"{{end}}></span></span>
+            <span class="verso-meter__lane"><span class="verso-meter__track" style="{{.Track}}"><span class="verso-meter__bar"{{if or (eq .Variant "danger") (eq .Variant "warning")}} data-verso-tone="{{.Variant}}"{{end}}></span></span></span>
             <span data-verso-figures class="verso-meter__amount {{if .Muted}}text-meta{{else}}text-ink{{end}}">{{.Text}}</span>
           </span>{{else if and .NoTrack .Text (ne .Text "—")}}<span class="verso-meter" data-verso-place="cell">
             <span class="verso-meter__room"></span>

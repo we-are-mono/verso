@@ -88,16 +88,18 @@ func TestRenderMeter(t *testing.T) {
 }
 
 // TestMeterIsBlocks: every meter's track is one block, 10px by 16px and 3px
-// apart, wherever it stands: ten in a listing's row or cell, as many as fit
-// in a gauge. The track is as long as its blocks, never stretched, so a
-// column of bars ends together by construction.
+// apart, wherever it stands, as many as its lane has room for and never fewer
+// than ten. The track is as long as its blocks, never stretched.
 func TestMeterIsBlocks(t *testing.T) {
 	declares(t, "meter", ".verso-meter",
 		"--verso-meter-block: calc(var(--spacing) * 2.5);",
 		"--verso-meter-gap: calc(var(--spacing) * 0.75);",
 		"--verso-meter-step: calc(var(--verso-meter-block) + var(--verso-meter-gap));",
 		"--verso-meter-blocks: 10;")
+	// A block in its own right, so a row's or a cell's track (a span, in its
+	// lane) keeps its size.
 	declares(t, "meter", ".verso-meter__track",
+		"display: block;",
 		"position: relative;",
 		"flex: none;",
 		"width: calc(var(--verso-meter-blocks) * var(--verso-meter-step) - var(--verso-meter-gap));",
@@ -261,8 +263,9 @@ func TestMeterCompact(t *testing.T) {
 	got := render(t, r, &Meter{Compact: true, Label: "Memory", Value: "47.0", Unit: "°C", Fill: 49, WarnMark: 89, Tone: "success"})
 	for _, want := range []string{
 		"Memory", ">47.0<", "°C",
-		// lit to the reading's own ceiling, its warn limit shading the zone
-		`<span class="verso-meter__track" style="--verso-meter-fill: 49; --verso-meter-warn: 89">`,
+		// lit to the reading's own ceiling, its warn limit shading the zone, in
+		// a lane filling the row's middle column
+		`<span class="verso-meter__lane"><span class="verso-meter__track" style="--verso-meter-fill: 49; --verso-meter-warn: 89">`,
 		// A reading in its ordinary range is green, bar and dot alike.
 		`class="verso-meter" data-verso-place="row"`,
 		meterBar("success"),

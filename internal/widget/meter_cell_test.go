@@ -23,7 +23,8 @@ func TestMeterCellDrawsTheShareAndItsFigure(t *testing.T) {
 	got := render(t, newRenderer(t), meterTable(TableCell{Text: "61 %", Fill: 61, Variant: "warning"}))
 	for _, want := range []string{
 		`<span class="verso-meter" data-verso-place="cell">`,
-		`<span class="verso-meter__track" style="--verso-meter-fill: 61">`, // the widget's own track, lit to 61%
+		// the widget's own track, lit to 61%, in a lane filling the cell
+		`<span class="verso-meter__lane"><span class="verso-meter__track" style="--verso-meter-fill: 61">`,
 		meterBar("warning"), // the plugin's band, in the badge vocabulary
 		`>61 %<`,
 	} {
@@ -31,8 +32,18 @@ func TestMeterCellDrawsTheShareAndItsFigure(t *testing.T) {
 			t.Errorf("meter cell missing %q:\n%s", want, got)
 		}
 	}
-	declares(t, "meter", ".verso-meter", "--verso-meter-blocks: 10;")
 	declaresBandFill(t, "warning")
+}
+
+// TestMeterCellFillsItsColumn: a cell's track holds as many blocks as its
+// column has room for, never fewer than ten, so a wide column is not left
+// half empty; every row of a column has the same room, so its bars still end
+// together.
+func TestMeterCellFillsItsColumn(t *testing.T) {
+	declares(t, "meter", ".verso-meter", "--verso-meter-blocks: 10;")
+	declares(t, "meter", `.verso-meter__lane:where(.verso-meter:is([data-verso-place="row"], [data-verso-place="cell"]) *)`,
+		"flex: 1 1 0%;",
+		"min-width: calc(var(--verso-meter-blocks) * var(--verso-meter-step) - var(--verso-meter-gap));")
 }
 
 // TestMeterCellBandsFromTheVariant: the listing owns its thresholds — airtime
@@ -112,7 +123,7 @@ func TestMeterCellWithNoTrackKeepsItsFigure(t *testing.T) {
 	if !strings.Contains(got, `>71.0 °C<`) || strings.Contains(got, `aria-hidden="true">—<`) {
 		t.Errorf("a no-track cell should show its figure, not the dash:\n%s", got)
 	}
-	declares(t, "meter", ".verso-meter__room", "flex: none;", "width: calc(var(--verso-meter-blocks) * var(--verso-meter-step) - var(--verso-meter-gap));")
+	declares(t, "meter", ".verso-meter__room", "flex: 1 1 0%;", "min-width: calc(var(--verso-meter-blocks) * var(--verso-meter-step) - var(--verso-meter-gap));")
 }
 
 // TestMeterCellFigureHoldsAReadingWithItsUnit: the figure's slot is one width

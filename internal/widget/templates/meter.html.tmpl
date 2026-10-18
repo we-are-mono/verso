@@ -18,8 +18,9 @@
   <div class="verso-meter__detail" data-verso-meter-detail>{{template "meter.detail" .DetailRuns}}</div>
 </div>
 {{else if .Compact}}
-{{/* compact: one dense row — name · ten blocks lit 0→this reading's own
-     ceiling, shaded past its warn limit · the value with a status dot. A
+{{/* compact: one dense row — name · as many blocks as the row has room
+     for, lit 0→this reading's own ceiling, shaded past its warn limit · the
+     value with a status dot. A
      reading with no limits drops the track (never a guessed threshold) and
      keeps a neutral dot. Colour is reserved for state (the fill + dot tone):
      green in the ordinary range, marigold past the warn trip, crimson past
@@ -30,7 +31,7 @@
   {{if .NoTrack}}
   <span class="verso-meter__note"><span class="verso-mark" aria-hidden="true"></span><span class="truncate">{{if .Detail}}{{.Detail}}{{else}}{{ t "no limits reported" }}{{end}}</span></span>
   {{else}}
-  <span class="verso-meter__track" style="{{.Track}}"><span class="verso-meter__bar"{{with .Tone}} data-verso-tone="{{.}}"{{end}} data-verso-meter-bar></span></span>
+  <span class="verso-meter__lane"><span class="verso-meter__track" style="{{.Track}}"><span class="verso-meter__bar"{{with .Tone}} data-verso-tone="{{.}}"{{end}} data-verso-meter-bar></span></span></span>
   {{end}}
   <span class="verso-meter__value">
     <span class="verso-mark" data-verso-tone="{{if .NoTrack}}muted{{else if eq .Tone "danger"}}danger{{else if eq .Tone "warning"}}warning{{else}}success{{end}}"></span>

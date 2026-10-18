@@ -7,10 +7,10 @@
  *
  * Every meter's block is one block: 10px by 16px, 3px apart, square-cornered,
  * so a gauge on the Overview and a cell in a listing read as the same thing.
- * A place says only how many blocks its track holds, and the track is as
- * long as its blocks, never stretched, so a column of bars ends together by
- * construction. The block is the one measure off the 8px grid: a 4px gap
- * would leave no room for 25 blocks on an Overview card.
+ * A track stands in a lane and holds as many blocks as the lane has room for,
+ * 10 to 25, and is as long as its blocks, never stretched. The block is the
+ * one measure off the 8px grid: a 4px gap would leave no room for 25 blocks
+ * on an Overview card.
  *
  * The track carries the reading's share (--verso-meter-fill) and, where it
  * has one, its warn limit (--verso-meter-warn), each a percent of the track.
@@ -31,10 +31,13 @@
  * whichever it holds; on a phone's card the gauge stacks, the label and
  * figure on a line and the lane under them. A row
  * (data-verso-place "row", a headroom listing) is one dense row: the name,
- * ten blocks, the value with its state's packet; a row of the grid, 7px after
- * the hairline over it and 8px over its own. A cell (data-verso-place "cell")
- * is the row's ten blocks and the figure inside a listing's cell, 12px after
- * them in a slot of one width; a cell with no track keeps the track's room.
+ * a lane of blocks, the value with its state's packet; a row of the grid, 7px
+ * after the hairline over it and 8px over its own. A cell (data-verso-place
+ * "cell") is a lane of blocks filling a listing's cell and the figure 12px
+ * after it in a slot of one width; every row of a column has the same room, so
+ * its bars end together, and a cell with no track keeps the lane's room. A
+ * row's or a cell's lane never holds fewer than ten blocks; a narrower window
+ * scrolls the listing instead.
  *
  * Variants: data-verso-place  overview · row · cell; none is the gauge
  * Elements: __head     the label's line, and the glyph naming the metric
@@ -43,13 +46,13 @@
  *           __reading  the figure and its unit, one line
  *           __figure   the reading, in the title's role
  *           __unit     its unit
- *           __lane     a gauge's room for its track, which counts its blocks
+ *           __lane     the room for a track, which counts its blocks
  *           __track    the range, in blocks
  *           __bar      the reading's lit blocks; data-verso-tone (success,
  *                      warning, danger, info) is its band, data-verso-role
  *                      (sky, violet, emerald, amber) a fixed accent a
  *                      dashboard assigns instead
- *           __room     a cell's track's room, where it has no track
+ *           __room     a cell's lane's room, where it has no track
  *           __detail   the one fact worth acting on
  *           __number   a figure in the detail, a step heavier than its words
  *           __name     a row's name
@@ -57,8 +60,8 @@
  *           __value    a row's value and its packet
  *           __amount   a cell's figure
  * Sets: --verso-meter-block, --verso-meter-gap, --verso-meter-step  the block
- *       --verso-meter-blocks  how many a track holds: ten, or as many as a
- *                      gauge's lane has room for
+ *       --verso-meter-blocks  how many a track holds: as many as its lane has
+ *                      room for, ten at the least
  *       --verso-meter-lit, --verso-meter-zone  the lit blocks and the first
  *                      shaded one, from the track's --verso-meter-fill and
  *                      --verso-meter-warn
@@ -168,6 +171,7 @@
 .verso-meter__track {
   --verso-meter-lit: max(round(nearest, var(--verso-meter-fill, 0) * var(--verso-meter-blocks) / 100, 1), min(1, var(--verso-meter-fill, 0)));
   --verso-meter-zone: round(down, var(--verso-meter-warn, 100) * var(--verso-meter-blocks) / 100, 1);
+  display: block;
   position: relative;
   flex: none;
   width: calc(var(--verso-meter-blocks) * var(--verso-meter-step) - var(--verso-meter-gap));
@@ -180,6 +184,10 @@
   container: verso-meter-lane / inline-size;
   min-width: 0;
   padding-block: calc(var(--spacing) * 1);
+}
+.verso-meter__lane:where(.verso-meter:is([data-verso-place="row"], [data-verso-place="cell"]) *) {
+  flex: 1 1 0%;
+  min-width: calc(var(--verso-meter-blocks) * var(--verso-meter-step) - var(--verso-meter-gap));
 }
 /* A lane holds n blocks from n steps less one gap wide (13n − 3px); under
    eleven's room it holds the ten every track starts from. */
@@ -259,8 +267,8 @@
   }
 }
 .verso-meter__room {
-  flex: none;
-  width: calc(var(--verso-meter-blocks) * var(--verso-meter-step) - var(--verso-meter-gap));
+  flex: 1 1 0%;
+  min-width: calc(var(--verso-meter-blocks) * var(--verso-meter-step) - var(--verso-meter-gap));
 }
 
 .verso-meter__bar {
