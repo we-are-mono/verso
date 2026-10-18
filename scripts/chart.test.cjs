@@ -92,6 +92,19 @@ test('a backlog is caught up so the graph never falls behind', () => {
   assert.equal(p.tick(5000).commits.length, 0, 'reset forgets what was in hand');
 });
 
+test('a minute taken up again glides on at once, its newest two in hand', () => {
+  const minute = [1, 2, 3, 4, 5, 6, 7];
+  const r = math.resume(minute, 4);
+  assert.deepEqual([...r.lane], [2, 3, 4, 5], 'the lane\'s points end where the glide starts from, off-right the last drawn');
+  assert.deepEqual([...r.held], [6, 7], 'the newest two go to the player: one glides in, one in hand');
+  const short = math.resume([9, 8], 4);
+  assert.deepEqual([...short.lane], [0, 0, 0, 0], 'a minute barely begun is quiet before its two');
+  assert.deepEqual([...short.held], [9, 8]);
+  const p = math.player(1000);
+  r.held.forEach(s => p.add(s));
+  assert.deepEqual([...p.tick(0).commits], [6], 'the player moves on the first frame');
+});
+
 test('a minute taken up again fills the graph\'s points, newest at the right', () => {
   assert.deepEqual([...math.minute([1, 2, 3, 4, 5], 3)], [3, 4, 5], 'a longer minute keeps its newest');
   assert.deepEqual([...math.minute([4, 5], 4)], [0, 0, 4, 5], 'a shorter one is quiet before it');

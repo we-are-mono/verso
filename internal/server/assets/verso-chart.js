@@ -59,6 +59,14 @@
       while (out.length < n) out.unshift(0);
       return out;
     },
+    // resume is a minute the router sampled, split so a graph of n points
+    // glides on at once: its points (lane) end on the third newest, standing
+    // off-right as a glide leaves the last one drawn, and the newest two are
+    // held for the player, one to glide in now and one in hand, so the graph
+    // is one sample behind the stream from its first frame, as it always is.
+    resume: function (vals, n) {
+      return { lane: math.minute(vals.slice(0, -2), n), held: vals.slice(-2) };
+    },
     // player paces a live graph by a steady clock instead of by when its
     // samples land. Samples arrive a second apart only on average: the router
     // sends one late when a read holds it, and the next one early. Gliding
@@ -266,19 +274,28 @@
       // The minute as the router sampled it, taken up when the stream opens
       // again: whatever the graph missed while it was away (a hidden tab, a
       // dropped stream) is drawn where it happened, what the player held
-      // goes, and the curves stand still until it has a sample in hand
-      // again, as on the first paint.
+      // goes, and the graph glides on from the minute's newest two at once
+      // (math.resume); under reduced motion the whole minute stands drawn.
       seed: function (nd, nu) {
         if (!Array.isArray(nd) || !Array.isArray(nu)) return;
         player.reset();
-        [nd, nu].forEach(function (vals, i) {
-          var l = lanes[i];
-          var fresh = math.minute(vals, N);
-          fresh.push(fresh[N - 1]);
-          l.vals.splice.apply(l.vals, [0, l.vals.length].concat(fresh));
-          l.draw();
-          if (l.figure) l.figure.textContent = rateText(fresh[N - 1]);
+        var split = [nd, nu].map(function (vals) {
+          return reduce ? { lane: math.minute(vals, N + 1), held: [] } : math.resume(vals, N + 1);
         });
+        split.forEach(function (s, i) {
+          var l = lanes[i];
+          l.vals.splice.apply(l.vals, [0, l.vals.length].concat(s.lane));
+          l.draw();
+          if (l.figure) l.figure.textContent = rateText(s.lane[N]);
+        });
+        slide(0);
+        for (var k = 0; k < split[0].held.length && k < split[1].held.length; k++) {
+          player.add([split[0].held[k], split[1].held[k]]);
+        }
+        if (!reduce && !looping) {
+          looping = true;
+          requestAnimationFrame(frame);
+        }
       },
     };
     return host.__versoLive;
