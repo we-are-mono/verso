@@ -137,20 +137,9 @@ own and points at the decision that governs it; the rationale lives there, not h
 
 - **An empty page listing.** VPN and Dynamic DNS with nothing in them stand
   their empty slot loose on the sand rather than in a card.
-- **Release note: drawers are cards.** A drawer's settings stand in cards on
-  sand, as a page's do, with even margins and the title on the cards' edge;
-  every answer stands in one column beside its question, and the rows a
-  switch reveals read as rows like the rest. Installed plugins need no
-  upgrade.
 
 ## Forms as ledgers (forms-ledger)
 
-- **Release note: forms are ledgers.** Every form reads as its questions on
-  the left and its answers on one edge, with help on what each setting does
-  a press away: "Show help" (or the ? key) opens it under every name, and
-  the browser keeps the choice. A setting whose change waits to be applied
-  is marked by a marigold bar down its row's left edge. Installed plugins
-  need no upgrade.
 - **Help written for a tooltip.** The plugins in their own repos (ddns,
   dnsdhcp, qos, vpn, wireless) wrote `help` and `tip` to be read on hover; on
   the page some read long (dnsdhcp's DUID tip runs past 300 characters). Read
@@ -162,12 +151,6 @@ Every look is a block in `internal/server/assets/blocks/`, every text one of
 the type roles in `type.css`, and the guards in
 `internal/server/stylesheet_guards_test.go` hold both without exceptions.
 
-- **Release note: one look per thing.** Cards, lists, folds, badges and the
-  Overview's cards now share one definition each, so the same thing looks the
-  same on every page; a few drifted copies changed to match (a list's words in
-  line with its card's, a card's fact list giving up its first line's air,
-  the device limits tip on the type roles). Installed plugins need no
-  upgrade.
 - **Two looks for a listing in a card.** A page card runs its listing to the
   frame with Paper column heads; a list (`Style: "list"`, the Overview's
   Ports and Tunnels, who is signed in) stands in the card's inset under a fact
@@ -178,12 +161,6 @@ the type roles in `type.css`, and the guards in
 
 ## Pending changes (ADR-010, pending-changes-page)
 
-- **Release note: pending changes live at the top of the sidebar.** The chip
-  beside the router's name is gone. While changes wait, a Pending changes row
-  stands first in the sidebar and opens a page listing them by the page each
-  was made on: open its page, discard one or a page's worth, or apply them
-  all and watch each step as the router reports it. An apply the router puts
-  back keeps the changes pending. Installed plugins need no upgrade.
 - **The reload step on the DUT.** The When you apply card names what procd's
   own triggers reload. Read it against what procd reloads for a dhcp +
   firewall + network apply on the DUT: stage one change in each, read step 2,
