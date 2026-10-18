@@ -44,12 +44,6 @@ own and points at the decision that governs it; the rationale lives there, not h
 - **Per-plugin uid.** Plugins share the shell's `verso` uid, so a plugin is not
   isolated from the shell *process* (same-uid signal/ptrace). A dedicated uid per
   plugin isolates them. Governed by ADR-007.
-- **A deadline on bodies before sign-in.** The listeners bound a connection's
-  handshake, headers and idle wait, but not a body: a client that has not
-  signed in can POST `/login` and trickle its body to hold a connection until
-  it ends, inside the per-source cap. A read deadline set through
-  `http.ResponseController` on bodies of requests without a session would close
-  that. Governed by ADR-017 §1.
 - **Non-core plugins into their own socket directory.** ddns, dnsdhcp, qos, vpn
   and wireless still bind in the shared `/var/run/verso`, where the shell's peer
   check stops a sibling answering as them but not keeping them down during a
@@ -63,48 +57,9 @@ own and points at the decision that governs it; the rationale lives there, not h
 - **One SO_PEERCRED reader.** `internal/openwrt/helper_peer_*.go`
   (`socketPeerUID`) duplicates `internal/peercred.UID`; point the helper client
   at the shared package.
-- **The shell masks a spooled reading itself.** `takeReading` keeps a config
-  reading as verso-rpcd spooled it, trusting the helper to have fingerprinted
-  every secret the shell knows. The two read manifests alike for every case in
-  `internal/server/testdata/plugin-secrets.json`, but serde_json drops a whole
-  manifest Go reads (a lone surrogate escape such as `"\ud800"`, nesting deeper
-  than 128), so its plugin's secrets reach the
-  shell in plaintext until the next scrub. Applying `history.WithoutSecrets`
-  with `secretOptions()` to each section on intake closes it whatever the
-  helper read. Governed by ADR-021.
-- **The remaining shell-held readings under a grant.** The overview's past
-  Internet graph (`pastTraffic`: history.db's interface traffic, gateway loss
-  and latency, and its outage and boot marks) and the online-device count
-  (`onlineDevices`, the neighbour table) still reach every signed-in session.
-  Gate them as ADR-007 §9 gates the roster and the events page: the traffic
-  and marks under `ubus network.interface dump`, the count under `ubus dhcp
-  ipv6leases`. Governed by ADR-007.
-- **A sign-in file saved as `.conf` reads verbatim.** `openvpnFiles` lists
-  every `.ovpn` and `.conf` directly in `/etc/openvpn` as a profile and folds
-  only inline blocks, so an `auth-user-pass` file named `*.conf` there (a
-  username and password, no blocks) reaches the page as written. Listing only
-  files an `openvpn` section names as its `config` (or skipping any that one
-  names as its `auth_user_pass`/`askpass`) would close it.
-- **A key line put back as a block's opener.** `unfold` (verso-rpcd
-  `openvpn.rs`) refuses a save that puts a block's line back where more of
-  it leaves the helper, but not one where a line hidden in the original
-  opens a block in the save: it stays hidden, yet its `<name>` becomes the
-  new block's placeholder, shown on the next fold. Only a hidden line
-  shaped `<name>` does so (no key's base64 is), behind a contrived `</X>`.
-  Refusing a restored line that opens a block in the save but did not in
-  the original would close it (docs/plugins.md, `openvpnFiles`).
 
 ## Correctness
 
-- **An OpenVPN that drops privileges never gets a trusted record.** OpenVPN
-  runs `up` (and `route-up` unless routes are delayed) as root, so root writes
-  the record in `/var/run/verso-openvpn`; the hooks after run as the profile's
-  `user`, which cannot rename over root's file in the 1733 directory, and
-  `read_record` (verso-rpcd `openvpn.rs`) trusts only a record owned by the
-  process's effective uid, so such an instance always falls back to the
-  kernel's view (no `since`, no `server`). Accepting a record owned by root or
-  by the instance's uid would close it; the hook then needs to carry over a
-  root-owned record when running as the instance's user.
 - **Clear-all NTP servers.** Whether an empty list in a brokered `uci.set` clears
   the option or leaves it stale is unverified (`internal/openwrt`).
 - **`list` widget add/remove.** The `list` widget renders a fixed set of rows with
@@ -112,26 +67,11 @@ own and points at the decision that governs it; the rationale lives there, not h
 - **Links to an absent plugin.** Interfaces links each network's DHCP server to
   `/plugins/dnsdhcp/?open=<network>` whether or not `verso-plugin-dnsdhcp` is
   installed; without it the link is a 404. Governed by ADR-009.
-- **Unanswered grants on Access and usage.** Where rpcd does not answer
-  `session list`, Access lists only the account's own sessions without saying
-  why; where it does not answer `verso usageDays`, the roster and a device's
-  panel drop usage silently. The roster, device panel, Changes and Events say
-  "couldn't be checked" (`sessionGrants.answer` / `anyUnchecked`); these two
-  could too. Governed by ADR-007 §9.
 - **Moving the history directory.** A change of `verso.history.directory`
   moves nothing (ADR-019): the history in the directory chosen before stays
   behind, and a factory reset empties only the defaults and the directories
   chosen at the time (ADR-021). Copying the database with `VACUUM INTO` on a
   change would carry it over. Governed by ADR-019.
-- **A factory reset's walk, by mount id and without depth.** verso-rpcd's
-  `reset.rs` tells a filesystem mounted inside a default by its device or by
-  its path in `/proc/self/mountinfo`, read once before the walk; a bind mount
-  of the same device made or moved after that read is walked into. Comparing
-  each held directory's `mnt_id` (`/proc/self/fdinfo/<fd>`) with its parent's
-  would follow the mounts as they stand. `clear` also recurses, one open
-  directory per level, so a tree in a default deeper than the descriptor
-  limit fails the erase and the reset with it; an iterative walk that keeps
-  only the current directory open would empty any depth. Governed by ADR-021.
 - **Why a session ended, on the sign-in page.** A browser whose session was
   revoked on Access or ended by a password change lands on `/login?expired=1`,
   which says "You were signed out after a period of inactivity." Remembering
@@ -172,10 +112,10 @@ own and points at the decision that governs it; the rationale lives there, not h
   pin arguments and error mapping per field. They become methods once the
   openwrt tests fake ubusd at the socket (needs the blob encoder exported from
   `internal/ubus`).
-- **Plugin helpers into the SDK.** Text/select field builders and panel-form
-  constants; the describe skeleton ×3; `text_cell`/`pill_cell`/`EM_DASH` ×2.
-  The SDK's `Section::flag` reads the init-script truth set; interfaces keeps
-  its netifd reader and firewall its fw4 one, each matching its own daemon.
+- **The interface and system editors on the SDK's fields.** Interfaces'
+  `editor.rs` and system's form builders spell their own text and select
+  fields over a `BTreeMap` of errors; moving them onto the SDK's `Errors`
+  lets them take `text_field`/`select_field` as firewall does.
 - **dnsdhcp on the next SDK pin.** `verso-plugin-dnsdhcp/src/dns.rs:308` builds
   `Widget::Link` with `desc`/`code`/`act`, which the SDK no longer has; it
   compiles against v0.8.0 and the shell ignores the keys, so bumping its pin
@@ -184,10 +124,6 @@ own and points at the decision that governs it; the rationale lives there, not h
   still read by their templates though no plugin sets them. The grid-style
   live-listing attributes (`data-verso-stream`, ring, empty) on tables wire
   nothing and only tests assert them.
-- **Firewall vocabulary.** `mod vocabulary` is `#[allow(dead_code)]` and only the
-  `#[cfg(test)]` reckoning reads it; it becomes `#[cfg(test)]`, and the SDK
-  `vocabulary.rs` (firewall its only consumer) moves into firewall. Dropping the
-  machinery outright is ~2,800 lines.
 - **Small leftovers.** `FiberModule`'s Vcc/Bias/Tx limits may be read by
   nothing; the wireless `Cargo.toml` comment names
   `wire.rs`/`serve.rs`, which do not exist.
@@ -213,9 +149,6 @@ own and points at the decision that governs it; the rationale lives there, not h
 - **Recently seen SFP modules in the Temperatures graph.** The graph's choices
   are the modules plugged in now, so an unplugged module's history goes
   unread; listing the modules seen over the last 30 days would reach it.
-- **The temperature history under a grant.** `handleTemperatureHistory`
-  answers history.db's temperatures to every signed-in session; gate it as
-  ADR-007 §9 gates the roster and the events page.
 - **The fibre lists side by side on a phone.** System › Hardware sets its SFP
   modules' fact lists in a two-column `Grid`, which stays two columns at every
   width, so on a phone each list is half the card and a dark receiver's

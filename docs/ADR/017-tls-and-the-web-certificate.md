@@ -99,8 +99,9 @@ firewall's config, so a rule written in raw nftables is not seen.
 
 **Every listener bounds what a client holds before it signs in.** A connection
 has 10 seconds for its TLS handshake and each request's headers, and two
-minutes idle before its next request; a body and an answer are not bounded, so
-a firmware upload and a live stream run their course. The listeners hold 256
+minutes idle before its next request. A request without a session has 10
+seconds to send its body; a signed-in body and an answer are not bounded, so a
+firmware upload and a live stream run their course. The listeners hold 256
 connections between them and 32 from any one client address, IPv4 or IPv6 —
 not an IPv6 /64, which every host on a LAN shares — and close one past either
 cap as it arrives. So a host the firewall admits cannot take the file

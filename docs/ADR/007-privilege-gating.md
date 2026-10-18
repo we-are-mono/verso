@@ -165,12 +165,14 @@ broken socket.**
 
    | Reading | Grant |
    |---|---|
-   | dnsmasq's lease file and the kernel neighbour table (the Devices roster, a device's panel, the brokered `dhcpLeases` read) | `ubus dhcp ipv6leases`, the DHCPv6 lease read connected devices are declared under |
+   | dnsmasq's lease file and the kernel neighbour table (the Devices roster, a device's panel, the brokered `dhcpLeases` read, the Overview's count of online devices) | `ubus dhcp ipv6leases`, the DHCPv6 lease read connected devices are declared under |
    | The held per-device usage days (the roster's month, a device's periods, the usage stream) | `ubus verso usageDays` |
    | The held per-device rates and the minute of them a device's graph opens on | `ubus verso usageLive` |
    | How the last alert went (ADR-020), whose words could name the address, and a test alert | `uci verso read`; a test also `uci verso write` |
    | Config history (ADR-021): each entry's changes, the starting point, the current readings | `uci <config> read` for each config; an act on it also `uci <config> write` |
    | System → Events: the internet going down and coming back; the router starting; an apply | `ubus network.interface dump`; `ubus system info`; its config history entry's grants |
+   | The Overview's past Internet graph: the interface's traffic, the gateway's loss and latency, and its outage and boot marks | `ubus network.interface dump`; its marks as on System → Events |
+   | The held temperature history (System → Hardware's graph) | `ubus system info`, the grant the router's own state is shown under |
    | Access's signed-in sessions of another rpcd account, and ending one | `ubus session list`; `ubus session destroy` — rpcd's own session object's grants, which no page's group carries and `verso-admin` does. A session's own account's sessions need none |
 
    A session refused the grant sees the reading's absence said plainly (an empty
