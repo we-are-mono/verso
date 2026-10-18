@@ -57,30 +57,22 @@ own and points at the decision that governs it; the rationale lives there, not h
 
 ## Correctness
 
-- **Clear-all NTP servers.** Whether an empty list in a brokered `uci.set` clears
-  the option or leaves it stale is unverified (`internal/openwrt`).
 - **`list` widget add/remove.** The `list` widget renders a fixed set of rows with
   no client-side add/remove. Blocked on the behavioural-pages item below.
-- **Links to an absent plugin.** Interfaces links each network's DHCP server to
-  `/plugins/dnsdhcp/?open=<network>` whether or not `verso-plugin-dnsdhcp` is
-  installed; without it the link is a 404. Governed by ADR-009.
-- **Moving the history directory.** A change of `verso.history.directory`
-  moves nothing (ADR-019): the history in the directory chosen before stays
-  behind, and a factory reset empties only the defaults and the directories
-  chosen at the time (ADR-021). Copying the database with `VACUUM INTO` on a
-  change would carry it over. Governed by ADR-019.
-- **Why a session ended, on the sign-in page.** A browser whose session was
-  revoked on Access or ended by a password change lands on `/login?expired=1`,
-  which says "You were signed out after a period of inactivity." Remembering
-  why each token ended (briefly, by token) would let sign-in say "You were
-  signed out from another browser" instead. Governed by ADR-007 §7.
+- **Links to an absent plugin, in cells and heading acts.** The shell draws
+  no link into a plugin that is not installed where a link stands alone, on a
+  section's header or in a callout; a link carried in a table cell or a
+  heading's acts still reaches the 404. Governed by ADR-009.
+- **A history move on the DK.** Choose another `verso.history.directory`,
+  restart the shell, and read that the history arrived and the old copy
+  went; the move has run only in tests. Governed by ADR-019.
 
 ## Validation (ADR-008)
 
-- **A `cidr` datatype.** WireGuard addresses and allowed-IPs are CIDR
-  (`10.0.0.1/24`); `internal/datatype` has `ipaddr` (a bare address) but no CIDR
-  type, so the WireGuard plugin declares no datatype on those fields. Add a `cidr`
-  (v4/v6 `addr/len`) datatype so they validate. Governed by ADR-008.
+- **WireGuard declares `cidr`.** The vpn plugin can declare `cidr` on an
+  interface's `addresses` and a peer's `allowed_ips`; a bare address (which
+  wg reads as a /32 in `allowed_ips`) is refused by `cidr`, so that field
+  checks its own. Governed by ADR-008.
 
 ## Product / definition-of-done
 
