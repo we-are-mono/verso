@@ -71,9 +71,13 @@ over a local socket**, exchanging *data*, not markup.
      the plugin. `"pages": true` says only that the entry opens; its subpages are
      then the envelope's `pages` (below), shown on its own pages. A shell older
      than the list form reads only `true`.
+   - `contributes` — optional `{id, slot, path, position, order}` entries, each
+     filling a named slot on a shell page or on another plugin's page (ADR-026).
+     `system_access: "<path>"`, the older way to add a part to Access, reads as
+     `{id: "access", slot: "shell.access.blocks", position: "before:web"}`.
    - `entity_tabs` — optional `{entity, slot, label, summaries}` contributions to
      shell-owned entity drawers. A plugin may omit navigation when it contributes
-     entity tabs, entity actions, or System Access content. A tab with `summaries:
+     entity tabs, entity actions, or slot contributions. A tab with `summaries:
      true` also answers `GET /entity/<kind>/` with `entities: [{id, name, state}]`.
      Optional `details: [{kind, label, values}]` carries configured facts for a tooltip;
      the optional semantic kind lets the shell choose a visual readout independently
@@ -162,6 +166,10 @@ over a local socket**, exchanging *data*, not markup.
    gate: a version the shell does not support yields a **degradation card in the
    chrome** ("plugin needs a newer Verso"), never a load failure or a 500.
    Additive vocabulary changes bump a minor; removals/renames bump a major.
+   The contract features the shell speaks beside the vocabulary (`slots`) travel
+   on every request as `X-Verso-Features`, comma-separated: a static manifest
+   cannot negotiate, but a plugin's page can see whether its opened slots will be
+   filled (ADR-026).
 
 7. **Crash isolation is a contract, not a hope.** Any transport failure — dial
    refused, timeout, non-JSON body, a schema the shell can't decode, a 5xx from

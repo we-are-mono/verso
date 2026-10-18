@@ -41,11 +41,18 @@ looks — while still offering a legitimate bridge when no widget yet fits.
    speed and role, and the shell draws every pixel — a board profile's own art
    or, for a board without art, a whole panel it generates from the ports — and
    lights both by one set of rules.
-   A `slot` is the one place a plugin hands a block to the shell: the plugin
-   says where on its page the block stands, and the shell, whose ids are a
-   closed set, decides what it is and answers for it. The system plugin leaves
-   `appearance` on General for the Appearance card (ADR-024); a slot the shell
-   has no block for draws nothing.
+   A `slot` is a place on a plugin's page, used one of two ways.
+   - **With no kind, the plugin hands a block to the shell.** The plugin says where
+     on its page the block stands, and the shell, whose ids are a closed set,
+     decides what it is and answers for it. The system plugin leaves `appearance`
+     on General for the Appearance card (ADR-024). A slot the shell has no block
+     for draws nothing.
+   - **With a kind (`block`, `act`, `notice`), the plugin opens the place to other
+     plugins** (ADR-026). They fill it with answers of that kind, which the shell
+     checks and draws in each answer's own words.
+   A facts list opens a facts slot through its own `slot` field, so contributed
+   rows read in its column. Either way the vocabulary stays closed. A slot only
+   says where something stands, never what it looks like.
 4. **A governed "raw" bridge.** When no widget fits, an author may emit a `raw`
    element: **display-only**, **Markdown** (not HTML/CSS), rendered through Verso's
    styling and sanitizer. It grants content freedom, never appearance control.

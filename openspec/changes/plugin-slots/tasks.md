@@ -58,7 +58,7 @@
 ## 7. Features header and ADRs
 
 - [x] 7.1 Test first in `internal/plugin/transport_test.go`: every plugin request carries `X-Verso-Features` from the one features list. Then implement it. Verify with `make test`.
-- [ ] 7.2 Write ADR-026, the slots decision and its reasons, from design.md decisions 1–9. Amend ADR-006 in place: the manifest gains `contributes`, `system_access` becomes an alias, the hooks section is struck, and `X-Verso-Features` is added. Amend ADR-005 in place for the slot widget's two uses. Verify that every ADR cross-reference resolves (`grep -n 'ADR-026' docs/ADR/*.md`).
+- [x] 7.2 Write ADR-026, the slots decision and its reasons, from design.md decisions 1–9. Amend ADR-006 in place: the manifest gains `contributes`, `system_access` becomes an alias, the hooks section is struck, and `X-Verso-Features` is added. Amend ADR-005 in place for the slot widget's two uses. Verify that every ADR cross-reference resolves (`grep -n 'ADR-026' docs/ADR/*.md`).
 
 ## 8. verso-plugin-system opens the certificate slots
 
