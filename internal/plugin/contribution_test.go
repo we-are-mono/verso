@@ -4,6 +4,8 @@
 package plugin
 
 import (
+	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
@@ -168,6 +170,25 @@ func TestSlotOwner(t *testing.T) {
 		if _, ok := SlotOwner(name); ok {
 			t.Errorf("SlotOwner(%q) accepted", name)
 		}
+	}
+}
+
+// The author's guide opens on a manifest; it must be one the shell loads,
+// contributions and all.
+func TestTheGuidesManifestLoads(t *testing.T) {
+	guide, err := os.ReadFile(filepath.Join("..", "..", "docs", "plugins.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, after, _ := strings.Cut(string(guide), "## The manifest")
+	_, block, _ := strings.Cut(after, "```json\n")
+	example, _, ok := strings.Cut(block, "```")
+	if !ok {
+		t.Fatal("the guide's manifest example is not found")
+	}
+	got, problems := Discover(mapFS(map[string]string{"plugins/ntp/manifest.json": example}), testGlob)
+	if len(got) != 1 || len(problems) != 0 || len(got[0].Contributes) != 1 {
+		t.Fatalf("got=%+v problems=%v", got, problems)
 	}
 }
 

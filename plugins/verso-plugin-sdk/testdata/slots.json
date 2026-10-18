@@ -1,0 +1,25 @@
+[
+  {
+    "name": "shell.access.blocks",
+    "kind": "block",
+    "anchors": [
+      "password",
+      "sessions",
+      "web",
+      "luci"
+    ]
+  },
+  {
+    "name": "shell.overview.cards",
+    "kind": "overview-card",
+    "anchors": [
+      "internet",
+      "ports",
+      "tunnels",
+      "traffic",
+      "resources",
+      "system",
+      "hardware"
+    ]
+  }
+]

@@ -41,6 +41,8 @@ mod encoding;
 pub use encoding::{base64_decode, url_encode};
 mod errors;
 pub use errors::Errors;
+mod slots;
+pub use slots::{ShellSlot, SlotKind, ACCESS_BLOCKS, OVERVIEW_CARDS, SHELL_SLOTS};
 mod fields;
 pub use fields::{from_panel, panel_form, select_field, text_field, PANEL_FIELD, REMOVE_FIELD};
 /// Hand-edited files a page lists and edits in place. See [`files`].
@@ -915,6 +917,10 @@ pub enum Widget {
         head: Option<PropertiesHead>,
         #[serde(skip_serializing_if = "String::is_empty")]
         empty: String,
+        /// A facts slot this list opens (ADR-026): rows other plugins
+        /// contribute to `<plugin id>.<slot>` join this list after its own.
+        #[serde(skip_serializing_if = "String::is_empty")]
+        slot: String,
     },
     /// Config sections as identical rows under fixed columns: each column
     /// declares a kind ("name", "mono", "keyword", "pill", "endpoint",
@@ -997,11 +1003,17 @@ pub enum Widget {
     /// (ADR-005 §4). Metered — its usage is the demand signal for the next
     /// widget.
     Raw { markdown: String },
-    /// A place on the page for a block the shell owns (ADR-005): the plugin
-    /// says where it stands, the shell decides what it is. The ids are the
-    /// shell's — `appearance`, the Appearance card on General — and a slot a
-    /// shell has no block for draws nothing.
-    Slot { id: String },
+    /// A place on the page. With no kind it is for a block the shell owns
+    /// (ADR-005): the plugin says where it stands, the shell decides what it
+    /// is — `appearance`, the Appearance card on General — and a slot a shell
+    /// has no block for draws nothing. With a kind it is a place this plugin
+    /// opens for other plugins to fill (ADR-026), named `<plugin id>.<id>`;
+    /// build it with [`Widget::open_slot`].
+    Slot {
+        id: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        kind: Option<SlotKind>,
+    },
 }
 
 /// SectionWidget is the body of [`Widget::Section`]; set what differs from the
@@ -1959,6 +1971,7 @@ impl Widget {
             align: String::new(),
             head: None,
             empty: String::new(),
+            slot: String::new(),
         }
     }
 
@@ -1979,7 +1992,21 @@ impl Widget {
     /// slot leaves the place for the shell's block named id, as
     /// `Widget::slot("appearance")` leaves the Appearance card's.
     pub fn slot(id: &str) -> Widget {
-        Widget::Slot { id: id.into() }
+        Widget::Slot {
+            id: id.into(),
+            kind: None,
+        }
+    }
+
+    /// open_slot opens a place of this kind for other plugins to fill, named
+    /// `<this plugin's id>.<id>`, as the system plugin's certificate card
+    /// opens `certificate.acts` for a certificate source's act. A facts slot
+    /// rides its list instead: set `slot` on [`Widget::Properties`].
+    pub fn open_slot(id: &str, kind: SlotKind) -> Widget {
+        Widget::Slot {
+            id: id.into(),
+            kind: Some(kind),
+        }
     }
 
     /// button is a direct action. Style is the semantic emphasis — "primary",

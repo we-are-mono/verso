@@ -39,7 +39,16 @@ type Properties struct {
 	// set's slot, when there are none; a list with a head says it under the
 	// head.
 	Empty string `json:"empty,omitempty"`
+	// Slot is a facts slot the list opens (ADR-026): rows other plugins
+	// contribute to <opener>.<Slot> stand after the list's own.
+	Slot string `json:"slot,omitempty"`
+	// joined are those rows, already in their own plugin's words, which no
+	// pass over the host's tree translates again.
+	joined []Property
 }
+
+// Join appends contributed rows to the list, after its own.
+func (p *Properties) Join(rows []Property) { p.joined = append(p.joined, rows...) }
 
 // PropertiesHead is what a list's head says: a title over a group of facts
 // (an address family, with its protocol as Chip), or the names of the two
@@ -147,7 +156,7 @@ func (p *Properties) renderInto(r *Renderer, out io.Writer, _ string) error {
 	// Rates and durations are written on a copy: the plugin's widget keeps its
 	// numbers.
 	view := *p
-	view.Items = slices.Clone(p.Items)
+	view.Items = append(slices.Clone(p.Items), p.joined...)
 	for i, item := range view.Items {
 		if item.Rate != nil {
 			view.Items[i].Value = r.numbers().Rate(*item.Rate).String()

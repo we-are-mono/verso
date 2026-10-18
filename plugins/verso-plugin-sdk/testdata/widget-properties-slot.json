@@ -1,0 +1,10 @@
+{
+  "type": "properties",
+  "items": [
+    {
+      "label": "Issued to",
+      "value": "router.example.com"
+    }
+  ],
+  "slot": "certificate.source"
+}

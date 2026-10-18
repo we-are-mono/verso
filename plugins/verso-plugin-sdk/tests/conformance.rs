@@ -12,7 +12,7 @@ use std::fs;
 use verso_plugin::{
     ActionBar, CollectionAdd, CollectionItem, CollectionRemove, ColumnWidth, ConditionItem, Field,
     Grid, HeadingAct, List, PropertiesHead, Property, RemoveConfirm, RowDrawer, SectionWidget,
-    SelectOption, SubjectKind, Switch, Table, TableCell, TableChip, TableColumn, TableEndpoint,
+    SelectOption, SlotKind, SubjectKind, Switch, SHELL_SLOTS, Table, TableCell, TableChip, TableColumn, TableEndpoint,
     TableGroup, TablePart, TableRow, TableRowAct, TableStream, Tone, Widget, STREAM_FIREWALL_LOG,
 };
 
@@ -328,6 +328,7 @@ fn write_widget_fixtures() {
                 align: "left".into(),
                 head: None,
                 empty: String::new(),
+                slot: String::new(),
             },
         ),
         (
@@ -347,6 +348,7 @@ fn write_widget_fixtures() {
                     chip: "dhcp".into(),
                 }),
                 empty: "No address.".into(),
+                slot: String::new(),
             },
         ),
         (
@@ -360,6 +362,7 @@ fn write_widget_fixtures() {
                     chip: String::new(),
                 }),
                 empty: "Nothing is installed.".into(),
+                slot: String::new(),
             },
         ),
         ("text", Widget::text("A short explanatory line.")),
@@ -415,6 +418,21 @@ fn write_widget_fixtures() {
             ),
         ),
         ("slot", Widget::slot("appearance")),
+        (
+            "slot-act",
+            Widget::open_slot("certificate.acts", SlotKind::Act),
+        ),
+        ("properties-slot", {
+            let mut facts = Widget::properties(vec![Property {
+                label: "Issued to".into(),
+                value: "router.example.com".into(),
+                ..Default::default()
+            }]);
+            if let Widget::Properties { slot, .. } = &mut facts {
+                *slot = "certificate.source".into();
+            }
+            facts
+        }),
         ("table", listing()),
         (
             "actionbar",
@@ -768,6 +786,35 @@ fn write_subject_kinds_fixture() {
     fs::create_dir_all(dir).unwrap();
     let json = serde_json::to_vec_pretty(&kinds).unwrap();
     fs::write(format!("{dir}/subject-kinds.json"), json).unwrap();
+}
+
+// The shell's slots, as the SDK names them, for the shell's Go tests to hold
+// against the slots its pages open (ADR-026): a slot one side has and the
+// other lacks, or one whose kind or anchors differ, fails there.
+#[test]
+fn write_slots_fixture() {
+    for slot in SHELL_SLOTS {
+        assert!(slot.name.starts_with("shell."), "{}: not a shell slot", slot.name);
+    }
+    let dir = concat!(env!("CARGO_MANIFEST_DIR"), "/testdata");
+    fs::create_dir_all(dir).unwrap();
+    let json = serde_json::to_vec_pretty(SHELL_SLOTS).unwrap();
+    fs::write(format!("{dir}/slots.json"), json).unwrap();
+}
+
+#[test]
+fn slot_kinds_are_the_manifest_words() {
+    let words: Vec<String> = [
+        SlotKind::Block,
+        SlotKind::Act,
+        SlotKind::Fact,
+        SlotKind::Notice,
+        SlotKind::OverviewCard,
+    ]
+    .iter()
+    .map(|k| serde_json::to_value(k).unwrap().as_str().unwrap().to_owned())
+    .collect();
+    assert_eq!(words, ["block", "act", "fact", "notice", "overview-card"]);
 }
 
 // A meter cell's limits: one headroom with its warn limit, one reading with no

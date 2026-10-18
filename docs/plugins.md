@@ -3,13 +3,11 @@
 This is the author's guide. If you can serve HTTP on a unix socket and emit JSON,
 you can write a Verso plugin — in any language, without touching the shell.
 
-> **Status:** grows with the widget set. Manifest v1 whole-page plugins are the
-> current implementation. Manifest v2 page contributions and coordinated Save &
-> Apply are the accepted target contract and are documented here before their
-> implementation. The widget vocabulary section is filled in as each widget lands;
-> anything marked _(landing)_ is not yet renderable.
-> The authority for design decisions is `docs/ADR/006-plugin-contract.md`
-> (mechanics) and `docs/ADR/005-ui-consistency-contract.md` (what you may emit).
+> **Status:** grows with the widget set; anything marked _(landing)_ is not yet
+> renderable. The authority for design decisions is
+> `docs/ADR/006-plugin-contract.md` (mechanics), `docs/ADR/026-slots.md`
+> (where a plugin places things) and `docs/ADR/005-ui-consistency-contract.md`
+> (what you may emit).
 
 ## What a plugin is
 
@@ -44,12 +42,12 @@ Ship a `manifest.json`. The shell discovers it by globbing the plugins directory
   "name": "Time synchronization",
   "socket": "/var/run/verso-plugin-ntp/ntp.sock",
   "schema_version": 1,
-  "contributions": [
+  "contributes": [
     {
-      "id": "general-time",
-      "hook": "system.general.after-time",
-      "path": "/contributions/general",
-      "order": 100
+      "id": "clock",
+      "slot": "shell.overview.cards",
+      "path": "/slots/clock",
+      "position": "after:system"
     }
   ],
   "acl": {
@@ -80,11 +78,13 @@ than 127, or escaping half a surrogate pair (`"\ud800"` alone).
 | `nav[].label` | the nav link text |
 | `nav[].path` | page path, relative to your mount (`/` = your index) |
 | `nav[].icon` | optional Lucide glyph *name* for the row; the shell owns the artwork, and an entry naming none takes its section's glyph |
-| `contributions` | optional list of fragments inserted at published shell hooks |
-| `contributions[].id` | contribution id, unique within the plugin; namespaces its fields |
-| `contributions[].hook` | globally unique shell hook id |
-| `contributions[].path` | socket endpoint used to render and prepare the fragment |
-| `contributions[].order` | order within the hook; plugin id and contribution id break ties |
+| `contributes` | optional list of things this plugin puts in named slots ([below](#filling-slots)) |
+| `contributes[].id` | lowercase letters, digits and hyphens, unique within the plugin; `<plugin id>.<id>` names it everywhere else |
+| `contributes[].slot` | the slot's name: `shell.<page>.<place>` for a shell page's, `<plugin id>.<name>` for one a plugin opens |
+| `contributes[].path` | the endpoint on your socket the shell GETs for it, and posts its form to |
+| `contributes[].position` | `first`, `last` (the default), `before:<anchor>` or `after:<anchor>` |
+| `contributes[].order` | order among contributions at one place (default 100); plugin id, then contribution id, break ties |
+| `system_access` | read as a contribution to `shell.access.blocks` standing `before:web`; prefer `contributes` |
 | `acl` | the rpcd access scopes you need ([below](#declaring-your-acl-scopes)): `read` to render config, `write` to change it |
 | `acl.read[]` | one `{scope, object, function}` grant naming a config the shell reads and hands you as a snapshot |
 | `acl.write[]` | one `{scope, object, function}` grant the shell checks before a POST |
@@ -128,32 +128,108 @@ envelope's to say:
 ]
 ```
 
-Manifest v2 may declare `nav`, `contributions`, or both, but must declare at least
-one. A contribution-only plugin creates no sidebar entry.
+A manifest declares at least one of `nav`, `entity_tabs`, `entity_acts` and
+`contributes`. A plugin that only contributes has no sidebar row.
 
-### Contributing to a shell page
+### Filling slots
 
-Shell templates publish stable hooks at every semantic seam between their sections,
-for example:
+A **slot** is a named place on a page. The shell's pages open slots, and a plugin's
+page can open them too. You fill one from your manifest, and the shell asks your
+plugin for the piece each time it draws the page the slot stands on. Neither the
+shell nor the plugin whose page it is needs to know who you are (ADR-026).
 
-```text
-system.general.before-identity
-system.general.after-identity
-system.general.after-time
-system.general.end
+```json
+"contributes": [
+  { "id": "source", "slot": "system.certificate.source", "path": "/slots/source" },
+  { "id": "use",    "slot": "system.certificate.acts",   "path": "/slots/use" },
+  { "id": "card",   "slot": "shell.overview.cards",      "path": "/slots/card",
+    "position": "after:system" }
+]
 ```
 
-Choose any published hook in the manifest. On page render the shell GETs the
-contribution's `path` and places its widget fragment there. A fragment uses the same
-closed widget vocabulary as a page, but must not contain a `form`: the shell wraps its
-own fields and all contributions in one outer page form. Field names are automatically
-namespaced on the browser side and stripped before your endpoint receives them.
+**Names.** A slot's name says who opened it:
 
-Several plugins may share a hook. `order`, then plugin id, then contribution id make
-the result deterministic. An unknown hook affects only that contribution and appears
-as a compatibility warning under Software. A missing plugin leaves no placeholder; a
-running plugin that fails produces a contained unavailable fragment without breaking
-the surrounding page.
+- `shell.<page>.<place>` is a shell page's. They are listed in the SDK's
+  `SHELL_SLOTS` and in `plugins/verso-plugin-sdk/testdata/slots.json`, with each
+  slot's kind and anchors. That list is the promise: a name in it keeps working, and a
+  renamed one keeps its old name as an alias.
+- `<plugin id>.<name>` is one a plugin's page opens. The opening plugin's README says
+  which it opens. The shell adds the opener's id itself, so no plugin can open a slot
+  in another's name.
+
+The id `shell` is reserved, and no plugin may take it.
+
+**Kinds.** Every slot takes one kind, and the shell draws only an answer of that kind:
+
+| kind | answer with | it stands |
+|---|---|---|
+| `block` | one `section`, `card` or `table` (a section may hold a form) | as a block of the page |
+| `act` | one `link` with an `icon`; `panel: true` opens your page in a drawer | after the host's own acts in its act row |
+| `fact` | one `properties` | its rows after the host list's own, in the same column |
+| `notice` | one `callout` | where the slot stands |
+| `overview-card` | the envelope's `card` and a `widget` body with no form ([Overview cards](#overview-cards)) | as an Overview card |
+
+An answer of another kind is not drawn, and the shell logs it.
+
+**Positions.** A contribution stands `first`, `last` (the default), or directly
+`before:` or `after:` an anchor. An anchor is a shell slot's own item (Access's
+`password`, `sessions`, `web`, `luci`; the Overview's cards by id) or another
+contribution, named `<plugin id>.<contribution id>`. Contributions at one place stand
+by `order`, then plugin id, then contribution id, so the result is the same on every
+render. An anchor that is not there, or that points back at itself through another
+contribution, puts the contribution last.
+
+**The request.** The shell GETs your `path` with:
+- the same brokered reads, language and `X-Verso-Plugins` your pages get;
+- `X-Verso-Slot`, the slot's name;
+- `X-Verso-Features` ([below](#what-the-shell-speaks)).
+
+Answer with an ordinary envelope, or with `204 No Content` when you have nothing to
+show right now (a certificate source that is not set up). Then nothing is drawn and
+nothing is logged.
+
+**Only what is drawn is asked for.** The shell asks only the contributions to slots on
+the page or drawer it is drawing, all at once, each within the plugin timeout. A
+drawer's slots are asked for when it opens. Slots inside a contributed answer are not
+filled. The drawer your contributed act opens is your own page, so its slots are.
+
+**Forms.** A contributed block's form posts to the page it stands on, and only your
+plugin receives the post, behind your declared write gate. A save that stages, or a
+command that ran, reads the page again with your notice in the top-right notification.
+Every other plugin on the page is asked for its piece as on any visit.
+
+**Failure.** A contribution whose plugin is not running leaves no trace on the page.
+One that times out, fails or answers what the shell cannot read is drawn as the
+shell's unavailable state, and the rest of the page draws. A contribution to a shell
+slot the list does not name, or to a slot whose opener is not installed, is logged
+once when the plugins load. Removing your package removes every contribution and
+every slot of yours from every page, and nothing about them is kept on the router.
+
+**Opening a slot of your own.** Your page opens a slot where you want other plugins'
+pieces to stand. A block, act or notice slot is a `slot` widget with a `kind`. A facts
+slot is a `slot` on the `properties` list itself, so contributed rows read in its
+column:
+
+```json
+{ "type": "properties", "items": [ … ], "slot": "certificate.source" }
+{ "type": "stack", "inline": true, "children": [ …your acts…,
+  { "type": "slot", "id": "certificate.acts", "kind": "act" } ] }
+```
+
+Their names are `<your id>.certificate.source` and `<your id>.certificate.acts`. Their
+anchors are the contributions in them, since your own items are not addressable.
+
+**Access.** `system_access: "/access"` is read as `{id: "access", slot:
+"shell.access.blocks", position: "before:web"}`, so a plugin written before slots keeps
+its part. A manifest that also contributes to `shell.access.blocks` is read from
+`contributes` alone.
+
+### What the shell speaks
+
+Every request the shell sends a plugin carries `X-Verso-Features`: the contract
+features the shell speaks, comma-separated (`slots`). When the list holds `slots`,
+your opened slots are filled and your contributions are drawn. Without it, keep
+whatever your page would show in their place.
 
 ## Entity panels
 
@@ -1571,19 +1647,30 @@ not a style choice — each has an owner: the envelope's `notice` for outcomes,
 { "type": "raw", "markdown": "WireGuard keeps a tunnel silent until traffic flows, so a peer can look idle while it is perfectly healthy." }
 ```
 
-### slot — a block the shell owns
+### slot — a place on your page
 
-A place on your page for a block the shell draws and answers for: you say
-where it stands, the shell says what it is. The ids are the shell's, a closed
-set; a slot the shell has no block for draws nothing.
+A slot has two uses.
 
-- `appearance` — the Appearance card, where the operator picks the router's
-  theme (ADR-024). The system plugin leaves it on General, between its router
-  settings and Time.
+**With no `kind`, it holds a block the shell owns.** You say where it stands, and the
+shell says what it is. These ids are the shell's, a closed set, and a slot the shell
+has no block for draws nothing.
+
+- `appearance` is the Appearance card, where the operator picks the router's theme
+  (ADR-024). The system plugin leaves it on General, between its router settings and
+  Time.
 
 ```json
 { "type": "slot", "id": "appearance" }
 ```
+
+**With a `kind` of `block`, `act` or `notice`, it is a place you open for other
+plugins to fill** ([Filling slots](#filling-slots)). Its name is `<your id>.<id>`.
+
+```json
+{ "type": "slot", "id": "certificate.acts", "kind": "act" }
+```
+
+A facts slot is the `slot` field of a `properties` list instead.
 
 ## Translations
 

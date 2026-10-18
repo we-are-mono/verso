@@ -8,9 +8,9 @@
 
 ## 2. The catalogue and the slot widget
 
-- [ ] 2.1 Test first in `plugins/verso-plugin-sdk/tests/conformance.rs`: the SDK exports the shell slot constants and writes `testdata/slots.json` (name, kind, anchors). Add `Widget::Slot { id, kind }` and `Properties.slot`, plus fixtures `widget-slot-act.json` and `widget-properties-slot.json`. Verify with `cargo test` in the SDK.
-- [ ] 2.2 Test first in `internal/widget`: `slot` decodes `kind` (`block`, `act`, `notice`), and `properties` decodes `slot`. Both decode the new SDK fixtures. An unknown kind decodes as a slot that draws nothing. Then implement it. Verify with `make test`.
-- [ ] 2.3 Document `contributes`, positions, kinds, plugin-opened slots and the catalogue in `docs/plugins.md`. Replace the "Contributing to a shell page" hooks section and the manifest table rows, and rewrite "slot — a block the shell owns" for both uses. Verify that the doc's JSON examples decode, using the manifest test's fixture loader.
+- [x] 2.1 Test first in `plugins/verso-plugin-sdk/tests/conformance.rs`: the SDK exports the shell slot constants and writes `testdata/slots.json` (name, kind, anchors). Add `Widget::Slot { id, kind }` and `Properties.slot`, plus fixtures `widget-slot-act.json` and `widget-properties-slot.json`. Verify with `cargo test` in the SDK.
+- [x] 2.2 Test first in `internal/widget`: `slot` decodes `kind` (`block`, `act`, `notice`), and `properties` decodes `slot`. Both decode the new SDK fixtures. An unknown kind decodes as a slot that draws nothing. Then implement it. Verify with `make test`.
+- [x] 2.3 Document `contributes`, positions, kinds, plugin-opened slots and the catalogue in `docs/plugins.md`. Replace the "Contributing to a shell page" hooks section and the manifest table rows, and rewrite "slot — a block the shell owns" for both uses. Verify that the doc's JSON examples decode, using the manifest test's fixture loader.
 
 ## 3. Slot resolution and ordering
 
