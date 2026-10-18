@@ -272,11 +272,6 @@
 :is(.verso-overview__grip, .verso-overview__hide):is(.verso-overview[data-arranging] *) {
   display: grid;
 }
-.verso-overview__hide:is(.verso-button):not(:disabled, [aria-disabled="true"]):hover {
-  --verso-button-edge: var(--color-crimson-line);
-  --verso-button-ground: var(--color-crimson-soft);
-  --verso-button-ink: var(--color-crimson-deep);
-}
 .verso-overview__glyph {
   display: flex;
   flex-shrink: 0;
