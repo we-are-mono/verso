@@ -26,8 +26,26 @@ func countingSampler(now *time.Time) (*sensorSampler, *atomic.Int32) {
 	}, &reads
 }
 
+// settle waits for a sampler's refresh in the background to land.
+func settle(t *testing.T, s *sensorSampler) {
+	t.Helper()
+	deadline := time.Now().Add(2 * time.Second)
+	for {
+		s.mu.Lock()
+		busy := s.refreshing
+		s.mu.Unlock()
+		if !busy {
+			return
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("the refresh never landed")
+		}
+		time.Sleep(time.Millisecond)
+	}
+}
+
 // One read serves everyone for five seconds, and concurrent callers on a stale
-// read wait for one read rather than each starting their own.
+// read start one refresh between them rather than each their own.
 func TestSensorSamplerReadsOncePerFreshness(t *testing.T) {
 	now := time.Unix(1_800_000_000, 0)
 	s, reads := countingSampler(&now)
@@ -37,7 +55,9 @@ func TestSensorSamplerReadsOncePerFreshness(t *testing.T) {
 		t.Fatalf("within five seconds: %d reads, want 1", reads.Load())
 	}
 	now = now.Add(time.Second)
-	if s.Read(); reads.Load() != 2 {
+	s.Read()
+	settle(t, s)
+	if reads.Load() != 2 {
 		t.Fatalf("after five seconds: %d reads, want 2", reads.Load())
 	}
 
@@ -47,8 +67,48 @@ func TestSensorSamplerReadsOncePerFreshness(t *testing.T) {
 		wg.Go(func() { s.Read() })
 	}
 	wg.Wait()
+	settle(t, s)
 	if reads.Load() != 3 {
 		t.Fatalf("eight concurrent callers on a stale read: %d reads, want 3", reads.Load())
+	}
+}
+
+// A stale reading never holds its caller: the sensors sit behind i2c, a read
+// takes the router a good part of a second, and the stream's every frame, the
+// Traffic graph's sample among them, would wait on it. The caller has the
+// last reading at once, and the next caller the fresh one once it lands. Only
+// the very first read, with nothing yet to give, is waited for.
+func TestSensorSamplerNeverWaitsOnAStaleRead(t *testing.T) {
+	now := time.Unix(1_800_000_000, 0)
+	release := make(chan struct{})
+	var n atomic.Int32
+	s := &sensorSampler{
+		read: func() sensors.Inventory {
+			if n.Add(1) > 1 {
+				<-release
+			}
+			return sensors.Inventory{Fans: make([]sensors.FanReading, n.Load())}
+		},
+		now: func() time.Time { return now },
+	}
+	if got := len(s.Read().Fans); got != 1 {
+		t.Fatalf("first read = %d, want the read it waited for", got)
+	}
+	now = now.Add(sensorFreshness)
+	answered := make(chan int, 1)
+	go func() { answered <- len(s.Read().Fans) }()
+	select {
+	case got := <-answered:
+		if got != 1 {
+			t.Errorf("a stale read answered %d, want the last reading", got)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("a stale read held its caller while the sensors were read")
+	}
+	close(release)
+	settle(t, s)
+	if got := len(s.Read().Fans); got != 2 {
+		t.Errorf("after the refresh = %d, want the fresh reading", got)
 	}
 }
 

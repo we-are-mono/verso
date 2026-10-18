@@ -37,29 +37,48 @@ func listsSensors(p *sensors.Profile) bool {
 }
 
 // sensorSampler reads the board's sensors at most once per sensorFreshness,
-// however many pages and streams ask; a caller that finds the read stale
-// while another refreshes it waits for that one read.
+// however many pages and streams ask. A read takes the router a good part of
+// a second, so once there is a reading no caller waits for one: a caller that
+// finds it stale has it at once and starts one refresh in the background,
+// which the callers after it share.
 type sensorSampler struct {
 	read func() sensors.Inventory
 	now  func() time.Time
 
-	mu  sync.Mutex
-	at  time.Time
-	inv sensors.Inventory
+	mu         sync.Mutex
+	at         time.Time
+	inv        sensors.Inventory
+	refreshing bool
 }
 
 func newSensorSampler(p *sensors.Profile) *sensorSampler {
 	return &sensorSampler{read: func() sensors.Inventory { return sensors.ResolveAll(p, &sensors.Reader{}) }, now: time.Now}
 }
 
-// Read is the latest inventory, read anew once it is sensorFreshness old.
+// Read is the latest inventory. The first is waited for, there being nothing
+// else to give; one sensorFreshness old, it is read anew behind its callers.
 func (s *sensorSampler) Read() sensors.Inventory {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if now := s.now(); s.at.IsZero() || now.Sub(s.at) >= sensorFreshness {
+	now := s.now()
+	if s.at.IsZero() {
 		s.inv, s.at = s.read(), now
+		return s.inv
+	}
+	if now.Sub(s.at) >= sensorFreshness && !s.refreshing {
+		s.refreshing = true
+		go s.refresh()
 	}
 	return s.inv
+}
+
+// refresh reads the sensors outside the lock, so every caller meanwhile has
+// the last reading, and hands the fresh one over.
+func (s *sensorSampler) refresh() {
+	inv := s.read()
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.inv, s.at, s.refreshing = inv, s.now(), false
 }
 
 // hardwareView is the Hardware card's readings: the CPU, the main rail's
