@@ -144,8 +144,11 @@ func (o *Overview) portsHead(tr func(string) string) cardHead {
 		}
 	}
 	h := cardHead{Tone: "neutral"}
-	if o.DevicesKnown {
+	switch {
+	case o.DevicesKnown:
 		h.Summary = deviceCount(tr, o.DevicesOnline)
+	case o.DevicesWithheld != "":
+		h.Summary = tr(o.DevicesWithheld)
 	}
 	switch {
 	case down > 0:
@@ -349,13 +352,19 @@ func (o *Overview) trafficHead(tr func(string) string) cardHead {
 }
 
 // trafficBody is the Internet graph, live over the last minute; the card's
-// header names it, so the graph draws no title of its own.
+// header names it, so the graph draws no title of its own. Where the session
+// may not see the history behind it, the card says so under the graph.
 func (o *Overview) trafficBody(r *Renderer, csrf string) (template.HTML, error) {
 	down, up := o.DownSeries, o.UpSeries
 	if len(down) < 2 || len(up) < 2 {
 		down, up = make([]float64, wanSeriesFallback), make([]float64, wanSeriesFallback)
 	}
-	return renderToHTML(r, InternetTraffic(o.DownNow, o.UpNow, down, up, ""), csrf)
+	graph, err := renderToHTML(r, InternetTraffic(o.DownNow, o.UpNow, down, up, ""), csrf)
+	if err != nil || o.TrafficWithheld == "" {
+		return graph, err
+	}
+	note, err := r.fragment("overview.withheld", o.TrafficWithheld)
+	return graph + note, err
 }
 
 // trafficWindowView is the Traffic card's window, the compact dropdown in its

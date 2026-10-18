@@ -47,6 +47,9 @@ type Overview struct {
 	// TrafficRangeURL offers the Internet graph's window where history
 	// stands behind it (Traffic.RangeURL).
 	TrafficRangeURL string
+	// TrafficWithheld is why the graph offers no past window though history
+	// stands behind it, said under the graph; empty while one is offered.
+	TrafficWithheld string
 
 	// The IPv4/IPv6 connection facts. Each side carries its protocol label and
 	// its rows; an absent address family says so in its place.
@@ -77,6 +80,9 @@ type Overview struct {
 	// The Ports card's line includes the observed device count when available.
 	DevicesOnline int
 	DevicesKnown  bool
+	// DevicesWithheld is why the line gives no count where the session may
+	// not see the devices, said in the count's place.
+	DevicesWithheld string
 
 	// FirewallState comes from fw4's loaded kernel table, not its configuration.
 	// Empty means the runtime read failed. No card shows it; the verdict counts

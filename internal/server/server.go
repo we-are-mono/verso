@@ -1115,9 +1115,13 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	ov.InterfacesKnown = telemetryOK
 	ov.WANDevice, ov.DownSeries, ov.UpSeries, ov.DownNow, ov.UpNow = s.wanMinute(r)
 	// A past window is history.db's, the shell's own store, so it is offered
-	// only under the grant that reads the uplink through rpcd.
-	if s.historyStore != nil && grants.may(r.Context(), interfaceGrant) {
-		ov.TrafficRangeURL = overviewTrafficPath
+	// only under the grant that reads the uplink through rpcd; without it the
+	// card says why it has none.
+	if s.historyStore != nil {
+		ov.TrafficWithheld = grants.withheld(r.Context(), interfaceGrant, trafficHistoryRefused, permissionsUnchecked)
+		if ov.TrafficWithheld == "" {
+			ov.TrafficRangeURL = overviewTrafficPath
+		}
 	}
 	// The IPv4/IPv6 panel reads the uplink's live connection facts: the
 	// addresses, gateways and lease times behind the internet tile's verdict.
@@ -1151,6 +1155,7 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	}
 	// Devices remain their own page; the Ports card carries their count.
 	ov.DevicesOnline, ov.DevicesKnown = s.onlineDevices(r.Context(), grants)
+	ov.DevicesWithheld = grants.withheld(r.Context(), leaseGrant, devicesRefused, devicesUnchecked)
 	// The verdict counts a firewall that is not fully loaded, a web interface
 	// the internet can reach, and a service procd stopped restarting.
 	s.applyFirewallStatus(r.Context(), sid, ov)

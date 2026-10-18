@@ -143,15 +143,21 @@ func TestOverviewPastTrafficNeedsTheInterfaceGrant(t *testing.T) {
 		return s
 	}
 	for _, c := range []struct {
-		name string
-		b    fakeBackend
+		name, says string
+		b          fakeBackend
 	}{
-		{"refused", fakeBackend{grant: grantAllBut("ubus network.interface dump")}},
-		{"unanswered", fakeBackend{accessErr: errors.New("rpcd gone")}},
+		{"refused", trafficHistoryRefused, fakeBackend{grant: grantAllBut("ubus network.interface dump")}},
+		{"unanswered", permissionsUnchecked, fakeBackend{accessErr: errors.New("rpcd gone")}},
 	} {
 		s := server(c.b)
-		if _, body := getSignedIn(t, s, "/"); strings.Contains(body, `name="range"`) {
+		_, body := getSignedIn(t, s, "/")
+		if strings.Contains(body, `name="range"`) {
 			t.Errorf("%s: the overview offers a past window", c.name)
+		}
+		// The Traffic card says why it has no past windows, as the roster
+		// says why it has no devices (ADR-007 §9).
+		if card := body[strings.Index(body, `data-overview-card="traffic"`):]; !strings.Contains(card[:strings.Index(card, "</article>")], c.says) {
+			t.Errorf("%s: the Traffic card does not say %q", c.name, c.says)
 		}
 		if status, body := getSignedIn(t, s, "/overview/traffic?range=day"); status != http.StatusForbidden || strings.Contains(body, "verso-chart__mark") {
 			t.Errorf("%s: a past window answered %d:\n%s", c.name, status, body)
@@ -167,8 +173,8 @@ func TestOverviewPastTrafficNeedsTheInterfaceGrant(t *testing.T) {
 		t.Errorf("refused the system grant, the graph's marks:\n%s", body)
 	}
 	s = server(fakeBackend{access: true})
-	if _, body := getSignedIn(t, s, "/"); !strings.Contains(body, `name="range"`) {
-		t.Error("root's overview offers no past window")
+	if _, body := getSignedIn(t, s, "/"); !strings.Contains(body, `name="range"`) || strings.Contains(body, trafficHistoryRefused) {
+		t.Error("root's overview offers no past window, or says it may not see one")
 	}
 	if _, body := getSignedIn(t, s, "/overview/traffic?range=day"); !strings.Contains(body, `data-verso-kind="boot"`) {
 		t.Error("root's graph does not mark the router starting")

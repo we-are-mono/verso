@@ -46,9 +46,12 @@ func (s *Server) handleSystemHardware(w http.ResponseWriter, r *http.Request) {
 	tr := translatorOrIdentity(t)
 	// The page opens on the first reading's day, drawn here, so the graph
 	// needs no second request; drawn only for a session that may read the
-	// history (mayReadTemperatures).
-	if choices := temperatureChoices(tr, in.inv); len(choices) > 0 && s.mayReadTemperatures(r.Context(), sid) {
-		in.tempGraph = s.temperatureGraph(r.Context(), tr, choices[0], historyWindows[0])
+	// history (mayReadTemperatures); any other is told why it has none.
+	if choices := temperatureChoices(tr, in.inv); len(choices) > 0 {
+		in.tempWithheld = s.grantsIn(r.Context(), sid).withheld(r.Context(), systemGrant, temperatureHistoryRefused, permissionsUnchecked)
+		if in.tempWithheld == "" {
+			in.tempGraph = s.temperatureGraph(r.Context(), tr, choices[0], historyWindows[0])
+		}
 	}
 	root := &widget.Stack{Children: hardwareCards(tr, in)}
 
@@ -70,6 +73,9 @@ type hardwareInput struct {
 	// reading (the CPU) over the last 24 hours. Without it the card is its
 	// table alone.
 	tempGraph widget.Widget
+	// tempWithheld is why the card has no graph where the session may not
+	// read the history, said in the graph's place.
+	tempWithheld string
 }
 
 // hardwareHeading is the page's heading: "Hardware" while all is well, else
@@ -287,6 +293,8 @@ func temperaturesCard(tr func(string) string, in hardwareInput) widget.Widget {
 	var children []widget.Widget
 	if choices := temperatureChoices(tr, in.inv); in.tempGraph != nil && len(choices) > 0 {
 		children = append(children, temperatureField(choices, choices[0].Series, historyWindows[0].Value), in.tempGraph)
+	} else if in.tempWithheld != "" {
+		children = append(children, &widget.Text{Markdown: in.tempWithheld})
 	}
 	rows := make([]widget.TableRow, 0, len(temps))
 	for i := range temps {

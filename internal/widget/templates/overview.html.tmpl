@@ -98,6 +98,10 @@
 {{range .Families}}{{.}}{{end}}
 {{end}}
 
+{{/* overview.withheld: why a card shows less than it holds, where the
+     session may not see the rest (ADR-007 §9). */}}
+{{define "overview.withheld"}}<p class="verso-overview__none">{{ t . }}</p>{{end}}
+
 {{/* overview.meters: the Resources card's gauges, two to a row where the
      card is wide enough, a hairline between the rows. */}}
 {{define "overview.meters"}}

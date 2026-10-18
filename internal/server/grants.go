@@ -124,6 +124,29 @@ func (g *sessionGrants) anyUnchecked() bool {
 	return false
 }
 
+// What a page says in place of a reading the shell withholds (ADR-007 §9):
+// the sentences stand where the reading would, and the short words in a
+// card's line, where a sentence would not fit.
+const (
+	trafficHistoryRefused     = "This account may not see the traffic history."
+	temperatureHistoryRefused = "This account may not see the temperature history."
+	devicesRefused            = "No permission to see devices"
+	devicesUnchecked          = "Permissions couldn’t be checked"
+)
+
+// withheld is what a page says in place of the reading p guards: nothing
+// while rpcd grants it, refused while rpcd refuses it, and unanswered while
+// rpcd does not answer, since the reading may then be the session's to see.
+func (g *sessionGrants) withheld(ctx context.Context, p aclProbe, refused, unanswered string) string {
+	switch g.answer(ctx, p) {
+	case granted:
+		return ""
+	case unchecked:
+		return unanswered
+	}
+	return refused
+}
+
 // refusal is words refusing what the session asked, or, where rpcd left a
 // probe unanswered, that the permissions could not be checked.
 func (g *sessionGrants) refusal(words string) string {

@@ -114,11 +114,11 @@ func TestTheHardwarePageOpensOnTheCPUsDay(t *testing.T) {
 // page and the graphs mark the router starting under.
 func TestTheTemperatureHistoryNeedsTheSystemGrant(t *testing.T) {
 	for _, c := range []struct {
-		name string
-		b    fakeBackend
+		name, says string
+		b          fakeBackend
 	}{
-		{"refused", fakeBackend{grant: grantAllBut("ubus system info")}},
-		{"unanswered", fakeBackend{accessErr: errors.New("rpcd gone")}},
+		{"refused", temperatureHistoryRefused, fakeBackend{grant: grantAllBut("ubus system info")}},
+		{"unanswered", permissionsUnchecked, fakeBackend{accessErr: errors.New("rpcd gone")}},
 	} {
 		s := temperatureServer(t)
 		s.backend = c.b
@@ -134,5 +134,13 @@ func TestTheTemperatureHistoryNeedsTheSystemGrant(t *testing.T) {
 		if !strings.Contains(body, ">cluster-thermal<") {
 			t.Errorf("%s: the page lists no reading", c.name)
 		}
+		// The Temperatures card says why it has no graph in the graph's place.
+		if !strings.Contains(body, c.says) {
+			t.Errorf("%s: the Temperatures card does not say %q", c.name, c.says)
+		}
+	}
+	s := temperatureServer(t)
+	if _, body := getSignedIn(t, s, "/system/hardware"); strings.Contains(body, temperatureHistoryRefused) || strings.Contains(body, permissionsUnchecked) {
+		t.Error("a session granted the history is told it may not see it")
 	}
 }

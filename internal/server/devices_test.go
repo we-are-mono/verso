@@ -405,24 +405,29 @@ func TestOnlineDevicesCountsFromTheNeighbourTable(t *testing.T) {
 // or in its stream.
 func TestOnlineDevicesNeedTheLeaseGrant(t *testing.T) {
 	for _, c := range []struct {
-		name string
-		b    func(fakeBackend) fakeBackend
+		name, says string
+		b          func(fakeBackend) fakeBackend
 	}{
-		{"refused", func(b fakeBackend) fakeBackend { b.grant = grantAllBut("ubus dhcp ipv6leases"); return b }},
-		{"unanswered", func(b fakeBackend) fakeBackend { b.accessErr = errors.New("rpcd gone"); return b }},
+		{"refused", devicesRefused, func(b fakeBackend) fakeBackend { b.grant = grantAllBut("ubus dhcp ipv6leases"); return b }},
+		{"unanswered", devicesUnchecked, func(b fakeBackend) fakeBackend { b.accessErr = errors.New("rpcd gone"); return b }},
 	} {
 		s := rosterServer(t)
 		s.backend = c.b(rosterBackend())
 		if online, ok := s.onlineDevices(t.Context(), s.grantsFor("test-sid")); ok || online != 0 {
 			t.Errorf("%s: online devices = %d (known %v), want no count", c.name, online, ok)
 		}
-		if _, body := getSignedIn(t, s, "/"); strings.Contains(body, "devices connected") {
+		_, body := getSignedIn(t, s, "/")
+		if strings.Contains(body, "devices connected") {
 			t.Errorf("%s: the overview counts the devices", c.name)
+		}
+		// The Ports card's line says why it gives no count in its place.
+		if !strings.Contains(body, c.says) {
+			t.Errorf("%s: the Ports card does not say %q", c.name, c.says)
 		}
 	}
 	s := rosterServer(t)
-	if _, body := getSignedIn(t, s, "/"); !strings.Contains(body, "2 devices connected") {
-		t.Error("root's overview does not count the devices")
+	if _, body := getSignedIn(t, s, "/"); !strings.Contains(body, "2 devices connected") || strings.Contains(body, devicesRefused) {
+		t.Error("root's overview does not count the devices, or says it may not see them")
 	}
 }
 
