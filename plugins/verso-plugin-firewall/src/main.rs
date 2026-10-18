@@ -307,6 +307,7 @@ mod tests {
             query: Form::default(),
             snapshot: fixture::snapshot(),
             ubus: Ubus::from_value(Value::Null),
+            plugins: Default::default(),
         }
     }
 

@@ -755,6 +755,7 @@ mod tests {
                 "lab": {".name": "lab", ".type": "route", ".index": 4,
                     "interface": "lan", "target": "172.16.0.0/12", "disabled": "1", "mtu": "1400"}
             }})),
+            plugins: Default::default(),
             ubus: Ubus::from_value(json!({"networkState": {
                 "interfaces": [
                     {"interface": "lan", "l3_device": "br-lan"},

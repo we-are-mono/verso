@@ -29,6 +29,11 @@ const HeaderUCI = "X-Verso-UCI"
 // (ADR-007), base64-encoded JSON keyed by the function that produced each result.
 const HeaderUbus = "X-Verso-Ubus"
 
+// HeaderPlugins names the plugins installed on the router, comma-separated ids,
+// so a plugin offers an act another plugin carries (a drawer to open, a record
+// to add) only where that plugin is there to carry it.
+const HeaderPlugins = "X-Verso-Plugins"
+
 // HeaderDescribe marks a request as a describe call rather than a page render: the
 // plugin answers the shell's pending-change list with plain-language descriptions
 // of its own changes for the review drawer, not a widget envelope. A plugin
@@ -44,14 +49,16 @@ const maxEnvelopeBytes = 1 << 20
 // Request is what the shell forwards to a plugin over its socket: the browser's
 // method, sub-path (below the /plugins/<id>/ mount), query, any form body, and the
 // reads the shell brokered on the plugin's behalf (ADR-007) — the uci snapshot and
-// the results of the helper functions the plugin declared.
+// the results of the helper functions the plugin declared — and the ids of the
+// plugins installed beside it.
 type Request struct {
-	Method string
-	Path   string
-	Query  map[string][]string
-	Form   map[string][]string
-	UCI    UCI
-	Ubus   Ubus
+	Method  string
+	Path    string
+	Query   map[string][]string
+	Form    map[string][]string
+	UCI     UCI
+	Ubus    Ubus
+	Plugins []string
 }
 
 // UCI is the read snapshot the shell injects into a plugin request (ADR-007):
@@ -527,6 +534,9 @@ func (t *SocketTransport) buildRequest(ctx context.Context, req Request) (*http.
 			return nil, fmt.Errorf("plugin: encode brokered reads: %w", err)
 		}
 		httpReq.Header.Set(HeaderUbus, base64.StdEncoding.EncodeToString(reads))
+	}
+	if len(req.Plugins) > 0 {
+		httpReq.Header.Set(HeaderPlugins, strings.Join(req.Plugins, ","))
 	}
 	return httpReq, nil
 }

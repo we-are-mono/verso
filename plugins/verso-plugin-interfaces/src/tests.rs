@@ -15,6 +15,7 @@ fn request(path: &str, query: &str) -> Request {
         "dhcp":{"lan":{".name":"lan",".type":"dhcp","interface":"lan","start":"100","limit":"150","leasetime":"12h"}},
         "wireless":{"radio":{".name":"radio",".type":"wifi-iface","network":"lan"}}
         })),
+        plugins: Default::default(),
         ubus: Ubus::from_value(
             json!({"networkState":{"devices":{"eth0":{"up":true},"eth1":{"up":true},"eth2":{"up":false},"br-lan":{"up":true,"bridge":true}},"interfaces":[{"interface":"lan","l3_device":"br-lan","up":true,"ipv4-address":[{"address":"192.168.1.1","mask":24}]}]}}),
         ),
@@ -771,6 +772,7 @@ fn the_editors_switches_read_as_netifd_reads_them() {
                 "ports": ["eth0"], "stp": "yes", "igmp_snooping": "true"}
         }})),
         ubus: Ubus::from_value(json!({})),
+        plugins: Default::default(),
     });
     // netifd's uci reader takes 1/true and 0/false; any other spelling leaves
     // the option at netifd's default.

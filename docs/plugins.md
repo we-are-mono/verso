@@ -427,10 +427,22 @@ and you own its meaning. The shell brokers only functions in its own closed set:
 | `ddnsState` | `{"services": {"home": {"address": "203.0.113.7", "running": true, "updated": 200, "next": 100}}}` — each ddns-scripts service with files in `/var/run/ddns`, keyed by section. `address` is what the name resolved to at the updater's last check, every address one per line (empty when it did not resolve); `updated` is seconds since an update was last sent and `next` seconds until the next check, both absent when the updater has not written them; `running` is whether the pid file names a live `dynamic_dns_updater`. No state is read from the log. |
 | `dhcpLeases` | `{"leases": [{"hostname", "mac", "ipv4", "ipv6s", "expires_at"}]}` — who holds an address right now, in address order. dnsmasq's DHCPv4 lease file is the list; odhcpd's DHCPv6 table adds `ipv6s` to the device it belongs to, joined by the link-layer address its DUID embeds or by the hostname both tables recorded. `hostname` is empty when the device offered none, `expires_at` is an epoch second (render the countdown against your own clock), and a DHCPv6 lease that joins no DHCPv4 lease is left out — it carries no MAC, which is the identity a reservation is keyed by. The shell reads the lease file itself, so it answers only an operator whose grant covers `dhcp ipv6leases`. |
 
+| `acmeState` | `{"domain": "router.example.com", "requesting": false, "outcome": "renewed", "at": 1759000000, "certificate": {"subject", "issuer", "from", "until", "fingerprint", "serial", "days_total", "days_left", "expired", "self_signed"}, "serving": true}` — the trusted certificate of `config cert 'verso'` in `/etc/config/acme` (ADR-017 §6); `{}` when there is no such section. `outcome` (`issued`, `renewed`, `issue-failed` or `renew-failed`) and `at` (an epoch second) are the last event acme sent for the section's first domain, recorded in RAM by `verso-rpcd acme deliver` from acme's hotplug, and absent after a reboot or when the domain changed since. `requesting` is whether acme's procd instance for the section runs. `certificate` is acme's certificate for the domain, in the facts `accessCredentials` gives the served one (the key is never read); `serving` is whether it is the one Verso serves. Both are absent while acme holds none. No state is read from the log. |
+
 The header is absent when you declared no `ubus` read, when the function is not one
 the shell brokers, and when the read failed or the operator was not allowed it. All
 four are the same thing to you: no data. Render the page without it — a missing
 count is a dash, not an error.
+
+### Which plugins are installed
+
+Every request also carries the **`X-Verso-Plugins`** header: the ids of the
+plugins installed on the router, comma-separated (`acme,dnsdhcp,system`), your
+own among them. The SDK reads it as `Request::plugins`; ask
+`request.has_plugin("dnsdhcp")` before offering an act another plugin carries,
+such as a link to its drawer, so the link never leads to a page that is not
+there. A shell older than the header sends none, which reads as nothing
+installed beside you.
 
 ### Writing config (the `commit` intent)
 

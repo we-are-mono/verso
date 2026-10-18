@@ -369,6 +369,7 @@ func (s *Server) pluginBodyAt(r *http.Request, m plugin.Manifest, pluginPath str
 	// structural op, so the re-render reflects the structural change.
 	req.UCI = s.readSnapshot(r.Context(), m, s.sessionSID(r))
 	req.Ubus = s.readUbus(r.Context(), m, s.sessionSID(r))
+	req.Plugins = s.pluginIDs()
 
 	env, err := s.transport.Fetch(r.Context(), m.Endpoint(), req)
 	if err != nil {

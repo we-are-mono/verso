@@ -243,6 +243,7 @@ func (s *Server) sendEntity(ctx context.Context, m plugin.Manifest, sid, kind, i
 	req.Path = entityPath + kind + "/" + id
 	req.UCI = s.readSnapshot(ctx, m, sid)
 	req.Ubus = s.readUbus(ctx, m, sid)
+	req.Plugins = s.pluginIDs()
 	return s.transport.Fetch(ctx, m.Endpoint(), req)
 }
 

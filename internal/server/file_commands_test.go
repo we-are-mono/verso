@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/url"
+	"strings"
 	"testing"
 
 	"github.com/we-are-mono/verso/internal/plugin"
@@ -35,6 +36,21 @@ func TestFirewallRuleFilesAreBrokeredToTheirPlugin(t *testing.T) {
 	}
 	if got := tr.lastReq.Ubus["firewallFiles"]; string(got) != string(files) {
 		t.Errorf("brokered read = %s, want the helper's JSON verbatim", got)
+	}
+}
+
+// TestAPluginRequestNamesTheInstalledPlugins: every plugin request carries the
+// ids of the installed plugins, in order, its own among them.
+func TestAPluginRequestNamesTheInstalledPlugins(t *testing.T) {
+	tr := &fakeTransport{env: &plugin.Envelope{SchemaVersion: 1, Title: "Demo", Widget: json.RawMessage(`{"type":"card"}`)}}
+	demo, other := demoManifest(), demoManifest()
+	other.ID, other.Name = "acme", "Trusted certificate"
+	s := newServerWith(t, fakeBackend{}, tr, []plugin.Manifest{demo, other})
+	if rec := get(t, s, "/plugins/demo/"); rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rec.Code)
+	}
+	if got := strings.Join(tr.lastReq.Plugins, ","); got != "acme,demo" {
+		t.Errorf("installed plugins = %q, want acme,demo", got)
 	}
 }
 

@@ -20,6 +20,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -649,6 +650,18 @@ func (s *Server) manifestList() []plugin.Manifest {
 	s.manifestsMu.RLock()
 	defer s.manifestsMu.RUnlock()
 	return s.manifests
+}
+
+// pluginIDs is the ids of the installed plugins, in order: what every plugin
+// request carries (X-Verso-Plugins).
+func (s *Server) pluginIDs() []string {
+	manifests := s.manifestList()
+	ids := make([]string, 0, len(manifests))
+	for _, m := range manifests {
+		ids = append(ids, m.ID)
+	}
+	slices.Sort(ids)
+	return ids
 }
 
 func (s *Server) manifestByID(id string) (plugin.Manifest, bool) {

@@ -12,6 +12,7 @@ fn request() -> Request {
             // and Access neither shows nor writes it.
         ),
         ubus: Ubus::from_value(json!({})),
+        plugins: Default::default(),
     }
 }
 #[test]

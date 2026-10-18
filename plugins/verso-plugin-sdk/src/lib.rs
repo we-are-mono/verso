@@ -186,6 +186,7 @@ where
         query: request_query(&target),
         snapshot: Snapshot::from_b64(header(&headers, "x-verso-uci")),
         ubus: Ubus::from_b64(header(&headers, "x-verso-ubus")),
+        plugins: Plugins::from_header(header(&headers, "x-verso-plugins")),
     };
 
     // A describe call is the shell asking this plugin to put its pending changes
@@ -230,12 +231,49 @@ where
 /// shell forwards verbatim and which addresses something *within* a page (which
 /// record to open, which device to act on) rather than which page to render;
 /// Snapshot and Ubus are the reads the shell took for this request, config and
-/// live state.
+/// live state; Plugins is which plugins are installed beside this one.
 pub struct Request {
     pub path: String,
     pub query: Form,
     pub snapshot: Snapshot,
     pub ubus: Ubus,
+    pub plugins: Plugins,
+}
+
+impl Request {
+    /// has_plugin is whether the plugin id is installed, so an act another
+    /// plugin carries (its drawer, its record) is offered only where it can be
+    /// carried out.
+    pub fn has_plugin(&self, id: &str) -> bool {
+        self.plugins.has(id)
+    }
+}
+
+/// Plugins is the ids of the plugins installed on the router, as the shell names
+/// them in X-Verso-Plugins. A shell that sends none names none.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct Plugins(Vec<String>);
+
+impl Plugins {
+    /// from_header reads the shell's comma-separated ids.
+    pub fn from_header(raw: &str) -> Plugins {
+        Plugins(
+            raw.split(',')
+                .map(str::trim)
+                .filter(|id| !id.is_empty())
+                .map(str::to_owned)
+                .collect(),
+        )
+    }
+
+    /// new names ids directly, as a test's request does.
+    pub fn new(ids: &[&str]) -> Plugins {
+        Plugins(ids.iter().map(|id| id.to_string()).collect())
+    }
+
+    pub fn has(&self, id: &str) -> bool {
+        self.0.iter().any(|installed| installed == id)
+    }
 }
 
 // ---- the describe hook ----
@@ -2993,8 +3031,8 @@ mod tests {
     use super::{
         commit, commit_delete, commit_new, header, parse_head, request_path, request_query, Change,
         ConditionItem, DescribeRequestBody, DescribeResponseBody, Description, Envelope, Field,
-        Form, List, PageTab, RowDrawer, SectionWidget, SelectOption, Snapshot, SubjectKind, Switch,
-        TableCell, TableRow, Ubus, Widget,
+        Form, List, PageTab, Plugins, RowDrawer, SectionWidget, SelectOption, Snapshot, SubjectKind,
+        Switch, TableCell, TableRow, Ubus, Widget,
     };
     use super::{json, uci_text, Map, Value};
 
@@ -3371,6 +3409,20 @@ mod tests {
         assert_eq!(counters["counters"][0]["name"], "Allow-Ping");
         assert_eq!(counters["counters"][0]["packets"], 12);
         assert!(ubus.get("somethingElse").is_none());
+    }
+
+    #[test]
+    fn the_installed_plugins_arrive_as_the_shell_names_them() {
+        // The shell's X-Verso-Plugins header, as its transport test sends it.
+        let (_, _, headers) =
+            parse_head("GET / HTTP/1.1\r\nX-Verso-Plugins: acme,dnsdhcp,system\r\n\r\n");
+        let plugins = Plugins::from_header(header(&headers, "x-verso-plugins"));
+        assert!(plugins.has("dnsdhcp") && plugins.has("acme"));
+        assert!(!plugins.has("dns") && !plugins.has(""));
+        // An older shell sends no header: nothing is installed beside this one.
+        let (_, _, headers) = parse_head("GET / HTTP/1.1\r\n\r\n");
+        assert!(!Plugins::from_header(header(&headers, "x-verso-plugins")).has("dnsdhcp"));
+        assert!(Plugins::new(&["dnsdhcp"]).has("dnsdhcp"));
     }
 
     #[test]

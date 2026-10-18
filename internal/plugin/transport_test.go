@@ -432,6 +432,25 @@ func TestSocketTransportInjectsBrokeredReads(t *testing.T) {
 	}
 }
 
+// TestSocketTransportNamesTheInstalledPlugins: the ids of the plugins installed
+// beside this one ride X-Verso-Plugins, comma-separated, so a plugin offers an
+// act another plugin carries only where that plugin is there to carry it.
+func TestSocketTransportNamesTheInstalledPlugins(t *testing.T) {
+	sock := serveUnix(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		envelopeJSON(w, http.StatusOK, fmt.Sprintf(
+			`{"schema_version":1,"title":%q,"widget":{"type":"card"}}`, r.Header.Get(HeaderPlugins)))
+	}))
+	env, err := testTransport().Fetch(context.Background(), at(sock), Request{
+		Method: http.MethodGet, Path: "/", Plugins: []string{"acme", "dnsdhcp", "system"},
+	})
+	if err != nil {
+		t.Fatalf("Fetch: %v", err)
+	}
+	if env.Title != "acme,dnsdhcp,system" {
+		t.Errorf("X-Verso-Plugins = %q", env.Title)
+	}
+}
+
 // TestSocketTransportOmitsBrokeredHeaderWhenEmpty: nothing brokered, no header —
 // a plugin sees the channel only when the shell actually performed a read.
 func TestSocketTransportOmitsBrokeredHeaderWhenEmpty(t *testing.T) {
