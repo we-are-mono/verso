@@ -28,14 +28,14 @@ func TestDecodeAndRenderConditions(t *testing.T) {
 	got := render(t, newRenderer(t), c)
 	for _, want := range []string{
 		`data-verso-conditions`, `data-verso-condition="dest_port"`,
-		// The block is headed as every section is: two cells of air over the
-		// shared band (the form's block step and one of its own), the lede the
-		// title's next 20px line, a cell from the lede to what follows, and the
-		// shared lede, not a heading of its own spacing.
+		// The block is headed as a part of its card is: its name on a ledger
+		// line, the Strong Hairline running on from it, and the lede on a line
+		// of its own under them.
 		`<fieldset data-verso-conditions class="verso-conditions">`,
 		`<div class="verso-conditions__head">`,
 		`<legend class="verso-conditions__title">`,
-		`<div data-verso-section-lede class="verso-prose text-body">Combined with and.</div>`,
+		`<span aria-hidden="true" class="verso-conditions__line"></span>`,
+		`<div data-verso-section-lede class="verso-conditions__lede verso-prose">Combined with and.</div>`,
 		`data-verso-condition-template="rate"`, `name="dest_port"`,
 		`Combined with and.`,
 		// The picker: one act rather than a closed list beside an Add button. Each
@@ -78,8 +78,11 @@ func TestDecodeAndRenderConditions(t *testing.T) {
 	}
 	declares(t, "conditions", ".verso-conditions", "padding-top: calc(var(--spacing) * 4);")
 	declares(t, "conditions", ".verso-conditions__head",
-		"flex-wrap: wrap;", "justify-content: space-between;", "column-gap: calc(var(--spacing) * 6);", "margin-bottom: var(--spacing-inset);")
-	declares(t, "conditions", ".verso-conditions__title", "color: var(--color-ink);", "@apply type-section-title;")
+		"flex-wrap: wrap;", "align-items: center;", "column-gap: calc(var(--spacing) * 3);", "margin-bottom: var(--spacing-inset);")
+	declares(t, "conditions", ".verso-conditions__title", "flex-shrink: 0;", "color: var(--color-ink);", "@apply type-subheading;")
+	declares(t, "conditions", ".verso-conditions__line", "height: 1px;", "background-color: var(--color-rule-strong);")
+	declares(t, "conditions", ".verso-conditions__lede", "flex: 1 0 100%;")
+	declares(t, "conditions", ".verso-conditions__lede:is(.verso-prose)", "color: var(--color-body);", "@apply type-lede;")
 	declares(t, "conditions", ".verso-conditions__group-head", "color: var(--color-meta);", "@apply type-label;")
 	declares(t, "conditions", ".verso-conditions__menu",
 		"position: absolute;", "top: 100%;", "left: 0;", "z-index: 30;", "width: 36rem;", "margin-top: calc(var(--spacing) * 2);")

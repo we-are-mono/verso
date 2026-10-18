@@ -63,7 +63,7 @@
 - [x] 4.1 `rhythm`: the block rhythm; `--verso-rhythm` stays a context property, and each child's `--verso-step` is a knob registered with `@property`; first-visible via `:nth-child(1 of S)`. Verify: block done.
 - [x] 4.2 `stack` and `cluster`: the page stack, and the repeated `flex flex-wrap items-center gap-2 min-w-0` row. Verify: block done; `TestNoRepeatedBundles` no longer lists that bundle.
 - [x] 4.3 `page`: page body, full and ground variants, heading (`type-headline`), the reach properties. Verify: block done.
-- [ ] 4.4 `section`: the kinds other than card (ruled, part, continued, plain, bare), band, ledger, kicker (`type-label`) and lede (`type-lede`). Every rule keyed on `data-verso-headless` or `data-verso-ruled` names its kind. Verify: block done; `section.html.tmpl` holds no class-string template call.
+- [x] 4.4 `section`: the kinds other than card (ruled, part, continued, plain, bare), band, ledger, kicker (`type-label`) and lede (`type-lede`). Every rule keyed on `data-verso-headless` or `data-verso-ruled` names its kind. Verify: block done; `section.html.tmpl` holds no class-string template call.
 - [x] 4.5 `drawer`, `beside`, `cards-row`: drawer frame, motion, open state, scrollbar, ground, gutter and title; the figure-beside row; the cards-of-one-kind row. Verify: block done, with a drawer of each kind in the parity run.
 
 ## 5. Forms
@@ -77,7 +77,7 @@
 
 ## 6. The card
 
-- [ ] 6.1 Test first, in `internal/widget/section_card_test.go`:
+- [x] 6.1 Test first, in `internal/widget/section_card_test.go`:
   - a titled top-level section renders `class="verso-card"` and `data-verso-section="card"`, with `verso-card__head` on its band and `verso-card__body` on its rhythm;
   - a headless ruled top-level section renders `verso-card` and `data-verso-headless`;
   - a nested part does not render `verso-card`;
@@ -87,8 +87,8 @@
   - one test per remaining `RenderWithToken` surface.
 
   Verify: the tests fail.
-- [ ] 6.2 Add `cards` to the `Renderer` handle (Decision 5) and return `card` from `sectionView.Kind()`. Emit the card classes in `section.html.tmpl`, and turn `cards` off for the choices drawer and the Overview card body. Verify: the 6.1 tests pass, and parity holds with the card rules still in `sections.css` re-keyed to `[data-verso-section="card"]`.
-- [ ] 6.3 `card`: frame, inset, head seam, title (`type-card-title`), body. The row bleed and edge handoff are property settings only, and visible edges use `:nth-child(1 of S)`. Delete every `:is(.verso-page-body, [data-verso-drawer-body]) section…` rule. Verify: block done; that pattern no longer appears in any stylesheet (search is empty).
+- [x] 6.2 Add `cards` to the `Renderer` handle (Decision 5) and return `card` from `sectionView.Kind()`. Emit the card classes in `section.html.tmpl`, and turn `cards` off for the choices drawer and the Overview card body. Verify: the 6.1 tests pass, and parity holds with the card rules still in `sections.css` re-keyed to `[data-verso-section="card"]`.
+- [x] 6.3 `card`: frame, inset, head seam, title (`type-card-title`), body. The row bleed and edge handoff are property settings only, and visible edges use `:nth-child(1 of S)`. Delete every `:is(.verso-page-body, [data-verso-drawer-body]) section…` rule. Verify: block done; that pattern no longer appears in any stylesheet (search is empty).
 - [ ] 6.4 `overview-card` and `overview`: the article takes `verso-card verso-overview-card`, the header `verso-card__head`, the title `verso-card__title`, the content `verso-card__body`. The Overview card's own frame and type utilities come off, and collapse, arrange, tone, summary and slot go to its block. Verify: block done; Arrange and collapse work in the dev container; the reference set's closed card and Arrange states hold parity.
 - [ ] 6.5 Spec scenario checks in the dev container, never committed:
   - swap the border token in `card.css`;

@@ -1,0 +1,105 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/* SPDX-FileCopyrightText: 2026 Mono Technologies Inc. */
+
+/*
+ * settings — a list of option rows: each a setting's row (blocks/field.css)
+ * with its description kept in view, its answer a control, an in-place value
+ * or a read-out. Each row brings its own air, so a section adds none above
+ * the set, and the hairlines between rows do the separating. A fold keeps
+ * the long tail of options inside the same list.
+ *
+ * Variants: data-verso-framed  the list stands in a card's frame: its head
+ *                              draws no hairline of its own
+ * Elements: __head      the group's name, ruled off as a table's heads are
+ *           __meta      what the head says beside the name
+ *           __readout   a fact's answer, standing where a control stands: its
+ *                       value or its pills, on 24px lines, the first on the
+ *                       name's band, pills wrapping onto lines of their own
+ *           __pill      one pill, on its 24px line
+ *           __value     the read-out value, verbatim, in figures
+ *           __fold      the long tail, behind a hairline as a row's; in a
+ *                       card it runs to the borders with the rows
+ *           __summary   the fold's words and chevron, in the action's ink so
+ *                       it reads as a place to go: 48px with its hairline,
+ *                       its air over the line a pixel short
+ *           __more      the rows it folds
+ * Reads:    --verso-field-bleed  on the fold: how far it runs past the
+ *                       column, as a row does
+ * Sets:     --verso-edge-air, --verso-edge-trail  forwarded to its first and
+ *                       last visible row
+ */
+
+.verso-settings > :nth-child(1 of :not(input[type="hidden"], [hidden], template)) {
+  --verso-edge-air: inherit;
+}
+.verso-settings > :nth-last-child(1 of :not(input[type="hidden"], [hidden], template)) {
+  --verso-edge-trail: inherit;
+}
+
+.verso-settings__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: calc(var(--spacing) * 3);
+  padding: var(--spacing) 0 calc(var(--spacing) * 0.75);
+  border: 0 solid var(--color-rule-strong);
+  border-bottom-width: 1px;
+  color: var(--color-meta);
+  @apply type-label;
+}
+.verso-settings__head:where(.verso-settings[data-verso-framed] > *) {
+  border-bottom-width: 0;
+}
+.verso-settings__meta {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--color-faint);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  @apply type-axis;
+}
+
+.verso-settings__readout {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: calc(var(--spacing) * 2);
+  padding-block: var(--spacing);
+}
+.verso-settings__pill {
+  display: flex;
+  align-items: center;
+  height: calc(var(--spacing) * 6);
+}
+.verso-settings__value {
+  color: var(--color-ink);
+  @apply type-value;
+}
+
+.verso-settings__fold {
+  margin-inline: calc(var(--verso-field-bleed, 0px) * -1);
+  padding-inline: var(--verso-field-bleed, 0px);
+  border: 0 solid var(--color-rule);
+  border-top-width: 1px;
+}
+.verso-settings__summary {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--spacing) * 1.5);
+  padding: calc(var(--spacing) * 2.75) calc(var(--spacing) * 3) calc(var(--spacing) * 3);
+  color: var(--color-denim-deep);
+  cursor: pointer;
+  user-select: none;
+  transition-property: color, background-color;
+  transition-duration: 150ms;
+  @apply type-button;
+}
+.verso-settings__summary:hover {
+  background-color: var(--color-quiet);
+  color: var(--color-denim);
+}
+.verso-settings__summary::-webkit-details-marker {
+  display: none;
+}
+.verso-settings__more {
+  padding-bottom: var(--spacing);
+}

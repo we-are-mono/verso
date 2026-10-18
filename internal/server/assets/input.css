@@ -21,7 +21,6 @@
 @import "tailwindcss" source(none);
 @import "./palette.css";
 @import "./type.css";
-@import "./sections.css";
 /* Blocks (ADR-025): one file per look under blocks/, each imported here into the
    components layer, so a utility in the markup outranks every block by layer
    order. CSS imports take no glob; TestEveryBlockIsImported fails on a block file
@@ -32,6 +31,7 @@
 @import "./blocks/bar.css" layer(components);
 @import "./blocks/box.css" layer(components);
 @import "./blocks/button.css" layer(components);
+@import "./blocks/card.css" layer(components);
 @import "./blocks/chart.css" layer(components);
 @import "./blocks/chevron.css" layer(components);
 @import "./blocks/chip.css" layer(components);
@@ -60,6 +60,7 @@
 @import "./blocks/form-grid.css" layer(components);
 @import "./blocks/glyph.css" layer(components);
 @import "./blocks/grid.css" layer(components);
+@import "./blocks/heading.css" layer(components);
 @import "./blocks/input.css" layer(components);
 @import "./blocks/joined.css" layer(components);
 @import "./blocks/link.css" layer(components);
@@ -85,6 +86,8 @@
 @import "./blocks/reveal.css" layer(components);
 @import "./blocks/rhythm.css" layer(components);
 @import "./blocks/scroll-edge.css" layer(components);
+@import "./blocks/section.css" layer(components);
+@import "./blocks/settings.css" layer(components);
 @import "./blocks/shelf.css" layer(components);
 @import "./blocks/sidebar.css" layer(components);
 @import "./blocks/slot.css" layer(components);
@@ -179,6 +182,9 @@
   --spacing-control: calc(2rem + 1px);
   /* A card's inset and the air between cards, fields and a group's steps. */
   --spacing-inset: 1.5rem;
+  /* A frame's words at either side: the inset less the frame's own pixel,
+     so a box that starts or ends inside the frame has its borders on lines. */
+  --spacing-side: calc(1.5rem - 1px);
   /* The page's frame, a drawer's inset and a block's step in a drawer. */
   --spacing-frame: 2.5rem;
   /* A row's act and a subsection's act, riding a 24px line. */
@@ -357,18 +363,6 @@ html {
       inset 0 0 0 2px var(--color-denim-deep),
       inset 0 0 0 62.5rem var(--color-denim-soft) !important;
   }
-
-
-
-
-
-  /* page masthead: the header the shell chrome renders over every page (an
-     optional kicker over the headline). Sizes live here so they hot-reload.
-     The lede is the takeover's sentence under its title. */
-  /* The kicker is the canvas's one kicker, wherever it sits: 12px at 500,
-     uppercase at .08em, in the meta ink. Denim is for what leads somewhere, and
-     a kicker leads nowhere. */
-  .verso-kicker { display: inline-flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; font-size: 0.75rem; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-meta); }
   /* A control (a field, a dropdown, a button, a value box) is 32px and its
      bottom border's pixel, so both its borders land on lines; it gives that
      pixel back to the layout, as a card gives its frame's, so whatever holds
@@ -376,29 +370,6 @@ html {
      and stays on the grid. A control that states its own vertical margin
      keeps it. */
   .h-control { margin-bottom: -1px; }
-}
-
-@layer utilities {
-
-  /* A section's lede, including inside drawers. Relative type and unitless
-     leading let enlarged text and spacing overrides grow the content
-     naturally. */
-  [data-verso-section-lede] {
-    max-width: 60ch;
-    font-size: var(--text-base);
-    font-weight: 300;
-    line-height: 1.5;
-  }
-  /* A section's lede is a step under the title it explains, written on 24px
-     lines, 16px between its paragraphs. */
-  [data-verso-section-lede],
-  [data-verso-section-lede] * {
-    font-size: var(--text-sm);
-    line-height: 1.5rem;
-  }
-  [data-verso-section-lede] p:not(:last-child) { margin-bottom: 1rem; }
-  [data-verso-section-lede] p:last-child { margin-bottom: 0; }
-
 }
 
 /* The Overview's cards (ADR-022, DESIGN.md "Overview cards"): two columns that

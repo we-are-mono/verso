@@ -19,11 +19,14 @@
  *   --verso-field-rule   the hairline over it (default none)
  *   --verso-field-bleed  how far it runs past its column either side, its
  *                        words kept in it (default 0)
- *   --verso-edge-lead    the air over its name where it opens the surface it
- *                        stands in, which outranks the lead; forwarded down
- *                        to it by the blocks it stands in
- *   --verso-edge-trail   what it gives back under itself where it ends that
- *                        surface; forwarded the same way
+ *   --verso-edge-air     the air over its name where it opens a surface that
+ *                        keeps that air itself, which outranks the lead;
+ *                        forwarded down to it by the blocks it stands in
+ *   --verso-edge-trail   what it gives back under itself where it ends a
+ *                        surface; forwarded the same way. A wide row that
+ *                        ends on the sentence under its answer (what it is
+ *                        for, or its note) closes on it, as words do, and
+ *                        gives nothing back
  * Variants: data-verso-wide   its answer is a page of text (a code or text
  *                             area), standing under the question at the
  *                             row's full width
@@ -66,7 +69,7 @@
   syntax: "*";
   inherits: false;
 }
-@property --verso-edge-lead {
+@property --verso-edge-air {
   syntax: "*";
   inherits: false;
 }
@@ -86,9 +89,12 @@
   max-width: var(--verso-form-width, 40rem);
   margin-inline: calc(var(--verso-field-bleed, 0px) * -1);
   margin-bottom: var(--verso-edge-trail, 0px);
-  padding: var(--verso-edge-lead, var(--verso-field-lead, var(--spacing-inset))) var(--verso-field-bleed, 0px) var(--verso-field-trail, 0px);
+  padding: var(--verso-edge-air, var(--verso-field-lead, var(--spacing-inset))) var(--verso-field-bleed, 0px) var(--verso-field-trail, 0px);
   border: 0 solid var(--color-rule);
   border-top-width: var(--verso-field-rule, 0px);
+}
+.verso-field[data-verso-wide]:has(> .verso-field__ledger > .verso-field__answer > [data-verso-field-note]:last-child) {
+  margin-bottom: 0;
 }
 
 /* A form's grid of fields owns their air. */
@@ -146,7 +152,7 @@
 }
 /* A settings list's fold draws its own hairline over its summary; the row
    before it keeps a row's 16px over that line. */
-.verso-field:is([data-verso-settings] *):has(+ details) {
+.verso-field:is(.verso-settings > *):has(+ .verso-settings__fold) {
   --verso-field-trail: calc(var(--spacing) * 4);
 }
 /* A field set is its head, then a row per setting under it: no hairline

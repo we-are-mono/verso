@@ -8,12 +8,12 @@
  * row per setting under it, each a question and its answer in the column;
  * how they stand to each other is the field block's.
  *
- * Reads: --verso-edge-lead, --verso-edge-trail  forwarded to its first and
+ * Reads: --verso-edge-air, --verso-edge-trail  forwarded to its first and
  *        last row
  */
 
 .verso-field-set > :first-child {
-  --verso-edge-lead: inherit;
+  --verso-edge-air: inherit;
 }
 .verso-field-set > :last-child {
   --verso-edge-trail: inherit;

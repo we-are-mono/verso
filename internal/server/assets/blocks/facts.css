@@ -23,6 +23,10 @@
  *                              fixed label column; on a phone the label
  *                              stands over its value, which takes the width
  *           data-verso-headed  a head stands over the list (facts-head)
+ * Context:  --verso-facts-lead, --verso-facts-trail  the air over its first
+ *                              row and under its last, which a surface whose
+ *                              own edge already keeps that air gives up (a
+ *                              card the list opens or closes)
  * Elements: __row     one fact; data-verso-help when a note follows it,
  *                     data-verso-next when its value says what it becomes
  *           __pair    an identity fact's label and value on one line
@@ -73,12 +77,13 @@
   border-bottom-width: 1px;
 }
 .verso-facts__row:where(.verso-facts[data-verso-style="divided"] *):first-child {
-  padding-top: calc(var(--spacing) * 2);
+  padding-top: var(--verso-facts-lead, calc(var(--spacing) * 2));
 }
 .verso-facts__row:where(.verso-facts[data-verso-style="divided"][data-verso-headed] *):first-child {
-  padding-top: calc(var(--spacing) * 1.75);
+  padding-top: var(--verso-facts-lead, calc(var(--spacing) * 1.75));
 }
 .verso-facts__row:where(.verso-facts[data-verso-style="divided"] *):last-child {
+  padding-bottom: var(--verso-facts-trail, calc(var(--spacing) * 2));
   border-bottom-width: 0;
 }
 .verso-facts__row:where(.verso-facts[data-verso-align="left"] *) {
@@ -110,6 +115,12 @@
   padding-block: calc(var(--spacing) * 2.5);
   border: 0 solid var(--color-mid);
   border-top-width: 1px;
+}
+.verso-facts__row:where(.verso-facts[data-verso-style="system"] *):first-child {
+  padding-top: var(--verso-facts-lead, calc(var(--spacing) * 2.5));
+}
+.verso-facts__row:where(.verso-facts[data-verso-style="system"] *):last-child {
+  padding-bottom: var(--verso-facts-trail, calc(var(--spacing) * 2.5));
 }
 .verso-facts__row[data-verso-next]:where(.verso-facts[data-verso-style="system"] *) {
   align-items: flex-start;

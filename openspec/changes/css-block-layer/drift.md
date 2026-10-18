@@ -328,3 +328,24 @@ after; the SVG's fills, strokes and LED animations compared directly.
 | the conditions builder and a condition | 2 | forms.css rules, utility strings, arbitrary variants into its rows | the conditions and condition blocks, the part rows' quiet names in the row-label role |
 | a reveal, a framed fold | 2 | rules in forms.css and utility strings | the reveal and disclosure blocks; no pixel changes |
 | the apply's steps | 1 | utility strings and a class-string template | the apply block |
+
+### `section`, `card`, `heading`, `settings`, and the edges they hand on
+
+| Copies | n | Difference | Became |
+|---|---|---|---|
+| a section's kinds, its band, its ledger, its lede | every page and drawer | sections.css in three cascades (utilities, unlayered, components), seven class-string templates in shared.html.tmpl, utilities in section.html.tmpl | the section block (kinds, band, ledger, lede) and the heading block (the title's line, its meta, its act, its lede); no pixel changes |
+| a page's and a drawer's subject as a card | every page and drawer | unlayered rules keyed on the page body and the drawer body, a card inferred from a section's place | the card block on the renderer's mark; its pulls and closes are knobs (`--verso-edge-lead`, `--verso-edge-air`, `--verso-edge-trail`) the rhythm, the field and the containers that forward them read; no pixel changes |
+| a card's side inset | | a `:root` property in sections.css | the `--spacing-side` theme token beside `--spacing-inset` |
+| a kicker | 3 | 12px caps on a 24px line by a class-string template and an input.css rule | the label role's 16px line in a 24px band, as a table's heads stand; no pixel changes |
+| a heading's act | 1 | arbitrary variants forcing the button inside to a control's height, 16px in, 8px gaps | the button block's act on a heading's line; no pixel changes |
+| a lede in a card's head | | weight 400 by an override of the lede's 300 | the body role, as the heading's card size states |
+| the conditions' head | 1 | the section title's role, turned into a part's ledger only inside a card by `::before` and `order` rules | a part's ledger everywhere: the name in the subheading role and the Strong Hairline running on from it |
+| a fold that is all a headless card holds | 1 | its summary in 600 at 16px with normal tracking | the card title's role, as a card's head is |
+| a fold among a card's rows | 1 | summary at weight 500 by an override | the field-label role, as a row's name is |
+| a settings list's head, read-out and fold | 1 | utility strings and arbitrary variants, the head on a 32px band | the settings block, the head on the table heads' 24px band |
+| a chooser drawer's groups | 1 | arbitrary variants reaching into its sections' first children and every rhythm's children | the modal block's `__choices` and the section block's chooser context; its groups' first blocks keep the 24px under a heading every section keeps |
+| a page's own listing, its legend and its empty note | every listing page | rules keyed on the page body's stack, a `px-4` beaten by an unlayered rule, utilities on the note | the listing's `data-verso-place="card"` from the renderer; legend and note read the listing's edges; no pixel changes |
+| the last row's hairline, a table with no heads | | unlayered rules on page and drawer bodies | context knobs the table reads (`--verso-last-rule-width`/`-color`, `--verso-table-lead`), its 1px lead on every surface |
+| a fact list's first and last rows in a card | | unlayered rules zeroing the rows' padding | the facts block's `--verso-facts-lead`/`-trail`, which the card sets |
+| the configuration card and the page's Save | 2 | `data-verso-code-divider` rules and a reach on `data-verso-rule`, both overridden on every surface that showed them | the code block's `data-verso-place="card"`; the acts under a card stand 23px on with no rule, by the form block |
+| every type role | | case unstated, so a role laid over the label role kept its capitals | every role states its case |

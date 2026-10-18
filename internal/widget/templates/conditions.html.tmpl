@@ -24,12 +24,14 @@
 {{/* The builder (blocks/conditions.css), each added condition the condition
      block (blocks/condition.css). */}}
 <fieldset data-verso-conditions class="verso-conditions">
-  {{/* Headed as every section is: 40px of air (the form's 24px block step and
-       16px of its own), the shared band and lede, and 24px under them, so the
-       title, its lede and what follows stand as far apart here as anywhere. */}}
+  {{/* The conditions are a part of the card that holds them, so they are
+       headed as a part is (a section's ledger): the name at the label's size
+       on its 24px line, the Strong Hairline running on from it to the
+       column's end, the lede under them. */}}
   <div class="verso-conditions__head">
     <legend class="verso-conditions__title">{{if .Label}}{{.Label}}{{else}}{{ t "Conditions" }}{{end}}</legend>
-    {{if .Help}}{{template "verso-section-lede" .Help}}{{end}}
+    <span aria-hidden="true" class="verso-conditions__line"></span>
+    {{if .Help}}<div data-verso-section-lede class="verso-conditions__lede verso-prose">{{.Help}}</div>{{end}}
   </div>
   {{/* The conditions a rule carries are one block: the list wears the quiet
        card while it holds any, and each condition after the first says on

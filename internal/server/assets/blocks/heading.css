@@ -1,0 +1,125 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/* SPDX-FileCopyrightText: 2026 Mono Technologies Inc. */
+
+/*
+ * heading — what stands over a section's content: its title (led by the
+ * glyph of what the section is), what stands on the title's line (a chip, a
+ * fact, an act at the line's end), and its lede on a line of its own under
+ * them. A section's band and a card's head are this one heading; the card
+ * sets its size. Heading acts finish at the content's right edge, also when
+ * they wrap under the title, centred on the title's 24px line so the title
+ * stays on its line whatever stands beside it.
+ *
+ * Variants: data-verso-size="card"  a card's head: its title in the card
+ *                                   title's role, its lede in the body role,
+ *                                   a step heavier than a lede elsewhere so it
+ *                                   holds its own beside the title
+ * Elements: __line        the title and what stands on its line, 12px apart
+ *           __glyph       what the section is, in Glyph
+ *           __title       the title, in the section title's role
+ *           __kicker      a kicker's words: naming the group under it and
+ *                         nothing more, in the label role, its 16px line
+ *                         centred in a 24px band
+ *           __sep         the dot between the title and an inline fact
+ *           __meta        a fact on the line: its __meta-label in Meta, its
+ *                         __meta-value (data-verso-section-meta, rewritten
+ *                         live) a step heavier; data-verso-inline: riding the
+ *                         title's group
+ *           __act         what acts on the section, at the line's end
+ *           __lede        the section's one or two sentences, in the lede
+ *                         role, 16px between its paragraphs, on a line of
+ *                         its own
+ */
+
+.verso-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  column-gap: calc(var(--spacing) * 6);
+}
+
+.verso-heading__line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: calc(var(--spacing) * 3);
+}
+
+.verso-heading__glyph {
+  display: flex;
+  flex-shrink: 0;
+  color: var(--color-glyph);
+}
+
+.verso-heading__title {
+  color: var(--color-ink);
+  @apply type-section-title;
+}
+.verso-heading__title:where(.verso-heading[data-verso-size="card"] *) {
+  @apply type-card-title;
+}
+
+.verso-heading__kicker {
+  padding-block: var(--spacing);
+  color: var(--color-meta);
+  @apply type-label;
+}
+
+.verso-heading__sep {
+  color: var(--color-inert);
+}
+@media (width < 40rem) {
+  .verso-heading__sep {
+    display: none;
+  }
+}
+
+.verso-heading__meta {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--spacing) * 1.5);
+  @apply type-body;
+}
+.verso-heading__meta[data-verso-inline] {
+  color: var(--color-meta);
+}
+.verso-heading__meta-label {
+  color: var(--color-meta);
+}
+.verso-heading__meta-value {
+  color: var(--color-body);
+  @apply type-subheading;
+}
+.verso-heading__meta-value:where(.verso-heading__meta[data-verso-inline] *) {
+  color: inherit;
+  @apply type-field-label;
+}
+
+.verso-heading__act {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  width: 100%;
+  height: calc(var(--spacing) * 6);
+  margin-left: auto;
+}
+@media (width >= 40rem) {
+  .verso-heading__act {
+    width: auto;
+  }
+}
+
+.verso-heading__lede {
+  flex: 1 0 100%;
+}
+.verso-heading__lede > * {
+  max-width: 60ch;
+}
+.verso-heading__lede:is(.verso-prose) {
+  color: var(--color-body);
+  @apply type-lede;
+}
+.verso-heading__lede:is(.verso-prose):where(.verso-heading[data-verso-size="card"] *) {
+  @apply type-body;
+}

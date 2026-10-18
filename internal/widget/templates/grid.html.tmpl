@@ -6,9 +6,8 @@
      Each child stands in a cell of its own; a split's first cell is the
      form's column. A facts grid's lists stand straight in its columns (the
      unfold reads them there, data-verso-facts), set left (Grid.renderInto),
-     and the seam between them is the facts block's. Cards of one kind keep
-     data-verso-cards, which the page's flow reads to stand them as a card
-     stands. */}}
+     and the seam between them is the facts block's. Cards of one kind side
+     by side stand in the page's flow as one card does. */}}
 {{if eq .Style "form"}}
 {{/* Related fields share a row only when their own container has room. The
      group owns the outer field padding, so stacking keeps the same rhythm. */}}
@@ -17,7 +16,7 @@
 <div class="verso-grid" data-verso-style="facts"><div data-verso-facts class="verso-grid__track">{{range .Children}}{{.}}{{end}}</div></div>
 {{else}}
 {{$split := or (eq .Style "settings") (eq .Style "editor") (eq .Style "rail")}}
-<div class="verso-grid"{{if or $split (eq .Style "figure") (eq .Style "cards")}} data-verso-style="{{.Style}}"{{end}}{{if eq .Style "cards"}} data-verso-cards{{end}} data-verso-columns="{{if le .Columns 1}}1{{else if eq .Columns 2}}2{{else if eq .Columns 3}}3{{else}}4{{end}}">
+<div class="verso-grid"{{if or $split (eq .Style "figure") (eq .Style "cards")}} data-verso-style="{{.Style}}"{{end}} data-verso-columns="{{if le .Columns 1}}1{{else if eq .Columns 2}}2{{else if eq .Columns 3}}3{{else}}4{{end}}">
   <div class="verso-grid__track">{{range $i, $child := .Children}}<div{{if and $split (eq $i 0)}} data-verso-form-column{{end}} class="verso-grid__cell">{{$child}}</div>{{end}}</div>
 </div>
 {{end}}

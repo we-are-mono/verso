@@ -1,0 +1,227 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/* SPDX-FileCopyrightText: 2026 Mono Technologies Inc. */
+
+/*
+ * section — a surface's subject and its parts, their air and the hairlines
+ * that divide them, on the 8px grid. A section says what it is
+ * (data-verso-section) and this block says how it stands; on a surface of
+ * cards a subject is a card instead (blocks/card.css).
+ *
+ *   ruled      one of the surface's subjects, set off from the last by a rule
+ *              40px under it, its content 24px under the rule; the one a
+ *              surface opens with draws neither. With a heading, the heading
+ *              band carries the rule instead: 40px from rule to title, the
+ *              content straight on (24px on, under a lede).
+ *   part       a section inside a section, ruled 24px under the content
+ *              before it and kept to the content's inset.
+ *   continued  not a new subject but more of the rows above (the act that
+ *              adds another): its rule always draws, on the last row's line.
+ *   plain      an unruled block, 24px off the one before.
+ *   bare       a nested or flush block that adds no air of its own.
+ *
+ * A rule is a top border and a box ends on a line, so every rule's margin is
+ * its air less the rule's own pixel. Where a surface differs is only how far
+ * its rules and bands run past the content: the reach (--verso-reach-start,
+ * --verso-reach-end, context the surface sets), every rule reaching by it and
+ * padding back in, so its words do not move.
+ *
+ * Reads:    --verso-step  in a rhythm, how far it stands from the block before
+ *           (a card stands a part 40px on)
+ *           --verso-reach-start, --verso-reach-end  the surface's reach
+ * Sets:     --verso-edge-lead  24px under a heading on its first block that
+ *                              brings no air of its own
+ *           --verso-edge-air   0 on the first block of a section with no
+ *                              heading: the air under its rule is the
+ *                              section's
+ *           --verso-table-lead 0 on a listing that opens a headed section
+ *           --verso-last-rule-color  transparent on its last block: a listing
+ *                              that ends it gives its last hairline to the
+ *                              rule that closes it
+ *           --verso-listing-trail  -1px on a listing among its blocks
+ *           --verso-rhythm     0 in a chooser's group (blocks/modal.css),
+ *                              whose groups stand under quiet bands
+ * Elements: __head    the heading (blocks/heading.css); data-verso-section-band
+ *                     where it is the band that carries the rule
+ *           __ledger  a part's heading line: its name at the label's size, a
+ *                     hairline running on to the column's end, 24px over what
+ *                     follows (its lede takes that air when there is one);
+ *                     __glyph, __part-title, __part-meta (verbatim), __line,
+ *                     __part-act
+ *           __lede    a part's or a kicker's lede, under its heading
+ *           __body    what the section holds (verso-rhythm)
+ */
+
+.verso-section[id] {
+  scroll-margin-top: calc(var(--spacing) * 16);
+}
+@media (width >= 48rem) {
+  .verso-section[id] {
+    scroll-margin-top: 0;
+  }
+}
+
+.verso-section[data-verso-section="ruled"] {
+  margin-inline: calc(-1 * var(--verso-reach-start, 0px)) calc(-1 * var(--verso-reach-end, 0px));
+  margin-top: var(--verso-step, calc(var(--spacing) * 10 - 1px));
+  padding-inline: var(--verso-reach-start, 0px) var(--verso-reach-end, 0px);
+  padding-top: var(--spacing-inset);
+  border: 0 solid var(--color-rule);
+  border-top-width: 1px;
+}
+.verso-section[data-verso-section="part"] {
+  margin-top: var(--verso-step, calc(var(--spacing-inset) - 1px));
+  padding-top: var(--spacing-inset);
+  border: 0 solid var(--color-rule);
+  border-top-width: 1px;
+}
+.verso-section:is([data-verso-section="ruled"], [data-verso-section="part"]):first-of-type {
+  margin-top: 0;
+  padding-top: 0;
+  border-top-width: 0;
+}
+.verso-section[data-verso-section="continued"] {
+  --verso-step: -1px;
+  margin-top: -1px;
+  padding-top: 0;
+  border: 0 solid var(--color-rule);
+  border-top-width: 1px;
+}
+.verso-section[data-verso-section="plain"] {
+  padding-top: var(--verso-edge-air, var(--spacing-inset));
+}
+.verso-section[data-verso-section="plain"]:first-child {
+  padding-top: 0;
+}
+
+/* On a page's own stack a section takes its standoff from the stack's 40px
+   rather than adding its own; a ruled one puts its rule there. */
+.verso-section:is(.verso-page__body > .verso-stack > *):not([data-verso-section="ruled"], [data-verso-section="part"]) {
+  padding-top: 0;
+}
+.verso-section:is(.verso-page__body > .verso-stack > *):is([data-verso-section="ruled"], [data-verso-section="part"]) {
+  margin-top: calc(var(--spacing) * 10 - 1px);
+}
+
+/* The heading band carries its section's rule: the rule, 40px, the title's
+   24px line, its lede's under it, and the content 24px on. */
+.verso-section:has(> .verso-section__head[data-verso-section-band]) {
+  margin-top: 0;
+  padding-block: 0;
+  border-top-width: 0;
+}
+.verso-section:has(> .verso-section__head[data-verso-section-band]):is(:not(input[type="hidden"], template, [hidden]) + *) {
+  margin-top: calc(var(--spacing) * 10 - 1px);
+}
+.verso-section__head[data-verso-section-band] {
+  margin-inline: calc(-1 * var(--verso-reach-start, 0px)) calc(-1 * var(--verso-reach-end, 0px));
+  padding: calc(var(--spacing) * 10) var(--verso-reach-end, 0px) 0 var(--verso-reach-start, 0px);
+  border: 0 solid var(--color-rule);
+  border-top-width: 1px;
+}
+/* A page opens under the masthead's hairline: a band with nothing visible
+   before it in the page draws no rule of its own. Hidden carriers and
+   elements with nothing in them are not something before it. */
+.verso-section__head[data-verso-section-band]:is(.verso-page__body *):not(.verso-page__body :not(input[type="hidden"], template, script, [hidden], :empty) ~ * *) {
+  padding-top: 0;
+  border-top-width: 0;
+}
+.verso-section__head:not([data-verso-section-band]):has(.verso-heading__kicker) {
+  margin-bottom: var(--spacing-inset);
+}
+
+/* Under a title (or its lede), whatever brings no air of its own stands 24px
+   under it, as a field does with its own. */
+.verso-section:has(> .verso-section__head[data-verso-section-band]) > .verso-section__body > :nth-child(1 of :not(input[type="hidden"], [hidden], template)):not(.verso-field, .verso-form-grid, .verso-conditional, .verso-field-set, .verso-form:not([data-verso-compact-form]):has(.verso-field, .verso-form-grid, .verso-conditional), [data-verso-change-field], .verso-settings, [data-verso-rows]:has(> .verso-field:first-child)) {
+  --verso-edge-lead: var(--spacing-inset);
+}
+.verso-section:has(> .verso-section__head[data-verso-section-band]) > .verso-section__body > .verso-listing:not([data-verso-list]):first-child {
+  --verso-table-lead: 0px;
+}
+
+/* A section with no heading opens with its first row's air given back,
+   which is right under a rule and flush under anything else; under a notice
+   (a page's opening callout) it stands 24px clear of it instead. */
+.verso-section[data-verso-headless] > .verso-section__body > :nth-child(1 of :not(input[type="hidden"], [hidden], template)) {
+  --verso-edge-air: 0px;
+}
+.verso-section[data-verso-headless]:is([data-verso-callout] + *) {
+  margin-top: var(--spacing-inset);
+}
+
+/* A listing that ends the section gives its last hairline to the rule that
+   closes it (the next section's, the page Save's), so the two never stand
+   as a pair; clear, not gone, so the row keeps its pixel and the grid. One
+   among the section's blocks gives its last hairline's pixel back to what
+   follows, so the next block's lines still fill bands of the grid. */
+.verso-section__body > :last-child {
+  --verso-last-rule-color: transparent;
+}
+.verso-section__body > .verso-listing:not(:last-child) {
+  --verso-listing-trail: -1px;
+}
+
+.verso-section__ledger {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--spacing) * 3);
+  height: calc(var(--spacing) * 6);
+  margin-bottom: var(--spacing-inset);
+}
+.verso-section__ledger:has(+ .verso-section__lede) {
+  margin-bottom: 0;
+}
+.verso-section__glyph {
+  display: flex;
+  flex-shrink: 0;
+  color: var(--color-glyph);
+}
+.verso-section__part-title {
+  flex-shrink: 0;
+  color: var(--color-ink);
+  @apply type-subheading;
+}
+.verso-section__part-meta {
+  flex-shrink: 0;
+  color: var(--color-ink);
+  @apply type-value;
+}
+.verso-section__line {
+  flex: 1 1 0%;
+  min-width: calc(var(--spacing) * 6);
+  height: 1px;
+  background-color: var(--color-rule-strong);
+}
+.verso-section__part-act {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+}
+
+.verso-section__lede {
+  margin-bottom: var(--spacing-inset);
+}
+.verso-section__lede > * {
+  max-width: 60ch;
+}
+.verso-section__lede:is(.verso-prose) {
+  color: var(--color-body);
+  @apply type-lede;
+}
+
+/* A chooser's groups (blocks/modal.css) stand one straight under the other,
+   each under a quiet band run edge to edge, its words at the drawer's
+   gutter, and their choices meet on their own lines. */
+.verso-section:is(.verso-modal__choices > *) {
+  margin-top: 0;
+  padding-top: 0;
+}
+.verso-section__head:is(.verso-modal__choices > .verso-section > *) {
+  margin: 0;
+  padding: calc(var(--spacing) * 2) var(--verso-drawer-gutter);
+  border-width: 1px 0;
+  border-color: var(--color-rule);
+  background-color: var(--color-quiet);
+}
+.verso-section__body:is(.verso-modal__choices > .verso-section > *) {
+  --verso-rhythm: 0px;
+}

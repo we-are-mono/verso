@@ -3,47 +3,38 @@
 {{/* settings: a list of option rows — plain name, one-line description, the
      underlying option as a mono code chip, and the state on the right (a shared
      switch, value pills, or a mono read-out value). Bare hairline rows by
-     default; the "card" style adds the quiet boxed frame (the same card as the
-     table widget). A seam folds the long tail of options inside the same block. */}}
+     default; the "card" style stands the list in a card's frame. A fold keeps
+     the long tail of options inside the same list (blocks/settings.css). */}}
 {{/* settings.value: an editing row's value. It is one setting's row like any
      form field's (verso-field, built in settingsItem.frame), with the
      description kept in view under it. An in-place value stages itself on
      blur or Enter and says its own refusal in the frame's band. */}}
 {{define "settings.value"}}<input id="{{.Name}}" type="text" name="{{.Name}}" value="{{.Value}}"{{with .DescribedBy}} aria-describedby="{{.}}"{{end}}{{if .Inline}} data-verso-inline-input{{with .Datatype}} data-verso-datatype="{{.}}"{{end}}{{end}}{{if eq .Measure "number"}} inputmode="numeric"{{end}} class="verso-input" data-verso-verbatim data-verso-figures{{if eq .Measure "number"}} data-verso-measure="number"{{end}}>{{end}}
 {{/* settings.readout: a fact's answer (readoutView) — its value or its pills,
-     standing in the answer column where a setting's control stands. They
-     read on 24px lines, the first on the name's band (the 4px over it gives
-     back the answer's pull over the band), pills wrapping onto lines of their
-     own. */}}
-{{define "settings.readout"}}{{if or .Value .Pills}}<div class="flex flex-wrap gap-x-2 py-1">
-    {{range .Pills}}<span class="flex h-6 items-center">{{.}}</span>{{end}}
-    {{with .Value}}<span class="font-mono text-base leading-6 font-medium tabular-nums text-ink">{{.}}</span>{{end}}
+     standing in the answer column where a setting's control stands. */}}
+{{define "settings.readout"}}{{if or .Value .Pills}}<div class="verso-settings__readout">
+    {{range .Pills}}<span class="verso-settings__pill">{{.}}</span>{{end}}
+    {{with .Value}}<span class="verso-settings__value" data-verso-verbatim data-verso-figures>{{.}}</span>{{end}}
   </div>{{end}}{{end}}
-{{/* bare: rows sit straight on the page, hairlines doing the separating.
-     Each row brings its own air, so a section adds none above the set
-     (data-verso-settings). */}}
-<div data-verso-settings>
-  {{/* the group label lives inside its card (same treatment as table column
-       heads), so section headings above stay the only floating text. */}}
-  {{/* bare groups rule off their head like a table's thead — the same hairline
-       under the label; framed cards stay ruleless. */}}
-  {{if .Title}}<div class="flex items-baseline justify-between gap-3 pt-1 pb-0.75 {{if not .Card}}border-b border-rule-strong {{end}}{{template "verso-kicker-class"}}">
+{{/* Each row brings its own air, so a section adds none above the set. The
+     group's name rules off its rows as a table's heads do; in a card's frame
+     it draws no hairline of its own. */}}
+<div class="verso-settings" data-verso-settings{{if .Card}} data-verso-framed{{end}}>
+  {{if .Title}}<div class="verso-settings__head">
     <span>{{.Title}}</span>
-    {{if .Meta}}<span class="min-w-0 truncate text-xs font-normal normal-case text-faint">{{.Meta}}</span>{{end}}
+    {{if .Meta}}<span class="verso-settings__meta">{{.Meta}}</span>{{end}}
   </div>{{end}}
   {{range .Items}}{{.}}{{end}}
   {{if .SeamSummary}}
-  <details class="border-t border-rule">
-    {{/* the chevron sits with the label (an orphaned right-edge chevron fades)
-         and the pair wears the action colour, so the fold reads as a place to
-         go without button chrome. Its air over the line is a pixel short, as
-         all air after a drawn edge is, so the fold is 48px tall with its
-         hairline and what follows stays on the grid. */}}
-    <summary class="flex cursor-pointer items-center gap-1.5 px-3 pt-2.75 pb-3 leading-6 text-sm font-semibold text-denim-deep transition-colors select-none hover:bg-quiet hover:text-denim [&::-webkit-details-marker]:hidden">
+  {{/* the chevron sits with the label (an orphaned right-edge chevron fades)
+       and the pair wears the action colour, so the fold reads as a place to
+       go without button chrome. */}}
+  <details class="verso-settings__fold">
+    <summary class="verso-settings__summary">
       {{icon "chevron-right" "verso-chevron size-4"}}
       {{.SeamSummary}}
     </summary>
-    <div class="pb-1">
+    <div class="verso-settings__more">
       {{range .SeamItems}}{{.}}{{end}}
     </div>
   </details>

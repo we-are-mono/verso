@@ -162,15 +162,23 @@ func TestRenderSettingsValueAndSeam(t *testing.T) {
 		}},
 	})
 	for _, want := range []string{
-		">lan</span>", "font-mono",
+		`<span class="verso-settings__value" data-verso-verbatim data-verso-figures>lan</span>`,
 		`name="cachesize" value="1000"`, `class="verso-field__answer"`, // a named value uses shared field geometry
-		"<span>Resolution</span>", "uppercase", // the group label renders inside the card
-		"<details", "3 more options", "nohosts", "verso-chevron",
+		`<div class="verso-settings" data-verso-settings data-verso-framed>`,
+		`<div class="verso-settings__head">`, "<span>Resolution</span>", // the group label renders inside the card
+		`<details class="verso-settings__fold">`, `<summary class="verso-settings__summary">`, "3 more options", "nohosts", "verso-chevron",
+		`<div class="verso-settings__more">`,
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("settings missing %q:\n%s", want, got)
 		}
 	}
+	// The read-out is the value role in its verbatim form, mono (type.css);
+	// the group label is the label role, in caps, and in the card's frame it
+	// draws no hairline of its own.
+	declares(t, "settings", ".verso-settings__value", "@apply type-value;")
+	declares(t, "settings", ".verso-settings__head", "color: var(--color-meta);", "@apply type-label;")
+	declares(t, "settings", ".verso-settings__head:where(.verso-settings[data-verso-framed] > *)", "border-bottom-width: 0;")
 	if strings.Count(got, "rounded-xs border border-rule bg-ground") != 0 {
 		t.Errorf("settings must not be wrapped in artifact cards:\n%s", got)
 	}

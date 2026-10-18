@@ -1,90 +1,72 @@
 <!-- SPDX-License-Identifier: GPL-2.0-only -->
 <!-- SPDX-FileCopyrightText: 2026 Mono Technologies Inc. -->
-{{/* section: a grouped block with an optional heading. Full headings and their
-     descriptions share a Quiet Sand band with 16px vertical padding and 20px
-     before the content. Nested sections keep their smaller ledger headings. */}}
+{{/* section: a grouped block with an optional heading. The section says what
+     it is (data-verso-section, its kind from sectionView.Kind) and its block
+     says how it stands (blocks/section.css); on a surface of cards a page's
+     or a drawer's subject is a card instead (blocks/card.css), its heading
+     the card's head (blocks/heading.css), so a page and a drawer draw it by
+     one definition. */}}
 {{/* Hairline is opt-in, and it means one of two things.
 
-     A ruled section is one of a page's subjects, set off from the last by a rule
-     with 24px on either side. When it has a full heading, the stylesheet replaces
-     the rule and its lower gap with the heading band. The one a page opens with
-     draws neither rule nor gap. first-of-type, not first-child: a form opens with its
-     hidden CSRF carrier, so the leading section is never the first child of
-     anything and would draw a rule with nothing above it to divide from.
+     A ruled section is one of a page's subjects, set off from the last by a
+     rule with 24px on either side. When it has a full heading, the heading
+     band carries the rule instead. The one a page opens with draws neither
+     rule nor gap.
 
-     Ruled AND flush is the other thing a rule can mean: not a new subject but a
-     continuation of the rows above — the control that adds another one. It
-     always draws its rule, because a continuation of nothing is not a case, and
-     it cancels the standoff its container would give it: the rule under the last
-     row IS the separation, and air above that rule would detach it from the set
-     it belongs to. */}}
-{{/* A section inside a section takes no lead-in of its own: it is one of its
-     parent's blocks, and the parent's block rhythm already stands it off. */}}
-{{/* A section someone can be sent to stops short of the viewport's top edge: far
-     enough that the phone's own bar is not covering the heading that was asked
-     for, and on a wider screen no further than the air the section already keeps
-     above itself. */}}
-{{/* A section with no heading has nothing for its first row's top padding to
-     stand off from: it is marked headless, and the stylesheet takes that
-     padding back so its first box starts where the section does. */}}
-{{/* The section says what it is and sections.css says how it stands — its
-     air, its rule, how far the rule reaches on this surface — so a page and a
-     drawer draw it by one definition. */}}
+     Ruled AND flush is the other thing a rule can mean: not a new subject but
+     a continuation of the rows above — the control that adds another one. It
+     always draws its rule, because a continuation of nothing is not a case,
+     and it cancels the standoff its container would give it: the rule under
+     the last row IS the separation. */}}
+{{/* A section with no heading has nothing for its first row's air to stand
+     off from: it is marked headless, and its block takes that air back so
+     its first box starts where the section does. */}}
 {{$band := and .Title (not .Nested) (not .Kicker)}}
 {{$card := eq .Kind "card"}}
-<section data-verso-section="{{.Kind}}"{{if $card}} class="verso-card"{{end}}{{if not (or .Title .Meta .Control)}} data-verso-headless{{end}}{{if .Anchor}} id="{{.Anchor}}"{{end}}{{if and .Hairline (not .Flush)}} data-verso-ruled{{if not .Nested}} data-verso-section-divider{{end}}{{end}}>
+<section class="{{if $card}}verso-card{{else}}verso-section{{end}}" data-verso-section="{{.Kind}}"{{if not (or .Title .Meta .Control)}} data-verso-headless{{end}}{{if .Anchor}} id="{{.Anchor}}"{{end}}>
   {{if and .Nested .Title (not .Kicker)}}
   {{/* A section inside a section is a part of its subject, and it stands on
        a ledger line: its name at the label's size and a hairline running on
        to the column's end — the start of a group, which a field label never
-       is. The ledger is one 20px line, and the first box in the part stands
-       24px under it, as a form's rows stand apart. The line is the strong hairline,
-       the one that stands between sections, so a ledger is told from the
-       hairlines between the rows under it; a part with a glyph leads with
-       it, in Glyph, so parts of different kinds are told apart at a
-       glance. A part's lede belongs to its line, as a card's belongs to its
-       title: it stands straight under the line, and the 24px to the first
-       box stands under the lede instead. */}}
-  <div data-verso-ledger class="{{if not .Sub}}mb-6 {{end}}flex h-6 items-center gap-3">
-    {{if .Icon}}<span class="shrink-0 text-glyph">{{icon .Icon "size-4"}}</span>{{end}}
+       is. The line is the strong hairline, the one that stands between
+       sections, so a ledger is told from the hairlines between the rows
+       under it; a part with a glyph leads with it, in Glyph, so parts of
+       different kinds are told apart at a glance. A part's lede belongs to
+       its line, as a card's belongs to its title. */}}
+  <div data-verso-ledger class="verso-section__ledger">
+    {{if .Icon}}<span class="verso-section__glyph">{{icon .Icon "size-4"}}</span>{{end}}
     {{/* Its heading is one level under the nearest titled section over it,
          so an outline never skips a level (Level). */}}
-    {{if eq .Level 2}}<h2 class="shrink-0 text-sm leading-6 font-semibold text-ink">{{.Title}}</h2>{{else if eq .Level 3}}<h3 class="shrink-0 text-sm leading-6 font-semibold text-ink">{{.Title}}</h3>{{else}}<h4 class="shrink-0 text-sm leading-6 font-semibold text-ink">{{.Title}}</h4>{{end}}
+    {{if eq .Level 2}}<h2 class="verso-section__part-title">{{.Title}}</h2>{{else if eq .Level 3}}<h3 class="verso-section__part-title">{{.Title}}</h3>{{else}}<h4 class="verso-section__part-title">{{.Title}}</h4>{{end}}
     {{/* A part's meta is its name as the config writes it (an expanded
-         row's network `lan`), so it is set verbatim, in mono. */}}
-    {{if .Meta}}<span data-verso-section-meta class="shrink-0 font-mono text-base leading-6 font-medium text-ink">{{.Meta}}</span>{{end}}
-    <span aria-hidden="true" class="h-px min-w-6 flex-1 bg-rule-strong"></span>
-    {{if .Control}}<span class="flex shrink-0 items-center">{{.Control}}</span>{{end}}
+         row's network `lan`), so it is set verbatim. */}}
+    {{if .Meta}}<span data-verso-section-meta class="verso-section__part-meta" data-verso-verbatim>{{.Meta}}</span>{{end}}
+    <span aria-hidden="true" class="verso-section__line"></span>
+    {{if .Control}}<span class="verso-section__part-act">{{.Control}}</span>{{end}}
   </div>
   {{else if or .Title .Meta .Control}}
-  {{/* A kicker's list stands 24px under it. */}}
-  <div{{if $band}} data-verso-section-band{{end}} class="{{if $card}}verso-card__head {{end}}{{if and .Sub (not $band)}}flex flex-wrap items-center justify-between gap-x-6{{else}}{{template "verso-section-band-class"}}{{end}}{{if .Kicker}} mb-6{{end}}">
-    <div class="flex flex-wrap items-center gap-3 leading-6">
-      {{/* On a page the band is a card's header, led by the glyph of what the
+  <div class="{{if $card}}verso-card__head{{else}}verso-section__head{{end}} verso-heading"{{if $band}} data-verso-section-band{{end}}{{if $card}} data-verso-size="card"{{end}}>
+    <div class="verso-heading__line">
+      {{/* A titled section's heading is led by the glyph of what the
            section is, as the Overview's cards are. */}}
-      {{if and $band .Icon}}<span aria-hidden="true" class="flex shrink-0 text-glyph">{{icon .Icon "size-4"}}</span>{{end}}
-      {{/* A kicker names the group under it and nothing more, so it is set at the
-           meta size in caps rather than as a heading — a second 18px heading
+      {{if and $band .Icon}}<span aria-hidden="true" class="verso-heading__glyph">{{icon .Icon "size-4"}}</span>{{end}}
+      {{/* A kicker names the group under it and nothing more, so it is set
+           in the label role rather than as a heading — a second heading
            beside a rail's list of headings would read as one of them. */}}
-      {{if .Title}}{{if .Kicker}}<h2 class="{{template "verso-kicker-class"}}">{{.Title}}</h2>{{else}}<h2 class="{{template "verso-section-title-class"}}">{{.Title}}</h2>{{end}}{{end}}
+      {{if .Title}}{{if .Kicker}}<h2 class="verso-heading__kicker">{{.Title}}</h2>{{else}}<h2 class="verso-heading__title">{{.Title}}</h2>{{end}}{{end}}
       {{if .Chip}}<span class="verso-chip" data-verso-verbatim>{{.Chip}}</span>{{end}}
-      {{/* the meta value carries a stable hook: a section whose content is live
-           (a streaming listing) has the shell rewrite this one string — how
-           many events are shown, how fast they arrive — and nothing else. */}}
-      {{if and .Meta .MetaInline}}<span class="text-inert max-sm:hidden" aria-hidden="true">·</span><span class="inline-flex items-center gap-1.5 text-sm leading-6 text-meta">{{if .MetaLabel}}<span>{{.MetaLabel}}</span>{{end}}<span data-verso-section-meta class="font-medium">{{.Meta}}</span></span>{{end}}
+      {{/* the meta value carries a stable hook: a section whose content is
+           live (a streaming listing) has the shell rewrite this one string —
+           how many events are shown, how fast they arrive — and nothing
+           else. */}}
+      {{if and .Meta .MetaInline}}<span class="verso-heading__sep" aria-hidden="true">·</span><span class="verso-heading__meta" data-verso-inline>{{if .MetaLabel}}<span>{{.MetaLabel}}</span>{{end}}<span data-verso-section-meta class="verso-heading__meta-value">{{.Meta}}</span></span>{{end}}
     </div>
-    {{if and .Meta (not .MetaInline)}}<span class="{{template "verso-section-meta-class"}}">{{if .MetaLabel}}<span class="{{template "verso-section-meta-label-class"}}">{{.MetaLabel}}</span>{{end}}<span data-verso-section-meta class="{{template "verso-section-meta-value-class"}}">{{.Meta}}</span></span>{{end}}
-    {{/* Heading actions finish at the content's right edge, including when
-         they wrap below the title. They keep a field's height, giving back
-         its bottom border's pixel, centred on the title's 24px line and
-         reaching 4px past it either side, so their borders land on lines and
-         the title stays on its line whatever stands beside it. */}}
-    {{if .Control}}<span class="ml-auto flex h-6 w-full items-center justify-end sm:w-auto [&>button]:h-control [&>button]:-mb-px [&>button]:gap-2 [&>button]:px-4">{{.Control}}</span>{{end}}
-    {{if and .Sub $band}}{{template "verso-section-lede" .Sub}}{{end}}
+    {{if and .Meta (not .MetaInline)}}<span class="verso-heading__meta">{{if .MetaLabel}}<span class="verso-heading__meta-label">{{.MetaLabel}}</span>{{end}}<span data-verso-section-meta class="verso-heading__meta-value">{{.Meta}}</span></span>{{end}}
+    {{if .Control}}<span class="verso-heading__act">{{.Control}}</span>{{end}}
+    {{if and .Sub $band}}<div data-verso-section-lede class="verso-heading__lede verso-prose">{{.Sub}}</div>{{end}}
   </div>
   {{end}}
-  {{if and .Sub (not $band)}}<div data-verso-section-lede class="{{template "verso-section-lede-class"}} mb-6">{{.Sub}}</div>{{end}}
-  {{/* Blocks stand off from each other; form rows sit flush. The rule is named
-       in input.css, where the two declarations can be ordered deliberately. */}}
-  <div class="{{if $card}}verso-card__body {{end}}verso-rhythm">{{range .Children}}{{.}}{{end}}</div>
+  {{if and .Sub (not $band)}}<div data-verso-section-lede class="verso-section__lede verso-prose">{{.Sub}}</div>{{end}}
+  {{/* Blocks stand off from each other; form rows sit flush (verso-rhythm). */}}
+  <div class="{{if $card}}verso-card__body{{else}}verso-section__body{{end}} verso-rhythm">{{range .Children}}{{.}}{{end}}</div>
 </section>

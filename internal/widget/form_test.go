@@ -155,9 +155,10 @@ func TestSettingsFormSaveRestsInSandUntilChanged(t *testing.T) {
 // with no rule of its own: the next section's rule is the only line between
 // them, and a ruled Save would read as a section of its own. A form that is
 // the page's (its sections inside it) commits the whole page, so its Save
-// stands 24px under a section rule of the page's own, run out to the rail. A
-// form in a panel keeps its own rule inside the panel. Every rule lands on a
-// line of the grid (its margin its air less its own pixel).
+// stands on the sand under the page's cards, whose frames rule it off: 24px
+// under the last card's line, a pixel short after its frame, drawing no rule
+// of its own. A form in a panel keeps its own rule inside the panel. Every
+// rule lands on a line of the grid (its margin its air less its own pixel).
 func TestSectionFormCommitsWithoutARule(t *testing.T) {
 	r := newRenderer(t)
 	form := func() *Form {
@@ -167,22 +168,22 @@ func TestSectionFormCommitsWithoutARule(t *testing.T) {
 	if !strings.Contains(sectioned, `<div data-verso-form-actions class="verso-form__acts" data-verso-close="flush">`) {
 		t.Errorf("a section's Save stands under its fields, unruled:\n%s", sectioned)
 	}
-	// The page's rule is a section's rule: 40px under the content before it,
-	// as every section's stands.
-	if got := render(t, r, form()); !strings.Contains(got, `<div data-verso-form-actions data-verso-rule class="verso-form__acts" data-verso-close="page">`) {
-		t.Errorf("the page's form closes the page on a section rule:\n%s", got)
+	if got := render(t, r, form()); !strings.Contains(got, `<div data-verso-form-actions class="verso-form__acts" data-verso-close="page">`) {
+		t.Errorf("the page's form does not close the page:\n%s", got)
 	}
 	framed := form()
 	framed.Frame = "panel"
 	if got := render(t, r, framed); !strings.Contains(got, `<div data-verso-form-actions class="verso-form__acts">`) {
 		t.Errorf("a panel's form closes on its own rule, inside the panel:\n%s", got)
 	}
-	// The acts' rule and air: 24px with its own pixel by default, 40px
-	// on the page's close, none and 24px flush.
+	// The acts' rule and air: 24px with its own pixel by default; on the
+	// page's close, or under a card, no rule and 24px under the card's line
+	// less its frame's pixel; none and 24px flush.
 	declares(t, "form", ".verso-form__acts",
 		"--verso-acts-after: calc(var(--spacing) * 5.75);", "margin-top: var(--verso-acts-after);",
 		"padding-top: calc(var(--spacing) * 5.75);", "border-top-width: 1px;")
-	declares(t, "form", `.verso-form__acts[data-verso-close="page"]`, "--verso-acts-after: calc(var(--spacing) * 9.75);")
+	declares(t, "form", `.verso-form__acts:is([data-verso-close="page"], :is(.verso-card, .verso-code[data-verso-place="card"], .verso-section:has(> .verso-section__body > .verso-code[data-verso-place="card"]:last-child)) ~ *)`,
+		"--verso-acts-after: calc(var(--spacing-inset) - 1px);", "padding-top: 0;", "border-top-width: 0;")
 	declares(t, "form", `.verso-form__acts[data-verso-close="flush"]`,
 		"--verso-acts-after: var(--spacing-inset);", "padding-top: 0;", "border-top-width: 0;")
 	// A form that is only its act (Install htop, under the package's facts)

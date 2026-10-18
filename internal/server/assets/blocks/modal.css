@@ -32,6 +32,8 @@
  *           edges and the cards it holds, the cards' 24px less the pixel of
  *           the edge it is measured from (16px less it on a phone), so a
  *           card's frame lands on a line of the drawer's grid
+ *           --verso-reach-start, --verso-reach-end  0: what stands in an
+ *           overlay reaches no further than its column (a card sets its own)
  * Elements: __head        a dialog's title and its close control; a drawer's
  *                         chrome, the title and its __acts
  *           __title       the dialog's title
@@ -40,12 +42,17 @@
  *           __body        a dialog's contents
  *           __ground      a drawer's body (data-verso-ground="paper": on the
  *                         drawer's own Paper)
+ *           __choices     a chooser's body: a list of choices on the
+ *                         drawer's own Paper, run edge to edge, each group
+ *                         under a quiet band (blocks/section.css)
  *           __panel       a drawer's fetched contents, and its __loading mark
  *           __busy        a dialog's face while its act runs: the waiting
  *                         mark, its __busy-title and __busy-words
  */
 
 .verso-modal {
+  --verso-reach-start: 0px;
+  --verso-reach-end: 0px;
   position: fixed;
   inset: 0;
   width: calc(100% - 2rem);
@@ -213,6 +220,14 @@
 .verso-modal__ground[data-verso-ground="paper"] {
   padding-block: calc(var(--spacing) * 7);
   background-color: transparent;
+}
+
+.verso-modal__choices {
+  flex: 1 1 0%;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding-bottom: calc(var(--spacing) * 8);
 }
 
 /* A panel fetched when it opens: a column filling the drawer, and the

@@ -10,7 +10,9 @@
  * Elements: __gate       the switch's row (a field)
  *           __body       the rows it reveals while on
  *           __otherwise  what stands while it is off
- * Reads:    --verso-edge-trail  what its container hands its last row; it
+ * Reads:    --verso-edge-air    what its container hands its first row; it
+ *           forwards it to the gate
+ *           --verso-edge-trail  what its container hands its last row; it
  *           forwards it to the last row of whichever branch shows, or to the
  *           gate when nothing shows under it
  */
@@ -29,7 +31,7 @@
 }
 
 .verso-conditional__gate {
-  --verso-edge-lead: inherit;
+  --verso-edge-air: inherit;
 }
 .verso-conditional__body,
 .verso-conditional__otherwise {

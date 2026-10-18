@@ -6,7 +6,7 @@
 {{/* Match the shared table scroller: it scrolls sideways and clips only
      while the inventory is wider than it (data-verso-scroller), so a row
      act's tip rises over the column heads. */}}
-<div class="verso-listing" data-verso-listing>
+<div class="verso-listing" data-verso-listing{{with .Place}} data-verso-place="{{.}}"{{end}}>
 <div data-verso-inventory data-verso-scroller class="verso-listing__scroller min-w-0">
   <p data-verso-inventory-stale role="status" hidden class="verso-listing__stale">{{t "Live status could not be refreshed. Retrying…"}}</p>
   {{/* On the notebook's grid as every listing is (the table block): each

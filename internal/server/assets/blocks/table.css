@@ -25,8 +25,17 @@
  * subject has an entity panel carries that panel's template after its last
  * cell.
  *
- * Context: --verso-table-start, --verso-table-end   the edges' insets, which
- *          a surface that stands the table in its own inset sets
+ * Context: --verso-edge-start, --verso-edge-end  the edges' insets, which a
+ *          surface that stands the table in its own inset sets (a card's
+ *          listing keeps the card's 23px)
+ *          --verso-head-top     the hairline over a card's column heads,
+ *          which the frame or a seam they stand on already draws
+ *          --verso-last-rule-width, --verso-last-rule-color  the last row's
+ *          hairline, which a frame that takes it (width 0) or a rule that
+ *          closes the section (transparent) gives up; the row keeps its grid
+ *          --verso-table-lead   the pixel a table with no column heads
+ *          stands down, as if under one, so every row lands its hairline on
+ *          a line; one that stands straight on a seam keeps none
  * Variants: data-verso-dense      no inset of the cells' own: the columns'
  *                                 widths space them
  *           data-verso-in-form    a set among a form's fields: its first and
@@ -73,12 +82,15 @@
  */
 
 .verso-table {
-  --verso-table-start: calc(var(--spacing) * 2.75);
-  --verso-table-end: calc(var(--spacing) * 4);
+  --verso-table-start: var(--verso-edge-start, calc(var(--spacing) * 2.75));
+  --verso-table-end: var(--verso-edge-end, calc(var(--spacing) * 4));
   width: 100%;
   border-collapse: separate;
   border-spacing: 0;
   @apply type-body;
+}
+.verso-table:not(:has(> thead)) {
+  padding-top: var(--verso-table-lead, 1px);
 }
 .verso-table[data-verso-in-form] {
   --verso-table-start: 0px;
@@ -102,6 +114,25 @@
 .verso-table__head:where(.verso-table[data-verso-dense] *) {
   padding-inline: 0;
 }
+/* In a card the heads are a row of the card's own Paper across it, between
+   hairlines, in Ink sentence case: the row divides the card's head from its
+   rows, so neither draws a rule or air of its own against it. It stands as
+   tall as a card's head, 48px from the line of the edge over it to its own
+   hairline's, its 16px line centred between them. A list's heads are a fact
+   list's heading instead: the 24px line 8px under the air over it and 8px
+   over its hairline, with no rule above. */
+.verso-table__head:where(.verso-listing[data-verso-place] > .verso-listing__scroller > .verso-table > thead > tr > *) {
+  padding-block: calc(var(--spacing) * 4 - 1px) calc(var(--spacing) * 4);
+  border-top: var(--verso-head-top, 1px) solid var(--color-rule);
+  border-bottom-color: var(--color-rule);
+  color: var(--color-ink);
+  @apply type-column-head;
+}
+.verso-table__head:where(.verso-listing[data-verso-place][data-verso-list] > .verso-listing__scroller > .verso-table > thead > tr > *) {
+  padding-block: calc(var(--spacing) * 2);
+  border-top-width: 0;
+  @apply type-subheading;
+}
 
 .verso-table__row {
   transition-property: background-color;
@@ -118,6 +149,10 @@
 .verso-table__sheet {
   border: 0 solid var(--color-rule);
   border-bottom-width: 1px;
+}
+:is(.verso-table__cell, .verso-table__grip, .verso-table__acts, .verso-table__tail, .verso-table__sheet):where(.verso-table > tbody > tr:not([hidden]):not(:has(~ tr:not([hidden]))) > *) {
+  border-bottom-width: var(--verso-last-rule-width, 1px);
+  border-bottom-color: var(--verso-last-rule-color, var(--color-rule));
 }
 :is(.verso-table__cell, .verso-table__grip, .verso-table__acts):where(.verso-table[data-verso-lifted] *) {
   border-bottom-color: transparent;

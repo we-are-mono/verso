@@ -18,10 +18,11 @@ var edgeTrim = regexp.MustCompile(`(?:^|[\s"'])((?:first|last|only)(?:-of-type)?
 
 // TestRowsNeverTrimTheirOwnEdges: a row keeps its air whatever stands around
 // it; giving back a first or last row's air is the section's to do
-// (sections.css), which knows whether its band sits above. A row that trims
-// itself does it in titled sections too, and opens one 16px tighter than its
-// neighbours — as the forward drawer's reflection gate did under "Reaching it
-// from home". Only a read-only listing, which is no form row, keeps its own.
+// (blocks/section.css, blocks/card.css), which knows whether its band sits
+// above. A row that trims itself does it in titled sections too, and opens
+// one 16px tighter than its neighbours — as the forward drawer's reflection
+// gate did under "Reaching it from home". Only a read-only listing, which is
+// no form row, keeps its own.
 func TestRowsNeverTrimTheirOwnEdges(t *testing.T) {
 	allowed := map[string]string{
 		"settings.html.tmpl last:pb-0": "a read-only facts listing closes on its last line, inside no section's rows",
@@ -64,7 +65,7 @@ func TestRowsNeverTrimTheirOwnEdges(t *testing.T) {
 }
 
 // TestASectionSaysWhatItIsNotHowItStands: a section states its kind and the
-// stylesheet (sections.css) owns its air and its rule, so a page and a drawer
+// stylesheet (blocks/section.css, blocks/card.css) owns its air and its rule, so a page and a drawer
 // draw the same section the same way, each by its own reach. No spacing or
 // rule utility rides the element.
 func TestASectionSaysWhatItIsNotHowItStands(t *testing.T) {

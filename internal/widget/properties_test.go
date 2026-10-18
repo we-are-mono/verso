@@ -146,8 +146,9 @@ func TestAHeadNamesAGroupOrItsColumns(t *testing.T) {
 		}
 	}
 	declares(t, "facts-head", ".verso-facts-head", "padding-block: calc(var(--spacing) * 2);", "border: 0 solid var(--color-rule-strong);", "@apply type-subheading;")
-	declares(t, "facts", `.verso-facts__row:where(.verso-facts[data-verso-style="divided"][data-verso-headed] *):first-child`, "padding-top: calc(var(--spacing) * 1.75);")
-	declares(t, "facts", `.verso-facts__row:where(.verso-facts[data-verso-style="divided"] *):first-child`, "padding-top: calc(var(--spacing) * 2);")
+	// A card the list opens may take that air back (--verso-facts-lead).
+	declares(t, "facts", `.verso-facts__row:where(.verso-facts[data-verso-style="divided"][data-verso-headed] *):first-child`, "padding-top: var(--verso-facts-lead, calc(var(--spacing) * 1.75));")
+	declares(t, "facts", `.verso-facts__row:where(.verso-facts[data-verso-style="divided"] *):first-child`, "padding-top: var(--verso-facts-lead, calc(var(--spacing) * 2));")
 	columns := render(t, newRenderer(t), &Properties{Align: "left", Head: &PropertiesHead{Label: "Part", Value: "Current"}, Items: []Property{{Label: "Kernel", Value: "6.12", Mono: true}}})
 	for _, want := range []string{
 		`<span class="shrink-0 sm:w-24">Part</span><span>Current</span>`,

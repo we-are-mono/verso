@@ -943,7 +943,7 @@ func TestStagedVersoSettingReachesThePendingRow(t *testing.T) {
 	// Reboot reads the same stage and asks for it to be ended first.
 	mustContain(t, maintenance, "1 pending change", "Apply changes, then reboot", "Discard and reboot")
 	pending := get(t, s, pendingPath).Body.String()
-	for _, want := range []string{`text-ink">System</h2>`, "verso: updates.autocheck = 0"} {
+	for _, want := range []string{`<h2 class="verso-heading__title">System</h2>`, "verso: updates.autocheck = 0"} {
 		if !strings.Contains(pending, want) {
 			t.Errorf("the Pending changes page is missing %q", want)
 		}

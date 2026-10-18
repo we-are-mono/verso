@@ -139,12 +139,18 @@ func TestRenderDevicesUsage(t *testing.T) {
 		`data-verso-ink="danger"`,
 		// The legend says what each ink stands for, in the ink itself.
 		">light<", ">under 10\U0000202fMb/s<", ">medium<", ">10 to 100\U0000202fMb/s<", ">heavy<", ">100\U0000202fMb/s and over<",
-		"text-green-deep", "text-marigold-deep", "text-crimson-deep",
+		`<span class="verso-listing__ink" data-verso-tone="success">light</span>`,
+		`<span class="verso-listing__ink" data-verso-tone="warning">medium</span>`,
+		`<span class="verso-listing__ink" data-verso-tone="danger">heavy</span>`,
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("usage roster missing %q", want)
 		}
 	}
+	// Each ink is written in its tone's Deep step, as the figures are.
+	declares(t, "listing", `.verso-listing__ink[data-verso-tone="success"]`, "color: var(--color-green-deep);")
+	declares(t, "listing", `.verso-listing__ink[data-verso-tone="warning"]`, "color: var(--color-marigold-deep);")
+	declares(t, "listing", `.verso-listing__ink[data-verso-tone="danger"]`, "color: var(--color-crimson-deep);")
 	for _, unwanted := range []string{"data-verso-figure-meter", "clip-path", "verso-meter__bar"} {
 		if strings.Contains(got, unwanted) {
 			t.Errorf("Now draws no meter, found %q", unwanted)

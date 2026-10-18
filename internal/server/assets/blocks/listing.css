@@ -21,25 +21,89 @@
  *           __header    a titled listing's header band, the table's first
  *                       row: the title flush left, its act flush right
  *           __title     the header's title
- *           __legend    the marks explained where the marks are, and hard
- *                       right the one caveat about what the listing includes
- *           __key       one mark and its words in the legend
+ *           __detail    what the header says beside its title
+ *           __act       the header's act, flush right
+ *           __legend    the marks explained where the marks are, its words
+ *                       in line with the rows' (23px after the air over it,
+ *                       24px over its end); following a page's own listing,
+ *                       it is that card's caption, 8px under the frame's
+ *                       line, its words in line with the card's edges
+ *           __key       one mark and its words in the legend; an ink
+ *                       explained in the ink itself (__ink, data-verso-tone,
+ *                       the word in the tone's Deep step, its __range quiet)
+ *           __caveat    the one caveat about what the listing includes, hard
+ *                       right
  *           __note      a line of words where a row would stand: nothing
- *                       matches, or nothing to list
+ *                       matches, or nothing to list; a row's air, the rows'
+ *                       insets and its hairline
  *           __stale     live status that could not be refreshed
- * Variants: data-verso-in-form  a set among a form's fields, the row's
+ * Variants: data-verso-place  card: a page's own listing, which is its card
+ *                             (Paper in the Strong Hairline frame, the
+ *                             frame's edges its heads' top and its last
+ *                             row's hairline, its words in line with a
+ *                             card's; under a control band, the band is its
+ *                             top strip) · in-card: a listing in a card's
+ *                             flow. Either way its column heads are a row of
+ *                             the card's Paper across it (blocks/table.css)
+ *           data-verso-list   a few facts about the page's subject, standing
+ *                             in the card's inset, its heads a fact list's
+ *                             heading
+ *           data-verso-in-form  a set among a form's fields, the row's
  *                               answer: its first line 8px under the
  *                               question's words, on its own hairline, and
  *                               the 9px under its last words given back, so
  *                               the row's own 16px is all that stands between
  *                               them and the next question's hairline
+ * Knobs:    --verso-listing-bleed  how far it runs past its column either
+ *                                  side (a card's listing runs to its edges)
+ *           --verso-listing-trail  what it gives back under itself: a listing
+ *                                  among a section's blocks closes on its
+ *                                  last row's hairline, on a line, and gives
+ *                                  that pixel back to what follows
+ * Sets:     --verso-edge-start, --verso-edge-end  on a page's own listing:
+ *                                  its rows' words in line with a card's
+ *           --verso-head-top, --verso-last-rule-width  the same: its frame
+ *                                  is its heads' top edge and its last row's
+ *                                  line
  */
 
+@property --verso-listing-bleed {
+  syntax: "*";
+  inherits: false;
+}
+@property --verso-listing-trail {
+  syntax: "*";
+  inherits: false;
+}
+
+.verso-listing {
+  margin-inline: calc(var(--verso-listing-bleed, 0px) * -1);
+  margin-bottom: var(--verso-listing-trail, 0px);
+}
 .verso-listing[data-verso-in-form] {
   margin-top: calc(var(--spacing) * 1.75);
   margin-bottom: calc(var(--spacing) * -2.25);
   border: 0 solid var(--color-rule);
   border-top-width: 1px;
+}
+.verso-listing[data-verso-place="card"] {
+  --verso-edge-start: var(--spacing-side);
+  --verso-edge-end: var(--spacing-side);
+  --verso-head-top: 0px;
+  --verso-last-rule-width: 0px;
+  border: 1px solid var(--color-rule-strong);
+  border-radius: var(--radius-xs);
+  background-color: var(--color-ground);
+}
+.verso-listing[data-verso-place="card"]:is(.verso-actionbar + *, .verso-actionbar + .verso-stack > :first-child) {
+  border-top-width: 0;
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+}
+/* The page's last card gives its bottom border's pixel back, so the
+   colophon's hairline lands on a line. */
+.verso-listing[data-verso-place="card"]:last-child:where(.verso-page__body > *, .verso-page__body > .verso-stack > *, .verso-page__body > .verso-stack > .verso-stack:last-child > *, .verso-page__body [data-verso-form-column] > .verso-stack:last-child > *) {
+  margin-bottom: -1px;
 }
 
 .verso-listing__scroller {
@@ -68,14 +132,26 @@
   color: var(--color-body);
   @apply type-title;
 }
+.verso-listing__detail {
+  color: var(--color-meta);
+}
+.verso-listing__act {
+  flex-shrink: 0;
+  margin-left: auto;
+}
 
 .verso-listing__legend {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: calc(var(--spacing) * 6);
-  padding-top: calc(var(--spacing) * 6);
+  padding: calc(var(--spacing-inset) - 1px) var(--spacing-side) var(--spacing-inset);
   @apply type-body;
+}
+.verso-listing__legend:is(.verso-listing + *) {
+  --verso-step: 0px;
+  margin-top: 0;
+  padding: calc(var(--spacing) * 1.75) 0 0;
 }
 .verso-listing__key {
   display: flex;
@@ -83,9 +159,37 @@
   gap: calc(var(--spacing) * 2);
   white-space: nowrap;
 }
+.verso-listing__key:has(> .verso-mark) {
+  color: var(--color-body);
+}
+.verso-listing__key:has(> .verso-listing__ink) {
+  gap: calc(var(--spacing) * 1.5);
+}
+.verso-listing__ink {
+  color: var(--color-ink);
+  @apply type-value;
+}
+.verso-listing__ink[data-verso-tone="success"] {
+  color: var(--color-green-deep);
+}
+.verso-listing__ink[data-verso-tone="warning"] {
+  color: var(--color-marigold-deep);
+}
+.verso-listing__ink[data-verso-tone="danger"] {
+  color: var(--color-crimson-deep);
+}
+.verso-listing__range,
+.verso-listing__caveat {
+  color: var(--color-meta);
+}
+.verso-listing__caveat {
+  margin-left: auto;
+}
 
 .verso-listing__note {
-  padding-block: calc(var(--spacing) * 1.75) calc(var(--spacing) * 2);
+  padding: calc(var(--spacing) * 1.75) var(--verso-edge-end, calc(var(--spacing) * 4)) calc(var(--spacing) * 2) var(--verso-edge-start, calc(var(--spacing) * 2.75));
+  border: 0 solid var(--color-rule);
+  border-bottom-width: 1px;
   color: var(--color-meta);
   @apply type-body;
 }

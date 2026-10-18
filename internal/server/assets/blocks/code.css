@@ -17,7 +17,13 @@
  * The card does not clip what stands outside it (the copy control's tip
  * hangs above the head), so its quiet pieces round their own corners.
  *
- * Variants: data-verso-code-divider  the block stands under a hairline
+ * Variants: data-verso-place="card"  a form's configuration preview, a card
+ *                                    of its own: 23px under the card before
+ *                                    it, as one card stands under another,
+ *                                    its editor in the Strong Hairline frame;
+ *                                    a form that writes more than one file
+ *                                    shows a card per file, one under the
+ *                                    other
  *           data-verso-busy          a live preview whose answer is in
  *                                    flight (verso-forms.js): it fades rather
  *                                    than blanks, slow in and instant out, so
@@ -36,18 +42,22 @@
   flex-direction: column;
   gap: calc(var(--spacing) * 2);
 }
-.verso-code[data-verso-code-divider] {
-  border: 0 solid var(--color-rule);
-  border-top-width: 1px;
+.verso-code[data-verso-place="card"] {
+  --verso-step: calc(var(--spacing-inset) - 1px);
+  margin-top: calc(var(--spacing-inset) - 1px);
+}
+/* The page's last card gives its bottom border's pixel back, so the
+   colophon's hairline lands on a line. */
+.verso-code[data-verso-place="card"]:last-child:where(.verso-page__body > *, .verso-page__body > .verso-stack > *, .verso-page__body > .verso-stack > .verso-stack:last-child > *, .verso-page__body [data-verso-form-column] > .verso-stack:last-child > *) {
+  margin-bottom: -1px;
 }
 /* A code box among a row's facts columns (what the daemon reported) is not
-   a form's footnote: no rule over it, and its caption stands on the first
-   fact's line. */
-.verso-code:where(.verso-grid[data-verso-style="facts"] .verso-grid__track > *) {
+   a form's footnote: its caption stands on the first fact's line. */
+.verso-code:is(.verso-grid[data-verso-style="facts"] .verso-grid__track > *) {
+  --verso-step: 0px;
   min-width: 0;
   margin-top: 0;
   padding-top: calc(var(--spacing) * 2);
-  border-top-width: 0;
 }
 .verso-code[data-verso-preview] {
   transition: opacity 0.4s ease 0.15s;
@@ -66,6 +76,9 @@
   border: 1px solid var(--color-rule);
   border-radius: var(--radius-xs);
   background-color: var(--color-canvas);
+}
+.verso-code__editor:where(.verso-code[data-verso-place="card"] > *) {
+  border-color: var(--color-rule-strong);
 }
 .verso-code__head {
   display: flex;

@@ -150,12 +150,12 @@ func TestOpenDrawerRendersItsFieldsInACard(t *testing.T) {
 			t.Fatal(err)
 		}
 		html := out.String()
-		open := strings.Index(html, `<section data-verso-section="card" class="verso-card" data-verso-headless data-verso-ruled`)
+		open := strings.Index(html, `<section class="verso-card" data-verso-section="card" data-verso-headless>`)
 		field := strings.Index(html, `name="target"`)
 		if size == "" && (open < 0 || field < open) {
 			t.Errorf("the drawer's field does not stand in a card:\n%s", html)
 		}
-		if size == "choices" && (strings.Contains(html, "verso-card") || strings.Contains(html, "data-verso-headless data-verso-ruled")) {
+		if size == "choices" && (strings.Contains(html, "verso-card") || strings.Contains(html, `data-verso-section="ruled" data-verso-headless`)) {
 			t.Errorf("a chooser was stood on cards:\n%s", html)
 		}
 	}

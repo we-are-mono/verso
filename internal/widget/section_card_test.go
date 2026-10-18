@@ -15,12 +15,13 @@ func TestASectionsGlyphLeadsItsTitle(t *testing.T) {
 	r := newRenderer(t)
 	got := render(t, r, &Section{Title: "SSH", Icon: "terminal"})
 	band := strings.Index(got, "data-verso-section-band")
-	glyph := strings.Index(got, `<span aria-hidden="true" class="flex shrink-0 text-glyph"><svg`)
+	glyph := strings.Index(got, `<span aria-hidden="true" class="verso-heading__glyph"><svg`)
 	title := strings.Index(got, ">SSH</h2>")
 	if band < 0 || !(band < glyph && glyph < title) {
 		t.Errorf("the glyph does not lead the title in the band:\n%s", got)
 	}
-	if bare := render(t, r, &Section{Title: "SSH"}); strings.Contains(bare, "text-glyph") {
+	declares(t, "heading", ".verso-heading__glyph", "color: var(--color-glyph);")
+	if bare := render(t, r, &Section{Title: "SSH"}); strings.Contains(bare, "verso-heading__glyph") {
 		t.Errorf("a section without a glyph shows one:\n%s", bare)
 	}
 }
@@ -34,8 +35,8 @@ func TestASectionsGlyphLeadsItsTitle(t *testing.T) {
 func TestATitledTopLevelSectionIsACard(t *testing.T) {
 	got := render(t, newRenderer(t), &Section{Title: "Ports", Children: []Widget{&Text{Markdown: "a"}}})
 	for _, want := range []string{
-		`<section data-verso-section="card" class="verso-card">`,
-		`class="verso-card__head `,
+		`<section class="verso-card" data-verso-section="card">`,
+		`<div class="verso-card__head verso-heading" data-verso-section-band data-verso-size="card">`,
 		`<div class="verso-card__body verso-rhythm">`,
 	} {
 		if !strings.Contains(got, want) {
@@ -46,7 +47,7 @@ func TestATitledTopLevelSectionIsACard(t *testing.T) {
 
 func TestAHeadlessRuledTopLevelSectionIsACard(t *testing.T) {
 	got := render(t, newRenderer(t), &Section{Hairline: true, Children: []Widget{&Text{Markdown: "a"}}})
-	if !strings.Contains(got, `<section data-verso-section="card" class="verso-card" data-verso-headless data-verso-ruled data-verso-section-divider>`) {
+	if !strings.Contains(got, `<section class="verso-card" data-verso-section="card" data-verso-headless>`) {
 		t.Errorf("a headless ruled section on a page is not a headless card:\n%s", got)
 	}
 	if strings.Contains(got, "verso-card__head") {
@@ -61,14 +62,14 @@ func TestANestedPartIsNotACard(t *testing.T) {
 	if strings.Count(got, `class="verso-card"`) != 1 {
 		t.Errorf("only the outer section is a card:\n%s", got)
 	}
-	if !strings.Contains(got, `<section data-verso-section="part"`) {
+	if !strings.Contains(got, `<section class="verso-section" data-verso-section="part"`) {
 		t.Errorf("the nested section is not a part:\n%s", got)
 	}
 }
 
 func TestOnCardsStandsALooseRunInAnUntitledCard(t *testing.T) {
 	got := render(t, newRenderer(t), OnCards(&Field{Name: "a", Label: "A"}))
-	if !strings.Contains(got, `<section data-verso-section="card" class="verso-card" data-verso-headless`) {
+	if !strings.Contains(got, `<section class="verso-card" data-verso-section="card" data-verso-headless`) {
 		t.Errorf("a loose run of fields is not stood on an untitled card:\n%s", got)
 	}
 }
@@ -106,7 +107,7 @@ func TestADrawersSubjectsAreCards(t *testing.T) {
 	got := renderPanelBody(t, &RowDrawer{Title: "Zone", Children: []Widget{
 		&Section{Title: "General", Children: []Widget{&Field{Name: "a", Label: "A"}}},
 	}})
-	if !strings.Contains(got, `<section data-verso-section="card" class="verso-card">`) {
+	if !strings.Contains(got, `<section class="verso-card" data-verso-section="card">`) {
 		t.Errorf("a drawer's titled section is not a card:\n%s", got)
 	}
 }

@@ -23,6 +23,9 @@
  *          it, and 40px on a phone too for a light page, whose body runs to
  *          the window's edges and insets its own lines by it. The bar and the
  *          colophon end their content where the column does by it.
+ *          --verso-reach-start, --verso-reach-end  how far a section's rule
+ *          runs past the content (blocks/section.css): 40px into the page's
+ *          gutter, to the rail, and none past the column's end
  * Variants (on __main): data-verso-width   full · form · narrow · wide; none
  *                                          is the default measure
  *                       data-verso-light   the light masthead, for a page
@@ -92,6 +95,8 @@
 }
 
 .verso-page__main {
+  --verso-reach-start: calc(var(--spacing) * 10);
+  --verso-reach-end: 0px;
   container-type: inline-size;
   display: flex;
   flex: 1 1 0%;

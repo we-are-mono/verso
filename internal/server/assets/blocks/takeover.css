@@ -12,6 +12,8 @@
  *
  * Elements: __main       the room under the bar, its column centred in it
  *           __column     the takeover's one measure
+ *           __kicker     what kind of wait it is, over the words, in the
+ *                        label role
  *           __state      what is happening: its __mark, then its __words
  *           __mark       the waiting mark, or the state's square once it has
  *                        settled, centred on the title's first line
@@ -72,6 +74,13 @@
   width: calc(var(--spacing) * 3.5);
   height: calc(var(--spacing) * 3.5);
   margin-top: calc(var(--spacing) * 1.5);
+}
+
+.verso-takeover__kicker {
+  margin-bottom: calc(var(--spacing) * 2);
+  padding-block: var(--spacing);
+  color: var(--color-meta);
+  @apply type-label;
 }
 
 .verso-takeover__words {

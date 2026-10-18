@@ -3,14 +3,16 @@
 
 /*
  * conditions — the optional conditions a rule carries, one block: headed as
- * every section is (40px of air, the form's 24px block step and 16px of its
- * own, the title, its lede, and 24px under them); the conditions on one
+ * a part of its card is (40px of air, the form's 24px block step and 16px of
+ * its own, the ledger and its lede, and 24px under them); the conditions on one
  * quiet card while it holds any, none at all when it is empty, so the card
  * follows every add and remove with no script; and the act that adds one,
  * opening a list someone reads or filters, pressing a line to add it.
  *
- * Elements: __head      the title and its lede, 24px over what follows
- *           __title     the title, in the section title's role
+ * Elements: __head      the ledger and its lede, 24px over what follows
+ *           __title     the name, in the subheading role
+ *           __line      the Strong Hairline running on from it
+ *           __lede      what the conditions are for, under the line
  *           __list      the conditions (blocks/condition.css): a hairline
  *                       frame on Quiet Sand, 24px in, while it holds any;
  *                       the measure its rows stand to
@@ -38,13 +40,28 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
-  column-gap: calc(var(--spacing) * 6);
+  column-gap: calc(var(--spacing) * 3);
   margin-bottom: var(--spacing-inset);
 }
 .verso-conditions__title {
+  flex-shrink: 0;
   color: var(--color-ink);
-  @apply type-section-title;
+  @apply type-subheading;
+}
+.verso-conditions__line {
+  flex: 1 1 calc(var(--spacing) * 6);
+  height: 1px;
+  background-color: var(--color-rule-strong);
+}
+.verso-conditions__lede {
+  flex: 1 0 100%;
+}
+.verso-conditions__lede > * {
+  max-width: 60ch;
+}
+.verso-conditions__lede:is(.verso-prose) {
+  color: var(--color-body);
+  @apply type-lede;
 }
 
 .verso-conditions__list:has(> .verso-condition) {
@@ -65,6 +82,11 @@
 }
 .verso-conditions__picker:is(.verso-conditions__list:has(> .verso-condition) ~ *) {
   padding-top: var(--spacing);
+}
+/* Conditions that close a card close it on their add, the card's 24px
+   under the act, as under any block's last line. */
+.verso-conditions__picker:where(.verso-card__body > .verso-conditions:nth-last-child(1 of :not(input[type="hidden"], [hidden], template)) > *) {
+  padding-bottom: 0;
 }
 
 .verso-conditions__menu {

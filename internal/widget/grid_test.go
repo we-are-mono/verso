@@ -54,14 +54,14 @@ const (
 )
 
 // Cards of one kind stand in a row of cells, each card in a cell of its own,
-// so none is the card after another (sections.css spaces those) and the row
-// lays them side by side where the page has room.
+// so none is the card after another (blocks/card.css spaces those) and the
+// row lays them side by side where the page has room.
 func TestGridCardsStandInCells(t *testing.T) {
 	got := render(t, newRenderer(t), &Grid{Style: "cards", Children: []Widget{
 		&Section{Title: "SFP+ module", Chip: "xfi0", Hairline: true},
 		&Section{Title: "SFP+ module", Chip: "xfi1", Hairline: true},
 	}})
-	if !strings.HasPrefix(strings.TrimSpace(got), `<div class="verso-grid" data-verso-style="cards" data-verso-cards`) || !strings.Contains(got, `<div class="verso-grid__track">`) {
+	if !strings.HasPrefix(strings.TrimSpace(got), `<div class="verso-grid" data-verso-style="cards" data-verso-columns=`) || !strings.Contains(got, `<div class="verso-grid__track">`) {
 		t.Errorf("the row should open the cards' cells:\n%s", got)
 	}
 	if n := strings.Count(got, `<div class="verso-grid__cell"><section`); n != 2 {
@@ -94,10 +94,11 @@ func TestGridFigureStandsBesideItsFacts(t *testing.T) {
 	// The row's hook is its own: a listing's live figures (a device's Now
 	// cell) carry data-verso-figure, and a rule aimed at that would stack
 	// them and stretch every row.
-	for _, path := range []string{
-		filepath.Join("..", "server", "assets", "sections.css"),
-		filepath.Join("..", "server", "assets", "blocks", "grid.css"),
-	} {
+	sheets, err := filepath.Glob(filepath.Join("..", "server", "assets", "blocks", "*.css"))
+	if err != nil || len(sheets) == 0 {
+		t.Fatalf("no block sheets: %v", err)
+	}
+	for _, path := range sheets {
 		css, err := os.ReadFile(path)
 		if err != nil {
 			t.Fatal(err)

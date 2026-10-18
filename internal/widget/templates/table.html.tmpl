@@ -68,19 +68,19 @@
      rows wear, the plain words for it, and hard right the one caveat about
      what the listing includes. */}}
 {{define "table.legend"}}{{if or .Legend .Note}}
-  <div data-verso-table-legend class="verso-listing__legend{{if not .Dense}} px-4{{end}}">
+  <div data-verso-table-legend class="verso-listing__legend">
     {{range .Legend}}
     {{if .Ink}}
     {{/* an ink explained in the ink itself: the word in the tone's Deep
          step, as the figures are written, and where it starts and stops. */}}
-    <span class="verso-listing__key gap-1.5"><span class="type-value {{if eq .Variant "success"}}text-green-deep{{else if eq .Variant "warning"}}text-marigold-deep{{else if eq .Variant "danger"}}text-crimson-deep{{else}}text-ink{{end}}">{{.Label}}</span>{{if .Detail}}<span class="text-meta">{{.Detail}}</span>{{end}}</span>
+    <span class="verso-listing__key"><span class="verso-listing__ink"{{with .Variant}} data-verso-tone="{{.}}"{{end}}>{{.Label}}</span>{{if .Detail}}<span class="verso-listing__range">{{.Detail}}</span>{{end}}</span>
     {{else}}
-    <span class="verso-listing__key text-body">
+    <span class="verso-listing__key">
       <span class="verso-mark" data-verso-tone="{{.Variant}}"></span>{{.Label}}
     </span>
     {{end}}
     {{end}}
-    {{if .Note}}<span class="ml-auto text-meta">{{.Note}}</span>{{end}}
+    {{if .Note}}<span class="verso-listing__caveat">{{.Note}}</span>{{end}}
   </div>
 {{end}}{{end}}
 {{define "table.rows"}}
@@ -468,13 +468,13 @@
   </div>
 {{else}}
 {{/* The listing's frame stands outside its scroller, so the fading edge
-     never fades a card's border (sections.css). A list stands in its card's
-     inset instead of running to the frame (data-verso-list). */}}
+     never fades a card's border (blocks/listing.css). A list stands in its
+     card's inset instead of running to the frame (data-verso-list). */}}
 {{/* Among a form's fields (InForm) a set is a row's answer: its first and
      last words keep to the row's gutters, where the question and the set's
      add stand, since it draws no tint under the pointer for words to sit
      off. */}}
-<div class="verso-listing" data-verso-listing{{if .List}} data-verso-list{{end}}{{if .InForm}} data-verso-in-form{{end}}>
+<div class="verso-listing" data-verso-listing{{with .Place}} data-verso-place="{{.}}"{{end}}{{if .List}} data-verso-list{{end}}{{if .InForm}} data-verso-in-form{{end}}>
 <div{{if .Live}} data-verso-live-table{{end}} data-verso-scroller class="verso-listing__scroller verso-scroll-edge">
   {{if .Live}}<p data-verso-inventory-stale role="status" hidden class="verso-listing__stale">{{t "Live status could not be refreshed. Retrying…"}}</p>{{end}}
   {{if .Title}}
@@ -483,9 +483,8 @@
        table's first row. */}}
   <div class="verso-listing__header">
     <h2 class="verso-listing__title">{{.Title}}</h2>
-    {{if .Detail}}<span class="text-meta">{{.Detail}}</span>{{end}}
-    <span class="flex-1"></span>
-    {{if .Action}}<a href="{{.Action.Href}}" class="verso-link shrink-0">{{.Action.Label}}</a>{{end}}
+    {{if .Detail}}<span class="verso-listing__detail">{{.Detail}}</span>{{end}}
+    {{if .Action}}<a href="{{.Action.Href}}" class="verso-link verso-listing__act">{{.Action.Label}}</a>{{end}}
   </div>
   {{end}}
   {{/* a live listing states its source and its ring on the table itself. The
@@ -532,7 +531,7 @@
     </tbody>
   </table>
   {{if not .PageBlock}}{{template "table.legend" .}}{{end}}
-  <p data-verso-listing-empty hidden class="verso-listing__note border-b border-rule pr-4 pl-2.75">{{t "Nothing matches."}}</p>
+  <p data-verso-listing-empty hidden class="verso-listing__note">{{t "Nothing matches."}}</p>
 </div>
 </div>
 {{/* A page's own listing is its card; its legend and note follow the card

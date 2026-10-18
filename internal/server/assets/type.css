@@ -4,8 +4,9 @@
 /*
  * Type roles (ADR-025, DESIGN.md › Typography › Hierarchy). Every text the shell
  * sets takes one of these, and nothing outside this file writes a size, weight,
- * line, tracking or face. A role sets them together, and never an ink: what
- * applies the role chooses the ink.
+ * line, tracking, case or face. A role sets them together, so a role laid over
+ * another replaces it whole, and never an ink: what applies the role chooses
+ * the ink.
  *
  * Two marks the shell writes from what a value is change how a role draws it:
  *   data-verso-verbatim  a string the machine wrote: the role's mono form, where
@@ -26,6 +27,7 @@
   line-height: 1.1;
   font-weight: 600;
   letter-spacing: -0.025em;
+  text-transform: none;
   font-variant-numeric: normal;
   &[data-verso-figures] { font-variant-numeric: tabular-nums; }
 }
@@ -36,6 +38,7 @@
   line-height: 1.75rem;
   font-weight: 600;
   letter-spacing: -0.025em;
+  text-transform: none;
   font-variant-numeric: normal;
   &[data-verso-verbatim] { font-family: var(--font-mono); font-size: 1.25rem; font-weight: 700; }
   &[data-verso-figures] { font-variant-numeric: tabular-nums; }
@@ -47,6 +50,7 @@
   line-height: 1.5rem;
   font-weight: 600;
   letter-spacing: -0.025em;
+  text-transform: none;
   font-variant-numeric: normal;
   &[data-verso-figures] { font-variant-numeric: tabular-nums; }
 }
@@ -57,6 +61,7 @@
   line-height: 1.5rem;
   font-weight: 600;
   letter-spacing: -0.025em;
+  text-transform: none;
   font-variant-numeric: normal;
   &[data-verso-figures] { font-variant-numeric: tabular-nums; }
 }
@@ -67,6 +72,7 @@
   line-height: 1.5rem;
   font-weight: 600;
   letter-spacing: normal;
+  text-transform: none;
   font-variant-numeric: normal;
   &[data-verso-figures] { font-variant-numeric: tabular-nums; }
 }
@@ -77,6 +83,7 @@
   line-height: 1.5rem;
   font-weight: 400;
   letter-spacing: normal;
+  text-transform: none;
   font-variant-numeric: normal;
   &[data-verso-verbatim] { font-family: var(--font-mono); font-size: 1rem; }
   &[data-verso-figures] { font-variant-numeric: tabular-nums; }
@@ -88,6 +95,7 @@
   line-height: 1.5rem;
   font-weight: 300;
   letter-spacing: normal;
+  text-transform: none;
   font-variant-numeric: normal;
 }
 
@@ -97,6 +105,7 @@
   line-height: 1.5rem;
   font-weight: 300;
   letter-spacing: normal;
+  text-transform: none;
   font-variant-numeric: normal;
 }
 
@@ -117,6 +126,7 @@
   line-height: 1rem;
   font-weight: 600;
   letter-spacing: normal;
+  text-transform: none;
   font-variant-numeric: normal;
 }
 
@@ -126,6 +136,7 @@
   line-height: 1.5rem;
   font-weight: 400;
   letter-spacing: normal;
+  text-transform: none;
   font-variant-numeric: normal;
   &[data-verso-figures] { font-variant-numeric: tabular-nums; }
 }
@@ -136,6 +147,7 @@
   line-height: 1.5rem;
   font-weight: 500;
   letter-spacing: normal;
+  text-transform: none;
   font-variant-numeric: normal;
   &[data-verso-figures] { font-variant-numeric: tabular-nums; }
 }
@@ -146,6 +158,7 @@
   line-height: 1.5rem;
   font-weight: 500;
   letter-spacing: normal;
+  text-transform: none;
   font-variant-numeric: normal;
   &[data-verso-verbatim] { font-family: var(--font-mono); font-size: 1rem; }
   &[data-verso-figures] { font-variant-numeric: tabular-nums; }
@@ -157,6 +170,7 @@
   line-height: 1rem;
   font-weight: 400;
   letter-spacing: normal;
+  text-transform: none;
   font-variant-numeric: normal;
   &[data-verso-verbatim] { font-family: var(--font-mono); font-weight: 500; }
   &[data-verso-figures] { font-variant-numeric: tabular-nums; }
@@ -168,6 +182,7 @@
   line-height: 1.5rem;
   font-weight: 600;
   letter-spacing: normal;
+  text-transform: none;
   font-variant-numeric: normal;
   &[data-verso-figures] { font-variant-numeric: tabular-nums; }
 }
@@ -178,6 +193,7 @@
   line-height: 1.5rem;
   font-weight: 400;
   letter-spacing: normal;
+  text-transform: none;
   font-variant-numeric: normal;
   &[data-verso-verbatim] { font-family: var(--font-mono); font-size: 1rem; }
   &[data-verso-figures] { font-variant-numeric: tabular-nums; }
@@ -189,6 +205,7 @@
   line-height: 1.5rem;
   font-weight: 400;
   letter-spacing: normal;
+  text-transform: none;
   font-variant-numeric: normal;
   &[data-verso-figures] { font-variant-numeric: tabular-nums; }
 }
@@ -199,6 +216,7 @@
   line-height: 2.5rem;
   font-weight: 700;
   letter-spacing: -0.05em;
+  text-transform: none;
   font-variant-numeric: tabular-nums;
 }
 
@@ -208,6 +226,7 @@
   line-height: 2.5rem;
   font-weight: 400;
   letter-spacing: normal;
+  text-transform: none;
   font-variant-numeric: normal;
 }
 
@@ -217,6 +236,7 @@
   line-height: 1.5rem;
   font-weight: 500;
   letter-spacing: normal;
+  text-transform: none;
   font-variant-numeric: tabular-nums;
 }
 
@@ -226,6 +246,7 @@
   line-height: 1.25;
   font-weight: 400;
   letter-spacing: normal;
+  text-transform: none;
   font-variant-numeric: normal;
   &[data-verso-figures] { font-variant-numeric: tabular-nums; }
 }

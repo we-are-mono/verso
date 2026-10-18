@@ -36,16 +36,13 @@ func TestDocumentTitleNamesThePage(t *testing.T) {
 
 // TestAccessContributionStandsOffByThePageGap: a plugin's part of Access is
 // one more of the page's subjects, set into the page's own stack (an Embed),
-// so no wrapper of its own spaces it. The stack stands the rule it opens on two
-// cells under what is above it, as every section's rule stands — its margin
-// those cells less the rule's pixel, so the rule lands on a line.
+// so no wrapper of its own spaces it. The stack stands where the card it opens
+// on would, a cell under what is above it less the frame's pixel before it,
+// as one card stands under another, so its frame lands on a line.
 func TestAccessContributionStandsOffByThePageGap(t *testing.T) {
-	css, err := os.ReadFile("assets/sections.css")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !strings.Contains(string(css), `.verso-page__body > .verso-stack > * + .verso-stack:has(> section[data-verso-section]:first-child > [data-verso-section-band]) { margin-top: calc(var(--spacing) * 10 - 1px); }`) {
-		t.Error("a part that opens on a section's rule does not land the rule two cells under the part before it")
+	rule := cssBlock(t, blockSheet(t, "stack"), `.verso-stack:is(.verso-stack > * + *):has(> .verso-card:nth-child(1 of :not(input[type="hidden"], template, [hidden]))) {`)
+	if !strings.Contains(rule, "--verso-step: calc(var(--spacing-inset) - 1px);") {
+		t.Error("a part that opens on a card does not stand where its card would under the part before it")
 	}
 	if _, err := os.Stat("templates/access-contribution.html.tmpl"); err == nil {
 		t.Error("a plugin's part of Access is drawn through a hand-built wrapper")
@@ -108,11 +105,11 @@ func TestMaintenanceSectionsUsePageBands(t *testing.T) {
 	}
 	// With nothing to say, nothing stands before Firmware: the section opens
 	// the work column right under the masthead's line.
-	if !regexp.MustCompile(`data-verso-form-column class="verso-grid__cell">\s*<div class="verso-stack">\s*<section data-verso-section="card" class="verso-card" id="section-firmware">`).MatchString(body) {
+	if !regexp.MustCompile(`data-verso-form-column class="verso-grid__cell">\s*<div class="verso-stack">\s*<section class="verso-card" data-verso-section="card" id="section-firmware">`).MatchString(body) {
 		t.Error("something stands before Firmware with nothing to say")
 	}
 	for _, id := range []string{"back-up-and-restore", "reboot", "factory-reset"} {
-		want := `<section data-verso-section="card" class="verso-card" id="section-` + id + `" data-verso-ruled data-verso-section-divider>`
+		want := `<section class="verso-card" data-verso-section="card" id="section-` + id + `">`
 		if !strings.Contains(body, want) {
 			t.Errorf("want %s", want)
 		}
@@ -127,9 +124,9 @@ func TestMaintenanceSectionsUsePageBands(t *testing.T) {
 // lede — so the two cannot drift apart.
 func TestMaintenanceHeadingsAreSectionHeadings(t *testing.T) {
 	body := get(t, passwordServer(t, fakeBackend{}), "/system/maintenance").Body.String()
-	band := `<div data-verso-section-band class="verso-card__head flex flex-wrap items-center justify-between gap-x-6">`
-	title := `<h2 class="text-lg leading-6 font-semibold tracking-[-0.025em] text-ink">`
-	lede := `<div class="w-full"><div data-verso-section-lede class="verso-prose text-body">`
+	band := `<div class="verso-card__head verso-heading" data-verso-section-band data-verso-size="card">`
+	title := `<h2 class="verso-heading__title">`
+	lede := `<div data-verso-section-lede class="verso-heading__lede verso-prose">`
 	for want, n := range map[string]int{band: 4, title: 4, lede: 2} {
 		if got := strings.Count(body, want); got < n {
 			t.Errorf("want at least %d of %q, got %d", n, want, got)
@@ -139,8 +136,8 @@ func TestMaintenanceHeadingsAreSectionHeadings(t *testing.T) {
 		t.Error("no heading is drawn by hand any more")
 	}
 	// What stands on a heading's line is a section meta: its label in the
-	// meta ink, its value set in the body ink at 600.
-	meta := `<span class="text-meta">Running for</span><span data-verso-section-meta class="font-semibold text-body">`
+	// meta ink, its value set in the body ink at 600 (blocks/heading.css).
+	meta := `<span class="verso-heading__meta-label">Running for</span><span data-verso-section-meta class="verso-heading__meta-value">`
 	if !strings.Contains(body, meta) {
 		t.Errorf("the reboot heading's uptime is a section meta, want %q", meta)
 	}

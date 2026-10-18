@@ -71,6 +71,10 @@ type Renderer struct {
 	// is a card there (sectionView.Kind). A chooser's list, a dialog and an
 	// Overview card's body are not such surfaces.
 	cards bool
+	// inCard says what this handle renders stands straight in a card's body:
+	// a listing there runs to the card's edges (Table.view). A section deeper
+	// in, or a form's fields, are not.
+	inCard bool
 }
 
 // withoutCards is the same pass rendering onto a surface whose sections are

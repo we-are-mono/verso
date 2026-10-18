@@ -280,38 +280,71 @@ func TestADevRedeployWaitsForUnsavedWork(t *testing.T) {
 // column-head row are 48px each, hairlines included (layout-grid). Its frame's
 // borders are lines: the bottom air and the gap after it give back a pixel.
 func TestACardMeasuresOnTheEightPixelGrid(t *testing.T) {
-	raw, err := os.ReadFile("assets/sections.css")
+	// the inset: a pixel short of 24px after each side border, so the body
+	// is a multiple of 8px and a pixel wide and a box across it has its
+	// borders on lines; it is the theme's one token
+	if !strings.Contains(cssBlock(t, readAsset(t, "assets/input.css"), "@theme"), "--spacing-side: calc(1.5rem - 1px);") {
+		t.Error("the theme does not name a frame's side inset: missing --spacing-side: calc(1.5rem - 1px);")
+	}
+	css := blockSheet(t, "card")
+	for head, wants := range map[string][]string{
+		// the reach of its rules matches the inset; the body ends on a line,
+		// so the full 24px under it
+		"\n.verso-card {": {
+			"--verso-reach-start: var(--spacing-side);",
+			"--verso-reach-end: var(--spacing-side);",
+			"padding: 0 var(--spacing-side) var(--spacing-inset);",
+			"border: 1px solid var(--color-rule-strong);",
+		},
+		// a pixel short after the frame or the header's hairline, so its
+		// lines fill whole bands of the grid
+		"\n.verso-card[data-verso-headless] {": {"padding-top: calc(var(--spacing-inset) - 1px);"},
+		"\n.verso-card__body:is(.verso-card__head + *):not(:has(> .verso-listing:not([data-verso-list]):first-child)) {": {"margin-top: -1px;"},
+		// the header: 11px after the frame, its 24px line, 12px under, then
+		// its seam in the frame's own ink, the title centred on the header's
+		// middle line
+		"\n.verso-card__head {": {
+			"padding: calc(var(--spacing) * 2.75) var(--spacing-side) calc(var(--spacing) * 3);",
+			"border: 0 solid var(--color-rule-strong);",
+			"border-bottom-width: 1px;",
+		},
+		// the air between cards, less the frame's pixel so the next frame
+		// lands on a line
+		"\n.verso-card:is(:not(input[type=\"hidden\"], template, script, [hidden]) ~ *) {": {"margin-top: calc(var(--spacing-inset) - 1px);"},
+	} {
+		block := cssBlock(t, css, head)
+		for _, want := range wants {
+			if !strings.Contains(block, want) {
+				t.Errorf("a card does not measure on the 8px grid; blocks/card.css %s lacks %s", strings.TrimSpace(head), want)
+			}
+		}
+	}
+	// the column-head row: its 16px line 15px after the edge over it, 16px
+	// over its own hairline
+	if !strings.Contains(cssBlock(t, blockSheet(t, "table"), ".verso-table__head:where(.verso-listing[data-verso-place] > .verso-listing__scroller > .verso-table > thead > tr > *) {"),
+		"padding-block: calc(var(--spacing) * 4 - 1px) calc(var(--spacing) * 4);") {
+		t.Error("a card's column-head row does not measure 48px with its hairlines")
+	}
+	// No sheet keeps a side inset of its own beside the theme's.
+	sheets, err := filepath.Glob("assets/blocks/*.css")
 	if err != nil {
 		t.Fatal(err)
 	}
-	css := string(raw)
-	for _, want := range []string{
-		// the inset: a pixel short of 24px after each side border, so the body
-		// is a multiple of 8px and a pixel wide and a box across it has its
-		// borders on lines; the reach of its rules matches it
-		":root { --verso-side: calc(var(--spacing-inset) - 1px); }",
-		"--verso-reach-start: var(--verso-side);\n  --verso-reach-end: var(--verso-side);",
-		// (the body ends on a line, so the full 24px under it, and a pixel
-		// short after the frame or the header's hairline, so its lines fill
-		// whole bands of the grid)
-		"padding: 0 var(--verso-side) var(--spacing-inset);",
-		"padding-top: calc(var(--spacing-inset) - 1px);",
-		"+ .verso-rhythm:not(:has(> [data-verso-listing]:not([data-verso-list]):first-child)) {\n  margin-top: -1px;\n}",
-		// the header: 11px after the frame, its 24px line, 12px under, then its
-		// seam in the frame's own ink, the title centred on the header's
-		// middle line
-		"padding-block: calc(var(--spacing) * 2.75) calc(var(--spacing) * 3);\n  border-top-width: 0;\n  border-bottom: 1px solid var(--color-rule-strong);",
-		// the column-head row: its 16px line 15px after the edge over it, 16px
-		// over its own hairline
-		"padding-block: calc(var(--spacing) * 4 - 1px) calc(var(--spacing) * 4);",
-		// the air between cards, less the frame's pixel so the next frame lands
-		// on a line
-		"[data-verso-section-band]) {\n  margin-top: calc(var(--spacing-inset) - 1px);\n}",
-	} {
-		if !strings.Contains(css, want) {
-			t.Errorf("a card does not measure on the 8px grid; sections.css is missing %s", want)
+	for _, sheet := range append(sheets, "assets/input.css") {
+		if strings.Contains(readAsset(t, sheet), "--verso-side") {
+			t.Errorf("%s keeps a side inset of its own (--verso-side)", sheet)
 		}
 	}
+}
+
+// readAsset is the source of the asset at path.
+func readAsset(t *testing.T, path string) string {
+	t.Helper()
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(raw)
 }
 
 // TestACardEndingOnAStackedRowsSentenceKeepsItsAir: a card whose last row is
@@ -319,14 +352,23 @@ func TestACardMeasuresOnTheEightPixelGrid(t *testing.T) {
 // answer closes the card's own 24px under the words, as the card opens; only
 // a row ending on a control or a hairline's rhythm takes the 16px pull.
 func TestACardEndingOnAStackedRowsSentenceKeepsItsAir(t *testing.T) {
-	raw, err := os.ReadFile("assets/sections.css")
-	if err != nil {
-		t.Fatal(err)
+	// The card hands its last block the 16px pull, and a row takes it as
+	// what it gives back under itself.
+	trail := cssBlock(t, blockSheet(t, "card"), "\n.verso-card__body > :nth-last-child(1 of :not(input[type=\"hidden\"], [hidden], template)) {")
+	if !strings.Contains(trail, "--verso-edge-trail: calc(var(--spacing) * -2);") {
+		t.Errorf("a card does not pull its last row's air: %s", trail)
 	}
-	const spared = `:is(.verso-field):not(.verso-field[data-verso-wide]:has(> .verso-field__ledger > .verso-field__answer > [data-verso-field-note]:last-child))`
-	pull := strings.Index(string(raw), "margin-bottom: calc(var(--spacing) * -2);")
-	if pull < 0 || strings.Count(string(raw)[:pull], spared) != 2 {
+	field := blockSheet(t, "field")
+	if !strings.Contains(cssBlock(t, field, "\n.verso-field {"), "margin-bottom: var(--verso-edge-trail, 0px);") {
+		t.Error("a row does not give back what its surface asks under itself")
+	}
+	// A stacked row ending on its sentence closes on it, as words do.
+	spared := `.verso-field[data-verso-wide]:has(> .verso-field__ledger > .verso-field__answer > [data-verso-field-note]:last-child) {`
+	if !strings.Contains(cssBlock(t, field, spared), "margin-bottom: 0;") {
 		t.Errorf("the card's closing pull does not spare a stacked row ending on its sentence")
+	}
+	if strings.Index(field, spared) < strings.Index(field, "\n.verso-field {") {
+		t.Error("the spared row's rule stands before the row's own, which outranks it")
 	}
 }
 
@@ -334,13 +376,11 @@ func TestACardEndingOnAStackedRowsSentenceKeepsItsAir(t *testing.T) {
 // say (flush left over the Overview's port listing, the figure's column on
 // the Hardware page), never a card rule aimed at the panel's own classes.
 func TestNoRuleAimsAtThePanel(t *testing.T) {
-	raw, err := os.ReadFile("assets/sections.css")
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, line := range strings.Split(string(raw), "\n") {
-		if strings.Contains(line, "verso-panel") || strings.Contains(line, "verso-ports") {
-			t.Errorf("sections.css places a panel: %s", line)
+	for _, block := range []string{"card", "section", "heading"} {
+		for _, line := range strings.Split(blockSheet(t, block), "\n") {
+			if strings.Contains(line, "verso-panel") || strings.Contains(line, "verso-ports") {
+				t.Errorf("blocks/%s.css places a panel: %s", block, line)
+			}
 		}
 	}
 }
@@ -417,7 +457,7 @@ func TestAFieldRowIsALedger(t *testing.T) {
 	// A row's air and hairline are its knobs, read once by the row itself.
 	row := cssBlock(t, css, "\n.verso-field {")
 	for _, want := range []string{
-		"padding: var(--verso-edge-lead, var(--verso-field-lead, var(--spacing-inset))) var(--verso-field-bleed, 0px) var(--verso-field-trail, 0px);",
+		"padding: var(--verso-edge-air, var(--verso-field-lead, var(--spacing-inset))) var(--verso-field-bleed, 0px) var(--verso-field-trail, 0px);",
 		"border-top-width: var(--verso-field-rule, 0px);",
 	} {
 		if !strings.Contains(row, want) {
@@ -534,7 +574,7 @@ func TestAFactsRowsKeepTheLedgersStep(t *testing.T) {
 	}
 	css := blockSheet(t, "field")
 	for head, want := range map[string]string{
-		".verso-field:is([data-verso-settings] *):has(+ details) {": "--verso-field-trail: calc(var(--spacing) * 4);",
+		".verso-field:is(.verso-settings > *):has(+ .verso-settings__fold) {": "--verso-field-trail: calc(var(--spacing) * 4);",
 	} {
 		if !strings.Contains(cssBlock(t, css, head), want) {
 			t.Errorf("%s wants %s", head, want)
@@ -644,19 +684,34 @@ func TestDescriptionsFoldAway(t *testing.T) {
 // body ends on a row closes 16px under its last words, as a row stands over
 // the next one's hairline: the card's own 24px is a block's (form-fields).
 func TestACardsRowsKeepARowsAirAtItsEdges(t *testing.T) {
-	raw, err := os.ReadFile("assets/sections.css")
-	if err != nil {
-		t.Fatal(err)
-	}
-	css := string(raw)
-	for _, want := range []string{
+	css := blockSheet(t, "card")
+	// A body that opens on a row, or on a block whose first visible child is
+	// one.
+	const opensOnARow = `> .verso-card__body > :nth-child(1 of :not(input[type="hidden"], [hidden], template)):is(.verso-field, :is(.verso-field-set, .verso-conditional, .verso-settings, [data-verso-rows], .verso-form:not([data-verso-compact-form])):has(> :nth-child(1 of :not(input[type="hidden"], [hidden], template)).verso-field)) {`
+	for head, want := range map[string]string{
 		// under a header, the pull counts in the seam's pixel the body took back
-		"> .verso-rhythm > :not(input[type=\"hidden\"], [hidden], template):not(:not(input[type=\"hidden\"], [hidden], template) ~ *):is(.verso-field) {\n  margin-top: calc(var(--spacing) * -2 - 1px);",
-		"> .verso-rhythm > :not(input[type=\"hidden\"], [hidden], template):not(:not(input[type=\"hidden\"], [hidden], template) ~ *):is(.verso-field) {\n  margin-top: calc(var(--spacing) * -2);",
-		"> .verso-rhythm > :not(input[type=\"hidden\"], [hidden], template):not(:has(~ :not(input[type=\"hidden\"], [hidden], template))):is(.verso-field):not(.verso-field[data-verso-wide]:has(> .verso-field__ledger > .verso-field__answer > [data-verso-field-note]:last-child)) {\n  margin-bottom: calc(var(--spacing) * -2);",
+		".verso-card:not([data-verso-headless]) " + opensOnARow: "--verso-edge-lead: calc(var(--spacing) * -2 - 1px);",
+		".verso-card[data-verso-headless] " + opensOnARow:       "--verso-edge-lead: calc(var(--spacing) * -2);",
+		// a body that ends on a row closes 16px under its last words
+		".verso-card__body > :nth-last-child(1 of :not(input[type=\"hidden\"], [hidden], template)) {": "--verso-edge-trail: calc(var(--spacing) * -2);",
 	} {
-		if !strings.Contains(css, want) {
-			t.Errorf("sections.css lacks %q", want)
+		if !strings.Contains(cssBlock(t, css, head), want) {
+			t.Errorf("blocks/card.css %s lacks %q", head, want)
+		}
+	}
+	// The rhythm stands its first block by the lead its surface hands it,
+	// and a row gives back the trail under itself.
+	if !strings.Contains(cssBlock(t, blockSheet(t, "rhythm"), `.verso-rhythm > :nth-child(1 of :not(input[type="hidden"], [hidden], template)) {`), "margin-top: var(--verso-edge-lead, 0px);") {
+		t.Error("the rhythm does not read the lead its surface hands its first block")
+	}
+	if !strings.Contains(cssBlock(t, blockSheet(t, "field"), "\n.verso-field {"), "margin-bottom: var(--verso-edge-trail, 0px);") {
+		t.Error("a row does not give back the trail its surface hands it")
+	}
+	// The blocks a row stands in forward the edges to it.
+	for _, block := range []string{"form", "settings"} {
+		sheet := blockSheet(t, block)
+		if !strings.Contains(sheet, "--verso-edge-trail: inherit;") {
+			t.Errorf("blocks/%s.css does not forward the trail to its last row", block)
 		}
 	}
 }
@@ -721,17 +776,18 @@ func TestASwitchShowsTheWordForItsState(t *testing.T) {
 // drawer alike. A row inside another row or a field set's cell stays in its
 // column.
 func TestFieldRowsRunToACardsBorders(t *testing.T) {
-	raw, err := os.ReadFile("assets/sections.css")
-	if err != nil {
-		t.Fatal(err)
+	block := cssBlock(t, blockSheet(t, "card"), ".verso-card__body .verso-field:not(.verso-field .verso-field, .verso-form-grid .verso-field),\n.verso-card__body .verso-settings__fold {")
+	if !strings.Contains(block, "--verso-field-bleed: var(--spacing-side);") {
+		t.Errorf("a card's field row does not run to its borders: %s", block)
 	}
-	block := cssBlock(t, string(raw), ".verso-card .verso-field:not(.verso-field .verso-field, .verso-form-grid .verso-field) {")
+	// The row reads the bleed: out past its column by it, its words back in.
+	row := cssBlock(t, blockSheet(t, "field"), "\n.verso-field {")
 	for _, want := range []string{
-		"margin-inline: calc(var(--verso-side) * -1);",
-		"padding-inline: var(--verso-side);",
+		"margin-inline: calc(var(--verso-field-bleed, 0px) * -1);",
+		"var(--verso-field-bleed, 0px) var(--verso-field-trail, 0px);",
 	} {
-		if !strings.Contains(block, want) {
-			t.Errorf("a card's field row does not run to its borders: missing %s in %s", want, block)
+		if !strings.Contains(row, want) {
+			t.Errorf("a row does not run by its bleed: missing %s in %s", want, row)
 		}
 	}
 }
@@ -859,26 +915,29 @@ func TestADevSessionCanDrawTheGrid(t *testing.T) {
 }
 
 // TestACardUnderACardDrawsNoSecondDivider: a form that writes more than one
-// file shows a card per file, one under the other. The rule above the first
-// sets the files off from the form; the next card is more of the same answer,
-// so it stands a cell under the one before, its frame on the line, with no
-// rule of its own.
+// file shows a card per file, one under the other. Each is a card of its own:
+// it stands a cell under the card before it, less that card's frame pixel,
+// its own frame on the line, with no rule of its own.
 func TestACardUnderACardDrawsNoSecondDivider(t *testing.T) {
 	css, err := os.ReadFile("assets/verso.css")
 	if err != nil {
 		t.Fatalf("read stylesheet: %v", err)
 	}
-	want := "[data-verso-code-divider]+[data-verso-code-divider]{margin-top:calc(var(--spacing-inset) - 1px);border-top-width:0;padding-top:0}"
+	want := ".verso-code[data-verso-place=card]{--verso-step:calc(var(--spacing-inset) - 1px);margin-top:calc(var(--spacing-inset) - 1px)}"
 	if !strings.Contains(string(css), want) {
 		t.Errorf("stylesheet is missing %s", want)
+	}
+	if rule := cssBlock(t, blockSheet(t, "code"), `.verso-code[data-verso-place="card"] {`); strings.Contains(rule, "border") {
+		t.Errorf("a configuration card draws a rule over itself: %s", rule)
 	}
 }
 
 // TestStylesheetTypeSystem: the two faces are the only faces, and each is
 // declared across the weights its file actually carries (both are variable),
 // so a weight the design asks for (the top bar's light maker line) is drawn
-// rather than clamped to the nearest declared one. The kicker is the canvas's
-// one kicker: 12px, 500, uppercase, .08em, in the meta ink.
+// rather than clamped to the nearest declared one. A kicker is the canvas's
+// one kicker wherever it stands (a section's, a takeover's): the label role,
+// 12px, 500, uppercase, .08em, in the meta ink.
 func TestStylesheetTypeSystem(t *testing.T) {
 	raw, err := os.ReadFile("assets/verso.css")
 	if err != nil {
@@ -895,15 +954,21 @@ func TestStylesheetTypeSystem(t *testing.T) {
 			t.Errorf("stylesheet is missing %q", want)
 		}
 	}
-	kickerAt := strings.Index(css, ".verso-kicker{")
-	if kickerAt < 0 {
-		t.Fatal("no kicker rule")
-	}
-	kicker := css[kickerAt : kickerAt+strings.Index(css[kickerAt:], "}")]
-	for _, want := range []string{"font-size:.75rem", "font-weight:500", "letter-spacing:.08em", "text-transform:uppercase", "color:var(--color-meta)"} {
-		if !strings.Contains(kicker, want) {
-			t.Errorf("kicker is missing %q: %s", want, kicker)
+	for _, sel := range []string{".verso-heading__kicker{", ".verso-takeover__kicker{"} {
+		kickerAt := strings.Index(css, sel)
+		if kickerAt < 0 {
+			t.Errorf("no kicker rule %s", sel)
+			continue
 		}
+		kicker := css[kickerAt : kickerAt+strings.Index(css[kickerAt:], "}")]
+		for _, want := range []string{"font-size:.75rem", "font-weight:500", "letter-spacing:.08em", "text-transform:uppercase", "color:var(--color-meta)"} {
+			if !strings.Contains(kicker, want) {
+				t.Errorf("kicker is missing %q: %s", want, kicker)
+			}
+		}
+	}
+	if strings.Contains(css, ".verso-kicker{") {
+		t.Error("a kicker of its own stands beside the label role's")
 	}
 	// A rule that names the system's monospace first skips Inconsolata.
 	if strings.Contains(css, "font-family:ui-monospace") {
@@ -923,7 +988,7 @@ func TestStylesheetKeepsOnePageRhythm(t *testing.T) {
 		t.Fatalf("read stylesheet: %v", err)
 	}
 	for _, want := range []string{
-		".verso-page__body>.verso-stack>section[data-verso-section]:not([data-verso-section=ruled],[data-verso-section=part]){padding-top:0}",
+		".verso-section:is(.verso-page__body>.verso-stack>*):not([data-verso-section=ruled],[data-verso-section=part]){padding-top:0}",
 		"margin-top:var(--verso-step,var(--verso-rhythm,calc(var(--spacing) * 10)))",
 	} {
 		if !strings.Contains(string(css), want) {
@@ -966,12 +1031,17 @@ func TestSectionRulesRunToTheRailOnly(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read stylesheet: %v", err)
 	}
-	// Every rule reaches by its surface's two measures (sections.css): a page
-	// runs 40px out to the rail and none past the column's end; a page card
-	// keeps its rules to its own edges.
+	// Every rule reaches by its surface's two measures (blocks/section.css): a
+	// page runs 40px out to the rail and none past the column's end; a page
+	// card keeps its rules to its own edges; an overlay keeps them to its
+	// column.
 	for _, want := range []string{
-		"main{--verso-reach-start:calc(var(--spacing) * 10);--verso-reach-end:0px}",
-		"margin-inline:calc(-1 * var(--verso-reach-start)) calc(-1 * var(--verso-reach-end));padding-inline:var(--verso-reach-start) var(--verso-reach-end)",
+		".verso-page__main{--verso-reach-start:calc(var(--spacing) * 10);--verso-reach-end:0px;",
+		".verso-card{--verso-reach-start:var(--spacing-side);--verso-reach-end:var(--spacing-side);",
+		".verso-modal{--verso-reach-start:0px;--verso-reach-end:0px;",
+		".verso-section[data-verso-section=ruled]{margin-inline:calc(-1 * var(--verso-reach-start,0px)) calc(-1 * var(--verso-reach-end,0px));",
+		"padding-inline:var(--verso-reach-start,0px) var(--verso-reach-end,0px);",
+		".verso-section__head[data-verso-section-band]{margin-inline:calc(-1 * var(--verso-reach-start,0px)) calc(-1 * var(--verso-reach-end,0px));padding:calc(var(--spacing) * 10) var(--verso-reach-end,0px) 0 var(--verso-reach-start,0px);",
 	} {
 		if !strings.Contains(string(css), want) {
 			t.Errorf("stylesheet is missing %q", want)
@@ -984,11 +1054,8 @@ func TestSectionRulesRunToTheRailOnly(t *testing.T) {
 // rule's own pixel so the rule lands on a line of the grid — not the plain
 // 40px between unruled blocks, which would set the rule a pixel off it.
 func TestARuledSectionStandsByItsRulesAir(t *testing.T) {
-	css, err := os.ReadFile("assets/sections.css")
-	if err != nil {
-		t.Fatalf("read stylesheet: %v", err)
-	}
-	if !strings.Contains(string(css), `.verso-page__body > .verso-stack > section:is([data-verso-section="ruled"], [data-verso-section="part"]) { margin-top: calc(var(--spacing) * 10 - 1px); }`) {
+	rule := cssBlock(t, blockSheet(t, "section"), `.verso-section:is(.verso-page__body > .verso-stack > *):is([data-verso-section="ruled"], [data-verso-section="part"]) {`)
+	if !strings.Contains(rule, "margin-top: calc(var(--spacing) * 10 - 1px);") {
 		t.Error("a ruled section on the page's stack does not land its rule on a line")
 	}
 }
@@ -1026,16 +1093,24 @@ func TestASectionKeepsTheMastheadsAirAndNoMore(t *testing.T) {
 	}
 	css := string(raw)
 	for _, want := range []string{
-		`[data-verso-headless]>.verso-rhythm>:not(input[type=hidden],[hidden]):not(:not(input[type=hidden],[hidden])~*),` +
-			`[data-verso-headless]>.verso-rhythm>:is([data-verso-rows],.verso-conditional):not(input[type=hidden],[hidden]):not(:not(input[type=hidden],[hidden])~*)>:not(input[type=hidden],[hidden]):not(:not(input[type=hidden],[hidden])~*),` +
-			`[data-verso-headless]>.verso-rhythm>form.verso-form:not(:not(input[type=hidden],[hidden])~*)>:not(input[type=hidden],[hidden]):not(:not(input[type=hidden],[hidden])~*){padding-top:0}`,
-		`.verso-rhythm>:nth-child(1 of :not(input[type=hidden])){margin-top:0}`,
+		// the headless section hands its first visible box no air …
+		`.verso-section[data-verso-headless]>.verso-section__body>:nth-child(1 of :not(input[type=hidden],[hidden],template)){--verso-edge-air:0px}`,
+		`.verso-card[data-verso-headless]>.verso-card__body>:nth-child(1 of :not(input[type=hidden],[hidden],template)){--verso-edge-air:0px}`,
+		// … which a run of rows, a reveal and a form forward to their own
+		// first row …
+		`.verso-stack[data-verso-rows]>:nth-child(1 of :not(input[type=hidden],[hidden],template)){--verso-edge-air:inherit}`,
+		`.verso-conditional__gate{--verso-edge-air:inherit}`,
+		`.verso-form>:nth-child(1 of :not(input[type=hidden],[hidden],template)){--verso-edge-air:inherit}`,
+		// … and the row takes as the air over its name
+		`padding:var(--verso-edge-air,var(--verso-field-lead,var(--spacing-inset)))`,
+		// hidden carriers ahead of the first block take no block gap
+		`.verso-rhythm>:nth-child(1 of :not(input[type=hidden],[hidden],template)){margin-top:var(--verso-edge-lead,0px)}`,
 	} {
 		if !strings.Contains(css, want) {
 			t.Errorf("stylesheet is missing %s", want)
 		}
 	}
-	if strings.Contains(css, `[data-verso-section]>.verso-rhythm>:not(input[type=hidden],[hidden]):not(:has(~:not(input[type=hidden],[hidden])))`) {
+	if strings.Contains(blockSheet(t, "section"), "--verso-edge-trail:") {
 		t.Error("a section's last row gives its padding back, so it ends off the grid's line")
 	}
 }
@@ -1065,7 +1140,7 @@ func TestAPageOpeningOnAHeadingDrawsOneRule(t *testing.T) {
 		t.Fatalf("read stylesheet: %v", err)
 	}
 	for _, want := range []string{
-		".verso-page__body [data-verso-section-band]:not(.verso-page__body :not(input[type=hidden],template,script,[hidden],:empty)~* [data-verso-section-band],.verso-page__body :not(input[type=hidden],template,script,[hidden],:empty)~[data-verso-section-band]){border-top-width:0;padding-top:0}",
+		".verso-section__head[data-verso-section-band]:is(.verso-page__body *):not(.verso-page__body :not(input[type=hidden],template,script,[hidden],:empty)~* *){border-top-width:0;padding-top:0}",
 	} {
 		if !strings.Contains(string(css), want) {
 			t.Errorf("stylesheet is missing %s", want)
@@ -1212,45 +1287,53 @@ func TestTheRailCarriesItsPlaceAcrossAPageChange(t *testing.T) {
 // whatever draws a rule after one brings the air before it itself, its margin
 // a whole number of cells less the rule's own pixel so the rule lands on a
 // line: a ruled section two cells under the last row's line, a heading band's
-// section the same, the configuration card's divider one. A section that kept
-// air of its own while the rule after it zeroed its margin set every rule off
-// the grid.
+// section the same, the configuration card one cell under the card before
+// it. A section that kept air of its own while the rule after it zeroed its
+// margin set every rule off the grid.
 func TestTheRuleAfterASectionBringsItsOwnAir(t *testing.T) {
-	raw, err := os.ReadFile("assets/sections.css")
-	if err != nil {
-		t.Fatal(err)
-	}
-	css := string(raw)
+	css := blockSheet(t, "section")
 	// A notice or an empty slot is a box like any other, a multiple of 4px
 	// tall with its frame, so it takes the full air before it.
 	if strings.Contains(css, ":is([data-verso-slot], [data-verso-callout])") {
 		t.Error("a notice or a slot still takes its air less a pixel, as a frame standing a pixel out did")
 	}
-	for _, want := range []string{
-		"section[data-verso-section=\"ruled\"] {\n    margin-top: calc(var(--spacing) * 10 - 1px);\n    border-top: 1px solid var(--color-rule);\n    padding-top: var(--spacing-inset);\n  }",
-		":not(input[type=\"hidden\"], template, [hidden]) + section[data-verso-section]:has(> [data-verso-section-band]),\n" +
-			"  .verso-page__body > .verso-stack > * + section[data-verso-section]:has(> [data-verso-section-band]) {\n    margin-top: calc(var(--spacing) * 10 - 1px);\n  }",
+	for head, wants := range map[string][]string{
+		`.verso-section[data-verso-section="ruled"] {`: {
+			"margin-top: var(--verso-step, calc(var(--spacing) * 10 - 1px));",
+			"padding-top: var(--spacing-inset);",
+			"border: 0 solid var(--color-rule);",
+			"border-top-width: 1px;",
+		},
+		`.verso-section:has(> .verso-section__head[data-verso-section-band]):is(:not(input[type="hidden"], template, [hidden]) + *) {`: {
+			"margin-top: calc(var(--spacing) * 10 - 1px);",
+		},
 		// a section with no heading that opens under a notice stands the
 		// inset's air under it, rather than flush on it
-		"[data-verso-callout] + section[data-verso-section][data-verso-headless] {\n    margin-top: var(--spacing-inset);\n  }",
+		`.verso-section[data-verso-headless]:is([data-verso-callout] + *) {`: {"margin-top: var(--spacing-inset);"},
 		// a listing that ends its section gives its last hairline to the rule
 		// that closes it, clear but keeping its pixel
-		"section[data-verso-section] > .verso-rhythm > :last-child .verso-table > tbody > tr:last-child > td {\n    border-bottom-color: transparent;\n  }",
-		// the configuration card's rule is a section's rule: 40px under what it
-		// follows, which ends on a line, the card 40px under it, less the
-		// rule's own pixel
-		"[data-verso-code-divider] {\n    margin-top: calc(var(--spacing) * 10);\n    padding-top: calc(var(--spacing) * 10 - 1px);\n  }",
+		"\n.verso-section__body > :last-child {": {"--verso-last-rule-color: transparent;"},
 	} {
-		if !strings.Contains(css, want) {
-			t.Errorf("sections.css is missing %s", want)
+		block := cssBlock(t, css, head)
+		for _, want := range wants {
+			if !strings.Contains(block, want) {
+				t.Errorf("blocks/section.css %s lacks %s", strings.TrimSpace(head), want)
+			}
 		}
 	}
-	for _, gone := range []string{
-		"[data-verso-section] + [data-verso-code-divider]",
-		"padding-block: 0 calc(var(--spacing) * 8)",
-	} {
+	// The table's last row reads the colour its surface hands it, keeping
+	// its pixel either way.
+	if !strings.Contains(blockSheet(t, "table"), "border-bottom-width: var(--verso-last-rule-width, 1px);\n  border-bottom-color: var(--verso-last-rule-color, var(--color-rule));") {
+		t.Error("a table's last row does not read the hairline its surface hands it")
+	}
+	// the configuration card stands as a card does: a cell under the one
+	// before it, less that card's frame pixel
+	if !strings.Contains(cssBlock(t, blockSheet(t, "code"), `.verso-code[data-verso-place="card"] {`), "margin-top: calc(var(--spacing-inset) - 1px);") {
+		t.Error("the configuration card does not stand a cell under the card before it")
+	}
+	for _, gone := range []string{"padding-block: 0 calc(var(--spacing) * 8)", "padding-bottom:"} {
 		if strings.Contains(css, gone) {
-			t.Errorf("sections.css still trades a section's closing air for the next rule's: %s", gone)
+			t.Errorf("blocks/section.css still trades a section's closing air for the next rule's: %s", gone)
 		}
 	}
 }
@@ -1262,16 +1345,19 @@ func TestTheRuleAfterASectionBringsItsOwnAir(t *testing.T) {
 // stood in one. The last row keeps its padding, in a group or not, so it ends
 // on a line.
 func TestASectionTrimsThroughARunOfRows(t *testing.T) {
-	raw, err := os.ReadFile("assets/sections.css")
-	if err != nil {
-		t.Fatal(err)
+	// The section hands its first visible block no air, and a run of rows
+	// and a reveal pass it on to the row they open with.
+	if !strings.Contains(cssBlock(t, blockSheet(t, "section"), `.verso-section[data-verso-headless] > .verso-section__body > :nth-child(1 of :not(input[type="hidden"], [hidden], template)) {`), "--verso-edge-air: 0px;") {
+		t.Error("an untitled section does not take its first row's air back")
 	}
-	css := string(raw)
-	want := "[data-verso-headless] > .verso-rhythm > :is([data-verso-rows], .verso-conditional):not(input[type=\"hidden\"], [hidden]):not(:not(input[type=\"hidden\"], [hidden]) ~ *) > :not(input[type=\"hidden\"], [hidden]):not(:not(input[type=\"hidden\"], [hidden]) ~ *) { padding-top: 0; }"
-	if !strings.Contains(css, want) {
-		t.Errorf("sections.css is missing %s", want)
+	if !strings.Contains(cssBlock(t, blockSheet(t, "stack"), `.verso-stack[data-verso-rows] > :nth-child(1 of :not(input[type="hidden"], [hidden], template)) {`), "--verso-edge-air: inherit;") {
+		t.Error("a run of rows does not pass the section's air on to its first row")
 	}
-	if strings.Contains(css, "[data-verso-section] > .verso-rhythm > [data-verso-rows]") {
+	if !strings.Contains(cssBlock(t, blockSheet(t, "conditional"), ".verso-conditional__gate {"), "--verso-edge-air: inherit;") {
+		t.Error("a reveal does not pass the section's air on to its gate's row")
+	}
+	// The section hands its last row nothing: it keeps its padding.
+	if strings.Contains(blockSheet(t, "section"), "--verso-edge-trail:") {
 		t.Error("a run of rows gives its last row's air back, so it ends off the grid's line")
 	}
 }
@@ -1282,15 +1368,11 @@ func TestASectionTrimsThroughARunOfRows(t *testing.T) {
 // brings its own air (TestTheRuleAfterASectionBringsItsOwnAir); an opening
 // that kept closing air of its own would push that rule off the line.
 func TestAnUntitledOpeningKeepsNoClosingAir(t *testing.T) {
-	raw, err := os.ReadFile("assets/sections.css")
-	if err != nil {
-		t.Fatal(err)
-	}
-	css := string(raw)
-	if strings.Contains(css, "[data-verso-headless]:not([data-verso-section=\"ruled\"]):has(") {
+	css := blockSheet(t, "section")
+	if strings.Contains(css, "[data-verso-headless]:has(") {
 		t.Error("an untitled opening keeps closing air before the rule after it")
 	}
-	if strings.Contains(css, "padding-bottom: calc(var(--spacing) * 8)") {
+	if strings.Contains(css, "padding-bottom") || strings.Contains(css, "margin-bottom: calc(var(--spacing) * 8)") {
 		t.Error("a section keeps closing air of its own")
 	}
 }
@@ -1424,7 +1506,7 @@ func TestNoPageStylesItsOwnListRows(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, sheet := range append(sheets, "assets/input.css", "assets/sections.css") {
+	for _, sheet := range append(sheets, "assets/input.css") {
 		css, err := os.ReadFile(sheet)
 		if err != nil {
 			t.Fatal(err)

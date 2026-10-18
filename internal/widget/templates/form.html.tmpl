@@ -68,7 +68,7 @@
        the form is only its act (every field hidden): with nothing to close
        off, the act stands 24px under what is above it. Every rule lands on a
        line of the grid (its margin its air less its own pixel). */}}
-  <div data-verso-form-actions{{if and .ClosesPage (not .JoinsCode)}} data-verso-rule{{end}} class="verso-form__acts"{{if .Inline}} data-verso-close="inline"{{else if or .JoinsCode .Sectioned}} data-verso-close="flush"{{else if .ClosesPage}} data-verso-close="page"{{else if .LoneAct}} data-verso-close="flush"{{end}}>
+  <div data-verso-form-actions class="verso-form__acts"{{if .Inline}} data-verso-close="inline"{{else if or .JoinsCode .Sectioned}} data-verso-close="flush"{{else if .ClosesPage}} data-verso-close="page"{{else if .LoneAct}} data-verso-close="flush"{{end}}>
     {{/* No Submit label, no primary button — a form may be driven by its
          actions or by a confirm among its fields instead. */}}
     {{/* A form that waits for a change draws its acts resting, as the page's

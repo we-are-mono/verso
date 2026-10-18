@@ -144,7 +144,6 @@ func paintedSources(t *testing.T) []string {
 		filepath.Join("..", "server", "templates", "*.tmpl"),
 		filepath.Join("..", "server", "assets", "input.css"),
 		filepath.Join("..", "server", "assets", "blocks", "*.css"),
-		filepath.Join("..", "server", "assets", "sections.css"),
 		filepath.Join("..", "server", "assets", "verso*.js"),
 		"*.go",
 		filepath.Join("..", "server", "*.go"),

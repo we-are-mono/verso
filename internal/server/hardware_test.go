@@ -131,7 +131,7 @@ func card(t *testing.T, body, title string) string {
 		t.Fatalf("no %q card:\n%s", title, body)
 	}
 	rest := body[i+len(marker):]
-	if j := strings.Index(rest, "<section data-verso-section"); j >= 0 {
+	if j := strings.Index(rest, `<section class="verso-card"`); j >= 0 {
 		rest = rest[:j]
 	}
 	return rest
@@ -443,12 +443,12 @@ func TestCoolingListsEveryFan(t *testing.T) {
 // stand side by side.
 func TestEachModuleIsACard(t *testing.T) {
 	page := renderCards(t, dkInput())
-	row := strings.Index(page, `data-verso-style="cards" data-verso-cards`)
+	row := strings.Index(page, `<div class="verso-grid" data-verso-style="cards"`)
 	if row < 0 || row > strings.Index(page, ">SFP&#43; module</h2>") {
 		t.Errorf("the modules' cards should stand in one row:\n%s", page)
 	}
 	var modules []string
-	for _, s := range strings.Split(page, "<section data-verso-section") {
+	for _, s := range strings.Split(page, `<section class="verso-card"`) {
 		if strings.Contains(s, ">SFP&#43; module</h2>") {
 			modules = append(modules, s)
 		}

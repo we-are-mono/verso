@@ -196,10 +196,6 @@ func (s *Section) postsWithForm(r *Renderer) Widget {
 
 func (s *Section) renderInto(r *Renderer, out io.Writer, csrf string) error {
 	control := s.postsWithForm(r)
-	children, err := r.nested(s.Title != "").renderChildren(s.Children, csrf)
-	if err != nil {
-		return err
-	}
 	v := sectionView{
 		Nested:     r.depth > 0,
 		OnCards:    r.cards,
@@ -214,7 +210,6 @@ func (s *Section) renderInto(r *Renderer, out io.Writer, csrf string) error {
 		MetaInline: s.MetaPosition == "inline",
 		Hairline:   s.Hairline,
 		Flush:      s.Flush,
-		Children:   children,
 	}
 	if control != nil {
 		var buf bytes.Buffer
@@ -223,6 +218,14 @@ func (s *Section) renderInto(r *Renderer, out io.Writer, csrf string) error {
 		}
 		v.Control = template.HTML(buf.String())
 	}
+	// What a card holds stands straight in its body.
+	pass := r.nested(s.Title != "")
+	pass.inCard = v.Kind() == "card"
+	children, err := pass.renderChildren(s.Children, csrf)
+	if err != nil {
+		return err
+	}
+	v.Children = children
 	if s.Sub != "" {
 		var buf bytes.Buffer
 		if err := r.md.Convert([]byte(s.Sub), &buf); err != nil {

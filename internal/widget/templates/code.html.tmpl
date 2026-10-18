@@ -17,7 +17,7 @@
      styled itself differently would read as a different kind of thing. With
      nothing to read yet it is there for the watcher but hidden: an empty box
      would read as a box to fill. */}}
-<div class="verso-code"{{if not (and .Live (not .Label))}} data-verso-code-divider{{end}}{{if .Live}} data-verso-preview{{if not .Value}} hidden{{end}}{{end}}>
+<div class="verso-code"{{if not (and .Live (not .Label))}} data-verso-place="card"{{end}}{{if .Live}} data-verso-preview{{if not .Value}} hidden{{end}}{{end}}>
   {{if .Lines}}
   {{/* The code block (blocks/code.css). Every token in its own ink: the
        keyword denim, a section's type amethyst, an option's name Ink, its

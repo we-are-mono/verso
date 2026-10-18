@@ -22,30 +22,9 @@
 {{define "verso-empty-slot-body"}}<span aria-hidden="true" class="verso-mark"></span>
     <p class="verso-slot__words">{{.}}</p>{{end}}
 
-{{/* verso-kicker-class: the one kicker — a word or two naming the group under
-     it, never a heading's rival: 12px at 500, uppercase at .08em, in the meta
-     ink. Every label set this way wears exactly this, so a reader who learns
-     it once reads it everywhere. */}}
-{{/* A section's heading, stated once for every page that heads a section —
-     the section widget and the pages the shell draws by hand alike. The band
-     (data-verso-section-band, its rule and inset in input.css) lays out the
-     title with whatever stands on its line (a count, an act) and wraps the
-     lede to a line of its own under them. The title is the 18px heading; the
-     lede is the section's one or two sentences in the reading style. */}}
-{{define "verso-section-band-class"}}flex flex-wrap items-center justify-between gap-x-6{{end}}
-{{define "verso-section-title-class"}}text-lg leading-6 font-semibold tracking-[-0.025em] text-ink{{end}}
-{{define "verso-section-lede-class"}}verso-prose text-body{{end}}
-{{define "verso-section-lede"}}<div class="w-full"><div data-verso-section-lede class="{{template "verso-section-lede-class"}}">{{.}}</div></div>{{end}}
-{{/* A section meta: a fact standing on the heading's line — how long the
-     router has run, when the firmware was last checked — its label in the
-     meta ink and its value in the body ink at 600, so the value is what the
-     eye lands on. data-verso-section-meta is the value's hook for a page that
-     rewrites it live. */}}
-{{define "verso-section-meta-class"}}inline-flex items-center gap-1.5 text-sm leading-6{{end}}
-{{define "verso-section-meta-label-class"}}text-meta{{end}}
-{{define "verso-section-meta-value-class"}}font-semibold text-body{{end}}
-
-{{define "verso-kicker-class"}}text-xs leading-6 font-medium tracking-[.08em] text-meta uppercase{{end}}
+{{/* A section's heading is the heading block (blocks/heading.css): the
+     title with whatever stands on its line (a count, an act), and the lede
+     on a line of its own under them. */}}
 
 {{/* verso-none: the dash a cell shows when it has no value. The dash is for
      the eye; a screen reader is told "None" instead of hearing a dash read out. */}}
@@ -455,16 +434,15 @@
         {{end}}
       </nav>
       {{end}}
-      {{/* A choice drawer's section bands carry the drawer inset inside an
-           arbitrary variant, where a partial cannot stand: the gutter there
-           is verso-drawer-inset spelled out. A table keeps its own cell inset
-           inside the drawer's, as an entity panel's does, so a lane's fill
-           never touches its words. */}}
+      {{/* A chooser's groups stand under quiet bands run edge to edge, their
+           words at the drawer's gutter (blocks/section.css). A table keeps
+           its own cell inset inside the drawer's, as an entity panel's does,
+           so a lane's fill never touches its words. */}}
       {{/* A panel that answered its own submission carries how it went for the
            outcome layer to say (verso-page.js), never as a line of its own:
            the page is not drawn around this answer, so the panel brings it. */}}
       {{if .Flash.Message}}<template data-verso-arrival>{{template "verso-flash" .Flash}}</template>{{end}}
-      {{if .Choices}}<div data-verso-scroll="sand" class="verso-drawer-scrollbar min-h-0 flex-1 overflow-x-hidden overflow-y-auto space-y-0 pb-8 [&>section]:pt-0 [&>section>div:first-child]:mb-0 [&>section>div:first-child]:border-y [&>section>div:first-child]:border-rule [&>section>div:first-child]:bg-quiet [&>section>div:first-child]:px-(--verso-drawer-gutter) [&>section>div:first-child]:py-2 [&_h3]:font-medium [&_h3]:tracking-[.08em] [&_.verso-rhythm>*]:!mt-0">
+      {{if .Choices}}<div data-verso-scroll="sand" class="verso-modal__choices verso-drawer-scrollbar">
       {{- else}}<div data-verso-scroll="sand" data-verso-drawer-body class="verso-modal__ground verso-stack verso-drawer-scrollbar">{{end}}
         {{range .Body}}{{.}}{{end}}
       </div>

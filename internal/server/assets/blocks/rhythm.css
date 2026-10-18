@@ -15,11 +15,19 @@
  *                           (a card sets 24px; default 40px)
  *           --verso-step    knob, on each child: how far it stands from the
  *                           one before it (unset: the surface's step)
+ *           --verso-edge-lead  knob, on the first child: how far it stands
+ *                           from the rhythm's top edge (unset: flush), which
+ *                           the surface around the rhythm sets (24px under a
+ *                           heading, a row's pull onto a card's frame)
  * Sets:     --verso-step    0 on a row-like after a row-like; a group's step
  *                           on a chart under the field that chooses it
  */
 
 @property --verso-step {
+  syntax: "*";
+  inherits: false;
+}
+@property --verso-edge-lead {
   syntax: "*";
   inherits: false;
 }
@@ -40,7 +48,7 @@
 }
 
 /* Hidden carriers are not blocks: the first child a reader sees takes no gap
-   above it. */
-.verso-rhythm > :nth-child(1 of :not(input[type="hidden"])) {
-  margin-top: 0;
+   above it, only the edge its surface gives it. */
+.verso-rhythm > :nth-child(1 of :not(input[type="hidden"], [hidden], template)) {
+  margin-top: var(--verso-edge-lead, 0px);
 }

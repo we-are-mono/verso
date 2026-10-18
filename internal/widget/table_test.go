@@ -982,7 +982,11 @@ func TestRenderTableDense(t *testing.T) {
 		}
 	}
 	css := blockCSS(t, "table")
-	declares(t, "table", ".verso-table", "--verso-table-start: calc(var(--spacing) * 2.75)", "--verso-table-end: calc(var(--spacing) * 4)")
+	// A surface that stands the table in its own inset (a card) sets the
+	// edges; otherwise they are the table's own.
+	declares(t, "table", ".verso-table",
+		"--verso-table-start: var(--verso-edge-start, calc(var(--spacing) * 2.75))",
+		"--verso-table-end: var(--verso-edge-end, calc(var(--spacing) * 4))")
 	declares(t, "table", tableStartEdge, "padding-inline-start: var(--verso-table-start)")
 	declares(t, "table", tableEndEdge, "padding-inline-end: var(--verso-table-end)")
 	declares(t, "table", ".verso-table__cell", "calc(var(--spacing) * 3.5)")

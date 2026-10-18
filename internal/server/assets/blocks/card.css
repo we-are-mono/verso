@@ -1,0 +1,212 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/* SPDX-FileCopyrightText: 2026 Mono Technologies Inc. */
+
+/*
+ * card — a page's subject, and a drawer's: Paper in a Strong Hairline frame,
+ * its heading the card's head behind a hairline, its rules reaching the
+ * card's edges. The renderer says which sections are cards (a top-level
+ * titled or ruled section on a surface of cards); a form's untitled run of
+ * fields is a card with no head, so no field stands loose on the sand.
+ *
+ * Cards stand 24px apart, their words 24px in. A frame's edges are lines of
+ * the grid: its top border lands on a line and the air after it is a pixel
+ * short of 24, so the body starts on the line 24px down; the body ends on a
+ * line, the air under it is the full 24px, so the bottom border lands on a
+ * line, and the gap after it gives that pixel back so the next card's top
+ * does too. Across, the same: its words stand 23px after the left border and
+ * 23px before the right one (--spacing-side), so a box that starts the body
+ * or ends it, or runs across it, has its borders on lines.
+ *
+ * Context: --verso-reach-start, --verso-reach-end  the card's edges, which
+ *                          its ruled parts reach
+ *          --verso-rhythm  24px: the card holds its blocks together
+ * Sets:    --verso-field-bleed  its rows run from border to border, their
+ *                          words still 23px in (a row in a row, or in a
+ *                          grid's cell, stays in its column); a settings
+ *                          list's fold runs with them
+ *          --verso-edge-lead  on a body that opens on a row: the row's name
+ *                          15px after the head's seam (or the headless
+ *                          frame), as a name stands after the hairline
+ *                          between rows; on one that opens on anything else
+ *                          under a head: 24px
+ *          --verso-edge-air  0 on a headless card's first block
+ *          --verso-edge-trail  on a body that ends on a row: the card closes
+ *                          16px under its last words, as a row stands over
+ *                          the next one's hairline
+ *          --verso-step    0 on what brings its own air (a row after any
+ *                          block); 40px on a titled part, which starts a
+ *                          group of its own
+ *          --verso-listing-bleed, --verso-edge-start, --verso-edge-end  on a
+ *                          listing in its flow: it runs to the card's edges,
+ *                          its words in line with the card's
+ *          --verso-head-top, --verso-table-lead  on a listing that opens the
+ *                          body: it stands straight on the head's hairline
+ *                          (or the frame), which is its heads' top edge
+ *          --verso-last-rule-width  on a listing that ends the body: the
+ *                          frame takes its last row's hairline
+ *          --verso-last-rule-color  transparent on the body's last block
+ *          --verso-listing-trail  on a listing among the body's blocks
+ *          --verso-facts-lead, --verso-facts-trail  on a fact list that
+ *                          opens or closes the body (or its first or last
+ *                          part): its first and last lines the block's 24px
+ *                          from the frame, as its words are from the sides
+ * Elements: __head  the heading (blocks/heading.css, its card size), running
+ *                   border to border, 48px from the frame's line to its
+ *                   hairline's: 11px after the frame, the title's 24px line,
+ *                   12px under it; the hairline the frame's own ink, so the
+ *                   head reads as the card's and the fainter lines under it
+ *                   as what it holds. A lede belongs to the head, its lines
+ *                   under the title's
+ *           __body  what the card holds (verso-rhythm), taking the head's
+ *                   seam pixel back so what stands first starts on the grid
+ *                   (a listing that opens it stands straight on the seam)
+ */
+
+.verso-card {
+  --verso-reach-start: var(--spacing-side);
+  --verso-reach-end: var(--spacing-side);
+  --verso-rhythm: var(--spacing-inset);
+  margin: 0;
+  padding: 0 var(--spacing-side) var(--spacing-inset);
+  border: 1px solid var(--color-rule-strong);
+  border-radius: var(--radius-xs);
+  background-color: var(--color-ground);
+}
+.verso-card[id] {
+  scroll-margin-top: calc(var(--spacing) * 16);
+}
+@media (width >= 48rem) {
+  .verso-card[id] {
+    scroll-margin-top: 0;
+  }
+}
+.verso-card[data-verso-headless] {
+  padding-top: calc(var(--spacing-inset) - 1px);
+}
+/* A card stands 23px under whatever is before it: the frame's pixel, then
+   the 24px every card keeps from the next. */
+.verso-card:is(:not(input[type="hidden"], template, script, [hidden]) ~ *) {
+  margin-top: calc(var(--spacing-inset) - 1px);
+}
+/* A page's own listing is its card, and its legend follows it close: the
+   card after the legend stands the full 24px under it. */
+.verso-card:is(.verso-listing + .verso-listing__legend + *) {
+  margin-top: var(--spacing-inset);
+}
+/* The page's last card gives its bottom border's pixel back, so the
+   colophon's hairline lands on a line: the last of the page's body, of its
+   stack, of a stack that ends it, or of the stack that ends a form's column
+   beside its rail. */
+.verso-card:last-child:where(.verso-page__body > *, .verso-page__body > .verso-stack > *, .verso-page__body > .verso-stack > .verso-stack:last-child > *, .verso-page__body [data-verso-form-column] > .verso-stack:last-child > *) {
+  margin-bottom: -1px;
+}
+/* A listing that ends the body closes on the frame; a headless card that
+   opens on one stands it on the frame. */
+.verso-card:has(> .verso-card__body > .verso-listing:not([data-verso-list]):last-child) {
+  padding-bottom: 0;
+}
+.verso-card[data-verso-headless]:has(> .verso-card__body > .verso-listing:first-child) {
+  padding-top: 0;
+}
+/* A fold that is all a headless card holds is the card itself
+   (blocks/disclosure.css), with no air of the card's own. */
+.verso-card[data-verso-headless]:has(> .verso-card__body > .verso-disclosure:only-child) {
+  padding: 0;
+}
+
+.verso-card__head {
+  margin-inline: calc(var(--spacing-side) * -1);
+  padding: calc(var(--spacing) * 2.75) var(--spacing-side) calc(var(--spacing) * 3);
+  border: 0 solid var(--color-rule-strong);
+  border-bottom-width: 1px;
+}
+
+.verso-card__body:is(.verso-card__head + *):not(:has(> .verso-listing:not([data-verso-list]):first-child)) {
+  margin-top: -1px;
+}
+
+/* Rows run border to border. */
+.verso-card__body .verso-field:not(.verso-field .verso-field, .verso-form-grid .verso-field),
+.verso-card__body .verso-settings__fold {
+  --verso-field-bleed: var(--spacing-side);
+}
+
+/* The edges a body opens and ends on. */
+.verso-card:not([data-verso-headless]) > .verso-card__body > :nth-child(1 of :not(input[type="hidden"], [hidden], template)):is(.verso-field, :is(.verso-field-set, .verso-conditional, .verso-settings, [data-verso-rows], .verso-form:not([data-verso-compact-form])):has(> :nth-child(1 of :not(input[type="hidden"], [hidden], template)).verso-field)) {
+  --verso-edge-lead: calc(var(--spacing) * -2 - 1px);
+}
+.verso-card[data-verso-headless] > .verso-card__body > :nth-child(1 of :not(input[type="hidden"], [hidden], template)):is(.verso-field, :is(.verso-field-set, .verso-conditional, .verso-settings, [data-verso-rows], .verso-form:not([data-verso-compact-form])):has(> :nth-child(1 of :not(input[type="hidden"], [hidden], template)).verso-field)) {
+  --verso-edge-lead: calc(var(--spacing) * -2);
+}
+.verso-card:not([data-verso-headless]) > .verso-card__body > :nth-child(1 of :not(input[type="hidden"], [hidden], template)):not(.verso-field, .verso-form-grid, .verso-conditional, .verso-field-set, .verso-form:not([data-verso-compact-form]):has(.verso-field, .verso-form-grid, .verso-conditional), [data-verso-change-field], .verso-settings, [data-verso-rows]:has(> .verso-field:first-child), .verso-listing:not([data-verso-list])) {
+  --verso-edge-lead: var(--spacing-inset);
+}
+.verso-card[data-verso-headless] > .verso-card__body > :nth-child(1 of :not(input[type="hidden"], [hidden], template)) {
+  --verso-edge-air: 0px;
+}
+.verso-card__body > :nth-last-child(1 of :not(input[type="hidden"], [hidden], template)) {
+  --verso-edge-trail: calc(var(--spacing) * -2);
+  --verso-last-rule-color: transparent;
+}
+
+/* A row brings its own 24px of air, so after any block it takes no step;
+   a titled part starts a group of its own, 40px on. */
+.verso-card__body > * + :is(.verso-field, .verso-form-grid, .verso-conditional, .verso-field-set, .verso-form:not([data-verso-compact-form]):has(.verso-field, .verso-form-grid, .verso-conditional), [data-verso-change-field], .verso-settings, [data-verso-rows]:has(> .verso-field:first-child)) {
+  --verso-step: 0;
+}
+.verso-card__body > * + .verso-section {
+  --verso-step: var(--spacing-frame);
+}
+
+/* A listing in the card's flow runs to its edges, its words in line with
+   the card's; one that opens the body stands straight on the head's hairline
+   or the frame, which is its heads' top edge, and one that ends it closes on
+   the frame, which takes its last row's hairline. Among the body's blocks it
+   gives its last hairline's pixel back to what follows, as a card does. */
+.verso-card__body > .verso-listing:not([data-verso-list]) {
+  --verso-listing-bleed: var(--spacing-side);
+  --verso-edge-start: var(--spacing-side);
+  --verso-edge-end: var(--spacing-side);
+}
+.verso-card__body > .verso-listing:first-child {
+  --verso-head-top: 0px;
+}
+.verso-card:not([data-verso-headless]) > .verso-card__body > .verso-listing:not([data-verso-list]):first-child {
+  --verso-table-lead: 0px;
+}
+.verso-card__body > .verso-listing:last-child {
+  --verso-last-rule-width: 0px;
+}
+.verso-card__body > .verso-listing:not(:last-child) {
+  --verso-listing-trail: -1px;
+}
+
+/* A fact list that opens the body, or its first part under its line and
+   lede, gives its first row's air up; one that closes the card (on its own
+   or as the end of its last part) gives up its last row's. Facts in columns
+   are one list while they stand one column; side by side, each column
+   starts and ends the block. */
+.verso-card__body > .verso-facts:nth-child(1 of :not(input[type="hidden"], [hidden], template)),
+.verso-card__body > .verso-section > .verso-section__body > .verso-facts:nth-child(1 of :not(input[type="hidden"], [hidden], template)),
+.verso-card__body > .verso-section > .verso-section__body > .verso-grid:nth-child(1 of :not(input[type="hidden"], [hidden], template)) > .verso-grid__track > .verso-facts:first-child {
+  --verso-facts-lead: 0px;
+}
+.verso-card__body > .verso-facts:nth-last-child(1 of :not(input[type="hidden"], [hidden], template)),
+.verso-card__body > .verso-section:nth-last-child(1 of :not(input[type="hidden"], [hidden], template)) > .verso-section__body > .verso-facts:nth-last-child(1 of :not(input[type="hidden"], [hidden], template)),
+.verso-card__body > .verso-section:nth-last-child(1 of :not(input[type="hidden"], [hidden], template)) > .verso-section__body > .verso-grid:nth-last-child(1 of :not(input[type="hidden"], [hidden], template)) > .verso-grid__track > .verso-facts:last-child {
+  --verso-facts-trail: 0px;
+}
+@container (width >= 42rem) {
+  .verso-card__body > .verso-section > .verso-section__body > .verso-grid:nth-child(1 of :not(input[type="hidden"], [hidden], template)) > .verso-grid__track > .verso-facts {
+    --verso-facts-lead: 0px;
+  }
+  .verso-card__body > .verso-section:nth-last-child(1 of :not(input[type="hidden"], [hidden], template)) > .verso-section__body > .verso-grid:nth-last-child(1 of :not(input[type="hidden"], [hidden], template)) > .verso-grid__track > .verso-facts {
+    --verso-facts-trail: 0px;
+  }
+}
+
+/* A fold among the card's rows: the row before it keeps a row's 16px over
+   its line. */
+.verso-card__body > .verso-field:has(+ .verso-disclosure:not(:only-child)) {
+  --verso-field-trail: calc(var(--spacing) * 4);
+}

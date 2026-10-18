@@ -20,17 +20,20 @@
  *           __acts    the commit row: what the form does and what doing it
  *                     costs. data-verso-close: rule (the form closes on its
  *                     own rule, 24px under its fields, a pixel short after
- *                     the rule) · page (it commits the whole page: its rule
- *                     40px under the content, run out to the rail
- *                     (data-verso-rule)) · flush (it finishes the
- *                     configuration card above it, commits a section of the
- *                     page, or is only its act: 24px under what is above,
- *                     no rule) · inline (it rides the fields' row)
+ *                     the rule) · page (it commits the whole page: on the
+ *                     sand under the page's cards, which rule it off) ·
+ *                     flush (it finishes the configuration card above it,
+ *                     commits a section of the page, or is only its act:
+ *                     24px under what is above, no rule) · inline (it rides
+ *                     the fields' row). Under a card, whatever its close, it
+ *                     stands 24px under the card's line, a pixel short after
+ *                     its frame, so the buttons land on lines, and draws no
+ *                     rule of its own
  *           __note    what the acts cost, read last at the row's end
  *           __glued   an inline form's submit, glued to its field: its left
  *                     corners square
  * Sets:     --verso-rhythm  24px, on a form of settings
- *           --verso-edge-lead, --verso-edge-trail  forwarded to its first and
+ *           --verso-edge-air, --verso-edge-trail  forwarded to its first and
  *                     last visible child
  */
 
@@ -39,7 +42,7 @@
 }
 
 .verso-form > :nth-child(1 of :not(input[type="hidden"], [hidden], template)) {
-  --verso-edge-lead: inherit;
+  --verso-edge-air: inherit;
 }
 .verso-form > :nth-last-child(1 of :not(input[type="hidden"], [hidden], template)) {
   --verso-edge-trail: inherit;
@@ -85,8 +88,10 @@
   border: 0 solid var(--color-rule);
   border-top-width: 1px;
 }
-.verso-form__acts[data-verso-close="page"] {
-  --verso-acts-after: calc(var(--spacing) * 9.75);
+.verso-form__acts:is([data-verso-close="page"], :is(.verso-card, .verso-code[data-verso-place="card"], .verso-section:has(> .verso-section__body > .verso-code[data-verso-place="card"]:last-child)) ~ *) {
+  --verso-acts-after: calc(var(--spacing-inset) - 1px);
+  padding-top: 0;
+  border-top-width: 0;
 }
 .verso-form__acts[data-verso-close="flush"] {
   --verso-acts-after: var(--spacing-inset);

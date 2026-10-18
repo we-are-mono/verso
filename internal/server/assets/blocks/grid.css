@@ -46,6 +46,14 @@
 .verso-grid[data-verso-style="cards"] {
   container: cards / inline-size;
 }
+/* A row of cards stands where a card would (blocks/card.css): 23px under
+   what is before it, and, the page's last, giving its frames' pixel back. */
+.verso-grid[data-verso-style="cards"]:is(:not(input[type="hidden"], template, script, [hidden]) ~ *) {
+  margin-top: calc(var(--spacing-inset) - 1px);
+}
+.verso-grid[data-verso-style="cards"]:last-child:where(.verso-page__body > .verso-stack > *) {
+  margin-bottom: -1px;
+}
 
 .verso-grid__track {
   display: grid;

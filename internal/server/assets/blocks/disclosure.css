@@ -15,6 +15,23 @@
  *                                         conditions card's are
  * Elements: __summary  what it folds, at its head
  *           __body     what it folds, under a hairline, its blocks 24px apart
+ *
+ * In a card no fold is a framed box. Among the card's rows (a rule's
+ * "Parameters for the less common actions") it is a row of the card: its
+ * summary stands as a row's name between the card's hairlines, running to
+ * its borders, its chevron where the answers end, and what it folds are rows
+ * of the card under it, the first meeting the summary on a hairline. A fold
+ * that is all its card holds (a drawer's "Advanced — 4 more options") is the
+ * card itself, folding as an Overview card does: its summary is the card's
+ * head, 48px from the frame's line to the seam's, the title's 24px line in
+ * the card title's role, and what it folds is the card's body behind that
+ * seam, opening on a row as a titled card's does, its first name 15px after
+ * the seam, and closing 16px under its last row's words. Closed, the card is
+ * its head alone.
+ *
+ * Sets: --verso-step        0 on a fold among a card's rows: the hairline is
+ *                           the separation
+ *       --verso-field-lead  15px on the first row a card's fold holds
  */
 
 .verso-disclosure {
@@ -24,6 +41,21 @@
 }
 .verso-disclosure[data-verso-style="condition"] {
   background-color: var(--color-quiet);
+}
+.verso-disclosure:is(.verso-card__body > :not(:only-child)) {
+  --verso-step: 0;
+  margin-inline: calc(var(--spacing-side) * -1);
+  border-width: 1px 0 0;
+  border-radius: 0;
+  background-color: transparent;
+}
+.verso-disclosure:is(.verso-card__body > :not(:only-child)):nth-last-child(1 of :not(input[type="hidden"], [hidden], template)) {
+  margin-bottom: calc(var(--spacing) * -2);
+}
+.verso-disclosure:is(.verso-card[data-verso-headless] > .verso-card__body > :only-child) {
+  border-width: 0;
+  border-radius: 0;
+  background-color: transparent;
 }
 
 .verso-disclosure__summary {
@@ -44,6 +76,16 @@
   padding: calc(var(--spacing) * 6);
   color: var(--color-ink);
 }
+.verso-disclosure__summary:where(.verso-card__body > :not(:only-child) > *) {
+  padding: calc(var(--spacing) * 3.75) var(--spacing-side) calc(var(--spacing) * 4);
+  color: var(--color-ink);
+  @apply type-field-label;
+}
+.verso-disclosure__summary:where(.verso-card[data-verso-headless] > .verso-card__body > :only-child > *) {
+  padding: calc(var(--spacing) * 2.75) var(--spacing-side) calc(var(--spacing) * 3);
+  color: var(--color-ink);
+  @apply type-card-title;
+}
 
 .verso-disclosure__body {
   --verso-rhythm: var(--spacing-inset);
@@ -54,4 +96,13 @@
 .verso-disclosure__body:where(.verso-disclosure[data-verso-style="condition"] *) {
   --verso-form-width: 100%;
   padding: calc(var(--spacing) * 6);
+}
+.verso-disclosure__body:where(.verso-card__body > :not(:only-child) > *, .verso-card[data-verso-headless] > .verso-card__body > :only-child > *) {
+  padding: 0 var(--spacing-side) calc(var(--spacing) * 4);
+}
+.verso-disclosure__body:where(.verso-card[data-verso-headless] > .verso-card__body > :only-child > *) {
+  border-top-color: var(--color-rule-strong);
+}
+.verso-disclosure__body:where(.verso-card__body > :not(:only-child) > *, .verso-card[data-verso-headless] > .verso-card__body > :only-child > *) > .verso-field:first-child {
+  --verso-field-lead: calc(var(--spacing) * 3.75);
 }

@@ -713,6 +713,10 @@ type tableView struct {
 	// (renderAmongFields): its cells keep to the row's gutters and it draws no
 	// fill of its own.
 	InForm bool
+	// Place is where the listing stands on a surface of cards: "card", a
+	// page's own block, which is a card itself; "in-card", straight in a
+	// card's body, running to its edges.
+	Place string
 	// Style is the listing's shape where it is not a grid. "console" is the one
 	// such shape: a live log drawn as a terminal writes one — no grid, no
 	// hairlines, filling the frame and running to its edges.
@@ -1219,12 +1223,25 @@ func (t *Table) consoleStyle() string {
 	return ""
 }
 
+// tablePlace is where a listing stands on a surface of cards (tableView.Place).
+func tablePlace(t *Table, r *Renderer) string {
+	switch {
+	case r.inForm:
+		return ""
+	case t.pageBlock && r.cards:
+		return "card"
+	case r.inCard:
+		return "in-card"
+	}
+	return ""
+}
+
 func (t *Table) view(r *Renderer, csrf string) (tableView, error) {
 	empty := t.empty()
 	stream := t.streaming()
 	v := tableView{
 		Live: t.Style == "live", Card: t.Style == "card", List: t.Style == "list", Style: t.consoleStyle(), Dense: t.Dense,
-		Title: t.Title, Detail: t.Detail, Action: t.Action, PageBlock: t.pageBlock,
+		Title: t.Title, Detail: t.Detail, Action: t.Action, PageBlock: t.pageBlock, Place: tablePlace(t, r),
 		// A live listing keeps its heads while it waits: they name what is
 		// about to arrive, and the first event must not shift the layout.
 		HasLabels: hasColumnLabels(t.Columns) && (!empty || stream),

@@ -4,8 +4,6 @@
 package widget
 
 import (
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -20,7 +18,7 @@ func TestSectionControlAlignsToContentEdge(t *testing.T) {
 		Control:  &Button{Label: "Use my computer's time", Style: "act", Name: "_action", Value: "clock"},
 		Children: []Widget{&Field{Name: "zonename", Label: "Time zone"}},
 	})
-	column := `<span class="ml-auto flex h-6 w-full items-center justify-end sm:w-auto [&>button]:h-control [&>button]:-mb-px [&>button]:gap-2 [&>button]:px-4">`
+	column := `<span class="verso-heading__act">`
 	at := strings.Index(got, column)
 	if at < 0 {
 		t.Fatalf("the heading's control must align to the content edge:\n%s", got)
@@ -30,6 +28,36 @@ func TestSectionControlAlignsToContentEdge(t *testing.T) {
 	if !(title < meta && meta < at) || !strings.Contains(got[at:], "Use my computer") {
 		t.Errorf("title and meta lead, followed by the heading action:\n%s", got)
 	}
+	// At the line's end, the full width when it wraps under the title, its
+	// own width beside it; on the title's 24px line.
+	declares(t, "heading", ".verso-heading__act",
+		"justify-content: flex-end;", "width: 100%;", "height: calc(var(--spacing) * 6);", "margin-left: auto;")
+	if rule := cssRuleWithin(blockCSS(t, "heading"), "@media (width >= 40rem)", ".verso-heading__act"); !strings.Contains(rule, "width: auto;") {
+		t.Errorf("a heading's act beside the title keeps its own width:\n%s", rule)
+	}
+	// The act's button is a field's height less the bottom border's pixel it
+	// gives back, so it reaches 4px past the title's line either side.
+	if !sheetSizesTheHeadingsButton(blockCSS(t, "button")) {
+		t.Error("blocks/button.css gives a heading act's button no field's height (var(--spacing-control), a pixel given back under it)")
+	}
+}
+
+// sheetSizesTheHeadingsButton reports whether css holds a rule aimed at a
+// button standing in a heading's act that sets it a field's height and gives
+// its bottom border's pixel back.
+func sheetSizesTheHeadingsButton(css string) bool {
+	for _, block := range strings.Split(css, "}") {
+		open := strings.Index(block, "{")
+		if open < 0 {
+			continue
+		}
+		sel, body := block[:open], block[open+1:]
+		if strings.Contains(sel, "verso-heading__act") && strings.Contains(sel, "verso-button") &&
+			strings.Contains(body, "height: var(--spacing-control)") && strings.Contains(body, "margin-bottom: -1px") {
+			return true
+		}
+	}
+	return false
 }
 
 // TestSectionActPostsWithTheSectionsForm: a card that saves itself holds its
@@ -89,18 +117,23 @@ func tagAttr(s, open, start, end string) string {
 
 // TestHeadlessSectionStartsAtItsFirstBox: a section with no heading has
 // nothing for its first row's top padding to stand off from, so it is marked
-// headless and the stylesheet takes that padding back — the first box starts
+// headless and its block takes that padding back — the first box starts
 // where the section does. A titled section keeps it, as the gap after its
 // heading.
 func TestHeadlessSectionStartsAtItsFirstBox(t *testing.T) {
 	r := newRenderer(t)
 	row := func() []Widget { return []Widget{&Field{Name: "hostname", Label: "Router name"}} }
-	if got := render(t, r, &Section{Children: row()}); !strings.Contains(got, `<section data-verso-section="plain" data-verso-headless`) {
+	if got := render(t, r, &Section{Children: row()}); !strings.Contains(got, `<section class="verso-section" data-verso-section="plain" data-verso-headless`) {
 		t.Errorf("an untitled section is marked headless:\n%s", got)
 	}
 	if got := render(t, r, &Section{Title: "Time", Children: row()}); strings.Contains(got, "data-verso-headless") {
 		t.Errorf("a titled section keeps its first row's air:\n%s", got)
 	}
+	// The section hands its first visible box no air, and the row reads it
+	// as the air over its name.
+	declares(t, "section", `.verso-section[data-verso-headless] > .verso-section__body > :nth-child(1 of :not(input[type="hidden"], [hidden], template))`,
+		"--verso-edge-air: 0px;")
+	declares(t, "field", ".verso-field", "padding: var(--verso-edge-air, var(--verso-field-lead, var(--spacing-inset)))")
 }
 
 // TestListAddHoversAsEverySecondaryButton: a list's Add is a secondary button
@@ -168,29 +201,35 @@ func TestRenderSectionSub(t *testing.T) {
 		Children: []Widget{&Text{Markdown: "body"}},
 	})
 	for _, want := range []string{
-		"data-verso-section-lede", // description stays inside the band
-		"<strong>Input</strong>",  // sub renders Markdown
-		"text-body",               // sub is muted head-matter, not body prose
+		// description stays inside the band, on a line of its own
+		`<div data-verso-section-lede class="verso-heading__lede verso-prose">`,
+		"<strong>Input</strong>", // sub renders Markdown
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("section sub missing %q:\n%s", want, got)
 		}
 	}
-	css, err := os.ReadFile(filepath.Join("..", "server", "assets", "sections.css"))
-	if err != nil {
-		t.Fatal(err)
+	// sub is muted head-matter, not body prose
+	declares(t, "heading", ".verso-heading__lede", "flex: 1 0 100%;")
+	declares(t, "heading", ".verso-heading__lede:is(.verso-prose)", "color: var(--color-body);", "@apply type-lede;")
+	for _, block := range []string{"heading", "card", "section"} {
+		if rule := cssRule(blockCSS(t, block), ".verso-heading__lede"); strings.Contains(rule, "margin-bottom") {
+			t.Errorf("blocks/%s.css: a band with a lede keeps a margin of its own; the block under it carries the cell", block)
+		}
 	}
-	sheet := string(css)
-	if strings.Contains(sheet, "[data-verso-section-band]:has([data-verso-section-lede]) { margin-bottom") {
-		t.Error("a band with a lede keeps a margin of its own; the block under it carries the cell")
-	}
-	const first = "section[data-verso-section]:has(> [data-verso-section-band]) > .verso-rhythm > :not(input[type=\"hidden\"], [hidden]):not(:not(input[type=\"hidden\"], [hidden]) ~ *):not(.verso-field, .verso-form-grid, .verso-conditional, .verso-field-set, form:not([data-verso-compact-form]):has(.verso-field, .verso-form-grid, .verso-conditional), [data-verso-change-field], [data-verso-settings], [data-verso-rows]:has(> .verso-field:first-child)) {\n    margin-top: var(--spacing-inset);"
-	if !strings.Contains(sheet, first) {
-		t.Error("the first block under a band stands a cell under it unless it brings that cell itself (a field, a stacked form of fields, a run of rows that opens on one; a field on one row with its act gives its air up)")
-	}
+	// The first block under a band stands a cell under it unless it brings
+	// that cell itself (a field, a stacked form of fields, a run of rows that
+	// opens on one): the surface hands it the lead, and the rhythm reads it.
+	const brings = `.verso-field, .verso-form-grid, .verso-conditional, .verso-field-set, .verso-form:not([data-verso-compact-form]):has(.verso-field, .verso-form-grid, .verso-conditional), [data-verso-change-field], .verso-settings, [data-verso-rows]:has(> .verso-field:first-child)`
+	declares(t, "section", `.verso-section:has(> .verso-section__head[data-verso-section-band]) > .verso-section__body > :nth-child(1 of :not(input[type="hidden"], [hidden], template)):not(`+brings+`)`,
+		"--verso-edge-lead: var(--spacing-inset);")
+	declares(t, "card", `.verso-card:not([data-verso-headless]) > .verso-card__body > :nth-child(1 of :not(input[type="hidden"], [hidden], template)):not(`+brings+`, .verso-listing:not([data-verso-list]))`,
+		"--verso-edge-lead: var(--spacing-inset);")
+	declares(t, "rhythm", `.verso-rhythm > :nth-child(1 of :not(input[type="hidden"], [hidden], template))`,
+		"margin-top: var(--verso-edge-lead, 0px);")
 
 	plain := render(t, r, &Section{Title: "Zones", Children: []Widget{&Text{Markdown: "body"}}})
-	if band := plain[strings.Index(plain, "data-verso-section-band"):]; strings.Contains(band[:strings.Index(band, ">")], "mb-") {
+	if strings.Contains(plain, "data-verso-section-lede") {
 		t.Errorf("a section without a sub stands its content straight on under the title:\n%s", plain)
 	}
 }
@@ -204,15 +243,18 @@ func TestRenderSectionMeta(t *testing.T) {
 		Children:  []Widget{&Text{Markdown: "body"}},
 	})
 	for _, want := range []string{
-		"justify-between",
-		"Current time",
-		"font-semibold text-body",
-		"2026-08-29 22:14:08",
+		`<span class="verso-heading__meta"><span class="verso-heading__meta-label">Current time</span>`,
+		`<span data-verso-section-meta class="verso-heading__meta-value">2026-08-29 22:14:08</span>`,
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("section meta missing %q:\n%s", want, got)
 		}
 	}
+	// The fact stands at the heading's far end, its label in Meta and its
+	// value in Body a step heavier, so the value is what the eye lands on.
+	declares(t, "heading", ".verso-heading", "justify-content: space-between;")
+	declares(t, "heading", ".verso-heading__meta-label", "color: var(--color-meta);")
+	declares(t, "heading", ".verso-heading__meta-value", "color: var(--color-body);", "@apply type-subheading;")
 }
 
 func TestRenderSectionInlineMeta(t *testing.T) {
@@ -247,7 +289,7 @@ func TestRenderSectionControl(t *testing.T) {
 		t.Fatalf("decode section control: %v", err)
 	}
 	got := render(t, r, w)
-	for _, want := range []string{"Rule", "Enabled", "Disabled", `name="enabled"`, `class="verso-choice__row" data-verso-kind="inline"`, `class="verso-choice__dot"`, "gap-3"} {
+	for _, want := range []string{"Rule", "Enabled", "Disabled", `name="enabled"`, `class="verso-choice__row" data-verso-kind="inline"`, `class="verso-choice__dot"`, `<span class="verso-heading__act">`} {
 		if !strings.Contains(got, want) {
 			t.Errorf("section control missing %q:\n%s", want, got)
 		}
@@ -277,9 +319,17 @@ func TestRenderSectionAnchor(t *testing.T) {
 	// field's label pointing at the section.
 	got := render(t, r, &Section{Title: "Speed", Anchor: "speed"})
 	// Its stop short of the viewport's edge is the stylesheet's, for every
-	// section with an id (sections.css).
-	if !strings.Contains(got, `data-verso-section="card" class="verso-card" id="section-speed"`) {
+	// section with an id (blocks/card.css, blocks/section.css).
+	if !strings.Contains(got, `<section class="verso-card" data-verso-section="card" id="section-speed">`) {
 		t.Errorf("anchored section missing its id:\n%s", got)
+	}
+	declares(t, "card", ".verso-card[id]", "scroll-margin-top: calc(var(--spacing) * 16);")
+	declares(t, "section", ".verso-section[id]", "scroll-margin-top: calc(var(--spacing) * 16);")
+	for _, block := range []string{"card", "section"} {
+		sel := ".verso-" + block + "[id]"
+		if rule := cssRuleWithin(blockCSS(t, block), "@media (width >= 48rem)", sel); !strings.Contains(rule, "scroll-margin-top: 0;") {
+			t.Errorf("blocks/%s.css: on a wider screen the air %s keeps above itself is enough:\n%s", block, sel, rule)
+		}
 	}
 	plain := render(t, r, &Section{Title: "Speed"})
 	if strings.Contains(plain, "id=") {
@@ -292,31 +342,55 @@ func TestRenderSectionAnchor(t *testing.T) {
 func TestRenderSectionKicker(t *testing.T) {
 	r := newRenderer(t)
 	got := render(t, r, &Section{Title: "On this page", Kicker: true})
-	if !strings.Contains(got, `<h2 class="text-xs leading-6 font-medium tracking-[.08em] text-meta uppercase">On this page</h2>`) {
+	if !strings.Contains(got, `<h2 class="verso-heading__kicker">On this page</h2>`) {
 		t.Errorf("kicker is not set as one:\n%s", got)
 	}
-	if strings.Contains(got, "text-lg") {
+	declares(t, "heading", ".verso-heading__kicker", "@apply type-label;")
+	if strings.Contains(got, "verso-heading__title") || strings.Contains(got, "data-verso-section-band") {
 		t.Errorf("a kicker is not a heading:\n%s", got)
 	}
 	// The list it names stands a cell under it.
-	if !strings.Contains(got, `<div class="flex flex-wrap items-center justify-between gap-x-6 mb-6">`) {
+	if !strings.Contains(got, `<div class="verso-section__head verso-heading">`) {
 		t.Errorf("a kicker keeps a cell of air under it:\n%s", got)
 	}
+	declares(t, "section", ".verso-section__head:not([data-verso-section-band]):has(.verso-heading__kicker)", "margin-bottom: var(--spacing-inset);")
 }
 
+// On a surface that does not stand its subjects on cards (an Overview card's
+// body), a section draws no rule by default; hairline=true makes it one of
+// the surface's ruled subjects, and its block draws the rule.
 func TestRenderSectionHairline(t *testing.T) {
 	r := newRenderer(t)
-	plain := render(t, r, &Section{Title: "Default", Children: []Widget{&Text{Markdown: "body"}}})
-	if strings.Contains(plain, "border-t border-rule") || strings.Contains(plain, "data-verso-ruled") {
+	bare := func(w Widget) string {
+		t.Helper()
+		pass := &Renderer{tmpl: r.setFor(""), md: r.md, seq: r.seq}
+		var b strings.Builder
+		if err := pass.render(&b, w, ""); err != nil {
+			t.Fatal(err)
+		}
+		return b.String()
+	}
+	plain := bare(&Section{Title: "Default", Children: []Widget{&Text{Markdown: "body"}}})
+	if !strings.Contains(plain, `<section class="verso-section" data-verso-section="plain">`) {
 		t.Errorf("section should omit its hairline by default:\n%s", plain)
 	}
 
-	divided := render(t, r, &Section{
+	divided := bare(&Section{
 		Title:    "Divided",
 		Hairline: true,
 		Children: []Widget{&Text{Markdown: "body"}},
 	})
-	if !strings.Contains(divided, `<section data-verso-section="card" class="verso-card" data-verso-ruled data-verso-section-divider>`) {
-		t.Errorf("section with hairline=true should include divider styling:\n%s", divided)
+	if !strings.Contains(divided, `<section class="verso-section" data-verso-section="ruled">`) {
+		t.Errorf("section with hairline=true should be a ruled section:\n%s", divided)
+	}
+	declares(t, "section", `.verso-section[data-verso-section="ruled"]`, "border: 0 solid var(--color-rule);", "border-top-width: 1px;")
+	// Titled, its heading band carries that rule.
+	if !strings.Contains(divided, `<div class="verso-section__head verso-heading" data-verso-section-band>`) {
+		t.Errorf("a titled ruled section's band carries its rule:\n%s", divided)
+	}
+	declares(t, "section", ".verso-section__head[data-verso-section-band]", "border: 0 solid var(--color-rule);", "border-top-width: 1px;")
+	// On a surface of cards the same section is a card: its frame divides it.
+	if got := render(t, r, &Section{Title: "Divided", Hairline: true}); !strings.Contains(got, `<section class="verso-card" data-verso-section="card">`) {
+		t.Errorf("a ruled subject on a surface of cards is a card:\n%s", got)
 	}
 }

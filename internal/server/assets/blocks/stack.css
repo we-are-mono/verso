@@ -25,6 +25,9 @@
  * Context:  --verso-stack-step the step the stack states for its children
  * Sets:     --verso-step       0 on what follows a control band, and on a
  *                              console
+ *           --verso-edge-air, --verso-edge-trail  a run of rows forwards
+ *                              what its container hands it to its first and
+ *                              last row
  */
 
 @property --verso-stack-gap {
@@ -58,8 +61,21 @@
   margin-top: 0;
 }
 
+.verso-stack[data-verso-rows] > :nth-child(1 of :not(input[type="hidden"], [hidden], template)) {
+  --verso-edge-air: inherit;
+}
+.verso-stack[data-verso-rows] > :nth-last-child(1 of :not(input[type="hidden"], [hidden], template)) {
+  --verso-edge-trail: inherit;
+}
+
 .verso-stack[data-verso-divided] > :not(:last-child) {
   border-bottom: 1px solid var(--color-rule);
+}
+
+/* A stack that opens on a card (a plugin's part of a shell page) stands
+   where its card would, 23px under what is before it. */
+.verso-stack:is(.verso-stack > * + *):has(> .verso-card:nth-child(1 of :not(input[type="hidden"], template, [hidden]))) {
+  --verso-step: calc(var(--spacing-inset) - 1px);
 }
 
 /* A control band is its listing's top strip; a log stands flush on its

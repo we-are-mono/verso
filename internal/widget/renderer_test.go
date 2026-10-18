@@ -79,7 +79,8 @@ func TestRenderTableEscapesCells(t *testing.T) {
 
 // TestAFlushStackIsARunOfRows: a flush stack adds no rhythm of its own, so it
 // says it holds rows and nothing else, and a section gives back the air of the
-// first and last of them as if they stood in it directly (sections.css).
+// first and last of them as if they stood in it directly (blocks/stack.css
+// forwards the section's edges to them).
 func TestAFlushStackIsARunOfRows(t *testing.T) {
 	got := render(t, newRenderer(t), &Stack{Flush: true, Children: []Widget{&Badge{Text: "a"}}})
 	if !strings.HasPrefix(got, `<div class="verso-stack" data-verso-rows data-verso-gap="none">`) {
@@ -1131,19 +1132,15 @@ func TestRenderCodeInUciGrammar(t *testing.T) {
 	declares(t, "code", ".verso-code__gutter", "border-radius: 0 0 0 var(--radius-xs)")
 	declares(t, "code", ".verso-code__gutter:where(.verso-code__editor:not(:has(> .verso-code__head)) *)",
 		"border-top-left-radius: var(--radius-xs)")
-	// The card stands two cells under the rule that sets it off, the rule two
-	// cells under what it follows, as every section's rule and title — on a
-	// page and in a drawer alike, so the air is the stylesheet's, not the
-	// block's.
-	sections, err := os.ReadFile(filepath.Join("..", "server", "assets", "sections.css"))
-	if err != nil {
-		t.Fatal(err)
+	// The preview is a card of its own, on a page and in a drawer alike: it
+	// stands 23px under the card before it, as one card stands under
+	// another, its editor in the Strong Hairline frame a card wears.
+	if !strings.Contains(got, `class="verso-code" data-verso-place="card"`) {
+		t.Errorf("the preview does not stand as a card: %s", got)
 	}
-	declares(t, "code", ".verso-code[data-verso-code-divider]", "border-top-width: 1px", "var(--color-rule)")
-	if !strings.Contains(got, `class="verso-code" data-verso-code-divider`) ||
-		!strings.Contains(string(sections), "[data-verso-code-divider] {\n    margin-top: calc(var(--spacing) * 10);\n    padding-top: calc(var(--spacing) * 10 - 1px);\n  }") {
-		t.Errorf("the card stands a cell under its rule: %s", got)
-	}
+	declares(t, "code", `.verso-code[data-verso-place="card"]`,
+		"--verso-step: calc(var(--spacing-inset) - 1px);", "margin-top: calc(var(--spacing-inset) - 1px);")
+	declares(t, "code", `.verso-code__editor:where(.verso-code[data-verso-place="card"] > *)`, "border-color: var(--color-rule-strong);")
 	// The path alone names the file: no glyph before it.
 	if head := got[strings.Index(got, "data-verso-code-head"):strings.Index(got, "/etc/config/network")]; strings.Contains(head, "<svg") {
 		t.Errorf("the head names the file by its path alone: %s", head)
@@ -1588,11 +1585,11 @@ func TestAPartsHeadingNeverSkipsALevel(t *testing.T) {
 	r := newRenderer(t)
 	part := &Section{Title: "Network", Children: []Widget{&Text{Markdown: "lan"}}}
 	under := render(t, r, &Section{Title: "Interfaces", Children: []Widget{part}})
-	if !strings.Contains(under, `font-semibold text-ink">Network</h3>`) {
+	if !strings.Contains(under, `<h3 class="verso-section__part-title">Network</h3>`) {
 		t.Errorf("a part under a titled section is not h3: %s", under)
 	}
 	bare := render(t, r, &Section{Children: []Widget{part}})
-	if !strings.Contains(bare, `font-semibold text-ink">Network</h2>`) {
+	if !strings.Contains(bare, `<h2 class="verso-section__part-title">Network</h2>`) {
 		t.Errorf("a part under an untitled section skips to h3: %s", bare)
 	}
 }

@@ -44,10 +44,17 @@ func TestAListingHoldsItsScrollerInAFrameOfItsOwn(t *testing.T) {
 		"interfaces": &Table{Style: "interfaces", Columns: []TableColumn{{Label: "Device"}}},
 	} {
 		got := render(t, r, w)
-		const frame = `<div class="verso-listing" data-verso-listing>`
+		const frame = `<div class="verso-listing" data-verso-listing data-verso-place="card">`
 		if !strings.Contains(got, frame) || strings.Index(got, frame) > strings.Index(got, "data-verso-scroller") {
 			t.Errorf("%s: the scroller does not stand in its listing's frame:\n%s", name, got)
 		}
+	}
+	// The frame is the listing's, Paper in the Strong Hairline a card wears;
+	// the scroller draws none of it.
+	declares(t, "listing", `.verso-listing[data-verso-place="card"]`,
+		"border: 1px solid var(--color-rule-strong);", "background-color: var(--color-ground);")
+	if rule := cssRule(blockCSS(t, "listing"), ".verso-listing__scroller"); strings.Contains(rule, "border") {
+		t.Errorf("the scroller draws a border its fading edge would fade:\n%s", rule)
 	}
 }
 
@@ -84,16 +91,26 @@ func TestPageSpacingIsThePagesNotTheBlocks(t *testing.T) {
 }
 
 // TestRuledSectionStandsFortyAboveAndBelowItsRule: a hairline between two of
-// a page's subjects has the page's gap on both sides of it — 2.5rem above the
-// rule, 2.5rem from the rule to the section's heading — and the section a page
-// opens with draws neither rule nor gap.
+// a surface's subjects has the page's gap on both sides of it — 2.5rem above
+// the rule, 2.5rem from the rule to the section's heading — and the section a
+// surface opens with draws neither rule nor gap. On a surface of cards the
+// same section is a card, and its frame divides it.
 func TestRuledSectionStandsFortyAboveAndBelowItsRule(t *testing.T) {
 	got := render(t, newRenderer(t), &Section{Title: "Time", Hairline: true, Children: []Widget{&Text{Markdown: "x"}}})
-	// The numbers are sections.css's; the section says it is a ruled card.
-	want := `<section data-verso-section="card" class="verso-card" data-verso-ruled data-verso-section-divider>`
+	want := `<section class="verso-card" data-verso-section="card">`
 	if !strings.Contains(got, want) {
 		t.Errorf("ruled section should carry %q:\n%s", want, got)
 	}
+	// The numbers are blocks/section.css's: every rule's margin is its air
+	// less the rule's own pixel.
+	declares(t, "section", `.verso-section[data-verso-section="ruled"]`,
+		"margin-top: var(--verso-step, calc(var(--spacing) * 10 - 1px));", "border-top-width: 1px;")
+	declares(t, "section", `.verso-section:has(> .verso-section__head[data-verso-section-band]):is(:not(input[type="hidden"], template, [hidden]) + *)`,
+		"margin-top: calc(var(--spacing) * 10 - 1px);")
+	declares(t, "section", ".verso-section__head[data-verso-section-band]",
+		"padding: calc(var(--spacing) * 10) var(--verso-reach-end, 0px) 0 var(--verso-reach-start, 0px);", "border-top-width: 1px;")
+	declares(t, "section", `.verso-section:is([data-verso-section="ruled"], [data-verso-section="part"]):first-of-type`,
+		"margin-top: 0;", "padding-top: 0;", "border-top-width: 0;")
 }
 
 // A phone's width leaves out the columns a listing names secondary — facts
@@ -189,22 +206,24 @@ func TestAListingsOwnSecondaryColumnsOutrankTheShells(t *testing.T) {
 // A list — a few facts about the page's subject, such as who is signed in —
 // stands in its card's inset as a fact list does, its hairlines stopping at
 // the card's words rather than running to the frame. The listing says so, and
-// the sheet holds it there (sections.css).
+// the card runs only a listing that is no list to its edges (blocks/card.css).
 func TestAListStandsInItsCardsInset(t *testing.T) {
 	r := newRenderer(t)
 	tbl := &Table{Style: "list", Columns: []TableColumn{{Label: "Source", Kind: "reference"}}, Rows: []TableRow{{ID: "a", Cells: []TableCell{{Text: "10.0.0.2"}}}}}
-	if got := render(t, r, tbl); !strings.Contains(got, `<div class="verso-listing" data-verso-listing data-verso-list>`) {
+	if got := render(t, r, &Section{Title: "Signed in", Children: []Widget{tbl}}); !strings.Contains(got, `<div class="verso-listing" data-verso-listing data-verso-place="in-card" data-verso-list>`) {
 		t.Errorf("a list should say it is one: %s", got)
 	}
+	declares(t, "card", ".verso-card__body > .verso-listing:not([data-verso-list])",
+		"--verso-listing-bleed: var(--spacing-side);", "--verso-edge-start: var(--spacing-side);", "--verso-edge-end: var(--spacing-side);")
 	tbl.Style = ""
-	if got := render(t, r, tbl); strings.Contains(got, "data-verso-list>") {
+	if got := render(t, r, &Section{Title: "Signed in", Children: []Widget{tbl}}); strings.Contains(got, "data-verso-list>") || !strings.Contains(got, `data-verso-place="in-card">`) {
 		t.Errorf("a listing is not a list: %s", got)
 	}
 }
 
 // A list's detail rides its value's line where the column has room for both
 // and wraps under it where it has not — a long IPv6 address, a phone. The
-// detail says it is one, so the sheet can flow it (sections.css).
+// detail says it is one, so the sheet can flow it.
 func TestAListsDetailIsMarkedToFlowBesideItsValue(t *testing.T) {
 	r := newRenderer(t)
 	tbl := &Table{Style: "list", Columns: []TableColumn{{Label: "Source", Kind: "reference"}, {Label: "Last seen"}},
