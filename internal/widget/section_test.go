@@ -39,9 +39,17 @@ func TestSectionControlAlignsToContentEdge(t *testing.T) {
 	}
 	// At the line's end, the full width when it wraps under the title, its
 	// own width beside it; on the title's 24px line, the fact 12px in front
-	// of the button.
+	// of the button. The act's 28px hangs 2px over and under that line,
+	// given back by the act's margins rather than growing it, and its fact
+	// keeps the same 2px, so a fact that wraps beside the button takes whole
+	// 24px lines: the act holds no fixed height.
 	declares(t, "heading", ".verso-heading__act",
-		"justify-content: flex-end;", "gap: calc(var(--spacing) * 3);", "width: 100%;", "height: calc(var(--spacing) * 6);", "margin-left: auto;")
+		"justify-content: flex-end;", "gap: calc(var(--spacing) * 3);", "width: 100%;",
+		"min-height: calc(var(--spacing) * 7);", "margin-block: calc(var(--spacing) * -0.5);", "margin-left: auto;")
+	if rule := cssRule(blockCSS(t, "heading"), ".verso-heading__act"); strings.Contains(rule, "\n  height:") {
+		t.Errorf("a heading's act holds a fixed height:\n%s", rule)
+	}
+	declares(t, "heading", ".verso-heading__meta:where(.verso-heading__act > *)", "padding-block: calc(var(--spacing) * 0.5);")
 	if rule := cssRuleWithin(blockCSS(t, "heading"), "@media (width >= 40rem)", ".verso-heading__act"); !strings.Contains(rule, "width: auto;") {
 		t.Errorf("a heading's act beside the title keeps its own width:\n%s", rule)
 	}

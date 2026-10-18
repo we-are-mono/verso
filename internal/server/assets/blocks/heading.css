@@ -96,14 +96,24 @@
   @apply type-field-label;
 }
 
+/* The act stands on the title's 24px line: its 28px control hangs 2px over
+   and under it, given back by the act's margins, rather than growing it. Its
+   fact keeps the same 2px about its lines, so a fact that wraps beside the
+   control (a phone's "Not checked since the router started") takes another
+   24px line for each line it runs to, and the head still closes on the
+   grid. */
 .verso-heading__act {
   display: flex;
   align-items: center;
   justify-content: flex-end;
   gap: calc(var(--spacing) * 3);
   width: 100%;
-  height: calc(var(--spacing) * 6);
+  min-height: calc(var(--spacing) * 7);
+  margin-block: calc(var(--spacing) * -0.5);
   margin-left: auto;
+}
+.verso-heading__meta:where(.verso-heading__act > *) {
+  padding-block: calc(var(--spacing) * 0.5);
 }
 @media (width >= 40rem) {
   .verso-heading__act {
