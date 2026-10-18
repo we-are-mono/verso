@@ -99,8 +99,13 @@ broken socket.**
    the operator's sid, exactly as it calls `uci`. Extending it is adding a method
    plus one rpcd-ACL grant; gating and protocol are shared. Each method accepts only
    the structured arguments required for that operation and invokes the corresponding
-   native OpenWrt mechanism; the protocol exposes no command string or general process
-   execution primitive. Firmware validation, target compatibility, and destructive
+   native OpenWrt mechanism; the protocol exposes no command string. Its one general
+   path is bound to a registry root wrote: `pluginCommand` runs a command a plugin
+   package registered in `/usr/share/verso/plugins/<id>/commands.json`, only under the
+   session's grant `verso-plugin <id> <command>`, only from root-owned files, with
+   arguments checked against the registered kinds, no shell, a clean environment and a
+   timeout (ADR-027). So the helper holds the root work core owns, and a plugin's root
+   work ships with the plugin. Firmware validation, target compatibility, and destructive
    operation checks are enforced again at this privileged boundary rather than relying
    only on browser or shell validation.
 
@@ -296,9 +301,10 @@ rpcd's `uci get` carrying the operator's sid — one whole-config call — and i
 the result into the plugin's request as the `X-Verso-UCI` header (JSON); the plugin
 renders from that snapshot and links no uci library. A declared `ubus` read scope on
 object `verso` is brokered the same way through the privileged helper, and rides its
-own `X-Verso-Ubus` header keyed by function name. The shell brokers only functions in
-a closed set it knows, so a manifest cannot name its way to an arbitrary helper verb,
-and the helper re-checks the operator's sid before it acts. For **writes**, the plugin
+own `X-Verso-Ubus` header keyed by function name. The shell brokers only the core
+functions it knows and the reads a plugin's registry declares (`verso-plugin <id>
+<name>`, keyed `<id>.<name>`, ADR-027), so a manifest cannot name its way to an
+arbitrary helper verb, and the helper re-checks the operator's sid before it acts. For **writes**, the plugin
 returns a declarative `commit` intent (ADR-006) and the shell executes it through
 rpcd, refusing any op outside the plugin's declared configs. The two gates are
 deliberately shaped by rpcd: a write is probe-and-refused up front

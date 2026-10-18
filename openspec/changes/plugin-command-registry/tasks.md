@@ -33,7 +33,7 @@
 
   Then implement it. Verify with `cargo test`, then on the lab container with `make dev`: one fixture plugin's read answers through `ubus call`.
 - [x] 3.5 Test first in `grants.rs`: a group with `"verso-plugin": {"vpn": ["state"]}` under `read` grants `(verso-plugin, vpn, state)` on refresh. Verify with `cargo test`.
-- [ ] 3.6 Write ADR-027 (plugin root halves and the command registry) from design decisions 1–8. Amend ADR-007 §5 and its implementation notes in place: one generic registry-bound path, and the closed broker set becomes the registry. Amend ADR-014 §3: the registry is unreachable with the zero session. Verify that every cross-reference resolves (`grep -n 'ADR-027' docs/ADR/*.md`).
+- [x] 3.6 Write ADR-027 (plugin root halves and the command registry) from design decisions 1–8. Amend ADR-007 §5 and its implementation notes in place: one generic registry-bound path, and the closed broker set becomes the registry. Amend ADR-014 §3: the registry is unreachable with the zero session. Verify that every cross-reference resolves (`grep -n 'ADR-027' docs/ADR/*.md`).
 
 ## 4. Shell: generic reads and acts
 

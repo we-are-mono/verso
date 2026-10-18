@@ -68,6 +68,11 @@ every surface reads. Checking is all it does — nothing installs unattended.**
    the helper hands over unattended for config history (ADR-021) is a spool
    file with every secret value removed.
 
+   The zero session reaches no plugin's registered root command (ADR-027):
+   those are granted per command to operator sessions only. A plugin's
+   unattended work runs from its own hotplug and init scripts, as root
+   already, and never through the helper.
+
 4. **Jitter lives in the script.** A random sleep (up to an hour) precedes
    the check, so identical shipped crontabs across a fleet spread their load
    on the feeds and the sysupgrade server instead of synchronizing on the
