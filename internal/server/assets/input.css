@@ -34,10 +34,13 @@
 @import "./blocks/chart.css" layer(components);
 @import "./blocks/chevron.css" layer(components);
 @import "./blocks/chip.css" layer(components);
+@import "./blocks/cluster.css" layer(components);
 @import "./blocks/code.css" layer(components);
+@import "./blocks/collection.css" layer(components);
 @import "./blocks/colophon.css" layer(components);
 @import "./blocks/console.css" layer(components);
 @import "./blocks/copy-inline.css" layer(components);
+@import "./blocks/divider.css" layer(components);
 @import "./blocks/drawer-scrollbar.css" layer(components);
 @import "./blocks/empty.css" layer(components);
 @import "./blocks/facts.css" layer(components);
@@ -55,6 +58,7 @@
 @import "./blocks/nav.css" layer(components);
 @import "./blocks/notice.css" layer(components);
 @import "./blocks/outcome.css" layer(components);
+@import "./blocks/page.css" layer(components);
 @import "./blocks/panel.css" layer(components);
 @import "./blocks/pluck.css" layer(components);
 @import "./blocks/ports.css" layer(components);
@@ -67,6 +71,7 @@
 @import "./blocks/shelf.css" layer(components);
 @import "./blocks/sidebar.css" layer(components);
 @import "./blocks/slot.css" layer(components);
+@import "./blocks/stack.css" layer(components);
 @import "./blocks/staged.css" layer(components);
 @import "./blocks/steps.css" layer(components);
 @import "./blocks/table.css" layer(components);
@@ -289,21 +294,6 @@ html {
   [x-cloak] { display: none !important; }
 
 
-  /* A page that fills the window (Width "full") hands its height down to the one
-     thing that wants it — a console, a canvas, anything that scrolls inside
-     itself rather than lengthening the page. The chain has to pass through the
-     shell's own body wrapper and the plugin's own layout widget, neither of
-     which knows it is in such a page, so it is stated here once rather than as
-     a flag every widget between them would have to carry. */
-  .verso-page-full,
-  .verso-page-full > .verso-page-body,
-  .verso-page-full > .verso-page-body > * {
-    display: flex;
-    flex-direction: column;
-    flex: 1 1 0%;
-    min-height: 0;
-  }
-
   /* Autofilled inputs: the browser's trust tint, repainted in the action colour.
      Chrome's own pale blue sits off the palette and washes the field's outline
      soft. The UA background yields only to an inset shadow — and the fields'
@@ -389,26 +379,9 @@ html {
      and stays on the grid. A control that states its own vertical margin
      keeps it. */
   :is(.h-control, .verso-box, [data-verso-token-list]) { margin-bottom: -1px; }
-  /* The heading keeps the masthead's act-height line on its own, centred on
-     it, so it stands at one height whether an act shares its line or the
-     acts wrap to a line of their own under it. */
-  .verso-page-heading { min-height: calc(var(--spacing) * 8); align-content: center; font-size: 1.5rem; font-weight: 600; letter-spacing: -0.025em; line-height: 1.1; color: var(--color-ink); }
 }
 
 @layer utilities {
-  /* One page rhythm: the page's blocks stand apart by the body's own inset,
-     2.5rem — the gap the page keeps from the window's top and left edge. The
-     page's root stack carries it; a section on it takes its standoff from the
-     rhythm instead of adding its own padding on top (a ruled one keeps its
-     2.5rem under the rule). A control band is the top strip of its listing's
-     card, so the listing stands flush under it. A log stays flush on
-     its bar. In utilities because the stack's space-y utility sets every
-     child's margins and only a utilities-layer rule outranks it. */
-  .verso-page-body > .verso-stack > * + * { margin-top: calc(var(--spacing) * 10); }
-  .verso-page-body > .verso-stack > [data-verso-actionbar] { margin-bottom: 0; }
-  .verso-page-body > .verso-stack > [data-verso-actionbar] + * { margin-top: 0; }
-  .verso-page-body > .verso-stack > .verso-console { margin-top: 0; }
-  /* Sections, their air and their rules: sections.css. */
 
   /* A section's lede, including inside drawers. Relative type and unitless
      leading let enlarged text and spacing overrides grow the content
@@ -429,42 +402,6 @@ html {
   [data-verso-section-lede] p:not(:last-child) { margin-bottom: 1rem; }
   [data-verso-section-lede] p:last-child { margin-bottom: 0; }
 
-  /* A page's masthead is a Quiet Sand bar, the page's ground, on a
-     hairline that runs from the rail to the window's right edge, while its
-     title keeps to the page's column and its
-     acts end where Log out does, whatever measure the column below keeps:
-     the page's gutter in from the window, and never past the top bar's
-     wide measure, rounded down to the 8px grid and a pixel more, as a page's
-     column is (w-column), so the acts' right border lands on a line
-     (--verso-measure). The page (main) is the size container, read in
-     whole pixels so a width a hair under its pixel never rounds a step
-     short; the margins pull the masthead out past the page's gutter and the
-     column's end to the rail and the window's edge, and the padding brings
-     its content back. The gutter is the page's: 16px on a phone, 40px past
-     it, and 40px on a phone too for a page whose body runs to the window's
-     edges (a live log, a run's output), which sets its own. */
-  :root { --verso-gutter: calc(var(--spacing) * 4); }
-  @media (width >= 48rem) {
-    :root { --verso-gutter: calc(var(--spacing) * 10); }
-  }
-  /* A short page's ground fills the window down to the colophon, every pixel
-     of it, so the colophon stands at the window's foot exactly as it stands at
-     the foot of a long page scrolled to its end. */
-  .verso-page-ground { flex: 1 0 auto; }
-  main [data-verso-masthead] {
-    --verso-measure: calc(round(down, min(round(100cqw, 1px) - var(--verso-gutter) * 2 - 1px, var(--container-6xl)), 0.5rem) + 1px);
-    margin-inline: calc(var(--verso-gutter) * -1) calc(100% - round(100cqw, 1px) + var(--verso-gutter));
-    padding-inline: var(--verso-gutter) calc(round(100cqw, 1px) - var(--verso-gutter) - var(--verso-measure));
-  }
-  /* The light masthead stands on the page's own ground, as the rail does, for
-     a page whose body is itself the darker surface (a live log, a run's
-     output). That surface sits flush on the masthead's hairline, which is its
-     one edge. */
-  main [data-verso-masthead="light"] {
-    margin-bottom: 0;
-    border-bottom: 1px solid var(--color-rule);
-    background-color: var(--color-ground);
-  }
 }
 
 /* The Overview's cards (ADR-022, DESIGN.md "Overview cards"): two columns that
@@ -634,18 +571,6 @@ html {
    hairline, a pixel before the body's own edges, scrolling with what the
    drawer holds. The lines never take a press. */
 @layer components {
-  :root[data-verso-grid] main { position: relative; }
-  :root[data-verso-grid] main::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    z-index: 25;
-    pointer-events: none;
-    background-image:
-      linear-gradient(to right, color-mix(in srgb, var(--color-denim) 22%, transparent) 1px, transparent 1px),
-      linear-gradient(to bottom, color-mix(in srgb, var(--color-denim) 22%, transparent) 1px, transparent 1px);
-    background-size: calc(var(--spacing) * 2) calc(var(--spacing) * 2);
-  }
   :root[data-verso-grid] [data-verso-drawer-body] {
     background-image:
       linear-gradient(to right, color-mix(in srgb, var(--color-denim) 22%, transparent) 1px, transparent 1px),

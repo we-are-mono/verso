@@ -65,7 +65,7 @@ func TestPackagesInventory(t *testing.T) {
 		`<td data-verso-verbatim class="verso-table__cell whitespace-nowrap text-ink"><span class="flex items-center"><span>3.5.1-r1</span>`,
 		"Process viewer",   // what it is, in its column
 		">Remove</button>", // removal is the row's act, asked on the row
-		"max-w-column-6xl", // package management uses the wide content width
+		`class="verso-page__main" data-verso-width="wide"`,          // package management uses the wide content width
 		`data-verso-panel-url="/system/packages/package?name=htop"`, // the drawer is fetched as it opens
 	} {
 		if !strings.Contains(body, want) {
@@ -156,7 +156,7 @@ func TestPackageRefreshIsAHeadingAct(t *testing.T) {
 	b := fakeBackend{access: true, pkgInstalledList: []openwrt.Package{{Name: "htop", Version: "3.5.1-r1", Installed: true}}}
 	body := get(t, pluginsServer(t, b, true, mgmtManifest()), "/system/packages").Body.String()
 	masthead, listing := strings.Index(body, "<div data-verso-masthead"), strings.Index(body, "<div data-verso-actionbar")
-	note := strings.Index(body, `<span data-verso-heading-note class="text-sm text-meta" aria-live="polite">`)
+	note := strings.Index(body, `<span data-verso-heading-note class="verso-page__note" aria-live="polite">`)
 	refresh, install := strings.Index(body, `method="post" action="/system/packages/discover"`), strings.Index(body, ">Install</")
 	if masthead < 0 || listing < 0 || note < 0 || refresh < 0 || install < 0 {
 		t.Fatalf("page is missing its masthead, listing, note, refresh or install:\n%s", body)
@@ -412,7 +412,7 @@ func TestDiscoverSearchRenders(t *testing.T) {
 	}, true, mgmtManifest())
 
 	body := get(t, s, "/system/packages/discover?q=htop").Body.String()
-	if !strings.Contains(body, "max-w-column-6xl") {
+	if !strings.Contains(body, `class="verso-page__main" data-verso-width="wide"`) {
 		t.Error("Available must use the wide package-management width")
 	}
 	// The search's button is the primary: the button block in no other dress.
@@ -652,7 +652,7 @@ func TestPackagePagesRenderWhileTheFeedsRefresh(t *testing.T) {
 		}
 		// The busy button says it is refreshing; the note beside it says
 		// nothing until the index has an age again.
-		if path == "/system/packages" && !strings.Contains(body, `<span data-verso-heading-note class="text-sm text-meta" aria-live="polite"></span>`) {
+		if path == "/system/packages" && !strings.Contains(body, `<span data-verso-heading-note class="verso-page__note" aria-live="polite"></span>`) {
 			t.Errorf("%s repeats the refresh beside its busy button", path)
 		}
 		if path == "/system/packages" && (!strings.Contains(body, ">Refreshing index…</button>") || !strings.Contains(body, "verso-button-waiting")) {

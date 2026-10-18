@@ -624,9 +624,9 @@ func TestDescriptionsFoldAway(t *testing.T) {
 	fold := string(raw)
 	for head, wants := range map[string][]string{
 		".verso-fold {": {"display: none;"},
-		".verso-fold:is([data-verso-column]:has(> .verso-page-body [data-verso-field-desc]) > [data-verso-masthead] *, dialog:has([data-verso-field-desc]) *) {": {"display: flex;"},
-		`.verso-fold__show:is([data-verso-descriptions="folded"] *) {`:                                                                                           {"display: inline-flex;"},
-		`.verso-fold__hide:is([data-verso-descriptions="folded"] *) {`:                                                                                           {"display: none;"},
+		".verso-fold:is(.verso-page__column:has(> .verso-page__body [data-verso-field-desc]) > .verso-page__masthead *, dialog:has([data-verso-field-desc]) *) {": {"display: flex;"},
+		`.verso-fold__show:is([data-verso-descriptions="folded"] *) {`:                                                                                            {"display: inline-flex;"},
+		`.verso-fold__hide:is([data-verso-descriptions="folded"] *) {`:                                                                                            {"display: none;"},
 	} {
 		block := cssBlock(t, fold, head)
 		for _, want := range wants {
@@ -736,7 +736,7 @@ func TestFieldRowsRunToACardsBorders(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	block := cssBlock(t, string(raw), ":is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) .verso-field-row:not(.verso-field-row .verso-field-row, .verso-form-grid .verso-field-row) {")
+	block := cssBlock(t, string(raw), ":is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) .verso-field-row:not(.verso-field-row .verso-field-row, .verso-form-grid .verso-field-row) {")
 	for _, want := range []string{
 		"margin-inline: calc(var(--verso-side) * -1);",
 		"padding-inline: var(--verso-side);",
@@ -835,16 +835,31 @@ func TestADevSessionCanDrawTheGrid(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, want := range []string{
-		":root[data-verso-grid] main{position:relative}",
-		":root[data-verso-grid] main:after{",
-		"pointer-events:none",
-		"background-size:calc(var(--spacing) * 2) calc(var(--spacing) * 2)",
 		":root[data-verso-grid] [data-verso-drawer-body]{",
 		"background-attachment:local",
 	} {
 		if !strings.Contains(string(css), want) {
 			t.Errorf("the dev grid is not drawn; stylesheet is missing %s", want)
 		}
+	}
+	// Over the page, the page block draws it from the bar's hairline and the
+	// rail's border, never taking a press.
+	sheet := blockSheet(t, "page")
+	if !strings.Contains(cssBlock(t, sheet, "\n.verso-page__main:where([data-verso-grid] *) {"), "position: relative;") {
+		t.Error("the dev grid is not drawn; the page's room does not hold it")
+	}
+	grid := cssBlock(t, sheet, "\n.verso-page__main:where([data-verso-grid] *)::after {")
+	for _, want := range []string{
+		"pointer-events: none;",
+		"inset: 0;",
+		"background-size: calc(var(--spacing) * 2) calc(var(--spacing) * 2);",
+	} {
+		if !strings.Contains(grid, want) {
+			t.Errorf("the dev grid is not drawn; blocks/page.css's grid is missing %s", want)
+		}
+	}
+	if !strings.Contains(string(css), ".verso-page__main:where([data-verso-grid] *)") {
+		t.Error("the dev grid is not drawn; the compiled stylesheet does not carry the page block's grid")
 	}
 }
 
@@ -913,16 +928,32 @@ func TestStylesheetKeepsOnePageRhythm(t *testing.T) {
 		t.Fatalf("read stylesheet: %v", err)
 	}
 	for _, want := range []string{
-		".verso-page-body>.verso-stack>*+*{margin-top:calc(var(--spacing) * 10)}",
-		// the listing joins its band, as a log (and its notice) sits flush on its bar
-		".verso-page-body>.verso-stack>[data-verso-actionbar]{margin-bottom:0}",
-		".verso-page-body>.verso-stack>[data-verso-actionbar]+*,.verso-page-body>.verso-stack>.verso-console{margin-top:0}",
-		".verso-page-body>.verso-stack>section[data-verso-section]:not([data-verso-section=ruled],[data-verso-section=part]){padding-top:0}",
+		".verso-page__body>.verso-stack>section[data-verso-section]:not([data-verso-section=ruled],[data-verso-section=part]){padding-top:0}",
 		"margin-top:var(--verso-step,var(--verso-rhythm,calc(var(--spacing) * 10)))",
 	} {
 		if !strings.Contains(string(css), want) {
 			t.Errorf("stylesheet is missing %q", want)
 		}
+	}
+	// The page's own stack stands its blocks 40px apart: the page sets the
+	// gap, and the stack steps every block after the first by it.
+	if !strings.Contains(cssBlock(t, blockSheet(t, "page"), "\n.verso-page__body > .verso-stack {"), "--verso-stack-gap: calc(var(--spacing) * 10);") {
+		t.Error("the page's root stack does not stand its blocks 40px apart")
+	}
+	stack := blockSheet(t, "stack")
+	step := cssBlock(t, stack, "\n.verso-stack > * + * {")
+	own := cssBlock(t, stack, "\n.verso-stack {")
+	if !strings.Contains(step, "margin-top: var(--verso-step, var(--verso-stack-step));") ||
+		!strings.Contains(own, "--verso-stack-step: var(--verso-stack-gap, var(--spacing-inset));") {
+		t.Errorf("a stack does not step its blocks by the gap its page sets:\n%s\n%s", own, step)
+	}
+	// Only the air over a block: none under the band, so its listing joins it.
+	if strings.Contains(stack, "margin-bottom") {
+		t.Error("a stack sets air under its blocks, so a listing no longer joins its band")
+	}
+	// the listing joins its band, as a log (and its notice) sits flush on its bar
+	if !strings.Contains(cssBlock(t, stack, "\n.verso-stack > .verso-actionbar + *,\n.verso-stack > .verso-console {"), "--verso-step: 0;") {
+		t.Error("a listing does not stand flush under its band, or a log on its masthead")
 	}
 	// a page's control band is a box in the page's column, never a bar
 	// reaching to the rail and the window's edge
@@ -962,7 +993,7 @@ func TestARuledSectionStandsByItsRulesAir(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read stylesheet: %v", err)
 	}
-	if !strings.Contains(string(css), `.verso-page-body > .verso-stack > section:is([data-verso-section="ruled"], [data-verso-section="part"]) { margin-top: calc(var(--spacing) * 10 - 1px); }`) {
+	if !strings.Contains(string(css), `.verso-page__body > .verso-stack > section:is([data-verso-section="ruled"], [data-verso-section="part"]) { margin-top: calc(var(--spacing) * 10 - 1px); }`) {
 		t.Error("a ruled section on the page's stack does not land its rule on a line")
 	}
 }
@@ -1039,7 +1070,7 @@ func TestAPageOpeningOnAHeadingDrawsOneRule(t *testing.T) {
 		t.Fatalf("read stylesheet: %v", err)
 	}
 	for _, want := range []string{
-		".verso-page-body [data-verso-section-band]:not(.verso-page-body :not(input[type=hidden],template,script,[hidden],:empty)~* [data-verso-section-band],.verso-page-body :not(input[type=hidden],template,script,[hidden],:empty)~[data-verso-section-band]){border-top-width:0;padding-top:0}",
+		".verso-page__body [data-verso-section-band]:not(.verso-page__body :not(input[type=hidden],template,script,[hidden],:empty)~* [data-verso-section-band],.verso-page__body :not(input[type=hidden],template,script,[hidden],:empty)~[data-verso-section-band]){border-top-width:0;padding-top:0}",
 	} {
 		if !strings.Contains(string(css), want) {
 			t.Errorf("stylesheet is missing %s", want)
@@ -1053,24 +1084,30 @@ func TestAPageOpeningOnAHeadingDrawsOneRule(t *testing.T) {
 // out ends at: the page's gutter in (16px on a phone, 40px past it), never
 // past the wide measure, rounded down to the 8px grid and a pixel more, as a
 // page's column is, so a right border at the end lands on a line. The pixel
-// is taken before the cap, as the column's max-w-column-* does, and the
+// is taken before the cap, as the page block's column does, and the
 // page's width is read in whole pixels, so no width rounds a step short of
 // the column's. The colophon's words end on the same line.
 func TestMastheadEndsUnderLogOut(t *testing.T) {
-	raw, err := os.ReadFile("assets/verso.css")
-	if err != nil {
-		t.Fatalf("read stylesheet: %v", err)
-	}
-	css := string(raw)
-	for _, want := range []string{
-		":root{--verso-gutter:calc(var(--spacing) * 4)}",
-		":root{--verso-gutter:calc(var(--spacing) * 10)}",
-		"main [data-verso-masthead]{--verso-measure:calc(round(down, min(round(100cqw, 1px) - var(--verso-gutter) * 2 - 1px, var(--container-6xl)), .5rem) + 1px);margin-inline:calc(var(--verso-gutter) * -1) calc(100% - round(100cqw, 1px) + var(--verso-gutter));padding-inline:var(--verso-gutter) calc(round(100cqw, 1px) - var(--verso-gutter) - var(--verso-measure))}",
-		".w-column{width:calc(round(down,100% - 1px,.5rem) + 1px)}",
-		".max-w-column-6xl{max-width:calc(var(--container-6xl) + 1px)}",
+	page := blockSheet(t, "page")
+	for head, wants := range map[string][]string{
+		// the page's gutter: 16px on a phone, 40px past it
+		"\n.verso-page {": {"--verso-gutter: calc(var(--spacing) * 4);"},
+		"@media (width >= 48rem) {\n  .verso-page {": {"--verso-gutter: calc(var(--spacing) * 10);"},
+		"\n.verso-page__masthead {": {
+			"--verso-measure: calc(round(down, min(round(100cqw, 1px) - var(--verso-gutter) * 2 - 1px, var(--container-6xl)), 0.5rem) + 1px);",
+			"margin-inline: calc(var(--verso-gutter) * -1) calc(100% - round(100cqw, 1px) + var(--verso-gutter));",
+			"padding: calc(var(--spacing) * 6) calc(round(100cqw, 1px) - var(--verso-gutter) - var(--verso-measure)) calc(var(--spacing) * 6) var(--verso-gutter);",
+		},
+		// the page's room is the size container the masthead measures against
+		"\n.verso-page__main {":   {"container-type: inline-size;"},
+		"\n.verso-page__column {": {"width: calc(round(down, 100% - 1px, 0.5rem) + 1px);"},
+		"\n.verso-page__column:where(.verso-page__main[data-verso-width=\"wide\"] *) {": {"max-width: calc(var(--container-6xl) + 1px);"},
 	} {
-		if !strings.Contains(css, want) {
-			t.Errorf("the masthead runs from the rail to the window's edge and its acts end where Log out does; stylesheet is missing %s", want)
+		rule := cssBlock(t, page, head)
+		for _, want := range wants {
+			if !strings.Contains(rule, want) {
+				t.Errorf("the masthead runs from the rail to the window's edge and its acts end where Log out does; blocks/page.css %q is missing %s", strings.TrimSpace(head), want)
+			}
 		}
 	}
 	// Log out's group and the colophon's words are measured as the column is.
@@ -1122,7 +1159,7 @@ func TestColophonHoldsStillBetweenPages(t *testing.T) {
 		t.Fatalf("read stylesheet: %v", err)
 	}
 	css := string(raw)
-	if !strings.Contains(css, ".verso-page-ground{flex:1 0 auto}") {
+	if !strings.Contains(cssBlock(t, blockSheet(t, "page"), "\n.verso-page__ground {"), "flex: 1 0 auto;") {
 		t.Error("a short page's ground fills the window down to the colophon")
 	}
 	if !strings.Contains(cssBlock(t, blockSheet(t, "colophon"), ".verso-colophon {"), "flex: none;") {
@@ -1197,7 +1234,7 @@ func TestTheRuleAfterASectionBringsItsOwnAir(t *testing.T) {
 	for _, want := range []string{
 		"section[data-verso-section=\"ruled\"] {\n    margin-top: calc(var(--spacing) * 10 - 1px);\n    border-top: 1px solid var(--color-rule);\n    padding-top: var(--spacing-inset);\n  }",
 		":not(input[type=\"hidden\"], template, [hidden]) + section[data-verso-section]:has(> [data-verso-section-band]),\n" +
-			"  .verso-page-body > .verso-stack > * + section[data-verso-section]:has(> [data-verso-section-band]) {\n    margin-top: calc(var(--spacing) * 10 - 1px);\n  }",
+			"  .verso-page__body > .verso-stack > * + section[data-verso-section]:has(> [data-verso-section-band]) {\n    margin-top: calc(var(--spacing) * 10 - 1px);\n  }",
 		// a section with no heading that opens under a notice stands the
 		// inset's air under it, rather than flush on it
 		"[data-verso-callout] + section[data-verso-section][data-verso-headless] {\n    margin-top: var(--spacing-inset);\n  }",

@@ -62,9 +62,11 @@ func TestPageSpacingIsThePagesNotTheBlocks(t *testing.T) {
 		t.Errorf("a listing carries no page gap of its own:\n%s", titled)
 	}
 	stack := render(t, r, &Stack{Children: []Widget{&Text{Markdown: "a"}, &Text{Markdown: "b"}}})
-	if !strings.Contains(stack, `class="verso-stack space-y-6"`) {
+	if !strings.HasPrefix(stack, `<div class="verso-stack">`) {
 		t.Errorf("a plain stack names itself for the page rhythm:\n%s", stack)
 	}
+	// The stack's step reads the gap the page sets on its root stack.
+	declares(t, "stack", ".verso-stack", "var(--verso-stack-gap,")
 	// The band adds no gap of its own: it is its listing card's top strip.
 	bar := render(t, r, &ActionBar{Tabs: []ActionTab{{Label: "All", Count: 1, Active: true}}})
 	const open = `data-verso-actionbar class="`

@@ -1,0 +1,20 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/* SPDX-FileCopyrightText: 2026 Mono Technologies Inc. */
+
+/*
+ * cluster — a wrapping row of acts, 32px tall: a control in it gives back its
+ * bottom border's pixel, so its edges land on lines, and its wrapped rows
+ * stand 40px apart. A row of subsection acts (28px, data-verso-size="act")
+ * stands each 2px in, reading its acts by their own size.
+ */
+
+.verso-cluster {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: calc(var(--spacing) * 2) calc(var(--spacing) * 3);
+}
+.verso-cluster:has([data-verso-size="act"]) {
+  row-gap: calc(var(--spacing) * 3);
+  padding-block: calc(var(--spacing) * 0.5);
+}

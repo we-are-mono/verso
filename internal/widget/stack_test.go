@@ -19,14 +19,14 @@ func TestARowOfActsIsAControlTall(t *testing.T) {
 		&Link{Label: "Install a certificate", Href: "/x", Style: "act"},
 		&Link{Label: "Download", Href: "/y", Style: "act"},
 	}})
-	if strings.Contains(got, " py-1") {
-		t.Errorf("an inline row adds no air over its controls:\n%s", got)
+	if !strings.HasPrefix(got, `<div class="verso-cluster">`) {
+		t.Errorf("an inline row is not a cluster:\n%s", got)
 	}
-	for _, want := range []string{"has-[[data-verso-size=act]]:py-0.5", "has-[[data-verso-size=act]]:gap-y-3"} {
-		if !strings.Contains(got, want) {
-			t.Errorf("an inline row is missing %q:\n%s", want, got)
-		}
+	if rule := cssRule(blockCSS(t, "cluster"), ".verso-cluster"); strings.Contains(rule, "padding") {
+		t.Errorf("an inline row adds no air over its controls:\n%s", rule)
 	}
+	declares(t, "cluster", `.verso-cluster:has([data-verso-size="act"])`,
+		"row-gap: calc(var(--spacing) * 3)", "padding-block: calc(var(--spacing) * 0.5)")
 	if strings.Count(got, `data-verso-size="act"`) != 2 {
 		t.Errorf("each act carries the mark the row reads:\n%s", got)
 	}

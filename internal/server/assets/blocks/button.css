@@ -54,6 +54,10 @@
   background-color: var(--verso-button-ground);
   color: var(--verso-button-ink);
   white-space: nowrap;
+  /* On a line of its own (the act a form is, a set's add) it hangs from the
+     line's top rather than its baseline, so the line is the button's height
+     and never the button and the strut's descent under it. */
+  vertical-align: top;
   cursor: pointer;
   transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, filter;
 }

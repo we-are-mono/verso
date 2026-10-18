@@ -50,7 +50,9 @@ func declaresTheSlot(t *testing.T) {
 func TestCollectionItemsStandOnSpaceAlone(t *testing.T) {
 	got := renderCollection(t, keyCollection(), "/system/access?plugin=system")
 	for _, want := range []string{
-		`>demo@laptop</p>`, `>SHA256:UPedI7ax</p>`, "font-mono",
+		`>demo@laptop</p>`, `>SHA256:UPedI7ax</p>`,
+		`<p class="verso-collection__title" data-verso-verbatim>demo@laptop</p>`,
+		`<p class="verso-collection__detail" data-verso-verbatim>SHA256:UPedI7ax</p>`,
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("want %s in:\n%s", want, got)
@@ -66,12 +68,29 @@ func TestCollectionItemsStandOnSpaceAlone(t *testing.T) {
 	// the first line, 4px over at either edge.
 	for _, want := range []string{
 		`<li>`,
-		`class="flex flex-wrap items-start justify-between gap-x-6 py-2">`,
-		`<p class="font-mono text-base leading-6 font-medium wrap-anywhere text-ink">demo@laptop</p>`,
-		`<div class="-my-1 shrink-0">`,
+		`class="verso-collection__item">`,
+		`<div class="verso-collection__words">`,
+		`<div class="verso-collection__act">`,
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("an item is not whole cells of the grid, want %s in:\n%s", want, got)
+		}
+	}
+	declares(t, "collection", ".verso-collection__item",
+		"display: flex", "flex-wrap: wrap", "align-items: flex-start",
+		"justify-content: space-between", "column-gap: calc(var(--spacing) * 6)",
+		"padding-block: calc(var(--spacing) * 2)")
+	declares(t, "collection", ".verso-collection__words", "flex: 1 1 0%", "min-width: 0")
+	declares(t, "collection", ".verso-collection__title",
+		"overflow-wrap: anywhere", "color: var(--color-ink)", "@apply type-value")
+	declares(t, "collection", ".verso-collection__detail",
+		"overflow-wrap: anywhere", "color: var(--color-meta)")
+	declares(t, "collection", ".verso-collection__act",
+		"flex-shrink: 0", "margin-block: calc(var(--spacing) * -1)")
+	css := blockCSS(t, "collection")
+	for _, absent := range []string{"border-bottom", "border-top"} {
+		if strings.Contains(css, absent) {
+			t.Errorf("a collection draws no rules (%s):\n%s", absent, css)
 		}
 	}
 }
@@ -170,12 +189,15 @@ func TestCollectionSaysWhenEmpty(t *testing.T) {
 		`<div data-verso-slot class="verso-slot">`,
 		`<span aria-hidden="true" class="verso-mark"></span>`,
 		`<p class="verso-slot__words">No keys are authorized.</p>`,
-		`x-data="confirm" @keydown.escape="escape" class="pt-6 pb-1"`,
+		`x-data="confirm" @keydown.escape="escape" class="verso-collection__add" data-verso-first>`,
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("want %s in:\n%s", want, got)
 		}
 	}
+	// A cell under the empty slot's edge, then the act centred in two.
+	declares(t, "collection", ".verso-collection__add[data-verso-first]",
+		"padding-block: calc(var(--spacing) * 6) calc(var(--spacing) * 1)")
 	declaresTheSlot(t)
 	// The slot is a place, not a control: nothing in it answers the pointer.
 	slot := got[strings.Index(got, "data-verso-slot"):strings.Index(got, `x-data="confirm"`)]
@@ -188,7 +210,10 @@ func TestCollectionSaysWhenEmpty(t *testing.T) {
 // slot is drawn and the add stands under the last item.
 func TestCollectionWithItemsAddsFromTheFoot(t *testing.T) {
 	got := renderCollection(t, keyCollection(), "")
-	if strings.Contains(got, "data-verso-slot") || !strings.Contains(got, `x-data="confirm" @keydown.escape="escape" class="pt-1.5 pb-1.5"`) {
+	if strings.Contains(got, "data-verso-slot") || !strings.Contains(got, `x-data="confirm" @keydown.escape="escape" class="verso-collection__add">`) ||
+		strings.Index(got, "verso-collection__add") < strings.LastIndex(got, "verso-collection__item") {
 		t.Errorf("a set with items adds from its foot:\n%s", got)
 	}
+	// The 28px act centred in the 40px under the last item.
+	declares(t, "collection", ".verso-collection__add", "padding-block: calc(var(--spacing) * 1.5)")
 }

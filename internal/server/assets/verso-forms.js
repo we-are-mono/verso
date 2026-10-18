@@ -805,8 +805,8 @@
     return fetch(window.location.pathname + window.location.search, { headers: { Accept: "text/html" }, credentials: "same-origin" })
       .then(function (res) { return res.ok && !res.redirected ? res.text() : ""; })
       .then(function (html) {
-        var fresh = html && versoParse(html).querySelector(".verso-page-body");
-        var current = document.querySelector(".verso-page-body");
+        var fresh = html && versoParse(html).querySelector(".verso-page__body");
+        var current = document.querySelector(".verso-page__body");
         if (!fresh || !current) return false;
         fresh = document.importNode(fresh, true);
         // Teleported drawers go with their owners before the body is replaced.

@@ -20,8 +20,14 @@ func TestHeadingLineIsAnActsHeight(t *testing.T) {
 	s := newServer(t, fakeBackend{access: true})
 	for _, path := range []string{"/system/services", "/system/packages"} {
 		whole := get(t, s, path).Body.String()
-		if !strings.Contains(whole[strings.LastIndex(whole, "</style>"):], `<div class="flex min-h-8 flex-wrap items-center justify-between gap-4">`) {
+		if !strings.Contains(whole[strings.LastIndex(whole, "</style>"):], `<div class="verso-page__line">`) {
 			t.Errorf("%s: the heading line should hold an act's height", path)
+		}
+	}
+	line := cssBlock(t, blockSheet(t, "page"), "\n.verso-page__line {")
+	for _, want := range []string{"min-height: calc(var(--spacing) * 8);", "align-items: center;", "flex-wrap: wrap;"} {
+		if !strings.Contains(line, want) {
+			t.Errorf("the heading line should hold an act's height, centred on it; .verso-page__line lacks %s", want)
 		}
 	}
 }
@@ -57,7 +63,7 @@ func TestPluginActSitsOnTheHeadingLine(t *testing.T) {
 	if strings.Contains(body, "data-verso-actionbar") {
 		t.Error("a page with nothing to narrow drew a toolbar row")
 	}
-	if !strings.Contains(body[heading:listing], `verso-page-body`) {
+	if !strings.Contains(body[heading:listing], `verso-page__body`) {
 		t.Error("the act should render in the heading row, ahead of the page body")
 	}
 }
@@ -78,7 +84,7 @@ func TestTheActsBlankPanelAnswersAPanelRequest(t *testing.T) {
 	if !strings.Contains(body, "A blank network.") {
 		t.Errorf("the act's blank panel should answer the panel request:\n%s", body)
 	}
-	if strings.Contains(body, "verso-page-heading") {
+	if strings.Contains(body, "verso-page__heading") {
 		t.Errorf("a panel request is answered with the panel alone:\n%s", body)
 	}
 }

@@ -98,12 +98,12 @@
 
   /* On a page's own stack a section takes its standoff from the stack's
      40px rather than adding its own; a ruled one puts its rule there. */
-  .verso-page-body > .verso-stack > section[data-verso-section]:not([data-verso-section="ruled"], [data-verso-section="part"]) { padding-top: 0; }
-  .verso-page-body > .verso-stack > section:is([data-verso-section="ruled"], [data-verso-section="part"]) { margin-top: calc(var(--spacing) * 10 - 1px); }
+  .verso-page__body > .verso-stack > section[data-verso-section]:not([data-verso-section="ruled"], [data-verso-section="part"]) { padding-top: 0; }
+  .verso-page__body > .verso-stack > section:is([data-verso-section="ruled"], [data-verso-section="part"]) { margin-top: calc(var(--spacing) * 10 - 1px); }
   /* A block of the stack that is itself a stack (a plugin's part of a shell
      page) and opens on a section's rule puts that rule where the section's
      own would stand. */
-  .verso-page-body > .verso-stack > * + .verso-stack:has(> section[data-verso-section]:first-child > [data-verso-section-band]) { margin-top: calc(var(--spacing) * 10 - 1px); }
+  .verso-page__body > .verso-stack > * + .verso-stack:has(> section[data-verso-section]:first-child > [data-verso-section-band]) { margin-top: calc(var(--spacing) * 10 - 1px); }
 
   /* The heading band carries its section's rule: the rule, 40px, the
      title's 24px line, its lede's under it, and the content 24px on — a
@@ -128,13 +128,13 @@
     margin-top: var(--spacing-inset);
   }
   section[data-verso-section]:has(> [data-verso-section-band]),
-  .verso-page-body > .verso-stack > section[data-verso-section]:has(> [data-verso-section-band]) {
+  .verso-page__body > .verso-stack > section[data-verso-section]:has(> [data-verso-section-band]) {
     margin-top: 0;
     border-top-width: 0;
     padding-block: 0;
   }
   :not(input[type="hidden"], template, [hidden]) + section[data-verso-section]:has(> [data-verso-section-band]),
-  .verso-page-body > .verso-stack > * + section[data-verso-section]:has(> [data-verso-section-band]) {
+  .verso-page__body > .verso-stack > * + section[data-verso-section]:has(> [data-verso-section-band]) {
     margin-top: calc(var(--spacing) * 10 - 1px);
   }
 
@@ -143,9 +143,9 @@
      stands under the masthead's own air. Hidden carriers and elements with
      nothing in them (a notice block with no notice) are not something
      before it, so no surface has to take care not to render them. */
-  .verso-page-body [data-verso-section-band]:not(
-    .verso-page-body :not(input[type="hidden"], template, script, [hidden], :empty) ~ * [data-verso-section-band],
-    .verso-page-body :not(input[type="hidden"], template, script, [hidden], :empty) ~ [data-verso-section-band]
+  .verso-page__body [data-verso-section-band]:not(
+    .verso-page__body :not(input[type="hidden"], template, script, [hidden], :empty) ~ * [data-verso-section-band],
+    .verso-page__body :not(input[type="hidden"], template, script, [hidden], :empty) ~ [data-verso-section-band]
   ) {
     border-top-width: 0;
     padding-top: 0;
@@ -215,7 +215,7 @@
  * Unlayered, so the card outranks the band rules above, whose surface
  * selectors would otherwise win on specificity alone. */
 :root { --verso-side: calc(var(--spacing-inset) - 1px); }
-:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]):not(section section) {
+:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]):not(section section) {
   --verso-reach-start: var(--verso-side);
   --verso-reach-end: var(--verso-side);
   margin: 0;
@@ -232,7 +232,7 @@
  * both borders: a line that touches a card's borders separates questions
  * (form-fields). A row inside a row, or in a field set's cell, stays in its
  * column; a drawer's rows run its content column. */
-:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) .verso-field-row:not(.verso-field-row .verso-field-row, .verso-form-grid .verso-field-row) {
+:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) .verso-field-row:not(.verso-field-row .verso-field-row, .verso-form-grid .verso-field-row) {
   margin-inline: calc(var(--verso-side) * -1);
   padding-inline: var(--verso-side);
 }
@@ -246,55 +246,49 @@
  * ends on. Under a header the body has already taken the seam's pixel back,
  * and the row's pull collapses with that margin rather than adding to it, so
  * the pull counts the pixel in. */
-:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:has(> [data-verso-section-band]):not(section section) > .verso-rhythm > :not(input[type="hidden"], [hidden], template):not(:not(input[type="hidden"], [hidden], template) ~ *):is(.verso-field-set, .verso-conditional, [data-verso-settings], [data-verso-rows], form:not([data-verso-compact-form])) > :not(input[type="hidden"], [hidden], template):not(:not(input[type="hidden"], [hidden], template) ~ *):is(.verso-field-row),
-:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:has(> [data-verso-section-band]):not(section section) > .verso-rhythm > :not(input[type="hidden"], [hidden], template):not(:not(input[type="hidden"], [hidden], template) ~ *):is(.verso-field-row) {
+:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:has(> [data-verso-section-band]):not(section section) > .verso-rhythm > :not(input[type="hidden"], [hidden], template):not(:not(input[type="hidden"], [hidden], template) ~ *):is(.verso-field-set, .verso-conditional, [data-verso-settings], [data-verso-rows], form:not([data-verso-compact-form])) > :not(input[type="hidden"], [hidden], template):not(:not(input[type="hidden"], [hidden], template) ~ *):is(.verso-field-row),
+:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:has(> [data-verso-section-band]):not(section section) > .verso-rhythm > :not(input[type="hidden"], [hidden], template):not(:not(input[type="hidden"], [hidden], template) ~ *):is(.verso-field-row) {
   margin-top: calc(var(--spacing) * -2 - 1px);
 }
-:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section][data-verso-headless][data-verso-ruled]:not(section section) > .verso-rhythm > :not(input[type="hidden"], [hidden], template):not(:not(input[type="hidden"], [hidden], template) ~ *):is(.verso-field-set, .verso-conditional, [data-verso-settings], [data-verso-rows], form:not([data-verso-compact-form])) > :not(input[type="hidden"], [hidden], template):not(:not(input[type="hidden"], [hidden], template) ~ *):is(.verso-field-row),
-:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section][data-verso-headless][data-verso-ruled]:not(section section) > .verso-rhythm > :not(input[type="hidden"], [hidden], template):not(:not(input[type="hidden"], [hidden], template) ~ *):is(.verso-field-row) {
+:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section][data-verso-headless][data-verso-ruled]:not(section section) > .verso-rhythm > :not(input[type="hidden"], [hidden], template):not(:not(input[type="hidden"], [hidden], template) ~ *):is(.verso-field-set, .verso-conditional, [data-verso-settings], [data-verso-rows], form:not([data-verso-compact-form])) > :not(input[type="hidden"], [hidden], template):not(:not(input[type="hidden"], [hidden], template) ~ *):is(.verso-field-row),
+:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section][data-verso-headless][data-verso-ruled]:not(section section) > .verso-rhythm > :not(input[type="hidden"], [hidden], template):not(:not(input[type="hidden"], [hidden], template) ~ *):is(.verso-field-row) {
   margin-top: calc(var(--spacing) * -2);
 }
-:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]):not(section section) > .verso-rhythm > :not(input[type="hidden"], [hidden], template):not(:has(~ :not(input[type="hidden"], [hidden], template))):is(.verso-field-set, [data-verso-settings], [data-verso-rows], form:not([data-verso-compact-form])) > :not(input[type="hidden"], [hidden], template):not(:has(~ :not(input[type="hidden"], [hidden], template))):is(.verso-field-row):not(.verso-field-wide:has(> .verso-field-ledger > .verso-field-answer > [data-verso-field-note]:last-child)),
-:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]):not(section section) > .verso-rhythm > .verso-conditional:last-child:has(> .verso-conditional-gate input[data-verso-switch]:checked) > .verso-conditional-body > .verso-field-row:last-child,
-:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]):not(section section) > .verso-rhythm > .verso-conditional:last-child:not(:has(> .verso-conditional-gate input[data-verso-switch]:checked)) > .verso-conditional-otherwise > .verso-field-row:last-child,
-:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]):not(section section) > .verso-rhythm > .verso-conditional:last-child:not(:has(> .verso-conditional-gate input[data-verso-switch]:checked)):not(:has(> .verso-conditional-otherwise)) > .verso-conditional-gate,
-:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]):not(section section) > .verso-rhythm > :not(input[type="hidden"], [hidden], template):not(:has(~ :not(input[type="hidden"], [hidden], template))):is(.verso-field-row):not(.verso-field-wide:has(> .verso-field-ledger > .verso-field-answer > [data-verso-field-note]:last-child)) {
+:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]):not(section section) > .verso-rhythm > :not(input[type="hidden"], [hidden], template):not(:has(~ :not(input[type="hidden"], [hidden], template))):is(.verso-field-set, [data-verso-settings], [data-verso-rows], form:not([data-verso-compact-form])) > :not(input[type="hidden"], [hidden], template):not(:has(~ :not(input[type="hidden"], [hidden], template))):is(.verso-field-row):not(.verso-field-wide:has(> .verso-field-ledger > .verso-field-answer > [data-verso-field-note]:last-child)),
+:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]):not(section section) > .verso-rhythm > .verso-conditional:last-child:has(> .verso-conditional-gate input[data-verso-switch]:checked) > .verso-conditional-body > .verso-field-row:last-child,
+:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]):not(section section) > .verso-rhythm > .verso-conditional:last-child:not(:has(> .verso-conditional-gate input[data-verso-switch]:checked)) > .verso-conditional-otherwise > .verso-field-row:last-child,
+:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]):not(section section) > .verso-rhythm > .verso-conditional:last-child:not(:has(> .verso-conditional-gate input[data-verso-switch]:checked)):not(:has(> .verso-conditional-otherwise)) > .verso-conditional-gate,
+:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]):not(section section) > .verso-rhythm > :not(input[type="hidden"], [hidden], template):not(:has(~ :not(input[type="hidden"], [hidden], template))):is(.verso-field-row):not(.verso-field-wide:has(> .verso-field-ledger > .verso-field-answer > [data-verso-field-note]:last-child)) {
   margin-bottom: calc(var(--spacing) * -2);
 }
 /* A settings list's fold draws a line between its rows as a row does, so it
  * runs to the borders with them. */
-:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) [data-verso-settings] > details {
+:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) [data-verso-settings] > details {
   margin-inline: calc(var(--verso-side) * -1);
   padding-inline: var(--verso-side);
 }
 /* A field brings its own 24px of air, so after any block in a card it takes
  * no margin: the step is its air, and its label stands 24px under the block
  * as anything else would. */
-:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > .verso-rhythm > * + :is(.verso-field-row, .verso-form-grid, .verso-conditional, .verso-field-set, form:not([data-verso-compact-form]):has(.verso-field-row, .verso-form-grid, .verso-conditional), [data-verso-change-field], [data-verso-settings], [data-verso-rows]:has(> .verso-field-row:first-child)) {
+:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > .verso-rhythm > * + :is(.verso-field-row, .verso-form-grid, .verso-conditional, .verso-field-set, form:not([data-verso-compact-form]):has(.verso-field-row, .verso-form-grid, .verso-conditional), [data-verso-change-field], [data-verso-settings], [data-verso-rows]:has(> .verso-field-row:first-child)) {
   margin-top: 0;
 }
 /* A titled part inside a card starts a group of its own, 40px on. */
-:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > .verso-rhythm > * + section[data-verso-section] {
+:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > .verso-rhythm > * + section[data-verso-section] {
   margin-top: var(--spacing-frame);
 }
-:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section][data-verso-headless][data-verso-ruled]:not(section section) {
+:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section][data-verso-headless][data-verso-ruled]:not(section section) {
   padding-top: calc(var(--spacing-inset) - 1px);
 }
 /* Under the header's hairline the body takes its pixel back, so what stands
  * first (a field's air, a block's 24px) starts its lines on the grid. A
  * listing that opens the body stands straight on the hairline instead. */
-:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > [data-verso-section-band] + .verso-rhythm:not(:has(> [data-verso-listing]:not([data-verso-list]):first-child)) {
+:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > [data-verso-section-band] + .verso-rhythm:not(:has(> [data-verso-listing]:not([data-verso-list]):first-child)) {
   margin-top: -1px;
 }
-:is(.verso-page-body, [data-verso-drawer-body]) :not(input[type="hidden"], template, script, [hidden]) ~ section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]):not(section section),
-.verso-page-body > .verso-stack > * + .verso-stack:has(> section[data-verso-section]:first-child > [data-verso-section-band]) {
+:is(.verso-page__body, [data-verso-drawer-body]) :not(input[type="hidden"], template, script, [hidden]) ~ section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]):not(section section),
+.verso-page__body > .verso-stack > * + .verso-stack:has(> section[data-verso-section]:first-child > [data-verso-section-band]) {
   margin-top: calc(var(--spacing-inset) - 1px);
-}
-/* The page's stack spaces its blocks by the air over each (40px, a card's
- * 23px), so none keeps air under it of its own: a stack's spacing under the
- * block before a card would otherwise outgrow the card's 23px by the pixel. */
-.verso-page-body > .verso-stack > * {
-  margin-bottom: 0;
 }
 /* A figure beside what is said of it (the Hardware page's board card): what
  * is said of it at the left, taking the row, and the figure 40px on at its
@@ -322,30 +316,30 @@
  * the Overview's column measure: each column its share rounded down to 8px
  * and a pixel more, the next 24px on less that pixel, so both borders of
  * every card are lines. Narrow, they stack 23px apart, as cards do. */
-.verso-page-body > .verso-stack > * + [data-verso-cards] {
+.verso-page__body > .verso-stack > * + [data-verso-cards] {
   margin-top: calc(var(--spacing-inset) - 1px);
 }
-.verso-page-body > .verso-stack > [data-verso-cards]:last-child {
+.verso-page__body > .verso-stack > [data-verso-cards]:last-child {
   margin-bottom: -1px;
 }
-.verso-page-body [data-verso-cards] {
+.verso-page__body [data-verso-cards] {
   container: cards / inline-size;
 }
-.verso-page-body [data-verso-cards] > div {
+.verso-page__body [data-verso-cards] > div {
   display: grid;
   grid-template-columns: calc(round(down, 100% - 1px, 8px) + 1px);
   gap: calc(var(--spacing-inset) - 1px);
   align-items: start;
 }
 @container cards (min-width: 40rem) {
-  .verso-page-body [data-verso-cards] > div {
+  .verso-page__body [data-verso-cards] > div {
     grid-template-columns: repeat(2, calc(round(down, calc((100% - var(--spacing-inset) - 1px) / 2), 8px) + 1px));
   }
 }
 /* The page's last card gives its bottom border's pixel back as every card
  * does to the next, so the colophon's hairline, the page's 40px on, lands on
  * a line. A form column's stack ends the page as well, beside its rail. */
-:is(.verso-page-body, .verso-page-body > .verso-stack, .verso-page-body > .verso-stack > .verso-stack:last-child, .verso-page-body [data-verso-form-column] > .verso-stack:last-child) >:is(section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]), [data-verso-listing], [data-verso-code-divider]):last-child {
+:is(.verso-page__body, .verso-page__body > .verso-stack, .verso-page__body > .verso-stack > .verso-stack:last-child, .verso-page__body [data-verso-form-column] > .verso-stack:last-child) >:is(section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]), [data-verso-listing], [data-verso-code-divider]):last-child {
   margin-bottom: -1px;
 }
 /* The header is 48px from the frame's line to its hairline's: 11px after the
@@ -353,19 +347,19 @@
  * title stands centred on the header's middle line. The hairline is the
  * frame's own ink, so the header reads as the card's, and the fainter lines
  * under it (between questions) as what the card holds. */
-:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > [data-verso-section-band] {
+:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > [data-verso-section-band] {
   padding-block: calc(var(--spacing) * 2.75) calc(var(--spacing) * 3);
   border-top-width: 0;
   border-bottom: 1px solid var(--color-rule-strong);
 }
-:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > [data-verso-section-band] h2 {
+:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > [data-verso-section-band] h2 {
   font-size: var(--text-base);
 }
 /* A lede belongs to the header: its lines stand straight under the title's,
  * over the header's hairline, so the header grows by a 24px line for each of
  * them and its hairline still lands on a line. It reads one step heavier
  * than a lede elsewhere, at 400, so it holds its own beside the title. */
-:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > [data-verso-section-band] [data-verso-section-lede] {
+:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > [data-verso-section-band] [data-verso-section-lede] {
   font-weight: 400;
 }
 /* A row stands 7px after the hairline over it. A table with no column heads
@@ -373,36 +367,36 @@
  * and every row, a lane's band too, keeps its own air and lands its hairline
  * on a line. One that opens a card's body already stands on the header's
  * hairline. */
-:is(.verso-page-body, [data-verso-drawer-body]) .verso-table:not(:has(> thead)) {
+:is(.verso-page__body, [data-verso-drawer-body]) .verso-table:not(:has(> thead)) {
   padding-top: 1px;
 }
-:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section] > [data-verso-section-band] + .verso-rhythm > [data-verso-listing]:not([data-verso-list]):first-child .verso-table {
+:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section] > [data-verso-section-band] + .verso-rhythm > [data-verso-listing]:not([data-verso-list]):first-child .verso-table {
   padding-top: 0;
 }
 /* A listing in a card's flow closes on its last row's hairline, on a line,
  * and gives that pixel back to what follows, as a card does, so the next
  * block's lines still fill bands of the grid. */
-:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section] > .verso-rhythm > [data-verso-listing]:not(:last-child) {
+:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section] > .verso-rhythm > [data-verso-listing]:not(:last-child) {
   margin-bottom: -1px;
 }
 /* A listing in a card runs to the card's edges, its words in line with the
  * card's, and one that ends the card closes on the frame. */
-:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > .verso-rhythm > [data-verso-listing]:not([data-verso-list]) {
+:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > .verso-rhythm > [data-verso-listing]:not([data-verso-list]) {
   margin-inline: calc(var(--verso-side) * -1);
 }
-:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > .verso-rhythm > [data-verso-listing]:not([data-verso-list]) :is(td, th):first-child {
+:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > .verso-rhythm > [data-verso-listing]:not([data-verso-list]) :is(td, th):first-child {
   --verso-table-start: var(--verso-side);
 }
-:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > .verso-rhythm > [data-verso-listing]:not([data-verso-list]) :is(td, th):last-of-type {
+:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > .verso-rhythm > [data-verso-listing]:not([data-verso-list]) :is(td, th):last-of-type {
   --verso-table-end: var(--verso-side);
 }
-:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:has(> .verso-rhythm > [data-verso-listing]:not([data-verso-list]):last-child):not(section section) {
+:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:has(> .verso-rhythm > [data-verso-listing]:not([data-verso-list]):last-child):not(section section) {
   padding-bottom: 0;
 }
 /* The frame's bottom border takes the last row's hairline pixel, so the
  * border is the row's next line. A list's last row draws none either: its
  * hairlines stand between its rows, as a fact list's do. */
-:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > .verso-rhythm > [data-verso-listing]:last-child .verso-table > tbody > tr:not([hidden]):not(:has(~ tr:not([hidden]))) > td {
+:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > .verso-rhythm > [data-verso-listing]:last-child .verso-table > tbody > tr:not([hidden]):not(:has(~ tr:not([hidden]))) > td {
   border-bottom-width: 0;
 }
 /* A list — a few facts about the page's subject — stands in the card's inset
@@ -410,72 +404,72 @@
  * own, so its words stand in line with the card's, and its hairlines stop at
  * them. A row's tint would run past its words to the inset's edge, so a list's
  * rows keep none. */
-:is(.verso-page-body, [data-verso-drawer-body]) [data-verso-list]:is(td, th):first-of-type {
+:is(.verso-page__body, [data-verso-drawer-body]) [data-verso-list]:is(td, th):first-of-type {
   padding-left: 0;
 }
-:is(.verso-page-body, [data-verso-drawer-body]) [data-verso-list]:is(td, th):last-of-type {
+:is(.verso-page__body, [data-verso-drawer-body]) [data-verso-list]:is(td, th):last-of-type {
   padding-right: 0;
 }
-:is(.verso-page-body, [data-verso-drawer-body]) [data-verso-list].verso-table > tbody > tr:hover {
+:is(.verso-page__body, [data-verso-drawer-body]) [data-verso-list].verso-table > tbody > tr:hover {
   background-color: transparent;
 }
 /* A list's detail rides its value's line where the column has room for both
  * ("10.0.0.232  Chrome · Linux"), and wraps under the value where it has not
  * — a long IPv6 address, a phone — so the second line is there only when it
  * earns its place. */
-:is(.verso-page-body, [data-verso-drawer-body]) [data-verso-list]td:has(> [data-verso-detail]) > * {
+:is(.verso-page__body, [data-verso-drawer-body]) [data-verso-list]td:has(> [data-verso-detail]) > * {
   display: inline-flex;
   vertical-align: top;
 }
-:is(.verso-page-body, [data-verso-drawer-body]) [data-verso-list]td:has(> [data-verso-detail]) > :not([data-verso-detail]) {
+:is(.verso-page__body, [data-verso-drawer-body]) [data-verso-list]td:has(> [data-verso-detail]) > :not([data-verso-detail]) {
   margin-inline-end: calc(var(--spacing) * 3);
 }
 /* Wrapped under its value, the detail is still one phrase: its words keep
  * together, and only a tag after them takes a line of its own. */
-:is(.verso-page-body, [data-verso-drawer-body]) [data-verso-list][data-verso-detail] > span:first-child {
+:is(.verso-page__body, [data-verso-drawer-body]) [data-verso-list][data-verso-detail] > span:first-child {
   white-space: nowrap;
 }
 /* A page that is one listing is one card with no header: the page's heading
  * names it. Its control band is the card's top strip (actionbar.html.tmpl),
  * so the listing under it drops its top edge and joins it. */
-.verso-page-body > [data-verso-listing],
-.verso-page-body > .verso-stack > [data-verso-listing],
-.verso-page-body > .verso-stack > .verso-stack > [data-verso-listing] {
+.verso-page__body > [data-verso-listing],
+.verso-page__body > .verso-stack > [data-verso-listing],
+.verso-page__body > .verso-stack > .verso-stack > [data-verso-listing] {
   border: 1px solid var(--color-rule-strong);
   border-radius: var(--radius-xs);
   background-color: var(--color-ground);
 }
-.verso-page-body > .verso-stack > [data-verso-actionbar] + [data-verso-listing],
-.verso-page-body > .verso-stack > [data-verso-actionbar] + .verso-stack > [data-verso-listing]:first-child {
+.verso-page__body > .verso-stack > [data-verso-actionbar] + [data-verso-listing],
+.verso-page__body > .verso-stack > [data-verso-actionbar] + .verso-stack > [data-verso-listing]:first-child {
   border-top-width: 0;
   border-top-left-radius: 0;
   border-top-right-radius: 0;
 }
-:is(.verso-page-body > [data-verso-listing], .verso-page-body > .verso-stack > [data-verso-listing], .verso-page-body > .verso-stack > .verso-stack > [data-verso-listing]) > [data-verso-scroller]:not([data-verso-inventory]) :is(td, th):first-child {
+:is(.verso-page__body > [data-verso-listing], .verso-page__body > .verso-stack > [data-verso-listing], .verso-page__body > .verso-stack > .verso-stack > [data-verso-listing]) > [data-verso-scroller]:not([data-verso-inventory]) :is(td, th):first-child {
   --verso-table-start: var(--verso-side);
 }
-:is(.verso-page-body > [data-verso-listing], .verso-page-body > .verso-stack > [data-verso-listing], .verso-page-body > .verso-stack > .verso-stack > [data-verso-listing]) > [data-verso-scroller] :is(td, th):last-of-type {
+:is(.verso-page__body > [data-verso-listing], .verso-page__body > .verso-stack > [data-verso-listing], .verso-page__body > .verso-stack > .verso-stack > [data-verso-listing]) > [data-verso-scroller] :is(td, th):last-of-type {
   --verso-table-end: var(--verso-side);
 }
-:is(.verso-page-body > [data-verso-listing], .verso-page-body > .verso-stack > [data-verso-listing], .verso-page-body > .verso-stack > .verso-stack > [data-verso-listing]) .verso-table > tbody > tr:not([hidden]):not(:has(~ tr:not([hidden]))) > td {
+:is(.verso-page__body > [data-verso-listing], .verso-page__body > .verso-stack > [data-verso-listing], .verso-page__body > .verso-stack > .verso-stack > [data-verso-listing]) .verso-table > tbody > tr:not([hidden]):not(:has(~ tr:not([hidden]))) > td {
   border-bottom-width: 0;
 }
 /* A listing's legend in a card keeps the card's inset and closes it. */
-:is(.verso-page-body, [data-verso-drawer-body]) [data-verso-listing] [data-verso-table-legend] {
+:is(.verso-page__body, [data-verso-drawer-body]) [data-verso-listing] [data-verso-table-legend] {
   padding: calc(var(--spacing-inset) - 1px) var(--verso-side) var(--spacing-inset);
 }
 /* A page's own listing is the card, so its legend follows it close, as a
  * caption does: 8px under the frame's line (7px after its pixel), its 24px
  * lines filling whole bands of the grid, its words in line with the card's
  * edges, the stack's air after it, the full 24px before a card. */
-.verso-page-body [data-verso-listing]:has(+ [data-verso-table-legend]) {
+.verso-page__body [data-verso-listing]:has(+ [data-verso-table-legend]) {
   margin-bottom: 0;
 }
-.verso-page-body [data-verso-listing] + [data-verso-table-legend] {
+.verso-page__body [data-verso-listing] + [data-verso-table-legend] {
   margin-top: 0;
   padding: calc(var(--spacing) * 1.75) 0 0;
 }
-.verso-page-body :is([data-verso-listing] + [data-verso-table-legend]) ~ section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]):not(section section):is([data-verso-table-legend] + *) {
+.verso-page__body :is([data-verso-listing] + [data-verso-table-legend]) ~ section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]):not(section section):is([data-verso-table-legend] + *) {
   margin-top: var(--spacing-inset);
 }
 /* A listing's column heads in a card are a row of the card's own Paper across
@@ -487,7 +481,7 @@
  * own hairline's, the 16px line 15px after that edge and 16px over its
  * hairline, centred on the row's middle line. Under a titled card's header it
  * draws no top border: the header keeps its own hairline, on the line. */
-:is(.verso-page-body, [data-verso-drawer-body]) :is(section[data-verso-section]:not(section section) > .verso-rhythm > [data-verso-listing],.verso-page-body > [data-verso-listing], .verso-page-body > .verso-stack > [data-verso-listing], .verso-page-body > .verso-stack > .verso-stack > [data-verso-listing]) > [data-verso-scroller] > table > thead > tr > th {
+:is(.verso-page__body, [data-verso-drawer-body]) :is(section[data-verso-section]:not(section section) > .verso-rhythm > [data-verso-listing],.verso-page__body > [data-verso-listing], .verso-page__body > .verso-stack > [data-verso-listing], .verso-page__body > .verso-stack > .verso-stack > [data-verso-listing]) > [data-verso-scroller] > table > thead > tr > th {
   border-top: var(--verso-head-top, 1px) solid var(--color-rule);
   border-bottom: 1px solid var(--color-rule);
   padding-block: calc(var(--spacing) * 4 - 1px) calc(var(--spacing) * 4);
@@ -501,7 +495,7 @@
 /* A list's heads are a fact list's heading, not a band across the card: 40px
  * as the Overview's IPv4 and IPv6 heads stand, the 24px line 8px under the
  * air over it and 8px over its hairline, with no rule of its own above. */
-:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > .verso-rhythm > [data-verso-listing][data-verso-list] > [data-verso-scroller] > table > thead > tr > th {
+:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > .verso-rhythm > [data-verso-listing][data-verso-list] > [data-verso-scroller] > table > thead > tr > th {
   border-top-width: 0;
   padding-block: calc(var(--spacing) * 2);
   line-height: calc(var(--spacing) * 6);
@@ -510,27 +504,27 @@
  * other value 400. Links and buttons keep their weight; they are acts. A
  * grouped listing's lanes are Quiet Sand bands among the rows, each straight
  * after the row before it (table.go). */
-:is(.verso-page-body, [data-verso-drawer-body]) :is(section[data-verso-section]:not(section section) > .verso-rhythm > [data-verso-listing],.verso-page-body > [data-verso-listing], .verso-page-body > .verso-stack > [data-verso-listing], .verso-page-body > .verso-stack > .verso-stack > [data-verso-listing]) > [data-verso-scroller] > table > tbody > tr > td .font-semibold:not(a, button) {
+:is(.verso-page__body, [data-verso-drawer-body]) :is(section[data-verso-section]:not(section section) > .verso-rhythm > [data-verso-listing],.verso-page__body > [data-verso-listing], .verso-page__body > .verso-stack > [data-verso-listing], .verso-page__body > .verso-stack > .verso-stack > [data-verso-listing]) > [data-verso-scroller] > table > tbody > tr > td .font-semibold:not(a, button) {
   font-weight: 500;
 }
-:is(.verso-page-body, [data-verso-drawer-body]) :is(section[data-verso-section]:not(section section) > .verso-rhythm > [data-verso-listing],.verso-page-body > [data-verso-listing], .verso-page-body > .verso-stack > [data-verso-listing], .verso-page-body > .verso-stack > .verso-stack > [data-verso-listing]) > [data-verso-scroller] > table > tbody > tr > td.font-medium,
-:is(.verso-page-body, [data-verso-drawer-body]) :is(section[data-verso-section]:not(section section) > .verso-rhythm > [data-verso-listing],.verso-page-body > [data-verso-listing], .verso-page-body > .verso-stack > [data-verso-listing], .verso-page-body > .verso-stack > .verso-stack > [data-verso-listing]) > [data-verso-scroller] > table > tbody > tr > td .font-medium:not(a, button) {
+:is(.verso-page__body, [data-verso-drawer-body]) :is(section[data-verso-section]:not(section section) > .verso-rhythm > [data-verso-listing],.verso-page__body > [data-verso-listing], .verso-page__body > .verso-stack > [data-verso-listing], .verso-page__body > .verso-stack > .verso-stack > [data-verso-listing]) > [data-verso-scroller] > table > tbody > tr > td.font-medium,
+:is(.verso-page__body, [data-verso-drawer-body]) :is(section[data-verso-section]:not(section section) > .verso-rhythm > [data-verso-listing],.verso-page__body > [data-verso-listing], .verso-page__body > .verso-stack > [data-verso-listing], .verso-page__body > .verso-stack > .verso-stack > [data-verso-listing]) > [data-verso-scroller] > table > tbody > tr > td .font-medium:not(a, button) {
   font-weight: 400;
 }
 /* A listing that opens a titled card's body stands straight under the
  * header's hairline, which is its top edge on the line. A list stands in the
  * card's inset instead, under the same 24px of air as any first block. */
-:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > [data-verso-section-band] + .verso-rhythm > [data-verso-listing]:not([data-verso-list]):first-child {
+:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > [data-verso-section-band] + .verso-rhythm > [data-verso-listing]:not([data-verso-list]):first-child {
   --verso-head-top: 0px;
   margin-top: 0;
 }
-:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section][data-verso-headless][data-verso-ruled]:has(> .verso-rhythm > [data-verso-listing]:first-child):not(section section) {
+:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section][data-verso-headless][data-verso-ruled]:has(> .verso-rhythm > [data-verso-listing]:first-child):not(section section) {
   padding-top: 0;
 }
-:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section][data-verso-headless][data-verso-ruled]:not(section section) > .verso-rhythm > [data-verso-listing]:first-child,
-.verso-page-body > [data-verso-listing],
-.verso-page-body > .verso-stack > [data-verso-listing],
-.verso-page-body > .verso-stack > .verso-stack > [data-verso-listing] {
+:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section][data-verso-headless][data-verso-ruled]:not(section section) > .verso-rhythm > [data-verso-listing]:first-child,
+.verso-page__body > [data-verso-listing],
+.verso-page__body > .verso-stack > [data-verso-listing],
+.verso-page__body > .verso-stack > .verso-stack > [data-verso-listing] {
   --verso-head-top: 0px;
 }
 /* A fact list that opens a card's body, or a part's under its line and lede,
@@ -539,34 +533,34 @@
  * and last lines stand the block's 24px from what is over and under them, as
  * its words stand 24px in from the sides, and as an Overview card's fact list
  * stands. */
-:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]):not(section section) > .verso-rhythm > dl:not(:not(input[type="hidden"], [hidden], template) ~ *) > :first-child,
-:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > .verso-rhythm > section[data-verso-section] > .verso-rhythm > dl:not(:not(input[type="hidden"], [hidden], template) ~ *) > :first-child {
+:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]):not(section section) > .verso-rhythm > dl:not(:not(input[type="hidden"], [hidden], template) ~ *) > :first-child,
+:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > .verso-rhythm > section[data-verso-section] > .verso-rhythm > dl:not(:not(input[type="hidden"], [hidden], template) ~ *) > :first-child {
   padding-top: 0;
 }
-:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]):not(section section) > .verso-rhythm > dl:not(:has(~ :not(input[type="hidden"], [hidden], template))) > :last-child,
-:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]):not(section section) > .verso-rhythm > section[data-verso-section]:not(:has(~ :not(input[type="hidden"], [hidden], template))) > .verso-rhythm > dl:not(:has(~ :not(input[type="hidden"], [hidden], template))) > :last-child {
+:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]):not(section section) > .verso-rhythm > dl:not(:has(~ :not(input[type="hidden"], [hidden], template))) > :last-child,
+:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]):not(section section) > .verso-rhythm > section[data-verso-section]:not(:has(~ :not(input[type="hidden"], [hidden], template))) > .verso-rhythm > dl:not(:has(~ :not(input[type="hidden"], [hidden], template))) > :last-child {
   padding-bottom: 0;
 }
 /* Facts in columns (a part's DHCP server) are one list while they stand one
  * column, so its first and last lines are the first column's first and the
  * last column's last; side by side, each column starts and ends the block. */
-:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > .verso-rhythm > section[data-verso-section] > .verso-rhythm > [data-verso-facts]:not(:not(input[type="hidden"], [hidden], template) ~ *) > dl:first-child > :first-child {
+:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > .verso-rhythm > section[data-verso-section] > .verso-rhythm > [data-verso-facts]:not(:not(input[type="hidden"], [hidden], template) ~ *) > dl:first-child > :first-child {
   padding-top: 0;
 }
-:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]):not(section section) > .verso-rhythm > section[data-verso-section]:not(:has(~ :not(input[type="hidden"], [hidden], template))) > .verso-rhythm > [data-verso-facts]:not(:has(~ :not(input[type="hidden"], [hidden], template))) > dl:last-child > :last-child {
+:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]):not(section section) > .verso-rhythm > section[data-verso-section]:not(:has(~ :not(input[type="hidden"], [hidden], template))) > .verso-rhythm > [data-verso-facts]:not(:has(~ :not(input[type="hidden"], [hidden], template))) > dl:last-child > :last-child {
   padding-bottom: 0;
 }
 @container (width >= 42rem) {
-  :is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > .verso-rhythm > section[data-verso-section] > .verso-rhythm > [data-verso-facts]:not(:not(input[type="hidden"], [hidden], template) ~ *) > dl > :first-child {
+  :is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > .verso-rhythm > section[data-verso-section] > .verso-rhythm > [data-verso-facts]:not(:not(input[type="hidden"], [hidden], template) ~ *) > dl > :first-child {
     padding-top: 0;
   }
-  :is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]):not(section section) > .verso-rhythm > section[data-verso-section]:not(:has(~ :not(input[type="hidden"], [hidden], template))) > .verso-rhythm > [data-verso-facts]:not(:has(~ :not(input[type="hidden"], [hidden], template))) > dl > :last-child {
+  :is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]):not(section section) > .verso-rhythm > section[data-verso-section]:not(:has(~ :not(input[type="hidden"], [hidden], template))) > .verso-rhythm > [data-verso-facts]:not(:has(~ :not(input[type="hidden"], [hidden], template))) > dl > :last-child {
     padding-bottom: 0;
   }
 }
 /* The conditions a rule carries that close a card close it on their add, the
  * card's 24px under the act, as under any block's last line. */
-:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > .verso-rhythm > [data-verso-conditions]:not(:has(~ :not(input[type="hidden"], [hidden], template))) > [data-verso-condition-picker] {
+:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > .verso-rhythm > [data-verso-conditions]:not(:has(~ :not(input[type="hidden"], [hidden], template))) > [data-verso-condition-picker] {
   padding-bottom: 0;
 }
 /* A fold among a card's rows (a rule's "Parameters for the less common
@@ -575,38 +569,38 @@
  * chevron where the answers end, and what it folds are rows of the card under
  * it, the first meeting the summary on a hairline. So no card holds a framed
  * box. A fold that is all its card holds is the card itself (below). */
-:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > .verso-rhythm > details.verso-disclosure:not(:only-child) {
+:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > .verso-rhythm > details.verso-disclosure:not(:only-child) {
   margin-inline: calc(var(--verso-side) * -1);
   border-width: 1px 0 0;
   border-color: var(--color-rule);
   border-radius: 0;
   background-color: transparent;
 }
-:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > .verso-rhythm > * + details.verso-disclosure:not(:only-child) {
+:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > .verso-rhythm > * + details.verso-disclosure:not(:only-child) {
   margin-top: 0;
 }
-:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > .verso-rhythm > details.verso-disclosure:not(:only-child):not(:has(~ :not(input[type="hidden"], [hidden], template))) {
+:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > .verso-rhythm > details.verso-disclosure:not(:only-child):not(:has(~ :not(input[type="hidden"], [hidden], template))) {
   margin-bottom: calc(var(--spacing) * -2);
 }
-:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > .verso-rhythm > .verso-field-row:has(+ details.verso-disclosure:not(:only-child)) {
+:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > .verso-rhythm > .verso-field-row:has(+ details.verso-disclosure:not(:only-child)) {
   padding-bottom: calc(var(--spacing) * 4);
 }
-:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > .verso-rhythm > details.verso-disclosure:not(:only-child) > summary {
+:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > .verso-rhythm > details.verso-disclosure:not(:only-child) > summary {
   padding: calc(var(--spacing) * 3.75) var(--verso-side) calc(var(--spacing) * 4);
   font-weight: var(--font-weight-medium);
   line-height: calc(var(--spacing) * 6);
   color: var(--color-ink);
 }
-:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > .verso-rhythm > details.verso-disclosure:not(:only-child) > .verso-rhythm {
+:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > .verso-rhythm > details.verso-disclosure:not(:only-child) > .verso-rhythm {
   border-top-color: var(--color-rule);
   padding: 0 var(--verso-side) calc(var(--spacing) * 4);
 }
-:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > .verso-rhythm > details.verso-disclosure:not(:only-child) > .verso-rhythm > .verso-field-row:first-child {
+:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > .verso-rhythm > details.verso-disclosure:not(:only-child) > .verso-rhythm > .verso-field-row:first-child {
   padding-top: calc(var(--spacing) * 3.75);
 }
 /* A page form's Save stands on the sand 24px under the last card, ruled off
  * by the cards themselves. */
-:is(.verso-page-body, [data-verso-drawer-body]) [data-verso-form-actions][data-verso-rule] {
+:is(.verso-page__body, [data-verso-drawer-body]) [data-verso-form-actions][data-verso-rule] {
   margin: calc(var(--spacing-inset) - 1px) 0 0;
   border-top-width: 0;
   padding: 0;
@@ -632,12 +626,12 @@
 }
 /* A form's configuration preview is a card of its own, on a page or in a
  * drawer, 24px under the card before it, its file strip the card's header. */
-:is(.verso-page-body, [data-verso-drawer-body]) [data-verso-code-divider] {
+:is(.verso-page__body, [data-verso-drawer-body]) [data-verso-code-divider] {
   margin: calc(var(--spacing-inset) - 1px) 0 0;
   border-top-width: 0;
   padding: 0;
 }
-:is(.verso-page-body, [data-verso-drawer-body]) [data-verso-code-divider] > [data-verso-code-editor] {
+:is(.verso-page__body, [data-verso-drawer-body]) [data-verso-code-divider] > [data-verso-code-editor] {
   border-color: var(--color-rule-strong);
 }
 /* A fold that is all its card holds (a drawer's "Advanced — 4 more options")
@@ -647,15 +641,15 @@
  * the seam), its chevron at the header's end, and what it folds is the
  * card's body behind that seam, the rows running to the card's borders.
  * Closed, the card is its header alone. So no card holds a framed box. */
-:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section][data-verso-headless][data-verso-ruled]:not(section section):has(> .verso-rhythm > details.verso-disclosure:only-child) {
+:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section][data-verso-headless][data-verso-ruled]:not(section section):has(> .verso-rhythm > details.verso-disclosure:only-child) {
   padding: 0;
 }
-:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section][data-verso-headless][data-verso-ruled]:not(section section) > .verso-rhythm > details.verso-disclosure:only-child {
+:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section][data-verso-headless][data-verso-ruled]:not(section section) > .verso-rhythm > details.verso-disclosure:only-child {
   border-width: 0;
   border-radius: 0;
   background-color: transparent;
 }
-:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section][data-verso-headless][data-verso-ruled]:not(section section) > .verso-rhythm > details.verso-disclosure:only-child > summary {
+:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section][data-verso-headless][data-verso-ruled]:not(section section) > .verso-rhythm > details.verso-disclosure:only-child > summary {
   padding: calc(var(--spacing) * 2.75) var(--verso-side) calc(var(--spacing) * 3);
   font-size: var(--text-base);
   line-height: calc(var(--spacing) * 6);
@@ -663,32 +657,32 @@
 }
 /* The body opens on a row as a titled card's does, its first name 15px after
  * the seam, and closes 16px under its last row's words. */
-:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section][data-verso-headless][data-verso-ruled]:not(section section) > .verso-rhythm > details.verso-disclosure:only-child > .verso-rhythm {
+:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section][data-verso-headless][data-verso-ruled]:not(section section) > .verso-rhythm > details.verso-disclosure:only-child > .verso-rhythm {
   border-top-color: var(--color-rule-strong);
   padding: 0 var(--verso-side) calc(var(--spacing) * 4);
 }
-:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section][data-verso-headless][data-verso-ruled]:not(section section) > .verso-rhythm > details.verso-disclosure:only-child > .verso-rhythm > .verso-field-row:first-child {
+:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section][data-verso-headless][data-verso-ruled]:not(section section) > .verso-rhythm > details.verso-disclosure:only-child > .verso-rhythm > .verso-field-row:first-child {
   padding-top: calc(var(--spacing) * 3.75);
 }
 /* The conditions a rule carries are a part of the card that holds them, so
  * they are headed as a part is (section.html.tmpl's ledger): the name at the
  * label's size on its 24px line, the Strong Hairline running on from it to
  * the column's end, the lede under them. */
-:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) [data-verso-conditions] > :first-child {
+:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) [data-verso-conditions] > :first-child {
   column-gap: calc(var(--spacing) * 3);
 }
-:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) [data-verso-conditions] > :first-child::before {
+:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) [data-verso-conditions] > :first-child::before {
   content: "";
   order: 1;
   flex: 1 1 calc(var(--spacing) * 6);
   height: 1px;
   background-color: var(--color-rule-strong);
 }
-:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) [data-verso-conditions] > :first-child > legend {
+:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) [data-verso-conditions] > :first-child > legend {
   font-size: var(--text-sm);
   line-height: calc(var(--spacing) * 6);
   letter-spacing: 0;
 }
-:is(.verso-page-body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) [data-verso-conditions] > :first-child > :not(legend) {
+:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) [data-verso-conditions] > :first-child > :not(legend) {
   order: 2;
 }

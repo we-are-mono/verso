@@ -50,7 +50,7 @@ func rootTag(body string) string {
 func TestTheHeadingLineOffersTheFold(t *testing.T) {
 	body := get(t, newServer(t, fakeBackend{}), "/system/maintenance").Body.String()
 	masthead := strings.Index(body, "data-verso-masthead")
-	page := strings.Index(body, `class="verso-page-body"`)
+	page := strings.Index(body, `class="verso-page__body"`)
 	if masthead < 0 || page < masthead {
 		t.Fatalf("no masthead before the page body:\n%s", body)
 	}

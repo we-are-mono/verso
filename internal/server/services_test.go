@@ -90,7 +90,7 @@ func TestServicesTable(t *testing.T) {
 		">verso</span>", // APK ownership joins verso-rpcd to the verso package
 		// package ownership is verbatim: the cell's role in its fixed 16px mono form
 		`<td data-verso-verbatim class="verso-table__cell whitespace-nowrap text-ink"><span class="flex items-center"><span>verso</span>`,
-		"max-w-column-6xl", // runtime fits without forcing a horizontal scroller
+		`class="verso-page__main" data-verso-width="wide"`, // runtime fits without forcing a horizontal scroller
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("services missing %q", want)

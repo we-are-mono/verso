@@ -15,14 +15,14 @@
          and below, so it is whole cells; its act rides the first line, 4px
          over at either edge. */}}
     <li>
-      <form method="post"{{if $.Action}} action="{{$.Action}}"{{end}} class="flex flex-wrap items-start justify-between gap-x-6 py-2">
+      <form method="post"{{if $.Action}} action="{{$.Action}}"{{end}} class="verso-collection__item">
         {{template "verso-csrf" $.CSRFToken}}
         {{if .Name}}<input type="hidden" name="{{.Name}}" value="{{.Value}}">{{end}}
-        <div class="min-w-0 flex-1">
-          <p class="font-mono text-base leading-6 font-medium wrap-anywhere text-ink">{{.Title}}</p>
-          {{if .Detail}}<p class="font-mono text-sm leading-6 wrap-anywhere text-meta">{{.Detail}}</p>{{end}}
+        <div class="verso-collection__words">
+          <p class="verso-collection__title" data-verso-verbatim>{{.Title}}</p>
+          {{if .Detail}}<p class="verso-collection__detail" data-verso-verbatim>{{.Detail}}</p>{{end}}
         </div>
-        <div class="-my-1 shrink-0">{{.Remove}}</div>
+        <div class="verso-collection__act">{{.Remove}}</div>
       </form>
     </li>
     {{end}}
@@ -39,15 +39,15 @@
   {{with .Add}}
   {{/* the 28px act centred in the two cells under the last item's row, or a
        cell under the empty slot's edge and then centred in two */}}
-  <div x-data="confirm" @keydown.escape="escape"{{if $.Open}} data-verso-open{{end}} class="{{if $.Items}}pt-1.5 pb-1.5{{else}}pt-6 pb-1{{end}}">
+  <div x-data="confirm" @keydown.escape="escape"{{if $.Open}} data-verso-open{{end}} class="verso-collection__add"{{if not $.Items}} data-verso-first{{end}}>
     <button type="button" x-ref="trigger" x-show="idle" @click="ask" :aria-expanded="expanded" aria-controls="{{$.AddID}}" class="verso-button group/act relative" data-verso-size="act" data-verso-glyph>{{icon "plus" "size-4"}}{{.Label}}</button>
-    <form id="{{$.AddID}}" method="post"{{if $.Action}} action="{{$.Action}}"{{end}} x-show="asking" x-cloak class="space-y-3">
+    <form id="{{$.AddID}}" method="post"{{if $.Action}} action="{{$.Action}}"{{end}} x-show="asking" x-cloak class="verso-collection__form">
       {{template "verso-csrf" $.CSRFToken}}
       <label for="{{$.AddID}}-input" class="sr-only">{{.Label}}</label>
       <input x-ref="first" id="{{$.AddID}}-input" name="{{.Name}}" value="{{.Value}}" type="text"{{if .Placeholder}} placeholder="{{.Placeholder}}"{{end}} autocomplete="off" spellcheck="false"{{if .Error}} aria-invalid="true" aria-describedby="{{$.AddID}}-error"{{end}} class="{{template "verso-input-class"}} w-full {{template "verso-input-border" .Error}}">
       {{if .Error}}<p id="{{$.AddID}}-error" data-verso-error class="{{template "verso-refusal-band"}}">{{template "verso-error-words" .Error}}</p>{{end}}
       {{$.Preview}}
-      <div class="flex items-center gap-2 pt-2">
+      <div class="verso-collection__acts">
         <button type="submit" class="verso-button">{{.Submit}}</button>
         <button type="button" @click="cancel" class="verso-button" data-verso-style="secondary">{{ t "Not now" }}</button>
       </div>

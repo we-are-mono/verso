@@ -80,9 +80,11 @@ func TestRenderTableEscapesCells(t *testing.T) {
 // first and last of them as if they stood in it directly (sections.css).
 func TestAFlushStackIsARunOfRows(t *testing.T) {
 	got := render(t, newRenderer(t), &Stack{Flush: true, Children: []Widget{&Badge{Text: "a"}}})
-	if !strings.HasPrefix(got, `<div data-verso-rows class="">`) {
+	if !strings.HasPrefix(got, `<div class="verso-stack" data-verso-rows data-verso-gap="none">`) {
 		t.Errorf("a flush stack does not say it is a run of rows: %s", got)
 	}
+	declares(t, "stack", `.verso-stack[data-verso-gap="none"]`,
+		"--verso-stack-step: var(--verso-stack-gap, 0px)")
 	if plain := render(t, newRenderer(t), &Stack{Children: []Widget{&Badge{Text: "a"}}}); strings.Contains(plain, "data-verso-rows") {
 		t.Errorf("a spaced stack is blocks, not a run of rows: %s", plain)
 	}
@@ -92,31 +94,42 @@ func TestRenderStackDivided(t *testing.T) {
 	r := newRenderer(t)
 	plain := render(t, r, &Stack{Children: []Widget{&Badge{Text: "a"}, &Badge{Text: "b"}}})
 	// The default stack sets its blocks 24px apart, the grid's inset.
-	if !strings.Contains(plain, "space-y-6") {
+	if !strings.HasPrefix(plain, `<div class="verso-stack">`) {
 		t.Errorf("default stack should space its children 24px apart:\n%s", plain)
 	}
+	declares(t, "stack", ".verso-stack > * + *", "margin-top: var(--verso-step, var(--verso-stack-step))")
+	declares(t, "stack", ".verso-stack", "--verso-stack-step: var(--verso-stack-gap, var(--spacing-inset))")
 	div := render(t, r, &Stack{Divided: true, Children: []Widget{&Badge{Text: "a"}, &Badge{Text: "b"}}})
-	if !strings.Contains(div, "divide-y") {
+	if !strings.HasPrefix(div, `<div class="verso-stack" data-verso-divided`) {
 		t.Errorf("divided stack should draw hairlines:\n%s", div)
 	}
+	declares(t, "stack", ".verso-stack[data-verso-divided] > :not(:last-child)",
+		"border-bottom: 1px solid var(--color-rule)")
 	compact := render(t, r, &Stack{Compact: true, Children: []Widget{&Badge{Text: "a"}, &Badge{Text: "b"}}})
-	if !strings.Contains(compact, "space-y-3") || strings.Contains(compact, "space-y-6") {
+	if !strings.HasPrefix(compact, `<div class="verso-stack" data-verso-gap="compact">`) {
 		t.Errorf("compact stack should use tighter spacing: %s", compact)
 	}
+	declares(t, "stack", `.verso-stack[data-verso-gap="compact"]`,
+		"--verso-stack-step: var(--verso-stack-gap, calc(var(--spacing) * 3))")
 	// An inline stack is a wrapping row of acts: 12px between them, its
 	// wrapped rows 40px apart, and the row a control's 32px, so its controls'
 	// edges are the row's own and land on the grid's lines.
 	inline := render(t, r, &Stack{Inline: true, Children: []Widget{&Badge{Text: "a"}, &Text{Markdown: "or"}, &Badge{Text: "b"}}})
-	if !strings.Contains(inline, `class="flex flex-wrap items-center gap-x-3 gap-y-2 has-[[data-verso-size=act]]:gap-y-3 has-[[data-verso-size=act]]:py-0.5"`) || !strings.Contains(inline, ">or</p>") {
+	if !strings.HasPrefix(inline, `<div class="verso-cluster">`) || !strings.Contains(inline, ">or</p>") {
 		t.Errorf("inline stack should keep its children in one wrapping row: %s", inline)
 	}
-	if strings.Contains(div, "space-y-") {
+	declares(t, "cluster", ".verso-cluster",
+		"display: flex", "flex-wrap: wrap", "align-items: center",
+		"gap: calc(var(--spacing) * 2) calc(var(--spacing) * 3)")
+	// A divided list is ruled, not spaced: its gap is none.
+	if !strings.Contains(div, `data-verso-gap="none"`) {
 		t.Errorf("divided stack should not also space:\n%s", div)
 	}
 	bounded := render(t, r, &Stack{Width: "compact", Children: []Widget{&Badge{Text: "a"}}})
-	if !strings.Contains(bounded, "max-w-md") {
+	if !strings.HasPrefix(bounded, `<div class="verso-stack" data-verso-width="compact">`) {
 		t.Errorf("compact-width stack must remain visually bounded: %s", bounded)
 	}
+	declares(t, "stack", `.verso-stack[data-verso-width="compact"]`, "max-width: var(--container-md)")
 }
 
 func TestRenderCardWithoutTitleOmitsHeader(t *testing.T) {
@@ -393,11 +406,14 @@ func TestRenderBadgeDotIsStill(t *testing.T) {
 
 func TestRenderDivider(t *testing.T) {
 	r := newRenderer(t)
-	// A divider separates groups inside a card or panel at the compact spacing.
+	// A divider separates groups: a bare hairline that keeps no air of its
+	// own, spaced by the stack or rhythm it stands in.
 	got := render(t, r, &Divider{})
-	if !strings.Contains(got, `<hr class="border-rule my-6">`) {
-		t.Errorf("divider should be a bare rule at the compact spacing: %s", got)
+	if !strings.Contains(got, `<hr class="verso-divider">`) {
+		t.Errorf("divider should be a bare rule spaced by what it stands in: %s", got)
 	}
+	declares(t, "divider", ".verso-divider",
+		"margin: 0", "border: 0 solid var(--color-rule)", "border-top-width: 1px")
 }
 
 func TestRenderProperties(t *testing.T) {

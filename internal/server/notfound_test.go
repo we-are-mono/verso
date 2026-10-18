@@ -28,7 +28,7 @@ func TestAnAddressWithNothingAtItIsAPage(t *testing.T) {
 		if rec.Code != http.StatusNotFound {
 			t.Errorf("%s: status %d, want 404", path, rec.Code)
 		}
-		for _, want := range []string{`verso-page-heading`, ">Page not found<", "There is nothing at this address", `href="/"`} {
+		for _, want := range []string{`verso-page__heading`, ">Page not found<", "There is nothing at this address", `href="/"`} {
 			if !strings.Contains(body, want) {
 				t.Errorf("%s: the page is missing %q:\n%s", path, want, body)
 			}
@@ -48,7 +48,7 @@ func TestAnAddressWithNothingAtItIsAPage(t *testing.T) {
 	fetch := httptest.NewRequest(http.MethodGet, "/nope", nil)
 	fetch.Header.Set("HX-Request", "true")
 	fetch.Header.Set("Accept", "text/html")
-	if rec := serve(t, s, fetch); rec.Code != http.StatusNotFound || strings.Contains(rec.Body.String(), "verso-page-heading") {
+	if rec := serve(t, s, fetch); rec.Code != http.StatusNotFound || strings.Contains(rec.Body.String(), "verso-page__heading") {
 		t.Errorf("a fragment's 404 is the bare line: %d %q", rec.Code, rec.Body.String())
 	}
 }

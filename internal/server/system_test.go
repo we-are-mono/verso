@@ -36,7 +36,7 @@ func TestSystemGeneralUsesBundledPluginRegistration(t *testing.T) {
 	s := newServerWith(t, fakeBackend{}, tr, []plugin.Manifest{systemManifest()})
 	body := get(t, s, "/plugins/system/").Body.String()
 
-	if !strings.Contains(body, `verso-page-heading">General</h1>`) {
+	if !strings.Contains(body, `verso-page__heading">General</h1>`) {
 		t.Error("a page in System keeps its own name as the heading, with no section prefix")
 	}
 	for _, want := range []string{
@@ -105,7 +105,7 @@ func TestNetworkFiledPluginPageOpensTheNetworkRow(t *testing.T) {
 			t.Errorf("rail missing %q", want)
 		}
 	}
-	if !strings.Contains(body, `verso-page-heading">DHCP</h1>`) {
+	if !strings.Contains(body, `verso-page__heading">DHCP</h1>`) {
 		t.Error("a page in Network keeps its own name as the heading, with no section prefix")
 	}
 }
@@ -139,15 +139,26 @@ func TestPageContentAppearsWithoutEntranceAnimation(t *testing.T) {
 	// The homepage keeps the air every page keeps: its heading line 24px under
 	// the top bar, 40px from the sidebar once there is room for it and 16px on
 	// a phone, so the cards' frames land on the grid's lines.
-	if !strings.Contains(body, `<div class="px-4 pt-6 pb-20 md:px-10">`) {
+	frame := strings.Index(body, `<div class="verso-page__frame">`)
+	main := body[strings.Index(body, "<main "):]
+	if !strings.Contains(main[:strings.Index(main, ">")+1], ` data-verso-home>`) || frame < 0 {
 		t.Error("the page's air is the frame's, outside the content measure")
+	}
+	page := blockSheet(t, "page")
+	if !strings.Contains(cssBlock(t, page, "\n.verso-page__frame {"), "padding: 0 var(--verso-gutter) calc(var(--spacing) * 10);") ||
+		!strings.Contains(cssBlock(t, page, "\n.verso-page__frame:where(.verso-page__main[data-verso-home] *) {"), "padding-block: calc(var(--spacing) * 6) calc(var(--spacing) * 20);") {
+		t.Error("the homepage's heading line does not stand 24px under the top bar, in the page's side air")
 	}
 	// Its h1 is every page's heading, on a control's line, and the cards
 	// stand 24px under it as they do under any heading line.
-	if !strings.Contains(body, `<h1 class="verso-page-heading text-balance">`) || !strings.Contains(body, `<div class="verso-overview-cols mt-6">`) {
+	if !strings.Contains(body, `<h1 class="verso-page__heading text-balance">`) || !strings.Contains(body, `<div class="verso-overview-cols mt-6">`) {
 		t.Error("the homepage's heading is not every page's heading")
 	}
-	if !strings.Contains(body, `<div data-verso-column class="max-w-`) {
+	column := strings.Index(body, `<div data-verso-column class="verso-page__column">`)
+	if column < frame {
 		t.Error("the content measure must sit inside that air")
+	}
+	if !strings.Contains(cssBlock(t, page, "\n.verso-page__column {"), "max-width: calc(var(--container-5xl) + 1px);") {
+		t.Error("the content measure is not capped")
 	}
 }

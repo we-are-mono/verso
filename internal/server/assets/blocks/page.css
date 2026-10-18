@@ -1,0 +1,245 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/* SPDX-FileCopyrightText: 2026 Mono Technologies Inc. */
+
+/*
+ * page — the app's document: the bar over it, the rail beside it, and the
+ * page itself in the room left, on Quiet Sand so its Paper cards stand off
+ * it. Its frame is 40px of air (16px on a phone) outside a measure the page
+ * declares, so the measure is the content's real width; the column is that
+ * measure or the room it has, rounded down to the 8px grid and a pixel more,
+ * so a card's right border lands on a line as its left one does. A short
+ * page's ground fills the window down to the colophon, which stands at the
+ * window's foot exactly as it stands under a long page scrolled to its end.
+ *
+ * A page whose subject is a running stream (Width "full": a log, a run's
+ * output) asks for the whole window instead: it fills the height, scrolls
+ * inside itself and runs to the right and bottom edges, the chain of boxes
+ * down to it handing it the leftover height. Its masthead is the light one,
+ * on the page's own ground, its body the darker surface.
+ *
+ * The root is the <body>: the page's words in the body role, in Ink.
+ *
+ * Context: --verso-gutter  the page's side air: 16px on a phone, 40px past
+ *          it, and 40px on a phone too for a light page, whose body runs to
+ *          the window's edges and insets its own lines by it. The bar and the
+ *          colophon end their content where the column does by it.
+ * Variants (on __main): data-verso-width   full · form · narrow · wide; none
+ *                                          is the default measure
+ *                       data-verso-light   the light masthead, for a page
+ *                                          whose body is the darker surface
+ *                       data-verso-home    the Overview: its own heading line,
+ *                                          24px under the bar, and room under
+ *                                          its cards
+ * Elements: __skip      the skip link, shown only while it has focus
+ *           __main      the page's room beside the rail: the size container
+ *                       the masthead measures against
+ *           __ground    the sand under the page
+ *           __frame     the page's air
+ *           __column    the page's measure
+ *           __masthead  the heading line's band: on the sand, or the light
+ *                       bar on a hairline from the rail to the window's
+ *                       edge, its acts ending where Log out does
+ *           __line      the heading and what acts on the page, centred on
+ *                       each other, an act's height whether it holds one
+ *           __heading   the page's title, in the headline role; a toned one
+ *                       (data-verso-tone) is a message about now, in its
+ *                       tone's deep step
+ *           __detail    the tab the heading names, after a dash, in Faint
+ *           __acts      what acts on the page, at the line's end
+ *           __note      a standing note among them, in Meta
+ *           __body      what the page holds
+ * Sets:     --verso-stack-gap  40px on the body's own stack
+ */
+
+.verso-page {
+  --verso-gutter: calc(var(--spacing) * 4);
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  margin: 0;
+  background-color: var(--color-ground);
+  color: var(--color-ink);
+  @apply type-body;
+}
+@media (width >= 48rem) {
+  .verso-page {
+    --verso-gutter: calc(var(--spacing) * 10);
+  }
+}
+
+.verso-page__skip {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.verso-page__skip:focus {
+  position: fixed;
+  top: calc(var(--spacing) * 3);
+  left: calc(var(--spacing) * 3);
+  z-index: 50;
+  width: auto;
+  height: auto;
+  padding: calc(var(--spacing) * 2) calc(var(--spacing) * 4);
+  overflow: visible;
+  clip-path: none;
+  border-radius: var(--radius-xs);
+  outline: 2px solid var(--color-denim);
+  background-color: var(--color-canvas);
+  @apply type-button;
+}
+
+.verso-page__main {
+  container-type: inline-size;
+  display: flex;
+  flex: 1 1 0%;
+  flex-direction: column;
+  min-width: 0;
+  outline: none;
+}
+.verso-page__main[data-verso-width="full"] {
+  height: calc(100vh - 3.5rem);
+  min-height: 0;
+}
+
+.verso-page__ground {
+  flex: 1 0 auto;
+  background-color: var(--color-quiet);
+}
+.verso-page__ground:where(.verso-page__main[data-verso-light] *) {
+  background-color: transparent;
+}
+
+.verso-page__frame {
+  padding: 0 var(--verso-gutter) calc(var(--spacing) * 10);
+}
+.verso-page__frame:where(.verso-page__main[data-verso-home] *) {
+  padding-block: calc(var(--spacing) * 6) calc(var(--spacing) * 20);
+}
+.verso-page__frame:where(.verso-page__main[data-verso-light] *) {
+  --verso-gutter: calc(var(--spacing) * 10);
+}
+
+.verso-page__column {
+  width: calc(round(down, 100% - 1px, 0.5rem) + 1px);
+  max-width: calc(var(--container-5xl) + 1px);
+}
+.verso-page__column:where(.verso-page__main[data-verso-width="form"] *) {
+  max-width: calc(var(--container-3xl) + 1px);
+}
+.verso-page__column:where(.verso-page__main[data-verso-width="narrow"] *) {
+  max-width: calc(var(--container-4xl) + 1px);
+}
+.verso-page__column:where(.verso-page__main[data-verso-width="wide"] *) {
+  max-width: calc(var(--container-6xl) + 1px);
+}
+
+/* A full page hands its height down the chain to the one thing that wants
+   it — a console, anything that scrolls inside itself rather than
+   lengthening the page — through the shell's own boxes and whatever the
+   plugin's layout puts in the body, neither of which knows it is in such a
+   page. */
+:is(.verso-page__ground, .verso-page__frame, .verso-page__column, .verso-page__body):where(.verso-page__main[data-verso-width="full"] *),
+.verso-page__body:where(.verso-page__main[data-verso-width="full"] *) > * {
+  display: flex;
+  flex: 1 1 0%;
+  flex-direction: column;
+  min-height: 0;
+}
+.verso-page__ground:where(.verso-page__main[data-verso-width="full"] *) {
+  background-color: transparent;
+}
+.verso-page__frame:where(.verso-page__main[data-verso-width="full"] *) {
+  --verso-gutter: calc(var(--spacing) * 10);
+  padding-bottom: 0;
+}
+.verso-page__column:where(.verso-page__main[data-verso-width="full"] *) {
+  width: auto;
+  max-width: none;
+}
+
+/* The masthead's acts end where Log out does, whatever measure the column
+   below keeps: the page's gutter in from the window, and never past the
+   top bar's wide measure, rounded down to the grid and a pixel more
+   (--verso-measure). The page (__main) is the size container, read in whole
+   pixels so a width a hair under its pixel never rounds a step short; the
+   margins pull the masthead out past the gutter and the column's end, and
+   the padding brings its content back. */
+.verso-page__masthead {
+  --verso-measure: calc(round(down, min(round(100cqw, 1px) - var(--verso-gutter) * 2 - 1px, var(--container-6xl)), 0.5rem) + 1px);
+  margin-inline: calc(var(--verso-gutter) * -1) calc(100% - round(100cqw, 1px) + var(--verso-gutter));
+  padding: calc(var(--spacing) * 6) calc(round(100cqw, 1px) - var(--verso-gutter) - var(--verso-measure)) calc(var(--spacing) * 6) var(--verso-gutter);
+}
+.verso-page__masthead:where(.verso-page__main[data-verso-light] *) {
+  padding-block: calc(var(--spacing) * 4);
+  border-bottom: 1px solid var(--color-rule);
+  background-color: var(--color-ground);
+}
+
+.verso-page__line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(var(--spacing) * 4);
+  min-height: calc(var(--spacing) * 8);
+}
+
+.verso-page__heading {
+  align-content: center;
+  min-height: calc(var(--spacing) * 8);
+  color: var(--color-ink);
+  @apply type-headline;
+}
+.verso-page__heading[data-verso-tone="info"] {
+  color: var(--color-denim-deep);
+}
+.verso-page__heading[data-verso-tone="success"] {
+  color: var(--color-green-deep);
+}
+.verso-page__heading[data-verso-tone="warning"] {
+  color: var(--color-marigold-deep);
+}
+.verso-page__heading[data-verso-tone="danger"] {
+  color: var(--color-crimson-deep);
+}
+.verso-page__detail {
+  color: var(--color-faint);
+}
+
+.verso-page__acts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: calc(var(--spacing) * 2) calc(var(--spacing) * 3);
+  margin-left: auto;
+}
+.verso-page__note {
+  color: var(--color-meta);
+}
+
+/* The layout grid, drawn on request in a dev session (verso-dev.js sets
+   data-verso-grid on G; a released build never loads that script): a line
+   every 8px over the page from the bar's hairline and the rail's border,
+   under the bar so it stays readable, never taking a press. */
+.verso-page__main:where([data-verso-grid] *) {
+  position: relative;
+}
+.verso-page__main:where([data-verso-grid] *)::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 25;
+  pointer-events: none;
+  background-image:
+    linear-gradient(to right, color-mix(in srgb, var(--color-denim) 22%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in srgb, var(--color-denim) 22%, transparent) 1px, transparent 1px);
+  background-size: calc(var(--spacing) * 2) calc(var(--spacing) * 2);
+}
+
+/* The page's own stack stands its blocks 40px apart. */
+.verso-page__body > .verso-stack {
+  --verso-stack-gap: calc(var(--spacing) * 10);
+}

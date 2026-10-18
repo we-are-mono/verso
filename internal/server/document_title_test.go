@@ -44,7 +44,7 @@ func TestAccessContributionStandsOffByThePageGap(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(css), `.verso-page-body > .verso-stack > * + .verso-stack:has(> section[data-verso-section]:first-child > [data-verso-section-band]) { margin-top: calc(var(--spacing) * 10 - 1px); }`) {
+	if !strings.Contains(string(css), `.verso-page__body > .verso-stack > * + .verso-stack:has(> section[data-verso-section]:first-child > [data-verso-section-band]) { margin-top: calc(var(--spacing) * 10 - 1px); }`) {
 		t.Error("a part that opens on a section's rule does not land the rule two cells under the part before it")
 	}
 	if _, err := os.Stat("templates/access-contribution.html.tmpl"); err == nil {
@@ -58,8 +58,17 @@ func TestAccessContributionStandsOffByThePageGap(t *testing.T) {
 func TestPageMastheadStandsOnTheSand(t *testing.T) {
 	s := passwordServer(t, fakeBackend{})
 	access := get(t, s, "/system/access").Body.String()
-	if !strings.Contains(access, `<div data-verso-masthead class="py-6">`) {
+	if !strings.Contains(access, `<div data-verso-masthead class="verso-page__masthead">`) {
 		t.Error("the heading's line stands 24px clear of the top bar and of the first card")
+	}
+	masthead := cssBlock(t, blockSheet(t, "page"), "\n.verso-page__masthead {")
+	if !strings.Contains(masthead, "padding: calc(var(--spacing) * 6) ") || !strings.Contains(masthead, " calc(var(--spacing) * 6) var(--verso-gutter);") {
+		t.Errorf("the heading's line stands 24px clear of the top bar and of the first card:\n%s", masthead)
+	}
+	for _, own := range []string{"border", "background"} {
+		if strings.Contains(masthead, own) {
+			t.Errorf("the masthead on the sand draws no %s of its own:\n%s", own, masthead)
+		}
 	}
 	if strings.Contains(access, "data-verso-bleed") {
 		t.Error("the page's rules are no one page's experiment")
@@ -94,12 +103,12 @@ func TestServerPagesNameEachThingOnce(t *testing.T) {
 // the rule.
 func TestMaintenanceSectionsUsePageBands(t *testing.T) {
 	body := get(t, passwordServer(t, fakeBackend{}), "/system/maintenance").Body.String()
-	if !strings.Contains(body, `<div data-verso-masthead class="py-6">`) {
+	if !strings.Contains(body, `<div data-verso-masthead class="verso-page__masthead">`) {
 		t.Error("the masthead opens onto the first section from the sand")
 	}
 	// With nothing to say, nothing stands before Firmware: the section opens
 	// the work column right under the masthead's line.
-	if !regexp.MustCompile(`data-verso-form-column class="min-w-0">\s*<div class="verso-stack space-y-6">\s*<section data-verso-section="plain" id="section-firmware">`).MatchString(body) {
+	if !regexp.MustCompile(`data-verso-form-column class="min-w-0">\s*<div class="verso-stack">\s*<section data-verso-section="plain" id="section-firmware">`).MatchString(body) {
 		t.Error("something stands before Firmware with nothing to say")
 	}
 	for _, id := range []string{"back-up-and-restore", "reboot", "factory-reset"} {

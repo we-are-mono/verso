@@ -16,7 +16,7 @@
 .verso-fold {
   display: none;
 }
-.verso-fold:is([data-verso-column]:has(> .verso-page-body [data-verso-field-desc]) > [data-verso-masthead] *, dialog:has([data-verso-field-desc]) *) {
+.verso-fold:is(.verso-page__column:has(> .verso-page__body [data-verso-field-desc]) > .verso-page__masthead *, dialog:has([data-verso-field-desc]) *) {
   display: flex;
 }
 

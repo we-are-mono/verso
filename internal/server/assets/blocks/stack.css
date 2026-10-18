@@ -1,0 +1,70 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/* SPDX-FileCopyrightText: 2026 Mono Technologies Inc. */
+
+/*
+ * stack — blocks one under another at one step, with no surface of its own.
+ * Each block stands its step under the one before; a hidden carrier is not a
+ * block, so the first one a reader sees takes no step above it. The page's
+ * own stack (the root of a page's body) stands its blocks 40px apart, the
+ * gap the page keeps from the window's edge; a control band is the top strip
+ * of its listing's card, so the listing stands flush under it, and a log
+ * stands flush on its masthead.
+ *
+ * Variants: data-verso-gap   compact (12px) · loose (40px) · none (a run
+ *                            of rows that meet on their own air, or a divided
+ *                            list); none set: 24px
+ *           data-verso-rows  a run of rows (a flush stack): a section gives
+ *                            back its first and last rows' air as if they
+ *                            stood in it directly
+ *           data-verso-divided  a hairline between the blocks
+ *           data-verso-width="compact"  a narrow stack, 448px at most
+ * Reads:    --verso-step       knob, on each child: how far it stands from
+ *                              the one before it (unset: the stack's step)
+ *           --verso-stack-gap  knob: the stack's own step, which the page
+ *                              sets on its root stack
+ * Context:  --verso-stack-step the step the stack states for its children
+ * Sets:     --verso-step       0 on what follows a control band, and on a
+ *                              console
+ */
+
+@property --verso-stack-gap {
+  syntax: "*";
+  inherits: false;
+}
+
+.verso-stack[data-verso-width="compact"] {
+  max-width: var(--container-md);
+}
+
+/* The stack states its step on itself (--verso-stack-step, which its children
+   inherit and a stack inside one states afresh), and each child stands that
+   far under the one before it. */
+.verso-stack {
+  --verso-stack-step: var(--verso-stack-gap, var(--spacing-inset));
+}
+.verso-stack[data-verso-gap="compact"] {
+  --verso-stack-step: var(--verso-stack-gap, calc(var(--spacing) * 3));
+}
+.verso-stack[data-verso-gap="loose"] {
+  --verso-stack-step: var(--verso-stack-gap, calc(var(--spacing) * 10));
+}
+.verso-stack[data-verso-gap="none"] {
+  --verso-stack-step: var(--verso-stack-gap, 0px);
+}
+.verso-stack > * + * {
+  margin-top: var(--verso-step, var(--verso-stack-step));
+}
+.verso-stack > :nth-child(1 of :not(input[type="hidden"], template, [hidden])) {
+  margin-top: 0;
+}
+
+.verso-stack[data-verso-divided] > :not(:last-child) {
+  border-bottom: 1px solid var(--color-rule);
+}
+
+/* A control band is its listing's top strip; a log stands flush on its
+   masthead. */
+.verso-stack > .verso-actionbar + *,
+.verso-stack > .verso-console {
+  --verso-step: 0;
+}

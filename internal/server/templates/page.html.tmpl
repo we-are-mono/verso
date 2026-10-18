@@ -20,8 +20,10 @@
 <style id="verso-css">{{.CSS}}</style>
 <style id="verso-theme">{{.Theme}}</style>
 </head>
-<body x-data="sidebar" class="min-h-screen m-0 flex flex-col bg-ground font-sans text-sm leading-normal text-ink">
-<a href="#main" class="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus:rounded-xs focus:bg-canvas focus:px-4 focus:py-2 focus:font-semibold focus:outline-2 focus:outline-denim">{{ t "Skip to content" }}</a>
+{{/* The page block (blocks/page.css): the document, the page's room beside
+     the rail, its ground, frame, column, masthead and body. */}}
+<body x-data="sidebar" class="verso-page">
+<a href="#main" class="verso-page__skip">{{ t "Skip to content" }}</a>
 {{/* The top bar: the device's nameplate on the left — the hostname in mono,
      then who built the board and what they call it; a fresh box with no
      readable name says what it is instead — with what waits on its stage
@@ -98,7 +100,7 @@
 {{/* Every other page is a column too, at least as tall as what the bar leaves
      of the screen, so its colophon stands at the bottom of a short page and
      under the last of a long one. */}}
-<main id="main" tabindex="-1" class="@container outline-none flex min-w-0 flex-1 flex-col{{if eq .Width "full"}} h-[calc(100vh-3.5rem)] min-h-0{{end}}">
+<main id="main" tabindex="-1" class="verso-page__main"{{if or (eq .Width "full") (eq .Width "form") (eq .Width "narrow") (eq .Width "wide")}} data-verso-width="{{.Width}}"{{end}}{{if .Light}} data-verso-light{{end}}{{if .Overview}} data-verso-home{{end}}>
   {{/* Subpages are the rail's business — the active row opens them beneath
        itself, so a page's own depth is read in one place and the content area
        starts at the content. */}}
@@ -119,7 +121,7 @@
   {{/* Every page stands on Quiet Sand so its Paper cards stand off it, home's
        as every other's (ADR-022); a live page (a log, Diagnostics)
        keeps its own frame, its output the darker surface. */}}
-  <div class="{{if eq .Width "full"}}flex min-h-0 flex-1 flex-col{{else}}verso-page-ground{{end}}{{if not (or .Light (eq .Width "full"))}} bg-quiet{{end}}">
+  <div class="verso-page__ground">
     {{/* The heading line stands on the sand 24px under the top bar and 24px
          over the first card, with no bar of its own. A live page's
          masthead is the light bar, its title's line 16px inside it at top and
@@ -134,12 +136,12 @@
          is its measure, or the room it has rounded down to the grid, and a
          pixel more, so a card's right border lands on a line as its left
          one does. */}}
-    <div class="{{if eq .Width "full"}}flex min-h-0 flex-1 flex-col px-(--verso-gutter) [--verso-gutter:--spacing(10)]{{else if .Overview}}px-4 pt-6 pb-20 md:px-10{{else if .Light}}px-(--verso-gutter) pb-10 [--verso-gutter:--spacing(10)]{{else}}px-4 pb-10 md:px-10{{end}}">
-    <div data-verso-column class="{{if eq .Width "full"}}verso-page-full{{else}}{{if eq .Width "form"}}max-w-column-3xl{{else if eq .Width "narrow"}}max-w-column-4xl{{else if eq .Width "wide"}}max-w-column-6xl{{else}}max-w-column-5xl{{end}} w-column{{end}}">
+    <div class="verso-page__frame">
+    <div data-verso-column class="verso-page__column">
     {{if .Heading}}
     {{/* Whatever measure the column keeps, the stylesheet ends the masthead's
          acts under Log out. */}}
-    <div{{if .Light}} data-verso-masthead="light" class="mb-10 py-4"{{else}} data-verso-masthead class="py-6"{{end}}>
+    <div data-verso-masthead{{if .Light}}="light"{{end}} class="verso-page__masthead">
       {{/* The heading line: the heading and what acts on the page, centred on
            each other. The line is an act's height whether it holds one or
            not, so moving between pages never shifts the heading or what sits
@@ -148,19 +150,19 @@
            " — <tab>" suffix ("neutral" drops the suffix without a tint).
            The line is 32px, a control on it giving back its bottom border's
            pixel. */}}
-      <div class="flex min-h-8 flex-wrap items-center justify-between gap-4">
-        <h1 class="verso-page-heading{{if eq .Tone "info"}} text-denim-deep{{else if eq .Tone "success"}} text-green-deep{{else if eq .Tone "warning"}} text-marigold-deep{{else if eq .Tone "danger"}} text-crimson-deep{{end}}">{{.Heading}}{{if and .HeadingDetail (not .Tone)}}<span class="text-faint"> — {{.HeadingDetail}}</span>{{end}}</h1>
+      <div class="verso-page__line">
+        <h1 class="verso-page__heading"{{if or (eq .Tone "info") (eq .Tone "success") (eq .Tone "warning") (eq .Tone "danger")}} data-verso-tone="{{.Tone}}"{{end}}>{{.Heading}}{{if and .HeadingDetail (not .Tone)}}<span class="verso-page__detail"> — {{.HeadingDetail}}</span>{{end}}</h1>
         {{/* The descriptions' fold leads the acts, then a standing note,
              the group as one on the line, its wrapped lines 40px apart. */}}
-        <div class="ml-auto flex flex-wrap items-center gap-x-3 gap-y-2">
+        <div class="verso-page__acts">
           {{template "verso-fold-act" ""}}
-          {{if .HeadingNote}}<span data-verso-heading-note class="text-sm text-meta" aria-live="polite">{{.HeadingNote}}</span>{{end}}
+          {{if .HeadingNote}}<span data-verso-heading-note class="verso-page__note" aria-live="polite">{{.HeadingNote}}</span>{{end}}
           {{.HeadingAct}}
         </div>
       </div>
     </div>
     {{end}}
-    <div{{if eq .Width "form"}} data-verso-form-column{{end}} class="verso-page-body">{{.Body}}</div>
+    <div{{if eq .Width "form"}} data-verso-form-column{{end}} class="verso-page__body">{{.Body}}</div>
     </div>
     </div>
   </div>

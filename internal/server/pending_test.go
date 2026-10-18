@@ -119,7 +119,7 @@ func TestPendingPageTakesTheListingsColumn(t *testing.T) {
 		"pending": pendingServer(t, fakeBackend{}),
 		"clean":   pendingServer(t, fakeBackend{changes: map[string][][]string{}}),
 	} {
-		if body := get(t, s, pendingPath).Body.String(); !strings.Contains(body, `data-verso-column class="max-w-column-6xl`) {
+		if body := get(t, s, pendingPath).Body.String(); !strings.Contains(body, `class="verso-page__main" data-verso-width="wide"`) {
 			t.Errorf("%s: the page does not stand on the listings' wide column", name)
 		}
 	}

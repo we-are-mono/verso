@@ -615,15 +615,15 @@ func TestHardwarePageMastheadAndTab(t *testing.T) {
 	srv := newServer(t, fakeBackend{board: openwrt.Board{Model: "Supermicro H13SAE-MF"}})
 	body := get(t, srv, "/system/hardware").Body.String()
 	for _, want := range []string{
-		`<div data-verso-masthead class="py-6">`,         // every page's heading line on the sand
-		`href="/system/hardware"`, `aria-current="page"`, // the active System tab
+		`<div data-verso-masthead class="verso-page__masthead">`, // every page's heading line on the sand
+		`href="/system/hardware"`, `aria-current="page"`,         // the active System tab
 		">Supermicro H13SAE-MF</h2>", // the board card
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("Hardware page missing %q", want)
 		}
 	}
-	if strings.Contains(body, `verso-page-heading">Supermicro H13SAE-MF`) {
+	if strings.Contains(body, `verso-page__heading">Supermicro H13SAE-MF`) {
 		t.Error("the page's title repeats the box's name the top bar already carries")
 	}
 	if strings.Contains(body, "All sensors") {

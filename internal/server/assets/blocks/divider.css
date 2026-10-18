@@ -1,0 +1,16 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/* SPDX-FileCopyrightText: 2026 Mono Technologies Inc. */
+
+/*
+ * divider — a hairline between groups, a real <hr>. It keeps no air of its
+ * own: the stack or rhythm it stands in spaces it as it spaces any block, so
+ * it stands a page's 40px from its neighbours on a page and a card's 24px in
+ * a card.
+ */
+
+.verso-divider {
+  height: 0;
+  margin: 0;
+  border: 0 solid var(--color-rule);
+  border-top-width: 1px;
+}

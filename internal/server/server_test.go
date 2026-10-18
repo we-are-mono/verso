@@ -1192,7 +1192,7 @@ func TestEveryPageWearsTheOneMasthead(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if n := strings.Count(string(src), `data-verso-masthead class="py-6"{{end}}`); n != 1 {
+	if n := strings.Count(string(src), `data-verso-masthead`); n != 1 || !strings.Contains(string(src), `<div data-verso-masthead{{if .Light}}="light"{{end}} class="verso-page__masthead">`) {
 		t.Errorf("page.html.tmpl draws %d mastheads, want one", n)
 	}
 	tr := &fakeTransport{env: &plugin.Envelope{
@@ -1201,7 +1201,7 @@ func TestEveryPageWearsTheOneMasthead(t *testing.T) {
 	}}
 	s := newServerWith(t, fakeBackend{}, tr, []plugin.Manifest{demoManifest()})
 	body := get(t, s, "/plugins/demo/").Body.String()
-	if !strings.Contains(body, `<div data-verso-masthead class="py-6">`) || strings.Contains(body, `class="verso-kicker"`) {
+	if !strings.Contains(body, `<div data-verso-masthead class="verso-page__masthead">`) || strings.Contains(body, `class="verso-kicker"`) {
 		t.Errorf("a plugin's page does not wear the one masthead:\n%s", body)
 	}
 }
@@ -2747,12 +2747,9 @@ func TestPluginNoticeArrivesAsTheNotification(t *testing.T) {
 // their own under the heading (Diagnostics) sets its title exactly where a
 // page with an act beside it, or none, does.
 func TestTheHeadingKeepsItsLineWhenItsActsWrapUnder(t *testing.T) {
-	css, err := os.ReadFile("assets/input.css")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !strings.Contains(string(css), ".verso-page-heading { min-height: calc(var(--spacing) * 8); align-content: center;") {
-		t.Error("the page heading does not keep its act-height line on its own")
+	heading := cssBlock(t, blockSheet(t, "page"), "\n.verso-page__heading {")
+	if !strings.Contains(heading, "align-content: center;") || !strings.Contains(heading, "min-height: calc(var(--spacing) * 8);") {
+		t.Errorf("the page heading does not keep its act-height line on its own:\n%s", heading)
 	}
 }
 
@@ -2769,15 +2766,22 @@ func TestAPageStandsOnSandUnderItsHeadingLine(t *testing.T) {
 	}}
 	s := newServerWith(t, fakeBackend{}, tr, []plugin.Manifest{demoManifest()})
 	body := get(t, s, "/plugins/demo/").Body.String()
-	if !strings.Contains(body, `<div class="verso-page-ground bg-quiet">`) || strings.Contains(body, "verso-notebook") {
+	page := blockSheet(t, "page")
+	if !strings.Contains(body, `<main id="main" tabindex="-1" class="verso-page__main">`) || !strings.Contains(body, `<div class="verso-page__ground">`) || strings.Contains(body, "verso-notebook") {
 		t.Errorf("the page does not stand on the sand without the grid:\n%s", body)
 	}
+	if !strings.Contains(cssBlock(t, page, "\n.verso-page__ground {"), "background-color: var(--color-quiet);") {
+		t.Error("the page's ground is not Quiet Sand")
+	}
 	// The frame's side air is the Overview's: 16px on a phone, 40px from md,
-	// so a card's own inset still leaves its content room.
-	if !strings.Contains(body, `<div class="px-4 pb-10 md:px-10">`) {
+	// so a card's own inset still leaves its content room; it keeps none
+	// over the heading line, whose own 24px is the air under the top bar.
+	if !strings.Contains(body, `<div class="verso-page__frame">`) ||
+		!strings.Contains(cssBlock(t, page, "\n.verso-page__frame {"), "padding: 0 var(--verso-gutter) calc(var(--spacing) * 10);") {
 		t.Errorf("the heading line meets the top bar, with no air of the frame's above it:\n%s", body)
 	}
-	if !strings.Contains(body, `<div data-verso-masthead class="py-6">`) {
+	if !strings.Contains(body, `<div data-verso-masthead class="verso-page__masthead">`) ||
+		!strings.Contains(cssBlock(t, page, "\n.verso-page__masthead {"), "padding: calc(var(--spacing) * 6) calc(round(100cqw, 1px) - var(--verso-gutter) - var(--verso-measure)) calc(var(--spacing) * 6) var(--verso-gutter);") {
 		t.Errorf("the title's line stands 24px clear of the top bar and of the first card:\n%s", body)
 	}
 	if strings.Contains(body, `class="verso-lede`) {
@@ -2786,17 +2790,28 @@ func TestAPageStandsOnSandUnderItsHeadingLine(t *testing.T) {
 	if strings.Contains(body, `<div class="mb-5">`) {
 		t.Error("no title keeps the 20px standoff")
 	}
+	for head, wants := range map[string][]string{
+		"\n.verso-page__masthead {": {
+			"--verso-measure: calc(round(down, min(round(100cqw, 1px) - var(--verso-gutter) * 2 - 1px, var(--container-6xl)), 0.5rem) + 1px);",
+			"margin-inline: calc(var(--verso-gutter) * -1) calc(100% - round(100cqw, 1px) + var(--verso-gutter));",
+		},
+		// the light masthead keeps its Paper and its hairline
+		"\n.verso-page__masthead:where(.verso-page__main[data-verso-light] *) {": {
+			"padding-block: calc(var(--spacing) * 4);",
+			"border-bottom: 1px solid var(--color-rule);",
+			"background-color: var(--color-ground);",
+		},
+	} {
+		rule := cssBlock(t, page, head)
+		for _, want := range wants {
+			if !strings.Contains(rule, want) {
+				t.Errorf("blocks/page.css %s is missing %s", strings.TrimSpace(head), want)
+			}
+		}
+	}
 	css, err := os.ReadFile("assets/input.css")
 	if err != nil {
 		t.Fatal(err)
-	}
-	for _, want := range []string{
-		"main [data-verso-masthead] {\n    --verso-measure: calc(round(down, min(round(100cqw, 1px) - var(--verso-gutter) * 2 - 1px, var(--container-6xl)), 0.5rem) + 1px);\n    margin-inline: calc(var(--verso-gutter) * -1) calc(100% - round(100cqw, 1px) + var(--verso-gutter));\n    padding-inline: var(--verso-gutter) calc(round(100cqw, 1px) - var(--verso-gutter) - var(--verso-measure));\n  }",
-		"main [data-verso-masthead=\"light\"] {\n    margin-bottom: 0;\n    border-bottom: 1px solid var(--color-rule);\n    background-color: var(--color-ground);",
-	} {
-		if !strings.Contains(string(css), want) {
-			t.Errorf("stylesheet is missing %s", want)
-		}
 	}
 	if strings.Contains(string(css), ".verso-notebook") {
 		t.Error("the stylesheet still draws the notebook's grid")
@@ -2815,7 +2830,7 @@ func TestALiveLogsMastheadIsLight(t *testing.T) {
 	}}
 	s := newServerWith(t, fakeBackend{}, tr, []plugin.Manifest{demoManifest()})
 	body := get(t, s, "/plugins/demo/").Body.String()
-	if !strings.Contains(body, `<div data-verso-masthead="light" class="mb-10 py-4">`) {
+	if !strings.Contains(body, `<div data-verso-masthead="light" class="verso-page__masthead">`) || !strings.Contains(body, ` data-verso-light>`) {
 		t.Errorf("a live log's masthead is not the light one:\n%s", body)
 	}
 	plain := get(t, newServerWith(t, fakeBackend{}, &fakeTransport{env: &plugin.Envelope{
@@ -2827,12 +2842,15 @@ func TestALiveLogsMastheadIsLight(t *testing.T) {
 	}
 	// the log sits flush on the masthead's hairline: one line, no air above
 	// it — as every darker body under a light masthead does
-	css, err := os.ReadFile("assets/input.css")
-	if err != nil {
-		t.Fatal(err)
+	page := blockSheet(t, "page")
+	for _, head := range []string{"\n.verso-page__masthead {", "\n.verso-page__masthead:where(.verso-page__main[data-verso-light] *) {"} {
+		if rule := cssBlock(t, page, head); strings.Contains(rule, "margin-bottom") || strings.Contains(rule, "margin-block") || strings.Contains(rule, "margin:") {
+			t.Errorf("a light masthead keeps air between its hairline and the surface under it:\n%s", rule)
+		}
 	}
-	if !strings.Contains(string(css), "main [data-verso-masthead=\"light\"] {\n    margin-bottom: 0;") {
-		t.Error("a light masthead keeps air between its hairline and the surface under it")
+	// and the log, the body stack's block, takes no step down from it
+	if !strings.Contains(cssBlock(t, blockSheet(t, "stack"), "\n.verso-stack > .verso-actionbar + *,\n.verso-stack > .verso-console {"), "--verso-step: 0;") {
+		t.Error("a log does not stand flush on its masthead")
 	}
 }
 
@@ -3428,7 +3446,7 @@ func TestNoPasswordWarningStandsInTheTopBarOnEveryPage(t *testing.T) {
 	body := get(t, pageBanner, "/plugins/demo/access").Body.String()
 	main := body[strings.Index(body, "<main "):]
 	bannerAt := strings.Index(main, "SSH accepts passwords from the internet.")
-	bodyAt := strings.Index(main, `class="verso-page-body"`)
+	bodyAt := strings.Index(main, `class="verso-page__body"`)
 	if bannerAt < 0 || bodyAt < 0 || bannerAt > bodyAt || !strings.Contains(main, `<div class="verso-notice" data-verso-kind="banner" data-verso-tone="danger">`) {
 		t.Errorf("a declared danger banner heads the content: banner=%d body=%d", bannerAt, bodyAt)
 	}

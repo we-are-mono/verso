@@ -570,7 +570,7 @@ func TestReserveSitsOnTheHeadingLine(t *testing.T) {
 	s.neighbors = testNeighbors
 	whole := get(t, s, "/devices").Body.String()
 	body := whole[strings.LastIndex(whole, "</style>"):]
-	heading, act := strings.Index(body, `verso-page-heading">Devices`), strings.Index(body, "Reserve address")
+	heading, act := strings.Index(body, `verso-page__heading">Devices`), strings.Index(body, "Reserve address")
 	roster := strings.Index(body, "<table")
 	if heading < 0 || act < 0 || roster < 0 {
 		t.Fatalf("roster is missing its heading, act or table:\n%s", body)

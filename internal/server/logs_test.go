@@ -75,7 +75,7 @@ func TestSystemLogStreamKeepsZeroIDAndParsesSyslog(t *testing.T) {
 func TestSystemLogActsStandOnTheHeadingLine(t *testing.T) {
 	whole := get(t, newServer(t, fakeBackend{access: true}), "/system/logs").Body.String()
 	body := whole[strings.LastIndex(whole, "</style>"):]
-	heading := strings.Index(body, `verso-page-heading">Logs`)
+	heading := strings.Index(body, `verso-page__heading">Logs`)
 	bar, search := strings.Index(body, `data-verso-actionbar="log"`), strings.Index(body, "data-verso-listing-filter")
 	live, download := strings.Index(body, "data-log-pause"), strings.Index(body, "data-log-download")
 	settings, rows := strings.Index(body, `href="/system/logs/settings"`), strings.Index(body, "data-verso-console-rows")
@@ -97,12 +97,15 @@ func TestSystemLogActsStandOnTheHeadingLine(t *testing.T) {
 		`data-log-pause title="Pause"`, "<span data-log-pause-label>Connecting…</span></button>",
 		"data-verso-wait", // the log's spinner, turning while lines arrive
 		`<p data-log-health role="status" hidden`,
-		`<div data-verso-masthead="light" class="mb-10 py-4">`, // the light bar, on the page's own ground
-		`<div class="flex min-h-0 flex-1 flex-col">`,           // a live page keeps its own frame, not the sand of the card pages
+		`<div data-verso-masthead="light" class="verso-page__masthead">`, // the light bar, on the page's own ground
+		`data-verso-width="full" data-verso-light>`,                      // a live page keeps its own frame, not the sand of the card pages
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("logs page missing %q", want)
 		}
+	}
+	if !strings.Contains(cssBlock(t, blockSheet(t, "page"), "\n.verso-page__ground:where(.verso-page__main[data-verso-width=\"full\"] *) {"), "background-color: transparent;") {
+		t.Error("a live page stands on the sand of the card pages")
 	}
 	// the log is read whole: no cut, no source, and its firewall traffic is
 	// the settings drawer's to turn on

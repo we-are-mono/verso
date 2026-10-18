@@ -5,7 +5,7 @@
   "use strict";
   // The listing is the Packages page's own stack: its control band, the rows,
   // the index's pager. Refresh and the index's age stand on the heading line.
-  var root = window.location.pathname === "/system/packages" ? document.querySelector(".verso-page-body > .verso-stack") : null;
+  var root = window.location.pathname === "/system/packages" ? document.querySelector(".verso-page__body > .verso-stack") : null;
   var REFRESH = '[data-verso-masthead] form[action="/system/packages/discover"]';
   var SEARCH = '[data-verso-actionbar] input[type="search"]';
   var pageURL = new URL(window.location.href);

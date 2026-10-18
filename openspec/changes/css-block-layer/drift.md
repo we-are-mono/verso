@@ -265,3 +265,17 @@ after; the SVG's fills, strokes and LED animations compared directly.
 | a saved row's wash, an installed setting's wash, an unfolding row's rise and line | 4 | two classes and two attributes the scripts set, each with its own keyframes | one arrival block, `data-verso-arrival` saved, installed, rise or draw; one helper (`versoArrive`) lets go of it; no motion changes |
 | the running fan, the diagnostics tool's glyph | 2 | a `verso-glyph-<name>` class; a rule keyed on the diagnostics form | the glyph block: `data-verso-name`, `data-verso-settle` under `data-verso-picked`; no motion changes |
 | a scroller on sand | 5 | `data-scroll="sand"`, a bare attribute rule | the scroller block's `data-verso-scroll="sand"`; no pixel changes |
+
+### `page`, `stack`, `cluster`, `divider` and `collection`
+
+| Copies | n | Difference | Became |
+|---|---|---|---|
+| the document's words | every page | 14px on a 21px line (leading-normal) for whatever names no role | the page block's body role, 14px on 24; the takeovers' too |
+| a lone button on a line (a form that is its act, a set's add) | | the 28px act on the 21px strut, its box the line; on a 24px strut it grew a pixel | the button hangs from the line's top (`vertical-align: top`), so the line is the button |
+| a reveal's act | every reveal | an inline summary on the strut: 50px folded | a block summary: 48px, its 24px air and its line |
+| the page's ground, frame, column, masthead, heading line and body | every page | utility strings branched per width in the template; the masthead's reach a rule keyed on `main` | the page block: `data-verso-width`, `data-verso-light`, `data-verso-home` on `__main`, the elements reading them |
+| the skip link | 1 | ten focus utilities | the page's `__skip`, the button role |
+| a stack's step | every stack | `space-y-*` (margin under each block), the page's 40px a utilities-layer override | the stack block: the step over each block (`--verso-stack-step`), the page setting `--verso-stack-gap` on its own; a control band's listing and a console take `--verso-step: 0` |
+| a row of acts | every inline stack | flex utilities with `has-[…]` variants | the cluster block |
+| a divider | 1 | `my-6`, which the page's step outranked above it and not below | no air of its own: the stack's step either side (40px on a page) |
+| a collection's items and add | 1 | utility strings; the detail mono 14px; the add's act on the strut | the collection block: the detail the body role's verbatim form (mono 16); the add a column, its act the line |
