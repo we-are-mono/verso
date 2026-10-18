@@ -10,7 +10,11 @@
  *
  * Its body is the block: the page's words in the body role, in Ink.
  *
- * Elements: __main       the room under the bar, its column centred in it
+ * Variants: data-verso-surface="cards"  what stands in the room is a card
+ *                                       (signing in): the room is Quiet
+ *                                       Sand, as every page of cards is, so
+ *                                       the card's Paper reads as a card
+ * Elements: __main      the room under the bar, its column centred in it
  *           __column     the takeover's one measure
  *           __kicker     what kind of wait it is, over the words, in the
  *                        label role
@@ -40,6 +44,9 @@
   background-color: var(--color-ground);
   color: var(--color-ink);
   @apply type-body;
+}
+.verso-takeover[data-verso-surface="cards"] {
+  background-color: var(--color-quiet);
 }
 
 .verso-takeover__main {

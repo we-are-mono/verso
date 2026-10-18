@@ -12,77 +12,25 @@
 <link rel="preload" href="/assets/fonts/inconsolata-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="{{.Stylesheet}}">
 <style id="verso-theme">{{ .Theme }}</style>
+<script src="/assets/verso-buttons.js" defer></script>
 <script src="/assets/verso-login.js" defer></script>
 </head>
 {{/* A takeover (blocks/takeover.css): the bar names the box, and the sign-in
-     card (blocks/login.css) stands in the room under it. */}}
-<body class="verso-takeover">
+     card (blocks/login.css) stands in the room under it. The card is the
+     shell's own widgets (loginCard); only public facts cross this boundary,
+     and the browser refreshes the live ones in place, never receiving the
+     authenticated overview. */}}
+<body class="verso-takeover" data-verso-surface="cards">
   {{template "takeover.bar" .}}
 
   <main class="verso-takeover__main">
-    <div class="verso-login">
-      {{/* Only public facts cross this boundary. The browser refreshes this
-           small status model; it never receives the authenticated overview. */}}
-      <section aria-label="{{ t "Router status" }}" data-login-status class="verso-login__status"
-        data-verso-internet="{{if .Status.Internet}}{{if .Status.InternetUp}}up{{else}}down{{end}}{{else}}unknown{{end}}"
-        data-up-label="{{ t "Internet is working" }}" data-down-label="{{ t "No internet connection" }}" data-unknown-label="{{ t "Internet status unavailable" }}">
-        <span class="verso-login__live">
-          <span data-login-live-mark aria-hidden="true" class="verso-mark"{{if .Status.Internet}}{{if .Status.InternetUp}} data-verso-tone="success" data-verso-live{{else}} data-verso-tone="danger"{{end}}{{end}}></span>
-          <span data-login-live-label data-live-label="{{ t "Live" }}" data-stale-label="{{ t "Status unavailable" }}">{{if .Status.Internet}}{{ t "Live" }}{{else}}{{ t "Status unavailable" }}{{end}}</span>
-        </span>
-        <p data-login-verdict class="verso-login__verdict">{{if .Status.Internet}}{{if .Status.InternetUp}}{{ t "Internet is working" }}{{else}}{{ t "No internet connection" }}{{end}}{{else}}{{ t "Internet status unavailable" }}{{end}}</p>
-        <p class="verso-login__uptime">{{ t "Uptime" }} <span data-login-uptime data-verso-figures>{{ .Status.Uptime }}</span></p>
-
-        <dl class="verso-facts verso-login__facts" data-verso-style="divided" data-verso-align="left">
-          <div class="verso-facts__row">
-            <dt class="verso-facts__label">{{ t "Local time" }}</dt>
-            <dd class="verso-facts__value" data-verso-verbatim><span><time data-login-clock data-unix="{{ .Status.Unix }}" data-offset="{{ .Status.Offset }}">{{ .Status.Clock }}</time> <span data-login-zone class="type-body text-meta">{{ .Status.Zone }}</span></span></dd>
-          </div>
-          <div class="verso-facts__row">
-            <dt class="verso-facts__label">{{ t "Firmware" }}</dt>
-            <dd class="verso-facts__value" data-verso-verbatim>{{if .Firmware}}{{ .Firmware }}{{else}}OpenWrt{{end}}</dd>
-          </div>
-          <div class="verso-facts__row">
-            <dt class="verso-facts__label">{{ t "You are" }}</dt>
-            <dd class="verso-facts__value" data-verso-verbatim><span>{{ .VisitorIP }}{{if .VisitorNetwork}} <span class="type-body text-meta">{{ t "on" }}</span> {{ .VisitorNetwork }}{{end}}</span></dd>
-          </div>
-        </dl>
-        <p class="verso-login__aside">{{ t "Everything else — networks, devices, rules — waits behind your password." }}</p>
-      </section>
-
-      <section aria-labelledby="login-heading" class="verso-login__sign-in">
-        {{if .Notice}}
-        <div role="status" class="verso-notice" data-verso-tone="warning">
-          <span aria-hidden="true" class="verso-mark verso-notice__mark" data-verso-tone="warning"></span>
-          <div class="verso-notice__words"><p>{{ .Notice }}</p></div>
-        </div>
-        {{end}}
-        <h1 id="login-heading" class="verso-takeover__title">{{ t "Sign in" }}</h1>
-        <form method="post" action="/login" data-login-form class="verso-login__form">
-          <div class="verso-login__field">
-            <label for="username" class="verso-field__name">{{ t "Username" }}</label>
-            <input id="username" name="username" type="text" value="{{ .Username }}" autocomplete="username" autocapitalize="none" spellcheck="false"
-              class="verso-input" data-verso-verbatim>
-          </div>
-          <div class="verso-login__field">
-            <label for="password" class="verso-field__name">{{ t "Password" }}</label>
-            <input id="password" name="password" type="password" autocomplete="current-password" autofocus
-              {{if .Error}}aria-invalid="true" aria-describedby="login-error"{{end}}
-              class="verso-input">
-            {{if .Error}}
-            <p id="login-error" role="alert" class="verso-refusal">{{template "verso-error-words" .Error}}</p>
-            {{end}}
-          </div>
-          {{/* The act, and its busy face while the sign-in is in flight
-               (verso-login.js): the button's own, its waiting mark and words. */}}
-          <button type="submit" data-login-submit aria-disabled="false" class="verso-button verso-login__submit">
-            <span class="verso-login__rest">{{ t "Sign in to router" }}</span>
-            <span role="status" class="verso-login__busy">{{template "verso-waiting"}}{{ t "Signing in…" }}</span>
-          </button>
-        </form>
-        {{if .Attempts}}<p class="verso-login__attempts"><span class="text-crimson-deep">{{ .Attempts }}</span> {{ .AttemptPolicy }}</p>{{end}}
-      </section>
+    {{/* The page is the router; signing in is its card. */}}
+    <h1 class="sr-only">{{if .Hostname}}{{.Hostname}}{{else}}{{ t "This device" }}{{end}}</h1>
+    <div class="verso-login" data-login data-unix="{{ .Status.Unix }}" data-offset="{{ .Status.Offset }}" data-zone="{{ .Status.Zone }}"
+      data-online-label="{{.Online}}" data-offline-label="{{.Offline}}" data-unknown-label="{{.Unknown}}" data-busy-label="{{.SigningIn}}">
+      {{.Card}}
     </div>
   </main>
+  <template data-verso-button-waiting>{{template "verso-waiting" ""}}</template>
 </body>
 </html>

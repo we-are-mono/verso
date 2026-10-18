@@ -112,7 +112,7 @@ func TestLoginSlovenianCoversRestingErrorsAndLiveState(t *testing.T) {
 			t.Fatalf("%s: %d", path, rec.Code)
 		}
 		if path == "/login" {
-			for _, text := range []string{"Prijava", "Prijavi se", "Prijavljanje…", "Povezava v internet deluje", "Lokalni čas", "Uporabniško ime"} {
+			for _, text := range []string{"Prijava", "Prijavljanje…", "Povezano", "Ta usmerjevalnik", "Deluje že", "Lokalni čas", "Uporabniško ime"} {
 				if !strings.Contains(rec.Body.String(), text) {
 					t.Errorf("login missing %q", text)
 				}

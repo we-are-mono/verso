@@ -2,62 +2,45 @@
 // SPDX-FileCopyrightText: 2026 Mono Technologies Inc.
 
 // The public sign-in page keeps native form submission. JavaScript supplies
-// only the busy state of the button — the button's own busy face
-// (blocks/button.css, blocks/login.css), its waiting mark the stylesheet's
-// own motion, as everywhere else — and the small public status refresh; it
-// holds no credentials and never needs the authenticated shell's client
-// runtime.
+// only the act's busy face — the shared one (verso-buttons.js), as every
+// other act's — and the small public status refresh, written into the card's
+// live facts by their keys; it holds no credentials and never needs the
+// authenticated shell's client runtime.
 (function () {
   "use strict";
-  var form = document.querySelector("[data-login-form]");
-  var panel = document.querySelector("[data-login-status]");
-  if (!form || !panel) return;
+  var root = document.querySelector("[data-login]");
+  if (!root) return;
+  var form = root.querySelector("form");
+  var button = form && form.querySelector('button[type="submit"]');
+  if (form) {
+    form.addEventListener("submit", function (event) {
+      versoButtons.submit(event, root.dataset.busyLabel);
+    });
+  }
 
-  var button = form.querySelector("[data-login-submit]");
-
-  form.addEventListener("submit", function (event) {
-    if (button.disabled) {
-      event.preventDefault();
-      return;
-    }
-    button.disabled = true;
-    button.setAttribute("aria-disabled", "true");
-    button.setAttribute("aria-busy", "true");
-    button.setAttribute("data-verso-busy", "");
-    form.setAttribute("aria-busy", "true");
-  });
-
-  // Returning via browser history must restore a usable native form.
-  window.addEventListener("pageshow", function () {
-    button.disabled = false;
-    button.setAttribute("aria-disabled", "false");
-    button.removeAttribute("aria-busy");
-    button.removeAttribute("data-verso-busy");
-    form.removeAttribute("aria-busy");
-  });
-
-  var clock = panel.querySelector("[data-login-clock]");
-  var zone = panel.querySelector("[data-login-zone]");
-  var uptime = panel.querySelector("[data-login-uptime]");
-  var verdict = panel.querySelector("[data-login-verdict]");
-  var live = panel.querySelector("[data-login-live-label]");
-  var mark = panel.querySelector("[data-login-live-mark]");
-  var unix = Number(clock.dataset.unix);
-  var offset = Number(clock.dataset.offset);
+  var clock = root.querySelector('[data-verso-prop="clock"]');
+  var uptime = root.querySelector('[data-verso-prop="uptime"]');
+  var internet = root.querySelector('[data-verso-prop="internet"]');
+  var mark = root.querySelector('[data-verso-prop-dot="internet"]');
+  if (!clock || !uptime || !internet || !mark) return;
+  var unix = Number(root.dataset.unix);
+  var offset = Number(root.dataset.offset);
+  var zone = root.dataset.zone;
   var received = performance.now();
   var lastRefresh = received;
   var refreshing = false;
 
-  // The state's mark: green and breathing while the internet answers, crimson
-  // when it does not, hollow when the router cannot say (blocks/mark.css).
-  function setInternet(internet) {
-    var state = internet === true ? "up" : internet === false ? "down" : "unknown";
-    panel.dataset.versoInternet = state;
-    verdict.textContent = panel.dataset[state + "Label"];
-    live.textContent = state === "unknown" ? live.dataset.staleLabel : live.dataset.liveLabel;
-    if (state === "unknown") mark.removeAttribute("data-verso-tone");
-    else mark.setAttribute("data-verso-tone", state === "up" ? "success" : "danger");
-    mark.toggleAttribute("data-verso-live", state === "up");
+  // The uplink's words and its packet's tone: online, offline, or unknown —
+  // the hollow packet — when the router cannot say (blocks/mark.css).
+  var states = {
+    up: { tone: "success", words: root.dataset.onlineLabel },
+    down: { tone: "danger", words: root.dataset.offlineLabel },
+    unknown: { tone: "unknown", words: root.dataset.unknownLabel },
+  };
+  function setInternet(value) {
+    var state = states[value === true ? "up" : value === false ? "down" : "unknown"];
+    internet.textContent = state.words;
+    mark.setAttribute("data-verso-tone", state.tone);
   }
 
   function tick() {
@@ -65,11 +48,15 @@
     // the browser's timezone, including when the two sides cross midnight.
     var date = new Date((unix + offset) * 1000 + performance.now() - received);
     clock.textContent = [date.getUTCHours(), date.getUTCMinutes(), date.getUTCSeconds()]
-      .map(function (n) { return String(n).padStart(2, "0"); }).join(":");
+      .map(function (n) { return String(n).padStart(2, "0"); }).join(":") + " " + zone;
+  }
+
+  function signingIn() {
+    return Boolean(button) && versoButtons.has(button);
   }
 
   async function refresh() {
-    if (refreshing || document.hidden || button.disabled) return;
+    if (refreshing || document.hidden || signingIn()) return;
     refreshing = true;
     var controller = new AbortController();
     var timeout = window.setTimeout(function () { controller.abort(); }, 5000);
@@ -83,8 +70,8 @@
       if (!Number.isFinite(status.unix) || !Number.isFinite(status.offset)) throw new Error("invalid clock");
       unix = status.unix;
       offset = status.offset;
+      zone = status.zone;
       received = performance.now();
-      zone.textContent = status.zone;
       uptime.textContent = status.uptime;
       setInternet(status.internet);
       tick();

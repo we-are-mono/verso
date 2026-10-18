@@ -129,7 +129,7 @@ async function signIn(browser, opts) {
   if (new URL(page.url()).pathname === '/login') {
     await page.fill('#username', USER);
     await page.fill('#password', PASSWORD);
-    await Promise.all([page.waitForNavigation(), page.click('[data-login-submit]')]);
+    await Promise.all([page.waitForNavigation(), page.click('[data-login] button[type="submit"]')]);
   }
   fs.mkdirSync(path.dirname(SESSION), { recursive: true });
   await context.storageState({ path: SESSION });

@@ -226,22 +226,17 @@ func validCSRF(r *http.Request, want string) bool {
 // long it has been up, and the visitor's own address and subnet. No network
 // inventory or configuration crosses this boundary, and no rpcd session is used.
 type loginData struct {
-	Lang           string       // negotiated language for <html lang>, "en" when English
-	Stylesheet     string       // the address the stylesheet is linked at (stylesheetHref)
-	Theme          template.CSS // the theme in force, after the stylesheet (ADR-024)
-	Error          string
-	Notice         string // a statement about how the visitor got here, shown in a marigold notice
-	Version        string // the deployed Verso build ("dev" when un-stamped), so the running version is verifiable without signing in
-	Firmware       string // the distribution name and release
-	Hostname       string // this board's name — the nameplate the whole rail hangs from
-	Maker          string // who built the board
-	Model          string // what they call it
-	Status         loginStatus
-	Username       string
-	VisitorIP      string
-	VisitorNetwork string // only the directly connected subnet containing this visitor
-	Attempts       string // failed sign-ins standing against this visitor's address
-	AttemptPolicy  string // the actual limiter policy, translated independently of the count
+	Lang       string       // negotiated language for <html lang>, "en" when English
+	Stylesheet string       // the address the stylesheet is linked at (stylesheetHref)
+	Theme      template.CSS // the theme in force, after the stylesheet (ADR-024)
+	Version    string       // the deployed Verso build ("dev" when un-stamped), so the running version is verifiable without signing in
+	Hostname   string       // this board's name — the nameplate the whole rail hangs from
+	Maker      string       // who built the board
+	Model      string       // what they call it
+	Status     loginStatus  // the clock the page's refresh keeps from (verso-login.js)
+	Card       template.HTML
+	// The words the refresh writes into the card, in the reader's language.
+	Online, Offline, Unknown, SigningIn string
 }
 
 // loginFirmware is the release this board runs, named and versioned: "OpenWrt
@@ -358,7 +353,7 @@ func (s *Server) handleLoginForm(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 		return
 	}
-	s.renderLogin(w, r, http.StatusOK, "")
+	s.renderLogin(w, r, http.StatusOK, loginRefusal{})
 }
 
 // handleLogin authenticates and, on success, stores the session server-side and
@@ -367,16 +362,16 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 	// /login is pre-session, so it can carry no CSRF token; a same-origin check
 	// is its CSRF defense against a cross-site auto-submit (VS-04).
 	if crossSiteLogin(r) {
-		s.renderLogin(w, r, http.StatusForbidden, "That request didn’t come from this page — reload and try again.")
+		s.renderLogin(w, r, http.StatusForbidden, loginRefusal{Form: "That request didn’t come from this page — reload and try again."})
 		return
 	}
 	key := clientIP(r)
 	if !s.loginLimiter.allowed(key) {
-		s.renderLogin(w, r, http.StatusTooManyRequests, "Too many attempts — wait a minute and try again.")
+		s.renderLogin(w, r, http.StatusTooManyRequests, loginRefusal{Form: "Too many attempts — wait a minute and try again."})
 		return
 	}
 	if err := r.ParseForm(); err != nil {
-		s.renderLogin(w, r, http.StatusOK, "Could not read the form.")
+		s.renderLogin(w, r, http.StatusOK, loginRefusal{Form: "Could not read the form."})
 		return
 	}
 	username := r.PostForm.Get("username")
@@ -387,7 +382,7 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		// username or password was wrong. The detail is logged, not shown.
 		s.loginLimiter.fail(key)
 		log.Printf("verso: login failed for %q: %v", username, err)
-		s.renderLogin(w, r, http.StatusOK, "Invalid username or password.")
+		s.renderLogin(w, r, http.StatusOK, loginRefusal{Field: "Invalid username or password."})
 		return
 	}
 	s.loginLimiter.success(key)
@@ -420,9 +415,9 @@ func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/login", http.StatusSeeOther)
 }
 
-func (s *Server) renderLogin(w http.ResponseWriter, r *http.Request, status int, errMsg string) {
+func (s *Server) renderLogin(w http.ResponseWriter, r *http.Request, status int, refusal loginRefusal) {
 	// /login is pre-session, so the language is negotiated from Accept-Language
-	// like any other request; the error copy is localized here at its one exit.
+	// like any other request; the card's words are localized as it renders.
 	lang, t := s.localize(r)
 	tr := translatorOrIdentity(t)
 	hostname, _ := os.Hostname()
@@ -431,15 +426,26 @@ func (s *Server) renderLogin(w http.ResponseWriter, r *http.Request, status int,
 	if r.PostForm != nil {
 		username = r.PostForm.Get("username")
 	}
+	live := s.readLoginStatus(tr)
+	attempts := attemptsNote(tr, s.loginLimiter.failures(clientIP(r)))
+	if attempts != "" {
+		attempts += " " + fmt.Sprintf(tr("After %d, this address waits a minute."), loginMaxFailures)
+	}
+	var card bytes.Buffer
+	if err := s.widgets.RenderWithToken(&card, loginCard(signIn{
+		Notice: s.expiryNotice(r), Refusal: refusal, Username: username, Attempts: attempts,
+		Status: live, Firmware: loginFirmware(),
+		VisitorIP: clientIP(r), VisitorNetwork: visitorNetwork(clientIP(r)),
+	}), "", lang, t); err != nil {
+		http.Error(w, "login page error", http.StatusInternalServerError)
+		return
+	}
 	var buf bytes.Buffer
 	if err := s.pageSet(lang).ExecuteTemplate(&buf, "login.html.tmpl", loginData{
-		Lang: langAttr(lang), Stylesheet: s.stylesheetHref(), Theme: s.themeCSS(), Error: tr(errMsg), Notice: tr(s.expiryNotice(r)),
-		Version: Version, Firmware: loginFirmware(),
+		Lang: langAttr(lang), Stylesheet: s.stylesheetHref(), Theme: s.themeCSS(), Version: Version,
 		Hostname: hostname, Maker: hw.Maker, Model: hw.Model,
-		Status: s.readLoginStatus(tr), Username: username,
-		VisitorIP: clientIP(r), VisitorNetwork: visitorNetwork(clientIP(r)),
-		Attempts:      attemptsNote(tr, s.loginLimiter.failures(clientIP(r))),
-		AttemptPolicy: fmt.Sprintf(tr("After %d, this address waits a minute."), loginMaxFailures),
+		Status: live, Card: template.HTML(card.String()), //nolint:gosec // rendered by the shell's own widget templates
+		Online: tr("Online"), Offline: tr("Offline"), Unknown: tr("Unknown"), SigningIn: tr("Signing in…"),
 	}); err != nil {
 		http.Error(w, "login page error", http.StatusInternalServerError)
 		return

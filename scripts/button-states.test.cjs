@@ -278,42 +278,6 @@ test('a check-in the router never answers says Put back and reads the page once 
   assert.equal(replaced, '/pending');
 });
 
-for (const reducedMotion of [false, true]) {
-  test(`login rejects duplicate submits and restores after history (reduced motion: ${reducedMotion})`, () => {
-    const env = environment();
-    const button = new Element('Sign in to router'), form = new Element(), panel = new Element();
-    const mark = new Element();
-    let animations = 0;
-    mark.replaceChildren(...Array.from({length: 4}, () => ({animate() { animations++; return {cancel() {}}; }})));
-    button.animate = () => {};
-    form.querySelector = selector => selector === '[data-login-submit]' ? button : mark;
-    const clock = {dataset: {unix: '0', offset: '0'}};
-    panel.querySelector = selector => selector === '[data-login-clock]' ? clock : new Element();
-    env.selectors.set('[data-login-form]', form);
-    env.selectors.set('[data-login-status]', panel);
-    env.window.matchMedia = () => ({matches: reducedMotion, addEventListener() {}});
-    env.window.setInterval = () => {};
-    env.context.performance = {now: () => 0};
-    env.context.getComputedStyle = () => ({getPropertyValue: () => '#999'});
-    env.load('verso-login.js');
-    assert.equal(form.emit('submit').defaultPrevented, false);
-    assert.equal(button.disabled, true);
-    assert.equal(button.getAttribute('aria-busy'), 'true');
-    assert.equal(form.getAttribute('aria-busy'), 'true');
-    assert.equal(form.emit('submit').defaultPrevented, true);
-    assert.equal(mark.children.length, 4);
-    // The mark's motion is the stylesheet's, gated on the reader's motion
-    // preference; the script never animates it.
-    assert.equal(animations, 0);
-    const css = fs.readFileSync(path.join(__dirname, '../internal/server/assets/blocks/waiting.css'), 'utf8');
-    assert.match(css, /@media \(prefers-reduced-motion: no-preference\) \{\s*\.verso-waiting__square \{\s*animation-duration:/);
-    env.window.emit('pageshow');
-    assert.equal(button.disabled, false);
-    assert.equal(button.getAttribute('aria-busy'), null);
-    assert.equal(form.getAttribute('aria-busy'), null);
-  });
-}
-
 test('package refresh stays locked through polling and unlocks after a network failure', async () => {
   const env = environment();
   const root = new Element(), button = new Element('Refresh index'), field = new Element(), error = new Element();

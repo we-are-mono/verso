@@ -3153,9 +3153,8 @@ func TestLoginNoticeOnExpiredMarker(t *testing.T) {
 	if !strings.Contains(body, notice) {
 		t.Errorf("expired login page is missing the notice")
 	}
-	_, status, _ := strings.Cut(body, `<div role="status"`)
-	noticeMarkup, _, _ := strings.Cut(status, "</div>")
-	if !strings.Contains(noticeMarkup, `class="verso-notice" data-verso-tone="warning"`) {
+	_, callout, _ := strings.Cut(body, `<div data-verso-callout class="verso-notice" data-verso-tone="warning">`)
+	if !strings.Contains(callout, notice) {
 		t.Errorf("the notice should carry the marigold warning tone")
 	}
 
@@ -3297,8 +3296,8 @@ func TestLoginFailureShowsErrorAndNoCookie(t *testing.T) {
 	// A rejected attempt is explained beside the password, with an accessible
 	// association and a cleared password. The submitted username stays editable.
 	for _, want := range []string{
-		`aria-invalid="true"`, `aria-describedby="login-error"`, `id="login-error" role="alert"`,
-		`name="username" type="text" value="root"`,
+		`aria-describedby="password-error" aria-invalid="true"`, `id="password-error"`,
+		`name="username" value="root" type="text"`,
 	} {
 		if !strings.Contains(rec.Body.String(), want) {
 			t.Errorf("login error missing %q", want)

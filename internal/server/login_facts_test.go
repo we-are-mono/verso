@@ -162,7 +162,7 @@ func TestLoginPageStatesPreAuthFacts(t *testing.T) {
 	}
 	for _, want := range []string{
 		hostname, // the device name in the public header
-		"Uptime", "Local time",
+		"Running for", "Local time",
 		"10.0.10.42", // only the visitor’s own address
 	} {
 		if !strings.Contains(body, want) {

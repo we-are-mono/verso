@@ -22,16 +22,18 @@ type loginStatus struct {
 	Zone     string `json:"zone"`
 	Unix     int64  `json:"unix"`
 	Offset   int    `json:"offset"`
+	// secondsUp is Uptime as the number the card's Running for row hands the
+	// renderer, which writes it as every duration is written.
+	secondsUp int64
 }
-
-func (s loginStatus) InternetUp() bool { return s.Internet != nil && *s.Internet }
 
 func (s *Server) readLoginStatus(tr func(string) string) loginStatus {
 	now := clock.Now()
 	zone, offset := now.Zone()
+	up := loginUptime()
 	status := loginStatus{
-		Uptime: units.Duration(loginUptime()),
-		Clock:  now.Format("15:04:05"), Zone: zone, Unix: now.Unix(), Offset: offset,
+		Uptime: units.Duration(up), secondsUp: up,
+		Clock: now.Format("15:04:05"), Zone: zone, Unix: now.Unix(), Offset: offset,
 	}
 	if up, err := s.loginInternet(); err == nil {
 		status.Internet = &up
