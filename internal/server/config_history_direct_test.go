@@ -190,28 +190,107 @@ func TestAConfigWrittenDirectlyIsAnEntryByNoOne(t *testing.T) {
 	}
 }
 
-// TestAReadingVersoWroteItselfIsNoEntry: the helper's own write, and an
-// apply's, keep the reading without an entry.
-func TestAReadingVersoWroteItselfIsNoEntry(t *testing.T) {
+// TestTheRoutersOwnCommitIsAnEntryWithItsCause: a commit the router made
+// itself is an entry by no operator, with what caused it and whose words the
+// cause is, each change in the owning plugin's words; the same reading again
+// is no entry (ADR-021).
+func TestTheRoutersOwnCommitIsAnEntryWithItsCause(t *testing.T) {
 	s, store, dir := spoolServer(t)
 	spool(t, dir, "1-firewall.json", firewallReading(1000, "ACCEPT"))
 	s.takeSpool(t.Context(), store, dir)
 
 	own := firewallReading(1010, "DROP")
+	own.Own, own.Cause, own.Plugin = true, "A certificate was installed by hand.", "acme"
+	spool(t, dir, "2-firewall.json", own)
+	s.takeSpool(t.Context(), store, dir)
+	own.Time = 1015
+	spool(t, dir, "3-firewall.json", own)
+	s.takeSpool(t.Context(), store, dir)
+
+	got := entries(t, store)
+	if len(got) != 1 {
+		t.Fatalf("entries = %+v, want one", got)
+	}
+	c := got[0]
+	if c.User != "" || c.Address != "" || c.Cause != "A certificate was installed by hand." || c.CausePlugin != "acme" ||
+		!c.OldRead || !c.Time.Equal(time.Unix(1010, 0)) || c.Status != history.ChangeApplied {
+		t.Errorf("entry = %+v", c)
+	}
+	op := c.Items[0].Ops[0]
+	if c.Items[0].Page != "Demo Plugin" || op.Option != "target" || *op.Value != "DROP" || string(op.Old) != `"ACCEPT"` {
+		t.Errorf("item %+v op %+v", c.Items[0], op)
+	}
+}
+
+// TestAReadingInAnApplysWindowIsTheApplys: a reading of a config an apply
+// wrote, within its window, is that apply's, its own mark or not.
+func TestAReadingInAnApplysWindowIsTheApplys(t *testing.T) {
+	s, store, dir := spoolServer(t)
+	spool(t, dir, "1-firewall.json", firewallReading(1000, "ACCEPT"))
+	s.takeSpool(t.Context(), store, dir)
+
+	s.expected.expect([]string{"firewall"}, time.Unix(1020, 0), time.Unix(1030, 0))
+	spool(t, dir, "2-firewall.json", firewallReading(1025, "REJECT"))
+	s.takeSpool(t.Context(), store, dir)
+	own := firewallReading(1028, "DROP")
+	own.Own, own.Cause = true, "The theme was changed."
+	spool(t, dir, "3-firewall.json", own)
+	s.takeSpool(t.Context(), store, dir)
+
+	if got := entries(t, store); len(got) != 0 {
+		t.Fatalf("readings in an apply's window made entries: %+v", got)
+	}
+	state, _, _ := store.ConfigState(t.Context(), "firewall")
+	if !json.Valid(state) || !reflect.DeepEqual(sections(t, string(state))["cfg0792bd"]["target"], "DROP") {
+		t.Errorf("the config is kept as %s, want as last read", state)
+	}
+}
+
+// TestAnOlderPluginsMarkIsTheRoutersWithNoCause: a root half built before
+// causes marks its commit with nothing in the mark; the entry is still the
+// router's, never edited directly, with no cause.
+func TestAnOlderPluginsMarkIsTheRoutersWithNoCause(t *testing.T) {
+	s, store, dir := spoolServer(t)
+	spool(t, dir, "1-firewall.json", firewallReading(1000, "ACCEPT"))
+	s.takeSpool(t.Context(), store, dir)
+	own := firewallReading(1010, "DROP")
 	own.Own = true
 	spool(t, dir, "2-firewall.json", own)
 	s.takeSpool(t.Context(), store, dir)
 
-	s.expected.expect([]string{"firewall"}, time.Unix(1020, 0), time.Unix(1030, 0))
-	spool(t, dir, "3-firewall.json", firewallReading(1025, "REJECT"))
+	got := entries(t, store)
+	if len(got) != 1 || got[0].User != "" || got[0].Cause != "" || got[0].CausePlugin != "" || !got[0].Own {
+		t.Fatalf("entries = %+v, want one of the router's with no cause", got)
+	}
+}
+
+// TestTheRoutersOwnCommitKeepsNoSecret: a secret the router commits reads as
+// changed, holding neither value.
+func TestTheRoutersOwnCommitKeepsNoSecret(t *testing.T) {
+	s, store, dir := spoolServer(t)
+	withKey := func(at int64, fingerprint string) configReading {
+		r := firewallReading(at, "ACCEPT")
+		r.Sections["cfg0792bd"]["key"] = map[string]any{"secret": fingerprint}
+		return r
+	}
+	spool(t, dir, "1-firewall.json", withKey(1000, "aa"))
+	s.takeSpool(t.Context(), store, dir)
+	own := withKey(1010, "bb")
+	own.Own, own.Cause = true, "The web interface's ports were changed."
+	spool(t, dir, "2-firewall.json", own)
 	s.takeSpool(t.Context(), store, dir)
 
-	if got := entries(t, store); len(got) != 0 {
-		t.Fatalf("Verso's own writes made entries: %+v", got)
+	got := entries(t, store)
+	if len(got) != 1 {
+		t.Fatalf("entries = %+v, want one", got)
 	}
-	state, _, _ := store.ConfigState(t.Context(), "firewall")
-	if !json.Valid(state) || !reflect.DeepEqual(sections(t, string(state))["cfg0792bd"]["target"], "REJECT") {
-		t.Errorf("the config is kept as %s, want as last read", state)
+	op := got[0].Items[0].Ops[0]
+	if op.Option != "key" || (op.Value != nil && *op.Value != "") || len(op.Old) != 0 {
+		t.Errorf("a secret kept a value: %+v", op)
+	}
+	blob, _ := json.Marshal(got)
+	if strings.Contains(string(blob), `"aa"`) || strings.Contains(string(blob), `"bb"`) {
+		t.Errorf("a fingerprint was kept: %s", blob)
 	}
 }
 

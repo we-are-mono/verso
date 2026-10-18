@@ -37,12 +37,14 @@ const spoolEvery = 2 * time.Second
 const ownWriteSlack = 10 * time.Second
 
 // configReading is one config as verso-rpcd read it: when it was written,
-// whether the helper wrote it itself, and its sections, a secret's value a
-// {"secret": fingerprint}.
+// whether the router wrote it itself, what caused that and whose words the
+// cause is, and its sections, a secret's value a {"secret": fingerprint}.
 type configReading struct {
 	Time     int64                     `json:"time"`
 	Config   string                    `json:"config"`
 	Own      bool                      `json:"own"`
+	Cause    string                    `json:"cause"`
+	Plugin   string                    `json:"plugin"`
 	Sections map[string]map[string]any `json:"sections"`
 }
 
@@ -159,7 +161,9 @@ func (s *Server) takeReading(ctx context.Context, store *history.Store, reading 
 		}
 		return store.SetConfigState(ctx, reading.Config, sections, at)
 	}
-	if !known || reading.Own || s.expected.holds(reading.Config, at) {
+	// A reading within an apply's window is the apply's; any other that
+	// differs is an entry, the router's own commits included (ADR-021).
+	if !known || s.expected.holds(reading.Config, at) {
 		return keep()
 	}
 	var before map[string]map[string]any
@@ -204,6 +208,7 @@ func (s *Server) directChange(ctx context.Context, reading configReading, before
 	}
 	groups, _ := s.describedGroups(ctx, directSource{s, config, reading.Sections}, flat, identityTranslator, func(string) func(string) string { return identityTranslator })
 	change := history.Change{Time: time.Unix(reading.Time, 0), Status: history.ChangeApplied, OldRead: true,
+		Own: reading.Own, Cause: reading.Cause, CausePlugin: reading.Plugin,
 		Items: stagedItems(stagedView{Groups: groups}, secrets)}
 	held := map[string]any{}
 	for name, section := range before {
