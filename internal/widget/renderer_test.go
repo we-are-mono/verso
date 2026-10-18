@@ -1043,9 +1043,9 @@ func TestRenderCodeInUciGrammar(t *testing.T) {
 		// Read as an editor reads a file: the keyword in denim, a section's
 		// type in amethyst, an option's name in Ink, its value in green, the
 		// quotes in Meta; each line its own element, the whitespace its own.
-		`<span data-verso-line><span class="text-denim-deep">config</span> <span class="text-amethyst-deep">interface</span> <span class="text-meta">'</span><span data-verso-value class="text-green-deep">lan</span><span class="text-meta">'</span></span>` + "\n" +
-			`<span data-verso-line>` + "\t" + `<span class="text-denim-deep">option</span> device <span class="text-meta">'</span><span data-verso-value class="text-green-deep">br-lan</span><span class="text-meta">'</span></span>`,
-		"\n" + `<span data-verso-line>` + "\t" + `<span class="text-denim-deep">list</span> dns `,
+		`<span data-verso-line><span class="verso-code__token" data-verso-token="keyword">config</span> <span class="verso-code__token" data-verso-token="section">interface</span> <span class="verso-code__token" data-verso-token="meta">'</span><span data-verso-value class="verso-code__token" data-verso-token="value">lan</span><span class="verso-code__token" data-verso-token="meta">'</span></span>` + "\n" +
+			`<span data-verso-line>` + "\t" + `<span class="verso-code__token" data-verso-token="keyword">option</span> device <span class="verso-code__token" data-verso-token="meta">'</span><span data-verso-value class="verso-code__token" data-verso-token="value">br-lan</span><span class="verso-code__token" data-verso-token="meta">'</span></span>`,
+		"\n" + `<span data-verso-line>` + "\t" + `<span class="verso-code__token" data-verso-token="keyword">list</span> dns `,
 		// The file it goes into heads it, as an editor's tab does, with the
 		// copy control on that line and the whole text behind it.
 		`data-verso-code-head`,
@@ -1126,12 +1126,16 @@ func TestRenderCodeInUciGrammar(t *testing.T) {
 	if head := got[strings.Index(got, "data-verso-code-head"):strings.Index(got, "/etc/config/network")]; strings.Contains(head, "<svg") {
 		t.Errorf("the head names the file by its path alone: %s", head)
 	}
-	if strings.Count(got, `text-denim-deep">option`) != 2 || strings.Count(got, `text-denim-deep">list`) != 1 {
+	if strings.Count(got, `data-verso-token="keyword">option`) != 2 || strings.Count(got, `data-verso-token="keyword">list`) != 1 {
 		t.Errorf("every keyword is set apart: %s", got)
 	}
-	// An opaque value is shown whole, as before: no editor, no gutter.
+	// Each token's ink is the code block's, named by its kind.
+	for kind, ink := range map[string]string{"keyword": "denim-deep", "section": "amethyst-deep", "value": "green-deep", "meta": "meta"} {
+		declares(t, "code", `.verso-code__token[data-verso-token="`+kind+`"]`, "color: var(--color-"+ink+")")
+	}
+	// An opaque value is shown whole: no editor, no gutter.
 	plain := render(t, r, &Code{Value: "config interface 'lan'"})
-	if strings.Contains(plain, "text-denim-deep") || strings.Contains(plain, "data-verso-preview-gutter") {
+	if strings.Contains(plain, "data-verso-token") || strings.Contains(plain, "data-verso-preview-gutter") {
 		t.Errorf("a block without a grammar is one string: %s", plain)
 	}
 }

@@ -33,6 +33,8 @@
  *           __path    the file's path
  *           __gutter  the line numbers; data-verso-wide past 99 lines
  *           __text    the lines
+ *           __token   a run of a line in its grammar's ink, by
+ *                     data-verso-token: keyword, section, value or meta
  *           __value   an opaque value's box
  *           __says    what the lines do, in words
  */
@@ -144,6 +146,23 @@
   white-space: pre;
   color: var(--color-ink);
   @apply type-code;
+}
+
+/* A line read in its grammar wears an ink per kind of token, a hue's deep
+   step on the field's white: a keyword denim, a section's type amethyst, a
+   value green, a comment and the quotes around a value Meta. A diagnostic's
+   output wears the same inks, so a run reads as a file does. */
+.verso-code__token[data-verso-token="keyword"] {
+  color: var(--color-denim-deep);
+}
+.verso-code__token[data-verso-token="section"] {
+  color: var(--color-amethyst-deep);
+}
+.verso-code__token[data-verso-token="value"] {
+  color: var(--color-green-deep);
+}
+.verso-code__token[data-verso-token="meta"] {
+  color: var(--color-meta);
 }
 
 .verso-code__value {

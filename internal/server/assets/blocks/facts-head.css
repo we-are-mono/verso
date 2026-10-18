@@ -10,6 +10,11 @@
  *
  * Variants: data-verso-columns  two column names (Part, Current) over the
  *                               labels and the values, set as a table's head
+ *           data-verso-align    left: over a document's facts, the values'
+ *                               name stands where their column starts
+ * Elements: __label  the labels' column name
+ *           __value  the values' column name, at the line's end, or over
+ *                    the values' column when the facts align left
  * Context:  --verso-facts-lead  the air over its line, which a card the list
  *                               opens gives up (blocks/card.css)
  */
@@ -26,4 +31,20 @@
 }
 .verso-facts-head[data-verso-columns] {
   gap: 0 calc(var(--spacing) * 6);
+}
+/* The columns' names stand over the columns they name: beside a phone the
+   labels' column is a left-aligned list's 96px (blocks/facts.css). */
+.verso-facts-head__label {
+  flex-shrink: 0;
+}
+@media (width >= 40rem) {
+  .verso-facts-head[data-verso-align="left"] .verso-facts-head__label {
+    width: calc(var(--spacing) * 24);
+  }
+}
+.verso-facts-head__value {
+  margin-left: auto;
+}
+.verso-facts-head[data-verso-align="left"] .verso-facts-head__value {
+  margin-left: 0;
 }

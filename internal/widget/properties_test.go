@@ -156,17 +156,24 @@ func TestAHeadNamesAGroupOrItsColumns(t *testing.T) {
 	declares(t, "facts", `.verso-facts__row:where(.verso-facts[data-verso-style="divided"] *):first-child`, "padding-top: var(--verso-facts-lead, calc(var(--spacing) * 2));")
 	columns := render(t, newRenderer(t), &Properties{Align: "left", Head: &PropertiesHead{Label: "Part", Value: "Current"}, Items: []Property{{Label: "Kernel", Value: "6.12", Mono: true}}})
 	for _, want := range []string{
-		`<span class="shrink-0 sm:w-24">Part</span><span>Current</span>`,
+		`data-verso-align="left">`,
+		`<span class="verso-facts-head__label">Part</span><span class="verso-facts-head__value">Current</span>`,
 	} {
 		if !strings.Contains(columns, want) {
 			t.Errorf("want %s in:\n%s", want, columns)
 		}
 	}
+	// The names stand over the columns they name: the labels' 96px beside a
+	// phone when the facts align left, the values' name at the line's end
+	// otherwise.
+	declares(t, "facts-head", `.verso-facts-head[data-verso-align="left"] .verso-facts-head__label`, "width: calc(var(--spacing) * 24)")
+	declares(t, "facts-head", ".verso-facts-head__value", "margin-left: auto")
+	declares(t, "facts-head", `.verso-facts-head[data-verso-align="left"] .verso-facts-head__value`, "margin-left: 0")
 	if strings.Contains(columns, "<h3") {
 		t.Errorf("column names are not a heading:\n%s", columns)
 	}
 	right := render(t, newRenderer(t), &Properties{Head: &PropertiesHead{Label: "Sensor", Value: "Reading"}, Items: []Property{{Label: "Fan", Value: "0 rpm"}}})
-	if !strings.Contains(right, `<span class="ml-auto">Reading</span>`) {
+	if !strings.Contains(right, `<span class="verso-facts-head__value">Reading</span>`) || strings.Contains(right, `data-verso-align`) {
 		t.Errorf("over values on the right edge the value's name holds that edge too:\n%s", right)
 	}
 	bare := render(t, newRenderer(t), &Properties{Items: []Property{{Label: "Fan", Value: "0 rpm"}}})

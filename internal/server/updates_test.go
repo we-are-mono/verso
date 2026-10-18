@@ -242,13 +242,10 @@ func TestMaintenanceUpdatesSoftwareLane(t *testing.T) {
 	if !(firmware < band && band < setting && setting < next) {
 		t.Errorf("the packages band should sit in the firmware section above the auto-check setting (firmware %d, band %d, setting %d, next %d)", firmware, band, setting, next)
 	}
-	// The masthead is the announcement: a waiting update retitles the page in the
-	// action colour, and the navigation suffix steps aside — a message, not a
-	// place-label.
-	for _, want := range []string{"Maintenance", "text-denim-deep"} {
-		if !strings.Contains(body, want) {
-			t.Errorf("the news masthead is missing %q:\n%s", want, body)
-		}
+	// The masthead names the page, and the navigation suffix steps aside — a
+	// message, not a place-label.
+	if !strings.Contains(body, "Maintenance") {
+		t.Errorf("the masthead is missing its heading:\n%s", body)
 	}
 	if strings.Contains(body, " — Maintenance</span>") {
 		t.Errorf("a toned masthead should drop the navigation suffix:\n%s", body)

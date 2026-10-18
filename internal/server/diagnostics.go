@@ -186,8 +186,8 @@ func (s *Server) handleDiagnosticsStop(w http.ResponseWriter, r *http.Request) {
 }
 
 // diagToken is one run of a line's text and the ink it is read in, named as
-// the code block names its inks (code.html.tmpl): "value" green, "keyword"
-// denim, "meta" quiet, "" the line's own ink.
+// the code block names its inks (blocks/code.css, data-verso-token): "value"
+// green, "keyword" denim, "meta" quiet, "" the line's own ink.
 type diagToken [2]string
 
 // diagnosticReading picks out what a diagnostic line is about: ping's

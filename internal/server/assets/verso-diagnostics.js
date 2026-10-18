@@ -21,8 +21,13 @@
   var el = versoEl;
   var job = "", stream = null;
   // The stream reads each line into tokens (diagnostics.go); they wear the
-  // code block's inks (code.html.tmpl), so a run reads as Verso's code does.
-  var INKS = { value: "text-green-deep", keyword: "text-denim-deep", meta: "text-meta" };
+  // code block's inks (blocks/code.css, by data-verso-token), so a run
+  // reads as Verso's code does.
+  function token(kind, text) {
+    var span = el("span", "verso-code__token", text);
+    span.setAttribute("data-verso-token", kind);
+    return span;
+  }
 
   function running() { return job !== ""; }
   // Run rests until there is something to reach for; while a run goes, Stop
@@ -91,8 +96,8 @@
       show((frame.lines || []).map(function (tokens) {
         var line = el("div", "verso-console__output");
         line.setAttribute("data-verso-verbatim", "");
-        tokens.forEach(function (token) {
-          line.appendChild(token[0] ? el("span", INKS[token[0]], token[1]) : document.createTextNode(token[1]));
+        tokens.forEach(function (part) {
+          line.appendChild(part[0] ? token(part[0], part[1]) : document.createTextNode(part[1]));
         });
         return line;
       }));

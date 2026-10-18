@@ -39,7 +39,7 @@
     {{end}}
     <div class="flex">
       <div data-verso-preview-gutter aria-hidden="true" class="verso-code__gutter" data-verso-figures{{if gt (len .Lines) 99}} data-verso-wide{{end}}>{{range .Lines}}<span data-verso-gutter-line>{{.Number}}</span>{{end}}</div>
-      <div{{if .Live}} data-verso-preview-body{{end}} class="verso-code__text verso-drawer-scrollbar">{{range $i, $l := .Lines}}{{if $i}}{{"\n"}}{{end}}<span data-verso-line>{{if $l.Comment}}<span class="text-meta">{{$l.Raw}}</span>{{else if $l.Keyword}}{{$l.Indent}}<span class="text-denim-deep">{{$l.Keyword}}</span> {{if $l.Section}}<span class="text-amethyst-deep">{{$l.Key}}</span>{{else}}{{$l.Key}}{{end}}{{if $l.Quoted}} <span class="text-meta">'</span><span data-verso-value class="text-green-deep">{{$l.Value}}</span><span class="text-meta">'</span>{{else if $l.Rest}} {{$l.Rest}}{{end}}{{else}}{{$l.Raw}}{{end}}</span>{{end}}</div>
+      <div{{if .Live}} data-verso-preview-body{{end}} class="verso-code__text verso-drawer-scrollbar">{{range $i, $l := .Lines}}{{if $i}}{{"\n"}}{{end}}<span data-verso-line>{{if $l.Comment}}<span class="verso-code__token" data-verso-token="meta">{{$l.Raw}}</span>{{else if $l.Keyword}}{{$l.Indent}}<span class="verso-code__token" data-verso-token="keyword">{{$l.Keyword}}</span> {{if $l.Section}}<span class="verso-code__token" data-verso-token="section">{{$l.Key}}</span>{{else}}{{$l.Key}}{{end}}{{if $l.Quoted}} <span class="verso-code__token" data-verso-token="meta">'</span><span data-verso-value class="verso-code__token" data-verso-token="value">{{$l.Value}}</span><span class="verso-code__token" data-verso-token="meta">'</span>{{else if $l.Rest}} {{$l.Rest}}{{end}}{{else}}{{$l.Raw}}{{end}}</span>{{end}}</div>
     </div>
   </div>
   {{else}}
