@@ -30,6 +30,40 @@ import (
 // crash.
 const supportedSchemaVersion = 1
 
+// withdrawLinksToAbsentPlugins takes off a plugin's page every link into a
+// plugin that is not installed (ADR-009 §3): a plugin may point at another
+// one's page (Interfaces' "Configure DHCP" into DNS and DHCP) without knowing
+// whether it is there, and the shell, which holds the installed set, draws
+// only the links that lead somewhere. An installed plugin that is down keeps
+// its links, since its address answers with the unavailable card.
+func (s *Server) withdrawLinksToAbsentPlugins(w widget.Widget) {
+	widget.Walk(w, func(n widget.Widget) {
+		if link, ok := n.(*widget.Link); ok && s.intoAbsentPlugin(link.Href) {
+			link.Withdraw()
+		}
+	})
+}
+
+// intoAbsentPlugin reports whether href is a shell-relative address under
+// /plugins/<id>/ whose plugin has no manifest loaded, the address handlePlugin
+// answers with "Page not found".
+func (s *Server) intoAbsentPlugin(href string) bool {
+	u, err := url.Parse(strings.TrimSpace(href))
+	if err != nil || u.Scheme != "" || u.Host != "" {
+		return false
+	}
+	rest, ok := strings.CutPrefix(u.Path, "/plugins/")
+	if !ok {
+		return false
+	}
+	id, _, _ := strings.Cut(rest, "/")
+	if id == "" {
+		return false
+	}
+	_, installed := s.manifestByID(id)
+	return !installed
+}
+
 // handlePlugin is the schema gateway (ADR-006 §3): it fetches a widget schema
 // from the plugin's socket and renders it through the shell's own chrome and
 // tokens. It is NOT a reverse proxy — plugin bytes are data the shell renders,
@@ -337,6 +371,7 @@ func (s *Server) pluginBodyAt(r *http.Request, m plugin.Manifest, pluginPath str
 	// The act rides in front of the page until the heading line is drawn, so
 	// every pass below reaches its blank panel as it reaches a row's.
 	wdg = widget.WithHeading(act, wdg)
+	s.withdrawLinksToAbsentPlugins(wdg)
 
 	// A composed access form returns through its shell host. The plugin still
 	// owns the schema, validation, ACL and commit intents.

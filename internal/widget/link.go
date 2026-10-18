@@ -28,7 +28,16 @@ type Link struct {
 	// install, a certificate to replace) — the page's address stays the page's.
 	// The act and secondary styles honour it.
 	Panel bool `json:"panel,omitempty"`
+	// withdrawn is the shell's: the link leads nowhere (into a plugin that is
+	// not installed), so it is drawn nowhere.
+	withdrawn bool
 }
+
+// Withdraw takes the link off the page: it renders nothing wherever it stands,
+// on its own, as a section's act, or as a notice's door or act. The shell
+// withdraws a link into a plugin that is not installed, whose address has
+// nothing at it.
+func (l *Link) Withdraw() { l.withdrawn = true }
 
 func (*Link) isWidget() {}
 
@@ -58,6 +67,9 @@ func (l *Link) renderDoor(r *Renderer, out io.Writer) error {
 }
 
 func (l *Link) draw(r *Renderer, out io.Writer, door bool) error {
+	if l.withdrawn {
+		return nil
+	}
 	href := l.Href
 	// A link to a place on a page — this one, or one it opens (an expanded
 	// row's act into the editor's DHCP section) — is a link to a section,

@@ -52,3 +52,30 @@ func TestAnAddressWithNothingAtItIsAPage(t *testing.T) {
 		t.Errorf("a fragment's 404 is the bare line: %d %q", rec.Code, rec.Body.String())
 	}
 }
+
+// TestALinkIntoAnAbsentPluginIsWithdrawn: a plugin's link into another plugin
+// that is not installed (Interfaces' "Configure DHCP" without the DHCP plugin)
+// leads to an address with nothing at it, so the shell draws it nowhere. A link
+// into an installed plugin stays, running or not (a stopped one answers with
+// its unavailable card), and so does one into the shell's own pages.
+func TestALinkIntoAnAbsentPluginIsWithdrawn(t *testing.T) {
+	tr := &fakeTransport{env: &plugin.Envelope{SchemaVersion: 1, Status: http.StatusOK, Widget: json.RawMessage(`{"type":"card","children":[
+		{"type":"section","title":"DHCP server","control":{"type":"link","label":"Configure DHCP","href":"/plugins/dnsdhcp/?open=lan","style":"act"},"children":[{"type":"text","markdown":"Serving"}]},
+		{"type":"callout","body":"Leases come from the DHCP server.","link":{"label":"Open DHCP","href":"/plugins/dnsdhcp/"}},
+		{"type":"link","label":"Another page","href":"/plugins/demo/other"},
+		{"type":"link","label":"Interfaces","href":"/plugins/interfaces/?open=lan"},
+		{"type":"link","label":"Access","href":"/system/access"}]}`)}}
+	interfaces := plugin.Manifest{ID: "interfaces", Name: "Interfaces", Socket: "/run/verso/interfaces.sock", SchemaVersion: 1}
+	s := newServerWith(t, fakeBackend{}, tr, []plugin.Manifest{demoManifest(), interfaces})
+	s.probe = func(e plugin.Endpoint) bool { return e.Socket != interfaces.Socket }
+	body := get(t, s, "/plugins/demo/").Body.String()
+	body = body[strings.Index(body, "<main"):]
+	if strings.Contains(body, "/plugins/dnsdhcp/") || strings.Contains(body, "Configure DHCP") || strings.Contains(body, "Open DHCP") {
+		t.Errorf("a link into an absent plugin is drawn:\n%s", body)
+	}
+	for _, want := range []string{"Serving", "Leases come from the DHCP server.", `href="/plugins/demo/other"`, `href="/plugins/interfaces/?open=lan"`, `href="/system/access"`} {
+		if !strings.Contains(body, want) {
+			t.Errorf("the page lost %q:\n%s", want, body)
+		}
+	}
+}

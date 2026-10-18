@@ -721,6 +721,13 @@ You compose a **closed set** of widgets with **semantic** props — `label`,
 widget types; you nest and compose these. When nothing fits, `raw` is the
 display-only bridge (last). Every node is `{"type": "...", …}`.
 
+A `link` may point into another plugin's pages (`/plugins/dnsdhcp/?open=lan`)
+without knowing whether that plugin is installed: the shell draws a link into
+a plugin that is not installed nowhere — not on its own, not as a section's
+act, not as a callout's door or act — so the page never leads to an address
+with nothing at it. A link into an installed plugin stays even while that
+plugin is down, since its address answers with the unavailable card.
+
 ### card — a container
 
 Nests other widgets. This is how you lay out a page.

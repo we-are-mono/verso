@@ -66,6 +66,9 @@ func (c *Callout) renderInto(r *Renderer, out io.Writer, _ string) error {
 		if err != nil {
 			return err
 		}
+		if act == "" { // withdrawn: no empty cell in the row
+			continue
+		}
 		acts = append(acts, act)
 	}
 	return c.execute(r, out, link, acts)

@@ -276,6 +276,7 @@ func (s *Server) entityTabs(ctx context.Context, r *http.Request, kind, id, acti
 		if err != nil {
 			continue
 		}
+		s.withdrawLinksToAbsentPlugins(body)
 		tr := pluginTr(claim.PluginID)
 		label := env.Title
 		if label == "" {
