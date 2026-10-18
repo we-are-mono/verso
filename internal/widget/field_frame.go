@@ -37,9 +37,6 @@ type fieldFrame struct {
 	// Detail says which thing an item of a group is (an included file's kind),
 	// under its name; unlike a description it never folds away.
 	Detail string
-	// Note is what the value does now, kept in view under the control in the
-	// answer, after its refusal.
-	Note string
 	// Errors are the refusals under the control, one band each, each named by
 	// the id its own input points at.
 	Errors []fieldError
@@ -97,15 +94,6 @@ func (f fieldFrame) DetailID() string {
 		return ""
 	}
 	return f.Label.For + "-detail"
-}
-
-// NoteID is the id the control points at for the note under it, and none
-// where the control has no id to point from.
-func (f fieldFrame) NoteID() string {
-	if f.Label.For == "" {
-		return ""
-	}
-	return f.Label.For + "-note"
 }
 
 // ShowsLabel reports whether the row has a label column at all. A bare

@@ -91,9 +91,9 @@
       {{with .Detail}}<p{{with $.DetailID}} id="{{.}}"{{end}} data-verso-field-detail class="verso-field__note">{{.}}</p>{{end}}
       {{/* A description folds away with every other on the page
            (blocks/field.css): its words stand in a span of their own, the
-           one track that closes. A wide row says it under its answer
-           instead. */}}
-      {{if not .Wide}}{{with .Desc}}<p{{with $.DescID}} id="{{.}}"{{end}} data-verso-field-desc class="verso-field__desc"><span>{{with $.DescHTML}}{{.}}{{else}}{{.}}{{end}}</span></p>{{end}}{{end}}
+           one track that closes. Every row says it here, under its name,
+           a wide one too. */}}
+      {{with .Desc}}<p{{with $.DescID}} id="{{.}}"{{end}} data-verso-field-desc class="verso-field__desc"><span>{{with $.DescHTML}}{{.}}{{else}}{{.}}{{end}}</span></p>{{end}}
     </div>
     {{/* An act on the whole answer (a set's add) stands on the question's
          line at the row's end, at every width. */}}
@@ -101,15 +101,9 @@
     {{/* A row that is all question (a set's head, a fact with nothing to
          read out) draws no answer, so a stacked row leaves no empty
          control's height under it. */}}
-    {{if or .Control .Errors .Note .Inline}}<div data-verso-control{{with .Measure}} data-verso-control-measure="{{.}}"{{end}}{{if .Inline}} data-verso-inline-field{{end}} class="verso-field__answer">
+    {{if or .Control .Errors .Inline}}<div data-verso-control{{with .Measure}} data-verso-control-measure="{{.}}"{{end}}{{if .Inline}} data-verso-inline-field{{end}} class="verso-field__answer">
       {{.Control}}
       {{range .Errors}}<span id="{{.ID}}" data-verso-error class="verso-refusal">{{template "verso-error-words" .Text}}</span>{{else}}{{if .Inline}}<span id="{{.ErrorID}}" data-verso-inline-error hidden class="verso-refusal"></span>{{end}}{{end}}
-      {{/* A wide row's answer stands under its label, so what the row is for
-           stands under the answer, after its refusal, as a note does: a
-           sentence between a name and its box would part them. Such rows are
-           rare, so it stays in view when the page's descriptions fold. */}}
-      {{if .Wide}}{{with .Desc}}<p{{with $.DescID}} id="{{.}}"{{end}} data-verso-field-note class="verso-field__note">{{with $.DescHTML}}{{.}}{{else}}{{.}}{{end}}</p>{{end}}{{end}}
-      {{with .Note}}<p{{with $.NoteID}} id="{{.}}"{{end}} data-verso-field-note class="verso-field__note">{{.}}</p>{{end}}
     </div>{{end}}
     {{/* A row that cannot be taken out of the set still reserves the glyph's
          width, so every control in the group begins and ends in one place. */}}

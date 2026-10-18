@@ -46,14 +46,8 @@ type Field struct {
 	Datatype     string   `json:"datatype"` // tier-1 datatype name, e.g. "hostname"
 	Options      []Option `json:"options"`  // choices when kind is "select" or "checks"; on a text field, values it suggests (see Suggests)
 	Error        string   `json:"error"`    // inline validation error (set on 422)
-	Help         string   `json:"help"`     // the sentence explaining the field; raised onto the label, see Tip
+	Help         string   `json:"help"`     // the sentence under the label: what the field is, or what changing it does
 	HelpVerbatim bool     `json:"-"`        // shell-composed help already localized (a sentence filled with data)
-	// Note is what changing the field does, where that is worth knowing before
-	// it is changed — "Takes effect immediately, for everyone who signs in".
-	// It stays in view under the control, after any refusal, and the control
-	// is described by it. What the field is belongs on the label (Help, Tip);
-	// a note is the field's consequence, not its explanation.
-	Note string `json:"note,omitempty"`
 	// Key is the option this field writes, verbatim — "ipaddr", "leasetime".
 	// It rides beside the label as a mono chip so someone who knows the config
 	// can see which line they are editing without leaving the form, and someone
@@ -183,9 +177,6 @@ func (f *Field) DescribedBy() string {
 	}
 	if f.Error != "" {
 		ids = append(ids, f.Name+"-error")
-	}
-	if f.Note != "" {
-		ids = append(ids, f.Name+"-note")
 	}
 	if f.Unit != "" {
 		ids = append(ids, f.Name+"-unit")
@@ -350,7 +341,7 @@ func (f *Field) frame() fieldFrame {
 	}
 	frame := fieldFrame{
 		Label: f.LabelView(), Change: change, Measure: f.ControlMeasure(),
-		Lane: f.Lane(), Removable: f.Removable(), Desc: f.description(), Note: f.Note, Wide: f.wide(),
+		Lane: f.Lane(), Removable: f.Removable(), Desc: f.description(), Wide: f.wide(),
 		Plain: f.Fetch != nil,
 	}
 	if f.Error != "" {

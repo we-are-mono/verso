@@ -363,11 +363,10 @@ func readAsset(t *testing.T, path string) string {
 	return string(raw)
 }
 
-// TestACardEndingOnAStackedRowsSentenceKeepsItsAir: a card whose last row is
-// stacked (its answer under its label) and ends on the sentence under that
-// answer closes the card's own 24px under the words, as the card opens; only
-// a row ending on a control or a hairline's rhythm takes the 16px pull.
-func TestACardEndingOnAStackedRowsSentenceKeepsItsAir(t *testing.T) {
+// TestACardPullsItsLastRowsAir: a card's last row gives back what the card
+// asks under itself, so the card closes 24px under the row's answer as it
+// opens; no row ends on a sentence under its answer.
+func TestACardPullsItsLastRowsAir(t *testing.T) {
 	// The card hands its last block the 16px pull, and a row takes it as
 	// what it gives back under itself.
 	trail := cssBlock(t, blockSheet(t, "card"), "\n.verso-card__body > :nth-last-child(1 of :not(input[type=\"hidden\"], [hidden], template)) {")
@@ -378,13 +377,10 @@ func TestACardEndingOnAStackedRowsSentenceKeepsItsAir(t *testing.T) {
 	if !strings.Contains(cssBlock(t, field, "\n.verso-field {"), "margin-bottom: var(--verso-edge-trail, 0px);") {
 		t.Error("a row does not give back what its surface asks under itself")
 	}
-	// A stacked row ending on its sentence closes on it, as words do.
-	spared := `.verso-field[data-verso-wide]:has(> .verso-field__ledger > .verso-field__answer > [data-verso-field-note]:last-child) {`
-	if !strings.Contains(cssBlock(t, field, spared), "margin-bottom: 0;") {
-		t.Errorf("the card's closing pull does not spare a stacked row ending on its sentence")
-	}
-	if strings.Index(field, spared) < strings.Index(field, "\n.verso-field {") {
-		t.Error("the spared row's rule stands before the row's own, which outranks it")
+	// A row's sentences stand under its name, so no row ends on one under
+	// its answer and none is spared the pull.
+	if strings.Contains(field, "data-verso-field-note") {
+		t.Error("the field block still styles a sentence under the answer")
 	}
 }
 
@@ -763,13 +759,13 @@ func TestAStagedRowIsMarkedDownItsEdge(t *testing.T) {
 	}
 }
 
-// TestWhatFollowsAControlStandsOnALine: a refusal or a note stands 8px
-// under its control's box wherever the answer stands on the grid (stacked,
-// wide, a bare control), and 4px under it only beside the question, where the
-// answer is pulled 4px over the name's band, so it always starts on a line.
+// TestWhatFollowsAControlStandsOnALine: a refusal stands 8px under its
+// control's box wherever the answer stands on the grid (stacked, wide, a bare
+// control), and 4px under it only beside the question, where the answer is
+// pulled 4px over the name's band, so it always starts on a line.
 func TestWhatFollowsAControlStandsOnALine(t *testing.T) {
 	css := blockSheet(t, "field")
-	after := ":is([data-verso-error], [data-verso-field-note], [data-verso-inline-error]) {"
+	after := ":is([data-verso-error], [data-verso-inline-error]) {"
 	if !strings.Contains(cssBlock(t, css, "\n.verso-field__answer > "+after), "margin-top: calc(var(--spacing) * 2);") {
 		t.Error("what follows a control does not stand 8px under it")
 	}

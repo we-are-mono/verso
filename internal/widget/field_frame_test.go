@@ -170,24 +170,20 @@ func TestEveryAnswerStandsInTheAnswerColumn(t *testing.T) {
 // w is a widget as a Widget, so a table of mixed widgets reads plainly.
 func w(widget Widget) Widget { return widget }
 
-// TestAStackedRowSaysWhatItIsForUnderItsAnswer: a row whose answer stands
-// under its label says what it is for under the answer, after its refusal and
-// before its note, and keeps it in view when the page's descriptions fold:
-// such rows are rare, and a sentence between a name and its box parts them.
-// A row whose answer stands beside its question keeps its description under
-// the name, where it folds.
-func TestAStackedRowSaysWhatItIsForUnderItsAnswer(t *testing.T) {
+// TestAStackedRowSaysWhatItIsForUnderItsName: a row whose answer stands
+// under its label says what it is for under the name, as every row does, and
+// folds it with the page's descriptions; its refusal stands under the box.
+func TestAStackedRowSaysWhatItIsForUnderItsName(t *testing.T) {
 	r := newRenderer(t)
-	got := render(t, r, &Field{Name: "note", Label: "Note", Wide: true, Help: "Why these changes are made.", Error: "Too long.", Note: "Kept for a year."})
+	got := render(t, r, &Field{Name: "note", Label: "Note", Wide: true, Help: "Why these changes are made.", Error: "Too long."})
+	desc := strings.Index(got, `<p id="note-desc" data-verso-field-desc class="verso-field__desc"><span>Why these changes are made.</span></p>`)
 	control := strings.Index(got, `id="note" name="note"`)
 	refusal := strings.Index(got, `id="note-error" data-verso-error`)
-	desc := strings.Index(got, `<p id="note-desc" data-verso-field-note class="verso-field__note">Why these changes are made.</p>`)
-	note := strings.Index(got, `id="note-note" data-verso-field-note`)
-	if !(control >= 0 && control < refusal && refusal < desc && desc < note) {
-		t.Errorf("a stacked row's description is not under its answer, after the refusal and before the note:\n%s", got)
+	if !(desc >= 0 && desc < control && control < refusal) {
+		t.Errorf("a stacked row's description is not under its name, over its box:\n%s", got)
 	}
-	if strings.Contains(got, "data-verso-field-desc") {
-		t.Errorf("a stacked row's description folds with the page's:\n%s", got)
+	if strings.Contains(got, "data-verso-field-note") {
+		t.Errorf("a stacked row says something under its box:\n%s", got)
 	}
 	if !strings.Contains(got, `aria-describedby="note-desc`) {
 		t.Errorf("the box is not described by its description:\n%s", got)
@@ -196,7 +192,7 @@ func TestAStackedRowSaysWhatItIsForUnderItsAnswer(t *testing.T) {
 	// plugin's stays the plain words it wrote.
 	marked := render(t, r, &Field{Name: "note", Label: "Note", Wide: true, HelpMarkdown: true, Help: "Kept in **System › Changes**."})
 	// (render normalizes the space before a tag away.)
-	if !strings.Contains(marked, `data-verso-field-note class="verso-field__note">Kept in<strong>System › Changes</strong>.</p>`) {
+	if !strings.Contains(marked, `data-verso-field-desc class="verso-field__desc"><span>Kept in<strong>System › Changes</strong>.</span></p>`) {
 		t.Errorf("the shell's description does not set its page in bold:\n%s", marked)
 	}
 	plain := render(t, r, &Field{Name: "note", Label: "Note", Wide: true, Help: "Kept in **System › Changes**."})
@@ -210,22 +206,21 @@ func TestAStackedRowSaysWhatItIsForUnderItsAnswer(t *testing.T) {
 }
 
 // TestARefusalStandsUnderItsControl: a refusal is part of the answer, after
-// the control and before the note, so it stands straight under the control
+// the control, so it stands straight under the control
 // whatever the description beside it says; it was once a grid row of its own,
 // which a long description pushed down, opening a gap under the field.
 func TestARefusalStandsUnderItsControl(t *testing.T) {
 	got := render(t, newRenderer(t), &Field{
 		Name: "synflood_burst", Label: "Burst", Key: "synflood_burst",
 		Help:  "How many may arrive at once before the rate limit applies. Absorbs ordinary bursts, like a page opening 40 sockets.",
-		Error: "Enter a whole number.", Note: "Counted in packets.",
+		Error: "Enter a whole number.",
 	})
 	question, answer := strings.Index(got, "verso-field__question"), strings.Index(got, "verso-field__answer")
 	desc := strings.Index(got, "data-verso-field-desc")
 	control := strings.Index(got, `id="synflood_burst" name="synflood_burst"`)
 	refusal := strings.Index(got, `id="synflood_burst-error" data-verso-error`)
-	note := strings.Index(got, `id="synflood_burst-note" data-verso-field-note`)
-	if !(question < desc && desc < answer && answer < control && control < refusal && refusal < note) {
-		t.Errorf("the refusal is not the answer's, between its control and its note:\n%s", got)
+	if !(question < desc && desc < answer && answer < control && control < refusal) {
+		t.Errorf("the refusal is not the answer's, under its control:\n%s", got)
 	}
 	if strings.Count(got[answer:], "</div>") < 2 || strings.Index(got[answer:], "</div>") < strings.Index(got[answer:], "data-verso-error") {
 		t.Errorf("the refusal stands outside the answer:\n%s", got)

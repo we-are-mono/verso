@@ -189,9 +189,9 @@ func factoryResetSection(v maintenanceView) *widget.Section {
 	form := &widget.Form{Action: factoryResetPath, Submit: "Erase and start over", Tone: widget.ToneDanger}
 	if v.Hostname != "" {
 		// The box shows the hostname to type (the page's script gates the act
-		// on it), and its note says so, so it never reads as a value in it.
+		// on it), and its help says so, so it never reads as a value in it.
 		form.Fields = []widget.Widget{&widget.Field{Name: "hostname", Datatype: "hostname", Label: "Type the hostname to confirm", Placeholder: v.Hostname,
-			Note: "The box shows this router’s hostname.", Autocomplete: "off", Required: true}}
+			Help: "The box shows this router’s hostname.", Autocomplete: "off", Required: true}}
 	}
 	// A reset leaves /data, and the router's history with it: it goes too
 	// unless the operator keeps it (ADR-021).

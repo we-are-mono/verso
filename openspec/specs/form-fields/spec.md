@@ -2,7 +2,7 @@
 
 ## Purpose
 
-How a form's fields are laid out and what each field row shows: its question, its description, its answer, its note, its refusal and its staged mark, as one ledger on every page, drawer and dialog, with descriptions an operator can fold away.
+How a form's fields are laid out and what each field row shows: its question, its description, its answer, its refusal and its staged mark, as one ledger on every page, drawer and dialog, with descriptions an operator can fold away.
 
 ## Requirements
 
@@ -195,12 +195,16 @@ A field that names what reads its option SHALL show it in its option chip after 
 - **WHEN** a plugin sends a field keyed `mac` whose option is read by `dhcp host`
 - **THEN** the field's chip reads `mac · dhcp host`
 
-### Requirement: A note stands under its answer
-A field's note, the sentence that says what its value does now, SHALL stand in the answer column under the control, and SHALL stay on screen when descriptions are folded.
+### Requirement: A field's sentences stand under its name
+Every sentence a field says about itself, what it is or what changing it does, SHALL stand under its name as its description, a stacked row's too. Nothing SHALL stand under a control but its refusal.
 
 #### Scenario: The theme
 - **WHEN** an operator opens System › General
-- **THEN** "Takes effect immediately, for everyone who signs in to this router." stands under the theme dropdown in its answer column
+- **THEN** "Takes effect immediately, for everyone who signs in to this router." stands under the Theme label, not under the dropdown
+
+#### Scenario: A stacked row
+- **WHEN** an operator opens a field whose answer is a text area
+- **THEN** what the field is for stands under its name, over the text area, and folds with the page's descriptions
 
 ### Requirement: A refusal stands under the control it refuses
 A field's refusal SHALL stand as its band under the control in the answer column, 8px under the control's line, or under a wide answer at the row's full width.
@@ -263,7 +267,7 @@ The fold SHALL be kept per browser and SHALL apply to every page and drawer that
 - **THEN** the staged count is unchanged
 
 ### Requirement: Folding hides descriptions alone
-Folding SHALL hide descriptions and nothing else: names, chips, staged marks, controls, notes, refusal bands and the detail under an item of a group SHALL stay. A folded description SHALL stay the accessible description of its control.
+Folding SHALL hide descriptions and nothing else: names, chips, staged marks, controls, refusal bands and the detail under an item of a group SHALL stay. A folded description SHALL stay the accessible description of its control.
 
 #### Scenario: What stays when folded
 - **WHEN** an operator folds descriptions on Firewall settings with a refusal on Burst

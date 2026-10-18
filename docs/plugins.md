@@ -1279,11 +1279,6 @@ any form that posts it itself.
 - `autocomplete`: optional browser autofill purpose. Password fields default to
   `new-password`; use `current-password` only for the existing credential.
 - `error`: an inline error to show under the field (you set this on a 422).
-- `note`: what changing the field does, where that is worth knowing before it
-  is changed — `"Takes effect immediately, for everyone who signs in to this
-  router."`. It stays in view under the control, after any `error`, never
-  folds, and the control is described by it. What the field *is* belongs in
-  its description (`help`, `tip`); a note is its consequence.
 - `key`: the option this field writes, verbatim — `"ipaddr"`, `"leasetime"`. It
   rides beside the label as a mono chip, so someone who knows the config sees
   which line they are editing and someone who does not can ignore it.
@@ -1318,7 +1313,9 @@ any form that posts it itself.
 - `help`, `tip` and `source`: a field's description, written under its label,
   is its `help` and then its `tip`; the operator can fold every description on
   the page away at once, and a screen reader reads it either way. `help` says
-  what to put in the control; `tip` answers "what even is this", for a label
+  what to put in the control, or what changing it does (`"Takes effect
+  immediately, for everyone who signs in to this router."`): nothing stands
+  under the control but its refusal. `tip` answers "what even is this", for a label
   that is a term of art the operator did not choose — a DUID, an interface
   identifier — and is left off where the label is already the plain word for
   the thing. `source` names what reads the option and joins `key` in the chip

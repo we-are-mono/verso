@@ -23,10 +23,7 @@
  *                        keeps that air itself, which outranks the lead;
  *                        forwarded down to it by the blocks it stands in
  *   --verso-edge-trail   what it gives back under itself where it ends a
- *                        surface; forwarded the same way. A wide row that
- *                        ends on the sentence under its answer (what it is
- *                        for, or its note) closes on it, as words do, and
- *                        gives nothing back
+ *                        surface; forwarded the same way
  * Variants: data-verso-wide   its answer is a page of text (a code or text
  *                             area), standing under the question at the
  *                             row's full width
@@ -43,10 +40,11 @@
  *                       on the page (data-verso-descriptions="folded" on the
  *                       root), closing its one track as it fades, so rows
  *                       close up by whole lines
- *           __note      a detail or a note that never folds
+ *           __note      the detail that says which thing an item of a group
+ *                       is, under its name; it never folds
  *           __act       an act on the whole answer (a set's add), on the
  *                       question's line at the row's end at every width
- *           __answer    the control, its refusal and its note, in the answer
+ *           __answer    the control and its refusal, in the answer
  *                       column (data-verso-control-measure: its measure where
  *                       the row stacks)
  *           __remove    the glyph that takes the row out of its set
@@ -94,9 +92,6 @@
   padding: var(--verso-edge-air, var(--verso-field-lead, var(--spacing-inset))) max(var(--verso-field-bleed, 0px), calc(100% - var(--verso-form-width, 40rem) + var(--verso-field-bleed, 0px) * 3)) var(--verso-field-trail, 0px) var(--verso-field-bleed, 0px);
   border: 0 solid var(--color-rule);
   border-top-width: var(--verso-field-rule, 0px);
-}
-.verso-field[data-verso-wide]:has(> .verso-field__ledger > .verso-field__answer > [data-verso-field-note]:last-child) {
-  margin-bottom: 0;
 }
 
 /* A form's grid of fields owns their air. */
@@ -321,23 +316,23 @@
   min-width: 0;
   min-height: calc(var(--spacing) * 8);
 }
-/* What follows a control (its refusal, its note) stands 8px under the
-   control's box, on a line. Beside its question the answer centres a 32px
+/* What follows a control (its refusal) stands 8px under the control's box,
+   on a line. Beside its question the answer centres a 32px
    control on the name's 24px line, reaching 4px past it either side, so
    what follows a pulled control gives those 4px back and still starts on the
    line 8px under the name's band. Stacked, wide or bare, the answer stands
    straight under the question with nothing pulled. */
-.verso-field__answer > :is([data-verso-error], [data-verso-field-note], [data-verso-inline-error]) {
+.verso-field__answer > :is([data-verso-error], [data-verso-inline-error]) {
   margin-top: calc(var(--spacing) * 2);
 }
 @container verso-field (width >= 36rem) {
   .verso-field__answer {
     margin-top: calc(var(--spacing) * -1);
   }
-  .verso-field__answer:not(:has(> :is([data-verso-error], [data-verso-field-note], [data-verso-inline-error]:not([hidden])))) {
+  .verso-field__answer:not(:has(> :is([data-verso-error], [data-verso-inline-error]:not([hidden])))) {
     margin-bottom: calc(var(--spacing) * -1);
   }
-  .verso-field__answer:is(.verso-field:not([data-verso-wide], [data-verso-plain]) > .verso-field__ledger:has(> .verso-field__question > *) > *) > :is([data-verso-error], [data-verso-field-note], [data-verso-inline-error]) {
+  .verso-field__answer:is(.verso-field:not([data-verso-wide], [data-verso-plain]) > .verso-field__ledger:has(> .verso-field__question > *) > *) > :is([data-verso-error], [data-verso-inline-error]) {
     margin-top: var(--spacing);
   }
 }

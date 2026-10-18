@@ -1047,17 +1047,12 @@ pub struct Field {
     pub options: Vec<SelectOption>,
     #[serde(skip_serializing_if = "String::is_empty")]
     pub error: String,
-    /// What the field is for, written under its label as the row's
-    /// description. One act on the page folds every description away for
-    /// someone who knows the settings; a screen reader reads it either way.
+    /// What the field is for, or what changing it does ("Takes effect
+    /// immediately"), written under its label as the row's description. One
+    /// act on the page folds every description away for someone who knows
+    /// the settings; a screen reader reads it either way.
     #[serde(skip_serializing_if = "String::is_empty")]
     pub help: String,
-    /// What changing the field does, where that is worth knowing before it is
-    /// changed — "Takes effect immediately". The shell keeps it in view under
-    /// the control, after any `error`, and never folds it. Set it through
-    /// `noted`.
-    #[serde(skip_serializing_if = "String::is_empty")]
-    pub note: String,
     /// The option this field writes, verbatim — "ipaddr", "leasetime". The
     /// shell sets it as a mono chip beside the label, so someone who knows
     /// the config can see which line they are editing without leaving the
@@ -1450,17 +1445,6 @@ impl Widget {
                 *flush = true
             }
             _ => {}
-        }
-        self
-    }
-
-    /// noted keeps what changing a field does in view under its control — "Takes
-    /// effect immediately, for everyone who signs in". It is the field's
-    /// consequence, not its explanation, which belongs on the label. Only a
-    /// field carries one; anything else comes back as it was.
-    pub fn noted(mut self, consequence: &str) -> Widget {
-        if let Widget::Field(Field { note, .. }) = &mut self {
-            *note = consequence.into();
         }
         self
     }
@@ -3119,19 +3103,20 @@ mod tests {
         assert!(bare.get("close").is_none());
     }
 
-    // A note says what changing a field does; only a field carries one, and
-    // a field without one sends none.
+    // What changing a field does is its help, under its label: a field sends
+    // the sentence as help and carries no note of its own.
     #[test]
-    fn a_note_rides_its_field_and_nothing_else() {
-        let wire = |w: Widget| serde_json::to_value(w).unwrap();
-        let noted =
-            wire(Widget::field("theme", "Theme", "", "", "").noted("Takes effect immediately."));
-        assert_eq!(noted["note"], "Takes effect immediately.");
-        assert!(wire(Widget::field("theme", "Theme", "", "", ""))
-            .get("note")
-            .is_none());
-        let text = wire(Widget::text("Words.").noted("Takes effect immediately."));
-        assert!(text.get("note").is_none());
+    fn a_fields_consequence_is_its_help() {
+        let wire = serde_json::to_value(Widget::field(
+            "theme",
+            "Theme",
+            "",
+            "",
+            "Takes effect immediately.",
+        ))
+        .unwrap();
+        assert_eq!(wire["help"], "Takes effect immediately.");
+        assert!(wire.get("note").is_none());
     }
 
     // A form's refusal is only what no control of it says: a field's refusal
