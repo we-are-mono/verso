@@ -279,3 +279,16 @@ after; the SVG's fills, strokes and LED animations compared directly.
 | a row of acts | every inline stack | flex utilities with `has-[…]` variants | the cluster block |
 | a divider | 1 | `my-6`, which the page's step outranked above it and not below | no air of its own: the stack's step either side (40px on a page) |
 | a collection's items and add | 1 | utility strings; the detail mono 14px; the add's act on the strut | the collection block: the detail the body role's verbatim form (mono 16); the add a column, its act the line |
+
+### the drawer (`modal`) and `grid`
+
+| Copies | n | Difference | Became |
+|---|---|---|---|
+| a drawer's chrome | every drawer | a utility string with an arbitrary shadow; its title 18/600 truncated | the modal's head and title in the drawer kind; no pixel changes |
+| a drawer's close | every drawer | its own button: Glyph, a transparent 1px border, the hairline wash and Sand-5 edge under the pointer | the modal's close, every overlay's one ×: Meta, no border, the mid wash |
+| a drawer's body | 3 | `verso-drawer-ground` and `verso-drawer-inset` class-string templates, `space-y-6` | the modal's ground (and its Paper variant for a page's settings drawn as a panel), stepped by the stack |
+| a table in a drawer | | rows that never tinted, its last column forced right, arbitrary variants on the body | the table block as it stands anywhere |
+| the drawer's gutter | | a `:root` property in sections.css | the drawer kind's context property |
+| tiles, an expanded row's facts columns, a split's form and rail, a figure beside its facts, cards of one kind | 6 | arbitrary variants and `data-verso-beside`/`data-verso-cards` rules keyed on the page body | the grid block, `data-verso-style`, each child in a `__cell`; no pixel changes |
+| facts in a grid's columns | | its dl's labels 96px, values left, by arbitrary variants into the facts list; their hairlines Rule | the facts block's left-set list (the renderer sets it), its hairlines Mid as every divided list's; on a phone the label over its value |
+| an editor split's inputs | | font forced by arbitrary variants (normal weight, a name or password in sans) | the inputs' own roles |

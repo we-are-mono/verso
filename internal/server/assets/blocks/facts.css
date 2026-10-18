@@ -90,6 +90,21 @@
     flex-direction: row;
   }
 }
+/* In a grid's facts columns (blocks/grid.css) too narrow to stand side by
+   side, the right column continues the left as one list: the left's last
+   fact meets the right's first on a hairline, 7px over its line, and an
+   empty column takes no place. */
+@container (width < 42rem) {
+  .verso-facts__row:last-child:where(.verso-grid[data-verso-style="facts"] .verso-facts:has(+ .verso-facts:has(*)) > *) {
+    border-bottom-width: 1px;
+  }
+  .verso-facts__row:first-child:where(.verso-grid[data-verso-style="facts"] .verso-facts + .verso-facts > *) {
+    padding-top: calc(var(--spacing) * 1.75);
+  }
+  .verso-facts:where(.verso-grid[data-verso-style="facts"] *):not(:has(*)) {
+    display: none;
+  }
+}
 .verso-facts__row:where(.verso-facts[data-verso-style="system"] *) {
   align-items: center;
   padding-block: calc(var(--spacing) * 2.5);

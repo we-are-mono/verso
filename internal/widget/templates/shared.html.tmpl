@@ -321,8 +321,8 @@
          what is asked for depends on which icon opened it, and an open that
          wants the tab already showing asks for nothing at all. Until then this
          is a spinner and the url it would fetch. */}}
-    <div data-verso-entity-body data-verso-entity-url="{{.Entity}}" class="flex min-h-0 flex-1 flex-col">
-      <div class="flex flex-1 items-center justify-center text-glyph">{{template "verso-waiting" ""}}<span class="sr-only">{{ t "Loading…" }}</span></div>
+    <div data-verso-entity-body data-verso-entity-url="{{.Entity}}" class="verso-modal__panel">
+      <div class="verso-modal__loading">{{template "verso-waiting" ""}}<span class="sr-only">{{ t "Loading…" }}</span></div>
     </div>
   </dialog>
 </template>{{end}}
@@ -473,16 +473,8 @@
 
 {{/* The title band is shared by every drawer, including shell-assembled entity
      panels. Only the title and close control belong here; facts live in the body. */}}
-{{/* verso-drawer-inset: a drawer's side inset — its gutter
-     (--verso-drawer-gutter, sections.css), the sand between its edges and its
-     cards, so the chrome's title and tabs stand on the cards' left edge and
-     its close ends on their right one. */}}
-{{define "verso-drawer-inset"}}px-(--verso-drawer-gutter){{end}}
-{{/* verso-drawer-ground: the body under a drawer's chrome, a page's own
-     ground in small — Quiet Sand, its subjects Paper cards. The cards keep
-     the gutter on every open side, under the chrome's hairline as at the
-     drawer's edges, as far from each as they stand from each other. */}}
-{{define "verso-drawer-ground"}}bg-quiet px-(--verso-drawer-gutter) pt-(--verso-drawer-gutter) pb-10{{end}}
+{{/* A drawer's gutter, chrome and ground are the modal block's
+     (blocks/modal.css: --verso-drawer-gutter, __head, __ground). */}}
 
 {{/* verso-fold-act: the one act that folds every description on the page
      away and brings them back (form-fields), on the page's heading line and
@@ -499,12 +491,12 @@
      its log, so the chrome reads as the drawer's and the cards under it as
      what it holds. */}}
 {{define "verso-drawer-header"}}
-<header class="flex flex-none items-center gap-4 bg-ground {{template "verso-drawer-inset"}} py-3.5 shadow-[inset_0_-1px_0_var(--color-rule)]">
-  <h2 class="min-w-0 truncate text-lg font-semibold tracking-tight text-ink">{{.}}</h2>
+<header class="verso-modal__head">
+  <h2 class="verso-modal__title">{{.}}</h2>
   {{/* The fold stands with the close, before it, at the band's end. */}}
-  <div class="ml-auto flex flex-none items-center gap-4">
+  <div class="verso-modal__acts">
     {{template "verso-fold-act" ""}}
-    <button type="button" @click="hide" aria-label="{{ t "Close" }}" class="grid size-7 flex-none cursor-pointer place-items-center rounded-xs border border-transparent text-glyph transition-colors hover:border-sand-5 hover:bg-rule hover:text-ink focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-denim">{{icon "x" "size-4"}}</button>
+    {{template "verso-close-btn"}}
   </div>
 </header>
 {{end}}
@@ -547,7 +539,8 @@
            outcome layer to say (verso-page.js), never as a line of its own:
            the page is not drawn around this answer, so the panel brings it. */}}
       {{if .Flash.Message}}<template data-verso-arrival>{{template "verso-flash" .Flash}}</template>{{end}}
-      <div data-verso-scroll="sand"{{if not .Choices}} data-verso-drawer-body{{end}} class="verso-drawer-scrollbar min-h-0 flex-1 {{if not .Choices}}space-y-6 {{end}}overflow-x-hidden overflow-y-auto {{if .Choices}}space-y-0 pb-8 [&>section]:pt-0 [&>section>div:first-child]:mb-0 [&>section>div:first-child]:border-y [&>section>div:first-child]:border-rule [&>section>div:first-child]:bg-quiet [&>section>div:first-child]:px-(--verso-drawer-gutter) [&>section>div:first-child]:py-2 [&_h3]:font-medium [&_h3]:tracking-[.08em] [&_.verso-rhythm>*]:!mt-0{{else}}{{template "verso-drawer-ground"}}{{end}} [&_table]:min-w-0 [&_.overflow-x-auto]:!overflow-visible [&_tbody_tr:hover]:!bg-transparent [&_td:last-child]:!text-right [&_th:last-child]:!text-right">
+      {{if .Choices}}<div data-verso-scroll="sand" class="verso-drawer-scrollbar min-h-0 flex-1 overflow-x-hidden overflow-y-auto space-y-0 pb-8 [&>section]:pt-0 [&>section>div:first-child]:mb-0 [&>section>div:first-child]:border-y [&>section>div:first-child]:border-rule [&>section>div:first-child]:bg-quiet [&>section>div:first-child]:px-(--verso-drawer-gutter) [&>section>div:first-child]:py-2 [&_h3]:font-medium [&_h3]:tracking-[.08em] [&_.verso-rhythm>*]:!mt-0">
+      {{- else}}<div data-verso-scroll="sand" data-verso-drawer-body class="verso-modal__ground verso-stack verso-drawer-scrollbar">{{end}}
         {{range .Body}}{{.}}{{end}}
       </div>
 {{end}}

@@ -1,57 +1,23 @@
 <!-- SPDX-License-Identifier: GPL-2.0-only -->
 <!-- SPDX-FileCopyrightText: 2026 Mono Technologies Inc. -->
-{{/* grid: responsive column layout of pre-rendered children. The plugin declared
-     only a style and a target column count (ADR-005); turning the count into
-     columns is the shell's job, and the classes that do it are stated here and
-     only here. The stylesheet is built from the templates alone (input.css
-     scans no Go), so a class named in Go is a class the page never gets — which
-     is how every grid the shell built from Go once collapsed to one column. */}}
-{{if eq .Style "facts"}}
-{{/* An expanded row's facts, in two columns 48px apart from the same top
-     line: the first half of them on the left, the rest on the right, as the
-     Interfaces canvas lays them out. Narrow, the right column continues the
-     left as one list: its first fact meets the left's last on a hairline,
-     7px over its line, with no gap between them; an empty column keeps its
-     place only while there are two. A
-     code box in a column (what the daemon reported) is not a form's
-     footnote, so it drops the rule and the standoff it keeps under a form,
-     and takes a row's top padding so its caption stands on the first
-     fact's line. */}}
-<div data-verso-facts class="grid min-w-0 grid-cols-1 gap-x-12 gap-y-0 @2xl:grid-cols-2 @2xl:gap-y-6 @max-2xl:[&>dl:has(+dl:has(*))>div:last-child]:border-b @max-2xl:[&>dl+dl>div:first-child]:pt-1.75 [&_dl]:divide-rule [&_dl>div]:justify-start [&_dt]:w-24 [&_dd]:flex-1 [&_dd]:justify-start [&_dd]:text-left [&>dl:not(:has(*))]:hidden @2xl:[&>dl:not(:has(*))]:block [&>div]:mt-0 [&>div]:min-w-0 [&>div]:border-t-0 [&>div]:pt-2 [&>div>span]:text-base">{{range .Children}}{{.}}{{end}}</div>
-{{else if eq .Style "settings"}}
-<div class="@container"><div class="grid min-w-0 grid-cols-1 gap-10 @form-split:grid-cols-form [&>div:first-child]:max-w-form [&>div:last-child]:self-start @form-split:[&>div:last-child]:sticky @form-split:[&>div:last-child]:top-22 [&_section[id]>.verso-rhythm]:[--verso-rhythm:0rem]">{{range $i, $child := .Children}}<div{{if eq $i 0}} data-verso-form-column{{end}} class="min-w-0">{{$child}}</div>{{end}}</div></div>
-{{else if eq .Style "editor"}}
-<div class="@container">
-  <div class="grid min-w-0 grid-cols-1 gap-10 @form-split:grid-cols-form [&_input]:font-normal [&_select]:font-normal [&_textarea]:font-normal [&_input[name=name]]:font-sans [&_input[name=name]]:text-sm [&_input[type=password]]:font-sans [&_input[type=password]]:text-sm">{{range $i, $child := .Children}}<div{{if eq $i 0}} data-verso-form-column{{end}} class="min-w-0 first:max-w-form">{{$child}}</div>{{end}}</div>
-</div>
-{{else if eq .Style "rail"}}
-{{/* The work keeps the shared form measure; the rail takes the remaining
-     width after the page's 40px gutter. Columns only split when their own
-     container has room for both, and then the rail stays in view as the form
-     scrolls, 32px under the top bar's 56px. At narrower widths the rail
-     leads the form, whose measure stays the same: its jump list and its
-     advice ("Before you flash") are read before the cards they are about,
-     not after the last of them. */}}
-<div class="@container">
-  <div class="grid grid-cols-1 gap-10 @form-split:grid-cols-form [&>:first-child]:max-w-form [&>div:last-child]:self-start [&>div:last-child]:order-first @form-split:[&>div:last-child]:order-none @form-split:[&>div:last-child]:sticky @form-split:[&>div:last-child]:top-22">{{range $i, $child := .Children}}<div{{if eq $i 0}} data-verso-form-column{{end}} class="min-w-0">{{$child}}</div>{{end}}</div>
-</div>
-{{else if eq .Style "figure"}}
-{{/* A figure beside what is said of it (the Hardware page's board card: the
-     router's facts, then its panel): what is said at the left, taking the
-     row, the figure last at its own width on the right; narrow, the figure
-     stands under it (sections.css). */}}
-<div data-verso-beside>{{range .Children}}{{.}}{{end}}</div>
-{{else if eq .Style "cards"}}
-{{/* Cards of one kind (a board's fiber modules) side by side where the page
-     has room, on the Overview's column measure (sections.css). Each stands in
-     a cell of its own, so none is the card after another. */}}
-<div data-verso-cards><div>{{range .Children}}<div class="min-w-0">{{.}}</div>{{end}}</div></div>
-{{else if eq .Style "form"}}
+{{/* grid: responsive column layout of pre-rendered children (blocks/grid.css).
+     The plugin declared only a style and a target column count (ADR-005);
+     turning the count into columns is the shell's job, stated in the block.
+     Each child stands in a cell of its own; a split's first cell is the
+     form's column. A facts grid's lists stand straight in its columns (the
+     unfold reads them there, data-verso-facts), set left (Grid.renderInto),
+     and the seam between them is the facts block's. Cards of one kind keep
+     data-verso-cards, which the page's flow reads to stand them as a card
+     stands. */}}
+{{if eq .Style "form"}}
 {{/* Related fields share a row only when their own container has room. The
      group owns the outer field padding, so stacking keeps the same rhythm. */}}
 <div class="verso-form-grid"><div class="verso-form-grid-fields" data-verso-columns="{{if le .Columns 1}}1{{else if eq .Columns 2}}2{{else}}3{{end}}">{{range .Children}}{{.}}{{end}}</div></div>
+{{else if eq .Style "facts"}}
+<div class="verso-grid" data-verso-style="facts"><div data-verso-facts class="verso-grid__track">{{range .Children}}{{.}}{{end}}</div></div>
 {{else}}
-{{/* Small tile and card grids go two-up on phones — never a lonely full-width
-     column — and widen on larger screens. */}}
-<div class="grid {{if le .Columns 1}}grid-cols-1{{else if eq .Columns 2}}grid-cols-2{{else if eq .Columns 3}}grid-cols-2 md:grid-cols-3{{else}}grid-cols-2 md:grid-cols-4{{end}} gap-8">{{range .Children}}{{.}}{{end}}</div>
+{{$split := or (eq .Style "settings") (eq .Style "editor") (eq .Style "rail")}}
+<div class="verso-grid"{{if or $split (eq .Style "figure") (eq .Style "cards")}} data-verso-style="{{.Style}}"{{end}}{{if eq .Style "cards"}} data-verso-cards{{end}} data-verso-columns="{{if le .Columns 1}}1{{else if eq .Columns 2}}2{{else if eq .Columns 3}}3{{else}}4{{end}}">
+  <div class="verso-grid__track">{{range $i, $child := .Children}}<div{{if and $split (eq $i 0)}} data-verso-form-column{{end}} class="verso-grid__cell">{{$child}}</div>{{end}}</div>
+</div>
 {{end}}

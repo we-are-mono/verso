@@ -47,6 +47,7 @@
 @import "./blocks/facts-head.css" layer(components);
 @import "./blocks/fold.css" layer(components);
 @import "./blocks/glyph.css" layer(components);
+@import "./blocks/grid.css" layer(components);
 @import "./blocks/link.css" layer(components);
 @import "./blocks/list.css" layer(components);
 @import "./blocks/listing.css" layer(components);
@@ -571,12 +572,4 @@ html {
    hairline, a pixel before the body's own edges, scrolling with what the
    drawer holds. The lines never take a press. */
 @layer components {
-  :root[data-verso-grid] [data-verso-drawer-body] {
-    background-image:
-      linear-gradient(to right, color-mix(in srgb, var(--color-denim) 22%, transparent) 1px, transparent 1px),
-      linear-gradient(to bottom, color-mix(in srgb, var(--color-denim) 22%, transparent) 1px, transparent 1px);
-    background-size: calc(var(--spacing) * 2) calc(var(--spacing) * 2);
-    background-position: -1px -1px;
-    background-attachment: local;
-  }
 }

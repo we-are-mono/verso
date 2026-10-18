@@ -1,0 +1,135 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/* SPDX-FileCopyrightText: 2026 Mono Technologies Inc. */
+
+/*
+ * grid — pre-rendered children laid out in columns. The plugin declares only
+ * a style and a column count (ADR-005); turning them into columns is the
+ * shell's. The root is the size container the columns are measured against,
+ * its __track the columns, each child in a __cell of its own.
+ *
+ * Variants: data-verso-style  (none): tiles, two-up on a phone and widening
+ *                             on a larger screen (data-verso-columns 1–4),
+ *                             32px apart
+ *                             · facts: an expanded row's facts in two columns
+ *                             48px apart from the same top line; narrow, the
+ *                             right column continues the left as one list
+ *                             (blocks/facts.css draws the seam)
+ *                             · settings, editor, rail: a form at the form's
+ *                             measure with a rail beside it once there is
+ *                             room for both (@form-split), the rail staying
+ *                             in view as the form scrolls, 32px under the
+ *                             bar; narrow, the rail of a "rail" leads the
+ *                             form, its advice read before the cards it is
+ *                             about
+ *                             · figure: what is said of a figure at the
+ *                             left, taking the row, the figure 40px on at
+ *                             its own width (--art-w); narrow, the figure
+ *                             stands under it, 24px down
+ *                             · cards: cards of one kind side by side on
+ *                             the Overview's column measure: each column its
+ *                             share rounded down to 8px and a pixel more, the
+ *                             next 24px on less that pixel, so both borders
+ *                             of every card are lines; narrow, they stack
+ *                             23px apart, as cards do
+ *           data-verso-columns  the tiles' target count
+ * Elements: __track  the columns
+ *           __cell   one child's place (data-verso-form-column on a split's
+ *                    form)
+ * Sets:     --verso-rhythm  0 on the sections of a settings split's form,
+ *                           whose rows meet on their own air
+ */
+
+.verso-grid {
+  container-type: inline-size;
+  min-width: 0;
+}
+.verso-grid[data-verso-style="cards"] {
+  container: cards / inline-size;
+}
+
+.verso-grid__track {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: calc(var(--spacing) * 8);
+  min-width: 0;
+}
+.verso-grid__track:where(.verso-grid[data-verso-columns="1"] *) {
+  grid-template-columns: minmax(0, 1fr);
+}
+@media (width >= 48rem) {
+  .verso-grid__track:where(.verso-grid[data-verso-columns="3"] *) {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .verso-grid__track:where(.verso-grid[data-verso-columns="4"] *) {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+.verso-grid__cell {
+  min-width: 0;
+}
+
+/* facts */
+.verso-grid__track:where(.verso-grid[data-verso-style="facts"] > *) {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0 calc(var(--spacing) * 12);
+}
+@container (width >= 42rem) {
+  .verso-grid__track:where(.verso-grid[data-verso-style="facts"] > *) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    row-gap: var(--spacing-inset);
+  }
+}
+
+/* settings, editor, rail */
+.verso-grid__track:where(.verso-grid:is([data-verso-style="settings"], [data-verso-style="editor"], [data-verso-style="rail"]) > *) {
+  grid-template-columns: minmax(0, 1fr);
+  gap: calc(var(--spacing) * 10);
+}
+.verso-grid__cell[data-verso-form-column]:where(.verso-grid:is([data-verso-style="settings"], [data-verso-style="editor"], [data-verso-style="rail"]) *) {
+  max-width: var(--verso-form-width, 40rem);
+}
+.verso-grid__cell:last-child:where(.verso-grid:is([data-verso-style="settings"], [data-verso-style="editor"], [data-verso-style="rail"]) *) {
+  align-self: start;
+}
+.verso-grid__cell:last-child:where(.verso-grid[data-verso-style="rail"] *) {
+  order: -1;
+}
+@container (width >= 62.5rem) {
+  .verso-grid__track:where(.verso-grid:is([data-verso-style="settings"], [data-verso-style="editor"], [data-verso-style="rail"]) > *) {
+    grid-template-columns: var(--verso-form-width, 40rem) minmax(0, 1fr);
+  }
+  .verso-grid__cell:last-child:where(.verso-grid:is([data-verso-style="settings"], [data-verso-style="rail"]) *) {
+    position: sticky;
+    top: calc(var(--spacing) * 22);
+    order: 0;
+  }
+}
+.verso-grid__cell:where(.verso-grid[data-verso-style="settings"] *) section[id] > .verso-rhythm {
+  --verso-rhythm: 0rem;
+}
+
+/* figure */
+.verso-grid__track:where(.verso-grid[data-verso-style="figure"] > *) {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--spacing-inset) calc(var(--spacing) * 10);
+}
+.verso-grid__cell:not(:last-child):where(.verso-grid[data-verso-style="figure"] *) {
+  flex: 1 1 22rem;
+}
+.verso-grid__cell:last-child:where(.verso-grid[data-verso-style="figure"] *) {
+  flex: 0 1 var(--art-w, auto);
+}
+
+/* cards */
+.verso-grid__track:where(.verso-grid[data-verso-style="cards"] > *) {
+  grid-template-columns: calc(round(down, 100% - 1px, 8px) + 1px);
+  align-items: start;
+  gap: calc(var(--spacing-inset) - 1px);
+}
+@container cards (width >= 40rem) {
+  .verso-grid__track:where(.verso-grid[data-verso-style="cards"] > *) {
+    grid-template-columns: repeat(2, calc(round(down, calc((100% - var(--spacing-inset) - 1px) / 2), 8px) + 1px));
+  }
+}

@@ -18,15 +18,40 @@ func TestRenderGrid(t *testing.T) {
 		&Text{Markdown: "B"},
 	}}
 	got := render(t, r, g)
-	if !strings.Contains(got, "grid-cols-2") {
-		t.Errorf("two-column grid classes missing: %s", got)
+	for _, want := range []string{
+		`<div class="verso-grid" data-verso-columns="2">`,
+		`<div class="verso-grid__track">`,
+		`<div class="verso-grid__cell">`,
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("two-column grid missing %q: %s", want, got)
+		}
 	}
 	for _, want := range []string{"A", "B"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("grid child %q not rendered: %s", want, got)
 		}
 	}
+	declares(t, "grid", ".verso-grid__track", "display: grid;", "grid-template-columns: repeat(2, minmax(0, 1fr));")
 }
+
+// cssRuleWithin is cssRule for the first rule sel after the at-rule at, or
+// "" when the sheet has no such at-rule.
+func cssRuleWithin(css, at, sel string) string {
+	i := strings.Index(css, at+" {")
+	if i < 0 {
+		return ""
+	}
+	return cssRule(css[i:], sel)
+}
+
+// The selectors grid.css writes for a split (settings, editor, rail).
+const (
+	splitTrack = `.verso-grid__track:where(.verso-grid:is([data-verso-style="settings"], [data-verso-style="editor"], [data-verso-style="rail"]) > *)`
+	splitSide  = `.verso-grid__cell:last-child:where(.verso-grid:is([data-verso-style="settings"], [data-verso-style="editor"], [data-verso-style="rail"]) *)`
+	stickySide = `.verso-grid__cell:last-child:where(.verso-grid:is([data-verso-style="settings"], [data-verso-style="rail"]) *)`
+	formSplit  = "@container (width >= 62.5rem)"
+)
 
 // Cards of one kind stand in a row of cells, each card in a cell of its own,
 // so none is the card after another (sections.css spaces those) and the row
@@ -36,69 +61,70 @@ func TestGridCardsStandInCells(t *testing.T) {
 		&Section{Title: "SFP+ module", Chip: "xfi0", Hairline: true},
 		&Section{Title: "SFP+ module", Chip: "xfi1", Hairline: true},
 	}})
-	if !strings.HasPrefix(strings.TrimSpace(got), `<div data-verso-cards><div>`) {
+	if !strings.HasPrefix(strings.TrimSpace(got), `<div class="verso-grid" data-verso-style="cards" data-verso-cards`) || !strings.Contains(got, `<div class="verso-grid__track">`) {
 		t.Errorf("the row should open the cards' cells:\n%s", got)
 	}
-	if n := strings.Count(got, `<div class="min-w-0"><section`); n != 2 {
+	if n := strings.Count(got, `<div class="verso-grid__cell"><section`); n != 2 {
 		t.Errorf("%d cards in cells of their own, want 2:\n%s", n, got)
 	}
-	css, err := os.ReadFile(filepath.Join("..", "server", "assets", "sections.css"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !strings.Contains(string(css), "[data-verso-cards] > div {") {
-		t.Error("sections.css should lay the cards' row out")
+	css := blockCSS(t, "grid")
+	declares(t, "grid", `.verso-grid[data-verso-style="cards"]`, "container: cards / inline-size;")
+	cards := `.verso-grid__track:where(.verso-grid[data-verso-style="cards"] > *)`
+	declares(t, "grid", cards, "grid-template-columns: calc(round(down, 100% - 1px, 8px) + 1px);")
+	if rule := cssRuleWithin(css, "@container cards (width >= 40rem)", cards); !strings.Contains(rule, "grid-template-columns: repeat(2,") {
+		t.Errorf("grid.css should lay the cards side by side where there is room:\n%s", rule)
 	}
 }
 
 // A figure stands beside what is said of it: what is said first, taking the
-// row, then the figure at its own width (sections.css lays them out and
-// wraps them).
+// row, then the figure at its own width (grid.css lays them out and wraps
+// them).
 func TestGridFigureStandsBesideItsFacts(t *testing.T) {
 	got := render(t, newRenderer(t), &Grid{Style: "figure", Children: []Widget{
 		&Properties{Align: "left", Items: []Property{{Label: "Memory", Value: "7.7 GiB"}}},
 		&Ports{Back: `<svg viewBox="0 0 504 136"></svg>`, Items: []PortItem{{Iface: "eth0"}}},
 	}})
-	row, list, ports := strings.Index(got, "<div data-verso-beside>"), strings.Index(got, "<dl"), strings.Index(got, `class="verso-ports`)
+	row, list, ports := strings.Index(got, `data-verso-style="figure"`), strings.Index(got, "<dl"), strings.Index(got, `class="verso-ports`)
 	if row < 0 || list < row || ports < list {
 		t.Errorf("the facts should open the row, then the figure:\n%s", got)
 	}
-	css, err := os.ReadFile(filepath.Join("..", "server", "assets", "sections.css"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !strings.Contains(string(css), "[data-verso-beside] > :last-child {") {
-		t.Error("sections.css should size the figure's column")
-	}
+	declares(t, "grid", `.verso-grid__track:where(.verso-grid[data-verso-style="figure"] > *)`, "display: flex;", "flex-wrap: wrap;")
+	declares(t, "grid", `.verso-grid__cell:not(:last-child):where(.verso-grid[data-verso-style="figure"] *)`, "flex: 1 1 22rem;")
+	declares(t, "grid", `.verso-grid__cell:last-child:where(.verso-grid[data-verso-style="figure"] *)`, "flex: 0 1 var(--art-w, auto);")
 	// The row's hook is its own: a listing's live figures (a device's Now
 	// cell) carry data-verso-figure, and a rule aimed at that would stack
 	// them and stretch every row.
-	if strings.Contains(string(css), "[data-verso-figure]") {
-		t.Error("sections.css styles the live figures' hook")
-	}
-	templates, err := filepath.Glob(filepath.Join("templates", "*.tmpl"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, path := range templates {
-		body, err := os.ReadFile(path)
+	for _, path := range []string{
+		filepath.Join("..", "server", "assets", "sections.css"),
+		filepath.Join("..", "server", "assets", "blocks", "grid.css"),
+	} {
+		css, err := os.ReadFile(path)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if strings.Contains(string(body), "data-verso-beside") && filepath.Base(path) != "grid.html.tmpl" {
-			t.Errorf("%s uses the figure row's hook", path)
+		if strings.Contains(string(css), "[data-verso-figure]") {
+			t.Errorf("%s styles the live figures' hook", path)
 		}
 	}
 }
 
-// TestGridColumnsResponsive checks the count→responsive-class mapping the shell owns.
+// TestGridColumnsResponsive checks the count→columns mapping the shell owns:
+// one column, two-up from a phone, three and four from a larger screen.
 func TestGridColumnsResponsive(t *testing.T) {
 	r := newRenderer(t)
-	cases := map[int]string{1: "grid-cols-1", 2: "grid-cols-2", 3: "md:grid-cols-3", 4: "md:grid-cols-4"}
-	for cols, want := range cases {
+	for cols := 1; cols <= 4; cols++ {
 		got := render(t, r, &Grid{Columns: cols, Children: []Widget{&Text{Markdown: "x"}}})
-		if !strings.Contains(got, want) {
-			t.Errorf("columns=%d: want class %q in:\n%s", cols, want, got)
+		if want := `data-verso-columns="` + string(rune('0'+cols)) + `"`; !strings.Contains(got, want) {
+			t.Errorf("columns=%d: want %s in:\n%s", cols, want, got)
+		}
+	}
+	css := blockCSS(t, "grid")
+	declares(t, "grid", ".verso-grid__track", "grid-template-columns: repeat(2, minmax(0, 1fr));")
+	declares(t, "grid", `.verso-grid__track:where(.verso-grid[data-verso-columns="1"] *)`, "grid-template-columns: minmax(0, 1fr);")
+	for _, n := range []string{"3", "4"} {
+		sel := `.verso-grid__track:where(.verso-grid[data-verso-columns="` + n + `"] *)`
+		if rule := cssRuleWithin(css, "@media (width >= 48rem)", sel); !strings.Contains(rule, "grid-template-columns: repeat("+n+", minmax(0, 1fr));") {
+			t.Errorf("columns=%s: grid.css should widen to %s columns on a larger screen:\n%s", n, n, rule)
 		}
 	}
 }
@@ -175,7 +201,7 @@ func TestDecodeGridChildren(t *testing.T) {
 		t.Fatalf("decode grid: %v", err)
 	}
 	got := render(t, r, w)
-	for _, want := range []string{"md:grid-cols-3", "Devices", "up"} {
+	for _, want := range []string{`data-verso-columns="3"`, "Devices", "up"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("decoded grid missing %q:\n%s", want, got)
 		}
@@ -198,17 +224,20 @@ func TestGridRail(t *testing.T) {
 		Children: []Widget{&Callout{Body: "the work"}, &Callout{Body: "the rail"}},
 	})
 	for _, want := range []string{
-		`<div class="@container">`,
-		"grid grid-cols-1 gap-10 @form-split:grid-cols-form",
+		`<div class="verso-grid" data-verso-style="rail" data-verso-columns="2">`,
+		`<div data-verso-form-column class="verso-grid__cell">`,
 		"the work", "the rail",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("rail grid missing %q:\n%s", want, got)
 		}
 	}
-	// A rail is never the even split an ordinary grid draws.
-	if strings.Contains(got, "md:grid-cols-2") {
-		t.Errorf("a rail must not fall back to even columns:\n%s", got)
+	css := blockCSS(t, "grid")
+	declares(t, "grid", ".verso-grid", "container-type: inline-size;")
+	// Narrow, one column; a rail is never the even split an ordinary grid draws.
+	declares(t, "grid", splitTrack, "grid-template-columns: minmax(0, 1fr);", "gap: calc(var(--spacing) * 10);")
+	if rule := cssRuleWithin(css, formSplit, splitTrack); !strings.Contains(rule, "grid-template-columns: var(--verso-form-width, 40rem) minmax(0, 1fr);") {
+		t.Errorf("grid.css should split a rail at the form's measure once its container has room:\n%s", rule)
 	}
 }
 
@@ -222,10 +251,18 @@ func TestASideColumnStaysInView(t *testing.T) {
 			Style: style, Columns: 2,
 			Children: []Widget{&Callout{Body: "the work"}, &Callout{Body: "the side"}},
 		})
-		for _, want := range []string{"[&>div:last-child]:self-start", "@form-split:[&>div:last-child]:sticky", "@form-split:[&>div:last-child]:top-22"} {
-			if !strings.Contains(got, want) {
-				t.Errorf("%s grid: the side column is missing %q:\n%s", style, want, got)
-			}
+		if want := `data-verso-style="` + style + `"`; !strings.Contains(got, want) {
+			t.Errorf("%s grid: missing %s:\n%s", style, want, got)
+		}
+		if !strings.Contains(stickySide, `[data-verso-style="`+style+`"]`) {
+			t.Errorf("%s grid: the side column is not among the ones held in view", style)
+		}
+	}
+	declares(t, "grid", splitSide, "align-self: start;")
+	rule := cssRuleWithin(blockCSS(t, "grid"), formSplit, stickySide)
+	for _, want := range []string{"position: sticky;", "top: calc(var(--spacing) * 22);"} {
+		if !strings.Contains(rule, want) {
+			t.Errorf("the side column beside the form is missing %q:\n%s", want, rule)
 		}
 	}
 }

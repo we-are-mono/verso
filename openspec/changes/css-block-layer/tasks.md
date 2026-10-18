@@ -64,7 +64,7 @@
 - [x] 4.2 `stack` and `cluster`: the page stack, and the repeated `flex flex-wrap items-center gap-2 min-w-0` row. Verify: block done; `TestNoRepeatedBundles` no longer lists that bundle.
 - [x] 4.3 `page`: page body, full and ground variants, heading (`type-headline`), the reach properties. Verify: block done.
 - [ ] 4.4 `section`: the kinds other than card (ruled, part, continued, plain, bare), band, ledger, kicker (`type-label`) and lede (`type-lede`). Every rule keyed on `data-verso-headless` or `data-verso-ruled` names its kind. Verify: block done; `section.html.tmpl` holds no class-string template call.
-- [ ] 4.5 `drawer`, `beside`, `cards-row`: drawer frame, motion, open state, scrollbar, ground, gutter and title; the figure-beside row; the cards-of-one-kind row. Verify: block done, with a drawer of each kind in the parity run.
+- [x] 4.5 `drawer`, `beside`, `cards-row`: drawer frame, motion, open state, scrollbar, ground, gutter and title; the figure-beside row; the cards-of-one-kind row. Verify: block done, with a drawer of each kind in the parity run.
 
 ## 5. Forms
 

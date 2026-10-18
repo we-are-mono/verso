@@ -32,20 +32,6 @@
  *
  * In utilities: the page stack's rhythm and the rows' own padding are
  * utilities, and only this layer outranks them. */
-/* A drawer's gutter: the sand between its edges and the cards it holds, one
- * measure on its three open sides (after its left border, before the
- * window's edge, under its chrome's hairline), and the chrome's words keep it
- * too, so the title and the tabs stand on the cards' left edge and the close
- * ends on their right one. It is the cards' 24px less the pixel of the edge
- * it is measured from, so a card's frame lands on a line of the drawer's
- * grid, which starts on its left border and its chrome's hairline; 760px is a
- * whole number of lines, so the right border lands on one too. On a phone,
- * where the drawer takes the window, it is 16px less that pixel, as a page's
- * gutter is there. */
-:root { --verso-drawer-gutter: calc(var(--spacing-inset) - 1px); }
-@media (width < 48rem) {
-  :root { --verso-drawer-gutter: calc(var(--spacing) * 4 - 1px); }
-}
 @layer utilities {
   main { --verso-reach-start: calc(var(--spacing) * 10); --verso-reach-end: 0px; }
   /* A drawer's subjects are cards, which set their own reach; what stands on
@@ -290,51 +276,13 @@
 .verso-page__body > .verso-stack > * + .verso-stack:has(> section[data-verso-section]:first-child > [data-verso-section-band]) {
   margin-top: calc(var(--spacing-inset) - 1px);
 }
-/* A figure beside what is said of it (the Hardware page's board card): what
- * is said of it at the left, taking the row, and the figure 40px on at its
- * own width (a panel says its art's, --art-w) at the right edge, both from
- * the same top line. Where what is said would read narrower than a fact
- * list does, the figure stands under it, 24px down, as a card's blocks
- * stand. Its hook is its own: a listing's live figures carry
- * data-verso-figure. */
-[data-verso-beside] {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  gap: var(--spacing-inset) calc(var(--spacing) * 10);
-}
-[data-verso-beside] > :not(:last-child) {
-  flex: 1 1 22rem;
-  min-width: 0;
-}
-[data-verso-beside] > :last-child {
-  flex: 0 1 var(--art-w, auto);
-  min-width: 0;
-}
-/* Cards of one kind side by side (a board's fiber modules): the row stands
- * where a card would, 23px under the card before it, and lays its cards on
- * the Overview's column measure: each column its share rounded down to 8px
- * and a pixel more, the next 24px on less that pixel, so both borders of
- * every card are lines. Narrow, they stack 23px apart, as cards do. */
+/* Cards of one kind side by side (blocks/grid.css) stand where a card would,
+ * 23px under the card before it. */
 .verso-page__body > .verso-stack > * + [data-verso-cards] {
   margin-top: calc(var(--spacing-inset) - 1px);
 }
 .verso-page__body > .verso-stack > [data-verso-cards]:last-child {
   margin-bottom: -1px;
-}
-.verso-page__body [data-verso-cards] {
-  container: cards / inline-size;
-}
-.verso-page__body [data-verso-cards] > div {
-  display: grid;
-  grid-template-columns: calc(round(down, 100% - 1px, 8px) + 1px);
-  gap: calc(var(--spacing-inset) - 1px);
-  align-items: start;
-}
-@container cards (min-width: 40rem) {
-  .verso-page__body [data-verso-cards] > div {
-    grid-template-columns: repeat(2, calc(round(down, calc((100% - var(--spacing-inset) - 1px) / 2), 8px) + 1px));
-  }
 }
 /* The page's last card gives its bottom border's pixel back as every card
  * does to the next, so the colophon's hairline, the page's 40px on, lands on

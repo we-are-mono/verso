@@ -84,11 +84,11 @@ func TestPackagesInventory(t *testing.T) {
 	panel := getPanel(t, s, "/system/packages/package?name=htop").Body.String()
 	for _, want := range []string{
 		"Process viewer", "GPL-2.0", // the drawer's story
-		`<div class="verso-prose text-body"><p>Process viewer</p>`,                                                                                 // the description is plain body prose, no heading over it
-		`href="https://htop.dev" class="verso-link" target="_blank" rel="noopener noreferrer"`,                                                     // project link opens safely outside Verso
-		`<dl class="verso-facts" data-verso-style="system">`,                                                                                       // facts are hairline rows 32px under the prose, closed by a rule as a table's are
-		`<header class="flex flex-none items-center gap-4 bg-ground px-(--verso-drawer-gutter) py-3.5 shadow-[inset_0_-1px_0_var(--color-rule)]">`, // shared title band
-		`href="/system/packages/files?package=htop"`,                                                                                               // an installed package lists its files
+		`<div class="verso-prose text-body"><p>Process viewer</p>`,                             // the description is plain body prose, no heading over it
+		`href="https://htop.dev" class="verso-link" target="_blank" rel="noopener noreferrer"`, // project link opens safely outside Verso
+		`<dl class="verso-facts" data-verso-style="system">`,                                   // facts are hairline rows 32px under the prose, closed by a rule as a table's are
+		`<header class="verso-modal__head">`,                                                   // shared title band
+		`href="/system/packages/files?package=htop"`,                                           // an installed package lists its files
 	} {
 		if !strings.Contains(panel, want) {
 			t.Errorf("drawer missing %q", want)

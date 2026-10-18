@@ -94,7 +94,7 @@ func TestHeadingActCarriesItsPanel(t *testing.T) {
 		// carries where the page goes when nothing is open.
 		`<span x-data="modal" data-open="true" data-closed-href="/x" class="contents">`,
 		`<a href="/x?open=new" @click.prevent="show"`,
-		"x-teleport", "New rule", "bg-ground px-(--verso-drawer-gutter)", `aria-label="Sections"`,
+		"x-teleport", "New rule", `<header class="verso-modal__head">`, `aria-label="Sections"`,
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("action bar panel missing %q:\n%s", want, got)

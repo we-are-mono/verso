@@ -395,6 +395,15 @@ func (g *Grid) renderInto(r *Renderer, out io.Writer, csrf string) error {
 	if first, ok := g.rows(); ok {
 		return r.renderRows(out, g, first, csrf)
 	}
+	// An expanded row's facts are read line by line, each value beside a
+	// fixed label column, as a document's facts are.
+	if g.Style == "facts" {
+		for _, child := range g.Children {
+			if p, ok := child.(*Properties); ok && p.Align == "" {
+				p.Align = "left"
+			}
+		}
+	}
 	children, err := r.renderChildren(g.Children, csrf)
 	if err != nil {
 		return err

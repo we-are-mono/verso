@@ -207,7 +207,7 @@ func TestTheBoardCardsFacts(t *testing.T) {
 		}
 	}
 	// The facts stand at the left, the panel beside them on the right.
-	figure, list, panel := strings.Index(board, "<div data-verso-beside>"), strings.Index(board, "<dl"), strings.Index(board, "verso-ports")
+	figure, list, panel := strings.Index(board, `<div class="verso-grid" data-verso-style="figure"`), strings.Index(board, "<dl"), strings.Index(board, "verso-ports")
 	if figure < 0 || list < figure || panel < list {
 		t.Errorf("the facts should stand beside the panel, the facts first:\n%s", board)
 	}
@@ -443,7 +443,7 @@ func TestCoolingListsEveryFan(t *testing.T) {
 // stand side by side.
 func TestEachModuleIsACard(t *testing.T) {
 	page := renderCards(t, dkInput())
-	row := strings.Index(page, "<div data-verso-cards>")
+	row := strings.Index(page, `data-verso-style="cards" data-verso-cards`)
 	if row < 0 || row > strings.Index(page, ">SFP&#43; module</h2>") {
 		t.Errorf("the modules' cards should stand in one row:\n%s", page)
 	}

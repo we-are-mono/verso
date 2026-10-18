@@ -108,7 +108,7 @@ func TestMaintenanceSectionsUsePageBands(t *testing.T) {
 	}
 	// With nothing to say, nothing stands before Firmware: the section opens
 	// the work column right under the masthead's line.
-	if !regexp.MustCompile(`data-verso-form-column class="min-w-0">\s*<div class="verso-stack">\s*<section data-verso-section="plain" id="section-firmware">`).MatchString(body) {
+	if !regexp.MustCompile(`data-verso-form-column class="verso-grid__cell">\s*<div class="verso-stack">\s*<section data-verso-section="plain" id="section-firmware">`).MatchString(body) {
 		t.Error("something stands before Firmware with nothing to say")
 	}
 	for _, id := range []string{"back-up-and-restore", "reboot", "factory-reset"} {

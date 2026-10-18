@@ -1,4 +1,5 @@
 <!-- SPDX-License-Identifier: GPL-2.0-only -->
 <!-- SPDX-FileCopyrightText: 2026 Mono Technologies Inc. -->
 {{template "verso-drawer-header" .Title}}
-<div data-verso-scroll="sand" class="verso-drawer-scrollbar min-h-0 flex-1 overflow-y-auto {{template "verso-drawer-inset"}} py-7">{{.Body}}</div>
+{{/* A page's settings drawn as a panel: on the drawer's own Paper. */}}
+<div data-verso-scroll="sand" class="verso-modal__ground verso-drawer-scrollbar" data-verso-ground="paper">{{.Body}}</div>

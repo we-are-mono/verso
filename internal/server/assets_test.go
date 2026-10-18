@@ -834,12 +834,18 @@ func TestADevSessionCanDrawTheGrid(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// Over a drawer's body, the modal block draws it, scrolling with what the
+	// drawer holds.
+	if !strings.Contains(string(css), ".verso-modal__ground:where([data-verso-grid] *){") {
+		t.Error("the dev grid is not drawn; the compiled stylesheet does not carry the drawer's grid")
+	}
+	drawer := cssBlock(t, blockSheet(t, "modal"), "\n.verso-modal__ground:where([data-verso-grid] *) {")
 	for _, want := range []string{
-		":root[data-verso-grid] [data-verso-drawer-body]{",
-		"background-attachment:local",
+		"background-size: calc(var(--spacing) * 2) calc(var(--spacing) * 2);",
+		"background-attachment: local;",
 	} {
-		if !strings.Contains(string(css), want) {
-			t.Errorf("the dev grid is not drawn; stylesheet is missing %s", want)
+		if !strings.Contains(drawer, want) {
+			t.Errorf("the dev grid is not drawn; blocks/modal.css's drawer grid is missing %s", want)
 		}
 	}
 	// Over the page, the page block draws it from the bar's hairline and the

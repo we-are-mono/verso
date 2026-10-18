@@ -682,8 +682,8 @@ func TestRenderTableRowDrawer(t *testing.T) {
 		// A native dialog the browser holds modal, its scrim its ::backdrop;
 		// Escape and the scrim close it through the component.
 		`<dialog x-ref="dialog"`, `class="verso-modal overflow-hidden" data-verso-kind="drawer"`, `@cancel="dismiss"`, `@click="scrim"`,
-		`<header class="flex flex-none items-center gap-4 bg-ground px-(--verso-drawer-gutter) py-3.5 shadow-[inset_0_-1px_0_var(--color-rule)]">`, // the shared drawer panel's header
-		"verso-drawer-scrollbar min-h-0 flex-1 space-y-6 overflow-x-hidden overflow-y-auto bg-quiet px-(--verso-drawer-gutter)",
+		`<header class="verso-modal__head">`, // the shared drawer panel's header
+		`<div data-verso-scroll="sand" data-verso-drawer-body class="verso-modal__ground verso-stack verso-drawer-scrollbar">`,
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("row drawer missing %q:\n%s", want, got)
@@ -706,6 +706,8 @@ func TestRenderTableRowDrawer(t *testing.T) {
 	// is about is still on screen at the bottom of a long form.
 	declares(t, "modal", `.verso-modal[data-verso-kind="drawer"]`, "flex-direction: column;", "height: 100%;", "margin: 0 0 0 auto;")
 	declares(t, "modal", `.verso-modal[data-verso-kind="drawer"][open]`, "display: flex;")
+	declares(t, "modal", ".verso-modal__head:where(.verso-modal[data-verso-kind=\"drawer\"] *)", "flex: none;")
+	declares(t, "modal", ".verso-modal__ground", "flex: 1 1 0%;", "min-height: 0;", "overflow-x: hidden;", "overflow-y: auto;")
 }
 
 func TestRenderTableRowDrawerTitleBand(t *testing.T) {
@@ -713,11 +715,16 @@ func TestRenderTableRowDrawerTitleBand(t *testing.T) {
 	tbl := redirectsTable()
 	tbl.Rows[0].Drawer = &RowDrawer{Title: "Edit redirect"}
 	got := render(t, r, tbl)
-	for _, want := range []string{`<h2 class="min-w-0 truncate text-lg font-semibold tracking-tight text-ink">Edit redirect</h2>`, "bg-ground px-(--verso-drawer-gutter)", "pt-(--verso-drawer-gutter)", `aria-label="Close"`} {
+	for _, want := range []string{`<h2 class="verso-modal__title">Edit redirect</h2>`, `<header class="verso-modal__head">`, `class="verso-modal__ground`, `aria-label="Close" class="verso-modal__close"`} {
 		if !strings.Contains(got, want) {
 			t.Errorf("drawer title band missing %q:\n%s", want, got)
 		}
 	}
+	// The band is on Paper at the gutter; the body under it opens a gutter down.
+	declares(t, "modal", ".verso-modal__head:where(.verso-modal[data-verso-kind=\"drawer\"] *)",
+		"padding: calc(var(--spacing) * 3.5) var(--verso-drawer-gutter);", "background-color: var(--color-ground);")
+	declares(t, "modal", ".verso-modal__ground",
+		"padding: var(--verso-drawer-gutter) var(--verso-drawer-gutter) calc(var(--spacing) * 10);")
 }
 
 // TestEveryDrawerOffersTheFold: a drawer's header carries the one act that
@@ -1400,8 +1407,8 @@ func TestRenderRowDrawerTitleBand(t *testing.T) {
 	for _, want := range []string{
 		// The header and the strip are 56px as the top bar is: a 28px line
 		// and 14px of air either side, the hairline drawn inside the band.
-		`<header class="flex flex-none items-center gap-4 bg-ground px-(--verso-drawer-gutter) py-3.5 shadow-[inset_0_-1px_0_var(--color-rule)]">`,
-		`<h2 class="min-w-0 truncate text-lg font-semibold tracking-tight text-ink">Allow-DHCP-Renew</h2>`,
+		`<header class="verso-modal__head">`,
+		`<h2 class="verso-modal__title">Allow-DHCP-Renew</h2>`,
 		// The strip: the tab in force carries the action colour under it; the
 		// rest stay quiet. The tabs are the air, so an underline stands on the
 		// strip's own hairline.
@@ -1410,12 +1417,18 @@ func TestRenderRowDrawerTitleBand(t *testing.T) {
 		// The body under the strip is the page's ground in small: Quiet Sand,
 		// its cards keeping one gutter under the strip as at the drawer's
 		// edges, the strip's tabs and the title standing on that gutter too.
-		"overflow-y-auto bg-quiet px-(--verso-drawer-gutter) pt-(--verso-drawer-gutter) pb-10",
+		`data-verso-drawer-body class="verso-modal__ground`,
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("drawer nameplate missing %q:\n%s", want, got)
 		}
 	}
+	declares(t, "modal", ".verso-modal__head:where(.verso-modal[data-verso-kind=\"drawer\"] *)",
+		"padding: calc(var(--spacing) * 3.5) var(--verso-drawer-gutter);", "background-color: var(--color-ground);",
+		"box-shadow: inset 0 -1px 0 var(--color-rule);")
+	declares(t, "modal", ".verso-modal__ground",
+		"padding: var(--verso-drawer-gutter) var(--verso-drawer-gutter) calc(var(--spacing) * 10);",
+		"background-color: var(--color-quiet);")
 }
 
 // TestRenderRowDrawerWithoutTabs: a panel with one thing to say draws no strip —
@@ -1428,9 +1441,11 @@ func TestRenderRowDrawerWithoutTabs(t *testing.T) {
 	if strings.Contains(got, `aria-label="Sections"`) {
 		t.Errorf("a panel with no tabs must draw no strip:\n%s", got)
 	}
-	if !strings.Contains(got, "overflow-y-auto bg-quiet px-(--verso-drawer-gutter) pt-(--verso-drawer-gutter) pb-10") {
+	if !strings.Contains(got, `data-verso-drawer-body class="verso-modal__ground`) {
 		t.Errorf("untabbed panel lost its own top:\n%s", got)
 	}
+	declares(t, "modal", ".verso-modal__ground",
+		"padding: var(--verso-drawer-gutter) var(--verso-drawer-gutter) calc(var(--spacing) * 10);")
 }
 
 // TestRowWithItsOwnDoorDrawsNoDetailsLink: a listing whose rows already say how

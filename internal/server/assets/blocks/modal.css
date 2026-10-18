@@ -28,10 +28,19 @@
  *                            drawer: the window's full height at its right
  *                            edge, at the one drawer width (768px, a page
  *                            form's measure), flex only while open
- * Elements: __head        a dialog's title and its close control
+ * Context:  --verso-drawer-gutter  a drawer's gutter: the sand between its
+ *           edges and the cards it holds, the cards' 24px less the pixel of
+ *           the edge it is measured from (16px less it on a phone), so a
+ *           card's frame lands on a line of the drawer's grid
+ * Elements: __head        a dialog's title and its close control; a drawer's
+ *                         chrome, the title and its __acts
  *           __title       the dialog's title
+ *           __acts        a drawer's acts at its chrome's end, the close last
  *           __close       the × that dismisses an overlay
  *           __body        a dialog's contents
+ *           __ground      a drawer's body (data-verso-ground="paper": on the
+ *                         drawer's own Paper)
+ *           __panel       a drawer's fetched contents, and its __loading mark
  *           __busy        a dialog's face while its act runs: the waiting
  *                         mark, its __busy-title and __busy-words
  */
@@ -92,6 +101,7 @@
 }
 
 .verso-modal[data-verso-kind="drawer"] {
+  --verso-drawer-gutter: calc(var(--spacing-inset) - 1px);
   flex-direction: column;
   width: 100%;
   max-width: var(--container-3xl);
@@ -101,6 +111,11 @@
   border-radius: 0;
   box-shadow: var(--shadow-drawer);
   transition: translate 300ms cubic-bezier(0, 0, 0.2, 1);
+}
+@media (width < 48rem) {
+  .verso-modal[data-verso-kind="drawer"] {
+    --verso-drawer-gutter: calc(var(--spacing) * 4 - 1px);
+  }
 }
 .verso-modal[data-verso-kind="drawer"][open] {
   display: flex;
@@ -152,6 +167,80 @@
 
 .verso-modal__body {
   padding: calc(var(--spacing) * 2) calc(var(--spacing) * 6) calc(var(--spacing) * 6);
+}
+
+/* A drawer's chrome is 56px as the top bar is, built the same way: its 28px
+   line and 14px of air either side, the hairline drawn inside it, on Paper
+   over the body's sand, so the chrome reads as the drawer's and the cards
+   under it as what it holds. Its words keep the gutter, so the title stands
+   on the cards' left edge and the close ends on their right one. */
+.verso-modal__head:where(.verso-modal[data-verso-kind="drawer"] *) {
+  flex: none;
+  justify-content: flex-start;
+  gap: calc(var(--spacing) * 4);
+  padding: calc(var(--spacing) * 3.5) var(--verso-drawer-gutter);
+  background-color: var(--color-ground);
+  box-shadow: inset 0 -1px 0 var(--color-rule);
+}
+.verso-modal__title:where(.verso-modal[data-verso-kind="drawer"] *) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.verso-modal__acts {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: calc(var(--spacing) * 4);
+  margin-left: auto;
+}
+
+/* A drawer's body: the page's ground in small, Quiet Sand, its subjects
+   Paper cards, which keep the gutter on every open side, under the chrome's
+   hairline as at the drawer's edges, as far from each as they stand from
+   each other. A panel whose words stand on the drawer's own Paper
+   (data-verso-ground="paper": a page's settings drawn as a panel) keeps the
+   gutter at its sides only. */
+.verso-modal__ground {
+  flex: 1 1 0%;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: var(--verso-drawer-gutter) var(--verso-drawer-gutter) calc(var(--spacing) * 10);
+  background-color: var(--color-quiet);
+}
+.verso-modal__ground[data-verso-ground="paper"] {
+  padding-block: calc(var(--spacing) * 7);
+  background-color: transparent;
+}
+
+/* A panel fetched when it opens: a column filling the drawer, and the
+   waiting mark in its middle until it lands. */
+.verso-modal__panel {
+  display: flex;
+  flex: 1 1 0%;
+  flex-direction: column;
+  min-height: 0;
+}
+.verso-modal__loading {
+  display: flex;
+  flex: 1 1 0%;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-glyph);
+}
+
+/* The layout grid, drawn on request in a dev session, behind a drawer's
+   body from its left border and its chrome's hairline, a pixel before the
+   body's own edges, scrolling with what the drawer holds. */
+.verso-modal__ground:where([data-verso-grid] *) {
+  background-image:
+    linear-gradient(to right, color-mix(in srgb, var(--color-denim) 22%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in srgb, var(--color-denim) 22%, transparent) 1px, transparent 1px);
+  background-size: calc(var(--spacing) * 2) calc(var(--spacing) * 2);
+  background-position: -1px -1px;
+  background-attachment: local;
 }
 
 .verso-modal__busy {
