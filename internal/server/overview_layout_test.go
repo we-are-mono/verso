@@ -33,6 +33,21 @@ func TestCookieLayout(t *testing.T) {
 		t.Errorf("garbled cookie = %+v, want the default layout", got)
 	}
 
+	// A browser still carrying the layout under its former name keeps it until
+	// the page writes the current one, which then wins.
+	former := httptest.NewRequest(http.MethodGet, "/", nil)
+	former.AddCookie(&http.Cookie{Name: formerOverviewLayoutCookie, Value: value})
+	if got := source.Layout(former).Encode(); got != value {
+		t.Errorf("former cookie = %q, want %q", got, value)
+	}
+	both := httptest.NewRequest(http.MethodGet, "/", nil)
+	both.AddCookie(&http.Cookie{Name: formerOverviewLayoutCookie, Value: value})
+	current := "1.internet-ports-tunnels.traffic-resources-system-hardware..resources"
+	both.AddCookie(&http.Cookie{Name: overviewLayoutCookie, Value: current})
+	if got := source.Layout(both).Encode(); got != "1.internet-ports-tunnels.traffic-system-hardware..resources" {
+		t.Errorf("both cookies = %q, want the current cookie's layout", got)
+	}
+
 	// A board with no profile has no Hardware card, whatever the cookie says.
 	unprofiled := cookieLayout{}
 	if got := unprofiled.Layout(bare); slices.Contains(got.Cols[1], "hardware") {

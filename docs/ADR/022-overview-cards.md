@@ -115,10 +115,15 @@ announced with its column and position.
 
 ### The layout is kept per browser, in a cookie
 
-The layout is one first-party cookie, `verso_overview`, valued
+The layout is one first-party cookie, `verso_cards`, valued
 `1.<left>.<right>.<closed>.<hidden>`, each field card ids joined by `-`
-(`Path=/`, `SameSite=Lax`, `Secure` over HTTPS, kept 400 days). The page's
-script writes it and never reads it; the shell reads it before it renders, so
+(`Path=/`, `SameSite=Lax`, kept 400 days). It is never `Secure`: a router
+answers over HTTP and HTTPS alike, and a `Secure` cookie written over HTTPS is
+one an HTTP page of the same router can neither read nor overwrite, so its
+layout would stop saving. The layout was kept as `verso_overview`, `Secure`
+over HTTPS; the shell reads that name while a browser carries no
+`verso_cards`, and the page drops it with every write. The page's script
+writes it and never reads it; the shell reads it before it renders, so
 the page arrives arranged and nothing moves after load. The shell treats it as
 untrusted: a value it cannot read is the default layout, unknown cards are
 dropped, a card named twice keeps its first place, and a card the value leaves

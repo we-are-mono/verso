@@ -11,7 +11,13 @@ import (
 
 // overviewLayoutCookie carries the Overview's card layout. The page writes it
 // (verso-overview.js) and the shell only reads it.
-const overviewLayoutCookie = "verso_overview"
+const overviewLayoutCookie = "verso_cards"
+
+// formerOverviewLayoutCookie is the name the layout was kept under while the
+// page marked it Secure over HTTPS; such a cookie is one an HTTP page of the
+// same router can never overwrite. It is read only while the browser carries
+// no current one, and the page's next write drops it.
+const formerOverviewLayoutCookie = "verso_overview"
 
 // layoutSource is where the Overview's card layout comes from for a request.
 type layoutSource interface {
@@ -28,6 +34,8 @@ type cookieLayout struct{ hardware bool }
 func (c cookieLayout) Layout(r *http.Request) widget.OverviewLayout {
 	l := widget.DefaultOverviewLayout()
 	if cookie, err := r.Cookie(overviewLayoutCookie); err == nil {
+		l = widget.ParseOverviewLayout(cookie.Value)
+	} else if cookie, err := r.Cookie(formerOverviewLayoutCookie); err == nil {
 		l = widget.ParseOverviewLayout(cookie.Value)
 	}
 	if !c.hardware {

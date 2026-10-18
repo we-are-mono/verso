@@ -3,7 +3,7 @@
 
 // verso-overview.js — the Overview's cards (ADR-022): open and close a card,
 // and Arrange them. The shell renders the page already in the browser's layout
-// (the verso_overview cookie); this script reads the layout back off the page,
+// (the verso_cards cookie); this script reads the layout back off the page,
 // changes it, and writes the cookie. It never reads the cookie itself: the
 // shell is its one reader.
 //
@@ -12,7 +12,10 @@
 // for a move that goes nowhere). The page's own handling is the thin part at
 // the end. Event delegation only, never an Alpine expression: CSP mode.
 (function () {
-  var COOKIE = "verso_overview";
+  var COOKIE = "verso_cards";
+  // The name the layout was kept under while it was Secure over HTTPS, which
+  // an HTTP page can never overwrite; every write drops it where it may.
+  var FORMER = "verso_overview";
   var VERSION = "1";
   // 400 days, the longest a browser keeps a cookie.
   var MAX_AGE = 34560000;
@@ -35,12 +38,16 @@
   function encode(l) {
     return [VERSION, l.cols[0].join("-"), l.cols[1].join("-"), l.closed.join("-"), l.hidden.join("-")].join(".");
   }
-  function cookie(value, protocol) {
-    return COOKIE + "=" + value + "; Path=/; Max-Age=" + MAX_AGE + "; SameSite=Lax" + (protocol === "https:" ? "; Secure" : "");
+  // The cookie is never Secure: a router answers over HTTP and HTTPS alike, and
+  // a Secure cookie written over one is one the other can neither read nor
+  // overwrite. A layout is no secret.
+  function cookie(value) {
+    return COOKIE + "=" + value + "; Path=/; Max-Age=" + MAX_AGE + "; SameSite=Lax";
   }
-  // forget drops the cookie, so the shell renders its default layout.
-  function forget(protocol) {
-    return COOKIE + "=; Path=/; Max-Age=0; SameSite=Lax" + (protocol === "https:" ? "; Secure" : "");
+  // forget drops the cookie under both its names, so the shell renders its
+  // default layout.
+  function forget() {
+    return [COOKIE, FORMER].map(function (name) { return name + "=; Path=/; Max-Age=0; SameSite=Lax"; });
   }
 
   // move puts a card at index in col, wherever it stood before.
@@ -114,7 +121,8 @@
     return { cols: cols, closed: closed, hidden: hidden };
   }
   function persist(l) {
-    document.cookie = cookie(encode(l), window.location.protocol);
+    document.cookie = cookie(encode(l));
+    document.cookie = forget()[1];
   }
   function remember(arranging) {
     try {
@@ -127,7 +135,7 @@
   // connection. Arrange carries over.
   function reload(l) {
     if (l) persist(l);
-    else document.cookie = forget(window.location.protocol);
+    else forget().forEach(function (c) { document.cookie = c; });
     remember(true);
     window.location.reload();
   }

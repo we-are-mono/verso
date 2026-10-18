@@ -108,8 +108,9 @@ test('choosing in a card\'s header control never opens or closes the card', () =
   assert.equal(L.togglesFrom(at()), true, 'the header itself');
 });
 
-test('the cookie is first-party, long-lived and secure over HTTPS', () => {
-  assert.equal(L.cookie('1.a.b..', 'https:'), 'verso_overview=1.a.b..; Path=/; Max-Age=34560000; SameSite=Lax; Secure');
-  assert.equal(L.cookie('1.a.b..', 'http:'), 'verso_overview=1.a.b..; Path=/; Max-Age=34560000; SameSite=Lax');
-  assert.equal(L.forget('https:'), 'verso_overview=; Path=/; Max-Age=0; SameSite=Lax; Secure');
+// Never Secure: a Secure cookie an HTTPS visit leaves behind is one an HTTP
+// page of the same router can neither read nor overwrite.
+test('the cookie is first-party, long-lived and the same over HTTP and HTTPS', () => {
+  assert.equal(L.cookie('1.a.b..'), 'verso_cards=1.a.b..; Path=/; Max-Age=34560000; SameSite=Lax');
+  assert.deepEqual([...L.forget()], ['verso_cards=; Path=/; Max-Age=0; SameSite=Lax', 'verso_overview=; Path=/; Max-Age=0; SameSite=Lax']);
 });
