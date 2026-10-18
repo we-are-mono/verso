@@ -7,7 +7,7 @@ Lets a plugin place what it has (a page block, an act and its drawer, a fact row
 ## ADDED Requirements
 
 ### Requirement: Shell pages publish named slots
-Every page the shell owns SHALL publish a `blocks` slot named `shell.<page>.blocks`, whose anchors are the page's own sections. The Overview SHALL also publish `shell.overview.cards`, whose anchors are its cards. The shell's slot names, their kinds and their anchors SHALL be listed in one published catalogue that the SDK's conformance tests read.
+Access SHALL publish a `blocks` slot named `shell.access.blocks`, whose anchors are its own sections, and the Overview SHALL publish `shell.overview.cards`, whose anchors are its cards. Another shell page publishes a slot as `shell.<page>.<place>` when a plugin has something to place there. The shell's slot names, their kinds and their anchors SHALL be listed in one published catalogue that the SDK's conformance tests read.
 
 #### Scenario: Access offers its sections as anchors
 - **WHEN** a plugin reads the catalogue

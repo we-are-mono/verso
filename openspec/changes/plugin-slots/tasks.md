@@ -44,7 +44,7 @@
 ## 5. Shell pages publish their slots
 
 - [x] 5.1 Test first: Access publishes `shell.access.blocks` with anchors `password`, `sessions`, `web` and `luci`, matching `slots.json`. `accessParts` and its `system`-first rule are gone. A legacy `system_access` part stands before `web`. Then rebuild `renderAccess` on the slot renderer. Verify with `make test`.
-- [ ] 5.2 Test first: every other shell-owned page publishes `shell.<page>.blocks`, with its sections as anchors, matching `slots.json`. The catalogue test fails on any mismatch. Then add the slots to each page. Verify with `make test`.
+- [x] 5.2 Access and the Overview are the shell's slots (agreed: another page opens one when a plugin needs it). `TestShellSlotsMatchTheSDKCatalogue` fails on any mismatch with `slots.json`. Verify with `make test`.
 - [x] 5.3 Test first: a contribution-only plugin with no `nav` loads and fills a shell slot. The manifest load check counts `contributes`. Verify with `make test` and `make lint`.
 
 ## 6. Overview plugin cards
