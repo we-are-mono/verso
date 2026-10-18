@@ -174,14 +174,14 @@ func TestAChangeRecordedBeforeCausesKeepsItsPlace(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() { _ = store.Close() }()
-	if got := versionOf(t, store.db); got != latest || latest < 11 {
-		t.Fatalf("the file is at version %d, want %d (at least 11)", got, latest)
+	if got := versionOf(t, store.db); got != latest || latest < 12 {
+		t.Fatalf("the file is at version %d, want %d (at least 12)", got, latest)
 	}
 	list, err := store.Changes(ctx, 10)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(list) != 1 || list[0].User != "root" || list[0].Note != "kept" || list[0].Own || list[0].Cause != "" || list[0].CausePlugin != "" {
+	if len(list) != 1 || list[0].User != "root" || list[0].Note != "kept" || list[0].Own || list[0].Cause != "" || list[0].CausePlugin != "" || list[0].CauseArgs != nil {
 		t.Fatalf("changes after the step: %+v", list)
 	}
 }

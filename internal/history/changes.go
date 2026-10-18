@@ -22,12 +22,13 @@ const (
 // the router made itself (ADR-021). User and Address are empty for a direct
 // edit and for the router's own commit, unless an operator's act made it.
 // Own says the router committed it itself. Cause is what made the router
-// commit, in English, and CausePlugin the plugin whose catalog words it,
-// empty for the shell's words; both are empty for a commit an older plugin
-// marked with no cause. Related is the
-// change that Relation names; UndoneBy the change that undid this one; 0 is
-// none. OldRead says what each change replaced was read before the apply, so
-// Old is what was there, nil included; without it Old knows nothing.
+// commit, in English, CauseArgs what its %s take, in order (the package a
+// package operation names), and CausePlugin the plugin whose catalog words
+// it, empty for the shell's words; all are empty for a commit an older plugin
+// marked with no cause. Related is the change that Relation names; UndoneBy
+// the change that undid this one; 0 is none. OldRead says what each change
+// replaced was read before the apply, so Old is what was there, nil included;
+// without it Old knows nothing.
 type Change struct {
 	ID          int64
 	Time        time.Time
@@ -41,6 +42,7 @@ type Change struct {
 	OldRead     bool
 	Own         bool
 	Cause       string
+	CauseArgs   []string
 	CausePlugin string
 	Items       []ChangeItem
 }
@@ -84,9 +86,17 @@ func (s *Store) RecordChange(ctx context.Context, c Change) (int64, error) {
 		return 0, err
 	}
 	defer func() { _ = tx.Rollback() }()
+	causeArgs := ""
+	if len(c.CauseArgs) > 0 {
+		encoded, err := json.Marshal(c.CauseArgs)
+		if err != nil {
+			return 0, err
+		}
+		causeArgs = string(encoded)
+	}
 	result, err := tx.ExecContext(ctx,
-		`INSERT INTO changes (time, status, user, address, note, relation, related, undone_by, old_read, own, cause, cause_plugin) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		c.Time.Unix(), c.Status, c.User, c.Address, c.Note, c.Relation, nullID(c.Related), nullID(c.UndoneBy), c.OldRead, c.Own, c.Cause, c.CausePlugin)
+		`INSERT INTO changes (time, status, user, address, note, relation, related, undone_by, old_read, own, cause, cause_args, cause_plugin) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		c.Time.Unix(), c.Status, c.User, c.Address, c.Note, c.Relation, nullID(c.Related), nullID(c.UndoneBy), c.OldRead, c.Own, c.Cause, causeArgs, c.CausePlugin)
 	if err != nil {
 		return 0, err
 	}
@@ -149,7 +159,7 @@ func (s *Store) Change(ctx context.Context, id int64) (Change, bool, error) {
 // changes reads the changes the query's tail selects, in its order, with
 // their rows and each row's uci changes.
 func (s *Store) changes(ctx context.Context, tail string, args ...any) ([]Change, error) {
-	rows, err := s.db.QueryContext(ctx, `SELECT id, time, status, user, address, note, relation, related, undone_by, old_read, own, cause, cause_plugin FROM changes `+tail, args...)
+	rows, err := s.db.QueryContext(ctx, `SELECT id, time, status, user, address, note, relation, related, undone_by, old_read, own, cause, cause_args, cause_plugin FROM changes `+tail, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -160,9 +170,14 @@ func (s *Store) changes(ctx context.Context, tail string, args ...any) ([]Change
 		var c Change
 		var at int64
 		var related, undoneBy sql.NullInt64
-		if err := rows.Scan(&c.ID, &at, &c.Status, &c.User, &c.Address, &c.Note, &c.Relation, &related, &undoneBy, &c.OldRead, &c.Own, &c.Cause, &c.CausePlugin); err != nil {
+		var causeArgs string
+		if err := rows.Scan(&c.ID, &at, &c.Status, &c.User, &c.Address, &c.Note, &c.Relation, &related, &undoneBy, &c.OldRead, &c.Own, &c.Cause, &causeArgs, &c.CausePlugin); err != nil {
 			_ = rows.Close()
 			return nil, err
+		}
+		if causeArgs != "" {
+			// Arguments that do not read leave the cause as written.
+			_ = json.Unmarshal([]byte(causeArgs), &c.CauseArgs)
 		}
 		c.Time, c.Related, c.UndoneBy = time.Unix(at, 0), related.Int64, undoneBy.Int64
 		index[c.ID] = len(list)

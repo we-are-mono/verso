@@ -94,6 +94,30 @@ func TestTheRoutersOwnChangeKeepsItsCause(t *testing.T) {
 	}
 }
 
+// TestACauseKeepsItsArguments: a cause with an argument, such as the package
+// a package operation names, keeps it apart from the sentence, in order.
+func TestACauseKeepsItsArguments(t *testing.T) {
+	store, _ := open(t)
+	c := applied(minute(1))
+	c.Own, c.Cause, c.CauseArgs = true, "Changed by %s as it was installed.", []string{"https-dns-proxy"}
+	id, err := store.RecordChange(ctx, c)
+	if err != nil {
+		t.Fatal(err)
+	}
+	c.ID = id
+	if got := readBack(t, store, id); !reflect.DeepEqual(got, c) {
+		t.Fatalf("read\n%+v\nwant\n%+v", got, c)
+	}
+	plain := applied(minute(2))
+	id, err = store.RecordChange(ctx, plain)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := readBack(t, store, id); got.CauseArgs != nil {
+		t.Errorf("a change with no arguments reads %#v", got.CauseArgs)
+	}
+}
+
 // TestAChangeNeverRecordedIsNotFound.
 func TestAChangeNeverRecordedIsNotFound(t *testing.T) {
 	store, _ := open(t)
