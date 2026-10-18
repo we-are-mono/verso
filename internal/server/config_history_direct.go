@@ -135,10 +135,14 @@ func (s *Server) takeSpool(ctx context.Context, store *history.Store, dir string
 // takeReading keeps one config as it was read. The first reading of it is
 // where its history starts; Verso's own write, the helper's or an apply's,
 // is kept as it is; any other difference from the last reading is an entry.
+// Every secret the shell knows is masked first: the helper fingerprints the
+// secrets of the manifests it reads, and a manifest it cannot read names
+// secrets the shell still knows.
 func (s *Server) takeReading(ctx context.Context, store *history.Store, reading configReading) error {
 	if !s.declaredConfigsUnion()[reading.Config] {
 		return nil
 	}
+	reading.Sections = withoutSecrets(reading.Config, reading.Sections, s.secretOptions())
 	sections, err := json.Marshal(reading.Sections)
 	if err != nil {
 		return err
@@ -173,6 +177,16 @@ func (s *Server) takeReading(ctx context.Context, store *history.Store, reading 
 		s.foldHistory(ctx)
 	}
 	return keep()
+}
+
+// withoutSecrets is each section of config with the value of every option
+// secrets names not kept (history.WithoutSecrets).
+func withoutSecrets(config string, sections map[string]map[string]any, secrets map[string]bool) map[string]map[string]any {
+	kept := make(map[string]map[string]any, len(sections))
+	for name, section := range sections {
+		kept[name], _ = history.WithoutSecrets(config, section, secrets)
+	}
+	return kept
 }
 
 // directChange is an edit written straight to a config as config history

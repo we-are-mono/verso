@@ -608,6 +608,48 @@ func TestAHistoryKeptBeforeAnOptionWasListedIsScrubbedOfIt(t *testing.T) {
 	}
 }
 
+// TestASpooledReadingIsMaskedByTheShell: a reading verso-rpcd spooled with a
+// secret's value as written, the helper having read no manifest naming it,
+// keeps no value of the secret the shell knows, as the config last read, as
+// its starting point, or in an entry, and what is no secret is kept as read.
+func TestASpooledReadingIsMaskedByTheShell(t *testing.T) {
+	m := demoACLManifest()
+	m.ACL.Write = append(m.ACL.Write, plugin.ACLScope{Scope: "uci", Object: "vpn", Function: "write"})
+	m.Secrets = []string{"vpn.auth_pass"}
+	s := newServerWith(t, fakeBackend{}, &fakeTransport{}, []plugin.Manifest{m})
+	path := filepath.Join(t.TempDir(), "history.db")
+	store, err := history.Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = store.Close() })
+	s.historyStore, s.changeLog = store, store
+	vpnReading := func(at int64, pass, remote string) configReading {
+		return configReading{Time: at, Config: "vpn", Sections: map[string]map[string]any{
+			"office": {".type": "tunnel", ".index": float64(0), "auth_pass": pass, "remote": remote},
+		}}
+	}
+	for _, reading := range []configReading{
+		vpnReading(1000, "PASS-SPOOLED-FIRST", "vpn.example.org"),
+		vpnReading(2000, "PASS-SPOOLED-NEXT", "NO-SECRET.example.org"),
+	} {
+		if err := s.takeReading(t.Context(), store, reading); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, pass := range []string{"PASS-SPOOLED-FIRST", "PASS-SPOOLED-NEXT"} {
+		if found := heldIn(t, path, pass); len(found) > 0 {
+			t.Fatalf("history.db holds the plugin's secret:\n%s", strings.Join(found, "\n"))
+		}
+	}
+	if found := heldIn(t, path, "NO-SECRET"); len(found) == 0 {
+		t.Error("what is no secret is not kept")
+	}
+	if got := entries(t, store); len(got) != 1 {
+		t.Errorf("entries = %+v, want the remote's change alone", got)
+	}
+}
+
 // TestAPluginNamesSecretsOnlyInTheConfigsItWrites: a secret a manifest names
 // in a config its acl does not write with scope uci, one it only reads
 // included, is not taken for one, as a scrub erases a secret's values from
