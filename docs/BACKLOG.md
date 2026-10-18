@@ -126,11 +126,6 @@ own and points at the decision that governs it; the rationale lives there, not h
 - **Recently seen SFP modules in the Temperatures graph.** The graph's choices
   are the modules plugged in now, so an unplugged module's history goes
   unread; listing the modules seen over the last 30 days would reach it.
-- **The fibre lists side by side on a phone.** System › Hardware sets its SFP
-  modules' fact lists in a two-column `Grid`, which stays two columns at every
-  width, so on a phone each list is half the card and a dark receiver's
-  "−25.2 dBm · no light" wraps. A grid that stacks under the card's own width
-  would keep each list whole.
 - **SFP module identity.** Each module's list gives its optical readings but
   not which module it is: vendor, part number, wavelength and serial live in
   the module's EEPROM (`ethtool -m`), which the shell cannot read unprivileged.
@@ -162,9 +157,6 @@ own and points at the decision that governs it; the rationale lives there, not h
   choice. A setting whose change waits to be applied
   is marked by a marigold bar down its row's left edge. Installed plugins
   need no upgrade.
-- **Maintenance's Firmware header on a phone.** At 390px the Firmware card's
-  header wraps to 108px, half a line over the grid, so every card under it
-  on Maintenance stands 4px off its lines.
 - **Help written for a tooltip.** The plugins in their own repos (ddns,
   dnsdhcp, qos, vpn, wireless) wrote `help` and `tip` to be read on hover; on
   the page some read long (dnsdhcp's DUID tip runs past 300 characters). Read
@@ -186,19 +178,9 @@ the type roles in `type.css`, and the guards in
   frame with Paper column heads; a list (`Style: "list"`, the Overview's
   Ports and Tunnels, who is signed in) stands in the card's inset under a fact
   list's heading. Decide whether a card's listing is ever more than a list.
-- **System panels on cards.** The Logs, Alerts and Packages settings panels
-  stand their rows on the drawer's own Paper (`data-verso-ground="paper"`)
-  rather than in cards, as every other drawer's settings do.
-- **The interface inventory's markup.** `table-interfaces.html.tmpl` still
-  draws its tree, its columns' widths and its unfold with utilities and
-  arbitrary values (`py-row`, `pl-29.25`, `w-39`), the one listing not built
-  from the table block's elements; `py-row` is the entry's last utility.
-- **Code and properties leftovers.** The code block's token inks and the
-  properties head still name colour and layout utilities per site
-  (`text-denim-deep`, `sm:w-24`); a token's ink is the code block's, by
-  `data-verso-token`.
-- **The rail's page transition.** The view-transition rules stand in
-  `input.css`; they are the nav block's.
+- **System settings without script.** The Logs, Alerts and Packages settings
+  stand on cards in their drawers; the pages a browser without script opens
+  for them still stand their rows loose on the sand.
 
 ## Pending changes (ADR-010, pending-changes-page)
 
