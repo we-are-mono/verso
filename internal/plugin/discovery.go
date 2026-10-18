@@ -45,6 +45,7 @@ func Discover(fsys fs.FS, glob string) (manifests []Manifest, problems []error) 
 			problems = append(problems, fmt.Errorf("plugin: %s: %w", path, err))
 			continue
 		}
+		problems = append(problems, wrapAll(path, m.readContributes(data))...)
 		if err := m.validate(); err != nil {
 			problems = append(problems, fmt.Errorf("plugin: %s: %w", path, err))
 			continue
@@ -194,4 +195,13 @@ func fieldName(key string) string {
 		}
 		return r
 	}, key)
+}
+
+// wrapAll prefixes each of a manifest's problems with the file it is in.
+func wrapAll(path string, errs []error) []error {
+	out := make([]error, 0, len(errs))
+	for _, err := range errs {
+		out = append(out, fmt.Errorf("plugin: %s: %w", path, err))
+	}
+	return out
 }

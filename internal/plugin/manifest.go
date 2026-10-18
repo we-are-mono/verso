@@ -18,12 +18,17 @@ import (
 // the shell's only build-free knowledge of a plugin (ADR-006).
 type Manifest struct {
 	// SystemAccess contributes service settings to the shell-owned Access page.
-	SystemAccess  string     `json:"system_access,omitempty"`
-	ID            string     `json:"id"`
-	Name          string     `json:"name"`
-	Socket        string     `json:"socket"`
-	SchemaVersion int        `json:"schema_version"`
-	Nav           []NavEntry `json:"nav"`
+	// It is read as a contribution to Access's blocks (readSystemAccess).
+	SystemAccess string `json:"system_access,omitempty"`
+	// Contributes is what the plugin puts in named slots (ADR-026), read
+	// entry by entry from the manifest's "contributes" so a bad entry is
+	// skipped and the rest kept.
+	Contributes   []Contribution `json:"-"`
+	ID            string         `json:"id"`
+	Name          string         `json:"name"`
+	Socket        string         `json:"socket"`
+	SchemaVersion int            `json:"schema_version"`
+	Nav           []NavEntry     `json:"nav"`
 	// EntityTabs and EntityActs are what this plugin has to say about a subject
 	// some other page lists — see EntityTab. Both are optional: most plugins own
 	// pages and contribute to nobody's panel.
@@ -159,6 +164,8 @@ func (m Manifest) validate() error {
 		return fmt.Errorf("manifest missing id")
 	case strings.ContainsAny(m.ID, `/.\ `):
 		return fmt.Errorf("id %q must be URL-safe (no / . \\ or space)", m.ID)
+	case m.ID == ShellID:
+		return fmt.Errorf("id %q is reserved for the shell's own slots", m.ID)
 	case m.Name == "":
 		return fmt.Errorf("plugin %q missing name", m.ID)
 	case m.Socket == "":
@@ -167,10 +174,10 @@ func (m Manifest) validate() error {
 		// The socket is dialed as-is; require a clean absolute path so a manifest
 		// cannot aim the shell at a relative or traversal path (VS-09).
 		return fmt.Errorf("plugin %q socket must be a clean absolute path", m.ID)
-	case len(m.Nav) == 0 && len(m.EntityTabs) == 0 && len(m.EntityActs) == 0 && m.SystemAccess == "":
-		return fmt.Errorf("plugin %q has no page or entity contributions", m.ID)
+	case len(m.Nav) == 0 && len(m.EntityTabs) == 0 && len(m.EntityActs) == 0 && len(m.Contributes) == 0 && m.SystemAccess == "":
+		return fmt.Errorf("plugin %q has no page, entity or slot contributions", m.ID)
 	}
-	if m.SystemAccess != "" && (!strings.HasPrefix(m.SystemAccess, "/") || strings.HasPrefix(m.SystemAccess, "//") || strings.ContainsAny(m.SystemAccess, "?#\\") || m.SystemAccess != filepath.Clean(m.SystemAccess)) {
+	if m.SystemAccess != "" && !localPath(m.SystemAccess) {
 		return fmt.Errorf("plugin %q access path must be a clean local path", m.ID)
 	}
 	for i, n := range m.Nav {

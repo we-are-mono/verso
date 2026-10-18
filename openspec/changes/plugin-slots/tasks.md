@@ -2,9 +2,9 @@
 
 ## 1. Manifest: `contributes` and the alias
 
-- [ ] 1.1 Test first in `internal/plugin/manifest_test.go`: `contributes` entries decode. A missing `path`, a repeated id, or an id outside `[a-z0-9-]` skips that entry with a logged reason and keeps the rest of the manifest. Id `shell` refuses the manifest. A contribution-only manifest loads. Then add `Contribution{ID, Slot, Path, Position, Order}` and its validation. Verify with `make test`.
-- [ ] 1.2 Test first: `system_access` reads as `{id: access, slot: shell.access.blocks, position: before:web}`, and is dropped when the manifest also contributes to `shell.access.blocks`. Then implement it in the manifest reader. Verify with `make test`.
-- [ ] 1.3 Test first: the position parser accepts `first`, `last`, `before:<anchor>` and `after:<anchor>`, and refuses anything else as a skipped entry. Then implement it. Verify with `make test`.
+- [x] 1.1 Test first in `internal/plugin/manifest_test.go`: `contributes` entries decode. A missing `path`, a repeated id, or an id outside `[a-z0-9-]` skips that entry with a logged reason and keeps the rest of the manifest. Id `shell` refuses the manifest. A contribution-only manifest loads. Then add `Contribution{ID, Slot, Path, Position, Order}` and its validation. Verify with `make test`.
+- [x] 1.2 Test first: `system_access` reads as `{id: access, slot: shell.access.blocks, position: before:web}`, and is dropped when the manifest also contributes to `shell.access.blocks`. Then implement it in the manifest reader. Verify with `make test`.
+- [x] 1.3 Test first: the position parser accepts `first`, `last`, `before:<anchor>` and `after:<anchor>`, and refuses anything else as a skipped entry. Then implement it. Verify with `make test`.
 
 ## 2. The catalogue and the slot widget
 
