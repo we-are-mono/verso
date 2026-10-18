@@ -28,6 +28,11 @@
         "function": "read"
       },
       {
+        "scope": "uci",
+        "object": "acme",
+        "function": "read"
+      },
+      {
         "scope": "ubus",
         "object": "verso",
         "function": "accessCredentials"

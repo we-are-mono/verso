@@ -762,6 +762,38 @@ fn a_certificate_act_runs_its_command_and_keeps_its_drawer_for_a_refusal() {
     );
 }
 
+// While a trusted certificate from the operator's domain is on, both acts that
+// replace the certificate say before the confirm that they turn it off (the
+// router does so with the act, ADR-017 §6); with it off or absent they say
+// nothing of it.
+#[test]
+fn a_certificate_act_says_it_turns_off_the_trusted_certificate_while_it_is_on() {
+    const TURNS_OFF: &str = "This also turns off the trusted certificate from your domain, so a renewal never replaces this one.";
+    let at = |path: &str, acme: serde_json::Value| {
+        let mut r = request();
+        r.path = path.into();
+        r.snapshot = Snapshot::from_value(json!({ "acme": acme }));
+        serde_json::to_value(get(&r)).unwrap()
+    };
+    let verso = |enabled: Option<&str>| {
+        let mut s = json!({".name": "verso", ".type": "cert", "domains": ["router.example.com"]});
+        if let Some(e) = enabled {
+            s["enabled"] = json!(e);
+        }
+        json!({ "verso": s })
+    };
+    for path in ["/access/certificate/install", "/access/certificate/new"] {
+        for on in [verso(None), verso(Some("1"))] {
+            let page = at(path, on).to_string();
+            assert!(page.contains(TURNS_OFF), "{path}: {page}");
+        }
+        for off in [verso(Some("0")), json!({}), json!({"verso": {".name": "verso", ".type": "acme"}})] {
+            let page = at(path, off).to_string();
+            assert!(!page.contains("trusted certificate from your domain"), "{path}: {page}");
+        }
+    }
+}
+
 // The router's time is read in the zone /etc/TZ names, its name beside it, as
 // the overview shows it: summer and winter, a bare name that means UTC, and a
 // rule that is no rule read as UTC rather than not at all.

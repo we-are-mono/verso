@@ -185,8 +185,9 @@ pub fn certificate(r: &Request) -> Widget {
             children.push(Widget::text("No readable web certificate was found."));
         }
     }
-    // The router cannot obtain a trusted certificate itself; one issued
-    // elsewhere is installed like any other, so there is one way in.
+    // A certificate issued elsewhere is installed like any other, so there is
+    // one way in for it; one the router obtains for the operator's own domain
+    // is verso-plugin-acme's part of Access, beside this card.
     // Its acts are acts on a part of the section, in the dress the key set's
     // add wears, each led by the glyph of what it does. The two that replace
     // the certificate open their forms in a drawer over Access; Download is a
@@ -234,6 +235,20 @@ fn textarea(name: &str, label: &str, value: &str) -> Widget {
         *style = "code".into();
     }
     field
+}
+
+/// TURNS_OFF is said in both acts that replace the certificate while a trusted
+/// certificate from the operator's domain is on: the router turns it off with
+/// the act, so a renewal never puts it back over the one chosen (ADR-017 §6).
+const TURNS_OFF: &str = "This also turns off the trusted certificate from your domain, so a renewal never replaces this one.";
+
+/// trusted_on is whether acme's `verso` cert section is on; acme-common takes
+/// an absent `enabled` as on.
+fn trusted_on(r: &Request) -> bool {
+    r.snapshot
+        .sections_of_type("acme", "cert")
+        .iter()
+        .any(|s| s.name() == "verso" && !matches!(s.scalar("enabled").as_str(), "0" | "no" | "off" | "false"))
 }
 
 // route answers a certificate's act that replaces it: its form, in the drawer
@@ -299,6 +314,9 @@ pub fn route(r: &Request, form: Option<&Form>) -> Envelope {
             return Envelope::page("Access", Widget::text("This page does not exist."))
                 .with_back("Access", "/system/access")
         }
+    }
+    if trusted_on(r) {
+        fields.push(Widget::text(TURNS_OFF));
     }
     let drawer = RowDrawer {
         title: title.into(),
