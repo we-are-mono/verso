@@ -312,7 +312,7 @@ no role fits takes the nearest, or comes here as a new role with its reason.
 - **Chip** (`type-chip`; 400, 0.875rem/14px on 16px; verbatim Inconsolata 500, 0.875rem/14px): the words in a citation chip (Chips); a mono chip is one step heavier because Inconsolata at 400 reads a size smaller than the Hanken beside it.
 - **Button** (`type-button`; 600, 0.875rem/14px on 24px): a button's words.
 - **Input** (`type-input`; 400, 0.875rem/14px on 24px; verbatim Inconsolata 400, 1rem/16px): what a field holds; a field for an identifier holds it in the verbatim form.
-- **Code** (`type-code`; Inconsolata 400, 1rem/16px on 24px): an editor's text, its line count and its gutter's numbers.
+- **Code** (`type-code`; Inconsolata 500, 1rem/16px on 24px): an editor's text, its line count and its gutter's numbers, a code field's text, a file list and a block of code in prose; at 500 because Inconsolata at 400 reads a size smaller than the Hanken beside it.
 - **Figure** (`type-figure`; Inconsolata 700, 2.25rem/36px on 40px, -0.05em, tabular): a takeover's countdown, the one number a whole page waits on.
 - **Axis** (`type-axis`; 500, 0.75rem/12px on 24px, tabular): a chart's scale and time labels, in Meta, a step quieter than the legend (Charts).
 - **Tip** (`type-tip`; 400, 0.875rem/14px, 1.25): a tooltip's words, set close because a tip is read at a glance and should stand as small as it can.

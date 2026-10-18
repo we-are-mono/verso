@@ -1069,13 +1069,17 @@ func TestRenderCodeInUciGrammar(t *testing.T) {
 		t.Errorf("the gutter and the text are not the code block's: %s", got)
 	}
 	declares(t, "code", ".verso-code__gutter", "@apply type-code")
-	declares(t, "code", ".verso-code__text", "@apply type-code", "white-space: pre", "font-weight: 500")
+	declares(t, "code", ".verso-code__text", "@apply type-code", "white-space: pre")
 	typeCSS, err := os.ReadFile(filepath.Join("..", "server", "assets", "type.css"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(cssRule(string(typeCSS), "@utility type-code"), "line-height: 1.5rem;") {
 		t.Errorf("the file's lines are not 24px: %s", cssRule(string(typeCSS), "@utility type-code"))
+	}
+	// Code reads at 500 through its role, so the text never sets its own.
+	if !strings.Contains(cssRule(string(typeCSS), "@utility type-code"), "font-weight: 500;") {
+		t.Errorf("code does not read at 500: %s", cssRule(string(typeCSS), "@utility type-code"))
 	}
 	// Past 99 lines the gutter widens for a third figure.
 	var long strings.Builder
