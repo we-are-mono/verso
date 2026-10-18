@@ -68,7 +68,9 @@
     <dt class="verso-facts__label">{{.Label}}</dt>
     <dd class="verso-facts__value"{{if .Span}} data-verso-span{{end}}{{if .Emphasis}} data-verso-emphasis{{end}}>
       {{if .Span}}{{template "verso-prop-span" .Span}}{{else}}
-      {{if .Dot}}<span class="verso-mark verso-facts__mark" data-verso-tone="{{.Dot}}"{{if .Key}} data-verso-prop-dot="{{.Key}}"{{end}} aria-hidden="true"></span>{{end}}
+      {{/* A value still being reached waits: the four folding packets stand
+           where a state's packet would. */}}
+      {{if eq .Dot "waiting"}}<span class="verso-facts__mark" data-verso-mark="waiting">{{template "verso-waiting"}}</span>{{else if .Dot}}<span class="verso-mark verso-facts__mark" data-verso-tone="{{.Dot}}"{{if .Key}} data-verso-prop-dot="{{.Key}}"{{end}} aria-hidden="true"></span>{{end}}
       {{if .Chip}}<span class="verso-chip" data-verso-verbatim>{{.Value}}</span>{{else if .Next}}
       {{/* What the value becomes, under what it is — as a table's cell says
            it: the value it was recedes to Meta, and what it becomes stands in

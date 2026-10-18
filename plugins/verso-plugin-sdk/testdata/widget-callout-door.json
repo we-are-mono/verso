@@ -1,0 +1,10 @@
+{
+  "type": "callout",
+  "variant": "info",
+  "title": "This network does not find the domain yet",
+  "body": "A record that answers the domain lets devices here reach it by name.",
+  "link": {
+    "label": "Add the record",
+    "href": "/plugins/dnsdhcp/dns/records/new"
+  }
+}

@@ -200,6 +200,23 @@ func TestAListWithNoFactsSaysSoInTheSlot(t *testing.T) {
 	}
 }
 
+// TestAFactThatIsUnderwayWearsTheWaitingMark: a value still being reached (a
+// certificate requested, not yet answered) leads with the four folding
+// packets where a state's packet stands, centred on the value's first line,
+// in the gutter of a left-aligned sheet as the packet is.
+func TestAFactThatIsUnderwayWearsTheWaitingMark(t *testing.T) {
+	for _, align := range []string{"", "left"} {
+		got := render(t, newRenderer(t), &Properties{Align: align, Items: []Property{
+			{Label: "Status", Value: "Requesting a certificate", Dot: "waiting"},
+		}})
+		if !strings.Contains(got, `<span class="verso-facts__mark" data-verso-mark="waiting"><span class="verso-waiting" data-verso-wait`) || strings.Contains(got, `data-verso-tone="waiting"`) {
+			t.Errorf("align %q: want the waiting mark in the mark's place, in:\n%s", align, got)
+		}
+	}
+	declares(t, "facts", `.verso-facts__mark[data-verso-mark="waiting"]`, "margin-top: calc(var(--spacing) * 1.25);")
+	declares(t, "facts", `.verso-facts__mark[data-verso-mark="waiting"]:where(.verso-facts[data-verso-align="left"] *)`, "top: calc(var(--spacing) * 1.25);", "left: calc(var(--spacing) * -4.75);", "margin-top: 0;")
+}
+
 // TestALiveFactCarriesItsKey: a row the stream keeps current carries its key
 // on its value and on its mark, so the stream rewrites both in place; on the
 // right edge the mark leads the value on its line, centred 9px down it.

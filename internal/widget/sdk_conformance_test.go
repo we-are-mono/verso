@@ -6,6 +6,7 @@ package widget
 import (
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 )
 
@@ -45,6 +46,40 @@ func TestSDKActDecodes(t *testing.T) {
 	}
 	if act.Label != "Add rule" || !act.OpensPanel || act.Drawer == nil || !act.Drawer.Open || len(act.Drawer.Children) != 1 {
 		t.Errorf("SDK act lost a field crossing the wire: %+v", act)
+	}
+}
+
+// TestSDKCalloutDoorReachesTheShell: a notice's door is the callout's link,
+// which the shell draws closing the notice's words, never as a button.
+func TestSDKCalloutDoorReachesTheShell(t *testing.T) {
+	data, err := os.ReadFile(filepath.Join("..", "..", "plugins", "verso-plugin-sdk", "testdata", "widget-callout-door.json"))
+	if err != nil {
+		t.Skip("SDK callout fixture not present — run `cargo test` in plugins/verso-plugin-sdk to generate it")
+	}
+	w, err := Decode(data)
+	if err != nil {
+		t.Fatalf("SDK callout fixture does not decode: %v", err)
+	}
+	c, ok := w.(*Callout)
+	if !ok || c.Link == nil || c.Link.Label != "Add the record" || c.Link.Href != "/plugins/dnsdhcp/dns/records/new" || len(c.Acts) != 0 {
+		t.Errorf("the door lost its way across the wire: %+v", w)
+	}
+}
+
+// TestSDKWaitingMarkReachesTheShell: a fact the SDK marks as waiting arrives
+// with the mark word the properties template draws the folding packets for.
+func TestSDKWaitingMarkReachesTheShell(t *testing.T) {
+	data, err := os.ReadFile(filepath.Join("..", "..", "plugins", "verso-plugin-sdk", "testdata", "widget-properties.json"))
+	if err != nil {
+		t.Skip("SDK properties fixture not present — run `cargo test` in plugins/verso-plugin-sdk to generate it")
+	}
+	w, err := Decode(data)
+	if err != nil {
+		t.Fatalf("SDK properties fixture does not decode: %v", err)
+	}
+	p, ok := w.(*Properties)
+	if !ok || !slices.ContainsFunc(p.Items, func(i Property) bool { return i.Label == "Status" && i.Dot == "waiting" }) {
+		t.Errorf("the waiting mark lost its word across the wire: %+v", w)
 	}
 }
 

@@ -403,7 +403,7 @@ Each shadow is a shape the shell keeps (offset, blur, spread) over a colour toke
 
 Corners are nearly square: 2px on every button, field, chip, band and card; 1px on state marks. Circles appear only for toggle knobs and the interface tree's physical/software encoding. A meter's blocks stand square.
 
-The state mark is a 6px square (5px in the nav), the packet. Filled means present in its hue; hollow (Faint border, no fill) means absent. The waiting mark is four of those squares folding on an 8px grid. Never a circular spinner.
+The state mark is a 6px square (5px in the nav), the packet. Filled means present in its hue; hollow (Faint border, no fill) means absent. The waiting mark is four of those squares folding on an 8px grid. Never a circular spinner. A fact still being reached (a certificate requested and not yet answered) leads with the waiting mark where its packet would stand, centred where the packet's centre is: a state that has arrived takes the packet, one underway takes the folding four.
 
 Borders are hairlines, 1px, in Hairline or Strong Hairline. Tables have no vertical rules and no stripes; rows are separated by a single hairline.
 

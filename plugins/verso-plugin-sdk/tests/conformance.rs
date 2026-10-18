@@ -259,6 +259,17 @@ fn write_widget_fixtures() {
                 "The tunnel has no endpoint yet.",
             ),
         ),
+        // A notice's door closes its words: the link to where the matter is
+        // settled, which the shell draws in the words' own ink.
+        (
+            "callout-door",
+            Widget::callout(
+                Tone::Info,
+                "This network does not find the domain yet",
+                "A record that answers the domain lets devices here reach it by name.",
+            )
+            .with_door("Add the record", "/plugins/dnsdhcp/dns/records/new"),
+        ),
         ("code", Widget::code("Public key", "hLIgo9xNzJM=")),
         // The same block declared as its form's preview: the shell keeps it
         // current as the form is edited, so the flag has to survive the decoder.
@@ -292,6 +303,12 @@ fn write_widget_fixtures() {
                     }
                     .marked(Tone::Success)
                     .noted("Reached over the internet."),
+                    Property {
+                        label: "Status".into(),
+                        value: "Requesting a certificate".into(),
+                        ..Property::default()
+                    }
+                    .waiting(),
                     Property {
                         label: "Valid".into(),
                         ..Property::default()

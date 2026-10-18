@@ -10,6 +10,11 @@
       "dot": "success"
     },
     {
+      "label": "Status",
+      "value": "Requesting a certificate",
+      "dot": "waiting"
+    },
+    {
       "label": "Valid",
       "value": "",
       "span": {

@@ -854,6 +854,11 @@ pub enum Widget {
         /// drawn as buttons inside the band, a cell under its words, in its ink.
         #[serde(skip_serializing_if = "Vec::is_empty")]
         acts: Vec<Widget>,
+        /// The door: a link to where the matter is settled, closing the
+        /// notice's words in their own ink ("… Open Firewall"). Set it with
+        /// [`Widget::with_door`].
+        #[serde(rename = "link", skip_serializing_if = "Option::is_none")]
+        door: Option<PageAction>,
     },
     /// A machine value in a monospace box, with an inline copy button.
     Code {
@@ -1867,7 +1872,21 @@ impl Widget {
             body: body.into(),
             compact: false,
             acts: Vec::new(),
+            door: None,
         }
+    }
+
+    /// with_door closes a callout's words with a link to where the matter is
+    /// settled, another page or another plugin's drawer. It is the notice's
+    /// door, never a button: a button resolves the notice where it stands.
+    pub fn with_door(mut self, label: &str, href: &str) -> Widget {
+        if let Widget::Callout { door, .. } = &mut self {
+            *door = Some(PageAction {
+                label: label.into(),
+                href: href.into(),
+            });
+        }
+        self
     }
 
     /// code shows a machine value with a copy button.
@@ -2170,6 +2189,14 @@ impl Property {
     /// marked leads the value with the state mark in this tone.
     pub fn marked(mut self, tone: Tone) -> Property {
         self.dot = tone.as_str().into();
+        self
+    }
+
+    /// waiting leads the value with the waiting mark, the four folding
+    /// packets, in the state mark's place: a value still being reached (a
+    /// request made and not yet answered), never a state that has arrived.
+    pub fn waiting(mut self) -> Property {
+        self.dot = "waiting".into();
         self
     }
 

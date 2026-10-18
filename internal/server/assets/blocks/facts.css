@@ -256,6 +256,17 @@
 .verso-facts__mark:where(.verso-facts[data-verso-style="system"] *) {
   margin-top: 0;
 }
+/* The waiting mark is 14px to the packet's 6: it stands on the same 24px
+   line, centred where the packet's centre is (5px down; in the gutter its
+   centre 12px left of the value, as the packet's). */
+.verso-facts__mark[data-verso-mark="waiting"] {
+  margin-top: calc(var(--spacing) * 1.25);
+}
+.verso-facts__mark[data-verso-mark="waiting"]:where(.verso-facts[data-verso-align="left"] *) {
+  top: calc(var(--spacing) * 1.25);
+  left: calc(var(--spacing) * -4.75);
+  margin-top: 0;
+}
 
 .verso-facts__help {
   flex-basis: 100%;
