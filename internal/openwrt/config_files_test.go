@@ -49,7 +49,15 @@ func TestConfigFilesJoinReviewDiscardAndApply(t *testing.T) {
 			ctx := context.Background()
 			var calls []string
 			state := configFileState{Files: []ConfigFile{{Path: "/etc/dnsmasq.conf", Family: "dnsmasq", Content: "log-queries\n", Pending: true}}}
-			b := &NativeBackend{helperSocket: configFileHelper(t, func(_ context.Context, sid, method string, args map[string]string, result any) error {
+			staged := map[string]any{}
+			if uci {
+				staged["dhcp"] = []any{[]any{"set", "main", "domain", "home"}}
+			}
+			b := uciStage(t, staged, func(method string) int {
+				calls = append(calls, "uci:"+map[string]string{"apply": "apply", "confirm": "confirm", "revert": "discard"}[method])
+				return ubusOK
+			})
+			b.helperSocket = configFileHelper(t, func(_ context.Context, sid, method string, args map[string]string, result any) error {
 				if sid != "sid" {
 					t.Errorf("sid lost")
 				}
@@ -68,12 +76,7 @@ func TestConfigFilesJoinReviewDiscardAndApply(t *testing.T) {
 					state = configFileState{}
 				}
 				return nil
-			}), uciChanges: func(context.Context, string) (map[string][][]string, error) {
-				if uci {
-					return map[string][][]string{"dhcp": {{"set", "main", "domain", "home"}}}, nil
-				}
-				return nil, nil
-			}, uciApply: func(context.Context, string, int) error { calls = append(calls, "uci:apply"); return nil }, uciConfirm: func(context.Context, string) error { calls = append(calls, "uci:confirm"); return nil }, uciRevert: func(context.Context, string, string) error { calls = append(calls, "uci:discard"); return nil }}
+			})
 			changes, err := b.UCIChanges(ctx, "sid")
 			if err != nil || len(changes["dhcp"]) == 0 {
 				t.Fatalf("file missing from review: %v %v", changes, err)
@@ -111,7 +114,8 @@ func TestAFileWaitsUnderItsOwnConfig(t *testing.T) {
 		{Path: "/etc/dnsmasq.d/10-local.conf", Family: "dnsmasq", Content: "log-queries\n", Pending: true},
 		{Path: "/etc/nftables.d/10-custom.nft", Family: "fw4", Content: "chain x {}\n", Pending: true},
 	}}
-	b := &NativeBackend{helperSocket: configFileHelper(t, func(_ context.Context, _, method string, args map[string]string, result any) error {
+	b := uciStage(t, map[string]any{}, func(string) int { return ubusOK })
+	b.helperSocket = configFileHelper(t, func(_ context.Context, _, method string, args map[string]string, result any) error {
 		if method == "configFiles" {
 			*result.(*configFileState) = state
 			return nil
@@ -120,8 +124,7 @@ func TestAFileWaitsUnderItsOwnConfig(t *testing.T) {
 			discarded = append(discarded, args["family"])
 		}
 		return nil
-	}), uciChanges: func(context.Context, string) (map[string][][]string, error) { return nil, nil },
-		uciRevert: func(context.Context, string, string) error { return nil }}
+	})
 	changes, err := b.UCIChanges(ctx, "sid")
 	if err != nil {
 		t.Fatal(err)
@@ -150,16 +153,20 @@ func TestAFileWaitsUnderItsOwnConfig(t *testing.T) {
 
 func TestFailedUCIApplyRestoresFiles(t *testing.T) {
 	var calls []string
-	b := &NativeBackend{helperSocket: configFileHelper(t, func(_ context.Context, _, method string, args map[string]string, result any) error {
+	b := uciStage(t, map[string]any{"dhcp": []any{[]any{"set", "main", "domain", "home"}}}, func(method string) int {
+		if method == "apply" {
+			return ubusUnknownError
+		}
+		return ubusOK
+	})
+	b.helperSocket = configFileHelper(t, func(_ context.Context, _, method string, args map[string]string, result any) error {
 		if method == "configFiles" {
 			*result.(*configFileState) = configFileState{Files: []ConfigFile{{Pending: true}}}
 		} else {
 			calls = append(calls, args["action"])
 		}
 		return nil
-	}), uciChanges: func(context.Context, string) (map[string][][]string, error) {
-		return map[string][][]string{"dhcp": {{"set", "main", "domain", "home"}}}, nil
-	}, uciApply: func(context.Context, string, int) error { return errors.New("failed") }}
+	})
 	if b.UCIApply(context.Background(), "sid", 30) == nil {
 		t.Fatal("failure hidden")
 	}
@@ -169,16 +176,31 @@ func TestFailedUCIApplyRestoresFiles(t *testing.T) {
 }
 
 func TestInvalidFileDoesNotStageAnIncludeDirectory(t *testing.T) {
-	wrote := false
-	b := &NativeBackend{uciConfig: func(context.Context, string, string) (map[string]any, error) {
-		return map[string]any{"main": map[string]any{".type": "dnsmasq"}}, nil
-	}, uciSet: func(context.Context, string, string, string, map[string]any) error { wrote = true; return nil }, helperSocket: configFileHelper(t, func(context.Context, string, string, map[string]string, any) error {
+	ubusd := newFakeUbus(t, map[string]ubusObject{"uci": replyWith(map[string]any{
+		"values": map[string]any{"main": map[string]any{".type": "dnsmasq"}},
+	})})
+	b := ubusd.backend()
+	b.helperSocket = configFileHelper(t, func(context.Context, string, string, map[string]string, any) error {
 		return errors.New("invalid or stale file")
-	})}
+	})
 	if b.StageConfigFile(context.Background(), "sid", "/etc/dnsmasq.d/local.conf", "old", "invalid") == nil {
 		t.Fatal("accepted")
 	}
-	if wrote {
-		t.Fatal("invalid file staged UCI")
+	for _, call := range ubusd.invoked("uci") {
+		if call.Method != "get" {
+			t.Fatalf("invalid file staged UCI: %+v", call)
+		}
 	}
+}
+
+// uciStage is a backend whose ubusd's `uci` object holds changes as its stage
+// and hands every other method it is asked to run, which answers its status.
+func uciStage(t *testing.T, changes map[string]any, run func(method string) int) *NativeBackend {
+	t.Helper()
+	return newFakeUbus(t, map[string]ubusObject{"uci": func(method string, _ map[string]any) (map[string]any, int) {
+		if method == "changes" {
+			return map[string]any{"changes": changes}, ubusOK
+		}
+		return nil, run(method)
+	}}).backend()
 }

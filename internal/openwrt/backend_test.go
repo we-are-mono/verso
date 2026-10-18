@@ -8,21 +8,36 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"reflect"
 	"slices"
 	"strconv"
 	"strings"
 	"testing"
+	"testing/fstest"
 
 	"github.com/we-are-mono/verso/internal/ubus"
 )
 
-func fakeSystemInfo(m map[string]any, err error) systemInfoFn {
-	return func(context.Context, string) (map[string]any, error) { return m, err }
+// wantProbe checks the one access probe a sid-gated read made: the session's
+// ubus-scope access to object.function, asked before the read itself.
+func wantProbe(t *testing.T, ubusd *fakeUbus, sid, object, function string) {
+	t.Helper()
+	want := ubusCall{Object: "session", Method: "access", Args: map[string]any{
+		"ubus_rpc_session": sid, "scope": "ubus", "object": object, "function": function,
+	}}
+	if got := ubusd.only(t, "session"); !reflect.DeepEqual(got, want) {
+		t.Errorf("probe = %+v, want %+v", got, want)
+	}
+}
+
+// unreachableUbus is a backend whose ubus socket nothing listens on.
+func unreachableUbus(t *testing.T) *NativeBackend {
+	return &NativeBackend{ubusSocket: filepath.Join(t.TempDir(), "absent.sock")}
 }
 
 func TestSystemInfoMapsFields(t *testing.T) {
-	m := map[string]any{
+	ubusd := newFakeUbus(t, map[string]ubusObject{"system": replyWith(map[string]any{
 		"uptime": int64(1287),
 		"load":   []any{int64(1566912), int64(465440), int64(189920)},
 		"memory": map[string]any{
@@ -30,10 +45,9 @@ func TestSystemInfoMapsFields(t *testing.T) {
 			"free":      int64(22826393600),
 			"available": int64(37969338368),
 		},
-	}
-	b := &NativeBackend{systemInfo: fakeSystemInfo(m, nil)}
+	})})
 
-	si, err := b.SystemInfo(context.Background(), "sid")
+	si, err := ubusd.backend().SystemInfo(context.Background(), "sid")
 	if err != nil {
 		t.Fatalf("SystemInfo: %v", err)
 	}
@@ -46,14 +60,20 @@ func TestSystemInfoMapsFields(t *testing.T) {
 	if si.Memory.Total != 64883740672 || si.Memory.Available != 37969338368 {
 		t.Errorf("Memory = %+v", si.Memory)
 	}
+	wantProbe(t, ubusd, "sid", "system", "info")
+	if got := ubusd.only(t, "system"); got.Method != "info" || len(got.Args) != 0 {
+		t.Errorf("read = %+v, want system.info with no arguments", got)
+	}
 }
 
 // TestBoardCarriesTheProcessorsName: `system` is the processor as the kernel
 // names it, the Hardware page's Processor when no profile names the chip.
 func TestBoardCarriesTheProcessorsName(t *testing.T) {
-	b := &NativeBackend{systemBoard: func(context.Context, string) (map[string]any, error) {
-		return map[string]any{"system": "AMD Ryzen 7 7700 8-Core Processor", "model": "Supermicro H13SAE-MF"}, nil
-	}}
+	ubusd := newFakeUbus(t, map[string]ubusObject{"system": replyWith(map[string]any{
+		"system": "AMD Ryzen 7 7700 8-Core Processor", "model": "Supermicro H13SAE-MF",
+	})})
+	b := ubusd.backend()
+	b.root = fstest.MapFS{}
 	got, err := b.Board(context.Background(), "sid")
 	if err != nil {
 		t.Fatal(err)
@@ -61,22 +81,25 @@ func TestBoardCarriesTheProcessorsName(t *testing.T) {
 	if got.System != "AMD Ryzen 7 7700 8-Core Processor" || got.Model != "Supermicro H13SAE-MF" {
 		t.Errorf("board = %+v", got)
 	}
+	wantProbe(t, ubusd, "sid", "system", "board")
+	if got := ubusd.only(t, "system"); got.Method != "board" {
+		t.Errorf("read = %+v, want system.board", got)
+	}
 }
 
 func TestBoardPrefersFullReleaseAndKernelBuild(t *testing.T) {
-	b := &NativeBackend{
-		systemBoard: func(context.Context, string) (map[string]any, error) {
-			return map[string]any{
-				"kernel": "6.12.101",
-				"release": map[string]any{
-					"distribution": "OpenWrt", "version": "25.12.4",
-					"description": "OpenWrt 25.12.4 r32933-4ccb782af7",
-					"target":      "qualcommax/ipq807x",
-				},
-			}, nil
+	ubusd := newFakeUbus(t, map[string]ubusObject{"system": replyWith(map[string]any{
+		"kernel": "6.12.101",
+		"release": map[string]any{
+			"distribution": "OpenWrt", "version": "25.12.4",
+			"description": "OpenWrt 25.12.4 r32933-4ccb782af7",
+			"target":      "qualcommax/ipq807x",
 		},
-		kernelBuild: func() string { return "Linux version 6.12.101 (builder@host) #1 SMP" },
-		packageArch: func() string { return "aarch64_cortex-a53" },
+	})})
+	b := ubusd.backend()
+	b.root = fstest.MapFS{
+		"proc/version": {Data: []byte("Linux version 6.12.101 (builder@host) #1 SMP\n")},
+		"etc/apk/arch": {Data: []byte("aarch64_cortex-a53\n")},
 	}
 	got, err := b.Board(context.Background(), "sid")
 	if err != nil {
@@ -125,10 +148,17 @@ func TestCondenseKernelBuild(t *testing.T) {
 	}
 }
 
+// TestSystemInfoError: a read procd refuses, a session rpcd denies and a ubus
+// nobody answers are each an error, never a zero reading.
 func TestSystemInfoError(t *testing.T) {
-	b := &NativeBackend{systemInfo: fakeSystemInfo(nil, errors.New("boom"))}
-	if _, err := b.SystemInfo(context.Background(), "sid"); err == nil {
-		t.Fatal("SystemInfo: want error, got nil")
+	for name, b := range map[string]*NativeBackend{
+		"refused":     newFakeUbus(t, map[string]ubusObject{"system": failWith(ubusUnknownError)}).backend(),
+		"denied":      newFakeUbus(t, map[string]ubusObject{"session": denyAll, "system": replyWith(map[string]any{"uptime": int64(1)})}).backend(),
+		"unreachable": unreachableUbus(t),
+	} {
+		if _, err := b.SystemInfo(context.Background(), "sid"); err == nil {
+			t.Errorf("%s: SystemInfo: want error, got nil", name)
+		}
 	}
 }
 
@@ -146,22 +176,30 @@ func TestHostnameReadsRunningName(t *testing.T) {
 	}
 }
 
-// TestAccessPassesProbe checks Access threads the full ACL triple through to the
-// seam — the real probe asks rpcd's session.access (verified live). This is the
-// enforcement primitive the shell uses to gate plugin writes (ADR-007).
+// TestAccessPassesProbe checks Access threads the full ACL triple through to
+// rpcd's session.access and reads its answer. This is the enforcement
+// primitive the shell uses to gate plugin writes (ADR-007).
 func TestAccessPassesProbe(t *testing.T) {
-	var got [4]string
-	b := &NativeBackend{access: func(_ context.Context, sid, scope, object, function string) (bool, error) {
-		got = [4]string{sid, scope, object, function}
-		return true, nil
-	}}
-
-	ok, err := b.Access(context.Background(), "s1", "uci", "system", "write")
-	if err != nil || !ok {
-		t.Fatalf("Access = %v, %v; want true, nil", ok, err)
+	for name, c := range map[string]struct {
+		session ubusObject
+		want    bool
+	}{
+		"granted": {grantAll, true},
+		"denied":  {denyAll, false},
+	} {
+		ubusd := newFakeUbus(t, map[string]ubusObject{"session": c.session})
+		ok, err := ubusd.backend().Access(context.Background(), "s1", "uci", "system", "write")
+		if err != nil || ok != c.want {
+			t.Fatalf("%s: Access = %v, %v; want %v, nil", name, ok, err, c.want)
+		}
+		want := map[string]any{"ubus_rpc_session": "s1", "scope": "uci", "object": "system", "function": "write"}
+		if got := ubusd.only(t, "session"); got.Method != "access" || !reflect.DeepEqual(got.Args, want) {
+			t.Errorf("%s: probe = %+v, want session.access %v", name, got, want)
+		}
 	}
-	if got != [4]string{"s1", "uci", "system", "write"} {
-		t.Errorf("probe args = %v, want [s1 uci system write]", got)
+	// A transport failure is not a denial: the caller fails closed on it.
+	if _, err := unreachableUbus(t).Access(context.Background(), "s1", "uci", "system", "write"); err == nil {
+		t.Error("Access over an unreachable ubus: want error, got nil")
 	}
 }
 
@@ -178,110 +216,108 @@ func TestSetSystemTimeThreadsStructuredArgs(t *testing.T) {
 	}
 }
 
-// TestUCISetThreadsArgs checks UCISet passes the sid, config, section and values
-// to the seam — the real write brokers rpcd's uci.set carrying the operator's sid
-// (ADR-007: the shell writes on the plugin's behalf).
-func TestUCISetThreadsArgs(t *testing.T) {
-	var gotSID, gotConfig, gotSection string
-	var gotValues map[string]any
-	b := &NativeBackend{uciSet: func(_ context.Context, sid, config, section string, values map[string]any) error {
-		gotSID, gotConfig, gotSection, gotValues = sid, config, section, values
-		return nil
-	}}
-
-	err := b.UCISet(context.Background(), "s1", "system", "@system[0]", map[string]any{"hostname": "verso-lab"})
-	if err != nil {
-		t.Fatalf("UCISet: %v", err)
+// wantUCI checks the calls made to rpcd's `uci` object, method and arguments
+// as the wire carried them.
+func wantUCI(t *testing.T, ubusd *fakeUbus, want ...ubusCall) {
+	t.Helper()
+	for i := range want {
+		want[i].Object = "uci"
 	}
-	if gotSID != "s1" || gotConfig != "system" || gotSection != "@system[0]" || gotValues["hostname"] != "verso-lab" {
-		t.Errorf("args not threaded: sid=%q config=%q section=%q values=%v", gotSID, gotConfig, gotSection, gotValues)
+	if got := ubusd.invoked("uci"); !reflect.DeepEqual(got, want) {
+		t.Errorf("uci calls =\n%+v\nwant\n%+v", got, want)
 	}
 }
 
-// TestUCIConfigThreadsArgs checks UCIConfig passes the sid and config through and
-// returns the whole-config values map the shell hands a plugin as its read
-// snapshot (ADR-007).
-func TestUCIConfigThreadsArgs(t *testing.T) {
-	var gotSID, gotConfig string
-	want := map[string]any{"wg0": map[string]any{".type": "interface", "proto": "wireguard"}}
-	b := &NativeBackend{uciConfig: func(_ context.Context, sid, config string) (map[string]any, error) {
-		gotSID, gotConfig = sid, config
-		return want, nil
-	}}
+// TestUCISetThreadsArgs checks UCISet hands rpcd's uci.set the sid, config,
+// section and values — the write carries the operator's sid (ADR-007: the
+// shell writes on the plugin's behalf).
+func TestUCISetThreadsArgs(t *testing.T) {
+	ubusd := newFakeUbus(t, map[string]ubusObject{"uci": replyWith(nil)})
 
-	got, err := b.UCIConfig(context.Background(), "s1", "network")
+	err := ubusd.backend().UCISet(context.Background(), "s1", "system", "@system[0]", map[string]any{"hostname": "verso-lab"})
+	if err != nil {
+		t.Fatalf("UCISet: %v", err)
+	}
+	wantUCI(t, ubusd, ubusCall{Method: "set", Args: map[string]any{
+		"ubus_rpc_session": "s1", "config": "system", "section": "@system[0]",
+		"values": map[string]any{"hostname": "verso-lab"},
+	}})
+}
+
+// TestUCIConfigThreadsArgs checks UCIConfig hands rpcd's uci.get the sid and
+// config and returns the whole-config values map the shell hands a plugin as
+// its read snapshot (ADR-007).
+func TestUCIConfigThreadsArgs(t *testing.T) {
+	ubusd := newFakeUbus(t, map[string]ubusObject{"uci": replyWith(map[string]any{
+		"values": map[string]any{"wg0": map[string]any{".type": "interface", "proto": "wireguard"}},
+	})})
+
+	got, err := ubusd.backend().UCIConfig(context.Background(), "s1", "network")
 	if err != nil {
 		t.Fatalf("UCIConfig: %v", err)
 	}
-	if gotSID != "s1" || gotConfig != "network" {
-		t.Errorf("args not threaded: sid=%q config=%q", gotSID, gotConfig)
-	}
+	wantUCI(t, ubusd, ubusCall{Method: "get", Args: map[string]any{"ubus_rpc_session": "s1", "config": "network"}})
 	if _, ok := got["wg0"]; !ok {
 		t.Errorf("UCIConfig result = %v, want the wg0 section", got)
 	}
 }
 
-// TestUCIAddThreadsArgsAndReturnsSection checks UCIAdd passes sid/config/type
-// through and returns rpcd's new section id — the shell realizes a repeater's "add"
-// (ADR-005 §7). An empty name is the anonymous section a repeater adds.
+// TestUCIAddThreadsArgsAndReturnsSection checks UCIAdd hands rpcd's uci.add
+// the sid, config and type and returns rpcd's new section id — the shell
+// realizes a repeater's "add" (ADR-005 §7). An empty name is the anonymous
+// section a repeater adds, and is not sent at all.
 func TestUCIAddThreadsArgsAndReturnsSection(t *testing.T) {
-	var gotSID, gotConfig, gotType, gotName string
-	b := &NativeBackend{uciAdd: func(_ context.Context, sid, config, secType, name string) (string, error) {
-		gotSID, gotConfig, gotType, gotName = sid, config, secType, name
-		return "cfg123", nil
-	}}
+	ubusd := newFakeUbus(t, map[string]ubusObject{"uci": replyWith(map[string]any{"section": "cfg123"})})
 
-	sec, err := b.UCIAdd(context.Background(), "s1", "network", "wireguard_wg0", "")
+	sec, err := ubusd.backend().UCIAdd(context.Background(), "s1", "network", "wireguard_wg0", "")
 	if err != nil {
 		t.Fatalf("UCIAdd: %v", err)
 	}
-	if gotSID != "s1" || gotConfig != "network" || gotType != "wireguard_wg0" || gotName != "" || sec != "cfg123" {
-		t.Errorf("args/return wrong: sid=%q config=%q type=%q name=%q sec=%q", gotSID, gotConfig, gotType, gotName, sec)
+	if sec != "cfg123" {
+		t.Errorf("section = %q, want cfg123", sec)
 	}
+	wantUCI(t, ubusd, ubusCall{Method: "add", Args: map[string]any{
+		"ubus_rpc_session": "s1", "config": "network", "type": "wireguard_wg0",
+	}})
 }
 
 // TestUCIAddNamesASection checks the named shape rpcd's `uci add` also takes: a
 // typed section a config refers to by name (`config updates 'updates'`), which is
 // how Verso's own settings sections come into being.
 func TestUCIAddNamesASection(t *testing.T) {
-	var gotName string
-	b := &NativeBackend{uciAdd: func(_ context.Context, _, _, _, name string) (string, error) {
-		gotName = name
-		return name, nil
-	}}
+	ubusd := newFakeUbus(t, map[string]ubusObject{"uci": func(_ string, args map[string]any) (map[string]any, int) {
+		return map[string]any{"section": args["name"]}, ubusOK
+	}})
 
-	sec, err := b.UCIAdd(context.Background(), "s1", "verso", "updates", "updates")
+	sec, err := ubusd.backend().UCIAdd(context.Background(), "s1", "verso", "updates", "updates")
 	if err != nil {
 		t.Fatalf("UCIAdd: %v", err)
 	}
-	if gotName != "updates" || sec != "updates" {
-		t.Errorf("name not threaded: name=%q sec=%q", gotName, sec)
+	if sec != "updates" {
+		t.Errorf("section = %q, want updates", sec)
 	}
+	wantUCI(t, ubusd, ubusCall{Method: "add", Args: map[string]any{
+		"ubus_rpc_session": "s1", "config": "verso", "type": "updates", "name": "updates",
+	}})
 }
 
-// TestUCIDeleteThreadsArgs checks UCIDelete passes sid/config/section through,
-// and the option too — the narrower shape that clears one setting rather than
-// the whole section.
+// TestUCIDeleteThreadsArgs checks UCIDelete hands rpcd's uci.delete the
+// sid, config and section, and the option too — the narrower shape that clears
+// one setting rather than the whole section.
 func TestUCIDeleteThreadsArgs(t *testing.T) {
-	var gotSID, gotConfig, gotSection, gotOption string
-	b := &NativeBackend{uciDelete: func(_ context.Context, sid, config, section, option string) error {
-		gotSID, gotConfig, gotSection, gotOption = sid, config, section, option
-		return nil
-	}}
+	ubusd := newFakeUbus(t, map[string]ubusObject{"uci": replyWith(nil)})
+	b := ubusd.backend()
 
 	if err := b.UCIDelete(context.Background(), "s1", "network", "@wireguard_wg0[0]", ""); err != nil {
 		t.Fatalf("UCIDelete: %v", err)
 	}
-	if gotSID != "s1" || gotConfig != "network" || gotSection != "@wireguard_wg0[0]" || gotOption != "" {
-		t.Errorf("args not threaded: sid=%q config=%q section=%q option=%q", gotSID, gotConfig, gotSection, gotOption)
-	}
-
 	if err := b.UCIDelete(context.Background(), "s1", "firewall", "allow_ping", "dest_port"); err != nil {
 		t.Fatalf("UCIDelete option: %v", err)
 	}
-	if gotSection != "allow_ping" || gotOption != "dest_port" {
-		t.Errorf("option not threaded: section=%q option=%q", gotSection, gotOption)
-	}
+	wantUCI(t, ubusd,
+		ubusCall{Method: "delete", Args: map[string]any{"ubus_rpc_session": "s1", "config": "network", "section": "@wireguard_wg0[0]"}},
+		ubusCall{Method: "delete", Args: map[string]any{"ubus_rpc_session": "s1", "config": "firewall", "section": "allow_ping", "option": "dest_port"}},
+	)
 }
 
 // TestUCIDeleteAbsentOptionIsNamed: rpcd answers `uci delete` for an option a
@@ -289,10 +325,7 @@ func TestUCIDeleteThreadsArgs(t *testing.T) {
 // never set is the state the caller asked for, so the backend names it —
 // ErrOptionNotFound — and the ubus status stops at this seam.
 func TestUCIDeleteAbsentOptionIsNamed(t *testing.T) {
-	notFound := &ubus.StatusError{Code: ubus.StatusNotFound, Phase: ubus.PhaseInvoke, Call: "delete"}
-	b := &NativeBackend{uciDelete: func(_ context.Context, _, _, _, _ string) error {
-		return fmt.Errorf("openwrt: %w", notFound)
-	}}
+	b := newFakeUbus(t, map[string]ubusObject{"uci": failWith(ubus.StatusNotFound)}).backend()
 
 	err := b.UCIDelete(context.Background(), "s1", "firewall", "cfg02dc81", "masq")
 	if !errors.Is(err, ErrOptionNotFound) {
@@ -300,7 +333,7 @@ func TestUCIDeleteAbsentOptionIsNamed(t *testing.T) {
 	}
 	// The section-level shape asks a different question: a section rpcd cannot
 	// find is a genuine failure, and stays one.
-	if err := b.UCIDelete(context.Background(), "s1", "firewall", "cfg02dc81", ""); errors.Is(err, ErrOptionNotFound) {
+	if err := b.UCIDelete(context.Background(), "s1", "firewall", "cfg02dc81", ""); err == nil || errors.Is(err, ErrOptionNotFound) {
 		t.Errorf("a section delete must not read as a cleared option: %v", err)
 	}
 }
@@ -312,17 +345,14 @@ func TestUCIDeleteAbsentOptionIsNamed(t *testing.T) {
 // from the lookup is rpcd off the bus, and stays a failure.
 func TestUCIConfigAbsentIsNamed(t *testing.T) {
 	for name, c := range map[string]struct {
-		cause  error
-		absent bool
+		backend *NativeBackend
+		absent  bool
 	}{
-		"no such config":        {&ubus.StatusError{Code: ubus.StatusNotFound, Phase: ubus.PhaseInvoke, Call: "get"}, true},
-		"the uci object is off": {&ubus.StatusError{Code: ubus.StatusNotFound, Phase: ubus.PhaseLookup, Call: "uci"}, false},
-		"a transport failure":   {errors.New("dial: connection refused"), false},
+		"no such config":        {newFakeUbus(t, map[string]ubusObject{"uci": failWith(ubus.StatusNotFound)}).backend(), true},
+		"the uci object is off": {newFakeUbus(t, nil).backend(), false},
+		"a transport failure":   {unreachableUbus(t), false},
 	} {
-		b := &NativeBackend{uciConfig: func(context.Context, string, string) (map[string]any, error) {
-			return nil, fmt.Errorf("openwrt: %w", c.cause)
-		}}
-		_, err := b.UCIConfig(context.Background(), "s1", "wireless")
+		_, err := c.backend.UCIConfig(context.Background(), "s1", "wireless")
 		if errors.Is(err, ErrConfigNotFound) != c.absent || err == nil {
 			t.Errorf("%s: UCIConfig = %v, want absent %v", name, err, c.absent)
 		}
@@ -338,47 +368,79 @@ func TestUCIConfigAbsentIsNamed(t *testing.T) {
 // "the option was already absent" would let a whole save report success without
 // a single write reaching the device.
 func TestUCIDeleteOtherFailuresPassThrough(t *testing.T) {
-	for name, cause := range map[string]error{
-		"another ubus status":   &ubus.StatusError{Code: ubus.StatusNotFound + 1, Phase: ubus.PhaseInvoke, Call: "delete"},
-		"a transport failure":   errors.New("dial: connection refused"),
-		"the uci object is off": &ubus.StatusError{Code: ubus.StatusNotFound, Phase: ubus.PhaseLookup, Call: "uci"},
+	unreachable := unreachableUbus(t)
+	_, dialErr := ubus.Dial(unreachable.ubusSocket)
+	for name, c := range map[string]struct {
+		backend *NativeBackend
+		cause   error
+	}{
+		"another ubus status": {
+			newFakeUbus(t, map[string]ubusObject{"uci": failWith(ubus.StatusNotFound + 1)}).backend(),
+			&ubus.StatusError{Code: ubus.StatusNotFound + 1, Phase: ubus.PhaseInvoke, Call: "delete"},
+		},
+		"a transport failure": {unreachable, dialErr},
+		"the uci object is off": {
+			newFakeUbus(t, nil).backend(),
+			&ubus.StatusError{Code: ubus.StatusNotFound, Phase: ubus.PhaseLookup, Call: "uci"},
+		},
 	} {
 		t.Run(name, func(t *testing.T) {
-			b := &NativeBackend{uciDelete: func(_ context.Context, _, _, _, _ string) error { return cause }}
-			err := b.UCIDelete(context.Background(), "s1", "firewall", "cfg02dc81", "masq")
-			if errors.Is(err, ErrOptionNotFound) || !errors.Is(err, cause) {
-				t.Errorf("UCIDelete = %v, want the cause unchanged", err)
+			err := c.backend.UCIDelete(context.Background(), "s1", "firewall", "cfg02dc81", "masq")
+			if errors.Is(err, ErrOptionNotFound) || err == nil || err.Error() != c.cause.Error() {
+				t.Errorf("UCIDelete = %v, want the cause unchanged: %v", err, c.cause)
 			}
 		})
 	}
 }
 
-// TestUCIOrderThreadsArgs checks UCIOrder passes sid/config through with the
-// whole new section sequence — the shape rpcd's `uci order` takes to stage a
-// reordered listing.
+// TestUCIOrderThreadsArgs checks UCIOrder hands rpcd's uci.order the sid and
+// config with the whole new section sequence — the shape rpcd's `uci order`
+// takes to stage a reordered listing.
 func TestUCIOrderThreadsArgs(t *testing.T) {
-	var gotSID, gotConfig string
-	var gotSections []string
-	b := &NativeBackend{uciOrder: func(_ context.Context, sid, config string, sections []string) error {
-		gotSID, gotConfig, gotSections = sid, config, sections
-		return nil
-	}}
+	ubusd := newFakeUbus(t, map[string]ubusObject{"uci": replyWith(nil)})
 
-	want := []string{"allow_ping", "allow_dhcp_renew", "cfg0af21e"}
-	if err := b.UCIOrder(context.Background(), "s1", "firewall", want); err != nil {
+	if err := ubusd.backend().UCIOrder(context.Background(), "s1", "firewall", []string{"allow_ping", "allow_dhcp_renew", "cfg0af21e"}); err != nil {
 		t.Fatalf("UCIOrder: %v", err)
 	}
-	if gotSID != "s1" || gotConfig != "firewall" {
-		t.Errorf("args not threaded: sid=%q config=%q", gotSID, gotConfig)
-	}
-	if len(gotSections) != len(want) {
-		t.Fatalf("sections = %v, want %v", gotSections, want)
-	}
-	for i := range want {
-		if gotSections[i] != want[i] {
-			t.Fatalf("sections = %v, want %v", gotSections, want)
+	wantUCI(t, ubusd, ubusCall{Method: "order", Args: map[string]any{
+		"ubus_rpc_session": "s1", "config": "firewall",
+		"sections": []any{"allow_ping", "allow_dhcp_renew", "cfg0af21e"},
+	}})
+}
+
+// TestUCIStageVerbsThreadArgs checks the stage's own verbs hand rpcd's `uci`
+// object what it takes: changes across every config, a config's revert, an
+// apply with its rollback armed for the timeout, and the confirm that keeps it.
+func TestUCIStageVerbsThreadArgs(t *testing.T) {
+	ubusd := newFakeUbus(t, map[string]ubusObject{"uci": func(method string, _ map[string]any) (map[string]any, int) {
+		if method == "changes" {
+			return map[string]any{"changes": map[string]any{"network": []any{[]any{"set", "lan", "proto", "static"}}}}, ubusOK
 		}
+		return nil, ubusOK
+	}})
+	b := ubusd.backend()
+	b.helperSocket = configFileHelper(t, func(context.Context, string, string, map[string]string, any) error { return nil })
+	ctx := context.Background()
+
+	changes, err := b.UCIChanges(ctx, "s1")
+	if err != nil || !reflect.DeepEqual(changes, map[string][][]string{"network": {{"set", "lan", "proto", "static"}}}) {
+		t.Fatalf("UCIChanges = %v, %v", changes, err)
 	}
+	if err := b.UCIUnstage(ctx, "s1", "network"); err != nil {
+		t.Fatalf("UCIUnstage: %v", err)
+	}
+	if err := b.UCIApply(ctx, "s1", 30); err != nil {
+		t.Fatalf("UCIApply: %v", err)
+	}
+	if err := b.UCIConfirm(ctx, "s1"); err != nil {
+		t.Fatalf("UCIConfirm: %v", err)
+	}
+	wantUCI(t, ubusd,
+		ubusCall{Method: "changes", Args: map[string]any{"ubus_rpc_session": "s1"}},
+		ubusCall{Method: "revert", Args: map[string]any{"ubus_rpc_session": "s1", "config": "network"}},
+		ubusCall{Method: "apply", Args: map[string]any{"ubus_rpc_session": "s1", "rollback": int64(1), "timeout": int64(30)}},
+		ubusCall{Method: "confirm", Args: map[string]any{"ubus_rpc_session": "s1"}},
+	)
 }
 
 func TestParseWANConnIPv6(t *testing.T) {
@@ -669,23 +731,22 @@ func TestParseChangesKeepsNumericFields(t *testing.T) {
 // and the message, and drops an element carrying no message at all rather than
 // letting one malformed entry cost the read.
 func TestLogReadFoldsLogdRecords(t *testing.T) {
-	var gotSID string
-	var gotLines int
-	b := &NativeBackend{logRead: func(_ context.Context, sid string, lines int) (map[string]any, error) {
-		gotSID, gotLines = sid, lines
-		return map[string]any{"log": []any{
-			map[string]any{"msg": "Log-WAN-probes: IN=wan0 OUT= SRC=203.0.113.9", "id": int64(4211), "priority": int64(4), "source": int64(0), "time": int64(1788294054648)},
-			map[string]any{"id": int64(4212)}, // no message: nothing to read
-			map[string]any{"msg": "verso: listening", "id": int64(4213), "priority": int64(27), "source": int64(1)},
-			"not a record",
-		}}, nil
-	}}
-	entries, err := b.LogRead(context.Background(), "sid-1", 64)
+	ubusd := newFakeUbus(t, map[string]ubusObject{"log": replyWith(map[string]any{"log": []any{
+		map[string]any{"msg": "Log-WAN-probes: IN=wan0 OUT= SRC=203.0.113.9", "id": int64(4211), "priority": int64(4), "source": int64(0), "time": int64(1788294054648)},
+		map[string]any{"id": int64(4212)}, // no message: nothing to read
+		map[string]any{"msg": "verso: listening", "id": int64(4213), "priority": int64(27), "source": int64(1)},
+		"not a record",
+	}})})
+	entries, err := ubusd.backend().LogRead(context.Background(), "sid-1", 64)
 	if err != nil {
 		t.Fatalf("LogRead: %v", err)
 	}
-	if gotSID != "sid-1" || gotLines != 64 {
-		t.Errorf("session/tail not threaded: sid=%q lines=%d", gotSID, gotLines)
+	wantProbe(t, ubusd, "sid-1", "log", "read")
+	// A one-shot tail of the asked length: logd's default is a subscription
+	// that never returns.
+	want := ubusCall{Object: "log", Method: "read", Args: map[string]any{"lines": int64(64), "stream": int64(0), "oneshot": int64(1)}}
+	if got := ubusd.only(t, "log"); !reflect.DeepEqual(got, want) {
+		t.Errorf("read = %+v, want %+v", got, want)
 	}
 	if len(entries) != 2 {
 		t.Fatalf("got %d entries, want 2: %+v", len(entries), entries)
@@ -702,12 +763,15 @@ func TestLogReadFoldsLogdRecords(t *testing.T) {
 	}
 }
 
+// TestLogReadPropagatesError: a session rpcd denies the log reads nothing — the
+// denial is the answer, and logd is never asked.
 func TestLogReadPropagatesError(t *testing.T) {
-	b := &NativeBackend{logRead: func(context.Context, string, int) (map[string]any, error) {
-		return nil, ErrAccessDenied
-	}}
-	if _, err := b.LogRead(context.Background(), "sid", 10); !errors.Is(err, ErrAccessDenied) {
+	ubusd := newFakeUbus(t, map[string]ubusObject{"session": denyAll, "log": replyWith(map[string]any{"log": []any{}})})
+	if _, err := ubusd.backend().LogRead(context.Background(), "sid", 10); !errors.Is(err, ErrAccessDenied) {
 		t.Errorf("LogRead error = %v, want ErrAccessDenied", err)
+	}
+	if calls := ubusd.invoked("log"); len(calls) != 0 {
+		t.Errorf("a denied session read the log: %+v", calls)
 	}
 }
 
@@ -715,17 +779,19 @@ func TestLogReadPropagatesError(t *testing.T) {
 // kernel writes into a log line, so it wins over the configured device; an
 // entry without a logical name is not a join anyone can use.
 func TestNetworkInterfacesPairsLogicalNamesWithDevices(t *testing.T) {
-	b := &NativeBackend{netIfaces: func(context.Context, string) (map[string]any, error) {
-		return map[string]any{"interface": []any{
-			map[string]any{"interface": "lan", "device": "br-lan", "l3_device": "br-lan", "up": true},
-			map[string]any{"interface": "wan", "device": "wan0", "l3_device": "pppoe-wan", "up": true},
-			map[string]any{"interface": "mgmt", "device": "eth0", "up": int64(0)},
-			map[string]any{"device": "eth9"},
-		}}, nil
-	}}
-	got, err := b.NetworkInterfaces(context.Background(), "sid")
+	ubusd := newFakeUbus(t, map[string]ubusObject{"network.interface": replyWith(map[string]any{"interface": []any{
+		map[string]any{"interface": "lan", "device": "br-lan", "l3_device": "br-lan", "up": true},
+		map[string]any{"interface": "wan", "device": "wan0", "l3_device": "pppoe-wan", "up": true},
+		map[string]any{"interface": "mgmt", "device": "eth0", "up": int64(0)},
+		map[string]any{"device": "eth9"},
+	}})})
+	got, err := ubusd.backend().NetworkInterfaces(context.Background(), "sid")
 	if err != nil {
 		t.Fatalf("NetworkInterfaces: %v", err)
+	}
+	wantProbe(t, ubusd, "sid", "network.interface", "dump")
+	if call := ubusd.only(t, "network.interface"); call.Method != "dump" {
+		t.Errorf("read = %+v, want network.interface.dump", call)
 	}
 	want := []NetIface{
 		{Name: "lan", Device: "br-lan", Up: true},

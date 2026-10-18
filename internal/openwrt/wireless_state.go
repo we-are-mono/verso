@@ -15,8 +15,8 @@ import (
 // channel and transmit power a radio is really using, how busy its channel is,
 // and how many clients each network carries. netifd says which kernel
 // interface a section became; iwinfo reads that interface.
-func (*NativeBackend) WirelessState(_ context.Context, sid string) (json.RawMessage, error) {
-	c, err := ubus.Dial("")
+func (b *NativeBackend) WirelessState(_ context.Context, sid string) (json.RawMessage, error) {
+	c, err := ubus.Dial(b.ubusSocket)
 	if err != nil {
 		return nil, err
 	}

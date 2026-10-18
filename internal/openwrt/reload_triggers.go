@@ -13,8 +13,8 @@ import (
 // ReloadTriggers names, for each config, the init scripts procd reloads when
 // a change to it is applied, from procd's own trigger table (ADR-010: procd
 // owns that mapping, so the shell reads it rather than keeping a copy).
-func (*NativeBackend) ReloadTriggers(_ context.Context, sid string) (map[string][]string, error) {
-	raw, err := callChecked("", sid, "service", "list", map[string]any{"verbose": true})
+func (b *NativeBackend) ReloadTriggers(_ context.Context, sid string) (map[string][]string, error) {
+	raw, err := callChecked(b.ubusSocket, sid, "service", "list", map[string]any{"verbose": true})
 	if err != nil {
 		return nil, err
 	}

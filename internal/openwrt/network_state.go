@@ -18,12 +18,12 @@ import (
 
 // NetworkState is the complete netifd inventory. Keep logical interfaces and
 // kernel devices separate: PPPoE and bridges are not their underlying ports.
-func (*NativeBackend) NetworkState(_ context.Context, sid string) (json.RawMessage, error) {
-	dump, err := fetchNetworkDump("", sid)
+func (b *NativeBackend) NetworkState(_ context.Context, sid string) (json.RawMessage, error) {
+	dump, err := fetchNetworkDump(b.ubusSocket, sid)
 	if err != nil {
 		return nil, err
 	}
-	c, err := ubus.Dial("")
+	c, err := ubus.Dial(b.ubusSocket)
 	if err != nil {
 		return nil, err
 	}
@@ -192,8 +192,8 @@ func networkState(dump, devices map[string]any) map[string]any {
 
 // NetworkSetUp changes the running logical interface. Start-on-boot remains a
 // separate, staged UCI setting, so a power button reports what actually ran.
-func (*NativeBackend) NetworkSetUp(_ context.Context, sid, name string, up bool) error {
-	c, err := ubus.Dial("")
+func (b *NativeBackend) NetworkSetUp(_ context.Context, sid, name string, up bool) error {
+	c, err := ubus.Dial(b.ubusSocket)
 	if err != nil {
 		return err
 	}
@@ -216,8 +216,8 @@ func (*NativeBackend) NetworkSetUp(_ context.Context, sid, name string, up bool)
 
 // NetworkRestart asks the running netifd object to reconnect. RPC access is
 // checked for both operations before either is attempted.
-func (*NativeBackend) NetworkRestart(_ context.Context, sid, name string) error {
-	c, err := ubus.Dial("")
+func (b *NativeBackend) NetworkRestart(_ context.Context, sid, name string) error {
+	c, err := ubus.Dial(b.ubusSocket)
 	if err != nil {
 		return err
 	}

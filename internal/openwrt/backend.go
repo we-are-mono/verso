@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"slices"
@@ -558,85 +559,42 @@ type Memory struct {
 	Available int64
 }
 
-// The ubus operations whose shell-side logic is unit-tested sit behind func
-// seams the tests fake; the real implementations dial the ubus socket and go
-// through rpcd (verified live, like the ubus client itself).
-type (
-	systemInfoFn  func(ctx context.Context, sid string) (map[string]any, error)
-	systemBoardFn func(ctx context.Context, sid string) (map[string]any, error)
-	accessFn      func(ctx context.Context, sid, scope, object, function string) (bool, error)
-	uciSetFn      func(ctx context.Context, sid, config, section string, values map[string]any) error
-	uciConfigFn   func(ctx context.Context, sid, config string) (map[string]any, error)
-	uciAddFn      func(ctx context.Context, sid, config, secType, name string) (string, error)
-	uciDeleteFn   func(ctx context.Context, sid, config, section, option string) error
-	uciOrderFn    func(ctx context.Context, sid, config string, sections []string) error
-	uciChangesFn  func(ctx context.Context, sid string) (map[string][][]string, error)
-	uciRevertFn   func(ctx context.Context, sid, config string) error
-	uciApplyFn    func(ctx context.Context, sid string, timeout int) error
-	uciConfirmFn  func(ctx context.Context, sid string) error
-	logReadFn     func(ctx context.Context, sid string, lines int) (map[string]any, error)
-	netIfacesFn   func(ctx context.Context, sid string) (map[string]any, error)
-)
-
 // NativeBackend reads OpenWrt state over the ubus socket, presenting the session
 // sid to rpcd's ACL-gated objects. Verso holds no ambient privilege over config:
 // rpcd authorizes and executes, so a restricted operator is limited to what
 // their ACLs grant (ADR-007).
+//
+// Its seams are where it reaches the router, not what it asks there: the two
+// sockets and the file system. A test stands a fake ubusd, a fake helper or a
+// map of files at them and sees every argument as the router would.
 type NativeBackend struct {
 	// helperSocket is where the verso-rpcd helper listens; empty is its
 	// default path.
 	helperSocket string
-	systemInfo   systemInfoFn
-	systemBoard  systemBoardFn
-	access       accessFn
-	uciSet       uciSetFn
-	uciConfig    uciConfigFn
-	uciAdd       uciAddFn
-	uciDelete    uciDeleteFn
-	uciOrder     uciOrderFn
-	kernelBuild  func() string
-	packageArch  func() string
-	uciChanges   uciChangesFn
-	uciRevert    uciRevertFn
-	uciApply     uciApplyFn
-	uciConfirm   uciConfirmFn
-	logRead      logReadFn
-	netIfaces    netIfacesFn
+	// ubusSocket is where ubusd listens; empty is its default path.
+	ubusSocket string
+	// root is the file system the board's own files (/proc/version,
+	// /etc/apk/arch) are read from; nil is the router's root.
+	root fs.FS
 }
 
 // NewNativeBackend returns a backend using the default ubus socket.
 func NewNativeBackend() *NativeBackend {
-	return &NativeBackend{
-		systemInfo:  dialSystemInfo(""),
-		systemBoard: dialSystemBoard(""),
-		access:      dialAccess(""),
-		uciSet:      dialUCISet(""),
-		uciConfig:   dialUCIConfig(""),
-		uciAdd:      dialUCIAdd(""),
-		uciDelete:   dialUCIDelete(""),
-		uciOrder:    dialUCIOrder(""),
-		kernelBuild: func() string {
-			data, err := os.ReadFile("/proc/version")
-			if err != nil {
-				return ""
-			}
-			return strings.TrimSpace(string(data))
-		},
-		packageArch: func() string {
-			data, err := os.ReadFile("/etc/apk/arch")
-			if err != nil {
-				return ""
-			}
-			line, _, _ := strings.Cut(string(data), "\n")
-			return strings.TrimSpace(line)
-		},
-		uciChanges: dialUCIChanges(""),
-		uciRevert:  dialUCIRevert(""),
-		uciApply:   dialUCIApply(""),
-		uciConfirm: dialUCIConfirm(""),
-		logRead:    dialLogRead(""),
-		netIfaces:  dialNetworkInterfaces(""),
+	return &NativeBackend{}
+}
+
+// readRoot is a file of the router's own, by its path from the root, or ""
+// when it cannot be read.
+func (b *NativeBackend) readRoot(name string) string {
+	root := b.root
+	if root == nil {
+		root = os.DirFS("/")
 	}
+	data, err := fs.ReadFile(root, name)
+	if err != nil {
+		return ""
+	}
+	return string(data)
 }
 
 // Hostname reads the running name, just like the public sign-in page and
@@ -645,19 +603,23 @@ func (*NativeBackend) Hostname(_ context.Context, _ string) (string, error) {
 	return os.Hostname()
 }
 
-// SystemInfo fetches and maps live system info, gated by an rpcd ACL check.
-func (b *NativeBackend) SystemInfo(ctx context.Context, sid string) (SystemInfo, error) {
-	m, err := b.systemInfo(ctx, sid)
+// SystemInfo fetches and maps live system info. system is procd's object (rpcd
+// does not proxy it), so the ACL is enforced by the session.access pre-check —
+// the pattern for any non-rpcd ubus call.
+func (b *NativeBackend) SystemInfo(_ context.Context, sid string) (SystemInfo, error) {
+	m, err := callChecked(b.ubusSocket, sid, "system", "info", nil)
 	if err != nil {
 		return SystemInfo{}, err
 	}
 	return parseSystemInfo(m), nil
 }
 
-// Board reads `ubus call system board` and folds it to the firmware release and
-// kernel version.
-func (b *NativeBackend) Board(ctx context.Context, sid string) (Board, error) {
-	m, err := b.systemBoard(ctx, sid)
+// Board reads `ubus call system board`, sid-gated like system info, and folds
+// it to the firmware release and kernel version. The kernel's build stamp comes
+// from /proc/version and the package architecture from /etc/apk/arch, which
+// ubus does not report.
+func (b *NativeBackend) Board(_ context.Context, sid string) (Board, error) {
+	m, err := callChecked(b.ubusSocket, sid, "system", "board", nil)
 	if err != nil {
 		return Board{}, err
 	}
@@ -665,14 +627,11 @@ func (b *NativeBackend) Board(ctx context.Context, sid string) (Board, error) {
 	if board.KernelBuild == "" && board.Kernel != "" {
 		board.KernelBuild = board.Kernel
 	}
-	if b.kernelBuild != nil {
-		if full := b.kernelBuild(); full != "" {
-			board.KernelBuild = condenseKernelBuild(full, board.Kernel)
-		}
+	if full := strings.TrimSpace(b.readRoot("proc/version")); full != "" {
+		board.KernelBuild = condenseKernelBuild(full, board.Kernel)
 	}
-	if b.packageArch != nil {
-		board.Arch = b.packageArch()
-	}
+	arch, _, _ := strings.Cut(b.readRoot("etc/apk/arch"), "\n")
+	board.Arch = strings.TrimSpace(arch)
 	return board, nil
 }
 
@@ -699,39 +658,86 @@ func condenseKernelBuild(full, release string) string {
 	return out
 }
 
-// Access reports whether rpcd grants the session object.function in scope.
-func (b *NativeBackend) Access(ctx context.Context, sid, scope, object, function string) (bool, error) {
-	return b.access(ctx, sid, scope, object, function)
+// Access reports whether rpcd grants the session object.function in scope,
+// asking rpcd's session.access over a connection of its own — the shell's ACL
+// enforcement point (ADR-007).
+func (b *NativeBackend) Access(_ context.Context, sid, scope, object, function string) (bool, error) {
+	c, err := ubus.Dial(b.ubusSocket)
+	if err != nil {
+		return false, err
+	}
+	defer c.Close()
+	return probeAccess(c, sid, scope, object, function)
 }
 
-// UCISet writes option values into a uci section through rpcd, gated by the sid.
-func (b *NativeBackend) UCISet(ctx context.Context, sid, config, section string, values map[string]any) error {
-	return b.uciSet(ctx, sid, config, section, values)
+// UCISet writes option values into a uci section through rpcd's `uci` object
+// (method `set`), carrying the sid so rpcd applies the operator's ACLs. values
+// is encoded as the nested `values:{}` table uci.set expects.
+func (b *NativeBackend) UCISet(_ context.Context, sid, config, section string, values map[string]any) error {
+	_, err := call(b.ubusSocket, "uci", "set", map[string]any{
+		"ubus_rpc_session": sid,
+		"config":           config,
+		"section":          section,
+		"values":           values,
+	})
+	return err
 }
 
-// UCIConfig reads a whole uci config through rpcd, gated by the sid.
+// UCIConfig reads a whole config through rpcd's `uci` object (method `get`
+// with no section), carrying the sid. rpcd returns the config's sections under
+// `values` — section name → section table — which the shell hands to a plugin
+// as its read snapshot (ADR-007). A config the operator may not read comes
+// back with no values, which surfaces as an empty snapshot.
+//
 // A config no installed package ships is reported as ErrConfigNotFound: rpcd
 // answers its read with UBUS_STATUS_NOT_FOUND from the invoke, a fact about
 // the router rather than a failure. The same status from the `uci` object's
 // lookup is rpcd off the bus, and passes through as the failure it is.
-func (b *NativeBackend) UCIConfig(ctx context.Context, sid, config string) (map[string]any, error) {
-	values, err := b.uciConfig(ctx, sid, config)
+func (b *NativeBackend) UCIConfig(_ context.Context, sid, config string) (map[string]any, error) {
+	res, err := call(b.ubusSocket, "uci", "get", map[string]any{
+		"ubus_rpc_session": sid,
+		"config":           config,
+	})
 	var status *ubus.StatusError
 	if errors.As(err, &status) && status.Code == ubus.StatusNotFound && status.Phase == ubus.PhaseInvoke {
 		return nil, fmt.Errorf("openwrt: read %s: %w", config, ErrConfigNotFound)
 	}
-	return values, err
+	if err != nil {
+		return nil, err
+	}
+	values, _ := res["values"].(map[string]any)
+	return values, nil
 }
 
-// UCIAdd creates a new section of secType through rpcd, gated by the sid, and
-// returns its id — anonymous when name is empty, named otherwise.
-func (b *NativeBackend) UCIAdd(ctx context.Context, sid, config, secType, name string) (string, error) {
-	return b.uciAdd(ctx, sid, config, secType, name)
+// UCIAdd creates a section of secType through rpcd's `uci` object (method
+// `add`), carrying the sid, and returns rpcd's new section id — anonymous when
+// name is empty, named otherwise. An empty name is omitted entirely, since it
+// is not a name rpcd should try to give a section. The caller commits the
+// config afterwards, as with `set`.
+func (b *NativeBackend) UCIAdd(_ context.Context, sid, config, secType, name string) (string, error) {
+	args := map[string]any{
+		"ubus_rpc_session": sid,
+		"config":           config,
+		"type":             secType,
+	}
+	if name != "" {
+		args["name"] = name
+	}
+	res, err := call(b.ubusSocket, "uci", "add", args)
+	if err != nil {
+		return "", err
+	}
+	section, _ := res["section"].(string)
+	return section, nil
 }
 
-// UCIDelete removes a section — or one of its options — through rpcd, gated by
-// the sid. An option rpcd cannot find is reported as ErrOptionNotFound: clearing
-// an option a section never carried is the state the caller asked for, and the
+// UCIDelete removes a section — or one of its options — through rpcd's `uci`
+// object (method `delete`), carrying the sid. Naming an option narrows the
+// delete to that option, leaving the section itself; omitting it removes the
+// whole section. The caller commits afterwards.
+//
+// An option rpcd cannot find is reported as ErrOptionNotFound: clearing an
+// option a section never carried is the state the caller asked for, and the
 // ubus status that says so stops here rather than travelling on as a bare
 // failure. A section-level delete is passed through as it comes.
 //
@@ -740,8 +746,16 @@ func (b *NativeBackend) UCIAdd(ctx context.Context, sid, config, secType, name s
 // rpcd off the bus is the opposite of "already in the state you asked for" —
 // nothing was read, nothing was written, and a save that swallowed it would
 // report success over a device it never reached.
-func (b *NativeBackend) UCIDelete(ctx context.Context, sid, config, section, option string) error {
-	err := b.uciDelete(ctx, sid, config, section, option)
+func (b *NativeBackend) UCIDelete(_ context.Context, sid, config, section, option string) error {
+	args := map[string]any{
+		"ubus_rpc_session": sid,
+		"config":           config,
+		"section":          section,
+	}
+	if option != "" {
+		args["option"] = option
+	}
+	_, err := call(b.ubusSocket, "uci", "delete", args)
 	if err == nil || option == "" {
 		return err
 	}
@@ -752,9 +766,17 @@ func (b *NativeBackend) UCIDelete(ctx context.Context, sid, config, section, opt
 	return err
 }
 
-// UCIOrder rewrites a config's section sequence through rpcd, gated by the sid.
-func (b *NativeBackend) UCIOrder(ctx context.Context, sid, config string, sections []string) error {
-	return b.uciOrder(ctx, sid, config, sections)
+// UCIOrder rewrites a config's section sequence through rpcd's `uci` object
+// (method `order`), carrying the sid. sections is the whole new order; rpcd
+// stages the move exactly as it stages a set or a delete, so the caller's
+// apply is what makes it live.
+func (b *NativeBackend) UCIOrder(_ context.Context, sid, config string, sections []string) error {
+	_, err := call(b.ubusSocket, "uci", "order", map[string]any{
+		"ubus_rpc_session": sid,
+		"config":           config,
+		"sections":         sections,
+	})
+	return err
 }
 
 // SetPassword sets username's system password through the privileged `verso-rpcd`
@@ -834,7 +856,7 @@ func (b *NativeBackend) FactoryReset(ctx context.Context, sid string, eraseHisto
 // UCIChanges reads the pending uci changes across all configs through rpcd, gated
 // by the sid.
 func (b *NativeBackend) UCIChanges(ctx context.Context, sid string) (map[string][][]string, error) {
-	changes, err := b.uciChanges(ctx, sid)
+	changes, err := b.uciChanges(sid)
 	if err != nil {
 		return nil, err
 	}
@@ -857,7 +879,7 @@ func (b *NativeBackend) UCIChanges(ctx context.Context, sid string) (map[string]
 // UCIRevert discards a config's staged changes through rpcd, gated by the sid,
 // and the staged files of the family that config's daemon reads.
 func (b *NativeBackend) UCIRevert(ctx context.Context, sid, config string) error {
-	if err := b.uciRevert(ctx, sid, config); err != nil {
+	if err := b.uciRevert(sid, config); err != nil {
 		return err
 	}
 	return b.UnstageFiles(ctx, sid, config)
@@ -865,8 +887,8 @@ func (b *NativeBackend) UCIRevert(ctx context.Context, sid, config string) error
 
 // UCIUnstage discards a config's staged uci changes through rpcd, gated by
 // the sid, leaving the config's staged files.
-func (b *NativeBackend) UCIUnstage(ctx context.Context, sid, config string) error {
-	return b.uciRevert(ctx, sid, config)
+func (b *NativeBackend) UCIUnstage(_ context.Context, sid, config string) error {
+	return b.uciRevert(sid, config)
 }
 
 // UnstageFiles discards the staged files of the family config's daemon
@@ -890,9 +912,9 @@ func (b *NativeBackend) UCIConfirm(ctx context.Context, sid string) error {
 
 // UCICommitted reads configs as committed through verso-rpcd's uciCommitted,
 // gated by the sid.
-func (*NativeBackend) UCICommitted(ctx context.Context, sid string, configs []string) (map[string]map[string]any, error) {
+func (b *NativeBackend) UCICommitted(ctx context.Context, sid string, configs []string) (map[string]map[string]any, error) {
 	var out map[string]map[string]any
-	err := callHelper(ctx, "", "uciCommitted", sid, map[string]string{"configs": strings.Join(configs, " ")}, &out)
+	err := callHelper(ctx, b.helperSocket, "uciCommitted", sid, map[string]string{"configs": strings.Join(configs, " ")}, &out)
 	return out, err
 }
 
@@ -1019,19 +1041,27 @@ func (b *NativeBackend) FirewallCounters(ctx context.Context, sid string) (json.
 	return result, nil
 }
 
-// LogRead reads the tail of logd's ring and folds it to typed records.
-func (b *NativeBackend) LogRead(ctx context.Context, sid string, lines int) ([]LogEntry, error) {
-	m, err := b.logRead(ctx, sid, lines)
+// LogRead reads the tail of logd's ring through the `log` object, sid-gated by
+// the same session.access pre-check every non-rpcd ubus call uses, and folds it
+// to typed records. stream:false is what makes this a one-shot tail: logd's
+// default is a subscription that never returns.
+func (b *NativeBackend) LogRead(_ context.Context, sid string, lines int) ([]LogEntry, error) {
+	m, err := callChecked(b.ubusSocket, sid, "log", "read", map[string]any{
+		"lines":   lines,
+		"stream":  false,
+		"oneshot": true,
+	})
 	if err != nil {
 		return nil, err
 	}
 	return parseLogEntries(m), nil
 }
 
-// NetworkInterfaces reads netifd's dump and folds it to the logical-name →
-// kernel-device pairs a log line has to be read through.
-func (b *NativeBackend) NetworkInterfaces(ctx context.Context, sid string) ([]NetIface, error) {
-	m, err := b.netIfaces(ctx, sid)
+// NetworkInterfaces reads the same netifd dump the uplink discovery reads —
+// one shape, one ACL, one place it is fetched — and folds it to the
+// logical-name → kernel-device pairs a log line has to be read through.
+func (b *NativeBackend) NetworkInterfaces(_ context.Context, sid string) ([]NetIface, error) {
+	m, err := fetchNetworkDump(b.ubusSocket, sid)
 	if err != nil {
 		return nil, err
 	}
@@ -1106,165 +1136,18 @@ func parseNetIfaces(dump map[string]any) []NetIface {
 	return out
 }
 
-// dialLogRead returns a logReadFn that reads the tail of logd's ring through the
-// `log` object, sid-gated by the same session.access pre-check every non-rpcd
-// ubus call uses. stream:false is what makes this a one-shot tail: logd's
-// default is a subscription that never returns.
-func dialLogRead(socket string) logReadFn {
-	return func(_ context.Context, sid string, lines int) (map[string]any, error) {
-		return callChecked(socket, sid, "log", "read", map[string]any{
-			"lines":   lines,
-			"stream":  false,
-			"oneshot": true,
-		})
-	}
-}
-
-// dialNetworkInterfaces returns a netIfacesFn reading the same netifd dump the
-// uplink discovery reads — one shape, one ACL, one place it is fetched.
-func dialNetworkInterfaces(socket string) netIfacesFn {
-	return func(_ context.Context, sid string) (map[string]any, error) {
-		return fetchNetworkDump(socket, sid)
-	}
-}
-
-// dialSystemInfo probes rpcd `session.access` for the sid, then invokes
-// `system info` directly. system is procd's object (rpcd does not proxy it), so
-// the ACL is enforced by the pre-check — the pattern for any non-rpcd ubus call.
-func dialSystemInfo(socket string) systemInfoFn {
-	return func(_ context.Context, sid string) (map[string]any, error) {
-		return callChecked(socket, sid, "system", "info", nil)
-	}
-}
-
-// dialSystemBoard returns a systemBoardFn that reads `ubus call system board`,
-// the device's identity (firmware release, kernel), sid-gated like system info.
-func dialSystemBoard(socket string) systemBoardFn {
-	return func(_ context.Context, sid string) (map[string]any, error) {
-		return callChecked(socket, sid, "system", "board", nil)
-	}
-}
-
-// dialAccess returns an accessFn that dials the socket per call and probes rpcd's
-// session.access for the session — the shell's ACL enforcement point (ADR-007).
-func dialAccess(socket string) accessFn {
-	return func(_ context.Context, sid, scope, object, function string) (bool, error) {
-		c, err := ubus.Dial(socket)
-		if err != nil {
-			return false, err
-		}
-		defer c.Close()
-		return probeAccess(c, sid, scope, object, function)
-	}
-}
-
-// dialUCISet returns a uciSetFn that writes option values via rpcd's `uci` object
-// (method `set`), carrying the sid so rpcd applies the operator's ACLs. values is
-// encoded as the nested `values:{}` table uci.set expects.
-func dialUCISet(socket string) uciSetFn {
-	return func(_ context.Context, sid, config, section string, values map[string]any) error {
-		_, err := call(socket, "uci", "set", map[string]any{
-			"ubus_rpc_session": sid,
-			"config":           config,
-			"section":          section,
-			"values":           values,
-		})
-		return err
-	}
-}
-
-// dialUCIConfig returns a uciConfigFn that reads a whole config via rpcd's `uci`
-// object (method `get` with no section), carrying the sid. rpcd returns the
-// config's sections under `values` — section name → section table — which the
-// shell hands to a plugin as its read snapshot (ADR-007). A config the operator
-// may not read comes back with no values, which surfaces as an empty snapshot.
-func dialUCIConfig(socket string) uciConfigFn {
-	return func(_ context.Context, sid, config string) (map[string]any, error) {
-		res, err := call(socket, "uci", "get", map[string]any{
-			"ubus_rpc_session": sid,
-			"config":           config,
-		})
-		if err != nil {
-			return nil, err
-		}
-		values, _ := res["values"].(map[string]any)
-		return values, nil
-	}
-}
-
-// dialUCIAdd returns a uciAddFn that creates a section of secType via rpcd's
-// `uci` object (method `add`), carrying the sid, and returns rpcd's new section
-// id. The optional `name` argument is what makes the section named rather than
-// anonymous; it is omitted entirely when empty, since an empty name is not a
-// name rpcd should try to give a section. The caller commits the config
-// afterwards, as with `set`.
-func dialUCIAdd(socket string) uciAddFn {
-	return func(_ context.Context, sid, config, secType, name string) (string, error) {
-		args := map[string]any{
-			"ubus_rpc_session": sid,
-			"config":           config,
-			"type":             secType,
-		}
-		if name != "" {
-			args["name"] = name
-		}
-		res, err := call(socket, "uci", "add", args)
-		if err != nil {
-			return "", err
-		}
-		section, _ := res["section"].(string)
-		return section, nil
-	}
-}
-
-// dialUCIDelete returns a uciDeleteFn that removes a section via rpcd's `uci`
-// object (method `delete`), carrying the sid. Naming an option narrows the
-// delete to that option, leaving the section itself; omitting it removes the
-// whole section. The caller commits afterwards.
-func dialUCIDelete(socket string) uciDeleteFn {
-	return func(_ context.Context, sid, config, section, option string) error {
-		args := map[string]any{
-			"ubus_rpc_session": sid,
-			"config":           config,
-			"section":          section,
-		}
-		if option != "" {
-			args["option"] = option
-		}
-		_, err := call(socket, "uci", "delete", args)
-		return err
-	}
-}
-
-// dialUCIOrder returns a uciOrderFn that rewrites a config's section sequence
-// via rpcd's `uci` object (method `order`), carrying the sid. sections is the
-// whole new order; rpcd stages the move exactly as it stages a set or a delete,
-// so the caller's apply is what makes it live.
-func dialUCIOrder(socket string) uciOrderFn {
-	return func(_ context.Context, sid, config string, sections []string) error {
-		_, err := call(socket, "uci", "order", map[string]any{
-			"ubus_rpc_session": sid,
-			"config":           config,
-			"sections":         sections,
-		})
-		return err
-	}
-}
-
-// dialUCIChanges returns a uciChangesFn that reads all pending changes via rpcd's
-// `uci` object (method `changes`, no config), carrying the sid. rpcd answers
+// uciChanges reads all pending uci changes via rpcd's `uci` object (method
+// `changes`, no config), carrying the sid. rpcd answers
 // {changes: {config: [[op, section, option?, value?], …]}}; configs the operator
 // may not read simply do not appear.
-func dialUCIChanges(socket string) uciChangesFn {
-	return func(_ context.Context, sid string) (map[string][][]string, error) {
-		res, err := call(socket, "uci", "changes", map[string]any{
-			"ubus_rpc_session": sid,
-		})
-		if err != nil {
-			return nil, err
-		}
-		return parseChanges(res["changes"]), nil
+func (b *NativeBackend) uciChanges(sid string) (map[string][][]string, error) {
+	res, err := call(b.ubusSocket, "uci", "changes", map[string]any{
+		"ubus_rpc_session": sid,
+	})
+	if err != nil {
+		return nil, err
 	}
+	return parseChanges(res["changes"]), nil
 }
 
 // parseChanges maps rpcd's generic changes table onto config → change tuples.
@@ -1312,44 +1195,38 @@ func parseChanges(v any) map[string][][]string {
 	return out
 }
 
-// dialUCIRevert returns a uciRevertFn that discards a config's staged changes via
-// rpcd's `uci` object (method `revert`), carrying the sid.
-func dialUCIRevert(socket string) uciRevertFn {
-	return func(_ context.Context, sid, config string) error {
-		_, err := call(socket, "uci", "revert", map[string]any{
-			"ubus_rpc_session": sid,
-			"config":           config,
-		})
-		return err
-	}
+// uciRevert discards a config's staged uci changes via rpcd's `uci` object
+// (method `revert`), carrying the sid.
+func (b *NativeBackend) uciRevert(sid, config string) error {
+	_, err := call(b.ubusSocket, "uci", "revert", map[string]any{
+		"ubus_rpc_session": sid,
+		"config":           config,
+	})
+	return err
 }
 
-// dialUCIApply returns a uciApplyFn that commits all dirty configs via rpcd's
-// `uci` object (method `apply` with rollback), carrying the sid. rpcd checkpoints
-// the configs, commits, lets procd's config triggers reload services, and reverts
-// on the device unless `confirm` lands within timeout seconds — the safety net
-// runs on the router, the only place it works when the operator cuts their own
-// connectivity (ADR-010).
-func dialUCIApply(socket string) uciApplyFn {
-	return func(_ context.Context, sid string, timeout int) error {
-		_, err := call(socket, "uci", "apply", map[string]any{
-			"ubus_rpc_session": sid,
-			"rollback":         true,
-			"timeout":          timeout,
-		})
-		return err
-	}
+// uciApply commits all dirty configs via rpcd's `uci` object (method `apply`
+// with rollback), carrying the sid. rpcd checkpoints the configs, commits, lets
+// procd's config triggers reload services, and reverts on the device unless
+// `confirm` lands within timeout seconds — the safety net runs on the router,
+// the only place it works when the operator cuts their own connectivity
+// (ADR-010).
+func (b *NativeBackend) uciApply(sid string, timeout int) error {
+	_, err := call(b.ubusSocket, "uci", "apply", map[string]any{
+		"ubus_rpc_session": sid,
+		"rollback":         true,
+		"timeout":          timeout,
+	})
+	return err
 }
 
-// dialUCIConfirm returns a uciConfirmFn that disarms a pending rollback via rpcd's
-// `uci` object (method `confirm`), carrying the sid.
-func dialUCIConfirm(socket string) uciConfirmFn {
-	return func(_ context.Context, sid string) error {
-		_, err := call(socket, "uci", "confirm", map[string]any{
-			"ubus_rpc_session": sid,
-		})
-		return err
-	}
+// uciConfirm disarms a pending rollback via rpcd's `uci` object (method
+// `confirm`), carrying the sid.
+func (b *NativeBackend) uciConfirm(sid string) error {
+	_, err := call(b.ubusSocket, "uci", "confirm", map[string]any{
+		"ubus_rpc_session": sid,
+	})
+	return err
 }
 
 // probeAccess asks rpcd whether the session may call object.function within the
@@ -1442,8 +1319,8 @@ func parseSystemInfo(m map[string]any) SystemInfo {
 // IPv6Leases reads odhcpd's DHCPv6 lease table (`ubus call dhcp ipv6leases`,
 // sid-gated like the other reads) and folds it to a flat list of DUID +
 // hostname + assigned addresses per client.
-func (*NativeBackend) IPv6Leases(_ context.Context, sid string) ([]V6Lease, error) {
-	m, err := callChecked("", sid, "dhcp", "ipv6leases", nil)
+func (b *NativeBackend) IPv6Leases(_ context.Context, sid string) ([]V6Lease, error) {
+	m, err := callChecked(b.ubusSocket, sid, "dhcp", "ipv6leases", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -1592,8 +1469,8 @@ func failedServices(raw map[string]any) []string {
 // seconds on a router with fifty procd services — and some packages' scripts
 // reload their daemon from that hook. procd's own instance table, read next,
 // already says what runs.
-func (*NativeBackend) RCList(_ context.Context, sid string) (map[string]RCState, error) {
-	c, err := ubus.Dial("")
+func (b *NativeBackend) RCList(_ context.Context, sid string) (map[string]RCState, error) {
+	c, err := ubus.Dial(b.ubusSocket)
 	if err != nil {
 		return nil, err
 	}
@@ -1625,8 +1502,8 @@ func (*NativeBackend) RCList(_ context.Context, sid string) (map[string]RCState,
 	return out, nil
 }
 
-func (*NativeBackend) FailedServices(_ context.Context, sid string) ([]string, error) {
-	raw, err := callChecked("", sid, "service", "list", nil)
+func (b *NativeBackend) FailedServices(_ context.Context, sid string) ([]string, error) {
+	raw, err := callChecked(b.ubusSocket, sid, "service", "list", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -1873,16 +1750,16 @@ func parseProcAge(stat []byte, systemUptime float64) int64 {
 // RCInit drives one rc action on a named init script through procd, after
 // probing the session's ubus/rc/init access. Name and action policy is the
 // caller's (the shell restricts both); rpcd's session gate is the backstop.
-func (*NativeBackend) RCInit(_ context.Context, sid, name, action string) error {
-	_, err := callChecked("", sid, "rc", "init", map[string]any{"name": name, "action": action})
+func (b *NativeBackend) RCInit(_ context.Context, sid, name, action string) error {
+	_, err := callChecked(b.ubusSocket, sid, "rc", "init", map[string]any{"name": name, "action": action})
 	return err
 }
 
 // WANStatus reads one plural netifd dump and supplements it with the kernel
 // route/rule view. Kernel discovery is best-effort: stock netifd discovery still
 // works if the platform refuses a route-netlink dump.
-func (*NativeBackend) WANStatus(_ context.Context, sid string) (WANState, error) {
-	dump, err := fetchNetworkDump("", sid)
+func (b *NativeBackend) WANStatus(_ context.Context, sid string) (WANState, error) {
+	dump, err := fetchNetworkDump(b.ubusSocket, sid)
 	if err != nil {
 		return WANState{}, err
 	}
@@ -1892,8 +1769,8 @@ func (*NativeBackend) WANStatus(_ context.Context, sid string) (WANState, error)
 
 // WANConn reads the same plural netifd dump and chooses the preferred
 // main-table route owner independently for IPv4 and IPv6.
-func (*NativeBackend) WANConn(_ context.Context, sid string) (WANConn, error) {
-	dump, err := fetchNetworkDump("", sid)
+func (b *NativeBackend) WANConn(_ context.Context, sid string) (WANConn, error) {
+	dump, err := fetchNetworkDump(b.ubusSocket, sid)
 	if err != nil {
 		return WANConn{}, err
 	}
@@ -2007,8 +1884,8 @@ func parseWANConn(v4, v6 map[string]any) WANConn {
 
 // DeviceStats reads network.device status for one named device, after
 // probing the session's access to the object.
-func (*NativeBackend) DeviceStats(_ context.Context, sid, device string) (DeviceStats, error) {
-	res, err := callChecked("", sid, "network.device", "status", map[string]any{"name": device})
+func (b *NativeBackend) DeviceStats(_ context.Context, sid, device string) (DeviceStats, error) {
+	res, err := callChecked(b.ubusSocket, sid, "network.device", "status", map[string]any{"name": device})
 	if err != nil {
 		return DeviceStats{}, err
 	}

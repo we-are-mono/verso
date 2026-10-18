@@ -155,9 +155,9 @@ func (b *NativeBackend) applyWithFiles(ctx context.Context, sid string, timeout 
 		pending = pending || f.Pending
 	}
 	if !pending {
-		return b.uciApply(ctx, sid, timeout)
+		return b.uciApply(sid, timeout)
 	}
-	changes, err := b.uciChanges(ctx, sid)
+	changes, err := b.uciChanges(sid)
 	if err != nil {
 		return err
 	}
@@ -169,7 +169,7 @@ func (b *NativeBackend) applyWithFiles(ctx context.Context, sid string, timeout 
 		return err
 	}
 	if uci {
-		if err := b.uciApply(ctx, sid, timeout); err != nil {
+		if err := b.uciApply(sid, timeout); err != nil {
 			// A cancelled HTTP request must not cancel restoration of files already written.
 			restoreCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), helperCallTimeout)
 			defer cancel()
@@ -187,10 +187,10 @@ func (b *NativeBackend) confirmWithFiles(ctx context.Context, sid string) error 
 		return err
 	}
 	if !files.Active {
-		return b.uciConfirm(ctx, sid)
+		return b.uciConfirm(sid)
 	}
 	if files.UCI && !files.UCIConfirmed {
-		if err := b.uciConfirm(ctx, sid); err != nil {
+		if err := b.uciConfirm(sid); err != nil {
 			return err
 		}
 		if err := b.fileAction(ctx, sid, "uci-confirmed", true, 30); err != nil {

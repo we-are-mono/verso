@@ -22,7 +22,7 @@ import (
 // DHCPState describes the DHCPv4 servers actually loaded by dnsmasq. The
 // operator's staged UCI snapshot is deliberately not a source of live state.
 func (b *NativeBackend) DHCPState(ctx context.Context, sid string) (json.RawMessage, error) {
-	c, err := ubus.Dial("")
+	c, err := ubus.Dial(b.ubusSocket)
 	if err != nil {
 		return nil, err
 	}
