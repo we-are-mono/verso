@@ -65,7 +65,7 @@
             </span>
             {{else if .AddHref}}<a href="{{.AddHref}}" aria-label="{{.AddLabel}}"{{template "table.laneadd-attrs" .}}>{{template "table.laneadd-body" .}}</a>{{end}}{{end}}
 {{/* table.legend: the marks explained where the marks are: the same dot the
-     rows wear, the plain words for it, and hard right the one caveat about
+     rows wear, the plain words for it, and after them the one caveat about
      what the listing includes. */}}
 {{define "table.legend"}}{{if or .Legend .Note}}
   <div data-verso-table-legend class="verso-listing__legend">

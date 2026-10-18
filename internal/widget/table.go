@@ -96,7 +96,7 @@ type Table struct {
 	// Legend explains the marks the rows carry, under the last row: a listing
 	// that states something with a dot owes the reader the dot's meaning once,
 	// where the dots are, rather than in a tooltip they have to go looking for.
-	// Note rides hard right of the legend — the one caveat about what the
+	// Note follows the legend, flush left — the one caveat about what the
 	// listing includes ("offline devices stay listed until their lease
 	// expires"). Either may stand without the other.
 	Legend []TableLegend `json:"legend,omitempty"`

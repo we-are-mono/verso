@@ -31,8 +31,8 @@
  *           __key       one mark and its words in the legend; an ink
  *                       explained in the ink itself (__ink, data-verso-tone,
  *                       the word in the tone's Deep step, its __range quiet)
- *           __caveat    the one caveat about what the listing includes, hard
- *                       right
+ *           __caveat    the one caveat about what the listing includes,
+ *                       after the keys, flush left as they are
  *           __note      a line of words where a row would stand: nothing
  *                       matches, or nothing to list; a row's air, the rows'
  *                       insets and its hairline
@@ -189,9 +189,6 @@
 .verso-listing__range,
 .verso-listing__caveat {
   color: var(--color-meta);
-}
-.verso-listing__caveat {
-  margin-left: auto;
 }
 
 .verso-listing__note {
