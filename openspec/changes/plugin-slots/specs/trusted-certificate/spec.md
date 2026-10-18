@@ -69,6 +69,10 @@ While the `verso` section is enabled, acme SHALL contribute a Source row to the 
 - **WHEN** acme's request for the domain is running
 - **THEN** the Source row carries the waiting mark
 
+#### Scenario: Held but not served
+- **WHEN** acme holds a certificate for the domain that the router does not serve
+- **THEN** the Source row, in the warning tone, says the certificate is not served yet and the router serves the one the card's facts show
+
 #### Scenario: No trusted certificate set up
 - **WHEN** there is no `verso` cert section, or it is disabled
 - **THEN** acme contributes no Source row, and the card's own Signed by row says who signed the served certificate
@@ -114,11 +118,11 @@ When the router's own lookup of the domain answers with none of the router's add
 ## ADDED Requirements
 
 ### Requirement: The Certificate card stands on the Overview
-While the `verso` section is enabled, acme SHALL contribute a Certificate card to the Overview. Its summary is the domain, its status says when a request or renewal failed, its body gives the certificate's time left, whether it is served and how long ago acme last did something, and it opens the setup. A failed request or renewal SHALL be the card's cause, in the danger tone once the served certificate has seven days or fewer left and in the warning tone before that.
+While the `verso` section is enabled, acme SHALL contribute a Certificate card to the Overview: the domain as its summary, the certificate's facts in its body, and a door that opens the setup. A failed request or renewal SHALL be the card's cause, in the danger tone once the served certificate has seven days or fewer left and in the warning tone before that.
 
 #### Scenario: A healthy certificate
 - **WHEN** acme serves a certificate that expires in 52 days
-- **THEN** the Overview shows a Certificate card whose closed summary reads `router.example.com`, whose body gives 52 days left, and which states no cause
+- **THEN** the Overview shows a Certificate card whose closed summary reads `router.example.com`, whose body gives whom it is issued to, who signed it, 52 days left, that it is served and how long ago acme last did something, and which states no cause
 
 #### Scenario: A failed renewal
 - **WHEN** acme's last renewal failed and the served certificate has 20 days left

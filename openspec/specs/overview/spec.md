@@ -7,7 +7,7 @@ The Overview is the landing page: a verdict on the network over cards that each 
 ## Requirements
 
 ### Requirement: The Overview shows seven cards in two columns
-The Overview SHALL show seven cards, each holding one kind of reading: Internet, Ports, Tunnels, Traffic, Resources, System and Hardware. Hardware stands only on a board that has a profile. Cards stand in two columns, each column stacking its cards at their own heights. The default layout puts Internet, Ports and Tunnels on the left, and Traffic, Resources, System and Hardware on the right.
+The Overview SHALL show seven cards, each holding one kind of reading: Internet, Ports, Tunnels, Traffic, Resources, System and Hardware. Hardware stands only on a board that has a profile. Cards stand in two columns, each column stacking its cards at their own heights. The default layout puts Internet, Ports and Tunnels on the left, and Traffic, Resources, System and Hardware on the right. Each card a running plugin contributes to `shell.overview.cards` SHALL stand among them, in the default layout where its position puts it.
 
 #### Scenario: First visit
 - **WHEN** a signed-in operator opens the Overview with no layout cookie on a board that has a profile
@@ -35,6 +35,10 @@ The Overview SHALL show seven cards, each holding one kind of reading: Internet,
 #### Scenario: Narrow screen
 - **WHEN** the page is too narrow for two columns
 - **THEN** the cards stand in one column, the left column's cards first, then the right column's
+
+#### Scenario: A plugin card in the default layout
+- **WHEN** verso-plugin-acme contributes its Certificate card with position `after:system` and there is no layout cookie
+- **THEN** the right column shows Traffic, Resources, System, Certificate and Hardware in that order
 
 ### Requirement: Each card's header carries its status
 Every card header SHALL show the card's icon and title. Cards with a verdict (Internet, Tunnels) show the verdict at the header's end as a status word with its packet in the verdict's tone, whether the card is open or closed. The Ports card shows a status only when a port a network uses has lost link or its state is unknown, since its panel and list already show every port linked. Cards of readings (Traffic, Resources, System, Hardware) show a status only when one of their readings is in a warning or danger band.
@@ -93,7 +97,7 @@ A card's open or closed state SHALL change only by the operator's action. A clos
 - **AND** its header reads "Not connected" in the danger tone
 
 ### Requirement: One verdict heads the page
-The Overview SHALL open with one verdict sentence tinted by tone, the most important true sentence on the page. With the uplink known and down it SHALL read "Your network is offline" (danger), whatever else is wrong. Otherwise, with exactly one cause it SHALL read that cause as a sentence that stands on its own, in the cause's tone; with two or more it SHALL read "N things need attention", in danger when any cause is danger and warning otherwise; with none and the uplink up it SHALL read "Your network is online" (success); and with nothing known it SHALL read "Your network at a glance" (neutral). A cause is a firewall not fully loaded, a port a network uses or a tunnel without link, a Resources reading out of its normal band, or a Hardware reading past the board's own limit; every card counts, hidden or not. The router's live clock and time zone stand in the System card as Local time, not beside the verdict. The page shows no kicker over the verdict and no status-tile strip.
+The Overview SHALL open with one verdict sentence tinted by tone, the most important true sentence on the page. With the uplink known and down it SHALL read "Your network is offline" (danger), whatever else is wrong. Otherwise, with exactly one cause it SHALL read that cause as a sentence that stands on its own, in the cause's tone; with two or more it SHALL read "N things need attention", in danger when any cause is danger and warning otherwise; with none and the uplink up it SHALL read "Your network is online" (success); and with nothing known it SHALL read "Your network at a glance" (neutral). A cause is a firewall not fully loaded, a port a network uses or a tunnel without link, a Resources reading out of its normal band, a Hardware reading past the board's own limit, or the cause a plugin card states; every card counts, hidden or not. The router's live clock and time zone stand in the System card as Local time, not beside the verdict. The page shows no kicker over the verdict and no status-tile strip.
 
 #### Scenario: The firewall is not running
 - **WHEN** the uplink is up, fw4's ruleset is not loaded in the kernel, and nothing else is wrong
@@ -126,6 +130,10 @@ The Overview SHALL open with one verdict sentence tinted by tone, the most impor
 #### Scenario: A hot board on a healthy network
 - **WHEN** the uplink is up, nothing else needs attention, and the Hardware header reads "cluster is hot"
 - **THEN** the verdict reads "cluster is hot" in the warning tone
+
+#### Scenario: A plugin card's cause
+- **WHEN** the uplink is up, nothing else needs attention, and acme's Certificate card states the cause "The certificate could not be renewed" in the warning tone
+- **THEN** the verdict reads "The certificate could not be renewed" in the warning tone, whether the card is open, closed or hidden
 
 ### Requirement: Arrange mode moves and hides cards
 The Overview SHALL offer an Arrange act on its heading line. In Arrange mode every card shows a drag handle and a hide control, and a shelf lists the hidden cards. Outside Arrange mode no card can be moved or hidden. Done ends Arrange mode.
@@ -174,7 +182,7 @@ The shell SHALL read the layout cookie when it renders the Overview and render e
 - **THEN** the Overview's HTML already has Traffic first in the left column
 
 ### Requirement: A damaged or stale layout falls back safely
-The shell SHALL treat the layout cookie as untrusted input. A cookie it can't parse gives the default layout. Card ids it doesn't know are dropped, and cards it has that the cookie doesn't name are added open at the end of the shorter column. A card named twice keeps its first place.
+The shell SHALL treat the layout cookie as untrusted input. A cookie it can't parse gives the default layout. Card ids it doesn't know are dropped, and cards it has that the cookie doesn't name are added open at the end of the shorter column. A card named twice keeps its first place. The card of a plugin that is installed but not answering SHALL keep its place in the layout, and the card of a plugin that is not installed SHALL be dropped.
 
 #### Scenario: Garbled cookie
 - **WHEN** the layout cookie holds text that isn't a layout
@@ -183,6 +191,14 @@ The shell SHALL treat the layout cookie as untrusted input. A cookie it can't pa
 #### Scenario: A card the cookie doesn't know
 - **WHEN** the cookie names six of the seven cards, or names a card the Overview no longer has
 - **THEN** the card it leaves out stands open at the end of the shorter column, and the card it names that isn't there is dropped
+
+#### Scenario: A plugin restarting
+- **WHEN** the operator has moved acme's Certificate card to the top of the left column, and acme's service is restarting while the Overview loads
+- **THEN** the Overview draws without the card, the operator's next arrangement keeps its place, and once acme answers again the card stands at the top of the left column
+
+#### Scenario: A plugin removed
+- **WHEN** the cookie names acme's Certificate card and verso-plugin-acme is not installed
+- **THEN** the card is dropped from the layout, and the next layout the page writes does not name it
 
 ### Requirement: Hidden cards are neither rendered nor streamed
 The shell SHALL NOT render a hidden card, and the Overview's live stream SHALL NOT send a frame that only hidden cards would read, nor take a reading that only such a frame needs. Readings the verdict needs are taken whatever is hidden. Closed cards still receive their frames, because their summaries are live.
@@ -322,3 +338,32 @@ The Hardware card SHALL link to the Hardware page, which shows every reading the
 #### Scenario: Following the card
 - **WHEN** the operator follows the Hardware card's link
 - **THEN** the Hardware page opens
+
+### Requirement: A plugin card has the shell card's anatomy
+A contribution to `shell.overview.cards` SHALL answer with a card's title, glyph by the shell's name for it, tone, status, summary, optional cause, optional page it opens on the plugin, and a body in the closed widget vocabulary. The shell SHALL draw its header, its open and closed states, its Go link and Arrange's grip and hide exactly as for its own cards.
+
+#### Scenario: Closed plugin card
+- **WHEN** the operator closes acme's Certificate card, whose summary is `router.example.com`
+- **THEN** the closed header reads Certificate followed by `router.example.com`, as a closed shell card reads its summary
+
+#### Scenario: A body outside the vocabulary
+- **WHEN** a plugin card's body holds a form
+- **THEN** the Overview draws without the card, the card keeps its place in the layout, and the shell logs a compatibility warning naming the plugin and the contribution
+
+### Requirement: A plugin card reads as of the page's load
+The shell SHALL fetch each plugin card once each time it draws the Overview, hidden cards included, so their causes reach the verdict. The Overview's live stream SHALL NOT dial plugins.
+
+#### Scenario: The stream runs
+- **WHEN** the Overview has been open for ten minutes with acme's card on it
+- **THEN** acme was asked for its card once, when the page was drawn
+
+### Requirement: The layout cookie names plugin cards
+The layout cookie SHALL be able to name a plugin card by its contribution's full id, `<plugin id>.<contribution id>`. The shell SHALL read a cookie written in the earlier format as before. The page SHALL write the version that can name plugin cards, keeping the ids of installed plugins' cards that did not draw.
+
+#### Scenario: An existing layout after the upgrade
+- **WHEN** a browser holds a layout written before plugin cards, with Traffic first on the left and System closed
+- **THEN** after the upgrade the Overview draws Traffic first on the left and System closed
+
+#### Scenario: Saving a layout with a plugin card
+- **WHEN** the operator moves acme's Certificate card to the left column and reloads
+- **THEN** the card stands in the left column

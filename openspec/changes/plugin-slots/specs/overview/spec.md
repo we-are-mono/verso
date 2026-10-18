@@ -97,7 +97,7 @@ The shell SHALL treat the layout cookie as untrusted input. A cookie it can't pa
 ## ADDED Requirements
 
 ### Requirement: A plugin card has the shell card's anatomy
-A contribution to `shell.overview.cards` SHALL answer with a card's title, Lucide icon, tone, status, summary, optional cause, optional page it opens on the plugin, and a body in the closed widget vocabulary. The shell SHALL draw its header, its open and closed states, its Go link and Arrange's grip and hide exactly as for its own cards.
+A contribution to `shell.overview.cards` SHALL answer with a card's title, glyph by the shell's name for it, tone, status, summary, optional cause, optional page it opens on the plugin, and a body in the closed widget vocabulary. The shell SHALL draw its header, its open and closed states, its Go link and Arrange's grip and hide exactly as for its own cards.
 
 #### Scenario: Closed plugin card
 - **WHEN** the operator closes acme's Certificate card, whose summary is `router.example.com`
