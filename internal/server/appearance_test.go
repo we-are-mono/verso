@@ -62,12 +62,14 @@ func TestTheAppearanceCardOffersEveryTheme(t *testing.T) {
 			t.Errorf("the Appearance card lacks %s", want)
 		}
 	}
-	// Saying it takes effect at once is the pick's own note, kept under the
-	// select in its answer and read with it, not a paragraph standing on its
-	// own.
-	answer := strings.Index(body, "verso-field__answer")
-	if note := strings.Index(body, `id="theme-note" data-verso-field-note`); answer < 0 || note < answer || !strings.Contains(body, `aria-describedby="theme-note"`) {
-		t.Error("the Appearance card's sentence is not the theme pick's note")
+	// Saying it takes effect at once is the pick's description, under its
+	// label where every field's help stands, not a note under the select.
+	pick := strings.Index(body, `<select id="theme"`)
+	if desc := strings.Index(body, `id="theme-desc" data-verso-field-desc class="verso-field__desc"><span>Takes effect immediately`); desc < 0 || desc > pick || !strings.Contains(body, `aria-describedby="theme-desc"`) {
+		t.Error("the Appearance card's sentence is not the theme pick's description")
+	}
+	if strings.Contains(body, `id="theme-note"`) {
+		t.Error("the Appearance card's sentence still stands under the select")
 	}
 	// Sand dark is offered once, as Sand's own, not again as a theme.
 	if strings.Count(body, `value="sand-dark"`) != 1 {
