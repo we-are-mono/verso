@@ -54,9 +54,6 @@ own and points at the decision that governs it; the rationale lives there, not h
   for a sibling; the system/firewall/interfaces init scripts show the pattern);
   manifest `socket` follows;
   SDK pin bumped to a tag carrying the stale-socket abort. Governed by ADR-007.
-- **One SO_PEERCRED reader.** `internal/openwrt/helper_peer_*.go`
-  (`socketPeerUID`) duplicates `internal/peercred.UID`; point the helper client
-  at the shared package.
 
 ## Correctness
 
@@ -105,13 +102,6 @@ own and points at the decision that governs it; the rationale lives there, not h
 
 ## Simplification
 
-- **`NativeBackend`'s ubus seams.** The helper seams are methods on
-  `helperSocket`; 14 ubus seams (systemInfo, systemBoard, access, the uci
-  set/config/add/delete/order and changes/revert/apply/confirm verbs, logRead,
-  netIfaces) plus kernelBuild/packageArch remain fields, because their tests
-  pin arguments and error mapping per field. They become methods once the
-  openwrt tests fake ubusd at the socket (needs the blob encoder exported from
-  `internal/ubus`).
 - **The interface and system editors on the SDK's fields.** Interfaces'
   `editor.rs` and system's form builders spell their own text and select
   fields over a `BTreeMap` of errors; moving them onto the SDK's `Errors`
@@ -120,12 +110,7 @@ own and points at the decision that governs it; the rationale lives there, not h
   `Widget::Link` with `desc`/`code`/`act`, which the SDK no longer has; it
   compiles against v0.8.0 and the shell ignores the keys, so bumping its pin
   needs those three lines dropped.
-- **Wire keys no plugin sends.** `Property.Variant` and `remove: "lane"` are
-  still read by their templates though no plugin sets them. The grid-style
-  live-listing attributes (`data-verso-stream`, ring, empty) on tables wire
-  nothing and only tests assert them.
-- **Small leftovers.** `FiberModule`'s Vcc/Bias/Tx limits may be read by
-  nothing; the wireless `Cargo.toml` comment names
+- **A stale comment in wireless.** The wireless `Cargo.toml` comment names
   `wire.rs`/`serve.rs`, which do not exist.
 
 ## Overview cards (ADR-022)
