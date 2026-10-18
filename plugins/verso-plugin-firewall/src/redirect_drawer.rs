@@ -27,7 +27,10 @@
 //! carries them (`conditions::for_redirect`), and the few that say what happens
 //! rather than what matches sit beside the thing they govern.
 
-use verso_plugin::{uci_text, Map, RowDrawer, SectionWidget, SelectOption, Tone, Widget};
+use verso_plugin::{
+    panel_form, select_field, text_field, uci_text, Map, RowDrawer, SectionWidget, SelectOption,
+    Tone, Widget,
+};
 
 use crate::conditions;
 use crate::fields;
@@ -100,7 +103,7 @@ pub fn drawer(
         title,
         closed: page::port_forwards_href(),
         open: true,
-        children: vec![fields::panel_form(submit, fields)],
+        children: vec![panel_form(submit, fields)],
         ..RowDrawer::default()
     }
 }
@@ -130,7 +133,7 @@ fn identity(redirect: &RedirectForm, errors: &Errors) -> Widget {
                 ENABLED_TIP,
                 redirect.enabled,
             ),
-            fields::text_field(
+            text_field(
                 "name",
                 "Name",
                 &redirect.name,
@@ -163,9 +166,8 @@ fn incoming(model: &Firewall, redirect: &RedirectForm, errors: &Errors) -> Widge
         "",
         vec![
             fields::row_group(vec![
-                fields::select_field("src", "Arrives from", &redirect.src, zones, errors)
-                    .writes("src"),
-                fields::text_field(
+                select_field("src", "Arrives from", &redirect.src, zones, errors).writes("src"),
+                text_field(
                     "src_dport",
                     "Incoming port",
                     &redirect.src_dport,
@@ -174,8 +176,7 @@ fn incoming(model: &Firewall, redirect: &RedirectForm, errors: &Errors) -> Widge
                 )
                 .writes("src_dport"),
             ]),
-            fields::select_field("proto", "Protocol", &redirect.proto, protocols, errors)
-                .writes("proto"),
+            select_field("proto", "Protocol", &redirect.proto, protocols, errors).writes("proto"),
             // Everything else a forward can be narrowed by. The catalogue is the
             // shell's: it renders the conditions this forward carries as rows and
             // keeps the rest behind its own picker. A row apiece would have been
@@ -231,7 +232,7 @@ fn destination(model: &Firewall, redirect: &RedirectForm, errors: &Errors) -> Wi
         // The devices worth forwarding to are the ones with a reserved address:
         // a leased address moves, and the forward would follow nothing. They
         // are offered, never imposed — any address can still be typed.
-        fields::text_field(
+        text_field(
             "dest_ip",
             "Destination address",
             &redirect.dest_ip,
@@ -246,7 +247,7 @@ fn destination(model: &Firewall, redirect: &RedirectForm, errors: &Errors) -> Wi
                 .map(|host| SelectOption::new(&host.ip, &host.name))
                 .collect(),
         ),
-        fields::text_field(
+        text_field(
             "dest_port",
             "Destination port",
             &redirect.dest_port,
@@ -260,7 +261,7 @@ fn destination(model: &Firewall, redirect: &RedirectForm, errors: &Errors) -> Wi
         children.push(Widget::callout(Tone::Warning, "", &warning));
     }
     children.push(
-        fields::select_field(
+        select_field(
             "dest",
             "The device is in",
             &redirect.dest,
@@ -374,7 +375,7 @@ fn reach(model: &Firewall, redirect: &RedirectForm, errors: &Errors) -> Widget {
         REFLECTION_HELP,
         redirect.reflection,
         vec![
-            fields::select_field(
+            select_field(
                 "reflection_src",
                 "Connections appear to come from",
                 &redirect.reflection_src,
@@ -450,14 +451,14 @@ fn handling(redirect: &RedirectForm, errors: &Errors) -> Vec<Widget> {
             LOG_HELP,
             redirect.log.on,
             vec![
-                fields::text_field(
+                text_field(
                     "log_prefix",
                     "Log prefix",
                     &redirect.log.prefix,
                     "Blank logs under the forward's own name.",
                     errors,
                 ),
-                fields::text_field(
+                text_field(
                     "log_limit",
                     "At most",
                     &redirect.log.limit,
@@ -467,7 +468,7 @@ fn handling(redirect: &RedirectForm, errors: &Errors) -> Vec<Widget> {
             ],
             Vec::new(),
         ),
-        fields::select_field(
+        select_field(
             "family",
             "Address family",
             &redirect.family,
@@ -495,7 +496,7 @@ mod tests {
     use crate::fixture;
     use crate::redirects;
     use serde_json::Value;
-    use verso_plugin::{Form, Snapshot};
+    use verso_plugin::{Form, Snapshot, PANEL_FIELD, REMOVE_FIELD};
 
     // A forward exists to let the internet in, so a new one arrives from the
     // zone that faces it — the one that masquerades — rather than from
@@ -567,7 +568,7 @@ mod tests {
             &Form::parse(&format!("{OPEN}={NEW}")),
             &Form::parse(&format!(
                 "name=Minecraft&src=wan&src_dport=25565&dest_ip=10.0.0.30&proto=tcp&{}=1",
-                fields::PANEL_FIELD
+                PANEL_FIELD
             )),
         ))
         .expect("serialize");
@@ -602,7 +603,7 @@ mod tests {
     /// fields, and the marker that says the body is the panel's own.
     fn submit(section: &str, fields: &[(&str, &str)]) -> Value {
         let mut model = fixture::firewall();
-        let body = format!("{}&{}=1", encode(fields), fields::PANEL_FIELD);
+        let body = format!("{}&{}=1", encode(fields), PANEL_FIELD);
         let envelope = redirects::save(
             &mut model,
             &Counters::default(),
@@ -706,7 +707,7 @@ mod tests {
         assert_eq!(form["type"], "form");
         assert_eq!(form["submit"], "Save port forward");
         assert!(
-            fixture::find_with(form, &|v| v["name"] == fields::PANEL_FIELD).is_some(),
+            fixture::find_with(form, &|v| v["name"] == PANEL_FIELD).is_some(),
             "the form says it is the panel's own"
         );
         // The parts read in order: the first heads the panel, a rule sets off the
@@ -1151,7 +1152,7 @@ mod tests {
             &mut model,
             &Counters::default(),
             &Form::parse(""),
-            &Form::parse(&format!("{}=https_to_nas", fields::REMOVE_FIELD)),
+            &Form::parse(&format!("{}=https_to_nas", REMOVE_FIELD)),
         );
         let body = serde_json::to_value(&envelope).expect("serialize");
 
@@ -1307,13 +1308,13 @@ mod tests {
             .clone();
         let trash = fixture::find_with(&row["cells"], &|v| v["icon"] == "trash-2")
             .expect("the row's trash act");
-        assert_eq!(trash["name"], fields::REMOVE_FIELD);
+        assert_eq!(trash["name"], REMOVE_FIELD);
         assert_eq!(trash["value"], "https_to_nas");
         assert_eq!(trash["title"], DELETE_TRIGGER);
         assert_eq!(trash["confirm_title"], DELETE_QUESTION);
         assert_eq!(trash["confirm"], DELETE_MESSAGE);
         assert!(
-            fixture::find_with(&panel(&body), &|v| v["name"] == fields::REMOVE_FIELD).is_none(),
+            fixture::find_with(&panel(&body), &|v| v["name"] == REMOVE_FIELD).is_none(),
             "the panel carries no removal; that belongs to its row"
         );
     }

@@ -39,6 +39,8 @@ mod encoding;
 pub use encoding::{base64_decode, url_encode};
 mod errors;
 pub use errors::Errors;
+mod fields;
+pub use fields::{from_panel, panel_form, select_field, text_field, PANEL_FIELD, REMOVE_FIELD};
 /// Hand-edited files a page lists and edits in place. See [`files`].
 pub mod files;
 mod sha256;
@@ -1597,7 +1599,9 @@ impl Widget {
     pub fn suggesting(mut self, options: Vec<SelectOption>) -> Widget {
         match &mut self {
             Widget::List(List { options: o, .. }) => *o = options,
-            Widget::Field(Field { kind, options: o, .. }) if kind == "text" => *o = options,
+            Widget::Field(Field {
+                kind, options: o, ..
+            }) if kind == "text" => *o = options,
             _ => {}
         }
         self

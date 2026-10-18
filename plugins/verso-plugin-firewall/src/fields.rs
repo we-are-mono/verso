@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: GPL-2.0-only
 // SPDX-FileCopyrightText: 2026 Mono Technologies Inc.
 
-//! The form vocabulary this plugin's panels are built out of.
+//! The form vocabulary this plugin's panels are built out of, beyond the
+//! labelled value, the closed choice and the panel form the SDK gives every
+//! plugin.
 //!
 //! A rule, a port forward and a zone are edited in the panel beside the listing
 //! they belong to — there is no page for any of them — and all three are made of
@@ -12,39 +14,9 @@
 //! and the same value typed into a zone are the same control. A panel composes
 //! these; it does not spell its own.
 
-use verso_plugin::{Field, Form, List, SelectOption, Widget};
+use verso_plugin::{text_field, List, Widget};
 
 use crate::rule_form::{Errors, RuleForm};
-
-/// REMOVE_FIELD names the subject of a confirmed act from a listing.
-pub const REMOVE_FIELD: &str = "_remove";
-
-/// PANEL_FIELD marks a submission as the open panel's own. A panel is edited at
-/// its listing's address, and a row's power act posts to that same address while
-/// the panel is open, so the address cannot say which of the two arrived: read
-/// by the address, the act came in as the panel's form and wrote a rule stripped
-/// of everything but its switch. The panel's form says what it is itself, and a
-/// submission without it is never read as a save, whatever the address names.
-pub const PANEL_FIELD: &str = "_panel";
-
-/// from_panel reports whether a submission is the open panel's editing form
-/// rather than something posted to the panel's address from the listing behind
-/// it.
-pub fn from_panel(form: &Form) -> bool {
-    form.get(PANEL_FIELD) == "1"
-}
-
-/// panel_form is a panel's editing form: the controls, the one act that submits
-/// them, and — after the controls, where it takes no place in the layout — the
-/// marker that names the submission as the panel's own. Every panel composes
-/// its form here so none can post without the marker and be mistaken for a
-/// flip on the listing behind it. The commit row carries the verb and nothing
-/// about applying: the panel saves into the stage and closes, and what applying
-/// costs is the bar's to say.
-pub fn panel_form(submit: &str, mut fields: Vec<Widget>) -> Widget {
-    fields.push(Widget::hidden(PANEL_FIELD, "1"));
-    Widget::form(submit, fields)
-}
 
 /// name_field is what the rule is called — the string every listing, hit count
 /// and log line identifies it by.
@@ -74,31 +46,6 @@ pub fn row_group(children: Vec<Widget>) -> Widget {
         flush: true,
         children,
     }
-}
-
-/// text_field is one typed value, carrying whatever the last submission got
-/// wrong about it.
-pub fn text_field(name: &str, label: &str, value: &str, help: &str, errors: &Errors) -> Widget {
-    Widget::Field(Field {
-        name: name.into(),
-        label: label.into(),
-        kind: "text".into(),
-        value: value.into(),
-        error: errors.get(name).into(),
-        help: help.into(),
-        ..Default::default()
-    })
-}
-
-/// select_field is one choice over a closed set.
-pub fn select_field(
-    name: &str,
-    label: &str,
-    value: &str,
-    options: Vec<SelectOption>,
-    errors: &Errors,
-) -> Widget {
-    Widget::select(name, label, value, options, errors.get(name))
 }
 
 /// token_list is many short values under one name, each removable on its own and

@@ -17,7 +17,10 @@
 //! same field builders, so a rule edited here and a rule edited there post
 //! identical forms and can never drift into two spellings of one setting.
 
-use verso_plugin::{uci_text, DrawerTab, Map, RowDrawer, SelectOption, Tone, Widget};
+use verso_plugin::{
+    panel_form, select_field, text_field, uci_text, DrawerTab, Map, RowDrawer, SelectOption, Tone,
+    Widget,
+};
 
 use crate::conditions;
 use crate::fields;
@@ -92,7 +95,7 @@ pub fn blank(model: &Firewall, form: &RuleForm, errors: &Errors, tab: &str) -> R
         tabs_keep_edits: true,
         closed: page::rules_href(),
         open: true,
-        children: vec![fields::panel_form(
+        children: vec![panel_form(
             "Add rule",
             vec![Widget::section(title, "", fields).flush()],
         )],
@@ -191,7 +194,7 @@ fn body(model: &Firewall, rule: &Rule, form: &RuleForm, errors: &Errors, tab: &s
     // while the form is up here is a Save nobody finds. Save puts the rule in
     // the stage and closes the panel; applying is the bar's, and so is saying
     // what it costs.
-    vec![fields::panel_form(
+    vec![panel_form(
         "Save rule",
         vec![Widget::section(title, "", fields).flush()],
     )]
@@ -239,7 +242,7 @@ fn match_fields(model: &Firewall, form: &RuleForm, errors: &Errors) -> Vec<Widge
         Widget::form_grid(
             2,
             vec![
-                fields::select_field(
+                select_field(
                     "src",
                     "Coming from",
                     &form.src,
@@ -247,7 +250,7 @@ fn match_fields(model: &Firewall, form: &RuleForm, errors: &Errors) -> Vec<Widge
                     errors,
                 )
                 .writes("src"),
-                fields::select_field(
+                select_field(
                     "dest",
                     "Going to",
                     &form.dest,
@@ -269,7 +272,7 @@ fn match_fields(model: &Firewall, form: &RuleForm, errors: &Errors) -> Vec<Widge
         fields::token_list("proto", "Protocol", "", "", &form.proto, errors)
             .writes("proto")
             .suggesting(conditions::named(&PROTOCOLS.map(String::from))),
-        fields::select_field(
+        select_field(
             "family",
             "Address family",
             &form.family,
@@ -515,7 +518,7 @@ fn tab_body(
 /// row, as everything in this panel is.
 fn action_fields(form: &RuleForm, errors: &Errors) -> Vec<Widget> {
     vec![
-        fields::select_field(
+        select_field(
             "target",
             "Verdict",
             &form.target.to_lowercase(),
@@ -543,8 +546,8 @@ fn action_fields(form: &RuleForm, errors: &Errors) -> Vec<Widget> {
             LOG_TIP,
             form.log.on,
             vec![
-                fields::text_field("log_prefix", "Log prefix", &form.log.prefix, "", errors),
-                fields::text_field("log_limit", "Log rate limit", &form.log.limit, "", errors),
+                text_field("log_prefix", "Log prefix", &form.log.prefix, "", errors),
+                text_field("log_limit", "Log rate limit", &form.log.limit, "", errors),
             ],
             Vec::new(),
         ),
@@ -566,29 +569,29 @@ fn action_fields(form: &RuleForm, errors: &Errors) -> Vec<Widget> {
             open: false,
             children: vec![
                 Widget::callout(Tone::Warning, "", ADVANCED_NOTE),
-                fields::select_field(
+                select_field(
                     "set_helper",
                     "Connection helper to assign",
                     &form.set_helper,
                     conditions::named(&HELPERS.map(String::from)),
                     errors,
                 ),
-                fields::select_field(
+                select_field(
                     "mark_operation",
                     "Mark operation",
                     mark_operation(form),
                     conditions::options(&[("set", "Set"), ("xor", "XOR")]),
                     errors,
                 ),
-                fields::text_field("set_mark", "Mark value", &form.set_mark, "", errors),
-                fields::text_field(
+                text_field("set_mark", "Mark value", &form.set_mark, "", errors),
+                text_field(
                     "set_mark_mask",
                     "Mark mask",
                     &form.set_mark_mask,
                     "Optional.",
                     errors,
                 ),
-                fields::select_field(
+                select_field(
                     "set_dscp",
                     "DSCP value to apply",
                     &form.set_dscp,
@@ -1631,7 +1634,7 @@ mod tests {
             .expect("the opened drawer");
             assert!(
                 fixture::find_with(&drawer, &|value| value["type"] == "confirm"
-                    || value["name"] == fields::REMOVE_FIELD)
+                    || value["name"] == verso_plugin::REMOVE_FIELD)
                 .is_none(),
                 "an edit drawer only edits; removal belongs to its row action"
             );

@@ -14,11 +14,10 @@
 
 use verso_plugin::{
     commit, commit_delete, commit_new, ColumnWidth, Envelope, Form, HeadingAct, RowDrawer,
-    Snapshot, Table, TableChip, TableColumn, TableRow, Tone, Widget,
+    Snapshot, Table, TableChip, TableColumn, TableRow, Tone, Widget, REMOVE_FIELD,
 };
 
 use crate::counters::Counters;
-use crate::fields::REMOVE_FIELD;
 use crate::format;
 use crate::model::{Firewall, Redirect, CONFIG};
 use crate::page;

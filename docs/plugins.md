@@ -1082,6 +1082,14 @@ the shell arrives with the row's panel already in front of the operator
               "children": [ /* properties, callout, form */ ] } }
 ```
 
+A panel's form posts to its listing's address, the same address a row's toggle
+posts to while the panel is open, so the form names itself: the SDK's
+`panel_form(submit, fields)` appends the hidden `_panel=1` (`PANEL_FIELD`),
+and `from_panel(form)` reads it back. Read a submission without it as a row
+act, never as a save. A confirmed removal names its subject in `_remove`
+(`REMOVE_FIELD`). `text_field` and `select_field` draw a typed value and a
+closed choice carrying the message `Errors` holds for them.
+
 **Seam.** A table may fold extra rows behind a collapsed block *inside the same
 card* — e.g. the stock rules a fresh install ships with, present and honest but
 not carrying the page:

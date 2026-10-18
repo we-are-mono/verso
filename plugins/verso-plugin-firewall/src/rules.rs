@@ -17,11 +17,10 @@
 use verso_plugin::{
     commit, commit_delete, commit_new, ColumnWidth, Envelope, Form, HeadingAct, RowDrawer,
     Snapshot, Table, TableCell, TableChip, TableColumn, TableGroup, TablePart, TableRow, Tone,
-    Widget, RESHAPE,
+    Widget, REMOVE_FIELD, RESHAPE,
 };
 
 use crate::counters::Counters;
-use crate::fields;
 use crate::format;
 use crate::model::{Firewall, Rule, CONFIG};
 use crate::page;
@@ -139,7 +138,7 @@ pub fn save(
     query: &Form,
     form: &Form,
 ) -> Envelope {
-    let removal = form.get(fields::REMOVE_FIELD);
+    let removal = form.get(REMOVE_FIELD);
     let section = if removal.is_empty() {
         query.get(rule_drawer::OPEN).trim().to_string()
     } else {

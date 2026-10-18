@@ -15,9 +15,10 @@ use std::cmp::Reverse;
 use std::collections::BTreeMap;
 use std::net::{IpAddr, Ipv4Addr};
 use verso_plugin::{
-    commit, commit_delete, commit_new, uci_text, Change, ColumnWidth, CommitOp, Description,
-    Envelope, Errors, Form, HeadingAct, RowDrawer, SelectOption, Snapshot, SubjectKind, Table,
-    TableCell, TableChip, TableColumn, TableGroup, TableRow, TableRowAct, Tone, Widget,
+    commit, commit_delete, commit_new, select_field, text_field, uci_text, Change, ColumnWidth,
+    CommitOp, Description, Envelope, Errors, Form, HeadingAct, RowDrawer, SelectOption, Snapshot,
+    SubjectKind, Table, TableCell, TableChip, TableColumn, TableGroup, TableRow, TableRowAct, Tone,
+    Widget,
 };
 
 const NEW: &str = "new";
@@ -459,14 +460,10 @@ fn row(line: &Line, drawer: Option<RowDrawer>) -> TableRow {
 }
 
 fn field(route: &Route, e: &Errors, key: &str, label: &str, help: &str) -> Widget {
-    let mut w = Widget::field(key, label, route.get(key), "", help).writes(key);
-    if let Widget::Field(f) = &mut w {
-        f.error = e.get(key).into();
-    }
-    w
+    text_field(key, label, route.get(key), help, e).writes(key)
 }
 fn select(route: &Route, e: &Errors, key: &str, label: &str, options: Vec<SelectOption>) -> Widget {
-    Widget::select(key, label, route.get(key), options, e.get(key)).writes(key)
+    select_field(key, label, route.get(key), options, e).writes(key)
 }
 
 /// drawer is one route's panel: an existing one (`existing`), or a blank one,

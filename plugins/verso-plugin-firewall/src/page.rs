@@ -9,7 +9,9 @@
 //! hit count, and a switch mean the same thing on every page, and a listing that
 //! spelled one of them differently would read as a different kind of thing.
 
-use verso_plugin::{Envelope, PageTab, TableCell, TableChip, TableEndpoint, TableRowAct, Widget};
+use verso_plugin::{
+    Envelope, PageTab, TableCell, TableChip, TableEndpoint, TableRowAct, Widget, REMOVE_FIELD,
+};
 
 use crate::format;
 use crate::format::EM_DASH;
@@ -240,7 +242,7 @@ pub fn remove_act(
     TableRowAct {
         icon: "trash-2".into(),
         title: title.into(),
-        name: crate::fields::REMOVE_FIELD.into(),
+        name: REMOVE_FIELD.into(),
         value: section.into(),
         confirm_title: question.into(),
         confirm: consequence.into(),

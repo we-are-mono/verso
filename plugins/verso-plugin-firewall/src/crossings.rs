@@ -22,7 +22,8 @@
 //! second one beside it.
 
 use verso_plugin::{
-    commit, commit_delete, commit_new, json, uci_text, CommitOp, Form, Map, SelectOption, Widget,
+    commit, commit_delete, commit_new, json, text_field, uci_text, CommitOp, Form, Map,
+    SelectOption, Widget,
 };
 
 use crate::fields;
@@ -196,7 +197,7 @@ pub fn fields(
     // out of it, locked, because they are set on the zones they leave. Why is
     // raised on its label rather than left as a loose sentence under it.
     out.push(
-        fields::text_field(
+        text_field(
             "reached_by",
             REACHED_BY,
             &list_or_none(&model.forwards_into(name)),

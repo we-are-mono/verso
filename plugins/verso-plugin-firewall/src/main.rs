@@ -17,7 +17,8 @@
 //! answers its own submissions the same way, from the values it was sent.
 
 use verso_plugin::{
-    commit, json, serve_described, CommitOp, Envelope, Form, Request, Snapshot, Tone,
+    commit, from_panel, json, serve_described, CommitOp, Envelope, Form, Request, Snapshot, Tone,
+    REMOVE_FIELD,
 };
 
 mod activity;
@@ -100,7 +101,7 @@ fn post(request: &Request, form: &Form) -> Envelope {
         // posts to this same address, even while an editor is open, so the
         // query alone must never turn a row action into a form submission.
         Route::Listing(Listing::Rules)
-            if fields::from_panel(form) || !form.get(fields::REMOVE_FIELD).is_empty() =>
+            if from_panel(form) || !form.get(REMOVE_FIELD).is_empty() =>
         {
             rules::save(
                 &request.snapshot,
@@ -111,12 +112,12 @@ fn post(request: &Request, form: &Form) -> Envelope {
             )
         }
         Route::Listing(Listing::PortForwards)
-            if fields::from_panel(form) || !form.get(fields::REMOVE_FIELD).is_empty() =>
+            if from_panel(form) || !form.get(REMOVE_FIELD).is_empty() =>
         {
             redirects::save(&mut model, &counters, &request.query, form)
         }
         Route::Listing(Listing::Zones)
-            if fields::from_panel(form) || !form.get(fields::REMOVE_FIELD).is_empty() =>
+            if from_panel(form) || !form.get(REMOVE_FIELD).is_empty() =>
         {
             zones::save(&request.snapshot, &mut model, &request.query, form)
         }

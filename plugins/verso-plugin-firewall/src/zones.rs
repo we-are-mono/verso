@@ -21,11 +21,10 @@
 
 use verso_plugin::{
     commit, commit_delete, commit_new, ColumnWidth, Envelope, Form, HeadingAct, RowDrawer,
-    Snapshot, Table, TableCell, TableChip, TableColumn, TableRow, Tone, Widget,
+    Snapshot, Table, TableCell, TableChip, TableColumn, TableRow, Tone, Widget, REMOVE_FIELD,
 };
 
 use crate::crossings::Crossings;
-use crate::fields;
 use crate::format;
 use crate::model::{Firewall, Zone, CONFIG};
 use crate::page;
@@ -119,7 +118,7 @@ pub struct Open {
 /// A refusal stays with its controls; removal returns the listing without
 /// opening the editor or depending on which panel the address happens to name.
 pub fn save(snapshot: &Snapshot, model: &mut Firewall, query: &Form, form: &Form) -> Envelope {
-    let removal = form.get(fields::REMOVE_FIELD);
+    let removal = form.get(REMOVE_FIELD);
     let section = if removal.is_empty() {
         query.get(zone_drawer::OPEN).trim().to_string()
     } else {

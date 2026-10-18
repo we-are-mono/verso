@@ -19,7 +19,10 @@
 //! the list it belongs to is worth more than a page of its own. A zone is the
 //! stronger case of the two, since it reads against the zones it can reach.
 
-use verso_plugin::{uci_text, DrawerTab, Field, Map, Property, RowDrawer, SelectOption, Widget};
+use verso_plugin::{
+    panel_form, text_field, uci_text, DrawerTab, Field, Map, Property, RowDrawer, SelectOption,
+    Widget,
+};
 
 use crate::crossings::{self, Crossings};
 use crate::fields;
@@ -166,7 +169,7 @@ pub fn blank(
         tabs: tabs(None, tab),
         closed: page::zones_href(),
         open: true,
-        children: vec![fields::panel_form("Add zone", fields)],
+        children: vec![panel_form("Add zone", fields)],
         ..RowDrawer::default()
     }
 }
@@ -243,7 +246,7 @@ fn body(
         &uci_block(&zone.section, form, reaches, true),
     ));
     fields.extend(carried(form, reaches, tab));
-    vec![fields::panel_form("Save zone", fields)]
+    vec![panel_form("Save zone", fields)]
 }
 
 /// tab_body is one reading's sections. Reaches and Advanced are one subject
@@ -319,7 +322,7 @@ fn traffic_fields(
             ENABLED_HELP,
             form.enabled,
         ),
-        fields::text_field("name", "Name", &form.name, name_help, errors).writes("name"),
+        text_field("name", "Name", &form.name, name_help, errors).writes("name"),
     ];
     // A network is what the rest of the config names; the other two ways a zone
     // covers something are for what it does not — a kernel device the network
@@ -484,7 +487,7 @@ fn advanced_fields(form: &ZoneForm, errors: &Errors) -> Vec<Widget> {
             "log",
             LOG_HELP,
             form.log,
-            vec![fields::text_field(
+            vec![text_field(
                 "log_limit",
                 "At most",
                 &form.log_limit,

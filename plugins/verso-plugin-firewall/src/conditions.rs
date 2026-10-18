@@ -29,9 +29,9 @@
 //! Only firewall4's own options appear. A condition it cannot express would be a
 //! control that changes nothing, which is worse than a control that is missing.
 
-use verso_plugin::{ConditionItem, List, SelectOption, Widget};
+use verso_plugin::{select_field, text_field, ConditionItem, List, SelectOption, Widget};
 
-use crate::fields::{select_field, text_field, token_list};
+use crate::fields::token_list;
 use crate::model::Firewall;
 use crate::redirect_form::RedirectForm;
 use crate::rule_form::{
