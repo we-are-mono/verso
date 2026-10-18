@@ -879,6 +879,10 @@ type pageHeader struct {
 	// Unreachable records that the plugin could not be asked: whatever it
 	// was, the body is the shell's unavailable state.
 	Unreachable bool
+	// DrawerOnly records that the page is nothing but an open drawer over
+	// the page its Back names: visited as a page, it lands there instead,
+	// which opens it (drawerLanding).
+	DrawerOnly bool
 	// Arrival is an outcome the shell drew itself, with an act in it, said
 	// by the notification in the flash's place (pageData.Arrival).
 	Arrival template.HTML

@@ -97,11 +97,18 @@ page form. No shell ever published a hook.
    - **Places.** A card that did not draw keeps its place while its plugin is
      installed.
 
-8. **The shell names the features it speaks.** `X-Verso-Features: slots` rides every
+8. **A drawer's address opens it over its page.** A contributed act opens its
+   plugin's page as a drawer over the page it stands on, so that page has no body of
+   its own. Visited as a page (an Overview card's door, a bookmark), a page that is only
+   an open drawer and names its `back` page lands there as `?drawer=<its address>`, and
+   that page opens it by pressing the act already on it. Nothing else can be opened
+   this way: the name must match a link the page holds.
+
+9. **The shell names the features it speaks.** `X-Verso-Features: slots` rides every
    plugin request. `schema_version` stays the vocabulary's gate. Features change on
    another axis, and a static manifest cannot negotiate, but a plugin's page can.
 
-9. **`system_access` is an alias.** It reads as a contribution to
+10. **`system_access` is an alias.** It reads as a contribution to
    `shell.access.blocks` standing before the web interface's section, so a plugin
    written before slots keeps its part. The shell no longer names `system`: the system
    plugin's part leads by its own `order`.

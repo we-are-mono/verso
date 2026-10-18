@@ -93,7 +93,11 @@ func TestAPanelActTheRouterRefusedStaysInThePanel(t *testing.T) {
 // on Access.
 func TestAnAccessPartAskedForAsAPageIsAccess(t *testing.T) {
 	s := certificatePanelServer(t, &credentialsFake{}, nil)
-	rec := get(t, s, "/plugins/system/access/certificate/new")
+	rec := get(t, s, "/plugins/system/access")
+	if rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != "/system/access" {
+		t.Fatalf("want Access, got %d → %q", rec.Code, rec.Header().Get("Location"))
+	}
+	rec = get(t, s, "/plugins/system/access/certificate/new")
 	if rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != "/system/access" {
 		t.Fatalf("want Access, got %d → %q", rec.Code, rec.Header().Get("Location"))
 	}

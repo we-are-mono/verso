@@ -258,7 +258,9 @@ the envelope's `card`, and its body as the `widget`:
 - `cause` is what is wrong, as a sentence that stands without the card. The Overview's
   heading says it when it is the one thing wrong, and counts it among the rest, whether
   the card is open, closed or hidden. Leave it out while all is well.
-- `opens` is the page on your plugin the card's door leads to.
+- `opens` is the page on your plugin the card's door leads to. A page that is only an
+  open drawer and names its `back` page (a setup over Access) lands there with the
+  drawer open, as the act on that page would open it: name the drawer's own address.
 
 The body reads and never asks, so it holds no form. A card answered with one is not
 drawn.

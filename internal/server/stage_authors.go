@@ -74,6 +74,13 @@ func pageLabel(m plugin.Manifest, pluginPath string) string {
 	return m.Name
 }
 
+// accessPartRoot reports whether a plugin path is the plugin's part of Access
+// itself, not what it keeps under it.
+func accessPartRoot(m plugin.Manifest, pluginPath string) bool {
+	part, ok := accessContribution(m)
+	return ok && strings.Trim(part.Path, "/") == strings.Trim(pluginPath, "/")
+}
+
 // accessPart reports whether a plugin path is the plugin's part of Access.
 func accessPart(m plugin.Manifest, pluginPath string) bool {
 	part, _ := accessContribution(m)

@@ -29,6 +29,7 @@ type answer struct {
 	notice *plugin.Notice
 	commit []plugin.CommitOp
 	act    string // the page's heading act, its drawer and all
+	back   string // the page's return address
 }
 
 // slotTransport answers by socket and path, as several plugins would, and
@@ -66,6 +67,9 @@ func (f *slotTransport) Fetch(ctx context.Context, target plugin.Endpoint, req p
 	env := &plugin.Envelope{SchemaVersion: 1, Title: "T", Widget: json.RawMessage(a.widget), Notice: a.notice, Commit: a.commit, Status: http.StatusOK}
 	if a.act != "" {
 		env.Act = json.RawMessage(a.act)
+	}
+	if a.back != "" {
+		env.Back = &plugin.PageAction{Label: "Back", Href: a.back}
 	}
 	return env, nil
 }
@@ -342,6 +346,56 @@ func TestADrawersSlotsAreFilledWhenItOpens(t *testing.T) {
 	}
 	if !strings.Contains(body, "turns off the trusted certificate") {
 		t.Errorf("the drawer's notice slot is not filled:\n%s", body)
+	}
+}
+
+// A drawer's own address, visited as a page (a card's door, a bookmark),
+// lands on the page it opens over, which opens it: the drawer alone has no
+// page under it to stand on.
+func TestADrawersAddressLandsOnItsPageWithItOpen(t *testing.T) {
+	drawer := `{"label":"Use your domain","href":"/plugins/acme/setup","drawer":{"title":"Trusted certificate","open":true,"closed":"/system/access","children":[{"type":"text","markdown":"Set up."}]}}`
+	tr := &cardTransport{slotTransport: slotTransport{answers: map[string]answer{
+		"/run/acme.sock /setup": {widget: `{"type":"stack","children":[]}`, act: drawer, back: "/system/access"},
+	}}}
+	s := newServerWith(t, fakeBackend{access: true}, tr, []plugin.Manifest{slotPlugin("acme", false, contribution("use", "system.certificate.acts", ""))})
+	rec := get(t, s, "/plugins/acme/setup")
+	if rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != "/system/access?drawer=%2Fplugins%2Facme%2Fsetup" {
+		t.Errorf("a visit answers %d → %q, want Access with the drawer named", rec.Code, rec.Header().Get("Location"))
+	}
+	// Asked for as the drawer it is, it is answered as one.
+	req := httptest.NewRequest(http.MethodGet, "/plugins/acme/setup", nil)
+	req.Header.Set("HX-Request", "true")
+	if panel := serve(t, s, req); panel.Code != http.StatusOK || !strings.Contains(panel.Body.String(), "Set up.") {
+		t.Errorf("the drawer asked for as one answers %d", panel.Code)
+	}
+}
+
+// The system plugin's Install drawer, kept under its part of Access, lands on
+// Access with the drawer open, as a drawer of any plugin does.
+func TestADrawerUnderAnAccessPartLandsOnAccessWithItOpen(t *testing.T) {
+	drawer := `{"label":"Install certificate","href":"/plugins/system/access/certificate/install","drawer":{"title":"Install a certificate","open":true,"closed":"/system/access","children":[]}}`
+	tr := &slotTransport{answers: map[string]answer{
+		"/run/system.sock /access/certificate/install": {widget: `{"type":"stack","children":[]}`, act: drawer, back: "/system/access"},
+	}}
+	system := slotPlugin("system", false)
+	system.SystemAccess = "/access"
+	s := slotServer(t, tr, system)
+	rec := get(t, s, "/plugins/system/access/certificate/install")
+	if want := "/system/access?drawer=%2Fplugins%2Fsystem%2Faccess%2Fcertificate%2Finstall"; rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != want {
+		t.Errorf("want Access opening the drawer, got %d → %q", rec.Code, rec.Header().Get("Location"))
+	}
+}
+
+// A page with a body of its own that also has a drawer open is a page: it is
+// drawn where it is.
+func TestAPageWithADrawerOpenIsNotSentAway(t *testing.T) {
+	drawer := `{"label":"Edit","href":"/plugins/host/x","drawer":{"title":"Edit","open":true,"closed":"/plugins/host/","children":[]}}`
+	tr := &slotTransport{answers: map[string]answer{
+		"/run/host.sock /x": {widget: `{"type":"section","title":"Listing","children":[]}`, act: drawer, back: "/plugins/host/"},
+	}}
+	s := slotServer(t, tr, slotPlugin("host", true))
+	if rec := get(t, s, "/plugins/host/x"); rec.Code != http.StatusOK {
+		t.Errorf("a page with its own body answers %d, want it drawn", rec.Code)
 	}
 }
 

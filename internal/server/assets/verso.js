@@ -750,6 +750,31 @@ document.addEventListener("alpine:init", function () {
   });
 });
 
+// A drawer's own address, visited as a page (an Overview card's door, a
+// bookmark), lands on the page it opens over with ?drawer=<its address>
+// (ADR-026). The page opens it as pressing its act would, once Alpine has
+// wired the act, and the address goes back to the page's own. Only an act on
+// the page can be opened this way: the name finds a link already here.
+(function () {
+  var params = new URLSearchParams(window.location.search);
+  var wanted = params.get("drawer");
+  if (!wanted) return;
+  params.delete("drawer");
+  var rest = params.toString();
+  try {
+    window.history.replaceState(null, "", window.location.pathname + (rest ? "?" + rest : "") + window.location.hash);
+  } catch (e) { /* the drawer still opens */ }
+  document.addEventListener("alpine:initialized", function () {
+    var links = document.querySelectorAll('[x-data="modal"] a[href]');
+    for (var i = 0; i < links.length; i++) {
+      if (links[i].getAttribute("href") === wanted) {
+        links[i].click();
+        return;
+      }
+    }
+  });
+})();
+
 // Entity editors stay open after Save. Once closed, read the roster again so
 // its labels, counts and offline rows match the saved policy. If the operator
 // has edited further, preserve that unfinished work in the existing drawer.

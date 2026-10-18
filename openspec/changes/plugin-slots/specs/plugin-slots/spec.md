@@ -150,6 +150,17 @@ The shell SHALL fill slots in a page's or drawer's own widget tree, and slots in
 - **WHEN** acme's drawer, opened from "Use your domain", holds a slot that another plugin fills
 - **THEN** the drawer draws that plugin's contribution
 
+### Requirement: A drawer's address opens it over its page
+A plugin page that is only an open drawer and names its return page (`back`), visited as a page, SHALL send the browser to that page naming the drawer, and the page SHALL open the drawer as its act would. A page with a body of its own SHALL be drawn where it is.
+
+#### Scenario: The Certificate card's door
+- **WHEN** the operator follows the Overview's Certificate card to `/plugins/acme/setup`
+- **THEN** Access opens with acme's setup drawer open over it, and the address reads Access's
+
+#### Scenario: A drawer the system plugin keeps under Access
+- **WHEN** the operator visits `/plugins/system/access/certificate/install`
+- **THEN** Access opens with the Install drawer open over it
+
 ### Requirement: Contributions speak the reader's language
 The shell SHALL ask each contribution in the reader's language and translate it with the contributing plugin's catalogue, as it does that plugin's pages.
 

@@ -89,8 +89,10 @@ func (s *Server) handlePlugin(w http.ResponseWriter, r *http.Request) {
 	}
 	// A plugin's part of Access, and what it keeps under it (a certificate's
 	// acts, drawers over Access), are not pages of their own: asked for as a
-	// page, the address lands on Access, which composes them.
-	if accessPart(m, r.PathValue("path")) && safeMethod(r.Method) && !panelRequest(r) {
+	// page, the address lands on Access, which composes them; a drawer under
+	// the part lands there open (below).
+	part := accessPart(m, r.PathValue("path")) && safeMethod(r.Method) && !panelRequest(r)
+	if part && accessPartRoot(m, r.PathValue("path")) {
 		http.Redirect(w, r, "/system/access", http.StatusSeeOther)
 		return
 	}
@@ -100,6 +102,16 @@ func (s *Server) handlePlugin(w http.ResponseWriter, r *http.Request) {
 	page, call := contributionPost(r)
 	body, status := s.pluginBodyFor(page, m, r.PathValue("path"), &hdr, &width, &pages, call)
 	if s.answerContributionPost(w, r, call.outcome) {
+		return
+	}
+	// A drawer with no page of its own, visited as a page, lands on the page
+	// it opens over, which opens it.
+	if hdr.DrawerOnly && hdr.Back != nil && safeMethod(r.Method) && !panelRequest(r) {
+		http.Redirect(w, r, drawerLanding(hdr.Back.Href, r.URL.RequestURI()), http.StatusSeeOther)
+		return
+	}
+	if part {
+		http.Redirect(w, r, "/system/access", http.StatusSeeOther)
 		return
 	}
 	if call.outcome != nil && call.outcome.posted && call.outcome.code >= http.StatusBadRequest {
@@ -421,6 +433,7 @@ func (s *Server) pluginBodyFor(r *http.Request, m plugin.Manifest, pluginPath st
 			return "", http.StatusOK
 		}
 	}
+	hdr.DrawerOnly = act != nil && act.Drawer != nil && act.Drawer.Open && env.Back != nil && emptyPage(wdg)
 	// The act rides in front of the page until the heading line is drawn, so
 	// every pass below reaches its blank panel as it reaches a row's.
 	wdg = widget.WithHeading(act, wdg)

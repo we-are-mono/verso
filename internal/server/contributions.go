@@ -274,6 +274,29 @@ func (s *Server) answerContributionPost(w http.ResponseWriter, r *http.Request, 
 	return false
 }
 
+// drawerQuery names, on a page's address, the drawer the page opens on load:
+// one an act on the page leads to.
+const drawerQuery = "drawer"
+
+// drawerLanding is the address of the page a drawer opens over, asking it
+// to open the drawer at its own address.
+func drawerLanding(page, drawer string) string {
+	u, err := url.Parse(widget.SafeHref(page))
+	if err != nil || u.Path == "" {
+		return "/"
+	}
+	q := u.Query()
+	q.Set(drawerQuery, drawer)
+	u.RawQuery = q.Encode()
+	return u.String()
+}
+
+// emptyPage is a page whose body draws nothing: an empty stack.
+func emptyPage(w widget.Widget) bool {
+	stack, ok := w.(*widget.Stack)
+	return ok && len(stack.Children) == 0
+}
+
 // postBack is the address a contribution's forms post to: the page being
 // drawn, naming the contribution.
 func (c pluginCall) postBack() string {
