@@ -956,6 +956,27 @@ func TestRenderTableFlatLabels(t *testing.T) {
 		"border-bottom-width: 1px", "var(--color-rule-strong)", "@apply type-label")
 }
 
+// TestRenderTableNote: a listing's note is its caption, the one line under its
+// last row saying what the listing leaves out, in Meta and flush left. A
+// listing with nothing in it says so instead, and carries no note.
+func TestRenderTableNote(t *testing.T) {
+	r := newRenderer(t)
+	columns := []TableColumn{{Label: "Name", Kind: "name"}}
+	rows := []TableRow{{Cells: []TableCell{{Text: "SSH"}}}}
+	got := render(t, r, &Table{Style: "flat", Columns: columns, Rows: rows, Note: "Offline devices stay listed."})
+	if want := `<p data-verso-table-caption class="verso-listing__caption">Offline devices stay listed.</p>`; !strings.Contains(got, want) {
+		t.Errorf("a listing's note is not its caption, missing %q:\n%s", want, got)
+	}
+	declares(t, "listing", ".verso-listing__caption", "color: var(--color-meta);", "@apply type-body;")
+	if rule := cssRule(blockCSS(t, "listing"), ".verso-listing__caption"); strings.Contains(rule, "margin-left: auto") || strings.Contains(rule, "text-align") {
+		t.Errorf("a listing's caption stands flush left:\n%s", rule)
+	}
+	empty := render(t, r, &Table{Style: "flat", Columns: columns, Note: "Offline devices stay listed.", EmptyText: "Nothing here."})
+	if strings.Contains(empty, "data-verso-table-caption") {
+		t.Errorf("an empty listing carries no note:\n%s", empty)
+	}
+}
+
 // TestRenderTableDense: every row is inset from the table's edges so a hover
 // tint and a band's fill, which run the full width, never touch a value. Dense
 // drops the cells' own inset for a listing carrying many columns — the columns'

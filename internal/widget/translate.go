@@ -248,10 +248,6 @@ func translateTable(n *Table, t func(string) string) {
 	n.EmptyText = t(n.EmptyText)
 	n.AddLabel = t(n.AddLabel)
 	n.Note = t(n.Note)
-	for i := range n.Legend {
-		n.Legend[i].Label = t(n.Legend[i].Label)
-		n.Legend[i].Detail = t(n.Legend[i].Detail)
-	}
 	for i := range n.Columns {
 		n.Columns[i].Label = t(n.Columns[i].Label)
 	}

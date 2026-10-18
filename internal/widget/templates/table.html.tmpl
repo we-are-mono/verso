@@ -64,24 +64,10 @@
               {{template "verso-drawer-fetched" ""}}
             </span>
             {{else if .AddHref}}<a href="{{.AddHref}}" aria-label="{{.AddLabel}}"{{template "table.laneadd-attrs" .}}>{{template "table.laneadd-body" .}}</a>{{end}}{{end}}
-{{/* table.legend: the marks explained where the marks are: the same dot the
-     rows wear, the plain words for it, and after them the one caveat about
-     what the listing includes. */}}
-{{define "table.legend"}}{{if or .Legend .Note}}
-  <div data-verso-table-legend class="verso-listing__legend">
-    {{range .Legend}}
-    {{if .Ink}}
-    {{/* an ink explained in the ink itself: the word in the tone's Deep
-         step, as the figures are written, and where it starts and stops. */}}
-    <span class="verso-listing__key"><span class="verso-listing__ink"{{with .Variant}} data-verso-tone="{{.}}"{{end}}>{{.Label}}</span>{{if .Detail}}<span class="verso-listing__range">{{.Detail}}</span>{{end}}</span>
-    {{else}}
-    <span class="verso-listing__key">
-      <span class="verso-mark" data-verso-tone="{{.Variant}}"></span>{{.Label}}
-    </span>
-    {{end}}
-    {{end}}
-    {{if .Note}}<span class="verso-listing__caveat">{{.Note}}</span>{{end}}
-  </div>
+{{/* table.caption: the one caveat about what the listing includes, under
+     its last row. */}}
+{{define "table.caption"}}{{with .Note}}
+  <p data-verso-table-caption class="verso-listing__caption">{{.}}</p>
 {{end}}{{end}}
 {{define "table.rows"}}
       {{range .}}
@@ -530,13 +516,13 @@
       {{end}}
     </tbody>
   </table>
-  {{if not .PageBlock}}{{template "table.legend" .}}{{end}}
+  {{if not .PageBlock}}{{template "table.caption" .}}{{end}}
   <p data-verso-listing-empty hidden class="verso-listing__note">{{t "Nothing matches."}}</p>
 </div>
 </div>
-{{/* A page's own listing is its card; its legend and note follow the card
-     under its bottom edge, the help about the card rather than a part of it. */}}
-{{if .PageBlock}}{{template "table.legend" .}}{{end}}
+{{/* A page's own listing is its card; its note follows the card under its
+     bottom edge, the help about the card rather than a part of it. */}}
+{{if .PageBlock}}{{template "table.caption" .}}{{end}}
 {{end}}
 {{end}}
 {{if .Reorderable}}

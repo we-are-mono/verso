@@ -402,8 +402,7 @@
 }
 
 /* An inked figures cell: its figures written at the value role's 500 in the
-   tone's Deep step, as the legend writes the ink's words, the
-   glyphs beside them left in Glyph. A live listing changes the tone in
+   tone's Deep step, the glyphs beside them left in Glyph. A live listing changes the tone in
    place, and the ink eases to it. The tokens are hex, and hex colours ease
    through sRGB, where green to crimson passes through mud; each tone is
    restated in OKLCH so the ease runs through Oklab. A browser without

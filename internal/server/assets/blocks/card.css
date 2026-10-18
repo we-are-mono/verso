@@ -103,9 +103,9 @@
 .verso-card:is(:not(input[type="hidden"], template, script, [hidden]) ~ *) {
   margin-top: calc(var(--spacing-inset) - 1px);
 }
-/* A page's own listing is its card, and its legend follows it close: the
-   card after the legend stands the full 24px under it. */
-.verso-card:is(.verso-listing + .verso-listing__legend + *) {
+/* A page's own listing is its card, and its caption follows it close: the
+   card after the caption stands the full 24px under it. */
+.verso-card:is(.verso-listing + .verso-listing__caption + *) {
   margin-top: var(--spacing-inset);
 }
 /* The page's last card gives its bottom border's pixel back, so the

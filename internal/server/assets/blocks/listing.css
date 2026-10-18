@@ -3,7 +3,7 @@
 
 /*
  * listing — a table in its frame: the box it scrolls sideways in, the header
- * band a titled listing opens on, and the legend and notes under it.
+ * band a titled listing opens on, and the caption and notes under it.
  *
  * A table wider than its box scrolls sideways in it. A box that scrolls one
  * way clips both (CSS computes overflow-y to auto too), so it clips the
@@ -23,17 +23,13 @@
  *           __title     the header's title
  *           __detail    what the header says beside its title
  *           __act       the header's act, flush right
- *           __legend    the marks explained where the marks are, its words
- *                       in line with the rows' (23px after the air over it,
- *                       24px over its end); following a page's own listing,
- *                       it is that card's caption, 8px under the frame's
- *                       line, its words in line with the card's edges
- *           __key       one mark and its words in the legend; an ink
- *                       explained in the ink itself (__ink, data-verso-tone,
- *                       the word in the tone's Deep step, its __range quiet)
- *           __caveat    the one caveat about what the listing includes,
- *                       after the keys, flush left as they are
- *           __note      a line of words where a row would stand: nothing
+ *           __caption   the one caveat about what the listing includes, in
+ *                       Meta, flush left, its words in line with the rows'
+ *                       (23px after the air over it, 24px over its end);
+ *                       following a page's own listing, it is that card's
+ *                       caption, 8px under the frame's line, its words in
+ *                       line with the card's edges
+ *           __note     a line of words where a row would stand: nothing
  *                       matches, or nothing to list; a row's air, the rows'
  *                       insets and its hairline
  *           __stale     live status that could not be refreshed
@@ -148,47 +144,15 @@
   margin-left: auto;
 }
 
-.verso-listing__legend {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: calc(var(--spacing) * 6);
+.verso-listing__caption {
   padding: calc(var(--spacing-inset) - 1px) var(--spacing-side) var(--spacing-inset);
+  color: var(--color-meta);
   @apply type-body;
 }
-.verso-listing__legend:is(.verso-listing + *) {
+.verso-listing__caption:is(.verso-listing + *) {
   --verso-step: 0px;
   margin-top: 0;
   padding: calc(var(--spacing) * 1.75) 0 0;
-}
-.verso-listing__key {
-  display: flex;
-  align-items: center;
-  gap: calc(var(--spacing) * 2);
-  white-space: nowrap;
-}
-.verso-listing__key:has(> .verso-mark) {
-  color: var(--color-body);
-}
-.verso-listing__key:has(> .verso-listing__ink) {
-  gap: calc(var(--spacing) * 1.5);
-}
-.verso-listing__ink {
-  color: var(--color-ink);
-  @apply type-value;
-}
-.verso-listing__ink[data-verso-tone="success"] {
-  color: var(--color-green-deep);
-}
-.verso-listing__ink[data-verso-tone="warning"] {
-  color: var(--color-marigold-deep);
-}
-.verso-listing__ink[data-verso-tone="danger"] {
-  color: var(--color-crimson-deep);
-}
-.verso-listing__range,
-.verso-listing__caveat {
-  color: var(--color-meta);
 }
 
 .verso-listing__note {

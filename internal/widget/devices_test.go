@@ -93,11 +93,6 @@ func TestRenderDevicesTable(t *testing.T) {
 	if strings.Contains(got, ">Idle<") {
 		t.Error("the roster states two presences, not three")
 	}
-	// The marks read by themselves, the dot beside its word in the Status
-	// column, so the listing carries no legend restating them.
-	if strings.Contains(got, "verso-listing__key") {
-		t.Error("the roster carries no legend")
-	}
 }
 
 // TestRenderDevicesRowsCarryNoPanel: a device's detail is the shell's panel,
@@ -145,11 +140,6 @@ func TestRenderDevicesUsage(t *testing.T) {
 		if !strings.Contains(got, want) {
 			t.Errorf("usage roster missing %q", want)
 		}
-	}
-	// The figures carry the load the ink repeats, so no legend spells out
-	// the bands.
-	if strings.Contains(got, "verso-listing__key") || strings.Contains(got, ">light<") {
-		t.Error("the usage roster carries no legend")
 	}
 	for _, unwanted := range []string{"data-verso-figure-meter", "clip-path", "verso-meter__bar"} {
 		if strings.Contains(got, unwanted) {

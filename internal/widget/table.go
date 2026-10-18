@@ -52,8 +52,8 @@ import (
 //	"figures"  — one or more figures side by side, each in a fixed slot, in
 //	             Ink; an inked cell (Ink) writes them in its Variant's Deep
 //	             step instead (success green, warning marigold, danger
-//	             crimson), so the listing owns its thresholds and its legend
-//	             says them. A figure with no Text keeps its slot hidden, so a
+//	             crimson), so the listing owns its thresholds; the figures
+//	             say the size the ink repeats. A figure with no Text keeps its slot hidden, so a
 //	             live listing fills it in place; with none to show, the faint
 //	             dash
 //	"phrase"   — the row's name as one line of parts (Parts): chips, words
@@ -93,14 +93,10 @@ type Table struct {
 	// the listing that knows how many columns it has is the one that says it.
 	Dense bool `json:"dense,omitempty"`
 
-	// Legend explains the marks the rows carry, under the last row: a listing
-	// that states something with a dot owes the reader the dot's meaning once,
-	// where the dots are, rather than in a tooltip they have to go looking for.
-	// Note follows the legend, flush left — the one caveat about what the
-	// listing includes ("offline devices stay listed until their lease
-	// expires"). Either may stand without the other.
-	Legend []TableLegend `json:"legend,omitempty"`
-	Note   string        `json:"note,omitempty"`
+	// Note is the listing's caption under its last row, flush left: the one
+	// caveat about what the listing includes ("offline devices stay listed
+	// until their lease expires").
+	Note string `json:"note,omitempty"`
 
 	// EmptyText is what a listing with nothing in it says, in two sentences at
 	// most: that nothing is here yet, and what the daemon does without it.
@@ -649,21 +645,6 @@ func (c *TableChip) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// TableLegend is one entry in a listing's legend: the same mark a row wears,
-// and the plain words for what wearing it means. Variant is the status cell's
-// own vocabulary, so the mark here and the mark in the row are one treatment —
-// an empty Variant draws the empty ring, exactly as a row does.
-//
-// An ink entry explains an inked figures cell instead: no mark, the Label
-// written in the Variant's Deep step as the figures are, and Detail after it
-// in Meta, saying where that ink starts and stops ("under 5 Mb/s").
-type TableLegend struct {
-	Variant string `json:"variant,omitempty"`
-	Label   string `json:"label"`
-	Ink     bool   `json:"ink,omitempty"`
-	Detail  string `json:"detail,omitempty"`
-}
-
 // TableEndpoint is one traffic endpoint in an endpoint cell. The kind picks the
 // type icon and treatment: a zone name reads sans, a device address reads mono,
 // "router" (this device) carries the accent, "any" is muted.
@@ -735,7 +716,6 @@ type tableView struct {
 	// follows them.
 	EmptyUnderBand bool
 	EmptyText      string
-	Legend         []TableLegend
 	Note           string
 	// Stream marks the live listing: the table carries the source and ring the
 	// client reads, and an empty one keeps its column heads and marks its quiet
@@ -757,7 +737,7 @@ type tableView struct {
 	Rows        []tableRowView
 	SeamSummary string
 	SeamRows    []tableRowView
-	// PageBlock is a listing that is its page's own card: its legend follows
+	// PageBlock is a listing that is its page's own card: its note follows
 	// the card rather than closing it.
 	PageBlock bool
 }
@@ -1249,10 +1229,10 @@ func (t *Table) view(r *Renderer, csrf string) (tableView, error) {
 		Columns:   t.Columns, HasDetail: t.hasDetail(),
 		Empty: empty, EmptyText: t.EmptyText,
 	}
-	// A legend explains the marks the rows carry, so an empty listing carrying
-	// no rows carries no legend either.
+	// A note is about the rows, so an empty listing carrying no rows carries
+	// no note either.
 	if !empty {
-		v.Legend, v.Note = t.Legend, t.Note
+		v.Note = t.Note
 	}
 	if stream {
 		v.Stream, v.StreamSource, v.StreamRing = true, t.Stream.Source, t.Stream.ring()
@@ -1292,7 +1272,7 @@ func (t *Table) view(r *Renderer, csrf string) (tableView, error) {
 	// Bands with nothing under them: the listing is empty all the same, so
 	// its heads go and its sentence is said, under the bands.
 	if !empty && t.bandsOnly() {
-		v.EmptyUnderBand, v.HasLabels, v.Legend, v.Note = true, false, nil, ""
+		v.EmptyUnderBand, v.HasLabels, v.Note = true, false, ""
 		if v.EmptyText == "" {
 			v.EmptyText = r.tr("Nothing here yet")
 		}
