@@ -633,6 +633,10 @@ func (fakeBackend) RefreshGrants(context.Context, string) error {
 	return errNoHelper
 }
 
+func (fakeBackend) PluginCommand(context.Context, string, string, string, map[string]string) (json.RawMessage, error) {
+	return nil, errNoHelper
+}
+
 func (fakeBackend) StageConfigFile(context.Context, string, string, string, string) error {
 	return errNoHelper
 }

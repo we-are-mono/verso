@@ -41,6 +41,9 @@ type Manifest struct {
 	// plugin's acl writes with scope "uci"; the shell and the helper leave one
 	// in any other config out alike.
 	Secrets []string `json:"secrets,omitempty"`
+	// Commands is the plugin's command registry, read from the commands.json
+	// beside its manifest (ADR-027); nil when it ships none.
+	Commands *Registry `json:"-"`
 }
 
 // ACL is a plugin's declared rpcd access surface — the Verso analog of LuCI's

@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/fs"
+	pathpkg "path"
 	"sort"
 	"strconv"
 	"strings"
@@ -55,6 +56,16 @@ func Discover(fsys fs.FS, glob string) (manifests []Manifest, problems []error) 
 			continue
 		}
 		seen[m.ID] = true
+		// The registry rides beside the manifest. A broken one costs the plugin
+		// its root commands, never its pages.
+		registryPath := pathpkg.Join(pathpkg.Dir(path), "commands.json")
+		if data, err := fs.ReadFile(fsys, registryPath); err == nil {
+			if r, err := parseRegistry(data); err != nil {
+				problems = append(problems, fmt.Errorf("plugin: %s: %w", registryPath, err))
+			} else {
+				m.Commands = r
+			}
+		}
 		manifests = append(manifests, m)
 	}
 	return manifests, problems

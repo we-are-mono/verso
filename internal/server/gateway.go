@@ -18,6 +18,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/we-are-mono/verso/internal/datatype"
 	"github.com/we-are-mono/verso/internal/openwrt"
@@ -1190,32 +1191,105 @@ func declaredUCIReadConfigs(m plugin.Manifest) []string {
 // de-privileged plugin cannot reach, read through the privileged helper with the
 // operator's sid and handed down beside the uci snapshot. It shares the snapshot's
 // posture — a read the shell cannot complete contributes nothing rather than
-// failing the page, and a plugin declaring none receives no header at all.
+// failing the page, and a plugin declaring none receives no header at all. The
+// reads run together, so a page waits for its slowest read, not their sum.
 func (s *Server) readUbus(ctx context.Context, m plugin.Manifest, sid string) plugin.Ubus {
-	var out plugin.Ubus
+	reads := s.declaredReads(m)
+	if len(reads) == 0 {
+		return nil
+	}
+	var (
+		mu  sync.Mutex
+		wg  sync.WaitGroup
+		out plugin.Ubus
+	)
+	for _, r := range reads {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			result, err := r.read(ctx, sid)
+			if err != nil {
+				log.Printf("verso: plugin %q read of %s failed: %v", m.ID, r.key, err)
+				return
+			}
+			mu.Lock()
+			defer mu.Unlock()
+			if out == nil {
+				out = make(plugin.Ubus)
+			}
+			out[r.key] = result
+		}()
+	}
+	wg.Wait()
+	return out
+}
+
+// brokeredRead is one read the shell performs for a plugin, under the key the
+// plugin finds it by.
+type brokeredRead struct {
+	key  string
+	read func(context.Context, string) (json.RawMessage, error)
+}
+
+// declaredReads is every read the plugin declared that the shell brokers: the
+// core functions it knows by name (scope "ubus", object "verso"), and the reads
+// an installed plugin's registry declares (scope "verso-plugin", ADR-027), keyed
+// "<plugin>.<name>". Anything else is no read at all, so a manifest cannot name
+// its way to an arbitrary helper verb.
+func (s *Server) declaredReads(m plugin.Manifest) []brokeredRead {
+	var out []brokeredRead
 	for _, function := range declaredUbusReadFunctions(m) {
-		result, brokered, err := s.brokeredUbusRead(ctx, sid, function)
-		if !brokered {
+		if read := s.coreRead(function); read != nil {
+			out = append(out, brokeredRead{key: function, read: read})
+		}
+	}
+	seen := make(map[string]bool)
+	for _, a := range m.ACL.Read {
+		key := a.Object + "." + a.Function
+		if a.Scope != "verso-plugin" || seen[key] {
 			continue
 		}
-		if err != nil {
-			log.Printf("verso: plugin %q read of ubus verso.%s failed: %v", m.ID, function, err)
-			continue
+		seen[key] = true
+		if read := s.registeredRead(a.Object, a.Function); read != nil {
+			out = append(out, brokeredRead{key: key, read: read})
 		}
-		if out == nil {
-			out = make(plugin.Ubus)
-		}
-		out[function] = result
 	}
 	return out
 }
 
-// brokeredUbusRead bounds the reads the shell will perform on a plugin's behalf to
-// a closed set of named helper functions, the way runPluginCommands bounds the
-// privileged tail of a write. Declaring a scope is not enough: the shell must also
-// know the function, so a manifest cannot name its way to an arbitrary helper verb.
-// It reports whether the function is one the shell brokers at all.
-func (s *Server) brokeredUbusRead(ctx context.Context, sid, function string) (json.RawMessage, bool, error) {
+// registeredRead is an installed plugin's registered read, handed on as its
+// version and its result; nil when the plugin is not installed or registers no
+// such read, so the helper is not asked.
+func (s *Server) registeredRead(id, name string) func(context.Context, string) (json.RawMessage, error) {
+	owner, ok := s.manifestByID(id)
+	if !ok {
+		return nil
+	}
+	command, ok := owner.Commands.Read(name)
+	if !ok {
+		return nil
+	}
+	certificates := owner.Commands.Certificates[name]
+	return func(ctx context.Context, sid string) (json.RawMessage, error) {
+		result, err := s.backend.PluginCommand(ctx, sid, id, name, nil)
+		if err != nil {
+			return nil, err
+		}
+		if result, err = certificatesAsFacts(result, certificates); err != nil {
+			return nil, err
+		}
+		return json.Marshal(struct {
+			Version int             `json:"version"`
+			Result  json.RawMessage `json:"result"`
+		}{command.Version, result})
+	}
+}
+
+// coreRead bounds the core reads the shell performs on a plugin's behalf to a
+// closed set of named helper functions, the way runPluginCommands bounds the
+// acts. Declaring a scope is not enough: the shell must also know the function.
+// It is nil for a function the shell does not broker.
+func (s *Server) coreRead(function string) func(context.Context, string) (json.RawMessage, error) {
 	var read func(context.Context, string) (json.RawMessage, error)
 	switch function {
 	case "dhcpState":
@@ -1248,11 +1322,8 @@ func (s *Server) brokeredUbusRead(ctx context.Context, sid, function string) (js
 		read = s.backend.DDNSState
 	case "acmeState":
 		read = s.readACMEState
-	default:
-		return nil, false, nil
 	}
-	result, err := read(ctx, sid)
-	return result, true, err
+	return read
 }
 
 // declaredUbusReadFunctions is the ordered, de-duplicated set of Verso helper

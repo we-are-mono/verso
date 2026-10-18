@@ -56,30 +56,48 @@ func (s *Server) readAccessCredentials(ctx context.Context, sid string) (json.Ra
 
 // readACMEState is the helper's acmeState with acme's certificate given as the
 // facts the Access page says of a certificate, never as PEM, so a plugin reads
-// it as the Certificate card does. A certificate that does not parse is left
-// out; the rest of the answer stands.
+// it as the Certificate card does.
 func (s *Server) readACMEState(ctx context.Context, sid string) (json.RawMessage, error) {
 	raw, err := s.backend.ACMEState(ctx, sid)
 	if err != nil {
 		return nil, err
 	}
+	return certificatesAsFacts(raw, []string{"certificate"})
+}
+
+// certificatesAsFacts replaces each named field of a read's result that holds a
+// PEM certificate with the facts the HTTPS certificate card shows (ADR-027 §8),
+// so no PEM reaches a plugin and the facts have one implementation. A field
+// that does not parse is left out; the rest of the answer stands.
+func certificatesAsFacts(raw json.RawMessage, fields []string) (json.RawMessage, error) {
+	if len(fields) == 0 {
+		return raw, nil
+	}
 	var state map[string]json.RawMessage
 	if err := json.Unmarshal(raw, &state); err != nil {
 		return nil, err
 	}
-	held, ok := state["certificate"]
-	if !ok {
-		return raw, nil
-	}
-	delete(state, "certificate")
-	var text string
-	if json.Unmarshal(held, &text) == nil {
+	changed := false
+	for _, field := range fields {
+		held, ok := state[field]
+		if !ok {
+			continue
+		}
+		changed = true
+		delete(state, field)
+		var text string
+		if json.Unmarshal(held, &text) != nil {
+			continue
+		}
 		if block, _ := pem.Decode([]byte(text)); block != nil {
 			if c, err := x509.ParseCertificate(block.Bytes); err == nil {
 				facts, _ := json.Marshal(certificateFacts(c, time.Now()))
-				state["certificate"] = facts
+				state[field] = facts
 			}
 		}
+	}
+	if !changed {
+		return raw, nil
 	}
 	return json.Marshal(state)
 }

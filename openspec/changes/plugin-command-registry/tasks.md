@@ -37,13 +37,13 @@
 
 ## 4. Shell: generic reads and acts
 
-- [ ] 4.1 Test first in `internal/server` with a fake backend:
+- [x] 4.1 Test first in `internal/server` with a fake backend:
   - a manifest `acl.read` entry with scope `verso-plugin` is read through `PluginCommand` and lands in `X-Verso-Ubus` under `<plugin>.<name>` as `{"version", "result"}`, with the version taken from the registry;
   - a refused, failed or unknown read gives no entry, and the page still renders;
   - three 200 ms reads finish in under 400 ms.
 
   Then implement it beside the core functions in `brokeredUbusRead`, and add `PluginCommand` to the `Backend` seam and `internal/openwrt`. Verify with `make test`.
-- [ ] 4.2 Test first: a read whose registry entry names `certificates` has those fields replaced by `certificateFacts`, and an unparsable one is dropped. No PEM reaches the plugin. Then generalize `readACMEState` into this transform, reading the registry from `/usr/share/verso/plugins/<id>/commands.json`. Verify with `make test`.
+- [x] 4.2 Test first: a read whose registry entry names `certificates` has those fields replaced by `certificateFacts`, and an unparsable one is dropped. No PEM reaches the plugin. Then generalize `readACMEState` into this transform, reading the registry from `/usr/share/verso/plugins/<id>/commands.json`. Verify with `make test`.
 - [ ] 4.3 Test first in `plugin_commands_test.go`:
   - an act declared as `verso-plugin` in `acl.write` runs through `PluginCommand` with its arguments;
   - an undeclared act is refused without a backend call;

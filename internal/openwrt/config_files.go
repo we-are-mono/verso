@@ -75,6 +75,20 @@ func (b *NativeBackend) DDNSUpdate(ctx context.Context, sid, section string) err
 	return callHelper(ctx, b.helperSocket, "ddnsUpdate", sid, map[string]string{"section": section}, nil)
 }
 
+// PluginCommand runs a plugin's registered root command through the helper
+// (ADR-027), which checks the session's grant `verso-plugin <plugin> <name>`
+// and the arguments against the registry before anything runs.
+func (b *NativeBackend) PluginCommand(ctx context.Context, sid, plugin, name string, args map[string]string) (json.RawMessage, error) {
+	request := pluginCommandRequest{
+		Method: "pluginCommand",
+		SID:    sid,
+		Args:   pluginCommandArgs{Plugin: plugin, Name: name, Args: args},
+	}
+	var result json.RawMessage
+	err := callHelperWith(ctx, b.helperSocket, "pluginCommand", request, &result, helperCallTimeout)
+	return result, err
+}
+
 // RefreshGrants has the helper grant the session what rpcd's login would grant
 // it from the access lists on disk now.
 func (b *NativeBackend) RefreshGrants(ctx context.Context, sid string) error {

@@ -58,6 +58,20 @@ type helperRequest struct {
 	Args   map[string]string `json:"args,omitempty"`
 }
 
+// pluginCommandRequest is pluginCommand's request: the plugin, the command and
+// the command's own arguments, nested.
+type pluginCommandRequest struct {
+	Method string            `json:"method"`
+	SID    string            `json:"sid"`
+	Args   pluginCommandArgs `json:"args"`
+}
+
+type pluginCommandArgs struct {
+	Plugin string            `json:"plugin"`
+	Name   string            `json:"name"`
+	Args   map[string]string `json:"args,omitempty"`
+}
+
 type helperResponse struct {
 	Status int             `json:"status"`
 	Result json.RawMessage `json:"result"`
@@ -80,6 +94,12 @@ func callHelper(ctx context.Context, socket, method, sid string, args map[string
 // context deadline that lands sooner still wins, so a request-scoped call can
 // never outlive its request.
 func callHelperWithin(ctx context.Context, socket, method, sid string, args map[string]string, result any, timeout time.Duration) error {
+	return callHelperWith(ctx, socket, method, helperRequest{Method: method, SID: sid, Args: args}, result, timeout)
+}
+
+// callHelperWith sends request, whole, as one helper request: pluginCommand's
+// arguments are not one flat map of text.
+func callHelperWith(ctx context.Context, socket, method string, request any, result any, timeout time.Duration) error {
 	if socket == "" {
 		socket = defaultHelperSocket
 	}
@@ -100,7 +120,7 @@ func callHelperWithin(ctx context.Context, socket, method, sid string, args map[
 	if err := conn.SetDeadline(deadline); err != nil {
 		return fmt.Errorf("verso-rpcd: deadline: %w", err)
 	}
-	if err := json.NewEncoder(conn).Encode(helperRequest{Method: method, SID: sid, Args: args}); err != nil {
+	if err := json.NewEncoder(conn).Encode(request); err != nil {
 		return fmt.Errorf("verso-rpcd: %s request: %w", method, err)
 	}
 

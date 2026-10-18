@@ -383,3 +383,45 @@ func TestCallHelperMapsPermissionDenied(t *testing.T) {
 		t.Fatalf("error = %v, want ErrAccessDenied", err)
 	}
 }
+
+// TestPluginCommandCarriesThePluginTheCommandAndItsArguments: a registered
+// root command (ADR-027) reaches the helper as pluginCommand with the plugin,
+// the command and the command's own arguments nested, and its result comes
+// back as the command wrote it. A refusal keeps its words for the form.
+func TestPluginCommandCarriesThePluginTheCommandAndItsArguments(t *testing.T) {
+	socket := filepath.Join(t.TempDir(), "helper.sock")
+	listener := listenAsHelper(t, socket)
+	t.Cleanup(func() { _ = listener.Close() })
+	got := make(chan string, 2)
+	go func() {
+		for _, reply := range []string{
+			`{"status":0,"result":{"sent":true}}`,
+			`{"status":2,"error":"That section does not exist."}`,
+		} {
+			conn, err := listener.Accept()
+			if err != nil {
+				return
+			}
+			line, _ := bufio.NewReader(conn).ReadString('\n')
+			got <- strings.TrimSpace(line)
+			_, _ = conn.Write([]byte(reply + "\n"))
+			_ = conn.Close()
+		}
+	}()
+	b := &NativeBackend{helperSocket: socket}
+	result, err := b.PluginCommand(context.Background(), "good-sid", "ddns", "update", map[string]string{"section": "home"})
+	if err != nil || string(result) != `{"sent":true}` {
+		t.Fatalf("result = %s, err = %v", result, err)
+	}
+	if want := `{"method":"pluginCommand","sid":"good-sid","args":{"plugin":"ddns","name":"update","args":{"section":"home"}}}`; <-got != want {
+		t.Errorf("the request is not %s", want)
+	}
+	_, err = b.PluginCommand(context.Background(), "good-sid", "ddns", "state", nil)
+	var refused interface{ ValidationMessage() string }
+	if !errors.As(err, &refused) || refused.ValidationMessage() != "That section does not exist." {
+		t.Fatalf("refusal = %v", err)
+	}
+	if want := `{"method":"pluginCommand","sid":"good-sid","args":{"plugin":"ddns","name":"state"}}`; <-got != want {
+		t.Error("a read carries no arguments")
+	}
+}
