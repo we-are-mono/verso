@@ -86,11 +86,6 @@ own and points at the decision that governs it; the rationale lives there, not h
   their own figures with a full space or none. A duration or rate goes to the
   shell as `duration` or `rate`; any other unit takes U+202F (DESIGN.md's
   Narrow Space Rule).
-- **qos claims the device's pause toggle.** The shell draws a device row's
-  power glyph and posts it to the plugin claiming `pause` (ADR-006,
-  `entity_acts` with `post`). qos's branch `pause-act` claims it, answers
-  `_act=pause`, and names paused devices in `engaged`; it builds once its SDK
-  pin moves past v0.8.0, which has no `EntitySummary.engaged`.
 
 ## Simplification
 
@@ -98,10 +93,6 @@ own and points at the decision that governs it; the rationale lives there, not h
   `editor.rs` and system's form builders spell their own text and select
   fields over a `BTreeMap` of errors; moving them onto the SDK's `Errors`
   lets them take `text_field`/`select_field` as firewall does.
-- **dnsdhcp on the next SDK pin.** `verso-plugin-dnsdhcp/src/dns.rs:308` builds
-  `Widget::Link` with `desc`/`code`/`act`, which the SDK no longer has; it
-  compiles against v0.8.0 and the shell ignores the keys, so bumping its pin
-  needs those three lines dropped.
 
 ## Overview cards (ADR-022)
 
