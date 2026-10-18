@@ -29,13 +29,13 @@
 }
 
 /* Rows that follow each other meet on their own air. */
-.verso-rhythm > :is(.verso-field-row, .verso-form-grid, .verso-field-set, [data-verso-change-field]) + :is(.verso-field-row, .verso-form-grid, .verso-field-set, [data-verso-change-field]) {
+.verso-rhythm > :is(.verso-field, .verso-form-grid, .verso-field-set, [data-verso-change-field]) + :is(.verso-field, .verso-form-grid, .verso-field-set, [data-verso-change-field]) {
   --verso-step: 0;
 }
 
 /* A graph stands a group's step under the field that chooses what it shows
    ("Show chart for …"): the two are one block. */
-.verso-rhythm > .verso-field-row + .verso-chart-graph {
+.verso-rhythm > .verso-field + .verso-chart {
   --verso-step: var(--spacing-inset);
 }
 

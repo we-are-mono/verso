@@ -27,7 +27,20 @@
  *           __note      a line of words where a row would stand: nothing
  *                       matches, or nothing to list
  *           __stale     live status that could not be refreshed
+ * Variants: data-verso-in-form  a set among a form's fields, the row's
+ *                               answer: its first line 8px under the
+ *                               question's words, on its own hairline, and
+ *                               the 9px under its last words given back, so
+ *                               the row's own 16px is all that stands between
+ *                               them and the next question's hairline
  */
+
+.verso-listing[data-verso-in-form] {
+  margin-top: calc(var(--spacing) * 1.75);
+  margin-bottom: calc(var(--spacing) * -2.25);
+  border: 0 solid var(--color-rule);
+  border-top-width: 1px;
+}
 
 .verso-listing__scroller {
   position: relative;

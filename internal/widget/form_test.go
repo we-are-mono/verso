@@ -21,7 +21,7 @@ func TestFormActionsFinishTheirConfigurationCard(t *testing.T) {
 				{Style: "settings", Submit: "Save", Fields: tail},
 			} {
 				got := render(t, newRenderer(t), f)
-				if !strings.Contains(got, `<div data-verso-form-actions class="flex flex-wrap items-center mt-6 gap-4">`) {
+				if !strings.Contains(got, `<div data-verso-form-actions class="verso-form__acts" data-verso-close="flush">`) {
 					t.Errorf("Save must join the card without another rule:\n%s", got)
 				}
 			}
@@ -164,19 +164,27 @@ func TestSectionFormCommitsWithoutARule(t *testing.T) {
 		return &Form{Style: "settings", Submit: "Save", Fields: []Widget{&Field{Name: "x"}}}
 	}
 	sectioned := render(t, r, &Section{Title: "SSH", Hairline: true, Children: []Widget{form()}})
-	if !strings.Contains(sectioned, `<div data-verso-form-actions class="flex flex-wrap items-center mt-6 gap-4">`) {
+	if !strings.Contains(sectioned, `<div data-verso-form-actions class="verso-form__acts" data-verso-close="flush">`) {
 		t.Errorf("a section's Save stands under its fields, unruled:\n%s", sectioned)
 	}
 	// The page's rule is a section's rule: 40px under the content before it,
 	// as every section's stands.
-	if got := render(t, r, form()); !strings.Contains(got, `<div data-verso-form-actions data-verso-rule class="flex flex-wrap items-center mt-9.75 gap-4 border-t border-rule pt-5.75">`) {
+	if got := render(t, r, form()); !strings.Contains(got, `<div data-verso-form-actions data-verso-rule class="verso-form__acts" data-verso-close="page">`) {
 		t.Errorf("the page's form closes the page on a section rule:\n%s", got)
 	}
 	framed := form()
 	framed.Frame = "panel"
-	if got := render(t, r, framed); !strings.Contains(got, `<div data-verso-form-actions class="flex flex-wrap items-center mt-5.75 gap-4 border-t border-rule pt-5.75">`) {
+	if got := render(t, r, framed); !strings.Contains(got, `<div data-verso-form-actions class="verso-form__acts">`) {
 		t.Errorf("a panel's form closes on its own rule, inside the panel:\n%s", got)
 	}
+	// The acts' rule and air: 24px with its own pixel by default, 40px
+	// on the page's close, none and 24px flush.
+	declares(t, "form", ".verso-form__acts",
+		"--verso-acts-after: calc(var(--spacing) * 5.75);", "margin-top: var(--verso-acts-after);",
+		"padding-top: calc(var(--spacing) * 5.75);", "border-top-width: 1px;")
+	declares(t, "form", `.verso-form__acts[data-verso-close="page"]`, "--verso-acts-after: calc(var(--spacing) * 9.75);")
+	declares(t, "form", `.verso-form__acts[data-verso-close="flush"]`,
+		"--verso-acts-after: var(--spacing-inset);", "padding-top: 0;", "border-top-width: 0;")
 	// A form that is only its act (Install htop, under the package's facts)
 	// has no fields to close off: its button stands 24px under whatever is
 	// above it, drawing no rule of its own.
@@ -184,7 +192,7 @@ func TestSectionFormCommitsWithoutARule(t *testing.T) {
 		&Field{Kind: "hidden", Name: "package", Value: "htop"},
 		&Field{Kind: "hidden", Name: "_primary", Value: "install"},
 	}}
-	if got := render(t, r, lone); !strings.Contains(got, `<div data-verso-form-actions class="flex flex-wrap items-center mt-6 gap-4">`) {
+	if got := render(t, r, lone); !strings.Contains(got, `<div data-verso-form-actions class="verso-form__acts" data-verso-close="flush">`) {
 		t.Errorf("a lone act draws a rule over itself:\n%s", got)
 	}
 }
@@ -210,7 +218,8 @@ func TestSearchFormSetsSubmitBesideItsField(t *testing.T) {
 	}
 	got := render(t, newRenderer(t), f)
 	for _, want := range []string{
-		`<div class="flex max-w-full items-end gap-2 [&>.verso-field-row]:w-80 [&>.verso-field-row]:min-w-0">`,
+		`data-verso-kind="search"`,
+		`<div class="verso-form__search">`,
 		`<button type="submit" class="verso-button shrink-0">`,
 		`placeholder="Package name"`,
 		">Search</button>",
@@ -219,6 +228,8 @@ func TestSearchFormSetsSubmitBesideItsField(t *testing.T) {
 			t.Errorf("search form render missing %q: %s", want, got)
 		}
 	}
+	declares(t, "form", ".verso-form__search", "display: flex;", "align-items: flex-end;", "gap: calc(var(--spacing) * 2);", "max-width: 100%;")
+	declares(t, "field", ".verso-field:is(.verso-form__search > *)", "width: calc(var(--spacing) * 80);", "min-width: 0;")
 	for _, never := range []string{"absolute inset-y-1", "pr-28"} {
 		if strings.Contains(got, never) {
 			t.Errorf("the search button sits inside its field (%q): %s", never, got)

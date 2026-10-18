@@ -1,0 +1,132 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/* SPDX-FileCopyrightText: 2026 Mono Technologies Inc. */
+
+/*
+ * form — fields and what commits them. A form of settings is a rhythm of its
+ * rows (verso-rhythm, its blocks 24px apart), its acts closing it. A search
+ * and an inline form are a toolbar rather than a list of settings: their
+ * fields stand as they always have, a label over its box
+ * (data-verso-compact-form).
+ *
+ * Variants: data-verso-kind  search: a field and its act side by side, 8px
+ *                            apart, each whole, the field at the 320px a
+ *                            page's find field keeps, the act on the field's
+ *                            own two cells; what else it offers on a line
+ *                            under them · inline: fields and their submit on
+ *                            one row, the fields at 288px
+ *                            (data-verso-size="compact": 208px), the submit
+ *                            glued to the last field (__glued)
+ * Elements: __search  a search's field and its act
+ *           __acts    the commit row: what the form does and what doing it
+ *                     costs. data-verso-close: rule (the form closes on its
+ *                     own rule, 24px under its fields, a pixel short after
+ *                     the rule) · page (it commits the whole page: its rule
+ *                     40px under the content, run out to the rail
+ *                     (data-verso-rule)) · flush (it finishes the
+ *                     configuration card above it, commits a section of the
+ *                     page, or is only its act: 24px under what is above,
+ *                     no rule) · inline (it rides the fields' row)
+ *           __note    what the acts cost, read last at the row's end
+ *           __glued   an inline form's submit, glued to its field: its left
+ *                     corners square
+ * Sets:     --verso-rhythm  24px, on a form of settings
+ *           --verso-edge-lead, --verso-edge-trail  forwarded to its first and
+ *                     last visible child
+ */
+
+.verso-form:where(.verso-rhythm) {
+  --verso-rhythm: var(--spacing-inset);
+}
+
+.verso-form > :nth-child(1 of :not(input[type="hidden"], [hidden], template)) {
+  --verso-edge-lead: inherit;
+}
+.verso-form > :nth-last-child(1 of :not(input[type="hidden"], [hidden], template)) {
+  --verso-edge-trail: inherit;
+}
+
+.verso-form[data-verso-kind="search"] {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: calc(var(--spacing) * 3);
+}
+.verso-form[data-verso-kind="inline"] {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: calc(var(--spacing) * 3);
+}
+.verso-form[data-verso-kind="inline"] > div:not(:last-of-type) {
+  width: calc(var(--spacing) * 72);
+}
+.verso-form[data-verso-kind="inline"][data-verso-size="compact"] > div:not(:last-of-type) {
+  width: calc(var(--spacing) * 52);
+}
+
+.verso-form__search {
+  display: flex;
+  align-items: flex-end;
+  gap: calc(var(--spacing) * 2);
+  max-width: 100%;
+}
+
+/* Its distance from the fields is its own: in the form's rhythm it is its
+   step, and the same margin where the form keeps none. */
+.verso-form__acts {
+  --verso-acts-after: calc(var(--spacing) * 5.75);
+  --verso-step: var(--verso-acts-after);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: calc(var(--spacing) * 4);
+  margin-top: var(--verso-acts-after);
+  padding-top: calc(var(--spacing) * 5.75);
+  border: 0 solid var(--color-rule);
+  border-top-width: 1px;
+}
+.verso-form__acts[data-verso-close="page"] {
+  --verso-acts-after: calc(var(--spacing) * 9.75);
+}
+.verso-form__acts[data-verso-close="flush"] {
+  --verso-acts-after: var(--spacing-inset);
+  padding-top: 0;
+  border-top-width: 0;
+}
+.verso-form__acts[data-verso-close="inline"] {
+  --verso-acts-after: 0px;
+  gap: calc(var(--spacing) * 3);
+  margin-left: calc(var(--spacing) * -3);
+  padding-top: 0;
+  border-top-width: 0;
+}
+.verso-form__acts:where(.verso-form[data-verso-kind="search"] *) {
+  gap: calc(var(--spacing) * 2) calc(var(--spacing) * 3);
+  margin-top: 0;
+  padding-top: 0;
+  border-top-width: 0;
+}
+
+.verso-form__note {
+  color: var(--color-meta);
+  @apply type-body;
+}
+.verso-form__note > p {
+  display: inline;
+}
+.verso-form__note:where(.verso-form__acts *) {
+  margin-left: auto;
+}
+.verso-form__note:where(.verso-form__acts[data-verso-close="inline"] *) {
+  align-self: center;
+  margin-left: 0;
+}
+.verso-form__note:where(.verso-form[data-verso-kind="search"] *) {
+  margin-left: 0;
+  color: var(--color-body);
+}
+
+.verso-form__glued {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}

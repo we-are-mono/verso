@@ -1,0 +1,63 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/* SPDX-FileCopyrightText: 2026 Mono Technologies Inc. */
+
+/*
+ * apply — what applying the stage will do, in order, one line each, read as
+ * a setting's name is: what the apply will do is the card's content, not a
+ * note about it. Each step's state stands at its line's end as the router
+ * reports it (Saving then Saved, the reloads Started, the check-in counting
+ * down then Kept); on a phone it drops under the step's words.
+ *
+ * Elements: __step    one step: its __number, its __text, its __state
+ *           __number  the step's number, in figures
+ *           __text    what it does
+ *           __state   how it stands, in Meta: its waiting mark, its __done
+ *                     check in the success ink, its __word in figures
+ */
+
+.verso-apply {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--spacing) * 2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.verso-apply__step {
+  display: grid;
+  grid-template-columns: 1.25rem minmax(0, 1fr);
+  align-items: start;
+  column-gap: calc(var(--spacing) * 2);
+  color: var(--color-ink);
+  @apply type-field-label;
+}
+@media (width >= 40rem) {
+  .verso-apply__step {
+    grid-template-columns: 1.25rem minmax(0, 1fr) auto;
+  }
+}
+
+.verso-apply__number {
+  font-variant-numeric: tabular-nums;
+}
+.verso-apply__text {
+  min-width: 0;
+}
+
+.verso-apply__state {
+  display: flex;
+  grid-column: 2;
+  align-items: center;
+  gap: calc(var(--spacing) * 1.5);
+  color: var(--color-meta);
+  white-space: nowrap;
+}
+@media (width >= 40rem) {
+  .verso-apply__state {
+    grid-column: auto;
+  }
+}
+.verso-apply__done {
+  color: var(--color-green-deep);
+}

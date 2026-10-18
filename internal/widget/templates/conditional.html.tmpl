@@ -18,6 +18,6 @@
        padding when it is first — so the standing-off is this block's to state. */}}
   {{/* A gate with nothing to reveal is just its row: an empty reveal would
        still hang its standoff under the row when switched on. */}}
-  {{if .Fields}}<div class="verso-conditional-body verso-rhythm">{{range .Fields}}{{.}}{{end}}</div>{{end}}
-  {{if .Otherwise}}<div class="verso-conditional-otherwise verso-rhythm">{{range .Otherwise}}{{.}}{{end}}</div>{{end}}
+  {{if .Fields}}<div class="verso-conditional__body verso-rhythm">{{range .Fields}}{{.}}{{end}}</div>{{end}}
+  {{if .Otherwise}}<div class="verso-conditional__otherwise verso-rhythm">{{range .Otherwise}}{{.}}{{end}}</div>{{end}}
 </div>

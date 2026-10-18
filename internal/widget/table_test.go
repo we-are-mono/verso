@@ -1504,6 +1504,15 @@ func TestEveryCellKeepsTheLastRowsHairline(t *testing.T) {
 	// on every cell and takes it from none.
 	declares(t, "table", tableHairline, "border-bottom-width: 1px", "var(--color-rule)")
 	css := blockCSS(t, "table")
+	// A set among a form's fields is the one exception: its last row's line
+	// would double the hairline between questions under it, so it keeps its
+	// pixel and lets the colour go.
+	const inForm = ":is(.verso-table__cell, .verso-table__grip, .verso-table__acts):where([data-verso-in-form] tbody > tr:last-child > *)"
+	rule := cssRule(css, inForm)
+	if strings.TrimSpace(rule) != "border-bottom-color: transparent;" {
+		t.Errorf("a set among fields does more to its last row than let its line's colour go: %q", rule)
+	}
+	css = strings.Replace(css, inForm+" {"+rule+"}", "", 1)
 	for _, bad := range []string{"border-bottom-width: 0", "border-bottom: 0", "border-bottom: none", "tr:last-"} {
 		if strings.Contains(css, bad) {
 			t.Errorf("a cell must not give up its hairline on the last row (%q)", bad)
@@ -2052,11 +2061,11 @@ func TestATableAmongFieldsIsALedgerRow(t *testing.T) {
 		if table < 0 {
 			t.Fatalf("%s: no listing:\n%s", name, got)
 		}
-		row := strings.LastIndex(got[:table], `class="verso-field-row`)
+		row := strings.LastIndex(got[:table], `<div class="verso-field"`)
 		if row < 0 {
 			t.Fatalf("%s: the table is not a row of the ledger:\n%s", name, got)
 		}
-		question, act, answer := strings.Index(got[row:], "verso-field-question"), strings.Index(got[row:], "verso-field-act"), strings.Index(got[row:], "verso-field-answer")
+		question, act, answer := strings.Index(got[row:], "verso-field__question"), strings.Index(got[row:], "verso-field__act"), strings.Index(got[row:], "verso-field__answer")
 		files := strings.Index(got[row:], ">Files<")
 		if question < 0 || files < question || act < files || answer < act || row+answer > table {
 			t.Errorf("%s: the table is not its group's question, its act and its answer:\n%s", name, got)
@@ -2064,7 +2073,7 @@ func TestATableAmongFieldsIsALedgerRow(t *testing.T) {
 		if act > 0 && answer > act && !strings.Contains(got[row+act:row+answer], `href="/plugins/firewall/settings/files/new"`) {
 			t.Errorf("%s: the add does not stand on the question's line:\n%s", name, got)
 		}
-		for _, want := range []string{"verso-field-wide", `<table class="verso-table" data-verso-in-form>`, ">10-a.nft<", ">20-b.nft<"} {
+		for _, want := range []string{"data-verso-wide", `<table class="verso-table" data-verso-in-form>`, ">10-a.nft<", ">20-b.nft<"} {
 			if !strings.Contains(got, want) {
 				t.Errorf("%s: missing %q:\n%s", name, want, got)
 			}
@@ -2091,7 +2100,7 @@ func TestATableOutsideAFormKeepsItsBand(t *testing.T) {
 		}
 	}
 	declares(t, "table", ".verso-table__band", "background-color: var(--color-quiet)")
-	for _, bad := range []string{"data-verso-in-form", "verso-field-row"} {
+	for _, bad := range []string{"data-verso-in-form", `<div class="verso-field"`} {
 		if strings.Contains(got, bad) {
 			t.Errorf("a listing outside a form is not a ledger row (%q):\n%s", bad, got)
 		}
@@ -2102,7 +2111,7 @@ func TestATableOutsideAFormKeepsItsBand(t *testing.T) {
 // add still stand, and the set says it is empty where its rows would be.
 func TestATableAmongFieldsWithNothingInIt(t *testing.T) {
 	got := render(t, newRenderer(t), &Form{Fields: Widgets{ruleFiles()}})
-	for _, want := range []string{"verso-field-act", ">Files<", "No rule files"} {
+	for _, want := range []string{`<div class="verso-field__act">`, ">Files<", "No rule files"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("an empty table among fields lost %q:\n%s", want, got)
 		}

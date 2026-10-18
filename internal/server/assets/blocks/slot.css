@@ -25,6 +25,12 @@
   @apply type-body;
 }
 
+/* A set's slot under the act that adds to it (a field's act) stands 8px
+   under the question, its frame's pixel out on the lines. */
+.verso-slot:is(.verso-field__act ~ .verso-field__answer > *) {
+  margin-top: calc(var(--spacing) * 2);
+}
+
 .verso-slot__words {
   flex: 1 1 0%;
   min-width: 0;

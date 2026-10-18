@@ -10,36 +10,38 @@
      form is labelled — with the glyph that takes the whole condition away at
      the line's end, on the form measure's edge; then its controls, at the full
      measure. A condition of one control draws it straight under the name, its
-     own label kept for a screen reader only (forms.css); a condition of
+     own label kept for a screen reader only (blocks/field.css); a condition of
      several parts keeps each part's label, set quieter than the name. */}}
 {{define "conditions.item"}}
-<section data-verso-condition="{{.Key}}" data-verso-and="{{ t "and" }}" role="group" aria-labelledby="{{.Name.For}}-label" class="verso-condition{{if .Single}} verso-condition-single{{end}}">
-  <div class="verso-condition-name flex max-w-form items-center gap-3">
+<section data-verso-condition="{{.Key}}" data-verso-and="{{ t "and" }}" role="group" aria-labelledby="{{.Name.For}}-label" class="verso-condition"{{if .Single}} data-verso-single{{end}}>
+  <div class="verso-condition__name">
     {{template "verso-field-label" .Name}}
     <button type="button" data-verso-condition-remove aria-label="{{ t "Remove" }} {{.Label}}" title="{{ t "Remove" }} {{.Label}}" class="verso-button ml-auto" data-verso-size="icon">{{icon "x" "size-4"}}</button>
   </div>
-  <div class="verso-rhythm max-w-form [&>div]:border-0">{{range .Children}}{{.}}{{end}}</div>
+  <div class="verso-condition__parts verso-rhythm">{{range .Children}}{{.}}{{end}}</div>
 </section>
 {{end}}
-<fieldset data-verso-conditions class="pt-4">
+{{/* The builder (blocks/conditions.css), each added condition the condition
+     block (blocks/condition.css). */}}
+<fieldset data-verso-conditions class="verso-conditions">
   {{/* Headed as every section is: 40px of air (the form's 24px block step and
        16px of its own), the shared band and lede, and 24px under them, so the
        title, its lede and what follows stand as far apart here as anywhere. */}}
-  <div class="{{template "verso-section-band-class"}} mb-6">
-    <legend class="{{template "verso-section-title-class"}}">{{if .Label}}{{.Label}}{{else}}{{ t "Conditions" }}{{end}}</legend>
+  <div class="verso-conditions__head">
+    <legend class="verso-conditions__title">{{if .Label}}{{.Label}}{{else}}{{ t "Conditions" }}{{end}}</legend>
     {{if .Help}}{{template "verso-section-lede" .Help}}{{end}}
   </div>
   {{/* The conditions a rule carries are one block: the list wears the quiet
        card while it holds any, and each condition after the first says on
-       the seam above it how it joins the one before — "and" (forms.css). */}}
-  <div data-verso-condition-list class="verso-condition-list">{{range .Active}}{{.}}{{end}}</div>
+       the seam above it how it joins the one before — "and". */}}
+  <div data-verso-condition-list class="verso-conditions__list">{{range .Active}}{{.}}{{end}}</div>
   {{/* No condition yet is an empty set, drawn as every set draws one — the
        slot where the first would stand, at the form's measure. The script
        brings it back when the last condition goes, so it is hidden by the
        attribute rather than a class a display utility could outrank. The act
        stands a cell under the slot, as it does under every set's, and the
        slot gives its bottom border's pixel back as every slot does. */}}
-  <div data-verso-condition-empty data-verso-slot{{if .Active}} hidden{{end}} class="verso-slot max-w-form">
+  <div data-verso-condition-empty data-verso-slot{{if .Active}} hidden{{end}} class="verso-slot verso-conditions__empty">
     {{template "verso-empty-slot-body" (t "No additional conditions. All traffic matching the path and protocol above is included.")}}
   </div>
   {{/* The way in is the act a set adds from, its 28px 24px under the slot and
@@ -50,42 +52,41 @@
        then pressing something else — and a drop-down cannot be searched, cannot
        show what a condition writes, and cannot say what sort of value it takes.
        The picker is a list someone reads or filters, and pressing a line adds it. */}}
-  <div data-verso-condition-picker class="relative pt-6 pb-1">
+  <div data-verso-condition-picker class="verso-conditions__picker">
     <button type="button" data-verso-condition-open aria-expanded="false" class="verso-button group/act relative" data-verso-size="act" data-verso-glyph>{{icon "plus" "size-4"}}{{ t "Add a condition" }}</button>
-    <div data-verso-condition-menu hidden class="absolute top-full left-0 z-30 mt-2 w-[36rem] max-w-[calc(100vw-2rem)] rounded-xs border border-rule-strong bg-ground shadow-(--shadow-menu)">
+    <div data-verso-condition-menu hidden class="verso-conditions__menu">
       {{/* The filter is the first thing focus lands on, because on a catalogue
            this size typing the name is faster than reading to find it. It is not
            a form control of this form: it filters a list and posts nothing. */}}
-      <div class="flex items-center gap-2 border-b border-rule-strong px-3 py-2.5">
-        <span class="flex flex-none text-faint">{{icon "search" "size-4"}}</span>
+      <div class="verso-conditions__filter">
+        <span class="verso-conditions__filter-glyph">{{icon "search" "size-4"}}</span>
         <input data-verso-condition-filter type="text" autocomplete="off"
-          placeholder="{{ t "Filter conditions" }}" aria-label="{{ t "Filter conditions" }}"
-          class="h-6 min-w-0 flex-1 border-0 bg-transparent p-0 text-sm text-ink outline-none placeholder:font-normal placeholder:text-meta">
+          placeholder="{{ t "Filter conditions" }}" aria-label="{{ t "Filter conditions" }}" class="verso-conditions__filter-input">
       </div>
-      <div class="verso-drawer-scrollbar max-h-90 overflow-y-auto">
+      <div class="verso-conditions__scroller verso-drawer-scrollbar">
         {{/* Each hairline is the top of the thing below it, never the bottom of the
              thing above: a heading rules itself off from the group before it, and
              every entry but the first under a heading rules itself off from its
              neighbour. Drawn the other way round, the last entry's line lands
              against the panel's own border and the list ends in a seam. */}}
         {{range $i, $group := .Groups}}
-        <div data-verso-condition-group{{if $group.Name}} data-verso-condition-group-name="{{$group.Name}}"{{end}}>
-          {{if $group.Name}}<div class="border-b border-rule bg-quiet px-4 py-2{{if $i}} border-t{{end}}"><span class="{{template "verso-kicker-class"}}">{{$group.Name}}</span></div>{{end}}
+        <div data-verso-condition-group{{if $group.Name}} data-verso-condition-group-name="{{$group.Name}}"{{end}} class="verso-conditions__group">
+          {{if $group.Name}}<div class="verso-conditions__group-head">{{$group.Name}}</div>{{end}}
           <div>
             {{range $group.Items}}
             {{/* A condition the rule already carries stays in the list and stays
                  legible — it is part of the catalogue whether or not it is in use —
                  but it is not an offer any more, so it is quiet and inert. */}}
-            <button type="button" data-verso-condition-choose="{{.Key}}"{{if .Active}} disabled{{end}} class="flex w-full items-center gap-3 border-t border-rule px-4 py-2 text-left transition-colors first:border-t-0 enabled:cursor-pointer enabled:hover:bg-quiet/50 disabled:opacity-45">
-              <span class="flex-none text-sm font-semibold text-ink">{{.Label}}</span>
+            <button type="button" data-verso-condition-choose="{{.Key}}"{{if .Active}} disabled{{end}} class="verso-conditions__offer">
+              <span class="verso-conditions__label">{{.Label}}</span>
               <span class="verso-chip" data-verso-verbatim>{{.Key}}</span>
-              {{if .Hint}}<span class="ml-auto flex-none text-sm text-meta">{{.Hint}}</span>{{end}}
+              {{if .Hint}}<span class="verso-conditions__hint">{{.Hint}}</span>{{end}}
             </button>
             {{end}}
           </div>
         </div>
         {{end}}
-        <p data-verso-condition-none hidden class="px-4 py-6 text-sm leading-snug text-body">{{ t "Nothing matches. Try the option's name as the config spells it." }}</p>
+        <p data-verso-condition-none hidden class="verso-conditions__none">{{ t "Nothing matches. Try the option's name as the config spells it." }}</p>
       </div>
     </div>
   </div>

@@ -74,7 +74,7 @@ func (c *Conditional) control() switchControl {
 func (c *Conditional) renderInto(r *Renderer, out io.Writer, csrf string) error {
 	var gate strings.Builder
 	if err := r.renderFrame(&gate, "switch.row", c.control(), fieldFrame{
-		Label: c.LabelView(), Class: "verso-conditional-gate", Desc: c.Help,
+		Label: c.LabelView(), Class: "verso-conditional__gate", Desc: c.Help,
 	}); err != nil {
 		return err
 	}

@@ -60,17 +60,17 @@
         <h1 id="login-heading" class="verso-takeover__title">{{ t "Sign in" }}</h1>
         <form method="post" action="/login" data-login-form class="verso-login__form">
           <div class="verso-login__field">
-            <label for="username" class="{{template "verso-field-label-class"}}">{{ t "Username" }}</label>
+            <label for="username" class="verso-field__name">{{ t "Username" }}</label>
             <input id="username" name="username" type="text" value="{{ .Username }}" autocomplete="username" autocapitalize="none" spellcheck="false"
               class="verso-input" data-verso-verbatim>
           </div>
           <div class="verso-login__field">
-            <label for="password" class="{{template "verso-field-label-class"}}">{{ t "Password" }}</label>
+            <label for="password" class="verso-field__name">{{ t "Password" }}</label>
             <input id="password" name="password" type="password" autocomplete="current-password" autofocus
               {{if .Error}}aria-invalid="true" aria-describedby="login-error"{{end}}
               class="verso-input">
             {{if .Error}}
-            <p id="login-error" role="alert" class="{{template "verso-refusal-band"}}">{{template "verso-error-words" .Error}}</p>
+            <p id="login-error" role="alert" class="verso-refusal">{{template "verso-error-words" .Error}}</p>
             {{end}}
           </div>
           {{/* The act, and its busy face while the sign-in is in flight

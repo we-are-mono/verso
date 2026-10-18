@@ -140,7 +140,7 @@ func TestRelatedFieldsStandAsRows(t *testing.T) {
 		&Field{Name: "port", Label: "Port"},
 		&List{Name: "servers", Label: "Servers"},
 	}})
-	if strings.Contains(unlabelled, "verso-form-grid") || strings.Count(unlabelled, `class="verso-field-row`) != 2 {
+	if strings.Contains(unlabelled, "verso-form-grid") || len(fieldRow.FindAllString(unlabelled, -1)) != 2 {
 		t.Errorf("an unlabelled set is a row per field:\n%s", unlabelled)
 	}
 	labelled := render(t, r, &Grid{Style: "form", Columns: 2, Label: "Timing", Help: "How often it runs.", Children: []Widget{
@@ -148,7 +148,7 @@ func TestRelatedFieldsStandAsRows(t *testing.T) {
 		&List{Name: "servers", Label: "Servers"},
 	}})
 	set, head, port := strings.Index(labelled, `class="verso-field-set"`), strings.Index(labelled, ">Timing<"), strings.Index(labelled, ">Port<")
-	if set < 0 || head < set || port < head || strings.Count(labelled, `class="verso-field-row`) != 3 || strings.Contains(labelled, "verso-form-grid") {
+	if set < 0 || head < set || port < head || len(fieldRow.FindAllString(labelled, -1)) != 3 || strings.Contains(labelled, "verso-form-grid") {
 		t.Errorf("a labelled set is its head, then a row per field:\n%s", labelled)
 	}
 	mixed := render(t, r, &Grid{Style: "form", Columns: 3, Children: []Widget{

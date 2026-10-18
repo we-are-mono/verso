@@ -1,0 +1,44 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/* SPDX-FileCopyrightText: 2026 Mono Technologies Inc. */
+
+/*
+ * conditional — rows gated by a switch (ADR-005 §7): the gate is a row like
+ * any other, and what it shows is more rows of the form, each with its own
+ * air, so the block adds none of its own. Which branch shows is the switch's
+ * own state (:checked), read here; no script.
+ *
+ * Elements: __gate       the switch's row (a field)
+ *           __body       the rows it reveals while on
+ *           __otherwise  what stands while it is off
+ * Reads:    --verso-edge-trail  what its container hands its last row; it
+ *           forwards it to the last row of whichever branch shows, or to the
+ *           gate when nothing shows under it
+ */
+
+.verso-conditional__body {
+  display: none;
+}
+.verso-conditional__otherwise {
+  display: block;
+}
+.verso-conditional__body:where(.verso-conditional:has(> .verso-conditional__gate input[data-verso-switch]:checked) > *) {
+  display: block;
+}
+.verso-conditional__otherwise:where(.verso-conditional:has(> .verso-conditional__gate input[data-verso-switch]:checked) > *) {
+  display: none;
+}
+
+.verso-conditional__gate {
+  --verso-edge-lead: inherit;
+}
+.verso-conditional__body,
+.verso-conditional__otherwise {
+  --verso-edge-trail: inherit;
+}
+.verso-conditional__gate:where(.verso-conditional:not(:has(> .verso-conditional__gate input[data-verso-switch]:checked)):not(:has(> .verso-conditional__otherwise)) > *) {
+  --verso-edge-trail: inherit;
+}
+.verso-conditional__body > :nth-last-child(1 of :not(input[type="hidden"], [hidden], template)),
+.verso-conditional__otherwise > :nth-last-child(1 of :not(input[type="hidden"], [hidden], template)) {
+  --verso-edge-trail: inherit;
+}

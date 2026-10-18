@@ -32,9 +32,9 @@ func TestDecodeAndRenderConditions(t *testing.T) {
 		// shared band (the form's block step and one of its own), the lede the
 		// title's next 20px line, a cell from the lede to what follows, and the
 		// shared lede, not a heading of its own spacing.
-		`<fieldset data-verso-conditions class="pt-4">`,
-		`<div class="flex flex-wrap items-center justify-between gap-x-6 mb-6">`,
-		`<legend class="text-lg leading-6 font-semibold tracking-[-0.025em] text-ink">`,
+		`<fieldset data-verso-conditions class="verso-conditions">`,
+		`<div class="verso-conditions__head">`,
+		`<legend class="verso-conditions__title">`,
 		`<div data-verso-section-lede class="verso-prose text-body">Combined with and.</div>`,
 		`data-verso-condition-template="rate"`, `name="dest_port"`,
 		`Combined with and.`,
@@ -48,12 +48,12 @@ func TestDecodeAndRenderConditions(t *testing.T) {
 		// Grouped, with the heading set as a kicker over its run of entries.
 		`data-verso-condition-group-name="Endpoints"`,
 		`data-verso-condition-group-name="Rate and time"`,
-		`<span class="text-xs leading-6 font-medium tracking-[.08em] text-meta uppercase">Endpoints</span>`,
+		`<div class="verso-conditions__group-head">Endpoints</div>`,
 		// A condition the rule already carries stays in the list and stays legible,
 		// but it is no longer an offer.
 		`data-verso-condition-choose="dest_port" disabled`,
-		// 576px wide, under the button, over the page.
-		`w-[36rem]`, `top-full left-0 z-30 mt-2`,
+		// 576px wide, under the button, over the page (declared below).
+		`<div data-verso-condition-menu hidden class="verso-conditions__menu">`,
 		// A condition is a form row, and the one thing that is different about
 		// it — that it can be taken away — is a glyph at the row's trailing
 		// edge, labelled for a reader who cannot see it. It wears the quiet
@@ -67,15 +67,25 @@ func TestDecodeAndRenderConditions(t *testing.T) {
 		// form measure's edge, so the controls under it keep the full measure;
 		// the condition itself runs the content's width, so the hairline between
 		// two conditions does too.
-		`data-verso-condition="dest_port" data-verso-and="and" role="group" aria-labelledby="condition-dest_port-label" class="verso-condition verso-condition-single"`,
-		`class="verso-condition-name flex max-w-form items-center gap-3"`,
-		`class="verso-rhythm max-w-form`,
+		`data-verso-condition="dest_port" data-verso-and="and" role="group" aria-labelledby="condition-dest_port-label" class="verso-condition" data-verso-single>`,
+		`<div class="verso-condition__name">`,
+		`<div class="verso-condition__parts verso-rhythm">`,
 		`data-verso-condition-open aria-expanded="false" class="verso-button group/act relative" data-verso-size="act" data-verso-glyph>`,
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("conditions missing %q:\n%s", want, got)
 		}
 	}
+	declares(t, "conditions", ".verso-conditions", "padding-top: calc(var(--spacing) * 4);")
+	declares(t, "conditions", ".verso-conditions__head",
+		"flex-wrap: wrap;", "justify-content: space-between;", "column-gap: calc(var(--spacing) * 6);", "margin-bottom: var(--spacing-inset);")
+	declares(t, "conditions", ".verso-conditions__title", "color: var(--color-ink);", "@apply type-section-title;")
+	declares(t, "conditions", ".verso-conditions__group-head", "color: var(--color-meta);", "@apply type-label;")
+	declares(t, "conditions", ".verso-conditions__menu",
+		"position: absolute;", "top: 100%;", "left: 0;", "z-index: 30;", "width: 36rem;", "margin-top: calc(var(--spacing) * 2);")
+	declares(t, "condition", ".verso-condition__name",
+		"display: flex;", "align-items: center;", "gap: calc(var(--spacing) * 3);", "max-width: var(--verso-form-width, 40rem);")
+	declares(t, "condition", ".verso-condition__parts", "max-width: var(--verso-form-width, 40rem);")
 }
 
 // TestAConditionIsOneNamedSetting: an added condition reads as the setting it
@@ -98,8 +108,8 @@ func TestAConditionIsOneNamedSetting(t *testing.T) {
 	got := render(t, newRenderer(t), c)
 	icmp := got[strings.Index(got, `data-verso-condition="icmp_type"`):strings.Index(got, `data-verso-condition="rate"`)]
 	for _, want := range []string{
-		`role="group" aria-labelledby="condition-icmp_type-label" class="verso-condition verso-condition-single"`,
-		`<span id="condition-icmp_type-label" class="text-sm font-medium text-ink relative cursor-help`,
+		`role="group" aria-labelledby="condition-icmp_type-label" class="verso-condition" data-verso-single>`,
+		`<span id="condition-icmp_type-label" class="verso-field__name" data-verso-tip tabindex="0"`,
 		`Narrow an ICMP rule.`,
 		`>icmp_type</span>`,
 		`data-verso-condition-remove aria-label="Remove ICMP types"`,
@@ -115,7 +125,7 @@ func TestAConditionIsOneNamedSetting(t *testing.T) {
 	}
 	rate := got[strings.Index(got, `data-verso-condition="rate"`):]
 	for _, want := range []string{
-		`class="verso-condition">`, // several parts: no single-control class
+		`class="verso-condition">`, // several parts: not data-verso-single
 		`<span id="condition-rate-label"`,
 		`>rate</span>`,
 		`>Initial burst</label>`,
@@ -124,10 +134,18 @@ func TestAConditionIsOneNamedSetting(t *testing.T) {
 			t.Errorf("several-part condition missing %q:\n%s", want, rate)
 		}
 	}
+	// A name that explains itself takes the help cursor; a single control's
+	// own label is kept for a screen reader only, and a part's name is set
+	// quieter than the condition's.
+	declares(t, "field", ".verso-field__name[data-verso-tip]", "position: relative;", "cursor: help;")
+	declares(t, "field", ".verso-field__label:where(.verso-condition[data-verso-single] .verso-condition__parts *)",
+		"position: absolute;", "width: 1px;", "height: 1px;", "clip-path: inset(50%);")
+	declares(t, "field", ".verso-field__name:where(.verso-condition:not([data-verso-single]) .verso-condition__parts *)",
+		"color: var(--color-body);", "@apply type-row-label;")
 }
 
 // TestConditionsStandInOneCardJoinedByAnd: the conditions a rule carries are
-// one block — a card the list wears while it holds any (forms.css) — and
+// one block — a card the list wears while it holds any (blocks/conditions.css) — and
 // each condition after the first says how it joins the one before it, in the
 // reader's language, on the seam between them.
 func TestConditionsStandInOneCardJoinedByAnd(t *testing.T) {
@@ -137,13 +155,16 @@ func TestConditionsStandInOneCardJoinedByAnd(t *testing.T) {
 	}}
 	got := render(t, newRenderer(t), c)
 	for want, n := range map[string]int{
-		`<div data-verso-condition-list class="verso-condition-list">`: 1,
+		`<div data-verso-condition-list class="verso-conditions__list">`: 1,
 		`data-verso-and="and"`: 4, // every condition carries it, active and in its template alike
 	} {
 		if c := strings.Count(got, want); c != n {
 			t.Errorf("want %d of %q, got %d:\n%s", n, want, c, got)
 		}
 	}
+	declares(t, "conditions", ".verso-conditions__list:has(> .verso-condition)",
+		"border: 1px solid var(--color-rule);", "background: var(--color-quiet);")
+	declares(t, "condition", ".verso-condition + .verso-condition::before", "content: attr(data-verso-and);")
 }
 
 // TestARevealIsAQuietAct: a reveal folds optional rows (a condition's
@@ -156,7 +177,7 @@ func TestARevealIsAQuietAct(t *testing.T) {
 	}})
 	for _, want := range []string{
 		`<details class="verso-reveal">`,
-		`<summary class="verso-reveal-act`,
+		`<summary class="verso-reveal__act">`,
 		`Exclude some`,
 		`name="src_ip_not"`,
 	} {
@@ -219,10 +240,10 @@ func TestConditionsSayWhenEmptyAsASetDoes(t *testing.T) {
 		// set's, and nothing of the block adds to that.
 		// The slot gives its bottom border's pixel back itself (the slot
 		// block's -1px), so the act lands on the line.
-		`<div data-verso-condition-empty data-verso-slot class="verso-slot max-w-form">`,
+		`<div data-verso-condition-empty data-verso-slot class="verso-slot verso-conditions__empty">`,
 		`<span aria-hidden="true" class="verso-mark"></span>`,
 		`<p class="verso-slot__words">No additional conditions.`,
-		`<div data-verso-condition-picker class="relative pt-6 pb-1">`,
+		`<div data-verso-condition-picker class="verso-conditions__picker">`,
 		// The collection's own add act, glyph first.
 		`class="verso-button group/act relative" data-verso-size="act" data-verso-glyph>`,
 	} {
@@ -231,6 +252,8 @@ func TestConditionsSayWhenEmptyAsASetDoes(t *testing.T) {
 		}
 	}
 	declaresTheSlot(t)
+	declares(t, "conditions", ".verso-conditions__empty", "max-width: var(--verso-form-width, 40rem);")
+	declares(t, "conditions", ".verso-conditions__picker", "padding-block: calc(var(--spacing) * 6) var(--spacing);")
 
 	// With a condition carried, the slot is there for the script to bring back
 	// but hidden — by the attribute, which no display utility overrides.

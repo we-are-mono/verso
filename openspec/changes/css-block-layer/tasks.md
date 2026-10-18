@@ -68,12 +68,12 @@
 
 ## 5. Forms
 
-- [ ] 5.1 `form`: the form and its grid. Verify: block done.
-- [ ] 5.2 `field`: row, question, label (`type-field-label`), answer, ledger, control, act, wide, plain and set. Register `--verso-field-bleed`, `--verso-field-lead`, `--verso-field-trail` and `--verso-edge-trail` (Decision 6), defaulting to today's values. Retire the `verso-field-*-class` templates. Verify: block done; `form-fields` scenarios pass in their tests.
-- [ ] 5.3 `input` and `select` (`type-input`, with its verbatim form for identifiers): the `verso-box` family, `verso-input-class`, time input, the select chevron and the repeated chevron overlay. Verify: block done.
-- [ ] 5.4 `choice`: switch, inline switch, checkbox and radio rows. Verify: block done.
-- [ ] 5.5 `conditional`: gate, body, otherwise. Read `:checked` and forward the edge (Decision 7) to the last row of the branch that shows. Verify: block done; a test with the body open and one with it closed both assert which row carries the trail property.
-- [ ] 5.6 `condition`, `joined`, `key-chip`. Verify: block done.
+- [x] 5.1 `form`: the form and its grid. Verify: block done.
+- [x] 5.2 `field`: row, question, label (`type-field-label`), answer, ledger, control, act, wide, plain and set. Register `--verso-field-bleed`, `--verso-field-lead`, `--verso-field-trail` and `--verso-edge-trail` (Decision 6), defaulting to today's values. Retire the `verso-field-*-class` templates. Verify: block done; `form-fields` scenarios pass in their tests.
+- [x] 5.3 `input` and `select` (`type-input`, with its verbatim form for identifiers): the `verso-box` family, `verso-input-class`, time input, the select chevron and the repeated chevron overlay. Verify: block done.
+- [x] 5.4 `choice`: switch, inline switch, checkbox and radio rows. Verify: block done.
+- [x] 5.5 `conditional`: gate, body, otherwise. Read `:checked` and forward the edge (Decision 7) to the last row of the branch that shows. Verify: block done; a test with the body open and one with it closed both assert which row carries the trail property.
+- [x] 5.6 `condition`, `joined`, `key-chip`. Verify: block done.
 
 ## 6. The card
 

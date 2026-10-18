@@ -21,13 +21,13 @@
 @import "tailwindcss" source(none);
 @import "./palette.css";
 @import "./type.css";
-@import "./forms.css";
 @import "./sections.css";
 /* Blocks (ADR-025): one file per look under blocks/, each imported here into the
    components layer, so a utility in the markup outranks every block by layer
    order. CSS imports take no glob; TestEveryBlockIsImported fails on a block file
    left off this list, whose rules would otherwise go missing unseen. */
 @import "./blocks/actionbar.css" layer(components);
+@import "./blocks/apply.css" layer(components);
 @import "./blocks/arrival.css" layer(components);
 @import "./blocks/bar.css" layer(components);
 @import "./blocks/box.css" layer(components);
@@ -40,16 +40,24 @@
 @import "./blocks/code.css" layer(components);
 @import "./blocks/collection.css" layer(components);
 @import "./blocks/colophon.css" layer(components);
+@import "./blocks/condition.css" layer(components);
+@import "./blocks/conditional.css" layer(components);
+@import "./blocks/conditions.css" layer(components);
 @import "./blocks/console.css" layer(components);
 @import "./blocks/control.css" layer(components);
 @import "./blocks/copy-inline.css" layer(components);
+@import "./blocks/disclosure.css" layer(components);
 @import "./blocks/divider.css" layer(components);
 @import "./blocks/drawer-scrollbar.css" layer(components);
 @import "./blocks/drop.css" layer(components);
 @import "./blocks/empty.css" layer(components);
 @import "./blocks/facts.css" layer(components);
 @import "./blocks/facts-head.css" layer(components);
+@import "./blocks/field.css" layer(components);
+@import "./blocks/field-set.css" layer(components);
 @import "./blocks/fold.css" layer(components);
+@import "./blocks/form.css" layer(components);
+@import "./blocks/form-grid.css" layer(components);
 @import "./blocks/glyph.css" layer(components);
 @import "./blocks/grid.css" layer(components);
 @import "./blocks/input.css" layer(components);
@@ -72,7 +80,9 @@
 @import "./blocks/prose.css" layer(components);
 @import "./blocks/rail.css" layer(components);
 @import "./blocks/raw.css" layer(components);
+@import "./blocks/refusal.css" layer(components);
 @import "./blocks/reorder.css" layer(components);
+@import "./blocks/reveal.css" layer(components);
 @import "./blocks/rhythm.css" layer(components);
 @import "./blocks/scroll-edge.css" layer(components);
 @import "./blocks/shelf.css" layer(components);
@@ -349,14 +359,6 @@ html {
   }
 
 
-
-
-  /* conditional widget: switch between its primary and optional alternate
-     field-sets from the controlling toggle (ADR-005 §7). Pure CSS state — no JS. */
-  .verso-conditional-body { display: none; }
-  .verso-conditional-otherwise { display: block; }
-  .verso-conditional:has(> .verso-conditional-gate input[data-verso-switch]:checked) > .verso-conditional-body { display: block; }
-  .verso-conditional:has(> .verso-conditional-gate input[data-verso-switch]:checked) > .verso-conditional-otherwise { display: none; }
 
 
 

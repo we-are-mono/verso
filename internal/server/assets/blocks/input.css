@@ -76,6 +76,20 @@
   appearance: none;
   cursor: pointer;
 }
+/* An inline form's fields stand glued to its submit: their right corners
+   square. */
+.verso-input:where(.verso-form[data-verso-kind="inline"] > div:not(:last-of-type) *) {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+/* Where a row stacks, a dropdown measures its longest option rather than
+   filling the row. */
+@container verso-field (width < 36rem) {
+  .verso-input:is(select):where(.verso-field__answer[data-verso-control-measure="choice"] *) {
+    width: auto;
+    max-width: 100%;
+  }
+}
 /* A dropdown in a sentence of fields measures its own longest option. */
 .verso-input:where(.verso-joined__part *) {
   width: auto;

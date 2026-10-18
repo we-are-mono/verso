@@ -30,9 +30,9 @@
   </label>
   <textarea name="{{.Name}}" hidden data-verso-file-text>{{.Value}}</textarea>
   <input type="hidden" name="{{.Name}}_name" value="{{.Chosen}}" data-verso-file-name>
-  <p hidden data-verso-file-refused class="{{template "verso-refusal-band"}}">{{ t "That file is larger than 32 KiB, so it isn’t a profile this router can use." }}</p>
+  <p hidden data-verso-file-refused class="verso-refusal">{{ t "That file is larger than 32 KiB, so it isn’t a profile this router can use." }}</p>
   {{if .Help}}<p id="{{.Name}}-help" class="verso-drop__help">{{.Help}}</p>{{end}}
-  {{if .Error}}<p id="{{.Name}}-error" data-verso-error class="{{template "verso-refusal-band"}}">{{template "verso-error-words" .Error}}</p>{{end}}
+  {{if .Error}}<p id="{{.Name}}-error" data-verso-error class="verso-refusal">{{template "verso-error-words" .Error}}</p>{{end}}
 </div>
 {{else if eq .Kind "file"}}
 {{/* A file to drop is its dialog's whole subject, so its area fills the width:
@@ -49,7 +49,7 @@
     <span class="verso-drop__or">{{ t "or" }} <span class="verso-drop__door">{{ t "choose one from your computer" }}</span></span>
   </label>
   {{if .Help}}<p id="{{.Name}}-help" class="verso-drop__help">{{.Help}}</p>{{end}}
-  {{if .Error}}<p id="{{.Name}}-error" data-verso-error class="{{template "verso-refusal-band"}}">{{template "verso-error-words" .Error}}</p>{{end}}
+  {{if .Error}}<p id="{{.Name}}-error" data-verso-error class="verso-refusal">{{template "verso-error-words" .Error}}</p>{{end}}
 </div>
 {{end}}
 

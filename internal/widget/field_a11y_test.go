@@ -52,10 +52,10 @@ func TestFieldNoteStandsUnderTheControl(t *testing.T) {
 			f.Options = choiceOptions(RadioOptionLimit + 1)
 		}
 		got := render(t, newRenderer(t), f)
-		answer := strings.Index(got, "verso-field-answer")
+		answer := strings.Index(got, "verso-field__answer")
 		note := strings.Index(got, `id="theme-note" data-verso-field-note`)
 		refusal := strings.Index(got, `id="theme-error"`)
-		if note < 0 || note < answer || !strings.Contains(got, "Takes effect immediately.") {
+		if answer < 0 || note < answer || !strings.Contains(got, "Takes effect immediately.") {
 			t.Fatalf("kind %q: the note is not under the control in the answer:\n%s", kind, got)
 		}
 		if refusal < 0 || refusal > note {
@@ -168,13 +168,13 @@ func TestDescribedControlsAreDescribed(t *testing.T) {
 		desc, read string
 	}{
 		"switch": {&Switch{Name: "wmm", Label: "WMM", Help: "Prioritise voice.", Tip: "Voice goes first."},
-			`<p id="wmm-desc" data-verso-field-desc class="text-sm leading-6 text-pretty text-body"><span>Prioritise voice. Voice goes first.</span></p>`,
+			`<p id="wmm-desc" data-verso-field-desc class="verso-field__desc"><span>Prioritise voice. Voice goes first.</span></p>`,
 			`id="wmm" name="wmm" aria-describedby="wmm-desc"`},
 		"gate": {&Conditional{Name: "psk", Label: "Use a key", Help: "A shared secret."},
-			`<p id="psk-desc" data-verso-field-desc class="text-sm leading-6 text-pretty text-body"><span>A shared secret.</span></p>`,
+			`<p id="psk-desc" data-verso-field-desc class="verso-field__desc"><span>A shared secret.</span></p>`,
 			`id="psk" name="psk" aria-describedby="psk-desc"`},
 		"list": {&List{Name: "ntp", Label: "Servers", Help: "Tried in order."},
-			`<p id="ntp-desc" data-verso-field-desc class="text-sm leading-6 text-pretty text-body"><span>Tried in order.</span></p>`,
+			`<p id="ntp-desc" data-verso-field-desc class="verso-field__desc"><span>Tried in order.</span></p>`,
 			`aria-labelledby="ntp-label" aria-describedby="ntp-desc"`},
 	} {
 		got := render(t, newRenderer(t), c.w)

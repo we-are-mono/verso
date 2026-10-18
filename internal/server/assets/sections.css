@@ -110,7 +110,7 @@
      listing, a reading, a set, a form of acts alone, a field and its act on
      one row, whose field gives up its air) stands 24px under it, as a field
      does with its own. */
-  section[data-verso-section]:has(> [data-verso-section-band]) > .verso-rhythm > :not(input[type="hidden"], [hidden]):not(:not(input[type="hidden"], [hidden]) ~ *):not(.verso-field-row, .verso-form-grid, .verso-conditional, .verso-field-set, form:not([data-verso-compact-form]):has(.verso-field-row, .verso-form-grid, .verso-conditional), [data-verso-change-field], [data-verso-settings], [data-verso-rows]:has(> .verso-field-row:first-child)) {
+  section[data-verso-section]:has(> [data-verso-section-band]) > .verso-rhythm > :not(input[type="hidden"], [hidden]):not(:not(input[type="hidden"], [hidden]) ~ *):not(.verso-field, .verso-form-grid, .verso-conditional, .verso-field-set, form:not([data-verso-compact-form]):has(.verso-field, .verso-form-grid, .verso-conditional), [data-verso-change-field], [data-verso-settings], [data-verso-rows]:has(> .verso-field:first-child)) {
     margin-top: var(--spacing-inset);
   }
   section[data-verso-section]:has(> [data-verso-section-band]),
@@ -218,7 +218,7 @@
  * both borders: a line that touches a card's borders separates questions
  * (form-fields). A row inside a row, or in a field set's cell, stays in its
  * column; a drawer's rows run its content column. */
-:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) .verso-field-row:not(.verso-field-row .verso-field-row, .verso-form-grid .verso-field-row) {
+:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) .verso-field:not(.verso-field .verso-field, .verso-form-grid .verso-field) {
   margin-inline: calc(var(--verso-side) * -1);
   padding-inline: var(--verso-side);
 }
@@ -232,19 +232,19 @@
  * ends on. Under a header the body has already taken the seam's pixel back,
  * and the row's pull collapses with that margin rather than adding to it, so
  * the pull counts the pixel in. */
-:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:has(> [data-verso-section-band]):not(section section) > .verso-rhythm > :not(input[type="hidden"], [hidden], template):not(:not(input[type="hidden"], [hidden], template) ~ *):is(.verso-field-set, .verso-conditional, [data-verso-settings], [data-verso-rows], form:not([data-verso-compact-form])) > :not(input[type="hidden"], [hidden], template):not(:not(input[type="hidden"], [hidden], template) ~ *):is(.verso-field-row),
-:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:has(> [data-verso-section-band]):not(section section) > .verso-rhythm > :not(input[type="hidden"], [hidden], template):not(:not(input[type="hidden"], [hidden], template) ~ *):is(.verso-field-row) {
+:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:has(> [data-verso-section-band]):not(section section) > .verso-rhythm > :not(input[type="hidden"], [hidden], template):not(:not(input[type="hidden"], [hidden], template) ~ *):is(.verso-field-set, .verso-conditional, [data-verso-settings], [data-verso-rows], form:not([data-verso-compact-form])) > :not(input[type="hidden"], [hidden], template):not(:not(input[type="hidden"], [hidden], template) ~ *):is(.verso-field),
+:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:has(> [data-verso-section-band]):not(section section) > .verso-rhythm > :not(input[type="hidden"], [hidden], template):not(:not(input[type="hidden"], [hidden], template) ~ *):is(.verso-field) {
   margin-top: calc(var(--spacing) * -2 - 1px);
 }
-:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section][data-verso-headless][data-verso-ruled]:not(section section) > .verso-rhythm > :not(input[type="hidden"], [hidden], template):not(:not(input[type="hidden"], [hidden], template) ~ *):is(.verso-field-set, .verso-conditional, [data-verso-settings], [data-verso-rows], form:not([data-verso-compact-form])) > :not(input[type="hidden"], [hidden], template):not(:not(input[type="hidden"], [hidden], template) ~ *):is(.verso-field-row),
-:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section][data-verso-headless][data-verso-ruled]:not(section section) > .verso-rhythm > :not(input[type="hidden"], [hidden], template):not(:not(input[type="hidden"], [hidden], template) ~ *):is(.verso-field-row) {
+:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section][data-verso-headless][data-verso-ruled]:not(section section) > .verso-rhythm > :not(input[type="hidden"], [hidden], template):not(:not(input[type="hidden"], [hidden], template) ~ *):is(.verso-field-set, .verso-conditional, [data-verso-settings], [data-verso-rows], form:not([data-verso-compact-form])) > :not(input[type="hidden"], [hidden], template):not(:not(input[type="hidden"], [hidden], template) ~ *):is(.verso-field),
+:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section][data-verso-headless][data-verso-ruled]:not(section section) > .verso-rhythm > :not(input[type="hidden"], [hidden], template):not(:not(input[type="hidden"], [hidden], template) ~ *):is(.verso-field) {
   margin-top: calc(var(--spacing) * -2);
 }
-:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]):not(section section) > .verso-rhythm > :not(input[type="hidden"], [hidden], template):not(:has(~ :not(input[type="hidden"], [hidden], template))):is(.verso-field-set, [data-verso-settings], [data-verso-rows], form:not([data-verso-compact-form])) > :not(input[type="hidden"], [hidden], template):not(:has(~ :not(input[type="hidden"], [hidden], template))):is(.verso-field-row):not(.verso-field-wide:has(> .verso-field-ledger > .verso-field-answer > [data-verso-field-note]:last-child)),
-:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]):not(section section) > .verso-rhythm > .verso-conditional:last-child:has(> .verso-conditional-gate input[data-verso-switch]:checked) > .verso-conditional-body > .verso-field-row:last-child,
-:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]):not(section section) > .verso-rhythm > .verso-conditional:last-child:not(:has(> .verso-conditional-gate input[data-verso-switch]:checked)) > .verso-conditional-otherwise > .verso-field-row:last-child,
-:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]):not(section section) > .verso-rhythm > .verso-conditional:last-child:not(:has(> .verso-conditional-gate input[data-verso-switch]:checked)):not(:has(> .verso-conditional-otherwise)) > .verso-conditional-gate,
-:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]):not(section section) > .verso-rhythm > :not(input[type="hidden"], [hidden], template):not(:has(~ :not(input[type="hidden"], [hidden], template))):is(.verso-field-row):not(.verso-field-wide:has(> .verso-field-ledger > .verso-field-answer > [data-verso-field-note]:last-child)) {
+:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]):not(section section) > .verso-rhythm > :not(input[type="hidden"], [hidden], template):not(:has(~ :not(input[type="hidden"], [hidden], template))):is(.verso-field-set, [data-verso-settings], [data-verso-rows], form:not([data-verso-compact-form])) > :not(input[type="hidden"], [hidden], template):not(:has(~ :not(input[type="hidden"], [hidden], template))):is(.verso-field):not(.verso-field[data-verso-wide]:has(> .verso-field__ledger > .verso-field__answer > [data-verso-field-note]:last-child)),
+:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]):not(section section) > .verso-rhythm > .verso-conditional:last-child:has(> .verso-conditional__gate input[data-verso-switch]:checked) > .verso-conditional__body > .verso-field:last-child,
+:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]):not(section section) > .verso-rhythm > .verso-conditional:last-child:not(:has(> .verso-conditional__gate input[data-verso-switch]:checked)) > .verso-conditional__otherwise > .verso-field:last-child,
+:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]):not(section section) > .verso-rhythm > .verso-conditional:last-child:not(:has(> .verso-conditional__gate input[data-verso-switch]:checked)):not(:has(> .verso-conditional__otherwise)) > .verso-conditional__gate,
+:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]):not(section section) > .verso-rhythm > :not(input[type="hidden"], [hidden], template):not(:has(~ :not(input[type="hidden"], [hidden], template))):is(.verso-field):not(.verso-field[data-verso-wide]:has(> .verso-field__ledger > .verso-field__answer > [data-verso-field-note]:last-child)) {
   margin-bottom: calc(var(--spacing) * -2);
 }
 /* A settings list's fold draws a line between its rows as a row does, so it
@@ -256,7 +256,7 @@
 /* A field brings its own 24px of air, so after any block in a card it takes
  * no margin: the step is its air, and its label stands 24px under the block
  * as anything else would. */
-:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > .verso-rhythm > * + :is(.verso-field-row, .verso-form-grid, .verso-conditional, .verso-field-set, form:not([data-verso-compact-form]):has(.verso-field-row, .verso-form-grid, .verso-conditional), [data-verso-change-field], [data-verso-settings], [data-verso-rows]:has(> .verso-field-row:first-child)) {
+:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > .verso-rhythm > * + :is(.verso-field, .verso-form-grid, .verso-conditional, .verso-field-set, form:not([data-verso-compact-form]):has(.verso-field, .verso-form-grid, .verso-conditional), [data-verso-change-field], [data-verso-settings], [data-verso-rows]:has(> .verso-field:first-child)) {
   margin-top: 0;
 }
 /* A titled part inside a card starts a group of its own, 40px on. */
@@ -530,7 +530,7 @@
 :is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > .verso-rhythm > details.verso-disclosure:not(:only-child):not(:has(~ :not(input[type="hidden"], [hidden], template))) {
   margin-bottom: calc(var(--spacing) * -2);
 }
-:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > .verso-rhythm > .verso-field-row:has(+ details.verso-disclosure:not(:only-child)) {
+:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > .verso-rhythm > .verso-field:has(+ details.verso-disclosure:not(:only-child)) {
   padding-bottom: calc(var(--spacing) * 4);
 }
 :is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > .verso-rhythm > details.verso-disclosure:not(:only-child) > summary {
@@ -543,7 +543,7 @@
   border-top-color: var(--color-rule);
   padding: 0 var(--verso-side) calc(var(--spacing) * 4);
 }
-:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > .verso-rhythm > details.verso-disclosure:not(:only-child) > .verso-rhythm > .verso-field-row:first-child {
+:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > .verso-rhythm > details.verso-disclosure:not(:only-child) > .verso-rhythm > .verso-field:first-child {
   padding-top: calc(var(--spacing) * 3.75);
 }
 /* A page form's Save stands on the sand 24px under the last card, ruled off
@@ -609,7 +609,7 @@
   border-top-color: var(--color-rule-strong);
   padding: 0 var(--verso-side) calc(var(--spacing) * 4);
 }
-:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section][data-verso-headless][data-verso-ruled]:not(section section) > .verso-rhythm > details.verso-disclosure:only-child > .verso-rhythm > .verso-field-row:first-child {
+:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section][data-verso-headless][data-verso-ruled]:not(section section) > .verso-rhythm > details.verso-disclosure:only-child > .verso-rhythm > .verso-field:first-child {
   padding-top: calc(var(--spacing) * 3.75);
 }
 /* The conditions a rule carries are a part of the card that holds them, so

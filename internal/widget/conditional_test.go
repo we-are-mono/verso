@@ -30,22 +30,24 @@ func TestConditionalDecodeAndRender(t *testing.T) {
 		`type="checkbox"`, `value="1"`, `name="use_psk"`, // the controlling switch
 		"data-verso-switch", `class="verso-choice__input"`, // same control as table toggle cells
 		"checked", "Use a pre-shared key",
-		"verso-conditional-body", // the gated field-set the CSS shows/hides
-		`name="psk"`,             // the gated field rendered
-		"verso-conditional-otherwise", "No key will be used.",
+		`<div class="verso-field verso-conditional__gate">`, // the gate is a field row
+		"verso-conditional__body",                           // the gated field-set the CSS shows/hides
+		`name="psk"`,                                        // the gated field rendered
+		"verso-conditional__otherwise", "No key will be used.",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("conditional render missing %q", want)
 		}
 	}
-	// The gate keeps a real label bound to its checkbox by id.
-	if !strings.Contains(got, `<label for="use_psk" id="use_psk-label" class="text-sm font-medium text-ink">Use a pre-shared key</label>`) {
+	// The gate keeps a real label bound to its checkbox by id, named as every
+	// field's name is.
+	if !strings.Contains(got, `<label for="use_psk" id="use_psk-label" class="verso-field__name">Use a pre-shared key</label>`) {
 		t.Errorf("conditional gate must label its switch at the form measure: %s", got)
 	}
 }
 
 // TestConditionalKeepsARowsAir: a gate is a field like any other, and brings
-// its own cell of air over its label's line as every field does (forms.css);
+// its own cell of air over its label's line as every field does (blocks/field.css);
 // the block around it adds no air of its own, and a field-set it reveals is
 // more rows of the form, each with its own cell of air.
 func TestConditionalKeepsARowsAir(t *testing.T) {
@@ -56,13 +58,23 @@ func TestConditionalKeepsARowsAir(t *testing.T) {
 	if !strings.Contains(got, `<div class="verso-conditional" data-verso-change-field`) {
 		t.Errorf("the block adds no air of its own: %s", got)
 	}
-	if !strings.Contains(got, `<div class="verso-conditional-body verso-rhythm">`) {
+	if !strings.Contains(got, `<div class="verso-conditional__body verso-rhythm">`) {
 		t.Errorf("a revealed field-set stands on its rows' own air, not a margin: %s", got)
 	}
-	gate := got[strings.Index(got, "verso-conditional-gate"):]
-	gate = gate[:strings.Index(gate, `"`)]
-	if strings.Contains(gate, "py-0") || strings.Contains(gate, "pt-0") {
+	at := strings.Index(got, `<div class="verso-field verso-conditional__gate`)
+	if at < 0 {
+		t.Fatalf("the gate is not a field row: %s", got)
+	}
+	gate := got[at:]
+	gate = gate[:strings.Index(gate, ">")]
+	if gate != `<div class="verso-field verso-conditional__gate"` {
 		t.Errorf("the gate gives up its field's cell of air (%q), so nothing stands it off what is above: %s", gate, got)
+	}
+	// Its air is the field's own lead (blocks/field.css); the conditional
+	// block only forwards a surface's edge to it, never zeroes it.
+	conditional := blockCSS(t, "conditional")
+	if strings.Contains(conditional, "--verso-field-lead") || strings.Contains(conditional, "padding") {
+		t.Errorf("the conditional block sets its gate's air itself:\n%s", conditional)
 	}
 }
 
@@ -72,9 +84,44 @@ func TestConditionalKeepsARowsAir(t *testing.T) {
 // Advanced reading, ending on automatic helpers).
 func TestAGateWithNothingToRevealIsJustARow(t *testing.T) {
 	got := render(t, newRenderer(t), &Conditional{Name: "auto_helper", Label: "Assign connection helpers automatically", Checked: true})
-	if strings.Contains(got, "verso-conditional-body") {
+	if strings.Contains(got, "verso-conditional__body") {
 		t.Errorf("a gate with nothing to reveal draws an empty reveal: %s", got)
 	}
+}
+
+// TestAConditionalHandsItsEdgeToTheRowThatShows: the edge a container hands
+// a conditional (--verso-edge-trail, what its last row gives back where it
+// ends the surface) goes to the last row of whichever branch shows. On, that
+// is the reveal's last row; off, what stands otherwise; off with nothing
+// otherwise, the gate itself. Which branch shows is the switch's own state,
+// read by the conditional block, so the row that carries the edge follows
+// the switch with no script.
+func TestAConditionalHandsItsEdgeToTheRowThatShows(t *testing.T) {
+	r := newRenderer(t)
+	got := render(t, r, &Conditional{Name: "use_psk", Label: "Use a pre-shared key", Checked: true,
+		Fields:    []Widget{&Field{Name: "psk", Label: "Pre-shared key"}},
+		Otherwise: []Widget{&Field{Name: "why", Label: "Why not"}}})
+	for _, want := range []string{
+		`class="verso-field verso-conditional__gate"`,
+		`<div class="verso-conditional__body verso-rhythm">`,
+		`<div class="verso-conditional__otherwise verso-rhythm">`,
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("conditional missing %q:\n%s", want, got)
+		}
+	}
+	// Open: the reveal shows and the otherwise hides, by the switch.
+	declares(t, "conditional", `.verso-conditional__body:where(.verso-conditional:has(> .verso-conditional__gate input[data-verso-switch]:checked) > *)`, "display: block")
+	declares(t, "conditional", `.verso-conditional__otherwise:where(.verso-conditional:has(> .verso-conditional__gate input[data-verso-switch]:checked) > *)`, "display: none")
+	// Either branch takes the edge and hands it to its last visible row, so
+	// whichever shows ends on the row that carries it.
+	declares(t, "conditional", ".verso-conditional__body,\n.verso-conditional__otherwise", "--verso-edge-trail: inherit")
+	declares(t, "conditional", `.verso-conditional__body > :nth-last-child(1 of :not(input[type="hidden"], [hidden], template)),
+.verso-conditional__otherwise > :nth-last-child(1 of :not(input[type="hidden"], [hidden], template))`, "--verso-edge-trail: inherit")
+	// Closed with nothing otherwise: the gate is the last row that shows.
+	declares(t, "conditional", `.verso-conditional__gate:where(.verso-conditional:not(:has(> .verso-conditional__gate input[data-verso-switch]:checked)):not(:has(> .verso-conditional__otherwise)) > *)`, "--verso-edge-trail: inherit")
+	// The row reads it as what it gives back under itself.
+	declares(t, "field", ".verso-field", "margin-bottom: var(--verso-edge-trail, 0px)")
 }
 
 func TestConditionalUnknownOtherwiseFieldFails(t *testing.T) {

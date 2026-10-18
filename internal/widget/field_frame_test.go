@@ -32,12 +32,12 @@ func TestEveryLabelledRowIsOneFrame(t *testing.T) {
 		"gate":     &Conditional{Name: "opt", Label: "Option", Key: "opt", Staged: true},
 	} {
 		got := render(t, r, w)
-		for _, want := range []string{`class="verso-field-label`, key, "data-verso-staged-row"} {
+		for _, want := range []string{`class="verso-field__label"`, key, "data-verso-staged-row"} {
 			if !strings.Contains(got, want) {
 				t.Errorf("%s: the row's label is missing %q:\n%s", name, want, got)
 			}
 		}
-		if n := strings.Count(got, "verso-field-row"); n != 1 {
+		if n := len(fieldRow.FindAllString(got, -1)); n != 1 {
 			t.Errorf("%s: one setting is one row, got %d:\n%s", name, n, got)
 		}
 	}
@@ -45,7 +45,11 @@ func TestEveryLabelledRowIsOneFrame(t *testing.T) {
 
 // answerIsTheControl finds the answer column's element, the one the stage and
 // the reshape wait read as the row's control.
-var answerIsTheControl = regexp.MustCompile(`<div data-verso-control[^>]*class="[^"]*verso-field-answer`)
+var answerIsTheControl = regexp.MustCompile(`<div data-verso-control[^>]*class="[^"]*verso-field__answer`)
+
+// fieldRow finds a field row's own element: the field block, bare or with a
+// role's class after it (a conditional's gate).
+var fieldRow = regexp.MustCompile(`class="verso-field[ "]`)
 
 // TestEveryRowIsAQuestionAndAnAnswer: a field row is one shape whatever it
 // holds (form-fields): its question (the name, its chip, the stage's mark) on
@@ -68,10 +72,10 @@ func TestEveryRowIsAQuestionAndAnAnswer(t *testing.T) {
 		"removable": &Field{Name: "opt", Label: "Option", Key: "opt", Remove: "yes"},
 	} {
 		got := render(t, r, w)
-		ledger := strings.Index(got, `class="verso-field-ledger`)
-		question := strings.Index(got, `class="verso-field-question`)
-		label := strings.Index(got, `class="verso-field-label`)
-		answer := strings.Index(got, `verso-field-answer`)
+		ledger := strings.Index(got, `class="verso-field__ledger"`)
+		question := strings.Index(got, `class="verso-field__question"`)
+		label := strings.Index(got, `class="verso-field__label"`)
+		answer := strings.Index(got, `verso-field__answer`)
 		if ledger < 0 || question < ledger || label < question || answer < label {
 			t.Errorf("%s: the row is not its question, then its answer, in one ledger:\n%s", name, got)
 		}
@@ -85,7 +89,7 @@ func TestEveryRowIsAQuestionAndAnAnswer(t *testing.T) {
 		}
 	}
 	got := render(t, r, &Field{Name: "opt", Label: "Option", Remove: "yes"})
-	if remove := strings.Index(got, "data-verso-remove-field"); remove < strings.Index(got, "verso-field-answer") {
+	if remove := strings.Index(got, "data-verso-remove-field"); remove < strings.Index(got, "verso-field__answer") || !strings.Contains(got[remove:], `class="verso-button verso-field__remove`) {
 		t.Errorf("a removable row's glyph stands in the lane after its answer:\n%s", got)
 	}
 }
@@ -154,7 +158,7 @@ func TestEveryAnswerStandsInTheAnswerColumn(t *testing.T) {
 		}}},
 	} {
 		got := render(t, r, w(c.w))
-		if wide := strings.Contains(got, "verso-field-wide"); wide != c.wide {
+		if wide := strings.Contains(got, "data-verso-wide"); wide != c.wide {
 			t.Errorf("%s: wide = %v, want %v:\n%s", name, wide, c.wide, got)
 		}
 		if stacked := strings.Contains(got, "data-verso-stacked"); stacked != c.stacked {
@@ -177,7 +181,7 @@ func TestAStackedRowSaysWhatItIsForUnderItsAnswer(t *testing.T) {
 	got := render(t, r, &Field{Name: "note", Label: "Note", Wide: true, Help: "Why these changes are made.", Error: "Too long.", Note: "Kept for a year."})
 	control := strings.Index(got, `id="note" name="note"`)
 	refusal := strings.Index(got, `id="note-error" data-verso-error`)
-	desc := strings.Index(got, `<p id="note-desc" data-verso-field-note class="text-sm leading-6 text-pretty text-body">Why these changes are made.</p>`)
+	desc := strings.Index(got, `<p id="note-desc" data-verso-field-note class="verso-field__note">Why these changes are made.</p>`)
 	note := strings.Index(got, `id="note-note" data-verso-field-note`)
 	if !(control >= 0 && control < refusal && refusal < desc && desc < note) {
 		t.Errorf("a stacked row's description is not under its answer, after the refusal and before the note:\n%s", got)
@@ -192,7 +196,7 @@ func TestAStackedRowSaysWhatItIsForUnderItsAnswer(t *testing.T) {
 	// plugin's stays the plain words it wrote.
 	marked := render(t, r, &Field{Name: "note", Label: "Note", Wide: true, HelpMarkdown: true, Help: "Kept in **System › Changes**."})
 	// (render normalizes the space before a tag away.)
-	if !strings.Contains(marked, `data-verso-field-note class="text-sm leading-6 text-pretty text-body">Kept in<strong>System › Changes</strong>.</p>`) {
+	if !strings.Contains(marked, `data-verso-field-note class="verso-field__note">Kept in<strong>System › Changes</strong>.</p>`) {
 		t.Errorf("the shell's description does not set its page in bold:\n%s", marked)
 	}
 	plain := render(t, r, &Field{Name: "note", Label: "Note", Wide: true, Help: "Kept in **System › Changes**."})
@@ -200,7 +204,7 @@ func TestAStackedRowSaysWhatItIsForUnderItsAnswer(t *testing.T) {
 		t.Errorf("a plugin's description is read as Markdown:\n%s", plain)
 	}
 	beside := render(t, r, &Field{Name: "name", Label: "Name", Help: "What the router is called."})
-	if !strings.Contains(beside, `<p id="name-desc" data-verso-field-desc`) || strings.Index(beside, "data-verso-field-desc") > strings.Index(beside, "verso-field-answer") {
+	if !strings.Contains(beside, `<p id="name-desc" data-verso-field-desc class="verso-field__desc">`) || strings.Index(beside, "data-verso-field-desc") > strings.Index(beside, "verso-field__answer") {
 		t.Errorf("a row beside its question loses its description under the name:\n%s", beside)
 	}
 }
@@ -215,7 +219,7 @@ func TestARefusalStandsUnderItsControl(t *testing.T) {
 		Help:  "How many may arrive at once before the rate limit applies. Absorbs ordinary bursts, like a page opening 40 sockets.",
 		Error: "Enter a whole number.", Note: "Counted in packets.",
 	})
-	question, answer := strings.Index(got, "verso-field-question"), strings.Index(got, "verso-field-answer")
+	question, answer := strings.Index(got, "verso-field__question"), strings.Index(got, "verso-field__answer")
 	desc := strings.Index(got, "data-verso-field-desc")
 	control := strings.Index(got, `id="synflood_burst" name="synflood_burst"`)
 	refusal := strings.Index(got, `id="synflood_burst-error" data-verso-error`)
@@ -233,7 +237,7 @@ func TestARefusalStandsUnderItsControl(t *testing.T) {
 // including the code editor, which drew a bare red line of its own.
 func TestAFieldsRefusalIsTheBand(t *testing.T) {
 	r := newRenderer(t)
-	band := `<span id="script-error" data-verso-error class="flex items-start gap-2 rounded-xs bg-crimson-soft px-3 py-2 text-sm leading-6 text-crimson-deep">`
+	band := `<span id="script-error" data-verso-error class="verso-refusal">`
 	for name, w := range map[string]Widget{
 		"text": &Field{Name: "script", Label: "Script", Error: "Not a script."},
 		"code": &Field{Name: "script", Label: "Script", Style: "code", Error: "Not a script."},
@@ -246,7 +250,7 @@ func TestAFieldsRefusalIsTheBand(t *testing.T) {
 	// An in-place value checks itself: its slot is the same band, empty and
 	// hidden until the check has something to say.
 	got := render(t, r, &Settings{Items: []SettingsItem{{Title: "Hostname", Name: "hostname", Value: "gw", Inline: true}}})
-	slot := `<span id="hostname-error" data-verso-inline-error hidden class="flex items-start gap-2 rounded-xs bg-crimson-soft px-3 py-2 text-sm leading-6 text-crimson-deep"></span>`
+	slot := `<span id="hostname-error" data-verso-inline-error hidden class="verso-refusal"></span>`
 	if !strings.Contains(got, slot) {
 		t.Errorf("an in-place value's slot is the refusal band:\n%s", got)
 	}

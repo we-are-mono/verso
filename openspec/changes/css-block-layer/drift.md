@@ -315,3 +315,16 @@ after; the SVG's fills, strokes and LED animations compared directly.
 | a shared secret's eye | 1 | a hand-built control-height square: Glyph, a hairline, the hairline wash under the pointer | the button block's secondary act at its square size |
 | a value fixed once written | 1 | utilities | the input block's `<output>` box and its padlock |
 | a file to drop | 2 | utility strings; a profile's area 32px of air, a file's 40px | the drop block, 40px of air for both |
+
+### `field`, `form`, `form-grid`, `field-set`, `conditional`, `conditions`, `condition`, `reveal`, `disclosure`, `refusal`, `apply`
+
+| Copies | n | Difference | Became |
+|---|---|---|---|
+| a setting's row and its parts | every form | forms.css under hyphenated names, four class-string templates, the row's air set as padding by sibling rules | the field block: the row reads its air, hairline and bleed from registered knobs the sibling rules set; no pixel changes |
+| a form's acts in its rhythm | | `mt-5.75` outranking the rhythm's step | the acts set the rhythm's step to their own distance; no pixel changes |
+| a whole form's refusal | 1 | a hand-written crimson band with a hairline | the notice block in the danger tone |
+| a refusal under a box, a row, a script's line | 9 | two class-string templates and a class string in verso.js | the refusal block, its line kind |
+| a conditional's branches | | rules in input.css and forms.css | the conditional block, which reads the switch and hands the container's edge to the row that shows; no pixel changes |
+| the conditions builder and a condition | 2 | forms.css rules, utility strings, arbitrary variants into its rows | the conditions and condition blocks, the part rows' quiet names in the row-label role |
+| a reveal, a framed fold | 2 | rules in forms.css and utility strings | the reveal and disclosure blocks; no pixel changes |
+| the apply's steps | 1 | utility strings and a class-string template | the apply block |

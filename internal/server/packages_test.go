@@ -416,7 +416,7 @@ func TestDiscoverSearchRenders(t *testing.T) {
 		t.Error("Available must use the wide package-management width")
 	}
 	// The search's button is the primary: the button block in no other dress.
-	for _, want := range []string{"[&>.verso-field-row]:w-80", `<button type="submit" class="verso-button shrink-0">`} {
+	for _, want := range []string{`data-verso-kind="search"`, `<div class="verso-form__search">`, `<button type="submit" class="verso-button shrink-0">`} {
 		if !strings.Contains(body, want) {
 			t.Errorf("Available's search and its button missing %q", want)
 		}

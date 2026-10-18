@@ -58,12 +58,8 @@
 {{define "verso-field-aria"}}{{with .DescribedBy}} aria-describedby="{{.}}"{{end}}{{if .Error}} aria-invalid="true"{{end}}{{if .Required}} aria-required="true"{{end}}{{end}}
 
 
-{{/* One form geometry on pages and in drawers: labels above controls, with
-     checkboxes beside their labels. forms.css owns spacing, content measures
-     and removable lanes. Layout hooks also cover locked fields and status
-     rows, which intentionally have no change-tracking attributes. */}}
-{{define "verso-field-row-class"}}verso-field-row max-w-form{{end}}
-{{define "verso-field-control-class"}}verso-field-control{{end}}
+{{/* One form geometry on pages and in drawers (blocks/field.css): a row's
+     spacing, its measures and its removable lane are the field block's. */}}
 
 {{/* verso-row-remove: the glyph that takes one row out of a set. It wears the
      same quiet treatment every icon act in a table wears, because that is what
@@ -71,7 +67,7 @@
      whole change is applied, so dressing it in crimson would promise a severity
      it does not have. The red is reserved for acts that cannot be taken back. */}}
 {{define "verso-row-remove"}}<button type="button" data-verso-remove-field="{{.Name}}" aria-label="{{ t "Remove" }} {{.Label}}"
-  class="verso-button group/act relative mt-1" data-verso-size="icon">{{icon "x" "size-4"}}</button>{{end}}
+  class="verso-button verso-field__remove group/act relative" data-verso-size="icon">{{icon "x" "size-4"}}</button>{{end}}
 
 {{/* The field's label: what the setting is called, the option it writes, and
      — on a label that carries an explanation — the help cursor and tab stop that
@@ -80,18 +76,16 @@
 {{/* A fused control's label is the one name covering every part, and its
      chip names every option, joined by a middot. */}}
 {{define "verso-field-label"}}
-<div class="verso-field-label flex min-w-0 flex-wrap items-center gap-2">
+<div class="verso-field__label">
   {{if .Label}}{{if .Group}}<span{{template "verso-field-label-attrs" .}}>{{template "verso-field-label-text" .}}</span>{{else}}<label for="{{.For}}"{{template "verso-field-label-attrs" .}}>{{template "verso-field-label-text" .}}</label>{{end}}{{end}}
   {{if .Key}}<span class="verso-chip" data-verso-key data-verso-verbatim>{{.Key}}</span>{{end}}
   {{if .Staged}}{{template "verso-staged-row" .StagedAt}}{{end}}
 </div>
 {{end}}
-{{/* verso-field-label-class: a setting's name, wherever a box is labelled —
-     a form row, and the sign-in form that stands outside any row. It is set
-     at 500, a step under a heading's 600, so a form reads as its headings
-     over the names of what they hold. */}}
-{{define "verso-field-label-class"}}text-sm font-medium text-ink{{end}}
-{{define "verso-field-label-attrs"}}{{with .For}} id="{{.}}-label"{{end}} class="{{if .Mono}}font-mono text-base leading-6 font-medium text-ink{{else}}{{template "verso-field-label-class"}}{{end}}{{if .Explained}} relative cursor-help{{end}}"{{if .Explained}} data-verso-tip tabindex="0" aria-describedby="{{.Tip.ID}}"{{end}}{{end}}
+{{/* A setting's name is set at 500, a step under a heading's 600, so a form
+     reads as its headings over the names of what they hold; a machine
+     string's name is verbatim. */}}
+{{define "verso-field-label-attrs"}}{{with .For}} id="{{.}}-label"{{end}} class="verso-field__name"{{if .Mono}} data-verso-verbatim{{end}}{{if .Explained}} data-verso-tip tabindex="0" aria-describedby="{{.Tip.ID}}"{{end}}{{end}}
 {{define "verso-field-label-text"}}{{.Label}}{{if .Explained}}{{template "verso-tip-wide" .Tip}}{{end}}{{end}}
 
 {{/* verso-staged-row: this setting's change waits on the stage — a bar in
@@ -111,38 +105,38 @@
      own check also writes into; then the remove lane. A switch is an answer
      like any other. The row carries the change hooks the stage reads unless
      it posts nothing. No widget draws this row by hand. */}}
-{{define "verso-field"}}<div class="{{template "verso-field-row-class"}}{{if .Wide}} verso-field-wide{{end}}{{if .Plain}} verso-field-plain{{end}}{{with .Class}} {{.}}{{end}}"{{with .Change}}{{if .Track}} data-verso-change-field data-verso-change-name="{{.Name}}" data-verso-change-label="{{.Label}}" data-verso-change-kind="{{.Kind}}"{{with .Writes}} data-verso-writes="{{.}}"{{end}}{{end}}{{end}}>
-  <div class="verso-field-ledger">
-    <div class="verso-field-question">
+{{define "verso-field"}}<div class="verso-field{{with .Class}} {{.}}{{end}}"{{if .Wide}} data-verso-wide{{end}}{{if .Plain}} data-verso-plain{{end}}{{with .Change}}{{if .Track}} data-verso-change-field data-verso-change-name="{{.Name}}" data-verso-change-label="{{.Label}}" data-verso-change-kind="{{.Kind}}"{{with .Writes}} data-verso-writes="{{.}}"{{end}}{{end}}{{end}}>
+  <div class="verso-field__ledger">
+    <div class="verso-field__question">
       {{if .ShowsLabel}}{{template "verso-field-label" .Label}}{{end}}
-      {{with .Detail}}<p{{with $.DetailID}} id="{{.}}"{{end}} data-verso-field-detail class="{{template "verso-field-desc-class"}}">{{.}}</p>{{end}}
-      {{/* A description folds away with every other on the page (forms.css):
-           its words stand in a span of their own, the one track that
-           closes. A wide row says it under its answer instead. */}}
-      {{if not .Wide}}{{with .Desc}}<p{{with $.DescID}} id="{{.}}"{{end}} data-verso-field-desc class="{{template "verso-field-desc-class"}}"><span>{{with $.DescHTML}}{{.}}{{else}}{{.}}{{end}}</span></p>{{end}}{{end}}
+      {{with .Detail}}<p{{with $.DetailID}} id="{{.}}"{{end}} data-verso-field-detail class="verso-field__note">{{.}}</p>{{end}}
+      {{/* A description folds away with every other on the page
+           (blocks/field.css): its words stand in a span of their own, the
+           one track that closes. A wide row says it under its answer
+           instead. */}}
+      {{if not .Wide}}{{with .Desc}}<p{{with $.DescID}} id="{{.}}"{{end}} data-verso-field-desc class="verso-field__desc"><span>{{with $.DescHTML}}{{.}}{{else}}{{.}}{{end}}</span></p>{{end}}{{end}}
     </div>
     {{/* An act on the whole answer (a set's add) stands on the question's
          line at the row's end, at every width. */}}
-    {{with .Act}}<div class="verso-field-act">{{.}}</div>{{end}}
+    {{with .Act}}<div class="verso-field__act">{{.}}</div>{{end}}
     {{/* A row that is all question (a set's head, a fact with nothing to
          read out) draws no answer, so a stacked row leaves no empty
          control's height under it. */}}
-    {{if or .Control .Errors .Note .Inline}}<div data-verso-control{{with .Measure}} data-verso-control-measure="{{.}}"{{end}}{{if .Inline}} data-verso-inline-field{{end}} class="{{template "verso-field-control-class"}} verso-field-answer relative">
+    {{if or .Control .Errors .Note .Inline}}<div data-verso-control{{with .Measure}} data-verso-control-measure="{{.}}"{{end}}{{if .Inline}} data-verso-inline-field{{end}} class="verso-field__answer">
       {{.Control}}
-      {{range .Errors}}<span id="{{.ID}}" data-verso-error class="{{template "verso-refusal-band"}}">{{template "verso-error-words" .Text}}</span>{{else}}{{if .Inline}}<span id="{{.ErrorID}}" data-verso-inline-error hidden class="{{template "verso-refusal-band"}}"></span>{{end}}{{end}}
+      {{range .Errors}}<span id="{{.ID}}" data-verso-error class="verso-refusal">{{template "verso-error-words" .Text}}</span>{{else}}{{if .Inline}}<span id="{{.ErrorID}}" data-verso-inline-error hidden class="verso-refusal"></span>{{end}}{{end}}
       {{/* A wide row's answer stands under its label, so what the row is for
            stands under the answer, after its refusal, as a note does: a
            sentence between a name and its box would part them. Such rows are
            rare, so it stays in view when the page's descriptions fold. */}}
-      {{if .Wide}}{{with .Desc}}<p{{with $.DescID}} id="{{.}}"{{end}} data-verso-field-note class="{{template "verso-field-desc-class"}}">{{with $.DescHTML}}{{.}}{{else}}{{.}}{{end}}</p>{{end}}{{end}}
-      {{with .Note}}<p{{with $.NoteID}} id="{{.}}"{{end}} data-verso-field-note class="{{template "verso-field-desc-class"}}">{{.}}</p>{{end}}
+      {{if .Wide}}{{with .Desc}}<p{{with $.DescID}} id="{{.}}"{{end}} data-verso-field-note class="verso-field__note">{{with $.DescHTML}}{{.}}{{else}}{{.}}{{end}}</p>{{end}}{{end}}
+      {{with .Note}}<p{{with $.NoteID}} id="{{.}}"{{end}} data-verso-field-note class="verso-field__note">{{.}}</p>{{end}}
     </div>{{end}}
     {{/* A row that cannot be taken out of the set still reserves the glyph's
          width, so every control in the group begins and ends in one place. */}}
-    {{if .Lane}}{{if .Removable}}{{template "verso-row-remove" .Change}}{{else}}<span data-verso-remove-lane class="size-7 flex-none" aria-hidden="true"></span>{{end}}{{end}}
+    {{if .Lane}}{{if .Removable}}{{template "verso-row-remove" .Change}}{{else}}<span data-verso-remove-lane class="verso-field__lane" aria-hidden="true"></span>{{end}}{{end}}
   </div>
 </div>{{end}}
-{{define "verso-field-desc-class"}}text-sm leading-6 text-pretty text-body{{end}}
 
 {{/* verso-field-set: related settings under one head (fieldSetView) — one
      setting asked of several things (which files load), or settings that
@@ -161,7 +155,7 @@
      is called in the reader's language. Values entered together are one box of
      several parts split by hairlines: they are one answer, and a reader sees
      one control rather than boxes that happen to stand near each other. The
-     frame takes the field's states (forms.css). The row's label names the
+     frame takes the field's states (blocks/box.css). The row's label names the
      group; each part stays its own input under its own name, which a screen
      reader says as the caret enters it and a refusal band repeats. */}}
 {{define "verso-box"}}<span class="verso-box"{{if .Stacked}} data-verso-stacked{{end}}{{with .Group}} role="group" aria-labelledby="{{.}}"{{end}}{{with .Described}} aria-describedby="{{.}}"{{end}}>{{range .Parts}}{{template "verso-box-part" .}}{{end}}</span>{{end}}
@@ -359,18 +353,10 @@
      one mark for state everywhere, and a message is state. */}}
 {{define "verso-message-mark"}}<span aria-hidden="true" class="verso-mark mt-2.25" data-verso-tone="{{template "verso-message-tone" .}}"></span>{{end}}
 
-{{/* verso-error-line: a refusal under the thing it refuses — a box, a row, a
-     button. The line's class, and its words after the crimson square; the
-     words stand in their own span so a script that says a refusal
-     (versoErrorLine, verso.js) writes them without losing the mark. */}}
-{{define "verso-error-line"}}flex items-start gap-2 text-sm leading-6 text-crimson-deep{{end}}
-
-{{/* verso-refusal-band: a refusal under the box it refuses — a field, a key's
-     box, a list's box — is that line set on crimson's own wash, so a wrong
-     value is findable without reading and reads the same wherever it was
-     typed. Its words are verso-error-words. Half a cell inside at top and
-     bottom keeps it whole cells of the notebook's grid. */}}
-{{define "verso-refusal-band"}}flex items-start gap-2 rounded-xs bg-crimson-soft px-3 py-2 text-sm leading-6 text-crimson-deep{{end}}
+{{/* verso-error-words: a refusal's words (blocks/refusal.css) after the
+     crimson square; the words stand in their own span so a script that says
+     a refusal (versoErrorLine, verso.js) writes them without losing the
+     mark. */}}
 {{define "verso-error-words"}}{{template "verso-message-mark" "danger"}}<span data-verso-error-text>{{.}}</span>{{end}}
 
 {{/* verso-message-tone: the mark's tone for a message's tone. Caution is

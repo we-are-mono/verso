@@ -1,0 +1,65 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/* SPDX-FileCopyrightText: 2026 Mono Technologies Inc. */
+
+/*
+ * condition — one added condition, one setting's row on the grid: its name
+ * line (the name, the key it is known by, what it is for raised on the name,
+ * the glyph that takes it away at the line's end, on the form measure's
+ * edge), then its parts at the full measure, the first straight under the
+ * name, each after 24px of air, as fields stand. Two conditions on the
+ * conditions card meet on a hairline across it, 24px from each and on a
+ * line, the seam saying how they join ("and", a kicker on the card's own
+ * sand, so the rule breaks around it).
+ *
+ * Variants: data-verso-single  one control: drawn straight under the name,
+ *                              its own label kept for a screen reader only
+ *                              (seen, it would only repeat the name); several
+ *                              parts set each part's label quieter than the
+ *                              name, so the name reads as the setting
+ * Elements: __name   the name line, a label's 24px line whatever stands on it
+ *           __parts  its controls, rows meeting on their own air
+ */
+
+.verso-condition:where(.verso-conditions__list > *):first-child {
+  padding-top: calc(var(--spacing-inset) - 1px);
+}
+.verso-condition:where(.verso-conditions__list > *):last-child {
+  padding-bottom: calc(var(--spacing-inset) - 1px);
+}
+.verso-condition:has(+ .verso-condition) {
+  padding-bottom: calc(var(--spacing-inset) - 1px);
+}
+.verso-condition + .verso-condition {
+  position: relative;
+  margin-inline: calc(var(--spacing-inset) * -1);
+  padding-inline: var(--spacing-inset);
+  padding-top: var(--spacing-inset);
+  border: 0 solid var(--color-rule);
+  border-top-width: 1px;
+}
+.verso-condition + .verso-condition::before {
+  content: attr(data-verso-and);
+  position: absolute;
+  top: 0;
+  left: 50%;
+  padding-inline: calc(var(--spacing) * 2);
+  background: var(--color-quiet);
+  color: var(--color-meta);
+  transform: translate(-50%, -50%);
+  @apply type-label;
+}
+
+.verso-condition__name {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--spacing) * 3);
+  height: calc(var(--spacing) * 6);
+  max-width: var(--verso-form-width, 40rem);
+}
+
+.verso-condition__parts {
+  max-width: var(--verso-form-width, 40rem);
+}
+.verso-condition__parts > * + * {
+  --verso-step: 0;
+}

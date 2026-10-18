@@ -1,0 +1,169 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/* SPDX-FileCopyrightText: 2026 Mono Technologies Inc. */
+
+/*
+ * conditions — the optional conditions a rule carries, one block: headed as
+ * every section is (40px of air, the form's 24px block step and 16px of its
+ * own, the title, its lede, and 24px under them); the conditions on one
+ * quiet card while it holds any, none at all when it is empty, so the card
+ * follows every add and remove with no script; and the act that adds one,
+ * opening a list someone reads or filters, pressing a line to add it.
+ *
+ * Elements: __head      the title and its lede, 24px over what follows
+ *           __title     the title, in the section title's role
+ *           __list      the conditions (blocks/condition.css): a hairline
+ *                       frame on Quiet Sand, 24px in, while it holds any;
+ *                       the measure its rows stand to
+ *           __empty     the set's empty slot, at the form's measure
+ *           __picker    the add, 24px under the slot (4px under the card)
+ *           __menu      the list it opens: 576px under the act, the page's
+ *                       Paper on the strong hairline, lifted
+ *           __filter    its filter line, typed into first; __filter-glyph,
+ *                       __filter-input
+ *           __scroller  the catalogue, scrolling past 360px
+ *           __group     a group of the catalogue; __group-head its name, a
+ *                       kicker on the quiet band, ruled off from the group
+ *                       before it
+ *           __offer     one condition offered: its __label, its key chip and
+ *                       its __hint; one the rule carries stays legible but
+ *                       inert (disabled)
+ *           __none      what the filter found nothing for
+ */
+
+.verso-conditions {
+  padding-top: calc(var(--spacing) * 4);
+}
+
+.verso-conditions__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  column-gap: calc(var(--spacing) * 6);
+  margin-bottom: var(--spacing-inset);
+}
+.verso-conditions__title {
+  color: var(--color-ink);
+  @apply type-section-title;
+}
+
+.verso-conditions__list:has(> .verso-condition) {
+  --verso-form-width: 100%;
+  padding-inline: var(--spacing-inset);
+  border: 1px solid var(--color-rule);
+  border-radius: var(--radius-xs);
+  background: var(--color-quiet);
+}
+
+.verso-conditions__empty {
+  max-width: var(--verso-form-width, 40rem);
+}
+
+.verso-conditions__picker {
+  position: relative;
+  padding-block: calc(var(--spacing) * 6) var(--spacing);
+}
+.verso-conditions__picker:is(.verso-conditions__list:has(> .verso-condition) ~ *) {
+  padding-top: var(--spacing);
+}
+
+.verso-conditions__menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 30;
+  width: 36rem;
+  max-width: calc(100vw - 2rem);
+  margin-top: calc(var(--spacing) * 2);
+  border: 1px solid var(--color-rule-strong);
+  border-radius: var(--radius-xs);
+  background-color: var(--color-ground);
+  box-shadow: var(--shadow-menu);
+}
+
+.verso-conditions__filter {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--spacing) * 2);
+  padding: calc(var(--spacing) * 2.5) calc(var(--spacing) * 3);
+  border: 0 solid var(--color-rule-strong);
+  border-bottom-width: 1px;
+}
+.verso-conditions__filter-glyph {
+  display: flex;
+  flex: none;
+  color: var(--color-faint);
+}
+.verso-conditions__filter-input {
+  flex: 1 1 0%;
+  min-width: 0;
+  height: calc(var(--spacing) * 6);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-ink);
+  outline: none;
+  @apply type-input;
+}
+.verso-conditions__filter-input::placeholder {
+  color: var(--color-meta);
+}
+
+.verso-conditions__scroller {
+  max-height: calc(var(--spacing) * 90);
+  overflow-y: auto;
+}
+
+.verso-conditions__group-head {
+  padding: calc(var(--spacing) * 2) calc(var(--spacing) * 4);
+  border: 0 solid var(--color-rule);
+  border-bottom-width: 1px;
+  background-color: var(--color-quiet);
+  color: var(--color-meta);
+  @apply type-label;
+}
+.verso-conditions__group-head:where(.verso-conditions__group + .verso-conditions__group > *) {
+  border-top-width: 1px;
+}
+
+.verso-conditions__offer {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--spacing) * 3);
+  width: 100%;
+  padding: calc(var(--spacing) * 2) calc(var(--spacing) * 4);
+  border: 0 solid var(--color-rule);
+  border-top-width: 1px;
+  text-align: left;
+  transition-property: background-color;
+  transition-duration: 150ms;
+}
+.verso-conditions__offer:first-child {
+  border-top-width: 0;
+}
+.verso-conditions__offer:enabled {
+  cursor: pointer;
+}
+.verso-conditions__offer:enabled:hover {
+  background-color: color-mix(in srgb, var(--color-quiet) 50%, transparent);
+}
+.verso-conditions__offer:disabled {
+  opacity: 0.45;
+}
+.verso-conditions__label {
+  flex: none;
+  color: var(--color-ink);
+  @apply type-subheading;
+}
+.verso-conditions__hint {
+  flex: none;
+  margin-left: auto;
+  color: var(--color-meta);
+  @apply type-body;
+}
+
+.verso-conditions__none {
+  padding: calc(var(--spacing) * 6) calc(var(--spacing) * 4);
+  color: var(--color-body);
+  @apply type-body;
+}

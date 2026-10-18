@@ -1,0 +1,38 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/* SPDX-FileCopyrightText: 2026 Mono Technologies Inc. */
+
+/*
+ * form-grid — related fields grouped side by side, in the same DOM and
+ * keyboard order at every size, sharing a row only when their own container
+ * has room. The group owns the rows' air (blocks/field.css), so wrapped rows
+ * keep the same rhythm: 24px over the group, 24px between its rows.
+ *
+ * Elements: __fields  the grid (data-verso-columns 1 · 2 · 3: two from
+ *                     36rem, three from 48rem)
+ */
+
+.verso-form-grid {
+  container: verso-form-grid / inline-size;
+  min-width: 0;
+  padding-block: var(--spacing-inset) 0;
+}
+
+.verso-form-grid__fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  gap: var(--spacing-inset);
+}
+.verso-form-grid__fields > * {
+  min-width: 0;
+}
+@container verso-form-grid (min-width: 36rem) {
+  .verso-form-grid__fields:is([data-verso-columns="2"], [data-verso-columns="3"]) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@container verso-form-grid (min-width: 48rem) {
+  .verso-form-grid__fields[data-verso-columns="3"] {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}

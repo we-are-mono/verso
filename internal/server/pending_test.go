@@ -77,8 +77,13 @@ func TestPendingPageHeadsTheStage(t *testing.T) {
 		`href="/plugins/dnsdhcp/"`, `href="/plugins/dnsdhcp/rules"`, "Open page", "Discard these",
 	)
 	// The note's question stands over its box, which takes the row's width.
-	if note := strings.Index(body, `name="note"`); note < 0 || !strings.Contains(body[strings.LastIndex(body[:note], "verso-field-row"):note], "verso-field-wide") {
-		t.Error("the note's label does not stand over its box")
+	note := strings.Index(body, `data-verso-change-name="note"`)
+	if note < 0 {
+		t.Fatal("the note is not a field row")
+	}
+	row := body[strings.LastIndex(body[:note], "<div"):]
+	if row = row[:strings.Index(row, ">")]; !strings.HasPrefix(row, `<div class="verso-field"`) || !strings.Contains(row, "data-verso-wide") {
+		t.Errorf("the note's label does not stand over its box: %s", row)
 	}
 	apply, dhcp, rules := strings.Index(body, "When you apply"), strings.Index(body, `text-ink">DHCP</h2>`), strings.Index(body, `text-ink">Firewall rules</h2>`)
 	if apply < 0 || dhcp < apply || rules < apply {

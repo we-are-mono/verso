@@ -51,9 +51,11 @@ func TestRenderFormError(t *testing.T) {
 	if !strings.Contains(got, "start port must be") {
 		t.Errorf("form-level error not rendered: %s", got)
 	}
-	if !strings.Contains(got, "border-crimson-line bg-crimson-soft") || !strings.Contains(got, "text-crimson-deep") {
+	if !strings.Contains(got, `<div class="verso-notice mb-6" data-verso-tone="danger">`) {
 		t.Errorf("form-level error not styled as danger: %s", got)
 	}
+	declares(t, "notice", `.verso-notice[data-verso-tone="danger"]`,
+		"--verso-notice-line: var(--color-crimson-line);", "--verso-notice-wash: var(--color-crimson-soft);", "--verso-notice-ink: var(--color-crimson-deep);")
 	if strings.Contains(got, "must be <= end") {
 		t.Errorf("form error not HTML-escaped by the shell: %s", got)
 	}
@@ -974,16 +976,23 @@ func TestRenderDisclosure(t *testing.T) {
 	condition := render(t, r, &Disclosure{Style: "condition", Summary: "Advanced"})
 	// The condition style sits a step in from the page's ground — on the quiet
 	// band, because what it folds is part of the form around it — and holds
-	// its words 20px in on every side, as the conditions card does.
+	// its words 24px in on every side, as the conditions card does.
 	for _, want := range []string{
-		"border-rule bg-quiet", "text-sm font-semibold text-ink",
-		"px-6 py-6 text-sm font-semibold text-ink", // the summary
-		"border-t border-rule px-6 py-6",           // what it folds
+		`<details class="verso-disclosure" data-verso-style="condition">`,
+		`<summary class="verso-disclosure__summary">`,
+		`<div class="verso-disclosure__body verso-rhythm">`,
 	} {
 		if !strings.Contains(condition, want) {
 			t.Errorf("condition disclosure missing %q: %s", want, condition)
 		}
 	}
+	declares(t, "disclosure", ".verso-disclosure", "border: 1px solid var(--color-rule);")
+	declares(t, "disclosure", `.verso-disclosure[data-verso-style="condition"]`, "background-color: var(--color-quiet);")
+	declares(t, "disclosure", `.verso-disclosure__summary:where(.verso-disclosure[data-verso-style="condition"] *)`,
+		"padding: calc(var(--spacing) * 6);", "color: var(--color-ink);")
+	declares(t, "disclosure", ".verso-disclosure__body", "border-top-width: 1px;")
+	declares(t, "disclosure", `.verso-disclosure__body:where(.verso-disclosure[data-verso-style="condition"] *)`,
+		"padding: calc(var(--spacing) * 6);")
 	if strings.Contains(got, "<details open") {
 		t.Errorf("a disclosure not asked to open must start folded: %s", got)
 	}
@@ -1339,13 +1348,14 @@ func TestRenderFieldError(t *testing.T) {
 		t.Errorf("errored field's box is not the input block: %q", box)
 	}
 	for _, want := range []string{
-		"bg-crimson-soft", "text-crimson-deep", // and the message sits on crimson's own ground
-		"bg-crimson", // with the mark beside it
+		`data-verso-error class="verso-refusal">`,                                       // and the message sits on crimson's own ground
+		`<span aria-hidden="true" class="verso-mark mt-2.25" data-verso-tone="danger">`, // with the mark beside it
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("errored field missing %q: %s", want, got)
 		}
 	}
+	declares(t, "refusal", ".verso-refusal", "background-color: var(--color-crimson-soft);", "color: var(--color-crimson-deep);")
 }
 
 func TestRenderFieldFocus(t *testing.T) {
@@ -1469,13 +1479,11 @@ func TestRenderListPerItemError(t *testing.T) {
 	if box := refusedBox(got); !strings.Contains(box, `value="bad host"`) || !strings.Contains(box, `class="verso-input"`) {
 		t.Errorf("the refused item is not the input block's box: %q", box)
 	}
-	for _, want := range []string{
-		"text-crimson-deep", // the message reads in the step of the hue that carries words
-	} {
-		if !strings.Contains(got, want) {
-			t.Errorf("errored list item missing focus treatment %q: %s", want, got)
-		}
+	if !strings.Contains(got, `data-verso-error class="verso-refusal`) {
+		t.Errorf("errored list item's message is not the refusal: %s", got)
 	}
+	// the message reads in the step of the hue that carries words
+	declares(t, "refusal", ".verso-refusal", "color: var(--color-crimson-deep);")
 }
 
 func TestRenderFormDefaultsSubmitLabel(t *testing.T) {

@@ -58,7 +58,8 @@ function T(s) {
 function versoErrorLine(line, message) {
   if (!line) {
     line = document.createElement("p");
-    line.className = versoErrorLine.lineClass;
+    line.className = "verso-refusal";
+    line.setAttribute("data-verso-kind", "line");
   }
   var mark = document.createElement("span");
   mark.setAttribute("aria-hidden", "true");
@@ -70,7 +71,6 @@ function versoErrorLine(line, message) {
   line.replaceChildren(mark, words);
   return line;
 }
-versoErrorLine.lineClass = "flex items-start gap-2 text-sm leading-6 text-crimson-deep";
 
 // versoEl makes one element of a row a script builds: its tag, its classes,
 // and its words as text — never markup, since what a script writes into a

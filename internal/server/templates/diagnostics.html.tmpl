@@ -61,6 +61,6 @@
        ending lands. */}}
   <button type="submit" data-verso-diag-run disabled class="verso-button ml-auto" data-verso-standby>{{icon "play" "size-4"}}{{t "Run"}}</button>
   <button type="button" data-verso-diag-stop hidden class="verso-button ml-auto disabled:pointer-events-none" data-verso-style="secondary">{{template "verso-waiting" ""}}{{t "Stop"}}</button>
-  <p data-verso-diag-error hidden role="alert" class="basis-full {{template "verso-error-line"}}"></p>
+  <p data-verso-diag-error hidden role="alert" class="verso-refusal basis-full" data-verso-kind="line"></p>
 </form>
 {{end}}

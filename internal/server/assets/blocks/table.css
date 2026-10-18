@@ -122,6 +122,11 @@
 :is(.verso-table__cell, .verso-table__grip, .verso-table__acts):where(.verso-table[data-verso-lifted] *) {
   border-bottom-color: transparent;
 }
+/* A set among a form's fields: its last row draws no line, so only the
+   hairline between questions follows it. */
+:is(.verso-table__cell, .verso-table__grip, .verso-table__acts):where([data-verso-in-form] tbody > tr:last-child > *) {
+  border-bottom-color: transparent;
+}
 .verso-table__cell {
   padding: calc(var(--spacing) * 1.75) calc(var(--spacing) * 3.5) calc(var(--spacing) * 2);
   @apply type-body;

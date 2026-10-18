@@ -9,13 +9,13 @@
      page's script says each one's state as the router reports it: Saving
      then Saved, the reloads Started, the check-in counting the window down
      then Kept. A step that shortens its line carries the whole as its title.
-     A step reads as a setting's name does (verso-field-label-class): what
-     the apply will do is the card's content, not a note about it. */}}
-{{define "verso-pending-steps"}}<ol data-verso-apply-steps class="m-0 flex list-none flex-col gap-2 p-0">
-  {{range .}}<li data-verso-apply-step="{{.Kind}}"{{with .Title}} title="{{.}}"{{end}} class="grid grid-cols-[1.25rem_minmax(0,1fr)_auto] items-start gap-x-2 leading-6 {{template "verso-field-label-class"}} max-sm:grid-cols-[1.25rem_minmax(0,1fr)]">
-    <span class="tabular-nums">{{.Number}}.</span>
-    <span class="min-w-0">{{.Text}}</span>
-    <span data-verso-apply-state aria-live="polite" hidden class="flex items-center gap-1.5 whitespace-nowrap text-meta max-sm:col-start-2"><span data-verso-apply-wait hidden>{{template "verso-waiting" ""}}</span><span data-verso-apply-done hidden class="text-green-deep">{{icon "check" "size-4"}}</span><span data-verso-apply-word class="tabular-nums"></span></span>
+     A step reads as a setting's name does (blocks/apply.css): what the
+     apply will do is the card's content, not a note about it. */}}
+{{define "verso-pending-steps"}}<ol data-verso-apply-steps class="verso-apply">
+  {{range .}}<li data-verso-apply-step="{{.Kind}}"{{with .Title}} title="{{.}}"{{end}} class="verso-apply__step">
+    <span class="verso-apply__number">{{.Number}}.</span>
+    <span class="verso-apply__text">{{.Text}}</span>
+    <span data-verso-apply-state aria-live="polite" hidden class="verso-apply__state"><span data-verso-apply-wait hidden>{{template "verso-waiting" ""}}</span><span data-verso-apply-done hidden class="verso-apply__done">{{icon "check" "size-4"}}</span><span data-verso-apply-word class="tabular-nums"></span></span>
   </li>{{end}}
 </ol>{{end}}
 

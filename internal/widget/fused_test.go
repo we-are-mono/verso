@@ -26,20 +26,22 @@ func TestRelatedValuesAreOneControl(t *testing.T) {
 	if strings.Contains(got, "verso-form-grid") {
 		t.Errorf("related values are one control, not two columns:\n%s", got)
 	}
+	if n := len(fieldRow.FindAllString(got, -1)); n != 1 {
+		t.Errorf("want one row, got %d", n)
+	}
 	for want, n := range map[string]int{
-		"verso-field-row":         1, // one row
-		`class="verso-box"`:       1, // one box
-		`class="verso-box__part"`: 2, // one part per value
-		"verso-field-label ":      1, // one label line
-		"<label":                  0, // the label names the group, not one input
-		"data-verso-change-field": 2, // each part is its own change
+		`class="verso-box"`:          1, // one box
+		`class="verso-box__part"`:    2, // one part per value
+		`class="verso-field__label"`: 1, // one label line
+		"<label":                     0, // the label names the group, not one input
+		"data-verso-change-field":    2, // each part is its own change
 	} {
 		if got := strings.Count(got, want); got != n {
 			t.Errorf("want %d of %q, got %d", n, want, got)
 		}
 	}
 	for _, want := range []string{
-		`<span id="synflood_rate-group-label" class="text-sm font-medium text-ink">Connection rate</span>`,
+		`<span id="synflood_rate-group-label" class="verso-field__name">Connection rate</span>`,
 		`>synflood_rate · synflood_burst</span>`, // one chip, every option
 		`role="group" aria-labelledby="synflood_rate-group-label"`,
 		`id="synflood_rate" name="synflood_rate" value="25" type="text" aria-label="Connections per second"`,
@@ -75,7 +77,7 @@ func TestAFusedLabelExplainsItsParts(t *testing.T) {
 	g.Children[1].(*Field).Help = "Extra connections allowed at once."
 	got := render(t, newRenderer(t), g)
 	for _, want := range []string{
-		`<p id="synflood_rate-group-desc" data-verso-field-desc class="text-sm leading-6 text-pretty text-body"><span>Connections per second: New connections allowed each second. Burst: Extra connections allowed at once.</span></p>`,
+		`<p id="synflood_rate-group-desc" data-verso-field-desc class="verso-field__desc"><span>Connections per second: New connections allowed each second. Burst: Extra connections allowed at once.</span></p>`,
 		`role="group" aria-labelledby="synflood_rate-group-label" aria-describedby="synflood_rate-group-desc"`,
 		`synflood_rate · synflood_burst</span>`, // the chip names both options
 	} {
@@ -91,7 +93,7 @@ func TestAFusedLabelExplainsItsParts(t *testing.T) {
 	// name in front would only repeat the label over it.
 	g.Children[1].(*Field).Help = ""
 	got = render(t, newRenderer(t), g)
-	if !strings.Contains(got, `data-verso-field-desc class="text-sm leading-6 text-pretty text-body"><span>New connections allowed each second.</span></p>`) {
+	if !strings.Contains(got, `data-verso-field-desc class="verso-field__desc"><span>New connections allowed each second.</span></p>`) {
 		t.Errorf("a lone part's help is the row's description as it stands:\n%s", got)
 	}
 	g.Children[1].(*Field).Help = "Extra connections allowed at once."
@@ -161,7 +163,7 @@ func TestOnlyTypedValuesFuse(t *testing.T) {
 		"list":   &List{Name: "b", Label: "B"},
 	} {
 		got := render(t, newRenderer(t), &Grid{Style: "form", Columns: 2, Children: []Widget{&Field{Name: "a", Label: "A"}, other}})
-		if strings.Contains(got, "verso-box") || strings.Contains(got, "verso-form-grid") || strings.Count(got, `class="verso-field-row`) != 2 {
+		if strings.Contains(got, "verso-box") || strings.Contains(got, "verso-form-grid") || len(fieldRow.FindAllString(got, -1)) != 2 {
 			t.Errorf("%s: a set holding one stands as a row per field, never fused, never columns:\n%s", name, got)
 		}
 	}
@@ -177,8 +179,11 @@ func TestAValueAndItsUnitFuse(t *testing.T) {
 		&Field{Name: "check_interval", Label: "Check every", Key: "check_interval", Value: "10"},
 		&Field{Name: "check_unit", Label: "Unit", Kind: "select", Key: "check_unit", Value: "minutes", Options: units},
 	}})
+	if n := len(fieldRow.FindAllString(got, -1)); n != 1 {
+		t.Errorf("want one row, got %d:\n%s", n, got)
+	}
 	for want, n := range map[string]int{
-		`class="verso-field-row`: 1, `class="verso-box"`: 1, `class="verso-box__part"`: 2,
+		`class="verso-box"`: 1, `class="verso-box__part"`: 2,
 		`>Check every</span>`: 1, `>check_interval · check_unit</span>`: 1,
 	} {
 		if c := strings.Count(got, want); c != n {
@@ -188,7 +193,7 @@ func TestAValueAndItsUnitFuse(t *testing.T) {
 	if !strings.Contains(got, `<select id="check_unit" name="check_unit" aria-label="Unit"`) || !strings.Contains(got, `class="verso-box__select"`) {
 		t.Errorf("the unit dropdown is not a part of the box:\n%s", got)
 	}
-	if strings.Contains(got, "verso-field-wide") || strings.Contains(got, ">Check every · Unit<") {
+	if strings.Contains(got, "data-verso-wide") || strings.Contains(got, ">Check every · Unit<") {
 		t.Errorf("a value and its unit stand in the answer column under the value's own name:\n%s", got)
 	}
 }

@@ -1,0 +1,30 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/* SPDX-FileCopyrightText: 2026 Mono Technologies Inc. */
+
+/*
+ * refusal — what was refused, under the thing it refuses: the crimson square
+ * hung on the first line (verso-error-words), then the words, in the deep
+ * crimson. Under a box (a field, a key's box, a list's box) it is a band on
+ * crimson's own wash, so a wrong value is findable without reading and reads
+ * the same wherever it was typed: half a cell inside at top and bottom keeps
+ * it whole cells of the grid. Under a row or a button it is the line alone.
+ * A script that says a refusal (versoErrorLine, verso.js) draws the same.
+ *
+ * Variants: data-verso-kind="line"  the words alone, with no wash
+ */
+
+.verso-refusal {
+  display: flex;
+  align-items: flex-start;
+  gap: calc(var(--spacing) * 2);
+  padding: calc(var(--spacing) * 2) calc(var(--spacing) * 3);
+  border-radius: var(--radius-xs);
+  background-color: var(--color-crimson-soft);
+  color: var(--color-crimson-deep);
+  @apply type-body;
+}
+.verso-refusal[data-verso-kind="line"] {
+  padding: 0;
+  border-radius: 0;
+  background-color: transparent;
+}

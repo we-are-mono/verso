@@ -46,6 +46,14 @@
   right: calc(var(--spacing) * 2);
 }
 
+/* Where a row stacks, a dropdown keeps its chevron with it at its own
+   measure, and a refusal under it never sets that measure. */
+@container verso-field (width < 36rem) {
+  .verso-control:where(.verso-field__answer[data-verso-control-measure="choice"] > *) {
+    width: fit-content;
+  }
+}
+
 .verso-control__wait {
   position: absolute;
   inset-block: 0;

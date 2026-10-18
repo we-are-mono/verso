@@ -19,15 +19,15 @@
 {{/* form.submit-tone: the act's dress — the primary, or the danger act for
      one that destroys, or the caution act for one disruptive but wanted. */}}
 {{define "form.submit-attrs"}}{{if eq .Tone "danger"}} data-verso-style="danger"{{else if eq .Tone "caution"}} data-verso-style="caution"{{end}}{{if or .Dirty (eq .Tone "danger") (eq .Tone "caution")}} data-verso-standby{{end}}{{end}}
-<form{{with .ID}} id="{{.}}"{{end}}{{if or .Inline .Search}} data-verso-compact-form{{end}} method="post"{{if .Action}} action="{{.Action}}"{{end}}{{if .Frame}} hx-post="{{.Panel}}" hx-target="closest {{if eq .Frame "entity"}}[data-verso-entity-body]{{else}}[data-verso-panel]{{end}}" hx-swap="innerHTML"{{end}}{{if .Multipart}} enctype="multipart/form-data"{{end}}{{if .AutoSubmit}} data-verso-autosubmit{{end}}{{if .Page}} data-verso-page-form{{end}}{{if .Dirty}} data-verso-dirty-form{{end}} class="verso-form {{if .Search}}flex flex-wrap items-center gap-3{{else if .Inline}}flex flex-wrap items-end gap-3 {{if .Compact}}[&>div:not(:last-of-type)]:w-52{{else}}[&>div:not(:last-of-type)]:w-72{{end}} [&>div:not(:last-of-type)_input]:rounded-r-none{{else if not .Page}}verso-rhythm [--verso-rhythm:1.5rem]{{end}}">
+<form{{with .ID}} id="{{.}}"{{end}}{{if or .Inline .Search}} data-verso-compact-form{{end}} method="post"{{if .Action}} action="{{.Action}}"{{end}}{{if .Frame}} hx-post="{{.Panel}}" hx-target="closest {{if eq .Frame "entity"}}[data-verso-entity-body]{{else}}[data-verso-panel]{{end}}" hx-swap="innerHTML"{{end}}{{if .Multipart}} enctype="multipart/form-data"{{end}}{{if .AutoSubmit}} data-verso-autosubmit{{end}}{{if .Page}} data-verso-page-form{{end}}{{if .Dirty}} data-verso-dirty-form{{end}} class="verso-form{{if not (or .Search .Inline .Page)}} verso-rhythm{{end}}"{{if .Search}} data-verso-kind="search"{{else if .Inline}} data-verso-kind="inline"{{if .Compact}} data-verso-size="compact"{{end}}{{end}}>
   {{template "verso-csrf" .CSRFToken}}
-  {{/* A refusal of the whole submission — one no field owns. A field's own
-       refusal is its band, and the page's navigator counts them; no form says
-       to look for them. The band keeps a dividing line's air below it. */}}
+  {{/* A refusal of the whole submission — one no field owns: the notice block
+       in the danger tone. A field's own refusal is its band, and the page's
+       navigator counts them; no form says to look for them. */}}
   {{if .Error}}
-  <div class="mb-6 flex items-start gap-2 rounded-xs border border-crimson-line bg-crimson-soft px-3 py-2 text-sm leading-6 text-crimson-deep">
-    {{template "verso-message-mark" "danger"}}
-    <span>{{.Error}}</span>
+  <div class="verso-notice mb-6" data-verso-tone="danger">
+    <span aria-hidden="true" class="verso-mark verso-notice__mark" data-verso-tone="danger"></span>
+    <div class="verso-notice__words"><p>{{.Error}}</p></div>
   </div>
   {{end}}
   {{if .Search}}
@@ -39,15 +39,15 @@
        over the field, and the button stands on the field's own two cells,
        the row's last, centred in them as the field's box is. Secondary
        actions remain separate controls alongside it. */}}
-  <div class="flex max-w-full items-end gap-2 [&>.verso-field-row]:w-80 [&>.verso-field-row]:min-w-0">
+  <div class="verso-form__search">
     {{range .Fields}}{{.}}{{end}}
     {{if .Submit}}<button type="submit"{{if .Dirty}} disabled{{end}} class="verso-button shrink-0"{{template "form.submit-attrs" .}}>{{if .Icon}}{{icon .Icon "size-4"}}{{end}}{{.Submit}}</button>{{end}}
   </div>
   {{if or .Actions .Note}}
-  <div class="flex flex-wrap items-center gap-x-3 gap-y-2">
+  <div class="verso-form__acts">
     {{if .CancelHref}}<a href="{{.CancelHref}}"{{if .Frame}} @click.prevent="hide"{{end}} class="verso-button" data-verso-style="secondary">{{t "Cancel"}}</a>{{end}}
     {{range .Actions}}<button type="submit" name="_action" value="{{.Action}}"{{if $.Dirty}} disabled{{end}} class="verso-button" data-verso-style="secondary">{{if .Icon}}{{icon .Icon "size-4"}}{{end}}{{.Label}}</button>{{end}}
-    {{if .Note}}<span class="text-sm text-body [&>p]:inline">{{.Note}}</span>{{end}}
+    {{if .Note}}<span class="verso-form__note">{{.Note}}</span>{{end}}
   </div>
   {{end}}
   {{else}}
@@ -68,19 +68,19 @@
        the form is only its act (every field hidden): with nothing to close
        off, the act stands 24px under what is above it. Every rule lands on a
        line of the grid (its margin its air less its own pixel). */}}
-  <div data-verso-form-actions{{if and .ClosesPage (not .JoinsCode)}} data-verso-rule{{end}} class="flex flex-wrap items-center {{if .Inline}}-ml-3 gap-3{{else if .JoinsCode}}mt-6 gap-4{{else if .Sectioned}}mt-6 gap-4{{else if .ClosesPage}}mt-9.75 gap-4 border-t border-rule pt-5.75{{else if .LoneAct}}mt-6 gap-4{{else}}mt-5.75 gap-4 border-t border-rule pt-5.75{{end}}">
+  <div data-verso-form-actions{{if and .ClosesPage (not .JoinsCode)}} data-verso-rule{{end}} class="verso-form__acts"{{if .Inline}} data-verso-close="inline"{{else if or .JoinsCode .Sectioned}} data-verso-close="flush"{{else if .ClosesPage}} data-verso-close="page"{{else if .LoneAct}} data-verso-close="flush"{{end}}>
     {{/* No Submit label, no primary button — a form may be driven by its
          actions or by a confirm among its fields instead. */}}
     {{/* A form that waits for a change draws its acts resting, as the page's
          script keeps them until something changes (verso-forms.js): drawn
          active and put to rest after, they would blink denim on every visit. */}}
-    {{if .Submit}}<button type="submit"{{if .Dirty}} disabled{{end}} class="verso-button{{if .Inline}} rounded-l-none{{end}}"{{template "form.submit-attrs" .}}>{{if .Icon}}{{icon .Icon "size-4"}}{{end}}{{.Submit}}</button>{{end}}
+    {{if .Submit}}<button type="submit"{{if .Dirty}} disabled{{end}} class="verso-button{{if .Inline}} verso-form__glued{{end}}"{{template "form.submit-attrs" .}}>{{if .Icon}}{{icon .Icon "size-4"}}{{end}}{{.Submit}}</button>{{end}}
     {{if .CancelHref}}<a href="{{.CancelHref}}"{{if .Frame}} @click.prevent="hide"{{end}} class="verso-button" data-verso-style="secondary">{{t "Cancel"}}</a>{{end}}
     {{range .Actions}}<button type="submit" name="_action" value="{{.Action}}"{{if $.Dirty}} disabled{{end}} class="verso-button" data-verso-style="secondary">{{if .Icon}}{{icon .Icon "size-4"}}{{end}}{{.Label}}</button>{{end}}
-    {{if .Note}}<span class="{{if not .Inline}}ml-auto {{else}}self-center {{end}}text-sm text-meta [&>p]:inline">{{.Note}}</span>{{end}}
+    {{if .Note}}<span class="verso-form__note">{{.Note}}</span>{{end}}
   </div>
   {{end}}
   {{/* A form with nothing to press still says what it is for. */}}
-  {{if and .Note (not .Submit) (not .Actions)}}<div class="text-sm text-meta [&>p]:inline">{{.Note}}</div>{{end}}
+  {{if and .Note (not .Submit) (not .Actions)}}<div class="verso-form__note">{{.Note}}</div>{{end}}
   {{end}}
 </form>

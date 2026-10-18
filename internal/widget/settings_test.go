@@ -18,15 +18,15 @@ func TestAFactIsALedgerRow(t *testing.T) {
 		{Title: "Default policies", Pills: []Badge{{Variant: "warning", Text: "in: reject"}}},
 		{Title: "Check for updates automatically", Desc: "Once a day."},
 	}})
-	if n := strings.Count(got, `class="verso-field-row`); n != 3 {
+	if n := len(fieldRow.FindAllString(got, -1)); n != 3 {
 		t.Fatalf("every fact is a row of the ledger, got %d:\n%s", n, got)
 	}
-	question, answer := strings.Index(got, "verso-field-question"), strings.Index(got, "verso-field-answer")
+	question, answer := strings.Index(got, "verso-field__question"), strings.Index(got, "verso-field__answer")
 	title, desc, value := strings.Index(got, ">Local domain<"), strings.Index(got, `data-verso-field-desc`), strings.Index(got, ">lan</span>")
 	if question < 0 || title < question || desc < title || answer < desc || value < answer {
 		t.Errorf("a fact's title and description are its question, its value its answer:\n%s", got)
 	}
-	if pills := strings.Index(got, ">in: reject<"); pills < strings.LastIndex(got[:pills], "verso-field-answer") || strings.LastIndex(got[:pills], "verso-field-answer") < strings.Index(got, ">Default policies<") {
+	if pills := strings.Index(got, ">in: reject<"); pills < strings.LastIndex(got[:pills], "verso-field__answer") || strings.LastIndex(got[:pills], "verso-field__answer") < strings.Index(got, ">Default policies<") {
 		t.Errorf("a fact's pills are its answer:\n%s", got)
 	}
 	for _, bad := range []string{"data-verso-settings-row", "border-b border-rule", "data-verso-change-field"} {
@@ -84,7 +84,7 @@ func TestInlineValueField(t *testing.T) {
 	got := render(t, newRenderer(t), s)
 	for _, want := range []string{
 		"data-verso-inline-field",
-		`<label for="hostname" id="hostname-label" class="text-sm font-medium text-ink">`, // the ordinary field label
+		`<label for="hostname" id="hostname-label" class="verso-field__name">`, // the ordinary field label
 		`id="hostname" type="text" name="hostname" value="mono-gateway"`,
 		`aria-describedby="hostname-desc hostname-error"`, // read with its description and its refusal
 		"data-verso-inline-input",
@@ -92,7 +92,7 @@ func TestInlineValueField(t *testing.T) {
 		"data-verso-inline-error",                 // the error slot lives beneath the field
 		`class="verso-input" data-verso-verbatim`, // an ordinary field's box: its error treatment ready, its words the same size
 		`data-verso-control-measure="host"`,       // same host measure as form fields
-		`<p id="hostname-desc" data-verso-field-desc class="text-sm leading-6 text-pretty text-body"><span>Used on the network.</span></p>`, // the description stands under the name, on 24px lines
+		`<p id="hostname-desc" data-verso-field-desc class="verso-field__desc"><span>Used on the network.</span></p>`, // the description stands under the name, on 24px lines
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("inline field missing %q\n%s", want, got)
@@ -124,12 +124,12 @@ func TestRenderSettings(t *testing.T) {
 	for _, want := range []string{
 		"Default policies", "What happens to traffic no zone claims.",
 		"in: reject", "out: accept", // policy pills render through the badge
-		`data-verso-tone="warning"`,   // reject carries the warning tone
-		"synflood_protect",            // the underlying option is on the row
-		"data-verso-verbatim",         // …as a mono code chip
-		`type="checkbox"`,             // toggle rows carry the shared switch
-		`class="verso-field-row`,      // every row is a row of the ledger
-		`class="verso-field-question`, // …its title the question
+		`data-verso-tone="warning"`,     // reject carries the warning tone
+		"synflood_protect",              // the underlying option is on the row
+		"data-verso-verbatim",           // …as a mono code chip
+		`type="checkbox"`,               // toggle rows carry the shared switch
+		`<div class="verso-field`,       // every row is a row of the ledger
+		`class="verso-field__question"`, // …its title the question
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("settings missing %q:\n%s", want, got)
@@ -163,7 +163,7 @@ func TestRenderSettingsValueAndSeam(t *testing.T) {
 	})
 	for _, want := range []string{
 		">lan</span>", "font-mono",
-		`name="cachesize" value="1000"`, "verso-field-control", // a named value uses shared field geometry
+		`name="cachesize" value="1000"`, `class="verso-field__answer"`, // a named value uses shared field geometry
 		"<span>Resolution</span>", "uppercase", // the group label renders inside the card
 		"<details", "3 more options", "nohosts", "verso-chevron",
 	} {

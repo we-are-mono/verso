@@ -12,7 +12,7 @@
 {{if eq .Style "form"}}
 {{/* Related fields share a row only when their own container has room. The
      group owns the outer field padding, so stacking keeps the same rhythm. */}}
-<div class="verso-form-grid"><div class="verso-form-grid-fields" data-verso-columns="{{if le .Columns 1}}1{{else if eq .Columns 2}}2{{else}}3{{end}}">{{range .Children}}{{.}}{{end}}</div></div>
+<div class="verso-form-grid"><div class="verso-form-grid__fields" data-verso-columns="{{if le .Columns 1}}1{{else if eq .Columns 2}}2{{else}}3{{end}}">{{range .Children}}{{.}}{{end}}</div></div>
 {{else if eq .Style "facts"}}
 <div class="verso-grid" data-verso-style="facts"><div data-verso-facts class="verso-grid__track">{{range .Children}}{{.}}{{end}}</div></div>
 {{else}}

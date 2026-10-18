@@ -1701,7 +1701,7 @@ document.addEventListener("mousedown", function (e) {
   function refused() {
     var rows = [];
     [].forEach.call(main.querySelectorAll('[aria-invalid="true"], [data-verso-error]:not([hidden])'), function (mark) {
-      var row = mark.closest(".verso-box__part, [role=radiogroup], .verso-field-row") || mark;
+      var row = mark.closest(".verso-box__part, [role=radiogroup], .verso-field") || mark;
       if (!row.getClientRects().length) return; // folded away or out of this reading
       if (rows.some(function (r) { return r.row === row; })) return;
       var control = row.matches("input, select, textarea") ? row

@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
@@ -322,7 +323,7 @@ func TestACardEndingOnAStackedRowsSentenceKeepsItsAir(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	const spared = `:is(.verso-field-row):not(.verso-field-wide:has(> .verso-field-ledger > .verso-field-answer > [data-verso-field-note]:last-child))`
+	const spared = `:is(.verso-field):not(.verso-field[data-verso-wide]:has(> .verso-field__ledger > .verso-field__answer > [data-verso-field-note]:last-child))`
 	pull := strings.Index(string(raw), "margin-bottom: calc(var(--spacing) * -2);")
 	if pull < 0 || strings.Count(string(raw)[:pull], spared) != 2 {
 		t.Errorf("the card's closing pull does not spare a stacked row ending on its sentence")
@@ -398,12 +399,8 @@ func TestAFieldRowMeasuresOnTheEightPixelGrid(t *testing.T) {
 // under the one's last line and 15px over the next one's name, and the answer
 // centres a 32px control on the name's band, reaching 4px past it either side.
 func TestAFieldRowIsALedger(t *testing.T) {
-	raw, err := os.ReadFile("assets/forms.css")
-	if err != nil {
-		t.Fatal(err)
-	}
-	css := string(raw)
-	ledger := cssBlock(t, css, ".verso-field-ledger {")
+	css := blockSheet(t, "field")
+	ledger := cssBlock(t, css, "\n.verso-field__ledger {")
 	for _, want := range []string{
 		"display: grid;",
 		"grid-template-columns: minmax(0, 1fr) var(--spacing-answer);",
@@ -413,21 +410,31 @@ func TestAFieldRowIsALedger(t *testing.T) {
 			t.Errorf("the ledger lacks %s: %s", want, ledger)
 		}
 	}
-	lane := cssBlock(t, css, ".verso-field-ledger:has(> :is([data-verso-remove-field], [data-verso-remove-lane])) {")
+	lane := cssBlock(t, css, "\n.verso-field__ledger:has(> :is(.verso-field__remove, .verso-field__lane)) {")
 	if !strings.Contains(lane, "grid-template-columns: minmax(0, 1fr) var(--spacing-answer) var(--spacing-act);") {
 		t.Errorf("a removable row's lane is not the ledger's third column: %s", lane)
 	}
-	between := cssBlock(t, css, ".verso-field-row + .verso-field-row,")
-	for _, want := range []string{"border-top: 1px solid var(--color-rule);", "padding-top: calc(var(--spacing) * 3.75);"} {
+	// A row's air and hairline are its knobs, read once by the row itself.
+	row := cssBlock(t, css, "\n.verso-field {")
+	for _, want := range []string{
+		"padding: var(--verso-edge-lead, var(--verso-field-lead, var(--spacing-inset))) var(--verso-field-bleed, 0px) var(--verso-field-trail, 0px);",
+		"border-top-width: var(--verso-field-rule, 0px);",
+	} {
+		if !strings.Contains(row, want) {
+			t.Errorf("a row does not read its air from its knobs: missing %s in %s", want, row)
+		}
+	}
+	between := cssBlock(t, css, "\n.verso-field:is(.verso-field + *),")
+	for _, want := range []string{"--verso-field-rule: 1px;", "--verso-field-lead: calc(var(--spacing) * 3.75);"} {
 		if !strings.Contains(between, want) {
 			t.Errorf("rows do not meet on a hairline 15px over the name: missing %s in %s", want, between)
 		}
 	}
-	before := cssBlock(t, css, ".verso-field-row:has(+ :is(.verso-field-row, .verso-conditional, .verso-field-set, [data-verso-rows])) {")
-	if !strings.Contains(before, "padding-bottom: calc(var(--spacing) * 4);") {
+	before := cssBlock(t, css, "\n.verso-field:has(+ :is(.verso-field, .verso-conditional, .verso-field-set, [data-verso-rows])) {")
+	if !strings.Contains(before, "--verso-field-trail: calc(var(--spacing) * 4);") {
 		t.Errorf("a row followed by a row keeps 16px under its last line: %s", before)
 	}
-	if answer := cssBlock(t, css, ".verso-field-answer {"); !strings.Contains(answer, "grid-column: 2;") {
+	if answer := cssBlock(t, css, "\n.verso-field__answer {"); !strings.Contains(answer, "grid-column: 2;") {
 		t.Errorf("the answer is not the ledger's second column: %s", answer)
 	}
 	// The answer reaches 4px past the name's band only beside it; stacked,
@@ -441,13 +448,13 @@ func TestAFieldRowIsALedger(t *testing.T) {
 		if !strings.Contains(css[beside:stacked], want) {
 			t.Errorf("the answer does not centre on the name's band beside it: missing %s", want)
 		}
-		if strings.Contains(css[:beside], ".verso-field-answer") && strings.Contains(cssBlock(t, css, ".verso-field-answer {"), want) {
+		if strings.Contains(cssBlock(t, css, "\n.verso-field__answer {"), want) {
 			t.Errorf("a stacked answer is still pulled (%s)", want)
 		}
 	}
 	for _, gone := range []string{".verso-field-toggle", ".verso-field-with-remove"} {
 		if strings.Contains(css, gone) {
-			t.Errorf("forms.css still lays out %s", gone)
+			t.Errorf("the field block still lays out %s", gone)
 		}
 	}
 }
@@ -458,29 +465,33 @@ func TestAFieldRowIsALedger(t *testing.T) {
 // answer column every control is the column's (form-fields). Nothing measures
 // a field as half its row any more.
 func TestAMeasureIsAStackedRows(t *testing.T) {
-	raw, err := os.ReadFile("assets/forms.css")
-	if err != nil {
-		t.Fatal(err)
-	}
-	css := string(raw)
-	stacked := strings.Index(css, "@container verso-field (width < 36rem)")
-	if stacked < 0 {
-		t.Fatal("forms.css has no stacked row")
-	}
-	for _, measure := range []string{`"secret"`, `"prefix"`, `"endpoint"`, `"choice"`} {
-		for at := strings.Index(css, "[data-verso-control-measure="+measure+"]"); at >= 0; {
-			if at < stacked {
-				t.Errorf("the %s measure applies outside a stacked row", measure)
+	measured := map[string]bool{}
+	// The field block holds the box measures; the input and control blocks
+	// let a dropdown measure its longest option.
+	for _, name := range []string{"field", "input", "control"} {
+		css := blockSheet(t, name)
+		stacked := strings.Index(css, "@container verso-field (width < 36rem)")
+		for _, measure := range []string{`"secret"`, `"prefix"`, `"endpoint"`, `"choice"`} {
+			for at := strings.Index(css, "[data-verso-control-measure="+measure+"]"); at >= 0; {
+				measured[measure] = true
+				if stacked < 0 || at < stacked {
+					t.Errorf("blocks/%s.css: the %s measure applies outside a stacked row", name, measure)
+				}
+				next := strings.Index(css[at+1:], "[data-verso-control-measure="+measure+"]")
+				if next < 0 {
+					break
+				}
+				at += next + 1
 			}
-			next := strings.Index(css[at+1:], "[data-verso-control-measure="+measure+"]")
-			if next < 0 {
-				break
-			}
-			at += next + 1
+		}
+		if strings.Contains(css, "--verso-field-width-host") || strings.Contains(css, `[data-verso-control-measure="host"]`) {
+			t.Errorf("blocks/%s.css: a field is still measured as half its row", name)
 		}
 	}
-	if strings.Contains(css, "--verso-field-width-host") || strings.Contains(css, `[data-verso-control-measure="host"]`) {
-		t.Error("a field is still measured as half its row")
+	for _, measure := range []string{`"secret"`, `"prefix"`, `"endpoint"`, `"choice"`} {
+		if !measured[measure] {
+			t.Errorf("no block measures a stacked %s control", measure)
+		}
 	}
 }
 
@@ -490,19 +501,17 @@ func TestAMeasureIsAStackedRows(t *testing.T) {
 // keeps the form's one left edge as every answer keeps its one column
 // (form-fields).
 func TestARevealedFieldIsARowLikeAnyOther(t *testing.T) {
-	raw, err := os.ReadFile("assets/forms.css")
-	if err != nil {
-		t.Fatal(err)
-	}
-	css := string(raw)
-	revealed := cssBlock(t, css, `:is(.verso-conditional-body, .verso-conditional-otherwise) > .verso-field-row:not(:not(input[type="hidden"], [hidden], template) ~ *),`)
-	for _, want := range []string{"border-top: 1px solid var(--color-rule);", "padding-top: calc(var(--spacing) * 3.75);"} {
+	css := blockSheet(t, "field")
+	revealed := cssBlock(t, css, `.verso-field:is(:is(.verso-conditional__body, .verso-conditional__otherwise) > :nth-child(1 of :not(input[type="hidden"], [hidden], template))),`)
+	for _, want := range []string{"--verso-field-rule: 1px;", "--verso-field-lead: calc(var(--spacing) * 3.75);"} {
 		if !strings.Contains(revealed, want) {
 			t.Errorf("a revealed row does not meet its gate on a hairline (%s): %s", want, revealed)
 		}
 	}
-	if strings.Contains(css, "verso-conditional-body .verso-field-question") {
-		t.Error("a revealed field's question still indents off the form's left edge")
+	for _, name := range []string{"field", "conditional"} {
+		if regexp.MustCompile(`verso-conditional__(body|otherwise)[^{]*verso-field__question`).MatchString(blockSheet(t, name)) {
+			t.Errorf("blocks/%s.css: a revealed field's question still indents off the form's left edge", name)
+		}
 	}
 }
 
@@ -510,16 +519,22 @@ func TestARevealedFieldIsARowLikeAnyOther(t *testing.T) {
 // so none keeps a rule of its own; the row before a fold keeps a row's 16px
 // over the fold's hairline.
 func TestAFactsRowsKeepTheLedgersStep(t *testing.T) {
-	raw, err := os.ReadFile("assets/forms.css")
+	sheets, err := filepath.Glob("assets/blocks/*.css")
 	if err != nil {
 		t.Fatal(err)
 	}
-	css := string(raw)
-	if strings.Contains(css, "data-verso-settings-row") {
-		t.Error("a fact's row keeps a rule of its own")
+	for _, sheet := range sheets {
+		raw, err := os.ReadFile(sheet)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if strings.Contains(string(raw), "data-verso-settings-row") {
+			t.Errorf("%s: a fact's row keeps a rule of its own", sheet)
+		}
 	}
+	css := blockSheet(t, "field")
 	for head, want := range map[string]string{
-		"[data-verso-settings] .verso-field-row:has(+ details) {": "padding-bottom: calc(var(--spacing) * 4);",
+		".verso-field:is([data-verso-settings] *):has(+ details) {": "--verso-field-trail: calc(var(--spacing) * 4);",
 	} {
 		if !strings.Contains(cssBlock(t, css, head), want) {
 			t.Errorf("%s wants %s", head, want)
@@ -533,35 +548,31 @@ func TestAFactsRowsKeepTheLedgersStep(t *testing.T) {
 // line 8px under the question's words, and the last draws no line of its own
 // over the hairline between questions (form-fields).
 func TestATableAmongFieldsKeepsItsActOnTheLine(t *testing.T) {
-	raw, err := os.ReadFile("assets/forms.css")
-	if err != nil {
-		t.Fatal(err)
-	}
-	css := string(raw)
-	ledger := ".verso-field-ledger:has(> .verso-field-act) {"
+	css := blockSheet(t, "field")
+	ledger := ".verso-field__ledger:has(> .verso-field__act) {"
 	if n := strings.Count(css, ledger); n != 2 {
 		t.Errorf("an act's ledger must hold its columns wide and stacked, got %d rules", n)
 	}
 	if !strings.Contains(cssBlock(t, css, ledger), "grid-template-columns: minmax(0, 1fr) auto;") {
 		t.Error("an act's ledger is not the question and the act")
 	}
-	for head, want := range map[string]string{
-		".verso-field-act {":                                "grid-row: 1;",
-		".verso-field-answer > [data-verso-in-form] {":      "border-top: 1px solid var(--color-rule);",
-		"[data-verso-in-form] tbody > tr:last-child > td {": "border-bottom-color: transparent;",
-	} {
-		if !strings.Contains(cssBlock(t, css, head), want) {
-			t.Errorf("%s wants %s", head, want)
-		}
+	if !strings.Contains(cssBlock(t, css, "\n.verso-field__act {"), "grid-row: 1;") {
+		t.Error("an act does not stand on the question's line")
 	}
-	set := cssBlock(t, css, ".verso-field-answer > [data-verso-in-form] {")
+	set := cssBlock(t, blockSheet(t, "listing"), ".verso-listing[data-verso-in-form] {")
+	if !strings.Contains(set, "border-top-width: 1px;") {
+		t.Errorf("a set among the fields does not open on its own hairline: %s", set)
+	}
 	if !strings.Contains(set, "margin-top: calc(var(--spacing) * 1.75);") {
 		t.Error("a set's first line does not stand 8px under its question's words")
 	}
 	if !strings.Contains(set, "margin-bottom: calc(var(--spacing) * -2.25);") {
 		t.Error("a set's last row keeps the 9px under its words, so the next question leaves the grid")
 	}
-	if !strings.Contains(cssBlock(t, css, ".verso-field-act ~ .verso-field-answer > [data-verso-slot] {"), "margin-top: calc(var(--spacing) * 2);") {
+	if !strings.Contains(cssBlock(t, blockSheet(t, "table"), ":where([data-verso-in-form] tbody > tr:last-child > *) {"), "border-bottom-color: transparent;") {
+		t.Error("a set's last row draws a line of its own over the hairline between questions")
+	}
+	if !strings.Contains(cssBlock(t, blockSheet(t, "slot"), ".verso-slot:is(.verso-field__act ~ .verso-field__answer > *) {"), "margin-top: calc(var(--spacing) * 2);") {
 		t.Error("an empty set's slot does not stand 8px under its question")
 	}
 }
@@ -569,27 +580,21 @@ func TestATableAmongFieldsKeepsItsActOnTheLine(t *testing.T) {
 // TestAChooserKeepsItsOwnLayout: a choice of what a page shows stands as its
 // name over its controls, not a question and an answer, at every width.
 func TestAChooserKeepsItsOwnLayout(t *testing.T) {
-	raw, err := os.ReadFile("assets/forms.css")
-	if err != nil {
-		t.Fatal(err)
+	css := blockSheet(t, "field")
+	// A chooser (data-verso-plain) and an inline or search form's field share
+	// one rule each: an inline or search form is a toolbar, not a list of
+	// settings, so its fields stand as they always have, a label over its box.
+	if !strings.Contains(cssBlock(t, css, ".verso-field__ledger:is(.verso-field[data-verso-plain] > *, [data-verso-compact-form] *) {"), "display: block;") {
+		t.Error("a chooser or a compact form's field is laid out as a ledger")
 	}
-	css := string(raw)
-	if !strings.Contains(cssBlock(t, css, ".verso-field-plain > .verso-field-ledger {"), "display: block;") {
-		t.Error("a chooser is laid out as a ledger")
+	if !strings.Contains(cssBlock(t, css, ".verso-field__answer:is(.verso-field[data-verso-plain] > * > *, [data-verso-compact-form] *) {"), "margin-block: 0;") {
+		t.Error("a chooser's or a compact form's controls are pulled over its name's band")
 	}
-	if !strings.Contains(cssBlock(t, css, ".verso-field-plain > .verso-field-ledger > .verso-field-answer {"), "margin-block: 0;") {
-		t.Error("a chooser's controls are pulled over its name's band")
-	}
-	// An inline or search form is a toolbar, not a list of settings: its
-	// fields stand as they always have, a label over its box, with no row's
-	// air or hairline.
-	for head, want := range map[string]string{
-		"[data-verso-compact-form] .verso-field-row {":    "border-top: 0;",
-		"[data-verso-compact-form] .verso-field-ledger {": "display: block;",
-		"[data-verso-compact-form] .verso-field-answer {": "margin-block: 0;",
-	} {
-		if !strings.Contains(cssBlock(t, css, head), want) {
-			t.Errorf("a compact form's field is a ledger row: %s lacks %s", head, want)
+	// A compact form's field keeps no row's air or hairline.
+	compact := cssBlock(t, css, ".verso-field:is([data-verso-compact-form] *) {")
+	for _, want := range []string{"--verso-field-rule: 0px;", "--verso-field-lead: 0px;", "--verso-field-trail: 0px;"} {
+		if !strings.Contains(compact, want) {
+			t.Errorf("a compact form's field is a ledger row: lacks %s in %s", want, compact)
 		}
 	}
 }
@@ -600,15 +605,11 @@ func TestAChooserKeepsItsOwnLayout(t *testing.T) {
 // word for what pressing it does, and stands only where there is a
 // description to fold, in its page's body or its drawer (form-fields).
 func TestDescriptionsFoldAway(t *testing.T) {
-	raw, err := os.ReadFile("assets/forms.css")
-	if err != nil {
-		t.Fatal(err)
-	}
-	css := string(raw)
+	css := blockSheet(t, "field")
 	for head, wants := range map[string][]string{
-		"[data-verso-field-desc] {":                                    {"display: grid;", "grid-template-rows: 1fr;", "200ms"},
-		"[data-verso-field-desc] > span {":                             {"min-height: 0;", "overflow: hidden;"},
-		`[data-verso-descriptions="folded"] [data-verso-field-desc] {`: {"grid-template-rows: 0fr;", "opacity: 0;", "visibility: hidden;"},
+		"\n.verso-field__desc {":                                           {"display: grid;", "grid-template-rows: 1fr;", "200ms"},
+		"\n.verso-field__desc > span {":                                    {"min-height: 0;", "overflow: hidden;"},
+		`.verso-field__desc:where([data-verso-descriptions="folded"] *) {`: {"grid-template-rows: 0fr;", "opacity: 0;", "visibility: hidden;"},
 	} {
 		block := cssBlock(t, css, head)
 		for _, want := range wants {
@@ -617,11 +618,7 @@ func TestDescriptionsFoldAway(t *testing.T) {
 			}
 		}
 	}
-	raw, err = os.ReadFile("assets/blocks/fold.css")
-	if err != nil {
-		t.Fatal(err)
-	}
-	fold := string(raw)
+	fold := blockSheet(t, "fold")
 	for head, wants := range map[string][]string{
 		".verso-fold {": {"display: none;"},
 		".verso-fold:is(.verso-page__column:has(> .verso-page__body [data-verso-field-desc]) > .verso-page__masthead *, dialog:has([data-verso-field-desc]) *) {": {"display: flex;"},
@@ -636,7 +633,7 @@ func TestDescriptionsFoldAway(t *testing.T) {
 		}
 	}
 	motion := strings.Index(css, "@media (prefers-reduced-motion: reduce)")
-	if motion < 0 || !strings.Contains(css[motion:], "[data-verso-field-desc] { transition: none; }") {
+	if motion < 0 || !strings.Contains(css[motion:], "{\n  .verso-field__desc {\n    transition: none;\n  }") {
 		t.Error("descriptions still glide where motion is reduced")
 	}
 }
@@ -654,9 +651,9 @@ func TestACardsRowsKeepARowsAirAtItsEdges(t *testing.T) {
 	css := string(raw)
 	for _, want := range []string{
 		// under a header, the pull counts in the seam's pixel the body took back
-		"> .verso-rhythm > :not(input[type=\"hidden\"], [hidden], template):not(:not(input[type=\"hidden\"], [hidden], template) ~ *):is(.verso-field-row) {\n  margin-top: calc(var(--spacing) * -2 - 1px);",
-		"> .verso-rhythm > :not(input[type=\"hidden\"], [hidden], template):not(:not(input[type=\"hidden\"], [hidden], template) ~ *):is(.verso-field-row) {\n  margin-top: calc(var(--spacing) * -2);",
-		"> .verso-rhythm > :not(input[type=\"hidden\"], [hidden], template):not(:has(~ :not(input[type=\"hidden\"], [hidden], template))):is(.verso-field-row):not(.verso-field-wide:has(> .verso-field-ledger > .verso-field-answer > [data-verso-field-note]:last-child)) {\n  margin-bottom: calc(var(--spacing) * -2);",
+		"> .verso-rhythm > :not(input[type=\"hidden\"], [hidden], template):not(:not(input[type=\"hidden\"], [hidden], template) ~ *):is(.verso-field) {\n  margin-top: calc(var(--spacing) * -2 - 1px);",
+		"> .verso-rhythm > :not(input[type=\"hidden\"], [hidden], template):not(:not(input[type=\"hidden\"], [hidden], template) ~ *):is(.verso-field) {\n  margin-top: calc(var(--spacing) * -2);",
+		"> .verso-rhythm > :not(input[type=\"hidden\"], [hidden], template):not(:has(~ :not(input[type=\"hidden\"], [hidden], template))):is(.verso-field):not(.verso-field[data-verso-wide]:has(> .verso-field__ledger > .verso-field__answer > [data-verso-field-note]:last-child)) {\n  margin-bottom: calc(var(--spacing) * -2);",
 	} {
 		if !strings.Contains(css, want) {
 			t.Errorf("sections.css lacks %q", want)
@@ -680,7 +677,7 @@ func TestAStagedRowIsMarkedDownItsEdge(t *testing.T) {
 		}
 	}
 	// One bar wherever the row stands: no sheet places a drawer's apart.
-	for _, sheet := range []string{"assets/blocks/staged.css", "assets/forms.css", "assets/input.css"} {
+	for _, sheet := range []string{"assets/blocks/staged.css", "assets/blocks/field.css", "assets/input.css"} {
 		raw, err := os.ReadFile(sheet)
 		if err != nil {
 			t.Fatal(err)
@@ -696,17 +693,13 @@ func TestAStagedRowIsMarkedDownItsEdge(t *testing.T) {
 // wide, a bare control), and 4px under it only beside the question, where the
 // answer is pulled 4px over the name's band, so it always starts on a line.
 func TestWhatFollowsAControlStandsOnALine(t *testing.T) {
-	raw, err := os.ReadFile("assets/forms.css")
-	if err != nil {
-		t.Fatal(err)
-	}
-	css := string(raw)
+	css := blockSheet(t, "field")
 	after := ":is([data-verso-error], [data-verso-field-note], [data-verso-inline-error]) {"
-	if !strings.Contains(cssBlock(t, css, ".verso-field-answer > "+after), "margin-top: calc(var(--spacing) * 2);") {
+	if !strings.Contains(cssBlock(t, css, "\n.verso-field__answer > "+after), "margin-top: calc(var(--spacing) * 2);") {
 		t.Error("what follows a control does not stand 8px under it")
 	}
 	beside := strings.Index(css, "@container verso-field (width >= 36rem) {")
-	pulled := ".verso-field-row:not(.verso-field-wide, .verso-field-plain) > .verso-field-ledger:has(> .verso-field-question > *) > .verso-field-answer > " + after
+	pulled := ".verso-field__answer:is(.verso-field:not([data-verso-wide], [data-verso-plain]) > .verso-field__ledger:has(> .verso-field__question > *) > *) > " + after
 	at := strings.Index(css, pulled)
 	if beside < 0 || at < beside || !strings.Contains(cssBlock(t, css, pulled), "margin-top: var(--spacing);") {
 		t.Error("beside its question, what follows a pulled control does not give the pull back")
@@ -732,7 +725,7 @@ func TestFieldRowsRunToACardsBorders(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	block := cssBlock(t, string(raw), ":is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) .verso-field-row:not(.verso-field-row .verso-field-row, .verso-form-grid .verso-field-row) {")
+	block := cssBlock(t, string(raw), ":is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) .verso-field:not(.verso-field .verso-field, .verso-form-grid .verso-field) {")
 	for _, want := range []string{
 		"margin-inline: calc(var(--verso-side) * -1);",
 		"padding-inline: var(--verso-side);",
@@ -1427,11 +1420,17 @@ func TestStylesheetKeepsFocusAndStillness(t *testing.T) {
 // look (list.html.tmpl) on every page; a page restyling its own would drift
 // from the rest.
 func TestNoPageStylesItsOwnListRows(t *testing.T) {
-	css, err := os.ReadFile("assets/forms.css")
+	sheets, err := filepath.Glob("assets/blocks/*.css")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if strings.Contains(string(css), "[data-verso-list-row]") || strings.Contains(string(css), "[data-verso-list-value]") {
-		t.Error("a page styles its own list rows")
+	for _, sheet := range append(sheets, "assets/input.css", "assets/sections.css") {
+		css, err := os.ReadFile(sheet)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if strings.Contains(string(css), "[data-verso-list-row]") || strings.Contains(string(css), "[data-verso-list-value]") {
+			t.Errorf("%s: a page styles its own list rows", sheet)
+		}
 	}
 }

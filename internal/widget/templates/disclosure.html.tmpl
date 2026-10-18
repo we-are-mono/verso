@@ -1,38 +1,19 @@
 <!-- SPDX-License-Identifier: GPL-2.0-only -->
 <!-- SPDX-FileCopyrightText: 2026 Mono Technologies Inc. -->
-{{/* disclosure: a native <details> expand/collapse. The chevron block turns
-     its glyph while the details is open. No JS. */}}
-{{/* The folded block is a surface, so it is the one surface this app draws: a
-     single hairline on the page's own ground. The condition style sits a step in
-     from that — on the quiet band, because what it folds is part of the form
-     around it rather than a thing of its own. */}}
+{{/* disclosure: a native <details> expand/collapse (blocks/disclosure.css),
+     the chevron block turning its glyph while the details is open. No JS. A
+     reveal folds optional rows behind one quiet act (blocks/reveal.css). */}}
 {{if eq .Style "reveal"}}
-{{/* reveal: optional rows folded behind one quiet act — a plus and the words,
-     in the link's ink, with no frame of its own, because what it folds is more
-     of the form it stands in rather than a thing of its own. It arrives open
-     when what it folds already holds something, so nothing is ever hidden that
-     the object says; once open, the act steps aside for the rows (forms.css). */}}
 <details{{if .Open}} open{{end}} class="verso-reveal">
-  <summary class="verso-reveal-act flex w-fit h-6 cursor-pointer items-center gap-1.5 rounded-xs text-sm leading-6 font-medium text-denim-deep select-none hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim [&::-webkit-details-marker]:hidden">{{icon "plus" "size-4"}}{{.Summary}}</summary>
+  <summary class="verso-reveal__act">{{icon "plus" "size-4"}}{{.Summary}}</summary>
   <div class="verso-rhythm">{{range .Children}}{{.}}{{end}}</div>
 </details>
 {{else}}
-<details{{if .Open}} open{{end}} class="verso-disclosure rounded-xs border border-rule {{if eq .Style "condition"}}bg-quiet{{else}}bg-ground{{end}}">
-  {{/* The condition style holds its words 24px in on every side, as the
-       conditions card does, so the drawer's two cards stand alike. */}}
-  <summary class="flex cursor-pointer items-center justify-between gap-2 select-none {{if eq .Style "condition"}}px-6 py-6 text-sm font-semibold text-ink{{else}}px-4 py-3 text-sm font-semibold text-body{{end}} [&::-webkit-details-marker]:hidden">
+<details{{if .Open}} open{{end}} class="verso-disclosure"{{if eq .Style "condition"}} data-verso-style="condition"{{end}}>
+  <summary class="verso-disclosure__summary">
     {{.Summary}}
     {{icon "chevron-right" "verso-chevron size-4 text-faint"}}
   </summary>
-  {{/* A table brings its own vertical padding at both edges — the header's
-       pt-4 and the last row's cell padding — meant for open page flow; inside
-       this padded box they would double the inset, so the box neutralizes both
-       and its own padding is the one uniform frame. */}}
-  {{/* The rhythm is the form's, not the box's: what it folds away is part of the
-       form around it, so two rows inside sit as close together as two rows
-       outside and only the blocks between them take air. */}}
-  <div class="verso-rhythm {{if eq .Style "condition"}}[--verso-rhythm:1.5rem] [--verso-form-width:100%] border-t border-rule px-6 py-6{{else}}[--verso-rhythm:1.5rem] border-t border-rule px-4 py-4{{end}} [&_thead_th]:pt-0 [&_tbody_tr:last-child_td]:pb-0">
-    {{range .Children}}{{.}}{{end}}
-  </div>
+  <div class="verso-disclosure__body verso-rhythm">{{range .Children}}{{.}}{{end}}</div>
 </details>
 {{end}}

@@ -162,7 +162,7 @@ func (it *SettingsItem) DescribedBy() string {
 func (it *SettingsItem) frame() fieldFrame {
 	f := fieldFrame{
 		Label: fieldLabel{For: it.Name, Label: it.Title, Key: it.Code, Staged: it.Staged, StagedAt: it.StagedAt},
-		Desc:  it.Desc, Class: "last:pb-0",
+		Desc:  it.Desc,
 	}
 	switch {
 	case it.Name != "":

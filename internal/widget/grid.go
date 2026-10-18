@@ -144,7 +144,8 @@ func (r *Renderer) renderFused(out io.Writer, g *Grid, fields []*Field) error {
 
 // renderJoined draws a sentence of related fields as one row: each part its
 // own control, side by side, the group's word between them. A sentence too
-// wide for the answer column wraps onto its next line there (forms.css).
+// wide for the answer column wraps onto its next line there (the joined
+// block).
 func (r *Renderer) renderJoined(out io.Writer, g *Grid, fields []*Field) error {
 	parts, frame := groupRow(g, fields, groupParts(g, fields))
 	return r.renderFrame(out, "verso-joined", parts, frame)

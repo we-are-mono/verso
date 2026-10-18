@@ -1,28 +1,5 @@
 classes-are-blocks	verso-busy
-classes-are-blocks	verso-chart-graph
-classes-are-blocks	verso-condition
-classes-are-blocks	verso-condition-list
-classes-are-blocks	verso-condition-name
-classes-are-blocks	verso-condition-single
-classes-are-blocks	verso-conditional
-classes-are-blocks	verso-conditional-body
-classes-are-blocks	verso-conditional-gate
-classes-are-blocks	verso-conditional-otherwise
 classes-are-blocks	verso-confirm
-classes-are-blocks	verso-disclosure
-classes-are-blocks	verso-field-act
-classes-are-blocks	verso-field-answer
-classes-are-blocks	verso-field-control
-classes-are-blocks	verso-field-label
-classes-are-blocks	verso-field-ledger
-classes-are-blocks	verso-field-plain
-classes-are-blocks	verso-field-question
-classes-are-blocks	verso-field-row
-classes-are-blocks	verso-field-set
-classes-are-blocks	verso-field-wide
-classes-are-blocks	verso-form
-classes-are-blocks	verso-form-grid
-classes-are-blocks	verso-form-grid-fields
 classes-are-blocks	verso-kicker
 classes-are-blocks	verso-overview
 classes-are-blocks	verso-overview-body
@@ -35,15 +12,7 @@ classes-are-blocks	verso-overview-dragging
 classes-are-blocks	verso-overview-meters
 classes-are-blocks	verso-overview-slot
 classes-are-blocks	verso-overview-summary
-classes-are-blocks	verso-reveal
-classes-are-blocks	verso-reveal-act
-no-class-string-templates	widget/templates/shared.html.tmpl	verso-error-line
-no-class-string-templates	widget/templates/shared.html.tmpl	verso-field-control-class
-no-class-string-templates	widget/templates/shared.html.tmpl	verso-field-desc-class
-no-class-string-templates	widget/templates/shared.html.tmpl	verso-field-label-class
-no-class-string-templates	widget/templates/shared.html.tmpl	verso-field-row-class
 no-class-string-templates	widget/templates/shared.html.tmpl	verso-kicker-class
-no-class-string-templates	widget/templates/shared.html.tmpl	verso-refusal-band
 no-class-string-templates	widget/templates/shared.html.tmpl	verso-section-band-class
 no-class-string-templates	widget/templates/shared.html.tmpl	verso-section-lede-class
 no-class-string-templates	widget/templates/shared.html.tmpl	verso-section-meta-class
@@ -55,19 +24,6 @@ no-repeated-bundles	flex gap-1.5 items-center text-ink
 no-repeated-bundles	font-semibold leading-6 shrink-0 text-ink text-sm
 no-rules-in-markup	server/assets/verso-forms.js	border-crimson!
 no-rules-in-markup	server/templates/login.html.tmpl	bg-ground!
-no-rules-in-markup	widget/templates/conditions.html.tmpl	[&>div]:border-0
-no-rules-in-markup	widget/templates/disclosure.html.tmpl	[&::-webkit-details-marker]:hidden
-no-rules-in-markup	widget/templates/disclosure.html.tmpl	[&::-webkit-details-marker]:hidden
-no-rules-in-markup	widget/templates/disclosure.html.tmpl	[&_tbody_tr:last-child_td]:pb-0
-no-rules-in-markup	widget/templates/disclosure.html.tmpl	[&_thead_th]:pt-0
-no-rules-in-markup	widget/templates/form.html.tmpl	[&>.verso-field-row]:min-w-0
-no-rules-in-markup	widget/templates/form.html.tmpl	[&>.verso-field-row]:w-80
-no-rules-in-markup	widget/templates/form.html.tmpl	[&>div:not(:last-of-type)]:w-52
-no-rules-in-markup	widget/templates/form.html.tmpl	[&>div:not(:last-of-type)]:w-72
-no-rules-in-markup	widget/templates/form.html.tmpl	[&>div:not(:last-of-type)_input]:rounded-r-none
-no-rules-in-markup	widget/templates/form.html.tmpl	[&>p]:inline
-no-rules-in-markup	widget/templates/form.html.tmpl	[&>p]:inline
-no-rules-in-markup	widget/templates/form.html.tmpl	[&>p]:inline
 no-rules-in-markup	widget/templates/section.html.tmpl	[&>button]:-mb-px
 no-rules-in-markup	widget/templates/section.html.tmpl	[&>button]:gap-2
 no-rules-in-markup	widget/templates/section.html.tmpl	[&>button]:h-control
@@ -84,93 +40,6 @@ no-rules-in-markup	widget/templates/shared.html.tmpl	[&_.verso-rhythm>*]:!mt-0
 no-rules-in-markup	widget/templates/shared.html.tmpl	[&_h3]:font-medium
 no-rules-in-markup	widget/templates/shared.html.tmpl	[&_h3]:tracking-[.08em]
 no-rules-in-markup	widget/templates/when.html.tmpl	!mt-0
-rules-live-in-blocks	forms.css	.verso-condition + .verso-condition
-rules-live-in-blocks	forms.css	.verso-condition + .verso-condition::before
-rules-live-in-blocks	forms.css	.verso-condition > .verso-rhythm > * + *
-rules-live-in-blocks	forms.css	.verso-condition > .verso-rhythm > :first-child
-rules-live-in-blocks	forms.css	.verso-condition-list > .verso-condition:first-child
-rules-live-in-blocks	forms.css	.verso-condition-list > .verso-condition:last-child
-rules-live-in-blocks	forms.css	.verso-condition-list:has(> .verso-condition)
-rules-live-in-blocks	forms.css	.verso-condition-list:has(> .verso-condition) ~ [data-verso-condition-picker]
-rules-live-in-blocks	forms.css	.verso-condition-name
-rules-live-in-blocks	forms.css	.verso-condition-single > .verso-rhythm .verso-field-label
-rules-live-in-blocks	forms.css	.verso-condition:has(+ .verso-condition)
-rules-live-in-blocks	forms.css	.verso-condition:not(.verso-condition-single) > .verso-rhythm .verso-field-label > :first-child
-rules-live-in-blocks	forms.css	.verso-conditional:has(+ :is(.verso-field-row, .verso-conditional, .verso-field-set, [data-verso-rows])) > .verso-conditional-body > .verso-conditional:last-child > .verso-conditional-body > .verso-field-row:last-child
-rules-live-in-blocks	forms.css	.verso-conditional:has(+ :is(.verso-field-row, .verso-conditional, .verso-field-set, [data-verso-rows])) > .verso-conditional-body > .verso-conditional:last-child > .verso-conditional-gate
-rules-live-in-blocks	forms.css	.verso-conditional:has(+ :is(.verso-field-row, .verso-conditional, .verso-field-set, [data-verso-rows])) > .verso-conditional-body > .verso-field-row:last-child
-rules-live-in-blocks	forms.css	.verso-conditional:has(+ :is(.verso-field-row, .verso-conditional, .verso-field-set, [data-verso-rows])) > .verso-conditional-gate
-rules-live-in-blocks	forms.css	.verso-conditional:has(+ :is(.verso-field-row, .verso-conditional, .verso-field-set, [data-verso-rows])) > :is(.verso-conditional-body, .verso-conditional-otherwise):has(> :not(.verso-field-row, .verso-conditional, input[type="hidden"], [hidden], template):last-child)
-rules-live-in-blocks	forms.css	.verso-conditional:has(> .verso-conditional-gate input[data-verso-switch]:checked):has(> .verso-conditional-body > :not(input[type="hidden"], [hidden], template)) > .verso-conditional-gate
-rules-live-in-blocks	forms.css	.verso-conditional:not(:has(> .verso-conditional-gate input[data-verso-switch]:checked)):has(> .verso-conditional-otherwise > .verso-field-row) > .verso-conditional-gate
-rules-live-in-blocks	forms.css	.verso-field-act
-rules-live-in-blocks	forms.css	.verso-field-act ~ .verso-field-answer > [data-verso-slot]
-rules-live-in-blocks	forms.css	.verso-field-answer
-rules-live-in-blocks	forms.css	.verso-field-answer
-rules-live-in-blocks	forms.css	.verso-field-answer
-rules-live-in-blocks	forms.css	.verso-field-answer > :is([data-verso-error], [data-verso-field-note], [data-verso-inline-error])
-rules-live-in-blocks	forms.css	.verso-field-answer > [data-verso-in-form]
-rules-live-in-blocks	forms.css	.verso-field-answer:not(:has(> :is([data-verso-error], [data-verso-field-note], [data-verso-inline-error]:not([hidden]))))
-rules-live-in-blocks	forms.css	.verso-field-control
-rules-live-in-blocks	forms.css	.verso-field-ledger
-rules-live-in-blocks	forms.css	.verso-field-ledger
-rules-live-in-blocks	forms.css	.verso-field-ledger:has(> .verso-field-act)
-rules-live-in-blocks	forms.css	.verso-field-ledger:has(> .verso-field-act)
-rules-live-in-blocks	forms.css	.verso-field-ledger:has(> :is([data-verso-remove-field], [data-verso-remove-lane]))
-rules-live-in-blocks	forms.css	.verso-field-ledger:has(> :is([data-verso-remove-field], [data-verso-remove-lane]))
-rules-live-in-blocks	forms.css	.verso-field-ledger:not(:has(> .verso-field-question > *)) > .verso-field-answer
-rules-live-in-blocks	forms.css	.verso-field-plain > .verso-field-ledger
-rules-live-in-blocks	forms.css	.verso-field-plain > .verso-field-ledger > .verso-field-answer
-rules-live-in-blocks	forms.css	.verso-field-question
-rules-live-in-blocks	forms.css	.verso-field-row
-rules-live-in-blocks	forms.css	.verso-field-row + .verso-field-row
-rules-live-in-blocks	forms.css	.verso-field-row + input[type="hidden"] + .verso-field-row
-rules-live-in-blocks	forms.css	.verso-field-row + input[type="hidden"] + input[type="hidden"] + .verso-field-row
-rules-live-in-blocks	forms.css	.verso-field-row:has(+ :is(.verso-field-row, .verso-conditional, .verso-field-set, [data-verso-rows]))
-rules-live-in-blocks	forms.css	.verso-field-row:has(+ fieldset[data-verso-when])
-rules-live-in-blocks	forms.css	.verso-field-row:has(+ input[type="hidden"] + .verso-field-row)
-rules-live-in-blocks	forms.css	.verso-field-row:has(+ input[type="hidden"] + input[type="hidden"] + .verso-field-row)
-rules-live-in-blocks	forms.css	.verso-field-row:not(.verso-field-wide, .verso-field-plain) > .verso-field-ledger:has(> .verso-field-question > *) > .verso-field-answer > :is([data-verso-error], [data-verso-field-note], [data-verso-inline-error])
-rules-live-in-blocks	forms.css	.verso-field-set > .verso-field-row + .verso-field-row
-rules-live-in-blocks	forms.css	.verso-field-set > .verso-field-row:first-child
-rules-live-in-blocks	forms.css	.verso-field-wide > .verso-field-ledger > .verso-field-answer
-rules-live-in-blocks	forms.css	.verso-form-grid
-rules-live-in-blocks	forms.css	.verso-form-grid-fields
-rules-live-in-blocks	forms.css	.verso-form-grid-fields > *
-rules-live-in-blocks	forms.css	.verso-form-grid-fields > .verso-field-row
-rules-live-in-blocks	forms.css	.verso-form-grid-fields:is([data-verso-columns="2"], [data-verso-columns="3"])
-rules-live-in-blocks	forms.css	.verso-form-grid-fields[data-verso-columns="3"]
-rules-live-in-blocks	forms.css	.verso-reveal-act
-rules-live-in-blocks	forms.css	.verso-reveal:not([open])
-rules-live-in-blocks	forms.css	.verso-reveal[open] > .verso-reveal-act
-rules-live-in-blocks	forms.css	:is(.verso-conditional, .verso-field-set, [data-verso-rows]) + .verso-field-row
-rules-live-in-blocks	forms.css	:is(.verso-conditional-body, .verso-conditional-otherwise) > .verso-conditional:not(:not(input[type="hidden"], [hidden], template) ~ *) > .verso-conditional-gate
-rules-live-in-blocks	forms.css	:is(.verso-conditional-body, .verso-conditional-otherwise) > .verso-field-row:not(:not(input[type="hidden"], [hidden], template) ~ *)
-rules-live-in-blocks	forms.css	:is(.verso-field-row, .verso-conditional, .verso-field-set, [data-verso-rows]) + .verso-conditional > .verso-conditional-gate
-rules-live-in-blocks	forms.css	:is(.verso-field-row, .verso-conditional, .verso-field-set, [data-verso-rows]) + :is(.verso-field-set, [data-verso-rows]) > .verso-field-row:first-child
-rules-live-in-blocks	forms.css	:is(.verso-field-row, .verso-conditional, .verso-field-set, [data-verso-rows], fieldset[data-verso-when]) + fieldset[data-verso-when] > .verso-field-row:first-child
-rules-live-in-blocks	forms.css	:is(.verso-field-set, [data-verso-rows]):has(+ :is(.verso-field-row, .verso-conditional, .verso-field-set, [data-verso-rows])) > .verso-field-row:last-child
-rules-live-in-blocks	forms.css	[data-verso-compact-form] .verso-field-answer
-rules-live-in-blocks	forms.css	[data-verso-compact-form] .verso-field-ledger
-rules-live-in-blocks	forms.css	[data-verso-compact-form] .verso-field-row
-rules-live-in-blocks	forms.css	[data-verso-control-measure="choice"] > :has(> select)
-rules-live-in-blocks	forms.css	[data-verso-control-measure="choice"] > :has(> select) > select
-rules-live-in-blocks	forms.css	[data-verso-control-measure="endpoint"]
-rules-live-in-blocks	forms.css	[data-verso-control-measure="prefix"]
-rules-live-in-blocks	forms.css	[data-verso-control-measure="secret"]
-rules-live-in-blocks	forms.css	[data-verso-descriptions="folded"] [data-verso-field-desc]
-rules-live-in-blocks	forms.css	[data-verso-field-desc]
-rules-live-in-blocks	forms.css	[data-verso-field-desc]
-rules-live-in-blocks	forms.css	[data-verso-field-desc] > span
-rules-live-in-blocks	forms.css	[data-verso-in-form] tbody > tr:last-child > td
-rules-live-in-blocks	forms.css	[data-verso-settings] .verso-field-row:has(+ details)
-rules-live-in-blocks	forms.css	fieldset[data-verso-when] + .verso-conditional > .verso-conditional-gate
-rules-live-in-blocks	forms.css	fieldset[data-verso-when] + .verso-field-row
-rules-live-in-blocks	forms.css	fieldset[data-verso-when]:has(~ :is(.verso-field-row, .verso-conditional, .verso-field-set, [data-verso-rows])) > .verso-field-row:last-child
-rules-live-in-blocks	input.css	.verso-conditional-body
-rules-live-in-blocks	input.css	.verso-conditional-otherwise
-rules-live-in-blocks	input.css	.verso-conditional:has(> .verso-conditional-gate input[data-verso-switch]:checked) > .verso-conditional-body
-rules-live-in-blocks	input.css	.verso-conditional:has(> .verso-conditional-gate input[data-verso-switch]:checked) > .verso-conditional-otherwise
 rules-live-in-blocks	input.css	.verso-kicker
 rules-live-in-blocks	input.css	.verso-overview
 rules-live-in-blocks	input.css	.verso-overview > .verso-overview-cols:has(> [data-overview-col])
@@ -264,24 +133,24 @@ rules-live-in-blocks	sections.css	:is(.verso-page__body, [data-verso-drawer-body
 rules-live-in-blocks	sections.css	:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section] > .verso-rhythm > [data-verso-listing]:not(:last-child)
 rules-live-in-blocks	sections.css	:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section] > [data-verso-section-band] + .verso-rhythm > [data-verso-listing]:not([data-verso-list]):first-child .verso-table
 rules-live-in-blocks	sections.css	:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:has(> .verso-rhythm > [data-verso-listing]:not([data-verso-list]):last-child):not(section section)
-rules-live-in-blocks	sections.css	:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:has(> [data-verso-section-band]):not(section section) > .verso-rhythm > :not(input[type="hidden"], [hidden], template):not(:not(input[type="hidden"], [hidden], template) ~ *):is(.verso-field-row)
-rules-live-in-blocks	sections.css	:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:has(> [data-verso-section-band]):not(section section) > .verso-rhythm > :not(input[type="hidden"], [hidden], template):not(:not(input[type="hidden"], [hidden], template) ~ *):is(.verso-field-set, .verso-conditional, [data-verso-settings], [data-verso-rows], form:not([data-verso-compact-form])) > :not(input[type="hidden"], [hidden], template):not(:not(input[type="hidden"], [hidden], template) ~ *):is(.verso-field-row)
+rules-live-in-blocks	sections.css	:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:has(> [data-verso-section-band]):not(section section) > .verso-rhythm > :not(input[type="hidden"], [hidden], template):not(:not(input[type="hidden"], [hidden], template) ~ *):is(.verso-field)
+rules-live-in-blocks	sections.css	:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:has(> [data-verso-section-band]):not(section section) > .verso-rhythm > :not(input[type="hidden"], [hidden], template):not(:not(input[type="hidden"], [hidden], template) ~ *):is(.verso-field-set, .verso-conditional, [data-verso-settings], [data-verso-rows], form:not([data-verso-compact-form])) > :not(input[type="hidden"], [hidden], template):not(:not(input[type="hidden"], [hidden], template) ~ *):is(.verso-field)
 rules-live-in-blocks	sections.css	:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]):not(section section)
-rules-live-in-blocks	sections.css	:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]):not(section section) > .verso-rhythm > .verso-conditional:last-child:has(> .verso-conditional-gate input[data-verso-switch]:checked) > .verso-conditional-body > .verso-field-row:last-child
-rules-live-in-blocks	sections.css	:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]):not(section section) > .verso-rhythm > .verso-conditional:last-child:not(:has(> .verso-conditional-gate input[data-verso-switch]:checked)) > .verso-conditional-otherwise > .verso-field-row:last-child
-rules-live-in-blocks	sections.css	:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]):not(section section) > .verso-rhythm > .verso-conditional:last-child:not(:has(> .verso-conditional-gate input[data-verso-switch]:checked)):not(:has(> .verso-conditional-otherwise)) > .verso-conditional-gate
-rules-live-in-blocks	sections.css	:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]):not(section section) > .verso-rhythm > :not(input[type="hidden"], [hidden], template):not(:has(~ :not(input[type="hidden"], [hidden], template))):is(.verso-field-row):not(.verso-field-wide:has(> .verso-field-ledger > .verso-field-answer > [data-verso-field-note]:last-child))
-rules-live-in-blocks	sections.css	:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]):not(section section) > .verso-rhythm > :not(input[type="hidden"], [hidden], template):not(:has(~ :not(input[type="hidden"], [hidden], template))):is(.verso-field-set, [data-verso-settings], [data-verso-rows], form:not([data-verso-compact-form])) > :not(input[type="hidden"], [hidden], template):not(:has(~ :not(input[type="hidden"], [hidden], template))):is(.verso-field-row):not(.verso-field-wide:has(> .verso-field-ledger > .verso-field-answer > [data-verso-field-note]:last-child))
+rules-live-in-blocks	sections.css	:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]):not(section section) > .verso-rhythm > .verso-conditional:last-child:has(> .verso-conditional__gate input[data-verso-switch]:checked) > .verso-conditional__body > .verso-field:last-child
+rules-live-in-blocks	sections.css	:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]):not(section section) > .verso-rhythm > .verso-conditional:last-child:not(:has(> .verso-conditional__gate input[data-verso-switch]:checked)) > .verso-conditional__otherwise > .verso-field:last-child
+rules-live-in-blocks	sections.css	:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]):not(section section) > .verso-rhythm > .verso-conditional:last-child:not(:has(> .verso-conditional__gate input[data-verso-switch]:checked)):not(:has(> .verso-conditional__otherwise)) > .verso-conditional__gate
+rules-live-in-blocks	sections.css	:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]):not(section section) > .verso-rhythm > :not(input[type="hidden"], [hidden], template):not(:has(~ :not(input[type="hidden"], [hidden], template))):is(.verso-field):not(.verso-field[data-verso-wide]:has(> .verso-field__ledger > .verso-field__answer > [data-verso-field-note]:last-child))
+rules-live-in-blocks	sections.css	:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]):not(section section) > .verso-rhythm > :not(input[type="hidden"], [hidden], template):not(:has(~ :not(input[type="hidden"], [hidden], template))):is(.verso-field-set, [data-verso-settings], [data-verso-rows], form:not([data-verso-compact-form])) > :not(input[type="hidden"], [hidden], template):not(:has(~ :not(input[type="hidden"], [hidden], template))):is(.verso-field):not(.verso-field[data-verso-wide]:has(> .verso-field__ledger > .verso-field__answer > [data-verso-field-note]:last-child))
 rules-live-in-blocks	sections.css	:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]):not(section section) > .verso-rhythm > dl:not(:has(~ :not(input[type="hidden"], [hidden], template))) > :last-child
 rules-live-in-blocks	sections.css	:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]):not(section section) > .verso-rhythm > dl:not(:not(input[type="hidden"], [hidden], template) ~ *) > :first-child
 rules-live-in-blocks	sections.css	:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]):not(section section) > .verso-rhythm > section[data-verso-section]:not(:has(~ :not(input[type="hidden"], [hidden], template))) > .verso-rhythm > [data-verso-facts]:not(:has(~ :not(input[type="hidden"], [hidden], template))) > dl > :last-child
 rules-live-in-blocks	sections.css	:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]):not(section section) > .verso-rhythm > section[data-verso-section]:not(:has(~ :not(input[type="hidden"], [hidden], template))) > .verso-rhythm > [data-verso-facts]:not(:has(~ :not(input[type="hidden"], [hidden], template))) > dl:last-child > :last-child
 rules-live-in-blocks	sections.css	:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:is(:has(> [data-verso-section-band]), [data-verso-headless][data-verso-ruled]):not(section section) > .verso-rhythm > section[data-verso-section]:not(:has(~ :not(input[type="hidden"], [hidden], template))) > .verso-rhythm > dl:not(:has(~ :not(input[type="hidden"], [hidden], template))) > :last-child
-rules-live-in-blocks	sections.css	:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) .verso-field-row:not(.verso-field-row .verso-field-row, .verso-form-grid .verso-field-row)
-rules-live-in-blocks	sections.css	:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > .verso-rhythm > * + :is(.verso-field-row, .verso-form-grid, .verso-conditional, .verso-field-set, form:not([data-verso-compact-form]):has(.verso-field-row, .verso-form-grid, .verso-conditional), [data-verso-change-field], [data-verso-settings], [data-verso-rows]:has(> .verso-field-row:first-child))
+rules-live-in-blocks	sections.css	:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) .verso-field:not(.verso-field .verso-field, .verso-form-grid .verso-field)
+rules-live-in-blocks	sections.css	:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > .verso-rhythm > * + :is(.verso-field, .verso-form-grid, .verso-conditional, .verso-field-set, form:not([data-verso-compact-form]):has(.verso-field, .verso-form-grid, .verso-conditional), [data-verso-change-field], [data-verso-settings], [data-verso-rows]:has(> .verso-field:first-child))
 rules-live-in-blocks	sections.css	:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > .verso-rhythm > * + details.verso-disclosure:not(:only-child)
 rules-live-in-blocks	sections.css	:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > .verso-rhythm > * + section[data-verso-section]
-rules-live-in-blocks	sections.css	:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > .verso-rhythm > .verso-field-row:has(+ details.verso-disclosure:not(:only-child))
+rules-live-in-blocks	sections.css	:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > .verso-rhythm > .verso-field:has(+ details.verso-disclosure:not(:only-child))
 rules-live-in-blocks	sections.css	:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > .verso-rhythm > [data-verso-conditions]:not(:has(~ :not(input[type="hidden"], [hidden], template))) > [data-verso-condition-picker]
 rules-live-in-blocks	sections.css	:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > .verso-rhythm > [data-verso-listing]:last-child .verso-table > tbody > tr:not([hidden]):not(:has(~ tr:not([hidden]))) > td
 rules-live-in-blocks	sections.css	:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > .verso-rhythm > [data-verso-listing]:not([data-verso-list])
@@ -290,7 +159,7 @@ rules-live-in-blocks	sections.css	:is(.verso-page__body, [data-verso-drawer-body
 rules-live-in-blocks	sections.css	:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > .verso-rhythm > [data-verso-listing][data-verso-list] > [data-verso-scroller] > table > thead > tr > th
 rules-live-in-blocks	sections.css	:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > .verso-rhythm > details.verso-disclosure:not(:only-child)
 rules-live-in-blocks	sections.css	:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > .verso-rhythm > details.verso-disclosure:not(:only-child) > .verso-rhythm
-rules-live-in-blocks	sections.css	:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > .verso-rhythm > details.verso-disclosure:not(:only-child) > .verso-rhythm > .verso-field-row:first-child
+rules-live-in-blocks	sections.css	:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > .verso-rhythm > details.verso-disclosure:not(:only-child) > .verso-rhythm > .verso-field:first-child
 rules-live-in-blocks	sections.css	:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > .verso-rhythm > details.verso-disclosure:not(:only-child) > summary
 rules-live-in-blocks	sections.css	:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > .verso-rhythm > details.verso-disclosure:not(:only-child):not(:has(~ :not(input[type="hidden"], [hidden], template)))
 rules-live-in-blocks	sections.css	:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) > .verso-rhythm > section[data-verso-section] > .verso-rhythm > [data-verso-facts]:not(:not(input[type="hidden"], [hidden], template) ~ *) > dl > :first-child
@@ -308,12 +177,12 @@ rules-live-in-blocks	sections.css	:is(.verso-page__body, [data-verso-drawer-body
 rules-live-in-blocks	sections.css	:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section]:not(section section) [data-verso-settings] > details
 rules-live-in-blocks	sections.css	:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section][data-verso-headless][data-verso-ruled]:has(> .verso-rhythm > [data-verso-listing]:first-child):not(section section)
 rules-live-in-blocks	sections.css	:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section][data-verso-headless][data-verso-ruled]:not(section section)
-rules-live-in-blocks	sections.css	:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section][data-verso-headless][data-verso-ruled]:not(section section) > .verso-rhythm > :not(input[type="hidden"], [hidden], template):not(:not(input[type="hidden"], [hidden], template) ~ *):is(.verso-field-row)
-rules-live-in-blocks	sections.css	:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section][data-verso-headless][data-verso-ruled]:not(section section) > .verso-rhythm > :not(input[type="hidden"], [hidden], template):not(:not(input[type="hidden"], [hidden], template) ~ *):is(.verso-field-set, .verso-conditional, [data-verso-settings], [data-verso-rows], form:not([data-verso-compact-form])) > :not(input[type="hidden"], [hidden], template):not(:not(input[type="hidden"], [hidden], template) ~ *):is(.verso-field-row)
+rules-live-in-blocks	sections.css	:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section][data-verso-headless][data-verso-ruled]:not(section section) > .verso-rhythm > :not(input[type="hidden"], [hidden], template):not(:not(input[type="hidden"], [hidden], template) ~ *):is(.verso-field)
+rules-live-in-blocks	sections.css	:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section][data-verso-headless][data-verso-ruled]:not(section section) > .verso-rhythm > :not(input[type="hidden"], [hidden], template):not(:not(input[type="hidden"], [hidden], template) ~ *):is(.verso-field-set, .verso-conditional, [data-verso-settings], [data-verso-rows], form:not([data-verso-compact-form])) > :not(input[type="hidden"], [hidden], template):not(:not(input[type="hidden"], [hidden], template) ~ *):is(.verso-field)
 rules-live-in-blocks	sections.css	:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section][data-verso-headless][data-verso-ruled]:not(section section) > .verso-rhythm > [data-verso-listing]:first-child
 rules-live-in-blocks	sections.css	:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section][data-verso-headless][data-verso-ruled]:not(section section) > .verso-rhythm > details.verso-disclosure:only-child
 rules-live-in-blocks	sections.css	:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section][data-verso-headless][data-verso-ruled]:not(section section) > .verso-rhythm > details.verso-disclosure:only-child > .verso-rhythm
-rules-live-in-blocks	sections.css	:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section][data-verso-headless][data-verso-ruled]:not(section section) > .verso-rhythm > details.verso-disclosure:only-child > .verso-rhythm > .verso-field-row:first-child
+rules-live-in-blocks	sections.css	:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section][data-verso-headless][data-verso-ruled]:not(section section) > .verso-rhythm > details.verso-disclosure:only-child > .verso-rhythm > .verso-field:first-child
 rules-live-in-blocks	sections.css	:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section][data-verso-headless][data-verso-ruled]:not(section section) > .verso-rhythm > details.verso-disclosure:only-child > summary
 rules-live-in-blocks	sections.css	:is(.verso-page__body, [data-verso-drawer-body]) section[data-verso-section][data-verso-headless][data-verso-ruled]:not(section section):has(> .verso-rhythm > details.verso-disclosure:only-child)
 rules-live-in-blocks	sections.css	:is([data-verso-code-divider], section[data-verso-section]:has(> .verso-rhythm > [data-verso-code-divider]:last-child)) ~ [data-verso-form-actions]
@@ -343,22 +212,16 @@ rules-live-in-blocks	sections.css	section[data-verso-section="ruled"]
 rules-live-in-blocks	sections.css	section[data-verso-section="ruled"]:first-of-type
 rules-live-in-blocks	sections.css	section[data-verso-section] > .verso-rhythm > :last-child .verso-table > tbody > tr:last-child > td
 rules-live-in-blocks	sections.css	section[data-verso-section]:has(> [data-verso-section-band])
-rules-live-in-blocks	sections.css	section[data-verso-section]:has(> [data-verso-section-band]) > .verso-rhythm > :not(input[type="hidden"], [hidden]):not(:not(input[type="hidden"], [hidden]) ~ *):not(.verso-field-row, .verso-form-grid, .verso-conditional, .verso-field-set, form:not([data-verso-compact-form]):has(.verso-field-row, .verso-form-grid, .verso-conditional), [data-verso-change-field], [data-verso-settings], [data-verso-rows]:has(> .verso-field-row:first-child))
+rules-live-in-blocks	sections.css	section[data-verso-section]:has(> [data-verso-section-band]) > .verso-rhythm > :not(input[type="hidden"], [hidden]):not(:not(input[type="hidden"], [hidden]) ~ *):not(.verso-field, .verso-form-grid, .verso-conditional, .verso-field-set, form:not([data-verso-compact-form]):has(.verso-field, .verso-form-grid, .verso-conditional), [data-verso-change-field], [data-verso-settings], [data-verso-rows]:has(> .verso-field:first-child))
 short-class-lists	server/templates/entity-panel.html.tmpl	flex h-control cursor-pointer items-center rounded-xs border border-denim bg-denim px-4 text-sm font-semibold whitespace-nowrap text-on-fill transition-colors hover:border-denim-deep hover:bg-denim-deep
 short-class-lists	server/templates/package-files.html.tmpl	max-h-80 overflow-auto rounded-xs border border-rule bg-quiet p-3 font-mono text-base text-body
 short-class-lists	server/templates/page.html.tmpl	flex h-7 cursor-pointer items-center gap-1 rounded-xs px-2 font-semibold transition-colors hover:bg-crimson-line/60 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-crimson-deep group-data-[ready]/refusals:hidden
 short-class-lists	server/templates/page.html.tmpl	group/refusals fixed top-[4.25rem] left-1/2 z-20 flex h-control -translate-x-1/2 items-center gap-2 rounded-xs border border-crimson-line bg-crimson-soft pr-1 pl-3 text-sm font-normal whitespace-nowrap text-crimson-deep shadow-(--shadow-float) md:left-[calc(50%+9rem)] data-[ready]:border-green-line data-[ready]:bg-green-soft data-[ready]:text-green-deep
 short-class-lists	widget/templates/actionbar.html.tmpl	h-control w-full cursor-pointer appearance-none rounded-xs border border-rule-strong bg-canvas pr-9 pl-3 text-sm text-ink shadow-(--shadow-field) transition-colors hover:border-faint focus:border-denim focus:outline-none
 short-class-lists	widget/templates/badge.html.tmpl	inline-flex items-center gap-2 rounded-xs border px-3 py-3 text-sm font-medium {{if eq .Variant "success"}}border-green-line bg-green-soft text-green-deep {{else if eq .Variant "warning"}}border-marigold-line bg-marigold-soft text-marigold-deep {{else if eq .Variant "danger"}}border-crimson-line bg-crimson-soft text-crimson-deep {{else if eq .Variant "info"}}border-denim-line bg-denim-soft text-denim-deep {{else}}border-rule bg-quiet text-meta{{end}}
-short-class-lists	widget/templates/conditions.html.tmpl	absolute top-full left-0 z-30 mt-2 w-[36rem] max-w-[calc(100vw-2rem)] rounded-xs border border-rule-strong bg-ground shadow-(--shadow-menu)
-short-class-lists	widget/templates/conditions.html.tmpl	flex w-full items-center gap-3 border-t border-rule px-4 py-2 text-left transition-colors first:border-t-0 enabled:cursor-pointer enabled:hover:bg-quiet/50 disabled:opacity-45
-short-class-lists	widget/templates/conditions.html.tmpl	h-6 min-w-0 flex-1 border-0 bg-transparent p-0 text-sm text-ink outline-none placeholder:font-normal placeholder:text-meta
 short-class-lists	widget/templates/device_limit_tip.html.tmpl	flex h-7 min-w-0 items-center justify-center rounded-xs border text-xs {{if .Active}}border-marigold-line bg-marigold-soft font-semibold text-marigold-deep{{else}}border-transparent bg-quiet text-meta{{end}}
 short-class-lists	widget/templates/device_limit_tip.html.tmpl	flex items-center justify-between gap-3 font-mono text-2xl leading-tight font-medium tabular-nums
 short-class-lists	widget/templates/device_limit_tip.html.tmpl	mt-1 flex min-h-8 items-center {{if .Unit}}font-mono text-2xl font-medium tabular-nums{{else}}text-base font-medium{{end}} leading-tight
-short-class-lists	widget/templates/disclosure.html.tmpl	flex cursor-pointer items-center justify-between gap-2 select-none {{if eq .Style "condition"}}px-6 py-6 text-sm font-semibold text-ink{{else}}px-4 py-3 text-sm font-semibold text-body{{end}} [&::-webkit-details-marker]:hidden
-short-class-lists	widget/templates/disclosure.html.tmpl	verso-reveal-act flex w-fit h-6 cursor-pointer items-center gap-1.5 rounded-xs text-sm leading-6 font-medium text-denim-deep select-none hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim [&::-webkit-details-marker]:hidden
-short-class-lists	widget/templates/form.html.tmpl	mb-6 flex items-start gap-2 rounded-xs border border-crimson-line bg-crimson-soft px-3 py-2 text-sm leading-6 text-crimson-deep
 short-class-lists	widget/templates/overview.html.tmpl	-my-1 ml-auto h-7 cursor-pointer rounded-xs px-2.5 font-medium text-denim-deep transition-colors hover:bg-denim-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim
 short-class-lists	widget/templates/overview.html.tmpl	flex min-w-0 cursor-pointer items-center gap-2 pt-2.75 pr-2.5 pb-3 pl-5.75 leading-6 select-none group-data-arranging/overview:cursor-grab group-data-arranging/overview:pl-1.5
 short-class-lists	widget/templates/overview.html.tmpl	flex shrink-0 items-center gap-2 text-sm leading-6 font-medium whitespace-nowrap text-body group-data-[tone=success]/card:text-green-deep group-data-[tone=warning]/card:text-marigold-deep group-data-[tone=danger]/card:text-crimson-deep
@@ -368,12 +231,6 @@ short-class-lists	widget/templates/section.html.tmpl	ml-auto flex h-6 w-full ite
 short-class-lists	widget/templates/settings.html.tmpl	flex cursor-pointer items-center gap-1.5 px-3 pt-2.75 pb-3 leading-6 text-sm font-semibold text-denim-deep transition-colors select-none hover:bg-quiet hover:text-denim [&::-webkit-details-marker]:hidden
 short-class-lists	widget/templates/settings.html.tmpl	flex items-baseline justify-between gap-3 pt-1 pb-0.75 {{if not .Card}}border-b border-rule-strong {{end}}{{template "verso-kicker-class"}}
 short-class-lists	widget/templates/shared.html.tmpl	verso-drawer-scrollbar min-h-0 flex-1 overflow-x-hidden overflow-y-auto space-y-0 pb-8 [&>section]:pt-0 [&>section>div:first-child]:mb-0 [&>section>div:first-child]:border-y [&>section>div:first-child]:border-rule [&>section>div:first-child]:bg-quiet [&>section>div:first-child]:px-(--verso-drawer-gutter) [&>section>div:first-child]:py-2 [&_h3]:font-medium [&_h3]:tracking-[.08em] [&_.verso-rhythm>*]:!mt-0
-type-comes-from-roles	forms.css	.verso-condition + .verso-condition::before	font-size
-type-comes-from-roles	forms.css	.verso-condition + .verso-condition::before	font-weight
-type-comes-from-roles	forms.css	.verso-condition + .verso-condition::before	letter-spacing
-type-comes-from-roles	forms.css	.verso-condition + .verso-condition::before	line-height
-type-comes-from-roles	forms.css	.verso-condition:not(.verso-condition-single) > .verso-rhythm .verso-field-label > :first-child	font-weight
-type-comes-from-roles	forms.css	.verso-reveal-act	line-height
 type-comes-from-roles	input.css	.verso-kicker	font-size
 type-comes-from-roles	input.css	.verso-kicker	font-weight
 type-comes-from-roles	input.css	.verso-kicker	letter-spacing
@@ -410,8 +267,6 @@ type-comes-from-roles	server/assets/verso-forms.js	text-sm
 type-comes-from-roles	server/assets/verso-forms.js	text-sm
 type-comes-from-roles	server/assets/verso-system.js	leading-6
 type-comes-from-roles	server/assets/verso-system.js	text-sm
-type-comes-from-roles	server/assets/verso.js	leading-6
-type-comes-from-roles	server/assets/verso.js	text-sm
 type-comes-from-roles	server/entity.go	leading-snug
 type-comes-from-roles	server/entity.go	text-sm
 type-comes-from-roles	server/restarting.go	font-mono
@@ -426,20 +281,12 @@ type-comes-from-roles	server/templates/package-files.html.tmpl	text-sm
 type-comes-from-roles	server/templates/page.html.tmpl	font-normal
 type-comes-from-roles	server/templates/page.html.tmpl	font-semibold
 type-comes-from-roles	server/templates/page.html.tmpl	text-sm
-type-comes-from-roles	server/templates/pending.html.tmpl	leading-6
 type-comes-from-roles	server/templates/pending.html.tmpl	text-sm
 type-comes-from-roles	widget/templates/actionbar.html.tmpl	text-sm
 type-comes-from-roles	widget/templates/badge.html.tmpl	font-medium
 type-comes-from-roles	widget/templates/badge.html.tmpl	font-medium
 type-comes-from-roles	widget/templates/badge.html.tmpl	text-sm
 type-comes-from-roles	widget/templates/badge.html.tmpl	text-sm
-type-comes-from-roles	widget/templates/conditions.html.tmpl	font-semibold
-type-comes-from-roles	widget/templates/conditions.html.tmpl	leading-snug
-type-comes-from-roles	widget/templates/conditions.html.tmpl	placeholder:font-normal
-type-comes-from-roles	widget/templates/conditions.html.tmpl	text-sm
-type-comes-from-roles	widget/templates/conditions.html.tmpl	text-sm
-type-comes-from-roles	widget/templates/conditions.html.tmpl	text-sm
-type-comes-from-roles	widget/templates/conditions.html.tmpl	text-sm
 type-comes-from-roles	widget/templates/device_limit_tip.html.tmpl	font-medium
 type-comes-from-roles	widget/templates/device_limit_tip.html.tmpl	font-medium
 type-comes-from-roles	widget/templates/device_limit_tip.html.tmpl	font-medium
@@ -465,18 +312,6 @@ type-comes-from-roles	widget/templates/device_limit_tip.html.tmpl	text-xs
 type-comes-from-roles	widget/templates/device_limit_tip.html.tmpl	text-xs
 type-comes-from-roles	widget/templates/device_limit_tip.html.tmpl	text-xs
 type-comes-from-roles	widget/templates/device_limit_tip.html.tmpl	text-xs
-type-comes-from-roles	widget/templates/disclosure.html.tmpl	font-medium
-type-comes-from-roles	widget/templates/disclosure.html.tmpl	font-semibold
-type-comes-from-roles	widget/templates/disclosure.html.tmpl	font-semibold
-type-comes-from-roles	widget/templates/disclosure.html.tmpl	leading-6
-type-comes-from-roles	widget/templates/disclosure.html.tmpl	text-sm
-type-comes-from-roles	widget/templates/disclosure.html.tmpl	text-sm
-type-comes-from-roles	widget/templates/disclosure.html.tmpl	text-sm
-type-comes-from-roles	widget/templates/form.html.tmpl	leading-6
-type-comes-from-roles	widget/templates/form.html.tmpl	text-sm
-type-comes-from-roles	widget/templates/form.html.tmpl	text-sm
-type-comes-from-roles	widget/templates/form.html.tmpl	text-sm
-type-comes-from-roles	widget/templates/form.html.tmpl	text-sm
 type-comes-from-roles	widget/templates/overview.html.tmpl	font-medium
 type-comes-from-roles	widget/templates/overview.html.tmpl	font-medium
 type-comes-from-roles	widget/templates/overview.html.tmpl	font-semibold
@@ -520,7 +355,3 @@ type-comes-from-roles	widget/templates/settings.html.tmpl	text-sm
 type-comes-from-roles	widget/templates/settings.html.tmpl	text-xs
 type-comes-from-roles	widget/templates/shared.html.tmpl	[&_h3]:font-medium
 type-comes-from-roles	widget/templates/shared.html.tmpl	[&_h3]:tracking-[.08em]
-type-comes-from-roles	widget/templates/shared.html.tmpl	font-medium
-type-comes-from-roles	widget/templates/shared.html.tmpl	font-mono
-type-comes-from-roles	widget/templates/shared.html.tmpl	leading-6
-type-comes-from-roles	widget/templates/shared.html.tmpl	text-base

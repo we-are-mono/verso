@@ -19,15 +19,15 @@ func TestDecodeAndRenderSwitch(t *testing.T) {
 		"Enabled", `class="verso-choice__input"`,
 		// A switch row is a field row like any other: its name is the
 		// question and its box the answer.
-		`class="verso-field-row max-w-form"`,
-		`<label for="enabled" id="enabled-label" class="text-sm font-medium text-ink`,
-		"verso-field-control verso-field-answer",
+		`<div class="verso-field" data-verso-change-field`,
+		`<label for="enabled" id="enabled-label" class="verso-field__name">`,
+		`<div data-verso-control class="verso-field__answer">`,
 		// The input is screen-reader-only, so the visible box has to be inside
 		// a label: without one, pressing the control does nothing at all.
 		`<label class="verso-choice__row"><span class="verso-choice">`,
 		// And its help is its description under its name, as a field's is,
 		// and the box is read with it.
-		`<p id="enabled-desc" data-verso-field-desc class="text-sm leading-6 text-pretty text-body"><span>Applies immediately.</span></p>`,
+		`<p id="enabled-desc" data-verso-field-desc class="verso-field__desc"><span>Applies immediately.</span></p>`,
 		`aria-describedby="enabled-desc"`,
 	} {
 		if !strings.Contains(got, want) {
@@ -37,6 +37,9 @@ func TestDecodeAndRenderSwitch(t *testing.T) {
 	if strings.Contains(got, "data-verso-tip") || strings.Contains(got, "enabled-tip") {
 		t.Errorf("a switch's name raises no tooltip:\n%s", got)
 	}
+	// The row keeps the form's measure, and its name the field-label role.
+	declares(t, "field", ".verso-field", "max-width: var(--verso-form-width, 40rem);")
+	declares(t, "field", ".verso-field__name", "color: var(--color-ink);", "@apply type-field-label;")
 	// DOM and visual order agree: the question, then the answer.
 	if label, control := strings.Index(got, ">Enabled"), strings.Index(got, "data-verso-switch"); label < 0 || control < 0 || label > control {
 		t.Errorf("the switch's name comes before its box in DOM order: %s", got)

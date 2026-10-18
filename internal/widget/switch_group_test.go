@@ -26,7 +26,7 @@ func TestSwitchesUnderOneLabelAreOneSetting(t *testing.T) {
 		t.Errorf("a labelled group of switches is one setting, not columns:\n%s", got)
 	}
 	for want, n := range map[string]int{
-		`<span id="include_a-group-label" class="text-sm font-medium text-ink">Files the config includes</span>`: 1,
+		`<span id="include_a-group-label" class="verso-field__name">Files the config includes</span>`: 1,
 		`>enabled</span>`:         1, // the option, named once for the group
 		`class="verso-field-set"`: 1,
 		`data-verso-switch`:       2,
@@ -38,10 +38,10 @@ func TestSwitchesUnderOneLabelAreOneSetting(t *testing.T) {
 	}
 	for _, want := range []string{
 		`role="group" aria-labelledby="include_a-group-label"`,
-		`<label for="include_a" id="include_a-label" class="font-mono text-base leading-6 font-medium text-ink">/etc/nftables.d/10-custom.nft</label>`,
+		`<label for="include_a" id="include_a-label" class="verso-field__name" data-verso-verbatim>/etc/nftables.d/10-custom.nft</label>`,
 		// An item's help says which thing it is, so it is the item's detail,
 		// which stays when descriptions fold.
-		`<p id="include_a-detail" data-verso-field-detail class="text-sm leading-6 text-pretty text-body">nftables · chain-pre</p>`,
+		`<p id="include_a-detail" data-verso-field-detail class="verso-field__note">nftables · chain-pre</p>`,
 		`aria-describedby="include_a-detail"`,
 	} {
 		if !strings.Contains(got, want) {
@@ -53,17 +53,17 @@ func TestSwitchesUnderOneLabelAreOneSetting(t *testing.T) {
 	}
 	// The group is its head, then a row per item under it (form-fields): the
 	// items are rows of the form, not controls inside the head's answer.
-	if n := strings.Count(got, `class="verso-field-row`); n != 3 {
+	if n := len(fieldRow.FindAllString(got, -1)); n != 3 {
 		t.Errorf("a head and two item rows, got %d rows:\n%s", n, got)
 	}
 	group, head := strings.Index(got, `class="verso-field-set"`), strings.Index(got, ">Files the config includes<")
-	firstItem := head + strings.Index(got[head:], `class="verso-field-row`)
+	firstItem := head + strings.Index(got[head:], `<div class="verso-field"`)
 	if group < 0 || head < group || firstItem < head {
 		t.Fatalf("the set is not its head, then its items:\n%s", got)
 	}
 	// The head is all question: it draws no answer, so a stacked row leaves
 	// no empty control's height under it.
-	if headRow := got[group:firstItem]; strings.Contains(headRow, "verso-field-answer") || strings.Contains(headRow, "data-verso-switch") {
+	if headRow := got[group:firstItem]; strings.Contains(headRow, "verso-field__answer") || strings.Contains(headRow, "data-verso-switch") {
 		t.Errorf("the head draws an answer of its own:\n%s", got)
 	}
 }
@@ -107,7 +107,7 @@ func TestASwitchIsRefusedLikeAField(t *testing.T) {
 		Error: "DNSSEC requires a dnsmasq build with DNSSEC support."}
 	got := render(t, newRenderer(t), s)
 	for _, want := range []string{
-		`<span id="dnssec-error" data-verso-error class="flex items-start gap-2 rounded-xs bg-crimson-soft px-3 py-2 text-sm leading-6 text-crimson-deep">`,
+		`<span id="dnssec-error" data-verso-error class="verso-refusal">`,
 		`aria-describedby="dnssec-error"`,
 		`aria-invalid="true"`,
 	} {

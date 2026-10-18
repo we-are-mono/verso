@@ -72,11 +72,11 @@ func TestAChooserIsNotALedgerRow(t *testing.T) {
 	lone := &Field{Name: "sensor", Label: "Show chart for", Kind: "select", Value: "cpu",
 		Options: []Option{{Value: "cpu", Label: "CPU"}}, Fetch: &FieldFetch{URL: "/x", Target: "#y"}}
 	for name, w := range map[string]Widget{"joined": chartChoice(), "short": short, "lone": lone} {
-		if got := render(t, newRenderer(t), w); !strings.Contains(got, "verso-field-plain") {
+		if got := render(t, newRenderer(t), w); !strings.Contains(got, "data-verso-plain") {
 			t.Errorf("%s: a chooser is drawn as a setting's row:\n%s", name, got)
 		}
 	}
-	if setting := render(t, newRenderer(t), path()); strings.Contains(setting, "verso-field-plain") {
+	if setting := render(t, newRenderer(t), path()); strings.Contains(setting, "data-verso-plain") {
 		t.Errorf("a setting's row is drawn as a chooser:\n%s", setting)
 	}
 }
@@ -104,8 +104,10 @@ func TestJoinedChoicesAreOneRow(t *testing.T) {
 	if strings.Contains(got, "verso-form-grid") {
 		t.Errorf("joined choices are one row, not two columns:\n%s", got)
 	}
+	if n := len(fieldRow.FindAllString(got, -1)); n != 1 {
+		t.Errorf("want one row, got %d:\n%s", n, got)
+	}
 	for want, n := range map[string]int{
-		"verso-field-row":         1,
 		`class="verso-joined"`:    1,
 		"<select":                 2,
 		`type="radio"`:            0, // a joined pick stays a dropdown
@@ -117,7 +119,7 @@ func TestJoinedChoicesAreOneRow(t *testing.T) {
 		}
 	}
 	for _, want := range []string{
-		`<span id="src-group-label" class="text-sm font-medium text-ink">Path</span>`,
+		`<span id="src-group-label" class="verso-field__name">Path</span>`,
 		`>src · dest</span>`,
 		`role="group" aria-labelledby="src-group-label"`,
 		`<select id="src" name="src" aria-label="Coming from"`,
@@ -157,8 +159,10 @@ func TestJoinedValuesStandApart(t *testing.T) {
 		&Field{Name: "start_time", Label: "Starts at", Key: "start_time", Datatype: "timehhmmss", Value: "09:00"},
 		&Field{Name: "stop_time", Label: "Ends at", Key: "stop_time", Datatype: "timehhmmss", Value: "17:00", Error: "Write a time of day as HH:MM or HH:MM:SS."},
 	}})
+	if n := len(fieldRow.FindAllString(got, -1)); n != 1 {
+		t.Errorf("want one row, got %d:\n%s", n, got)
+	}
 	for want, n := range map[string]int{
-		"verso-field-row":         1,
 		`class="verso-box"`:       0, // never fused
 		`class="verso-joined"`:    1,
 		"<input":                  2,

@@ -103,7 +103,7 @@ var notAColour = []string{"&", `href="`, "url("}
 // colourExceptions are literals kept on purpose, keyed by the file's name and
 // the literal, each with the reason it is not a colour the palette owes.
 var colourExceptions = map[string]string{
-	"input.css #000":          "the scroll edge's mask: only its alpha is read, it paints nothing",
+	"scroll-edge.css #000":    "the scroll edge's mask: only its alpha is read, it paints nothing",
 	"icons.html.tmpl #1b1917": "Safari's pinned-tab colour: the brand's mark, not the page",
 }
 
@@ -143,7 +143,7 @@ func paintedSources(t *testing.T) []string {
 		filepath.Join("templates", "*.tmpl"),
 		filepath.Join("..", "server", "templates", "*.tmpl"),
 		filepath.Join("..", "server", "assets", "input.css"),
-		filepath.Join("..", "server", "assets", "forms.css"),
+		filepath.Join("..", "server", "assets", "blocks", "*.css"),
 		filepath.Join("..", "server", "assets", "sections.css"),
 		filepath.Join("..", "server", "assets", "verso*.js"),
 		"*.go",
@@ -246,10 +246,10 @@ func TestTheLiteralGuardSeesWhatItShould(t *testing.T) {
 		}
 	}
 	// A literal kept on purpose is kept in its own file only.
-	if hits := literalColours("input.css", `mask-image: linear-gradient(to left, transparent, #000 1rem);`); len(hits) > 0 {
+	if hits := literalColours("scroll-edge.css", `mask-image: linear-gradient(to left, transparent, #000 var(--verso-scroll-edge));`); len(hits) > 0 {
 		t.Errorf("the scroll edge's mask is flagged: %v", hits)
 	}
-	if hits := literalColours("forms.css", `color: #000;`); len(hits) == 0 {
+	if hits := literalColours("field.css", `color: #000;`); len(hits) == 0 {
 		t.Error("a #000 outside the mask's file passes as if it were the mask")
 	}
 }

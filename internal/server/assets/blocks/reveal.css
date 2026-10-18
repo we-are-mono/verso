@@ -1,0 +1,44 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/* SPDX-FileCopyrightText: 2026 Mono Technologies Inc. */
+
+/*
+ * reveal — optional rows folded behind one quiet act, one of its form's rows:
+ * folded, the act (a plus and the words, in the link's ink, with no frame of
+ * its own) stands as a field's label does, 24px of air and its 24px line;
+ * open, the rows it folded, the act stepping aside — there is nothing left
+ * to reveal. The rows are fields and bring their own air. It arrives open
+ * when what it folds already holds something.
+ *
+ * Elements: __act   the act (the <summary>)
+ *           __body  the rows it folds
+ */
+
+.verso-reveal:not([open]) {
+  padding-top: var(--spacing-inset);
+}
+
+.verso-reveal__act {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--spacing) * 1.5);
+  width: fit-content;
+  height: calc(var(--spacing) * 6);
+  border-radius: var(--radius-xs);
+  color: var(--color-denim-deep);
+  cursor: pointer;
+  user-select: none;
+  @apply type-field-label;
+}
+.verso-reveal__act::-webkit-details-marker {
+  display: none;
+}
+.verso-reveal__act:hover {
+  color: var(--color-ink);
+}
+.verso-reveal__act:focus-visible {
+  outline: 2px solid var(--color-denim);
+  outline-offset: 2px;
+}
+.verso-reveal__act:where(.verso-reveal[open] > *) {
+  display: none;
+}
