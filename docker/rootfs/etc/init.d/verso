@@ -38,8 +38,86 @@ certificate() {
 	make_certificate replace
 }
 
-# history_dir is where the router's history is kept (ADR-019): the operator's
-# choice, else /data/verso where /data is a mount, else on the overlay. It is
+# HISTORY_FROM records, for the shell's next start, the directory the running
+# shell keeps the router's history in once the operator has chosen another
+# (ADR-019), so that start moves the history into the one chosen. It is root's,
+# in root's own directory, where no other account can point it anywhere.
+HISTORY_FROM="$TLS_DIR/history-from"
+
+# history_choice is the directory the router's history is kept in (ADR-019):
+# the operator's choice, else /data/verso where /data is a mount, else on the
+# overlay.
+history_choice() {
+	local dir
+	config_get dir history directory
+	if [ -z "$dir" ]; then
+		if grep -qs ' /data ' /proc/mounts; then
+			dir=/data/verso
+		else
+			dir=/usr/share/verso/history
+		fi
+	fi
+	echo "$dir"
+}
+
+# history_flag is the directory a shell's arguments, one a line, name for its
+# history: the value after -history-dir, among the arguments after
+# /usr/bin/verso, as start_service hands it over (ujail, which procd runs the
+# shell under, takes arguments of its own before it).
+history_flag() {
+	local arg shell= dir=
+	while IFS= read -r arg; do
+		if [ -z "$shell" ]; then
+			[ "$arg" = /usr/bin/verso ] && shell=1
+		elif [ "$arg" = -history-dir ]; then
+			IFS= read -r dir
+		fi
+	done
+	echo "$dir"
+}
+
+# history_running is the directory the running shell keeps the history in, as
+# its own command line names it: an apply reaches the shell as a SIGHUP, so it
+# writes on where it was started, whatever procd records for its next start.
+# None when no shell runs.
+history_running() {
+	local pid
+	pid="$(ubus call service list '{"name":"verso"}' 2>/dev/null | jsonfilter -e '@.verso.instances.verso.pid' 2>/dev/null)"
+	[ -n "$pid" ] || return 0
+	tr '\0' '\n' 2>/dev/null <"/proc/$pid/cmdline" | history_flag
+}
+
+# history_note records in HISTORY_FROM where the running shell keeps the
+# history while another directory is chosen, and drops the record while the
+# running shell keeps it where it is chosen. It answers the running shell's
+# directory, none when no shell runs.
+history_note() {
+	local running
+	running="$(history_running)"
+	[ -n "$running" ] || return 0
+	if [ "$running" = "$(history_choice)" ]; then
+		rm -f "$HISTORY_FROM"
+	else
+		echo "$running" >"$HISTORY_FROM.new" && mv -f "$HISTORY_FROM.new" "$HISTORY_FROM"
+	fi
+	echo "$running"
+}
+
+# history_from is the directory the history moves from at this start: the
+# running shell's, at an apply that chose another directory (procd keeps the
+# command line for the shell's respawns), else the one HISTORY_FROM recorded
+# when a shell last stopped, or ran, with another chosen, taken here once.
+history_from() {
+	local from
+	from="$(history_note)"
+	if [ -z "$from" ]; then
+		from="$(cat "$HISTORY_FROM" 2>/dev/null)"
+		rm -f "$HISTORY_FROM"
+	fi
+	echo "$from"
+}
+
+# history_dir is where the router's history is kept (history_choice). It is
 # made here, as root, and given to the verso user, since the shell cannot make
 # a directory on /data, the overlay or a USB stick.
 #
@@ -55,14 +133,7 @@ certificate() {
 # them back as root's.
 history_dir() {
 	local dir
-	config_get dir history directory
-	if [ -z "$dir" ]; then
-		if grep -qs ' /data ' /proc/mounts; then
-			dir=/data/verso
-		else
-			dir=/usr/share/verso/history
-		fi
-	fi
+	dir="$(history_choice)"
 	case "$dir" in
 		/data/*/* | /tmp/*/* | /mnt/*/*/* | /usr/share/verso/history/*) ;;
 		/data/verso | /usr/share/verso/history)
@@ -80,7 +151,7 @@ history_dir() {
 }
 
 start_service() {
-	local listen_http listen_https redirect_https addr history changes probes alert_url heartbeat_url alert_kinds kind theme
+	local listen_http listen_https redirect_https addr history from changes probes alert_url heartbeat_url alert_kinds kind theme
 	make_certificate
 	# Where the shell answers is a Verso setting (ADR-017 §1): read here and
 	# handed over on the command line, as uhttpd's init script hands uhttpd its
@@ -102,6 +173,11 @@ start_service() {
 	[ -n "$redirect_https" ] && procd_append_param command -redirect-https "$redirect_https"
 	history="$(history_dir)"
 	[ -n "$history" ] && procd_append_param command -history-dir "$history"
+	# A directory chosen since the history was last opened takes it at this
+	# start: the shell moves it from where it was (ADR-019).
+	from="$(history_from)"
+	[ -n "$history" ] && [ -n "$from" ] && [ "$from" != "$history" ] &&
+		procd_append_param command -history-from "$from"
 	# How many entries config history keeps (ADR-021): 1000 unless the
 	# operator says otherwise, as a whole number, so a typo cannot keep the
 	# shell from starting.
@@ -167,6 +243,14 @@ start_service() {
 	procd_set_param stdout 1
 	procd_set_param stderr 1
 	procd_close_instance
+}
+
+# stop_service records where the stopping shell keeps the history while
+# another directory is chosen (history_note): a restart after a hand edit, a
+# shutdown or an upgrade stops the shell before the start that moves it.
+stop_service() {
+	config_load verso
+	history_note >/dev/null
 }
 
 service_triggers() {

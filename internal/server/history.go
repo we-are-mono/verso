@@ -24,10 +24,13 @@ import (
 )
 
 // StartHistory records the router's measurements into dir/history.db
-// (ADR-019). A file that cannot be opened is reported and the history is kept
-// in memory instead, so collection goes on. The uplink is probed at its
-// gateway and at each of probes, and alerts go where notify says (ADR-020).
-func (s *Server) StartHistory(dir string, probes []netip.Addr, notify alerts.Config) {
+// (ADR-019), after carrying over the history kept in from, the directory
+// chosen before, when that names another. A file that cannot be opened is
+// reported and the history is kept in memory instead, so collection goes on.
+// The uplink is probed at its gateway and at each of probes, and alerts go
+// where notify says (ADR-020).
+func (s *Server) StartHistory(dir, from string, probes []netip.Addr, notify alerts.Config) {
+	carryHistory(from, dir)
 	store, onDisk := s.openHistory(dir, notify)
 	if store == nil {
 		return
@@ -68,6 +71,29 @@ func (s *Server) StartHistory(dir string, probes []netip.Addr, notify alerts.Con
 		if onDisk {
 			markStopped(dir)
 		}
+	}
+}
+
+// carryHistory moves the history kept in from into dir, with the mark of its
+// clean stop, so this start reads the boot as the stop left it. A history
+// that cannot move stays where it was, and the shell says why in its log.
+func carryHistory(from, dir string) {
+	moved, err := history.Move(from, dir)
+	switch {
+	case !moved && err != nil:
+		log.Printf("verso: history in %s not moved to %s: %v", from, dir, err)
+		return
+	case !moved:
+		return
+	case err != nil:
+		log.Printf("verso: history moved from %s to %s, but not all of it left %s: %v", from, dir, from, err)
+	default:
+		log.Printf("verso: history moved from %s to %s", from, dir)
+	}
+	mark := filepath.Join(from, stoppedMark)
+	if _, err := os.Stat(mark); err == nil {
+		markStopped(dir)
+		_ = os.Remove(mark)
 	}
 }
 

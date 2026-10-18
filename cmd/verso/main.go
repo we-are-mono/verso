@@ -112,6 +112,7 @@ func serve(args []string) {
 	flags.Func("listen-http", "an address:port to serve HTTP on (repeatable)", func(v string) error { plain = append(plain, v); return nil })
 	redirect := flags.String("redirect-https", "", "0 serves the shell over HTTP instead of redirecting to HTTPS")
 	historyDir := flags.String("history-dir", "", "the directory the router's history is kept in; empty keeps none")
+	historyFrom := flags.String("history-from", "", "the directory the history was kept in before -history-dir was chosen; its history moves into -history-dir")
 	historyChanges := flags.Int("history-changes", 1000, "how many entries config history keeps")
 	themeChoice := flags.String("theme", "", "the theme in force (verso.ui.theme); empty follows the browser in Sand")
 	var probes []netip.Addr
@@ -231,7 +232,7 @@ func serve(args []string) {
 	srv.SetAllowedHosts(allowedHosts())
 	if *historyDir != "" {
 		srv.SetChangesKept(*historyChanges)
-		srv.StartHistory(*historyDir, probes, notify)
+		srv.StartHistory(*historyDir, *historyFrom, probes, notify)
 	}
 
 	// Both signals are answered from before the first listener is announced, so

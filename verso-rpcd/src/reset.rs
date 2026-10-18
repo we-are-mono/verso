@@ -60,12 +60,14 @@ const LINKS: usize = 40;
 const WRITERS: [&str; 2] = ["verso", "nlbwmon"];
 
 /// The files the shell keeps in its history directory: the database, the
-/// files SQLite keeps beside it, and the mark of a clean stop.
-const SHELL_FILES: [&str; 5] = [
+/// files SQLite keeps beside it, the copy a move of the history is writing,
+/// and the mark of a clean stop.
+const SHELL_FILES: [&str; 6] = [
     "history.db",
     "history.db-wal",
     "history.db-shm",
     "history.db-journal",
+    "history.db-moving",
     "stopped",
 ];
 
@@ -93,7 +95,8 @@ pub fn start(erase: bool) -> Result<(), Failure> {
         return crate::spawn_system_action(FIRSTBOOT, &["-r", "-y"]);
     }
     // A directory applied while the shell runs reaches it as a SIGHUP, not
-    // a restart: it writes on where it was started until it stops.
+    // a restart: it writes on where it was started until it stops, and a
+    // start moves the history from where it was kept before.
     let chosen = uci_get("verso.history.directory")
         .map(PathBuf::from)
         .into_iter()
@@ -218,20 +221,29 @@ trait Router: Clone + Send + 'static {
 struct Device;
 
 impl Device {
-    /// running_history is the directory the running shell was started with.
-    fn running_history(&self) -> Option<PathBuf> {
+    /// running_history is where the running shell's history may be: the
+    /// directory it was started with, and the one it was to move the history
+    /// from at that start, which holds it still where the move did not
+    /// happen.
+    fn running_history(&self) -> Vec<PathBuf> {
         self.processes("verso")
             .into_iter()
             .flatten()
             .find_map(|process| {
                 shell_history(&fs::read(format!("/proc/{}/cmdline", process.pid)).ok()?)
             })
+            .unwrap_or_default()
     }
 }
 
-/// shell_history is the directory a process's /proc cmdline names, if the
-/// process is the shell. Each argument ends in a NUL, an empty one too.
-fn shell_history(cmdline: &[u8]) -> Option<PathBuf> {
+/// HISTORY_FLAGS are the shell's flags that name a directory its history
+/// is in: the one it keeps it in, and the one it moves it from.
+const HISTORY_FLAGS: [&[u8]; 2] = [b"history-dir", b"history-from"];
+
+/// shell_history is each directory a process's /proc cmdline names for the
+/// history (HISTORY_FLAGS), if the process is the shell. Each argument ends
+/// in a NUL, an empty one too.
+fn shell_history(cmdline: &[u8]) -> Option<Vec<PathBuf>> {
     let cmdline = cmdline.strip_suffix(b"\0").unwrap_or(cmdline);
     let args: Vec<&OsStr> = cmdline
         .split(|byte| *byte == 0)
@@ -241,7 +253,12 @@ fn shell_history(cmdline: &[u8]) -> Option<PathBuf> {
     if *program != SHELL {
         return None;
     }
-    history_flag(args)
+    Some(
+        HISTORY_FLAGS
+            .iter()
+            .filter_map(|flag| history_flag(args, flag))
+            .collect(),
+    )
 }
 
 impl Router for Device {
@@ -381,13 +398,13 @@ fn family(roots: &[u32], table: &[(u32, Stat)]) -> Vec<Process> {
     found
 }
 
-/// history_flag is the directory a shell's arguments name, as Go's flag
-/// package reads them. Flags, with one dash or two, end at "--" or at the
-/// first argument that is none. Every flag the shell has takes a value, after
-/// '=' or as the next argument, whatever that looks like. The last
-/// -history-dir counts, and an empty one names none; arguments the shell
-/// refuses to start with name none either.
-fn history_flag(args: &[&OsStr]) -> Option<PathBuf> {
+/// history_flag is the directory a shell's arguments name by flag, as Go's
+/// flag package reads them. Flags, with one dash or two, end at "--" or at
+/// the first argument that is none. Every flag the shell has takes a value,
+/// after '=' or as the next argument, whatever that looks like. The last one
+/// counts, and an empty one names none; arguments the shell refuses to start
+/// with name none either.
+fn history_flag(args: &[&OsStr], flag: &[u8]) -> Option<PathBuf> {
     let mut dir = None;
     let mut args = args.iter();
     while let Some(arg) = args.next() {
@@ -403,7 +420,7 @@ fn history_flag(args: &[&OsStr]) -> Option<PathBuf> {
             Some(at) => (&name[..at], &name[at + 1..]),
             None => (name, args.next()?.as_bytes()),
         };
-        if name == b"history-dir" {
+        if name == flag {
             dir = (!value.is_empty()).then(|| PathBuf::from(OsStr::from_bytes(value)));
         }
     }
@@ -2126,7 +2143,7 @@ mod tests {
     fn the_running_shells_directory_is_read_as_its_flags_are() {
         let read = |args: &[&str]| {
             let args: Vec<&OsStr> = args.iter().map(OsStr::new).collect();
-            history_flag(&args)
+            history_flag(&args, b"history-dir")
         };
         assert_eq!(
             read(&[
@@ -2193,22 +2210,48 @@ mod tests {
     fn a_command_line_keeps_its_empty_arguments() {
         assert_eq!(
             shell_history(b"/usr/bin/verso\0-alert-url\0\0-history-dir\0/data/x\0"),
-            Some(PathBuf::from("/data/x")),
+            Some(vec![PathBuf::from("/data/x")]),
             "an empty argument is a flag's value"
         );
         assert_eq!(
             shell_history(b"/usr/bin/verso\0-history-dir\0\0-probe\0/data/x\0"),
-            None
+            Some(vec![])
         );
         assert_eq!(
             shell_history(b"/usr/bin/verso\0-history-dir\0/data/x"),
-            Some(PathBuf::from("/data/x"))
+            Some(vec![PathBuf::from("/data/x")])
         );
         assert_eq!(
             shell_history(b"/usr/bin/other\0-history-dir\0/data/x\0"),
             None
         );
         assert_eq!(shell_history(b""), None);
+    }
+
+    // A shell started to move its history from the directory chosen before
+    // may hold it there still, where the move did not happen: a reset
+    // reaches both.
+    #[test]
+    fn a_shell_moving_its_history_names_where_it_moves_it_from() {
+        assert_eq!(
+            shell_history(
+                b"/usr/bin/verso\0-history-dir\0/mnt/sda1/verso\0-history-from\0/data/verso\0"
+            ),
+            Some(vec![
+                PathBuf::from("/mnt/sda1/verso"),
+                PathBuf::from("/data/verso")
+            ])
+        );
+    }
+
+    // A copy a move was writing is history too, and goes with it.
+    #[test]
+    fn a_move_cut_short_is_emptied_with_the_history() {
+        let stand = Stand::new("moving");
+        stand.file("/mnt/usb/verso/history.db-moving", "half a copy");
+        stand.file("/mnt/usb/verso/notes.txt", "the owner's");
+        stand.history(Some("/mnt/usb/verso")).erase().unwrap();
+        assert_eq!(names(&stand.at("/mnt/usb/verso")), ["notes.txt"]);
     }
 
     // A directory is held open only through no link at its last name, read

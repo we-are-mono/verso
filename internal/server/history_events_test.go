@@ -4,8 +4,11 @@
 package server
 
 import (
+	"errors"
+	"io/fs"
 	"math"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -218,6 +221,38 @@ func TestEventTimeSaysNoMoreThanItNeeds(t *testing.T) {
 		if got := eventTime(at, now); got != want {
 			t.Errorf("eventTime(%v) = %q, want %q", at, got, want)
 		}
+	}
+}
+
+// TestAMovedHistoryKeepsItsCleanStop: the history carried from the directory
+// chosen before comes with the mark of its clean stop, so the start that opens
+// it where it is now records the boot as one after a clean stop, and the
+// directory it left holds none of it (ADR-019).
+func TestAMovedHistoryKeepsItsCleanStop(t *testing.T) {
+	from, to := t.TempDir(), t.TempDir()
+	store, err := history.Open(filepath.Join(from, "history.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Close(); err != nil {
+		t.Fatal(err)
+	}
+	markStopped(from)
+	carryHistory(from, to)
+	for _, name := range []string{"history.db", stoppedMark} {
+		if _, err := os.Stat(filepath.Join(to, name)); err != nil {
+			t.Errorf("%s did not move: %v", name, err)
+		}
+		if _, err := os.Stat(filepath.Join(from, name)); !errors.Is(err, fs.ErrNotExist) {
+			t.Errorf("%s stayed behind: %v", name, err)
+		}
+	}
+	// a history that does not move leaves its mark where it is
+	again := t.TempDir()
+	markStopped(again)
+	carryHistory(again, to)
+	if _, err := os.Stat(filepath.Join(again, stoppedMark)); err != nil {
+		t.Errorf("a mark with no history to move went: %v", err)
 	}
 }
 

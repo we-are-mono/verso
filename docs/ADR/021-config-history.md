@@ -312,8 +312,9 @@ events, charts and per-device usage) before `firstboot` runs. Those are the
 defaults, `/data/verso`, `/usr/share/verso/history`, `/data/nlbwmon` and
 `/usr/share/nlbwmon/db`, which the shell and nlbwmon open again once
 `firstboot` puts their configs back, whatever directory was chosen before; and
-the chosen directories, the one set and the one the running shell was started
-with (an applied change reaches the shell as a SIGHUP, not a restart). Each
+the chosen directories, the one set, the one the running shell was started
+with (an applied change reaches the shell as a SIGHUP, not a restart) and the
+one it was started to move the history from (ADR-019). Each
 is reached as the shell reaches it: made clean as Go's `filepath.Clean` makes
 it, from `/` where it is relative (procd starts the shell there), then
 followed through its links. A default that is a directory of its own, the
@@ -325,7 +326,8 @@ it holds. Everywhere else the history
 shares its directory with whatever its owner keeps there, so only its
 writer's files go, each a file by its name, never following a link or going
 into a directory, whoever owns the directory: the shell's `history.db`, the
-files SQLite keeps beside it and the `stopped` mark, or nlbwmon's `<day>.db`
+files SQLite keeps beside it, the `history.db-moving` copy of a move cut
+short and the `stopped` mark, or nlbwmon's `<day>.db`
 and `<day>.db.gz`, the names nlbwmon itself prunes, and either with `.broken`
 after it, a day the usage watchdog moved aside (ADR-018). That holds for a
 default of another account's, a stick mounted at a default, a default linked

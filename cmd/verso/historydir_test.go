@@ -35,10 +35,11 @@ chown() { echo "$*" >>"$CHOWNS"; }
 }
 `
 
-// historyDirFunction is history_dir as the init script spells it.
+// historyDirFunction is history_dir as the init script spells it, with
+// history_choice, which it calls.
 func historyDirFunction(t *testing.T) string {
 	t.Helper()
-	return initFunction(t, initScript, "history_dir")
+	return initFunction(t, initScript, "history_choice") + initFunction(t, initScript, "history_dir")
 }
 
 // initFunction is the shell function name as the init script at path spells

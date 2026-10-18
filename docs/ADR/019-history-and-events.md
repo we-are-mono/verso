@@ -102,8 +102,19 @@ still `0600`. The file holds copies of configs only root may read (ADR-021).
 nlbwmon keeps its database apart, in the directory the package's usage-setup
 gives it (ADR-018): `/data/nlbwmon` where `/data` is a mount, else
 `/usr/share/nlbwmon/db`, unless the owner set one themselves. Changing
-`verso.history.directory` moves neither: the shell opens `history.db` in the
-new directory on its next start, and the old file stays where it was.
+`verso.history.directory` leaves nlbwmon's where it is, and moves the
+shell's: an apply reaches the running shell as a SIGHUP, so it writes on in
+the directory it was started with, and its next start moves the history into
+the one chosen before opening it. The init script reads the running shell's
+directory from its command line, at the apply and at every stop, and records
+it in `/etc/verso/history-from`, root's, while another is chosen; the next
+start takes the record and hands the shell `-history-from`. The shell copies
+the file with `VACUUM INTO`, WAL and all, into `history.db-moving`, private
+from the start, which takes the name `history.db` once whole, carries the
+clean-stop mark, and then removes the history's files where it was, so the
+router keeps one history. A directory that holds a history already is never
+written over: both stay, and the shell says so in its log. A move that fails
+leaves the history whole where it was.
 
 A directory that cannot be written is warned about, never refused. The shell
 keeps collecting in memory, and System → Events says above its listing that
