@@ -148,6 +148,35 @@ Found and fixed during the check:
   `verso-plugin` grant. Sessions take grants at login, and a fresh one was
   granted.
 
+## 11.2 The upgrade on a router in service
+
+On 2026-10-19 a Mono Gateway in daily use (Mono 25.12.5, layerscape/armv8_64b)
+was upgraded with the local apks in one `apk add`, from verso 0.9.0-r39 and the
+plugins before the move. apk upgraded acme, ddns, dnsdhcp and vpn first and verso
+last, and refused nothing.
+
+It then wrote `/etc/config/verso.apk-new`. That file is the stock default, which
+is unchanged since r39, written beside the router's edited config. There was
+nothing to merge.
+
+A read-only tour afterwards: every page was read by GET, and the browser refused
+any other request.
+- **VPN.** The OpenVPN tunnel read connected for 5 d 16 h, with its traffic.
+  The connection record survived its hook moving from verso to verso-plugin-vpn.
+- **Interfaces.** Every DHCP chip read "DHCP server is running.", from
+  `dnsdhcp.dhcp-state`.
+- **DHCP.** Every server read Serving, with its lease count.
+- **DNS.** The page named AdGuard Home on port 53. The root half reads the socket
+  owners the lab container hides.
+- **DDNS.** The name read "points here".
+- **Firewall.** The rules carried their hits, and the rule files listed fw4's
+  alone.
+- **Access.** The certificate card read acme's state.
+
+Not checked on this router: a staged file across the upgrade (none was staged),
+and apk refusing verso alone (all six moved together). The refusal is the one
+1.1 tested and 10.2 read back from the package.
+
 ## 10.2 verso's conflicts, as packaged
 
 `make apk APK_GOARCH=arm64` at v0.9.0-59 built `verso-0.9.0-r59.apk`. Its
