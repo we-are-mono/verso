@@ -19,9 +19,8 @@ own and points at the decision that governs it; the rationale lives there, not h
   - its SDK pinned by the verso tag that carries `Request::plugins`,
     `with_door`, `Property::door`, `Property::waiting`, `SlotKind`,
     `Envelope::nothing` and `Envelope::overview_card` (it builds against the SDK
-    in this tree), and its `verso>=` raised to that release, the first whose
-    shell fills slots (ADR-026): its manifest has no part of Access left for an
-    older shell to draw;
+    in this tree; its `verso>=` names 0.9.0-r38, the first shell that fills
+    slots, ADR-026);
   - on the DK (where `https://<domain>` already opens with no warning, its LAN
     answer kept by AdGuard Home): the LAN record through dnsdhcp's offer, the
     HTTP redirect to the domain, a hand install turning `acme.verso` off, and
@@ -29,10 +28,6 @@ own and points at the decision that governs it; the rationale lives there, not h
   - the outcome as the top-right notification, the drawer refreshing itself
     while a request runs (a new widget behaviour, the owner's call), and a
     Request now act;
-  - on the DK, the one HTTPS certificate card (ADR-026): the Source row and
-    "Use your domain" with the served ACME certificate, the notice in Install
-    and Make, the Certificate card on the Overview reading its time left, and
-    removing the package on Packages leaving no trace on Access or the Overview.
 - **Plugin contracts: certificate sources, the root half.** The page side is
   slots (ADR-026); core still runs ACME's root work: `verso-rpcd/src/acme.rs`
   (deliver, `acmeState`, acme.sh's `account.conf`), `setWebCertificate`/

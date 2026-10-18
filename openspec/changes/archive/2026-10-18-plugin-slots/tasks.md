@@ -87,7 +87,7 @@
   - stopping acme removes its row and act with no placeholder;
   - the Overview shows the Certificate card, and Arrange keeps its place across an acme restart.
   Save screenshots to ~/Share/screenshots.
-- [ ] 10.2 On the DK (router.example.com in every public artifact), check that the served ACME certificate shows as its Source row and that its Overview card reads its expiry. Removing verso-plugin-acme on Packages must leave no trace on Access or the Overview.
+- [x] 10.2 On the DK (router.example.com in every public artifact), check that the served ACME certificate shows as its Source row and that its Overview card reads its expiry. Removing verso-plugin-acme on Packages must leave no trace on Access or the Overview.
 - [x] 10.4 Test first in `internal/server/contributions_test.go`: a drawer-only page with `back`, visited as a page, lands on its page as `?drawer=<address>`; a page with a body stays; a drawer under an Access part lands on Access. The page script opens the named act's drawer on load. Verify with `make test` and a headless browser in the lab: `/plugins/acme/setup` and `/plugins/system/access/certificate/install` open over Access.
 - [x] 10.3 Update `docs/BACKLOG.md`: the certificate-source entry's slot half is done. Its root half (the `acme.rs` move, `hand_over`, the `acmeState` broker) stays, under the registry and events entry. Write release notes asking to upgrade verso, verso-plugin-system and verso-plugin-acme together. Verify that `make lint` and `make test` are green.
 
