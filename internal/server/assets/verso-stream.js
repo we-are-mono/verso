@@ -26,14 +26,14 @@
   }
   // setDetail writes a gauge's caption with its figures heavier than
   // the words around them, cut as widget.meterDetail cuts it: a word of
-  // digits alone (its decimals after "." or ",") is a figure, "1-minute" a
-  // word, and a narrow space parts a figure from its unit.
+  // digits alone (its decimals after "." or ",") is a figure, with the unit
+  // it holds across a narrow space; "1-minute" is a word.
   function setDetail(root, text) {
     var el = root.querySelector("[data-verso-meter-detail]");
     if (!el) return;
     var runs = [];
-    (text.match(/[^  ]+|[  ]+/g) || []).forEach(function (word) {
-      var figure = /^\d+(?:[.,]\d+)*$/.test(word);
+    (text.match(/\d+(?:[.,]\d+)*\u{202f}[^ \u{202f}]+|[^ \u{202f}]+|[ \u{202f}]+/gu) || []).forEach(function (word) {
+      var figure = /^\d+(?:[.,]\d+)*(?:\u{202f}[^ \u{202f}]+)?$/u.test(word);
       var last = runs[runs.length - 1];
       if (last && !figure && !last.figure) last.text += word;
       else runs.push({ text: word, figure: figure });

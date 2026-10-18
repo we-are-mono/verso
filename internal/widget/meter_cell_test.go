@@ -152,7 +152,7 @@ func TestDetailCellWeighsItsFigures(t *testing.T) {
 		}
 	}
 	got := renderRaw(t, r, table("detail", "warns 81 °C · protects 85 °C"))
-	want := `warns <span class="verso-meter__number">81</span>` + " °C · protects " + `<span class="verso-meter__number">85</span>` + " °C"
+	want := `warns <span class="verso-meter__number">81` + "\U0000202f" + `°C</span> · protects <span class="verso-meter__number">85` + "\U0000202f" + `°C</span>`
 	if !strings.Contains(got, want) {
 		t.Errorf("a detail cell does not weigh its figures, want %q in:\n%s", want, got)
 	}

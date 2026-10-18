@@ -122,17 +122,17 @@ type meterRun struct {
 }
 
 var (
-	// A caption's words and the spaces between them; a unit stands after its
-	// figure across a narrow space, so the narrow space parts them too.
-	meterWord = regexp.MustCompile(`[^ \x{202f}]+|[ \x{202f}]+`)
+	// A caption's words and the spaces between them, a figure and the unit it
+	// holds across a narrow space (units.Space) taken as one.
+	meterWord = regexp.MustCompile(`\d+(?:[.,]\d+)*\x{202f}[^ \x{202f}]+|[^ \x{202f}]+|[ \x{202f}]+`)
 	// A figure is a word of digits alone, its decimals after either mark a
-	// language writes them with; "1-minute" is a word.
-	meterFigure = regexp.MustCompile(`^\d+(?:[.,]\d+)*$`)
+	// language writes them with, and the unit it holds; "1-minute" is a word.
+	meterFigure = regexp.MustCompile(`^\d+(?:[.,]\d+)*(?:\x{202f}[^ \x{202f}]+)?$`)
 )
 
-// meterDetail cuts a caption where its figures start and end, so the figures
-// can stand heavier than the words around them. verso-stream.js cuts
-// a live caption the same way.
+// meterDetail cuts a caption where its figures (each with its unit) start and
+// end, so the figures can stand heavier than the words around them.
+// verso-stream.js cuts a live caption the same way.
 func meterDetail(detail string) []meterRun {
 	var runs []meterRun
 	for _, word := range meterWord.FindAllString(detail, -1) {

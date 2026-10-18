@@ -944,7 +944,9 @@ Column kinds, one treatment each (never mix them per row):
 - `"detail"` — a reading's facts in words (`"warns 81 °C · protects 85 °C"`),
   muted, each figure heavier than the words around it, as a gauge's
   caption weighs them. A figure is a word of digits alone (decimals after `.`
-  or `,`); a word with a digit in it and a unit stay words.
+  or `,`), with its unit when the unit follows it across a narrow no-break
+  space (U+202F, as `"81 °C"`); a word with a digit in it and a word after an
+  ordinary space stay words.
 - `"num"` — right-aligned tabular figures (counters); muted.
 - `"meter"` — a share of something: ten blocks lit to the cell's `fill`
   (0–100) with `text` as the figure beside it (`"61 %"`). `variant` bands the

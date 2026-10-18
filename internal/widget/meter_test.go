@@ -160,15 +160,17 @@ func TestAGaugeFillsItsLane(t *testing.T) {
 	}
 }
 
-// TestMeterDetailWeighsItsFigures: in a gauge's caption a figure stands a
-// step heavier than the words around it, so "34.1 of 60.4 GiB" is read by its
-// numbers; a word with a digit in it ("1-minute") and a unit stay words.
+// TestMeterDetailWeighsItsFigures: in a gauge's caption a figure stands
+// heavier than the words around it, its unit with it (the unit stands after
+// its figure across a narrow space), so "34.1 of 60.4 GiB" is read by its
+// quantities; a word with a digit in it ("1-minute") and a word after an
+// ordinary space ("32 threads") stay words.
 func TestMeterDetailWeighsItsFigures(t *testing.T) {
 	r := newRenderer(t)
 	for detail, want := range map[string]string{
-		"34.1 of 60.4 GiB · 26.3 GiB free": `<span class="verso-meter__number">34.1</span> of <span class="verso-meter__number">60.4</span>` + " GiB · " + `<span class="verso-meter__number">26.3</span>` + " GiB free",
-		"1-minute average · 32 threads":    `1-minute average · <span class="verso-meter__number">32</span> threads`,
-		"34,1 od 60,4 GiB":                 `<span class="verso-meter__number">34,1</span> od <span class="verso-meter__number">60,4</span>` + " GiB",
+		"34.1 of 60.4\U0000202fGiB · 26.3\U0000202fGiB free": `<span class="verso-meter__number">34.1</span> of <span class="verso-meter__number">60.4` + "\U0000202f" + `GiB</span> · <span class="verso-meter__number">26.3` + "\U0000202f" + `GiB</span> free`,
+		"1-minute average · 32 threads":                      `1-minute average · <span class="verso-meter__number">32</span> threads`,
+		"34,1 od 60,4\U0000202fGiB":                          `<span class="verso-meter__number">34,1</span> od <span class="verso-meter__number">60,4` + "\U0000202f" + `GiB</span>`,
 	} {
 		for _, m := range []*Meter{
 			{Label: "Memory", Value: "56", Unit: "%", Fill: 56, Detail: detail},
