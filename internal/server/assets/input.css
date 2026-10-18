@@ -311,24 +311,14 @@
   }
 }
 
-/* The rail across a page change (the nav block names what is carried). The
-   root is unnamed, so the page itself appears at once, and the carried parts
-   let every press through to it. Only where the rail stands beside the page
-   (on a phone it is a closed drawer by then), and only for a reader who has
-   not asked for stillness; anywhere else the page simply loads. */
+/* The document across a page change: the rail is carried, and the nav block
+   names its parts and how they move (blocks/nav.css). The root is unnamed, so
+   the page itself appears at once, and the carried parts let every press
+   through to it. Only where the rail stands beside the page (on a phone it is
+   a closed drawer by then), and only for a reader who has not asked for
+   stillness; anywhere else the page simply loads. */
 @media (min-width: 48rem) and (prefers-reduced-motion: no-preference) {
   @view-transition { navigation: auto; }
   :root { view-transition-name: none; }
   ::view-transition { pointer-events: none; }
-  /* The rail's one easing, the unfold's: a quick start, a long settle. */
-  ::view-transition-group(*) {
-    animation-duration: 0.36s;
-    animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
-    z-index: 1;
-  }
-  /* The marker travels under the words it passes, and keeps its edge rule
-     whole whatever width it is between a row and a subpage. */
-  ::view-transition-group(verso-nav-marker) { z-index: 0; }
-  ::view-transition-old(verso-nav-marker),
-  ::view-transition-new(verso-nav-marker) { block-size: 100%; object-fit: fill; }
 }

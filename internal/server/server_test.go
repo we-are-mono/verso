@@ -976,7 +976,7 @@ func TestPluginSubpagesOpenInTheRail(t *testing.T) {
 		t.Fatalf("rail draws %d markers, want exactly one", n)
 	}
 	here := nav[strings.Index(nav, `href="/plugins/demo/dnsdhcp" aria-current="page"`):]
-	if !strings.Contains(here[:strings.Index(here, "</a>")], `data-verso-nav-marker aria-hidden="true" style="--verso-vt: verso-nav-marker"`) {
+	if !strings.Contains(here[:strings.Index(here, "</a>")], `data-verso-nav-marker aria-hidden="true" style="--verso-vt: verso-nav-marker; --verso-vt-class: verso-nav-marker"`) {
 		t.Errorf("the marker must sit in the subpage you are on:\n%s", nav)
 	}
 	// The branch and each subpage's words are named for the page change: the

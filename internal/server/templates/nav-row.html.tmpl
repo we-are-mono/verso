@@ -3,12 +3,13 @@
 {{/* verso-nav-row: one destination in the rail, and the subpages it opens while
      it is the one you are in — the nav block (blocks/nav.css). A leading icon
      identifies each destination; the subpages share that identity and carry
-     only their labels. The marker, the face of each row, the branch and each
-     subpage carry a name for the page change (--verso-vt) and their kind
-     (--verso-vt-class), so the marker glides to where you are going. */}}
+     only their labels. The marker, the face of each row, its chevron, the
+     branch and each subpage carry a name for the page change (--verso-vt)
+     and their kind (--verso-vt-class; a chevron takes its row's), so the
+     marker glides to where you are going. */}}
 {{/* verso-nav-marker: where you are — one in the rail, laid behind the words of
      the place it marks. */}}
-{{define "verso-nav-marker"}}<span data-verso-nav-marker aria-hidden="true" style="--verso-vt: verso-nav-marker" class="verso-nav__marker"></span>{{end}}
+{{define "verso-nav-marker"}}<span data-verso-nav-marker aria-hidden="true" style="--verso-vt: verso-nav-marker; --verso-vt-class: verso-nav-marker" class="verso-nav__marker"></span>{{end}}
 {{/* verso-nav-square: the rail's state mark, in a tone's hue; a live one
      breathes. */}}
 {{define "verso-nav-square"}}<span aria-hidden="true" class="verso-mark" data-verso-tone="{{if or (eq . "success") (eq . "danger") (eq . "info")}}{{.}}{{else}}muted{{end}}"{{if eq . "success"}} data-verso-live{{end}}></span>{{end}}

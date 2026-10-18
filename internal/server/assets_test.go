@@ -1352,8 +1352,27 @@ func TestTheRailCarriesItsPlaceAcrossAPageChange(t *testing.T) {
 	}
 	// The carried parts are the nav block's own: the marker, each row's face,
 	// its chevron and the open branch.
-	if !strings.Contains(blockSheet(t, "nav"), ":is(.verso-nav__face, .verso-nav__marker, .verso-nav__chevron, .verso-nav__branch) {\n    view-transition-name: var(--verso-vt);") {
+	nav := blockSheet(t, "nav")
+	if !strings.Contains(nav, ":is(.verso-nav__face, .verso-nav__marker, .verso-nav__chevron, .verso-nav__branch) {\n    view-transition-name: var(--verso-vt);") {
 		t.Error("blocks/nav.css does not name the rail's parts for the page change")
+	}
+	// How the carried parts move is the nav block's too: the rail's one
+	// easing on each of its kinds, and the marker under the words it passes.
+	for _, want := range []string{
+		"::view-transition-group(.verso-nav-row),\n  ::view-transition-group(.verso-nav-sub),\n  ::view-transition-group(.verso-nav-branch),\n  ::view-transition-group(.verso-nav-marker) {\n    animation-duration: 0.36s;",
+		"::view-transition-group(.verso-nav-marker) {\n    z-index: 0;",
+		"::view-transition-new(.verso-nav-marker) {\n    block-size: 100%;",
+	} {
+		if !strings.Contains(nav, want) {
+			t.Errorf("blocks/nav.css is missing %q", want)
+		}
+	}
+	entry, err := os.ReadFile("assets/input.css")
+	if err != nil {
+		t.Fatalf("read entry stylesheet: %v", err)
+	}
+	if strings.Contains(string(entry), "::view-transition-group") {
+		t.Error("the entry stylesheet moves the rail's parts; the nav block does")
 	}
 }
 

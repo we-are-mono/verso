@@ -14,8 +14,9 @@
  *
  * Across a page change the marker, each row's face, the open branch and each
  * subpage's words are named for where they lead (--verso-vt, and their kind
- * in --verso-vt-class: verso-nav-row, verso-nav-branch, verso-nav-sub and
- * verso-nav-sub-N, view-transition classes rather than element classes), so
+ * in --verso-vt-class: verso-nav-row, which a row's chevron takes with it,
+ * verso-nav-branch, verso-nav-sub, verso-nav-sub-N and verso-nav-marker,
+ * view-transition classes rather than element classes), so
  * the browser carries each from the page you leave to the page you open: the
  * marker glides from where you were to where you are going, the rows under
  * a branch that opens slide down to make room while its hairline draws down
@@ -179,6 +180,25 @@ summary.verso-nav__row::-webkit-details-marker {
   :is(.verso-nav__face, .verso-nav__marker, .verso-nav__chevron, .verso-nav__branch) {
     view-transition-name: var(--verso-vt);
     view-transition-class: var(--verso-vt-class, none);
+  }
+  /* The rail's one easing, the unfold's: a quick start, a long settle. */
+  ::view-transition-group(.verso-nav-row),
+  ::view-transition-group(.verso-nav-sub),
+  ::view-transition-group(.verso-nav-branch),
+  ::view-transition-group(.verso-nav-marker) {
+    animation-duration: 0.36s;
+    animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+    z-index: 1;
+  }
+  /* The marker travels under the words it passes, and keeps its edge rule
+     whole whatever width it is between a row and a subpage. */
+  ::view-transition-group(.verso-nav-marker) {
+    z-index: 0;
+  }
+  ::view-transition-old(.verso-nav-marker),
+  ::view-transition-new(.verso-nav-marker) {
+    block-size: 100%;
+    object-fit: fill;
   }
   /* A row that gains or gives up the weight swaps it quickly, so the words
      never read doubled while they move. */
