@@ -52,6 +52,7 @@ Check its contents before setting `fw4_compatible` to `1` in `/etc/config/firewa
 /// RULE_FILES is fw4's own folder of rule files, listed and edited exactly as
 /// DNS & DHCP lists and edits dnsmasq's option files.
 pub const RULE_FILES: FileSet = FileSet {
+    family: "fw4",
     page: "/plugins/firewall/settings",
     editors: "/plugins/firewall/settings/files/",
     dir: "/etc/nftables.d/",
@@ -1124,6 +1125,20 @@ mod tests {
             "content": "# the office\nchain x {}\n", "version": "v1"
         })];
         model
+    }
+
+    // The firewall reads the dhcp config, so it is handed dnsmasq's files
+    // beside fw4's; its page lists fw4's alone.
+    #[test]
+    fn the_rule_files_are_fw4s_alone() {
+        let mut model = with_rule_files();
+        model.rule_files.push(json!({
+            "path": "/etc/dnsmasq.conf", "family": "dnsmasq", "content": "log-queries\n", "version": "v2"
+        }));
+        let body = serde_json::to_value(page(&model)).expect("serialize");
+        let text = fixture::section(&body, CUSTOM_TITLE).to_string();
+        assert!(text.contains("10-custom.nft"), "{text}");
+        assert!(!text.contains("dnsmasq"), "{text}");
     }
 
     // fw4's own folder of rule files is listed and edited exactly as DNS &

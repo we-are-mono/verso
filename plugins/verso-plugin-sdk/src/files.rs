@@ -26,6 +26,10 @@ pub const LIMIT: usize = 32768;
 /// FileSet is one daemon's hand-edited files as a page offers them: where
 /// they live, what they are called, and where their editors are.
 pub struct FileSet {
+    /// The file family the set is, as its registry declares it (`dnsmasq`,
+    /// `fw4`): a plugin is handed the families of every config it reads, and
+    /// the set is only its own.
+    pub family: &'static str,
     /// The page the listing sits on; a closed editor returns to it.
     pub page: &'static str,
     /// The address of a file's editor, before the file's name.
@@ -60,6 +64,12 @@ fn text<'a>(f: &'a Value, key: &str) -> &'a str {
 }
 
 impl FileSet {
+    /// own is the set's files among those handed over: its family's.
+    fn own<'a>(&self, files: &'a [Value]) -> impl Iterator<Item = &'a Value> {
+        let family = self.family;
+        files.iter().filter(move |f| text(f, "family") == family)
+    }
+
     /// href is the address of a file's editor.
     pub fn href(&self, path: &str) -> String {
         let name = match self.main {
@@ -85,8 +95,8 @@ impl FileSet {
     /// listing is the set's files: the Files band with its New file act, then a row per file — its folder before its name, how many
     /// lines of setting it holds, and the way into its editor.
     pub fn listing(&self, files: &[Value]) -> Widget {
-        let mut rows: Vec<TableRow> = files
-            .iter()
+        let mut rows: Vec<TableRow> = self
+            .own(files)
             .map(|f| {
                 let path = text(f, "path");
                 let count = text(f, "content")
@@ -225,7 +235,7 @@ impl FileSet {
         if path.is_empty() {
             return Ok(self.editor("", "", "", NEW_FILE_VERSION, ""));
         }
-        match files.iter().find(|f| text(f, "path") == path) {
+        match self.own(files).find(|f| text(f, "path") == path) {
             Some(file) if !text(file, "error").is_empty() => Err(text(file, "error").into()),
             Some(file) => {
                 Ok(self.editor(&path, "", text(file, "content"), text(file, "version"), ""))
@@ -256,7 +266,7 @@ impl FileSet {
             "Use lowercase letters, numbers, hyphens or underscores for the file name."
         } else if content.len() > LIMIT || content.contains('\0') {
             self.too_large
-        } else if original.is_empty() && files.iter().any(|file| text(file, "path") == target) {
+        } else if original.is_empty() && self.own(files).any(|file| text(file, "path") == target) {
             "A file with this name already exists."
         } else {
             ""
@@ -305,6 +315,7 @@ mod tests {
     use crate::json;
 
     const SET: FileSet = FileSet {
+        family: "x",
         page: "/plugins/x/",
         editors: "/plugins/x/files/",
         dir: "/etc/x.d/",
@@ -335,7 +346,7 @@ mod tests {
     #[test]
     fn a_row_is_a_file_with_its_folder_its_count_and_its_editor() {
         let files =
-            [json!({"path":"/etc/x.d/10-a.conf","content":"# note\na\n\nb\n","version":"v"})];
+            [json!({"path":"/etc/x.d/10-a.conf","family":"x","content":"# note\na\n\nb\n","version":"v"})];
         let body = serde_json::to_value(SET.listing(&files)).unwrap();
         let row = &body["rows"][0];
         assert_eq!(row["panel"], "/plugins/x/files/10-a.conf");
@@ -345,6 +356,25 @@ mod tests {
         assert_eq!(row["cells"][1]["sub"], "options");
         assert_eq!(row["cells"][2]["actions"][0]["icon"], "square-pen");
         assert_eq!(body["drawer_icon"], "square-pen");
+    }
+
+    // A plugin is handed the files of every config it reads, which may be
+    // more than one family's: the set lists, opens and checks names against
+    // its own family's alone.
+    #[test]
+    fn another_familys_files_are_not_the_sets() {
+        let files = [
+            json!({"path":"/etc/x.d/10-a.conf","family":"x","content":"a\n","version":"v"}),
+            json!({"path":"/etc/x.conf","family":"y","content":"b\n","version":"w"}),
+            json!({"path":"/etc/x.d/20-b.conf","family":"y","content":"c\n","version":"u"}),
+        ];
+        let body = serde_json::to_value(SET.listing(&files)).unwrap();
+        let listed: Vec<&Value> = body["rows"].as_array().unwrap().iter().filter_map(|r| r.get("id")).collect();
+        assert_eq!(listed, [&json!("/etc/x.d/10-a.conf")]);
+        assert!(SET.open(&files, "main").is_err());
+        assert!(SET.open(&files, "10-a.conf").is_ok());
+        let (_, command) = SET.save(&files, "new", &Form::parse("filename=20-b&content=a&expected=v")).unwrap();
+        assert!(command.is_some(), "another family's file takes no name of the set");
     }
 
     #[test]
@@ -362,7 +392,7 @@ mod tests {
     // of the set could have, or one already taken, is refused in the editor.
     #[test]
     fn a_save_stages_the_file_or_says_why_not() {
-        let files = [json!({"path":"/etc/x.d/taken.conf"})];
+        let files = [json!({"path":"/etc/x.d/taken.conf","family":"x"})];
         let (_, command) = SET
             .save(
                 &files,

@@ -2122,7 +2122,10 @@ A page lists and edits its family with the SDK's `verso_plugin::files::FileSet`:
 the Files band with its count and New file, a row per file (folder, name, lines
 that set something, the pen that opens its editor), and an editor drawer whose
 save is the `config-file-stage` command. DNS and Firewall declare only
-their folder, suffix and words, so the two listings cannot drift apart.
+their family, folder, suffix and words, so the two listings cannot drift apart.
+A plugin is handed the files of every config it reads (the firewall reads
+`dhcp` too), and a `FileSet` lists, opens and checks names against its own
+family's files alone.
 
 ### DHCP and DNS pages, and custom option files
 

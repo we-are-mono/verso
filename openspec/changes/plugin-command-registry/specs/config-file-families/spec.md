@@ -43,8 +43,12 @@ A family's files and directory SHALL lie under `/etc`. The helper SHALL refuse a
 The shell SHALL give a plugin that declares the files read the files of each family whose owning config the plugin may read, and no other family's.
 
 #### Scenario: The firewall page
-- **WHEN** the firewall plugin, reading the `firewall` config, asks for files
-- **THEN** it receives the `fw4` family's files and none of dnsmasq's or OpenVPN's
+- **WHEN** the firewall plugin, reading the `firewall` and `dhcp` configs, asks for files
+- **THEN** it receives the `fw4` and `dnsmasq` families' files and none of OpenVPN's
+
+#### Scenario: A page lists its own family
+- **WHEN** a page's file set is handed the files of more than one family
+- **THEN** it lists, opens and checks new names against its own family's files alone, so the firewall's rule files never list `/etc/dnsmasq.conf`
 
 ### Requirement: A plugin stages the files of configs it writes
 The shell SHALL stage a family's file only for a plugin that declares file staging and may write the family's owning config. The helper SHALL refuse a stage when:
