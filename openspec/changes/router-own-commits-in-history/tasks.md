@@ -3,15 +3,15 @@
 ## 1. The mark carries its cause
 
 - [x] 1.1 Test first in `plugins/verso-plugin-sdk/src/root.rs`: `own_write_in(dir, "acme", "acme", "A certificate was installed by hand.")` writes `{"plugin":"acme","cause":"A certificate was installed by hand."}`, 0600, in a 0700 directory. A config that is no uci name is refused, and so is a cause over 512 bytes or holding a newline. Then change `own_write` to `own_write(plugin, config, cause)`. Verify with `cargo test` in the SDK.
-- [ ] 1.2 Test first in `verso-rpcd/src/config_watch.rs`:
+- [x] 1.2 Test first in `verso-rpcd/src/config_watch.rs`:
   - `marked` returns the mark's plugin and cause from a JSON mark;
   - an empty mark, or one that does not parse, returns own with no cause;
   - a mark over 4 KiB is read no further and counts with no cause;
   - the existing refusals hold: a stale mark, one not root's, a directory others may write, a name that is no config.
 
   Then make `marked` and `owned` return the cause. Verify with `cargo test`.
-- [ ] 1.3 Test first in `config_watch.rs`: `own_write("verso", cause)` is taken by the next settled reading with its cause, once. A spooled record carries `"own"`, `"cause"` and `"plugin"` (empty for the helper's own). Then implement it and update `spool_config`. Verify with `cargo test`.
-- [ ] 1.4 Test first in `access.rs` and `arrival.rs`: `set_theme` and `set_web_listeners` mark `verso` with their causes, and an arrival marks each config it commits with the arrival cause (design decision 6). Then pass the causes. Verify with `cargo test`.
+- [x] 1.3 Test first in `config_watch.rs`: `own_write("verso", cause)` is taken by the next settled reading with its cause, once. A spooled record carries `"own"`, `"cause"` and `"plugin"` (empty for the helper's own). Then implement it and update `spool_config`. Verify with `cargo test`.
+- [x] 1.4 Test first in `access.rs` and `arrival.rs`: `set_theme` and `set_web_listeners` mark `verso` with their causes, and an arrival marks each config it commits with the arrival cause (design decision 6). Then pass the causes. Verify with `cargo test`.
 
 ## 2. history.db keeps the cause
 
@@ -52,7 +52,7 @@
 
 ## 6. verso-plugin-acme
 
-- [ ] 6.1 Test first in the acme repo: the hand-over marks `acme` with plugin `acme` and the cause "A certificate was installed by hand.", and the cause has its Slovenian in `i18n/sl.json`. Then call `own_write("acme", "acme", …)`. Verify with `cargo test` and `make lint` in the acme repo, and commit there.
+- [x] 6.1 Test first in the acme repo: the hand-over marks `acme` with plugin `acme` and the cause "A certificate was installed by hand.", and the cause has its Slovenian in `i18n/sl.json`. Then call `own_write("acme", "acme", …)`. Verify with `cargo test` and `make lint` in the acme repo, and commit there.
 
 ## 7. Documents
 

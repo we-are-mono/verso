@@ -168,6 +168,23 @@ fn uci(args: &[&str]) -> Result<bool, Failure> {
 /// clears its option. procd then records the shell's new command line; the
 /// running shell already answers on the listeners (ADR-017 §1).
 pub fn web_listeners(https: &str, http: &str, redirect: &str) -> Result<Value, Failure> {
+    web_listeners_with(https, http, redirect, uci, crate::config_watch::own_write)?;
+    let _ = Command::new("/etc/init.d/verso").arg("reload").status();
+    Ok(json!({"result":true}))
+}
+
+/// PORTS_CAUSE is what config history says moved the web interface's ports.
+const PORTS_CAUSE: &str = "The web interface's ports were changed.";
+
+/// web_listeners_with is web_listeners' write over run, the way one uci
+/// command is run, and mark, the way the router's own commit is marked.
+fn web_listeners_with(
+    https: &str,
+    http: &str,
+    redirect: &str,
+    mut run: impl FnMut(&[&str]) -> Result<bool, Failure>,
+    mut mark: impl FnMut(&str, &'static str),
+) -> Result<(), Failure> {
     if !https
         .split_whitespace()
         .chain(http.split_whitespace())
@@ -176,30 +193,30 @@ pub fn web_listeners(https: &str, http: &str, redirect: &str) -> Result<Value, F
     {
         return Err(Failure::invalid("invalid listener"));
     }
-    if !uci(&["-q", "get", "verso.web"])? && !uci(&["set", "verso.web=web"])? {
+    if !run(&["-q", "get", "verso.web"])? && !run(&["set", "verso.web=web"])? {
         return Err(Failure::unknown("verso.web could not be created"));
     }
     for (option, addrs) in [("listen_https", https), ("listen_http", http)] {
         let path = format!("verso.web.{option}");
-        uci(&["-q", "delete", &path])?;
+        run(&["-q", "delete", &path])?;
         for addr in addrs.split_whitespace() {
-            if !uci(&["add_list", &format!("{path}={addr}")])? {
+            if !run(&["add_list", &format!("{path}={addr}")])? {
                 return Err(Failure::unknown(format!("{path} could not be written")));
             }
         }
     }
     if redirect.is_empty() {
-        uci(&["-q", "delete", "verso.web.redirect_https"])?;
-    } else if !uci(&["set", &format!("verso.web.redirect_https={redirect}")])? {
+        run(&["-q", "delete", "verso.web.redirect_https"])?;
+    } else if !run(&["set", &format!("verso.web.redirect_https={redirect}")])? {
         return Err(Failure::unknown("verso.web.redirect_https could not be written"));
     }
-    // Verso's own act, not an edit made outside it (ADR-021).
-    crate::config_watch::own_write("verso");
-    if !uci(&["commit", "verso"])? {
+    // The router's own act, with its cause, not an edit made outside it
+    // (ADR-021).
+    mark("verso", PORTS_CAUSE);
+    if !run(&["commit", "verso"])? {
         return Err(Failure::unknown("verso could not be committed"));
     }
-    let _ = Command::new("/etc/init.d/verso").arg("reload").status();
-    Ok(json!({"result":true}))
+    Ok(())
 }
 
 /// set_theme puts a theme in force (ADR-024): it writes verso.ui.theme and
@@ -209,12 +226,20 @@ pub fn web_listeners(https: &str, http: &str, redirect: &str) -> Result<Value, F
 /// the running shell swaps its own theme, and the init script carries the
 /// option to the next start.
 pub fn set_theme(id: &str) -> Result<Value, Failure> {
-    set_theme_with(id, uci)?;
+    set_theme_with(id, uci, crate::config_watch::own_write)?;
     Ok(json!({"result": true}))
 }
 
-/// set_theme_with is set_theme over run, the way one uci command is run.
-fn set_theme_with(id: &str, mut run: impl FnMut(&[&str]) -> Result<bool, Failure>) -> Result<(), Failure> {
+/// THEME_CAUSE is what config history says changed the theme.
+const THEME_CAUSE: &str = "The theme was changed.";
+
+/// set_theme_with is set_theme over run, the way one uci command is run, and
+/// mark, the way the router's own commit is marked.
+fn set_theme_with(
+    id: &str,
+    mut run: impl FnMut(&[&str]) -> Result<bool, Failure>,
+    mut mark: impl FnMut(&str, &'static str),
+) -> Result<(), Failure> {
     if id.is_empty() || id.len() > 64 || !id.bytes().all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'-') {
         return Err(Failure::invalid("invalid theme"));
     }
@@ -226,8 +251,9 @@ fn set_theme_with(id: &str, mut run: impl FnMut(&[&str]) -> Result<bool, Failure
     } else if !run(&["set", &format!("verso.ui.theme={id}")])? {
         return Err(Failure::unknown("verso.ui.theme could not be written"));
     }
-    // Verso's own act, not an edit made outside it (ADR-021).
-    crate::config_watch::own_write("verso");
+    // The router's own act, with its cause, not an edit made outside it
+    // (ADR-021).
+    mark("verso", THEME_CAUSE);
     if !run(&["commit", "verso"])? {
         return Err(Failure::unknown("verso could not be committed"));
     }
@@ -304,24 +330,57 @@ mod tests {
         assert!(web_listeners("", "", "yes").is_err());
     }
 
-    /// The uci commands set_theme_with runs for id, in order.
+    /// The uci commands set_theme_with runs for id, in order, and the mark it
+    /// leaves as `mark <config>: <cause>`.
     fn theme_commands(id: &str) -> Result<Vec<String>, Failure> {
-        let mut ran = Vec::new();
-        set_theme_with(id, |args| {
-            ran.push(args.join(" "));
-            Ok(true)
-        })?;
-        Ok(ran)
+        let ran = std::cell::RefCell::new(Vec::new());
+        set_theme_with(
+            id,
+            |args| {
+                ran.borrow_mut().push(args.join(" "));
+                Ok(true)
+            },
+            |config, cause| ran.borrow_mut().push(format!("mark {config}: {cause}")),
+        )?;
+        Ok(ran.into_inner())
     }
 
     #[test]
     fn a_theme_is_written_and_committed_on_its_own() {
         assert_eq!(
             theme_commands("catppuccin-mocha").unwrap(),
-            ["set verso.ui=ui", "set verso.ui.theme=catppuccin-mocha", "commit verso"]
+            [
+                "set verso.ui=ui",
+                "set verso.ui.theme=catppuccin-mocha",
+                "mark verso: The theme was changed.",
+                "commit verso"
+            ]
         );
         // Sand following the browser is the option's absence.
-        assert_eq!(theme_commands("sand").unwrap(), ["set verso.ui=ui", "-q delete verso.ui.theme", "commit verso"]);
+        assert_eq!(
+            theme_commands("sand").unwrap(),
+            ["set verso.ui=ui", "-q delete verso.ui.theme", "mark verso: The theme was changed.", "commit verso"]
+        );
+    }
+
+    /// The web interface's ports are committed on their own, marked as the
+    /// router's act with their cause just before the commit (ADR-021).
+    #[test]
+    fn the_web_ports_are_committed_with_their_cause() {
+        let ran = std::cell::RefCell::new(Vec::new());
+        web_listeners_with(
+            "0.0.0.0:443",
+            "",
+            "1",
+            |args| {
+                ran.borrow_mut().push(args.join(" "));
+                Ok(true)
+            },
+            |config, cause| ran.borrow_mut().push(format!("mark {config}: {cause}")),
+        )
+        .unwrap();
+        let ran = ran.into_inner();
+        assert_eq!(&ran[ran.len() - 2..], ["mark verso: The web interface's ports were changed.", "commit verso"]);
     }
 
     #[test]
@@ -335,7 +394,7 @@ mod tests {
 
     #[test]
     fn a_theme_that_does_not_commit_says_so() {
-        let failed = set_theme_with("sand-dark", |args| Ok(args[0] != "commit"));
+        let failed = set_theme_with("sand-dark", |args| Ok(args[0] != "commit"), |_, _| {});
         assert!(failed.is_err());
     }
 

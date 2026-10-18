@@ -66,59 +66,87 @@ unsafe extern "C" {
 /// How long a mark of the helper's own write waits for the write it names.
 const OWN_WITHIN: Duration = Duration::from_secs(30);
 
-/// Configs the helper is about to commit itself, and when it said so.
-static OWN: Mutex<Option<HashMap<String, Instant>>> = Mutex::new(None);
+/// Own is a commit the router made itself (ADR-021): what caused it, one
+/// English sentence, and the plugin whose catalog words it, empty for the
+/// helper's own. A mark from a plugin built before causes carries neither.
+#[derive(Debug, Default, Clone, PartialEq, Eq, serde::Deserialize)]
+pub struct Own {
+    #[serde(default)]
+    pub plugin: String,
+    #[serde(default)]
+    pub cause: String,
+}
+
+/// Configs the helper is about to commit itself, when it said so, and why.
+static OWN: Mutex<Option<HashMap<String, (Instant, &'static str)>>> = Mutex::new(None);
 
 /// own_write says the helper is about to commit config itself (the web
 /// listeners, a package that just arrived), so its next reading is spooled
-/// as the helper's own: Verso's act, not an edit made outside it.
-pub fn own_write(config: &str) {
+/// as the router's own act, not an edit made outside it, with cause, an
+/// English sentence the shell's catalog words.
+pub fn own_write(config: &str, cause: &'static str) {
     if let Ok(mut own) = OWN.lock() {
         own.get_or_insert_with(HashMap::new)
-            .insert(config.to_owned(), Instant::now());
+            .insert(config.to_owned(), (Instant::now(), cause));
     }
 }
 
-/// Where a plugin's root half marks a commit it is about to make as Verso's
-/// own act (ADR-027): one empty file per config, in a directory only root may
-/// write. The SDK's `root::own_write` makes the mark.
+/// Where a plugin's root half marks a commit it is about to make as the
+/// router's own act (ADR-027): one file per config, holding its plugin and
+/// cause, in a directory only root may write. The SDK's `root::own_write`
+/// makes the mark.
 const OWN_MARKS: &str = "/tmp/run/verso-own";
+
+/// The most of a mark that is read: a plugin id and a cause of 512 bytes fit
+/// many times over.
+const MARK_LIMIT: usize = 4096;
 
 /// owned takes the mark of the helper's own write to config, or of a plugin's
 /// root half, if one is fresh enough to name the write just seen.
-fn owned(config: &str) -> bool {
+fn owned(config: &str) -> Option<Own> {
     let mine = OWN
         .lock()
         .ok()
         .and_then(|mut own| own.as_mut()?.remove(config))
-        .is_some_and(|at| at.elapsed() <= OWN_WITHIN);
-    mine || marked(Path::new(OWN_MARKS), config, SystemTime::now(), |uid| uid == 0)
+        .filter(|(at, _)| at.elapsed() <= OWN_WITHIN)
+        .map(|(_, cause)| Own { plugin: String::new(), cause: cause.to_owned() });
+    mine.or_else(|| marked(Path::new(OWN_MARKS), config, SystemTime::now(), |uid| uid == 0))
 }
 
 /// marked takes a root half's mark of config from dir: a regular file, in a
 /// directory root alone may write, written by an account rooted says is root
-/// within OWN_WITHIN of now. A mark names one write, so it is removed.
-fn marked(dir: &Path, config: &str, now: SystemTime, rooted: impl Fn(u32) -> bool) -> bool {
+/// within OWN_WITHIN of now. A mark names one write, so it is removed. Its
+/// plugin and cause are read when they parse; a mark that holds none still
+/// counts.
+fn marked(dir: &Path, config: &str, now: SystemTime, rooted: impl Fn(u32) -> bool) -> Option<Own> {
     if !uci_committed::config_name(config) {
-        return false;
+        return None;
     }
-    let Ok(folder) = fs::symlink_metadata(dir) else {
-        return false;
-    };
+    let folder = fs::symlink_metadata(dir).ok()?;
     if !folder.is_dir() || !rooted(folder.uid()) || folder.mode() & 0o077 != 0 {
-        return false;
+        return None;
     }
     let path = dir.join(config);
-    let Ok(mark) = fs::symlink_metadata(&path) else {
-        return false;
-    };
+    let mark = fs::symlink_metadata(&path).ok()?;
+    let mut body = Vec::new();
+    if mark.file_type().is_file() {
+        if let Ok(file) = fs::File::open(&path) {
+            let _ = file.take(MARK_LIMIT as u64 + 1).read_to_end(&mut body);
+        }
+    }
     let _ = fs::remove_file(&path);
     let fresh = mark
         .modified()
         .ok()
         .and_then(|at| now.duration_since(at).ok())
         .is_some_and(|age| age <= OWN_WITHIN);
-    mark.file_type().is_file() && rooted(mark.uid()) && fresh
+    if !(mark.file_type().is_file() && rooted(mark.uid()) && fresh) {
+        return None;
+    }
+    if body.len() > MARK_LIMIT {
+        return Some(Own::default());
+    }
+    Some(serde_json::from_slice(&body).unwrap_or_default())
 }
 
 /// watchdog runs the watch for as long as the helper does.
@@ -134,7 +162,7 @@ fn watch() -> Result<(), String> {
     let spool = Path::new(SPOOL);
     // With no key no secret can be fingerprinted, so nothing is spooled: the
     // config is left to its next write, the reason in the log.
-    let spool_config = |name: &str, written: u64, own: bool| match key() {
+    let spool_config = |name: &str, written: u64, own: Option<Own>| match key() {
         Ok(key) => spool_config(spool, name, written, own, key),
         Err(error) => eprintln!("verso-rpcd: config watch: {name} not spooled: {error}"),
     };
@@ -152,7 +180,7 @@ fn watch() -> Result<(), String> {
         ));
     }
     for name in configs_in(Path::new(WATCHED)) {
-        spool_config(&name, now_secs(), false);
+        spool_config(&name, now_secs(), None);
     }
     let mut pending: HashMap<String, (Instant, u64)> = HashMap::new();
     let mut buf = [0u8; 4096];
@@ -222,9 +250,10 @@ fn configs_in(dir: &Path) -> Vec<String> {
 }
 
 /// spool_config reads one config as it is committed and spools it, its
-/// secrets fingerprinted, and own where the helper wrote it itself. A config
-/// that cannot be read is left to its next write; the reason goes to the log.
-fn spool_config(spool: &Path, name: &str, written: u64, own: bool, key: &[u8]) {
+/// secrets fingerprinted, and own, with its cause, where the router wrote it
+/// itself. A config that cannot be read is left to its next write; the reason
+/// goes to the log.
+fn spool_config(spool: &Path, name: &str, written: u64, own: Option<Own>, key: &[u8]) {
     let mut sections = match uci_committed::read(name) {
         Ok(sections) => sections,
         Err(failure) => {
@@ -241,10 +270,18 @@ fn spool_config(spool: &Path, name: &str, written: u64, own: bool, key: &[u8]) {
         &secret_options(Path::new(PLUGINS)),
         key,
     );
-    let record = json!({ "time": written, "config": name, "own": own, "sections": sections });
+    let record = record(name, written, own.as_ref(), sections);
     if let Err(error) = write_spool(spool, name, &record) {
         eprintln!("verso-rpcd: config watch: {name} not spooled: {error}");
     }
+}
+
+/// record is one reading as the shell takes it from the spool: own, the cause
+/// and the plugin whose words it is, empty where the router did not write the
+/// config itself or gave no cause.
+fn record(name: &str, written: u64, own: Option<&Own>, sections: Value) -> Value {
+    let (cause, plugin) = own.map(|o| (o.cause.as_str(), o.plugin.as_str())).unwrap_or_default();
+    json!({ "time": written, "config": name, "own": own.is_some(), "cause": cause, "plugin": plugin, "sections": sections })
 }
 
 /// secret_options is every config.option kept secret: the shared list and
@@ -836,11 +873,48 @@ mod tests {
     }
 
     #[test]
-    fn the_helpers_own_write_is_marked_once() {
-        own_write("verso-test-own");
-        assert!(owned("verso-test-own"));
-        assert!(!owned("verso-test-own"), "a mark names one write");
-        assert!(!owned("verso-test-other"));
+    fn the_helpers_own_write_is_marked_once_with_its_cause() {
+        own_write("verso-test-own", "The theme was changed.");
+        assert_eq!(owned("verso-test-own"), Some(Own { plugin: String::new(), cause: "The theme was changed.".into() }));
+        assert_eq!(owned("verso-test-own"), None, "a mark names one write");
+        assert_eq!(owned("verso-test-other"), None);
+    }
+
+    /// The spool's record says whether the router made the commit itself,
+    /// what caused it and whose words the cause is: empty for none.
+    #[test]
+    fn a_spooled_record_carries_its_cause() {
+        let sections = json!({"verso": {".type": "web"}});
+        let own = Own { plugin: "acme".into(), cause: "A certificate was installed by hand.".into() };
+        assert_eq!(
+            record("acme", 7, Some(&own), sections.clone()),
+            json!({"time": 7, "config": "acme", "own": true, "cause": "A certificate was installed by hand.", "plugin": "acme", "sections": sections})
+        );
+        assert_eq!(
+            record("acme", 7, None, sections.clone()),
+            json!({"time": 7, "config": "acme", "own": false, "cause": "", "plugin": "", "sections": sections})
+        );
+    }
+
+    /// A root half's mark carries its plugin and cause; a mark from a plugin
+    /// built before causes is an empty file, and still counts, with none.
+    #[test]
+    fn a_root_halfs_mark_gives_its_cause() {
+        let dir = std::env::temp_dir().join(format!("verso-own-causes-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::DirBuilder::new().mode(0o700).create(&dir).unwrap();
+        let me = fs::metadata(&dir).unwrap().uid();
+        let mine = |uid: u32| uid == me;
+        let now = SystemTime::now();
+        let cause = "A certificate was installed by hand.";
+
+        fs::write(dir.join("acme"), json!({"plugin": "acme", "cause": cause}).to_string()).unwrap();
+        assert_eq!(marked(&dir, "acme", now, mine), Some(Own { plugin: "acme".into(), cause: cause.into() }));
+        for unread in [&b""[..], b"not json", &[b'x'; MARK_LIMIT + 1]] {
+            fs::write(dir.join("acme"), unread).unwrap();
+            assert_eq!(marked(&dir, "acme", now, mine), Some(Own::default()), "{}", String::from_utf8_lossy(&unread[..unread.len().min(8)]));
+        }
+        let _ = fs::remove_dir_all(&dir);
     }
 
     /// A root half marks a commit it is about to make (ADR-027): the mark
@@ -855,23 +929,23 @@ mod tests {
         let now = SystemTime::now();
 
         fs::write(dir.join("acme"), b"").unwrap();
-        assert!(marked(&dir, "acme", now, mine));
-        assert!(!marked(&dir, "acme", now, mine), "a mark names one write");
+        assert!(marked(&dir, "acme", now, mine).is_some());
+        assert!(marked(&dir, "acme", now, mine).is_none(), "a mark names one write");
 
         fs::write(dir.join("acme"), b"").unwrap();
-        assert!(!marked(&dir, "acme", now + OWN_WITHIN + Duration::from_secs(1), mine), "a stale mark");
+        assert!(marked(&dir, "acme", now + OWN_WITHIN + Duration::from_secs(1), mine).is_none(), "a stale mark");
         assert!(!dir.join("acme").exists(), "a stale mark is taken away");
 
         fs::write(dir.join("acme"), b"").unwrap();
-        assert!(!marked(&dir, "acme", now, |_| false), "a mark not root's");
+        assert!(marked(&dir, "acme", now, |_| false).is_none(), "a mark not root's");
 
         fs::write(dir.join("acme"), b"").unwrap();
         fs::set_permissions(&dir, fs::Permissions::from_mode(0o777)).unwrap();
-        assert!(!marked(&dir, "acme", now, mine), "a directory others may write");
+        assert!(marked(&dir, "acme", now, mine).is_none(), "a directory others may write");
         fs::set_permissions(&dir, fs::Permissions::from_mode(0o700)).unwrap();
 
-        assert!(!marked(&dir, "../acme", now, mine), "a name that is no config");
-        assert!(!marked(&dir.join("absent"), "acme", now, mine));
+        assert!(marked(&dir, "../acme", now, mine).is_none(), "a name that is no config");
+        assert!(marked(&dir.join("absent"), "acme", now, mine).is_none());
         let _ = fs::remove_dir_all(&dir);
     }
 

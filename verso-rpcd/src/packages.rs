@@ -306,7 +306,7 @@ pub fn install(name: &str) -> Result<String, String> {
     let absent = arrival::absent(arrival::installed);
     let output = command_ok("apk add", Command::new("apk").args(["add", name]))?;
     for due in arrival::due(&absent, arrival::installed) {
-        arrival::settle(due, arrival::run, arrival::pause)?;
+        arrival::settle(due, arrival::run, arrival::pause, crate::config_watch::own_write)?;
     }
     Ok(output)
 }

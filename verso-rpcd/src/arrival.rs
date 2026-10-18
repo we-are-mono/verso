@@ -103,17 +103,30 @@ pub fn installed(package: &str) -> bool {
         .is_ok_and(|o| o.status.success())
 }
 
-/// Runs an arrival's steps in order, stopping at the first that fails.
+/// ARRIVAL_CAUSE is what config history says committed an arriving package's
+/// config.
+pub const ARRIVAL_CAUSE: &str =
+    "The package arrived switched off, so it changes nothing until it is turned on.";
+
+/// Runs an arrival's steps in order, stopping at the first that fails. Each
+/// config it commits is marked, through mark, as the router's own act with
+/// ARRIVAL_CAUSE (ADR-021).
 pub fn settle(
     arrival: &Arrival,
     run: impl Fn(&[&str]) -> Result<(), String>,
     pause: impl Fn(),
+    mark: impl Fn(&str, &'static str),
 ) -> Result<(), String> {
     let still_on =
         |error: String| format!("{} was installed but is still on: {error}", arrival.package);
     for step in arrival.steps {
         match step {
-            Step::Run(argv) => run(argv).map_err(still_on)?,
+            Step::Run(argv) => {
+                if let ["/sbin/uci", "commit", config] = argv {
+                    mark(config, ARRIVAL_CAUSE);
+                }
+                run(argv).map_err(still_on)?
+            }
             Step::Drain(argv) => {
                 // A package ships a handful of copies at most.
                 for _ in 0..16 {
@@ -143,11 +156,6 @@ pub fn pause() {
 }
 
 pub fn run(argv: &[&str]) -> Result<(), String> {
-    // A config the helper commits is its own act, not an edit made outside
-    // Verso (ADR-021).
-    if let ["/sbin/uci", "commit", config] = argv {
-        crate::config_watch::own_write(config);
-    }
     let output = Command::new(argv[0])
         .args(&argv[1..])
         .output()
@@ -206,6 +214,7 @@ mod tests {
                 Ok(())
             },
             || {},
+            |_, _| {},
         )
         .unwrap();
         let ran = ran.into_inner();
@@ -219,6 +228,27 @@ mod tests {
         assert_eq!(ran.last().unwrap(), "/etc/init.d/https-dns-proxy start");
     }
 
+    // The commit an arrival makes is the router's own act in config history,
+    // marked with its cause just before it runs (ADR-021).
+    #[test]
+    fn an_arrivals_commit_is_marked_with_its_cause() {
+        let ran = RefCell::new(vec![]);
+        settle(
+            arrival("adblock"),
+            |argv| {
+                ran.borrow_mut().push(argv.join(" "));
+                Ok(())
+            },
+            || {},
+            |config, cause| ran.borrow_mut().push(format!("mark {config}: {cause}")),
+        )
+        .unwrap();
+        let ran = ran.into_inner();
+        let commit = ran.iter().position(|c| c == "/sbin/uci commit adblock").unwrap();
+        assert_eq!(ran[commit - 1], format!("mark adblock: {ARRIVAL_CAUSE}"));
+        assert_eq!(ran.iter().filter(|c| c.starts_with("mark")).count(), 1);
+    }
+
     #[test]
     fn adblock_arrives_disabled() {
         let ran = RefCell::new(vec![]);
@@ -229,6 +259,7 @@ mod tests {
                 Ok(())
             },
             || {},
+            |_, _| {},
         )
         .unwrap();
         assert_eq!(
@@ -259,6 +290,7 @@ mod tests {
                 Ok(())
             },
             || *pauses.borrow_mut() += 1,
+            |_, _| {},
         )
         .unwrap();
         assert_eq!((reloads.into_inner(), pauses.into_inner()), (4, 3));
@@ -277,6 +309,7 @@ mod tests {
                 Ok(())
             },
             || {},
+            |_, _| {},
         )
         .unwrap_err();
         assert_eq!(tries.into_inner(), AWAIT_TRIES);
@@ -286,7 +319,7 @@ mod tests {
     #[test]
     fn a_step_that_fails_says_the_package_is_still_on() {
         let error =
-            settle(arrival("adblock"), |_| Err("uci: I/O error".into()), || {}).unwrap_err();
+            settle(arrival("adblock"), |_| Err("uci: I/O error".into()), || {}, |_, _| {}).unwrap_err();
         assert_eq!(
             error,
             "adblock was installed but is still on: uci: I/O error"
