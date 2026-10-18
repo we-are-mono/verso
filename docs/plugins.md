@@ -477,7 +477,9 @@ Within `values`, `null` **clears** one option:
 The shell issues an option-level delete for every null and one `uci set` for
 what remains. Reach for it whenever an editor owns a setting the submission no
 longer carries: an empty string is a value, and a rule matching the empty port
-is not a rule matching every port.
+is not a rule matching every port. An empty array clears its list option the
+same way: rpcd refuses a `uci set` that carries one, so the shell deletes the
+option instead.
 
 Each ordinary entry is one `uci set`: `config` + `section` + a `values` map of
 option→value, where a value is a string (an option), an array of strings (a

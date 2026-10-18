@@ -244,6 +244,55 @@ func TestUCISetThreadsArgs(t *testing.T) {
 	}})
 }
 
+// TestUCISetClearsAnEmptyList: rpcd refuses a uci.set that carries an empty
+// list with INVALID_ARGUMENT and stages nothing of the call, so clearing every
+// NTP server (system.ntp.server = []) failed the whole save, its other values
+// with it (verified against rpcd: the option stood as it was). An empty list
+// is an option with no values, so UCISet stages it as uci.delete of the
+// option, an option already absent counting as cleared, and then sets the
+// rest.
+func TestUCISetClearsAnEmptyList(t *testing.T) {
+	clearServer := ubusCall{Method: "delete", Args: map[string]any{
+		"ubus_rpc_session": "s1", "config": "system", "section": "ntp", "option": "server",
+	}}
+	set := func(values map[string]any) ubusCall {
+		return ubusCall{Method: "set", Args: map[string]any{
+			"ubus_rpc_session": "s1", "config": "system", "section": "ntp", "values": values,
+		}}
+	}
+	for name, c := range map[string]struct {
+		values map[string]any
+		absent bool // uci.delete answers NOT_FOUND: the option was never set
+		want   []ubusCall
+	}{
+		"an emptied list beside a value": {values: map[string]any{"server": []any{}, "enabled": "1"},
+			want: []ubusCall{clearServer, set(map[string]any{"enabled": "1"})}},
+		"an emptied list alone": {values: map[string]any{"server": []string{}}, want: []ubusCall{clearServer}},
+		"a list already absent": {values: map[string]any{"server": []any{}}, absent: true, want: []ubusCall{clearServer}},
+		"a list with its servers": {values: map[string]any{"server": []any{"0.openwrt.pool.ntp.org"}},
+			want: []ubusCall{set(map[string]any{"server": []any{"0.openwrt.pool.ntp.org"}})}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			ubusd := newFakeUbus(t, map[string]ubusObject{"uci": func(method string, _ map[string]any) (map[string]any, int) {
+				if method == "delete" && c.absent {
+					return nil, ubus.StatusNotFound
+				}
+				return nil, ubusOK
+			}})
+			if err := ubusd.backend().UCISet(context.Background(), "s1", "system", "ntp", c.values); err != nil {
+				t.Fatalf("UCISet: %v", err)
+			}
+			wantUCI(t, ubusd, c.want...)
+		})
+	}
+	// a clear rpcd refuses for another reason stops the write
+	ubusd := newFakeUbus(t, map[string]ubusObject{"uci": failWith(ubusUnknownError)})
+	if err := ubusd.backend().UCISet(context.Background(), "s1", "system", "ntp", map[string]any{"server": []any{}, "enabled": "1"}); err == nil || errors.Is(err, ErrOptionNotFound) {
+		t.Errorf("UCISet = %v, want the clear's failure", err)
+	}
+	wantUCI(t, ubusd, clearServer)
+}
+
 // TestUCIConfigThreadsArgs checks UCIConfig hands rpcd's uci.get the sid and
 // config and returns the whole-config values map the shell hands a plugin as
 // its read snapshot (ADR-007).

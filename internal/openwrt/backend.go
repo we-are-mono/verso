@@ -670,10 +670,37 @@ func (b *NativeBackend) Access(_ context.Context, sid, scope, object, function s
 	return probeAccess(c, sid, scope, object, function)
 }
 
-// UCISet writes option values into a uci section through rpcd's `uci` object
+// UCISet writes option values into a uci section through rpcd, gated by the sid.
+// An empty list is an option with no values, and rpcd refuses a uci.set that
+// carries one (INVALID_ARGUMENT, nothing of the call staged), so each is
+// staged as a delete of the option instead, one already absent counting as
+// cleared, before the rest are set.
+func (b *NativeBackend) UCISet(ctx context.Context, sid, config, section string, values map[string]any) error {
+	set := make(map[string]any, len(values))
+	var emptied []string
+	for option, value := range values {
+		if emptyList(value) {
+			emptied = append(emptied, option)
+			continue
+		}
+		set[option] = value
+	}
+	sort.Strings(emptied)
+	for _, option := range emptied {
+		if err := b.UCIDelete(ctx, sid, config, section, option); err != nil && !errors.Is(err, ErrOptionNotFound) {
+			return err
+		}
+	}
+	if len(set) == 0 && len(emptied) > 0 {
+		return nil
+	}
+	return b.uciSet(sid, config, section, set)
+}
+
+// uciSet writes option values into a uci section through rpcd's `uci` object
 // (method `set`), carrying the sid so rpcd applies the operator's ACLs. values
 // is encoded as the nested `values:{}` table uci.set expects.
-func (b *NativeBackend) UCISet(_ context.Context, sid, config, section string, values map[string]any) error {
+func (b *NativeBackend) uciSet(sid, config, section string, values map[string]any) error {
 	_, err := call(b.ubusSocket, "uci", "set", map[string]any{
 		"ubus_rpc_session": sid,
 		"config":           config,
@@ -681,6 +708,17 @@ func (b *NativeBackend) UCISet(_ context.Context, sid, config, section string, v
 		"values":           values,
 	})
 	return err
+}
+
+// emptyList reports whether a uci value is a list with no values.
+func emptyList(value any) bool {
+	switch v := value.(type) {
+	case []any:
+		return len(v) == 0
+	case []string:
+		return len(v) == 0
+	}
+	return false
 }
 
 // UCIConfig reads a whole config through rpcd's `uci` object (method `get`
