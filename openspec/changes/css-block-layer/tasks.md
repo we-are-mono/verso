@@ -129,8 +129,8 @@
 
 ## 11. Integration
 
-- [ ] 11.1 Full parity over the whole reference set at both widths. Look at the screenshots beside the baseline's and confirm that every difference is a convergence `drift.md` records, then run `make lint` and `make test`. Verify: the diff holds only recorded convergences; the screenshots match otherwise.
-- [ ] 11.2 Update `docs/BACKLOG.md` with the block layer and the type roles as they stand, and record any visual improvement noticed during the conversion as its own item. Run `graphify update .`. Verify: BACKLOG reflects it; graphify reports the update.
+- [x] 11.1 Full parity over the whole reference set at both widths. Look at the screenshots beside the baseline's and confirm that every difference is a convergence `drift.md` records, then run `make lint` and `make test`. Verify: the diff holds only recorded convergences; the screenshots match otherwise.
+- [x] 11.2 Update `docs/BACKLOG.md` with the block layer and the type roles as they stand, and record any visual improvement noticed during the conversion as its own item. Run `graphify update .`. Verify: BACKLOG reflects it; graphify reports the update.
 
 ## Workflow follow-up
 

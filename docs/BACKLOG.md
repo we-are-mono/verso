@@ -164,6 +164,36 @@ own and points at the decision that governs it; the rationale lives there, not h
   the page some read long (dnsdhcp's DUID tip runs past 300 characters). Read
   each plugin's forms with descriptions shown and tighten what reads as prose.
 
+## Stylesheet blocks (ADR-025, css-block-layer)
+
+Every look is a block in `internal/server/assets/blocks/`, every text one of
+the 21 type roles in `type.css`, and the guards in
+`internal/server/stylesheet_guards_test.go` hold both without exceptions.
+
+- **Release note: one look per thing.** Cards, lists, folds, badges and the
+  Overview's cards now share one definition each, so the same thing looks the
+  same on every page; a few drifted copies changed to match (a list's words in
+  line with its card's, a card's fact list giving up its first line's air,
+  the device limits tip on the type roles). Installed plugins need no
+  upgrade.
+- **Two looks for a listing in a card.** A page card runs its listing to the
+  frame with Paper column heads; a list (`Style: "list"`, the Overview's
+  Ports and Tunnels, who is signed in) stands in the card's inset under a fact
+  list's heading. Decide whether a card's listing is ever more than a list.
+- **System panels on cards.** The Logs, Alerts and Packages settings panels
+  stand their rows on the drawer's own Paper (`data-verso-ground="paper"`)
+  rather than in cards, as every other drawer's settings do.
+- **The interface inventory's markup.** `table-interfaces.html.tmpl` still
+  draws its tree, its columns' widths and its unfold with utilities and
+  arbitrary values (`py-row`, `pl-29.25`, `w-39`), the one listing not built
+  from the table block's elements; `py-row` is the entry's last utility.
+- **Code and properties leftovers.** The code block's token inks and the
+  properties head still name colour and layout utilities per site
+  (`text-denim-deep`, `sm:w-24`); a token's ink is the code block's, by
+  `data-verso-token`.
+- **The rail's page transition.** The view-transition rules stand in
+  `input.css`; they are the nav block's.
+
 ## Pending changes (ADR-010, pending-changes-page)
 
 - **Release note: pending changes live at the top of the sidebar.** The chip
