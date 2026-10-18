@@ -56,29 +56,30 @@
 
 ## 5. File families from the registries
 
-- [ ] 5.1 Test first in `config_files.rs`, with registries in a temp dir:
+- [x] 5.1 Test first in `config_files.rs`, with registries in a temp dir:
   - the family table builds from every registry;
   - a family under `/etc/config`, `/etc/shadow` or another protected path is dropped and logged;
   - two families sharing a name or a place are both dropped;
   - a path outside every family is refused.
 
   Then replace the `Family` enum with the table, keeping the journal format. Verify with `cargo test`.
-- [ ] 5.2 Test first, with a fake transform:
+- [x] 5.2 Test first, with a fake transform:
   - `list` folds content and withholds by path;
   - `stage` restores held material or refuses;
   - a failing transform lists that family by path alone;
   - check and reload run their fixed argv.
 
   Then implement the transform protocol (design decision 9). Verify with `cargo test`.
-- [ ] 5.3 Test first: a journal written by the current build (families `dnsmasq`, `fw4`, `openvpn`) still lists, applies and discards under the registry-built table. Verify with `cargo test` against a recorded journal fixture.
-- [ ] 5.4 Test first in `internal/server`:
+- [x] 5.3 Test first: a journal written by the current build (families `dnsmasq`, `fw4`, `openvpn`) still lists, applies and discards under the registry-built table. Verify with `cargo test` against a recorded journal fixture.
+- [x] 5.4 Test first in `internal/server`:
   - `configFiles` carries `families` (`name`, `config`, `plugin`);
   - a plugin's file read is narrowed to families of configs it reads;
-  - `config-file-stage` checks the owning config from that list.
+  - `config-file-stage` passes the configs the plugin may write, and the helper refuses a file whose family's config is not among them;
+  - a discard names a config, and the helper drops the files of that config's families.
 
-  Then remove `fileConfig`. Verify with `make test`.
-- [ ] 5.5 Test first: a config history entry for an applied OpenVPN profile edit holds the folded text, and the history database holds no line of the key block. Then fix the recording path if it does not already use the listing. Amend ADR-021's files row in place. Verify with `make test` and `cargo test`.
-- [ ] 5.6 Document families, their bounds and the transform protocol in `docs/plugins.md`. Verify that the doc's family example decodes with the SDK's `Registry`.
+  Then remove `fileConfig` and the shell's family-to-config map, so the helper's table is the one path matcher. Verify with `make test` and `cargo test`.
+- [x] 5.5 Test first: a config history entry for an applied OpenVPN profile edit holds the folded text, and the history database holds no line of the key block. Then fix the recording path if it does not already use the listing. Amend ADR-021's files row in place. Verify with `make test` and `cargo test`.
+- [x] 5.6 Document families, their bounds and the transform protocol in `docs/plugins.md`. Verify that the doc's family example decodes with the SDK's `Registry`.
 
 ## 6. In-tree plugins: firewall, interfaces, system
 
@@ -97,7 +98,7 @@
 
 - [ ] 8.1 Test first in the vpn repo: move `openvpn.rs`'s tests (state, records, PID and owner checks, fold, unfold, profile withholding, the hotplug script's tests) with it. Then move the code as the `state` read and the `files` transform. Verify with `cargo test`.
 - [ ] 8.2 Ship `commands.json` (`state`, `files`, and the `openvpn` family: `/etc/openvpn`, mode `0600`, reload `/etc/init.d/openvpn reload`) and `/etc/hotplug.d/openvpn/50-verso` with `replaces:verso`. Change the manifest and ACL to `verso-plugin vpn state` and `configFiles`, and depend on `verso>=R`. Verify with `cargo test`.
-- [ ] 8.3 Remove `openvpn.rs`, `vpnState`, `openvpnFiles`, the hotplug file and `replaces:verso-plugin-vpn` from core. Verify with `make test` and `make lint`.
+- [x] 8.3 Remove `openvpn.rs`, `vpnState`, `openvpnFiles`, the hotplug file and `replaces:verso-plugin-vpn` from core. Verify with `make test` and `make lint`.
 
 ## 9. verso-plugin-ddns and verso-plugin-dnsdhcp (their own repositories)
 

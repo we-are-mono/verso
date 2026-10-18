@@ -1239,7 +1239,11 @@ type brokeredRead struct {
 func (s *Server) declaredReads(m plugin.Manifest) []brokeredRead {
 	var out []brokeredRead
 	for _, function := range declaredUbusReadFunctions(m) {
-		if read := s.coreRead(function); read != nil {
+		read := s.coreRead(function)
+		if function == "configFiles" {
+			read = s.familyFiles(m)
+		}
+		if read != nil {
 			out = append(out, brokeredRead{key: function, read: read})
 		}
 	}
@@ -1285,6 +1289,48 @@ func (s *Server) registeredRead(id, name string) func(context.Context, string) (
 	}
 }
 
+// familyFiles is the helper's file listing narrowed to the families whose
+// config the plugin reads (ADR-027), so a page never lists — and so never
+// offers to edit — another daemon's files.
+func (s *Server) familyFiles(m plugin.Manifest) func(context.Context, string) (json.RawMessage, error) {
+	reads := declaredUCIReadConfigs(m)
+	return func(ctx context.Context, sid string) (json.RawMessage, error) {
+		raw, err := s.backend.ConfigFiles(ctx, sid)
+		if err != nil {
+			return nil, err
+		}
+		var state struct {
+			Files    []json.RawMessage `json:"files"`
+			Families []struct {
+				Name   string `json:"name"`
+				Config string `json:"config"`
+				Plugin string `json:"plugin"`
+			} `json:"families"`
+		}
+		if err := json.Unmarshal(raw, &state); err != nil {
+			return nil, err
+		}
+		mine := map[string]bool{}
+		families := []any{}
+		for _, f := range state.Families {
+			if slices.Contains(reads, f.Config) {
+				mine[f.Name] = true
+				families = append(families, f)
+			}
+		}
+		files := []json.RawMessage{}
+		for _, file := range state.Files {
+			var named struct {
+				Family string `json:"family"`
+			}
+			if json.Unmarshal(file, &named) == nil && mine[named.Family] {
+				files = append(files, file)
+			}
+		}
+		return json.Marshal(map[string]any{"files": files, "families": families})
+	}
+}
+
 // coreRead bounds the core reads the shell performs on a plugin's behalf to a
 // closed set of named helper functions, the way runPluginCommands bounds the
 // acts. Declaring a scope is not enough: the shell must also know the function.
@@ -1314,10 +1360,6 @@ func (s *Server) coreRead(function string) func(context.Context, string) (json.R
 		}
 	case "wirelessState":
 		read = s.backend.WirelessState
-	case "vpnState":
-		read = s.backend.VPNState
-	case "openvpnFiles":
-		read = s.backend.OpenVPNFiles
 	case "ddnsState":
 		read = s.backend.DDNSState
 	case "acmeState":

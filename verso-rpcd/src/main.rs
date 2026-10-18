@@ -17,6 +17,7 @@ mod plugin_command;
 mod registry;
 mod config_files;
 mod ddns;
+mod families;
 mod grants;
 mod dhcp;
 mod diagnostics;
@@ -25,7 +26,6 @@ mod firewall_log;
 mod firmware;
 mod hardware;
 mod netlink;
-mod openvpn;
 mod packages;
 mod ubus;
 mod config_watch;
@@ -342,28 +342,21 @@ fn dispatch(request: &Value, state: &State, uid: u32) -> Result<Value, Failure> 
         "dhcpState" => dhcp::state(),
         "dnsState" => config_files::dns_state(),
         "firewallFiles" => config_files::firewall_state(),
-        "openvpnFiles" => config_files::openvpn_state(),
         "configFiles" => config_files::state(),
         "uciCommitted" => uci_committed::committed(argument(request, "configs")?),
         "stageConfigFile" => config_files::stage(
             argument(request, "path")?,
             argument(request, "expected")?,
             argument(request, "content")?,
+            optional_argument(request, "configs"),
         ),
         "applyConfigFiles" => config_files::lifecycle(
             argument(request, "action")?,
             argument(request, "uci")? == "1",
             argument(request, "timeout")?.parse().unwrap_or(30),
-            match argument(request, "family") {
-                Ok(name) => Some(
-                    config_files::Family::named(name)
-                        .ok_or_else(|| Failure::invalid("Unknown file family."))?,
-                ),
-                Err(_) => None,
-            },
+            argument(request, "config").ok(),
         ),
         "accessCredentials" => access::state(),
-        "vpnState" => openvpn::state(),
         "ddnsState" => ddns::state(),
         "acmeState" => acme::state(&acme::System, &acme::Places::router()),
         "ddnsUpdate" => ddns::update(argument(request, "section")?),

@@ -48,7 +48,10 @@ func TestConfigFilesJoinReviewDiscardAndApply(t *testing.T) {
 		t.Run(map[bool]string{false: "files only", true: "mixed"}[uci], func(t *testing.T) {
 			ctx := context.Background()
 			var calls []string
-			state := configFileState{Files: []ConfigFile{{Path: "/etc/dnsmasq.conf", Family: "dnsmasq", Content: "log-queries\n", Pending: true}}}
+			state := configFileState{
+				Files:    []ConfigFile{{Path: "/etc/dnsmasq.conf", Family: "dnsmasq", Content: "log-queries\n", Pending: true}},
+				Families: []FileFamily{{Name: "dnsmasq", Config: "dhcp", Plugin: "dnsdhcp"}},
+			}
 			staged := map[string]any{}
 			if uci {
 				staged["dhcp"] = []any{[]any{"set", "main", "domain", "home"}}
@@ -105,15 +108,23 @@ func TestConfigFilesJoinReviewDiscardAndApply(t *testing.T) {
 }
 
 // TestAFileWaitsUnderItsOwnConfig: a staged file is a change to the config
-// whose daemon reads it — a rule file waits under the firewall, a dnsmasq file
-// under dhcp — and discarding one config leaves the other's files staged.
+// whose daemon reads it, as the helper's family table says — a rule file waits
+// under the firewall, a dnsmasq file under dhcp — and discarding a config asks
+// the helper to drop that config's families' files, leaving the others staged.
 func TestAFileWaitsUnderItsOwnConfig(t *testing.T) {
 	ctx := context.Background()
 	var discarded []string
-	state := configFileState{Files: []ConfigFile{
-		{Path: "/etc/dnsmasq.d/10-local.conf", Family: "dnsmasq", Content: "log-queries\n", Pending: true},
-		{Path: "/etc/nftables.d/10-custom.nft", Family: "fw4", Content: "chain x {}\n", Pending: true},
-	}}
+	state := configFileState{
+		Files: []ConfigFile{
+			{Path: "/etc/dnsmasq.d/10-local.conf", Family: "dnsmasq", Content: "log-queries\n", Pending: true},
+			{Path: "/etc/nftables.d/10-custom.nft", Family: "fw4", Content: "chain x {}\n", Pending: true},
+			{Path: "/etc/orphan.conf", Family: "gone", Content: "x\n", Pending: true},
+		},
+		Families: []FileFamily{
+			{Name: "dnsmasq", Config: "dhcp", Plugin: "dnsdhcp"},
+			{Name: "fw4", Config: "firewall", Plugin: "firewall"},
+		},
+	}
 	b := uciStage(t, map[string]any{}, func(string) int { return ubusOK })
 	b.helperSocket = configFileHelper(t, func(_ context.Context, _, method string, args map[string]string, result any) error {
 		if method == "configFiles" {
@@ -121,7 +132,7 @@ func TestAFileWaitsUnderItsOwnConfig(t *testing.T) {
 			return nil
 		}
 		if args["action"] == "discard" {
-			discarded = append(discarded, args["family"])
+			discarded = append(discarded, args["config"])
 		}
 		return nil
 	})
@@ -136,18 +147,14 @@ func TestAFileWaitsUnderItsOwnConfig(t *testing.T) {
 	if !reflect.DeepEqual(changes, want) {
 		t.Fatalf("changes %v want %v", changes, want)
 	}
-	for config, family := range map[string]string{"firewall": "fw4", "dhcp": "dnsmasq", "openvpn": "openvpn"} {
+	for _, config := range []string{"firewall", "dhcp", "network"} {
 		discarded = nil
 		if err := b.UCIRevert(ctx, "sid", config); err != nil {
 			t.Fatal(err)
 		}
-		if !reflect.DeepEqual(discarded, []string{family}) {
-			t.Errorf("discarding %s discarded files of %v", config, discarded)
+		if !reflect.DeepEqual(discarded, []string{config}) {
+			t.Errorf("discarding %s asked the helper to discard %v", config, discarded)
 		}
-	}
-	discarded = nil
-	if err := b.UCIRevert(ctx, "sid", "network"); err != nil || discarded != nil {
-		t.Errorf("a config no file belongs to discards no files: %v %v", discarded, err)
 	}
 }
 
@@ -183,7 +190,7 @@ func TestInvalidFileDoesNotStageAnIncludeDirectory(t *testing.T) {
 	b.helperSocket = configFileHelper(t, func(context.Context, string, string, map[string]string, any) error {
 		return errors.New("invalid or stale file")
 	})
-	if b.StageConfigFile(context.Background(), "sid", "/etc/dnsmasq.d/local.conf", "old", "invalid") == nil {
+	if b.StageConfigFile(context.Background(), "sid", "/etc/dnsmasq.d/local.conf", "old", "invalid", []string{"dhcp"}) == nil {
 		t.Fatal("accepted")
 	}
 	for _, call := range ubusd.invoked("uci") {

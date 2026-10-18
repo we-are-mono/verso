@@ -4,6 +4,9 @@ use serde_json::{Map, Value};
 use std::collections::{BTreeMap, BTreeSet};
 use verso_plugin::{Request, Section, Snapshot};
 
+/// The VPN plugin's read of what the tunnels are doing (ADR-027).
+pub const VPN_STATE: &str = "vpn.state";
+
 #[derive(Clone, Default)]
 pub struct Record {
     pub id: String,
@@ -125,9 +128,11 @@ impl Model {
             wireless: records(&r.snapshot, "wireless", "wifi-iface"),
             routes: routes(&r.snapshot),
             live: r.ubus.get("networkState").cloned().unwrap_or(Value::Null),
+            // The VPN plugin's own read (ADR-027), at a version this plugin
+            // knows; without it, or at another, no device is OpenVPN's.
             openvpn: r
                 .ubus
-                .get("vpnState")
+                .read(VPN_STATE, &[1])
                 .and_then(|s| s["tunnels"].as_array())
                 .into_iter()
                 .flatten()

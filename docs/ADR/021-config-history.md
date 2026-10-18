@@ -42,7 +42,7 @@ An entry holds:
 | status | `applied`, `rolledback`, or `undone` once a later entry reverses it |
 | by | the rpcd session's user and the browser's address; empty for an edit made outside Verso |
 | changes | each change as `uci changes` reported it (`op`, config, section, option, value), with the value it replaced |
-| files | the daemon option files the apply staged (the helper's config-file families, `docs/plugins.md`), as their text before and after |
+| files | the daemon option files the apply staged (the file families plugins declare, ADR-027, `docs/plugins.md`), as their text before and after as the family's listing gives it: folded where its transform folds, so no key an OpenVPN profile holds reaches the history |
 | words | each describe hook's sentences and subjects (below), as the plugin wrote them at apply time |
 | relation | the entry this one undoes, returns to, or stages again, if any |
 | note | the operator's optional note |

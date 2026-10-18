@@ -19,6 +19,11 @@ RPCD_MANIFEST := verso-rpcd/Cargo.toml
 # plugins/verso-plugin-<name>, a crate of its own. Every other plugin is a
 # repository of its own that builds and packages itself.
 PLUGINS := interfaces system firewall
+# PLUGIN_FLOORS are the plugins whose root work left this package for their own
+# (ADR-027): a version from before the move calls helper verbs this verso no
+# longer has, so apk moves it with verso or refuses both, never leaving them
+# mixed.
+PLUGIN_FLOORS := !verso-plugin-vpn<0.3.0-r2
 plugin_manifest = plugins/verso-plugin-$(1)/Cargo.toml
 # Every Rust crate the tree tests and lints: the helper, the SDK, the plugins.
 CRATES := $(RPCD_MANIFEST) plugins/verso-plugin-sdk/Cargo.toml $(foreach p,$(PLUGINS),$(call plugin_manifest,$(p)))
@@ -389,7 +394,6 @@ apk: apk-preflight build-$(APK_GOARCH)
 	install -Dm755 docker/rootfs/usr/libexec/verso/update-check         $(APK_PAYLOAD)/usr/libexec/verso/update-check
 	install -Dm755 docker/rootfs/usr/libexec/verso/web-owner            $(APK_PAYLOAD)/usr/libexec/verso/web-owner
 	install -Dm755 docker/rootfs/usr/libexec/verso/usage-setup          $(APK_PAYLOAD)/usr/libexec/verso/usage-setup
-	install -Dm644 docker/rootfs/etc/hotplug.d/openvpn/50-verso         $(APK_PAYLOAD)/etc/hotplug.d/openvpn/50-verso
 	install -Dm644 docker/rootfs/etc/capabilities/verso.json          $(APK_PAYLOAD)/etc/capabilities/verso.json
 	install -Dm644 docker/rootfs/etc/config/verso                      $(APK_PAYLOAD)/etc/config/verso
 	install -Dm644 docker/rootfs/lib/upgrade/keep.d/verso              $(APK_PAYLOAD)/lib/upgrade/keep.d/verso
@@ -405,8 +409,7 @@ apk: apk-preflight build-$(APK_GOARCH)
 	  --info "description:Verso — a modern web UI for OpenWrt" \
 	  --info license:GPL-2.0-only --info url:https://github.com/we-are-mono/verso \
 	  --info origin:verso \
-	  --info "depends:ca-bundle firewall4 kmod-nfnetlink-log nlbwmon" \
-	  --info "replaces:verso-plugin-vpn" \
+	  --info "depends:ca-bundle firewall4 kmod-nfnetlink-log nlbwmon $(PLUGIN_FLOORS)" \
 	  --files "$(APK_PAYLOAD)" \
 	  --script post-install:$(POSTINST) \
 	  --script post-upgrade:$(POSTINST) \

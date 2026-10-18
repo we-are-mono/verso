@@ -10,14 +10,18 @@
       ],
       "ubus": {
         "verso": [
-          "dhcpState",
-          "vpnState"
+          "dhcpState"
         ],
         "service": [
           "list"
         ],
         "network.interface": [
           "dump"
+        ]
+      },
+      "verso-plugin": {
+        "vpn": [
+          "state"
         ]
       }
     },

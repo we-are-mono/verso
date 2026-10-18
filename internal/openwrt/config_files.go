@@ -17,47 +17,37 @@ type ConfigFile struct {
 	Pending bool   `json:"pending"`
 }
 
-// fileFamilies binds each family of hand-edited files to the uci config whose
-// daemon reads them: a staged file waits under that config, and discarding
-// that config discards the family's files with it.
-var fileFamilies = map[string]string{"dnsmasq": "dhcp", "fw4": "firewall", "openvpn": "openvpn"}
-
-// familyOf is the family whose files a config owns, if any.
-func familyOf(config string) (string, bool) {
-	for family, owner := range fileFamilies {
-		if owner == config {
-			return family, true
-		}
-	}
-	return "", false
+// FileFamily is one family of hand-edited files as the helper's table holds it
+// (ADR-027): its name, the uci config whose daemon reads it — a staged file
+// waits under that config, and discarding the config discards the family's
+// files with it — and the plugin that declared it.
+type FileFamily struct {
+	Name   string `json:"name"`
+	Config string `json:"config"`
+	Plugin string `json:"plugin"`
 }
 
 type configFileState struct {
 	Files        []ConfigFile `json:"files"`
+	Families     []FileFamily `json:"families"`
 	Active       bool         `json:"active"`
 	UCI          bool         `json:"uci"`
 	UCIConfirmed bool         `json:"uci_confirmed"`
 }
 
+// config is the uci config that owns the family named name.
+func (s configFileState) config(name string) (string, bool) {
+	for _, f := range s.Families {
+		if f.Name == name {
+			return f.Config, true
+		}
+	}
+	return "", false
+}
+
 func (b *NativeBackend) DNSState(ctx context.Context, sid string) (json.RawMessage, error) {
 	var state json.RawMessage
 	err := callHelper(ctx, b.helperSocket, "dnsState", sid, nil, &state)
-	return state, err
-}
-
-// OpenVPNFiles is OpenVPN's profiles as they will read once staged changes
-// are applied, each folded so no key in it leaves the helper.
-func (b *NativeBackend) OpenVPNFiles(ctx context.Context, sid string) (json.RawMessage, error) {
-	var state json.RawMessage
-	err := callHelper(ctx, b.helperSocket, "openvpnFiles", sid, nil, &state)
-	return state, err
-}
-
-// VPNState is each OpenVPN instance's profile, process and last word, and
-// every tunnel device's counters, read by the helper with nothing secret in it.
-func (b *NativeBackend) VPNState(ctx context.Context, sid string) (json.RawMessage, error) {
-	var state json.RawMessage
-	err := callHelper(ctx, b.helperSocket, "vpnState", sid, nil, &state)
 	return state, err
 }
 
@@ -107,6 +97,15 @@ func (b *NativeBackend) configFileState(ctx context.Context, sid string) (config
 	err := callHelper(ctx, b.helperSocket, "configFiles", sid, nil, &state)
 	return state, err
 }
+
+// ConfigFiles is every family's files as they will read once staged changes
+// apply, and the families, as the helper answers them: what a plugin that
+// declares the files read is handed, narrowed to its own families.
+func (b *NativeBackend) ConfigFiles(ctx context.Context, sid string) (json.RawMessage, error) {
+	var state json.RawMessage
+	err := callHelper(ctx, b.helperSocket, "configFiles", sid, nil, &state)
+	return state, err
+}
 func (b *NativeBackend) fileAction(ctx context.Context, sid, action string, uci bool, timeout int) error {
 	enabled := "0"
 	if uci {
@@ -115,11 +114,16 @@ func (b *NativeBackend) fileAction(ctx context.Context, sid, action string, uci 
 	return callHelper(ctx, b.helperSocket, "applyConfigFiles", sid, map[string]string{"action": action, "uci": enabled, "timeout": fmt.Sprint(timeout)}, nil)
 }
 
-// discardFiles drops one family's staged files, leaving the others staged.
-func (b *NativeBackend) discardFiles(ctx context.Context, sid, family string) error {
-	return callHelper(ctx, b.helperSocket, "applyConfigFiles", sid, map[string]string{"action": "discard", "family": family, "uci": "0", "timeout": "30"}, nil)
+// discardFiles drops the staged files of the families config owns, leaving the
+// others staged.
+func (b *NativeBackend) discardFiles(ctx context.Context, sid, config string) error {
+	return callHelper(ctx, b.helperSocket, "applyConfigFiles", sid, map[string]string{"action": "discard", "config": config, "uci": "0", "timeout": "30"}, nil)
 }
-func (b *NativeBackend) StageConfigFile(ctx context.Context, sid, path, expected, content string) error {
+
+// StageConfigFile stages a hand-edited file through the helper, which refuses
+// it unless its family's config is one of configs: the configs the plugin
+// asking may write.
+func (b *NativeBackend) StageConfigFile(ctx context.Context, sid, path, expected, content string, configs []string) error {
 	var directories []string
 	// dnsmasq's jail only mounts its configured include directory. Stage that
 	// setting with the first include file so it also works on bare metal.
@@ -149,7 +153,8 @@ func (b *NativeBackend) StageConfigFile(ctx context.Context, sid, path, expected
 	}
 	// Validate and stage the file before changing UCI. A stale editor, invalid
 	// filename, or dnsmasq syntax error must not leave a confdir change behind.
-	if err := callHelper(ctx, b.helperSocket, "stageConfigFile", sid, map[string]string{"path": path, "expected": expected, "content": content}, nil); err != nil {
+	args := map[string]string{"path": path, "expected": expected, "content": content, "configs": strings.Join(configs, ",")}
+	if err := callHelper(ctx, b.helperSocket, "stageConfigFile", sid, args, nil); err != nil {
 		return err
 	}
 	for _, section := range directories {

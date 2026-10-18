@@ -609,14 +609,6 @@ func (fakeBackend) WirelessState(context.Context, string) (json.RawMessage, erro
 	return nil, errNoHelper
 }
 
-func (fakeBackend) VPNState(context.Context, string) (json.RawMessage, error) {
-	return nil, errNoHelper
-}
-
-func (fakeBackend) OpenVPNFiles(context.Context, string) (json.RawMessage, error) {
-	return nil, errNoHelper
-}
-
 func (fakeBackend) DDNSState(context.Context, string) (json.RawMessage, error) {
 	return nil, errNoHelper
 }
@@ -637,8 +629,12 @@ func (fakeBackend) PluginCommand(context.Context, string, string, string, map[st
 	return nil, errNoHelper
 }
 
-func (fakeBackend) StageConfigFile(context.Context, string, string, string, string) error {
+func (fakeBackend) StageConfigFile(context.Context, string, string, string, string, []string) error {
 	return errNoHelper
+}
+
+func (fakeBackend) ConfigFiles(context.Context, string) (json.RawMessage, error) {
+	return nil, errNoHelper
 }
 
 func (fakeBackend) NetworkSetUp(context.Context, string, string, bool) error {

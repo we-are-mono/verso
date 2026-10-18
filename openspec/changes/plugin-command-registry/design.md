@@ -204,7 +204,9 @@ every plugin would carry an X.509 crate.
 - an optional `transform` naming one of the plugin's `transform` commands.
 
 The helper builds its family table from all registries for each operation, under the
-existing journal lock. The bounds in the spec (under `/etc`, the protected list, no
+existing journal lock. A family's directory is made before its check runs, so a check
+that names it (dnsmasq's `--conf-dir`) reads an empty directory rather than failing on
+a missing one. The bounds in the spec (under `/etc`, the protected list, no
 shared name or place) are checked when the table is built. A bad family is dropped and
 logged, and the others stand.
 

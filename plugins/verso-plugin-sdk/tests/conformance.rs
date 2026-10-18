@@ -963,6 +963,18 @@ fn argument_kinds_match_the_samples() {
     }
 }
 
+// docs/plugins.md's file family example is one the SDK reads and accepts.
+#[test]
+fn the_documented_family_decodes() {
+    use verso_plugin::Registry;
+    let doc = fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/../../docs/plugins.md")).unwrap();
+    let section = doc.split("### Hand-edited files").nth(1).expect("the families section");
+    let fragment = section.split("```json").nth(1).unwrap().split("```").next().unwrap();
+    let registry: Registry = serde_json::from_str(&format!("{{\"schema_version\": 1, {fragment}}}")).expect("the example decodes");
+    registry.check().expect("the example is a valid registry");
+    assert_eq!(registry.families[0].name, "fw4");
+}
+
 // docs/plugins.md's registry example is one the SDK reads and accepts.
 #[test]
 fn the_documented_registry_decodes() {

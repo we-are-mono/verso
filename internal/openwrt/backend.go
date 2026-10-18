@@ -266,8 +266,6 @@ type Backend interface {
 	FirewallFiles(ctx context.Context, sid string) (json.RawMessage, error)
 	NetworkState(ctx context.Context, sid string) (json.RawMessage, error)
 	WirelessState(ctx context.Context, sid string) (json.RawMessage, error)
-	VPNState(ctx context.Context, sid string) (json.RawMessage, error)
-	OpenVPNFiles(ctx context.Context, sid string) (json.RawMessage, error)
 	DDNSState(ctx context.Context, sid string) (json.RawMessage, error)
 	// ACMEState is the trusted certificate as acme left it (ADR-017 §6): the
 	// last outcome, whether a request runs, and acme's certificate in PEM.
@@ -281,9 +279,13 @@ type Backend interface {
 	// RefreshGrants gives a signed-in session what signing in now would: the
 	// groups of access lists installed since it signed in (ADR-007 §8).
 	RefreshGrants(ctx context.Context, sid string) error
-	// StageConfigFile stages a hand-edited daemon file (dnsmasq, nftables)
-	// through the helper, refusing it unless the file still holds expected.
-	StageConfigFile(ctx context.Context, sid, path, expected, content string) error
+	// StageConfigFile stages a hand-edited daemon file through the helper,
+	// refusing it unless the file still holds expected and its family's config
+	// is one of configs, the configs the asking plugin may write.
+	StageConfigFile(ctx context.Context, sid, path, expected, content string, configs []string) error
+	// ConfigFiles is every family's files and the families, as the helper
+	// answers them (ADR-027).
+	ConfigFiles(ctx context.Context, sid string) (json.RawMessage, error)
 	// NetworkSetUp brings one logical interface up or down; NetworkRestart
 	// restarts it. Both ride netifd's network.interface object, sid-gated.
 	NetworkSetUp(ctx context.Context, sid, name string, up bool) error
@@ -913,7 +915,7 @@ func (b *NativeBackend) UCIChanges(ctx context.Context, sid string) (map[string]
 		changes = make(map[string][][]string)
 	}
 	for _, f := range files.Files {
-		config, ok := fileFamilies[f.Family]
+		config, ok := files.config(f.Family)
 		if f.Pending && ok {
 			changes[config] = append(changes[config], []string{"file", f.Path, f.Content})
 		}
@@ -936,13 +938,11 @@ func (b *NativeBackend) UCIUnstage(_ context.Context, sid, config string) error 
 	return b.uciRevert(sid, config)
 }
 
-// UnstageFiles discards the staged files of the family config's daemon
-// reads, leaving its uci changes; a config no family is read for has none.
+// UnstageFiles discards the staged files of the families config's daemon
+// reads, leaving its uci changes; a config no family is read for has none,
+// which the helper, holding the family table, answers.
 func (b *NativeBackend) UnstageFiles(ctx context.Context, sid, config string) error {
-	if family, ok := familyOf(config); ok {
-		return b.discardFiles(ctx, sid, family)
-	}
-	return nil
+	return b.discardFiles(ctx, sid, config)
 }
 
 // UCIApply commits all dirty configs with rpcd's rollback armed, gated by the sid.

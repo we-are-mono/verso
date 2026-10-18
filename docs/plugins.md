@@ -541,8 +541,7 @@ functions in its own closed set:
 | `accessCredentials` | Public SSH key comments/fingerprints and public web-certificate metadata. No authorized-key options, private keys, or router passwords are included. |
 | `firewallCounters` | `{"counters": [{"chain", "name", "packets", "bytes"}]}` — fw4's live nftables hit counters, one entry per (chain, rule name), summed across the several nft rules a single UCI section can render into. |
 | `wirelessState` | `{"radios": {"radio0": {"up": true, "channel": 6, "txpower": 20, "busy": 61, "hardware": "NXP 88W9098"}}, "networks": {"default_radio0": {"up": true, "clients": 3}}}` — what the radios are doing now, keyed by `wireless` config section. netifd's `network.wireless status` says whether each radio and network is up and which kernel interface a network became; iwinfo reads that interface for the channel and transmit power (dBm) in use, the in-use channel's busy share (whole percent of active airtime) and the associated clients. A number that could not be read is absent, never zero. The operator's grant must cover `network.wireless status`, and `iwinfo info`/`assoclist`/`survey` for the numbers. |
-| `openvpnFiles` | `{"files": [{"path": "/etc/openvpn/proton.ovpn", "family": "openvpn", "content": "...", "version": "...", "pending": false, "exists": true}]}` — OpenVPN's profiles (`.ovpn` and `.conf` directly in `/etc/openvpn`) as they will read once staged changes are applied, in the shape `dnsState` and `firewallFiles` give theirs. A file there is read as a profile only when an `openvpn` section names that exact path as its `config`, or it is staged; any other (a sign-in file saved as `.conf`, say, which holds no block to fold) is listed by its `path` alone, never opened, with an `error` in place of its `content` and `version`, so its name stays taken and nothing in it leaves the helper. `content` has every inline block folded to one line (`<tls-crypt> … 18 lines … </tls-crypt>`): every block OpenVPN would read inline, whatever its name (a `<connection>` block folds whole), found as OpenVPN finds it — a line whose only token is `<name>` after OpenVPN's quoting, comments and leading `--`, read in OpenVPN's own line-buffer pieces, closed by the first line that starts with `</name>` past C whitespace. `version` is the whole file's at its path, an HMAC of the path and the file under the helper's root-only key: it tells a save the file changed and gives nothing of a folded block away, here or at another path. Without the key (no randomness to make it) a present file has an `error` saying so in place of its `version`, and its save is refused. A file that does not exist has the fixed version the SDK names `NEW_FILE_VERSION`. Stage an edit with `config-file-stage` (declare `ubus verso.stageConfigFile` and `uci openvpn write`): a placeholder left as it was takes back its original block, so an editor that never saw a key keeps it. A save that would put a block back where OpenVPN no longer reads it inline (a BOM-led opener moved off the first line, or with a line added above it) is refused, so neither the next read nor `vpnState` shows what it holds; so is one that has a line of a block open a block it did not open before (a block opened above the placeholder and closed by a hidden `</name>`), whose `<name>` the next read would show as the placeholder. A new profile is written readable by root only. |
-| `vpnState` | `{"instances": {"proton": {"config": "/etc/openvpn/proton.ovpn", "running": true, "state": "connected", "since": 1791295321, "server": "185.107.56.234:1194", "address": "10.96.0.14/16", "device": "tun0", "profile": {...}}}, "tunnels": [{"device": "tun0", "kind": "openvpn", "instance": "proton", "up": true, "rx": 1331000000, "tx": 190800000, "addresses": ["10.96.0.14/16"]}]}` — each `openvpn` section that names a profile file, and every tunnel device someone brought up (the kernel's own `sit0` and kin left out). `state` is what OpenVPN itself last reported through the hooks OpenWrt's init wires to every instance (`/etc/hotplug.d/openvpn/50-verso`, shipped by the verso package beside this helper, recording into `/var/run/verso-openvpn`): `connected` at `route-up`, `connecting` from `up` or `route-pre-down` (a reconnect under `persist-tun`), `stopped` without a process. Where OpenVPN has reported nothing this run (the hook arrived after the tunnel came up, or the profile sets `script-security` below 2), it is what the kernel proves over rtnetlink: `up` when the tun device carries with an IPv4 address, otherwise `connecting`. A record counts only when it carries the running process's PID and was written by root, which runs OpenVPN's first hooks and records under the instance's name, or by the user a profile drops to, which runs the hooks after, records under the name and its uid (`proton.65534`) and carries root's record of the run over; the user's is read first. `since` (an epoch second, connected only) and `server` come from the hook and are absent without it; `address` is the device's while it has one. No state is read from the log. `device` is the tun device the process holds. `profile` reads the file out — `client`, `dev`, `proto`, `remotes` (`host`, `port`, `proto`), `random`, `cipher`, `verify`, `asks_sign_in`, `redirect`, `nopull`, `blocks` (the inline block names) and `text`, the file folded as `openvpnFiles` folds it; the facts come from the lines outside the blocks, and `remotes` and `proto` also from each `<connection>` block's own options (a block inline in one left out), the block itself still folded. Profiles are read only under `/etc/openvpn`; key blocks and sign-in files never leave the helper. A tunnel's `kind` is `openvpn`, `wireguard`, `tailscale` or `tunnel`. |
+| `configFiles` | `{"files": [{"path": "/etc/nftables.d/10-custom.nft", "family": "fw4", "content": "...", "version": "...", "pending": false, "exists": true}], "families": [{"name": "fw4", "config": "firewall", "plugin": "firewall"}]}` — the files of the families whose config you read, as they will read once staged changes are applied, and those families (see [Hand-edited files](#hand-edited-files)). A file listed by its path alone carries an `error` in place of its `content` and `version`. |
 | `ddnsState` | `{"services": {"home": {"address": "203.0.113.7", "running": true, "updated": 200, "next": 100}}}` — each ddns-scripts service with files in `/var/run/ddns`, keyed by section. `address` is what the name resolved to at the updater's last check, every address one per line (empty when it did not resolve); `updated` is seconds since an update was last sent and `next` seconds until the next check, both absent when the updater has not written them; `running` is whether the pid file names a live `dynamic_dns_updater`. No state is read from the log. |
 | `dhcpLeases` | `{"leases": [{"hostname", "mac", "ipv4", "ipv6s", "expires_at"}]}` — who holds an address right now, in address order. dnsmasq's DHCPv4 lease file is the list; odhcpd's DHCPv6 table adds `ipv6s` to the device it belongs to, joined by the link-layer address its DUID embeds or by the hostname both tables recorded. `hostname` is empty when the device offered none, `expires_at` is an epoch second (render the countdown against your own clock), and a DHCPv6 lease that joins no DHCPv4 lease is left out — it carries no MAC, which is the identity a reservation is keyed by. The shell reads the lease file itself, so it answers only an operator whose grant covers `dhcp ipv6leases`. |
 
@@ -2051,21 +2050,67 @@ resetting its filter, expanded row, or the session's inactivity deadline.
 
 ### Hand-edited files
 
-Some daemons read files no config section describes: dnsmasq's option files and
-fw4's rule files. The helper stages them in families, each binding its files to
-the config whose daemon reads them:
+Some daemons read files no config section describes: dnsmasq's option files,
+fw4's rule files, OpenVPN's profiles. The helper stages them in **families**,
+each binding its files to the config whose daemon reads them. A family is
+declared by the plugin that owns the daemon, in its registry (ADR-027); core
+holds none of its own.
 
-| Family | Files | Staged by a plugin with | Checked at Apply by | Read again by |
-|---|---|---|---|---|
-| dnsmasq | `/etc/dnsmasq.conf`, `/etc/dnsmasq.d/*.conf` | `dhcp` write | `dnsmasq --test` (also on save) | `dnsmasq reload` |
-| fw4 | `/etc/nftables.d/*.nft` | `firewall` write | `fw4 check` of the whole ruleset | `fw4 restart` |
+```json
+"families": [{
+  "name": "fw4",
+  "config": "firewall",
+  "dir": { "path": "/etc/nftables.d", "suffixes": [".nft"], "names": "plain" },
+  "mode": "0644",
+  "words": {
+    "too_large": "Rule files must be at most 32 KiB.",
+    "invalid": "Invalid rule file.",
+    "over_limit": "Rule files exceed the editor size limit."
+  },
+  "check": ["/sbin/fw4", "check"],
+  "reload": ["/sbin/fw4", "-q", "restart"]
+}]
+```
 
-A staged file waits in the review under its family's config (`dhcp`,
-`firewall`), and discarding that config discards that family's files alone.
-fw4 is rebuilt with `restart`, not `reload`: its reload flushes the table, which
-keeps chains a file no longer declares, so a rolled-back base chain would stay
-hooked in. `verso.firewallFiles` brokers fw4's files as `verso.dnsState` does
-dnsmasq's; each lists only its own family.
+| Field | Meaning |
+|---|---|
+| `name` | The family's name, unique on the router. |
+| `config` | The uci config whose daemon reads the files: a staged file waits in the review under it, discarding it discards the family's files, and only a plugin that may write it stages them. |
+| `files`, `dir` | Fixed files, and one directory whose files directly in it, ending in one of `suffixes`, are the family's: `plain` names are up to 64 of lower-case letters, digits, `_` and `-`; `dotted` names are up to 96 of letters, digits, `_`, `-` and `.`. Each starts with a letter or digit. |
+| `mode` | `0644`, or `0600` for files that hold keys: what a new file is written with. |
+| `words` | The refusals the editor shows, in the words the files are called by, translated through your catalogue. |
+| `check` | A program that checks the daemon's whole configuration with the staged files in place, run at Apply; a refusal restores the files and says the program's complaint. The family's directory exists while it runs. |
+| `reload` | A program that has the daemon read its files again, run after a kept Apply and after a rollback. |
+| `transform` | Optional: a `transform` command of your registry that shapes the files on their way out of root and back in (below). |
+
+A family's places lie under `/etc`, outside `/etc/config`, `/etc/verso`,
+`/etc/passwd`, `/etc/shadow`, `/etc/group`, `/etc/rpcd`, `/etc/dropbear`,
+`/etc/ssl`, `/etc/init.d`, `/etc/rc.d`, `/etc/hotplug.d`, `/etc/crontabs` and
+`/etc/uci-defaults`, and apart from every other family's. A family that breaks
+one of these is dropped with a logged reason; two families that share a name or
+a place are both dropped. Programs run as given, without a shell.
+
+**The transform.** The helper runs it as root with `input`:
+
+- `{"op": "list", "files": [{"path", "content", "pending"}]}` answers
+  `{"files": [...]}`, one entry per file in the same order: `{"path", "content"}`
+  with what the editor shows (folded, for OpenVPN's keys), or `{"path",
+  "withheld": "<why>"}` to list a file by its path alone. A transform that fails
+  lists the family's files by path alone.
+- `{"op": "stage", "path", "edited", "previous"}` answers `{"content"}`, the file
+  as it will be written with what the listing held back put in again, or a
+  refusal (exit 3) whose words the editor shows. A check of one file before it
+  is staged belongs here too: dnsdhcp's runs `dnsmasq --test` on it.
+
+A plugin reads its families' files by declaring `ubus verso configFiles` in
+`acl.read`: the shell hands it the files of the families whose config the plugin
+reads, and those families, nothing else. Stage an edit with `config-file-stage`
+(declare `ubus verso stageConfigFile`); the shell passes the configs the plugin
+may write, and the helper refuses a file whose family's config is not among
+them. A file's `version` is an HMAC of its path and its whole text under the
+helper's root-only key, so it tells a save the file changed and gives nothing
+held back away; a file that does not exist has the fixed version the SDK names
+`NEW_FILE_VERSION`.
 
 A page lists and edits its family with the SDK's `verso_plugin::files::FileSet`:
 the Files band with its count and New file, a row per file (folder, name, lines

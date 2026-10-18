@@ -861,7 +861,7 @@ fn a_device_with_no_network_reads_as_its_device() {
 fn a_device_run_by_openvpn_hands_off_to_its_vpn_panel() {
     let mut r = request("/edit", "device=tun0");
     r.ubus = Ubus::from_value(json!({
-        "vpnState": {"tunnels": [{"device": "tun0", "kind": "openvpn", "instance": "proton", "up": true}]}
+        "vpn.state": {"version": 1, "result": {"tunnels": [{"device": "tun0", "kind": "openvpn", "instance": "proton", "up": true}]}}
     }));
     let drawer = open_drawer(&get(&r));
     assert_eq!(drawer["title"], "tun0");
@@ -870,6 +870,17 @@ fn a_device_run_by_openvpn_hands_off_to_its_vpn_panel() {
     assert!(text.contains("proton"), "{text}");
     assert!(!text.contains("\"mtu\""), "{text}");
     assert!(!text.contains("macaddr"), "{text}");
+}
+// The VPN plugin's read at a version this plugin does not know is no read: the
+// device is never handed to a panel it may misname.
+#[test]
+fn a_vpn_read_at_an_unknown_version_hands_nothing_off() {
+    let mut r = request("/edit", "device=tun0");
+    r.ubus = Ubus::from_value(json!({
+        "vpn.state": {"version": 2, "result": {"tunnels": [{"device": "tun0", "kind": "openvpn", "instance": "proton", "up": true}]}}
+    }));
+    let text = serde_json::to_string(&get(&r)).unwrap();
+    assert!(!text.contains("/plugins/vpn/?open=proton"), "{text}");
 }
 /// A change to an interface reads as its settings and is about that
 /// interface, by its name; one to anything else in network (a bridge, the

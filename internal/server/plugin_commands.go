@@ -12,20 +12,15 @@ import (
 	"github.com/we-are-mono/verso/internal/plugin"
 )
 
-// fileConfig names the uci config whose daemon reads a hand-edited file: the
-// dnsmasq files are dhcp's, the nftables rule files fw4 loads are the
-// firewall's. The helper bounds the paths themselves; this binds each one to
-// the plugin allowed to change what that daemon does.
-func fileConfig(path string) (string, bool) {
-	switch {
-	case path == "/etc/dnsmasq.conf" || strings.HasPrefix(path, "/etc/dnsmasq.d/"):
-		return "dhcp", true
-	case strings.HasPrefix(path, "/etc/nftables.d/"):
-		return "firewall", true
-	case strings.HasPrefix(path, "/etc/openvpn/"):
-		return "openvpn", true
+// writableConfigs is every uci config the plugin declares it writes.
+func writableConfigs(m plugin.Manifest) []string {
+	var out []string
+	for _, a := range m.ACL.Write {
+		if a.Scope == "uci" && a.Function == "write" && !slices.Contains(out, a.Object) {
+			out = append(out, a.Object)
+		}
 	}
-	return "", false
+	return out
 }
 
 // Commands have a closed vocabulary and structured arguments. They run only
@@ -65,15 +60,16 @@ func (s *Server) coreAct(ctx context.Context, m plugin.Manifest, sid string, cmd
 	var err error
 	switch cmd.Name {
 	case "config-file-stage":
-		// A file belongs to the daemon that reads it, and is staged only by a
-		// plugin that may write that daemon's config.
-		config, known := fileConfig(cmd.Args["path"])
-		configAllowed := known && slices.Contains(m.ACL.Write, plugin.ACLScope{Scope: "uci", Object: config, Function: "write"})
+		// A file belongs to the family of the daemon that reads it, and is
+		// staged only by a plugin that may write that family's config: the
+		// helper, which holds the family table, holds the file to the configs
+		// the plugin may write.
 		allowed := slices.Contains(m.ACL.Write, plugin.ACLScope{Scope: "ubus", Object: "verso", Function: "stageConfigFile"})
-		if !allowed || !configAllowed || len(cmd.Args) != 3 {
+		configs := writableConfigs(m)
+		if !allowed || len(configs) == 0 || len(cmd.Args) != 3 {
 			return fmt.Errorf("invalid file staging command")
 		}
-		err = s.backend.StageConfigFile(ctx, sid, cmd.Args["path"], cmd.Args["expected"], cmd.Args["content"])
+		err = s.backend.StageConfigFile(ctx, sid, cmd.Args["path"], cmd.Args["expected"], cmd.Args["content"], configs)
 	case "ssh-key-add", "ssh-key-remove", "certificate-generate", "certificate-install":
 		return s.credentialCommand(ctx, m, sid, cmd)
 	case "set-system-time":

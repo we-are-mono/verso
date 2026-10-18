@@ -2,11 +2,16 @@
 // SPDX-FileCopyrightText: 2026 Mono Technologies Inc.
 //! Bounded, root-owned file stage with a durable rollback journal. Saving never
 //! changes active configuration. Recovery runs even when the shell disappears.
+//!
+//! Which files may be staged is the family table's (`families`): each family is
+//! declared by the plugin that owns its daemon (ADR-027), and nothing outside a
+//! family is ever read, written or restored. A family's transform, its plugin's
+//! root command, shapes what leaves the helper and what a save puts back.
+use crate::families::{Family, Table};
+use crate::plugin_command::{self, Runner};
 use crate::Failure;
 use serde_json::{json, Value};
 use std::{
-    cell::OnceCell,
-    collections::BTreeSet,
     fs,
     io::{Read, Write},
     os::unix::fs::{OpenOptionsExt, PermissionsExt},
@@ -30,141 +35,48 @@ fn now() -> u64 {
         .unwrap_or_default()
         .as_secs()
 }
-/// A family is one daemon's hand-edited files: where they may live, how the
-/// daemon's whole configuration is checked with them in place, and how it is
-/// told to read them again. A path belongs to one family or to none, and
-/// nothing outside a family is ever read, written or restored.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub enum Family {
-    Dnsmasq,
-    Fw4,
-    /// OpenVPN's profiles. They carry keys, so whatever reports one shows it
-    /// folded (openvpn::fold), and a save puts the keys back (openvpn::unfold).
-    Openvpn,
+
+/// check_live checks the daemon's whole configuration with the written files in
+/// place, by the program its family names. A family that names none (OpenVPN:
+/// a profile it cannot read shows as a tunnel that does not come up) is not
+/// checked. The family's directory exists while it is checked, so a check that
+/// names it reads an empty one rather than failing on a missing one.
+fn check_live(family: &Family) -> Result<(), Failure> {
+    let Some((program, args)) = family.declared.check.split_first() else {
+        return Ok(());
+    };
+    if let (_, Some(dir)) = family.places() {
+        check_path(&dir)?;
+        fs::create_dir_all(&dir).map_err(failure)?;
+    }
+    let check = Command::new(program)
+        .args(args)
+        .stdin(Stdio::null())
+        .output()
+        .map_err(failure)?;
+    if !check.status.success() {
+        let said = [check.stderr, check.stdout].concat();
+        return Err(Failure::invalid(format!(
+            "{} rejected the files: {}",
+            family.name(),
+            complaint(&String::from_utf8_lossy(&said))
+        )));
+    }
+    Ok(())
 }
 
-impl Family {
-    const ALL: [Family; 3] = [Family::Dnsmasq, Family::Fw4, Family::Openvpn];
-
-    pub fn of(path: &str) -> Option<Family> {
-        if path == "/etc/dnsmasq.conf" || in_dir(path, "/etc/dnsmasq.d/", ".conf") {
-            Some(Family::Dnsmasq)
-        } else if in_dir(path, "/etc/nftables.d/", ".nft") {
-            Some(Family::Fw4)
-        } else if profile_name(path) {
-            Some(Family::Openvpn)
-        } else {
-            None
-        }
-    }
-
-    pub fn named(name: &str) -> Option<Family> {
-        Family::ALL.into_iter().find(|f| f.name() == name)
-    }
-
-    pub fn name(self) -> &'static str {
-        match self {
-            Family::Dnsmasq => "dnsmasq",
-            Family::Fw4 => "fw4",
-            Family::Openvpn => "openvpn",
-        }
-    }
-
-    /// The files the family always has, and the folder its others live in.
-    fn places(self) -> (&'static [&'static str], &'static str) {
-        match self {
-            Family::Dnsmasq => (&["/etc/dnsmasq.conf"], "/etc/dnsmasq.d"),
-            Family::Fw4 => (&[], "/etc/nftables.d"),
-            Family::Openvpn => (&[], "/etc/openvpn"),
-        }
-    }
-
-    /// check_draft checks one file on its own before it is staged. dnsmasq
-    /// reads a file of options by itself; an nftables snippet names fw4's own
-    /// chains and sets, so it can only be checked inside the ruleset, which
-    /// check_live does when the change is applied.
-    fn check_draft(self, body: &str) -> Result<(), Failure> {
-        match self {
-            Family::Dnsmasq => validate_dnsmasq(body),
-            Family::Fw4 | Family::Openvpn => Ok(()),
-        }
-    }
-
-    /// check_live checks the daemon's whole configuration with the written
-    /// files in place. OpenVPN has no such check: a profile it cannot read
-    /// shows as a tunnel that does not come up, which the VPN page says.
-    fn check_live(self) -> Result<(), Failure> {
-        let (mut command, refusal) = match self {
-            Family::Openvpn => return Ok(()),
-            Family::Dnsmasq => {
-                let mut command = Command::new("/usr/sbin/dnsmasq");
-                command.args(["--test", "--conf-file=/etc/dnsmasq.conf"]);
-                if Path::new("/etc/dnsmasq.d").is_dir() {
-                    command.arg("--conf-dir=/etc/dnsmasq.d");
-                }
-                (command, "dnsmasq rejected the custom options")
-            }
-            Family::Fw4 => {
-                let mut command = Command::new("/sbin/fw4");
-                command.arg("check");
-                (command, "fw4 rejected the rule files")
-            }
-        };
-        let check = command.stdin(Stdio::null()).output().map_err(failure)?;
-        if !check.status.success() {
-            let said = [check.stderr, check.stdout].concat();
-            return Err(Failure::invalid(format!(
-                "{refusal}: {}",
-                complaint(&String::from_utf8_lossy(&said))
-            )));
-        }
-        Ok(())
-    }
-
-    /// The refusals a family's editor shows, each in the words its files are
-    /// called by, whole so a plugin's catalog can translate them.
-    fn too_large(self) -> &'static str {
-        match self {
-            Family::Dnsmasq => "Custom option files must be at most 32 KiB.",
-            Family::Fw4 => "Rule files must be at most 32 KiB.",
-            Family::Openvpn => "Profiles must be at most 32 KiB.",
-        }
-    }
-    fn invalid(self) -> &'static str {
-        match self {
-            Family::Dnsmasq => "Invalid custom options file.",
-            Family::Fw4 => "Invalid rule file.",
-            Family::Openvpn => "Invalid profile.",
-        }
-    }
-    fn over_limit(self) -> &'static str {
-        match self {
-            Family::Dnsmasq => "Custom option files exceed the editor size limit.",
-            Family::Fw4 => "Rule files exceed the editor size limit.",
-            Family::Openvpn => "Profiles exceed the editor size limit.",
-        }
-    }
-
-    /// reload has the daemon read its files again, so what runs is exactly
-    /// what they say. fw4's own reload only flushes its table, which empties
-    /// chains but keeps them: a chain a file no longer declares — a base chain
-    /// with a drop policy, say, undone by a rollback — would stay hooked in.
-    /// fw4's restart checks the ruleset, then rebuilds the table whole.
-    fn reload(self) {
-        let (program, args): (&str, &[&str]) = match self {
-            Family::Dnsmasq => ("/etc/init.d/dnsmasq", &["reload"]),
-            Family::Fw4 => ("/sbin/fw4", &["-q", "restart"]),
-            // procd restarts each instance whose profile changed, and leaves
-            // the other tunnels up.
-            Family::Openvpn => ("/etc/init.d/openvpn", &["reload"]),
-        };
-        let _ = Command::new(program)
-            .args(args)
-            .stdin(Stdio::null())
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
-            .status();
-    }
+/// reload has the daemon read its files again, by the program its family
+/// names, so what runs is exactly what they say.
+fn reload(family: &Family) {
+    let Some((program, args)) = family.declared.reload.split_first() else {
+        return;
+    };
+    let _ = Command::new(program)
+        .args(args)
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status();
 }
 
 /// complaint is what a check said about the files, without the notices it
@@ -179,64 +91,30 @@ fn complaint(said: &str) -> String {
         .to_string()
 }
 
-/// in_dir reports whether path is a file directly in dir with the suffix,
-/// named as a person would name one: lowercase letters, digits, dashes and
-/// underscores, starting with a letter or digit.
-fn in_dir(path: &str, dir: &str, suffix: &str) -> bool {
-    path.strip_prefix(dir)
-        .and_then(|s| s.strip_suffix(suffix))
-        .is_some_and(|name| {
-            !name.is_empty()
-                && name.len() <= 64
-                && name.as_bytes()[0].is_ascii_alphanumeric()
-                && name
-                    .bytes()
-                    .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'_' || b == b'-')
-        })
-}
-
-/// profile_name reports whether path is an OpenVPN profile directly in
-/// /etc/openvpn. A provider's download keeps a name like
-/// `nl-free-12.protonvpn.udp.ovpn`, so dots and capitals are allowed where
-/// in_dir allows neither; a slash, and so any other folder, never is.
-fn profile_name(path: &str) -> bool {
-    path.strip_prefix("/etc/openvpn/")
-        .and_then(|s| s.strip_suffix(".ovpn").or_else(|| s.strip_suffix(".conf")))
-        .is_some_and(|name| {
-            !name.is_empty()
-                && name.len() <= 96
-                && name.as_bytes()[0].is_ascii_alphanumeric()
-                && name
-                    .bytes()
-                    .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'_' | b'-' | b'.'))
-        })
-}
-
-fn allowed(path: &str) -> bool {
-    Family::of(path).is_some()
-}
-
-/// touched is every family a journal's files belong to, once each, in order.
-fn touched(j: &Value) -> Vec<Family> {
-    let mut families: Vec<Family> = j["files"]
+/// touched is every family a journal's files belong to, once each, by name.
+fn touched<'t>(table: &'t Table, j: &Value) -> Vec<&'t Family> {
+    let mut families: Vec<&Family> = j["files"]
         .as_object()
-        .map(|files| files.keys().filter_map(|p| Family::of(p)).collect())
+        .map(|files| files.keys().filter_map(|p| table.of(p)).collect())
         .unwrap_or_default();
-    families.sort();
-    families.dedup();
+    families.sort_by(|a, b| a.name().cmp(b.name()));
+    families.dedup_by(|a, b| a.name() == b.name());
     families
 }
 
-/// drop_family unstages one family's files, or every file when none is named.
-fn drop_family(j: &mut Value, family: Option<Family>) {
+/// drop_config unstages the files of the families config owns, or every file
+/// when no config is named.
+fn drop_config(table: &Table, j: &mut Value, config: Option<&str>) {
     if let Some(files) = j["files"].as_object_mut() {
-        files.retain(|path, _| family.is_some_and(|f| Family::of(path) != Some(f)));
+        files.retain(|path, _| {
+            config.is_some_and(|c| table.of(path).map(|f| f.declared.config.as_str()) != Some(c))
+        });
     }
 }
 
-fn reload_all(families: &[Family]) {
+fn reload_all(families: &[&Family]) {
     for family in families {
-        family.reload();
+        reload(family);
     }
 }
 fn check_path(path: &Path) -> Result<(), Failure> {
@@ -245,7 +123,7 @@ fn check_path(path: &Path) -> Result<(), Failure> {
         crate::paths::Refused::Unreadable(why) => failure(why),
     })
 }
-fn read(path: &Path) -> Result<Option<String>, Failure> {
+fn read(path: &Path, too_large: &str) -> Result<Option<String>, Failure> {
     check_path(path)?;
     let mut file = match fs::File::open(path) {
         Ok(f) => f,
@@ -261,11 +139,7 @@ fn read(path: &Path) -> Result<Option<String>, Failure> {
         .read_to_end(&mut bytes)
         .map_err(failure)?;
     if bytes.len() > LIMIT {
-        let family = path
-            .to_str()
-            .and_then(Family::of)
-            .unwrap_or(Family::Dnsmasq);
-        return Err(Failure::invalid(family.too_large()));
+        return Err(Failure::invalid(too_large));
     }
     String::from_utf8(bytes)
         .map(Some)
@@ -348,12 +222,12 @@ fn load_at(path: &Path) -> Result<Value, Failure> {
 fn save_at(path: &Path, journal: &Value) -> Result<(), Failure> {
     atomic(path, &journal.to_string(), 0o600)
 }
-fn restore(journal: &Value) -> Result<(), Failure> {
+fn restore(table: &Table, journal: &Value) -> Result<(), Failure> {
     for (path, file) in journal["files"]
         .as_object()
         .ok_or_else(|| Failure::unknown("Invalid file journal."))?
     {
-        if !allowed(path) {
+        if table.of(path).is_none() {
             return Err(Failure::invalid("Invalid file journal path."));
         }
         restore_file(Path::new(path), file)?;
@@ -372,53 +246,123 @@ fn restore_file(path: &Path, file: &Value) -> Result<(), Failure> {
         }
     }
 }
-/// recover rolls back an apply whose confirmation window has passed, and
-/// answers with the families it restored, which the caller reloads.
-fn recover(j: &mut Value) -> Result<Vec<Family>, Failure> {
+/// recover rolls back an apply whose confirmation window has passed and reloads
+/// the families it restored. The family table is built only then.
+fn recover(j: &mut Value, table: impl FnOnce() -> Table) -> Result<(), Failure> {
     if j["active"] == true && j["deadline"].as_u64().unwrap_or(0) <= now() {
-        restore(j)?;
+        let table = table();
+        restore(&table, j)?;
         j["active"] = json!(false);
         j["uci_confirmed"] = json!(false);
         save_at(Path::new(JOURNAL), j)?;
-        return Ok(touched(j));
+        reload_all(&touched(&table, j));
     }
-    Ok(Vec::new())
+    Ok(())
 }
 pub fn watchdog() {
     std::thread::spawn(|| loop {
         std::thread::sleep(std::time::Duration::from_secs(1));
-        let restored = {
-            let Ok(_guard) = LOCK.lock() else {
-                continue;
-            };
-            load_at(Path::new(JOURNAL))
-                .and_then(|mut j| recover(&mut j))
-                .unwrap_or_else(|e| {
-                    eprintln!("verso-rpcd: file rollback failed: {}", e.message);
-                    Vec::new()
-                })
+        let Ok(_guard) = LOCK.lock() else {
+            continue;
         };
-        reload_all(&restored);
+        if let Err(e) = load_at(Path::new(JOURNAL)).and_then(|mut j| recover(&mut j, Table::installed)) {
+            eprintln!("verso-rpcd: file rollback failed: {}", e.message);
+        }
     });
 }
+
+/// One file as a listing reads it before its family's transform: its path,
+/// what it will hold once staged changes apply, and whether it is staged.
+struct Draft {
+    path: String,
+    body: Option<String>,
+    pending: bool,
+}
+
+/// What a family's transform made of one listed file.
+#[derive(Debug, Clone, PartialEq)]
+enum Shown {
+    Content(String),
+    Withheld(String),
+}
+
+/// shown runs a family's transform over its listed files (op `list`): what
+/// each shows, folded, or a reason to list it by path alone. A family without
+/// a transform shows its files as they are; one whose transform fails shows
+/// nothing of them.
+fn shown(runner: &impl Runner, family: &Family, drafts: &[Draft]) -> Vec<Shown> {
+    let Some(command) = &family.transform else {
+        return drafts.iter().map(|d| Shown::Content(d.body.clone().unwrap_or_default())).collect();
+    };
+    let failed = || drafts.iter().map(|_| Shown::Withheld("The file could not be read.".into())).collect();
+    let input = json!({
+        "op": "list",
+        "files": drafts.iter().map(|d| json!({"path": d.path, "content": d.body, "pending": d.pending})).collect::<Vec<_>>(),
+    });
+    let Ok(answer) = plugin_command::run_command(runner, &family.plugin, command, &Default::default(), input) else {
+        return failed();
+    };
+    let Some(files) = answer["files"].as_array().filter(|f| f.len() == drafts.len()) else {
+        eprintln!("verso-rpcd: {}: its transform listed another number of files", family.plugin);
+        return failed();
+    };
+    files
+        .iter()
+        .zip(drafts)
+        .map(|(file, draft)| match (file["path"].as_str(), file["content"].as_str(), file["withheld"].as_str()) {
+            (Some(path), Some(content), None) if path == draft.path => Shown::Content(content.to_string()),
+            (Some(path), None, Some(why)) if path == draft.path => Shown::Withheld(why.to_string()),
+            _ => Shown::Withheld("The file could not be read.".into()),
+        })
+        .collect()
+}
+
+/// restored runs a family's transform over a save (op `stage`): the file as it
+/// will be written, with whatever the transform held back put in again, or the
+/// transform's refusal. A family without a transform writes the save as it is.
+fn restored(
+    runner: &impl Runner,
+    family: &Family,
+    path: &str,
+    edited: &str,
+    previous: Option<&str>,
+) -> Result<String, Failure> {
+    let Some(command) = &family.transform else {
+        return Ok(edited.to_string());
+    };
+    let input = json!({"op": "stage", "path": path, "edited": edited, "previous": previous});
+    let answer = plugin_command::run_command(runner, &family.plugin, command, &Default::default(), input)?;
+    answer["content"]
+        .as_str()
+        .map(String::from)
+        .ok_or_else(|| Failure::unknown(format!("{}: its transform answered no content", family.plugin)))
+}
+
 /// state is every family's files as they will read once staged changes are
-/// applied, each saying which family it belongs to.
+/// applied, each saying which family it belongs to, and the families: their
+/// names, the uci config that owns each and the plugin that declared it.
 pub fn state() -> Result<Value, Failure> {
+    state_with(&Table::installed(), &plugin_command::System)
+}
+
+fn state_with(table: &Table, runner: &impl Runner) -> Result<Value, Failure> {
     let _guard = LOCK.lock().map_err(failure)?;
     let mut j = load_at(Path::new(JOURNAL))?;
-    reload_all(&recover(&mut j)?);
+    recover(&mut j, || table.clone())?;
     let mut paths = vec![];
-    for family in Family::ALL {
+    for family in &table.families {
         let (fixed, dir) = family.places();
-        paths.extend(fixed.iter().map(PathBuf::from));
-        check_path(Path::new(dir))?;
-        if let Ok(entries) = fs::read_dir(dir) {
-            paths.extend(
-                entries
-                    .filter_map(Result::ok)
-                    .map(|e| e.path())
-                    .filter(|p| p.to_str().is_some_and(allowed)),
-            );
+        paths.extend(fixed);
+        if let Some(dir) = dir {
+            check_path(&dir)?;
+            if let Ok(entries) = fs::read_dir(&dir) {
+                paths.extend(
+                    entries
+                        .filter_map(Result::ok)
+                        .map(|e| e.path())
+                        .filter(|p| p.to_str().is_some_and(|p| table.of(p).is_some())),
+                );
+            }
         }
     }
     if let Some(files) = j["files"].as_object() {
@@ -432,78 +376,75 @@ pub fn state() -> Result<Value, Failure> {
             .is_some_and(|f| f.contains_key(p.to_string_lossy().as_ref()))
     });
     if paths.len() > 64 {
-        return Err(Failure::invalid("Too many custom option files."));
+        return Err(Failure::invalid("Too many files to list."));
     }
-    let mut files = vec![];
+    // Each family's files go to its transform together, in one run.
+    let mut files: Vec<Option<Value>> = vec![];
+    let mut drafts: Vec<(usize, &Family, Draft)> = vec![];
     let mut total = 0;
-    let profiles = OnceCell::new();
     for path in paths {
-        let key = path.to_string_lossy();
-        let Some(family) = Family::of(&key) else {
+        let key = path.to_string_lossy().to_string();
+        let Some(family) = table.of(&key) else {
             continue;
         };
-        let pending = j["files"].get(key.as_ref()).is_some();
-        if withheld(family, &key, pending, || profiles.get_or_init(crate::openvpn::profiles)) {
-            files.push(unnamed(&key));
-            continue;
-        }
-        let active = match read(&path) {
+        let pending = j["files"].get(&key).is_some();
+        let active = match read(&path, &family.words().too_large) {
             Ok(body) => body,
-            Err(e) if j["files"].get(key.as_ref()).is_none() => {
-                files.push(json!({"path":key,"family":family.name(),"error":e.message}));
+            Err(e) if !pending => {
+                files.push(Some(json!({"path":key,"family":family.name(),"error":e.message})));
                 continue;
             }
             Err(_) => None,
         };
-        let body = j["files"][key.as_ref()]["after"]
-            .as_str()
-            .map(String::from)
-            .or(active);
+        let body = j["files"][&key]["after"].as_str().map(String::from).or(active);
         total += body.as_ref().map(String::len).unwrap_or(0);
         if total > TOTAL {
-            files.push(json!({"path":key,"family":family.name(),"error":family.over_limit()}));
+            files.push(Some(json!({"path":key,"family":family.name(),"error":family.words().over_limit})));
             continue;
         }
-        files.push(listed(&key, family, body.as_deref(), pending, version));
+        drafts.push((files.len(), family, Draft { path: key, body, pending }));
+        files.push(None);
     }
-    Ok(
-        json!({"files":files,"active":j["active"],"uci":j["uci"],"uci_confirmed":j["uci_confirmed"]}),
-    )
+    for family in &table.families {
+        let mine: Vec<&(usize, &Family, Draft)> = drafts.iter().filter(|(_, f, _)| f.name() == family.name()).collect();
+        if mine.is_empty() {
+            continue;
+        }
+        let owned: Vec<Draft> = mine
+            .iter()
+            .map(|(_, _, d)| Draft { path: d.path.clone(), body: d.body.clone(), pending: d.pending })
+            .collect();
+        for ((slot, family, draft), shown) in mine.into_iter().zip(shown(runner, family, &owned)) {
+            files[*slot] = Some(listed(&draft.path, family, draft.body.as_deref(), draft.pending, shown, version));
+        }
+    }
+    let families: Vec<Value> = table.families.iter().map(Family::description).collect();
+    Ok(json!({
+        "files": files.into_iter().flatten().collect::<Vec<_>>(),
+        "families": families,
+        "active": j["active"],
+        "uci": j["uci"],
+        "uci_confirmed": j["uci_confirmed"],
+    }))
 }
-/// withheld is whether a file is listed by its path alone, never opened: an
-/// OpenVPN file no instance reads as its profile (`config`) and none staged.
-/// Any other file in /etc/openvpn may hold a secret fold does not hide, a
-/// sign-in file (a username and a password) above all, whatever it is named
-/// and whichever option or profile line names it. profiles is the paths the
-/// instances read, asked for only when an OpenVPN file is listed.
-fn withheld<'a>(
-    family: Family,
-    path: &str,
-    pending: bool,
-    profiles: impl FnOnce() -> &'a BTreeSet<String>,
-) -> bool {
-    family == Family::Openvpn && !pending && !profiles().contains(path)
-}
-/// unnamed is how state reports a withheld file: by its path, which a new
-/// profile's name must not take, with no content and no version, so no save
-/// can be checked against it.
-fn unnamed(path: &str) -> Value {
-    json!({"path":path,"family":Family::Openvpn.name(),"error":"No OpenVPN instance reads this file as its profile."})
-}
-/// listed is how state reports one file. A profile is reported folded, keys
-/// left in the helper; its version is the whole file's, keyed, which is what
-/// a save is checked against. A file with no version has the reason in its
-/// place, so it fails no other file's listing.
+
+/// listed is how state reports one file: what its transform shows of it, and
+/// its version, the whole file's, keyed, which is what a save is checked
+/// against. A withheld file is reported by its path alone, with no content and
+/// no version, so its name stays taken and no save can be checked against it.
+/// A file with no version has the reason in its place, so it fails no other
+/// file's listing.
 fn listed(
     path: &str,
-    family: Family,
+    family: &Family,
     body: Option<&str>,
     pending: bool,
+    shown: Shown,
     version: impl FnOnce(&str, Option<&str>) -> Result<String, Failure>,
 ) -> Value {
-    let content = match family {
-        Family::Openvpn => crate::openvpn::fold(body.unwrap_or("")),
-        _ => body.unwrap_or_default().to_string(),
+    let content = match shown {
+        Shown::Content(content) => content,
+        Shown::Withheld(why) => return json!({"path":path,"family":family.name(),"error":why}),
     };
     match version(path, body) {
         Ok(version) => {
@@ -514,42 +455,33 @@ fn listed(
         }
     }
 }
-fn validate_dnsmasq(body: &str) -> Result<(), Failure> {
-    let dir = Path::new(JOURNAL).parent().unwrap();
-    check_path(dir)?;
-    fs::create_dir_all(dir).map_err(failure)?;
-    fs::set_permissions(dir, fs::Permissions::from_mode(0o700)).map_err(failure)?;
-    let file = dir.join("validate.conf");
-    atomic(&file, body, 0o600)?;
-    let result = Command::new("/usr/sbin/dnsmasq")
-        .arg("--test")
-        .arg(format!("--conf-file={}", file.display()))
-        .stdin(Stdio::null())
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .status();
-    let _ = fs::remove_file(file);
-    if !result.map_err(failure)?.success() {
-        return Err(Failure::invalid(
-            "dnsmasq rejected these options. Check the option names and values.",
-        ));
-    }
-    Ok(())
+
+/// stage stages one file of a family whose config is one of configs: the
+/// configs the plugin asking may write, as the shell reads them from its
+/// manifest.
+pub fn stage(path: &str, expected: &str, body: &str, configs: &str) -> Result<Value, Failure> {
+    stage_with(&Table::installed(), &plugin_command::System, path, expected, body, configs)
 }
-pub fn stage(path: &str, expected: &str, body: &str) -> Result<Value, Failure> {
-    let Some(family) = Family::of(path) else {
-        return Err(Failure::invalid("Invalid custom options file."));
-    };
+
+fn stage_with(
+    table: &Table,
+    runner: &impl Runner,
+    path: &str,
+    expected: &str,
+    body: &str,
+    configs: &str,
+) -> Result<Value, Failure> {
+    let family = family_for(table, path, configs)?;
     if body.len() > LIMIT || body.contains('\0') {
-        return Err(Failure::invalid(family.invalid()));
+        return Err(Failure::invalid(family.words().invalid.as_str()));
     }
     let _guard = LOCK.lock().map_err(failure)?;
     let mut j = load_at(Path::new(JOURNAL))?;
-    reload_all(&recover(&mut j)?);
+    recover(&mut j, || table.clone())?;
     if j["active"] == true {
         return Err(Failure::invalid("Wait for the current apply to finish."));
     }
-    let before = read(Path::new(path))?;
+    let before = read(Path::new(path), &family.words().too_large)?;
     let previous = j["files"][path]["after"].as_str().or(before.as_deref());
     if version(path, previous)? != expected {
         return Err(Failure::invalid(
@@ -562,31 +494,18 @@ pub fn stage(path: &str, expected: &str, body: &str) -> Result<Value, Failure> {
     {
         return Err(Failure::invalid("Too many staged files."));
     }
-    // A profile was edited folded; its keys go back in from what it held,
-    // never where the next fold would show them.
-    let restored = match family {
-        Family::Openvpn => Some(crate::openvpn::unfold(body, previous.unwrap_or("")).ok_or_else(|| {
-            Failure::invalid(
-                "A folded block was moved, or a line added before it, where OpenVPN would not read it as a block. Move it back, or paste the block in whole.",
-            )
-        })?),
-        _ => None,
-    };
-    let body = restored.as_deref().unwrap_or(body);
-    if body.len() > LIMIT {
-        return Err(Failure::invalid(family.invalid()));
+    let body = restored(runner, family, path, body, previous)?;
+    if body.len() > LIMIT || body.contains('\0') {
+        return Err(Failure::invalid(family.words().invalid.as_str()));
     }
-    family.check_draft(body)?;
-    // A new profile holds keys, so only root reads it.
-    let fresh = if family == Family::Openvpn { 0o600 } else { 0o644 };
     let mode = fs::metadata(path)
         .map(|m| m.permissions().mode() & 0o777)
-        .unwrap_or(fresh);
+        .unwrap_or(family.mode());
     let original = j["files"][path]
         .get("before")
         .cloned()
         .unwrap_or(json!(before));
-    if original.as_str() == Some(body) {
+    if original.as_str() == Some(body.as_str()) {
         j["files"].as_object_mut().unwrap().remove(path);
     } else {
         j["files"][path] = json!({"before":original,"after":body,"mode":mode});
@@ -598,29 +517,40 @@ pub fn stage(path: &str, expected: &str, body: &str) -> Result<Value, Failure> {
         .map(|f| f["after"].as_str().unwrap_or("").len())
         .sum();
     if total > TOTAL {
-        return Err(Failure::invalid(match family {
-            Family::Dnsmasq => "Staged custom options exceed the editor size limit.",
-            Family::Fw4 | Family::Openvpn => family.over_limit(),
-        }));
+        return Err(Failure::invalid(family.words().over_limit.as_str()));
     }
     save_at(Path::new(JOURNAL), &j)?;
     Ok(json!({"result":true}))
 }
+/// family_for is the family that holds path, when its config is one of
+/// configs (comma-separated); otherwise the save is refused.
+fn family_for<'t>(table: &'t Table, path: &str, configs: &str) -> Result<&'t Family, Failure> {
+    let family = table
+        .of(path)
+        .ok_or_else(|| Failure::invalid("This file is not one the router edits."))?;
+    if !configs.split(',').any(|c| c == family.declared.config) {
+        return Err(Failure::invalid("This page may not change that file."));
+    }
+    Ok(family)
+}
+
 /// lifecycle carries staged files through an apply. On apply it writes every
 /// staged file, checks each touched family's whole configuration with them in
 /// place, and has each family read them again; a refusal restores the files
 /// before anything reloads. Abort and the watchdog restore the same way.
-/// A discard names the family whose files it drops — the one whose config was
-/// discarded — or none, to drop every staged file.
+/// A discard names the config that was discarded, and drops the files of the
+/// families that config owns — none, for a config no family belongs to — or
+/// names none, to drop every staged file.
 pub fn lifecycle(
     action: &str,
     uci: bool,
     timeout: u64,
-    family: Option<Family>,
+    config: Option<&str>,
 ) -> Result<Value, Failure> {
+    let table = Table::installed();
     let _guard = LOCK.lock().map_err(failure)?;
     let mut j = load_at(Path::new(JOURNAL))?;
-    reload_all(&recover(&mut j)?);
+    recover(&mut j, || table.clone())?;
     match action {
         "apply" => {
             if j["active"] == true {
@@ -630,7 +560,10 @@ pub fn lifecycle(
                 return Ok(json!({"active":false}));
             }
             for (path, file) in j["files"].as_object().unwrap() {
-                if !allowed(path) || read(Path::new(path))?.as_deref() != file["before"].as_str() {
+                let Some(owner) = table.of(path) else {
+                    return Err(Failure::invalid("A staged file belongs to no family. Discard it."));
+                };
+                if read(Path::new(path), &owner.words().too_large)?.as_deref() != file["before"].as_str() {
                     return Err(Failure::invalid(
                         "A file changed outside Verso. Discard and reopen it.",
                     ));
@@ -649,17 +582,17 @@ pub fn lifecycle(
                         file["mode"].as_u64().unwrap_or(0o644) as u32,
                     )?;
                 }
-                touched(&j).into_iter().try_for_each(Family::check_live)
+                touched(&table, &j).into_iter().try_for_each(check_live)
             })();
             if let Err(e) = result {
-                restore(&j)?;
+                restore(&table, &j)?;
                 j["active"] = json!(false);
                 save_at(Path::new(JOURNAL), &j)?;
                 return Err(e);
             }
             // Every family the change touched reads its files again, whether
             // or not the uci apply beside it touches that daemon's config.
-            reload_all(&touched(&j));
+            reload_all(&touched(&table, &j));
         }
         "uci-confirmed" => {
             j["uci_confirmed"] = json!(true);
@@ -673,8 +606,8 @@ pub fn lifecycle(
         }
         "abort" => {
             if j["active"] == true {
-                restore(&j)?;
-                reload_all(&touched(&j));
+                restore(&table, &j)?;
+                reload_all(&touched(&table, &j));
             }
             j["active"] = json!(false);
             save_at(Path::new(JOURNAL), &j)?;
@@ -683,7 +616,7 @@ pub fn lifecycle(
             if j["active"] == true {
                 return Err(Failure::invalid("An apply is in progress."));
             }
-            drop_family(&mut j, family);
+            drop_config(&table, &mut j, config);
             save_at(Path::new(JOURNAL), &j)?;
         }
         _ => return Err(Failure::invalid("Invalid file transaction action.")),
@@ -701,7 +634,7 @@ pub fn dns_state() -> Result<Value, Failure> {
             .split_whitespace()
             .any(|w| w == "DNSSEC")
     });
-    let mut result = only(state()?, Family::Dnsmasq);
+    let mut result = only(state()?, "dnsmasq");
     result["resolver"] = json!(Path::new("/usr/sbin/dnsmasq").is_file());
     result["dnssec"] = json!(dnssec);
     result["doh"] = json!(Path::new("/usr/sbin/https-dns-proxy").is_file());
@@ -775,22 +708,16 @@ fn udp_listeners(table: &str) -> Vec<(String, u16)> {
 /// firewall_state is the rule files fw4 reads from its own folder, as they
 /// will read once staged changes are applied.
 pub fn firewall_state() -> Result<Value, Failure> {
-    let mut result = only(state()?, Family::Fw4);
+    let mut result = only(state()?, "fw4");
     result["fw4"] = json!(Path::new("/sbin/fw4").is_file());
     Ok(result)
 }
 
-/// openvpn_state is OpenVPN's profiles, folded, as they will read once staged
-/// changes are applied.
-pub fn openvpn_state() -> Result<Value, Failure> {
-    Ok(only(state()?, Family::Openvpn))
-}
-
 /// only narrows a state to one family's files, so a page never lists — and
 /// so never offers to edit — another daemon's.
-fn only(mut state: Value, family: Family) -> Value {
+fn only(mut state: Value, family: &str) -> Value {
     if let Some(files) = state["files"].as_array_mut() {
-        files.retain(|f| f["family"] == family.name());
+        files.retain(|f| f["family"] == family);
     }
     state
 }
@@ -798,8 +725,46 @@ fn only(mut state: Value, family: Family) -> Value {
 #[cfg(test)]
 mod tests {
     use super::*;
-    /// A local upstream is whatever answers on that port here: the table's
-    /// loopback and any-address sockets, by inode, never one talking out.
+    use crate::families::fixtures;
+    use crate::plugin_command::{Ran, Run};
+    use std::cell::RefCell;
+
+    /// A transform that answers with a fixed reply and records its requests.
+    struct Transform {
+        reply: Result<Ran, String>,
+        requests: RefCell<Vec<Value>>,
+    }
+
+    impl Transform {
+        fn answering(code: i32, stdout: Value) -> Transform {
+            Transform {
+                reply: Ok(Ran { code: Some(code), stdout: stdout.to_string().into_bytes(), stderr: vec![] }),
+                requests: RefCell::new(vec![]),
+            }
+        }
+    }
+
+    impl Runner for Transform {
+        fn run(&self, run: &Run) -> Result<Ran, String> {
+            self.requests.borrow_mut().push(serde_json::from_slice(&run.stdin).unwrap());
+            self.reply.clone()
+        }
+    }
+
+    fn vpn() -> Family {
+        let mut f = fixtures::openvpn();
+        f.transform = Some(serde_json::from_value(json!(
+            {"name": "files", "kind": "transform", "exec": "/usr/bin/verso-plugin-vpn", "argv": ["root"]}
+        )).unwrap());
+        f
+    }
+
+    fn draft(path: &str, body: &str) -> Draft {
+        Draft { path: path.into(), body: Some(body.into()), pending: false }
+    }
+
+    /// A udp table's local listeners are its loopback and any-address sockets,
+    /// by inode, never one talking out.
     #[test]
     fn a_udp_table_lists_the_local_listeners_by_inode() {
         let table = "  sl  local_address rem_address   st tx_queue rx_queue tr tm->when retrnsmt   uid  timeout inode ref pointer drops\n\
@@ -827,15 +792,44 @@ mod tests {
         );
     }
     #[test]
-    fn discarding_one_family_keeps_the_others_staged() {
+    fn discarding_one_config_keeps_the_others_files_staged() {
+        let table = fixtures::table();
         let mut j = json!({"files":{
             "/etc/nftables.d/10-a.nft":{"after":"x"},
             "/etc/dnsmasq.d/x.conf":{"after":"y"}
         },"active":false});
-        drop_family(&mut j, Some(Family::Fw4));
+        drop_config(&table, &mut j, Some("network"));
+        assert_eq!(j["files"].as_object().unwrap().len(), 2, "a config no family belongs to drops nothing");
+        drop_config(&table, &mut j, Some("firewall"));
         assert_eq!(j["files"], json!({"/etc/dnsmasq.d/x.conf":{"after":"y"}}));
-        drop_family(&mut j, None);
+        drop_config(&table, &mut j, None);
         assert_eq!(j["files"], json!({}));
+    }
+
+    /// A file is staged for a plugin only when its family's config is one the
+    /// plugin may write; a path in no family is staged for nobody.
+    #[test]
+    fn a_file_is_staged_only_for_its_familys_writer() {
+        let table = fixtures::table();
+        for (path, configs) in [
+            ("/etc/dnsmasq.d/10-local.conf", "dhcp"),
+            ("/etc/dnsmasq.conf", "network,dhcp"),
+            ("/etc/nftables.d/10-custom.nft", "firewall"),
+            ("/etc/openvpn/proton.ovpn", "openvpn"),
+        ] {
+            assert!(family_for(&table, path, configs).is_ok(), "{path} for {configs}");
+        }
+        for (path, configs) in [
+            ("/etc/dnsmasq.d/10-local.conf", "firewall"),
+            ("/etc/nftables.d/10-custom.nft", "dhcp"),
+            ("/etc/firewall.user", "firewall"),
+            ("/etc/passwd", "dhcp"),
+            ("/etc/openvpn/proton.ovpn", "firewall"),
+            ("/etc/dnsmasq.conf", ""),
+            ("/etc/dnsmasq.conf", "dhcpx"),
+        ] {
+            assert!(family_for(&table, path, configs).is_err(), "{path} for {configs}");
+        }
     }
     #[test]
     fn a_page_sees_only_its_own_familys_files() {
@@ -844,102 +838,108 @@ mod tests {
             {"path":"/etc/nftables.d/10-a.nft","family":"fw4"}
         ],"active":false});
         assert_eq!(
-            only(state.clone(), Family::Fw4)["files"],
+            only(state.clone(), "fw4")["files"],
             json!([{"path":"/etc/nftables.d/10-a.nft","family":"fw4"}])
         );
         assert_eq!(
-            only(state, Family::Dnsmasq)["files"],
+            only(state, "dnsmasq")["files"],
             json!([{"path":"/etc/dnsmasq.conf","family":"dnsmasq"}])
         );
     }
     #[test]
-    fn each_family_owns_its_own_paths() {
-        assert_eq!(Family::of("/etc/dnsmasq.conf"), Some(Family::Dnsmasq));
-        assert_eq!(
-            Family::of("/etc/dnsmasq.d/10-local.conf"),
-            Some(Family::Dnsmasq)
-        );
-        assert_eq!(
-            Family::of("/etc/nftables.d/10-custom.nft"),
-            Some(Family::Fw4)
-        );
-        for p in [
-            "/etc/nftables.d/10-custom.conf",
-            "/etc/dnsmasq.d/10-local.nft",
-            "/etc/nftables.d/../passwd.nft",
-            "/etc/nftables.d/a/b.nft",
-            "/etc/nftables.d/.nft",
-            "/etc/nftables.d/Rules.nft",
-            "/etc/firewall.user",
-            "/usr/share/nftables.d/ruleset-post/x.nft",
-        ] {
-            assert_eq!(Family::of(p), None, "{p}");
-        }
-    }
-    #[test]
-    fn a_profile_is_any_ovpn_or_conf_directly_in_etc_openvpn() {
-        for p in [
-            "/etc/openvpn/proton.ovpn",
-            "/etc/openvpn/nl-free-12.protonvpn.udp.ovpn",
-            "/etc/openvpn/Work.conf",
-        ] {
-            assert_eq!(Family::of(p), Some(Family::Openvpn), "{p}");
-        }
-        for p in [
-            "/etc/openvpn/proton.auth",
-            "/etc/openvpn/keys/a.ovpn",
-            "/etc/openvpn/../shadow.conf",
-            "/etc/openvpn/.ovpn",
-            "/etc/openvpn/.hidden.ovpn",
-            "/etc/openvpnx/a.ovpn",
-        ] {
-            assert_eq!(Family::of(p), None, "{p}");
-        }
-    }
-    /// A file in /etc/openvpn is a profile only when an instance reads it as
-    /// one: a sign-in file saved as `.conf` there (a username and password,
-    /// nothing folded) is listed by its path, never opened, so its name is
-    /// still taken and nothing in it leaves the helper. A file staged is the
-    /// page's own, listed as staged.
-    #[test]
-    fn an_openvpn_file_no_instance_names_is_listed_by_its_path_alone() {
-        let named: BTreeSet<String> = ["/etc/openvpn/proton.ovpn".to_string()].into();
-        let profiles = || &named;
-        assert!(!withheld(Family::Openvpn, "/etc/openvpn/proton.ovpn", false, profiles));
-        assert!(withheld(Family::Openvpn, "/etc/openvpn/proton.conf", false, profiles));
-        assert!(!withheld(Family::Openvpn, "/etc/openvpn/new.ovpn", true, profiles));
-        assert!(!withheld(Family::Dnsmasq, "/etc/dnsmasq.d/x.conf", false, || panic!("uci read for dnsmasq")));
-        let listed = unnamed("/etc/openvpn/proton.conf");
-        assert_eq!(
-            listed,
-            json!({"path":"/etc/openvpn/proton.conf","family":"openvpn","error":"No OpenVPN instance reads this file as its profile."})
-        );
-    }
-    #[test]
     fn a_change_names_every_family_it_touches_once() {
+        let table = fixtures::table();
         let j = json!({"files":{
             "/etc/nftables.d/10-a.nft":{},
             "/etc/nftables.d/20-b.nft":{},
             "/etc/dnsmasq.d/x.conf":{}
         }});
-        assert_eq!(touched(&j), vec![Family::Dnsmasq, Family::Fw4]);
-        assert!(touched(&json!({"files":{}})).is_empty());
+        let names: Vec<&str> = touched(&table, &j).into_iter().map(Family::name).collect();
+        assert_eq!(names, ["dnsmasq", "fw4"]);
+        assert!(touched(&table, &json!({"files":{}})).is_empty());
     }
+
+    /// A journal written before families came from the registries names its
+    /// files by path, under the same families: it still lists, applies and
+    /// discards under the table the registries build.
     #[test]
-    fn paths_are_bounded() {
-        for p in ["/etc/dnsmasq.conf", "/etc/dnsmasq.d/10-local.conf"] {
-            assert!(allowed(p));
+    fn a_journal_from_before_the_registries_still_resolves() {
+        let table = fixtures::table();
+        let j = json!({"files":{
+            "/etc/dnsmasq.conf":{"before":"a","after":"b","mode":420},
+            "/etc/nftables.d/10-custom.nft":{"before":null,"after":"x","mode":420},
+            "/etc/openvpn/proton.ovpn":{"before":"c","after":"d","mode":384}
+        },"active":false});
+        for path in j["files"].as_object().unwrap().keys() {
+            assert!(table.of(path).is_some(), "{path}");
         }
-        for p in [
-            "/etc/passwd",
-            "/etc/dnsmasq.d/../passwd.conf",
-            "/etc/dnsmasq.d/a/b.conf",
-            "/etc/dnsmasq.d/.conf",
-            "/etc/dnsmasq.d/ABC.conf",
+        let names: Vec<&str> = touched(&table, &j).into_iter().map(Family::name).collect();
+        assert_eq!(names, ["dnsmasq", "fw4", "openvpn"]);
+        let mut discard = j.clone();
+        drop_config(&table, &mut discard, Some("openvpn"));
+        assert_eq!(discard["files"].as_object().unwrap().len(), 2);
+    }
+
+    #[test]
+    fn a_family_without_a_transform_shows_its_files_as_they_are() {
+        let t = Transform::answering(0, json!({}));
+        let shown = shown(&t, &fixtures::fw4(), &[draft("/etc/nftables.d/a.nft", "rule")]);
+        assert_eq!(shown, [Shown::Content("rule".into())]);
+        assert!(t.requests.borrow().is_empty());
+    }
+
+    #[test]
+    fn a_transform_folds_and_withholds() {
+        let t = Transform::answering(0, json!({"files": [
+            {"path": "/etc/openvpn/proton.ovpn", "content": "client\n<key> … 3 lines … </key>"},
+            {"path": "/etc/openvpn/proton.conf", "withheld": "No OpenVPN instance reads this file as its profile."}
+        ]}));
+        let drafts = [draft("/etc/openvpn/proton.ovpn", "client\n<key>\nSECRET\n</key>"), draft("/etc/openvpn/proton.conf", "user\npass")];
+        let got = shown(&t, &vpn(), &drafts);
+        assert_eq!(got[0], Shown::Content("client\n<key> … 3 lines … </key>".into()));
+        assert_eq!(got[1], Shown::Withheld("No OpenVPN instance reads this file as its profile.".into()));
+        let request = &t.requests.borrow()[0];
+        assert_eq!(request["command"], "files");
+        assert_eq!(request["input"]["op"], "list");
+        assert_eq!(request["input"]["files"][0]["content"], "client\n<key>\nSECRET\n</key>");
+
+        let listed_withheld = listed("/etc/openvpn/proton.conf", &vpn(), Some("user\npass"), false, got[1].clone(), |_, _| Ok("v".into()));
+        assert_eq!(listed_withheld, json!({"path":"/etc/openvpn/proton.conf","family":"openvpn","error":"No OpenVPN instance reads this file as its profile."}));
+        let folded = listed("/etc/openvpn/proton.ovpn", &vpn(), Some("client\n<key>\nSECRET\n</key>"), true, got[0].clone(), |_, _| Ok("v".into()));
+        assert!(!folded.to_string().contains("SECRET"), "{folded}");
+    }
+
+    #[test]
+    fn a_failing_transform_lists_its_files_by_path_alone() {
+        for t in [
+            Transform { reply: Err("timed out".into()), requests: RefCell::new(vec![]) },
+            Transform::answering(1, json!({})),
+            Transform::answering(0, json!({"files": []})),
+            Transform::answering(0, json!({"files": [{"path": "/etc/openvpn/other.ovpn", "content": "x"}]})),
         ] {
-            assert!(!allowed(p));
+            let got = shown(&t, &vpn(), &[draft("/etc/openvpn/proton.ovpn", "client\n<key>\nSECRET\n</key>")]);
+            assert!(matches!(&got[0], Shown::Withheld(_)), "{got:?}");
         }
     }
+
+    #[test]
+    fn a_transform_restores_a_save_or_refuses_it() {
+        let t = Transform::answering(0, json!({"content": "client\n<key>\nSECRET\n</key>\nverb 3"}));
+        let saved = restored(&t, &vpn(), "/etc/openvpn/proton.ovpn", "client\n<key> … 3 lines … </key>\nverb 3", Some("client\n<key>\nSECRET\n</key>")).unwrap();
+        assert_eq!(saved, "client\n<key>\nSECRET\n</key>\nverb 3");
+        let request = &t.requests.borrow()[0];
+        assert_eq!(request["input"]["op"], "stage");
+        assert_eq!(request["input"]["previous"], "client\n<key>\nSECRET\n</key>");
+
+        let refused = Transform::answering(3, json!({"refusal": "A folded block was moved."}));
+        let err = restored(&refused, &vpn(), "/etc/openvpn/proton.ovpn", "x", None).unwrap_err();
+        assert_eq!((err.status, err.message.as_str()), (crate::STATUS_INVALID_ARGUMENT, "A folded block was moved."));
+
+        let none = Transform::answering(0, json!({}));
+        assert_eq!(restored(&none, &fixtures::fw4(), "/etc/nftables.d/a.nft", "rule", None).unwrap(), "rule");
+        assert!(none.requests.borrow().is_empty());
+    }
+
     const KEY: [u8; 32] = [7; 32];
     const PATH: &str = "/etc/openvpn/proton.ovpn";
     /// A file that does not exist has the version the plugin SDK sends to
@@ -968,16 +968,15 @@ mod tests {
             version_under(&KEY, "/etc/openvpn/ab", "\n")
         );
     }
-    /// A folded profile's version tells a save the file changed and nothing
-    /// of what its folded blocks hold: without the key no guess at a block
-    /// can be checked against it.
+    /// A file's version tells a save the file changed and nothing of what it
+    /// holds: without the key no guess at a folded block can be checked
+    /// against it.
     #[test]
-    fn a_profiles_version_gives_nothing_of_its_folded_blocks() {
+    fn a_files_version_gives_nothing_of_what_it_holds() {
         let profile = |password: &str| {
             format!("client\nremote vpn.test.invalid 1194\n<auth-user-pass>\noperator7\n{password}\n</auth-user-pass>\nverb 3\n")
         };
         let (held, other) = (profile("m4x9p"), profile("m4x9q"));
-        assert_eq!(crate::openvpn::fold(&held), crate::openvpn::fold(&other));
         let reported = version_under(&KEY, PATH, &held);
         assert_ne!(reported, version_under(&KEY, PATH, &other), "a changed block changes the version");
         assert_eq!(reported, version_under(&KEY, PATH, &held), "the same file keeps its version");
@@ -1009,16 +1008,16 @@ mod tests {
         };
         let unkeyed = |path: &str, body: Option<&str>| version_from(starved, path, body);
         let body = "client\n<key>\nSECRET\n</key>\n";
-        let file = listed(PATH, Family::Openvpn, Some(body), true, unkeyed);
+        let folded = Shown::Content("client\n<key> … 3 lines … </key>\n".into());
+        let file = listed(PATH, &vpn(), Some(body), true, folded, unkeyed);
         assert_eq!(file["error"], "The router has no key to check its files against.");
         assert!(file.get("version").is_none(), "{file}");
         assert_eq!((&file["path"], &file["family"], &file["pending"]), (&json!(PATH), &json!("openvpn"), &json!(true)));
-        assert_eq!(file["content"], crate::openvpn::fold(body), "staged content still reads folded");
         assert!(!file.to_string().contains("SECRET"), "{file}");
         let refused = version_from(starved, PATH, Some(body)).unwrap_err();
         assert_eq!(refused.status, crate::STATUS_INVALID_ARGUMENT, "the operator reads why");
         // a file that does not exist needs no key
-        let new = listed(PATH, Family::Openvpn, None, true, unkeyed);
+        let new = listed(PATH, &vpn(), None, true, Shown::Content(String::new()), unkeyed);
         assert_eq!((&new["version"], &new["exists"]), (&json!(NEW_FILE), &json!(false)));
         assert!(new.get("error").is_none());
         assert!(!dir.exists(), "no key is kept");
@@ -1035,11 +1034,11 @@ mod tests {
         assert_eq!(load_at(&journal).unwrap(), j);
         atomic(&path, "edited\n", 0o600).unwrap();
         restore_file(&path, &json!({"before":"original\n","mode":384})).unwrap();
-        assert_eq!(read(&path).unwrap().as_deref(), Some("original\n"));
+        assert_eq!(read(&path, "too large").unwrap().as_deref(), Some("original\n"));
         restore_file(&path, &json!({"before":null})).unwrap();
         assert!(!path.exists());
         std::os::unix::fs::symlink("/etc/passwd", &path).unwrap();
-        assert!(read(&path).is_err());
+        assert!(read(&path, "too large").is_err());
         assert!(atomic(&path, "bad", 0o600).is_err());
         fs::remove_dir_all(dir).unwrap();
     }

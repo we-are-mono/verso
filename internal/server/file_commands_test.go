@@ -72,8 +72,8 @@ type fileStagingBackend struct {
 	staged []string
 }
 
-func (b *fileStagingBackend) StageConfigFile(_ context.Context, _, path, _, _ string) error {
-	b.staged = append(b.staged, path)
+func (b *fileStagingBackend) StageConfigFile(_ context.Context, _, path, _, _ string, configs []string) error {
+	b.staged = append(b.staged, path+" "+strings.Join(configs, ","))
 	return nil
 }
 
@@ -85,11 +85,11 @@ func fileWriter(config string) plugin.Manifest {
 	}}}
 }
 
-// TestAFileIsStagedOnlyByItsDaemonsWriter: a dnsmasq file belongs to whoever
-// may write the dhcp config and an nftables rule file to whoever may write the
-// firewall's, so neither plugin can stage the other's files — and a path in
-// no family is staged by nobody.
-func TestAFileIsStagedOnlyByItsDaemonsWriter(t *testing.T) {
+// TestAFileIsStagedWithTheConfigsItsPluginWrites: a file is staged only for a
+// plugin that declares file staging, and reaches the helper with the configs
+// that plugin may write, so the helper — which holds the family table — stages
+// it only when its family's config is one of them (ADR-027).
+func TestAFileIsStagedWithTheConfigsItsPluginWrites(t *testing.T) {
 	b := &fileStagingBackend{}
 	s := newServerWith(t, b, nil, nil)
 	stage := func(m plugin.Manifest, path string) error {
@@ -98,36 +98,59 @@ func TestAFileIsStagedOnlyByItsDaemonsWriter(t *testing.T) {
 			Args: map[string]string{"path": path, "expected": "v", "content": "x"},
 		}})
 	}
-	for _, ok := range []struct {
-		m    plugin.Manifest
-		path string
-	}{
-		{fileWriter("dhcp"), "/etc/dnsmasq.d/10-local.conf"},
-		{fileWriter("dhcp"), "/etc/dnsmasq.conf"},
-		{fileWriter("firewall"), "/etc/nftables.d/10-custom.nft"},
-		{fileWriter("openvpn"), "/etc/openvpn/proton.ovpn"},
-	} {
-		if err := stage(ok.m, ok.path); err != nil {
-			t.Errorf("%s staging %s: %v", ok.m.ID, ok.path, err)
-		}
+	both := fileWriter("dhcp")
+	both.ACL.Write = append(both.ACL.Write, plugin.ACLScope{Scope: "uci", Object: "network", Function: "write"})
+	if err := stage(both, "/etc/dnsmasq.d/10-local.conf"); err != nil {
+		t.Fatal(err)
 	}
-	for _, refused := range []struct {
-		m    plugin.Manifest
-		path string
-	}{
-		{fileWriter("firewall"), "/etc/dnsmasq.d/10-local.conf"},
-		{fileWriter("dhcp"), "/etc/nftables.d/10-custom.nft"},
-		{fileWriter("firewall"), "/etc/firewall.user"},
-		{fileWriter("dhcp"), "/etc/passwd"},
-		{fileWriter("firewall"), "/etc/openvpn/proton.ovpn"},
-	} {
-		if err := stage(refused.m, refused.path); err == nil {
-			t.Errorf("%s staged %s", refused.m.ID, refused.path)
-		}
+	if err := stage(fileWriter("firewall"), "/etc/nftables.d/10-custom.nft"); err != nil {
+		t.Fatal(err)
 	}
-	if len(b.staged) != 4 {
-		t.Errorf("only the allowed files reach the router: %v", b.staged)
+	reader := plugin.Manifest{ID: "reader", ACL: plugin.ACL{Write: []plugin.ACLScope{{Scope: "uci", Object: "dhcp", Function: "write"}}}}
+	if stage(reader, "/etc/dnsmasq.d/10-local.conf") == nil {
+		t.Error("a plugin that declares no file staging staged a file")
 	}
+	stager := plugin.Manifest{ID: "stager", ACL: plugin.ACL{Write: []plugin.ACLScope{{Scope: "ubus", Object: "verso", Function: "stageConfigFile"}}}}
+	if stage(stager, "/etc/dnsmasq.d/10-local.conf") == nil {
+		t.Error("a plugin that writes no config staged a file")
+	}
+	want := []string{"/etc/dnsmasq.d/10-local.conf dhcp,network", "/etc/nftables.d/10-custom.nft firewall"}
+	if strings.Join(b.staged, "|") != strings.Join(want, "|") {
+		t.Errorf("staged %v, want %v", b.staged, want)
+	}
+}
+
+// TestAPluginReadsOnlyItsOwnFamiliesFiles: the file listing a plugin declares
+// is narrowed to the families whose config the plugin reads.
+func TestAPluginReadsOnlyItsOwnFamiliesFiles(t *testing.T) {
+	files := json.RawMessage(`{"files":[` +
+		`{"path":"/etc/nftables.d/10-a.nft","family":"fw4","content":"","version":"v"},` +
+		`{"path":"/etc/dnsmasq.conf","family":"dnsmasq","content":"","version":"v"}],` +
+		`"families":[{"name":"fw4","config":"firewall","plugin":"firewall"},{"name":"dnsmasq","config":"dhcp","plugin":"dnsdhcp"}],` +
+		`"active":false}`)
+	tr := &fakeTransport{env: &plugin.Envelope{SchemaVersion: 1, Title: "Firewall", Widget: json.RawMessage(`{"type":"card"}`)}}
+	m := demoManifest()
+	m.ACL = plugin.ACL{Read: []plugin.ACLScope{
+		{Scope: "uci", Object: "firewall", Function: "read"},
+		{Scope: "ubus", Object: "verso", Function: "configFiles"},
+	}}
+	s := newServerWith(t, configFilesBackend{files: files}, tr, []plugin.Manifest{m})
+	if rec := get(t, s, "/plugins/demo/"); rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rec.Code)
+	}
+	got := string(tr.lastReq.Ubus["configFiles"])
+	if !strings.Contains(got, "/etc/nftables.d/10-a.nft") || strings.Contains(got, "dnsmasq") {
+		t.Errorf("the firewall's file read = %s", got)
+	}
+}
+
+type configFilesBackend struct {
+	fakeBackend
+	files json.RawMessage
+}
+
+func (b configFilesBackend) ConfigFiles(context.Context, string) (json.RawMessage, error) {
+	return b.files, nil
 }
 
 // TestAFileStagesBesideTheConfigThatNamesIt: importing a profile writes the
