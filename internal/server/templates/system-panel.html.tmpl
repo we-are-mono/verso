@@ -1,5 +1,5 @@
 <!-- SPDX-License-Identifier: GPL-2.0-only -->
 <!-- SPDX-FileCopyrightText: 2026 Mono Technologies Inc. -->
 {{template "verso-drawer-header" .Title}}
-{{/* A page's settings drawn as a panel: on the drawer's own Paper. */}}
-<div data-verso-scroll="sand" class="verso-modal__ground verso-drawer-scrollbar" data-verso-ground="paper">{{.Body}}</div>
+{{/* A page's settings drawn as a panel: its cards on the drawer's sand. */}}
+<div data-verso-scroll="sand" data-verso-drawer-body class="verso-modal__ground verso-drawer-scrollbar">{{.Body}}</div>

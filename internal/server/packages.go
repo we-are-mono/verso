@@ -667,19 +667,13 @@ func (s *Server) renderDiscover(w http.ResponseWriter, r *http.Request, errMsg s
 		children = append(children, table)
 	}
 
+	if panelRequest(r) {
+		s.writeSystemPanel(w, r, http.StatusOK, "Install packages", children)
+		return
+	}
 	var body strings.Builder
 	if err := s.widgets.RenderWithToken(&body, &widget.Stack{Children: children}, s.sessionCSRF(r), lang, t); err != nil {
 		http.Error(w, "render error", http.StatusInternalServerError)
-		return
-	}
-	if panelRequest(r) {
-		data := struct {
-			Title string
-			Body  template.HTML
-		}{tr("Install packages"), template.HTML(body.String())}
-		if err := s.pageSet(lang).ExecuteTemplate(w, "system-panel.html.tmpl", data); err != nil {
-			http.Error(w, "render error", http.StatusInternalServerError)
-		}
 		return
 	}
 	s.renderPage(w, r, http.StatusOK, pageHeader{Heading: "Install packages", Tone: "neutral"}, "wide", s.sectionPages("System", r.URL.Path), template.HTML(body.String()))

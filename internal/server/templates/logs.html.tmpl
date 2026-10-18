@@ -27,12 +27,12 @@
   </span>
 </div>
 {{end}}
-{{/* logs.view: how the log is read, at the head of its settings drawer and
-     outside their form, so it never stages — whether the firewall's traffic
-     is folded in. The page's script keeps it in step with the log
-     (verso-listing.js). */}}
+{{/* logs.view: how the log is read, the card at the head of its settings
+     drawer and outside their form, so it never stages — whether the
+     firewall's traffic is folded in. The page's script keeps it in step with
+     the log (verso-listing.js). */}}
 {{define "logs.view"}}
-<label class="verso-choice__row mb-6" data-verso-kind="label">
+<label class="verso-choice__row" data-verso-kind="label">
   <span class="verso-choice">
     <input type="checkbox" data-log-include-firewall class="verso-choice__input">
     <span class="verso-choice__face"></span>

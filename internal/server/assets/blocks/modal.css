@@ -40,8 +40,7 @@
  *           __acts        a drawer's acts at its chrome's end, the close last
  *           __close       the × that dismisses an overlay
  *           __body        a dialog's contents
- *           __ground      a drawer's body (data-verso-ground="paper": on the
- *                         drawer's own Paper)
+ *           __ground      a drawer's body
  *           __choices     a chooser's body: a list of choices on the
  *                         drawer's own Paper, run edge to edge, each group
  *                         under a quiet band (blocks/section.css)
@@ -206,9 +205,7 @@
 /* A drawer's body: the page's ground in small, Quiet Sand, its subjects
    Paper cards, which keep the gutter on every open side, under the chrome's
    hairline as at the drawer's edges, as far from each as they stand from
-   each other. A panel whose words stand on the drawer's own Paper
-   (data-verso-ground="paper": a page's settings drawn as a panel) keeps the
-   gutter at its sides only. */
+   each other. */
 .verso-modal__ground {
   flex: 1 1 0%;
   min-height: 0;
@@ -218,11 +215,6 @@
   padding: var(--verso-drawer-gutter) var(--verso-drawer-gutter) calc(var(--spacing) * 10);
   background-color: var(--color-quiet);
 }
-.verso-modal__ground[data-verso-ground="paper"] {
-  padding-block: calc(var(--spacing) * 7);
-  background-color: transparent;
-}
-
 .verso-modal__choices {
   flex: 1 1 0%;
   min-height: 0;

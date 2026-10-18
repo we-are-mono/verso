@@ -196,6 +196,29 @@ func panelRedirect(w http.ResponseWriter, r *http.Request, to string) {
 	http.Redirect(w, r, to, http.StatusSeeOther)
 }
 
+// writeSystemPanel answers a frame asking for a System page's settings as the
+// drawer over that page: the title in its chrome, and the blocks stood on
+// cards on the drawer's sand (widget.OnCards), as every drawer's body stands.
+func (s *Server) writeSystemPanel(w http.ResponseWriter, r *http.Request, status int, title string, blocks []widget.Widget) {
+	lang, t := s.localize(r)
+	var body, panel strings.Builder
+	if err := s.widgets.RenderWithToken(&body, widget.OnCards(&widget.Stack{Children: blocks}), s.sessionCSRF(r), lang, t); err != nil {
+		http.Error(w, "render error", http.StatusInternalServerError)
+		return
+	}
+	data := struct {
+		Title string
+		Body  template.HTML
+	}{translatorOrIdentity(t)(title), template.HTML(body.String())} //nolint:gosec // rendered by the shell's own templates
+	if err := s.pageSet(lang).ExecuteTemplate(&panel, "system-panel.html.tmpl", data); err != nil {
+		http.Error(w, "render error", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.WriteHeader(status)
+	_, _ = w.Write([]byte(panel.String()))
+}
+
 // flashNotice stores a plugin's outcome as the request session's flash, where
 // it says something, for the page its redirect lands on.
 func (s *Server) flashNotice(r *http.Request, n *plugin.Notice) {

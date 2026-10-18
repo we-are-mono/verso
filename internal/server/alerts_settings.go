@@ -119,23 +119,13 @@ func (s *Server) handleAlerts(w http.ResponseWriter, r *http.Request) {
 			&widget.Button{Label: "Send a test alert", Busy: "Sending…", Style: "act", Icon: "send"},
 		}})
 	}
-	var content, panel strings.Builder
-	if err := s.widgets.RenderWithToken(&content, &widget.Stack{Children: children}, s.sessionCSRF(r), lang, t); err != nil {
-		http.Error(w, "render error", http.StatusInternalServerError)
+	if panelRequest(r) {
+		s.writeSystemPanel(w, r, status, "Alerts", children)
 		return
 	}
-	if panelRequest(r) {
-		data := struct {
-			Title string
-			Body  template.HTML
-		}{tr("Alerts"), template.HTML(content.String())} //nolint:gosec // rendered by the shell's own templates
-		if err := s.pageSet(lang).ExecuteTemplate(&panel, "system-panel.html.tmpl", data); err != nil {
-			http.Error(w, "render error", http.StatusInternalServerError)
-			return
-		}
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		w.WriteHeader(status)
-		_, _ = w.Write([]byte(panel.String()))
+	var content strings.Builder
+	if err := s.widgets.RenderWithToken(&content, &widget.Stack{Children: children}, s.sessionCSRF(r), lang, t); err != nil {
+		http.Error(w, "render error", http.StatusInternalServerError)
 		return
 	}
 	s.renderPage(w, r, status, pageHeader{Heading: "Alerts", Tone: "neutral"}, "narrow",

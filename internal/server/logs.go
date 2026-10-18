@@ -158,7 +158,6 @@ func systemLogSection(config map[string]any) (string, map[string]any) {
 
 func (s *Server) handleLogSettings(w http.ResponseWriter, r *http.Request) {
 	lang, t := s.localize(r)
-	tr := translatorOrIdentity(t)
 	config, err := s.backend.UCIConfig(r.Context(), s.sessionSID(r), "system")
 	section, values := systemLogSection(config)
 	status, message := http.StatusOK, ""
@@ -212,29 +211,21 @@ func (s *Server) handleLogSettings(w http.ResponseWriter, r *http.Request) {
 			&widget.Field{Name: "log_file", Label: "Log file", Value: value("log_file", ""), Placeholder: "Optional", Help: "An absolute path. Writing logs to persistent storage uses flash write cycles."},
 		}})
 	}
-	var content, view, panel strings.Builder
+	if panelRequest(r) {
+		// The drawer over the log opens on how the log is read (logs.view),
+		// a card above the settings' and outside their form.
+		var view strings.Builder
+		if err := s.pageSet(lang).ExecuteTemplate(&view, "logs.view", nil); err != nil {
+			http.Error(w, "render error", http.StatusInternalServerError)
+			return
+		}
+		blocks := append([]widget.Widget{&widget.Embed{HTML: template.HTML(view.String())}}, children...) //nolint:gosec // rendered by the shell's own templates
+		s.writeSystemPanel(w, r, status, "Log settings", blocks)
+		return
+	}
+	var content strings.Builder
 	if err := s.widgets.RenderWithToken(&content, &widget.Stack{Children: children}, s.sessionCSRF(r), lang, t); err != nil {
 		http.Error(w, "render error", http.StatusInternalServerError)
-		return
-	}
-	// The drawer over the log opens on how the log is read (logs.view), above
-	// the settings and outside their form.
-	if err := s.pageSet(lang).ExecuteTemplate(&view, "logs.view", nil); err != nil {
-		http.Error(w, "render error", http.StatusInternalServerError)
-		return
-	}
-	data := struct {
-		Title string
-		Body  template.HTML
-	}{tr("Log settings"), template.HTML(view.String() + content.String())} //nolint:gosec // rendered by the shell's own templates
-	if err := s.pageSet(lang).ExecuteTemplate(&panel, "system-panel.html.tmpl", data); err != nil {
-		http.Error(w, "render error", http.StatusInternalServerError)
-		return
-	}
-	if panelRequest(r) {
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		w.WriteHeader(status)
-		_, _ = w.Write([]byte(panel.String()))
 		return
 	}
 	// The settings alone, as a page: the way the log is read stays with the
