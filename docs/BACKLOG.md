@@ -17,29 +17,32 @@ own and points at the decision that governs it; the rationale lives there, not h
   Open:
   - the repository on GitHub as `we-are-mono/verso-plugin-acme`;
   - its SDK pinned by the verso tag that carries `Request::plugins`,
-    `with_door`, `Property::door` and `Property::waiting` (it builds against the
-    SDK in this tree), and its `verso>=` raised to that release;
+    `with_door`, `Property::door`, `Property::waiting`, `SlotKind`,
+    `Envelope::nothing` and `Envelope::overview_card` (it builds against the SDK
+    in this tree), and its `verso>=` raised to that release, the first whose
+    shell fills slots (ADR-026): its manifest has no part of Access left for an
+    older shell to draw;
   - on the DK (where `https://<domain>` already opens with no warning, its LAN
     answer kept by AdGuard Home): the LAN record through dnsdhcp's offer, the
     HTTP redirect to the domain, a hand install turning `acme.verso` off, and
     turning it back on serving the held certificate;
-  - the outcome as the top-right notification, the part refreshing itself while
-    a request runs (a new widget behaviour, the owner's call), and a Request now
-    act;
-  - the HTTPS certificate and Trusted certificate cards describe the served
-    certificate twice and compete over replacing it: one card, the source a
-    row and an act in it, waits on the certificate-source contract below.
-- **Plugin contracts: certificate sources.** Core is coupled to ACME:
-  `verso-rpcd/src/acme.rs` (deliver, `acmeState`, acme.sh's `account.conf`),
-  `setWebCertificate`/`makeWebCertificate` turning `acme.verso` off, the shell's
-  `acmeState` broker and its PEM transform, and verso-plugin-system reading
-  `uci acme`. The direction: a source's root half ships with its plugin (a
-  root-only binary run by its hotplug and init, installing through `verso
-  certificate install`); one generic `verso-rpcd` verb hands a plugin the state
-  file its root half writes; a hand install raises `hotplug-call
-  verso-certificate` (`ACTION=installed`) for any source to act on; a manifest
-  declares a certificate source (act, drawer, facts path) and the shell fills
-  a slot in the HTTPS certificate card with it. Core then names no source.
+  - the outcome as the top-right notification, the drawer refreshing itself
+    while a request runs (a new widget behaviour, the owner's call), and a
+    Request now act;
+  - on the DK, the one HTTPS certificate card (ADR-026): the Source row and
+    "Use your domain" with the served ACME certificate, the notice in Install
+    and Make, the Certificate card on the Overview reading its time left, and
+    removing the package on Packages leaving no trace on Access or the Overview.
+- **Plugin contracts: certificate sources, the root half.** The page side is
+  slots (ADR-026); core still runs ACME's root work: `verso-rpcd/src/acme.rs`
+  (deliver, `acmeState`, acme.sh's `account.conf`), `setWebCertificate`/
+  `makeWebCertificate` turning `acme.verso` off, and the shell's `acmeState`
+  broker and its PEM transform. The direction: a source's root half ships with
+  its plugin (a root-only binary run by its hotplug and init, installing through
+  `verso certificate install`), registered with `verso-rpcd` as a plugin
+  command; one generic verb hands a plugin the state file its root half writes;
+  a hand install raises `hotplug-call verso-certificate` (`ACTION=installed`)
+  for any source to act on. Core then names no source.
 - **An image without uhttpd.** The Mono image still ships `uhttpd`,
   `uhttpd-mod-ubus` and `px5g-mbedtls`; drop them from the build (Gateway repo)
   so Verso holds the router's ports from first boot.

@@ -52,7 +52,7 @@
 - [x] 6.1 Test first in `internal/widget/overview_test.go`: a contributed card's `card` fields build its header (title, icon, tone, status, summary), its closed summary, its Go link to the contributor's page, and Arrange's grip and hide. A body holding a form draws the contained unavailable state. Then implement it. Verify with `make test`.
 - [x] 6.2 Test first: a contributed card's cause joins `causes()`, whether the card is hidden, closed or open. One plugin cause alone becomes the verdict in its own words. Then implement it. Verify with `make test`.
 - [x] 6.3 Test first: the default layout places a contributed card by its position (`after:system`). The stream never dials a plugin. Each render fetches each card once. Then implement it. Verify with `make test`.
-- [ ] 6.4 Test first in `internal/widget/overview_layout_test.go`: cookie v2 (`2.` plus base64url JSON, 3 KB cap) parses. v1 and `verso_overview` still parse. A garbled value gives the default layout. An installed plugin's card id that did not draw is kept and emitted for the page to write back. An uninstalled plugin's card id is dropped. Then implement it, and change the page's script to write v2 with the kept ids. Verify with `make test`, plus a Playwright check that moving a plugin card survives a reload.
+- [x] 6.4 Test first in `internal/widget/overview_layout_test.go`: cookie v2 (`2.` plus base64url JSON, 3 KB cap) parses. v1 and `verso_overview` still parse. A garbled value gives the default layout. An installed plugin's card id that did not draw is kept and emitted for the page to write back. An uninstalled plugin's card id is dropped. Then implement it, and change the page's script to write v2 with the kept ids. Verify with `make test`, plus a Playwright check that moving a plugin card survives a reload.
 - [x] 6.5 Amend ADR-022 in place: plugin cards, cookie v2 and the kept ids replace "a plugin contributes no card". Update DESIGN.md's Overview section for plugin cards. Verify that the ADR and DESIGN.md name the same cookie format as the code.
 
 ## 7. Features header and ADRs
@@ -80,7 +80,7 @@
 
 ## 10. Integration on the lab and the DK
 
-- [ ] 10.1 Run `make dev` with system and acme deployed. Check with Playwright that:
+- [x] 10.1 Run `make dev` with system and acme deployed. Check with Playwright that:
   - Access shows one HTTPS certificate card with the Source row and "Use your domain";
   - the drawer saves and stages;
   - Install shows acme's notice;
@@ -88,7 +88,7 @@
   - the Overview shows the Certificate card, and Arrange keeps its place across an acme restart.
   Save screenshots to ~/Share/screenshots.
 - [ ] 10.2 On the DK (router.example.com in every public artifact), check that the served ACME certificate shows as its Source row and that its Overview card reads its expiry. Removing verso-plugin-acme on Packages must leave no trace on Access or the Overview.
-- [ ] 10.3 Update `docs/BACKLOG.md`: the certificate-source entry's slot half is done. Its root half (the `acme.rs` move, `hand_over`, the `acmeState` broker) stays, under the registry and events entry. Write release notes asking to upgrade verso, verso-plugin-system and verso-plugin-acme together. Verify that `make lint` and `make test` are green.
+- [x] 10.3 Update `docs/BACKLOG.md`: the certificate-source entry's slot half is done. Its root half (the `acme.rs` move, `hand_over`, the `acmeState` broker) stays, under the registry and events entry. Write release notes asking to upgrade verso, verso-plugin-system and verso-plugin-acme together. Verify that `make lint` and `make test` are green.
 
 ## Workflow follow-up
 

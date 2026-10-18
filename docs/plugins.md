@@ -240,7 +240,7 @@ the envelope's `card`, and its body as the `widget`:
 {
   "schema_version": 1,
   "card": {
-    "title": "Certificate", "icon": "shield-check",
+    "title": "Certificate", "icon": "shield",
     "tone": "warning", "status": "Renewal failed", "summary": "router.example.com",
     "cause": "The certificate could not be renewed", "opens": "/"
   },
@@ -248,7 +248,8 @@ the envelope's `card`, and its body as the `widget`:
 }
 ```
 
-- `title` and `icon` (a Lucide name) head the card.
+- `title` and `icon` head the card. The icon is a glyph by the shell's name for it, as
+  `nav[].icon` is (`shield` is Lucide's shield-check).
 - `tone` is `success`, `warning`, `danger` or `neutral`.
 - `status` is the word at the header's end. Leave it out while all is well.
 - `summary` is the one reading a closed card says after its title. It is words, never
