@@ -57,9 +57,9 @@ func TestDecodeTableGolden(t *testing.T) {
 		0x00, 0x00, 0x05, 0x07, // value 1287
 	}
 
-	tbl, err := decodeTable(body)
+	tbl, err := DecodeTable(body)
 	if err != nil {
-		t.Fatalf("decodeTable: %v", err)
+		t.Fatalf("DecodeTable: %v", err)
 	}
 	if got, ok := tbl["uptime"].(int64); !ok || got != 1287 {
 		t.Fatalf("uptime = %v (%T), want int64 1287", tbl["uptime"], tbl["uptime"])
@@ -91,9 +91,9 @@ func TestEncodeArgsGolden(t *testing.T) {
 // TestEncodeArgsRoundTrip: the encoder's output decodes back to the same args,
 // including an empty value — the no-password login case.
 func TestEncodeArgsRoundTrip(t *testing.T) {
-	tbl, err := decodeTable(encodeArgs(map[string]string{"username": "root", "password": ""}))
+	tbl, err := DecodeTable(encodeArgs(map[string]string{"username": "root", "password": ""}))
 	if err != nil {
-		t.Fatalf("decodeTable: %v", err)
+		t.Fatalf("DecodeTable: %v", err)
 	}
 	if tbl["username"] != "root" {
 		t.Errorf("username = %v, want root", tbl["username"])
@@ -115,30 +115,30 @@ func TestEncodeTableGolden(t *testing.T) {
 		'h', 'i', 0x00, // "hi\0"
 		0x00, // pad child to 12
 	}
-	got, err := encodeTable(map[string]any{"v": map[string]string{"a": "hi"}})
+	got, err := EncodeTable(map[string]any{"v": map[string]string{"a": "hi"}})
 	if err != nil {
-		t.Fatalf("encodeTable: %v", err)
+		t.Fatalf("EncodeTable: %v", err)
 	}
 	if !bytes.Equal(got, want) {
-		t.Fatalf("encodeTable =\n % x\nwant\n % x", got, want)
+		t.Fatalf("EncodeTable =\n % x\nwant\n % x", got, want)
 	}
 }
 
 // TestEncodeTableRoundTrip round-trips the full uci.set argument shape — flat
 // string fields alongside a nested values table — back through the decoder.
 func TestEncodeTableRoundTrip(t *testing.T) {
-	body, err := encodeTable(map[string]any{
+	body, err := EncodeTable(map[string]any{
 		"ubus_rpc_session": "deadbeef",
 		"config":           "system",
 		"section":          "@system[0]",
 		"values":           map[string]string{"hostname": "verso-lab"},
 	})
 	if err != nil {
-		t.Fatalf("encodeTable: %v", err)
+		t.Fatalf("EncodeTable: %v", err)
 	}
-	tbl, err := decodeTable(body)
+	tbl, err := DecodeTable(body)
 	if err != nil {
-		t.Fatalf("decodeTable: %v", err)
+		t.Fatalf("DecodeTable: %v", err)
 	}
 	if tbl["config"] != "system" || tbl["section"] != "@system[0]" {
 		t.Errorf("flat fields = %q/%q, want system/@system[0]", tbl["config"], tbl["section"])
@@ -156,13 +156,13 @@ func TestEncodeTableRoundTrip(t *testing.T) {
 // rpcd's uci.apply policy: rollback is BLOBMSG_TYPE_BOOL (INT8 on the wire),
 // while timeout is BLOBMSG_TYPE_INT32.
 func TestEncodeTableApplyTypes(t *testing.T) {
-	body, err := encodeTable(map[string]any{"rollback": true, "timeout": 30})
+	body, err := EncodeTable(map[string]any{"rollback": true, "timeout": 30})
 	if err != nil {
-		t.Fatalf("encodeTable: %v", err)
+		t.Fatalf("EncodeTable: %v", err)
 	}
-	tbl, err := decodeTable(body)
+	tbl, err := DecodeTable(body)
 	if err != nil {
-		t.Fatalf("decodeTable: %v", err)
+		t.Fatalf("DecodeTable: %v", err)
 	}
 	if got := tbl["rollback"]; got != int64(1) {
 		t.Errorf("rollback = %#v (%T), want int64(1)", got, got)
@@ -191,11 +191,39 @@ func TestEncodeTableApplyTypes(t *testing.T) {
 	}
 }
 
+// TestEncodeTableInt64: an int64 travels as INT64 at its full width, where an
+// int is held to the INT32 rpcd's policies declare.
+func TestEncodeTableInt64(t *testing.T) {
+	body, err := EncodeTable(map[string]any{"total": int64(64883740672), "low": int64(-5)})
+	if err != nil {
+		t.Fatalf("EncodeTable: %v", err)
+	}
+	tbl, err := DecodeTable(body)
+	if err != nil {
+		t.Fatalf("DecodeTable: %v", err)
+	}
+	if tbl["total"] != int64(64883740672) || tbl["low"] != int64(-5) {
+		t.Errorf("decoded = %#v, want the int64 values back", tbl)
+	}
+	attrs, err := splitAttrs(body)
+	if err != nil {
+		t.Fatalf("splitAttrs: %v", err)
+	}
+	for _, attr := range attrs {
+		if attr.id != bmInt64 {
+			t.Errorf("type = %d, want INT64 (%d)", attr.id, bmInt64)
+		}
+	}
+	if _, err := EncodeTable(map[string]any{"total": 64883740672}); err == nil {
+		t.Error("an int outside int32 encoded, want the range error")
+	}
+}
+
 // TestEncodeTableRejectsUnsupported: an unencodable value type is a hard error,
 // not silent corruption — a caller learns immediately it passed a bad arg.
 func TestEncodeTableRejectsUnsupported(t *testing.T) {
-	if _, err := encodeTable(map[string]any{"n": 42.5}); err == nil {
-		t.Fatal("encodeTable: want error for a float value, got nil")
+	if _, err := EncodeTable(map[string]any{"n": 42.5}); err == nil {
+		t.Fatal("EncodeTable: want error for a float value, got nil")
 	}
 }
 
@@ -207,13 +235,13 @@ func TestEncodeTableArrayValue(t *testing.T) {
 		"typed": []string{"a.pool", "b.pool"},
 		"json":  []any{"a.pool", "b.pool"},
 	} {
-		body, err := encodeTable(map[string]any{"server": val})
+		body, err := EncodeTable(map[string]any{"server": val})
 		if err != nil {
-			t.Fatalf("%s: encodeTable: %v", name, err)
+			t.Fatalf("%s: EncodeTable: %v", name, err)
 		}
-		tbl, err := decodeTable(body)
+		tbl, err := DecodeTable(body)
 		if err != nil {
-			t.Fatalf("%s: decodeTable: %v", name, err)
+			t.Fatalf("%s: DecodeTable: %v", name, err)
 		}
 		arr, ok := tbl["server"].([]any)
 		if !ok || len(arr) != 2 || arr[0] != "a.pool" || arr[1] != "b.pool" {

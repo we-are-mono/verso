@@ -105,7 +105,7 @@ func (m *msg) bytes() []byte {
 }
 
 // encodeArgs encodes a table of named strings as a blobmsg table body — the
-// flat-string counterpart of decodeTable, for a map[string]string value.
+// flat-string counterpart of DecodeTable, for a map[string]string value.
 func encodeArgs(args map[string]string) []byte {
 	var body []byte
 	for name, val := range args {
@@ -114,11 +114,12 @@ func encodeArgs(args map[string]string) []byte {
 	return body
 }
 
-// encodeTable encodes named arguments that may include nested tables — the shape
+// EncodeTable encodes named arguments that may include nested tables — the shape
 // uci.set needs for its values:{} — as a blobmsg table body. Values may be
 // strings, booleans, signed integers, arrays, or nested tables; any other type
-// is a hard error rather than silent corruption on the wire.
-func encodeTable(args map[string]any) ([]byte, error) {
+// is a hard error rather than silent corruption on the wire. An int travels as
+// INT32, the width rpcd's policies declare; an int64 travels as INT64.
+func EncodeTable(args map[string]any) ([]byte, error) {
 	var body []byte
 	for name, val := range args {
 		var err error
@@ -147,10 +148,14 @@ func appendBlobmsgValue(dst []byte, name string, val any) ([]byte, error) {
 		return appendBlobmsgInt32(dst, name, int32(v)), nil
 	case int32:
 		return appendBlobmsgInt32(dst, name, v), nil
+	case int64:
+		var encoded [8]byte
+		binary.BigEndian.PutUint64(encoded[:], uint64(v))
+		return appendBlobmsgAttr(dst, bmInt64, name, encoded[:]), nil
 	case map[string]string:
 		return appendBlobmsgAttr(dst, bmTable, name, encodeArgs(v)), nil
 	case map[string]any:
-		body, err := encodeTable(v)
+		body, err := EncodeTable(v)
 		if err != nil {
 			return nil, err
 		}
@@ -263,9 +268,10 @@ func container(b []byte) ([]rawAttr, error) {
 	return splitAttrs(b[4:rawLen])
 }
 
-// decodeTable decodes the children of a blobmsg table into name→value pairs.
-// Values are int64, float64, string, map[string]any (table) or []any (array).
-func decodeTable(body []byte) (map[string]any, error) {
+// DecodeTable decodes the children of a blobmsg table into name→value pairs.
+// Values are int64, float64, string, map[string]any (table) or []any (array):
+// every integer width, booleans included, reads as int64.
+func DecodeTable(body []byte) (map[string]any, error) {
 	attrs, err := splitAttrs(body)
 	if err != nil {
 		return nil, err
@@ -313,7 +319,7 @@ func decodeBlobmsg(a rawAttr) (name string, val any, err error) {
 
 	switch a.id {
 	case bmTable:
-		val, err = decodeTable(data)
+		val, err = DecodeTable(data)
 	case bmArray:
 		val, err = decodeArray(data)
 	case bmString:

@@ -207,7 +207,7 @@ func (c *Client) Invoke(objID uint32, method string) (map[string]any, error) {
 // Argument values may be strings, booleans, signed integers, arrays, or nested
 // tables; any other type is rejected before anything is sent.
 func (c *Client) InvokeTable(objID uint32, method string, args map[string]any) (map[string]any, error) {
-	body, err := encodeTable(args)
+	body, err := EncodeTable(args)
 	if err != nil {
 		return nil, err
 	}
@@ -240,7 +240,7 @@ func (c *Client) invoke(objID uint32, method string, tableBody []byte) (map[stri
 			}
 			for _, a := range attrs {
 				if a.id == attrData {
-					result, err = decodeTable(a.payload)
+					result, err = DecodeTable(a.payload)
 					if err != nil {
 						return nil, err
 					}
