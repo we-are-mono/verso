@@ -398,15 +398,37 @@ func changeStatus(status string) (string, string) {
 
 // changeCause is what made the router commit an entry, in the viewer's
 // language: from the catalog of the plugin that said it, or the shell's for
-// its own (ADR-012); a cause no catalog holds reads as written.
+// its own (ADR-012); a cause no catalog holds reads as written. Its %s are
+// filled with its arguments as written, the translation's when it takes as
+// many as there are, else the English sentence's; a sentence that takes
+// another count reads as written.
 func changeCause(c history.Change, tr func(string) string, pluginTr func(string) func(string) string) string {
 	if c.Cause == "" {
 		return ""
 	}
 	if c.CausePlugin != "" {
-		return pluginTr(c.CausePlugin)(c.Cause)
+		tr = pluginTr(c.CausePlugin)
 	}
-	return tr(c.Cause)
+	if len(c.CauseArgs) == 0 {
+		return tr(c.Cause)
+	}
+	fill := func(sentence string) (string, bool) {
+		if strings.Count(sentence, "%s") != len(c.CauseArgs) || strings.Count(sentence, "%") != len(c.CauseArgs) {
+			return sentence, false
+		}
+		args := make([]any, len(c.CauseArgs))
+		for i, a := range c.CauseArgs {
+			args[i] = a
+		}
+		return fmt.Sprintf(sentence, args...), true
+	}
+	if filled, ok := fill(tr(c.Cause)); ok {
+		return filled
+	}
+	if filled, ok := fill(c.Cause); ok {
+		return filled
+	}
+	return c.Cause
 }
 
 // changeBy is who applied an entry and from where: this browser's own

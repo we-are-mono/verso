@@ -48,6 +48,7 @@ type configReading struct {
 	Config   string                    `json:"config"`
 	Own      bool                      `json:"own"`
 	Cause    string                    `json:"cause"`
+	Args     []string                  `json:"args"`
 	Plugin   string                    `json:"plugin"`
 	By       string                    `json:"by"`
 	Sections map[string]map[string]any `json:"sections"`
@@ -229,7 +230,7 @@ func (s *Server) directChange(ctx context.Context, reading configReading, before
 	}
 	groups, _ := s.describedGroups(ctx, directSource{s, config, reading.Sections}, flat, identityTranslator, func(string) func(string) string { return identityTranslator })
 	change := history.Change{Time: time.Unix(reading.Time, 0), Status: history.ChangeApplied, OldRead: true,
-		Own: reading.Own, Cause: reading.Cause, CausePlugin: reading.Plugin,
+		Own: reading.Own, Cause: reading.Cause, CauseArgs: reading.Args, CausePlugin: reading.Plugin,
 		Items: stagedItems(stagedView{Groups: groups}, secrets)}
 	// A commit the router made for an operator's act is that operator's.
 	if sess, ok := s.sessionByHandle(reading.By); ok && reading.Own {

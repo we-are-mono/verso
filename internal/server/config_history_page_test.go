@@ -444,6 +444,41 @@ func TestTheRoutersOwnChangeNamesItselfAndItsCause(t *testing.T) {
 	}
 }
 
+// TestACausesArgumentsFillItsSentence: the sentence is translated, then its
+// %s filled with the arguments as written; a sentence whose %s count differs
+// from its arguments reads as written, in whichever language fills.
+func TestACausesArgumentsFillItsSentence(t *testing.T) {
+	slovenian := map[string]string{
+		"Changed by %s as it was installed.": "Spremenil %s ob namestitvi.",
+		"Changed by %s as it was removed.":   "Spremenjeno ob odstranitvi.",
+	}
+	tr := func(s string) string {
+		if t, ok := slovenian[s]; ok {
+			return t
+		}
+		return s
+	}
+	noPlugins := func(string) func(string) string { return tr }
+	for _, c := range []struct {
+		cause string
+		args  []string
+		want  string
+	}{
+		{"Changed by %s as it was installed.", []string{"https-dns-proxy"}, "Spremenil https-dns-proxy ob namestitvi."},
+		// The translation lost its %s: the English sentence fills instead.
+		{"Changed by %s as it was removed.", []string{"adblock"}, "Changed by adblock as it was removed."},
+		{"Changed by %s as it was upgraded.", nil, "Changed by %s as it was upgraded."},
+		{"Changed as packages were upgraded.", []string{"x"}, "Changed as packages were upgraded."},
+		// With nothing to fill, a translation reads as it is, a % in it too.
+		{"Changed by 100% of it.", nil, "Changed by 100% of it."},
+	} {
+		got := changeCause(history.Change{Own: true, Cause: c.cause, CauseArgs: c.args}, tr, noPlugins)
+		if got != c.want {
+			t.Errorf("%q with %v reads %q, want %q", c.cause, c.args, got, c.want)
+		}
+	}
+}
+
 // TestTheDrawerSaysWhatCausedTheChange: the drawer holds the cause the row's
 // one line may cut short, before the note.
 func TestTheDrawerSaysWhatCausedTheChange(t *testing.T) {

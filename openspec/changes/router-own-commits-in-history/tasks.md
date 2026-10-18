@@ -85,8 +85,8 @@
 
   Then keep operations in the helper (design decision 7). Verify with `cargo test`.
 - [x] 9.2 Test first: `pkgInstall`, `pkgRemove`, `pkgUpgradeOne` and `pkgUpgrade` each run inside an operation with their cause and the package as its argument. Then wrap them in `main.rs`. Verify with `cargo test`.
-- [ ] 9.3 Test first in `internal/history`: a file at version 11 steps to 12 with every change kept and no arguments; `RecordChange` stores `CauseArgs` and reads them back. Then add `migrations/012_change_cause_args.sql` and the field. Verify with `go test ./internal/history`.
-- [ ] 9.4 Test first in `internal/server`:
+- [x] 9.3 Test first in `internal/history`: a file at version 11 steps to 12 with every change kept and no arguments; `RecordChange` stores `CauseArgs` and reads them back. Then add `migrations/012_change_cause_args.sql` and the field. Verify with `go test ./internal/history`.
+- [x] 9.4 Test first in `internal/server`:
   - an `own` reading with arguments records them;
   - the page translates the format and fills in the arguments as written;
   - a format whose `%s` count differs from its arguments reads as written.

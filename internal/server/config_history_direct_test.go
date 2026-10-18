@@ -275,6 +275,22 @@ func TestACommitMadeForAnOperatorIsTheirs(t *testing.T) {
 	}
 }
 
+// TestACausesArgumentsAreKept: a package operation's commit keeps its
+// cause's arguments, the package it names.
+func TestACausesArgumentsAreKept(t *testing.T) {
+	s, store, dir := spoolServer(t)
+	spool(t, dir, "1-firewall.json", firewallReading(1000, "ACCEPT"))
+	s.takeSpool(t.Context(), store, dir)
+	r := firewallReading(1010, "DROP")
+	r.Own, r.Cause, r.Args = true, "Changed by %s as it was installed.", []string{"https-dns-proxy"}
+	spool(t, dir, "2-firewall.json", r)
+	s.takeSpool(t.Context(), store, dir)
+	got := entries(t, store)
+	if len(got) != 1 || !reflect.DeepEqual(got[0].CauseArgs, []string{"https-dns-proxy"}) || got[0].Cause != r.Cause {
+		t.Fatalf("entries = %+v", got)
+	}
+}
+
 // TestAReadingInAnApplysWindowIsTheApplys: a reading of a config an apply
 // wrote, within its window, is that apply's, its own mark or not.
 func TestAReadingInAnApplysWindowIsTheApplys(t *testing.T) {
