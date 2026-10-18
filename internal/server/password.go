@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/we-are-mono/verso/internal/clock"
+	"github.com/we-are-mono/verso/internal/plugin"
 	"github.com/we-are-mono/verso/internal/units"
 	"github.com/we-are-mono/verso/internal/widget"
 )
@@ -297,6 +298,31 @@ func (s *Server) handleEndSession(w http.ResponseWriter, r *http.Request, id str
 	http.Redirect(w, r, "/system/access", http.StatusSeeOther)
 }
 
+// accessParts is the plugins that add a part to Access, in the order the page
+// stacks them: the bundled system plugin first, whose SSH and HTTPS
+// certificate are the page's own subjects, then the rest by id, so a part that
+// builds on one of them (the trusted certificate) stands after it.
+func accessParts(manifests []plugin.Manifest) []plugin.Manifest {
+	var parts []plugin.Manifest
+	for _, m := range manifests {
+		if m.SystemAccess != "" {
+			parts = append(parts, m)
+		}
+	}
+	slices.SortStableFunc(parts, func(a, b plugin.Manifest) int {
+		switch {
+		case a.ID == b.ID:
+			return 0
+		case a.ID == "system":
+			return -1
+		case b.ID == "system":
+			return 1
+		}
+		return strings.Compare(a.ID, b.ID)
+	})
+	return parts
+}
+
 func validatePassword(password, confirm string) map[string]string {
 	errs := map[string]string{}
 	switch {
@@ -327,10 +353,7 @@ func (s *Server) renderAccess(w http.ResponseWriter, r *http.Request, status int
 	access := accessBody(hasPassword, username, fieldErrs, formErr, s.accessSessions(r, g), g, translatorOrIdentity(t))
 	hdr := pageHeader{Heading: "Access", Tone: "neutral"}
 	r = withStageMemo(r)
-	for _, manifest := range s.manifestList() {
-		if manifest.SystemAccess == "" {
-			continue
-		}
+	for _, manifest := range accessParts(s.manifestList()) {
 		request := r.Clone(r.Context())
 		if r.URL.Query().Get("plugin") != manifest.ID {
 			request.Method = http.MethodGet

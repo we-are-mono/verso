@@ -11,6 +11,8 @@ import (
 	"net/url"
 	"strings"
 	"testing"
+
+	"github.com/we-are-mono/verso/internal/plugin"
 )
 
 // passwordServer builds a shell whose password write is the given backend fake.
@@ -43,6 +45,26 @@ func TestPasswordFormRenders(t *testing.T) {
 // The password form holds Change password until something is typed, and names
 // the account it changes for the browser's password manager, which otherwise
 // cannot tell whose new password it is saving.
+// The bundled system plugin's part (SSH, the HTTPS certificate) is Access's
+// own subject and comes first; a part another plugin adds follows it, in id
+// order, so the trusted certificate stands after the certificate it replaces.
+func TestAccessPartsStartWithTheSystemPlugin(t *testing.T) {
+	part := func(id string) plugin.Manifest {
+		m := demoManifest()
+		m.ID, m.SystemAccess = id, "/access"
+		return m
+	}
+	none := demoManifest()
+	none.ID = "dnsdhcp"
+	var got []string
+	for _, m := range accessParts([]plugin.Manifest{part("acme"), none, part("system"), part("backup")}) {
+		got = append(got, m.ID)
+	}
+	if strings.Join(got, ",") != "system,acme,backup" {
+		t.Errorf("Access parts = %v, want system,acme,backup", got)
+	}
+}
+
 func TestAccessPasswordFormWaitsAndNamesItsAccount(t *testing.T) {
 	body := get(t, passwordServer(t, fakeBackend{}), "/system/access").Body.String()
 	form := body[strings.Index(body, `action="/system/access"`):]
