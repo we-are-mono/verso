@@ -417,19 +417,13 @@ envelope** back — `Content-Type: application/json`:
 - `width` — use `form` for a 640px settings page, `narrow` for 896px,
   `normal` for 1024px, or `wide` for 1152px. Layout uses the available width
   on smaller screens.
-- `commands` — optional array containing one immediate, structured action.
-  Supported names are `interface-restart`, `set-system-time`, `ssh-key-add`,
-  `ssh-key-remove`, `certificate-generate`, `certificate-install`, and
-  `ddns-update` (`section`: one ddns-scripts service, sent its address now;
-  needs `ubus verso.ddnsUpdate`, and the service switched on in the applied
-  config). Commands
-  require their exact declared write scope, a valid CSRF-protected POST, and a
-  valid widget schema. They cannot be combined with `commit` or `apply`.
-  Invalid credentials return a form error; private keys never appear in reads
-  or previews. Configuration changes continue to use staged `commit` intents.
-- `apply` — optional; a tightly typed non-UCI operation the shell performs after
-  the staged UCI transaction applies. Only shell-known operations are accepted,
-  and the manifest must declare the exact matching rpcd write scope.
+- `commands` — optional array containing one act, run at once (see
+  [Acts](#acts)): one of the shell's own, or a plugin's registered act
+  `<plugin>.<name>`. An act requires its exact declared write scope, a valid
+  CSRF-protected POST, and a valid widget schema, and cannot be combined with
+  `commit`; `config-file-stage` is the one command that may. Invalid credentials
+  return a form error; private keys never appear in reads or previews.
+  Configuration changes continue to use staged `commit` intents.
 
 **GET** `<path>` → return the page as a schema envelope, HTTP 200.
 
@@ -535,7 +529,10 @@ header, base64-encoded JSON shaped
 ```
 
 Each value is the helper's own JSON, untouched — the shell does not interpret it,
-and you own its meaning. The shell brokers only functions in its own closed set:
+and you own its meaning. Beside a plugin's registered reads (scope
+`verso-plugin`, keyed `<plugin>.<name>`; see
+[Root work](#root-work-the-command-registry)), the shell brokers only the core
+functions in its own closed set:
 
 | Function | Returns |
 |---|---|
@@ -733,29 +730,42 @@ the `add-section` change that made it or the snapshot. The describe hook never w
 never answers with a page; it only turns changes into words, though it may build
 one of its own pages to read a control's words from it.
 
-### Privileged post-apply actions
+### Acts
 
-Rare settings have a non-UCI tail. For example, disabling NTP is a UCI change,
-but setting the kernel clock is not. A successful POST may therefore return an
-`apply` array beside `commit`:
+Some presses do something now rather than stage a change: setting the router's
+clock from this computer, sending a DDNS update, adding an SSH key. A POST's
+answer names such an act in `commands`, one per POST:
 
 ```json
-"apply": [{
+"commands": [{
   "name": "set-system-time",
   "args": {
     "datetime": "2026-08-30T12:34:56",
-    "timezone": "CET-1CEST,M3.5.0,M10.5.0/3"
+    "timezone": "UTC"
   }
 }]
 ```
 
-This is not an extensible command channel. The shell recognizes a closed set of
-action names, verifies the plugin declared the corresponding ACL scope (for this
-one, `{ "scope":"ubus", "object":"verso",
-"function":"setSystemTime" }`), and passes only structured arguments to
-`verso-rpcd`. The helper validates them again at the root boundary and invokes no
-shell. A validation failure prepares neither UCI writes nor an action; Discard
-drops both; the apply runs the action only after UCI apply.
+The shell runs the act before it answers, and only when your manifest declares
+its grant. Its arguments are text.
+
+- **The shell's own acts** have names without a dot, from a closed set, each with
+  its own grant: `set-system-time` (`ubus verso setSystemTime`), `ssh-key-add` and
+  `ssh-key-remove` (`ubus verso setAuthorizedKeys`), `certificate-generate` and
+  `certificate-install` (`ubus verso makeWebCertificate`, `setWebCertificate`),
+  `interface-up`, `interface-down` and `interface-restart` (`ubus
+  network.interface up`, `down`, `restart`), `ddns-update` (`ubus verso
+  ddnsUpdate`), and `config-file-stage` (below).
+- **A registered act** is `<plugin>.<name>`, a command your registry declares (see
+  [Root work](#root-work-the-command-registry)), granted as `verso-plugin <plugin>
+  <name>`.
+
+An act never shares a save with staged changes: an answer naming both a `commit`
+and an act is refused as not permitted, and neither happens. The one command that
+may stand beside a `commit` is `config-file-stage`, because a staged file joins the
+stage rather than acting at once. A refused act's words reach the page's notice,
+through your catalogue; any other failure says the router could not complete the
+action.
 
 ### What the shell does when you misbehave
 
@@ -981,7 +991,7 @@ was refused, failed, or names a plugin that is not installed. Render without it.
 
 An act runs when your answer to a POST names it in `commands` as
 `<plugin>.<name>`, the key its read would have (see
-[Acts](#privileged-post-apply-actions)), with its arguments as text. The shell's
+[Acts](#acts)), with its arguments as text. The shell's
 own commands have no dot in their names:
 
 ```json
@@ -1966,9 +1976,9 @@ code with the shell. Its whole shape:
   `datetime-local` field while it is off.
 - **POST /** echoes the submission and returns `commit` intents for
   `system.@system[0]` and the timeserver section (created by `type` when
-  missing), which the shell stages through rpcd. Manual time also returns the
-  typed `set-system-time` `apply` action the shell performs after the stage
-  applies. The plugin declares datatypes (`hostname`, `host`) and adds its own
+  missing), which the shell stages through rpcd. Setting the clock from this
+  computer is a separate press, whose answer names the `set-system-time` act the
+  shell runs at once. The plugin declares datatypes (`hostname`, `host`) and adds its own
   semantic checks (the timezone must come from its catalog; the manual datetime
   must be calendar-valid), returning the re-rendered form with inline field
   errors when one fails — the shell blocks the write (ADR-008).

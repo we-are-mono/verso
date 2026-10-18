@@ -146,9 +146,12 @@ over a local socket**, exchanging *data*, not markup.
    confirmations appear, and never in the content. An outcome is stated
    as intent, never composed as widgets, so a plugin cannot get it wrong. Every
    field is optional: a plugin that sends only `schema_version`, `title`,
-   and `widget` gets a plain page. A successful POST may also carry a closed-set
-   `apply` intent for a typed non-UCI operation that follows the UCI apply; the
-   shell accepts it only when the plugin declared its exact rpcd scope.
+   and `widget` gets a plain page. A successful POST may instead carry one act in
+   `commands`: a non-UCI operation the shell runs at once, before it answers, and
+   only when the plugin declared its exact rpcd scope. A name without a dot is one
+   of the shell's own acts; `<plugin>.<name>` is a plugin's registered root
+   command (ADR-027). An act never shares a save with a `commit`; staging a
+   hand-edited file, which joins the stage, is the one command that may.
 
 5. **The plugin is authoritative for its own writes and validation, and says so
    in-band.** A POST that fails validation returns HTTP **422** with the *same*
@@ -253,8 +256,9 @@ over a local socket**, exchanging *data*, not markup.
   plugin's declared configs. An op takes one of three shapes — set a section's
   options; create a section of a named `type` (empty `section`) and set them;
   `delete` a section outright — and a `null` among an op's `values` clears that
-  one option, since an empty string is a value and unsetting is not. A typed `apply` intent is bounded the same way for
-  the small closed set of non-UCI operations the shell brokers. §5 narrows accordingly — the plugin stays
+  one option, since an empty string is a value and unsetting is not. An act in
+  `commands` is bounded the same way: the shell's own acts by a closed set, a
+  plugin's registered acts by its registry and grant (ADR-027). §5 narrows accordingly — the plugin stays
   authoritative for *validation* and for *deciding* what to write, but the
   privileged write is the shell's, so a de-privileged (non-root) plugin holds no
   write access and no session credential of its own.
