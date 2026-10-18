@@ -35,6 +35,8 @@ const SERVED: &str = "/etc/verso/tls.crt";
 const TLS_DIR: &str = "/etc/verso";
 /// The record of the last outcome: a few lines in RAM, gone on reboot.
 const RECORD_DIR: &str = "/var/run/verso-acme";
+/// acme.sh's account settings under acme-common's `--home /etc/acme`.
+const ACCOUNT_CONF: &str = "/etc/acme/account.conf";
 const VERSO: &str = "/usr/bin/verso";
 /// A chain of a few certificates fits many times over.
 const LIMIT: u64 = 64 * 1024;
@@ -108,6 +110,8 @@ pub struct Places {
     pub certs: PathBuf,
     pub served: PathBuf,
     pub records: PathBuf,
+    /// acme.sh's account.conf, where its DNS scripts save what they were given.
+    pub account_conf: PathBuf,
 }
 
 impl Places {
@@ -116,6 +120,7 @@ impl Places {
             certs: CERT_DIR.into(),
             served: SERVED.into(),
             records: RECORD_DIR.into(),
+            account_conf: ACCOUNT_CONF.into(),
         }
     }
 
@@ -148,6 +153,9 @@ pub enum Done {
 struct Section {
     domain: String,
     enabled: bool,
+    /// Each `credentials` entry as acme-common hands it to acme.sh: the
+    /// variable and its value, unquoted.
+    credentials: Vec<(String, String)>,
 }
 
 /// section reads `config cert 'verso'`: its first domain, when it names one
@@ -167,7 +175,60 @@ fn section(acme: &Value) -> Option<Section> {
         return None;
     }
     let enabled = !matches!(s["enabled"].as_str(), Some("0" | "no" | "off" | "false"));
-    Some(Section { domain: domain.to_owned(), enabled })
+    let entries = match &s["credentials"] {
+        Value::Array(list) => list.iter().filter_map(Value::as_str).collect(),
+        Value::String(one) => vec![one.as_str()],
+        _ => Vec::new(),
+    };
+    let credentials = entries
+        .into_iter()
+        .filter_map(|entry| {
+            let (name, value) = entry.split_once('=')?;
+            Some((name.trim().to_owned(), unquote(value.trim()).to_owned()))
+        })
+        .collect();
+    Some(Section { domain: domain.to_owned(), enabled, credentials })
+}
+
+fn unquote(value: &str) -> &str {
+    ['"', '\'']
+        .iter()
+        .find_map(|q| value.strip_prefix(*q).and_then(|v| v.strip_suffix(*q)))
+        .unwrap_or(value)
+}
+
+/// forget_stale drops from acme.sh's account.conf every line that sets one of
+/// the section's credentials to another value. acme.sh's DNS scripts save
+/// what they were given there, and acme.sh reads that file at every start
+/// over what acme-common hands it, so a credential changed in Verso would lose
+/// to the one saved before it. The plugin's config trigger runs this ahead of
+/// acme-common's, which waits procd's second. A file left as it was is not
+/// written.
+fn forget_stale(path: &Path, credentials: &[(String, String)]) -> Result<(), Failure> {
+    let Some(saved) = read_public(path)? else {
+        return Ok(());
+    };
+    let stale = |line: &str| {
+        let Some((name, value)) = line.split_once('=') else {
+            return false;
+        };
+        credentials
+            .iter()
+            .any(|(variable, wanted)| variable == name.trim() && unquote(value.trim()) != wanted)
+    };
+    let kept: Vec<&str> = saved.split_inclusive('\n').filter(|line| !stale(line)).collect();
+    if kept.len() == saved.split_inclusive('\n').count() {
+        return Ok(());
+    }
+    use std::os::unix::fs::PermissionsExt;
+    let mode = fs::metadata(path)
+        .map(|m| m.permissions().mode() & 0o777)
+        .unwrap_or(0o600);
+    let tmp = crate::access::write_new(path, kept.concat().as_bytes(), mode, None)?;
+    fs::rename(&tmp, path).map_err(|e| {
+        let _ = fs::remove_file(&tmp);
+        Failure::unknown(e.to_string())
+    })
 }
 
 /// file_name holds a domain to what can name a file under CERT_DIR and nothing
@@ -190,9 +251,15 @@ pub fn deliver(event: Event, main_domain: Option<&str>, router: &impl Router, pl
     if event == Event::Prepare {
         return Ok(Done::Nothing);
     }
-    let Some(section) = section(&router.acme()?).filter(|s| s.enabled) else {
+    let Some(section) = section(&router.acme()?) else {
         return Ok(Done::Nothing);
     };
+    if event == Event::Sync {
+        forget_stale(&places.account_conf, &section.credentials)?;
+    }
+    if !section.enabled {
+        return Ok(Done::Nothing);
+    }
     if event != Event::Sync && main_domain != Some(section.domain.as_str()) {
         return Ok(Done::Nothing);
     }
@@ -518,13 +585,14 @@ mod tests {
     fn scratch(name: &str) -> Places {
         let dir = std::env::temp_dir().join(format!("verso-acme-{name}-{}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);
-        for sub in ["certs", "served", "records"] {
+        for sub in ["certs", "served", "records", "acme"] {
             fs::create_dir_all(dir.join(sub)).expect("scratch dir");
         }
         Places {
             certs: dir.join("certs"),
             served: dir.join("served/tls.crt"),
             records: dir.join("records/verso-acme"),
+            account_conf: dir.join("acme/account.conf"),
         }
     }
 
@@ -691,6 +759,53 @@ mod tests {
         let s = state(&Fake::with(verso(Some("0"))), &places).unwrap();
         assert!(s.get("outcome").is_none(), "{s}");
         assert_eq!(state(&Fake::with(json!({})), &places).unwrap(), json!({}));
+    }
+
+    // acme.sh's DNS scripts save the credentials they were given in
+    // account.conf, which it reads at every start over what acme-common hands
+    // it: a token changed in Verso would lose to the one saved before it.
+    #[test]
+    fn a_catch_up_forgets_the_credentials_acme_sh_saved_that_verso_since_changed() {
+        let places = scratch("forget");
+        let saved = "LOG_FILE='/var/log/acme.log'\nDNSimple_OAUTH_TOKEN='dnsimple_a_old'\nSAVED_CF_Token='x'\nCF_Zone_ID='z1'\nUPGRADE_HASH='abc'\n";
+        fs::write(&places.account_conf, saved).unwrap();
+        let mut acme = verso(None);
+        acme["verso"]["dns"] = json!("dns_dnsimple");
+        acme["verso"]["credentials"] = json!(["DNSimple_OAUTH_TOKEN=\"dnsimple_a_new\"", "CF_Zone_ID=\"z1\""]);
+        let router = Fake::with(acme);
+        deliver(Event::Sync, None, &router, &places).unwrap();
+        assert_eq!(
+            fs::read_to_string(&places.account_conf).unwrap(),
+            "LOG_FILE='/var/log/acme.log'\nSAVED_CF_Token='x'\nCF_Zone_ID='z1'\nUPGRADE_HASH='abc'\n",
+            "the stale token goes, an equal value and everything else stay"
+        );
+    }
+
+    #[test]
+    fn nothing_to_forget_leaves_account_conf_untouched() {
+        let places = scratch("forget-none");
+        let saved = "DNSimple_OAUTH_TOKEN='dnsimple_a_new'\n";
+        fs::write(&places.account_conf, saved).unwrap();
+        let before = fs::metadata(&places.account_conf).unwrap().modified().unwrap();
+        let mut acme = verso(Some("0"));
+        acme["verso"]["credentials"] = json!(["DNSimple_OAUTH_TOKEN=\"dnsimple_a_new\""]);
+        deliver(Event::Sync, None, &Fake::with(acme), &places).unwrap();
+        assert_eq!(fs::read_to_string(&places.account_conf).unwrap(), saved);
+        assert_eq!(fs::metadata(&places.account_conf).unwrap().modified().unwrap(), before);
+        // No account.conf yet (acme.sh never ran) is nothing to forget.
+        let fresh = scratch("forget-absent");
+        deliver(Event::Sync, None, &Fake::with(verso(None)), &fresh).unwrap();
+        assert!(!fresh.account_conf.exists());
+    }
+
+    #[test]
+    fn a_disabled_section_still_forgets_a_stale_copy() {
+        let places = scratch("forget-off");
+        fs::write(&places.account_conf, "CF_Token='old'\n").unwrap();
+        let mut acme = verso(Some("0"));
+        acme["verso"]["credentials"] = json!(["CF_Token=\"new\""]);
+        deliver(Event::Sync, None, &Fake::with(acme), &places).unwrap();
+        assert_eq!(fs::read_to_string(&places.account_conf).unwrap(), "");
     }
 
     #[test]
