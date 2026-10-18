@@ -11,13 +11,9 @@
      (blocks/button.css): class="verso-button", its dress by data-verso-style,
      its size by data-verso-size. */}}
 
-{{/* verso-select-compact and verso-select-compact-chevron: a dropdown on a
-     line of words, its 24px box the line itself, so it rides a legend or a
-     reading without making the line taller. The page's dropdown in its
-     small size: the same Paper, strong hairline and Denim focus, 14px words,
-     its chevron 14px and 8px from the right edge. */}}
-{{define "verso-select-compact"}}h-6 cursor-pointer appearance-none rounded-xs border border-rule-strong bg-canvas pr-7 pl-2 text-sm leading-none text-ink transition-colors hover:border-faint focus:border-denim focus:outline-none{{end}}
-{{define "verso-select-compact-chevron"}}pointer-events-none absolute right-2 flex text-meta{{end}}
+{{/* Every typed box and dropdown is the input block (blocks/input.css), a
+     box with a glyph inside it the control block (blocks/control.css), and
+     fused values the box block (blocks/box.css). */}}
 
 {{/* verso-empty-slot-body: what stands in a set's slot (the slot block,
      blocks/slot.css) — the hollow packet (absent) and the set's empty words.
@@ -25,18 +21,6 @@
      stands 24px under it. */}}
 {{define "verso-empty-slot-body"}}<span aria-hidden="true" class="verso-mark"></span>
     <p class="verso-slot__words">{{.}}</p>{{end}}
-
-{{/* verso-input-border: a form control's border, the only thing that changes
-     about it — the strong hairline at rest, the faint step under the pointer,
-     the action colour while typing. A refused field stays crimson at rest,
-     under the pointer and while focused, deep crimson for the last two: it is
-     the box that is wrong while it is being corrected. Focused, its edge
-     doubles to 2px (an inset line beside the field's own inset shadow), since
-     a change of shade alone does not read as focus. The crimson hangs on
-     aria-invalid, which the page drops on the first keystroke (verso-forms.js),
-     since the refusal was about the value that was there — the box then
-     returns to the hairline and the action colour. */}}
-{{define "verso-input-border"}}border-rule-strong hover:border-faint focus:border-denim{{if .}} aria-invalid:border-crimson aria-invalid:hover:border-crimson-deep aria-invalid:focus:border-crimson-deep aria-invalid:focus:shadow-[inset_0_0_0_1px_var(--color-crimson-deep),var(--shadow-field)]{{end}}{{end}}
 
 {{/* verso-kicker-class: the one kicker — a word or two naming the group under
      it, never a heading's rival: 12px at 500, uppercase at .08em, in the meta
@@ -75,27 +59,6 @@
      and whether it is required. Required is stated rather than enforced: the
      browser's own bubble would stand in front of the shell's refusal. */}}
 {{define "verso-field-aria"}}{{with .DescribedBy}} aria-describedby="{{.}}"{{end}}{{if .Error}} aria-invalid="true"{{end}}{{if .Required}} aria-required="true"{{end}}{{end}}
-
-{{/* verso-input-box: one control, one box — the height a button beside it
-     shares, white, the inset shadow, and a placeholder in the meta ink at the
-     regular weight (it is text, and must read as such). */}}
-{{define "verso-input-box"}}h-control w-full rounded-xs border {{template "verso-input-fill"}} px-3 text-ink transition-colors placeholder:font-normal placeholder:text-meta focus:outline-none{{end}}
-
-{{/* verso-input-fill: what anything typed into stands on — white, pressed in
-     by the inset shadow — so a plain box and a box of tokens read as the same
-     kind of field. */}}
-{{define "verso-input-fill"}}bg-canvas shadow-(--shadow-field){{end}}
-
-{{/* verso-input-class: the box for a machine string — an address, a port, a
-     name a daemon will answer to — set in mono at the reading size, at the
-     regular weight: a step under the 500 a displayed value takes, so what is
-     being typed never reads as what has been stated. */}}
-{{define "verso-input-class"}}{{template "verso-input-box"}} font-mono text-base font-normal{{end}}
-
-{{/* verso-input-words: the box for words — a rule's name, a description, a
-     password — set in the sans at 14px, which is what Hanken's taller
-     x-height reads as beside mono at 16. */}}
-{{define "verso-input-words"}}{{template "verso-input-box"}} font-sans text-sm font-normal{{end}}
 
 
 {{/* One form geometry on pages and in drawers: labels above controls, with
@@ -209,22 +172,20 @@
      chevron, inset right-3 to mirror the text's pl-3, because the native arrow
      hugs the border and can't follow the theme. A part of a joined row is
      named on its own; a lone field is named by its row's label. */}}
-{{define "verso-select"}}<div class="relative">
-    <select id="{{.Name}}"{{if .Theme}} data-verso-theme{{else}} name="{{.Name}}"{{end}}{{with .Fetch}} hx-get="{{.URL}}" hx-trigger="change" hx-include="closest .verso-joined" hx-target="{{.Target}}" hx-swap="outerHTML"{{end}}{{if .Reshapes}} data-verso-reshape{{end}}{{if .Named}} aria-label="{{.Label}}"{{end}}{{template "verso-field-aria" .}} class="{{if .Words}}{{template "verso-input-words"}}{{else}}{{template "verso-input-class"}}{{end}} {{template "verso-input-border" .Error}} cursor-pointer appearance-none pr-9">
+{{define "verso-select"}}<div class="verso-control">
+    <select id="{{.Name}}"{{if .Theme}} data-verso-theme{{else}} name="{{.Name}}"{{end}}{{with .Fetch}} hx-get="{{.URL}}" hx-trigger="change" hx-include="closest .verso-joined" hx-target="{{.Target}}" hx-swap="outerHTML"{{end}}{{if .Reshapes}} data-verso-reshape{{end}}{{if .Named}} aria-label="{{.Label}}"{{end}}{{template "verso-field-aria" .}} class="verso-input"{{if not .Words}} data-verso-verbatim{{end}} data-verso-trail>
       {{range .Options}}<option value="{{.Value}}"{{if eq .Value $.Value}} selected{{end}}>{{.Label}}</option>{{end}}
     </select>
-    <span class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-meta">{{icon "chevron-down" "size-4"}}</span>
-    {{if .Reshapes}}{{template "verso-reshape-wait" "absolute inset-y-0 left-full ml-3 flex items-center"}}{{end}}
+    <span class="verso-control__trail">{{icon "chevron-down" "size-4"}}</span>
+    {{if .Reshapes}}<span data-verso-reshape-wait hidden class="verso-control__wait">{{template "verso-waiting" ""}}</span>{{end}}
   </div>{{end}}
 {{/* verso-listing-search: the search that narrows a listing, given its
      placeholder (.Filter) and the words standing in it (.Query); over a paged
-     listing (.Paged) the page asks the server instead of narrowing. It wears the app's one input treatment: white, an
-     inset shadow, the strong hairline that warms to the faint step under the
-     pointer and to the action colour while typing. */}}
-{{define "verso-listing-search"}}<div class="relative flex max-w-full items-center">
-    <span class="pointer-events-none absolute left-2.5 flex text-faint">{{icon "search" "size-4"}}</span>
-    <input type="search"{{if not .Paged}} data-verso-listing-filter{{end}}{{with .Query}} value="{{.}}"{{end}} autocomplete="off" placeholder="{{.Filter}}" aria-label="{{.Filter}}"
-      class="h-control w-80 max-w-full rounded-xs border border-rule-strong bg-canvas pr-3 pl-8.5 text-sm text-ink shadow-(--shadow-field) transition-colors placeholder:font-normal placeholder:text-meta hover:border-faint focus:border-denim focus:outline-none">
+     listing (.Paged) the page asks the server instead of narrowing. It is the
+     app's one box, led by the lens. */}}
+{{define "verso-listing-search"}}<div class="verso-control w-80">
+    <span class="verso-control__lead">{{icon "search" "size-4"}}</span>
+    <input type="search"{{if not .Paged}} data-verso-listing-filter{{end}}{{with .Query}} value="{{.}}"{{end}} autocomplete="off" placeholder="{{.Filter}}" aria-label="{{.Filter}}" class="verso-input" data-verso-lead>
   </div>{{end}}
 {{/* verso-reshape-wait: the waiting mark beside a choice that reshapes its
      form, hidden until the choice is made and the form it names is on its way
@@ -237,7 +198,7 @@
      address, a number, a clock time or a date its own measure, anything else
      the column. A part of a joined row is named on its own; a lone field is
      named by its row's label. */}}
-{{define "verso-text-input"}}<input id="{{.Name}}" name="{{.Name}}" value="{{.Value}}" type="text"{{if .Named}} aria-label="{{.Label}}"{{end}}{{if eq .Measure "number"}} inputmode="numeric"{{end}}{{if .Placeholder}} placeholder="{{.Placeholder}}"{{end}}{{if .Autofocus}} autofocus{{end}}{{if .Datatype}} data-datatype="{{.Datatype}}"{{end}}{{if .Suggests}} data-verso-suggest-input role="combobox" aria-expanded="false" aria-autocomplete="list" aria-controls="{{.Name}}-options" autocomplete="off"{{end}}{{template "verso-field-aria" .}} class="{{if .Words}}{{template "verso-input-words"}}{{else}}{{template "verso-input-class"}}{{end}} {{if and (eq .Measure "address") (ne .ControlMeasure "prefix")}}w-measure-44! max-w-full{{else if eq .Measure "number"}}w-measure-24! max-w-full{{else if eq .Measure "short"}}w-measure-32! max-w-full{{end}} {{template "verso-input-border" .Error}}">{{end}}
+{{define "verso-text-input"}}<input id="{{.Name}}" name="{{.Name}}" value="{{.Value}}" type="text"{{if .Named}} aria-label="{{.Label}}"{{end}}{{if eq .Measure "number"}} inputmode="numeric"{{end}}{{if .Placeholder}} placeholder="{{.Placeholder}}"{{end}}{{if .Autofocus}} autofocus{{end}}{{if .Datatype}} data-datatype="{{.Datatype}}"{{end}}{{if .Suggests}} data-verso-suggest-input role="combobox" aria-expanded="false" aria-autocomplete="list" aria-controls="{{.Name}}-options" autocomplete="off"{{end}}{{template "verso-field-aria" .}} class="verso-input"{{if not .Words}} data-verso-verbatim{{end}}{{if and (eq .Measure "address") (ne .ControlMeasure "prefix")}} data-verso-measure="address"{{else if or (eq .Measure "number") (eq .Measure "short")}} data-verso-measure="{{.Measure}}"{{end}}>{{end}}
 
 {{/* verso-suggest-input: a typed value (a boxPart) with the values worth
      offering under its box — a device's address and its name. They are a
@@ -247,7 +208,7 @@
      is showing and Enter takes it, while focus stays in the box; the options
      are out of the tab order for the same reason. A box at a measure holds the
      list to its own edge; the list grows past it for a long name. */}}
-{{define "verso-suggest-input"}}<div class="relative{{if or (eq .Measure "address") (eq .Measure "number") (eq .Measure "short")}} w-fit max-w-full{{end}}">
+{{define "verso-suggest-input"}}<div class="verso-control{{if or (eq .Measure "address") (eq .Measure "number") (eq .Measure "short")}} w-fit{{end}}">
   {{template "verso-text-input" .}}
   <div id="{{.Name}}-options" data-verso-suggest-menu role="listbox"{{if .Label}} aria-labelledby="{{.Name}}-label"{{end}} hidden class="verso-menu verso-drawer-scrollbar" data-verso-menu-width="words">
     {{range $i, $o := .Options}}
@@ -262,11 +223,11 @@
      four characters and a full-width field would say it might not be. It
      wears the app's clock where the platform's glyph would stand, in the
      quiet ink and inset right-3 as a dropdown's chevron is; the platform's own
-     stays under it, invisible (forms.css), so a press on the glyph still opens
-     the picker. */}}
-{{define "verso-time-input"}}<div class="relative w-32 max-w-full">
-    <input id="{{.Name}}" name="{{.Name}}" value="{{.Value}}" type="time"{{if .Named}} aria-label="{{.Label}}"{{end}}{{template "verso-field-aria" .}} class="verso-time-input {{template "verso-input-class"}} {{template "verso-input-border" .Error}}">
-    <span class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-meta">{{icon "clock" "size-4"}}</span>
+     stays under it, invisible (blocks/input.css), so a press on the glyph
+     still opens the picker. */}}
+{{define "verso-time-input"}}<div class="verso-control w-32">
+    <input id="{{.Name}}" name="{{.Name}}" value="{{.Value}}" type="time"{{if .Named}} aria-label="{{.Label}}"{{end}}{{template "verso-field-aria" .}} class="verso-input" data-verso-verbatim data-verso-trail>
+    <span class="verso-control__trail">{{icon "clock" "size-4"}}</span>
   </div>{{end}}
 
 {{/* verso-joined: a sentence of related fields as one row (boxView) — a path
@@ -276,37 +237,18 @@
      them as the sentence says it ("lan to wan", "09:00 to 17:00"). The word
      is read by sight; each part's own name says it to a screen reader. */}}
 {{define "verso-joined"}}<div class="verso-joined" role="group" aria-labelledby="{{.Group}}"{{with .Described}} aria-describedby="{{.}}"{{end}}>{{range .Parts}}{{template "verso-joined-part" .}}{{end}}</div>{{end}}
-{{define "verso-joined-part"}}{{with .Join}}<span id="{{$.JoinID}}" aria-hidden="true" class="verso-joined-word">{{.}}</span>{{end}}<div class="verso-joined-part"{{if .Track}} data-verso-change-field data-verso-change-name="{{.Name}}" data-verso-change-label="{{.Label}}" data-verso-change-kind="{{.ChangeKind}}"{{with .Key}} data-verso-writes="{{.}}"{{end}}{{end}}>{{if eq .Kind "select"}}{{template "verso-select" .}}{{else if eq .Kind "time"}}{{template "verso-time-input" .}}{{else}}{{template "verso-text-input" .}}{{end}}</div>{{end}}
+{{define "verso-joined-part"}}{{with .Join}}<span id="{{$.JoinID}}" aria-hidden="true" class="verso-joined__word">{{.}}</span>{{end}}<div class="verso-joined__part"{{if .Track}} data-verso-change-field data-verso-change-name="{{.Name}}" data-verso-change-label="{{.Label}}" data-verso-change-kind="{{.ChangeKind}}"{{with .Key}} data-verso-writes="{{.}}"{{end}}{{end}}>{{if eq .Kind "select"}}{{template "verso-select" .}}{{else if eq .Kind "time"}}{{template "verso-time-input" .}}{{else}}{{template "verso-text-input" .}}{{end}}</div>{{end}}
 {{/* verso-box-part: one value in a box (a boxPart) — a typed value, or the
      dropdown of units a value is counted in, bare inside the box's frame with
      the app's chevron where the native arrow would stand. After a typed value
      stands its unit, or in a labelled set its own name, so the set reads
      without a tooltip; a screen reader hears the name from the input's own
      label, so the shown name is for sight alone. */}}
-{{define "verso-box-part"}}<span class="verso-box-part" data-verso-measure="{{.Measure}}"{{if .Track}} data-verso-change-field data-verso-change-name="{{.Name}}" data-verso-change-label="{{.Label}}" data-verso-change-kind="{{.ChangeKind}}"{{with .Key}} data-verso-writes="{{.}}"{{end}}{{end}}>{{if eq .Kind "select"}}<select id="{{.Name}}" name="{{.Name}}"{{if .Named}} aria-label="{{.Label}}"{{end}}{{template "verso-field-aria" .}} class="verso-box-select">
+{{define "verso-box-part"}}<span class="verso-box__part" data-verso-measure="{{.Measure}}"{{if .Track}} data-verso-change-field data-verso-change-name="{{.Name}}" data-verso-change-label="{{.Label}}" data-verso-change-kind="{{.ChangeKind}}"{{with .Key}} data-verso-writes="{{.}}"{{end}}{{end}}>{{if eq .Kind "select"}}<select id="{{.Name}}" name="{{.Name}}"{{if .Named}} aria-label="{{.Label}}"{{end}}{{template "verso-field-aria" .}} class="verso-box__select">
       {{range .Options}}<option value="{{.Value}}"{{if eq .Value $.Value}} selected{{end}}>{{.Label}}</option>{{end}}
-    </select><span aria-hidden="true" class="verso-box-chevron">{{icon "chevron-down" "size-4"}}</span>{{else}}<input id="{{.Name}}" name="{{.Name}}"{{if eq .Kind "password"}} type="password" autocomplete="{{if .Autocomplete}}{{.Autocomplete}}{{else}}new-password{{end}}"{{else}} value="{{.Value}}" type="text"{{end}}{{if .Named}} aria-label="{{.Label}}"{{end}}{{if eq .Measure "number"}} inputmode="numeric"{{end}}{{with .Placeholder}} placeholder="{{.}}"{{end}}{{if .Autofocus}} autofocus{{end}}{{with .Datatype}} data-datatype="{{.}}"{{end}}{{template "verso-field-aria" .}} class="verso-box-input {{if .Words}}font-sans text-sm{{else}}font-mono text-base{{end}} font-normal">{{with .Unit}}<span id="{{$.Name}}-unit" class="verso-box-unit">{{.}}</span>{{else}}{{if .Shown}}<span aria-hidden="true" class="verso-box-unit">{{.Label}}</span>{{end}}{{end}}{{end}}</span>{{end}}
-{{/* verso-token-chip: the one chip that is not a citation. Every chip above
-     states a fact somewhere in the page's prose and is sized to the words around
-     it; this one is a value a person put inside a control and can take back out,
-     so it is sized to the control instead — 26px inside a 36px box, 4px of the
-     box's own ground showing all round it. At citation size it read as a label
-     that had wandered into a field, and left its remove glyph too small to wear
-     the hover every other icon act wears.
-
-     The value is set at the box's own reading size and weight, because what is in
-     the chip is exactly what was typed into the box beside it. It stands a step
-     darker than a citation — Mid Sand behind a Strong Hairline — because it sits
-     on a field's white rather than on the page, and a quiet chip there all but
-     disappears into it. */}}
-{{define "verso-token-chip"}}inline-flex h-6 items-center gap-1.5 rounded-xs border border-rule-strong bg-mid px-2 font-mono text-base font-medium whitespace-nowrap text-ink{{end}}
-
-{{/* The glyph that takes one value out. Twenty pixels, so what it takes on
-     hover is a target rather than an outline of the glyph, and it answers the
-     pointer as every glyph act does (the button block's glyph size): the parked border,
-     the hairline wash, a step darker than the chip so it shows on it, and Ink.
-     It pulls 4px into the chip's right padding so it sits inside the chip's
-     edge. */}}
+    </select><span aria-hidden="true" class="verso-box__chevron">{{icon "chevron-down" "size-4"}}</span>{{else}}<input id="{{.Name}}" name="{{.Name}}"{{if eq .Kind "password"}} type="password" autocomplete="{{if .Autocomplete}}{{.Autocomplete}}{{else}}new-password{{end}}"{{else}} value="{{.Value}}" type="text"{{end}}{{if .Named}} aria-label="{{.Label}}"{{end}}{{if eq .Measure "number"}} inputmode="numeric"{{end}}{{with .Placeholder}} placeholder="{{.}}"{{end}}{{if .Autofocus}} autofocus{{end}}{{with .Datatype}} data-datatype="{{.}}"{{end}}{{template "verso-field-aria" .}} class="verso-box__input"{{if not .Words}} data-verso-verbatim{{end}}>{{with .Unit}}<span id="{{$.Name}}-unit" class="verso-box__unit">{{.}}</span>{{else}}{{if .Shown}}<span aria-hidden="true" class="verso-box__unit">{{.Label}}</span>{{end}}{{end}}{{end}}</span>{{end}}
+{{/* A value a person put inside a token box is the tokens block's chip
+     (blocks/tokens.css). */}}
 
 {{/* verso-entity-drawer: the same sliding frame as a row's own drawer, with
      nothing in it. A row whose subject several plugins have a say about does not

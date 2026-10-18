@@ -269,12 +269,15 @@ func TestTheTrafficCardsWindowRidesItsHeader(t *testing.T) {
 		`<select name="range"`, `hx-get="/overview/traffic"`, `hx-target="#overview-traffic-graph"`, `hx-swap="outerHTML"`,
 		`<option value="minute" selected>Last minute</option>`, `<option value="day">Last 24 hours</option>`,
 		`<option value="week">Last 7 days</option>`, `<option value="month">Last 30 days</option>`, `<option value="year">Last year</option>`,
-		`class="h-6 cursor-pointer`,
+		`<div class="verso-control shrink-0" data-verso-size="compact">`,
+		`class="verso-input" data-verso-size="compact">`,
 	} {
 		if !strings.Contains(head, want) {
 			t.Errorf("the Traffic card's header missing %q:\n%s", want, head)
 		}
 	}
+	// the compact dropdown rides the header's line of words: 24px, no shadow
+	declares(t, "input", `.verso-input[data-verso-size="compact"]`, "height: calc(var(--spacing) * 6);", "box-shadow: none;")
 	if strings.Index(head, "data-overview-card-control") > strings.Index(head, "data-overview-toggle") {
 		t.Error("the window stands after the open-close control")
 	}

@@ -30,6 +30,7 @@
 @import "./blocks/actionbar.css" layer(components);
 @import "./blocks/arrival.css" layer(components);
 @import "./blocks/bar.css" layer(components);
+@import "./blocks/box.css" layer(components);
 @import "./blocks/button.css" layer(components);
 @import "./blocks/chart.css" layer(components);
 @import "./blocks/chevron.css" layer(components);
@@ -39,6 +40,7 @@
 @import "./blocks/collection.css" layer(components);
 @import "./blocks/colophon.css" layer(components);
 @import "./blocks/console.css" layer(components);
+@import "./blocks/control.css" layer(components);
 @import "./blocks/copy-inline.css" layer(components);
 @import "./blocks/divider.css" layer(components);
 @import "./blocks/drawer-scrollbar.css" layer(components);
@@ -48,6 +50,8 @@
 @import "./blocks/fold.css" layer(components);
 @import "./blocks/glyph.css" layer(components);
 @import "./blocks/grid.css" layer(components);
+@import "./blocks/input.css" layer(components);
+@import "./blocks/joined.css" layer(components);
 @import "./blocks/link.css" layer(components);
 @import "./blocks/list.css" layer(components);
 @import "./blocks/listing.css" layer(components);
@@ -79,6 +83,7 @@
 @import "./blocks/tabs.css" layer(components);
 @import "./blocks/takeover.css" layer(components);
 @import "./blocks/tip.css" layer(components);
+@import "./blocks/tokens.css" layer(components);
 @import "./blocks/traffic.css" layer(components);
 @import "./blocks/waiting.css" layer(components);
 
@@ -343,12 +348,6 @@ html {
 
 
 
-  /* A token box holding values no longer needs telling what goes in it. The
-     prompt is for an empty box; beside two chips there is no room left for a
-     sentence, and what showed was half of one. It gives way to the values and
-     comes back when the last one is taken out — in CSS, because which state the
-     box is in is not something a script should have to keep track of. */
-  [data-verso-token-list]:has([data-verso-token]) [data-verso-token-input]::placeholder { color: transparent; }
 
   /* conditional widget: switch between its primary and optional alternate
      field-sets from the controlling toggle (ADR-005 §7). Pure CSS state — no JS. */
@@ -379,7 +378,7 @@ html {
      it (a field, a row of acts, a heading line, a card) measures it as 32px
      and stays on the grid. A control that states its own vertical margin
      keeps it. */
-  :is(.h-control, .verso-box, [data-verso-token-list]) { margin-bottom: -1px; }
+  .h-control { margin-bottom: -1px; }
 }
 
 @layer utilities {

@@ -1,0 +1,147 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/* SPDX-FileCopyrightText: 2026 Mono Technologies Inc. */
+
+/*
+ * box — one frame holding typed values: a value and its unit, or related
+ * values fused into one control. The frame wears the input's states (the
+ * strong hairline, the faint step under the pointer, the action colour while
+ * a part is typed into, crimson while one is refused); its parts are bare
+ * inputs split by hairlines, each as wide as its measure plus its unit's
+ * words. It is a control's 32px and gives its bottom border's pixel back.
+ *
+ * Variants: data-verso-stacked  parts that would outgrow the answer column
+ *                               side by side stand one under another, each a
+ *                               line of the one control, its value at the
+ *                               left and its name at the right: the frame
+ *                               and the hairlines between parts on the grid's
+ *                               lines 32px apart, so the first part centres on
+ *                               the question's line as a lone control does
+ * Elements: __part    one value (data-verso-measure number · secret · none:
+ *                     the default 176px)
+ *           __input   its bare input, in the input role (verbatim for a
+ *                     machine string)
+ *           __unit    the unit, or a part's own name, read after the value:
+ *                     words in Meta, so the value stays what the eye lands on
+ *           __select  a unit dropdown, bare like the typed parts, as wide as
+ *                     its longest option
+ *           __chevron its chevron, where the native arrow would stand
+ */
+
+.verso-box {
+  display: inline-flex;
+  align-self: flex-start;
+  max-width: 100%;
+  height: var(--spacing-control);
+  margin-bottom: -1px;
+  border: 1px solid var(--color-rule-strong);
+  border-radius: var(--radius-xs);
+  background: var(--color-canvas);
+  box-shadow: var(--shadow-field);
+  transition-property: border-color, box-shadow;
+  transition-duration: 150ms;
+  transition-timing-function: var(--default-transition-timing-function);
+}
+.verso-box:hover {
+  border-color: var(--color-faint);
+}
+.verso-box:focus-within {
+  border-color: var(--color-denim);
+}
+.verso-box:has([aria-invalid="true"]) {
+  border-color: var(--color-crimson);
+}
+.verso-box:has([aria-invalid="true"]):hover {
+  border-color: var(--color-crimson-deep);
+}
+.verso-box:has([aria-invalid="true"]):focus-within {
+  border-color: var(--color-crimson-deep);
+  box-shadow: inset 0 0 0 1px var(--color-crimson-deep), var(--shadow-field);
+}
+.verso-box[data-verso-stacked] {
+  flex-direction: column;
+  width: 100%;
+  height: auto;
+}
+
+.verso-box__part {
+  --verso-part-width: calc(var(--spacing) * 44);
+  display: flex;
+  flex: 0 1 auto;
+  align-items: center;
+  min-width: 0;
+  cursor: text;
+}
+.verso-box__part[data-verso-measure="number"] {
+  --verso-part-width: calc(var(--spacing) * 24);
+}
+.verso-box__part[data-verso-measure="secret"] {
+  --verso-part-width: calc(var(--spacing) * 64);
+}
+.verso-box__part + .verso-box__part {
+  border: 0 solid var(--color-rule);
+  border-left-width: 1px;
+}
+.verso-box__part:where(.verso-box[data-verso-stacked] *) {
+  height: calc(var(--spacing) * 8 - 1px);
+}
+.verso-box__part:where(.verso-box[data-verso-stacked] *) + .verso-box__part {
+  height: calc(var(--spacing) * 8);
+  border-left-width: 0;
+  border-top-width: 1px;
+}
+.verso-box__part:has(> .verso-box__select) {
+  position: relative;
+  cursor: pointer;
+}
+
+.verso-box__input {
+  width: var(--verso-part-width);
+  min-width: 0;
+  height: 100%;
+  padding-inline: calc(var(--spacing) * 3);
+  border: 0;
+  background: transparent;
+  color: var(--color-ink);
+  outline: none;
+  @apply type-input;
+}
+.verso-box__input:where(.verso-box[data-verso-stacked] *) {
+  flex: 1 1 auto;
+  width: auto;
+}
+.verso-box__input::placeholder {
+  color: var(--color-meta);
+  @apply type-input;
+}
+.verso-box__input:where(.verso-box__part:has(.verso-box__unit) *) {
+  padding-right: calc(var(--spacing) * 1.5);
+}
+
+.verso-box__unit {
+  padding-right: calc(var(--spacing) * 3);
+  color: var(--color-meta);
+  white-space: nowrap;
+  @apply type-input;
+}
+
+.verso-box__select {
+  height: 100%;
+  min-width: 0;
+  padding-inline: calc(var(--spacing) * 3) calc(var(--spacing) * 9);
+  border: 0;
+  background: transparent;
+  color: var(--color-ink);
+  appearance: none;
+  cursor: pointer;
+  outline: none;
+  @apply type-input;
+}
+.verso-box__chevron {
+  position: absolute;
+  inset-block: 0;
+  right: calc(var(--spacing) * 3);
+  display: flex;
+  align-items: center;
+  color: var(--color-meta);
+  pointer-events: none;
+}

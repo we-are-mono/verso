@@ -1,0 +1,32 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/* SPDX-FileCopyrightText: 2026 Mono Technologies Inc. */
+
+/*
+ * joined — a sentence of fields side by side, the group's word between them
+ * ("lan to wan", "09:00 to 17:00"). A dropdown measures its own longest
+ * option and a typed value its own measure, as they do alone; a sentence
+ * wider than the answer column wraps onto its next line, 40px on, rather
+ * than squeezing them.
+ *
+ * Elements: __part  one field of the sentence, as wide as it needs
+ *           __word  the group's word, read on the controls' own middle line,
+ *                   on a 24px line as the words inside them are
+ */
+
+.verso-joined {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: calc(var(--spacing) * 2) calc(var(--spacing) * 3);
+}
+
+.verso-joined__part {
+  width: fit-content;
+  max-width: 100%;
+}
+
+.verso-joined__word {
+  color: var(--color-body);
+  white-space: nowrap;
+  @apply type-body;
+}

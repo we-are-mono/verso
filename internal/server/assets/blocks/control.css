@@ -1,0 +1,56 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/* SPDX-FileCopyrightText: 2026 Mono Technologies Inc. */
+
+/*
+ * control — a box (blocks/input.css) with a glyph inside it: a dropdown's
+ * chevron and a clock time's clock at its end, inset 12px as the words are,
+ * because the native arrow hugs the border and cannot follow the theme; a
+ * glyph leading it (what a field reaches for, the search's lens) 12px in, in
+ * Glyph. The glyphs take no press: the box under them does.
+ *
+ * Variants: data-verso-size="compact"  around a compact box: its chevron
+ *                                      14px, 8px from the end
+ * Elements: __lead   the glyph leading the box
+ *           __trail  the glyph ending it
+ *           __wait   the waiting mark beside a choice that reshapes its form,
+ *                    12px outside the box, so the box's measure never makes
+ *                    room for it
+ */
+
+.verso-control {
+  position: relative;
+  max-width: 100%;
+}
+.verso-control[data-verso-size="compact"] {
+  display: inline-flex;
+  align-items: center;
+}
+
+.verso-control__lead,
+.verso-control__trail {
+  position: absolute;
+  inset-block: 0;
+  display: flex;
+  align-items: center;
+  pointer-events: none;
+}
+.verso-control__lead {
+  left: calc(var(--spacing) * 3);
+  color: var(--color-glyph);
+}
+.verso-control__trail {
+  right: calc(var(--spacing) * 3);
+  color: var(--color-meta);
+}
+.verso-control__trail:where(.verso-control[data-verso-size="compact"] *) {
+  right: calc(var(--spacing) * 2);
+}
+
+.verso-control__wait {
+  position: absolute;
+  inset-block: 0;
+  left: 100%;
+  display: flex;
+  align-items: center;
+  margin-left: calc(var(--spacing) * 3);
+}

@@ -22,7 +22,7 @@
     </div>{{end}}
     </div>
     <template><div data-verso-list-row class="verso-list__row"><input type="hidden" name="{{.Name}}">{{template "list.packet"}}<span data-verso-list-value class="verso-list__value" data-verso-verbatim></span><button type="button" data-verso-list-remove title="{{t "Remove"}}" aria-label="{{t "Remove"}}" class="verso-button -my-1" data-verso-size="icon">{{icon "x" "size-4"}}</button></div></template>
-    <div class="flex items-center gap-2"><input id="{{.Name}}"{{if .Label}} aria-labelledby="{{.Name}}-label"{{end}}{{if .Described}} aria-describedby="{{.Name}}-desc"{{end}} data-verso-list-input {{if .Datatype}}data-datatype="{{.Datatype}}"{{end}} placeholder="{{if .Prompt}}{{.Prompt}}{{else}}{{t "Add…"}}{{end}}" class="{{template "verso-input-class"}} {{template "verso-input-border" ""}} min-w-0"><button type="button" data-verso-list-add class="verso-button" data-verso-style="secondary">{{t "Add"}}</button></div>
+    <div class="flex items-center gap-2"><input id="{{.Name}}"{{if .Label}} aria-labelledby="{{.Name}}-label"{{end}}{{if .Described}} aria-describedby="{{.Name}}-desc"{{end}} data-verso-list-input {{if .Datatype}}data-datatype="{{.Datatype}}"{{end}} placeholder="{{if .Prompt}}{{.Prompt}}{{else}}{{t "Add…"}}{{end}}" class="verso-input min-w-0" data-verso-verbatim><button type="button" data-verso-list-add class="verso-button" data-verso-style="secondary">{{t "Add"}}</button></div>
   </div>
   {{else if eq .Style "tokens"}}
   {{/* The box is a field, and each value inside it is a chip — the same chip a
@@ -34,23 +34,23 @@
        rows of chips stand 16px apart, so each row adds 40px and the box stays
        on the grid. The value being typed stands at the same height as the
        chips it is about to join. */}}
-  <div data-verso-token-list class="flex min-h-control flex-wrap items-center gap-x-1 gap-y-4 rounded-xs border border-rule-strong {{template "verso-input-fill"}} p-0.75 transition-colors hover:not-focus-within:border-faint focus-within:border-denim">
+  <div data-verso-token-list class="verso-tokens">
     {{range .Items}}
-    <span data-verso-token class="{{template "verso-token-chip"}}">
+    <span data-verso-token class="verso-tokens__chip" data-verso-verbatim>
       <input type="hidden" name="{{$.Name}}" value="{{.}}"><span data-verso-token-label>{{.}}</span>
-      <button type="button" data-verso-token-remove aria-label="{{ t "Remove" }} {{.}}" class="verso-button size-5 -mr-1" data-verso-size="glyph">{{icon "x" "size-3"}}</button>
+      <button type="button" data-verso-token-remove aria-label="{{ t "Remove" }} {{.}}" class="verso-button verso-tokens__remove" data-verso-size="glyph">{{icon "x" "size-3"}}</button>
     </span>
     {{end}}
-    <input id="{{.Name}}"{{if .Label}} aria-labelledby="{{.Name}}-label"{{end}}{{if .Described}} aria-describedby="{{.Name}}-desc"{{end}} data-verso-token-input type="text"{{if .Datatype}} data-datatype="{{.Datatype}}"{{end}}{{if .Options}} role="combobox" aria-expanded="false" aria-autocomplete="list" aria-controls="{{.Name}}-options"{{end}} autocomplete="off" placeholder="{{if .Prompt}}{{.Prompt}}{{else}}{{ t "Add…" }}{{end}}" class="h-6 min-w-18 flex-1 border-0 bg-transparent px-1.5 font-mono text-base font-normal text-ink outline-none placeholder:font-sans placeholder:text-sm placeholder:font-normal placeholder:text-meta">
+    <input id="{{.Name}}"{{if .Label}} aria-labelledby="{{.Name}}-label"{{end}}{{if .Described}} aria-describedby="{{.Name}}-desc"{{end}} data-verso-token-input type="text"{{if .Datatype}} data-datatype="{{.Datatype}}"{{end}}{{if .Options}} role="combobox" aria-expanded="false" aria-autocomplete="list" aria-controls="{{.Name}}-options"{{end}} autocomplete="off" placeholder="{{if .Prompt}}{{.Prompt}}{{else}}{{ t "Add…" }}{{end}}" class="verso-tokens__input" data-verso-verbatim>
   </div>
   {{/* The empty chip the shell clones when a value is typed in. A value the
        plugin sent and a value added here are one kind of thing, so there is one
        chip rather than the same markup written twice — once here and once in the
        script, where the two drifted apart the moment either was touched. */}}
   <template data-verso-token-chip>
-    <span data-verso-token class="{{template "verso-token-chip"}}">
+    <span data-verso-token class="verso-tokens__chip" data-verso-verbatim>
       <input type="hidden" name="{{.Name}}" value=""><span data-verso-token-label></span>
-      <button type="button" data-verso-token-remove class="verso-button size-5 -mr-1" data-verso-size="glyph">{{icon "x" "size-3"}}</button>
+      <button type="button" data-verso-token-remove class="verso-button verso-tokens__remove" data-verso-size="glyph">{{icon "x" "size-3"}}</button>
     </span>
   </template>
   {{/* The values worth offering, under the box. They are a reminder rather than
@@ -75,11 +75,11 @@
     {{range $i, $item := .Items}}
     <div class="space-y-1">
       {{$err := index $.Errors (printf "%d" $i)}}
-      <input name="{{$.Name}}" value="{{$item}}" type="text" aria-labelledby="{{$.Name}}-label"{{if $err}} aria-invalid="true" aria-describedby="{{$.Name}}-error-{{$i}}"{{end}}{{if $.Datatype}} data-datatype="{{$.Datatype}}"{{end}} class="{{template "verso-input-class"}} {{template "verso-input-border" $err}}">
+      <input name="{{$.Name}}" value="{{$item}}" type="text" aria-labelledby="{{$.Name}}-label"{{if $err}} aria-invalid="true" aria-describedby="{{$.Name}}-error-{{$i}}"{{end}}{{if $.Datatype}} data-datatype="{{$.Datatype}}"{{end}} class="verso-input" data-verso-verbatim>
       {{with $err}}<p id="{{$.Name}}-error-{{$i}}" data-verso-error class="{{template "verso-refusal-band"}}">{{template "verso-error-words" .}}</p>{{end}}
     </div>
     {{end}}
-    <input id="{{.Name}}" name="{{.Name}}" value="" type="text"{{if .Label}} aria-labelledby="{{.Name}}-label"{{end}}{{if .Described}} aria-describedby="{{.Name}}-desc"{{end}} placeholder="{{ t "Add…" }}"{{if .Datatype}} data-datatype="{{.Datatype}}"{{end}} class="{{template "verso-input-class"}} {{template "verso-input-border" ""}}">
+    <input id="{{.Name}}" name="{{.Name}}" value="" type="text"{{if .Label}} aria-labelledby="{{.Name}}-label"{{end}}{{if .Described}} aria-describedby="{{.Name}}-desc"{{end}} placeholder="{{ t "Add…" }}"{{if .Datatype}} data-datatype="{{.Datatype}}"{{end}} class="verso-input" data-verso-verbatim>
   </div>
   {{end}}
   {{/* The explanation is raised onto the label, as every other row's is. */}}

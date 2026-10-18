@@ -1666,7 +1666,7 @@ document.addEventListener("input", function (e) {
 // anywhere on the part, the unit included, puts the caret in its input, as
 // pressing inside a plain box does.
 document.addEventListener("mousedown", function (e) {
-  var part = e.target.closest && e.target.closest(".verso-box-part");
+  var part = e.target.closest && e.target.closest(".verso-box__part");
   if (!part || e.target.matches("input")) return;
   var input = part.querySelector("input");
   if (!input) return;
@@ -1701,7 +1701,7 @@ document.addEventListener("mousedown", function (e) {
   function refused() {
     var rows = [];
     [].forEach.call(main.querySelectorAll('[aria-invalid="true"], [data-verso-error]:not([hidden])'), function (mark) {
-      var row = mark.closest(".verso-box-part, [role=radiogroup], .verso-field-row") || mark;
+      var row = mark.closest(".verso-box__part, [role=radiogroup], .verso-field-row") || mark;
       if (!row.getClientRects().length) return; // folded away or out of this reading
       if (rows.some(function (r) { return r.row === row; })) return;
       var control = row.matches("input, select, textarea") ? row

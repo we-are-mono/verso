@@ -39,9 +39,7 @@
     via.disabled = tool.value === "nslookup";
     glyphs.forEach(function (glyph) { glyph.hidden = glyph.dataset.versoDiagGlyph !== tool.value; });
     // "any interface" is words; a picked interface is its name, verbatim.
-    var named = via.value !== "";
-    via.classList.toggle("font-mono", named); via.classList.toggle("text-base", named);
-    via.classList.toggle("font-sans", !named); via.classList.toggle("text-sm", !named);
+    via.toggleAttribute("data-verso-verbatim", via.value !== "");
   }
 
   // What this browser reached for before comes back as the target's

@@ -1,0 +1,144 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/* SPDX-FileCopyrightText: 2026 Mono Technologies Inc. */
+
+/*
+ * input — the one box anything is typed into or chosen from: the control's
+ * 32px and its bottom border's pixel (given back, so what follows starts on a
+ * line), white pressed in by the inset shadow, the strong hairline warming to
+ * the faint step under the pointer and to the action colour while typing. A
+ * refused box (aria-invalid) stays crimson at rest, deep crimson under the
+ * pointer and while focused, its edge doubled to 2px while focused, since a
+ * change of shade alone does not read as focus: it is the box that is wrong
+ * while it is being corrected. The page drops the mark on the first
+ * keystroke (verso-forms.js), and the box returns to the hairline.
+ *
+ * Its words take the input role: words in the sans; a machine string (an
+ * address, a port, a name a daemon answers to) its verbatim form
+ * (data-verso-verbatim), mono at the reading size — both at 400, a step under
+ * the 500 a stated value takes, so what is being typed never reads as what
+ * has been stated. A placeholder is words in Meta.
+ *
+ * Variants: data-verso-measure  address (44 cells) · number (24) · short
+ *                               (32): as wide as its grammar needs, a pixel
+ *                               more so its right border lands on a line,
+ *                               never past its column
+ *           data-verso-size="compact"  a dropdown riding a line of words: the
+ *                               line itself (24px), no shadow, its words 8px in
+ *           data-verso-lead     a glyph leads inside the box (blocks/control.css)
+ *           data-verso-trail    a glyph (a chevron, a clock) ends it
+ *           data-verso-kind="code"  a file's text typed in place
+ * Elements: __count  a code box's line count, under it at the right
+ */
+
+.verso-input {
+  width: 100%;
+  height: var(--spacing-control);
+  margin-bottom: -1px;
+  padding-inline: calc(var(--spacing) * 3);
+  border: 1px solid var(--color-rule-strong);
+  border-radius: var(--radius-xs);
+  background-color: var(--color-canvas);
+  box-shadow: var(--shadow-field);
+  color: var(--color-ink);
+  outline: none;
+  transition-property: color, background-color, border-color, box-shadow;
+  transition-duration: 150ms;
+  @apply type-input;
+}
+.verso-input::placeholder {
+  color: var(--color-meta);
+  @apply type-input;
+}
+.verso-input:hover {
+  border-color: var(--color-faint);
+}
+.verso-input:focus {
+  border-color: var(--color-denim);
+}
+.verso-input[aria-invalid="true"] {
+  border-color: var(--color-crimson);
+}
+.verso-input[aria-invalid="true"]:hover {
+  border-color: var(--color-crimson-deep);
+}
+.verso-input[aria-invalid="true"]:focus {
+  border-color: var(--color-crimson-deep);
+  box-shadow: inset 0 0 0 1px var(--color-crimson-deep), var(--shadow-field);
+}
+.verso-input:disabled {
+  background-color: var(--color-quiet);
+  color: var(--color-meta);
+  cursor: default;
+}
+
+.verso-input:is(select) {
+  appearance: none;
+  cursor: pointer;
+}
+/* A dropdown in a sentence of fields measures its own longest option. */
+.verso-input:where(.verso-joined__part *) {
+  width: auto;
+}
+.verso-input:is(textarea) {
+  height: auto;
+  padding-block: calc(var(--spacing) * 2);
+}
+/* A file's text, typed in place: the code role on Paper, 12px in, as tall
+   as the reader drags it. Its line count stands under it at the right. */
+.verso-input[data-verso-kind="code"] {
+  padding: calc(var(--spacing) * 3);
+  background-color: var(--color-ground);
+  box-shadow: none;
+  resize: vertical;
+  @apply type-code;
+}
+.verso-input__count {
+  color: var(--color-meta);
+  text-align: right;
+  @apply type-body;
+}
+
+.verso-input[data-verso-measure="address"] {
+  width: calc(var(--spacing) * 44 + 1px);
+  max-width: 100%;
+}
+.verso-input[data-verso-measure="number"] {
+  width: calc(var(--spacing) * 24 + 1px);
+  max-width: 100%;
+}
+.verso-input[data-verso-measure="short"] {
+  width: calc(var(--spacing) * 32 + 1px);
+  max-width: 100%;
+}
+
+.verso-input[data-verso-lead] {
+  padding-left: calc(var(--spacing) * 9.5);
+}
+.verso-input[data-verso-trail] {
+  padding-right: calc(var(--spacing) * 9);
+}
+
+.verso-input[data-verso-size="compact"] {
+  height: calc(var(--spacing) * 6);
+  margin-bottom: 0;
+  padding-inline: calc(var(--spacing) * 2) calc(var(--spacing) * 7);
+  box-shadow: none;
+}
+
+/* A clock time's own picker glyph gives way to the app's clock: it keeps its
+   place at the end of the box, exactly under the drawn glyph, a 16px square
+   with no air of its own, so a press there still opens the platform's
+   picker — it is only no longer seen. */
+.verso-input[type="time"]::-webkit-calendar-picker-indicator {
+  width: calc(var(--spacing) * 4);
+  height: calc(var(--spacing) * 4);
+  margin: 0;
+  padding: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+/* A target offering what was reached for before keeps the browser's drop
+   arrow off, so it reads as the field it is. */
+.verso-input[list]::-webkit-calendar-picker-indicator {
+  display: none;
+}

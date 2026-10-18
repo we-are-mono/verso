@@ -319,7 +319,7 @@ func TestTemperaturesChartOneReadingAtATime(t *testing.T) {
 	in.tempGraph = &widget.Chart{ID: temperatureGraphID, Span: 24 * time.Hour, Series: []widget.ChartSeries{{Values: []float64{48, 49}}}}
 	temps := card(t, renderCards(t, in), "Temperatures")
 	for _, want := range []string{
-		">Show chart for<", `class="verso-joined-word">over</span>`,
+		">Show chart for<", `class="verso-joined__word">over</span>`,
 		`hx-get="/system/hardware/temperature"`, `hx-target="#hardware-temperature-graph"`,
 		`<option value="temp.cluster-thermal" selected>cluster</option>`,
 		`<option value="temp.temperature.sfp · xfi0">SFP&#43; module xfi0</option>`,

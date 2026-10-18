@@ -1,0 +1,83 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/* SPDX-FileCopyrightText: 2026 Mono Technologies Inc. */
+
+/*
+ * tokens — a box of values (a list of addresses, of names): a field's box,
+ * each value inside it a chip a person put there and can take back out. The
+ * chips stand 4px inside the box's edge (3px and its pixel) and 4px apart, on
+ * the box's white rather than crowding its edge, so the box is a field's
+ * 32px; wrapped rows of chips stand 16px apart, so each row adds 40px and
+ * the box stays on the grid. The box gives its bottom border's pixel back.
+ *
+ * Elements: __chip    one value: sized to the control rather than to words,
+ *                     24px inside the 32px box, Mid Sand behind a Strong
+ *                     Hairline, since it sits on a field's white where a
+ *                     quiet chip all but disappears; the value at the box's
+ *                     own reading size, verbatim, as it was typed
+ *           __remove  the glyph act that takes it out, pulled 4px into the
+ *                     chip's padding so it sits inside the chip's edge
+ *           __input   the value being typed, at the chips' height; its prompt
+ *                     words in Meta, gone once a chip holds a value (the
+ *                     prompt is for an empty box)
+ */
+
+.verso-tokens {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: calc(var(--spacing) * 4) var(--spacing);
+  min-height: var(--spacing-control);
+  margin-bottom: -1px;
+  padding: calc(var(--spacing) * 0.75);
+  border: 1px solid var(--color-rule-strong);
+  border-radius: var(--radius-xs);
+  background-color: var(--color-canvas);
+  box-shadow: var(--shadow-field);
+  transition-property: border-color;
+  transition-duration: 150ms;
+}
+.verso-tokens:hover:not(:focus-within) {
+  border-color: var(--color-faint);
+}
+.verso-tokens:focus-within {
+  border-color: var(--color-denim);
+}
+
+.verso-tokens__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--spacing) * 1.5);
+  height: calc(var(--spacing) * 6);
+  padding-inline: calc(var(--spacing) * 2);
+  border: 1px solid var(--color-rule-strong);
+  border-radius: var(--radius-xs);
+  background-color: var(--color-mid);
+  color: var(--color-ink);
+  white-space: nowrap;
+  @apply type-value;
+}
+
+.verso-tokens__remove[data-verso-size] {
+  width: calc(var(--spacing) * 5);
+  height: calc(var(--spacing) * 5);
+  margin-right: calc(var(--spacing) * -1);
+}
+
+.verso-tokens__input {
+  flex: 1 1 0%;
+  min-width: calc(var(--spacing) * 18);
+  height: calc(var(--spacing) * 6);
+  padding-inline: calc(var(--spacing) * 1.5);
+  border: 0;
+  background: transparent;
+  color: var(--color-ink);
+  outline: none;
+  @apply type-input;
+}
+.verso-tokens__input::placeholder {
+  color: var(--color-meta);
+  @apply type-input;
+}
+.verso-tokens__input:where(.verso-tokens:has(.verso-tokens__chip) *)::placeholder {
+  color: transparent;
+}

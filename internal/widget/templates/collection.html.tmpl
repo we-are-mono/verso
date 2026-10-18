@@ -44,7 +44,7 @@
     <form id="{{$.AddID}}" method="post"{{if $.Action}} action="{{$.Action}}"{{end}} x-show="asking" x-cloak class="verso-collection__form">
       {{template "verso-csrf" $.CSRFToken}}
       <label for="{{$.AddID}}-input" class="sr-only">{{.Label}}</label>
-      <input x-ref="first" id="{{$.AddID}}-input" name="{{.Name}}" value="{{.Value}}" type="text"{{if .Placeholder}} placeholder="{{.Placeholder}}"{{end}} autocomplete="off" spellcheck="false"{{if .Error}} aria-invalid="true" aria-describedby="{{$.AddID}}-error"{{end}} class="{{template "verso-input-class"}} w-full {{template "verso-input-border" .Error}}">
+      <input x-ref="first" id="{{$.AddID}}-input" name="{{.Name}}" value="{{.Value}}" type="text"{{if .Placeholder}} placeholder="{{.Placeholder}}"{{end}} autocomplete="off" spellcheck="false"{{if .Error}} aria-invalid="true" aria-describedby="{{$.AddID}}-error"{{end}} class="verso-input" data-verso-verbatim>
       {{if .Error}}<p id="{{$.AddID}}-error" data-verso-error class="{{template "verso-refusal-band"}}">{{template "verso-error-words" .Error}}</p>{{end}}
       {{$.Preview}}
       <div class="verso-collection__acts">

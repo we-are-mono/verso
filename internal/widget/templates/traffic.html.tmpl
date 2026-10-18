@@ -18,10 +18,10 @@
      that comes back is that window's and the dropdown keeps the choice. The
      Overview's Traffic card carries it in its header. */}}
 {{define "traffic.window"}}
-<div class="relative flex shrink-0 items-center">
-  <select name="range" aria-label="{{ t "Window" }}" hx-get="{{.URL}}" hx-trigger="change" hx-target="{{.Target}}" hx-swap="outerHTML" class="{{template "verso-select-compact"}}">
+<div class="verso-control shrink-0" data-verso-size="compact">
+  <select name="range" aria-label="{{ t "Window" }}" hx-get="{{.URL}}" hx-trigger="change" hx-target="{{.Target}}" hx-swap="outerHTML" class="verso-input" data-verso-size="compact">
     {{range .Ranges}}<option value="{{.Value}}"{{if eq .Value $.Range}} selected{{end}}>{{.Label}}</option>{{end}}
   </select>
-  <span class="{{template "verso-select-compact-chevron"}}">{{icon "chevron-down" "size-3.5"}}</span>
+  <span class="verso-control__trail">{{icon "chevron-down" "size-3.5"}}</span>
 </div>
 {{end}}

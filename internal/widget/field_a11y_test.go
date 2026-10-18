@@ -4,6 +4,8 @@
 package widget
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -205,25 +207,49 @@ func TestTipCanBeReached(t *testing.T) {
 // is mono at the reading size and regular weight, a step under the 500 a
 // displayed value takes; words (a rule's name, a description, a password) are
 // sans at 14px, which is what Hanken's taller x-height reads as beside mono 16.
+// The box takes the input role (type.css): its words the sans at 400, its
+// verbatim form (data-verso-verbatim) mono at the reading size.
 func TestInputsFollowTheTypographyContract(t *testing.T) {
-	const mono, sans = "font-mono text-base font-normal", "font-sans text-sm font-normal"
 	for name, c := range map[string]struct {
-		f    *Field
-		want string
+		f        *Field
+		verbatim bool
 	}{
-		"words":    {&Field{Name: "name", Label: "Name"}, sans},
-		"password": {&Field{Name: "pw", Label: "Password", Kind: "password"}, sans},
-		"prose":    {&Field{Name: "desc", Label: "Description", Kind: "textarea"}, sans},
-		"address":  {&Field{Name: "ip", Label: "Address", Datatype: "ipaddr"}, mono},
-		"number":   {&Field{Name: "mtu", Label: "MTU", Key: "mtu"}, mono},
-		"unit":     {&Field{Name: "rate", Label: "Rate", Unit: "Mbit/s"}, mono},
+		"words":    {&Field{Name: "name", Label: "Name"}, false},
+		"password": {&Field{Name: "pw", Label: "Password", Kind: "password"}, false},
+		"prose":    {&Field{Name: "desc", Label: "Description", Kind: "textarea"}, false},
+		"address":  {&Field{Name: "ip", Label: "Address", Datatype: "ipaddr"}, true},
+		"number":   {&Field{Name: "mtu", Label: "MTU", Key: "mtu"}, true},
+		"unit":     {&Field{Name: "rate", Label: "Rate", Unit: "Mbit/s"}, true},
 	} {
 		got := render(t, newRenderer(t), c.f)
-		if !strings.Contains(got, c.want) {
-			t.Errorf("%s: want %q:\n%s", name, c.want, got)
+		at := strings.Index(got, `id="`+c.f.Name+`"`)
+		if at < 0 {
+			t.Fatalf("%s: no box:\n%s", name, got)
 		}
-		if strings.Contains(got, "font-mono text-base font-medium text-ink shadow") {
-			t.Errorf("%s: an input is never set at the displayed value's 500:\n%s", name, got)
+		box := got[at : at+strings.Index(got[at:], ">")]
+		if !strings.Contains(box, `class="verso-input"`) && !strings.Contains(box, `class="verso-box__input"`) {
+			t.Errorf("%s: the box is not the input block's: %s", name, box)
+		}
+		if strings.Contains(box, "data-verso-verbatim") != c.verbatim {
+			t.Errorf("%s: verbatim should be %v: %s", name, c.verbatim, box)
+		}
+		if strings.Contains(box, "font-") {
+			t.Errorf("%s: a box's type is its role's, never a utility: %s", name, box)
+		}
+	}
+	for block, sel := range map[string]string{"input": ".verso-input", "box": ".verso-box__input"} {
+		if rule := cssRule(blockCSS(t, block), sel); !strings.Contains(rule, "@apply type-input;") || strings.Contains(rule, "type-value") {
+			t.Errorf("blocks/%s.css %s should set its words in the input role, never the displayed value's:\n%s", block, sel, rule)
+		}
+	}
+	typeCSS, err := os.ReadFile(filepath.Join("..", "server", "assets", "type.css"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	role := cssRule(string(typeCSS), "@utility type-input")
+	for _, want := range []string{"font-family: var(--font-sans);", "font-size: 0.875rem;", "font-weight: 400;", "&[data-verso-verbatim] { font-family: var(--font-mono); font-size: 1rem;"} {
+		if !strings.Contains(role, want) {
+			t.Errorf("the input role should declare %q:\n%s", want, role)
 		}
 	}
 }
@@ -279,29 +305,54 @@ func TestCoarseCutsAreOneCountedDropdown(t *testing.T) {
 // to the ordinary hairline and the action colour.
 // Focused, the edge doubles to 2px — an inset line inside the border, beside
 // the field's own inset shadow — so focus reads without the box growing.
-const refusedBorder = "border-rule-strong hover:border-faint focus:border-denim aria-invalid:border-crimson aria-invalid:hover:border-crimson-deep aria-invalid:focus:border-crimson-deep aria-invalid:focus:shadow-[inset_0_0_0_1px_var(--color-crimson-deep),var(--shadow-field)]"
+// The input block (blocks/input.css) draws it on any box that carries the
+// attribute, however it came to carry it.
+func refusedBorder(t *testing.T) {
+	t.Helper()
+	declares(t, "input", ".verso-input", "border: 1px solid var(--color-rule-strong);")
+	declares(t, "input", ".verso-input:hover", "border-color: var(--color-faint);")
+	declares(t, "input", ".verso-input:focus", "border-color: var(--color-denim);")
+	declares(t, "input", `.verso-input[aria-invalid="true"]`, "border-color: var(--color-crimson);")
+	declares(t, "input", `.verso-input[aria-invalid="true"]:hover`, "border-color: var(--color-crimson-deep);")
+	declares(t, "input", `.verso-input[aria-invalid="true"]:focus`, "border-color: var(--color-crimson-deep);",
+		"box-shadow: inset 0 0 0 1px var(--color-crimson-deep), var(--shadow-field);")
+}
 
 // TestRefusedFieldStaysCrimsonWhileFocused: a refused field is marked as the
 // one that is wrong at rest, under the pointer and while it has focus, and
 // its refusal is marked as one the page can take away once it is answered.
 func TestRefusedFieldStaysCrimsonWhileFocused(t *testing.T) {
+	refusedBorder(t)
 	got := render(t, newRenderer(t), &Field{Name: "ip", Label: "Address", Error: "Not an address."})
-	for _, want := range []string{refusedBorder, `aria-invalid="true"`, `id="ip-error" data-verso-error`} {
-		if !strings.Contains(got, want) {
-			t.Errorf("refused field missing %q:\n%s", want, got)
-		}
+	if box := refusedBox(got); !strings.Contains(box, `class="verso-input"`) {
+		t.Errorf("refused field's box is not the input block: %q\n%s", box, got)
+	}
+	if !strings.Contains(got, `id="ip-error" data-verso-error`) {
+		t.Errorf("refused field missing its refusal:\n%s", got)
 	}
 	for name, w := range map[string]Widget{
 		"collection add": &Collection{Add: &CollectionAdd{Label: "Add a key", Name: "authorized_key", Submit: "Add key", Error: "Paste one complete SSH public key."}},
 		"list box":       &List{Name: "server", Label: "Servers", Items: []string{"x"}, Errors: map[string]string{"0": "Enter a hostname."}},
 	} {
 		got := render(t, newRenderer(t), w)
-		for _, want := range []string{refusedBorder, `aria-invalid="true"`, "data-verso-error"} {
-			if !strings.Contains(got, want) {
-				t.Errorf("%s missing %q:\n%s", name, want, got)
-			}
+		if box := refusedBox(got); !strings.Contains(box, `class="verso-input"`) {
+			t.Errorf("%s: the refused box is not the input block: %q\n%s", name, box, got)
+		}
+		if !strings.Contains(got, "data-verso-error") {
+			t.Errorf("%s missing its refusal:\n%s", name, got)
 		}
 	}
+}
+
+// refusedBox is the open tag of the first element marked aria-invalid, or ""
+// when none is.
+func refusedBox(html string) string {
+	at := strings.Index(html, `aria-invalid="true"`)
+	if at < 0 {
+		return ""
+	}
+	start := strings.LastIndex(html[:at], "<")
+	return html[start : at+strings.Index(html[at:], ">")]
 }
 
 // A copy control is named with what it copies, as a row's act is named with

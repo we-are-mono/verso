@@ -58,8 +58,8 @@
      fields are separated by their padding. */}}
 {{define "field.control"}}
   {{if eq .Style "code"}}
-  <textarea id="{{.Name}}" name="{{.Name}}" rows="14" spellcheck="false" data-verso-code-editor{{template "verso-field-aria" .}} class="w-full resize-y rounded-xs border {{template "verso-input-border" .Error}} bg-ground p-3 font-mono text-sm leading-relaxed text-ink outline-none">{{.Value}}</textarea>
-  <p class="text-right font-mono text-sm text-meta">{{t "Lines"}}: <span data-verso-code-lines>{{.LineCount}}</span></p>
+  <textarea id="{{.Name}}" name="{{.Name}}" rows="14" spellcheck="false" data-verso-code-editor{{template "verso-field-aria" .}} class="verso-input" data-verso-kind="code">{{.Value}}</textarea>
+  <p class="verso-input__count">{{t "Lines"}}: <span data-verso-code-lines data-verso-figures>{{.LineCount}}</span></p>
   {{else if eq .Style "locked"}}
   {{/* A value fixed once written: the row keeps its place and its label, the
        control is a quiet box with a padlock and the reason on it, and nothing
@@ -127,7 +127,7 @@
        value; a sign-in password never does. The eye is a control's square,
        the field's height, so the pair is one control's line. */}}
   <span x-data="reveal" class="flex w-full items-center gap-2">
-    <input id="{{.Name}}" name="{{.Name}}" type="password" :type="inputType" value="{{.Value}}" autocomplete="off" spellcheck="false"{{template "verso-field-aria" .}} class="min-w-0 flex-1 {{template "verso-input-words"}} {{template "verso-input-border" .Error}}">
+    <input id="{{.Name}}" name="{{.Name}}" type="password" :type="inputType" value="{{.Value}}" autocomplete="off" spellcheck="false"{{template "verso-field-aria" .}} class="verso-input min-w-0 flex-1">
     <button type="button" @click="toggle" :aria-pressed="pressed" aria-pressed="false" aria-label="{{ t "Show password" }}" title="{{ t "Show password" }}" class="grid h-control w-control shrink-0 cursor-pointer place-items-center rounded-xs border border-rule-strong text-glyph transition-colors hover:border-sand-5 hover:bg-rule hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-denim">
       <span x-show="masked" class="flex">{{icon "eye" "size-4"}}</span>
       <span x-show="shown" x-cloak class="flex">{{icon "eye-off" "size-4"}}</span>
@@ -135,11 +135,11 @@
   </span>
   {{else if eq .Kind "password"}}
   {{/* Never reflect a submitted password back into the value attribute. */}}
-  <input id="{{.Name}}" name="{{.Name}}" type="password" autocomplete="{{if .Autocomplete}}{{.Autocomplete}}{{else}}new-password{{end}}"{{template "verso-field-aria" .}} class="{{template "verso-input-words"}} {{template "verso-input-border" .Error}}">
+  <input id="{{.Name}}" name="{{.Name}}" type="password" autocomplete="{{if .Autocomplete}}{{.Autocomplete}}{{else}}new-password{{end}}"{{template "verso-field-aria" .}} class="verso-input">
   {{else if eq .Kind "textarea"}}
-  <textarea id="{{.Name}}" name="{{.Name}}" rows="5"{{template "verso-field-aria" .}} class="{{template "verso-input-words"}} {{template "verso-input-border" .Error}} h-auto py-2 leading-relaxed">{{.Value}}</textarea>
+  <textarea id="{{.Name}}" name="{{.Name}}" rows="5"{{template "verso-field-aria" .}} class="verso-input">{{.Value}}</textarea>
   {{else if eq .Kind "datetime-local"}}
-  <input id="{{.Name}}" name="{{.Name}}" value="{{.Value}}" type="datetime-local" step="1"{{template "verso-field-aria" .}} class="{{template "verso-input-class"}} {{template "verso-input-border" .Error}}">
+  <input id="{{.Name}}" name="{{.Name}}" value="{{.Value}}" type="datetime-local" step="1"{{template "verso-field-aria" .}} class="verso-input" data-verso-verbatim>
   {{else if eq .Kind "time"}}
   {{template "verso-time-input" .Part}}
   {{else if .Unit}}

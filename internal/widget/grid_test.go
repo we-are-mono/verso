@@ -173,16 +173,19 @@ func TestASecretAndItsRepeatAreOneControl(t *testing.T) {
 	}})
 	for _, want := range []string{
 		`role="group" aria-labelledby="password-group-label"`,
-		`class="verso-box-part" data-verso-measure="secret"`,
+		`class="verso-box__part" data-verso-measure="secret"`,
 		`id="password" name="password" type="password" autocomplete="new-password" aria-label="New password"`,
 		`id="confirm" name="confirm" type="password" autocomplete="new-password" aria-label="Repeat new password"`,
 		`data-verso-change-kind="password"`,
-		"font-sans text-sm",
 		"Repeat new password: The passwords differ.",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("fused secret missing %q:\n%s", want, got)
 		}
+	}
+	// set in words: the input role's sans, not its verbatim form
+	if n := strings.Count(got, `class="verso-box__input">`); n != 2 || strings.Contains(got, "data-verso-verbatim") {
+		t.Errorf("a secret is set in words, want 2 parts without verbatim, got %d:\n%s", n, got)
 	}
 	if strings.Contains(got, "hunter22") {
 		t.Errorf("a secret is never reflected into the page:\n%s", got)

@@ -292,3 +292,15 @@ after; the SVG's fills, strokes and LED animations compared directly.
 | tiles, an expanded row's facts columns, a split's form and rail, a figure beside its facts, cards of one kind | 6 | arbitrary variants and `data-verso-beside`/`data-verso-cards` rules keyed on the page body | the grid block, `data-verso-style`, each child in a `__cell`; no pixel changes |
 | facts in a grid's columns | | its dl's labels 96px, values left, by arbitrary variants into the facts list; their hairlines Rule | the facts block's left-set list (the renderer sets it), its hairlines Mid as every divided list's; on a phone the label over its value |
 | an editor split's inputs | | font forced by arbitrary variants (normal weight, a name or password in sans) | the inputs' own roles |
+
+### `input`, `control`, `box`, `joined` and `tokens`
+
+| Copies | n | Difference | Became |
+|---|---|---|---|
+| a typed box, a dropdown, a textarea | every field | five class-string templates composed per site; the crimson only where the template was told a refusal could come | the input block: words or verbatim, `data-verso-measure`; any box marked refused is crimson |
+| a placeholder in a machine-string box | | mono, the box's face | the input role's words: a prompt is words |
+| a box with a glyph inside (a dropdown's chevron, a clock, a leading glyph, the search's lens) | 9 | absolute spans hand-placed per site; the search's lens 10px in, in Faint, its words 34px in | the control block: every glyph 12px in, a lead in Glyph, the words 38px in |
+| a compact dropdown | 1 | its own class-string template, its words on a 1 line | the input's compact size on its 24px line |
+| a file's text typed in place | 1 | mono 14 on a 1.625 line | the code role (mono 16 on 24); its line count words with figures |
+| a box of fused values, a sentence of fields | | rules in forms.css under hyphenated names | the box and joined blocks; no pixel changes |
+| a token box and its chips | 2 | a class-string template and utility strings | the tokens block; no pixel changes |

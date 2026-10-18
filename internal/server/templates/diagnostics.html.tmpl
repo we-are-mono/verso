@@ -17,43 +17,43 @@
 <form data-verso-diag-form novalidate class="flex min-w-0 basis-full flex-wrap items-center gap-2">
   {{/* Each tool leads with its own glyph, the one the pick swaps in: ping's
        echo, traceroute's path, the lookup's search. */}}
-  <div class="relative w-44">
-    <span class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-glyph">
+  <div class="verso-control w-44">
+    <span class="verso-control__lead">
       <span data-verso-diag-glyph="ping" class="verso-glyph flex" data-verso-settle>{{icon "radio" "size-4"}}</span>
       <span data-verso-diag-glyph="traceroute" hidden class="verso-glyph flex" data-verso-settle>{{icon "route" "size-4"}}</span>
       <span data-verso-diag-glyph="nslookup" hidden class="verso-glyph flex" data-verso-settle>{{icon "search" "size-4"}}</span>
     </span>
-    <select name="tool" aria-label="{{t "Tool"}}" class="{{template "verso-input-words"}} {{template "verso-input-border" false}} cursor-pointer appearance-none pr-9 pl-9.5">
+    <select name="tool" aria-label="{{t "Tool"}}" class="verso-input" data-verso-lead data-verso-trail>
       <option value="ping" selected>{{t "Ping"}}</option>
       <option value="traceroute">{{t "Traceroute"}}</option>
       <option value="nslookup">{{t "DNS lookup"}}</option>
     </select>
-    <span class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-meta">{{icon "chevron-down" "size-4"}}</span>
+    <span class="verso-control__trail">{{icon "chevron-down" "size-4"}}</span>
   </div>
   {{/* The target offers back what this browser reached for before, newest
        first, as it is typed into (verso-diagnostics.js); the browser's own
        drop arrow stays off, so it reads as the field it is. */}}
   <div class="w-100 max-w-full">
-    <input type="text" name="target" list="verso-diag-recent" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="{{t "example.com or 1.1.1.1"}}" aria-label="{{t "Host or address"}}" class="{{template "verso-input-class"}} {{template "verso-input-border" false}} [&::-webkit-calendar-picker-indicator]:hidden!">
+    <input type="text" name="target" list="verso-diag-recent" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="{{t "example.com or 1.1.1.1"}}" aria-label="{{t "Host or address"}}" class="verso-input" data-verso-verbatim>
     <datalist id="verso-diag-recent" data-verso-diag-recent></datalist>
   </div>
   {{/* The way out wears the interface's glyph, as an interface cited anywhere
        does. "any interface" is words and reads in the sans; a picked
        interface is its name, verbatim, in mono (verso-diagnostics.js). */}}
-  <div class="relative w-48">
-    <span class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-glyph">{{icon "network" "size-4"}}</span>
-    <select name="interface" aria-label="{{t "Interface"}}" class="{{template "verso-input-words"}} {{template "verso-input-border" false}} cursor-pointer appearance-none pr-9 pl-9.5 disabled:cursor-default disabled:bg-quiet disabled:text-meta">
+  <div class="verso-control w-48">
+    <span class="verso-control__lead">{{icon "network" "size-4"}}</span>
+    <select name="interface" aria-label="{{t "Interface"}}" class="verso-input" data-verso-lead data-verso-trail>
       <option value="" selected>{{t "any interface"}}</option>
       {{range .Interfaces}}<option value="{{.Value}}">{{.Label}}</option>{{end}}
     </select>
-    <span class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-meta">{{icon "chevron-down" "size-4"}}</span>
+    <span class="verso-control__trail">{{icon "chevron-down" "size-4"}}</span>
   </div>
   {{/* The family is a cut, so a dropdown like its neighbours. */}}
-  <div class="relative w-36">
-    <select name="family" aria-label="{{t "IP family"}}" class="{{template "verso-input-words"}} {{template "verso-input-border" false}} cursor-pointer appearance-none pr-9 pl-3">
+  <div class="verso-control w-36">
+    <select name="family" aria-label="{{t "IP family"}}" class="verso-input" data-verso-trail>
       {{range $i, $family := .Families}}<option value="{{.Value}}"{{if not $i}} selected{{end}}>{{.Label}}</option>{{end}}
     </select>
-    <span class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-meta">{{icon "chevron-down" "size-4"}}</span>
+    <span class="verso-control__trail">{{icon "chevron-down" "size-4"}}</span>
   </div>
   {{/* Run leads with play, the act naming its own glyph. Stop carries the
        waiting mark turning while the router answers, as a log's Live does

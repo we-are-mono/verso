@@ -29,7 +29,7 @@ func TestRelatedValuesAreOneControl(t *testing.T) {
 	for want, n := range map[string]int{
 		"verso-field-row":         1, // one row
 		`class="verso-box"`:       1, // one box
-		`class="verso-box-part"`:  2, // one part per value
+		`class="verso-box__part"`: 2, // one part per value
 		"verso-field-label ":      1, // one label line
 		"<label":                  0, // the label names the group, not one input
 		"data-verso-change-field": 2, // each part is its own change
@@ -44,7 +44,7 @@ func TestRelatedValuesAreOneControl(t *testing.T) {
 		`role="group" aria-labelledby="synflood_rate-group-label"`,
 		`id="synflood_rate" name="synflood_rate" value="25" type="text" aria-label="Connections per second"`,
 		`data-verso-change-name="synflood_burst" data-verso-change-label="Burst" data-verso-change-kind="text" data-verso-writes="synflood_burst"`,
-		`<span id="synflood_burst-unit" class="verso-box-unit">packets</span>`,
+		`<span id="synflood_burst-unit" class="verso-box__unit">packets</span>`,
 		`aria-describedby="synflood_burst-unit"`, // the unit is read with the value
 	} {
 		if !strings.Contains(got, want) {
@@ -178,14 +178,14 @@ func TestAValueAndItsUnitFuse(t *testing.T) {
 		&Field{Name: "check_unit", Label: "Unit", Kind: "select", Key: "check_unit", Value: "minutes", Options: units},
 	}})
 	for want, n := range map[string]int{
-		`class="verso-field-row`: 1, `class="verso-box"`: 1, `class="verso-box-part"`: 2,
+		`class="verso-field-row`: 1, `class="verso-box"`: 1, `class="verso-box__part"`: 2,
 		`>Check every</span>`: 1, `>check_interval · check_unit</span>`: 1,
 	} {
 		if c := strings.Count(got, want); c != n {
 			t.Errorf("want %d of %q, got %d:\n%s", n, want, c, got)
 		}
 	}
-	if !strings.Contains(got, `<select id="check_unit" name="check_unit" aria-label="Unit"`) || !strings.Contains(got, "verso-box-select") {
+	if !strings.Contains(got, `<select id="check_unit" name="check_unit" aria-label="Unit"`) || !strings.Contains(got, `class="verso-box__select"`) {
 		t.Errorf("the unit dropdown is not a part of the box:\n%s", got)
 	}
 	if strings.Contains(got, "verso-field-wide") || strings.Contains(got, ">Check every · Unit<") {
@@ -203,14 +203,14 @@ func TestAFusedSetNamesItsParts(t *testing.T) {
 		&Field{Name: "weight", Label: "Weight", Key: "weight", Value: "5"},
 	}})
 	for _, name := range []string{"Port", "Priority", "Weight"} {
-		if !strings.Contains(got, `<span aria-hidden="true" class="verso-box-unit">`+name+`</span>`) {
+		if !strings.Contains(got, `<span aria-hidden="true" class="verso-box__unit">`+name+`</span>`) {
 			t.Errorf("the %s part does not name itself inside the box:\n%s", name, got)
 		}
 	}
 	if !strings.Contains(got, `>port · priority · weight</span>`) {
 		t.Errorf("the chip does not name every option:\n%s", got)
 	}
-	if burst := render(t, newRenderer(t), synflood()); strings.Contains(burst, `class="verso-box-unit">Burst<`) {
+	if burst := render(t, newRenderer(t), synflood()); strings.Contains(burst, `class="verso-box__unit">Burst<`) {
 		t.Errorf("a part with a unit shows its unit, not its name:\n%s", burst)
 	}
 }
@@ -220,7 +220,7 @@ func TestAFusedSetNamesItsParts(t *testing.T) {
 // and asks for no number pad.
 func TestAUnitIsNotANumber(t *testing.T) {
 	got := render(t, newRenderer(t), &Field{Name: "filename", Label: "File name", Value: "10-local", Unit: ".conf"})
-	for _, want := range []string{`class="verso-box"`, `data-verso-measure="full"`, `<span id="filename-unit" class="verso-box-unit">.conf</span>`} {
+	for _, want := range []string{`class="verso-box"`, `data-verso-measure="full"`, `<span id="filename-unit" class="verso-box__unit">.conf</span>`} {
 		if !strings.Contains(got, want) {
 			t.Errorf("suffix field missing %q:\n%s", want, got)
 		}
@@ -236,8 +236,8 @@ func TestAUnitIsNotANumber(t *testing.T) {
 func TestAUnitMakesANumberBox(t *testing.T) {
 	got := render(t, newRenderer(t), &Field{Name: "rate", Label: "Rate", Key: "synflood_rate", Value: "25", Unit: "Mbit/s"})
 	for _, want := range []string{
-		`class="verso-box"`, `class="verso-box-part" data-verso-measure="number"`,
-		`inputmode="numeric"`, `<span id="rate-unit" class="verso-box-unit">Mbit/s</span>`,
+		`class="verso-box"`, `class="verso-box__part" data-verso-measure="number"`,
+		`inputmode="numeric"`, `<span id="rate-unit" class="verso-box__unit">Mbit/s</span>`,
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("unit field missing %q:\n%s", want, got)

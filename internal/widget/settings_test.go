@@ -68,7 +68,7 @@ func TestAnInlinePortIsAsWideAsAPort(t *testing.T) {
 	}})
 	input := got[strings.Index(got, `<input id="web_https"`):]
 	input = input[:strings.Index(input, ">")]
-	if !strings.Contains(input, "w-24! max-w-full") || !strings.Contains(input, `inputmode="numeric"`) {
+	if !strings.Contains(input, `class="verso-input"`) || !strings.Contains(input, `data-verso-measure="number"`) || !strings.Contains(input, `inputmode="numeric"`) {
 		t.Errorf("an inline port takes the row's width: %s", input)
 	}
 	if strings.Contains(got, "data-verso-control-measure") {
@@ -88,11 +88,10 @@ func TestInlineValueField(t *testing.T) {
 		`id="hostname" type="text" name="hostname" value="mono-gateway"`,
 		`aria-describedby="hostname-desc hostname-error"`, // read with its description and its refusal
 		"data-verso-inline-input",
-		`data-verso-datatype="hostname"`,    // the client validates by this on blur
-		"data-verso-inline-error",           // the error slot lives beneath the field
-		"aria-invalid:border-crimson",       // the error treatment is ready on the input
-		`data-verso-control-measure="host"`, // same host measure as form fields
-		"font-mono text-base",               // same size as an ordinary field input
+		`data-verso-datatype="hostname"`,          // the client validates by this on blur
+		"data-verso-inline-error",                 // the error slot lives beneath the field
+		`class="verso-input" data-verso-verbatim`, // an ordinary field's box: its error treatment ready, its words the same size
+		`data-verso-control-measure="host"`,       // same host measure as form fields
 		`<p id="hostname-desc" data-verso-field-desc class="text-sm leading-6 text-pretty text-body"><span>Used on the network.</span></p>`, // the description stands under the name, on 24px lines
 	} {
 		if !strings.Contains(got, want) {

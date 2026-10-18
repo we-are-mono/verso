@@ -9,7 +9,7 @@
      form field's (verso-field, built in settingsItem.frame), with the
      description kept in view under it. An in-place value stages itself on
      blur or Enter and says its own refusal in the frame's band. */}}
-{{define "settings.value"}}<input id="{{.Name}}" type="text" name="{{.Name}}" value="{{.Value}}"{{with .DescribedBy}} aria-describedby="{{.}}"{{end}}{{if .Inline}} data-verso-inline-input{{with .Datatype}} data-verso-datatype="{{.}}"{{end}}{{end}}{{if eq .Measure "number"}} inputmode="numeric"{{end}} class="{{template "verso-input-class"}} {{template "verso-input-border" .Inline}} tabular-nums{{if eq .Measure "number"}} w-24! max-w-full{{end}}">{{end}}
+{{define "settings.value"}}<input id="{{.Name}}" type="text" name="{{.Name}}" value="{{.Value}}"{{with .DescribedBy}} aria-describedby="{{.}}"{{end}}{{if .Inline}} data-verso-inline-input{{with .Datatype}} data-verso-datatype="{{.}}"{{end}}{{end}}{{if eq .Measure "number"}} inputmode="numeric"{{end}} class="verso-input" data-verso-verbatim data-verso-figures{{if eq .Measure "number"}} data-verso-measure="number"{{end}}>{{end}}
 {{/* settings.readout: a fact's answer (readoutView) — its value or its pills,
      standing in the answer column where a setting's control stands. They
      read on 24px lines, the first on the name's band (the 4px over it gives

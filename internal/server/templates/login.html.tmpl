@@ -62,13 +62,13 @@
           <div class="verso-login__field">
             <label for="username" class="{{template "verso-field-label-class"}}">{{ t "Username" }}</label>
             <input id="username" name="username" type="text" value="{{ .Username }}" autocomplete="username" autocapitalize="none" spellcheck="false"
-              class="{{template "verso-input-class"}} {{template "verso-input-border" ""}}">
+              class="verso-input" data-verso-verbatim>
           </div>
           <div class="verso-login__field">
             <label for="password" class="{{template "verso-field-label-class"}}">{{ t "Password" }}</label>
             <input id="password" name="password" type="password" autocomplete="current-password" autofocus
               {{if .Error}}aria-invalid="true" aria-describedby="login-error"{{end}}
-              class="{{template "verso-input-words"}} {{template "verso-input-border" .Error}}">
+              class="verso-input">
             {{if .Error}}
             <p id="login-error" role="alert" class="{{template "verso-refusal-band"}}">{{template "verso-error-words" .Error}}</p>
             {{end}}

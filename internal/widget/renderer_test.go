@@ -234,14 +234,18 @@ func TestRenderBadge(t *testing.T) {
 // colour applies only while it is not focused, as a plain field's does.
 func TestAFocusedBoxStaysFocusedUnderThePointer(t *testing.T) {
 	r := newRenderer(t)
-	for name, w := range map[string]Widget{
-		"tokens": &List{Name: "proto", Label: "Protocol", Style: "tokens"},
-		"file":   &Field{Name: "backup", Kind: "file"},
-	} {
-		got := render(t, r, w)
-		if !strings.Contains(got, "hover:not-focus-within:border-") || !strings.Contains(got, "focus-within:border-denim") {
-			t.Errorf("%s: hover must not outrank focus:\n%s", name, got)
-		}
+	file := render(t, r, &Field{Name: "backup", Kind: "file"})
+	if !strings.Contains(file, "hover:not-focus-within:border-") || !strings.Contains(file, "focus-within:border-denim") {
+		t.Errorf("file: hover must not outrank focus:\n%s", file)
+	}
+	tokens := render(t, r, &List{Name: "proto", Label: "Protocol", Style: "tokens"})
+	if !strings.Contains(tokens, `class="verso-tokens"`) {
+		t.Errorf("tokens: the box is not the tokens block:\n%s", tokens)
+	}
+	declares(t, "tokens", ".verso-tokens:hover:not(:focus-within)", "border-color: var(--color-faint);")
+	declares(t, "tokens", ".verso-tokens:focus-within", "border-color: var(--color-denim);")
+	if cssRule(blockCSS(t, "tokens"), ".verso-tokens:hover") != "" {
+		t.Errorf("tokens: a bare hover rule would outrank focus")
 	}
 }
 
@@ -1320,8 +1324,12 @@ func TestRenderFieldError(t *testing.T) {
 	if !strings.Contains(got, "must be a valid hostname") {
 		t.Errorf("inline error not shown: %s", got)
 	}
+	// the field names itself as the refused one, focused too
+	refusedBorder(t)
+	if box := refusedBox(got); !strings.Contains(box, `class="verso-input"`) {
+		t.Errorf("errored field's box is not the input block: %q", box)
+	}
 	for _, want := range []string{
-		refusedBorder,                          // the field names itself as the refused one, focused too
 		"bg-crimson-soft", "text-crimson-deep", // and the message sits on crimson's own ground
 		"bg-crimson", // with the mark beside it
 	} {
@@ -1334,14 +1342,18 @@ func TestRenderFieldError(t *testing.T) {
 func TestRenderFieldFocus(t *testing.T) {
 	r := newRenderer(t)
 	got := render(t, r, &Field{Name: "hostname", Label: "Hostname"})
-	for _, want := range []string{
-		// resting, pointed at, and focused: only the border changes — the
-		// strong hairline, the faint step under the pointer, the action colour
-		// while typing — as the canvas draws every input
-		"border-rule-strong hover:border-faint focus:border-denim",
-	} {
-		if !strings.Contains(got, want) {
-			t.Errorf("valid field missing focus treatment %q: %s", want, got)
+	if !strings.Contains(got, `class="verso-input"`) {
+		t.Errorf("valid field is not the input block: %s", got)
+	}
+	// resting, pointed at, and focused: only the border changes — the strong
+	// hairline, the faint step under the pointer, the action colour while
+	// typing — as the canvas draws every input
+	declares(t, "input", ".verso-input", "border: 1px solid var(--color-rule-strong);")
+	declares(t, "input", ".verso-input:hover", "border-color: var(--color-faint);")
+	declares(t, "input", ".verso-input:focus", "border-color: var(--color-denim);")
+	for _, sel := range []string{".verso-input:hover", ".verso-input:focus"} {
+		if rule := cssRule(blockCSS(t, "input"), sel); strings.Contains(rule, "background") || strings.Contains(rule, "shadow") {
+			t.Errorf("%s changes more than the border:\n%s", sel, rule)
 		}
 	}
 }
@@ -1369,11 +1381,14 @@ func TestRenderListItemsPlusBlank(t *testing.T) {
 	for _, want := range []string{
 		`data-verso-change-name="server"`, `data-verso-change-kind="list"`,
 		"NTP servers", "0.pool.ntp.org", "1.pool.ntp.org", "Add",
-		"border-rule-strong hover:border-faint focus:border-denim",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("list missing %q", want)
 		}
+	}
+	// every item, the blank one too, is the input block's box
+	if n := strings.Count(got, `class="verso-input" data-verso-verbatim`); n != 3 {
+		t.Errorf("want 3 input boxes, got %d: %s", n, got)
 	}
 }
 
@@ -1395,26 +1410,40 @@ func TestRenderTokenListKeepsRepeatedFieldContract(t *testing.T) {
 		// The chip the script clones is the chip the server draws, to the class:
 		// one source for a token's shape, not one here and one in the script.
 		`<template data-verso-token-chip>`, `data-verso-token-label`,
-		// 24px inside a 34px box, with 4px of the box showing all round and
-		// between chips, wrapped rows 16px apart so the box stays on the grid's
-		// cells — and a 20px remove glyph wearing the hover every icon act
-		// wears. The box is a field, so it wears a field's fill: white, with
-		// the inset shadow, and a field's height.
-		`class="flex min-h-control flex-wrap items-center gap-x-1 gap-y-4 rounded-xs border border-rule-strong bg-canvas shadow-(--shadow-field) p-0.75`,
-		`h-6 min-w-18 flex-1`, // the value being typed stands at the chips' height
-		// A value in the box is a step darker than the quiet ground a chip
-		// wears elsewhere, so it stands off the white box it sits in; its
-		// remove glyph's hover is a step darker again, so it shows on the chip.
-		`inline-flex h-6 items-center gap-1.5 rounded-xs border border-rule-strong bg-mid px-2 font-mono text-base font-medium whitespace-nowrap text-ink`,
+		`<div data-verso-token-list class="verso-tokens">`,
+		`class="verso-tokens__input" data-verso-verbatim`,
+		`<span data-verso-token class="verso-tokens__chip" data-verso-verbatim>`,
 		// Its remove glyph takes the hover every icon act takes: the parked
 		// border, the hairline wash and Ink, the button block at its glyph
 		// size.
-		`class="verso-button size-5 -mr-1" data-verso-size="glyph">`,
+		`class="verso-button verso-tokens__remove" data-verso-size="glyph">`,
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("token list missing %q:\n%s", want, got)
 		}
 	}
+	// 24px inside a 34px box, with 4px of the box showing all round and
+	// between chips, wrapped rows 16px apart so the box stays on the grid's
+	// cells — and a 20px remove glyph wearing the hover every icon act wears.
+	// The box is a field, so it wears a field's fill: white, with the inset
+	// shadow, and a field's height.
+	declares(t, "tokens", ".verso-tokens", "display: flex;", "flex-wrap: wrap;", "align-items: center;",
+		"gap: calc(var(--spacing) * 4) var(--spacing);", "min-height: var(--spacing-control);",
+		"padding: calc(var(--spacing) * 0.75);", "border: 1px solid var(--color-rule-strong);",
+		"border-radius: var(--radius-xs);", "background-color: var(--color-canvas);", "box-shadow: var(--shadow-field);")
+	// the value being typed stands at the chips' height
+	declares(t, "tokens", ".verso-tokens__input", "height: calc(var(--spacing) * 6);",
+		"min-width: calc(var(--spacing) * 18);", "flex: 1 1 0%;")
+	// A value in the box is a step darker than the quiet ground a chip wears
+	// elsewhere, so it stands off the white box it sits in; its remove glyph's
+	// hover is a step darker again, so it shows on the chip. The value is set
+	// as it was typed: the displayed value's role, verbatim.
+	declares(t, "tokens", ".verso-tokens__chip", "display: inline-flex;", "height: calc(var(--spacing) * 6);",
+		"gap: calc(var(--spacing) * 1.5);", "padding-inline: calc(var(--spacing) * 2);",
+		"border: 1px solid var(--color-rule-strong);", "background-color: var(--color-mid);",
+		"color: var(--color-ink);", "white-space: nowrap;", "@apply type-value;")
+	declares(t, "tokens", ".verso-tokens__remove[data-verso-size]", "width: calc(var(--spacing) * 5);",
+		"height: calc(var(--spacing) * 5);", "margin-right: calc(var(--spacing) * -1);")
 }
 
 // TestRenderListPerItemError shows how a repeating widget reports which row
@@ -1427,8 +1456,11 @@ func TestRenderListPerItemError(t *testing.T) {
 	if !strings.Contains(got, "must be a hostname or IP address") {
 		t.Errorf("per-item error missing: %s", got)
 	}
+	refusedBorder(t)
+	if box := refusedBox(got); !strings.Contains(box, `value="bad host"`) || !strings.Contains(box, `class="verso-input"`) {
+		t.Errorf("the refused item is not the input block's box: %q", box)
+	}
 	for _, want := range []string{
-		refusedBorder,
 		"text-crimson-deep", // the message reads in the step of the hue that carries words
 	} {
 		if !strings.Contains(got, want) {

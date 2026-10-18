@@ -46,7 +46,7 @@ func TestAFetchingChoiceFetchesAViewAndStagesNothing(t *testing.T) {
 		`name="sensor"`:                                              1,
 		`name="range"`:                                               1,
 		">Show chart for<":                                           1,
-		`class="verso-joined-word">over</span>`:                      1,
+		`class="verso-joined__word">over</span>`:                     1,
 		"data-verso-change-field":                                    0,
 		"data-verso-writes":                                          0,
 		`<option value="temp.cluster-thermal" selected>CPU</option>`: 1,
@@ -110,7 +110,7 @@ func TestJoinedChoicesAreOneRow(t *testing.T) {
 		"<select":                 2,
 		`type="radio"`:            0, // a joined pick stays a dropdown
 		"data-verso-change-field": 2,
-		`<span id="dest-join" aria-hidden="true" class="verso-joined-word">to</span>`: 1,
+		`<span id="dest-join" aria-hidden="true" class="verso-joined__word">to</span>`: 1,
 	} {
 		if c := strings.Count(got, want); c != n {
 			t.Errorf("want %d of %q, got %d:\n%s", n, want, c, got)
@@ -163,17 +163,18 @@ func TestJoinedValuesStandApart(t *testing.T) {
 		`class="verso-joined"`:    1,
 		"<input":                  2,
 		"data-verso-change-field": 2,
-		`<span id="stop_time-join" aria-hidden="true" class="verso-joined-word">to</span>`: 1,
-		"w-measure-32! max-w-full": 2, // a clock time's own width
-		`aria-invalid="true"`:      1,
+		`<span id="stop_time-join" aria-hidden="true" class="verso-joined__word">to</span>`: 1,
+		`data-verso-measure="short"`: 2, // a clock time's own width
+		`aria-invalid="true"`:        1,
 	} {
 		if c := strings.Count(got, want); c != n {
 			t.Errorf("want %d of %q, got %d:\n%s", n, want, c, got)
 		}
 	}
+	declares(t, "input", `.verso-input[data-verso-measure="short"]`, "width: calc(var(--spacing) * 32 + 1px);", "max-width: 100%;")
 	for _, id := range []string{"start_time", "stop_time"} {
 		input := got[strings.Index(got, `<input id="`+id+`"`):]
-		if input = input[:strings.Index(input, ">")]; !strings.Contains(input, "font-mono") {
+		if input = input[:strings.Index(input, ">")]; !strings.Contains(input, `class="verso-input" data-verso-verbatim`) {
 			t.Errorf("a clock time is a machine string, set in mono: %s", input)
 		}
 	}
@@ -200,7 +201,7 @@ func TestJoinedClockTimesStandApart(t *testing.T) {
 		`class="verso-joined"`:    1,
 		`type="time"`:             2,
 		"data-verso-change-field": 2,
-		`<span id="stop_time-join" aria-hidden="true" class="verso-joined-word">to</span>`: 1,
+		`<span id="stop_time-join" aria-hidden="true" class="verso-joined__word">to</span>`: 1,
 	} {
 		if c := strings.Count(got, want); c != n {
 			t.Errorf("want %d of %q, got %d:\n%s", n, want, c, got)
@@ -214,13 +215,27 @@ func TestJoinedClockTimesStandApart(t *testing.T) {
 	// stays underneath, invisible, so a press on the glyph still opens its
 	// picker.
 	for want, n := range map[string]int{
-		`points="12 6 12 12 16 14"`: 2, // Lucide's clock, from the shared set
-		"verso-time-input":          2,
+		`points="12 6 12 12 16 14"`:                                 2, // Lucide's clock, from the shared set
+		`<div class="verso-control w-32">`:                          2,
+		`type="time" aria-label=`:                                   2,
+		`class="verso-input" data-verso-verbatim data-verso-trail>`: 2,
+		`<span class="verso-control__trail">`:                       2,
 	} {
 		if c := strings.Count(got, want); c != n {
 			t.Errorf("want %d of %q, got %d:\n%s", n, want, c, got)
 		}
 	}
+	declares(t, "control", ".verso-control__lead,\n.verso-control__trail", "pointer-events: none;")
+	// the trail's own rule, after the one it shares with the lead
+	control := blockCSS(t, "control")
+	trail := cssRule(control[strings.Index(control, "\n.verso-control__lead {"):], ".verso-control__trail")
+	for _, d := range []string{"right: calc(var(--spacing) * 3);", "color: var(--color-meta);"} {
+		if !strings.Contains(trail, d) {
+			t.Errorf("blocks/control.css .verso-control__trail does not declare %q:\n%s", d, trail)
+		}
+	}
+	declares(t, "input", `.verso-input[type="time"]::-webkit-calendar-picker-indicator`,
+		"width: calc(var(--spacing) * 4);", "height: calc(var(--spacing) * 4);", "opacity: 0;", "cursor: pointer;")
 }
 
 // TestAJoinedRowNamesAnOptionOnce: parts that write one option between them
@@ -234,9 +249,10 @@ func TestAJoinedRowNamesAnOptionOnce(t *testing.T) {
 	if !strings.Contains(got, `>limit</span>`) || strings.Contains(got, "limit · limit") {
 		t.Errorf("the row names its one option once:\n%s", got)
 	}
-	if !strings.Contains(got, "w-measure-24! max-w-full") {
+	if !strings.Contains(got, `id="limit" name="limit"`) || !strings.Contains(got, `data-verso-measure="number"`) {
 		t.Errorf("a count stands at a number's width:\n%s", got)
 	}
+	declares(t, "input", `.verso-input[data-verso-measure="number"]`, "width: calc(var(--spacing) * 24 + 1px);", "max-width: 100%;")
 	if (&Field{Key: "limit_burst"}).Measure() != "number" {
 		t.Error("a burst is a count, at a number's width")
 	}

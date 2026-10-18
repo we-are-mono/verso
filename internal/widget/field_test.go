@@ -225,17 +225,25 @@ func TestAFieldsHelpIsItsDescription(t *testing.T) {
 func TestAnAnswerFillsItsColumnOrKeepsItsMeasure(t *testing.T) {
 	r := newRenderer(t)
 	for name, c := range map[string]struct {
-		f    *Field
-		want string
+		f       *Field
+		measure string
+		width   string
 	}{
-		"number":  {&Field{Name: "mtu", Label: "MTU", Key: "mtu"}, "w-measure-24!"},
-		"range":   {&Field{Name: "dest_port", Label: "Port", Key: "dest_port"}, "w-measure-32!"},
-		"address": {&Field{Name: "ipaddr", Label: "Address", Key: "ipaddr"}, "w-measure-44!"},
+		"number":  {&Field{Name: "mtu", Label: "MTU", Key: "mtu"}, "number", "24"},
+		"range":   {&Field{Name: "dest_port", Label: "Port", Key: "dest_port"}, "short", "32"},
+		"address": {&Field{Name: "ipaddr", Label: "Address", Key: "ipaddr"}, "address", "44"},
 	} {
-		if got := render(t, r, c.f); !strings.Contains(got, c.want) {
-			t.Errorf("%s keeps its measure (%s):\n%s", name, c.want, got)
+		want := `class="verso-input" data-verso-verbatim data-verso-measure="` + c.measure + `"`
+		if got := render(t, r, c.f); !strings.Contains(got, want) {
+			t.Errorf("%s keeps its measure (%s):\n%s", name, want, got)
 		}
+		// its own measure, a pixel more so its border lands on a line, but
+		// never past the column
+		declares(t, "input", `.verso-input[data-verso-measure="`+c.measure+`"]`,
+			"width: calc(var(--spacing) * "+c.width+" + 1px);", "max-width: 100%;")
 	}
+	// one without a measure fills the column
+	declares(t, "input", ".verso-input", "width: 100%;")
 	got := render(t, r, &Field{Name: "key", Label: "Password", Kind: "password"})
 	if strings.Contains(got, "w-measure-64") || !strings.Contains(got, `data-verso-control-measure="secret"`) {
 		t.Errorf("a secret fills the answer column and keeps its measure for a stacked row:\n%s", got)
