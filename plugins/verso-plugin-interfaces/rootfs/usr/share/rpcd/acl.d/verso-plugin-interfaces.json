@@ -9,9 +9,6 @@
         "wireless"
       ],
       "ubus": {
-        "verso": [
-          "dhcpState"
-        ],
         "service": [
           "list"
         ],
@@ -20,6 +17,9 @@
         ]
       },
       "verso-plugin": {
+        "dnsdhcp": [
+          "dhcp-state"
+        ],
         "vpn": [
           "state"
         ]

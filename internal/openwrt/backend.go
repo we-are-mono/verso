@@ -251,11 +251,8 @@ type Backend interface {
 	// are the same thing right now.
 	NetworkInterfaces(ctx context.Context, sid string) ([]NetIface, error)
 	// The helper's raw state reads the shell brokers to a declaring plugin
-	// (ADR-007), sid-gated: DHCP and DNS service state, netifd's network state
-	// and what the radios are doing. Each stays raw JSON; the plugin, not the
-	// shell, owns what it means.
-	DHCPState(ctx context.Context, sid string) (json.RawMessage, error)
-	DNSState(ctx context.Context, sid string) (json.RawMessage, error)
+	// (ADR-007), sid-gated: netifd's network state and what the radios are
+	// doing. Each stays raw JSON; the plugin, not the shell, owns what it means.
 	NetworkState(ctx context.Context, sid string) (json.RawMessage, error)
 	WirelessState(ctx context.Context, sid string) (json.RawMessage, error)
 	// PluginCommand runs a plugin's registered root command (ADR-027): a read's

@@ -182,21 +182,27 @@ func TestFailedUCIApplyRestoresFiles(t *testing.T) {
 	}
 }
 
-func TestInvalidFileDoesNotStageAnIncludeDirectory(t *testing.T) {
-	ubusd := newFakeUbus(t, map[string]ubusObject{"uci": replyWith(map[string]any{
-		"values": map[string]any{"main": map[string]any{".type": "dnsmasq"}},
-	})})
+// A stage is the helper's alone: what else a save stages beside the file
+// (dnsmasq's confdir, say) is the owning plugin's commit, so the backend
+// touches no uci, and a file refused is refused as the helper said.
+func TestStagingAFileAsksTheHelperAlone(t *testing.T) {
+	ubusd := newFakeUbus(t, map[string]ubusObject{"uci": replyWith(map[string]any{})})
 	b := ubusd.backend()
-	b.helperSocket = configFileHelper(t, func(context.Context, string, string, map[string]string, any) error {
+	var asked map[string]string
+	b.helperSocket = configFileHelper(t, func(_ context.Context, _, method string, args map[string]string, _ any) error {
+		if method == "stageConfigFile" {
+			asked = args
+		}
 		return errors.New("invalid or stale file")
 	})
-	if b.StageConfigFile(context.Background(), "sid", "/etc/dnsmasq.d/local.conf", "old", "invalid", []string{"dhcp"}) == nil {
+	if b.StageConfigFile(context.Background(), "sid", "/etc/dnsmasq.d/local.conf", "old", "invalid", []string{"dhcp", "network"}) == nil {
 		t.Fatal("accepted")
 	}
-	for _, call := range ubusd.invoked("uci") {
-		if call.Method != "get" {
-			t.Fatalf("invalid file staged UCI: %+v", call)
-		}
+	if asked["path"] != "/etc/dnsmasq.d/local.conf" || asked["configs"] != "dhcp,network" {
+		t.Fatalf("asked %v", asked)
+	}
+	if calls := ubusd.invoked("uci"); len(calls) != 0 {
+		t.Fatalf("a stage touched uci: %+v", calls)
 	}
 }
 

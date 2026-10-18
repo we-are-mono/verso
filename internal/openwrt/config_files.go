@@ -45,12 +45,6 @@ func (s configFileState) config(name string) (string, bool) {
 	return "", false
 }
 
-func (b *NativeBackend) DNSState(ctx context.Context, sid string) (json.RawMessage, error) {
-	var state json.RawMessage
-	err := callHelper(ctx, b.helperSocket, "dnsState", sid, nil, &state)
-	return state, err
-}
-
 // PluginCommand runs a plugin's registered root command through the helper
 // (ADR-027), which checks the session's grant `verso-plugin <plugin> <name>`
 // and the arguments against the registry before anything runs.
@@ -103,45 +97,8 @@ func (b *NativeBackend) discardFiles(ctx context.Context, sid, config string) er
 // it unless its family's config is one of configs: the configs the plugin
 // asking may write.
 func (b *NativeBackend) StageConfigFile(ctx context.Context, sid, path, expected, content string, configs []string) error {
-	var directories []string
-	// dnsmasq's jail only mounts its configured include directory. Stage that
-	// setting with the first include file so it also works on bare metal.
-	if strings.HasPrefix(path, "/etc/dnsmasq.d/") {
-		cfg, err := b.UCIConfig(ctx, sid, "dhcp")
-		if err != nil {
-			return err
-		}
-		found := false
-		for section, raw := range cfg {
-			values, ok := raw.(map[string]any)
-			if !ok || values[".type"] != "dnsmasq" {
-				continue
-			}
-			found = true
-			dir, _ := values["confdir"].(string)
-			if dir != "" && dir != "/etc/dnsmasq.d" {
-				return fmt.Errorf("the resolver uses a different custom options directory")
-			}
-			if dir == "" {
-				directories = append(directories, section)
-			}
-		}
-		if !found {
-			return fmt.Errorf("local resolver configuration unavailable")
-		}
-	}
-	// Validate and stage the file before changing UCI. A stale editor, invalid
-	// filename, or dnsmasq syntax error must not leave a confdir change behind.
 	args := map[string]string{"path": path, "expected": expected, "content": content, "configs": strings.Join(configs, ",")}
-	if err := callHelper(ctx, b.helperSocket, "stageConfigFile", sid, args, nil); err != nil {
-		return err
-	}
-	for _, section := range directories {
-		if err := b.UCISet(ctx, sid, "dhcp", section, map[string]any{"confdir": "/etc/dnsmasq.d"}); err != nil {
-			return err
-		}
-	}
-	return nil
+	return callHelper(ctx, b.helperSocket, "stageConfigFile", sid, args, nil)
 }
 func (b *NativeBackend) applyWithFiles(ctx context.Context, sid string, timeout int) error {
 	files, err := b.configFileState(ctx, sid)

@@ -585,14 +585,6 @@ func (f fakeBackend) FactoryReset(ctx context.Context, sid string, erase bool) e
 // in for: a test that needs one embeds fakeBackend and overrides that method.
 var errNoHelper = errors.New("fakeBackend: helper call not provided")
 
-func (fakeBackend) DHCPState(context.Context, string) (json.RawMessage, error) {
-	return nil, errNoHelper
-}
-
-func (fakeBackend) DNSState(context.Context, string) (json.RawMessage, error) {
-	return nil, errNoHelper
-}
-
 func (fakeBackend) NetworkState(context.Context, string) (json.RawMessage, error) {
 	return nil, errNoHelper
 }

@@ -1338,10 +1338,6 @@ func (s *Server) familyFiles(m plugin.Manifest) func(context.Context, string) (j
 func (s *Server) coreRead(function string) func(context.Context, string) (json.RawMessage, error) {
 	var read func(context.Context, string) (json.RawMessage, error)
 	switch function {
-	case "dhcpState":
-		read = s.backend.DHCPState
-	case "dnsState":
-		read = s.backend.DNSState
 	case "accessCredentials":
 		read = s.readAccessCredentials
 	case "dhcpLeases":

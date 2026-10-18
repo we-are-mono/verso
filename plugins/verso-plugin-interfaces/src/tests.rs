@@ -669,7 +669,7 @@ fn a_dhcp_server_reads_as_its_state_and_how_full_its_pool_is() {
     let mut r = request("/", "");
     r.ubus = Ubus::from_value(json!({
         "networkState":{"devices":{"eth0":{"up":true},"br-lan":{"up":true,"bridge":true}},"interfaces":[{"interface":"lan","l3_device":"br-lan","up":true,"ipv4-address":[{"address":"192.168.1.1","mask":24}]}]},
-        "dhcpState":{"networks":{"lan":{"state":"running","enabled":true,"pool":"192.168.1.100–192.168.1.249","lease_time":"12h","leases":30}}}
+        "dnsdhcp.dhcp-state":{"version":1,"result":{"networks":{"lan":{"state":"running","enabled":true,"pool":"192.168.1.100–192.168.1.249","lease_time":"12h","leases":30}}}}
     }));
     let m = Model::read(&r);
     let parts = groups(&inventory_row(&m, "br-lan"));
@@ -688,12 +688,22 @@ fn a_dhcp_server_reads_as_its_state_and_how_full_its_pool_is() {
     assert_eq!(pool["span"]["tone"], "success");
     // Without a lease count there is no fill to draw: the range as words.
     r.ubus = Ubus::from_value(json!({
-        "dhcpState":{"networks":{"lan":{"state":"running","enabled":true,"pool":"192.168.1.100–192.168.1.249"}}}
+        "dnsdhcp.dhcp-state":{"version":1,"result":{"networks":{"lan":{"state":"running","enabled":true,"pool":"192.168.1.100–192.168.1.249"}}}}
     }));
     let parts = groups(&inventory_row(&Model::read(&r), "br-lan"));
     let pool = parts[1]["children"][0]["children"][0]["items"][1].clone();
     assert_eq!(pool["value"], "192.168.1.100–192.168.1.249");
     assert!(pool.get("span").is_none(), "{pool}");
+    // The DNS and DHCP plugin's read at a version this plugin does not know,
+    // or none at all, still draws the row, with no state taken from it.
+    for ubus in [
+        json!({"dnsdhcp.dhcp-state":{"version":2,"result":{"networks":{"lan":{"state":"running","enabled":true,"pool":"192.168.1.100–192.168.1.249"}}}}}),
+        json!({}),
+    ] {
+        r.ubus = Ubus::from_value(ubus);
+        let text = serde_json::to_string(&inventory_row(&Model::read(&r), "br-lan")).unwrap();
+        assert!(!text.contains("Serving") && !text.contains("192.168.1.100"), "{text}");
+    }
 }
 // open_drawer is the one panel the page's act says is open.
 fn open_drawer(e: &Envelope) -> serde_json::Value {

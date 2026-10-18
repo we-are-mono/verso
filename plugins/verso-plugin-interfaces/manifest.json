@@ -44,9 +44,9 @@
         "function": "networkState"
       },
       {
-        "scope": "ubus",
-        "object": "verso",
-        "function": "dhcpState"
+        "scope": "verso-plugin",
+        "object": "dnsdhcp",
+        "function": "dhcp-state"
       },
       {
         "scope": "verso-plugin",

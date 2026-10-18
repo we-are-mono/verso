@@ -537,7 +537,6 @@ functions in its own closed set:
 
 | Function | Returns |
 |---|---|
-| `dhcpState` | `{"networks": {"lan": {"enabled": true, "state": "running", "pool": "192.168.1.100–192.168.1.249", "lease_time": "12h", "leases": 12}}}` — DHCPv4 service observations from procd, generated dnsmasq ranges, netifd and unexpired leases. `enabled` comes from applied configuration, not the operator’s staged changes. States are `running`, `warning`, `stopped` and `disabled`; optional `reason` distinguishes failures, unavailable readings and full pools. Missing lease counts stay unknown. |
 | `networkState` | `{"interfaces": [...], "devices": {...}, "protocols": {...}, "routes": [...]}` — netifd logical-interface dump, kernel-device state, installed protocol handlers (when available), and the kernel's main routing table as `ip route` lists it (`family`, `target` in CIDR, `gateway`, `device`, `metric`, `proto`, `type` when not unicast, `source`; local, broadcast, multicast and cached entries left out). The shell adds physical-port and parent relationships from its existing topology reader. |
 | `accessCredentials` | Public SSH key comments/fingerprints and public web-certificate metadata. No authorized-key options, private keys, or router passwords are included. |
 | `wirelessState` | `{"radios": {"radio0": {"up": true, "channel": 6, "txpower": 20, "busy": 61, "hardware": "NXP 88W9098"}}, "networks": {"default_radio0": {"up": true, "clients": 3}}}` — what the radios are doing now, keyed by `wireless` config section. netifd's `network.wireless status` says whether each radio and network is up and which kernel interface a network became; iwinfo reads that interface for the channel and transmit power (dBm) in use, the in-use channel's busy share (whole percent of active airtime) and the associated clients. A number that could not be read is absent, never zero. The operator's grant must cover `network.wireless status`, and `iwinfo info`/`assoclist`/`survey` for the numbers. |
@@ -2143,14 +2142,15 @@ new network and renames it with the network; editing it is the DHCP page's.
 `dhcp` sections of type `verso_defaults` hold the ordinary upstreams retained
 while encryption is selected.
 
-The shell brokers `verso.dnsState` for installed DNS capabilities and custom file
-contents. The `config-file-stage` command takes `path`, `expected` (the version
-returned by the read, opaque, or `NEW_FILE_VERSION` to create a file), and
-`content`; its manifest must declare both
-`verso.stageConfigFile` and write access to `dhcp`. The helper accepts only
-`/etc/dnsmasq.conf` and safe `.conf` basenames under `/etc/dnsmasq.d/`, rejects
-symlinks and stale edits, and checks dnsmasq syntax before staging. Include files
-also stage dnsmasq's `confdir`, which its jail must mount.
+What the resolver can do and each network's DHCP server as dnsmasq loaded it
+are the plugin's own registered reads, `dnsdhcp.dns-state` and
+`dnsdhcp.dhcp-state`, answered by its root half; the plugin's README documents
+both. Its custom option files are the `dnsmasq` family it declares
+(`/etc/dnsmasq.conf` and `.conf` files in `/etc/dnsmasq.d`), listed through
+`configFiles` and saved with `config-file-stage` (see
+[Hand-edited files](#hand-edited-files)); its transform has dnsmasq check a save
+before it is staged. A file saved in `/etc/dnsmasq.d` also stages that folder as
+the resolver's `confdir`, which dnsmasq's jail must mount, in the same save.
 
 File changes join the existing review/apply/discard flow as `file` review records,
 not UCI options. The root helper keeps the shared stage and rollback journal in
@@ -2168,12 +2168,14 @@ Tailwind templates owned by the shell.
 
 
 DHCP service visibility is shared by the Interfaces and DNS/DHCP plugins via
-`verso_plugin::dhcp`. The SDK merges applied observations with each plugin's
-staged snapshot, labels pending enable/disable changes explicitly, and links each
+`verso_plugin::dhcp`, which reads `dnsdhcp.dhcp-state` at the version the SDK
+names (a plugin declares the grant `verso-plugin dnsdhcp dhcp-state`). The SDK
+merges applied observations with each plugin's staged snapshot, labels pending enable/disable changes explicitly, and links each
 server to its drawer on the DHCP page (`/plugins/dnsdhcp/?open=<network>`),
 which the interface listing opens over itself. The interface identity
 carries one DHCP chip per configured network: success, warning or danger, with a
-neutral disabled state. The DHCP broker obtains protected include directives through a bounded helper read; handwritten exclusions are included in its service assessment. Chip `title` is localized independently of its verbatim
+neutral disabled state. The read follows dnsmasq's includes as root, so
+handwritten exclusions are part of its service assessment. Chip `title` is localized independently of its verbatim
 identity label. Expanded network facts show the observed pool, lease duration and
 active lease count. Physical bridge members do not inherit their bridge's chip.
 

@@ -18,7 +18,6 @@ mod registry;
 mod config_files;
 mod families;
 mod grants;
-mod dhcp;
 mod diagnostics;
 mod firewall;
 mod firewall_log;
@@ -338,8 +337,6 @@ fn dispatch(request: &Value, state: &State, uid: u32) -> Result<Value, Failure> 
     }
 
     match method {
-        "dhcpState" => dhcp::state(),
-        "dnsState" => config_files::dns_state(),
         "configFiles" => config_files::state(),
         "uciCommitted" => uci_committed::committed(argument(request, "configs")?),
         "stageConfigFile" => config_files::stage(

@@ -85,7 +85,7 @@
 
 - [x] 6.1 Test first in `plugins/verso-plugin-firewall`: `root` answers `state` with the counters (moved from `firewall.rs` `counters`) and whether `/sbin/fw4` exists. Its registry declares `state` and the `fw4` family with `fw4 check` and `fw4 -q restart`. Then implement it and give firewall its own `rootfs/usr/share/rpcd/acl.d/verso-plugin-firewall.json`. Verify with `cargo test`.
 - [x] 6.2 Switch the firewall pages to `firewall.state` and `configFiles`. Remove `firewallCounters` and `firewallFiles` from the helper, `verso-helper.json`, the shell's broker and `internal/openwrt`. Keep `firewallStatus` and `firewallLog`. Package `commands.json` in `package_plugin`. Verify with `make test`, `make lint`, and the firewall pages on `make dev`.
-- [ ] 6.3 Test first in `plugins/verso-plugin-interfaces`: tunnel rows come from `vpn.state` version 1, and DHCP state from `dnsdhcp.dhcp-state` version 1. With either absent, or at a version interfaces does not know, the page renders without it. Then change its manifest and rpcd ACL to the `verso-plugin` grants. Verify with `cargo test`.
+- [x] 6.3 Test first in `plugins/verso-plugin-interfaces`: tunnel rows come from `vpn.state` version 1, and DHCP state from `dnsdhcp.dhcp-state` version 1. With either absent, or at a version interfaces does not know, the page renders without it. Then change its manifest and rpcd ACL to the `verso-plugin` grants. Verify with `cargo test`.
 - [x] 6.4 Test first in `verso-rpcd`: after `setWebCertificate` or `makeWebCertificate` writes the pair, the fake runner sees `hotplug-call verso-certificate` with `ACTION=installed`, and no `uci` call. Then replace `acme::hand_over`. Verify with `cargo test`.
 
 ## 7. verso-plugin-acme (its own repository)
@@ -102,9 +102,9 @@
 
 ## 9. verso-plugin-ddns and verso-plugin-dnsdhcp (their own repositories)
 
-- [ ] 9.1 Test first in the ddns repo: move `ddns.rs`'s tests. `update` refuses a section that is not a uci name before running anything (helper-side), and refuses a missing section with a refusal text (root half). Then ship `commands.json` (`state` and `update`, with `section: uci-name` and a 30 s timeout), the manifest, the ACL, and `depends: verso>=R`. Verify with `cargo test`.
-- [ ] 9.2 Test first in the dnsdhcp repo: move `dhcp.rs`, `dns_state`'s feature probe and `validate_dnsmasq` as the `dhcp-state` and `dns-state` reads and the `files` transform's `stage`. Ship the `dnsmasq` family (`/etc/dnsmasq.conf`, `/etc/dnsmasq.d`, check `dnsmasq --test`, reload `/etc/init.d/dnsmasq reload`). Then switch its pages to `dnsdhcp.*` and `configFiles`. Verify with `cargo test`.
-- [ ] 9.3 Remove `ddns.rs`, `dhcp.rs`, `ddnsState`, `ddnsUpdate`, `dhcpState`, `dnsState`, the `ddns-update` command and the matching backend methods from core. Verify with `make test` and `make lint`.
+- [x] 9.1 Test first in the ddns repo: move `ddns.rs`'s tests. `update` refuses a section that is not a uci name before running anything (helper-side), and refuses a missing section with a refusal text (root half). Then ship `commands.json` (`state` and `update`, with `section: uci-name` and a 30 s timeout), the manifest, the ACL, and `depends: verso>=R`. Verify with `cargo test`.
+- [x] 9.2 Test first in the dnsdhcp repo: move `dhcp.rs`, `dns_state`'s feature probe and `validate_dnsmasq` as the `dhcp-state` and `dns-state` reads and the `files` transform's `stage`. Ship the `dnsmasq` family (`/etc/dnsmasq.conf`, `/etc/dnsmasq.d`, check `dnsmasq --test`, reload `/etc/init.d/dnsmasq reload`). Then switch its pages to `dnsdhcp.*` and `configFiles`. Verify with `cargo test`.
+- [x] 9.3 Remove `ddns.rs`, `dhcp.rs`, `ddnsState`, `ddnsUpdate`, `dhcpState`, `dnsState`, the `ddns-update` command and the matching backend methods from core. Verify with `make test` and `make lint`.
 
 ## 10. Core packaging and the empty verb list
 

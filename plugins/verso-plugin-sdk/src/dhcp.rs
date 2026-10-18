@@ -1,9 +1,16 @@
 // SPDX-License-Identifier: GPL-2.0-only
 // SPDX-FileCopyrightText: 2026 Mono Technologies Inc.
-//! Shared presentation of the shell's live DHCPv4 observations. Both plugins
-//! use this vocabulary so a server has the same meaning on either page.
+//! Shared presentation of the live DHCPv4 observations verso-plugin-dnsdhcp's
+//! root half reads (its `dhcp-state` read, ADR-027). Both the DNS & DHCP and
+//! the Interfaces plugins use this vocabulary so a server has the same meaning
+//! on either page; each declares and is granted that read.
 use crate::{url_encode, Snapshot, Ubus, Value};
 use std::collections::BTreeSet;
+
+/// The read a plugin declares (`verso-plugin dnsdhcp dhcp-state`) and finds the
+/// servers' state under, and the version this vocabulary reads.
+pub const DHCP_STATE: &str = "dnsdhcp.dhcp-state";
+pub const DHCP_STATE_VERSION: u32 = 1;
 
 #[derive(Clone, Debug)]
 pub struct Server {
@@ -88,7 +95,7 @@ fn text(value: Option<&Value>, key: &str) -> String {
 }
 pub fn servers(snapshot: &Snapshot, ubus: &Ubus) -> Vec<Server> {
     let configs = snapshot.sections_of_type("dhcp", "dhcp");
-    let live = ubus.get("dhcpState").and_then(|v| v.get("networks"));
+    let live = ubus.read(DHCP_STATE, &[DHCP_STATE_VERSION]).and_then(|v| v.get("networks"));
     let mut networks: BTreeSet<String> = snapshot
         .sections_of_type("network", "interface")
         .iter()
@@ -160,7 +167,7 @@ mod tests {
     #[test]
     fn staged_enable_is_never_reported_running() {
         let live = Ubus::from_value(
-            json!({"dhcpState":{"networks":{"lan":{"enabled":false,"state":"disabled"}}}}),
+            json!({"dnsdhcp.dhcp-state":{"version":1,"result":{"networks":{"lan":{"enabled":false,"state":"disabled"}}}}}),
         );
         let states = servers(&snapshot("0"), &live);
         assert_eq!(states.len(), 1);
@@ -170,17 +177,23 @@ mod tests {
     #[test]
     fn stopped_and_missing_evidence_are_distinct() {
         let live = Ubus::from_value(
-            json!({"dhcpState":{"networks":{"lan":{"enabled":true,"state":"stopped"}}}}),
+            json!({"dnsdhcp.dhcp-state":{"version":1,"result":{"networks":{"lan":{"enabled":true,"state":"stopped"}}}}}),
         );
         assert_eq!(servers(&snapshot("0"), &live)[0].tone(), "danger");
         let unknown = servers(&snapshot("0"), &Ubus::from_value(json!({})));
         assert_eq!(unknown[0].label(), "Status unavailable");
         assert_eq!(unknown[0].tone(), "warning");
+        // A state at a version the SDK does not know is no evidence either,
+        // never read as if it were the shape it knows.
+        let newer = Ubus::from_value(
+            json!({"dnsdhcp.dhcp-state":{"version":2,"result":{"networks":{"lan":{"enabled":true,"state":"stopped"}}}}}),
+        );
+        assert_eq!(servers(&snapshot("0"), &newer)[0].label(), "Status unavailable");
     }
     #[test]
     fn applied_running_server_and_pending_disable_share_one_vocabulary() {
         let live = Ubus::from_value(
-            json!({"dhcpState":{"networks":{"lan":{"enabled":true,"state":"running","pool":"192.168.1.100–192.168.1.249","leases":0}}}}),
+            json!({"dnsdhcp.dhcp-state":{"version":1,"result":{"networks":{"lan":{"enabled":true,"state":"running","pool":"192.168.1.100–192.168.1.249","leases":0}}}}}),
         );
         let running = servers(&snapshot("0"), &live);
         assert_eq!(running[0].tone(), "success");
