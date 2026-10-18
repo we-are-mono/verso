@@ -45,6 +45,7 @@ mod slots;
 pub use slots::{ShellSlot, SlotKind, ACCESS_BLOCKS, OVERVIEW_CARDS, SHELL_SLOTS};
 mod args;
 pub use args::{ArgKind, MAX_TEXT};
+pub mod root;
 pub mod registry;
 pub use registry::{
     ArgSpec, Command, CommandKind, Family, FamilyDir, FamilyWords, FileNames, Registry,
@@ -611,6 +612,28 @@ impl Ubus {
     /// rather than treating its absence as an error.
     pub fn get(&self, function: &str) -> Option<&Value> {
         self.0.get(function)
+    }
+
+    /// read returns a registered read's result (ADR-027), keyed
+    /// `<plugin>.<name>`, when the shell brokered it at one of the `versions`
+    /// this plugin knows. Another plugin may raise its read's version on an
+    /// incompatible change and ship apart from this one, so a version not
+    /// known here is no entry, logged once, never a result read wrongly.
+    pub fn read(&self, key: &str, versions: &[u32]) -> Option<&Value> {
+        let entry = self.0.get(key)?;
+        let version = entry.get("version").and_then(Value::as_u64)?;
+        if versions.iter().any(|v| u64::from(*v) == version) {
+            return entry.get("result");
+        }
+        static SKIPPED: std::sync::Mutex<Vec<String>> = std::sync::Mutex::new(Vec::new());
+        let said = format!("{key}@{version}");
+        if let Ok(mut skipped) = SKIPPED.lock() {
+            if !skipped.contains(&said) {
+                eprintln!("verso-plugin: skipping {key} at version {version}; this plugin reads {versions:?}");
+                skipped.push(said);
+            }
+        }
+        None
     }
 }
 
@@ -2798,8 +2821,10 @@ pub fn commit_delete(config: &str, section: &str) -> CommitOp {
     }
 }
 
-/// ApplyAction is one tightly typed non-UCI operation the shell performs after
-/// the staged UCI transaction applies — only for a declared rpcd scope.
+/// ApplyAction is one act the shell runs at once, before it answers the POST,
+/// and only for a declared grant. A name with a dot, `<plugin>.<name>`, is a
+/// registered root command (ADR-027); a name without one is the shell's own
+/// (`config-file-stage`, `set-system-time`, …).
 #[derive(Serialize, Debug)]
 pub struct ApplyAction {
     pub name: String,
@@ -3581,6 +3606,27 @@ mod tests {
         assert_eq!(counters["counters"][0]["name"], "Allow-Ping");
         assert_eq!(counters["counters"][0]["packets"], 12);
         assert!(ubus.get("somethingElse").is_none());
+    }
+
+    #[test]
+    fn registered_reads_arrive_at_their_version() {
+        let ubus = Ubus::from_value(serde_json::json!({
+            "dhcpLeases": {"leases": []},
+            "vpn.state": {"version": 1, "result": {"tunnels": [{"device": "tun0"}]}},
+            "dnsdhcp.dhcp-state": {"version": 2, "result": {"networks": {}}}
+        }));
+        let vpn = ubus.read("vpn.state", &[1]).expect("a known version");
+        assert_eq!(vpn["tunnels"][0]["device"], "tun0");
+        // A version this plugin does not know is no entry, however often asked.
+        assert!(ubus.read("dnsdhcp.dhcp-state", &[1]).is_none());
+        assert!(ubus.read("dnsdhcp.dhcp-state", &[1]).is_none());
+        assert!(ubus.read("dnsdhcp.dhcp-state", &[1, 2]).is_some());
+        assert!(ubus.read("ddns.state", &[1]).is_none());
+        // Core functions keep their names.
+        assert!(ubus.get("dhcpLeases").is_some());
+        // An entry without a version is never read as a result.
+        let bare = Ubus::from_value(serde_json::json!({"vpn.state": {"tunnels": []}}));
+        assert!(bare.read("vpn.state", &[1]).is_none());
     }
 
     #[test]

@@ -850,6 +850,149 @@ nothing in the shell's instance delivers no signal. On the same rescan the shell
 gives every signed-in session the access list your package ships, as signing in
 would (ADR-007 §8), so nobody signs in again to use your pages.
 
+## Root work: the command registry
+
+Some of what a page shows or does needs root: a tunnel's state read from the
+kernel, an update a daemon sends now, a file only root may open. Your plugin runs
+as its own account and never gains root itself. Instead it ships a **root half**
+(ADR-027): your own binary, started by root as `verso-plugin-<id> root`. The
+privileged helper starts it for a command you register, and only for an operator
+whose session holds your grant. Your hotplug scripts and init script start it for
+unattended work, under subcommands of your own (`root deliver sync`). The shell and
+the helper name no plugin: the registry is how they learn what yours does.
+
+### The registry file
+
+Install `/usr/share/verso/plugins/<id>/commands.json` beside your manifest, owned
+by root and writable by root alone. Build it with the SDK's `Registry`, whose
+`to_json` refuses one the helper would refuse:
+
+```json
+{
+  "schema_version": 1,
+  "commands": [
+    { "name": "state", "kind": "read", "version": 1,
+      "exec": "/usr/bin/verso-plugin-ddns", "argv": ["root"] },
+    { "name": "update", "kind": "act", "timeout": 30,
+      "exec": "/usr/bin/verso-plugin-ddns", "argv": ["root"],
+      "args": { "section": { "kind": "uci-name" } } }
+  ]
+}
+```
+
+| Field | Meaning |
+|---|---|
+| `name` | Lower-case letters, digits and `-`, starting with a letter; unique in the file. It is the function of your rpcd grant. |
+| `kind` | `read` (no arguments, run when a page renders), `act` (arguments checked against `args`, run on a POST), or `transform` (a file family's, run by the helper alone; see the file families below). |
+| `version` | A read's version, 1 or more. Raise it only when the result changes incompatibly: a field removed or retyped. An added field keeps it. |
+| `exec`, `argv` | The program, as an absolute path, and its fixed arguments. Nothing a request carries ever reaches the command line. |
+| `timeout` | Seconds before the helper stops the command and its children: 10 when absent, at most 120. |
+| `args` | An act's arguments, each `{ "kind": … }` with `"optional": true` when it may be left out. |
+| `certificates` | Per read, the fields of its result that hold a PEM certificate. The shell turns each into the facts the HTTPS certificate card shows (subject, issuer, validity, fingerprint, serial, days), so no PEM reaches a page. |
+
+The helper reads the file each time a command is asked for, so an install or a
+removal takes effect at once. It runs a command only when the registry file, the
+executable and every directory above each are owned by root, writable by root
+alone, and not links, and the executable is a regular file. A file that fails
+this check, or does not parse, refuses your plugin's commands with a logged
+reason, and every other plugin's still run.
+
+### Argument kinds
+
+Every argument arrives as text, as a form posts it, and is checked against its
+kind before anything runs. An unknown argument, a missing required one, or a
+value outside its kind refuses the act. The kinds are a closed set:
+
+| Kind | Takes |
+|---|---|
+| `uci-name` | 1–64 of letters, digits and `_`: a section or option name. |
+| `hostname` | Up to 253 characters of dot-separated labels: letters, digits and `-`, no label starting or ending with `-`. |
+| `ipv4`, `ipv6`, `ip` | An address of that family (either for `ip`). IPv6 takes no zone and no IPv4-mapped form. |
+| `port` | 1–65535 in plain digits. |
+| `int` | `{"kind": "int", "min": -10, "max": 300}`: a whole number in plain digits, with an optional `-`. |
+| `enum` | `{"kind": "enum", "values": ["up", "down"]}`: one of the values, exactly. |
+| `bool` | `0` or `1`, as uci writes it. |
+| `text` | `{"kind": "text", "max": 256}`: any text of at most `max` bytes (65536 at most) without a NUL. |
+
+The SDK's `ArgKind::accepts` checks a value the same way, so your form can refuse
+it first in its own words. The samples every check is held to are in the SDK's
+`testdata/argument-kinds.json`.
+
+### Your root half
+
+Your binary's `main` hands the `root` argument to the SDK's dispatcher, before
+anything else:
+
+```rust
+fn main() {
+    if std::env::args().nth(1).as_deref() == Some("root") {
+        verso_plugin::root::run(&[("state", &state), ("update", &update)]);
+    }
+    verso_plugin::serve(/* … your pages … */);
+}
+```
+
+`root::run` refuses to act unless the effective uid is root. It reads the request
+from stdin (`{"command", "args", "input"}`), runs the handler it names, and ends
+the process as the helper reads an outcome:
+
+| The handler returns | Exit | Stdout | The operator sees |
+|---|---|---|---|
+| `Ok(object)` | 0 | the object | the result |
+| `Err(RootError::Refusal(words))` | 3 | `{"refusal": words}` | the words, translated through your catalogue |
+| `Err(RootError::Failure(detail))`, or a panic | 1 | nothing | "The router could not complete the action"; the detail goes to the log |
+
+The command runs with `PATH` alone in its environment, in `/`, with no shell. The
+helper refuses output over 1 MiB and output that is not one JSON object. The
+subcommands your hotplug and init scripts use are your own: check
+`verso_plugin::root::is_root()` before they act.
+
+### Grants
+
+Grant each command in your rpcd ACL under the scope `verso-plugin`: reads under
+`read`, acts under `write`. Declare the same in your manifest, so the shell knows
+to broker it:
+
+```json
+"acl": {
+  "read":  [{ "scope": "verso-plugin", "object": "ddns", "function": "state" }],
+  "write": [{ "scope": "verso-plugin", "object": "ddns", "function": "update" }]
+}
+```
+
+A plugin may grant and declare another plugin's read: Interfaces reads
+`{ "scope": "verso-plugin", "object": "vpn", "function": "state" }`. While that
+plugin is not installed, the read gives no entry. Nothing without an operator's
+session reaches the registry: unattended work runs from your own hotplug and init
+scripts, as root already.
+
+### Reads and acts on your pages
+
+The shell runs each declared read when your page renders, in parallel, and passes
+it in `X-Verso-Ubus` under `<plugin>.<name>` as `{"version": …, "result": …}`. Read
+it with the versions your code knows:
+
+```rust
+if let Some(state) = req.ubus.read("vpn.state", &[1]) { /* … */ }
+```
+
+A version your code does not know is no entry, logged once. So is a read that
+was refused, failed, or names a plugin that is not installed. Render without it.
+
+An act runs when your answer to a POST names it in `commands` as
+`<plugin>.<name>`, the key its read would have (see
+[Acts](#privileged-post-apply-actions)), with its arguments as text. The shell's
+own commands have no dot in their names:
+
+```json
+"commands": [{ "name": "ddns.update", "args": { "section": "home" } }]
+```
+
+### Removing
+
+`apk del` removes your registry, your binary and your ACL. The helper then refuses
+your commands as unknown, and every reader of them gets no entry.
+
 ## The widget vocabulary
 
 You compose a **closed set** of widgets with **semantic** props — `label`,
