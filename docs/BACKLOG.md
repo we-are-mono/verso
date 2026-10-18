@@ -16,11 +16,6 @@ own and points at the decision that governs it; the rationale lives there, not h
   repository of its own) issues a real certificate on the DK over DNSimple.
   Open:
   - the repository on GitHub as `we-are-mono/verso-plugin-acme`;
-  - its SDK pinned by the verso tag that carries `Request::plugins`,
-    `with_door`, `Property::door`, `Property::waiting`, `SlotKind`,
-    `Envelope::nothing` and `Envelope::overview_card` (it builds against the SDK
-    in this tree; its `verso>=` names 0.9.0-r38, the first shell that fills
-    slots, ADR-026);
   - on the DK (where `https://<domain>` already opens with no warning, its LAN
     answer kept by AdGuard Home): the LAN record through dnsdhcp's offer, the
     HTTP redirect to the domain, a hand install turning `acme.verso` off, and
@@ -28,16 +23,24 @@ own and points at the decision that governs it; the rationale lives there, not h
   - the outcome as the top-right notification, the drawer refreshing itself
     while a request runs (a new widget behaviour, the owner's call), and a
     Request now act;
-- **Plugin contracts: certificate sources, the root half.** The page side is
-  slots (ADR-026); core still runs ACME's root work: `verso-rpcd/src/acme.rs`
-  (deliver, `acmeState`, acme.sh's `account.conf`), `setWebCertificate`/
-  `makeWebCertificate` turning `acme.verso` off, and the shell's `acmeState`
-  broker and its PEM transform. The direction: a source's root half ships with
-  its plugin (a root-only binary run by its hotplug and init, installing through
-  `verso certificate install`), registered with `verso-rpcd` as a plugin
-  command; one generic verb hands a plugin the state file its root half writes;
-  a hand install raises `hotplug-call verso-certificate` (`ACTION=installed`)
-  for any source to act on. Core then names no source.
+- **Plugin contracts: events.** Plugins fill slots (ADR-026) and run their root
+  work through the command registry (ADR-027); what they lack is word of what
+  happened. Core events a plugin reacts to (`certificate.replaced`,
+  `config.applied`), and a plugin's outcomes as the top-right notification;
+  `hotplug-call verso-certificate` is the one root-side event raised today. The
+  shell still names plugins in these places:
+  - `wirelessState`, computed in Go for the wireless plugin (`gateway.go`);
+  - the interface acts `interface-restart`, `interface-up` and
+    `interface-down` in the closed `commands` set (`plugin_commands.go`);
+  - links to `/plugins/firewall/` (`exposure.go`, `fwlog.go`);
+  - the Overview's links found by the nav labels "VPN" and "Interfaces"
+    (`server.go`);
+  - the `device`/`shape` entity slot (`device_limits.go`);
+  - firewall4's reload in Services (`services.go`).
+- **Plugin repositories pin a verso tag.** acme, vpn, ddns and dnsdhcp build
+  against the SDK in this tree (`path = "../verso-plugin-sdk"`), so each builds
+  only beside a Verso checkout. Each pins the first verso tag that carries the
+  root dispatcher, the registry types, `Ubus::read` and `FileSet::family`.
 - **An image without uhttpd.** The Mono image still ships `uhttpd`,
   `uhttpd-mod-ubus` and `px5g-mbedtls`; drop them from the build (Gateway repo)
   so Verso holds the router's ports from first boot.
@@ -194,8 +197,8 @@ the type roles in `type.css`, and the guards in
 - **A verdict when the address comes from the internet.** Behind NAT the router
   cannot see its public address, so an `ip_source 'web'` name reads only
   "running". The updater learns it on every check and keeps it only in its log;
-  writing it beside `<section>.ip` (as `<section>.current`) lets `ddnsState`
-  hand it over. Send with the restart fix, upstream and in the Mono feed.
+  writing it beside `<section>.ip` (as `<section>.current`) lets the plugin's
+  `ddns.state` read hand it over. Send with the restart fix, upstream and in the Mono feed.
 ## Line shaping (SQM)
 
 - **SQM over the whole line (cake).** The QoS plugin caps devices one by one;
