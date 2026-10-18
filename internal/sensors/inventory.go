@@ -93,8 +93,8 @@ type FanReading struct {
 
 // FiberModule is one SFP/SFP+ cage's diagnostics, read from its module DOM through
 // hwmon (VCC as an in channel, temperature, transmit/receive optical power, laser
-// bias current) with the module's own min/max/crit limits. RxHasLight is the
-// loss-of-signal verdict: receive power above the module's own floor.
+// bias current). RxHasLight is the loss-of-signal verdict: receive power above
+// the module's own floor.
 type FiberModule struct {
 	Cage   string
 	Source string
@@ -102,22 +102,15 @@ type FiberModule struct {
 	TempMilliC int
 
 	VccMilliV int
-	VccMin    int
-	VccMax    int
 	HasVcc    bool
 
 	BiasMilliA int
-	BiasMax    int
 	HasBias    bool
 
 	TxMicroW int64
-	TxMin    int64
-	TxMax    int64
 	HasTx    bool
 
 	RxMicroW   int64
-	RxMin      int64
-	RxMax      int64
 	HasRx      bool
 	RxHasLight bool
 }
@@ -396,22 +389,15 @@ func fiberFrom(h Hwmon) FiberModule {
 	vin := firstKey(h)
 	if mv, ok := readIntOK(filepath.Join(h.Dir, chanAttr("in", vin, "input"))); ok {
 		f.VccMilliV, f.HasVcc = mv, true
-		f.VccMin, _ = readIntOK(filepath.Join(h.Dir, chanAttr("in", vin, "min")))
-		f.VccMax, _ = readIntOK(filepath.Join(h.Dir, chanAttr("in", vin, "max")))
 	}
 	if ma, ok := readIntOK(filepath.Join(h.Dir, chanAttr("curr", 1, "input"))); ok {
 		f.BiasMilliA, f.HasBias = ma, true
-		f.BiasMax, _ = readIntOK(filepath.Join(h.Dir, chanAttr("curr", 1, "max")))
 	}
 	if uw, ok := readInt64OK(filepath.Join(h.Dir, chanAttr("power", 1, "input"))); ok {
 		f.TxMicroW, f.HasTx = uw, true
-		f.TxMin, _ = readInt64OK(filepath.Join(h.Dir, chanAttr("power", 1, "min")))
-		f.TxMax, _ = readInt64OK(filepath.Join(h.Dir, chanAttr("power", 1, "max")))
 	}
 	if uw, ok := readInt64OK(filepath.Join(h.Dir, chanAttr("power", 2, "input"))); ok {
 		f.RxMicroW, f.HasRx = uw, true
-		f.RxMin, _ = readInt64OK(filepath.Join(h.Dir, chanAttr("power", 2, "min")))
-		f.RxMax, _ = readInt64OK(filepath.Join(h.Dir, chanAttr("power", 2, "max")))
 		f.RxHasLight = rxHasLight(h.Dir, uw)
 	}
 	return f
