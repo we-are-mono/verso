@@ -101,9 +101,18 @@ does not own, or a link to one. No secret leaves the helper, and no session is
 asked for: the shell, which faces the network before anyone signs in, never
 holds a secret without one (ADR-014).
 
-The helper's own commits (the web listeners, a package that just arrived) are
-Verso's acts, not edits made outside it: the helper marks the config before it
-commits, and spools that reading as its own.
+The router's own commits are its acts, not edits made outside it. These are:
+- the helper's commits: the theme, the web listeners, a package that just
+  arrived;
+- a plugin's root half's commits, such as ACME's hand-over (ADR-027).
+
+Each commit is marked before it is made, and the mark says what caused it: one
+English sentence, and the plugin whose catalog words it, or none for the
+shell's own words. A commit the helper makes for an operator's act also
+carries a handle of that operator's session: the hex SHA-256 of the session
+id, never the id, since plugins share the account the spool belongs to. A root
+half's mark carries no handle. The helper spools the reading as the router's
+own, with its cause, plugin and handle.
 
 The shell keeps the last reading of every config the plugins declare in
 `history.db`, as the **current state**, and takes the spool every two seconds.
@@ -111,12 +120,22 @@ While an apply's rollback window is open it takes nothing: a reading may be
 the apply's write or its undoing. Once the apply is recorded, kept or rolled
 back, a reading of a config it wrote, made between the apply and ten seconds
 after it was recorded, is the apply's own. The first reading of a config is
-where its history starts, and is kept as it is, as is Verso's own; any other
-reading that differs is an entry of its own: by no one, at the time it was
-written, its rows the changes `uci changes` would have listed had it been
+where its history starts, and is kept as it is.
+
+Any other reading that differs is an entry of its own, at the time it was
+written. Its rows are the changes `uci changes` would have listed had it been
 staged, described by the plugin that writes the config, with what each
-replaced. History therefore stays continuous whatever wrote to `/etc/config`,
-with nobody signed in.
+replaced. The entry is by one of three:
+- **An operator**: a commit the router made for that operator's act, found by
+  the handle among the signed-in sessions. Its cause is in Notes.
+- **The router**: any other commit the router made itself. Its cause is in
+  Notes, read from the catalog of the plugin that gave it. A mark from a plugin
+  built before causes gives none, and still makes the entry the router's.
+- **No one ("Edited directly")**: a commit nothing marked.
+
+No commit the router makes is left out. History therefore stays continuous
+whatever wrote to `/etc/config`, with nobody signed in, and every setting the
+router holds can be explained by its rows.
 
 procd's `config.change` event is not the source: it reaches procd only from
 rpcd and `reload_config`, so a plain `uci commit` over SSH never raises it.

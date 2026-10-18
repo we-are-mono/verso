@@ -9,6 +9,7 @@
   - ADR-014 §3: the registry is unreachable with the zero session.
   - ADR-017 §6: the trusted certificate's root work ships with its plugin.
   - ADR-026: slots placed plugins on the screen; this places their root work.
+  - ADR-021: a root half's commits are recorded as the router's acts, with their cause.
 
 ## Context
 
@@ -84,6 +85,14 @@ root half at all.
    hold a PEM certificate; the shell turns each into the facts the HTTPS certificate
    card shows, with the function that card uses, so no PEM reaches a plugin and the
    facts have one implementation.
+
+9. **A root half's commit says what caused it.** Before a root half commits a config
+   (`uci commit`), it marks it with the SDK's `root::own_write(plugin, config, cause)`.
+   The mark is a file in `/tmp/run/verso-own`, a directory root alone may write, and
+   names the plugin and one English sentence, a key of the plugin's catalog. Config
+   history records the commit as the router's own act with that cause (ADR-021). A
+   root half's mark never names an operator: only the helper's commits made for an
+   operator's act do.
 
 Core keeps the root work the shell itself renders (the firewall's status and log, DHCP
 leases, network state) and what guards access to the router (credentials, SSH keys,

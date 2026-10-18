@@ -138,6 +138,13 @@ const CAUSE_LIMIT: usize = 512;
 /// cause is one English sentence saying what made the commit ("A certificate
 /// was installed by hand."); config history shows it translated from plugin's
 /// own catalog (ADR-012), so it is written as a key of that catalog.
+///
+/// ```no_run
+/// // ACME's hand-over turns its renewal off, as the router's own act.
+/// verso_plugin::root::own_write("acme", "acme", "A certificate was installed by hand.")?;
+/// std::process::Command::new("/sbin/uci").args(["commit", "acme"]).status().map_err(|e| e.to_string())?;
+/// # Ok::<(), String>(())
+/// ```
 pub fn own_write(plugin: &str, config: &str, cause: &str) -> Result<(), String> {
     own_write_in(Path::new(OWN_MARKS), plugin, config, cause)
 }

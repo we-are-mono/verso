@@ -61,7 +61,7 @@
 
 ## 7. Documents
 
-- [ ] 7.1 Amend ADR-021 in place: the router's own commits are recorded as its acts, with their causes, and acts the shell starts for an operator are that operator's. Amend ADR-027 where it names the mark: the mark now carries its cause and plugin. Rewrite the `root::own_write` row in `docs/plugins.md`, with an example. Verify the doc example compiles as an SDK doc test (`cargo test --doc`).
+- [x] 7.1 Amend ADR-021 in place: the router's own commits are recorded as its acts, with their causes, and acts the shell starts for an operator are that operator's. Amend ADR-027 where it names the mark: the mark now carries its cause and plugin. Rewrite the `root::own_write` row in `docs/plugins.md`, with an example. Verify the doc example compiles as an SDK doc test (`cargo test --doc`).
 - [ ] 7.2 Update `docs/BACKLOG.md` if anything is left open, and draft the release notes: history now shows the router's own changes, and verso and verso-plugin-acme are released together. Verify that `make lint` and `make test` pass.
 
 ## 8. Checks on a running router
