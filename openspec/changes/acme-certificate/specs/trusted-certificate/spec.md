@@ -124,15 +124,23 @@ The router's root-only path that installs a certificate SHALL accept only a cert
 - **THEN** it exits non-zero naming the mismatch and the served pair is unchanged
 
 ### Requirement: The domain is offered an answer on the LAN
-When no DNS record in `/etc/config/dhcp` answers the domain, the part SHALL offer to add one. With verso-plugin-dnsdhcp installed, the offer SHALL open its New record drawer with the domain and the router's LAN address filled in, and staging the record stays that drawer's act. Without it, the part SHALL name the record to add.
+When the router's own lookup of the domain answers with none of the router's addresses, whatever keeps the LAN's names (dnsmasq, AdGuard Home), the part SHALL offer to add a record. With verso-plugin-dnsdhcp installed, the offer SHALL open its New record drawer with the domain and the router's LAN address filled in, and staging the record stays that drawer's act. Without it, the part SHALL name the record to add.
 
 #### Scenario: Adding the LAN record
 - **WHEN** no record answers `router.example.com` and the operator takes the offer
 - **THEN** the New record drawer opens as an A record for `router.example.com` with the router's LAN address, and nothing is staged until the operator saves it
 
 #### Scenario: A record already answers
-- **WHEN** a record answers `router.example.com`
+- **WHEN** a record answers `router.example.com` with the router's address
 - **THEN** the part makes no offer
+
+#### Scenario: AdGuard Home keeps the LAN's names
+- **WHEN** AdGuard Home on the router answers `router.example.com` with the router's address and `/etc/config/dhcp` holds no record of it
+- **THEN** the part makes no offer
+
+#### Scenario: The domain leads elsewhere
+- **WHEN** the router's lookup answers `router.example.com` with an address that is not the router's
+- **THEN** the part says this network finds the domain at another address and offers the record
 
 #### Scenario: DNS and DHCP plugin not installed
 - **WHEN** verso-plugin-dnsdhcp is not installed and no record answers the domain

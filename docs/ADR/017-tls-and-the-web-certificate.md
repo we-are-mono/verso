@@ -279,8 +279,13 @@ unprivileged shell the DNS credentials.
   certificate card shows, and whether it is the one served. The key is never
   read. No state comes from the log; an outcome recorded before a reboot is gone,
   and the certificate file still gives expiry and serving.
-- **The name on the LAN.** When no record in `/etc/config/dhcp` answers the
-  domain, the plugin offers to add one: with verso-plugin-dnsdhcp installed (the
+- **The name on the LAN.** `acmeState` asks the router's own resolver for the
+  domain and says whether the answer is one of the router's addresses (`lan`:
+  `here`, `elsewhere`, `none`), the lookup bounded at 1.5 s. It asks rather than
+  reads `/etc/config/dhcp`, because the LAN's names may be kept elsewhere
+  (AdGuard Home on the router, a resolver on the network), and the router's
+  lookup gets the answer the LAN gets. When the answer is not the router's, the
+  plugin offers to add a record: with verso-plugin-dnsdhcp installed (the
   shell names the installed plugins on every request), it opens that plugin's New
   record page filled in with the domain and the router's LAN address, and staging
   the record stays its Save; without it, the part names the record. The plugin

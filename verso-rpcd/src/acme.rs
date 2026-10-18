@@ -16,11 +16,13 @@
 //! material only.
 
 use serde_json::{json, Value};
+use std::collections::BTreeMap;
 use std::fs;
 use std::io::Read;
+use std::net::IpAddr;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use crate::Failure;
 
@@ -103,6 +105,11 @@ pub trait Router {
     /// Turn `acme.verso` off and commit acme, through root's save directory.
     fn disable(&self) -> Result<(), Failure>;
     fn now(&self) -> u64;
+    /// The addresses the router's own resolver gives domain: the answer the
+    /// LAN gets from whatever keeps its names (dnsmasq, AdGuard Home).
+    fn resolve(&self, domain: &str) -> Vec<IpAddr>;
+    /// Every address on the router's links.
+    fn own_addresses(&self) -> Vec<IpAddr>;
 }
 
 /// Places are the directories and files deliver and state read and write.
@@ -332,6 +339,7 @@ pub fn state(router: &impl Router, places: &Places) -> Result<Value, Failure> {
     let mut out = json!({
         "domain": section.domain,
         "requesting": router.running(SERVICE).iter().any(|name| name == SECTION),
+        "lan": lan_answer(router, &section.domain),
     });
     if let Some((event, at)) = read_record(&places.record(), &section.domain) {
         out["outcome"] = json!(event);
@@ -345,6 +353,36 @@ pub fn state(router: &impl Router, places: &Places) -> Result<Value, Failure> {
     }
     Ok(out)
 }
+
+/// lan_answer is whether this network finds the domain at the router: `here`
+/// when the router's own lookup answers with one of its addresses,
+/// `elsewhere` when it answers with others, `none` when it does not answer.
+/// It asks rather than reads a config, so it holds whatever keeps the LAN's
+/// names.
+fn lan_answer(router: &impl Router, domain: &str) -> &'static str {
+    let resolved = router.resolve(domain);
+    if resolved.is_empty() {
+        return "none";
+    }
+    let own = router.own_addresses();
+    match resolved.iter().any(|ip| own.contains(ip)) {
+        true => "here",
+        false => "elsewhere",
+    }
+}
+
+/// addresses_of is every address on the links, its prefix length left off.
+fn addresses_of(links: &BTreeMap<String, crate::netlink::Link>) -> Vec<IpAddr> {
+    links
+        .values()
+        .flat_map(|link| &link.addresses)
+        .filter_map(|a| a.split('/').next()?.parse().ok())
+        .collect()
+}
+
+/// LOOKUP_WAIT bounds the router's own lookup: a resolver that does not
+/// answer never holds the page, and an answer that late is no answer.
+const LOOKUP_WAIT: Duration = Duration::from_millis(1500);
 
 /// read_record is the recorded event and time, when the record is for domain:
 /// one left by a domain since changed says nothing about this one.
@@ -451,6 +489,24 @@ impl Router for System {
             .map(|d| d.as_secs())
             .unwrap_or(0)
     }
+
+    fn resolve(&self, domain: &str) -> Vec<IpAddr> {
+        use std::net::ToSocketAddrs;
+        let (tx, rx) = std::sync::mpsc::channel();
+        let name = format!("{domain}:443");
+        std::thread::spawn(move || {
+            let found: Vec<IpAddr> = name
+                .to_socket_addrs()
+                .map(|addrs| addrs.map(|a| a.ip()).collect())
+                .unwrap_or_default();
+            let _ = tx.send(found);
+        });
+        rx.recv_timeout(LOOKUP_WAIT).unwrap_or_default()
+    }
+
+    fn own_addresses(&self) -> Vec<IpAddr> {
+        addresses_of(&crate::netlink::links())
+    }
 }
 
 /// command_line runs `verso-rpcd acme deliver EVENT`, acme's hotplug and the
@@ -530,6 +586,8 @@ mod tests {
         installed: RefCell<Vec<(PathBuf, PathBuf)>>,
         signalled: RefCell<u32>,
         disabled: RefCell<u32>,
+        resolved: Vec<IpAddr>,
+        own: Vec<IpAddr>,
     }
 
     impl Fake {
@@ -541,6 +599,8 @@ mod tests {
                 installed: RefCell::new(Vec::new()),
                 signalled: RefCell::new(0),
                 disabled: RefCell::new(0),
+                resolved: Vec::new(),
+                own: vec!["10.0.0.1".parse().unwrap(), "fd25:e9f9:d695::1".parse().unwrap()],
             }
         }
     }
@@ -572,6 +632,39 @@ mod tests {
         fn now(&self) -> u64 {
             1_760_000_000
         }
+        fn resolve(&self, _: &str) -> Vec<IpAddr> {
+            self.resolved.clone()
+        }
+        fn own_addresses(&self) -> Vec<IpAddr> {
+            self.own.clone()
+        }
+    }
+
+    // Whatever answers the LAN's names (dnsmasq, AdGuard Home, a resolver
+    // elsewhere), the router's own lookup says whether the domain leads here.
+    #[test]
+    fn state_says_whether_the_lan_finds_the_domain_at_the_router() {
+        let places = scratch("lan");
+        let mut router = Fake::with(verso(None));
+        assert_eq!(state(&router, &places).unwrap()["lan"], "none");
+        router.resolved = vec!["203.0.113.9".parse().unwrap()];
+        assert_eq!(state(&router, &places).unwrap()["lan"], "elsewhere");
+        router.resolved = vec!["203.0.113.9".parse().unwrap(), "fd25:e9f9:d695::1".parse().unwrap()];
+        assert_eq!(state(&router, &places).unwrap()["lan"], "here");
+        router.resolved = vec!["10.0.0.1".parse().unwrap()];
+        assert_eq!(state(&router, &places).unwrap()["lan"], "here");
+    }
+
+    #[test]
+    fn the_router_holds_the_addresses_on_its_links() {
+        let eth = crate::netlink::Link {
+            addresses: vec!["10.0.0.1/24".into(), "fd25:e9f9:d695::1/60".into(), "fe80::1/64".into()],
+            ..crate::netlink::Link::default()
+        };
+        let links = BTreeMap::from([("br-lan.1".to_string(), eth)]);
+        let got = addresses_of(&links);
+        assert!(got.contains(&"10.0.0.1".parse::<IpAddr>().unwrap()));
+        assert!(got.contains(&"fd25:e9f9:d695::1".parse::<IpAddr>().unwrap()));
     }
 
     fn verso(enabled: Option<&str>) -> Value {
@@ -734,7 +827,7 @@ mod tests {
         let places = scratch("state");
         let mut router = Fake::with(verso(None));
         router.running = vec![("acme", "verso")];
-        assert_eq!(state(&router, &places).unwrap(), json!({"domain": DOMAIN, "requesting": true}));
+        assert_eq!(state(&router, &places).unwrap(), json!({"domain": DOMAIN, "requesting": true, "lan": "none"}));
 
         hold(&places, DOMAIN, "CERT-NEW\n");
         fs::write(&places.served, "CERT-NEW\n").unwrap();
