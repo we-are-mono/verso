@@ -16,6 +16,15 @@ The `acme.verso` turn-on before the hand install was made with the command-line 
 
 **Restored afterwards.** The lab's own certificate and theme were put back, and https-dns-proxy was removed.
 
+## On a router in service
+
+On 2026-10-19 a Mono Gateway in daily use was upgraded with local apks, from verso 0.9.0-r65 and verso-plugin-acme 0.1.0-r11 to 0.9.0-r83 and 0.1.0-r12, in one `apk add`. apk upgraded acme first and verso last.
+
+- **history.db.** Changes still listed all six earlier rows and the starting point, so history.db took steps 10 to 12 and kept what it held.
+- **The theme.** The owner chose a theme on General's Appearance card and set it back. Each change read "The theme was changed.", by root from the owner's own address.
+
+Not run on that router: the hand install (it would turn off ACME for the owner's real domain) and a package install. Both ran in the lab (8.1, 9.5), and the hand install's reboot waits for the DUT (8.2).
+
 ## 9.5 What a package's scripts commit during an install
 
 The `dhcp` row seen beside the arrival is a package operation's own (design decision 7). The check was repeated at v0.9.0-r76 on `make dev`:
