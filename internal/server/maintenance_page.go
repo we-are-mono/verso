@@ -194,9 +194,9 @@ func factoryResetSection(v maintenanceView) *widget.Section {
 			Help: "The box shows this router’s hostname.", Autocomplete: "off", Required: true}}
 	}
 	// A reset leaves /data, and the router's history with it: it goes too
-	// unless the operator keeps it (ADR-021).
-	form.Fields = append(form.Fields, &widget.Field{Name: "history", Kind: "checks", Values: []string{"erase"},
-		Options: []widget.Option{{Value: "erase", Label: "Also erase the router’s history"}}})
+	// unless the operator keeps it (ADR-021). It is a setting's row like any
+	// other, its box hard right.
+	form.Fields = append(form.Fields, &widget.Switch{Name: "history", Label: "Also erase the router’s history", On: true})
 	return &widget.Section{Title: "Factory reset", Anchor: "factory-reset", Hairline: true,
 		Sub:      "Erase settings, installed plugins, and local data. This cannot be undone and no backup is taken for you.",
 		Children: []widget.Widget{form}}

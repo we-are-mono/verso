@@ -154,7 +154,7 @@ func TestFactoryResetNotDoneIsANotification(t *testing.T) {
 	} {
 		s := newServerFull(t, fakeBackend{hn: "verso-lab", factoryReset: func(context.Context, string, bool) error { return tc.err }},
 			&fakeTransport{}, nil, fakeAuth{sid: "test-sid"})
-		res, token := postPluginRequest(t, s, "/system/maintenance/factory-reset", url.Values{"hostname": {"verso-lab"}, "history": {"erase"}}, nil)
+		res, token := postPluginRequest(t, s, "/system/maintenance/factory-reset", url.Values{"hostname": {"verso-lab"}, "history": {"1"}}, nil)
 		if res.Code != http.StatusSeeOther || res.Header().Get("Location") != maintenancePath {
 			t.Errorf("%s: reset = %d → %q; want a redirect back to Maintenance", tc.name, res.Code, res.Header().Get("Location"))
 		}
@@ -207,18 +207,21 @@ func TestFactoryLANAddress(t *testing.T) {
 }
 
 // TestFactoryResetErasesHistoryUnlessKept: the form offers to erase the
-// router's history, checked from the start, and the reset erases it unless
-// the box was cleared (ADR-021).
+// router's history, switched on from the start, and the reset erases it
+// unless the switch was cleared (ADR-021). It is a setting's row like any
+// other: the sentence the question, the box hard right in the answer.
 func TestFactoryResetErasesHistoryUnlessKept(t *testing.T) {
 	var erased []bool
 	s := newServerFull(t, fakeBackend{hn: "verso-lab", factoryReset: func(_ context.Context, _ string, erase bool) error { erased = append(erased, erase); return nil }},
 		&fakeTransport{}, nil, fakeAuth{sid: "test-sid"})
 
 	page := get(t, s, maintenancePath).Body.String()
-	if !strings.Contains(page, "Also erase the router’s history") || !strings.Contains(page, `value="erase" checked`) {
-		t.Fatalf("the reset form should offer the erase, checked:\n%s", page)
+	label := strings.Index(page, `<label for="history" id="history-label" class="verso-field__name">Also erase the router’s history</label>`)
+	box := strings.Index(page, `data-verso-switch id="history" name="history"`)
+	if label < 0 || box < label || !strings.Contains(page[box:box+300], `value="1" checked`) {
+		t.Fatalf("the reset form should offer the erase as a switch's row, on:\n%s", page)
 	}
-	postPlugin(t, s, "/system/maintenance/factory-reset", url.Values{"hostname": {"verso-lab"}, "history": {"erase"}})
+	postPlugin(t, s, "/system/maintenance/factory-reset", url.Values{"hostname": {"verso-lab"}, "history": {"1"}})
 	postPlugin(t, s, "/system/maintenance/factory-reset", url.Values{"hostname": {"verso-lab"}})
 	if !reflect.DeepEqual(erased, []bool{true, false}) {
 		t.Fatalf("erased = %v, want erased then kept", erased)

@@ -438,7 +438,7 @@ func (s *Server) handleFactoryReset(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "restarting page error", http.StatusInternalServerError)
 		return
 	}
-	if err := s.backend.FactoryReset(r.Context(), s.sessionSID(r), r.FormValue("history") == "erase"); err != nil {
+	if err := s.backend.FactoryReset(r.Context(), s.sessionSID(r), r.FormValue("history") == "1"); err != nil {
 		log.Printf("verso: factory reset: %v", err)
 		s.flash(r, "danger", factoryResetRefusal(tr, err))
 		http.Redirect(w, r, maintenancePath, http.StatusSeeOther)
