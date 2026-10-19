@@ -112,8 +112,14 @@ A build for the DK is served from this machine (verso 0.9.0-r117,
 verso-plugin-acme 0.1.0-r14, built from a clean worktree of 58cb8e7 with each
 plugin cloned at its committed head). acme's own hook stands in for a forced
 renewal, so no request reaches Let's Encrypt:
-`ACTION=renewed main_domain=<the domain> hotplug-call acme`. Waiting on the
-owner to install it and run the check.
+`ACTION=renewed main_domain=<the domain> hotplug-call acme`.
+
+The owner installed it on Zamanifi (2026-10-19) and ran the hook with Access
+open: the notification said the renewal. The install also showed nlbwmon's
+restart burst ("Too many pending MAC address lookups", 1,559 lines over two
+seconds, 31,665 connections against a database_limit of 10,000, 232 records
+that day), fixed apart from this change in 9562237: an upgrade no longer
+restarts nlbwmon unless usage-setup changed a setting.
 
 ## 5.4 The stacked layer, for the owner
 
