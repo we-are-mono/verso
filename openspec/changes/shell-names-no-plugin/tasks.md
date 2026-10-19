@@ -117,8 +117,8 @@ Every task ends with `make lint` passing, and `make test` passing except the fiv
 
 ## 6. Plugins name their services
 
-- [ ] 6.1 In `plugins/verso-plugin-ddns` (its own repo), add `services` `{"ddns": "Dynamic DNS"}` to `manifest.json`. Verify with `cargo test` there that its catalogs carry the words, and commit there.
-- [ ] 6.2 Test first:
+- [x] 6.1 In `plugins/verso-plugin-ddns` (its own repo), add `services` `{"ddns": "Dynamic DNS"}` to `manifest.json`. Verify with `cargo test` there that its catalogs carry the words, and commit there.
+- [x] 6.2 Test first:
   - in `internal/plugin/manifest_test.go`, every scenario of the `staged-changes` delta's malformed entries: an entry with a bad script name or with words that are not non-empty text is dropped with a log line; a `services` that is not an object is dropped whole; the manifest loads either way;
   - in `internal/server/apply_steps_test.go`, every scenario of its reload-step words: ddns and openvpn in their plugins' words; raw `openvpn` with no words; `firewall` keeps the shell's word; a stopped plugin's words still said; two scripts with one word said once.
 

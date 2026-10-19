@@ -114,7 +114,8 @@ func (s *Server) whenYouApply(r *http.Request, sid string, view stagedView, lang
 		triggers = nil
 	}
 	var steps []pendingStep
-	for i, step := range applySteps(view.Count, stagedConfigs(view), triggers, tr) {
+	name := serviceNamer(s.manifestsByID(), tr, s.pluginTranslators(r))
+	for i, step := range applySteps(view.Count, stagedConfigs(view), triggers, tr, name) {
 		steps = append(steps, pendingStep{applyStep: step, Number: i + 1})
 	}
 	children = append(children,

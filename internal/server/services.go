@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -55,12 +54,6 @@ var svcKeep = map[string]bool{"verso": true, "verso-rpcd": true, "rpcd": true, "
 // flushes the router's nftables, NAT and forwarding rules. It may be restarted,
 // but the Services page never offers or accepts stop.
 var svcMustStayEnabled = map[string]bool{"firewall": true}
-
-// svcNameRe is the shape of an init-script name — the only thing that reaches
-// procd's rc object.
-var svcNameRe = regexp.MustCompile(`^[a-z0-9][a-zA-Z0-9._-]{0,63}$`)
-
-func svcNameOK(name string) bool { return svcNameRe.MatchString(name) }
 
 // pluginState is one installed plugin's assembled truth: the manifest identity
 // plus procd's view and the socket probe.
@@ -122,7 +115,7 @@ func (s *Server) handleServicesAction(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "no action in form", http.StatusBadRequest)
 		return
 	}
-	if !svcNameOK(svc) {
+	if !plugin.ServiceName(svc) {
 		http.Error(w, "bad service name", http.StatusBadRequest)
 		return
 	}

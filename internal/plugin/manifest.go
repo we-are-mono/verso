@@ -45,6 +45,10 @@ type Manifest struct {
 	// Commands is the plugin's command registry, read from the commands.json
 	// beside its manifest (ADR-027); nil when it ships none.
 	Commands *Registry `json:"-"`
+	// Services are the plugin's words for the init scripts it brings, by
+	// script, in English its catalog translates: what an apply's reload step
+	// calls them. Read entry by entry (readServices).
+	Services map[string]string `json:"-"`
 }
 
 // ACL is a plugin's declared rpcd access surface — the Verso analog of LuCI's

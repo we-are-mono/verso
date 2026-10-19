@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/we-are-mono/verso/internal/i18n"
+	"github.com/we-are-mono/verso/internal/plugin"
 	"github.com/we-are-mono/verso/internal/units"
 )
 
@@ -27,10 +28,10 @@ type applyStep struct {
 // rest, so the step keeps to one line.
 const reloadsNamed = 4
 
-// serviceWords is what the page calls the init scripts procd reloads: a
-// script the operator knows by its purpose, by that. Two scripts that serve
-// one purpose share its name and are said once. A script with no word here
-// is named as procd names it.
+// serviceWords is what the page calls the init scripts of base OpenWrt and
+// the shell that procd reloads: a script the operator knows by its purpose,
+// by that. Two scripts that serve one purpose share its name and are said
+// once. A plugin names the services it brings itself (serviceNamer).
 var serviceWords = map[string]string{
 	"network":         "Network",
 	"dnsmasq":         "DNS & DHCP",
@@ -46,17 +47,36 @@ var serviceWords = map[string]string{
 	"nlbwmon":         "Bandwidth monitor",
 	"packet_steering": "Packet steering",
 	"verso":           "Web interface",
-	"ddns":            "Dynamic DNS",
+}
+
+// serviceNamer names an init script as the reload step says it: the shell's
+// word for a service of base OpenWrt or its own; else the word the first of
+// the installed manifests, in id order, declares for a service it brings, in
+// that plugin's catalog's language, whether or not it is running; else as
+// procd names it. A plugin's word never replaces the shell's.
+func serviceNamer(manifests []plugin.Manifest, tr func(string) string, pluginTr func(pluginID string) func(string) string) func(script string) string {
+	return func(script string) string {
+		if word, ok := serviceWords[script]; ok {
+			return tr(word)
+		}
+		for _, m := range manifests {
+			if word, ok := m.Services[script]; ok {
+				return pluginTr(m.ID)(word)
+			}
+		}
+		return script
+	}
 }
 
 // applySteps is the card's steps for n changes to configs, given procd's
 // reload triggers: the router saves them; it reloads what the triggers name
 // for those configs, together and in no order it promises, so as one step;
 // it keeps them once the page checks in within the rollback window. A stage
-// whose configs no trigger names has no reload step.
-func applySteps(n int, configs []string, triggers map[string][]string, tr func(string) string) []applyStep {
+// whose configs no trigger names has no reload step. name says a service as
+// the card does (serviceNamer).
+func applySteps(n int, configs []string, triggers map[string][]string, tr, name func(string) string) []applyStep {
 	steps := []applyStep{{Kind: "save", Text: i18n.Count(tr, n, "Saves %d change.", "Saves %d changes. (two)", "Saves %d changes. (few)", "Saves %d changes.")}}
-	if names := reloadNames(configs, triggers, tr); len(names) > 0 {
+	if names := reloadNames(configs, triggers, name); len(names) > 0 {
 		shown := names
 		if len(names) > reloadsNamed {
 			more := len(names) - reloadsNamed
@@ -74,7 +94,7 @@ func applySteps(n int, configs []string, triggers map[string][]string, tr func(s
 // reloadNames is what the triggers reload for configs, each named once:
 // Network first, the reload that drops every connection; then each config's
 // own service before its others.
-func reloadNames(configs []string, triggers map[string][]string, tr func(string) string) []string {
+func reloadNames(configs []string, triggers map[string][]string, say func(script string) string) []string {
 	var scripts []string
 	add := func(script string) {
 		if !slices.Contains(scripts, script) {
@@ -96,10 +116,7 @@ func reloadNames(configs []string, triggers map[string][]string, tr func(string)
 	}
 	var names []string
 	for _, script := range scripts {
-		name := script
-		if word, ok := serviceWords[script]; ok {
-			name = tr(word)
-		}
+		name := say(script)
 		if !slices.Contains(names, name) {
 			names = append(names, name)
 		}
