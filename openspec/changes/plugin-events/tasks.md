@@ -160,7 +160,7 @@
 
 ## 9. Integration
 
-- [ ] 9.1 On the lab container under `make dev`, with Access open in two tabs of one browser (headless with `reducedMotion: 'reduce'`, screenshots in `~/Share/screenshots`):
+- [x] 9.1 On the lab container under `make dev`, with Access open in two tabs of one browser (headless with `reducedMotion: 'reduce'`, screenshots in `~/Share/screenshots`):
   - `verso announce acme.renewed router.example.com` as root says "The certificate for router.example.com was renewed." in the visible tab alone, and System → Events lists it;
   - the browser holds one `/events/stream`;
   - the same command as the `verso` user is refused.
