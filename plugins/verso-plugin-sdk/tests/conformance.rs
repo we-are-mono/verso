@@ -896,11 +896,15 @@ fn write_phrase_fixture() {
 }
 
 // The command registry (ADR-027): a registry holding every kind of command, an
-// act with every argument kind, a family with a transform, and a certificate
-// field, written as commands.json holds it. The helper's tests read it back.
+// act with every argument kind, a family with a transform, a certificate
+// field, and two events, one said and ending the other, which alerts
+// (ADR-028), written as commands.json holds it. The helper's and the shell's
+// tests read it back.
 #[test]
 fn write_commands_fixture() {
-    use verso_plugin::{ArgKind, ArgSpec, Command, Family, FamilyDir, FamilyWords, FileNames, Registry};
+    use verso_plugin::{
+        ArgKind, ArgSpec, Command, EventDeclaration, EventTone, Family, FamilyDir, FamilyWords, FileNames, Registry,
+    };
     const EXEC: &str = "/usr/bin/verso-plugin-example";
     let registry = Registry::new()
         .command(Command::read("state", 1, EXEC))
@@ -936,7 +940,17 @@ fn write_commands_fixture() {
             reload: vec!["/etc/init.d/example".into(), "reload".into()],
             transform: Some("files".into()),
         })
-        .certificate("state", "certificate");
+        .certificate("state", "certificate")
+        .event(
+            EventDeclaration::new("updated", "The address of %s was updated.", EventTone::Success, "state")
+                .notify()
+                .ends(&["update-failed"]),
+        )
+        .event(
+            EventDeclaration::new("update-failed", "The address of %s could not be updated.", EventTone::Danger, "state")
+                .notify()
+                .alert(),
+        );
     let json = registry.to_json().expect("the sample registry is valid");
     let dir = concat!(env!("CARGO_MANIFEST_DIR"), "/testdata");
     fs::create_dir_all(dir).unwrap();

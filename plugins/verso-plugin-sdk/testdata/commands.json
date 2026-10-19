@@ -103,5 +103,25 @@
     "state": [
       "certificate"
     ]
-  }
+  },
+  "events": [
+    {
+      "name": "updated",
+      "sentence": "The address of %s was updated.",
+      "tone": "success",
+      "read": "state",
+      "notify": true,
+      "ends": [
+        "update-failed"
+      ]
+    },
+    {
+      "name": "update-failed",
+      "sentence": "The address of %s could not be updated.",
+      "tone": "danger",
+      "read": "state",
+      "notify": true,
+      "alert": true
+    }
+  ]
 }

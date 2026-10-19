@@ -82,6 +82,15 @@ func TestTheSDKRegistryFixtureDecodes(t *testing.T) {
 	if r.Certificates["state"][0] != "certificate" {
 		t.Errorf("certificates = %v", r.Certificates)
 	}
+	updated, ok := r.Event("updated")
+	if !ok || updated.Sentence != "The address of %s was updated." || updated.Tone != "success" || updated.Read != "state" ||
+		!updated.Notify || updated.Alert || len(updated.Ends) != 1 || updated.Ends[0] != "update-failed" {
+		t.Errorf("updated = %+v, %v", updated, ok)
+	}
+	failed, ok := r.Event("update-failed")
+	if !ok || failed.Tone != "danger" || !failed.Notify || !failed.Alert || len(failed.Ends) != 0 {
+		t.Errorf("update-failed = %+v, %v", failed, ok)
+	}
 }
 
 // registryWithEvents is acme's state read with events declared beside it.

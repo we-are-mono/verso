@@ -159,6 +159,80 @@ pub struct Family {
     pub transform: Option<String>,
 }
 
+/// The tone an event says itself in: the shell's tone vocabulary, less
+/// neutral, since an event is news.
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
+#[serde(rename_all = "kebab-case")]
+pub enum EventTone {
+    Success,
+    Info,
+    Warning,
+    Danger,
+}
+
+/// The longest sentence an event declares.
+pub const SENTENCE_LIMIT: usize = 512;
+
+/// One event the plugin's root half announces with [`crate::root::announce`]
+/// (ADR-028). Its name is its contract: the sentence may be reworded, but a
+/// changed meaning, or a change in its arguments' count or order, is a new
+/// event.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct EventDeclaration {
+    pub name: String,
+    /// One English sentence, `%s` standing for each argument in order, and a
+    /// key of the plugin's catalog: the shell translates it when it shows it.
+    pub sentence: String,
+    pub tone: EventTone,
+    /// A read of this registry: a session sees the event only under its grant.
+    pub read: String,
+    /// Said as the top-right notification to the operators looking.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub notify: bool,
+    /// An alert kind of the plugin's own, which the operator may choose.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub alert: bool,
+    /// Events of this plugin's that this one closes, as the internet coming
+    /// back closes an outage.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub ends: Vec<String>,
+}
+
+impl EventDeclaration {
+    /// An event that is recorded and not said; add [`EventDeclaration::notify`]
+    /// to say it and [`EventDeclaration::alert`] to let it alert.
+    pub fn new(name: &str, sentence: &str, tone: EventTone, read: &str) -> EventDeclaration {
+        EventDeclaration {
+            name: name.into(),
+            sentence: sentence.into(),
+            tone,
+            read: read.into(),
+            notify: false,
+            alert: false,
+            ends: vec![],
+        }
+    }
+    pub fn notify(mut self) -> EventDeclaration {
+        self.notify = true;
+        self
+    }
+    pub fn alert(mut self) -> EventDeclaration {
+        self.alert = true;
+        self
+    }
+    pub fn ends(mut self, events: &[&str]) -> EventDeclaration {
+        self.ends = events.iter().map(|e| e.to_string()).collect();
+        self
+    }
+}
+
+/// An event's name: 1–64 of lower-case letters, digits and `-`.
+pub fn valid_event_name(name: &str) -> bool {
+    !name.is_empty()
+        && name.len() <= 64
+        && name.bytes().all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'-')
+}
+
 /// A plugin's whole registry.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Registry {
@@ -171,6 +245,9 @@ pub struct Registry {
     /// the shell turns into the facts the certificate card shows.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub certificates: BTreeMap<String, Vec<String>>,
+    /// The events the plugin's root half announces.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub events: Vec<EventDeclaration>,
 }
 
 impl Default for Registry {
@@ -186,7 +263,12 @@ impl Registry {
             commands: vec![],
             families: vec![],
             certificates: BTreeMap::new(),
+            events: vec![],
         }
+    }
+    pub fn event(mut self, event: EventDeclaration) -> Registry {
+        self.events.push(event);
+        self
     }
     pub fn command(mut self, command: Command) -> Registry {
         self.commands.push(command);
@@ -235,6 +317,34 @@ impl Registry {
             }
             if fields.is_empty() || fields.iter().any(|f| f.is_empty()) {
                 return Err(format!("certificates: {read:?} names no field"));
+            }
+        }
+        let mut events = std::collections::BTreeSet::new();
+        for event in &self.events {
+            check_event(event, kind_of(&event.read) == Some(CommandKind::Read))?;
+            if !events.insert(event.name.as_str()) {
+                return Err(format!("event {:?} is declared twice", event.name));
+            }
+        }
+        for event in &self.events {
+            if let Some(end) = event.ends.iter().find(|end| **end == event.name || !events.contains(end.as_str())) {
+                return Err(format!("event {:?}: its ends name {end:?}, which is not another event it declares", event.name));
+            }
+        }
+        Ok(())
+    }
+
+    /// check_catalog fails for a declared event's sentence that `catalog`, the
+    /// plugin's catalog for `language`, does not translate, or translates with
+    /// another count of `%s`: the shell fills a translation with the event's
+    /// arguments, in order. A plugin's tests call it for each catalog it ships.
+    pub fn check_catalog(&self, language: &str, catalog: &serde_json::Value) -> Result<(), String> {
+        for event in &self.events {
+            let Some(translated) = catalog.get(&event.sentence).and_then(|t| t.as_str()) else {
+                return Err(format!("{language}: no translation of {:?}", event.sentence));
+            };
+            if translated.matches("%s").count() != event.sentence.matches("%s").count() {
+                return Err(format!("{language}: {translated:?} has another count of %s than {:?}", event.sentence));
             }
         }
         Ok(())
@@ -304,6 +414,20 @@ fn check_command(c: &Command) -> Result<(), String> {
             return Err(at(&format!("argument {name:?} must be letters, digits and _")));
         }
         spec.kind.check().map_err(|why| at(&format!("argument {name:?}: {why}")))?;
+    }
+    Ok(())
+}
+
+fn check_event(e: &EventDeclaration, read_registered: bool) -> Result<(), String> {
+    let at = |why: &str| format!("event {:?}: {why}", e.name);
+    if !valid_event_name(&e.name) {
+        return Err(at("name must be lower-case letters, digits and -, at most 64"));
+    }
+    if e.sentence.is_empty() || e.sentence.len() > SENTENCE_LIMIT || e.sentence.contains(['\n', '\r']) {
+        return Err(at("its sentence must be one line of at most 512 bytes"));
+    }
+    if !read_registered {
+        return Err(at(&format!("its read {:?} is not a read of this registry", e.read)));
     }
     Ok(())
 }
@@ -490,5 +614,62 @@ mod tests {
             .family(fw4());
         let back: Registry = serde_json::from_str(&r.to_json().unwrap()).unwrap();
         assert_eq!(back, r);
+    }
+
+    fn renewed() -> EventDeclaration {
+        EventDeclaration::new("renewed", "The certificate for %s was renewed.", EventTone::Success, "state")
+    }
+
+    fn with_state(event: EventDeclaration) -> Registry {
+        Registry::new().command(Command::read("state", 1, EXEC)).event(event)
+    }
+
+    #[test]
+    fn an_event_reads_back_with_its_switches() {
+        let failed =
+            EventDeclaration::new("renew-failed", "The certificate for %s could not be renewed.", EventTone::Danger, "state")
+                .notify()
+                .alert();
+        let r = with_state(renewed().notify().ends(&["renew-failed"])).event(failed);
+        let json = r.to_json().unwrap();
+        let back: Registry = serde_json::from_str(&json).unwrap();
+        assert_eq!(back, r);
+        assert!(json.contains(r#""tone": "success""#), "{json}");
+        let quiet = with_state(renewed()).to_json().unwrap();
+        assert!(!quiet.contains("notify") && !quiet.contains("alert") && !quiet.contains("ends"), "{quiet}");
+    }
+
+    #[test]
+    fn an_event_breaking_a_rule_is_refused() {
+        let cases: Vec<(EventDeclaration, &str)> = vec![
+            (EventDeclaration::new("Renewed", "x", EventTone::Info, "state"), "name"),
+            (EventDeclaration::new(&"a".repeat(65), "x", EventTone::Info, "state"), "name"),
+            (EventDeclaration::new("odd", "", EventTone::Info, "state"), "sentence"),
+            (EventDeclaration::new("odd", "one\ntwo", EventTone::Info, "state"), "sentence"),
+            (EventDeclaration::new("odd", &"x".repeat(513), EventTone::Info, "state"), "sentence"),
+            (EventDeclaration::new("odd", "x", EventTone::Info, "status"), "read"),
+            (EventDeclaration::new("odd", "x", EventTone::Info, "state").ends(&["expired"]), "ends"),
+            (EventDeclaration::new("odd", "x", EventTone::Info, "state").ends(&["odd"]), "ends"),
+        ];
+        for (event, why) in cases {
+            let name = event.name.clone();
+            let err = with_state(event).to_json().unwrap_err();
+            assert!(err.contains(why), "{name}: {err}");
+        }
+        let twice = with_state(renewed()).event(renewed());
+        assert!(twice.to_json().unwrap_err().contains("twice"));
+        let act = Registry::new().command(Command::act("state", EXEC)).event(renewed());
+        assert!(act.to_json().unwrap_err().contains("read"), "an event's read is a read, not an act");
+    }
+
+    #[test]
+    fn a_catalog_holds_every_sentence_with_its_arguments() {
+        let r = with_state(renewed());
+        let good = serde_json::json!({"The certificate for %s was renewed.": "Potrdilo za %s je obnovljeno."});
+        assert!(r.check_catalog("sl", &good).is_ok());
+        let missing = serde_json::json!({});
+        assert!(r.check_catalog("sl", &missing).unwrap_err().contains("The certificate for %s was renewed."));
+        let lost = serde_json::json!({"The certificate for %s was renewed.": "Potrdilo je obnovljeno."});
+        assert!(r.check_catalog("sl", &lost).unwrap_err().contains("%s"));
     }
 }

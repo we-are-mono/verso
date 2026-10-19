@@ -49,7 +49,7 @@ pub mod netlink;
 pub mod root;
 pub mod registry;
 pub use registry::{
-    ArgSpec, Command, CommandKind, Family, FamilyDir, FamilyWords, FileNames, Registry,
+    ArgSpec, Command, CommandKind, EventDeclaration, EventTone, Family, FamilyDir, FamilyWords, FileNames, Registry,
     REGISTRY_SCHEMA_VERSION,
 };
 mod fields;
