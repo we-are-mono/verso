@@ -8,6 +8,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -96,6 +97,79 @@ func TestAnnounceTakesTheSDKsArguments(t *testing.T) {
 	}
 	if len(r.argv) != 1 || !strings.Contains(r.argv[0][4], `"subject":"eth0","args":["-x"]`) {
 		t.Errorf("ran %q", r.argv)
+	}
+}
+
+// replacements records each certificate replacement announced.
+type replacements struct {
+	said [][2]string
+	err  error
+}
+
+func (r *replacements) replaced(name, until string) error {
+	r.said = append(r.said, [2]string{name, until})
+	return r.err
+}
+
+// TestInstallingACertificateAnnouncesItsReplacement: the root install command
+// announces the replacement, by the certificate's name and the day it
+// expires, once the pair is written; an announcement that fails is said and
+// the install stands.
+func TestInstallingACertificateAnnouncesItsReplacement(t *testing.T) {
+	dir, from := t.TempDir(), t.TempDir()
+	certPath, keyPath, leaf := issued(t, from, "router.example.com")
+	var r replacements
+	if err := certificate([]string{"install", dir, certPath, keyPath}, os.Getuid(), io.Discard, r.replaced); err != nil {
+		t.Fatal(err)
+	}
+	want := [2]string{"router.example.com", leaf.NotAfter.UTC().Format("2006-01-02")}
+	if len(r.said) != 1 || r.said[0] != want {
+		t.Errorf("announced %v, want %v", r.said, want)
+	}
+	failing := replacements{err: errors.New("the spool is full")}
+	var out bytes.Buffer
+	if err := certificate([]string{"install", dir, certPath, keyPath}, os.Getuid(), &out, failing.replaced); err != nil {
+		t.Fatalf("a failed announcement failed the install: %v", err)
+	}
+	if !strings.Contains(out.String(), "the spool is full") {
+		t.Errorf("out = %q, want the failed announcement said", out.String())
+	}
+}
+
+// TestCertificateAnnounceSaysTheServedPairWasReplaced: the helper's hand
+// install announces through `verso certificate announce DIR`, which reads the
+// pair in DIR.
+func TestCertificateAnnounceSaysTheServedPairWasReplaced(t *testing.T) {
+	dir, from := t.TempDir(), t.TempDir()
+	certPath, keyPath, leaf := issued(t, from, "router.example.com")
+	if err := certificate([]string{"install", dir, certPath, keyPath}, os.Getuid(), io.Discard, nil); err != nil {
+		t.Fatal(err)
+	}
+	var r replacements
+	if err := certificate([]string{"announce", dir}, os.Getuid(), io.Discard, r.replaced); err != nil {
+		t.Fatal(err)
+	}
+	if len(r.said) != 1 || r.said[0] != [2]string{"router.example.com", leaf.NotAfter.UTC().Format("2006-01-02")} {
+		t.Errorf("announced %v", r.said)
+	}
+	failing := replacements{err: errors.New("not root")}
+	if err := certificate([]string{"announce", dir}, os.Getuid(), io.Discard, failing.replaced); err == nil {
+		t.Error("a failed announcement answered success")
+	}
+	if err := certificate([]string{"announce", t.TempDir()}, os.Getuid(), io.Discard, r.replaced); err == nil {
+		t.Error("a directory with no pair was announced")
+	}
+}
+
+// TestGeneratingACertificateAnnouncesNothing: a first boot's certificate
+// replaces nothing.
+func TestGeneratingACertificateAnnouncesNothing(t *testing.T) {
+	var r replacements
+	if err := certificate([]string{"generate", t.TempDir(), "router"}, os.Getuid(), io.Discard, r.replaced); err != nil {
+		t.Fatal(err)
+	}
+	if len(r.said) != 0 {
+		t.Errorf("generate announced %v", r.said)
 	}
 }
 

@@ -18,6 +18,7 @@ import (
 	"net/netip"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strings"
 	"syscall"
 	"time"
@@ -48,7 +49,8 @@ func main() {
 	}
 	// `verso certificate generate` is the init script's, run as root before the
 	// shell starts when it has no certificate to serve (ADR-017 §5); `install`
-	// is verso-rpcd's, run as root to serve a certificate acme issued (§6).
+	// is a root half's, run to serve a certificate acme issued (§6); and
+	// `announce` the helper's, once it has written a pair by hand (ADR-028).
 	// `verso announce` is root's one way to say an event happened (ADR-028):
 	// a plugin's root half, the helper and the certificate install run it.
 	if len(os.Args) > 1 && os.Args[1] == "announce" {
@@ -59,7 +61,7 @@ func main() {
 		return
 	}
 	if len(os.Args) > 1 && os.Args[1] == "certificate" {
-		if err := certificate(os.Args[2:], shellUID, os.Stdout); err != nil {
+		if err := certificate(os.Args[2:], shellUID, os.Stdout, announceReplaced); err != nil {
 			fmt.Fprintf(os.Stderr, "verso: certificate: %v\n", err)
 			os.Exit(1)
 		}
@@ -80,18 +82,31 @@ func pluginsDir() string {
 	return "/usr/share/verso/plugins"
 }
 
-const certificateUsage = "usage: verso certificate generate DIR NAME...\n       verso certificate install DIR CERT KEY"
+const certificateUsage = "usage: verso certificate generate DIR NAME...\n       verso certificate install DIR CERT KEY\n       verso certificate announce DIR"
 
 // certificate puts a pair in dir, the key keyOwner's alone: `generate` makes a
 // self-signed one for the names given that a LAN visit can use; `install`
 // takes one issued elsewhere, checked as a pasted pair is, its key stored in
-// PKCS#8. It writes the files only: whoever runs it tells the shell to serve
-// them, or the shell's next start reads them.
-func certificate(args []string, keyOwner int, out io.Writer) error {
+// PKCS#8, and announces the served certificate replaced; `announce` announces
+// it for the pair already in dir, as the helper's hand install does once it
+// has written one (ADR-028). It writes the files only: whoever runs it tells
+// the shell to serve them, or the shell's next start reads them. replaced
+// announces a replacement by the certificate's name and the day it expires;
+// nil announces nothing.
+func certificate(args []string, keyOwner int, out io.Writer, replaced func(name, until string) error) error {
 	if len(args) < 2 {
 		return errors.New(certificateUsage)
 	}
 	switch {
+	case args[0] == "announce" && len(args) == 2:
+		name, until, err := servedFacts(args[1])
+		if err != nil {
+			return err
+		}
+		if replaced == nil {
+			return nil
+		}
+		return replaced(name, until)
 	case args[0] == "generate":
 		names := tlscert.LANNames(args[2:])
 		cert, key, err := tlscert.Generate(names, time.Now())
@@ -104,9 +119,56 @@ func certificate(args []string, keyOwner int, out io.Writer) error {
 		fmt.Fprintf(out, "verso: certificate made for %s\n", strings.Join(names, " "))
 		return nil
 	case args[0] == "install" && len(args) == 4:
-		return install(args[1], args[2], args[3], keyOwner, out)
+		if err := install(args[1], args[2], args[3], keyOwner, out); err != nil {
+			return err
+		}
+		if replaced == nil {
+			return nil
+		}
+		// The pair is served whatever becomes of its announcement.
+		name, until, err := servedFacts(args[1])
+		if err == nil {
+			err = replaced(name, until)
+		}
+		if err != nil {
+			fmt.Fprintf(out, "verso: the certificate's replacement was not announced: %v\n", err)
+		}
+		return nil
 	}
 	return errors.New(certificateUsage)
+}
+
+// servedFacts is the name the certificate in dir is for, its common name or
+// else its first DNS name, and the day it expires.
+func servedFacts(dir string) (name, until string, err error) {
+	certPEM, err := os.ReadFile(filepath.Join(dir, tlscert.CertFile))
+	if err != nil {
+		return "", "", err
+	}
+	block, _ := pem.Decode(certPEM)
+	if block == nil {
+		return "", "", errors.New("no certificate in " + filepath.Join(dir, tlscert.CertFile))
+	}
+	leaf, err := x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		return "", "", err
+	}
+	name = leaf.Subject.CommonName
+	if name == "" && len(leaf.DNSNames) > 0 {
+		name = leaf.DNSNames[0]
+	}
+	return name, leaf.NotAfter.UTC().Format("2006-01-02"), nil
+}
+
+// announceReplaced announces the web certificate replaced, as `verso
+// announce` does, and tells procd.
+func announceReplaced(name, until string) error {
+	a, err := events.NewWriter(pluginsDir(), shellUID).Announce(events.CertificateReplaced, "", []string{name, until})
+	if err != nil {
+		return err
+	}
+	raise(a, runQuietly, os.Stderr)
+	return nil
 }
 
 func install(dir, certPath, keyPath string, keyOwner int, out io.Writer) error {

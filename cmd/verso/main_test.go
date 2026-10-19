@@ -267,7 +267,7 @@ func TestAListenerThatIsNoAddressStopsTheShell(t *testing.T) {
 
 func TestCertificateGenerateNamesWhatTheLANUses(t *testing.T) {
 	dir := t.TempDir()
-	if err := certificate([]string{"generate", dir, "verso-lab", "verso-lab.lan", "192.168.1.1", "2a02:1::1", "fd00::1"}, os.Getuid(), io.Discard); err != nil {
+	if err := certificate([]string{"generate", dir, "verso-lab", "verso-lab.lan", "192.168.1.1", "2a02:1::1", "fd00::1"}, os.Getuid(), io.Discard, nil); err != nil {
 		t.Fatal(err)
 	}
 	info, err := os.Stat(filepath.Join(dir, tlscert.KeyFile))
@@ -284,7 +284,7 @@ func TestCertificateGenerateNamesWhatTheLANUses(t *testing.T) {
 	if fmt.Sprint(pair.Leaf.DNSNames, pair.Leaf.IPAddresses) != "[verso-lab verso-lab.lan] [192.168.1.1 fd00::1]" {
 		t.Errorf("names: %v %v", pair.Leaf.DNSNames, pair.Leaf.IPAddresses)
 	}
-	if err := certificate([]string{"generate"}, os.Getuid(), io.Discard); err == nil {
+	if err := certificate([]string{"generate"}, os.Getuid(), io.Discard, nil); err == nil {
 		t.Error("a generate with no directory succeeded")
 	}
 }
@@ -317,7 +317,7 @@ func TestCertificateInstallServesAnIssuedPairWithItsKeyInPKCS8(t *testing.T) {
 	dir, from := t.TempDir(), t.TempDir()
 	certPath, keyPath, leaf := issued(t, from, "router.example.com")
 	var out bytes.Buffer
-	if err := certificate([]string{"install", dir, certPath, keyPath}, os.Getuid(), &out); err != nil {
+	if err := certificate([]string{"install", dir, certPath, keyPath}, os.Getuid(), &out, nil); err != nil {
 		t.Fatal(err)
 	}
 	key, err := os.ReadFile(filepath.Join(dir, tlscert.KeyFile))
@@ -346,7 +346,7 @@ func TestCertificateInstallServesAnIssuedPairWithItsKeyInPKCS8(t *testing.T) {
 
 func TestCertificateInstallRefusesAPairThatCannotBeServed(t *testing.T) {
 	dir, from := t.TempDir(), t.TempDir()
-	if err := certificate([]string{"generate", dir, "router"}, os.Getuid(), io.Discard); err != nil {
+	if err := certificate([]string{"generate", dir, "router"}, os.Getuid(), io.Discard, nil); err != nil {
 		t.Fatal(err)
 	}
 	before := func() map[string][]byte {
@@ -359,14 +359,14 @@ func TestCertificateInstallRefusesAPairThatCannotBeServed(t *testing.T) {
 	was := before()
 	certPath, _, _ := issued(t, from, "router.example.com")
 	_, otherKey, _ := issued(t, t.TempDir(), "other.example.com")
-	err := certificate([]string{"install", dir, certPath, otherKey}, os.Getuid(), io.Discard)
+	err := certificate([]string{"install", dir, certPath, otherKey}, os.Getuid(), io.Discard, nil)
 	if err == nil || !strings.Contains(err.Error(), "do not match") {
 		t.Errorf("err = %v, want the mismatch named", err)
 	}
-	if err := certificate([]string{"install", dir, certPath, filepath.Join(from, "absent.key")}, os.Getuid(), io.Discard); err == nil {
+	if err := certificate([]string{"install", dir, certPath, filepath.Join(from, "absent.key")}, os.Getuid(), io.Discard, nil); err == nil {
 		t.Error("an absent key was installed")
 	}
-	if err := certificate([]string{"install", dir, certPath}, os.Getuid(), io.Discard); err == nil {
+	if err := certificate([]string{"install", dir, certPath}, os.Getuid(), io.Discard, nil); err == nil {
 		t.Error("an install with no key succeeded")
 	}
 	for f, b := range before() {

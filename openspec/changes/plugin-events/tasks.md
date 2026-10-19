@@ -135,7 +135,7 @@
 
 ## 7. The certificate's replacement
 
-- [ ] 7.1 Test first in `cmd/verso/main_test.go`:
+- [x] 7.1 Test first in `cmd/verso/main_test.go`:
   - `verso certificate install` announces `certificate.replaced` with the leaf's common name and expiry day after it writes the pair;
   - `verso certificate announce DIR` announces the same for the pair in DIR;
   - an announcement that fails is said on stderr and the install still exits 0;
