@@ -15,6 +15,12 @@ import (
 // take it as its id, so a slot named shell.… is always the shell's.
 const ShellID = "shell"
 
+// CoreNames are the owners of core's events and core's alert kinds, and of
+// the events ADR-019 names that the router does not record yet (ADR-028). A
+// plugin's id names its events and its alert kind, so no plugin may take one:
+// a plugin cannot speak as the router, nor its alerts merge with core's.
+var CoreNames = []string{"wan", "boot", "changes", "rollback", "storage", "certificate", "firmware", "device", "dhcp"}
+
 // AccessBlocks is the slot of Access's blocks, where a plugin's part of the
 // page stands.
 const AccessBlocks = "shell.access.blocks"

@@ -2,14 +2,14 @@
 
 ## 1. The registry declares events; core's names are reserved
 
-- [ ] 1.1 Test first in `internal/plugin/registry_test.go`:
+- [x] 1.1 Test first in `internal/plugin/registry_test.go`:
   - `events` parses into each declaration's name, sentence, tone, read, notify, alert and its list of ends;
   - `notify` absent reads as false;
   - each of these is dropped with a logged reason while the plugin's other declarations stay: a name outside `[a-z0-9-]{1,64}`, an unknown tone, a read the registry does not register, an end naming no event of the plugin's;
   - a registry with no `events` parses as before.
 
   Then implement it (design decision 3). Verify with `make test`.
-- [ ] 1.2 Test first in `internal/plugin/manifest_test.go`: a manifest whose id is any of `wan`, `boot`, `changes`, `rollback`, `storage`, `certificate`, `firmware`, `device` or `dhcp` is refused with a logged reason, as `shell` is. Then extend `Manifest.validate` (design decision 4). Verify with `make test`.
+- [x] 1.2 Test first in `internal/plugin/manifest_test.go`: a manifest whose id is any of `wan`, `boot`, `changes`, `rollback`, `storage`, `certificate`, `firmware`, `device` or `dhcp` is refused with a logged reason, as `shell` is. Then extend `Manifest.validate` (design decision 4). Verify with `make test`.
 - [ ] 1.3 Test first in `plugins/verso-plugin-sdk`:
   - the registry builder's `event(…)` refuses every declaration 1.1 drops;
   - a registry with two events serializes into `testdata/commands.json`, and the shell's conformance test decodes that fixture with the same declarations;

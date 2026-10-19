@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"path"
 	"path/filepath"
+	"slices"
 	"strings"
 )
 
@@ -169,6 +170,8 @@ func (m Manifest) validate() error {
 		return fmt.Errorf("id %q must be URL-safe (no / . \\ or space)", m.ID)
 	case m.ID == ShellID:
 		return fmt.Errorf("id %q is reserved for the shell's own slots", m.ID)
+	case slices.Contains(CoreNames, m.ID):
+		return fmt.Errorf("id %q is reserved for the router's own events and alerts", m.ID)
 	case m.Name == "":
 		return fmt.Errorf("plugin %q missing name", m.ID)
 	case m.Socket == "":
