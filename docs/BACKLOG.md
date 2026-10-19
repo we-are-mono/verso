@@ -20,23 +20,33 @@ own and points at the decision that governs it; the rationale lives there, not h
     answer kept by AdGuard Home): the LAN record through dnsdhcp's offer, the
     HTTP redirect to the domain, a hand install turning `acme.verso` off, and
     turning it back on serving the held certificate;
-  - the outcome as the top-right notification, the drawer refreshing itself
-    while a request runs (a new widget behaviour, the owner's call), and a
-    Request now act;
-- **Plugin contracts: events.** Plugins fill slots (ADR-026) and run their root
-  work through the command registry (ADR-027); what they lack is word of what
-  happened. Core events a plugin reacts to (`certificate.replaced`,
-  `config.applied`), and a plugin's outcomes as the top-right notification;
-  `hotplug-call verso-certificate` is the one root-side event raised today. The
-  shell still names plugins in these places:
-  - `wirelessState`, computed in Go for the wireless plugin (`gateway.go`);
+  - the drawer refreshing itself while a request runs (a new widget
+    behaviour, the owner's call), and a Request now act; acme's outcomes reach
+    the top-right notification as its announced events (ADR-028);
+- **Plugin contracts: the shell names no plugin.** Plugins fill slots
+  (ADR-026), run their root work through the command registry (ADR-027) and
+  announce events (ADR-028, change `plugin-events`). The shell still names
+  plugins in these places, each a move through the registry or the manifest
+  (change `shell-names-no-plugin`):
+  - `wirelessState`, computed in Go for the wireless plugin (`gateway.go`):
+    the wireless plugin's registered read;
   - the interface acts `interface-restart`, `interface-up` and
-    `interface-down` in the closed `commands` set (`plugin_commands.go`);
-  - links to `/plugins/firewall/` (`exposure.go`, `fwlog.go`);
+    `interface-down` in the closed `commands` set (`plugin_commands.go`): the
+    interfaces plugin's registered acts;
+  - links to `/plugins/firewall/` (`exposure.go`, `fwlog.go`): firewall's
+    `entity_acts` open links for rule, port-forward and zone;
   - the Overview's links found by the nav labels "VPN" and "Interfaces"
-    (`server.go`);
-  - the `device`/`shape` entity slot (`device_limits.go`);
-  - firewall4's reload in Services (`services.go`).
+    (`server.go`): a manifest field naming the card an entry serves; the
+    Tunnels card says "Open VPN" while linking to Interfaces with VPN absent;
+  - the qos "Mbit/s" shim in `device_limits.go`, dropped with a floor.
+
+  firewall4's reload in Services and the `device`/`shape` slot stay core's:
+  OpenWrt's service and core's own slot vocabulary.
+- **VPN tunnel events.** OpenVPN runs its hooks as the profile's user once
+  the profile drops privileges, and only root announces (ADR-028). A root-side
+  source for the tunnel's state, the kernel's `net` hotplug for its device or
+  netifd's `iface` hotplug, lets the VPN plugin announce its tunnel up and
+  down, ADR-019's row.
 - **Plugin repositories pin a verso tag.** acme, vpn, ddns and dnsdhcp build
   against the SDK in this tree (`path = "../verso-plugin-sdk"`), so each builds
   only beside a Verso checkout. Each pins the first verso tag that carries the
