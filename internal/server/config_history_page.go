@@ -293,7 +293,9 @@ func changesTable(changes []history.Change, startAt, now time.Time, viewer strin
 	table := &widget.Table{
 		Columns: []widget.TableColumn{
 			{Label: "When", Width: widget.MeasureShort},
-			{Label: "Changed", Kind: "phrase"},
+			// What a change did can run long; it wraps rather than widen the
+			// listing past its frame.
+			{Label: "Changed", Kind: "phrase", Wrap: true},
 			{Label: "Notes", Kind: "comment", Width: widget.MeasureName},
 			{Label: "By", Kind: "phrase", Width: widget.MeasureName},
 			{Label: "Status", Kind: "status", Width: widget.MeasureWord},

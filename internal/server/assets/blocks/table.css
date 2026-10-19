@@ -67,7 +67,10 @@
  *           __words     the name's words, which a switched-off row's marker
  *                       lies under
  *           __phrase    a name written as one line of parts, marked as a
- *                       name is
+ *                       name is; data-verso-wrap where its column lets it
+ *                       run onto more lines (TableColumn.Wrap)
+ *           __part      one of a phrase's parts: words, a link, or a value
+ *                       (data-verso-part="value") as the device wrote it
  *           __expand    the name of a row that unfolds, the control that
  *                       unfolds it
  *           __identity  an inventory row's node, unfold box and name, one
@@ -315,6 +318,36 @@
 }
 .verso-table__phrase[data-verso-off] {
   color: var(--color-body);
+}
+
+/* A phrase's words and links keep whole; a value is what gives, clipped
+   with an ellipsis at the cell's edge. */
+.verso-table__part {
+  flex-shrink: 0;
+}
+.verso-table__part[data-verso-part="value"] {
+  flex-shrink: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* A phrase whose column wraps runs onto the listing's 24px lines, between
+   its parts and inside its words and values, so a long one (what a change
+   did) never widens the listing past its frame. A chip stays whole. */
+.verso-table__phrase[data-verso-wrap] {
+  flex-wrap: wrap;
+  row-gap: 0;
+  white-space: normal;
+}
+.verso-table__phrase[data-verso-wrap] > .verso-table__part,
+.verso-table__phrase[data-verso-wrap] > .verso-table__part[data-verso-part="value"] {
+  flex-shrink: 1;
+  min-width: 0;
+  overflow: visible;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .verso-table__expand {

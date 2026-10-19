@@ -1972,9 +1972,9 @@ func TestRenderTablePhrase(t *testing.T) {
 	got := render(t, r, phraseTable(false))
 	chip := strings.Index(got, ">Allow-Ping</span>")
 	key := strings.Index(got, ">target</span>")
-	before := strings.Index(got, `<span class="truncate type-body" data-verso-verbatim>ACCEPT</span>`)
+	before := strings.Index(got, `<span class="verso-table__part type-body" data-verso-part="value" data-verso-verbatim>ACCEPT</span>`)
 	arrow := strings.Index(got, `>→</span>`)
-	after := strings.Index(got, `<span class="truncate type-body" data-verso-verbatim>DROP</span>`)
+	after := strings.Index(got, `<span class="verso-table__part type-body" data-verso-part="value" data-verso-verbatim>DROP</span>`)
 	if chip < 0 || !(chip < key && key < before && before < arrow && arrow < after) {
 		t.Fatalf("parts out of place (%d %d %d %d %d):\n%s", chip, key, before, arrow, after, got)
 	}
@@ -1988,6 +1988,22 @@ func TestRenderTablePhrase(t *testing.T) {
 	off := render(t, r, phraseTable(true))
 	if n := strings.Count(off, "verso-table__words"); n != 1 {
 		t.Errorf("a phrase not in force should be marked over once, got %d:\n%s", n, off)
+	}
+}
+
+// TestAWrappingPhraseColumnSaysSo: a phrase column that wraps marks its
+// phrases, which then run onto more lines rather than widen the listing; a
+// phrase column that does not stays on its one line.
+func TestAWrappingPhraseColumnSaysSo(t *testing.T) {
+	r := newRenderer(t)
+	tbl := phraseTable(false)
+	if got := render(t, r, tbl); strings.Contains(got, "data-verso-wrap") {
+		t.Errorf("a phrase column that does not wrap is marked:\n%s", got)
+	}
+	tbl.Columns[0].Wrap = true
+	got := render(t, r, tbl)
+	if n := strings.Count(got, `class="verso-table__phrase verso-table__words" data-verso-wrap`); n != 1 {
+		t.Errorf("a wrapping phrase column should mark its phrase once, got %d:\n%s", n, got)
 	}
 }
 

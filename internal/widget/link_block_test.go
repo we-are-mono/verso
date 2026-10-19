@@ -38,7 +38,7 @@ func TestALinkIsTheLinkBlock(t *testing.T) {
 		Columns: []TableColumn{{Label: "Rule", Kind: "phrase"}},
 		Rows:    []TableRow{{ID: "a", Cells: []TableCell{{Text: "see the zone", Parts: []TablePart{{Words: "see"}, {Href: "/x", Words: "the zone"}}}}}},
 	})
-	if !strings.Contains(cell, `<a href="/x" class="verso-link shrink-0" data-verso-door>`) {
+	if !strings.Contains(cell, `<a href="/x" class="verso-link verso-table__part" data-verso-door>`) {
 		t.Errorf("a link in a row's words is not a door:\n%s", cell)
 	}
 }

@@ -262,6 +262,11 @@ type TableColumn struct {
 	// up. One of the closed ColumnMeasure set; the growing columns share what is
 	// left.
 	Width ColumnMeasure `json:"width,omitempty"`
+	// Wrap lets a phrase column's cells run onto the listing's 24px lines,
+	// between their parts and inside their words and values, where one line
+	// would widen the listing past its frame: a sentence of what changed,
+	// whose length the reader cannot choose.
+	Wrap bool `json:"wrap,omitempty"`
 }
 
 // ColumnMeasure is a column's fixed width, named by what the column holds —
@@ -841,6 +846,7 @@ type tableCellView struct {
 	Indent     string
 
 	Kind      string
+	Wrap      bool // a phrase that runs onto more lines (TableColumn.Wrap)
 	Identity  bool // the row's name: its first identity column, the one a switched-off row marks
 	Off       bool // the row's subject is switched off and this is its name: marked over, set in Body, and said to a screen reader
 	Draggable bool // reorder cells: the table persists an order, so draw the handle
@@ -1474,7 +1480,7 @@ func (t *Table) rowViews(r *Renderer, csrf string, rows []TableRow, hasDetail bo
 			if kind == "" {
 				kind = "text"
 			}
-			cv := tableCellView{Kind: kind, Draggable: reorderable, RowID: row.ID, RowName: rowName, CSRFToken: csrf, Drawer: row.Drawer != nil || row.Entity != nil, Panel: rv.PanelURL, Dense: t.Dense}
+			cv := tableCellView{Kind: kind, Wrap: t.Columns[i].Wrap, Draggable: reorderable, RowID: row.ID, RowName: rowName, CSRFToken: csrf, Drawer: row.Drawer != nil || row.Entity != nil, Panel: rv.PanelURL, Dense: t.Dense}
 			cv.Expandable = i == primary && len(row.Expanded) > 0
 			if i == primary {
 				switch {
