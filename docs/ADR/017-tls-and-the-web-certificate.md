@@ -305,6 +305,17 @@ unprivileged shell the DNS credentials.
   no source of the certificate. The Install and Make drawers say so before the
   operator confirms when the section is on. Turning it back on serves the certificate acme holds at once
   (Catch-up) and requests one when none is held.
+- **The replacement is an event.** Every replacement of the served pair, by
+  hand, made on Access, or installed for acme by `verso certificate install`,
+  is announced as `certificate.replaced` (ADR-028), naming the certificate's
+  name and the day it expires: System → Events lists it to a session that may
+  read the certificate's facts, and procd hears `verso.certificate.replaced`,
+  which another plugin's trigger answers. A hand install announces it after the
+  SIGHUP and the hand-over, and a made certificate likewise; the install
+  stands whether or not it is announced. The reload stays on `SIGHUP` (§4):
+  acme releases in the field send it after their install, and serving a new
+  pair must not wait on a spool the shell reads every two seconds, nor fail
+  with it.
 
 ### 7. Where the browser is sent
 
