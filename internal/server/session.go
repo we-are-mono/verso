@@ -97,7 +97,10 @@ type Sessions struct {
 	// cards are the plugins' Overview card headers as each session's last
 	// Overview read them (ADR-026), by token, which its live stream says
 	// again without asking the plugins.
-	cards    map[string][]widget.OverviewContribution
+	cards map[string][]widget.OverviewContribution
+	// said is each session's events of the last minute, by token, which its
+	// browser's stream says (session_events.go).
+	said     map[string]*sessionEvents
 	now      func() time.Time
 	idle     time.Duration
 	absolute time.Duration
@@ -277,6 +280,7 @@ func (s *Sessions) destroy(token string) {
 		s.killSID(sess.sid)
 	}
 	delete(s.endings, token)
+	s.forgetEnded()
 	s.mu.Unlock()
 }
 

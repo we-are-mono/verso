@@ -206,6 +206,35 @@ func TestAnnouncementsAreTakenWhileAnApplyWaits(t *testing.T) {
 	}
 }
 
+// TestAPluginsSaidEventIsKeptForItsReaders: a recorded event declared said is
+// kept for each signed-in session rpcd grants its read; the router's own, and
+// one declared quiet, for none.
+func TestAPluginsSaidEventIsKeptForItsReaders(t *testing.T) {
+	s, store, dir := announcing(t)
+	quiet := acmeEvents()
+	quiet.Commands.Events = append(quiet.Commands.Events, plugin.EventDeclaration{Name: "checked", Sentence: "Checked.", Tone: "info", Read: "state"})
+	s.kinds = events.NewTable([]plugin.Manifest{quiet})
+	reader := s.sessions.CreateWithMetadata("sid-reader", "root", "", "")
+	other := s.sessions.CreateWithMetadata("sid-other", "guest", "", "")
+	s.backend = fakeBackend{grantSID: func(sid, scope, object, function string) bool {
+		return sid == "sid-reader" || scope != "verso-plugin"
+	}}
+	at := time.Now().UnixNano()
+	leave(t, dir, at, announced("acme.renewed", at, "router.example.com"))
+	leave(t, dir, at+1, announced("acme.checked", at+1))
+	leave(t, dir, at+2, announced(events.CertificateReplaced, at+2, "router.example.com", "2027-01-17"))
+	s.takeAnnouncements(t.Context(), store, dir)
+	if got := s.sessions.told(reader, 0); len(got) != 1 || got[0].Event.Kind != "acme.renewed" || got[0].ID == 0 {
+		t.Errorf("reader was told %+v, want acme's renewal alone", got)
+	}
+	if got := s.sessions.told(other, 0); len(got) != 0 {
+		t.Errorf("a session without acme's read was told %+v", got)
+	}
+	if got := recordedEvents(t, store); len(got) != 3 {
+		t.Errorf("recorded %+v, want all three", got)
+	}
+}
+
 // TestTheSpoolsNamesAreTheWritersNames: the taker reads exactly the names the
 // writer gives.
 func TestTheSpoolsNamesAreTheWritersNames(t *testing.T) {

@@ -149,7 +149,10 @@ type fakeBackend struct {
 	// a restricted rpcd login that may do some things and not others. probes
 	// records every probe asked, as "scope object function". unanswered names
 	// the probes rpcd leaves unanswered, as an rpcd that stops mid-page does.
-	grant      func(scope, object, function string) bool
+	grant func(scope, object, function string) bool
+	// grantSID is grant by the sid asked for, for what several sessions are
+	// each allowed.
+	grantSID   func(sid, scope, object, function string) bool
 	probes     *[]string
 	unanswered []string
 }
@@ -234,12 +237,15 @@ func (f fakeBackend) Hostname(context.Context, string) (string, error) {
 	return f.hn, nil
 }
 
-func (f fakeBackend) Access(_ context.Context, _, scope, object, function string) (bool, error) {
+func (f fakeBackend) Access(_ context.Context, sid, scope, object, function string) (bool, error) {
 	if f.probes != nil {
 		*f.probes = append(*f.probes, scope+" "+object+" "+function)
 	}
 	if slices.Contains(f.unanswered, scope+" "+object+" "+function) {
 		return false, errors.New("rpcd did not answer")
+	}
+	if f.grantSID != nil {
+		return f.grantSID(sid, scope, object, function), f.accessErr
 	}
 	if f.grant != nil {
 		return f.grant(scope, object, function), f.accessErr

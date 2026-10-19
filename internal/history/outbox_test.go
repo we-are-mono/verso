@@ -14,14 +14,16 @@ import (
 func TestRecordOnceRecordsAnAnnouncementOnce(t *testing.T) {
 	store, _ := open(t)
 	e := Event{Time: minute(0), Kind: "acme.renewed", Detail: `{"spool":"a.json","args":["x"]}`}
-	for range 2 {
-		if err := store.RecordOnce(ctx, e, "a.json"); err != nil {
-			t.Fatal(err)
-		}
+	first, err := store.RecordOnce(ctx, e, "a.json")
+	if err != nil || first == 0 {
+		t.Fatalf("first = %d, %v", first, err)
+	}
+	if again, err := store.RecordOnce(ctx, e, "a.json"); err != nil || again != 0 {
+		t.Fatalf("again = %d, %v; want 0, nothing recorded", again, err)
 	}
 	other := Event{Time: minute(0), Kind: "acme.renewed", Detail: `{"spool":"b.json","args":["x"]}`}
-	if err := store.RecordOnce(ctx, other, "b.json"); err != nil {
-		t.Fatal(err)
+	if id, err := store.RecordOnce(ctx, other, "b.json"); err != nil || id <= first {
+		t.Fatalf("other = %d, %v", id, err)
 	}
 	got, _, err := store.EventsAfter(ctx, 0)
 	if err != nil || len(got) != 2 || got[0] != e || got[1] != other {

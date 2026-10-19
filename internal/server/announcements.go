@@ -62,15 +62,35 @@ func (s *Server) takeAnnouncements(ctx context.Context, store *history.Store, di
 			_ = os.Remove(path)
 			continue
 		}
-		e, _, ok := kinds.Record(a, name, s.pluginsDir)
+		e, k, ok := kinds.Record(a, name, s.pluginsDir)
 		if !ok {
 			log.Printf("verso: announcement %s let go: %s is no kind root may announce", name, a.Kind)
 			_ = os.Remove(path)
 			continue
 		}
-		if err := store.RecordOnce(ctx, e, name); err != nil {
+		id, err := store.RecordOnce(ctx, e, name)
+		if err != nil {
 			return
 		}
 		_ = os.Remove(path)
+		if id != 0 {
+			s.sayEvent(ctx, id, e, k)
+		}
 	}
+}
+
+// sayEvent keeps e, recorded as id, for every signed-in session rpcd lets see
+// it, when its kind is said: their browsers' streams say it as the top-right
+// notification (ADR-028). The router's own kinds are never said this way.
+func (s *Server) sayEvent(ctx context.Context, id int64, e history.Event, k events.Kind) {
+	if !k.Said {
+		return
+	}
+	probe, known := kindProbe(k)
+	if !known {
+		return
+	}
+	s.sessions.tellAll(saidEvent{ID: id, Event: e}, func(sid string) bool {
+		return probe == nil || s.grantsFor(sid).may(ctx, *probe)
+	})
 }

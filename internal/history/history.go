@@ -377,26 +377,30 @@ func (s *Store) Record(ctx context.Context, e Event) error {
 // RecordOnce records e, which root announced and the shell took from the
 // spool under the name spool (ADR-028), unless an event of its time and kind
 // already carries that spool name: a shell that stopped after recording an
-// announcement and before letting it go records it once.
-func (s *Store) RecordOnce(ctx context.Context, e Event, spool string) error {
+// announcement and before letting it go records it once. id is the new
+// event's number, 0 when it was recorded already.
+func (s *Store) RecordOnce(ctx context.Context, e Event, spool string) (id int64, err error) {
+	defer func() { s.note(err, time.Now()) }()
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
-		s.note(err, time.Now())
-		return err
+		return 0, err
 	}
 	defer func() { _ = tx.Rollback() }()
 	var seen int
 	err = tx.QueryRowContext(ctx, `SELECT count(*) FROM events WHERE time = ? AND kind = ? AND json_valid(detail) AND json_extract(detail, '$.spool') = ?`,
 		e.Time.Unix(), e.Kind, spool).Scan(&seen)
-	if err == nil && seen == 0 {
-		_, err = tx.ExecContext(ctx, `INSERT INTO events (time, kind, subject, detail) VALUES (?, ?, ?, ?)`,
-			e.Time.Unix(), e.Kind, e.Subject, e.Detail)
+	if err != nil || seen > 0 {
+		return 0, err
 	}
-	if err == nil {
-		err = tx.Commit()
+	res, err := tx.ExecContext(ctx, `INSERT INTO events (time, kind, subject, detail) VALUES (?, ?, ?, ?)`,
+		e.Time.Unix(), e.Kind, e.Subject, e.Detail)
+	if err != nil {
+		return 0, err
 	}
-	s.note(err, time.Now())
-	return err
+	if id, err = res.LastInsertId(); err != nil {
+		return 0, err
+	}
+	return id, tx.Commit()
 }
 
 // Events reads the events in [from, to), newest first.
