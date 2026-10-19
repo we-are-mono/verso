@@ -8,6 +8,27 @@ import (
 	"time"
 )
 
+// TestRecordOnceRecordsAnAnnouncementOnce: an announced event is recorded
+// once by the spool name it was taken under, however often the shell finds
+// it, and another announcement of the same kind at the same time is its own.
+func TestRecordOnceRecordsAnAnnouncementOnce(t *testing.T) {
+	store, _ := open(t)
+	e := Event{Time: minute(0), Kind: "acme.renewed", Detail: `{"spool":"a.json","args":["x"]}`}
+	for range 2 {
+		if err := store.RecordOnce(ctx, e, "a.json"); err != nil {
+			t.Fatal(err)
+		}
+	}
+	other := Event{Time: minute(0), Kind: "acme.renewed", Detail: `{"spool":"b.json","args":["x"]}`}
+	if err := store.RecordOnce(ctx, other, "b.json"); err != nil {
+		t.Fatal(err)
+	}
+	got, _, err := store.EventsAfter(ctx, 0)
+	if err != nil || len(got) != 2 || got[0] != e || got[1] != other {
+		t.Fatalf("events = %+v, %v; want each announcement once", got, err)
+	}
+}
+
 // TestEventsAfterHandsOverEachEventOnce: a reader that remembers the last id
 // it saw gets only what was recorded since, oldest first.
 func TestEventsAfterHandsOverEachEventOnce(t *testing.T) {
