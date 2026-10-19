@@ -352,6 +352,19 @@ mod tests {
     use super::*;
     use std::cell::Cell;
 
+    /// while_busy runs a stand-in, again while Linux says it is busy: a test
+    /// on another thread may fork while the script is being written, and its
+    /// child holds the write open until it execs (ETXTBSY).
+    fn while_busy<T>(run: impl Fn() -> Result<T, String>) -> Result<T, String> {
+        for _ in 0..50 {
+            match run() {
+                Err(e) if e.contains("Text file busy") => std::thread::sleep(Duration::from_millis(10)),
+                answer => return answer,
+            }
+        }
+        run()
+    }
+
     /// fake_verso is an executable standing in for `verso`, its body a shell
     /// script, in a directory of the test's own.
     fn fake_verso(name: &str, body: &str) -> PathBuf {
@@ -366,10 +379,10 @@ mod tests {
     #[test]
     fn announce_runs_verso_announce_with_the_event() {
         let verso = fake_verso("args", r#"printf '%s\n' "$@" > "$(dirname "$0")/args""#);
-        announce_with(&verso, Duration::from_secs(10), "acme", "renewed", Some("eth0"), &["router.example.com", "-1"]).unwrap();
+        while_busy(|| announce_with(&verso, Duration::from_secs(10), "acme", "renewed", Some("eth0"), &["router.example.com", "-1"])).unwrap();
         let args = fs::read_to_string(verso.with_file_name("args")).unwrap();
         assert_eq!(args, "announce\nacme.renewed\n--subject\neth0\n--\nrouter.example.com\n-1\n");
-        announce_with(&verso, Duration::from_secs(10), "acme", "renewed", None, &[]).unwrap();
+        while_busy(|| announce_with(&verso, Duration::from_secs(10), "acme", "renewed", None, &[])).unwrap();
         let args = fs::read_to_string(verso.with_file_name("args")).unwrap();
         assert_eq!(args, "announce\nacme.renewed\n--\n");
     }
@@ -377,14 +390,14 @@ mod tests {
     #[test]
     fn a_refused_announcement_is_an_error_with_its_reason() {
         let verso = fake_verso("refused", "echo 'verso: announce: acme.expired: no installed plugin declares it' >&2; exit 1");
-        let err = announce_with(&verso, Duration::from_secs(10), "acme", "expired", None, &[]).unwrap_err();
+        let err = while_busy(|| announce_with(&verso, Duration::from_secs(10), "acme", "expired", None, &[])).unwrap_err();
         assert!(err.contains("no installed plugin declares it"), "{err}");
     }
 
     #[test]
     fn an_announcement_that_does_not_answer_is_given_up() {
         let verso = fake_verso("slow", "sleep 2");
-        let err = announce_with(&verso, Duration::from_millis(100), "acme", "renewed", None, &[]).unwrap_err();
+        let err = while_busy(|| announce_with(&verso, Duration::from_millis(100), "acme", "renewed", None, &[])).unwrap_err();
         assert!(err.contains("did not answer"), "{err}");
     }
 
@@ -511,17 +524,9 @@ mod tests {
         path
     }
 
-    /// call_fake runs the stand-in, again while Linux says it is busy: a
-    /// test on another thread may fork while the script is being written,
-    /// and its child holds the write open until it execs (ETXTBSY).
+    /// call_fake runs the ubus stand-in while Linux says it is busy.
     fn call_fake(ubus: &Path, object: &str, method: &str, args: &Value) -> Result<Map<String, Value>, String> {
-        for _ in 0..50 {
-            match ubus_with(ubus, object, method, args) {
-                Err(e) if e.contains("Text file busy") => std::thread::sleep(Duration::from_millis(10)),
-                answer => return answer,
-            }
-        }
-        ubus_with(ubus, object, method, args)
+        while_busy(|| ubus_with(ubus, object, method, args))
     }
 
     #[test]
