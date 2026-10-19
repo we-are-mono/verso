@@ -16,8 +16,8 @@ Every task ends with `make lint` passing, and `make test` passing except the fiv
 
 ## 2. Rates split at the narrow space
 
-- [ ] 2.1 In `plugins/verso-plugin-qos` (its own repo), test first in `summaries.rs`: a capped device's download and upload read `25\u{202f}Mb/s`, and an uncapped one reads `No limit`. Then write the rates with U+202F. Verify with `cargo test` and `cargo clippy` there, and commit there.
-- [ ] 2.2 Test first in `internal/server/device_limits_test.go`:
+- [x] 2.1 In `plugins/verso-plugin-qos` (its own repo), test first in `summaries.rs`: a capped device's download and upload read `25\u{202f}Mb/s`, and an uncapped one reads `No limit`. Then write the rates with U+202F. Verify with `cargo test` and `cargo clippy` there, and commit there.
+- [x] 2.2 Test first in `internal/server/device_limits_test.go`:
   - `25` U+202F `Mb/s` gives figure `25` and unit `Mb/s`;
   - `3` U+202F `kb/s` gives figure `3` and unit `kb/s`;
   - `25 Mb/s` with a plain space is shown whole with no unit;

@@ -12,6 +12,7 @@ import (
 
 	"github.com/we-are-mono/verso/internal/plugin"
 	"github.com/we-are-mono/verso/internal/sysstat"
+	"github.com/we-are-mono/verso/internal/units"
 )
 
 type limitSummaryTransport struct {
@@ -112,14 +113,20 @@ func TestRemovingLastOfflineLimitKeepsSuccessfulSaveVisible(t *testing.T) {
 	}
 }
 
-// TestALimitReadsInMegabitsWhicheverSpellingThePluginWrites: the plugin ships
-// on its own, so a limit may arrive as "25 Mbit/s" or "25 Mb/s"; the tip
-// writes both as every rate is written.
-func TestALimitReadsInMegabitsWhicheverSpellingThePluginWrites(t *testing.T) {
-	for _, value := range []string{"25 Mbit/s", "25 Mb/s"} {
-		tip := deviceLimitTip([]plugin.EntitySummaryDetail{{Kind: "download", Label: "Download", Values: []string{value}}}, translatorOrIdentity(nil))
-		if tip == nil || len(tip.Rates) != 1 || tip.Rates[0].Value != "25" || tip.Rates[0].Unit != "Mb/s" {
-			t.Errorf("%q = %+v", value, tip)
+// TestARateSplitsAtTheNarrowSpaceWhateverItsUnit: a plugin writes a rate's
+// figure and unit apart by U+202F, and the tip sets the unit it wrote in the
+// unit's ink. Any other spelling is shown whole, as the plugin wrote it: the
+// shell reads no plugin's own spelling.
+func TestARateSplitsAtTheNarrowSpaceWhateverItsUnit(t *testing.T) {
+	for _, c := range []struct{ value, figure, unit string }{
+		{"25" + units.Space + "Mb/s", "25", "Mb/s"},
+		{"3" + units.Space + "kb/s", "3", "kb/s"},
+		{"25 Mb/s", "25 Mb/s", ""},
+		{"No limit", "No limit", ""},
+	} {
+		tip := deviceLimitTip([]plugin.EntitySummaryDetail{{Kind: "download", Label: "Download", Values: []string{c.value}}}, translatorOrIdentity(nil))
+		if tip == nil || len(tip.Rates) != 1 || tip.Rates[0].Value != c.figure || tip.Rates[0].Unit != c.unit {
+			t.Errorf("%q = %+v, want figure %q unit %q", c.value, tip, c.figure, c.unit)
 		}
 	}
 }

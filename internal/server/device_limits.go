@@ -124,13 +124,10 @@ func deviceLimitTip(details []plugin.EntitySummaryDetail, tr func(string) string
 			tip.Until, tip.Qualifier, tip.Clock = value, tr("Until"), tr("Router time")
 		case "download", "upload":
 			rate := widget.DeviceLimitRate{Label: tr(detail.Label), Value: tr(value), Icon: detail.Kind}
-			// The device-limits plugin ships on its own, and its releases
-			// before the shell's rate spelling write "Mbit/s", and a full space
-			// before the unit.
-			for _, suffix := range []string{units.Space + "Mb/s", " Mb/s", " Mbit/s"} {
-				if number, ok := strings.CutSuffix(value, suffix); ok {
-					rate.Value, rate.Unit = number, "Mb/s"
-				}
+			// A figure and its unit stand apart by the narrow space, whatever
+			// the unit; any other spelling is shown whole, as written.
+			if figure, unit, ok := strings.Cut(value, units.Space); ok {
+				rate.Value, rate.Unit = figure, unit
 			}
 			tip.Rates = append(tip.Rates, rate)
 		}
