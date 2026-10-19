@@ -7,7 +7,7 @@ Lets a plugin's root side, and core's, announce what happened on the router: the
 ## ADDED Requirements
 
 ### Requirement: Root announces an event through one command
-`verso announce <owner>.<event> [--subject <device>] [<arg>…]` SHALL be the one way to announce an event; the certificate's install and `verso certificate announce` SHALL announce through it. It SHALL refuse unless run as root. It SHALL leave the event for the shell, with the time it was announced. It SHALL refuse an event its owner does not declare, and arguments that do not fill the declared sentence. A refused announcement SHALL exit non-zero, say why on stderr, and leave nothing behind.
+`verso announce <owner>.<event> [--subject <device>] [<arg>…]` SHALL be the one way to announce an event; the certificate's install and `verso certificate announce` SHALL announce through it. It SHALL refuse unless run as root, and refuse an event its owner does not declare, arguments that do not fill the declared sentence, and any argument with a control character. A refused announcement SHALL exit non-zero, say why on stderr, and leave nothing behind.
 
 #### Scenario: A root half announces
 - **WHEN** acme's root half runs `verso announce acme.renewed router.example.com` as root, and acme declares `renewed` with the sentence "The certificate for %s was renewed."
@@ -25,37 +25,62 @@ Lets a plugin's root side, and core's, announce what happened on the router: the
 - **WHEN** a root half announces `acme.renewed` with no argument, and its sentence holds one `%s`
 - **THEN** the command exits non-zero and nothing is announced
 
+#### Scenario: A line break in an argument
+- **WHEN** a root half announces `acme.renewed` with an argument holding a newline
+- **THEN** the command exits non-zero and nothing is announced
+
+### Requirement: Root announces only what core lets it
+Of core's own events, `verso announce` SHALL accept only the certificate's replacement. The router's other events are the shell's to record.
+
+#### Scenario: Announcing the internet down
+- **WHEN** a root process runs `verso announce wan.down`
+- **THEN** the command exits non-zero and no event is recorded
+
+### Requirement: The spool cannot lead root elsewhere
+`verso announce` SHALL write only into the shell's own events directory: a directory, not a link, owned by the shell's account, mode `0700`. It SHALL refuse, writing nothing anywhere, when anything else stands at that name.
+
+#### Scenario: A link at the spool's name
+- **WHEN** a link to `/etc/uci-defaults` stands where the events directory belongs, and a root half announces
+- **THEN** the announcement is refused and nothing is written in `/etc/uci-defaults`
+
 ### Requirement: Announcing never waits on the shell
-An announcement SHALL be kept until the shell takes it, across a restart of the shell, up to 256 announcements waiting. Past that, `verso announce` SHALL refuse with exit status non-zero, and the announcements already waiting SHALL be kept. The announcing process SHALL never wait on the shell or on a reaction.
+An announcement SHALL be kept until the shell takes it, across a restart of the shell, up to 256 waiting, including one made while the router boots before the shell has started. Past 256, `verso announce` SHALL refuse, and the announcements already waiting SHALL be kept. The announcing process SHALL never wait on the shell or on a reaction.
 
 #### Scenario: The shell restarting
 - **WHEN** acme announces a renewal while procd is restarting the shell
 - **THEN** the started shell records the renewal
+
+#### Scenario: At boot
+- **WHEN** acme's catch-up at boot installs a certificate before the shell starts
+- **THEN** the certificate's replacement is recorded once the shell starts
 
 #### Scenario: The shell stopped
 - **WHEN** 256 announcements wait because the shell is stopped, and a root half announces another
 - **THEN** that announcement is refused, and the 256 waiting are recorded once the shell starts
 
 ### Requirement: A plugin declares its events
-A plugin's `commands.json` SHALL declare each event it announces in `events`: its name; its sentence, in English, with `%s` for each argument; its tone (`success`, `info`, `warning` or `danger`); the registered read whose grant lets a session see it; whether it alerts; and, optionally, the event of its own that it ends. A declaration naming a read the registry lacks, or an unknown tone, SHALL be ignored with a logged reason, and that plugin's other declarations kept.
-
-#### Scenario: A declaration with no such read
-- **WHEN** a plugin declares an event whose read is `status` and its registry registers no read `status`
-- **THEN** the shell logs that the event is ignored, announcing it is refused, and the plugin's other events are recorded
+A plugin's `commands.json` SHALL declare each event it announces in `events`: its name; its sentence, in English, with `%s` for each argument; its tone (`success`, `info`, `warning` or `danger`); the registered read whose grant lets a session see it; whether it is said (`notify`, off when absent); whether it alerts; and the events of its own it ends.
 
 #### Scenario: A registry from before events
 - **WHEN** a plugin's `commands.json` has no `events`
 - **THEN** the plugin's commands work as before, and announcing any event as that plugin is refused
 
-### Requirement: Core's owners are reserved
-The owners `wan`, `boot`, `changes`, `storage` and `certificate` SHALL be core's. A plugin with one of those ids SHALL have its event declarations ignored, with a logged reason.
+### Requirement: A broken declaration is ignored alone
+A declaration naming a read the registry lacks, an unknown tone, or an end the plugin does not declare SHALL be ignored with a logged reason, and that plugin's other declarations kept.
 
-#### Scenario: A plugin named for a core owner
-- **WHEN** a plugin with the id `certificate` declares an event `replaced`
-- **THEN** its declaration is ignored, and `certificate.replaced` stays core's
+#### Scenario: A declaration with no such read
+- **WHEN** a plugin declares an event whose read is `status` and its registry registers no read `status`
+- **THEN** the shell logs that the event is ignored, announcing it is refused, and the plugin's other events are recorded
+
+### Requirement: Core's names are reserved
+A plugin whose id is one of core's event owners or alert kinds (`wan`, `boot`, `changes`, `rollback`, `storage`, `certificate`) or an owner of ADR-019's events (`firmware`, `device`, `dhcp`) SHALL NOT load, and its manifest SHALL be refused with a logged reason, as one with the id `shell` is.
+
+#### Scenario: A plugin named for an alert kind
+- **WHEN** a plugin with the id `rollback` is installed
+- **THEN** the shell refuses its manifest, logs why, and the `rollback` alert kind stays core's
 
 ### Requirement: Each event is recorded once, in the order announced
-The shell SHALL take waiting announcements every two seconds, oldest first, and record each as an event of the router's history, at the time it was announced, kind `<owner>.<event>`. An announcement the shell has recorded SHALL NOT be recorded again, even when the shell stopped before it let the announcement go. An announcement not written by root, or whose owner no longer declares it, SHALL be dropped unrecorded with a logged reason.
+The shell SHALL take waiting announcements every two seconds, oldest first, and record each as an event of the router's history, at the time it was announced, kind `<owner>.<event>`. An announcement the shell has recorded SHALL NOT be recorded again, even when the shell stopped before it let the announcement go. An announcement not written by root, or whose owner's registry on disk does not declare it, SHALL be dropped unrecorded with a logged reason.
 
 #### Scenario: A crash between recording and letting go
 - **WHEN** the shell records an announcement and is killed before it removes the announcement
@@ -64,6 +89,10 @@ The shell SHALL take waiting announcements every two seconds, oldest first, and 
 #### Scenario: Two announcements in one pass
 - **WHEN** acme announces `renew-failed` and then `renewed` within two seconds
 - **THEN** System → Events lists `renewed` above `renew-failed`, each at the time it was announced
+
+#### Scenario: An event a plugin's upgrade declares
+- **WHEN** an upgrade of acme declares a new event and announces it before the shell has re-read its plugins
+- **THEN** the shell records the event
 
 #### Scenario: A plugin removed with an announcement waiting
 - **WHEN** acme announces an event and is removed before the shell takes it
@@ -92,15 +121,19 @@ A plugin's event SHALL show, on System → Events and as a notification, only to
 - **THEN** no acme event is listed, and none is said to that session
 
 ### Requirement: An event is said to the operators looking at the router
-Every plugin event the shell records SHALL be said as the top-right notification to each signed-in session allowed to see it: on one of the session's open pages as it is recorded, or, with no page open, on the next page the session opens within a minute of the event. It SHALL be said once per session, in the session's language, in the tone it declares. The router's own events (`wan`, `boot`, `changes`, `storage`, `certificate`) SHALL NOT be said this way.
+A recorded plugin event declared `notify` SHALL be said as the top-right notification to each signed-in session allowed to see it, in the session's language and the event's tone: once per browser, on a page that is visible, either as it is recorded or when a page of that session becomes visible within a minute of its recording. The router's own events SHALL NOT be said this way.
 
 #### Scenario: A page open
 - **WHEN** an operator has Access open and acme's request for the domain succeeds
 - **THEN** the notification says the certificate was issued, without the operator doing anything
 
-#### Scenario: Two pages open
-- **WHEN** the same session has two pages open as the event is recorded
-- **THEN** one of them says it, and the other does not
+#### Scenario: Two tabs open
+- **WHEN** the same browser has two pages of the session open as the event is recorded
+- **THEN** one page says it and the other does not, and the browser holds one stream for both
+
+#### Scenario: A tab in the background
+- **WHEN** the only open page is a background tab as the event is recorded, and the operator brings it forward 30 seconds later
+- **THEN** the page says the event as it comes forward
 
 #### Scenario: Back within a minute
 - **WHEN** an operator has no page open as the event is recorded, and opens one 30 seconds later
@@ -110,12 +143,27 @@ Every plugin event the shell records SHALL be said as the top-right notification
 - **WHEN** an operator opens a page five minutes after the event
 - **THEN** no notification says it, and System → Events lists it
 
+#### Scenario: An event declared quiet
+- **WHEN** a plugin announces an event it declares without `notify`
+- **THEN** System → Events lists it and no notification says it
+
 #### Scenario: The internet went down
 - **WHEN** the router records the internet going down while an operator has a page open
 - **THEN** no notification says it, as before this change
 
-### Requirement: A page listens only while its sign-in lasts
-A page's stream of events SHALL end when its session ends, and holding it open SHALL NOT keep the session alive or move its idle clock.
+### Requirement: An act's own outcome is never held behind an event
+The outcome of an act the operator takes SHALL be said at once, as before this change, replacing what the notification shows. An event SHALL wait until the notification is free, and events SHALL wait behind each other.
+
+#### Scenario: Saving while an event shows
+- **WHEN** acme's failure shows in the notification and the operator saves a form
+- **THEN** the save's outcome is said at once
+
+#### Scenario: An event during an outcome
+- **WHEN** a save's outcome shows and an event arrives
+- **THEN** the event is said after the save's outcome leaves
+
+### Requirement: A browser listens only while its sign-in lasts
+A browser's stream of events SHALL end when its session ends, and holding it open SHALL NOT keep the session alive or move its idle clock.
 
 #### Scenario: An idle page
 - **WHEN** a page stays open with nobody using it until the session's idle limit passes
@@ -133,15 +181,26 @@ System → Events → Alerts SHALL list each installed plugin that declares an a
 - **THEN** an alert titled "home-router: The certificate for router.example.com could not be renewed." is sent, saying at what time
 
 #### Scenario: An event that does not alert
-- **WHEN** acme announces `renewed`, which it declares as not alerting, and opens no incident
+- **WHEN** acme announces `renewed`, which it declares as not alerting, and no incident is open
 - **THEN** no alert is sent
 
 ### Requirement: An event that ends another closes its incident
-An alerting event that another event is declared to end SHALL open an incident for its kind and subject, and that event SHALL close it, as the internet coming back closes an outage (ADR-020). The same opening event while its incident is open SHALL send nothing more. A closed incident whose alert was sent SHALL send one more message, naming how long it lasted.
+An alerting event that another event's `ends` lists SHALL open an incident for its kind and subject, and any event whose `ends` lists it SHALL close it, as the internet coming back closes an outage (ADR-020). The same opening event while its incident is open SHALL send nothing more. A closed incident whose alert was sent SHALL send one more message, naming how long it lasted.
 
 #### Scenario: A failure that lasts
 - **WHEN** acme announces `renew-failed` on three nights in a row, then `renewed`
 - **THEN** one alert is sent for the failure, none for the second and third nights, and one when it is renewed, naming how long it lasted
+
+#### Scenario: Closed by another success
+- **WHEN** acme announces `renew-failed`, and the operator re-applies the setup and acme announces `issued`
+- **THEN** the failure's incident closes, and a later `renew-failed` alerts again
+
+### Requirement: Incidents outlast a restart
+An incident open when the shell stops SHALL still be open when it starts again: a repeat of its opening event SHALL send nothing, and its closing event SHALL send the message naming how long it lasted.
+
+#### Scenario: An upgrade between failures
+- **WHEN** acme announces `renew-failed`, the shell is upgraded, acme announces `renew-failed` the next night, and `renewed` the night after
+- **THEN** one alert is sent for the failure, and one when it is renewed
 
 ### Requirement: An incident's first alert waits a minute
 An incident's first alert SHALL wait a minute before it is sent, so an incident closed within it sends one message saying when it began and when it ended.
@@ -151,29 +210,33 @@ An incident's first alert SHALL wait a minute before it is sent, so an incident 
 - **THEN** one alert is sent, saying when the failure began and when it ended
 
 ### Requirement: An alerting event nothing ends alerts each time
-An alerting event that no event is declared to end SHALL send one alert each time it is recorded.
+An alerting event that no event's `ends` lists SHALL send one alert each time it is recorded.
 
 #### Scenario: Two alike in a day
 - **WHEN** a plugin announces, twice in a day, an alerting event no event of its ends
 - **THEN** two alerts are sent
 
 ### Requirement: Plugins react through procd
-An announcement SHALL also be sent to procd as the service event `verso.<owner>.<event>`, its data the subject and the arguments, so a plugin's init script reacts with `procd_add_raw_trigger`, as it reacts to `config.change`. The shell SHALL send nothing to a plugin's socket for an event.
+An announcement SHALL also be sent to procd as the service event `verso.<owner>.<event>`, its data the subject and the arguments, so a plugin's init script reacts with `procd_add_raw_trigger`, as it reacts to `config.change`. The data SHALL only choose which trigger fires: the command a trigger runs is given none of it. The shell SHALL send nothing to a plugin's socket for an event.
 
 #### Scenario: A plugin reacts
 - **WHEN** a plugin's init script declares `procd_add_raw_trigger "verso.certificate.replaced" 1000 /usr/bin/verso-plugin-x root reload-tls` and the web certificate is replaced
 - **THEN** procd runs that command as root about a second later
+
+#### Scenario: Two events within the delay
+- **WHEN** the certificate is replaced twice within that second
+- **THEN** procd runs the command once
 
 #### Scenario: Nobody reacts
 - **WHEN** no installed service declares a trigger for the event
 - **THEN** the event is recorded and said as usual, and nothing else runs
 
 ### Requirement: The web certificate's replacement is an event
-Replacing the certificate the router serves SHALL record `certificate.replaced`, naming the certificate's name and the day it expires, and send `verso.certificate.replaced` to procd, whether it was installed by hand, made on Access, or installed for acme by the router's install command. A hand install or a made certificate SHALL still announce `hotplug-call verso-certificate` with `ACTION=installed` first, waiting for its scripts, as before.
+Replacing the certificate the router serves SHALL record `certificate.replaced`, naming the certificate's name and the day it expires, and send `verso.certificate.replaced` to procd, whether it was installed by hand, made on Access, or installed for acme by the router's install command. A failed announcement SHALL NOT fail the install.
 
 #### Scenario: Installed by hand
 - **WHEN** the operator installs a certificate for `router.example.com` valid until 2027-01-17 through Access
-- **THEN** System → Events lists that the web interface's certificate was replaced, for `router.example.com` until 2027-01-17, and acme's section is already off when Install answers
+- **THEN** System → Events lists that the web interface's certificate was replaced, for `router.example.com` until 2027-01-17
 
 #### Scenario: Renewed by acme
 - **WHEN** acme renews the certificate and hands it to the router's install command
@@ -182,3 +245,10 @@ Replacing the certificate the router serves SHALL record `certificate.replaced`,
 #### Scenario: Seen by an operator who may not see the certificate
 - **WHEN** a session rpcd does not grant `ubus verso accessCredentials` opens System → Events
 - **THEN** the certificate's replacement is not listed
+
+### Requirement: A hand install is served and handed over before it is announced
+A certificate installed by hand or made on Access SHALL be served first, then announced to `hotplug-call verso-certificate` with `ACTION=installed`, waiting for its scripts as before, and only then recorded as replaced.
+
+#### Scenario: The trusted certificate was on
+- **WHEN** `acme.verso.enabled` is 1 and the operator installs a certificate through Access
+- **THEN** acme's section is off when Install answers, and the certificate's replacement is recorded after it

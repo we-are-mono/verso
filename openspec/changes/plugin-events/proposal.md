@@ -17,22 +17,27 @@ An outcome that comes later has nowhere to go. Examples are acme renewing the ro
   - its sentence: English, with `%s` for its arguments, and a key of the plugin's catalog;
   - its tone;
   - the registered read whose grant lets a session see it;
+  - whether it is said to the operators looking;
   - whether it alerts;
-  - the event it ends, if any.
+  - the events of its own it ends.
 
-  The shell records an announced event only when its owner declares it.
+  The shell records an announced event only when its owner declares it. An event's name is its contract: a changed meaning is a new name.
 - **Recorded once.**
   - The shell takes the spool every two seconds, oldest first, and records each event in history.db.
   - A crash between recording and removing never records an event twice.
   - Core kinds and plugin kinds become one table. The Events page, the events' grants and alerts all read it.
-- **Said on open pages.**
-  - One stream per open page carries each recorded event to the sessions allowed to see it.
-  - A page opened within a minute says an event the stream did not reach.
-- **Alerts.** Each installed plugin that declares an alerting event becomes a kind under System → Events → Alerts. An event that ends another closes its incident, as the internet coming back closes an outage.
+- **Said on the page someone is looking at.**
+  - One stream per browser carries each recorded event to the sessions allowed to see it.
+  - It is said once per browser, on a visible page, as it is recorded or when a page comes into view within a minute.
+  - An act's own outcome is said at once, as today; events wait their turn.
+- **Alerts.** Each installed plugin that declares an alerting event becomes a kind under System → Events → Alerts. An event that ends another closes its incident, as the internet coming back closes an outage. Incidents survive a restart of the shell, the internet's included.
 - **Reactions run through procd.** A plugin reacts with `procd_add_raw_trigger "verso.<owner>.<event>"` in its init script, the way it reacts to `config.change`. A plugin's page process is never told anything: it reads the router as it is on every request.
 - **The web certificate is an event.** Replacing the served certificate, by hand or by acme, records `certificate.replaced` and sends `verso.certificate.replaced`. `hotplug-call verso-certificate` with `ACTION=installed` stays as it is.
 - **verso-plugin-acme announces** a certificate issued or renewed, and a failure of either.
-- **VPN tunnel events are not announced.** Once a profile drops privileges, OpenVPN runs its hooks as the profile's user, and only root may announce. ADR-019's "VPN tunnel up, down" row was never built and leaves its table.
+- **VPN tunnel events are not announced.** Once a profile drops privileges, OpenVPN runs its hooks as the profile's user, and only root may announce. ADR-019's "VPN tunnel up, down" row names the VPN plugin's daemon hooks as its source, which cannot announce; it names the VPN plugin's announced events instead.
+- **Not in this change.**
+  - The places where the shell still names a plugin. They move through the registry and the manifest in `shell-names-no-plugin`.
+  - A "config applied" event: every apply already sends OpenWrt's `config.change`, which `procd_add_config_trigger` answers.
 
 ## Capabilities
 
@@ -46,23 +51,25 @@ An outcome that comes later has nowhere to go. Examples are acme renewing the ro
 
 - **ADRs.**
   - New ADR-028, "Events".
-  - ADR-019 amended in place: event sources gain a plugin's announced events and the certificate's replacement; the VPN row leaves; kinds become one table.
+  - ADR-019 amended in place: event sources gain a plugin's announced events and the certificate's replacement; the VPN row's source becomes the VPN plugin's announced events; kinds become one table.
   - ADR-020 amended: a plugin's alerting events are a kind; incidents come from `ends`.
   - ADR-027 amended: the registry's `events`, and `announce` beside `own_write`.
   - ADR-017 §6 amended: `certificate.replaced`.
   - ADR-006 §4: an outcome that comes later reaches the notification as an event.
 - **Shell.**
   - `cmd/verso`: the `announce` subcommand. `certificate install` announces too.
-  - `internal/plugin`: the registry's `events`.
+  - `internal/plugin`: the registry's `events`; core's names reserved in `Manifest.validate`.
+  - `internal/events` (new): the kind table, the spool's writer and reader.
   - `internal/history`: an event recorded once by its spool name.
-  - `internal/server`: the spool taker, the kind table, Events rows and grants, the session's event queue, the `/events/stream` stream, the alert kinds.
-  - `internal/alerts`: incidents for any kind that ends another.
-  - `verso-page.js`: the stream.
+  - `internal/server`: the spool taker, Events rows and grants, each session's last minute of events, the `/events/stream` stream, the alert kinds.
+  - `internal/alerts`: incidents for any kind that ends another, rebuilt from history at start; kinds passed through `Configure`.
+  - `verso-page.js`: one stream per browser, and a notification layer where events wait behind an act's outcome.
 - **Helper.** `access.rs` announces the hand install and the made certificate. Its init script makes the spool.
-- **SDK.** `root::announce`, and the registry builder's `events`.
+- **SDK.** `root::announce`, the registry builder's `events`, and `registry::check_catalog` for plugins' tests.
 - **verso-plugin-acme.** Its declarations, its announces in `deliver`, its catalog's sentences, and a release that depends on this verso.
 - **Compatibility.**
   - Older shells and helpers ignore `events` in `commands.json`.
   - A plugin that announces nothing keeps working.
   - No `PLUGIN_FLOORS` entry is needed.
   - No history.db migration: an event's words travel in its detail.
+  - With `verso.alerts.kind` absent, an installed plugin's alerting events alert; the release notes say so.

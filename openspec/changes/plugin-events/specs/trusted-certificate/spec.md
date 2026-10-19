@@ -3,7 +3,7 @@
 ## ADDED Requirements
 
 ### Requirement: acme announces its outcomes
-While the `verso` section is enabled, acme SHALL announce each outcome of the request or the renewal for the section's domain, the domain as its argument: `issued`, `renewed`, `issue-failed` and `renew-failed`. Each SHALL be seen under the grant of acme's `state` read. A request starting, a catch-up, and an outcome for any other section or domain SHALL announce nothing.
+While the `verso` section is enabled, acme SHALL announce each outcome of the request or the renewal for the section's domain, the domain as its argument: `issued`, `renewed`, `issue-failed` and `renew-failed`, each said and seen under the grant of acme's `state` read. A success SHALL be announced once its certificate is served; one that could not be served SHALL announce nothing. A request starting, a catch-up, and an outcome for any other section or domain SHALL announce nothing.
 
 #### Scenario: Issued while the operator waits
 - **WHEN** the operator applies a first setup for `router.example.com` and stays on Access, and the request succeeds
@@ -33,7 +33,7 @@ acme's outcomes SHALL read, with the domain in place of `%s`:
 - **THEN** System → Events reads "A certificate for router.example.com was issued." in the success colour
 
 ### Requirement: acme's failures alert until a success ends them
-`issue-failed` and `renew-failed` SHALL alert. `issued` SHALL end `issue-failed`, and `renewed` SHALL end `renew-failed`. Neither success SHALL alert on its own.
+`issue-failed` and `renew-failed` SHALL alert. `issued` and `renewed` SHALL each end both failures, so a failed renewal closes when a re-applied setup issues a certificate. Neither success SHALL alert on its own.
 
 #### Scenario: A failed renewal alerts
 - **WHEN** the alert address is set, `verso.alerts.kind` is absent, and the renewal fails
