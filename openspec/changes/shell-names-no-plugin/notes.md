@@ -26,3 +26,10 @@
 - System open: General, Hardware, Access, Packages, Services, Maintenance, Logs, Events, Changes, Diagnostics.
 - Glyphs: Wireless and VPN wear the ones their entries name (wifi, lock), Firewall its section's (Security's shield).
 - Screenshots: `~/Share/screenshots/shell-names-no-plugin-5.5-rail-network.png` and `-rail-system.png`.
+
+## 6.4 — service words in the lab (2026-10-19): not observable here
+
+- procd holds a reload trigger only for a running service with an instance. The container's ddns has both its hostnames disabled, so `/etc/init.d/ddns start` registers nothing, and openvpn is not installed. No staged change there can make the reload step name either.
+- Enabling a DDNS hostname would run a real updater against a provider, so it was not done.
+- `TestPendingPageNamesThePluginsServicesInTheirWords` renders the Pending page with ddns and openvpn changes staged, procd's triggers for both, and the two plugins' `services`: it reads "Reloads Dynamic DNS and OpenVPN."
+- A router with an enabled DDNS hostname, or an OpenVPN profile, is where 6.4 is checked.

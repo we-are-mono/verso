@@ -262,6 +262,23 @@ func TestPendingDiscardRoute(t *testing.T) {
 	}
 }
 
+// TestPendingPageNamesThePluginsServicesInTheirWords: with changes to the
+// configs of services the DDNS and VPN plugins bring, the reload step says
+// each in the words its plugin declares.
+func TestPendingPageNamesThePluginsServicesInTheirWords(t *testing.T) {
+	b := fakeBackend{
+		access:   true,
+		changes:  map[string][][]string{"ddns": {{"set", "home", "enabled", "1"}}, "openvpn": {{"set", "work", "enabled", "1"}}},
+		triggers: map[string][]string{"ddns": {"ddns"}, "openvpn": {"openvpn"}},
+	}
+	ddns := plugin.Manifest{ID: "ddns", Name: "Dynamic DNS", Socket: "/ddns.sock", SchemaVersion: 1, Services: map[string]string{"ddns": "Dynamic DNS"},
+		ACL: plugin.ACL{Write: []plugin.ACLScope{{Scope: "uci", Object: "ddns", Function: "write"}}}}
+	vpn := plugin.Manifest{ID: "vpn", Name: "VPN", Socket: "/vpn.sock", SchemaVersion: 1, Services: map[string]string{"openvpn": "OpenVPN"},
+		ACL: plugin.ACL{Write: []plugin.ACLScope{{Scope: "uci", Object: "openvpn", Function: "write"}}}}
+	s := newServerWith(t, b, &fakeTransport{}, []plugin.Manifest{ddns, vpn})
+	mustContain(t, get(t, s, pendingPath).Body.String(), "Reloads Dynamic DNS and OpenVPN.")
+}
+
 // TestTheOldReviewAddressLeadsToThePage: a bookmark of the review drawer's
 // address reaches the page.
 func TestTheOldReviewAddressLeadsToThePage(t *testing.T) {
