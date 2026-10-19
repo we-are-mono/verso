@@ -76,7 +76,7 @@ Every task ends with `make lint` passing, and `make test` passing except the fiv
   - with a fixture plugin `fw2` claiming `zone`, `rule` and `port-forward` in place of the firewall plugin, the notice and the log lead into `fw2`, matching plugin-boundary's "A plugin is replaced".
 
   Then claim the three kinds in `plugins/verso-plugin-firewall/manifest.json`, give `fwLogReader` its `door`, and remove `fwLogRuleEditor`, `fwLogRedirectEditor` and the exposure path. Verify with `make test`.
-- [ ] 4.5 Document door kinds and the `open` claim in `docs/plugins.md` ("Entity panels"): the door's address, page, word and the first-by-id rule. Reword the `entity_acts` row (`docs/plugins.md:92`) and the `EntityAct` doc comment, which say it opens nothing. Amend ADR-006 (`entity_acts`) and ADR-022 (a card's door is a claim) in place. Verify by checking that `grep -n 'navLabel\|/plugins/firewall/' docs/ADR/0{06,22}*.md` finds nothing that says core links there.
+- [x] 4.5 Document door kinds and the `open` claim in `docs/plugins.md` ("Entity panels"): the door's address, page, word and the first-by-id rule. Reword the `entity_acts` row (`docs/plugins.md:92`) and the `EntityAct` doc comment, which say it opens nothing. Amend ADR-006 (`entity_acts`) and ADR-022 (a card's door is a claim) in place. Verify by checking that `grep -n 'navLabel\|/plugins/firewall/' docs/ADR/0{06,22}*.md` finds nothing that says core links there.
 - [ ] 4.6 In the lab, check each case and save screenshots to `~/Share/screenshots/`:
   - each Overview card opens the right page;
   - the exposure notice on Access opens Firewall's Zones page for a zone cause;

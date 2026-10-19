@@ -89,7 +89,7 @@ than 127, or escaping half a surrogate pair (`"\ud800"` alone).
 | `acl.read[]` | one `{scope, object, function}` grant naming a config the shell reads and hands you as a snapshot |
 | `acl.write[]` | one `{scope, object, function}` grant the shell checks before a POST |
 | `entity_tabs` | optional: what this plugin has to say about a subject some other page lists ([below](#entity-panels)) |
-| `entity_acts` | optional: this plugin's direct acts on such a subject, which open nothing |
+| `entity_acts` | optional: this plugin's direct acts on such a subject, and its claims on the doors the shell links through ([below](#doors)) |
 | `secrets` | optional: the options your config keeps a secret in, as `config.option` in any section (`"ddns.password"`), each in a config your `acl` writes with scope `uci`; one in any other config, one your plugin only reads included, is not taken for a secret. Config history (ADR-021) records that they changed and never their values, and takes any it kept before out of the whole history. OpenWrt's own (`network.password`, `wireless.key`, `wireless.sae_password` and the like) are covered already; name any other your plugin writes |
 
 To place several pages in the menu, add more entries — each is grouped under its
@@ -350,6 +350,49 @@ The subject of a panel is settled — the panel is headed with it — so do not 
 a control that could point your object at a different one. Carry it hidden
 instead: the MAC of a device whose reservation is being edited is the panel's
 subject, not a field.
+
+### Doors
+
+The shell links to some kinds of thing a plugin keeps: the Overview's cards open
+the networks and tunnels, the Access exposure notice opens what lets the
+internet in, and a Firewall log row opens the rule that decided it. Which plugin
+opens them is that plugin's to say. Claim the kind's door, the slot `open`, with
+the address of one subject, `{id}` where its identity goes:
+
+```json
+"entity_acts": [
+  { "entity": "zone", "slot": "open", "path": "/zones?open={id}" }
+]
+```
+
+| Kind | What it is | `{id}` |
+|---|---|---|
+| `network` | a logical interface, `network.interface` | its section name |
+| `tunnel` | a VPN tunnel | the name your page lists it under |
+| `zone` | a firewall zone | its section name |
+| `rule` | a firewall traffic rule | its section name |
+| `port-forward` | a firewall redirect | its section name |
+
+- **One thing.** A door to one subject is your path under your mount with `{id}`
+  filled in, escaped for where it stands (path or query).
+- **The kind.** A door to the kind as a whole leads to the most specific of your
+  pages holding the claim's path without its query: a nav entry, or one of its
+  declared subpages. A claim under none of your nav entries is no door.
+- **Its words.** A door that says where it goes uses the label of your nav entry
+  holding the claim, in your catalog's translation, as "Open Firewall". Rename
+  the page and every door follows.
+- **One answer.** When two running plugins claim one door, the one whose id
+  sorts first answers it, on every page.
+- **No claim, no link.** While no running plugin claims a door, the shell draws
+  no link there, and a name it would have linked stands as plain text.
+- **Checked at load.** A claim on a kind or slot the shell does not have, and a
+  door whose path holds no `{id}`, is logged and dropped; your other claims
+  stand.
+
+Where the shell draws doors: the Internet and Ports cards open `network`, the
+Tunnels card `tunnel` or else `network`, the exposure notice the kind of its
+first cause, and a Firewall log row its `rule` or `port-forward`. None of these
+kinds is a panel: `/entity/<kind>/` answers only for the kinds above.
 
 ## The socket contract
 

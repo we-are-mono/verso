@@ -44,7 +44,12 @@ verdict names ("The firewall is not running"). The rule count, and the UCI read
 behind it every second, are gone.
 
 A card is built by its own functions in `internal/widget/overview_cards.go`:
-its header (`head`), its body (`body`) and the page it opens. A card's header
+its header (`head`), its body (`body`) and the page it opens. A card that opens
+into a plugin names the kind it opens, not a page: Internet and Ports open
+networks, Tunnels opens tunnels or else networks, and each goes through the
+running plugin's claim on that kind's door (ADR-006), saying "Open" with that
+plugin's nav label. With no claim running the card has no door. Hardware and
+System open the shell's own pages. A card's header
 carries no control: a choice of what a card shows (the Traffic card's window)
 stands in its body over the graph it chooses, and folds away with the card,
 which a choice in the header would outlive.

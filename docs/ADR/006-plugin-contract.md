@@ -96,7 +96,15 @@ over a local socket**, exchanging *data*, not markup.
      plugin's `/entity/<kind>/<id>`, passes the plugin's write gate, stages the
      commit it answers with, and returns to the listing with its notice. A
      summary names the posting acts that are on for its subject in `engaged`,
-     so the row's glyph says what pressing it does.
+     so the row's glyph says what pressing it does. A claim on the slot `open`
+     of a door kind (`network`, `tunnel`, `zone`, `rule`, `port-forward`) is
+     the plugin's door to that kind of thing: wherever the shell links one, it
+     links through the running claim whose plugin id sorts first, to the
+     plugin's page listing the kind or to one subject (`{id}` in its path), in
+     the claiming plugin's nav label. With no claim running it links nothing,
+     so the shell never names a plugin's path or page. A claim on a kind or
+     slot the shell does not have, or a door with no `{id}`, is dropped at load
+     with a log line, the plugin's other claims standing.
    - `acl` — the rpcd access scopes the plugin's writes need, as a `write` list of
      `{scope, object, function}` triples mirroring `session.access` (added for
      ADR-007, see Neutral below). Optional; a display-only plugin declares none.

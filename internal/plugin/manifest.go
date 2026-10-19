@@ -136,10 +136,14 @@ type EntityTab struct {
 	Summaries bool `json:"summaries,omitempty"`
 }
 
-// EntityAct is a plugin's act on a subject that opens nothing — removing a
+// EntityAct is a plugin's act on a subject that opens no panel — removing a
 // reservation, say. It wears a slot's icon in the listing's row exactly as a tab
 // does; the difference is only that following it does the thing rather than
 // opening the panel.
+//
+// An act on a door kind's slot "open" is the plugin's claim on that door: where
+// the shell links a network, a tunnel, a firewall zone, rule or port forward
+// (the shell's doorKinds).
 //
 // Path is a route into the plugin, with {id} standing for the subject's own
 // identity (a MAC, a UCI section name). The shell substitutes it and applies the
