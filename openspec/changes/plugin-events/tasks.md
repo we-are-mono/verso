@@ -98,12 +98,13 @@
   - an event is shown by one visible tab and recorded as shown;
   - a hidden tab shows it when it becomes visible within its minute, and not after;
   - an id already shown is not shown again after a reconnect;
-  - an act's outcome replaces what shows at once;
-  - an event waits behind an act's outcome and behind another event;
+  - an act's outcome takes its place at once and replaces the previous act's outcome, and no event;
+  - an event stands under it, newest nearest it, each leaving on its own timer, a danger or warning one only when closed;
+  - a fourth event pushes out the oldest;
   - without Web Locks, a tab opens a stream of its own.
 
   Then implement it in `verso-page.js`. Verify with `make test`.
-- [ ] 5.4 Show the owner the layer's new rule (an event waits, an act's outcome never does) on the lab under `make dev`, and revise until it is accepted. Then amend ADR-006 §4 in place: an outcome that comes after its request reaches the notification as an event (ADR-028). Verify with the owner's word in the change's notes, and with `grep -n 'ADR-028' docs/ADR/006-plugin-contract.md`.
+- [ ] 5.4 Show the owner the stacked layer on the lab under `make dev`: an act's outcome with two events under it, in light and dark, and inside an open drawer. Revise until it is accepted, and record the rule in DESIGN.md. Then amend ADR-006 §4 in place: an outcome that comes after its request reaches the notification as an event (ADR-028). Verify with the owner's word in the change's notes, and with `grep -n 'ADR-028' docs/ADR/006-plugin-contract.md`.
 
 ## 6. Alerts
 

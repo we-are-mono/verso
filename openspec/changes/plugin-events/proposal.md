@@ -29,7 +29,7 @@ An outcome that comes later has nowhere to go. Examples are acme renewing the ro
 - **Said on the page someone is looking at.**
   - One stream per browser carries each recorded event to the sessions allowed to see it.
   - It is said once per browser, on a visible page, as it is recorded or when a page comes into view within a minute.
-  - An act's own outcome is said at once, as today; events wait their turn.
+  - An act's own outcome is said at once in its place, as today. Each event is a notification of its own, stacked under it, at most three at a time.
 - **Alerts.** Each installed plugin that declares an alerting event becomes a kind under System → Events → Alerts. An event that ends another closes its incident, as the internet coming back closes an outage. Incidents survive a restart of the shell, the internet's included.
 - **Reactions run through procd.** A plugin reacts with `procd_add_raw_trigger "verso.<owner>.<event>"` in its init script, the way it reacts to `config.change`. A plugin's page process is never told anything: it reads the router as it is on every request.
 - **The web certificate is an event.** Replacing the served certificate, by hand or by acme, records `certificate.replaced` and sends `verso.certificate.replaced`. `hotplug-call verso-certificate` with `ACTION=installed` stays as it is.
@@ -63,7 +63,8 @@ An outcome that comes later has nowhere to go. Examples are acme renewing the ro
   - `internal/history`: an event recorded once by its spool name.
   - `internal/server`: the spool taker, Events rows and grants, each session's last minute of events, the `/events/stream` stream, the alert kinds.
   - `internal/alerts`: incidents for any kind that ends another, rebuilt from history at start; kinds passed through `Configure`.
-  - `verso-page.js`: one stream per browser, and a notification layer where events wait behind an act's outcome.
+  - `verso-page.js`: one stream per browser, and a notification layer that stacks events under an act's outcome.
+- **DESIGN.md.** The notification's stacking rule.
 - **Helper.** `access.rs` announces the hand install and the made certificate. Its init script makes the spool.
 - **SDK.** `root::announce`, the registry builder's `events`, and `registry::check_catalog` for plugins' tests.
 - **verso-plugin-acme.** Its declarations, its announces in `deliver`, its catalog's sentences, and a release that depends on this verso.

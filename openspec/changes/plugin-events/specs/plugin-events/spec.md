@@ -151,16 +151,20 @@ A recorded plugin event declared `notify` SHALL be said as the top-right notific
 - **WHEN** the router records the internet going down while an operator has a page open
 - **THEN** no notification says it, as before this change
 
-### Requirement: An act's own outcome is never held behind an event
-The outcome of an act the operator takes SHALL be said at once, as before this change, replacing what the notification shows. An event SHALL wait until the notification is free, and events SHALL wait behind each other.
+### Requirement: Events stack beside an act's outcome
+The outcome of an act the operator takes SHALL be said at once in its own place, replacing the previous act's outcome, as before this change. Each event SHALL be a notification of its own, stacked under that place, newest nearest it, leaving on its own as an outcome of its tone does. At most three events SHALL stand; a fourth SHALL push out the oldest.
 
 #### Scenario: Saving while an event shows
-- **WHEN** acme's failure shows in the notification and the operator saves a form
-- **THEN** the save's outcome is said at once
+- **WHEN** acme's failure shows and the operator saves a form
+- **THEN** the save's outcome is said at once above it, and the failure stays until it is closed
 
 #### Scenario: An event during an outcome
 - **WHEN** a save's outcome shows and an event arrives
-- **THEN** the event is said after the save's outcome leaves
+- **THEN** both show, the event under the save's outcome, and each leaves on its own
+
+#### Scenario: A fourth event
+- **WHEN** three events stand and a fourth arrives
+- **THEN** the oldest leaves, the fourth stands nearest the top, and System → Events lists all four
 
 ### Requirement: A browser listens only while its sign-in lasts
 A browser's stream of events SHALL end when its session ends, and holding it open SHALL NOT keep the session alive or move its idle clock.

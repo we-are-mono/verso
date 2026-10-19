@@ -186,7 +186,13 @@ A file failing a check is removed and logged. A record that fails, because histo
    - A hidden tab keeps an unshown event until it becomes visible, while the event is still fresh.
 
    So each event is said once per browser, on a page someone is looking at, and a browser holds one stream however many tabs are open. Draining on connect is what says an event on the next page opened within its minute.
-4. **The layer.** `versoOutcome.show` keeps its rule for an act's own outcome: it takes the layer at once, replacing what shows. An event never replaces an act's outcome. It waits until the layer is free, and events wait behind each other.
+4. **The layer stacks.**
+   - An act's own outcome keeps one place at the top, and the next act's outcome replaces it, as today: an operator's newer outcome supersedes their older one.
+   - Each event is a notification of its own, stacked under that place, newest nearest it. Each leaves on its own timer, a danger or warning one when it is closed, and holds while the pointer or focus is on it.
+   - At most three events stand. A fourth pushes out the oldest, which System → Events still lists.
+   - Inside an open drawer the stack stands where the notification stands today. Each notification is read aloud through the page's announcer as it arrives.
+
+   *Alternative: one at a time, an event waiting until the layer is free.* Rejected: a danger outcome stays until closed, so an event behind one could wait without end, and the queue would hide what happened instead of saying it.
 
 *Alternatives:*
 - **The flash slot.** Rejected: it holds one message, and a redirect's own outcome would overwrite an event or be overwritten by one.
@@ -267,7 +273,7 @@ The reload stays on SIGHUP (ADR-017 §4):
 
 - **A chatty plugin interrupts every operator.**
   - Mitigation: `notify` is off unless declared, and `docs/plugins.md` says an event is said only when it is worth interrupting for.
-  - Mitigation: events wait behind each other, and System → Events holds them all.
+  - Mitigation: at most three events stand at once, and System → Events holds them all.
 - **The browser's one stream depends on Web Locks and BroadcastChannel.** Every browser the shell supports has both. Where either is missing, the tab opens a stream of its own and shows only while visible.
 - **An event recorded twice by two shells.** Only one shell runs; procd's named instance sees to that.
 - **Clock.** An event carries the root half's clock at announcement, like every event on a router without NTP. Freshness is reckoned from the shell's record time.
