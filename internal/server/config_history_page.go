@@ -15,7 +15,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-	"unicode"
 
 	"github.com/we-are-mono/verso/internal/clock"
 	"github.com/we-are-mono/verso/internal/history"
@@ -243,7 +242,7 @@ func (s *Server) handleStartPanel(w http.ResponseWriter, r *http.Request) {
 		status = http.StatusConflict
 	}
 	drawer := &widget.RowDrawer{Title: fmt.Sprintf(tr("Starting point · %s"), changeTitle(start.at, time.Now(), tr)), Verbatim: true,
-		Children: returnBody(plan, startPath, "Return to the starting point", "At the starting point", hidden, tr)}
+		Children: returnBody(plan, startPath, "Return to the starting point", "Each option, from what it holds now to what it held at the starting point.", hidden, tr)}
 	s.writeChangeDrawer(w, r, "start", drawer, failed, status, lang, t)
 }
 
@@ -655,12 +654,6 @@ func changeDrawer(c history.Change, all []history.Change, since, hidden bool, no
 // Neither is offered on an entry the reader sees only in part.
 func whatChangedTab(c history.Change, all []history.Change, path string, now time.Time, hidden bool, cause string, tr func(string) string) widget.Widgets {
 	var children widget.Widgets
-	if cause != "" {
-		children = append(children, &widget.Text{Markdown: markdownLiteral(cause), Translated: true})
-	}
-	if c.Note != "" {
-		children = append(children, &widget.Text{Markdown: markdownLiteral(c.Note), Translated: true})
-	}
 	var notes []string
 	var act *widget.Form
 	count := len(c.Items)
@@ -704,7 +697,17 @@ func whatChangedTab(c history.Change, all []history.Change, path string, now tim
 	for _, note := range notes {
 		children = append(children, &widget.Callout{Variant: "warning", Compact: true, Body: note})
 	}
-	children = append(children, changeOpsTable(c, tr))
+	// What caused it and the operator's note caption its lines, in the
+	// listing's order: one quiet line, not paragraphs above them.
+	lines := changeOpsTable(c, tr)
+	var caption []string
+	for _, said := range []string{cause, c.Note} {
+		if said != "" {
+			caption = append(caption, said)
+		}
+	}
+	lines.Note = strings.Join(caption, " · ")
+	children = append(children, lines)
 	if act != nil {
 		children = append(children, act)
 	}
@@ -715,14 +718,15 @@ func whatChangedTab(c history.Change, all []history.Change, path string, now tim
 // net of anything since undone or rolled back, and Return to this point,
 // which stages the opposite of all of it.
 func sinceThenTab(c history.Change, all []history.Change, path string, hidden bool, tr func(string) string) widget.Widgets {
-	return returnBody(reverseOf(sinceThen(all, c)), path, "Return to this point", "At this point", hidden, tr)
+	return returnBody(reverseOf(sinceThen(all, c)), path, "Return to this point", "Each option, from what it holds now to what it held at this point.", hidden, tr)
 }
 
-// returnBody is what a return would stage, an option a row as it is now and
-// as it was then, and the act that stages it, labelled. Nothing to return
-// says the router is as it was. A return that would reach configs the reader
-// may not read (hidden) says so in place of its act.
-func returnBody(plan actPlan, path, label, then string, hidden bool, tr func(string) string) widget.Widgets {
+// returnBody is what a return would stage, an option a line from what it
+// holds now to what it held then, introduced by intro, and the act that
+// stages it, labelled. Nothing to return says the router is as it was. A
+// return that would reach configs the reader may not read (hidden) says so
+// in place of its act.
+func returnBody(plan actPlan, path, label, intro string, hidden bool, tr func(string) string) widget.Widgets {
 	if len(plan.Rows) == 0 && !plan.Unknown && len(plan.Secrets) == 0 && len(plan.Files) == 0 && !hidden {
 		return widget.Widgets{&widget.Text{Markdown: "Nothing has changed since. This is how the router is now."}}
 	}
@@ -737,21 +741,12 @@ func returnBody(plan actPlan, path, label, then string, hidden bool, tr func(str
 	for _, note := range notes {
 		children = append(children, &widget.Callout{Variant: "warning", Compact: true, Body: note})
 	}
-	table := &widget.Table{Columns: []widget.TableColumn{
-		{Label: "Option", Kind: "mono"},
-		{Label: "Now", Kind: "mono", Width: widget.MeasureName},
-		{Label: then, Kind: "mono", Width: widget.MeasureName},
-		{Label: "Change", Kind: "status", Width: widget.MeasureWord},
-	}}
+	// Each option reads from what it holds now to what it held then: what
+	// returning sets it to, as the caption says.
+	table := linesTable()
+	table.Note = tr(intro)
 	for _, row := range plan.Rows {
-		verb, variant := "Changed", "warning"
-		switch {
-		case row.Then == none:
-			verb, variant = "Removed", "danger"
-		case row.Now == none:
-			verb, variant = "Added", "success"
-		}
-		table.Rows = append(table.Rows, widget.TableRow{Cells: []widget.TableCell{{Text: row.Option}, {Text: row.Now}, {Text: row.Then}, {Text: verb, Variant: variant}}})
+		table.Rows = append(table.Rows, lineRow(returnLine(row, tr)))
 	}
 	children = append(children, table)
 	if !hidden && !plan.Unknown && len(plan.Steps) > 0 {
@@ -784,79 +779,147 @@ func changeTitle(at, now time.Time, tr func(string) string) string {
 	return changeDay(at, now, tr) + ", " + clock.Local(at).Format("15:04")
 }
 
-// changeOpsTable is every uci change an entry made, a row each: the option,
-// what it held and what it holds. Each run of the review drawer's rows is a
-// lane, named by its page and, where its plugin described it, its words.
+// linesTable is a drawer's uci changes as lines: one column, unheaded, each
+// change read as the listing reads an edit, wrapping in the drawer's width.
+func linesTable() *widget.Table {
+	return &widget.Table{Columns: []widget.TableColumn{{Kind: "phrase", Wrap: true}}}
+}
+
+// lineRow is one line of a drawer's changes.
+func lineRow(parts []widget.TablePart) widget.TableRow {
+	return widget.TableRow{Cells: []widget.TableCell{{Text: plainParts(parts), Parts: parts}}}
+}
+
+// plainParts is a line's parts as one reading: its chips' labels, values and
+// words.
+func plainParts(parts []widget.TablePart) string {
+	words := make([]string, len(parts))
+	for i, p := range parts {
+		switch {
+		case p.Chip != nil:
+			words[i] = p.Chip.Label
+		case p.Value != "":
+			words[i] = p.Value
+		default:
+			words[i] = p.Words
+		}
+	}
+	return strings.Join(words, " ")
+}
+
+// pathParts is a uci path as a line begins: its section's chip, then its
+// option's where it names one.
+func pathParts(path string) []widget.TablePart {
+	config, rest, _ := strings.Cut(path, ".")
+	section, option, named := strings.Cut(rest, ".")
+	parts := []widget.TablePart{{Chip: &widget.TableChip{Label: config + "." + section}}}
+	if named {
+		parts = append(parts, widget.TablePart{Chip: &widget.TableChip{Label: option}})
+	}
+	return parts
+}
+
+// valuePart is what an option holds as a line says it: the value as the
+// device wrote it, two quotes for an empty one, and "not set" for none.
+func valuePart(v string, tr func(string) string) widget.TablePart {
+	switch v {
+	case none:
+		return widget.TablePart{Words: tr("not set")}
+	case "":
+		return widget.TablePart{Value: "''"}
+	}
+	return widget.TablePart{Value: v}
+}
+
+// edited is a path that went from one value to another, as a line.
+func edited(path, before, after string, tr func(string) string) []widget.TablePart {
+	return append(pathParts(path), valuePart(before, tr), widget.TablePart{Words: "→"}, valuePart(after, tr))
+}
+
+// returnLine is one row of a return as a line: an option from what it holds
+// now to what it held then; a whole section, whose values are its type, as
+// added or removed by the return.
+func returnLine(row planRow, tr func(string) string) []widget.TablePart {
+	if strings.Count(row.Option, ".") > 1 {
+		return edited(row.Option, row.Now, row.Then, tr)
+	}
+	switch {
+	case row.Now == none:
+		return append(pathParts(row.Option), widget.TablePart{Words: tr("added")}, valuePart(row.Then, tr))
+	case row.Then == none:
+		return append(pathParts(row.Option), widget.TablePart{Words: tr("removed")}, valuePart(row.Now, tr))
+	}
+	return edited(row.Option, row.Now, row.Then, tr)
+}
+
+// changeOpsTable is every uci change an entry made, a line each: the
+// section's and option's chips, what it held and what it holds. Each run of
+// the review drawer's lines is a lane, named by its page and, where its
+// plugin described it, its words; changes its plugin left undescribed, one
+// after another on one page, share one lane.
 func changeOpsTable(c history.Change, tr func(string) string) *widget.Table {
-	table := &widget.Table{Columns: []widget.TableColumn{
-		{Label: "Option", Kind: "mono"},
-		{Label: "Before", Kind: "mono", Width: widget.MeasureName},
-		{Label: "After", Kind: "mono", Width: widget.MeasureName},
-		{Label: "Change", Kind: "status", Width: widget.MeasureWord},
-	}}
+	table := linesTable()
+	var lane *widget.TableGroup
 	for _, item := range c.Items {
 		var rows []widget.TableRow
 		for _, op := range item.Ops {
-			rows = append(rows, opRows(op, tr)...)
+			for _, line := range opLines(op, tr) {
+				rows = append(rows, lineRow(line))
+			}
 		}
 		if len(rows) == 0 {
 			continue
 		}
-		group := &widget.TableGroup{Label: tr(item.Page), Verbatim: true}
-		if !item.Verbatim {
-			group.Tally = item.Words
+		page := tr(item.Page)
+		if item.Verbatim && lane != nil && lane.Label == page && lane.Tally == "" {
+			table.Rows = append(table.Rows, rows...)
+			continue
 		}
-		rows[0].Group = group
+		lane = &widget.TableGroup{Label: page, Verbatim: true}
+		if !item.Verbatim {
+			lane.Tally = item.Words
+		}
+		rows[0].Group = lane
 		table.Rows = append(table.Rows, rows...)
 	}
 	return table
 }
 
-// opRows is one uci change as the drawer's rows: the option, what it held
-// and holds, and what happened to it. A section removed is listed with each
-// option it held; a secret's values are not kept, in a change to it or in a
-// section removed.
-func opRows(op history.ChangeOp, tr func(string) string) []widget.TableRow {
-	const none = "—"
+// opLines is one uci change as the drawer's lines, read as the listing reads
+// an edit: an option from what it held to what it holds, a list gaining or
+// losing a value, a section added or removed with its type. A section removed
+// is listed with each option it held; a secret's values are not kept, in a
+// change to it or in a section removed.
+func opLines(op history.ChangeOp, tr func(string) string) [][]widget.TablePart {
 	path := op.Config + "." + op.Section
 	option := path + "." + op.Option
-	row := func(name, before, after, verb, variant string) widget.TableRow {
-		return widget.TableRow{Cells: []widget.TableCell{{Text: name}, {Text: before}, {Text: after}, {Text: verb, Variant: variant}}}
-	}
-	shown := func(v string) string {
-		if v == "" {
-			return "''"
-		}
-		return v
-	}
 	held := func() string {
 		if old, ok := oldValue(op.Old); ok {
-			return shown(old)
+			return old
 		}
 		return none
 	}
 	value := none
 	if op.Value != nil {
-		value = shown(*op.Value)
+		value = *op.Value
+	}
+	said := func(p string, words string, v string) []widget.TablePart {
+		return append(pathParts(p), widget.TablePart{Words: tr(words)}, valuePart(v, tr))
 	}
 	if op.Secret {
-		notKept := tr("not kept")
-		return []widget.TableRow{row(option, notKept, notKept, "Changed", "warning")}
+		return [][]widget.TablePart{append(pathParts(option), widget.TablePart{Words: tr("changed")})}
 	}
 	switch op.Op {
 	case "add-section":
-		return []widget.TableRow{row(path, none, op.Option, "Added", "success")}
+		return [][]widget.TablePart{said(path, "added", op.Option)}
 	case "set":
-		if before := held(); before != none {
-			return []widget.TableRow{row(option, before, value, "Changed", "warning")}
-		}
-		return []widget.TableRow{row(option, none, value, "Added", "success")}
+		return [][]widget.TablePart{edited(option, held(), value, tr)}
 	case "list-add":
-		return []widget.TableRow{row(option, none, value, "Added", "success")}
+		return [][]widget.TablePart{said(option, "added", value)}
 	case "list-del":
-		return []widget.TableRow{row(option, value, none, "Removed", "danger")}
+		return [][]widget.TablePart{said(option, "removed", value)}
 	case "remove-option":
-		return []widget.TableRow{row(option, held(), none, "Removed", "danger")}
+		return [][]widget.TablePart{edited(option, held(), none, tr)}
 	case "remove-section":
 		var section map[string]any
 		_ = json.Unmarshal(op.Old, &section)
@@ -864,7 +927,7 @@ func opRows(op history.ChangeOp, tr func(string) string) []widget.TableRow {
 		if typ == "" {
 			typ = none
 		}
-		rows := []widget.TableRow{row(path, typ, none, "Removed", "danger")}
+		lines := [][]widget.TablePart{said(path, "removed", typ)}
 		keys := make([]string, 0, len(section))
 		for k := range section {
 			if !strings.HasPrefix(k, ".") {
@@ -874,7 +937,7 @@ func opRows(op history.ChangeOp, tr func(string) string) []widget.TableRow {
 		sort.Strings(keys)
 		for _, k := range keys {
 			if isFingerprint(section[k]) {
-				rows = append(rows, row(path+"."+k, tr("not kept"), none, "Removed", "danger"))
+				lines = append(lines, append(pathParts(path+"."+k), widget.TablePart{Words: tr("not kept")}, widget.TablePart{Words: "→"}, valuePart(none, tr)))
 				continue
 			}
 			v := fmt.Sprint(section[k])
@@ -885,23 +948,9 @@ func opRows(op history.ChangeOp, tr func(string) string) []widget.TableRow {
 				}
 				v = strings.Join(words, " ")
 			}
-			rows = append(rows, row(path+"."+k, shown(v), none, "Removed", "danger"))
+			lines = append(lines, edited(path+"."+k, v, none, tr))
 		}
-		return rows
+		return lines
 	}
-	return []widget.TableRow{row(path, none, none, "Changed", "warning")}
-}
-
-// markdownLiteral is words a person typed, to stand in Markdown as they
-// were typed: every ASCII punctuation mark escaped, so none of it is read as
-// formatting.
-func markdownLiteral(s string) string {
-	var b strings.Builder
-	for _, r := range s {
-		if r < 128 && (unicode.IsPunct(r) || unicode.IsSymbol(r)) {
-			b.WriteByte('\\')
-		}
-		b.WriteRune(r)
-	}
-	return b.String()
+	return [][]widget.TablePart{append(pathParts(path), widget.TablePart{Words: tr("changed")})}
 }

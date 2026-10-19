@@ -310,7 +310,7 @@ func TestReturnStagesWhatChangedSince(t *testing.T) {
 	record(t, store, later)
 
 	body := getPanel(t, s, fmt.Sprintf("%s/%d?tab=since", changesPath, id)).Body.String()
-	for _, want := range []string{">firewall.cfg0792bd.target<", ">REJECT<", ">DROP<", "Return to this point"} {
+	for _, want := range []string{firewallTargetLine, ">REJECT<", ">DROP<", "Return to this point"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("since then missing %q:\n%s", want, body)
 		}
@@ -400,7 +400,7 @@ func TestTheStartingPointClosesTheListingAndReturnsTheRouterToIt(t *testing.T) {
 		t.Fatalf("the starting point should close the listing (%d, %d)", last, start)
 	}
 	drawer := getPanel(t, s, changesPath+"/start").Body.String()
-	for _, want := range []string{">firewall.cfg0792bd.target<", ">DROP<", ">ACCEPT<", "Return to the starting point"} {
+	for _, want := range []string{firewallTargetLine, ">DROP<", ">ACCEPT<", "Return to the starting point"} {
 		if !strings.Contains(drawer, want) {
 			t.Errorf("starting point drawer missing %q:\n%s", want, drawer)
 		}

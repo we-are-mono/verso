@@ -256,7 +256,7 @@ func TestAChangeOpensOnWhatItChanged(t *testing.T) {
 	}
 	body := rec.Body.String()
 	for _, want := range []string{"Ping off for the audit", "Firewall", "Edited the rule “Allow-Ping”.",
-		">firewall.cfg0792bd.target<", ">ACCEPT<", ">DROP<"} {
+		firewallTargetLine, ">ACCEPT<", ">DROP<"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("drawer missing %q:\n%s", want, body)
 		}
@@ -292,27 +292,111 @@ func TestEachUCIChangeIsARow(t *testing.T) {
 		{Config: "network", Section: "wan", Op: "set", Option: "password", Secret: true},
 		{Config: "system", Section: "main", Op: "set", Option: "hostname", Value: text(""), Old: json.RawMessage(`"OpenWrt"`)},
 	}
-	var got [][4]string
+	var got []string
 	for _, op := range ops {
-		for _, row := range opRows(op, identity) {
-			got = append(got, [4]string{row.Cells[0].Text, row.Cells[1].Text, row.Cells[2].Text, row.Cells[3].Text})
+		for _, line := range opLines(op, identity) {
+			got = append(got, plainOf(line))
 		}
 	}
-	want := [][4]string{
-		{"network.guest", "—", "interface", "Added"},
-		{"network.guest.proto", "—", "static", "Added"},
-		{"network.lan.ports", "—", "lan3", "Added"},
-		{"network.lan.ports", "lan1", "—", "Removed"},
-		{"network.lan.mtu", "1400", "—", "Removed"},
-		{"network.wan6", "interface", "—", "Removed"},
-		{"network.wan6.dns", "1.1.1.1 9.9.9.9", "—", "Removed"},
-		{"network.wan6.proto", "dhcpv6", "—", "Removed"},
-		{"network.wan.password", "not kept", "not kept", "Changed"},
-		{"system.main.hostname", "OpenWrt", "''", "Changed"},
+	// Each reads as the listing reads an edit: the section's chip and the
+	// option's, then what it held and holds.
+	want := []string{
+		"network.guest added interface",
+		"network.guest proto not set → static",
+		"network.lan ports added lan3",
+		"network.lan ports removed lan1",
+		"network.lan mtu 1400 → not set",
+		"network.wan6 removed interface",
+		"network.wan6 dns 1.1.1.1 9.9.9.9 → not set",
+		"network.wan6 proto dhcpv6 → not set",
+		"network.wan password changed",
+		"system.main hostname OpenWrt → ''",
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("rows\n%v\nwant\n%v", got, want)
 	}
+}
+
+// TestTheDrawerReadsInItsWidth: changes a plugin left undescribed, one after
+// another on one page, stand under one band; one it described keeps a band
+// of its own with its words; and each change is one line, read as the
+// listing reads an edit, in one column that wraps in the drawer's width.
+func TestTheDrawerReadsInItsWidth(t *testing.T) {
+	raw := func(option string) history.ChangeItem {
+		return history.ChangeItem{Page: "DNS and DHCP", Plugin: "dnsdhcp", Verbatim: true, Ops: []history.ChangeOp{
+			{Config: "dhcp", Section: "cfg01411c", Op: "remove-option", Option: option, Old: json.RawMessage(`"1"`)},
+		}}
+	}
+	described := history.ChangeItem{Page: "DNS and DHCP", Plugin: "dnsdhcp", Words: "Turned on logging", Ops: []history.ChangeOp{
+		{Config: "dhcp", Section: "cfg01411c", Op: "set", Option: "logqueries", Value: text("1")},
+	}}
+	table := changeOpsTable(history.Change{Items: []history.ChangeItem{raw("noresolv"), raw("doh_server"), described, raw("server")}}, identity)
+	var bands []string
+	for _, row := range table.Rows {
+		if row.Group != nil {
+			bands = append(bands, row.Group.Label+"|"+row.Group.Tally)
+		}
+	}
+	want := []string{"DNS and DHCP|", "DNS and DHCP|Turned on logging", "DNS and DHCP|"}
+	if !reflect.DeepEqual(bands, want) {
+		t.Errorf("bands %v, want %v", bands, want)
+	}
+	// One line a change, in one column that wraps and needs no heading.
+	if len(table.Columns) != 1 || table.Columns[0].Kind != "phrase" || !table.Columns[0].Wrap || table.Columns[0].Label != "" {
+		t.Errorf("columns = %+v, want one unlabelled phrase column that wraps", table.Columns)
+	}
+	var lines []string
+	for _, row := range table.Rows {
+		lines = append(lines, plainOf(row.Cells[0].Parts))
+	}
+	if want := []string{"dhcp.cfg01411c noresolv 1 → not set", "dhcp.cfg01411c doh_server 1 → not set",
+		"dhcp.cfg01411c logqueries not set → 1", "dhcp.cfg01411c server 1 → not set"}; !reflect.DeepEqual(lines, want) {
+		t.Errorf("lines\n%v\nwant\n%v", lines, want)
+	}
+}
+
+// TestAReturnReadsEachOptionFromNowToThen: a return's option reads from what
+// it holds now to what it held then; a whole section it puts back or takes
+// away reads as added or removed with its type, never as a value.
+func TestAReturnReadsEachOptionFromNowToThen(t *testing.T) {
+	for _, c := range []struct {
+		row  planRow
+		want string
+	}{
+		{planRow{Option: "firewall.cfg0792bd.target", Now: "DROP", Then: "ACCEPT"}, "firewall.cfg0792bd target DROP → ACCEPT"},
+		{planRow{Option: "firewall.cfg0792bd.target", Now: none, Then: "ACCEPT"}, "firewall.cfg0792bd target not set → ACCEPT"},
+		{planRow{Option: "https-dns-proxy.cfg032d79", Now: none, Then: "https-dns-proxy"}, "https-dns-proxy.cfg032d79 added https-dns-proxy"},
+		{planRow{Option: "network.guest", Now: "interface", Then: none}, "network.guest removed interface"},
+	} {
+		if got := plainOf(returnLine(c.row, identity)); got != c.want {
+			t.Errorf("%+v reads %q, want %q", c.row, got, c.want)
+		}
+	}
+}
+
+// chipsLine is how a drawer's line begins in the page: the section's chip,
+// then the option's.
+func chipsLine(section, option string) string {
+	return `>` + section + `</span><span class="verso-chip" data-verso-verbatim>` + option + `<`
+}
+
+// firewallTargetLine is the line the fixtures' rule target change begins.
+var firewallTargetLine = chipsLine("firewall.cfg0792bd", "target")
+
+// plainOf is a line's parts as read text.
+func plainOf(parts []widget.TablePart) string {
+	words := make([]string, len(parts))
+	for i, p := range parts {
+		switch {
+		case p.Chip != nil:
+			words[i] = p.Chip.Label
+		case p.Value != "":
+			words[i] = p.Value
+		default:
+			words[i] = p.Words
+		}
+	}
+	return strings.Join(words, " ")
 }
 
 // TestEverySubjectKindHasAChip: each kind a plugin can name draws with its
@@ -490,6 +574,36 @@ func TestTheDrawerSaysWhatCausedTheChange(t *testing.T) {
 	cause, note := strings.Index(body, "The theme was changed."), strings.Index(body, "a note")
 	if cause < 0 || note < 0 || cause > note {
 		t.Errorf("the drawer should hold the cause before the note:\n%s", body)
+	}
+}
+
+// TestTheCauseAndTheNoteCaptionTheLines: what caused a change and the
+// operator's note are the caption under its lines, one quiet line in the
+// listing's order, never paragraphs of their own above them.
+func TestTheCauseAndTheNoteCaptionTheLines(t *testing.T) {
+	c := turnedOff(time.Now())
+	c.ID, c.OldRead, c.Note = 9, true, "kept for the audit"
+	children := whatChangedTab(c, []history.Change{c}, changesPath+"/9", time.Now(), false, "The theme was changed.", identity)
+	var table *widget.Table
+	for _, child := range children {
+		switch w := child.(type) {
+		case *widget.Text:
+			t.Errorf("a paragraph stands above the lines: %q", w.Markdown)
+		case *widget.Table:
+			table = w
+		}
+	}
+	if table == nil || table.Note != "The theme was changed. · kept for the audit" {
+		t.Fatalf("caption = %+v", table)
+	}
+	since := returnBody(actPlan{Rows: []planRow{{Option: "firewall.cfg0792bd.target", Now: "DROP", Then: "ACCEPT"}}}, changesPath+"/9", "Return to this point", "Each option, from what it holds now to what it held at this point.", false, identity)
+	for _, child := range since {
+		if w, ok := child.(*widget.Table); ok && w.Note != "Each option, from what it holds now to what it held at this point." {
+			t.Errorf("the return's caption = %q", w.Note)
+		}
+		if w, ok := child.(*widget.Text); ok {
+			t.Errorf("a paragraph stands above the return's lines: %q", w.Markdown)
+		}
 	}
 }
 

@@ -114,7 +114,7 @@ func TestConfigHistoryShowsOnlyWhatTheSessionMayRead(t *testing.T) {
 	}
 	mixed := getPanel(t, s, fmt.Sprintf("%s/%d", changesPath, ids["both"])).Body.String()
 	leaks("a mixed entry's drawer", mixed)
-	if !strings.Contains(mixed, ">firewall.cfg0792bd.target<") {
+	if !strings.Contains(mixed, firewallTargetLine) {
 		t.Error("a mixed entry's drawer misses its readable row")
 	}
 	if !strings.Contains(mixed, "Part of this is in settings this account may not read") || strings.Contains(mixed, `value="undo"`) {
@@ -127,7 +127,7 @@ func TestConfigHistoryShowsOnlyWhatTheSessionMayRead(t *testing.T) {
 	}
 	start := getPanel(t, s, startPath).Body.String()
 	leaks("the starting point", start)
-	if !strings.Contains(start, ">firewall.cfg0792bd.target<") || strings.Contains(start, `value="return"`) {
+	if !strings.Contains(start, firewallTargetLine) || strings.Contains(start, `value="return"`) {
 		t.Error("the starting point shows its readable config and offers no return across an unreadable one")
 	}
 
@@ -242,7 +242,7 @@ func TestConfigHistoryRootSeesItAll(t *testing.T) {
 		}
 	}
 	mixed := getPanel(t, s, fmt.Sprintf("%s/%d", changesPath, ids["both"])).Body.String()
-	for _, want := range []string{">firewall.cfg0792bd.target<", ">dhcp.labhost.name<", ">old-printer<", ">lab-printer<", `value="undo"`} {
+	for _, want := range []string{firewallTargetLine, chipsLine("dhcp.labhost", "name"), ">old-printer<", ">lab-printer<", `value="undo"`} {
 		if !strings.Contains(mixed, want) {
 			t.Errorf("root's drawer misses %q", want)
 		}

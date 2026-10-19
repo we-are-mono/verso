@@ -923,6 +923,8 @@
   "Changed by %s as it was removed.": "Spremenil %s ob odstranitvi.",
   "Changed by %s as it was upgraded.": "Spremenil %s ob posodobitvi.",
   "Changed as packages were upgraded.": "Spremenjeno ob posodobitvi paketov.",
+  "Each option, from what it holds now to what it held at this point.": "Vsaka možnost, od vrednosti, ki jo ima zdaj, do vrednosti, ki jo je imela na tej točki.",
+  "Each option, from what it holds now to what it held at the starting point.": "Vsaka možnost, od vrednosti, ki jo ima zdaj, do vrednosti, ki jo je imela na izhodišču.",
   "not set": "ni nastavljeno",
   "becomes": "postane",
   "and %d more": "in še %d",

@@ -120,7 +120,7 @@ func TestARemovedSectionKeepsNoSecret(t *testing.T) {
 	}
 
 	body := getPanel(t, s, fmt.Sprintf("%s/%d", changesPath, id)).Body.String()
-	if strings.Contains(body, wifiKey) || !strings.Contains(body, "wireless.guestnet.key") || !strings.Contains(body, "not kept") {
+	if strings.Contains(body, wifiKey) || !strings.Contains(body, chipsLine("wireless.guestnet", "key")) || !strings.Contains(body, "not kept") {
 		t.Fatalf("drawer:\n%s", body)
 	}
 
