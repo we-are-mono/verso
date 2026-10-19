@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/we-are-mono/verso/internal/alerts"
+	"github.com/we-are-mono/verso/internal/events"
 	"github.com/we-are-mono/verso/internal/i18n"
 	"github.com/we-are-mono/verso/internal/listen"
 	"github.com/we-are-mono/verso/internal/openwrt"
@@ -48,6 +49,15 @@ func main() {
 	// `verso certificate generate` is the init script's, run as root before the
 	// shell starts when it has no certificate to serve (ADR-017 §5); `install`
 	// is verso-rpcd's, run as root to serve a certificate acme issued (§6).
+	// `verso announce` is root's one way to say an event happened (ADR-028):
+	// a plugin's root half, the helper and the certificate install run it.
+	if len(os.Args) > 1 && os.Args[1] == "announce" {
+		if err := announce(os.Args[2:], events.NewWriter(pluginsDir(), shellUID), runQuietly, os.Stderr); err != nil {
+			fmt.Fprintf(os.Stderr, "verso: announce: %v\n", err)
+			os.Exit(1)
+		}
+		return
+	}
 	if len(os.Args) > 1 && os.Args[1] == "certificate" {
 		if err := certificate(os.Args[2:], shellUID, os.Stdout); err != nil {
 			fmt.Fprintf(os.Stderr, "verso: certificate: %v\n", err)
@@ -61,6 +71,14 @@ func main() {
 // shellUID is the de-privileged `verso` account the shell serves as, mirroring
 // VERSO_UID in verso-rpcd: the one account besides root that reads the key.
 const shellUID = 6000
+
+// pluginsDir is where each installed plugin keeps its manifest and registry.
+func pluginsDir() string {
+	if dir := os.Getenv("VERSO_PLUGINS_DIR"); dir != "" {
+		return dir
+	}
+	return "/usr/share/verso/plugins"
+}
 
 const certificateUsage = "usage: verso certificate generate DIR NAME...\n       verso certificate install DIR CERT KEY"
 
@@ -193,10 +211,7 @@ func serve(args []string) {
 		log.Fatalf("verso: %v", err)
 	}
 
-	pluginsDir := os.Getenv("VERSO_PLUGINS_DIR")
-	if pluginsDir == "" {
-		pluginsDir = "/usr/share/verso/plugins"
-	}
+	pluginsDir := pluginsDir()
 	// discover reads every plugin manifest, reporting the malformed ones; verb
 	// says whether this is the startup scan or a rescan.
 	discover := func(verb string) []plugin.Manifest {
@@ -270,6 +285,7 @@ func serve(args []string) {
 		return rescanned
 	})
 	srv.SetAllowedHosts(allowedHosts())
+	srv.SetPluginsDir(pluginsDir)
 	if *historyDir != "" {
 		srv.SetChangesKept(*historyChanges)
 		srv.StartHistory(*historyDir, *historyFrom, probes, notify)
