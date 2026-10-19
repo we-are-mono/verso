@@ -6,6 +6,9 @@ package server
 import (
 	"slices"
 	"testing"
+
+	"github.com/we-are-mono/verso/internal/plugin"
+	"github.com/we-are-mono/verso/internal/widget"
 )
 
 // stockFirewall is OpenWrt's shipped firewall, its Allow-Ping and DHCP rules
@@ -97,6 +100,42 @@ func TestAPortForwardToTheRouterItselfExposesTheShell(t *testing.T) {
 		if (len(got) == 1 && got[0].kind == exposedForward && got[0].name == "fwd8443") != c.want {
 			t.Errorf("redirect %v: got %v, want exposed=%v", c.redirect, got, c.want)
 		}
+	}
+}
+
+// TestTheExposureNoticeOpensThePageOfItsFirstCause: the notice links through
+// the running claim on its first cause's kind, to the page listing that kind,
+// in the claiming plugin's word; whichever plugin claims it, and with none
+// running the warning stands without a link.
+func TestTheExposureNoticeOpensThePageOfItsFirstCause(t *testing.T) {
+	pluginTr := func(string) func(string) string { return identityTranslator }
+	zone := exposed{kind: exposedZone, name: "wan"}
+	rule := exposed{kind: exposedRule, name: "Allow-Web", port: "443"}
+	forward := exposed{kind: exposedForward, name: "fwd8443", port: "443"}
+	for _, c := range []struct {
+		plugin string
+		found  []exposed
+		href   string
+	}{
+		{"firewall", []exposed{zone}, "/plugins/firewall/zones"},
+		{"firewall", []exposed{rule, zone}, "/plugins/firewall/"},
+		{"firewall", []exposed{forward}, "/plugins/firewall/port-forwards"},
+		{"fw2", []exposed{zone}, "/plugins/fw2/zones"},
+	} {
+		s := navServer(doorFirewall(c.plugin))
+		notice, _ := exposureNotice(c.found, identityTranslator, s.door, pluginTr).(*widget.Callout)
+		if notice == nil || notice.Link == nil || notice.Link.Href != c.href || notice.Link.Label != "Open Firewall" {
+			t.Errorf("%s %v: notice = %+v, want a link to %s saying Open Firewall", c.plugin, c.found, notice, c.href)
+		}
+	}
+	s := navServer(doorFirewall("firewall"))
+	s.probe = func(plugin.Endpoint) bool { return false }
+	notice, _ := exposureNotice([]exposed{zone}, identityTranslator, s.door, pluginTr).(*widget.Callout)
+	if notice == nil || notice.Link != nil {
+		t.Errorf("with the firewall stopped, notice = %+v, want the warning with no link", notice)
+	}
+	if got := exposureNotice(nil, identityTranslator, s.door, pluginTr); got != nil {
+		t.Errorf("nothing exposed, notice = %+v", got)
 	}
 }
 

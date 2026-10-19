@@ -69,7 +69,7 @@ Every task ends with `make lint` passing, and `make test` passing except the fiv
   - with the VPN entry labelled Tunnels, the card says "Open Tunnels".
 
   Then give `overviewCardSpec` its `door`, fill `Overview.Doors` from `s.door`, and claim `network` with `/edit?network={id}` in `plugins/verso-plugin-interfaces/manifest.json`. Remove `InterfacesHref`, `TunnelsHref` and `navLabelHref` (design decision 3). Verify with `make test`.
-- [ ] 4.4 Test first in `internal/server/exposure_test.go` and `internal/server/fwlog_test.go`:
+- [x] 4.4 Test first in `internal/server/exposure_test.go` and `internal/server/fwlog_test.go`:
   - the exposure notice links the listing door of its first cause's kind as "Open Firewall": Zones for a zone, Rules for a rule, Port forwards for a forward. It has no link with no claim;
   - a logged rule addresses `/plugins/firewall/?open=<section>`, and a redirect `/plugins/firewall/port-forwards?open=<section>`, through the doors;
   - with no claim, both are plain text, and a `nat` row stays plain;

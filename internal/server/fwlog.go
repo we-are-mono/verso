@@ -34,15 +34,25 @@ import (
 // into markup: the parse yields data, the stream carries JSON, and the browser
 // writes it as text.
 
-// fwLogRuleEditor and fwLogRedirectEditor are where a logged verdict's rule
-// opens: its panel on the listing that holds it, addressed by the section. The
-// stream is named for the firewall and so is the door it opens: a row states
-// which rule decided it, and the only useful thing to do with that is to go and
-// read it.
-const (
-	fwLogRuleEditor     = "/plugins/firewall/?open="
-	fwLogRedirectEditor = "/plugins/firewall/port-forwards?open="
-)
+// fwDoors are where a logged verdict's rule opens: the running claims on the
+// doors to rules and to port forwards, addressed by the section. A row states
+// which rule decided it, and the only useful thing to do with that is to go
+// and read it; with no claim running, the row names the rule as plain text.
+type fwDoors struct {
+	rule, forward *entityDoor
+}
+
+// firewallDoors resolves the doors a firewall log row opens.
+func firewallDoors(door func(kind string) (entityDoor, bool)) fwDoors {
+	var doors fwDoors
+	if d, ok := door("rule"); ok {
+		doors.rule = &d
+	}
+	if d, ok := door("port-forward"); ok {
+		doors.forward = &d
+	}
+	return doors
+}
 
 // fwEvent is one firewall verdict as the activity stream carries it. Every
 // field is a string or a number the browser renders as text — never markup, and
@@ -168,7 +178,7 @@ type fwResolver struct {
 // of which device each logical interface currently owns. A miss on either read
 // is not fatal: an unresolved rule is a row with no door, an unresolved device
 // is a row that names the kernel's own device — both honest, both still rows.
-func newFWResolver(config map[string]any, ifaces []openwrt.NetIface) *fwResolver {
+func newFWResolver(config map[string]any, ifaces []openwrt.NetIface, doors fwDoors) *fwResolver {
 	r := &fwResolver{rules: map[string]fwRule{}, zones: map[string]string{}}
 	// interface name → the kernel device netifd has it on right now.
 	devices := make(map[string]string, len(ifaces))
@@ -194,14 +204,14 @@ func newFWResolver(config map[string]any, ifaces []openwrt.NetIface) *fwResolver
 		seen[secType]++
 		switch secType {
 		case "rule":
-			r.addRule(id, section, secType, position, fwLogRuleEditor)
+			r.addRule(id, section, secType, position, doors.rule)
 		case "redirect":
-			r.addRule(id, section, secType, position, fwLogRedirectEditor)
+			r.addRule(id, section, secType, position, doors.forward)
 		case "nat":
 			// A source-rewrite section logs with the same `<name>: ` prefix, and
-			// nothing in this shell edits one — so the row names the decision and
-			// offers no door. An empty href renders the name as plain text.
-			r.addRule(id, section, secType, position, "")
+			// no door opens one — so the row names the decision and offers no
+			// door. An empty href renders the name as plain text.
+			r.addRule(id, section, secType, position, nil)
 		case "zone":
 			r.addZone(section, devices)
 		}
@@ -216,7 +226,7 @@ func newFWResolver(config map[string]any, ifaces []openwrt.NetIface) *fwResolver
 // which is also the id rpcd hands back) and `@<type>[<position>]` where it does
 // not. rpcd's config id for an anonymous section — cfg13dc81 — is never a prefix
 // fw4 writes, so it is never a key here.
-func (r *fwResolver) addRule(id string, section map[string]any, secType string, position int, editor string) {
+func (r *fwResolver) addRule(id string, section map[string]any, secType string, position int, door *entityDoor) {
 	name := uciString(section["name"])
 	if name == "" {
 		name = fwSectionID(id, section, secType, position)
@@ -228,8 +238,8 @@ func (r *fwResolver) addRule(id string, section map[string]any, secType string, 
 		Name:    name,
 		Verdict: fwTargets[strings.ToUpper(uciString(section["target"]))],
 	}
-	if editor != "" {
-		rule.Href = editor + id
+	if door != nil {
+		rule.Href = door.To(id)
 	}
 	r.rules[name] = rule
 }

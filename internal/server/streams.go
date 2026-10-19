@@ -80,7 +80,7 @@ func (s *Server) streamHandler(source string) http.HandlerFunc {
 // Like the overview stream it lives only as long as the session (serveSSE).
 func (s *Server) streamFirewallLog(w http.ResponseWriter, r *http.Request) {
 	sid := s.sessionSID(r)
-	reader := &fwLogReader{backend: s.backend, sid: sid, limit: fwLogBacklog}
+	reader := &fwLogReader{backend: s.backend, sid: sid, limit: fwLogBacklog, door: s.door}
 	// A dropped connection is reconnected by the browser on its own, and it
 	// hands back the id of the last event it saw. Resuming there is what keeps
 	// a reconnect from replaying the backlog into a page that already has it.
@@ -103,8 +103,11 @@ func (s *Server) streamFirewallLog(w http.ResponseWriter, r *http.Request) {
 // and the mappings it resolves lines through. It is per-connection on purpose —
 // the cursor belongs to a reader, not to the device.
 type fwLogReader struct {
-	backend  openwrt.Backend
-	sid      string
+	backend openwrt.Backend
+	sid     string
+	// door is where a logged rule opens, looked up as the mappings refresh
+	// (Server.door); nil links nothing.
+	door     func(kind string) (entityDoor, bool)
 	cursor   int64 // the highest log id already sent; only newer records are read
 	started  bool  // the first poll is the backlog, every later one is the present
 	limit    int   // how many rows the first poll may hand over
@@ -193,7 +196,7 @@ func (f *fwLogReader) refresh(ctx context.Context) {
 		if f.resolver == nil {
 			// Nothing to resolve through yet: rows still flow, naming the
 			// kernel's own devices and no rules.
-			f.resolver = newFWResolver(nil, nil)
+			f.resolver = newFWResolver(nil, nil, fwDoors{})
 			log.Printf("verso: firewall activity: config unreadable, streaming unresolved rows: %v", err)
 		}
 		return
@@ -202,5 +205,9 @@ func (f *fwLogReader) refresh(ctx context.Context) {
 	if err != nil {
 		ifaces = nil // no zone join; a row names the device the kernel named
 	}
-	f.resolver = newFWResolver(config, ifaces)
+	var doors fwDoors
+	if f.door != nil {
+		doors = firewallDoors(f.door)
+	}
+	f.resolver = newFWResolver(config, ifaces, doors)
 }

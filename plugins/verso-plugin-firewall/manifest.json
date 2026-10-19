@@ -12,6 +12,11 @@
       { "label": "Activity", "path": "activity" }
     ] }
   ],
+  "entity_acts": [
+    { "entity": "rule", "slot": "open", "path": "/?open={id}" },
+    { "entity": "port-forward", "slot": "open", "path": "/port-forwards?open={id}" },
+    { "entity": "zone", "slot": "open", "path": "/zones?open={id}" }
+  ],
   "acl": {
     "read": [
       { "scope": "uci", "object": "firewall", "function": "read" },

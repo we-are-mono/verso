@@ -184,7 +184,17 @@ func (s *Server) applyExposure(r *http.Request, ov *widget.Overview) {
 // exposureCallout says, on Access, that the internet can reach the shell and
 // why, or nothing when the firewall keeps it off the WAN or cannot be read.
 func (s *Server) exposureCallout(r *http.Request, tr func(string) string) widget.Widget {
-	found := s.shellExposure(r)
+	return exposureNotice(s.shellExposure(r), tr, s.door, s.pluginTranslators(r))
+}
+
+// exposedDoor is the door kind each cause of exposure is.
+var exposedDoor = map[exposedKind]string{exposedZone: "zone", exposedRule: "rule", exposedForward: "port-forward"}
+
+// exposureNotice is the warning for what found says reaches the shell, or
+// nil for nothing. It opens the page listing its first cause's kind, through
+// the running claim on that kind's door, in the claiming plugin's word; with
+// no claim running the warning stands alone.
+func exposureNotice(found []exposed, tr func(string) string, door func(kind string) (entityDoor, bool), pluginTr func(string) func(string) string) widget.Widget {
 	if len(found) == 0 {
 		return nil
 	}
@@ -201,10 +211,13 @@ func (s *Server) exposureCallout(r *http.Request, tr func(string) string) widget
 			why = append(why, fmt.Sprintf(tr("The port forward “%s” sends the internet to port %s on the router."), e.name, e.port))
 		}
 	}
-	return &widget.Callout{
+	notice := &widget.Callout{
 		Variant: "warning",
 		Title:   "The internet can reach this web interface",
 		Body:    strings.Join(why, " "),
-		Link:    &widget.Link{Label: "Open Firewall", Href: "/plugins/firewall/"},
 	}
+	if d, ok := door(exposedDoor[found[0].kind]); ok {
+		notice.Link = &widget.Link{Label: fmt.Sprintf(tr("Open %s"), d.Word(pluginTr)), Href: d.Listing()}
+	}
+	return notice
 }

@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/we-are-mono/verso/internal/openwrt"
+	"github.com/we-are-mono/verso/internal/plugin"
 	"github.com/we-are-mono/verso/internal/widget"
 )
 
@@ -83,7 +84,8 @@ func openStream(t *testing.T, s *Server, source string) (*http.Response, string)
 // through the netfilter parse, through the config and netifd join, onto the
 // wire as structured rows. The lines are the shapes the kernel really writes.
 func TestFirewallLogStreamCarriesResolvedRows(t *testing.T) {
-	s := newServer(t, fwLogBackend())
+	s := newServerWith(t, fwLogBackend(), &fakeTransport{}, []plugin.Manifest{doorFirewall("firewall")})
+	s.probe = func(plugin.Endpoint) bool { return true }
 	s.eventInterval = 5 * time.Millisecond
 
 	res, payload := openStream(t, s, "firewall-log")

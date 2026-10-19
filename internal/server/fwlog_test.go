@@ -147,11 +147,39 @@ func fwTestIfaces() []openwrt.NetIface {
 	}
 }
 
+// fwTestDoors are the doors to rules and port forwards the firewall plugin
+// claims, as it ships.
+func fwTestDoors() fwDoors {
+	return firewallDoors(navServer(doorFirewall("firewall")).door)
+}
+
+// TestFWResolverLinksOnlyThroughAClaim: a logged rule's name links through the
+// running claims on rules and port forwards, whichever plugin makes them; with
+// none, the name is plain text.
+func TestFWResolverLinksOnlyThroughAClaim(t *testing.T) {
+	rule, _ := parseFWLogLine(fwLineRuleDrop)
+	forward, _ := parseFWLogLine(fwLineForward)
+	r := newFWResolver(fwTestConfig(), fwTestIfaces(), firewallDoors(navServer(doorFirewall("fw2")).door))
+	if e := r.event(1, 1, rule); e.RuleHref != "/plugins/fw2/?open=cfg11dc81" {
+		t.Errorf("rule href = %q, want fw2's rule door", e.RuleHref)
+	}
+	if e := r.event(1, 1, forward); e.RuleHref != "/plugins/fw2/port-forwards?open=cfg21dc81" {
+		t.Errorf("forward href = %q, want fw2's port forward door", e.RuleHref)
+	}
+	r = newFWResolver(fwTestConfig(), fwTestIfaces(), fwDoors{})
+	if e := r.event(1, 1, rule); e.Rule != "Log-WAN-probes" || e.RuleHref != "" {
+		t.Errorf("with no claim, rule = %q %q, want its name as plain text", e.Rule, e.RuleHref)
+	}
+	if e := r.event(1, 1, forward); e.RuleHref != "" {
+		t.Errorf("with no claim, forward href = %q", e.RuleHref)
+	}
+}
+
 // TestFWResolverNamesTheDecision: a prefix is a rule's name or a zone policy's
 // sentence, and the two resolve differently — one opens its editor, the other
 // has nothing to open because nobody wrote it.
 func TestFWResolverNamesTheDecision(t *testing.T) {
-	r := newFWResolver(fwTestConfig(), fwTestIfaces())
+	r := newFWResolver(fwTestConfig(), fwTestIfaces(), fwTestDoors())
 
 	line, _ := parseFWLogLine(fwLineRuleDrop)
 	e := r.event(4211, 1788294054, line)
@@ -198,7 +226,7 @@ func TestFWResolverNamesTheDecision(t *testing.T) {
 // kernel writes in front of the packet. A section written with a name of its own
 // (`config rule 'block_telnet'`) keeps that name.
 func TestFWResolverNamesAnonymousSectionsThePositionalWayFW4Does(t *testing.T) {
-	r := newFWResolver(fwTestConfig(), fwTestIfaces())
+	r := newFWResolver(fwTestConfig(), fwTestIfaces(), fwTestDoors())
 
 	positional, _ := parseFWLogLine(`[ 1.0] @rule[2]: IN=wan0 OUT= SRC=1.2.3.4 DST=5.6.7.8 PROTO=TCP DPT=23`)
 	e := r.event(1, 1, positional)
@@ -248,7 +276,7 @@ func TestFWResolverNamesAnonymousSectionsThePositionalWayFW4Does(t *testing.T) {
 // logs is a row like any other. Nothing in this shell renders an editor for one,
 // so the row states the decision and offers no door.
 func TestFWResolverReadsSNATSections(t *testing.T) {
-	r := newFWResolver(fwTestConfig(), fwTestIfaces())
+	r := newFWResolver(fwTestConfig(), fwTestIfaces(), fwTestDoors())
 
 	snat, _ := parseFWLogLine(`[ 1.0] @nat[0]: IN= OUT=wan0 SRC=10.0.0.5 DST=1.1.1.1 PROTO=UDP DPT=53`)
 	e := r.event(1, 1, snat)
@@ -264,7 +292,7 @@ func TestFWResolverReadsSNATSections(t *testing.T) {
 // no verdict, an unknown prefix claims none, and a device no zone owns is named
 // as the kernel named it.
 func TestFWResolverStaysHonestWhereItCannotResolve(t *testing.T) {
-	r := newFWResolver(fwTestConfig(), fwTestIfaces())
+	r := newFWResolver(fwTestConfig(), fwTestIfaces(), fwTestDoors())
 
 	marked, _ := parseFWLogLine(`[ 1.0] Mark-VoIP: IN=br-lan OUT=wan0 SRC=10.0.0.5 DST=1.1.1.1 PROTO=UDP DPT=5060`)
 	if e := r.event(1, 1, marked); e.Verdict != "" || e.Rule != "Mark-VoIP" {
