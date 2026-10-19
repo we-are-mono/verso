@@ -119,7 +119,7 @@
   - the staged file still applies;
   - apk refuses an upgrade of verso alone.
 - [ ] 11.3 On the DK (router.example.com in every public artifact): install a certificate by hand while `acme.verso` is on, reboot, and check that the hand-installed certificate is served and `acme.verso.enabled` is 0. Then check that a forced acme renew is served with no one signed in.
-- [ ] 11.4 Update `docs/BACKLOG.md`: the certificate-source root half and the registry are done, and the events theme is next. Note `wirelessState` and the interface acts as the remaining plugin-specific code in the shell. Write release notes asking to upgrade verso, verso-plugin-acme, verso-plugin-vpn, verso-plugin-ddns and verso-plugin-dnsdhcp together. Verify that `make lint` and `make test` are green.
+- [x] 11.4 Update `docs/BACKLOG.md`: the certificate-source root half and the registry are done, and the events theme is next. Note `wirelessState` and the interface acts as the remaining plugin-specific code in the shell. Write release notes asking to upgrade verso, verso-plugin-acme, verso-plugin-vpn, verso-plugin-ddns and verso-plugin-dnsdhcp together. Verify that `make lint` and `make test` are green.
 
 ## Workflow follow-up
 

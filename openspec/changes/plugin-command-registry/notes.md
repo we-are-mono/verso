@@ -271,3 +271,22 @@ a grant needs a plugin to belong to, and the plugins that exist are the plainest
 samples. `arrival.rs` names https-dns-proxy and dnsmasq. That is core's own
 package handling (a package installed through Verso has its takeover of dnsmasq
 undone), and no plugin's root work.
+
+## 11.4 The backlog, the release notes and the suite
+
+The backlog holds no item for the registry or the certificate source's root
+half: both landed here. The two places this task named as left in the shell
+were settled by the changes after it. `wirelessState` is the wireless plugin's
+registered read `wireless.state` (5c000ef, and db9617b in its repo). Interface
+up, down and restart stay the shell's acts, kept for the Interfaces listing
+the shell takes over, which the backlog names as "The Interfaces listing in
+the shell". The events theme landed and is archived as `plugin-events`.
+
+The release notes ask for verso and the four plugins to be upgraded together
+(`release-notes.md`).
+
+`make lint` and `make test` are green at 39bc8f6. Two fixes made the suite
+green. The SDK's announce tests now retry their stand-in while Linux reports it
+busy (58e1643): a test forking on another thread failed one run in six with
+ETXTBSY. The grid tests' page now has `querySelector` (39bc8f6), which
+verso-dev.js uses since 056bf7f.

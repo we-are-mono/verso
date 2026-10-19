@@ -38,3 +38,7 @@ The `dhcp` row seen beside the arrival is a package operation's own (design deci
 The two `dhcp` rows are the package's own service taking dnsmasq over as it started, and handing it back when the arrival stopped it. The arrival's commit kept its own cause.
 
 Removing the package from Packages answered "https-dns-proxy removed." and left no row. With the arrival's settings, the package's stop leaves dnsmasq alone, so nothing declared changed. The removal's cause is held by the unit tests. Screenshot: `package-removal.png`.
+
+## 7.2 The backlog, the release notes and the suite
+
+Nothing of this change is left open in the backlog. Its last check on hardware is task 8.2. The release notes ask for verso and verso-plugin-acme to be upgraded together (`release-notes.md`). `make lint` and `make test` are green at 39bc8f6.

@@ -88,8 +88,8 @@ own and points at the decision that governs it; the rationale lives there, not h
 - **Conformance kit.** An executable check of the plugin contract
   (`docs/plugins.md` carries the checklist).
 - **Narrow unit spaces in the plugin repos.** wireless (MHz, dBm, `%`), vpn and
-  ddns (durations), qos (Mb/s) and dnsdhcp (lease expiry as "11h 32m") write
-  their own figures with a full space or none. A duration or rate goes to the
+  ddns (durations) and dnsdhcp (lease expiry as "11h 32m") write their own
+  figures with a full space or none. A duration or rate goes to the
   shell as `duration` or `rate`; any other unit takes U+202F (DESIGN.md's
   Narrow Space Rule).
 
