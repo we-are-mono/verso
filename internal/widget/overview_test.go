@@ -15,7 +15,10 @@ func fullOverview() *Overview {
 		InterfacesKnown: true, DevicesKnown: true, DevicesOnline: 9,
 		Model: "Mono Gateway Development Kit",
 		Arch:  "aarch64_generic", Target: "layerscape/armv8_64b",
-		TunnelsHref: "/plugins/wireguard/", InterfacesHref: "/plugins/interfaces/",
+		Doors: map[string]OverviewDoor{
+			"tunnel":  {Href: "/plugins/wireguard/", Word: "VPN"},
+			"network": {Href: "/plugins/interfaces/", Word: "Interfaces"},
+		},
 		Firmware: "OpenWrt 25.12.4", Kernel: "Linux 6.12.101", Uptime: secs(532800),
 		Clock: "14:52:07", Zone: "CEST",
 		FirewallState: "active",
@@ -349,6 +352,62 @@ func TestTheTrafficCardsWindowStandsOverItsGraph(t *testing.T) {
 	}
 	if bare := render(t, newRenderer(t), &Overview{}); strings.Contains(bare, `name="range"`) {
 		t.Error("with no history behind it, the Traffic card offers a window")
+	}
+}
+
+// cardDoor is one shell card's Go link as the page draws it: where it leads
+// and what it says.
+func cardDoor(t *testing.T, o *Overview, id string) (href, label string) {
+	t.Helper()
+	page := render(t, newRenderer(t), o)
+	at := strings.Index(page, `data-overview-card="`+id+`"`)
+	if at < 0 {
+		t.Fatalf("no card %q", id)
+	}
+	card := page[at+1:]
+	if next := strings.Index(card, `data-overview-card="`); next >= 0 {
+		card = card[:next]
+	}
+	m := regexp.MustCompile(`<a href="([^"]*)" data-overview-go aria-label="([^"]*)"`).FindStringSubmatch(card)
+	if m == nil {
+		return "", ""
+	}
+	return m[1], m[2]
+}
+
+// TestACardsDoorIntoAPluginIsThatPluginsClaim: Internet and Ports open the
+// door to networks and Tunnels the door to tunnels, else to networks, each in
+// the claiming plugin's own word, already in its language; a card no claim
+// answers has no Go link. The shell's own pages keep the shell's doors.
+func TestACardsDoorIntoAPluginIsThatPluginsClaim(t *testing.T) {
+	network := OverviewDoor{Href: "/plugins/interfaces/", Word: "Interfaces"}
+	tunnel := OverviewDoor{Href: "/plugins/vpn/", Word: "VPN"}
+	for _, c := range []struct {
+		name         string
+		doors        map[string]OverviewDoor
+		id           string
+		href, saying string
+	}{
+		{"internet", map[string]OverviewDoor{"network": network, "tunnel": tunnel}, "internet", "/plugins/interfaces/", "Open Interfaces"},
+		{"ports", map[string]OverviewDoor{"network": network, "tunnel": tunnel}, "ports", "/plugins/interfaces/", "Open Interfaces"},
+		{"tunnels", map[string]OverviewDoor{"network": network, "tunnel": tunnel}, "tunnels", "/plugins/vpn/", "Open VPN"},
+		{"tunnels without a tunnel door", map[string]OverviewDoor{"network": network}, "tunnels", "/plugins/interfaces/", "Open Interfaces"},
+		{"a renamed page", map[string]OverviewDoor{"tunnel": {Href: "/plugins/vpn/", Word: "Tunnels"}}, "tunnels", "/plugins/vpn/", "Open Tunnels"},
+		{"a word in its plugin's language", map[string]OverviewDoor{"network": {Href: "/plugins/interfaces/", Word: "Vmesniki"}}, "internet", "/plugins/interfaces/", "Open Vmesniki"},
+		{"internet with no door", nil, "internet", "", ""},
+		{"ports with no door", nil, "ports", "", ""},
+		{"tunnels with no door", nil, "tunnels", "", ""},
+	} {
+		o := fullOverview()
+		o.Doors = c.doors
+		if href, label := cardDoor(t, o, c.id); href != c.href || label != c.saying {
+			t.Errorf("%s: door = %q %q, want %q %q", c.name, href, label, c.href, c.saying)
+		}
+	}
+	o := fullOverview()
+	o.Doors = nil
+	if href, label := cardDoor(t, o, "hardware"); href != "/system/hardware" || label != "Open Hardware" {
+		t.Errorf("with no plugin doors, Hardware's door = %q %q", href, label)
 	}
 }
 

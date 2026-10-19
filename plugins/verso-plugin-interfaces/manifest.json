@@ -16,6 +16,13 @@
       "icon": "route"
     }
   ],
+  "entity_acts": [
+    {
+      "entity": "network",
+      "slot": "open",
+      "path": "/edit?network={id}"
+    }
+  ],
   "acl": {
     "read": [
       {

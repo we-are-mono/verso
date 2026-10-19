@@ -20,8 +20,10 @@ type Overview struct {
 	// card's Local time.
 	Clock, Zone     string
 	InterfacesKnown bool
-	TunnelsHref     string
-	InterfacesHref  string
+	// Doors are where a card opens into a plugin, by the kind of thing it
+	// opens ("network", "tunnel"): the running plugin's claim on that kind's
+	// door. A kind no plugin claims has none, and its card no Go link.
+	Doors map[string]OverviewDoor
 
 	// Layout is where the cards stand, read from the browser (ADR-022); the
 	// zero value is the default layout.
@@ -255,6 +257,13 @@ type OverviewContribution struct {
 	Body                         Widget
 }
 
+// OverviewDoor is a card's door into a plugin: where the claiming plugin
+// lists the kind, and its word for that page, already in its own language,
+// so no pass of the shell's translates it again.
+type OverviewDoor struct {
+	Href, Word string
+}
+
 // head is the contributed card's header as the shell's cards carry theirs.
 func (c OverviewContribution) head() cardHead {
 	return cardHead{Tone: c.Tone, Status: c.Status, Summary: c.Summary, Cause: c.Cause}
@@ -345,6 +354,12 @@ func (o *Overview) card(r *Renderer, spec overviewCardSpec, closed bool, csrf st
 		return overviewCardView{}, fmt.Errorf("overview card %s: %w", spec.ID, err)
 	}
 	v := overviewCardView{ID: spec.ID, Title: r.tr(spec.Title), Icon: spec.Icon, Head: spec.head(o, r.tr), Closed: closed, Body: body}
+	for _, kind := range spec.doors {
+		if door := o.Doors[kind]; door.Href != "" {
+			v.Href, v.OpenLabel = door.Href, fmt.Sprintf(r.tr("Open %s"), door.Word)
+			break
+		}
+	}
 	if spec.href != nil {
 		if v.Href = spec.href(o); v.Href != "" {
 			v.OpenLabel = fmt.Sprintf(r.tr("Open %s"), r.tr(spec.Opens))

@@ -45,7 +45,7 @@ Every task ends with `make lint` passing, and `make test` passing except the fiv
 
 ## 4. Doors are plugins' claims
 
-- [ ] 4.1 Test first in `internal/server/entity_test.go`:
+- [x] 4.1 Test first in `internal/server/entity_test.go`:
   - `network`, `tunnel`, `zone`, `rule` and `port-forward` are door kinds, each with the slot `open`, and `/entity/zone/x` answers 404;
   - `door(kind)` is the live claimant whose id sorts first; a stopped claimant gives no door, and a claim under no nav entry gives none;
   - `To("a b")` escapes the id under the plugin's mount;
@@ -55,14 +55,14 @@ Every task ends with `make lint` passing, and `make test` passing except the fiv
   - `entityActs` takes the first claimant by id.
 
   Then implement them (design decision 1). Verify with `make test`.
-- [ ] 4.2 In `plugins/verso-plugin-vpn` (its own repo), add to `manifest.json`:
+- [x] 4.2 In `plugins/verso-plugin-vpn` (its own repo), add to `manifest.json`:
   - the claim `{"entity": "tunnel", "slot": "open", "path": "/?open={id}"}`;
   - `order` 40 on its nav entry;
   - the glyph `lock`;
   - `services` `{"openvpn": "OpenVPN"}`, with `OpenVPN` in its catalogs.
 
   Verify with `cargo test` there, and that `make dev` loads it with no log line about a dropped claim. Commit there.
-- [ ] 4.3 Test first in `internal/widget/overview_test.go` and `internal/server/server_test.go`, for every scenario of the `overview` delta:
+- [x] 4.3 Test first in `internal/widget/overview_test.go` and `internal/server/server_test.go`, for every scenario of the `overview` delta:
   - with interfaces and vpn answering, Internet, Ports and Tunnels have their doors and words;
   - with vpn stopped, Tunnels says "Open Interfaces";
   - with neither answering, Internet, Ports and Tunnels draw no Go link, and Hardware still links `/system/hardware`;

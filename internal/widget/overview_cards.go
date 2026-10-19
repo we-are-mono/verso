@@ -34,8 +34,11 @@ type cardHead struct {
 // status and summary change in its own functions and nowhere else.
 type overviewCardSpec struct {
 	ID, Title, Icon string
-	// Opens names the page the card's Go link leads to; href resolves it from
-	// the live registry, empty when no running plugin serves it.
+	// doors are the kinds of thing a card opening into a plugin opens, the
+	// first a plugin claims winning (Overview.Doors).
+	doors []string
+	// Opens names the shell's own page the card's Go link leads to; href
+	// resolves it, empty while there is nothing to go there for.
 	Opens string
 	href  func(*Overview) string
 	head  func(*Overview, func(string) string) cardHead
@@ -45,9 +48,11 @@ type overviewCardSpec struct {
 // overviewCardSpecs are the Overview's cards, in the default layout's order.
 func overviewCardSpecs() []overviewCardSpec {
 	return []overviewCardSpec{
-		{ID: "internet", Title: "Internet", Icon: "globe", Opens: "Interfaces", href: func(o *Overview) string { return o.InterfacesHref }, head: (*Overview).internetHead, body: (*Overview).internetBody},
-		{ID: "ports", Title: "Ports", Icon: "ethernet-port", Opens: "Interfaces", href: func(o *Overview) string { return o.InterfacesHref }, head: (*Overview).portsHead, body: (*Overview).portsBody},
-		{ID: "tunnels", Title: "Tunnels", Icon: "lock", Opens: "VPN", href: (*Overview).tunnelsHref, head: (*Overview).tunnelsHead, body: (*Overview).tunnelsBody},
+		{ID: "internet", Title: "Internet", Icon: "globe", doors: []string{"network"}, head: (*Overview).internetHead, body: (*Overview).internetBody},
+		{ID: "ports", Title: "Ports", Icon: "ethernet-port", doors: []string{"network"}, head: (*Overview).portsHead, body: (*Overview).portsBody},
+		// A tunnel is a network too: with no plugin claiming tunnels, the
+		// card opens where networks are listed.
+		{ID: "tunnels", Title: "Tunnels", Icon: "lock", doors: []string{"tunnel", "network"}, head: (*Overview).tunnelsHead, body: (*Overview).tunnelsBody},
 		{ID: "traffic", Title: "Traffic", Icon: "activity", head: (*Overview).trafficHead, body: (*Overview).trafficBody},
 		{ID: "resources", Title: "Resources", Icon: "gauge", head: (*Overview).resourcesHead, body: (*Overview).resourcesBody},
 		{ID: "system", Title: "System", Icon: "router", Opens: "Services", href: (*Overview).systemHref, head: (*Overview).systemHead, body: (*Overview).systemBody},
@@ -273,13 +278,6 @@ func (o *Overview) portsInPanelOrder() []OverviewInterface {
 }
 
 // ── Tunnels ──
-
-func (o *Overview) tunnelsHref() string {
-	if o.TunnelsHref != "" {
-		return o.TunnelsHref
-	}
-	return o.InterfacesHref
-}
 
 // tunnelsHead reads each tunnel's netdev, which says nothing about a remote
 // peer or a handshake: up is the device, not the far end. Its line names the

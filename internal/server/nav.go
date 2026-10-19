@@ -328,16 +328,3 @@ func navEntryAt(m plugin.Manifest, pluginPath string) (plugin.NavEntry, bool) {
 	}
 	return found, best >= 0
 }
-
-// navLabelHref resolves a particular destination without confusing it with
-// another plugin in the same section. Missing destinations stay unlinked.
-func (s *Server) navLabelHref(label string) string {
-	for _, manifest := range s.manifestList() {
-		for _, entry := range manifest.Nav {
-			if entry.Label == label && s.probe(manifest.Endpoint()) {
-				return pluginHref(manifest.ID, entry.Path)
-			}
-		}
-	}
-	return ""
-}

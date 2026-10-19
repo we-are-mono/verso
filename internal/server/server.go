@@ -315,6 +315,7 @@ func New(
 	if err != nil {
 		return nil, fmt.Errorf("server: %w", err)
 	}
+	manifests = withKnownClaims(manifests)
 	interfaceSampler := telemetry.NewSampler()
 	interfaceSampler.Start()
 	profile := boardProfile()
@@ -630,7 +631,7 @@ func (s *Server) Rescan() {
 	if s.rescan == nil {
 		return
 	}
-	manifests := s.rescan()
+	manifests := withKnownClaims(s.rescan())
 	s.manifestsMu.Lock()
 	s.manifests = manifests
 	s.pluginByID = indexByID(manifests)
@@ -1206,12 +1207,23 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	s.applyFirewallStatus(r.Context(), sid, ov)
 	s.applyExposure(r, ov)
 	s.applyFailedServices(r.Context(), sid, ov)
-	// Resolve each card's door by its registered navigation entry, leaving it
-	// unlinked while no running plugin serves its destination.
-	ov.TunnelsHref = s.navLabelHref("VPN")
-	ov.InterfacesHref = s.navLabelHref("Interfaces")
+	ov.Doors = s.overviewDoors(r)
 
 	s.renderWidgetPage(w, r, http.StatusOK, pageHeader{}, "wide", nil, ov)
+}
+
+// overviewDoors are the doors the Overview's cards open into plugins: each
+// kind's running claim, leading to the page that lists the kind and named in
+// the claiming plugin's words. A kind no running plugin claims has no door.
+func (s *Server) overviewDoors(r *http.Request) map[string]widget.OverviewDoor {
+	pluginTr := s.pluginTranslators(r)
+	doors := map[string]widget.OverviewDoor{}
+	for _, kind := range []string{"network", "tunnel"} {
+		if door, ok := s.door(kind); ok {
+			doors[kind] = widget.OverviewDoor{Href: door.Listing(), Word: door.Word(pluginTr)}
+		}
+	}
+	return doors
 }
 
 // sysMetricsToWidget maps the System readings onto the overview's gauge fields.

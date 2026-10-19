@@ -119,10 +119,11 @@ func (s *Server) entityContributors(kind string) []entityClaim {
 }
 
 // entityActs are the live direct acts on one subject of this kind, already
-// addressed to that subject, in slot order.
+// addressed to that subject, in slot order. A slot two plugins claim is the
+// claim of the one whose id sorts first, as a door is.
 func (s *Server) entityActs(kind, id string) map[string]string {
 	acts := map[string]string{}
-	for _, m := range s.manifestList() {
+	for _, m := range s.manifestsByID() {
 		if !s.probe(m.Endpoint()) {
 			continue
 		}
@@ -130,16 +131,18 @@ func (s *Server) entityActs(kind, id string) map[string]string {
 			if a.Entity != kind || a.Slot == "" || a.Path == "" || a.Post {
 				continue
 			}
-			acts[a.Slot] = pluginHref(m.ID, strings.ReplaceAll(a.Path, "{id}", url.PathEscape(id)))
+			if _, taken := acts[a.Slot]; !taken {
+				acts[a.Slot] = pluginHref(m.ID, strings.ReplaceAll(a.Path, "{id}", url.PathEscape(id)))
+			}
 		}
 	}
 	return acts
 }
 
 // entityToggle is the live plugin claiming a toggle slot of this kind with a
-// posting act (EntityAct.Post), if one does.
+// posting act (EntityAct.Post), if one does: the one whose id sorts first.
 func (s *Server) entityToggle(kind, slot string) (plugin.Manifest, bool) {
-	for _, m := range s.manifestList() {
+	for _, m := range s.manifestsByID() {
 		if !s.probe(m.Endpoint()) {
 			continue
 		}
