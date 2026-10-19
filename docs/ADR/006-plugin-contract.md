@@ -144,7 +144,11 @@ over a local socket**, exchanging *data*, not markup.
    (`success` | `warning` | `danger` | `info`) — said by the shell's notification at
    the top right of the viewport, exactly where and how the shell's own
    confirmations appear, and never in the content. An outcome is stated
-   as intent, never composed as widgets, so a plugin cannot get it wrong. Every
+   as intent, never composed as widgets, so a plugin cannot get it wrong. An
+   outcome that comes after its request — a renewal at night, a request that
+   finishes a minute later — has no envelope to ride: the plugin's root half
+   announces it as an event (ADR-028), which the same notification says to the
+   operators looking, stacked under the act's own outcome. Every
    field is optional: a plugin that sends only `schema_version`, `title`,
    and `widget` gets a plain page. A successful POST may instead carry one act in
    `commands`: a non-UCI operation the shell runs at once, before it answers, and
