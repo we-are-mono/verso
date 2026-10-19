@@ -123,7 +123,7 @@ Every task ends with `make lint` passing, and `make test` passing except the fiv
   - in `internal/server/apply_steps_test.go`, every scenario of its reload-step words: ddns and openvpn in their plugins' words; raw `openvpn` with no words; `firewall` keeps the shell's word; a stopped plugin's words still said; two scripts with one word said once.
 
   Then read `services` per entry into `Manifest.Services`, add the namer, and drop `ddns` from `serviceWords` (design decision 5). Verify with `make test`.
-- [ ] 6.3 Document `services` in `docs/plugins.md` ("The manifest"), and amend ADR-006 in place. Verify that the documented example decodes in the manifest test.
+- [x] 6.3 Document `services` in `docs/plugins.md` ("The manifest"), and amend ADR-006 in place. Verify that the documented example decodes in the manifest test.
 - [ ] 6.4 In the lab, stage a change to the `ddns` config and one to the `openvpn` config. Verify that Pending changes reads "Reloads Dynamic DNS and OpenVPN.", or each alone where only one has a trigger in the container.
 
 ## 7. The guard

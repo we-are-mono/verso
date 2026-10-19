@@ -85,6 +85,7 @@ than 127, or escaping half a surrogate pair (`"\ud800"` alone).
 | `contributes[].path` | the endpoint on your socket the shell GETs for it, and posts its form to |
 | `contributes[].position` | `first`, `last` (the default), `before:<anchor>` or `after:<anchor>` |
 | `contributes[].order` | order among contributions at one place (default 100); plugin id, then contribution id, break ties |
+| `services` | optional: your words for the init scripts your package brings, as `{"<script>": "<words>"}` ([below](#naming-your-services)) |
 | `system_access` | read as a contribution to `shell.access.blocks` standing `before:web`; prefer `contributes` |
 | `acl` | the rpcd access scopes you need ([below](#declaring-your-acl-scopes)): `read` to render config, `write` to change it |
 | `acl.read[]` | one `{scope, object, function}` grant naming a config the shell reads and hands you as a snapshot |
@@ -173,6 +174,24 @@ General 10 under System.
 `nav[].order` and `contributes[].order` are different fields: a contribution with
 no `order` reads as 100 among the contributions at its place, while a nav entry
 with no `order` stands after every entry with one.
+
+### Naming your services
+
+Before an apply, Pending changes says which services it reloads ("Reloads DNS &
+DHCP and Firewall."), read from procd's own reload triggers. The shell has words
+for base OpenWrt's services and its own; a service your package brings is yours
+to name, in English your catalog translates:
+
+```json
+"services": { "ddns": "Dynamic DNS" }
+```
+
+- The key is the init script's name, as `/etc/init.d/<script>` has it.
+- The shell's word for a base service wins: you cannot rename `firewall`.
+- Your words stand while your plugin is installed, running or not.
+- With no words, the step names the script as procd does (`openvpn`).
+- An entry whose key is not an init script's name, or whose words are not text,
+  is logged and dropped; your other words, and your plugin, load.
 
 ### Filling slots
 

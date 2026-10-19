@@ -74,6 +74,11 @@ over a local socket**, exchanging *data*, not markup.
      place among its siblings (ADR-009 §2), read entry by entry: one that is not
      a whole number is logged and read as none, and the manifest loads. An
      entry's optional `icon` names its glyph; the shell picks none by a label.
+   - `services` — optional words, by init script, for the services the plugin's
+     package brings, in English its catalog translates: what an apply's reload
+     step calls them. The shell keeps words only for base OpenWrt's services and
+     its own, and its word wins. Read entry by entry: a bad entry is logged and
+     dropped, and the manifest loads.
    - `contributes` — optional `{id, slot, path, position, order}` entries, each
      filling a named slot on a shell page or on another plugin's page (ADR-026).
      `system_access: "<path>"`, the older way to add a part to Access, reads as
