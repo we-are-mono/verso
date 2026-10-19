@@ -255,6 +255,56 @@ pub fn signal_shell() -> Result<(), String> {
     Ok(())
 }
 
+/// The most of a ubus answer read: a busy router's largest, an association
+/// list or an interface dump, is tens of kilobytes.
+const MAX_UBUS_ANSWER: u64 = 1 << 20;
+
+/// ubus is `ubus call <object> <method> <args>` for a root half: the answer as
+/// one JSON object, or why there is none. A method that answers nothing gives
+/// an empty object. The child gets no stdin, an answer over 1 MiB is a failure
+/// read no further, and the helper's timeout bounds the whole run.
+///
+/// ```no_run
+/// let status = verso_plugin::root::ubus("network.wireless", "status", &serde_json::json!({}))?;
+/// # Ok::<(), String>(())
+/// ```
+pub fn ubus(object: &str, method: &str, args: &Value) -> Result<Map<String, Value>, String> {
+    ubus_with(Path::new("/bin/ubus"), object, method, args)
+}
+
+fn ubus_with(program: &Path, object: &str, method: &str, args: &Value) -> Result<Map<String, Value>, String> {
+    let call = format!("ubus call {object} {method}");
+    let mut child = std::process::Command::new(program)
+        .args(["call", object, method, &args.to_string()])
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::null())
+        .spawn()
+        .map_err(|e| format!("{call}: {e}"))?;
+    let mut answer = Vec::new();
+    if let Some(out) = child.stdout.take() {
+        out.take(MAX_UBUS_ANSWER + 1)
+            .read_to_end(&mut answer)
+            .map_err(|e| format!("{call}: {e}"))?;
+    }
+    if answer.len() as u64 > MAX_UBUS_ANSWER {
+        let _ = child.kill();
+        let _ = child.wait();
+        return Err(format!("{call}: the answer is over 1 MiB"));
+    }
+    let status = child.wait().map_err(|e| format!("{call}: {e}"))?;
+    if !status.success() {
+        return Err(format!("{call} ended with {status}"));
+    }
+    if answer.iter().all(u8::is_ascii_whitespace) {
+        return Ok(Map::new());
+    }
+    match serde_json::from_slice(&answer) {
+        Ok(Value::Object(map)) => Ok(map),
+        _ => Err(format!("{call}: the answer is not one JSON object")),
+    }
+}
+
 /// write_new writes value beside path under a private name, its mode set
 /// before a byte is written, and answers that name for the caller to rename
 /// into place: the file is never readable by anyone it is not meant for.
@@ -448,6 +498,75 @@ mod tests {
         assert!(own_write_in(&dir, "acme", "acme", &"x".repeat(513)).is_err(), "a cause over 512 bytes");
         assert!(own_write_in(&dir, "acme", "acme", "").is_err(), "no cause");
         let _ = fs::remove_dir_all(&dir);
+    }
+
+    /// fake_ubus is an executable standing in for `/bin/ubus`, its body a
+    /// shell script that reads `call <object> <method> <args>` as $2 $3 $4.
+    fn fake_ubus(name: &str, body: &str) -> PathBuf {
+        let dir = std::env::temp_dir().join(format!("verso-ubus-{name}-{}", std::process::id()));
+        fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("ubus");
+        fs::write(&path, format!("#!/bin/sh\n{body}\n")).unwrap();
+        fs::set_permissions(&path, fs::Permissions::from_mode(0o755)).unwrap();
+        path
+    }
+
+    /// call_fake runs the stand-in, again while Linux says it is busy: a
+    /// test on another thread may fork while the script is being written,
+    /// and its child holds the write open until it execs (ETXTBSY).
+    fn call_fake(ubus: &Path, object: &str, method: &str, args: &Value) -> Result<Map<String, Value>, String> {
+        for _ in 0..50 {
+            match ubus_with(ubus, object, method, args) {
+                Err(e) if e.contains("Text file busy") => std::thread::sleep(Duration::from_millis(10)),
+                answer => return answer,
+            }
+        }
+        ubus_with(ubus, object, method, args)
+    }
+
+    #[test]
+    fn ubus_answers_the_object_the_call_printed() {
+        let ubus = fake_ubus("answer", r#"[ "$1" = call ] && printf '{"object":"%s","method":"%s","args":%s}' "$2" "$3" "$4""#);
+        let answer = call_fake(&ubus,"iwinfo", "info", &json!({"device": "wlan0"})).unwrap();
+        assert_eq!(
+            Value::Object(answer),
+            json!({"object": "iwinfo", "method": "info", "args": {"device": "wlan0"}})
+        );
+    }
+
+    #[test]
+    fn ubus_with_nothing_to_say_answers_an_empty_object() {
+        let ubus = fake_ubus("silent", "exit 0");
+        assert_eq!(call_fake(&ubus,"network.interface.lan", "up", &json!({})).unwrap(), Map::new());
+    }
+
+    #[test]
+    fn ubus_gives_the_child_no_stdin() {
+        let ubus = fake_ubus("stdin", r#"if read -r line; then echo '{"stdin":"open"}'; else echo '{"stdin":"none"}'; fi"#);
+        assert_eq!(Value::Object(call_fake(&ubus,"o", "m", &json!({})).unwrap()), json!({"stdin": "none"}));
+    }
+
+    #[test]
+    fn ubus_fails_with_a_reason_on_a_failed_call() {
+        let ubus = fake_ubus("failed", "echo 'Command failed: Not found' >&2; exit 4");
+        let err = call_fake(&ubus,"iwinfo", "survey", &json!({})).unwrap_err();
+        assert!(err.contains("ubus call iwinfo survey"), "{err}");
+    }
+
+    #[test]
+    fn ubus_fails_on_an_answer_that_is_not_one_object() {
+        for (name, body) in [("text", "echo 'not json'"), ("list", "echo '[1, 2]'"), ("two", r#"echo '{}{}'"#)] {
+            let ubus = fake_ubus(name, body);
+            let err = call_fake(&ubus,"o", "m", &json!({})).unwrap_err();
+            assert!(err.contains("not one JSON object"), "{name}: {err}");
+        }
+    }
+
+    #[test]
+    fn ubus_stops_reading_an_answer_over_its_bound() {
+        let ubus = fake_ubus("huge", r#"printf '{"x":"'; head -c 2000000 /dev/zero | tr '\0' 'a'; printf '"}'"#);
+        let err = call_fake(&ubus,"o", "m", &json!({})).unwrap_err();
+        assert!(err.contains("over 1 MiB"), "{err}");
     }
 
     #[test]

@@ -959,6 +959,7 @@ The SDK gives a root half what the helper's own root work uses:
 |---|---|
 | `root::own_write(plugin, config, cause)` | Call it just before your root half runs `uci commit`, so config history records the commit as the router's own act, with `cause` in its Notes, rather than as an edit made outside it (ADR-021). `cause` is one English sentence of at most 512 bytes, such as `"A certificate was installed by hand."`; history shows it translated from your plugin's catalog, so add it to `i18n/<code>.json`. It leaves a mark in `/tmp/run/verso-own`, root's alone, which counts for one commit within 30 seconds. |
 | `root::uci::committed(config)` | A config as committed, with nothing staged in it, in the shape rpcd's `uci get` answers. |
+| `root::ubus(object, method, args)` | `ubus call` as root: the answer as one JSON object, an empty one for a method that answers nothing, or why there is none. The child gets no stdin, and an answer over 1 MiB is a failure. |
 | `root::signal_shell()` | Tells the running shell, through procd, to read what changed again (a new certificate pair, say). |
 | `root::write_new(path, bytes, mode)` | A file written beside `path` under a private name, its mode set before a byte is written, for you to rename into place. |
 | `netlink::links()` | Every network device with its kind, state, counters and addresses, read over rtnetlink. |

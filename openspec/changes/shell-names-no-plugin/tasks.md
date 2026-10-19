@@ -7,7 +7,7 @@ Every task ends with `make lint` passing, and `make test` passing except the fiv
 - [x] 1.1 Move `plugins/verso-plugin-system/src/datetime.rs` to `plugins/verso-plugin-sdk/src/datetime.rs`, exported as `verso_plugin::datetime`, and move its tests from `verso-plugin-system/src/tests.rs` beside it.
   - Point the System plugin at the SDK, and `verso-rpcd/src/main.rs` at the SDK's file by path; the helper keeps its own boundary test (design decision 8).
   - Verify with `cargo test` in the SDK, the System plugin and `verso-rpcd`, and `make lint`.
-- [ ] 1.2 Test first in the SDK's `root` module, against a stand-in program:
+- [x] 1.2 Test first in the SDK's `root` module, against a stand-in program:
   - `root::ubus(object, method, args)` returns the parsed JSON object;
   - it fails, with a reason, on a non-zero exit, on output that is not one JSON object, and on output over 1 MiB, which it stops reading;
   - it gives the child no stdin.
