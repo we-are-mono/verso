@@ -171,7 +171,7 @@
   - with a shell restart between a second `acme.renew-failed` and its `acme.renewed`, two messages are sent again, not three.
 
   Verify with the received bodies in the notes.
-- [ ] 9.3 On the lab container, a fixture init script with `procd_add_raw_trigger "verso.certificate.replaced"` runs its command once after a certificate is installed through Access. Verify with its `logger` line in the notes.
+- [x] 9.3 On the lab container, a fixture init script with `procd_add_raw_trigger "verso.certificate.replaced"` runs its command once after a certificate is installed through Access. Verify with its `logger` line in the notes.
 - [ ] 9.4 On the DK, from a build cut from a clean worktree: force an acme renewal with nobody signed in, then with an operator on Access. Check that the renewal is listed at its time on System → Events, and that the notification says it only in the second case. Verify with the notes, written with `router.example.com` in place of the real domain.
 - [ ] 9.5 Finish the paperwork, then verify that `make lint` passes and `make test` passes but for the five known `dev-grid` tests, named in the notes:
   - write the change's `release-notes.md`, operator-facing (the release-notes style), saying that an installed plugin's failures alert unless the operator chose kinds;

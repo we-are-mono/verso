@@ -33,6 +33,22 @@ Screenshots, in `~/Share/screenshots`:
 - `events-in-drawer.png`: an issued certificate said inside the open Alerts
   drawer, which lists acme ("Trusted certificate") as an alert kind.
 
+## 9.3 A plugin's procd trigger answers the certificate's replacement (lab, 2026-10-19)
+
+A fixture service, `/etc/init.d/zz-events-fixture`, declared
+`procd_add_raw_trigger "verso.certificate.replaced" 1000 /usr/bin/logger -t events-fixture "the web certificate was replaced"`.
+A self-signed P-256 pair for router.example.com was installed through Access,
+"Install a certificate" (the drawer answered "The router is serving the
+installed certificate."). The log held the fixture's line once, two seconds
+after:
+
+```
+Mon Oct 19 04:19:51 2026 user.notice events-fixture: the web certificate was replaced
+```
+
+System → Events listed "The web interface’s certificate was replaced, for
+router.example.com until 2027-10-19."
+
 ## 5.4 The stacked layer, for the owner
 
 Built and shown in the screenshots above; waiting on the owner's word before
