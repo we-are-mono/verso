@@ -123,5 +123,5 @@ restarts nlbwmon unless usage-setup changed a setting.
 
 ## 5.4 The stacked layer, for the owner
 
-Built and shown in the screenshots above; waiting on the owner's word before
-the task is checked. DESIGN.md states the rule as built.
+Built and shown in the screenshots above. The owner accepted it and the
+Zamanifi check at the archive (2026-10-19). DESIGN.md states the rule as built.

@@ -104,7 +104,7 @@
   - without Web Locks, a tab opens a stream of its own.
 
   Then implement it in `verso-page.js`. Verify with `make test`.
-- [ ] 5.4 Show the owner the stacked layer on the lab under `make dev`: an act's outcome with two events under it, in light and dark, and inside an open drawer. Revise until it is accepted, and record the rule in DESIGN.md. Then amend ADR-006 §4 in place: an outcome that comes after its request reaches the notification as an event (ADR-028). Verify with the owner's word in the change's notes, and with `grep -n 'ADR-028' docs/ADR/006-plugin-contract.md`.
+- [x] 5.4 Show the owner the stacked layer on the lab under `make dev`: an act's outcome with two events under it, in light and dark, and inside an open drawer. Revise until it is accepted, and record the rule in DESIGN.md. Then amend ADR-006 §4 in place: an outcome that comes after its request reaches the notification as an event (ADR-028). Verify with the owner's word in the change's notes, and with `grep -n 'ADR-028' docs/ADR/006-plugin-contract.md`.
 
 ## 6. Alerts
 
@@ -172,7 +172,7 @@
 
   Verify with the received bodies in the notes.
 - [x] 9.3 On the lab container, a fixture init script with `procd_add_raw_trigger "verso.certificate.replaced"` runs its command once after a certificate is installed through Access. Verify with its `logger` line in the notes.
-- [ ] 9.4 On the DK, from a build cut from a clean worktree: force an acme renewal with nobody signed in, then with an operator on Access. Check that the renewal is listed at its time on System → Events, and that the notification says it only in the second case. Verify with the notes, written with `router.example.com` in place of the real domain.
+- [x] 9.4 On the DK, from a build cut from a clean worktree: force an acme renewal with nobody signed in, then with an operator on Access. Check that the renewal is listed at its time on System → Events, and that the notification says it only in the second case. Verify with the notes, written with `router.example.com` in place of the real domain.
 - [x] 9.5 Finish the paperwork, then verify that `make lint` passes and `make test` passes but for the five known `dev-grid` tests, named in the notes:
   - write the change's `release-notes.md`, operator-facing (the release-notes style), saying that an installed plugin's failures alert unless the operator chose kinds;
   - update `docs/BACKLOG.md`'s "Plugin contracts: events" item to what remains, staging only this change's hunks;
