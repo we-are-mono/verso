@@ -19,6 +19,15 @@ close_web_key() {
 	chown 6000:0 "$1"
 }
 
+# events_spool_sound is whether the directory at $1 is the events spool as made:
+# a directory, not a link, the shell's account's, mode 0700 (OpenWrt's busybox
+# has no stat, so ls reads the mode and owner).
+events_spool_sound() {
+	[ -d "$1" ] && [ ! -L "$1" ] || return 1
+	set -- $(ls -lnd "$1" 2>/dev/null)
+	[ "$1" = drwx------ ] && [ "$3" = "$(id -u verso 2>/dev/null)" ]
+}
+
 start_service() {
 	# Prepare NFLOG before firewall (START=19) can install logging rules.
 	/usr/libexec/verso/firewall-logging-setup || logger -t verso-rpcd -p daemon.err 'Firewall packet logging setup failed'
@@ -60,6 +69,19 @@ start_service() {
 	if mkdir /var/run/verso/changes 2>/dev/null; then
 		chown verso:verso /var/run/verso/changes
 		chmod 0700 /var/run/verso/changes
+	fi
+
+	# The events spool (ADR-028): root's announcements wait here for the shell,
+	# so it stands before any plugin's init or hotplug script can announce.
+	# Unlike changes it outlives a restart of the helper, so an announcement
+	# waiting through an upgrade is kept: a sound one stays, and anything else
+	# at its name is removed and the directory made again, as state is.
+	if ! events_spool_sound /var/run/verso/events; then
+		rm -rf /var/run/verso/events
+		if mkdir /var/run/verso/events 2>/dev/null; then
+			chown verso:verso /var/run/verso/events
+			chmod 0700 /var/run/verso/events
+		fi
 	fi
 
 	# The helper's socket has a directory of its own. In the shared one above any
