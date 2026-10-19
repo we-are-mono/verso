@@ -77,7 +77,7 @@
 
 ## 5. Saying
 
-- [ ] 5.1 Test first in `session_test.go` (injected clock, fake grants):
+- [x] 5.1 Test first in `session_test.go` (injected clock, fake grants):
   - a recorded event declared `notify` is kept only for sessions whose grant probe answers yes;
   - a session keeps at most 8, each for a minute from its recording;
   - reading does not remove them;
@@ -86,7 +86,7 @@
   - a core kind and an event without `notify` are never kept.
 
   Then implement them in `Sessions`. Verify with `make test`.
-- [ ] 5.2 Test first in `internal/server`: `GET /events/stream`
+- [x] 5.2 Test first in `internal/server`: `GET /events/stream`
   - sends the session's kept events newer than `Last-Event-ID` on connect, each as the `verso-flash` fragment in the request's language and its kind's tone, with its rowid as the id;
   - sends one kept while it is open;
   - writes a comment every keep-alive interval (injected);

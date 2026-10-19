@@ -78,7 +78,9 @@ func (s *Server) currentSession(r *http.Request) (session, bool) {
 	if err != nil {
 		return session{}, false
 	}
-	if r.Method == http.MethodGet && r.Header.Get("X-Verso-Refresh") == "1" {
+	// A refresh the page makes on its own, and the events stream it holds
+	// open, are the page working, not a person: neither moves the idle clock.
+	if r.Method == http.MethodGet && (r.Header.Get("X-Verso-Refresh") == "1" || r.URL.Path == eventStreamPath) {
 		return s.sessions.peek(cookie.Value)
 	}
 	return s.sessions.get(cookie.Value)

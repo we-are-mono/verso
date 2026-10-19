@@ -27,6 +27,42 @@ func writeEvent(w io.Writer, id, name string, v any) error {
 	return err
 }
 
+// serveSSEOn holds one event stream open that moves only when something
+// happens: send writes what there is now, and again each time the channel
+// wake hands out closes. Every keepAlive it writes a comment, so a connection
+// gone dead is found, and re-checks the session without touching its idle
+// clock, as serveSSE does. It ends when the browser goes away, send fails, or
+// the session ends.
+func (s *Server) serveSSEOn(w http.ResponseWriter, r *http.Request, wake func() <-chan struct{}, keepAlive time.Duration, send func() bool) {
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		http.Error(w, "streaming unsupported", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-store")
+	ticker := time.NewTicker(keepAlive)
+	defer ticker.Stop()
+	for {
+		// The channel is taken before what there is is sent, so nothing that
+		// arrives in between is missed.
+		woken := wake()
+		if !s.sessionAlive(r) || !send() {
+			return
+		}
+		flusher.Flush()
+		select {
+		case <-r.Context().Done():
+			return
+		case <-woken:
+		case <-ticker.C:
+			if _, err := io.WriteString(w, ": open\n\n"); err != nil {
+				return
+			}
+		}
+	}
+}
+
 // serveSSE holds one event stream open: send writes a frame now and on every
 // eventInterval tick after, each flushed to the browser, until the browser goes
 // away, send reports a failed write, or the session ends. The session is

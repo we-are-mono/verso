@@ -171,6 +171,9 @@ type Server struct {
 	// announcerUID is the account whose announcements the events spool takes:
 	// root, the zero value; a test's own account stands in for it.
 	announcerUID int
+	// eventKeepAlive is how often an idle events stream proves it is open;
+	// zero, defaultEventKeepAlive.
+	eventKeepAlive time.Duration
 	// rescan re-reads the manifest directory (wired by cmd/verso; nil in
 	// tests that never install). Its result replaces the served set.
 	rescan   func() []plugin.Manifest
