@@ -86,6 +86,19 @@ func TestAnnounceLeavesTheEventAndTellsProcd(t *testing.T) {
 	}
 }
 
+// TestAnnounceTakesTheSDKsArguments: the SDK ends the flags with "--", so an
+// argument beginning with a dash is an argument.
+func TestAnnounceTakesTheSDKsArguments(t *testing.T) {
+	w := announceWriter(t)
+	var r ran
+	if err := announce([]string{"acme.renewed", "--subject", "eth0", "--", "-x"}, w, r.run(nil), &bytes.Buffer{}); err != nil {
+		t.Fatal(err)
+	}
+	if len(r.argv) != 1 || !strings.Contains(r.argv[0][4], `"subject":"eth0","args":["-x"]`) {
+		t.Errorf("ran %q", r.argv)
+	}
+}
+
 // TestAnnounceRefusesWithItsReason: a refused announcement is an error naming
 // why, procd is not told, and nothing waits.
 func TestAnnounceRefusesWithItsReason(t *testing.T) {

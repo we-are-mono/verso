@@ -23,6 +23,7 @@ use std::fs;
 use std::io::{Read, Write};
 use std::os::unix::fs::{DirBuilderExt, OpenOptionsExt, PermissionsExt};
 use std::path::{Path, PathBuf};
+use std::time::Duration;
 
 pub mod uci;
 
@@ -181,6 +182,65 @@ fn own_write_in(dir: &Path, plugin: &str, config: &str, cause: &str) -> Result<(
         .map_err(|e| format!("{}: {e}", mark.display()))
 }
 
+/// The router's shell, whose `announce` subcommand records an event.
+pub const VERSO: &str = "/usr/bin/verso";
+
+/// How long [`announce`] waits for `verso announce`, which bounds its own
+/// send to procd well inside this.
+const ANNOUNCE_WITHIN: Duration = Duration::from_secs(10);
+
+/// announce says that `event`, one this plugin's registry declares, happened,
+/// about the network device `subject` if it is about one, its declared
+/// sentence filled with `args` (ADR-028). The shell records it on System →
+/// Events, says it to the operators looking when the declaration asks, alerts
+/// on it as the operator chose, and procd hears it as `verso.<plugin>.<event>`.
+/// Call it from the root half as an outcome happens; an error says why it was
+/// not announced, and changes nothing else.
+///
+/// ```no_run
+/// verso_plugin::root::announce("acme", "renewed", None, &["router.example.com"])?;
+/// # Ok::<(), String>(())
+/// ```
+pub fn announce(plugin: &str, event: &str, subject: Option<&str>, args: &[&str]) -> Result<(), String> {
+    announce_with(Path::new(VERSO), ANNOUNCE_WITHIN, plugin, event, subject, args)
+}
+
+fn announce_with(
+    verso: &Path,
+    within: Duration,
+    plugin: &str,
+    event: &str,
+    subject: Option<&str>,
+    args: &[&str],
+) -> Result<(), String> {
+    let mut command = std::process::Command::new(verso);
+    command.arg("announce").arg(format!("{plugin}.{event}"));
+    if let Some(subject) = subject {
+        command.args(["--subject", subject]);
+    }
+    // After "--" an argument is never read as a flag, whatever it begins with.
+    command
+        .arg("--")
+        .args(args)
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::piped());
+    let child = command.spawn().map_err(|e| format!("{}: {e}", verso.display()))?;
+    // The child is waited for on a thread of its own, so the bound costs no
+    // poll; one that does not answer is left to end on its own, which `verso
+    // announce` does.
+    let (done, answer) = std::sync::mpsc::channel();
+    std::thread::spawn(move || {
+        let _ = done.send(child.wait_with_output());
+    });
+    match answer.recv_timeout(within) {
+        Ok(Ok(out)) if out.status.success() => Ok(()),
+        Ok(Ok(out)) => Err(String::from_utf8_lossy(&out.stderr).trim().to_string()),
+        Ok(Err(e)) => Err(e.to_string()),
+        Err(_) => Err(format!("verso announce did not answer within {within:?}")),
+    }
+}
+
 /// signal_shell tells the running shell, through procd, to read what changed
 /// again — a new certificate pair on disk, for one (ADR-017 §4).
 pub fn signal_shell() -> Result<(), String> {
@@ -241,6 +301,42 @@ pub fn run(handlers: &[(&str, Handler)]) -> ! {
 mod tests {
     use super::*;
     use std::cell::Cell;
+
+    /// fake_verso is an executable standing in for `verso`, its body a shell
+    /// script, in a directory of the test's own.
+    fn fake_verso(name: &str, body: &str) -> PathBuf {
+        let dir = std::env::temp_dir().join(format!("verso-announce-{name}-{}", std::process::id()));
+        fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("verso");
+        fs::write(&path, format!("#!/bin/sh\n{body}\n")).unwrap();
+        fs::set_permissions(&path, fs::Permissions::from_mode(0o755)).unwrap();
+        path
+    }
+
+    #[test]
+    fn announce_runs_verso_announce_with_the_event() {
+        let verso = fake_verso("args", r#"printf '%s\n' "$@" > "$(dirname "$0")/args""#);
+        announce_with(&verso, Duration::from_secs(10), "acme", "renewed", Some("eth0"), &["router.example.com", "-1"]).unwrap();
+        let args = fs::read_to_string(verso.with_file_name("args")).unwrap();
+        assert_eq!(args, "announce\nacme.renewed\n--subject\neth0\n--\nrouter.example.com\n-1\n");
+        announce_with(&verso, Duration::from_secs(10), "acme", "renewed", None, &[]).unwrap();
+        let args = fs::read_to_string(verso.with_file_name("args")).unwrap();
+        assert_eq!(args, "announce\nacme.renewed\n--\n");
+    }
+
+    #[test]
+    fn a_refused_announcement_is_an_error_with_its_reason() {
+        let verso = fake_verso("refused", "echo 'verso: announce: acme.expired: no installed plugin declares it' >&2; exit 1");
+        let err = announce_with(&verso, Duration::from_secs(10), "acme", "expired", None, &[]).unwrap_err();
+        assert!(err.contains("no installed plugin declares it"), "{err}");
+    }
+
+    #[test]
+    fn an_announcement_that_does_not_answer_is_given_up() {
+        let verso = fake_verso("slow", "sleep 2");
+        let err = announce_with(&verso, Duration::from_millis(100), "acme", "renewed", None, &[]).unwrap_err();
+        assert!(err.contains("did not answer"), "{err}");
+    }
 
     fn state(_: &RootRequest) -> Result<Map<String, Value>, RootError> {
         let mut m = Map::new();
