@@ -121,43 +121,51 @@ type navRow struct {
 	PluginID string
 }
 
-// railOrder is the rail's designed order. Matching on the
-// English label is what lets a plugin land in its designed place without the
-// shell knowing anything about that plugin: the labels are still English at
-// this point, localized only at the display edge. A destination it does not
-// name follows these, in the order of the section it is filed under
-// (sectionLess), so a new plugin appears in the rail with no shell change.
-var railOrder = []string{
-	"Overview", "Devices", "Traffic", "Journal", "Network", "Wireless", "VPN",
-	"Firewall", "Routing", "Storage", "System",
+// The shell's own places in the rail (ADR-009 §2). Overview stands first, at
+// 0, before anything a plugin declares; Devices and the Network and System
+// rows stand at numbers plugin authors are told, so a plugin's row can stand
+// before, between or after them.
+const (
+	devicesPlace = 10
+	networkPlace = 20
+	systemPlace  = 90
+)
+
+// place is where one rail row or collapsed section page stands among its
+// siblings: its declared order, nil for none, and for ties the section it is
+// filed under, its English label and the plugin that filed it.
+type place struct {
+	order    *int
+	section  string
+	label    string
+	pluginID string
 }
 
-// navIcon chooses a shell-owned glyph before labels are localized. Designed
-// destinations have their own identity; other entries inherit their section's
-// glyph unless the plugin names one in its manifest.
-func navIcon(label, section string) string {
-	switch label {
-	case "Overview":
-		return "house"
-	case "Devices":
-		return "phone"
-	case "Traffic":
-		return "activity"
-	case "Journal":
-		return "menu"
-	case "Wireless":
-		return "wifi"
-	case "Firewall":
-		return "zone"
-	case "Routing":
-		return "route"
-	case "VPN":
-		return "lock"
-	case "Storage":
-		return "hard-drive"
-	case "System":
-		return "settings"
+// fixed is one of the shell's own places.
+func fixed(order int) *int { return &order }
+
+// placeLess orders siblings by their declared order, every placed one before
+// every unplaced one; unplaced ones by the section they are filed under
+// (sectionLess); then by English label and plugin id. The labels are still
+// English here, so the rail reads the same in every language, and the same
+// whatever order the plugins were found in.
+func placeLess(a, b place) bool {
+	switch {
+	case (a.order != nil) != (b.order != nil):
+		return a.order != nil
+	case a.order != nil && *a.order != *b.order:
+		return *a.order < *b.order
+	case a.order == nil && a.section != b.section:
+		return sectionLess(a.section, b.section)
+	case a.label != b.label:
+		return a.label < b.label
 	}
+	return a.pluginID < b.pluginID
+}
+
+// sectionIcon is the glyph a section's rows wear when their entry names none.
+// The shell chooses no glyph by a plugin's label: a plugin names its own.
+func sectionIcon(section string) string {
 	switch section {
 	case "Status":
 		return "activity"
@@ -173,10 +181,11 @@ func navIcon(label, section string) string {
 }
 
 // buildSidebar assembles the rail for the current path: one flat list of
-// destinations in the designed order, the active one carrying the subpages it
-// opens. Labels are localized at the display edge (ADR-012): shell-owned labels
-// from base (tr), each plugin's from that plugin's catalog (pluginTr(id)), which
-// is why the ordering above happens while they are still English.
+// destinations, Overview first and the rest where each declares its place
+// (placeLess), the active one carrying the subpages it opens. Labels are
+// localized at the display edge (ADR-012): shell-owned labels from base (tr),
+// each plugin's from that plugin's catalog (pluginTr(id)), which is why the
+// ordering happens while they are still English.
 func (s *Server) buildSidebar(active string, tr func(string) string, pluginTr func(id string) func(string) string, pages []pageTab) navModel {
 	// Every section the manifests register becomes rows — no titles between
 	// them, because the rail is a list of places and not a taxonomy. Status is
@@ -188,10 +197,15 @@ func (s *Server) buildSidebar(active string, tr func(string) string, pluginTr fu
 	// management page's business (ADR-011). Direct URLs still answer — with the
 	// notice and its way back on — so nothing is unreachable, just unlisted.
 	type filed struct {
-		section string
-		row     navRow
+		place place
+		row   navRow
 	}
-	var places []filed
+	// A row says nothing of how things are — the homepage does — so Devices
+	// is its name alone.
+	places := []filed{{
+		place: place{order: fixed(devicesPlace), section: "Status", label: "Devices"},
+		row:   navRow{Label: "Devices", Href: devicesPath, Icon: "phone", Active: isActive(active, devicesPath)},
+	}}
 	var hrefs []string // every live registration, rail row or not
 	for _, m := range s.manifestList() {
 		if !s.probe(m.Endpoint()) {
@@ -205,13 +219,13 @@ func (s *Server) buildSidebar(active string, tr func(string) string, pluginTr fu
 			}
 			icon := entry.Icon
 			if icon == "" {
-				icon = navIcon(entry.Label, entry.Section)
+				icon = sectionIcon(entry.Section)
 			}
 			row := navRow{Label: entry.Label, Href: href, Icon: icon, PluginID: m.ID, Opens: entry.Pages.Opens, Group: entry.Pages.List != nil}
 			for _, p := range entry.Pages.List {
 				row.Children = append(row.Children, pageTab{Label: p.Label, Href: pluginHref(m.ID, p.Path), PluginID: m.ID})
 			}
-			places = append(places, filed{entry.Section, row})
+			places = append(places, filed{place{order: entry.Order, section: entry.Section, label: entry.Label, pluginID: m.ID}, row})
 		}
 	}
 	here := s.sectionAt(active)
@@ -220,7 +234,7 @@ func (s *Server) buildSidebar(active string, tr func(string) string, pluginTr fu
 		if len(pages) == 0 {
 			continue
 		}
-		row := navRow{Label: c.Section, Href: pages[0].Href, Icon: navIcon(c.Section, c.Section), Active: here == c.Section, Opens: true, Group: true, Children: pages}
+		row := navRow{Label: c.Section, Href: pages[0].Href, Icon: sectionIcon(c.Section), Active: here == c.Section, Opens: true, Group: true, Children: pages}
 		// What System has waiting for you is what it has to install.
 		if c.Section == "System" {
 			if truth, ok := s.updateTruth(); ok {
@@ -229,17 +243,12 @@ func (s *Server) buildSidebar(active string, tr func(string) string, pluginTr fu
 				}
 			}
 		}
-		places = append(places, filed{c.Section, row})
+		places = append(places, filed{place{order: fixed(c.Place), section: c.Section, label: c.Section}, row})
 	}
-	// Stable, so a section's rows keep discovery (id-sorted) order.
-	sort.SliceStable(places, func(a, b int) bool { return sectionLess(places[a].section, places[b].section) })
+	sort.SliceStable(places, func(a, b int) bool { return placeLess(places[a].place, places[b].place) })
 
-	// A row says nothing of how things are — the homepage does — so Devices
-	// is its name alone.
-	rows := []navRow{
-		{Label: "Overview", Href: "/", Icon: navIcon("Overview", "Status"), Active: isActive(active, "/")},
-		{Label: "Devices", Href: devicesPath, Icon: navIcon("Devices", "Status"), Active: isActive(active, devicesPath)},
-	}
+	// Overview is place 0: nothing a plugin declares stands before it.
+	rows := []navRow{{Label: "Overview", Href: "/", Icon: "house", Active: isActive(active, "/")}}
 	// Only the most specific registration lights its row; one filed under a
 	// collapsed section or Status lights none here (the section's row is lit by
 	// sectionAt).
@@ -253,17 +262,6 @@ func (s *Server) buildSidebar(active string, tr func(string) string, pluginTr fu
 		}
 		rows = append(rows, p.row)
 	}
-
-	// The designed order, with anything the canvas does not name kept in
-	// section order. Stable, so discovery order still decides between two rows
-	// the canvas is silent about.
-	sort.SliceStable(rows, func(a, b int) bool {
-		ra, rb := slices.Index(railOrder, rows[a].Label), slices.Index(railOrder, rows[b].Label)
-		if (ra >= 0) != (rb >= 0) {
-			return ra >= 0
-		}
-		return ra >= 0 && ra < rb
-	})
 
 	for i := range rows {
 		rows[i].Label = localizeLabel(rows[i].PluginID, rows[i].Label, tr, pluginTr)

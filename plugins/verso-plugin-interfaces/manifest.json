@@ -7,13 +7,15 @@
     {
       "section": "Network",
       "label": "Interfaces",
-      "path": "/"
+      "path": "/",
+      "order": 10
     },
     {
       "section": "Network",
       "label": "Routes",
       "path": "/routes",
-      "icon": "route"
+      "icon": "route",
+      "order": 40
     }
   ],
   "entity_acts": [

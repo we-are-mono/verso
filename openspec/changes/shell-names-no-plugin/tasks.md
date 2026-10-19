@@ -93,7 +93,7 @@ Every task ends with `make lint` passing, and `make test` passing except the fiv
   - a manifest with no `order` loads as before.
 
   Then read `order` per entry beside the main decode, as `readContributes` does, into `NavEntry.Order *int`. Verify with `make test`.
-- [ ] 5.2 Test first in `internal/server/nav_test.go`, every scenario of the `rail` delta:
+- [x] 5.2 Test first in `internal/server/nav_test.go`, every scenario of the `rail` delta:
   - the bundled plugins' designed rail and both sections' pages;
   - a row at 45 between Wireless and Firewall, and a Network page at 35;
   - ties by English label in two languages;

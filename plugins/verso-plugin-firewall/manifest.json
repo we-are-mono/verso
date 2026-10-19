@@ -4,7 +4,7 @@
   "socket": "/var/run/verso-plugin-firewall/firewall.sock",
   "schema_version": 1,
   "nav": [
-    { "section": "Security", "label": "Firewall", "path": "/", "pages": [
+    { "section": "Security", "label": "Firewall", "path": "/", "order": 50, "pages": [
       { "label": "Rules", "path": "" },
       { "label": "Port forwards", "path": "port-forwards" },
       { "label": "Zones", "path": "zones" },

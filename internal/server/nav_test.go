@@ -102,14 +102,14 @@ func TestBuildSidebarShellOwnedRowsAreBuiltIn(t *testing.T) {
 	}
 }
 
-// Several plugins filing into one section keep their rows in discovery
-// (id-sorted) order; the stable sorts must not disturb within-section order.
-func TestBuildSidebarRowsKeepDiscoveryOrder(t *testing.T) {
+// Several plugins filing into one section with no place of their own stand by
+// their English label, whatever order the plugins were found in.
+func TestBuildSidebarUnplacedRowsStandByLabel(t *testing.T) {
 	s := navServer(
 		manifest("alpha", nav("Extra", "Zulu", "/")),
 		manifest("beta", nav("Extra", "Alpha", "/")),
 	)
-	want := []string{"Overview", "Devices", "System", "Zulu", "Alpha"}
+	want := []string{"Overview", "Devices", "System", "Alpha", "Zulu"}
 	if got := railLabels(sidebar(s, "/")); !slices.Equal(got, want) {
 		t.Fatalf("rail = %v, want %v", got, want)
 	}
@@ -120,9 +120,9 @@ func TestBuildSidebarRowsKeepDiscoveryOrder(t *testing.T) {
 // inside the section. The pages filed there never stand in the rail themselves.
 func TestBuildSidebarCollapsedSectionIsOneRow(t *testing.T) {
 	s := navServer(
-		manifest("system", nav("System", "General", "/")),
-		manifest("dnsdhcp", nav("Network", "DHCP", "/dhcp"), nav("Network", "DNS", "/dns")),
-		manifest("interfaces", nav("Network", "Interfaces", "/")),
+		manifest("system", navAt(10, nav("System", "General", "/"))),
+		manifest("dnsdhcp", navAt(20, nav("Network", "DHCP", "/dhcp")), navAt(30, nav("Network", "DNS", "/dns"))),
+		manifest("interfaces", navAt(10, nav("Network", "Interfaces", "/"))),
 	)
 	for _, tc := range []struct {
 		section, at, first string
@@ -251,17 +251,17 @@ func TestBuildSidebarDropsARowWithoutALivePlugin(t *testing.T) {
 	}
 }
 
-// The rail follows its designed order, whatever order the plugins were
-// discovered in. Wi-Fi files under a section of its own, so it keeps its row
-// beside Network rather than becoming one of Network's pages.
+// The rail stands where the plugins place themselves, whatever order they
+// were discovered in. Wi-Fi files under a section of its own, so it keeps its
+// row beside Network rather than becoming one of Network's pages.
 func TestBuildSidebarFollowsTheDesignedOrder(t *testing.T) {
-	dns := manifest("dnsdhcp", nav("Network", "DHCP", "/"))
+	dns := manifest("dnsdhcp", navAt(20, nav("Network", "DHCP", "/")))
 	dns.Socket = "/dns.sock"
-	wireless := manifest("wireless", nav("Wireless", "Wireless", "/"))
+	wireless := manifest("wireless", navAt(30, nav("Wireless", "Wireless", "/")))
 	wireless.Socket = "/wireless.sock"
-	firewall := manifest("firewall", nav("Security", "Firewall", "/"))
+	firewall := manifest("firewall", navAt(50, nav("Security", "Firewall", "/")))
 	firewall.Socket = "/firewall.sock"
-	vpn := manifest("vpn", nav("VPN", "VPN", "/"))
+	vpn := manifest("vpn", navAt(40, nav("VPN", "VPN", "/")))
 	vpn.Socket = "/vpn.sock"
 	// Discovery is id-sorted, so the manifests arrive dnsdhcp, firewall, vpn,
 	// wireless — nothing like the order the rail must draw them in.
@@ -445,7 +445,7 @@ func TestTheManifestsListWinsOverTheEnvelope(t *testing.T) {
 }
 
 func TestSystemPagesUseOnlyLivePluginRegistrations(t *testing.T) {
-	system := manifest("system", nav("System", "General", "/"))
+	system := manifest("system", navAt(10, nav("System", "General", "/")))
 	system.Socket = "/live/system.sock"
 	vpn := manifest("vpn", nav("System", "VPN", "/"))
 	vpn.Socket = "/dead/vpn.sock"
@@ -464,12 +464,13 @@ func TestSystemPagesUseOnlyLivePluginRegistrations(t *testing.T) {
 }
 
 // Network's pages are every live registration filed under it, whichever plugin
-// files them, in the designed order — Interfaces, DHCP, DNS, Routes — and
-// anything else after those by label. The page in hand is the one marked.
+// files them, where each places itself — Interfaces, DHCP, DNS, Routes — and
+// anything with no place after those by label. The page in hand is the one
+// marked.
 func TestNetworkPagesFollowTheDesignedOrder(t *testing.T) {
 	s := navServer(
-		manifest("dnsdhcp", nav("Network", "DNS", "/dns"), nav("Network", "DHCP", "/")),
-		manifest("interfaces", nav("Network", "Routes", "/routes"), nav("Network", "Interfaces", "/")),
+		manifest("dnsdhcp", navAt(30, nav("Network", "DNS", "/dns")), navAt(20, nav("Network", "DHCP", "/"))),
+		manifest("interfaces", navAt(40, nav("Network", "Routes", "/routes")), navAt(10, nav("Network", "Interfaces", "/"))),
 		manifest("vpn", nav("Network", "WireGuard", "/")),
 		manifest("lab", nav("Network", "Bridges", "/")),
 	)

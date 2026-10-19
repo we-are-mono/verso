@@ -12,28 +12,35 @@ import (
 
 // collapsedSection is a section the rail folds into one row (ADR-009 §2): the
 // row is named for the section and opens into its pages, which are every live
-// registration filed under it — in the designed order, the rest by label — and
-// after them the pages the shell itself owns there. A stopped plugin withdraws
-// its page through the same live registration filter every row uses.
+// registration filed under it and the pages the shell itself owns there, each
+// where it declares its place (placeLess). A stopped plugin withdraws its page
+// through the same live registration filter every row uses.
 type collapsedSection struct {
 	Section string
-	Root    string   // the section's own address, which leads to its first page
-	Order   []string // page labels the design places first, in its order
-	Shell   []pageTab
+	Root    string // the section's own address, which leads to its first page
+	Place   int    // the section's row's place in the rail
+	Shell   []shellPage
+}
+
+// shellPage is a page the shell owns in a collapsed section, at a place
+// plugin authors are told, so a plugin's page can stand among them.
+type shellPage struct {
+	Label, Href string
+	Place       int
 }
 
 var collapsedSections = []collapsedSection{
-	{Section: "Network", Root: "/network", Order: []string{"Interfaces", "DHCP", "DNS", "Routes"}},
-	{Section: "System", Root: "/system", Order: []string{"General"}, Shell: []pageTab{
-		{Label: "Hardware", Href: "/system/hardware"},
-		{Label: "Access", Href: "/system/access"},
-		{Label: "Packages", Href: "/system/packages"},
-		{Label: "Services", Href: "/system/services"},
-		{Label: "Maintenance", Href: "/system/maintenance"},
-		{Label: "Logs", Href: "/system/logs"},
-		{Label: "Events", Href: eventsPath},
-		{Label: "Changes", Href: changesPath},
-		{Label: "Diagnostics", Href: "/system/diagnostics"},
+	{Section: "Network", Root: "/network", Place: networkPlace},
+	{Section: "System", Root: "/system", Place: systemPlace, Shell: []shellPage{
+		{Label: "Hardware", Href: "/system/hardware", Place: 20},
+		{Label: "Access", Href: "/system/access", Place: 30},
+		{Label: "Packages", Href: "/system/packages", Place: 40},
+		{Label: "Services", Href: "/system/services", Place: 50},
+		{Label: "Maintenance", Href: "/system/maintenance", Place: 60},
+		{Label: "Logs", Href: "/system/logs", Place: 70},
+		{Label: "Events", Href: eventsPath, Place: 80},
+		{Label: "Changes", Href: changesPath, Place: 90},
+		{Label: "Diagnostics", Href: "/system/diagnostics", Place: 100},
 	}},
 }
 
@@ -53,19 +60,32 @@ func (s *Server) sectionPages(section, active string) []pageTab {
 	if !ok {
 		return nil
 	}
-	var tabs []pageTab
+	type placedTab struct {
+		place place
+		tab   pageTab
+	}
+	var placed []placedTab
 	for _, m := range s.manifestList() {
 		if !s.probe(m.Endpoint()) {
 			continue
 		}
 		for _, entry := range m.Nav {
 			if entry.Section == section {
-				tabs = append(tabs, pageTab{Label: entry.Label, Href: pluginHref(m.ID, entry.Path), PluginID: m.ID})
+				placed = append(placed, placedTab{
+					place{order: entry.Order, section: section, label: entry.Label, pluginID: m.ID},
+					pageTab{Label: entry.Label, Href: pluginHref(m.ID, entry.Path), PluginID: m.ID},
+				})
 			}
 		}
 	}
-	sort.SliceStable(tabs, func(a, b int) bool { return orderedLess(c.Order, tabs[a].Label, tabs[b].Label) })
-	tabs = append(tabs, c.Shell...)
+	for _, page := range c.Shell {
+		placed = append(placed, placedTab{place{order: fixed(page.Place), section: section, label: page.Label}, pageTab{Label: page.Label, Href: page.Href}})
+	}
+	sort.SliceStable(placed, func(a, b int) bool { return placeLess(placed[a].place, placed[b].place) })
+	tabs := make([]pageTab, len(placed))
+	for i, p := range placed {
+		tabs[i] = p.tab
+	}
 	hrefs := make([]string, len(tabs))
 	for i, tab := range tabs {
 		hrefs[i] = tab.Href

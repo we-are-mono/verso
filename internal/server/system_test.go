@@ -16,7 +16,7 @@ func systemManifest() plugin.Manifest {
 	return plugin.Manifest{
 		ID: "system", Name: "System",
 		Socket: "/var/run/verso/system.sock", SchemaVersion: 1,
-		Nav: []plugin.NavEntry{{Section: "System", Label: "General", Path: "/"}},
+		Nav: []plugin.NavEntry{navAt(10, plugin.NavEntry{Section: "System", Label: "General", Path: "/"})},
 		ACL: plugin.ACL{
 			Read:  []plugin.ACLScope{{Scope: "uci", Object: "system", Function: "read"}},
 			Write: []plugin.ACLScope{{Scope: "uci", Object: "system", Function: "write"}},
@@ -67,9 +67,9 @@ func TestSystemRootRedirectsToFirstLiveRegisteredPage(t *testing.T) {
 func networkManifests() []plugin.Manifest {
 	return []plugin.Manifest{
 		{ID: "dnsdhcp", Name: "DNS and DHCP", Socket: "/var/run/verso/dnsdhcp.sock", SchemaVersion: 1,
-			Nav: []plugin.NavEntry{{Section: "Network", Label: "DHCP", Path: "/"}}},
+			Nav: []plugin.NavEntry{navAt(20, plugin.NavEntry{Section: "Network", Label: "DHCP", Path: "/"})}},
 		{ID: "interfaces", Name: "Interfaces", Socket: "/var/run/verso/interfaces.sock", SchemaVersion: 1,
-			Nav: []plugin.NavEntry{{Section: "Network", Label: "Interfaces", Path: "/"}}},
+			Nav: []plugin.NavEntry{navAt(10, plugin.NavEntry{Section: "Network", Label: "Interfaces", Path: "/"})}},
 	}
 }
 
