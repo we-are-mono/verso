@@ -377,7 +377,7 @@ fn answer(method: &str, request: &Value, state: &State, sid: &str) -> Result<Val
             // A pair installed by hand is the operator's: whatever renews
             // another hears so, and lets it be.
             let done = access::certificate(argument(request, "certificate")?, argument(request, "key")?)?;
-            certificate_event::installed(&plugin_command::System);
+            certificate_event::handed_over(&plugin_command::System);
             Ok(done)
         }
         "setWebListeners" => {
@@ -406,7 +406,7 @@ fn answer(method: &str, request: &Value, state: &State, sid: &str) -> Result<Val
                 .lock()
                 .map_err(|_| Failure::unknown("credential-operation lock poisoned"))?;
             let done = access::make()?;
-            certificate_event::installed(&plugin_command::System);
+            certificate_event::handed_over(&plugin_command::System);
             Ok(done)
         }
         "setPassword" => {

@@ -143,8 +143,8 @@
   - the core sentence fills with both arguments.
 
   Then implement it. Verify with `make test`.
-- [ ] 7.2 Test first in `verso-rpcd` with a fake `Runner`: `setWebCertificate` and `makeWebCertificate` write the pair, send the shell's SIGHUP, run `hotplug-call verso-certificate` (`ACTION=installed`) and wait for it, then run `verso certificate announce /etc/verso`, in that order. A failing announcement is logged and the install still answers success. Then implement it in `access.rs`. Verify with `cargo test` in `verso-rpcd`.
-- [ ] 7.3 Amend ADR-017 §6 in place: the replacement is `certificate.replaced`, and the reload stays on SIGHUP, for decision 10's reasons. Verify by reading the section against design decision 10.
+- [x] 7.2 Test first in `verso-rpcd` with a fake `Runner`: `setWebCertificate` and `makeWebCertificate` write the pair, send the shell's SIGHUP, run `hotplug-call verso-certificate` (`ACTION=installed`) and wait for it, then run `verso certificate announce /etc/verso`, in that order. A failing announcement is logged and the install still answers success. Then implement it in `access.rs`. Verify with `cargo test` in `verso-rpcd`.
+- [x] 7.3 Amend ADR-017 §6 in place: the replacement is `certificate.replaced`, and the reload stays on SIGHUP, for decision 10's reasons. Verify by reading the section against design decision 10.
 
 ## 8. verso-plugin-acme
 
