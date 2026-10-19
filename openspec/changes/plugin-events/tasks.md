@@ -148,15 +148,15 @@
 
 ## 8. verso-plugin-acme
 
-- [ ] 8.1 Test first in acme: its `commands.json` parses with the SDK's `Registry` and declares the four events with the sentences, tones and alerts of the trusted-certificate spec, under `state`, said. `issued` and `renewed` must each end both failures. Then declare them. Verify with `cargo test` in `plugins/verso-plugin-acme`.
-- [ ] 8.2 Test first with the fake `Router`, which gains `announce`:
+- [x] 8.1 Test first in acme: its `commands.json` parses with the SDK's `Registry` and declares the four events with the sentences, tones and alerts of the trusted-certificate spec, under `state`, said. `issued` and `renewed` must each end both failures. Then declare them. Verify with `cargo test` in `plugins/verso-plugin-acme`.
+- [x] 8.2 Test first with the fake `Router`, which gains `announce`:
   - `deliver` announces a success after the certificate is installed and the shell signalled, and a failure as it records it, for the section's domain;
   - a success whose install fails announces nothing;
   - `prepare`, `sync`, another section, another domain and a disabled section announce nothing;
   - a failing announcement is logged and the outcome still recorded.
 
   Then implement it. Verify with `cargo test` in acme.
-- [ ] 8.3 Add the four sentences' Slovenian to acme's `i18n/sl.json`, and have the package depend on this verso. Verify with a test calling the SDK's `registry::check_catalog` over acme's registry and catalogs, and with `cargo test`.
+- [x] 8.3 Add the four sentences' Slovenian to acme's `i18n/sl.json`, and have the package depend on this verso. Verify with a test calling the SDK's `registry::check_catalog` over acme's registry and catalogs, and with `cargo test`.
 
 ## 9. Integration
 
