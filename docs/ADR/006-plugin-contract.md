@@ -70,7 +70,10 @@ over a local socket**, exchanging *data*, not markup.
      from the manifest on every page, so a group opens in place without asking
      the plugin. `"pages": true` says only that the entry opens; its subpages are
      then the envelope's `pages` (below), shown on its own pages. A shell older
-     than the list form reads only `true`.
+     than the list form reads only `true`. An entry's optional `order` is its
+     place among its siblings (ADR-009 §2), read entry by entry: one that is not
+     a whole number is logged and read as none, and the manifest loads. An
+     entry's optional `icon` names its glyph; the shell picks none by a label.
    - `contributes` — optional `{id, slot, path, position, order}` entries, each
      filling a named slot on a shell page or on another plugin's page (ADR-026).
      `system_access: "<path>"`, the older way to add a part to Access, reads as

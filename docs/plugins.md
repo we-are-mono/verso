@@ -78,6 +78,7 @@ than 127, or escaping half a surrogate pair (`"\ud800"` alone).
 | `nav[].label` | the nav link text |
 | `nav[].path` | page path, relative to your mount (`/` = your index) |
 | `nav[].icon` | optional Lucide glyph *name* for the row; the shell owns the artwork, and an entry naming none takes its section's glyph |
+| `nav[].order` | optional whole number, the entry's place among its siblings ([below](#where-an-entry-stands)); an entry with none stands after every entry with one |
 | `contributes` | optional list of things this plugin puts in named slots ([below](#filling-slots)) |
 | `contributes[].id` | lowercase letters, digits and hyphens, unique within the plugin; `<plugin id>.<id>` names it everywhere else |
 | `contributes[].slot` | the slot's name: `shell.<page>.<place>` for a shell page's, `<plugin id>.<name>` for one a plugin opens |
@@ -97,18 +98,17 @@ own `section`:
 
 ```json
 "nav": [
-  { "section": "System", "label": "General", "path": "/" },
-  { "section": "System", "label": "Time",    "path": "/time" }
+  { "section": "System", "label": "General", "path": "/",     "order": 10 },
+  { "section": "System", "label": "Time",    "path": "/time", "order": 15 }
 ]
 ```
 
 An entry filed under `Network` or `System` is not a menu row of its own: those two
 sections are each one row, named for the section, that opens into every page filed
-there, whichever plugin files it. Network's pages run Interfaces, DHCP, DNS, Routes, then
-the rest by label; System's run General, then the rest by label, then the shell's
-own pages. A page in either section keeps its own title as its heading, with no
-section prefix. Any other section's entries are rows of
-their own (Wireless files under `Wireless` to keep one).
+there, whichever plugin files it. A page in either section keeps its own title as
+its heading, with no section prefix. Any other section's entries are rows of
+their own (Wireless files under `Wireless` to keep one); an entry filed under
+`Status` has none, since the Overview is that section.
 
 These entries are registrations, not suggestions layered over a shell page list.
 For example, the bundled System plugin creates **System → General** solely through
@@ -130,6 +130,49 @@ envelope's to say:
 
 A manifest declares at least one of `nav`, `entity_tabs`, `entity_acts` and
 `contributes`. A plugin that only contributes has no sidebar row.
+
+### Where an entry stands
+
+Where your entry stands is yours to say, with `order`: its place among its
+siblings. An entry filed under `Network` or `System` stands among that section's
+pages; any other stands among the rail's rows. Siblings stand by `order`, lowest
+first; two at one place by their English label, then plugin id, so a translation
+never reorders the rail.
+
+- Overview is place 0 and always first. A place below 1 reads as 1.
+- An entry with no `order` stands after every entry with one: by section (the
+  shell's sections first, in their order, then the rest by title), then by label.
+- An `order` that is not a whole number is logged and read as none; your manifest
+  still loads.
+
+The shell's own places, so you can stand before, between or after them:
+
+| Rail row | Place |
+|---|---|
+| Overview | 0 |
+| Devices | 10 |
+| Network | 20 |
+| System | 90 |
+
+| System page | Place |
+|---|---|
+| Hardware | 20 |
+| Access | 30 |
+| Packages | 40 |
+| Services | 50 |
+| Maintenance | 60 |
+| Logs | 70 |
+| Events | 80 |
+| Changes | 90 |
+| Diagnostics | 100 |
+
+The first-party plugins stand at: Wireless 30, VPN 40 and Firewall 50 among the
+rows; Interfaces 10, DHCP 20, DNS 30, Routes 40 and Dynamic DNS 50 under Network;
+General 10 under System.
+
+`nav[].order` and `contributes[].order` are different fields: a contribution with
+no `order` reads as 100 among the contributions at its place, while a nav entry
+with no `order` stands after every entry with one.
 
 ### Filling slots
 

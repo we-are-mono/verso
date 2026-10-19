@@ -56,21 +56,32 @@ call: **on a gateway the firewall is not optional, so it is core.**
 
    This ordered list is data the shell owns — the analog of `luci-base` declaring
    the top-level slots — but it does not drive the top-level chrome directly. The
-   sidebar is a flat list of places in a designed order (Overview, Devices,
-   Network, Wireless, Firewall, …, System), with no section titles between them.
+   sidebar is a flat list of places with no section titles between them.
    Status is the **Overview** at its head, so status never appears twice and the
    nav carries no live state. Every other entry is a row of its own, except in the
    two **collapsed sections**, **Network** and **System**: each is one row named
    for the section, leading to its first live page, lit anywhere inside the
    section, and opening there into its pages — every live registration filed
-   under it, whichever plugin files it, in the section's designed order
-   (Network: Interfaces, DHCP, DNS, Routes; System: General),
-   the rest by label, then the
-   pages the shell owns there. Its root (`/network`, `/system`) redirects to that
-   first page. A page in a collapsed section keeps its own name as its heading,
-   with no section prefix: the open row already says where it is. Rows the design does not
-   name follow in this canonical section order, ahead of any non-core section,
-   so the sidebar is deterministic regardless of plugin discovery order.
+   under it, whichever plugin files it, beside the pages the shell owns there.
+   Its root (`/network`, `/system`) redirects to that first page. A page in a
+   collapsed section keeps its own name as its heading, with no section prefix:
+   the open row already says where it is.
+
+   **Where a place stands is its own to say.** A nav entry declares `order`, its
+   place among its siblings: the rail's rows, or a collapsed section's pages.
+   Overview is place 0 and always first; a place below 1 reads as 1. The
+   shell's own places are published numbers, so a plugin can stand before,
+   between or after them: Devices 10, Network 20, System 90; System's pages
+   Hardware 20, Access 30, Packages 40, Services 50, Maintenance 60, Logs 70,
+   Events 80, Changes 90, Diagnostics 100. Siblings at one place stand by
+   English label, then plugin id, so a translation never reorders the rail. An
+   entry with no place stands after every placed one, by this canonical section
+   order (ahead of any non-core section), then label. The rail is thereby the
+   same whatever order plugins are found in, and the shell names no plugin's
+   label to order it. The first-party plugins declare the designed rail:
+   Wireless 30, VPN 40, Firewall 50; under Network, Interfaces 10, DHCP 20,
+   DNS 30, Routes 40, Dynamic DNS 50; under System, General 10. A row wears the
+   glyph its entry names, else its section's.
 
 3. **The shell serves its own machinery and generic platform administration
    directly; feature-specific device configuration is a plugin.** Four bounded
@@ -137,10 +148,10 @@ call: **on a gateway the firewall is not optional, so it is core.**
    own pages into a section beside plugin pages. The **System** section holds the
    shell-owned **Access**, **Packages**, **Services**, and **Maintenance** pages
    next to manifest-registered plugin pages (General, SSH, cron). The bundled
-   System plugin's manifest registers General; the shell neither predeclares nor
-   conditionally hides it. The System destination is the first live registered
-   page, falling back to the shell's own pages when no System plugin page is
-   available. **Network** collapses the same way with no shell-owned pages: its
+   System plugin's manifest registers General at place 10; the shell neither
+   predeclares nor conditionally hides it. The System destination is the first
+   of its pages by place, General while it answers, the shell's own Hardware
+   when it does not. **Network** collapses the same way with no shell-owned pages: its
    pages come from the interfaces and DNS/DHCP plugins, so with neither answering
    it has no row. Wi-Fi files under a section of its own (`Wireless`) and keeps
    its row. Security is not collapsed: its one occupant, the firewall plugin, is
@@ -174,10 +185,10 @@ call: **on a gateway the firewall is not optional, so it is core.**
 5. **Plugins extend the taxonomy; unknown sections sort after core.** A plugin's
    `nav[].section` (ADR-006) either names a core section — its links join that
    section in place, and in a collapsed section (Network, System) they become
-   pages of the section's one row rather than rows — or names a new one. New
-   (non-core) sections render **after**
-   all core sections among the section rows, ordered
-   deterministically (by section title, then plugin id).
+   pages of the section's one row rather than rows — or names a new one. Its
+   entries stand where their `order` places them (§2); an entry with no place
+   in a new (non-core) section stands **after** every core section's, ordered
+   deterministically (by section title, then label, then plugin id).
    This is the direct analog of a LuCI app filling the **Services** or **VPN**
    slot, and it is the flexibility the design requires: feature applications LuCI
    delivers as `luci-app-*` (VPN, DDNS, statistics) arrive in Verso as a

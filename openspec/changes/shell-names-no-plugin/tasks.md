@@ -104,11 +104,11 @@ Every task ends with `make lint` passing, and `make test` passing except the fiv
   - an entry filed under Status still has no row.
 
   Then implement `placeLess` and the shell's place constants. Remove `railOrder`, `navIcon`'s label cases and `collapsedSections.Order`. Give the in-tree manifests their numbers: Interfaces 10, Routes 40, Firewall 50, General 10 (design decision 4). Rewrite the existing nav tests that depend on label order to declare `order`. Verify with `make test`.
-- [ ] 5.3 Declare `order` in each plugin repository's `manifest.json`, then verify with `cargo test` and commit in each repo:
+- [x] 5.3 Declare `order` in each plugin repository's `manifest.json`, then verify with `cargo test` and commit in each repo:
   - `plugins/verso-plugin-dnsdhcp`: DHCP 20, DNS 30;
   - `plugins/verso-plugin-ddns`: Dynamic DNS 50;
   - `plugins/verso-plugin-wireless`: Wireless 30.
-- [ ] 5.4 Document nav `order` in `docs/plugins.md` ("The manifest") beside `contributes[].order`, saying that a missing nav `order` falls after the ordered entries while a missing contribution `order` reads as 100. Include:
+- [x] 5.4 Document nav `order` in `docs/plugins.md` ("The manifest") beside `contributes[].order`, saying that a missing nav `order` falls after the ordered entries while a missing contribution `order` reads as 100. Include:
   - the published numbers of the shell's rows and System pages, and the bundled plugins' numbers;
   - values below 1, ties, and malformed values.
 
