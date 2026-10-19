@@ -113,7 +113,7 @@ Every task ends with `make lint` passing, and `make test` passing except the fiv
   - values below 1, ties, and malformed values.
 
   Amend ADR-009 §2, §3 and §5 and ADR-006 in place. Verify by checking that `grep -n 'designed order' docs/ADR/009*.md` names numbers, not labels.
-- [ ] 5.5 In the lab, with every plugin deployed, verify that the rail reads Overview, Devices, Network, Wireless, VPN, Firewall, System, and that Network's and System's pages read as the `rail` delta's first-party scenario says. Save a screenshot to `~/Share/screenshots/`.
+- [x] 5.5 In the lab, with every plugin deployed, verify that the rail reads Overview, Devices, Network, Wireless, VPN, Firewall, System, and that Network's and System's pages read as the `rail` delta's first-party scenario says. Save a screenshot to `~/Share/screenshots/`.
 
 ## 6. Plugins name their services
 

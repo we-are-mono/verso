@@ -17,3 +17,12 @@
 - **VPN plugin stopped.** Tunnels: `/plugins/interfaces/` "Open Interfaces".
 - Both plugins were started again afterwards.
 - Screenshots: `~/Share/screenshots/shell-names-no-plugin-4.6-*.png` (overview, access, activity, rule-drawer, activity-plugin-stopped, overview-vpn-stopped).
+
+## 5.5 — the rail in the lab (2026-10-19)
+
+- Every plugin deployed, each manifest declaring its place (acme and qos have no nav entries).
+- Rail: Overview, Devices, Network, Wireless, VPN, Firewall, System.
+- Network open: Interfaces, DHCP, DNS, Routes, Dynamic DNS.
+- System open: General, Hardware, Access, Packages, Services, Maintenance, Logs, Events, Changes, Diagnostics.
+- Glyphs: Wireless and VPN wear the ones their entries name (wifi, lock), Firewall its section's (Security's shield).
+- Screenshots: `~/Share/screenshots/shell-names-no-plugin-5.5-rail-network.png` and `-rail-system.png`.
