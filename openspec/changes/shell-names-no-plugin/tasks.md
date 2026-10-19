@@ -27,7 +27,7 @@ Every task ends with `make lint` passing, and `make test` passing except the fiv
 
 ## 3. Wi-Fi state is the wireless plugin's read
 
-- [ ] 3.1 In `plugins/verso-plugin-wireless` (its own repo), test first in a new `root.rs`: every case of `internal/openwrt/wireless_state_test.go` and `internal/server/wireless_state_test.go`, ported against injected ubus answers. They cover a radio up and down, a network with no interface, absent numbers when iwinfo cannot answer, and busy share from the in-use frequency only. Then:
+- [x] 3.1 In `plugins/verso-plugin-wireless` (its own repo), test first in a new `root.rs`: every case of `internal/openwrt/wireless_state_test.go` and `internal/server/wireless_state_test.go`, ported against injected ubus answers. They cover a radio up and down, a network with no interface, absent numbers when iwinfo cannot answer, and busy share from the in-use frequency only. Then:
   - implement the root half on `root::ubus`, and add `rootfs/usr/share/verso/plugins/wireless/commands.json` with the read `state`, version 1;
   - replace `ubus verso wirelessState` with `verso-plugin wireless state` in the manifest's `acl.read`;
   - in `rootfs/usr/share/rpcd/acl.d/verso-plugin-wireless.json`, grant `"verso-plugin": {"wireless": ["state"]}` in place of `verso wirelessState`, `network.wireless` and `iwinfo`;
@@ -35,8 +35,8 @@ Every task ends with `make lint` passing, and `make test` passing except the fiv
   - make `deploy-dev.sh` install `commands.json` as root:root 0644.
 
   Verify with `cargo test` and `cargo clippy` there, and commit there.
-- [ ] 3.2 In the lab, with `make dev` running, run the wireless repo's `deploy-dev.sh`. Ask the helper for `pluginCommand {"plugin": "wireless", "name": "state"}` over `socat`, with a session granted the plugin's access group, and open the Wi-Fi page. Verify that the helper answers one JSON object with `radios` and `networks`, and that the page shows the seeded radio's state.
-- [ ] 3.3 Test first in `internal/server/gateway_test.go`: `coreRead("wirelessState")` is nil, and a manifest declaring `ubus verso wirelessState` gets no entry. Then remove:
+- [x] 3.2 In the lab, with `make dev` running, run the wireless repo's `deploy-dev.sh`. Ask the helper for `pluginCommand {"plugin": "wireless", "name": "state"}` over `socat`, with a session granted the plugin's access group, and open the Wi-Fi page. Verify that the helper answers one JSON object with `radios` and `networks`, and that the page shows the seeded radio's state.
+- [x] 3.3 Test first in `internal/server/gateway_test.go`: `coreRead("wirelessState")` is nil, and a manifest declaring `ubus verso wirelessState` gets no entry. Then remove:
   - the `coreRead` case;
   - `NativeBackend.WirelessState` and `wireless_state.go` with their tests;
   - the `Backend` method and every fake's.

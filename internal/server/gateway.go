@@ -1350,8 +1350,6 @@ func (s *Server) coreRead(function string) func(context.Context, string) (json.R
 			}
 			return result, err
 		}
-	case "wirelessState":
-		read = s.backend.WirelessState
 	}
 	return read
 }

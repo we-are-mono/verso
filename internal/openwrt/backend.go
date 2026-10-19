@@ -250,11 +250,10 @@ type Backend interface {
 	// line says eth0, the firewall config says "wan", and only netifd knows they
 	// are the same thing right now.
 	NetworkInterfaces(ctx context.Context, sid string) ([]NetIface, error)
-	// The helper's raw state reads the shell brokers to a declaring plugin
-	// (ADR-007), sid-gated: netifd's network state and what the radios are
-	// doing. Each stays raw JSON; the plugin, not the shell, owns what it means.
+	// The raw state read the shell brokers to a declaring plugin (ADR-007),
+	// sid-gated: netifd's network state, which the shell draws too. It stays
+	// raw JSON; the plugin, not the shell, owns what it means.
 	NetworkState(ctx context.Context, sid string) (json.RawMessage, error)
-	WirelessState(ctx context.Context, sid string) (json.RawMessage, error)
 	// PluginCommand runs a plugin's registered root command (ADR-027): a read's
 	// result, or an act's, as the command answered it. A refusal carries the
 	// words the operator reads as its ValidationMessage.

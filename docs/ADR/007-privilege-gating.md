@@ -72,11 +72,12 @@ broken socket.**
    config with the sid and hands the plugin a snapshot to render from, and it
    **writes** the plugin's declarative `commit` intent — refusing anything outside
    the plugin's declared, session-authorized scopes. A read scope also reaches past
-   config: a `ubus` scope on object `verso` names one of the helper's read functions
-   (`wirelessState`), and a `verso-plugin` scope names a read a plugin's registry
-   declares (the firewall's nftables counters, ADR-027), so a page can show live
-   kernel state that neither the plugin nor the de-privileged shell may read for
-   itself. Plugins
+   config: a `ubus` scope on object `verso` names one of the shell's own brokered
+   reads, state the shell draws itself or that guards access to the router
+   (`networkState`, `dhcpLeases`), and a `verso-plugin` scope names a read a
+   plugin's registry declares (the firewall's nftables counters, what the radios
+   are doing, ADR-027), so a page can show live kernel state that neither the
+   plugin nor the de-privileged shell may read for itself. Plugins
    gain a *declared* privilege surface instead of ambient root, and never read
    `/etc/config` or hold a write path.
 

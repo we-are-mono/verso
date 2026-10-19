@@ -533,13 +533,14 @@ Each value is the helper's own JSON, untouched — the shell does not interpret 
 and you own its meaning. Beside a plugin's registered reads (scope
 `verso-plugin`, keyed `<plugin>.<name>`; see
 [Root work](#root-work-the-command-registry)), the shell brokers only the core
-functions in its own closed set:
+functions in its own closed set: state the shell draws itself, or that guards
+access to the router. State only your page draws, such as what the radios are
+doing, is your plugin's own registered read.
 
 | Function | Returns |
 |---|---|
 | `networkState` | `{"interfaces": [...], "devices": {...}, "protocols": {...}, "routes": [...]}` — netifd logical-interface dump, kernel-device state, installed protocol handlers (when available), and the kernel's main routing table as `ip route` lists it (`family`, `target` in CIDR, `gateway`, `device`, `metric`, `proto`, `type` when not unicast, `source`; local, broadcast, multicast and cached entries left out). The shell adds physical-port and parent relationships from its existing topology reader. |
 | `accessCredentials` | Public SSH key comments/fingerprints and public web-certificate metadata. No authorized-key options, private keys, or router passwords are included. |
-| `wirelessState` | `{"radios": {"radio0": {"up": true, "channel": 6, "txpower": 20, "busy": 61, "hardware": "NXP 88W9098"}}, "networks": {"default_radio0": {"up": true, "clients": 3}}}` — what the radios are doing now, keyed by `wireless` config section. netifd's `network.wireless status` says whether each radio and network is up and which kernel interface a network became; iwinfo reads that interface for the channel and transmit power (dBm) in use, the in-use channel's busy share (whole percent of active airtime) and the associated clients. A number that could not be read is absent, never zero. The operator's grant must cover `network.wireless status`, and `iwinfo info`/`assoclist`/`survey` for the numbers. |
 | `configFiles` | `{"files": [{"path": "/etc/nftables.d/10-custom.nft", "family": "fw4", "content": "...", "version": "...", "pending": false, "exists": true}], "families": [{"name": "fw4", "config": "firewall", "plugin": "firewall"}]}` — the files of the families whose config you read, as they will read once staged changes are applied, and those families (see [Hand-edited files](#hand-edited-files)). A file listed by its path alone carries an `error` in place of its `content` and `version`. |
 | `dhcpLeases` | `{"leases": [{"hostname", "mac", "ipv4", "ipv6s", "expires_at"}]}` — who holds an address right now, in address order. dnsmasq's DHCPv4 lease file is the list; odhcpd's DHCPv6 table adds `ipv6s` to the device it belongs to, joined by the link-layer address its DUID embeds or by the hostname both tables recorded. `hostname` is empty when the device offered none, `expires_at` is an epoch second (render the countdown against your own clock), and a DHCPv6 lease that joins no DHCPv4 lease is left out — it carries no MAC, which is the identity a reservation is keyed by. The shell reads the lease file itself, so it answers only an operator whose grant covers `dhcp ipv6leases`. |
 

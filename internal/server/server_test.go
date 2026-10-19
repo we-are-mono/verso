@@ -124,10 +124,10 @@ type fakeBackend struct {
 	wanCalls *int
 	devStats *[]openwrt.DeviceStats
 	devErr   error
-	// A core brokered read (ADR-007): the canned wireless payload the shell
+	// A core brokered read (ADR-007): the canned network state the shell
 	// forwards to a declaring plugin, and the failure that degrades it away.
-	wireless    json.RawMessage
-	wirelessErr error
+	network     json.RawMessage
+	networkErr  error
 	fwStatus    openwrt.FirewallStatus
 	fwStatusErr error
 	// The device's log ring and netifd's logical/device join — what the live
@@ -591,15 +591,11 @@ func (f fakeBackend) FactoryReset(ctx context.Context, sid string, erase bool) e
 // in for: a test that needs one embeds fakeBackend and overrides that method.
 var errNoHelper = errors.New("fakeBackend: helper call not provided")
 
-func (fakeBackend) NetworkState(context.Context, string) (json.RawMessage, error) {
-	return nil, errNoHelper
-}
-
-func (f fakeBackend) WirelessState(context.Context, string) (json.RawMessage, error) {
-	if f.wireless == nil && f.wirelessErr == nil {
+func (f fakeBackend) NetworkState(context.Context, string) (json.RawMessage, error) {
+	if f.network == nil && f.networkErr == nil {
 		return nil, errNoHelper
 	}
-	return f.wireless, f.wirelessErr
+	return f.network, f.networkErr
 }
 
 func (fakeBackend) RefreshGrants(context.Context, string) error {
@@ -1208,11 +1204,11 @@ func demoReadManifest() plugin.Manifest {
 	return m
 }
 
-func demoWirelessManifest() plugin.Manifest {
+func demoNetworkStateManifest() plugin.Manifest {
 	m := demoManifest()
 	m.ACL = plugin.ACL{Read: []plugin.ACLScope{
-		{Scope: "uci", Object: "wireless", Function: "read"},
-		{Scope: "ubus", Object: "verso", Function: "wirelessState"},
+		{Scope: "uci", Object: "network", Function: "read"},
+		{Scope: "ubus", Object: "verso", Function: "networkState"},
 	}}
 	return m
 }
@@ -1406,21 +1402,49 @@ func TestPluginNoReadACLGetsNoSnapshot(t *testing.T) {
 // acl.read receives that helper's result in its request, read with the operator's
 // sid (ADR-007) — live state the plugin cannot reach itself.
 func TestPluginUbusReadBrokered(t *testing.T) {
-	radios := json.RawMessage(`{"radios":{"radio0":{"up":true,"channel":6}},"networks":{}}`)
+	state := json.RawMessage(`{"interfaces":{"lan":{"up":true}},"devices":{}}`)
 	tr := &fakeTransport{env: &plugin.Envelope{
-		SchemaVersion: 1, Title: "Wi-Fi", Widget: json.RawMessage(`{"type":"card"}`),
+		SchemaVersion: 1, Title: "Interfaces", Widget: json.RawMessage(`{"type":"card"}`),
 	}}
-	s := newServerWith(t, fakeBackend{wireless: radios}, tr, []plugin.Manifest{demoWirelessManifest()})
+	s := newServerWith(t, fakeBackend{network: state}, tr, []plugin.Manifest{demoNetworkStateManifest()})
 
 	if rec := get(t, s, "/plugins/demo/"); rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200", rec.Code)
 	}
-	got, ok := tr.lastReq.Ubus["wirelessState"]
+	got, ok := tr.lastReq.Ubus["networkState"]
 	if !ok {
 		t.Fatalf("forwarded request carried no brokered read: %+v", tr.lastReq.Ubus)
 	}
-	if string(got) != string(radios) {
-		t.Errorf("brokered read = %s, want the helper's JSON verbatim", got)
+	// The shell adds the kernel's device topology beside netifd's answer; the
+	// helper's part arrives as it answered.
+	var read struct {
+		Interfaces json.RawMessage `json:"interfaces"`
+	}
+	if err := json.Unmarshal(got, &read); err != nil || string(read.Interfaces) != `{"lan":{"up":true}}` {
+		t.Errorf("brokered read = %s, want the helper's interfaces as answered", got)
+	}
+}
+
+// TestTheShellBrokersNoReadOnlyAPluginDraws: Wi-Fi's live state is the
+// wireless plugin's own registered read (ADR-027), so the shell no longer
+// knows a read by that plugin's old name, and a manifest still declaring it
+// gets no entry.
+func TestTheShellBrokersNoReadOnlyAPluginDraws(t *testing.T) {
+	s := newServerWith(t, fakeBackend{}, &fakeTransport{}, nil)
+	if s.coreRead("wirelessState") != nil {
+		t.Error("the shell still brokers wirelessState")
+	}
+	tr := &fakeTransport{env: &plugin.Envelope{
+		SchemaVersion: 1, Title: "Wireless", Widget: json.RawMessage(`{"type":"card"}`),
+	}}
+	m := demoManifest()
+	m.ACL = plugin.ACL{Read: []plugin.ACLScope{{Scope: "ubus", Object: "verso", Function: "wirelessState"}}}
+	s = newServerWith(t, fakeBackend{}, tr, []plugin.Manifest{m})
+	if rec := get(t, s, "/plugins/demo/"); rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rec.Code)
+	}
+	if _, ok := tr.lastReq.Ubus["wirelessState"]; ok {
+		t.Errorf("an old wireless plugin still got the shell's read: %+v", tr.lastReq.Ubus)
 	}
 }
 
@@ -1440,7 +1464,7 @@ func TestPluginUndeclaredUbusReadNotBrokered(t *testing.T) {
 		tr := &fakeTransport{env: &plugin.Envelope{
 			SchemaVersion: 1, Title: "Demo", Widget: json.RawMessage(`{"type":"card"}`),
 		}}
-		backend := fakeBackend{wireless: json.RawMessage(`{"radios":{}}`)}
+		backend := fakeBackend{network: json.RawMessage(`{"interfaces":{}}`)}
 		s := newServerWith(t, backend, tr, []plugin.Manifest{m})
 
 		if rec := get(t, s, "/plugins/demo/"); rec.Code != http.StatusOK {
@@ -1457,10 +1481,10 @@ func TestPluginUndeclaredUbusReadNotBrokered(t *testing.T) {
 // the uci snapshot takes.
 func TestPluginUbusReadDegradesOnBackendError(t *testing.T) {
 	tr := &fakeTransport{env: &plugin.Envelope{
-		SchemaVersion: 1, Title: "Wi-Fi", Widget: json.RawMessage(`{"type":"card"}`),
+		SchemaVersion: 1, Title: "Interfaces", Widget: json.RawMessage(`{"type":"card"}`),
 	}}
-	backend := fakeBackend{wirelessErr: errors.New("helper unavailable")}
-	s := newServerWith(t, backend, tr, []plugin.Manifest{demoWirelessManifest()})
+	backend := fakeBackend{networkErr: errors.New("helper unavailable")}
+	s := newServerWith(t, backend, tr, []plugin.Manifest{demoNetworkStateManifest()})
 
 	rec := get(t, s, "/plugins/demo/")
 	if rec.Code != http.StatusOK {
