@@ -571,6 +571,7 @@
   "When": "Kdaj",
   "Event": "Dogodek",
   "Internet went down": "Internet je izpadel",
+  "The web interface’s certificate was replaced, for %s until %s.": "Potrdilo spletnega vmesnika je zamenjano, za %s do %s.",
   "Internet came back after %s": "Internet je spet na voljo po %s",
   "Internet down %s–%s": "Internet ni deloval %s–%s",
   "Internet down since %s": "Internet ne deluje od %s",

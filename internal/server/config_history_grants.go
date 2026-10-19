@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 
+	"github.com/we-are-mono/verso/internal/events"
 	"github.com/we-are-mono/verso/internal/history"
 	"github.com/we-are-mono/verso/internal/widget"
 )
@@ -143,28 +144,53 @@ func (s *Server) readsAllHistory(ctx context.Context, g *sessionGrants, entries 
 	}
 }
 
-// eventGrants are the grants the events of each kind need: the read the
-// router's own state they record comes from, the internet's outages
-// interfaceGrant and the router starting systemGrant. The shell's history
-// storage is its own and needs none.
+// The grants the router's own kinds of event name (internal/events): the read
+// the state they record comes from, the internet's outages interfaceGrant,
+// the router starting systemGrant, and the web certificate's replacement
+// accessCredentialsGrant. The shell's history storage is its own and needs
+// none.
 var (
-	interfaceGrant = aclProbe{"ubus", "network.interface", "dump"}
-	systemGrant    = aclProbe{"ubus", "system", "info"}
-	eventGrants    = map[string]*aclProbe{
-		"wan.down":            &interfaceGrant,
-		"wan.up":              &interfaceGrant,
-		"boot":                &systemGrant,
-		"storage.unavailable": nil,
-		"storage.available":   nil,
+	interfaceGrant         = aclProbe{"ubus", "network.interface", "dump"}
+	systemGrant            = aclProbe{"ubus", "system", "info"}
+	accessCredentialsGrant = aclProbe{"ubus", "verso", "accessCredentials"}
+	coreEventGrants        = map[events.Grant]*aclProbe{
+		events.InterfaceGrant:         &interfaceGrant,
+		events.SystemGrant:            &systemGrant,
+		events.AccessCredentialsGrant: &accessCredentialsGrant,
 	}
 )
 
-// grantedEvents is the events of a kind eventGrants names whose grant rpcd
-// gives the session, in the order given.
-func grantedEvents(ctx context.Context, g *sessionGrants, events []history.Event) []history.Event {
+// pluginReadGrant is the grant of a plugin's registered read (ADR-027), which
+// its events show under (ADR-028). A session holds it through the plugin's
+// own ACL group, root's among them, never through one Verso ships, so it is
+// asked of whatever read a declaration names and is not one of shellProbes.
+func pluginReadGrant(plugin, read string) aclProbe { return aclProbe{"verso-plugin", plugin, read} }
+
+// kindProbe is the probe a session passes to see an event of k, nil when every
+// session may; known is false for a grant the shell does not ask, which no
+// session passes.
+func kindProbe(k events.Kind) (probe *aclProbe, known bool) {
+	switch {
+	case k.Grant == nil:
+		return nil, true
+	case k.Plugin != "" && k.Grant.Scope == "verso-plugin" && k.Grant.Object == k.Plugin:
+		p := pluginReadGrant(k.Plugin, k.Grant.Function)
+		return &p, true
+	}
+	probe, known = coreEventGrants[*k.Grant]
+	return probe, known
+}
+
+// grantedEvents is the events of a known kind, apart from an apply's, whose
+// grant rpcd gives the session, in the order given: what a chart may mark.
+func grantedEvents(ctx context.Context, g *sessionGrants, kinds *events.Table, recorded []history.Event) []history.Event {
 	var out []history.Event
-	for _, e := range events {
-		if grant, known := eventGrants[e.Kind]; known && (grant == nil || g.may(ctx, *grant)) {
+	for _, e := range recorded {
+		k := kinds.Of(e)
+		if k.Unknown || k.ByChange {
+			continue
+		}
+		if probe, known := kindProbe(k); known && (probe == nil || g.may(ctx, *probe)) {
 			out = append(out, e)
 		}
 	}
@@ -197,11 +223,12 @@ func newEventsView(ctx context.Context, g *sessionGrants, entries []history.Chan
 	return v
 }
 
-// show reports whether the session may see e, and e as it may see it: an
-// apply whose entry the session reads only in part names only its pages.
-func (v eventsView) show(ctx context.Context, e history.Event) (history.Event, bool) {
-	switch e.Kind {
-	case "changes.applied", "changes.rolledback":
+// show reports whether the session may see e, of kind k, and e as it may see
+// it: an apply whose entry the session reads only in part names only its
+// pages; an event of no known kind shows to a session that may read all of
+// config history.
+func (v eventsView) show(ctx context.Context, k events.Kind, e history.Event) (history.Event, bool) {
+	if k.ByChange {
 		var d changesDetail
 		if json.Unmarshal([]byte(e.Detail), &d) != nil || !v.kept[d.Change] {
 			return e, v.whole()
@@ -217,12 +244,15 @@ func (v eventsView) show(ctx context.Context, e history.Event) (history.Event, b
 		}
 		return e, true
 	}
-	grant, known := eventGrants[e.Kind]
+	if k.Unknown {
+		return e, v.whole()
+	}
+	probe, known := kindProbe(k)
 	switch {
 	case !known:
-		return e, v.whole()
-	case grant == nil:
+		return e, false
+	case probe == nil:
 		return e, true
 	}
-	return e, v.g.may(ctx, *grant)
+	return e, v.g.may(ctx, *probe)
 }

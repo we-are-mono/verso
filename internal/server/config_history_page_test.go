@@ -428,11 +428,11 @@ func TestAChangeOpensFromItsIcon(t *testing.T) {
 // TestAnAppliedEventOpensItsChange: Events' row for an apply opens the
 // entry config history keeps for it.
 func TestAnAppliedEventOpensItsChange(t *testing.T) {
-	row := eventRow(history.Event{Kind: "changes.applied", Detail: `{"pages":["Firewall"],"change":42}`}, time.Now(), identity)
+	row := coreRow(history.Event{Kind: "changes.applied", Detail: `{"pages":["Firewall"],"change":42}`}, time.Now(), identity)
 	if row.Panel != changesPath+"/42" {
 		t.Errorf("panel = %q, want the change's drawer", row.Panel)
 	}
-	if row := eventRow(history.Event{Kind: "changes.applied", Detail: `{"pages":["Firewall"]}`}, time.Now(), identity); row.Panel != "" {
+	if row := coreRow(history.Event{Kind: "changes.applied", Detail: `{"pages":["Firewall"]}`}, time.Now(), identity); row.Panel != "" {
 		t.Errorf("an apply history did not keep opens %q", row.Panel)
 	}
 }

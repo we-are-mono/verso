@@ -96,7 +96,7 @@ func (s *Server) handleOverviewTraffic(w http.ResponseWriter, r *http.Request) {
 // pastTraffic is the Internet graph over a past window ending now: the
 // uplink's traffic, its events and its stretches of packet loss as marks, and
 // the gateway's average latency beside the traffic's. Each event is marked
-// only under its kind's grant (eventGrants), as the events page lists it.
+// only under its kind's grant (kindProbe), as the events page lists it.
 func (s *Server) pastTraffic(r *http.Request, g *sessionGrants, w historyWindow) (*widget.Traffic, error) {
 	var device string
 	if wan, err := s.wanStatus(r); err == nil {
@@ -143,7 +143,7 @@ func (s *Server) pastTraffic(r *http.Request, g *sessionGrants, w historyWindow)
 	tr := translatorOrIdentity(t)
 	traffic := widget.InternetTraffic(mean(down), mean(up), down, up, w.Value)
 	traffic.DownPeak, traffic.UpPeak = downPeak, upPeak
-	traffic.Marks = eventMarks(grantedEvents(r.Context(), g, events), start, end, now, tr)
+	traffic.Marks = eventMarks(grantedEvents(r.Context(), g, s.eventKinds(), events), start, end, now, tr)
 	traffic.Marks = append(traffic.Marks, lossMarks(loss, start, step, traffic.Marks, now, tr)...)
 	if ms, ok := average(latency); ok {
 		traffic.Latency = fmt.Sprintf("%.0f", ms)

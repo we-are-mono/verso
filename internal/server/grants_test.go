@@ -293,19 +293,23 @@ func scanProbes(fset *token.FileSet, files []*ast.File) (probeVars map[string]st
 			return ok && elided.Type == nil
 		})
 	}
+	// configGrant and pluginReadGrant are the two probes asked of whatever
+	// a reading names: a config history names, and the read a plugin's event
+	// declares, which a session holds through the plugin's own ACL group.
+	asked := []string{"configGrant", "pluginReadGrant"}
 	isConfigGrant := func(n ast.Node) bool {
 		call, ok := n.(*ast.CallExpr)
 		if !ok {
 			return false
 		}
 		id, ok := call.Fun.(*ast.Ident)
-		return ok && id.Name == "configGrant"
+		return ok && slices.Contains(asked, id.Name)
 	}
 	for _, f := range files {
 		for _, decl := range f.Decls {
 			switch d := decl.(type) {
 			case *ast.FuncDecl:
-				if d.Recv == nil && d.Name.Name == "configGrant" {
+				if d.Recv == nil && slices.Contains(asked, d.Name.Name) {
 					continue
 				}
 				ast.Inspect(d, func(n ast.Node) bool {

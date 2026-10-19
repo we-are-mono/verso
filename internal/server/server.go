@@ -28,6 +28,7 @@ import (
 
 	"github.com/we-are-mono/verso/internal/alerts"
 	"github.com/we-are-mono/verso/internal/clock"
+	"github.com/we-are-mono/verso/internal/events"
 	"github.com/we-are-mono/verso/internal/history"
 	"github.com/we-are-mono/verso/internal/i18n"
 	"github.com/we-are-mono/verso/internal/listen"
@@ -161,6 +162,9 @@ type Server struct {
 	pluginByID  map[string]plugin.Manifest
 	// slots is every plugin's contributions by the slot each fills (ADR-026).
 	slots slotIndex
+	// kinds is every kind of event the router records, its own and the
+	// installed plugins' declared events (ADR-028).
+	kinds *events.Table
 	// rescan re-reads the manifest directory (wired by cmd/verso; nil in
 	// tests that never install). Its result replaces the served set.
 	rescan   func() []plugin.Manifest
@@ -319,6 +323,7 @@ func New(
 		manifests:      manifests,
 		pluginByID:     indexByID(manifests),
 		slots:          loadSlots(manifests),
+		kinds:          events.NewTable(manifests),
 		auth:           auth,
 		sessions:       newSessions(),
 		layouts:        cookieLayout{hardware: boardSensors != nil},
@@ -621,6 +626,7 @@ func (s *Server) Rescan() {
 	s.manifests = manifests
 	s.pluginByID = indexByID(manifests)
 	s.slots = loadSlots(manifests)
+	s.kinds = events.NewTable(manifests)
 	s.manifestsMu.Unlock()
 	// A plugin installed while operators are signed in ships access lists
 	// their sessions never received; each session is given, with its own sid,
@@ -674,6 +680,14 @@ func (s *Server) pluginIDs() []string {
 	}
 	slices.Sort(ids)
 	return ids
+}
+
+// eventKinds is the kinds of event the router records, as the plugins last
+// loaded declare them.
+func (s *Server) eventKinds() *events.Table {
+	s.manifestsMu.RLock()
+	defer s.manifestsMu.RUnlock()
+	return s.kinds
 }
 
 func (s *Server) manifestByID(id string) (plugin.Manifest, bool) {

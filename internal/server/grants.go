@@ -35,7 +35,7 @@ var leaseGrant = aclProbe{"ubus", "dhcp", "ipv6leases"}
 // the test holding root to this list holds it to every probe.
 var shellProbes = []aclProbe{
 	leaseGrant, usageDaysGrant, usageLiveGrant, interfaceGrant, systemGrant,
-	alertsReadGrant, alertsWriteGrant, sessionListGrant, sessionDestroyGrant,
+	accessCredentialsGrant, alertsReadGrant, alertsWriteGrant, sessionListGrant, sessionDestroyGrant,
 }
 
 // configGrant is the uci grant of perm, read or write, on config.

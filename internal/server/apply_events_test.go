@@ -316,11 +316,11 @@ func TestEachRowKeepsWhatItIsAbout(t *testing.T) {
 // TestAppliedAndRolledBackChangesReadAsSentences.
 func TestAppliedAndRolledBackChangesReadAsSentences(t *testing.T) {
 	identity := func(s string) string { return s }
-	applied := eventRow(history.Event{Kind: "changes.applied", Detail: `{"pages":["Firewall","Interfaces"]}`}, time.Now(), identity)
+	applied := coreRow(history.Event{Kind: "changes.applied", Detail: `{"pages":["Firewall","Interfaces"]}`}, time.Now(), identity)
 	if got := applied.Cells[2]; got.Text != "Changes applied: Firewall, Interfaces" || got.Variant != "neutral" {
 		t.Errorf("applied = %+v", got)
 	}
-	back := eventRow(history.Event{Kind: "changes.rolledback", Detail: `{"pages":["Firewall"]}`}, time.Now(), identity)
+	back := coreRow(history.Event{Kind: "changes.rolledback", Detail: `{"pages":["Firewall"]}`}, time.Now(), identity)
 	if got := back.Cells[2]; got.Text != "Changes rolled back: Firewall. The router could not be reached to confirm them." || got.Variant != "warning" {
 		t.Errorf("rolled back = %+v", got)
 	}

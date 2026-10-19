@@ -20,9 +20,9 @@ import (
 	"time"
 
 	"github.com/we-are-mono/verso/internal/clock"
+	"github.com/we-are-mono/verso/internal/events"
 	"github.com/we-are-mono/verso/internal/history"
 	"github.com/we-are-mono/verso/internal/openwrt"
-	"github.com/we-are-mono/verso/internal/units"
 	"github.com/we-are-mono/verso/internal/widget"
 )
 
@@ -171,7 +171,7 @@ func (s *Server) handleEvents(w http.ResponseWriter, r *http.Request) {
 	lang, t := s.localize(r)
 	tr := translatorOrIdentity(t)
 	now := time.Now()
-	events, err := s.historyStore.Events(r.Context(), time.Unix(0, 0), now.Add(time.Minute))
+	recorded, err := s.historyStore.Events(r.Context(), time.Unix(0, 0), now.Add(time.Minute))
 	if err != nil {
 		http.Error(w, "history unavailable", http.StatusInternalServerError)
 		return
@@ -182,6 +182,8 @@ func (s *Server) handleEvents(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	g := s.grantsFor(s.sessionSID(r))
+	kinds := s.eventKinds()
+	pluginTr := s.pluginTranslators(r)
 	view := newEventsView(r.Context(), g, entries, s.readsAllHistory(r.Context(), g, entries))
 	table := &widget.Table{
 		Columns: []widget.TableColumn{
@@ -192,9 +194,10 @@ func (s *Server) handleEvents(w http.ResponseWriter, r *http.Request) {
 		},
 		EmptyText: "Nothing has happened yet. The router records when the internet goes down and comes back, and when it starts.",
 	}
-	for _, e := range events {
-		if shown, ok := view.show(r.Context(), e); ok {
-			table.Rows = append(table.Rows, eventRow(shown, now, tr))
+	for _, e := range recorded {
+		k := kinds.Of(e)
+		if shown, ok := view.show(r.Context(), k, e); ok {
+			table.Rows = append(table.Rows, eventRow(k, shown, now, kindTranslator(k, tr, pluginTr)))
 		}
 	}
 	page := &widget.Stack{Children: append(uncheckedNotice(g, table), table)}
@@ -220,42 +223,18 @@ func (s *Server) handleEvents(w http.ResponseWriter, r *http.Request) {
 		s.sectionPages("System", r.URL.Path), template.HTML(body.String())) //nolint:gosec // rendered by the shell's own templates
 }
 
-// eventRow says one event in words: when, on what, and what happened, with
-// the weight of it as the status colour.
-func eventRow(e history.Event, now time.Time, tr func(string) string) widget.TableRow {
-	what, variant := e.Kind, "neutral"
-	switch e.Kind {
-	case "wan.down":
-		what, variant = tr("Internet went down"), "danger"
-	case "wan.up":
-		var d struct{ After int64 }
-		_ = json.Unmarshal([]byte(e.Detail), &d)
-		what, variant = fmt.Sprintf(tr("Internet came back after %s"), units.Duration(d.After)), "success"
-	case "boot":
-		var d bootDetail
-		_ = json.Unmarshal([]byte(e.Detail), &d)
-		what = tr("Router started")
-		if !d.Clean {
-			what, variant = tr("Router started after losing power or crashing"), "warning"
-		}
-	case "storage.unavailable":
-		var d struct{ Cause string }
-		_ = json.Unmarshal([]byte(e.Detail), &d)
-		what, variant = fmt.Sprintf(tr("History could not be saved: %s"), d.Cause), "warning"
-	case "storage.available":
-		what, variant = tr("History is saved again"), "success"
-	case "changes.applied":
-		what = fmt.Sprintf(tr("Changes applied: %s"), changedPages(e.Detail, tr))
-	case "changes.rolledback":
-		what, variant = fmt.Sprintf(tr("Changes rolled back: %s. The router could not be reached to confirm them."), changedPages(e.Detail, tr)), "warning"
-	}
+// eventRow says one event of kind k in words: when, on what, and what
+// happened, with the weight of it as the status colour. tr is the reader's
+// translator for k (kindTranslator).
+func eventRow(k events.Kind, e history.Event, now time.Time, tr func(string) string) widget.TableRow {
+	what, variant := k.Words(e, tr)
 	row := widget.TableRow{Cells: []widget.TableCell{
 		{Text: eventTime(e.Time, now), Verbatim: true},
 		{Text: e.Subject},
 		{Text: what, Variant: variant},
 	}}
 	// An apply opens its entry in config history (ADR-021).
-	if e.Kind == "changes.applied" || e.Kind == "changes.rolledback" {
+	if k.ByChange {
 		var d changesDetail
 		if json.Unmarshal([]byte(e.Detail), &d) == nil && d.Change > 0 {
 			row.Panel = fmt.Sprintf("%s/%d", changesPath, d.Change)
@@ -265,16 +244,14 @@ func eventRow(e history.Event, now time.Time, tr func(string) string) widget.Tab
 	return row
 }
 
-// changedPages names the pages an apply's changes were made on, in the
-// reader's language.
-func changedPages(detail string, tr func(string) string) string {
-	var d struct{ Pages []string }
-	_ = json.Unmarshal([]byte(detail), &d)
-	names := make([]string, len(d.Pages))
-	for i, page := range d.Pages {
-		names[i] = tr(page)
+// kindTranslator is the reader's translator for events of k: the shell's for
+// the router's own, the plugin's catalog over the shell's for a plugin's
+// (ADR-012).
+func kindTranslator(k events.Kind, tr func(string) string, pluginTr func(string) func(string) string) func(string) string {
+	if k.Plugin == "" || pluginTr == nil {
+		return tr
 	}
-	return strings.Join(names, ", ")
+	return pluginTr(k.Plugin)
 }
 
 // eventMarks are the events over [start, end) as marks on its chart, oldest

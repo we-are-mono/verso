@@ -50,11 +50,11 @@ func TestEventsWarnsWhileHistoryIsNotSaved(t *testing.T) {
 // TestStorageEventsReadAsSentences.
 func TestStorageEventsReadAsSentences(t *testing.T) {
 	identity := func(s string) string { return s }
-	down := eventRow(history.Event{Kind: "storage.unavailable", Detail: `{"cause":"disk I/O error"}`}, time.Now(), identity)
+	down := coreRow(history.Event{Kind: "storage.unavailable", Detail: `{"cause":"disk I/O error"}`}, time.Now(), identity)
 	if got := down.Cells[2]; got.Text != "History could not be saved: disk I/O error" || got.Variant != "warning" {
 		t.Errorf("unavailable = %+v", got)
 	}
-	up := eventRow(history.Event{Kind: "storage.available"}, time.Now(), identity)
+	up := coreRow(history.Event{Kind: "storage.available"}, time.Now(), identity)
 	if got := up.Cells[2]; got.Text != "History is saved again" || got.Variant != "success" {
 		t.Errorf("available = %+v", got)
 	}

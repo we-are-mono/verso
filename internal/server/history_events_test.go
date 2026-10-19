@@ -136,7 +136,7 @@ func TestEventsPageListsWhatHappenedNewestFirst(t *testing.T) {
 // TestAnEventIsSaidInWords: what happened is a sentence, so it is set in sans;
 // mono is for the strings a machine wrote (the interface).
 func TestAnEventIsSaidInWords(t *testing.T) {
-	row := eventRow(history.Event{Kind: "wan.down", Subject: "wan0"}, time.Now(), func(s string) string { return s })
+	row := coreRow(history.Event{Kind: "wan.down", Subject: "wan0"}, time.Now(), func(s string) string { return s })
 	if row.Cells[2].Verbatim {
 		t.Fatal("the event is set as a machine string")
 	}
@@ -145,7 +145,7 @@ func TestAnEventIsSaidInWords(t *testing.T) {
 // TestAShortOutageSaysItsSeconds: under a minute reads in seconds, not as
 // "0 min".
 func TestAShortOutageSaysItsSeconds(t *testing.T) {
-	row := eventRow(history.Event{Kind: "wan.up", Subject: "wan0", Detail: `{"after":25}`}, time.Now(), func(s string) string { return s })
+	row := coreRow(history.Event{Kind: "wan.up", Subject: "wan0", Detail: `{"after":25}`}, time.Now(), func(s string) string { return s })
 	if got := row.Cells[2].Text; got != "Internet came back after 25\U0000202fs" {
 		t.Fatalf("event = %q", got)
 	}

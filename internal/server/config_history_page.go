@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/we-are-mono/verso/internal/clock"
+	"github.com/we-are-mono/verso/internal/events"
 	"github.com/we-are-mono/verso/internal/history"
 	"github.com/we-are-mono/verso/internal/widget"
 )
@@ -410,26 +411,7 @@ func changeCause(c history.Change, tr func(string) string, pluginTr func(string)
 	if c.CausePlugin != "" {
 		tr = pluginTr(c.CausePlugin)
 	}
-	if len(c.CauseArgs) == 0 {
-		return tr(c.Cause)
-	}
-	fill := func(sentence string) (string, bool) {
-		if strings.Count(sentence, "%s") != len(c.CauseArgs) || strings.Count(sentence, "%") != len(c.CauseArgs) {
-			return sentence, false
-		}
-		args := make([]any, len(c.CauseArgs))
-		for i, a := range c.CauseArgs {
-			args[i] = a
-		}
-		return fmt.Sprintf(sentence, args...), true
-	}
-	if filled, ok := fill(tr(c.Cause)); ok {
-		return filled
-	}
-	if filled, ok := fill(c.Cause); ok {
-		return filled
-	}
-	return c.Cause
+	return events.Fill(c.Cause, c.CauseArgs, tr)
 }
 
 // changeBy is who applied an entry and from where: this browser's own

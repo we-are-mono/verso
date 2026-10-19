@@ -20,12 +20,12 @@
 
 ## 2. One kind table
 
-- [ ] 2.1 Test first in a new `internal/events`: the core kinds carry the words, tone, grant, announced and said flags, alert kind and ends of design decision 5's table.
+- [x] 2.1 Test first in a new `internal/events`: the core kinds carry the words, tone, grant, announced and said flags, alert kind and ends of design decision 5's table.
   - A plugin's declared events join the table as `<plugin>.<event>`.
   - A recorded plugin event whose plugin has been removed still gives its English sentence, its arguments filled in, and the unknown-kind visibility.
 
   Then implement the table, rebuilt from the manifests on every rescan. Verify with `make test`.
-- [ ] 2.2 Test first in `history_events_test.go` and `config_history_grants_test.go`:
+- [x] 2.2 Test first in `history_events_test.go` and `config_history_grants_test.go`:
   - every existing row and grant test passes unchanged against the table;
   - a plugin event's row reads its sentence through the plugin's catalog, its arguments as written, in its tone's colour, with its subject in the Interface column;
   - a sentence with no translation reads in English;
