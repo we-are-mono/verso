@@ -33,6 +33,7 @@
 - Enabling a DDNS hostname would run a real updater against a provider, so it was not done.
 - `TestPendingPageNamesThePluginsServicesInTheirWords` renders the Pending page with ddns and openvpn changes staged, procd's triggers for both, and the two plugins' `services`: it reads "Reloads Dynamic DNS and OpenVPN."
 - A router with an enabled DDNS hostname, or an OpenVPN profile, is where 6.4 is checked.
+- On the owner's router, with this build (verso 0.9.0-r142, vpn 0.3.0-r4) installed from the local feed, a staged edit to the `proton` profile's file read on Pending changes: 1 "Saves 1 change.", 2 "Reloads OpenVPN.", 3 "Keeps them if this page checks in within 30 s." The VPN plugin's word reached the step.
 
 ## 7.3 — what is left (2026-10-19)
 

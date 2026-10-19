@@ -124,7 +124,7 @@ Every task ends with `make lint` passing, and `make test` passing except the fiv
 
   Then read `services` per entry into `Manifest.Services`, add the namer, and drop `ddns` from `serviceWords` (design decision 5). Verify with `make test`.
 - [x] 6.3 Document `services` in `docs/plugins.md` ("The manifest"), and amend ADR-006 in place. Verify that the documented example decodes in the manifest test.
-- [ ] 6.4 In the lab, stage a change to the `ddns` config and one to the `openvpn` config. Verify that Pending changes reads "Reloads Dynamic DNS and OpenVPN.", or each alone where only one has a trigger in the container.
+- [x] 6.4 In the lab, stage a change to the `ddns` config and one to the `openvpn` config. Verify that Pending changes reads "Reloads Dynamic DNS and OpenVPN.", or each alone where only one has a trigger in the container.
 
 ## 7. The guard
 
