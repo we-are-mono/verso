@@ -33,3 +33,9 @@
 - Enabling a DDNS hostname would run a real updater against a provider, so it was not done.
 - `TestPendingPageNamesThePluginsServicesInTheirWords` renders the Pending page with ddns and openvpn changes staged, procd's triggers for both, and the two plugins' `services`: it reads "Reloads Dynamic DNS and OpenVPN."
 - A router with an enabled DDNS hostname, or an OpenVPN profile, is where 6.4 is checked.
+
+## 7.3 — what is left (2026-10-19)
+
+- `graphify query "core Go naming a plugin id, path or nav label"` surfaces core's own vocabulary only: event kinds, theme labels, the helper's reset.
+- Core's Go outside tests holds no `/plugins/<id>` path. Its remaining capitalised words that a plugin also uses are OpenWrt's: "Firewall" for the firewall service, "DNS" and "DHCP" for protocols.
+- The guard (`internal/boundary`) reported a planted `pluginHref("firewall", …)` and `navRow.Label == "VPN"` at their lines, and passes on the tree.

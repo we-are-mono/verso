@@ -148,7 +148,7 @@ Every task ends with `make lint` passing, and `make test` passing except the fiv
     - `"/plugins/"` alone.
 
   Then implement the scan over `./internal/...` and `./cmd/...` with `go list -export -deps` and `go/types`, and the `verso-rpcd/src` check (design decision 9). Verify with `make test`: the real tree passes.
-- [ ] 7.3 Run `graphify update .`, then `graphify query "core Go naming a plugin id, path or nav label"`. Verify that nothing it surfaces outside tests names a plugin.
+- [x] 7.3 Run `graphify update .`, then `graphify query "core Go naming a plugin id, path or nav label"`. Verify that nothing it surfaces outside tests names a plugin.
 
 ## 8. The backlog and the last checks
 
