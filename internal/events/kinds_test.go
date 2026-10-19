@@ -4,7 +4,10 @@
 package events
 
 import (
+	"os"
+	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -170,6 +173,54 @@ func TestARemovedPluginsEventKeepsItsWords(t *testing.T) {
 	odd := history.Event{Kind: "odd.thing"}
 	if what, tone := table.Of(odd).Words(odd, identity); what != "odd.thing" || tone != "neutral" {
 		t.Errorf("an event with no words reads its kind: %q in %s", what, tone)
+	}
+}
+
+// TestAnAnnouncementIsRecordedWithItsWords: what root announced becomes the
+// event history keeps: at the time announced, its subject, and, for a plugin's
+// kind, its declared words beside its arguments, so it still reads once the
+// plugin is gone; a kind root may not announce is no event.
+func TestAnAnnouncementIsRecordedWithItsWords(t *testing.T) {
+	table := NewTable([]plugin.Manifest{acme()})
+	a := Announcement{V: 1, Time: 1_800_000_000_123_456_789, Kind: "acme.renewed", Subject: "eth0", Args: []string{"router.example.com"}}
+	e, k, ok := table.Record(a, "s.json", "")
+	if !ok || k.Name != "acme.renewed" {
+		t.Fatalf("recorded = %v, kind %+v", ok, k)
+	}
+	if !e.Time.Equal(time.Unix(0, a.Time)) || e.Kind != "acme.renewed" || e.Subject != "eth0" ||
+		e.Detail != `{"spool":"s.json","plugin":"acme","sentence":"The certificate for %s was renewed.","args":["router.example.com"],"tone":"success","read":"state"}` {
+		t.Errorf("event = %+v", e)
+	}
+	if e, _, ok := table.Record(Announcement{Kind: CertificateReplaced, Time: 1, Args: []string{"a", "b"}}, "c.json", ""); !ok || e.Detail != `{"spool":"c.json","args":["a","b"]}` {
+		t.Errorf("certificate.replaced = %+v, %v", e, ok)
+	}
+	for _, kind := range []string{"wan.down", "boot", "acme.expired", "ddns.updated"} {
+		if _, _, ok := table.Record(Announcement{Kind: kind, Time: 1}, "x.json", ""); ok {
+			t.Errorf("%s was recorded as announced", kind)
+		}
+	}
+}
+
+// TestAnEventAnUpgradeDeclaresIsRecordedBeforeTheRescan: a plugin's upgrade
+// can announce an event it newly declares before the shell reads its plugins
+// again, so the plugin's registry on disk is read before the event is given up.
+func TestAnEventAnUpgradeDeclaresIsRecordedBeforeTheRescan(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(dir, "acme"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	registry := `{"schema_version":1,"commands":[{"name":"state","kind":"read","version":1,"exec":"/x"}],` +
+		`"events":[{"name":"issued","sentence":"A certificate for %s was issued.","tone":"success","read":"state","notify":true}]}`
+	if err := os.WriteFile(filepath.Join(dir, "acme", "commands.json"), []byte(registry), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	table := NewTable([]plugin.Manifest{acme()})
+	e, k, ok := table.Record(Announcement{Kind: "acme.issued", Time: 1, Args: []string{"x"}}, "s.json", dir)
+	if !ok || !k.Said || k.Plugin != "acme" || !strings.Contains(e.Detail, `"sentence":"A certificate for %s was issued."`) {
+		t.Errorf("issued = %+v, %+v, %v", e, k, ok)
+	}
+	if _, _, ok := table.Record(Announcement{Kind: "acme.expired", Time: 1}, "s.json", dir); ok {
+		t.Error("an event the registry on disk does not declare either was recorded")
 	}
 }
 

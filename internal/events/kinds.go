@@ -10,7 +10,11 @@ package events
 import (
 	"encoding/json"
 	"fmt"
+	"os"
+	"path/filepath"
+	"slices"
 	"strings"
+	"time"
 
 	"github.com/we-are-mono/verso/internal/history"
 	"github.com/we-are-mono/verso/internal/plugin"
@@ -60,6 +64,8 @@ type Kind struct {
 	// Unknown: no installed plugin declares it, so it shows only to a
 	// session that may read the whole of config history.
 	Unknown bool
+	// declared is a plugin's kind's declaration, the words it is recorded with.
+	declared *plugin.EventDeclaration
 }
 
 // Detail is what an announced event keeps beside its kind: the spool name it
@@ -143,11 +149,56 @@ func (t *Table) Of(e history.Event) Kind {
 // their manifests were found.
 func (t *Table) AlertPlugins() []AlertPlugin { return t.plugins }
 
+// Record is the event history keeps of a, taken from the spool under the name
+// spool, and its kind; false when a is of no kind root may announce. A
+// plugin's kind the table lacks is looked for in that plugin's registry in
+// pluginsDir, read again: an upgrade's new event may come before the rescan
+// its package asks for.
+func (t *Table) Record(a Announcement, spool, pluginsDir string) (history.Event, Kind, bool) {
+	k, ok := t.kinds[a.Kind]
+	if !ok {
+		k, ok = declaredOnDisk(pluginsDir, a.Kind)
+	}
+	if !ok || !k.Announced {
+		return history.Event{}, Kind{}, false
+	}
+	d := Detail{Spool: spool, Args: a.Args}
+	if k.declared != nil {
+		d.Plugin, d.Sentence, d.Tone, d.Read = k.Plugin, k.declared.Sentence, k.declared.Tone, k.declared.Read
+	}
+	detail, err := json.Marshal(d)
+	if err != nil {
+		return history.Event{}, Kind{}, false
+	}
+	return history.Event{Time: time.Unix(0, a.Time), Kind: a.Kind, Subject: a.Subject, Detail: string(detail)}, k, true
+}
+
+// declaredOnDisk is kind as its plugin's registry in pluginsDir declares it.
+func declaredOnDisk(pluginsDir, kind string) (Kind, bool) {
+	owner, name, ok := strings.Cut(kind, ".")
+	if pluginsDir == "" || !ok || !ownerName.MatchString(owner) || slices.Contains(plugin.CoreNames, owner) {
+		return Kind{}, false
+	}
+	data, err := os.ReadFile(filepath.Join(pluginsDir, owner, "commands.json"))
+	if err != nil {
+		return Kind{}, false
+	}
+	registry, _, err := plugin.ParseRegistry(data)
+	if err != nil {
+		return Kind{}, false
+	}
+	e, ok := registry.Event(name)
+	if !ok {
+		return Kind{}, false
+	}
+	return pluginKind(owner, e), true
+}
+
 // pluginKind is one declared event of plugin's as a kind of its own.
 func pluginKind(id string, e plugin.EventDeclaration) Kind {
 	k := Kind{
 		Name: id + "." + e.Name, Plugin: id, Words: recordedWords,
-		Grant: &Grant{"verso-plugin", id, e.Read}, Announced: true, Said: e.Notify,
+		Grant: &Grant{"verso-plugin", id, e.Read}, Announced: true, Said: e.Notify, declared: &e,
 	}
 	if e.Alert {
 		k.Alert = id
