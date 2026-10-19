@@ -39,3 +39,8 @@
 - `graphify query "core Go naming a plugin id, path or nav label"` surfaces core's own vocabulary only: event kinds, theme labels, the helper's reset.
 - Core's Go outside tests holds no `/plugins/<id>` path. Its remaining capitalised words that a plugin also uses are OpenWrt's: "Firewall" for the firewall service, "DNS" and "DHCP" for protocols.
 - The guard (`internal/boundary`) reported a planted `pluginHref("firewall", …)` and `navRow.Label == "VPN"` at their lines, and passes on the tree.
+
+## 8.2 — lint and tests (2026-10-19)
+
+- `make lint`: 0 issues (golangci-lint, deadcode, clippy over the helper, the SDK and the in-tree plugins).
+- `make test`: every Go package passes, the guard among them; the Rust crates pass 722 tests with none failing; node passes 79 of 84. The five that fail are `scripts/dev-grid.test.cjs`'s G-grid tests, another session's, as before this change.

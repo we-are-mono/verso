@@ -157,7 +157,7 @@ Every task ends with `make lint` passing, and `make test` passing except the fiv
   - add "The Interfaces listing in the shell": the shell lists interfaces from netifd; the interfaces plugin contributes its editor and config writes through `network` slots; up, down and restart are the listing's own acts; the tree table draws it.
 
   Verify with `git diff --cached docs/BACKLOG.md`, which shows only those hunks.
-- [ ] 8.2 Run `make lint` and `make test`. Verify that every check passes except the five known `scripts/dev-grid.test.cjs` tests, and record the result in the change's notes.
+- [x] 8.2 Run `make lint` and `make test`. Verify that every check passes except the five known `scripts/dev-grid.test.cjs` tests, and record the result in the change's notes.
 
 ## Workflow follow-up
 
