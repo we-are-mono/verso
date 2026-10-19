@@ -30,10 +30,11 @@ fi
 /etc/init.d/cron enable 2>/dev/null
 /etc/init.d/cron start 2>/dev/null
 # Usage history is nlbwmon's, kept a day a period on storage that survives a
-# reboot (ADR-018); it restarts to take the periods up.
+# reboot (ADR-018). usage-setup restarts a running nlbwmon only when it changed
+# a setting, so an upgrade leaves it counting; a stopped one is started.
 /usr/libexec/verso/usage-setup
 /etc/init.d/nlbwmon enable 2>/dev/null
-/etc/init.d/nlbwmon restart 2>/dev/null
+/etc/init.d/nlbwmon running 2>/dev/null || /etc/init.d/nlbwmon start 2>/dev/null
 # The shell probes the uplink over ICMP echo sockets its group is granted
 # (ADR-019); take the grant up now rather than at the next boot.
 sysctl -q -p /etc/sysctl.d/05-verso-ping.conf 2>/dev/null

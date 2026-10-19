@@ -29,6 +29,6 @@ done
 # The daily update check is the package's one crontab line.
 [ -f /etc/crontabs/root ] && sed -i '\#/usr/libexec/verso/update-check#d' /etc/crontabs/root
 
+# usage-setup restarts a running nlbwmon once it has its stock settings back.
 /usr/libexec/verso/usage-setup remove
-/etc/init.d/nlbwmon running 2>/dev/null && /etc/init.d/nlbwmon restart
 exit 0
