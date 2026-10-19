@@ -207,16 +207,16 @@ func declaredOnDisk(pluginsDir, kind string) (Kind, bool) {
 }
 
 // pluginKind is one declared event of plugin's as a kind of its own.
-func pluginKind(id string, e plugin.EventDeclaration) Kind {
+func pluginKind(pluginID string, e plugin.EventDeclaration) Kind {
 	k := Kind{
-		Name: id + "." + e.Name, Plugin: id, Words: recordedWords,
-		Grant: &Grant{"verso-plugin", id, e.Read}, Announced: true, Said: e.Notify, declared: &e,
+		Name: pluginID + "." + e.Name, Plugin: pluginID, Words: recordedWords,
+		Grant: &Grant{"verso-plugin", pluginID, e.Read}, Announced: true, Said: e.Notify, declared: &e,
 	}
 	if e.Alert {
-		k.Alert = id
+		k.Alert = pluginID
 	}
 	for _, end := range e.Ends {
-		k.Ends = append(k.Ends, id+"."+end)
+		k.Ends = append(k.Ends, pluginID+"."+end)
 	}
 	return k
 }

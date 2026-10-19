@@ -45,7 +45,7 @@ type Contribution struct {
 }
 
 // Name is the contribution's full id, <plugin id>.<contribution id>.
-func (c Contribution) Name(plugin string) string { return plugin + "." + c.ID }
+func (c Contribution) Name(pluginID string) string { return pluginID + "." + c.ID }
 
 // Where is the place in a slot a position names.
 type Where int

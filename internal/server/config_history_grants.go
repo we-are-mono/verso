@@ -164,7 +164,7 @@ var (
 // its events show under (ADR-028). A session holds it through the plugin's
 // own ACL group, root's among them, never through one Verso ships, so it is
 // asked of whatever read a declaration names and is not one of shellProbes.
-func pluginReadGrant(plugin, read string) aclProbe { return aclProbe{"verso-plugin", plugin, read} }
+func pluginReadGrant(pluginID, read string) aclProbe { return aclProbe{"verso-plugin", pluginID, read} }
 
 // kindProbe is the probe a session passes to see an event of k, nil when every
 // session may; known is false for a grant the shell does not ask, which no

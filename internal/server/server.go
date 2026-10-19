@@ -704,10 +704,10 @@ func (s *Server) eventKinds() *events.Table {
 	return s.kinds
 }
 
-func (s *Server) manifestByID(id string) (plugin.Manifest, bool) {
+func (s *Server) manifestByID(pluginID string) (plugin.Manifest, bool) {
 	s.manifestsMu.RLock()
 	defer s.manifestsMu.RUnlock()
-	m, ok := s.pluginByID[id]
+	m, ok := s.pluginByID[pluginID]
 	return m, ok
 }
 

@@ -186,7 +186,7 @@ func sectionIcon(section string) string {
 // localized at the display edge (ADR-012): shell-owned labels from base (tr),
 // each plugin's from that plugin's catalog (pluginTr(id)), which is why the
 // ordering happens while they are still English.
-func (s *Server) buildSidebar(active string, tr func(string) string, pluginTr func(id string) func(string) string, pages []pageTab) navModel {
+func (s *Server) buildSidebar(active string, tr func(string) string, pluginTr func(pluginID string) func(string) string, pages []pageTab) navModel {
 	// Every section the manifests register becomes rows — no titles between
 	// them, because the rail is a list of places and not a taxonomy. Status is
 	// served by Overview; Network and System each collapse to one row whose
@@ -286,8 +286,8 @@ func (s *Server) buildSidebar(active string, tr func(string) string, pluginTr fu
 
 // pluginHref is the shell-side URL for a plugin page: the /plugins/<id>/ mount
 // joined with the manifest's (mount-relative) nav path.
-func pluginHref(id, navPath string) string {
-	return "/plugins/" + id + "/" + strings.TrimPrefix(navPath, "/")
+func pluginHref(pluginID, navPath string) string {
+	return "/plugins/" + pluginID + "/" + strings.TrimPrefix(navPath, "/")
 }
 
 func isActive(current, href string) bool {

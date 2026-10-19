@@ -193,11 +193,11 @@ func (b *Bundle) Translator(code string) func(string) string {
 // text resolves from its catalog while shell-owned widget defaults (Save, Details)
 // still resolve from base. A key present in both resolves to the plugin's value.
 // English fallback throughout.
-func (b *Bundle) PluginTranslator(code, plugin string) func(string) string {
+func (b *Bundle) PluginTranslator(code, pluginID string) func(string) string {
 	code = strings.ToLower(code)
-	plugin = strings.ToLower(plugin)
+	pluginID = strings.ToLower(pluginID)
 	comps := b.catalogs[code]
-	return lookup(comps[BaseComponent], comps[plugin], b.sink(code, plugin))
+	return lookup(comps[BaseComponent], comps[pluginID], b.sink(code, pluginID))
 }
 
 // InContext is the catalog key for source said in a context. A catalog keys by

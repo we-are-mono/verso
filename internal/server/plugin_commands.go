@@ -47,11 +47,11 @@ func (s *Server) runPluginCommands(ctx context.Context, m plugin.Manifest, sid s
 // only when the posting plugin declares it in acl.write. The helper checks the
 // session's grant and the arguments against the registry; the shell adds no
 // check of its own that could disagree with it.
-func (s *Server) registeredAct(ctx context.Context, m plugin.Manifest, sid, owner, name string, args map[string]string) error {
-	if !slices.Contains(m.ACL.Write, plugin.ACLScope{Scope: "verso-plugin", Object: owner, Function: name}) {
-		return fmt.Errorf("act %s.%s lacks declared scope", owner, name)
+func (s *Server) registeredAct(ctx context.Context, m plugin.Manifest, sid, pluginID, name string, args map[string]string) error {
+	if !slices.Contains(m.ACL.Write, plugin.ACLScope{Scope: "verso-plugin", Object: pluginID, Function: name}) {
+		return fmt.Errorf("act %s.%s lacks declared scope", pluginID, name)
 	}
-	_, err := s.backend.PluginCommand(ctx, sid, owner, name, args)
+	_, err := s.backend.PluginCommand(ctx, sid, pluginID, name, args)
 	return err
 }
 

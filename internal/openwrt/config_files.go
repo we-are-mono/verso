@@ -48,11 +48,11 @@ func (s configFileState) config(name string) (string, bool) {
 // PluginCommand runs a plugin's registered root command through the helper
 // (ADR-027), which checks the session's grant `verso-plugin <plugin> <name>`
 // and the arguments against the registry before anything runs.
-func (b *NativeBackend) PluginCommand(ctx context.Context, sid, plugin, name string, args map[string]string) (json.RawMessage, error) {
+func (b *NativeBackend) PluginCommand(ctx context.Context, sid, pluginID, name string, args map[string]string) (json.RawMessage, error) {
 	request := pluginCommandRequest{
 		Method: "pluginCommand",
 		SID:    sid,
-		Args:   pluginCommandArgs{Plugin: plugin, Name: name, Args: args},
+		Args:   pluginCommandArgs{Plugin: pluginID, Name: name, Args: args},
 	}
 	var result json.RawMessage
 	err := callHelperWith(ctx, b.helperSocket, "pluginCommand", request, &result, helperCallTimeout)

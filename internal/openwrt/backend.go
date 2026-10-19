@@ -257,7 +257,7 @@ type Backend interface {
 	// PluginCommand runs a plugin's registered root command (ADR-027): a read's
 	// result, or an act's, as the command answered it. A refusal carries the
 	// words the operator reads as its ValidationMessage.
-	PluginCommand(ctx context.Context, sid, plugin, name string, args map[string]string) (json.RawMessage, error)
+	PluginCommand(ctx context.Context, sid, pluginID, name string, args map[string]string) (json.RawMessage, error)
 	// RefreshGrants gives a signed-in session what signing in now would: the
 	// groups of access lists installed since it signed in (ADR-007 §8).
 	RefreshGrants(ctx context.Context, sid string) error
