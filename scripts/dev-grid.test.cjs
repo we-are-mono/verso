@@ -26,7 +26,7 @@ function session({stored = null, storage = 'works'} = {}) {
   const context = vm.createContext({
     document: {
       documentElement: root,
-      getElementById: () => null, // no inlined stylesheet: the hot reload stands down
+      querySelector: () => null, // no linked stylesheet: the hot reload stands down
       addEventListener: (type, f) => { if (type === 'keydown') listeners.push(f); },
     },
     window: {},
