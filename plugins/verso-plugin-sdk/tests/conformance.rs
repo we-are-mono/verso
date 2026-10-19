@@ -989,6 +989,23 @@ fn the_documented_family_decodes() {
     assert_eq!(registry.families[0].name, "fw4");
 }
 
+// docs/plugins.md's events example is one the SDK reads and accepts.
+#[test]
+fn the_documented_events_decode() {
+    use verso_plugin::{EventTone, Registry};
+    let doc = fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/../../docs/plugins.md")).unwrap();
+    let section = doc.split("### Declaring events").nth(1).expect("the events section");
+    let fragment = section.split("```json").nth(1).unwrap().split("```").next().unwrap();
+    let registry: Registry = serde_json::from_str(&format!(
+        r#"{{"schema_version": 1, "commands": [{{"name": "state", "kind": "read", "version": 1, "exec": "/usr/bin/verso-plugin-acme"}}], {fragment}}}"#
+    ))
+    .expect("the example decodes");
+    registry.check().expect("the example is a valid registry");
+    assert_eq!(registry.events.len(), 2);
+    assert_eq!(registry.events[1].tone, EventTone::Danger);
+    assert!(registry.events[1].alert && !registry.events[0].alert);
+}
+
 // docs/plugins.md's registry example is one the SDK reads and accepts.
 #[test]
 fn the_documented_registry_decodes() {

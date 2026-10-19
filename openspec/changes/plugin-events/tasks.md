@@ -16,7 +16,7 @@
   - `registry::check_catalog` fails for a declared sentence a shipped catalog lacks, or translates with another count of `%s`.
 
   Then implement them. Verify with `cargo test` in the SDK and `make test`.
-- [ ] 1.4 Amend ADR-027 in place: the registry's `events`, and `announce` beside `own_write` in decision 9. Add the "Declaring events" part of a new `docs/plugins.md` section, "Events": the fields, `notify` off unless declared, an event's name as its contract, and the catalog check. Its example is checked by a doc test against the SDK's `Registry`. Verify with `cargo test` in the SDK.
+- [x] 1.4 Amend ADR-027 in place: the registry's `events`, and `announce` beside `own_write` in decision 9. Add the "Declaring events" part of a new `docs/plugins.md` section, "Events": the fields, `notify` off unless declared, an event's name as its contract, and the catalog check. Its example is checked by a doc test against the SDK's `Registry`. Verify with `cargo test` in the SDK.
 
 ## 2. One kind table
 

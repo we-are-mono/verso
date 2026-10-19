@@ -894,6 +894,7 @@ by root and writable by root alone. Build it with the SDK's `Registry`, whose
 | `timeout` | Seconds before the helper stops the command and its children: 10 when absent, at most 120. |
 | `args` | An act's arguments, each `{ "kind": … }` with `"optional": true` when it may be left out. |
 | `certificates` | Per read, the fields of its result that hold a PEM certificate. The shell turns each into the facts the HTTPS certificate card shows (subject, issuer, validity, fingerprint, serial, days), so no PEM reaches a page. |
+| `events` | The events your root half announces (see [Events](#events)). The helper does not read them; the shell does. |
 
 The helper reads the file each time a command is asked for, so an install or a
 removal takes effect at once. It runs a command only when the registry file, the
@@ -1007,6 +1008,53 @@ own commands have no dot in their names:
 
 `apk del` removes your registry, your binary and your ACL. The helper then refuses
 your commands as unknown, and every reader of them gets no entry.
+
+## Events
+
+Your pages say how an act went in the answer to its request (`notice`). Some
+outcomes come later: a certificate renewed at night, a request that finishes a
+minute after the operator applied it. Your root half announces those as events
+(ADR-028). The shell records each with the router's other events on System →
+Events, says it as the top-right notification to the operators looking at the
+router, alerts on it where the operator asked, and sends it to procd, where
+other plugins react to it.
+
+### Declaring events
+
+Declare every event your root half announces in your registry's `events`:
+
+```json
+"events": [
+  { "name": "renewed", "sentence": "The certificate for %s was renewed.",
+    "tone": "success", "read": "state", "notify": true,
+    "ends": ["renew-failed"] },
+  { "name": "renew-failed", "sentence": "The certificate for %s could not be renewed.",
+    "tone": "danger", "read": "state", "notify": true, "alert": true }
+]
+```
+
+- `name` — 1–64 of lower-case letters, digits and `-`. The event is
+  `<your id>.<name>`.
+- `sentence` — one English line, `%s` standing for each argument in order, and a
+  key of your catalog: the shell translates it when it shows it and fills in the
+  arguments as written. Your tests call the SDK's `Registry::check_catalog` for
+  each catalog you ship, which fails for a sentence it lacks or translates with
+  another count of `%s`.
+- `tone` — `success`, `info`, `warning` or `danger`.
+- `read` — a read of your registry. A session sees the event, on System → Events
+  and as a notification, only under that read's grant.
+- `notify` — say the event as the notification. Absent, it is recorded and not
+  said: declare it only for an outcome worth interrupting an operator for.
+- `alert` — your plugin becomes an alert kind on System → Events → Alerts, and
+  this event alerts under it.
+- `ends` — your events this one closes, as the internet coming back closes an
+  outage: a failure that alerted sends one more message when an event ending it
+  arrives, and repeats of it in between send nothing.
+
+The shell drops a declaration that breaks a rule, with the reason in the log,
+and keeps your others. The name is the event's contract: you may reword the
+sentence, but a changed meaning, or a change in its arguments' count or order,
+is a new name.
 
 ## The widget vocabulary
 

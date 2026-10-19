@@ -10,6 +10,7 @@
   - ADR-017 §6: the trusted certificate's root work ships with its plugin.
   - ADR-026: slots placed plugins on the screen; this places their root work.
   - ADR-021: a root half's commits are recorded as the router's acts, with their cause.
+  - ADR-028: the registry declares the events a root half announces.
 
 ## Context
 
@@ -36,6 +37,8 @@ root half at all.
    arguments, an optional timeout, and, for an act, a schema of its arguments. The
    helper reads the file each time a command is asked for, so an install or a removal
    takes effect at once; the file is small, and the call starts a process anyway.
+   The same file declares the events the root half announces (`events`, ADR-028),
+   which the shell reads and the helper does not.
 
 2. **One verb, gated by a plugin scope.** `pluginCommand {plugin, name, args}` is
    granted not as `ubus verso pluginCommand` but per command, as
@@ -92,7 +95,10 @@ root half at all.
    names the plugin and one English sentence, a key of the plugin's catalog. Config
    history records the commit as the router's own act with that cause (ADR-021). A
    root half's mark never names an operator: only the helper's commits made for an
-   operator's act do.
+   operator's act do. What a root half saw happen, rather than committed, it
+   announces with the SDK's `root::announce(plugin, event, subject, args)`, beside
+   `own_write`: the event its registry declares, in the same vocabulary of an
+   English sentence and its arguments (ADR-028).
 
 Core keeps the root work the shell itself renders (the firewall's status and log, DHCP
 leases, network state) and what guards access to the router (credentials, SSH keys,
