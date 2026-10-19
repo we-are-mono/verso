@@ -36,14 +36,14 @@
 
 ## 3. Announcing
 
-- [ ] 3.1 Test first in `internal/events` (injected euid and shell uid, temp spool, registries in a temp plugins dir), in the manner of `cmd/verso/historydir_test.go`:
+- [x] 3.1 Test first in `internal/events` (injected euid and shell uid, temp spool, registries in a temp plugins dir), in the manner of `cmd/verso/historydir_test.go`:
   - each of these is refused, with a reason, leaving nothing: a non-root caller; an undeclared kind; a core kind other than `certificate.replaced`; arguments that do not fill the sentence; a subject that is not a device name; an argument over 256 bytes or holding any control character; a ninth argument; 256 announcements waiting; a missing spool;
   - each of these is refused, and nothing is written at a link's target: a link at the spool's name, a directory owned by another account, a directory with any group or other bit;
   - an accepted one is written through the checked descriptor, mode `0644`, renamed to `<ns:020>-<pid>-<random>.json`, and two announced in one nanosecond both stand;
   - the reader's parser reads it back field for field.
 
   Then implement the writer and the reader's parser (design decision 2). Verify with `make test`.
-- [ ] 3.2 Test first in `cmd/verso/main_test.go`:
+- [x] 3.2 Test first in `cmd/verso/main_test.go`:
   - `verso announce` exits 0 on an accepted announcement and non-zero, with the reason on stderr, on a refused one;
   - it then runs `ubus call service event` with type `verso.<owner>.<event>` and data `{subject, args}`, through an injected runner;
   - a failing ubus is said on stderr and still exits 0.
@@ -64,8 +64,8 @@
 
 ## 4. Recording once
 
-- [ ] 4.1 Test first in `internal/history`: `Store.RecordOnce` records an event, records nothing for a second with the same time, kind and spool name, and records one whose spool name differs. Then implement it. Verify with `make test`.
-- [ ] 4.2 Test first in `internal/server` (temp spool, injected owner check):
+- [x] 4.1 Test first in `internal/history`: `Store.RecordOnce` records an event, records nothing for a second with the same time, kind and spool name, and records one whose spool name differs. Then implement it. Verify with `make test`.
+- [x] 4.2 Test first in `internal/server` (temp spool, injected owner check):
   - files are taken oldest name first;
   - each of these is removed unrecorded with a logged reason: a file not owned by root, a link, one over 8 KiB, an unknown format version, a kind neither the table nor its plugin's registry on disk declares;
   - a kind the table lacks but its plugin's `commands.json` on disk declares is recorded;

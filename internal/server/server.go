@@ -165,6 +165,12 @@ type Server struct {
 	// kinds is every kind of event the router records, its own and the
 	// installed plugins' declared events (ADR-028).
 	kinds *events.Table
+	// pluginsDir is where the installed plugins' registries are read again
+	// from when an announcement's kind is new (SetPluginsDir).
+	pluginsDir string
+	// announcerUID is the account whose announcements the events spool takes:
+	// root, the zero value; a test's own account stands in for it.
+	announcerUID int
 	// rescan re-reads the manifest directory (wired by cmd/verso; nil in
 	// tests that never install). Its result replaces the served set.
 	rescan   func() []plugin.Manifest

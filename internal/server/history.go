@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/we-are-mono/verso/internal/alerts"
+	"github.com/we-are-mono/verso/internal/events"
 	"github.com/we-are-mono/verso/internal/history"
 	"github.com/we-are-mono/verso/internal/openwrt"
 	"github.com/we-are-mono/verso/internal/probe"
@@ -54,6 +55,7 @@ func (s *Server) StartHistory(dir, from string, probes []netip.Addr, notify aler
 	var watching sync.WaitGroup
 	watching.Go(func() { watchWAN(watchCtx, store, openwrt.KernelWAN) })
 	watching.Go(func() { s.watchSpool(watchCtx, store, changesSpool) })
+	watching.Go(func() { s.watchAnnouncements(watchCtx, store, events.SpoolDir) })
 	watching.Go(func() { prober.Run(watchCtx) })
 	watching.Go(func() { s.alerter.Run(watchCtx) })
 	ctx, cancel := context.WithCancel(context.Background())
