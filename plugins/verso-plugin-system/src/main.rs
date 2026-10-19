@@ -3,15 +3,14 @@
 use std::collections::BTreeMap;
 use std::net::{IpAddr, Ipv6Addr};
 use std::time::{SystemTime, UNIX_EPOCH};
+use verso_plugin::datetime::normalize_local_datetime;
 use verso_plugin::{
     commit, commit_new, json, serve_described, ApplyAction, Envelope, Field, Form, List, Request,
     SectionWidget, SelectOption, Snapshot, Tone, Widget,
 };
 mod access;
 mod credentials;
-mod datetime;
 mod describe;
-use datetime::normalize_local_datetime;
 mod sshkey;
 mod timezones;
 use timezones::ZONES;

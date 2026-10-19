@@ -31,7 +31,7 @@ mod reset;
 mod uci_committed;
 mod usage;
 
-#[path = "../../plugins/verso-plugin-system/src/datetime.rs"]
+#[path = "../../plugins/verso-plugin-sdk/src/datetime.rs"]
 mod datetime;
 use datetime::normalize_local_datetime;
 

@@ -50,3 +50,28 @@ pub fn normalize_local_datetime(value: &str) -> Option<String> {
         "{year:04}-{month:02}-{day:02} {hour:02}:{minute:02}:{second:02}"
     ))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::normalize_local_datetime;
+
+    #[test]
+    fn a_real_day_is_written_as_date_takes_it() {
+        assert_eq!(
+            normalize_local_datetime("2024-02-29T23:59:59").as_deref(),
+            Some("2024-02-29 23:59:59")
+        );
+    }
+
+    #[test]
+    fn anything_but_a_real_day_and_time_is_refused() {
+        for s in [
+            "2026-02-29T00:00:00",
+            "2026-04-31T12:00:00",
+            "2026-01-01T25:00:00",
+            "2026-01-01T00:00:00;reboot",
+        ] {
+            assert!(normalize_local_datetime(s).is_none(), "{s}");
+        }
+    }
+}

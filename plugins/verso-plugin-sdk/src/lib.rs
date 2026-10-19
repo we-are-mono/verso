@@ -36,6 +36,7 @@ pub use serde_json::{json, Map, Value};
 
 mod cells;
 pub use cells::{muted_cell, pill_cell, text_cell, EM_DASH};
+pub mod datetime;
 pub mod dhcp;
 mod encoding;
 pub use encoding::{base64_decode, url_encode};
