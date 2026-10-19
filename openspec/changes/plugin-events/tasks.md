@@ -32,7 +32,7 @@
   - the event shows only under `verso-plugin <plugin> <read>`.
 
   Then move `eventRow`, `eventGrants` and `eventsView.show` onto the table. Add `ubus verso accessCredentials` to `shellProbes`. Verify with `make test`: the root-grants test also holds the new probe.
-- [ ] 2.3 Amend ADR-019 in place: the events table gains a plugin's announced events and the certificate's replacement, the VPN row's source becomes the VPN plugin's announced events, and the kinds become one table. Verify by checking that `grep -n 'daemon hooks' docs/ADR/019-history-and-events.md` finds nothing.
+- [x] 2.3 Amend ADR-019 in place: the events table gains a plugin's announced events and the certificate's replacement, the VPN row's source becomes the VPN plugin's announced events, and the kinds become one table. Verify by checking that `grep -n 'daemon hooks' docs/ADR/019-history-and-events.md` finds nothing.
 
 ## 3. Announcing
 

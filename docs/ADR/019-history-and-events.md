@@ -4,7 +4,7 @@
 - **Date:** 2026-10-08
 - **Relates to:** ADR-007 (privileged reads), ADR-013 (Verso's settings),
   ADR-014 (unattended network access is opt-in), ADR-018 (per-device usage),
-  ADR-020 (alerts)
+  ADR-020 (alerts), ADR-028 (events root announces)
 
 ## Context
 
@@ -181,10 +181,20 @@ the log:
 | Router booted, cleanly or not | the kernel's boot id and boot time; a clean stop leaves a mark beside the history |
 | Changes applied, changes rolled back | the shell's own apply path (ADR-010): an apply confirmed is applied; one whose rollback window passes, plus five seconds, without a confirm was reverted by the router. Either names the pages its changes were made on |
 | Firmware installed | the release changing between boots |
-| VPN tunnel up, down | the VPN plugin's daemon hooks |
+| VPN tunnel up, down | the VPN plugin's announced events (ADR-028) |
 | New device | a MAC address seen for the first time |
 | DHCP pool nearly full | lease count against the pool size |
 | History not saved, saved again | the shell's own writes, both recorded once writing works again (below, "Where it lives") |
+| The web certificate replaced | the root install command and the helper's hand install, announced (ADR-017 §6, ADR-028) |
+| A plugin's own events | what its root half announces, as its registry declares them (ADR-028) |
+
+Every kind is one entry of one table (`internal/events`): its words, its tone,
+the grant it shows under, whether root may announce it, whether it is said to
+the operators looking, its alert kind (ADR-020) and the kinds it ends. The
+Events page, the grants, the chart marks and the alerts all read an event
+through it, the router's own kinds and every installed plugin's declared ones
+alike. A plugin's event keeps the sentence and tone it was recorded with, so it
+still reads, in English, once the plugin is gone.
 
 The internet is up while a default route stands in the main table, IPv4 or
 IPv6. A default route in a policy table carries only the traffic marked for it
@@ -245,7 +255,9 @@ out to it unattended is opt-in (ADR-014).
 - System → Events lists the timeline, newest first: when, on which interface,
   and what happened as a status coloured by its weight. It is a page of its
   own beside Logs, whose console fills its page. Each event shows only to a
-  session rpcd grants the read its fact comes from (ADR-007, ADR-021).
+  session rpcd grants the read its fact comes from (ADR-007, ADR-021): a
+  plugin's, the registered read its declaration names; one whose plugin is
+  gone, a session that may read the whole of config history.
 - System → Maintenance gains the "History is kept in" row, its description
   stating the file's size and the free space beside it.
 
