@@ -46,7 +46,9 @@ func (s *Server) refreshAlerts(ctx context.Context, sid string) {
 		log.Printf("verso: alerts: settings not reread: %v", err)
 		return
 	}
-	s.alerter.Configure(alertsConfig(config))
+	c := alertsConfig(config)
+	c.Table = s.eventKinds()
+	s.alerter.Configure(c)
 }
 
 // webAddress is whether an alert can be posted to raw.
@@ -93,9 +95,22 @@ func (s *Server) handleAlerts(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	table := s.eventKinds()
 	kinds := cfg.Kinds
 	if kinds == nil {
-		kinds = alerts.DefaultKinds
+		kinds = alerts.Every(table)
+	}
+	options := []widget.Option{
+		{Value: alerts.KindWAN, Label: "The internet goes down and comes back"},
+		{Value: alerts.KindBoot, Label: "The router restarts after losing power or crashing"},
+		{Value: alerts.KindRollback, Label: "Applied changes are rolled back because nobody could confirm them"},
+		{Value: alerts.KindStorage, Label: "History cannot be saved"},
+	}
+	// Each installed plugin with an alerting event is a kind of its own, by
+	// its name in the reader's words (ADR-028).
+	pluginTr := s.pluginTranslators(r)
+	for _, p := range table.AlertPlugins() {
+		options = append(options, widget.Option{Value: p.ID, Label: pluginTr(p.ID)(p.Name)})
 	}
 	children := []widget.Widget{}
 	if message != "" {
@@ -107,12 +122,7 @@ func (s *Server) handleAlerts(w http.ResponseWriter, r *http.Request) {
 			Help: s.alertsHelp(r, g, tr)},
 		&widget.Field{Name: "heartbeat", Label: "Heartbeat address", Value: cfg.Heartbeat, Placeholder: "Optional",
 			Help: "The router calls this every five minutes, and a monitor there (Healthchecks.io, Uptime Kuma) tells you when the calls stop: the one way to hear of an outage while it lasts."},
-		&widget.Field{Name: "kind", Label: "Alert when", Kind: "checks", Values: kinds, Options: []widget.Option{
-			{Value: alerts.KindWAN, Label: "The internet goes down and comes back"},
-			{Value: alerts.KindBoot, Label: "The router restarts after losing power or crashing"},
-			{Value: alerts.KindRollback, Label: "Applied changes are rolled back because nobody could confirm them"},
-			{Value: alerts.KindStorage, Label: "History cannot be saved"},
-		}},
+		&widget.Field{Name: "kind", Label: "Alert when", Kind: "checks", Values: kinds, Options: options},
 	}})
 	if s.alerter.Configured() && mayTestAlerts(r.Context(), g) {
 		children = append(children, &widget.Form{Action: alertsTestPath, NoSubmit: true, Fields: []widget.Widget{
@@ -161,7 +171,7 @@ func (s *Server) stageAlerts(ctx context.Context, sid string, verso map[string]a
 	}
 	chosen := slices.Clone(next.Kinds)
 	slices.Sort(chosen)
-	defaults := slices.Sorted(slices.Values(alerts.DefaultKinds))
+	defaults := slices.Sorted(slices.Values(alerts.Every(s.eventKinds())))
 	switch {
 	case slices.Equal(chosen, defaults):
 		if section["kind"] != nil {

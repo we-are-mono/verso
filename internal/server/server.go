@@ -637,6 +637,10 @@ func (s *Server) Rescan() {
 	s.slots = loadSlots(manifests)
 	s.kinds = events.NewTable(manifests)
 	s.manifestsMu.Unlock()
+	// A plugin that came or went brings or takes its alert kind (ADR-028).
+	if s.alerter != nil {
+		s.alerter.SetTable(s.eventKinds())
+	}
 	// A plugin installed while operators are signed in ships access lists
 	// their sessions never received; each session is given, with its own sid,
 	// what signing in now would give it (ADR-007 §8).

@@ -119,6 +119,7 @@ func (s *Server) openHistory(dir string, notify alerts.Config) (*history.Store, 
 	// alerts.
 	host, _ := os.Hostname()
 	alerter := alerts.New(store, host)
+	notify.Table = s.eventKinds()
 	alerter.Configure(notify)
 	if err := alerter.Begin(context.Background()); err != nil {
 		log.Printf("verso: alerts: %v", err)

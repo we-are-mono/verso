@@ -3,7 +3,8 @@
 - **Status:** Accepted
 - **Date:** 2026-10-08
 - **Relates to:** ADR-013 (Verso's settings), ADR-014 (unattended network
-  access is opt-in), ADR-019 (history and events)
+  access is opt-in), ADR-019 (history and events), ADR-028 (events root
+  announces)
 
 ## Context
 
@@ -53,7 +54,8 @@ it by from outside.
 
 ### Which events alert
 
-`verso.alerts.kind` lists the kinds that alert. Absent, all four do:
+`verso.alerts.kind` lists the kinds that alert. Absent, every kind does: the
+router's four, and each installed plugin's (below).
 
 | Kind | Alerts on |
 |---|---|
@@ -61,18 +63,34 @@ it by from outside.
 | `boot` | a start after losing power or crashing; a clean reboot is not news |
 | `rollback` | applied changes the router undid because nobody could confirm them: someone locked themselves out; changes kept are not news |
 | `storage` | the history not being saved, or its file not being rewritten of the secrets a scrub took out (ADR-021). The outbox lives in that history, so this one is sent at once and only once, outside it; if it does not arrive it is not tried again |
+| `<plugin>` | the events an installed plugin declares as alerting (ADR-028), its id the kind and its name the checkbox's words; acme's failures to issue or renew the certificate, for one |
+
+A plugin's alert is titled with the router's hostname and the event's sentence
+in English, its arguments filled in, and says when it happened. An id left in
+the option after its plugin is removed matches nothing. The kinds reach the
+alerter with the table of kinds the router records (ADR-019), again on every
+rescan, so a plugin installed while the shell runs alerts from then on.
 
 ### Incidents, not events
 
-- **One message per incident.** A drop within five minutes of the last
-  recovery reopens the incident: a WAN that flaps ten times sends one alert,
-  and a recovery not yet sent is withdrawn.
+- **One message per incident.** An incident is opened by an alerting event
+  that another kind ends, on one subject: the internet going down, which its
+  coming back ends; a plugin's failure, which a success it declares ends. An
+  opening event within five minutes of the incident's close reopens it: a WAN
+  that flaps ten times sends one alert, and a recovery not yet sent is
+  withdrawn. An alerting event nothing ends is one message each time.
 - **A drop is held a minute.** Its first try waits a minute, and a drop that
   ends sooner, or before it could be delivered, is rewritten into one message
   that says when it started and ended. Without the hold, a retry that lands
   between the line returning and the shell noticing sends both halves.
 - **Recovery closes it.** An incident whose drop was already delivered sends a
-  second message naming its duration.
+  second message naming its duration; repeats of its opening event while it
+  is open send nothing.
+- **Incidents outlast a restart.** The alerter takes up, as it starts, the
+  incidents the history leaves open, as already told: a repeat sends nothing,
+  and the close sends the recovery. The one loss is a drop still within its
+  minute's hold at the restart, which is sent as it stands rather than
+  rewritten with its end.
 - **Sent when it can be.** An alert that cannot be delivered waits in the
   history's outbox (`alerts` in `history.db`) and is retried, thirty seconds
   doubling to ten minutes apart, for 24 hours, then dropped. A receiver on the

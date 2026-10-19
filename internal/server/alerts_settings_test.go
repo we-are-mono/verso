@@ -17,6 +17,7 @@ import (
 
 	"github.com/we-are-mono/verso/internal/alerts"
 	"github.com/we-are-mono/verso/internal/history"
+	"github.com/we-are-mono/verso/internal/plugin"
 )
 
 func withAlerter(t *testing.T, s *Server) *history.Store {
@@ -149,6 +150,81 @@ func TestSavingAlertsStagesThem(t *testing.T) {
 	postPlugin(t, s, alertsPath, url.Values{"url": {"https://ntfy.sh/home"}})
 	if kinds, _ := writes[0].values["kind"].([]string); !slices.Equal(kinds, []string{"none"}) {
 		t.Fatalf("no kind chosen wrote %v, want [none]", writes[0].values["kind"])
+	}
+}
+
+// alertingAcme is acme declaring a failure that alerts.
+func alertingAcme() plugin.Manifest {
+	m := acmeEvents()
+	m.Commands.Events = append(m.Commands.Events, plugin.EventDeclaration{
+		Name: "renew-failed", Sentence: "The certificate for %s could not be renewed.", Tone: "danger", Read: "state", Notify: true, Alert: true})
+	return m
+}
+
+// TestAnAlertingPluginIsAKindOfItsOwn: each installed plugin declaring an
+// alerting event is a checkbox of its own, by its name; with no kinds chosen
+// every box is ticked, the plugins' with the router's.
+func TestAnAlertingPluginIsAKindOfItsOwn(t *testing.T) {
+	s := newServerWith(t, fakeBackend{access: true, uci: map[string]map[string]any{"verso": {"alerts": map[string]any{
+		".type": "alerts", "url": "https://ntfy.sh/home",
+	}}}}, &fakeTransport{}, []plugin.Manifest{alertingAcme()})
+	withAlerter(t, s)
+	_, body := getSignedIn(t, s, alertsPath)
+	for _, want := range []string{`value="wan" checked`, `value="acme" checked`, "Trusted certificate"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("alerts form missing %q", want)
+		}
+	}
+}
+
+// TestSavingEveryKindLeavesNoList: the full set, the plugins' among it, is
+// what an absent option means, so saving it removes the option; a plugin that
+// declares no alerting event is no kind.
+func TestSavingEveryKindLeavesNoList(t *testing.T) {
+	var writes []uciWrite
+	var deletes []string
+	s := newServerWith(t, fakeBackend{writes: &writes, deletes: &deletes, uci: map[string]map[string]any{"verso": {"alerts": map[string]any{
+		".type": "alerts", "kind": []any{"wan"},
+	}}}}, &fakeTransport{}, []plugin.Manifest{alertingAcme()})
+	withAlerter(t, s)
+	postPlugin(t, s, alertsPath, url.Values{"url": {"https://ntfy.sh/home"}, "kind": {"wan", "boot", "rollback", "storage", "acme"}})
+	if !slices.Contains(deletes, "verso.alerts.kind") {
+		t.Errorf("deletes = %v, want the full set removed", deletes)
+	}
+	writes, deletes = nil, nil
+	postPlugin(t, s, alertsPath, url.Values{"url": {"https://ntfy.sh/home"}, "kind": {"wan", "boot", "rollback", "storage"}})
+	if kinds, _ := writes[0].values["kind"].([]string); !slices.Equal(kinds, []string{"boot", "rollback", "storage", "wan"}) {
+		t.Errorf("the router's four without acme wrote %v", writes[0].values["kind"])
+	}
+}
+
+// TestARemovedPluginsKindChangesNothing: a plugin id left in the option after
+// the plugin is gone matches no kind and stands in no box.
+func TestARemovedPluginsKindChangesNothing(t *testing.T) {
+	s := newServer(t, fakeBackend{access: true, uci: map[string]map[string]any{"verso": {"alerts": map[string]any{
+		".type": "alerts", "url": "https://ntfy.sh/home", "kind": []any{"wan", "acme"},
+	}}}})
+	withAlerter(t, s)
+	status, body := getSignedIn(t, s, alertsPath)
+	if status != http.StatusOK || strings.Contains(body, `value="acme"`) || !strings.Contains(body, `value="wan" checked`) {
+		t.Errorf("status %d; a removed plugin's kind is drawn, or the router's lost:\n%s", status, body)
+	}
+}
+
+// TestARescanHandsTheAlerterThePluginsKinds: a plugin installed while the
+// shell runs alerts under its own kind from then on.
+func TestARescanHandsTheAlerterThePluginsKinds(t *testing.T) {
+	s := newServer(t, fakeBackend{access: true})
+	store := withAlerter(t, s)
+	s.alerter.Configure(alerts.Config{URL: "https://ntfy.sh/home", Table: s.eventKinds()})
+	s.SetRescan(func() []plugin.Manifest { return []plugin.Manifest{alertingAcme()} })
+	s.Rescan()
+	at := time.Now()
+	s.alerter.Observe(context.Background(), []history.Event{{Time: at, Kind: "acme.renew-failed",
+		Detail: `{"spool":"s","plugin":"acme","sentence":"The certificate for %s could not be renewed.","args":["router.example.com"],"tone":"danger","read":"state"}`}})
+	due, err := store.Due(context.Background(), at.Add(time.Hour))
+	if err != nil || len(due) != 1 || due[0].Title != "home-router: The certificate for router.example.com could not be renewed." {
+		t.Errorf("after the rescan, acme's failure queued %+v, %v", due, err)
 	}
 }
 

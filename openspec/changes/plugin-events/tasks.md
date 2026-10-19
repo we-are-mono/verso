@@ -108,7 +108,7 @@
 
 ## 6. Alerts
 
-- [ ] 6.1 Test first in `internal/alerts`:
+- [x] 6.1 Test first in `internal/alerts`:
   - every existing WAN, boot, rollback and storage test passes unchanged;
   - a plugin kind that another's `ends` lists: the opening event is held a minute; closed within it, it is rewritten into one message; closed later, the recovery message names the duration;
   - either of two kinds listing the same failure closes it;
@@ -118,15 +118,15 @@
   - kinds arrive through `Configure`, with no package-global default left.
 
   Then generalise incidents over the kind table (design decision 8). Verify with `make test`.
-- [ ] 6.2 Test first in `internal/alerts`: `Begin` over a store holding an open WAN outage and an open plugin failure rebuilds both. The next repeat sends nothing, and each close sends its recovery message. A closed incident is not rebuilt. Then implement the rebuild. Verify with `make test`.
-- [ ] 6.3 Test first in `alerts_settings_test.go`:
+- [x] 6.2 Test first in `internal/alerts`: `Begin` over a store holding an open WAN outage and an open plugin failure rebuilds both. The next repeat sends nothing, and each close sends its recovery message. A closed incident is not rebuilt. Then implement the rebuild. Verify with `make test`.
+- [x] 6.3 Test first in `alerts_settings_test.go`:
   - each installed plugin declaring an alerting event is a checkbox labelled by its manifest name through its catalog;
   - with `verso.alerts.kind` absent, every box is ticked;
   - saving exactly the full set removes the option;
   - an id of a removed plugin left in the option changes nothing.
 
   Then implement it. Verify with `make test`.
-- [ ] 6.4 Amend ADR-020 in place:
+- [x] 6.4 Amend ADR-020 in place:
   - a plugin's alerting events are a kind;
   - absent means every kind;
   - incidents come from `ends` and are rebuilt from history at start.
