@@ -152,7 +152,7 @@ Every task ends with `make lint` passing, and `make test` passing except the fiv
 
 ## 8. The backlog and the last checks
 
-- [ ] 8.1 In `docs/BACKLOG.md`, staging only this change's hunks, since the file holds another session's edits:
+- [x] 8.1 In `docs/BACKLOG.md`, staging only this change's hunks, since the file holds another session's edits:
   - remove the item "Plugin contracts: the shell names no plugin";
   - add "The Interfaces listing in the shell": the shell lists interfaces from netifd; the interfaces plugin contributes its editor and config writes through `network` slots; up, down and restart are the listing's own acts; the tree table draws it.
 

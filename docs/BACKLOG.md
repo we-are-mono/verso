@@ -23,25 +23,12 @@ own and points at the decision that governs it; the rationale lives there, not h
   - the drawer refreshing itself while a request runs (a new widget
     behaviour, the owner's call), and a Request now act; acme's outcomes reach
     the top-right notification as its announced events (ADR-028);
-- **Plugin contracts: the shell names no plugin.** Plugins fill slots
-  (ADR-026), run their root work through the command registry (ADR-027) and
-  announce events (ADR-028, change `plugin-events`). The shell still names
-  plugins in these places, each a move through the registry or the manifest
-  (change `shell-names-no-plugin`):
-  - `wirelessState`, computed in Go for the wireless plugin (`gateway.go`):
-    the wireless plugin's registered read;
-  - the interface acts `interface-restart`, `interface-up` and
-    `interface-down` in the closed `commands` set (`plugin_commands.go`): the
-    interfaces plugin's registered acts;
-  - links to `/plugins/firewall/` (`exposure.go`, `fwlog.go`): firewall's
-    `entity_acts` open links for rule, port-forward and zone;
-  - the Overview's links found by the nav labels "VPN" and "Interfaces"
-    (`server.go`): a manifest field naming the card an entry serves; the
-    Tunnels card says "Open VPN" while linking to Interfaces with VPN absent;
-  - the qos "Mbit/s" shim in `device_limits.go`, dropped with a floor.
-
-  firewall4's reload in Services and the `device`/`shape` slot stay core's:
-  OpenWrt's service and core's own slot vocabulary.
+- **The Interfaces listing in the shell.** Interfaces are the device's own, as
+  its devices are: the shell lists them from netifd, configured ones that are
+  down included, and the interfaces plugin contributes its editor and its
+  config writes through `network` slots, as dnsdhcp and qos contribute to the
+  Devices page. Up, down and restart (`interface-*`, `plugin_commands.go`) are
+  the listing's own acts, and the tree table (`table.interfaces`) draws it.
 - **VPN tunnel events.** OpenVPN runs its hooks as the profile's user once
   the profile drops privileges, and only root announces (ADR-028). A root-side
   source for the tunnel's state, the kernel's `net` hotplug for its device or
