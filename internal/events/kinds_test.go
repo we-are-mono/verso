@@ -120,6 +120,9 @@ func TestPluginKindsJoinTheTable(t *testing.T) {
 	if !slices.Equal(renewed.Ends, []string{"acme.renew-failed"}) {
 		t.Errorf("ends = %v", renewed.Ends)
 	}
+	if !table.Ended("acme.renew-failed") || table.Ended("acme.renewed") || !table.Ended("wan.down") || table.Ended("boot") {
+		t.Error("Ended does not name the kinds another kind ends")
+	}
 	if failed, _ := table.Kind("acme.renew-failed"); failed.Alert != "acme" {
 		t.Errorf("an alerting event alerts under its plugin's id: %q", failed.Alert)
 	}

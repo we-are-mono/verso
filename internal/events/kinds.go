@@ -93,6 +93,8 @@ const certificateSentence = "The web interface’s certificate was replaced, for
 type Table struct {
 	kinds   map[string]Kind
 	plugins []AlertPlugin
+	// ended is the kinds another kind ends: the ones that open an incident.
+	ended map[string]bool
 }
 
 // AlertPlugin is an installed plugin that declares an alerting event, an
@@ -119,8 +121,18 @@ func NewTable(manifests []plugin.Manifest) *Table {
 			t.plugins = append(t.plugins, AlertPlugin{ID: m.ID, Name: m.Name})
 		}
 	}
+	t.ended = map[string]bool{}
+	for _, k := range t.kinds {
+		for _, end := range k.Ends {
+			t.ended[end] = true
+		}
+	}
 	return t
 }
+
+// Ended reports whether another kind ends kind, so that an alert of it opens
+// an incident the other closes (ADR-020).
+func (t *Table) Ended(kind string) bool { return t.ended[kind] }
 
 // Kind is the kind named name, if the router records it.
 func (t *Table) Kind(name string) (Kind, bool) {

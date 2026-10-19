@@ -23,11 +23,14 @@ import (
 	"time"
 
 	"github.com/we-are-mono/verso/internal/clock"
+	"github.com/we-are-mono/verso/internal/events"
 	"github.com/we-are-mono/verso/internal/history"
 	"github.com/we-are-mono/verso/internal/units"
 )
 
-// The kinds of alert an operator chooses from (verso.alerts.kind).
+// The router's own kinds of alert an operator chooses from (verso.alerts.kind),
+// beside one for each installed plugin that declares an alerting event, named
+// by its id (ADR-028).
 const (
 	KindWAN      = "wan"      // the internet going down and coming back
 	KindBoot     = "boot"     // a start after losing power or crashing
@@ -35,8 +38,18 @@ const (
 	KindStorage  = "storage"  // the history not being saved
 )
 
-// DefaultKinds alert when verso.alerts.kind is absent.
-var DefaultKinds = []string{KindWAN, KindBoot, KindRollback, KindStorage}
+// Every is every kind of alert: the router's own and, in the order table found
+// them, each installed plugin's that declares an alerting event. They all
+// alert while verso.alerts.kind is absent.
+func Every(table *events.Table) []string {
+	kinds := []string{KindWAN, KindBoot, KindRollback, KindStorage}
+	if table != nil {
+		for _, p := range table.AlertPlugins() {
+			kinds = append(kinds, p.ID)
+		}
+	}
+	return kinds
+}
 
 const (
 	// flapWindow joins drops this close to a recovery into one incident.
@@ -54,16 +67,23 @@ const (
 )
 
 // Config is verso.alerts: where alerts go, where the heartbeat goes, and which
-// kinds alert (nil: DefaultKinds). An empty address sends nothing.
+// kinds alert (nil: Every kind). Table is the kinds of event the router
+// records, its own and the installed plugins' (nil: the router's own). An
+// empty address sends nothing.
 type Config struct {
 	URL       string
 	Heartbeat string
 	Kinds     []string
+	Table     *events.Table
 }
 
-// incident is the internet's outage as one story: from its first drop to its
-// last recovery, flapping included.
+// incident is one story told as one alert and its recovery: from the first
+// event of its opening kind on its subject to the last that closes it, a
+// flapping line's drops included (ADR-020). first is the event that opened it,
+// whose words its alert says.
 type incident struct {
+	first      history.Event
+	kind       events.Kind
 	start, end time.Time
 	open       bool
 	downAlert  int64
@@ -77,16 +97,17 @@ type Alerter struct {
 	client *http.Client
 	now    func() time.Time
 
-	mu       sync.Mutex
-	cfg      Config
-	wan      *incident
-	lastBeat time.Time
-	after    int64
+	mu        sync.Mutex
+	cfg       Config
+	incidents map[string]*incident
+	lastBeat  time.Time
+	after     int64
 }
 
 // New alerts in host's name ("home-router: the internet is down").
 func New(store *history.Store, host string) *Alerter {
-	return &Alerter{store: store, host: host, client: &http.Client{Timeout: 10 * time.Second}, now: time.Now}
+	return &Alerter{store: store, host: host, client: &http.Client{Timeout: 10 * time.Second}, now: time.Now,
+		incidents: map[string]*incident{}}
 }
 
 // Configure takes up new settings; it takes effect from the next event.
@@ -96,39 +117,72 @@ func (a *Alerter) Configure(c Config) {
 	a.cfg = c
 }
 
+// SetTable takes up the kinds of event the installed plugins declare now,
+// after a plugin came or went, keeping every other setting.
+func (a *Alerter) SetTable(t *events.Table) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.cfg.Table = t
+}
+
+// routersOwn is the table of the router's own kinds, for an alerter told of
+// no plugins.
+var routersOwn = events.NewTable(nil)
+
+func (a *Alerter) table() *events.Table {
+	if a.cfg.Table == nil {
+		return routersOwn
+	}
+	return a.cfg.Table
+}
+
 func (a *Alerter) wants(kind string) bool {
-	if a.cfg.URL == "" {
+	if a.cfg.URL == "" || kind == "" {
 		return false
 	}
 	kinds := a.cfg.Kinds
 	if kinds == nil {
-		kinds = DefaultKinds
+		kinds = Every(a.cfg.Table)
 	}
 	return slices.Contains(kinds, kind)
 }
 
-// Begin skips the events recorded before the alerter started: they happened
-// while it was not watching, and were reported then or not at all.
+// Begin takes up the incidents the history leaves open, and skips the events
+// recorded before the alerter started: they happened while it was not
+// watching, and were reported then or not at all. Their incidents are taken
+// up as told: a repeat of one still open sends nothing, and its close sends
+// the recovery.
 func (a *Alerter) Begin(ctx context.Context) error {
-	_, last, err := a.store.EventsAfter(ctx, 0)
+	recorded, last, err := a.store.EventsAfter(ctx, 0)
 	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.observe(ctx, recorded, true)
 	a.after = last
-	a.mu.Unlock()
 	return err
 }
 
 // Observe makes alerts of events, oldest first.
-func (a *Alerter) Observe(ctx context.Context, events []history.Event) {
+func (a *Alerter) Observe(ctx context.Context, recorded []history.Event) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	for _, e := range events {
+	a.observe(ctx, recorded, false)
+}
+
+// observe makes alerts of events, oldest first; told, it only takes their
+// incidents up, as Begin does, keeping nothing.
+func (a *Alerter) observe(ctx context.Context, recorded []history.Event, told bool) {
+	table := a.table()
+	for _, e := range recorded {
+		k := table.Of(e)
 		var err error
 		switch {
-		case e.Kind == "wan.down" && a.wants(KindWAN):
-			err = a.wanDown(ctx, e.Time)
-		case e.Kind == "wan.up" && a.wants(KindWAN):
-			err = a.wanUp(ctx, e.Time)
-		case e.Kind == "changes.rolledback" && a.wants(KindRollback):
+		case len(k.Ends) > 0:
+			err = a.closed(ctx, k, e, told)
+		case k.Unknown || !a.wants(k.Alert):
+		case table.Ended(k.Name):
+			err = a.opened(ctx, k, e, told)
+		case told:
+		case e.Kind == "changes.rolledback":
 			var d struct{ Pages []string }
 			_ = json.Unmarshal([]byte(e.Detail), &d)
 			_, err = a.store.Enqueue(ctx, history.Alert{
@@ -136,7 +190,7 @@ func (a *Alerter) Observe(ctx context.Context, events []history.Event) {
 				Body: fmt.Sprintf("Changes to %s were undone at %s: the router could not be reached to confirm them.",
 					strings.Join(d.Pages, ", "), clockTime(e.Time)),
 			})
-		case e.Kind == "boot" && a.wants(KindBoot):
+		case e.Kind == "boot":
 			var d struct{ Clean bool }
 			_ = json.Unmarshal([]byte(e.Detail), &d)
 			if !d.Clean {
@@ -145,6 +199,12 @@ func (a *Alerter) Observe(ctx context.Context, events []history.Event) {
 					Body: fmt.Sprintf("After losing power or crashing, at %s.", clockTime(e.Time)),
 				})
 			}
+		case k.Plugin != "":
+			what, tone := k.Words(e, english)
+			_, err = a.store.Enqueue(ctx, history.Alert{
+				Created: e.Time, Title: a.title(what), Priority: priority(tone),
+				Body: fmt.Sprintf("At %s.", clockTime(e.Time)),
+			})
 		}
 		if err != nil {
 			log.Printf("verso: alert not kept: %v", err)
@@ -152,42 +212,107 @@ func (a *Alerter) Observe(ctx context.Context, events []history.Event) {
 	}
 }
 
-func (a *Alerter) wanDown(ctx context.Context, at time.Time) error {
-	if in := a.wan; in != nil && (in.open || at.Sub(in.end) < flapWindow) {
+// opened opens the incident e starts, or reopens one closed less than
+// flapWindow ago, withdrawing its recovery if that is not sent yet. Its first
+// alert waits confirmDrop, so one closed sooner is told once.
+func (a *Alerter) opened(ctx context.Context, k events.Kind, e history.Event, told bool) error {
+	key := k.Name + "\x00" + e.Subject
+	if in := a.incidents[key]; in != nil && (in.open || e.Time.Sub(in.end) < flapWindow) {
 		in.open = true
+		if told {
+			return nil
+		}
 		if in.upAlert != 0 {
 			if _, err := a.store.Cancel(ctx, in.upAlert); err != nil {
 				return err
 			}
 			in.upAlert = 0
 		}
-		_, err := a.store.Rewrite(ctx, in.downAlert, a.title("the internet is down"), fmt.Sprintf("Since %s.", clockTime(in.start)))
+		title, body := a.openedWords(in)
+		_, err := a.store.Rewrite(ctx, in.downAlert, title, body)
 		return err
 	}
+	in := &incident{first: e, kind: k, start: e.Time, open: true}
+	a.incidents[key] = in
+	if told {
+		return nil
+	}
+	title, body := a.openedWords(in)
+	_, tone := k.Words(e, english)
 	id, err := a.store.Enqueue(ctx, history.Alert{
-		Created: at, Hold: at.Add(confirmDrop), Title: a.title("the internet is down"), Priority: "high",
-		Body: fmt.Sprintf("Since %s.", clockTime(at)),
+		Created: e.Time, Hold: e.Time.Add(confirmDrop), Title: title, Body: body, Priority: priority(tone),
 	})
-	a.wan = &incident{start: at, open: true, downAlert: id}
+	in.downAlert = id
 	return err
 }
 
-func (a *Alerter) wanUp(ctx context.Context, at time.Time) error {
-	in := a.wan
-	if in == nil || !in.open {
-		return nil
+// closed closes every open incident e's kind ends on e's subject: its first
+// alert, still waiting, becomes one message from start to end; one already
+// sent is followed by a recovery naming how long it lasted.
+func (a *Alerter) closed(ctx context.Context, k events.Kind, e history.Event, told bool) error {
+	for _, end := range k.Ends {
+		in := a.incidents[end+"\x00"+e.Subject]
+		if in == nil || !in.open {
+			continue
+		}
+		in.open, in.end = false, e.Time
+		if told {
+			continue
+		}
+		title, body := a.foldedWords(in)
+		rewritten, err := a.store.Rewrite(ctx, in.downAlert, title, body)
+		if err != nil {
+			return err
+		}
+		if rewritten {
+			continue
+		}
+		title, body = a.recoveredWords(in, k, e)
+		if in.upAlert, err = a.store.Enqueue(ctx, history.Alert{Created: e.Time, Title: title, Body: body, Priority: "default"}); err != nil {
+			return err
+		}
 	}
-	in.open, in.end = false, at
-	rewritten, err := a.store.Rewrite(ctx, in.downAlert, a.title("the internet was down"),
-		fmt.Sprintf("From %s to %s (%s).", clockTime(in.start), clockTime(at), duration(at.Sub(in.start))))
-	if err != nil || rewritten {
-		return err
+	return nil
+}
+
+// The words of an incident's alerts: the internet's, as ADR-020 has them, and
+// a plugin's, in the sentences of its opening and its closing events.
+
+func (a *Alerter) openedWords(in *incident) (title, body string) {
+	what := "the internet is down"
+	if in.kind.Plugin != "" {
+		what, _ = in.kind.Words(in.first, english)
 	}
-	in.upAlert, err = a.store.Enqueue(ctx, history.Alert{
-		Created: at, Title: a.title("the internet is back"), Priority: "default",
-		Body: fmt.Sprintf("After %s, down since %s.", duration(at.Sub(in.start)), clockTime(in.start)),
-	})
-	return err
+	return a.title(what), fmt.Sprintf("Since %s.", clockTime(in.start))
+}
+
+func (a *Alerter) foldedWords(in *incident) (title, body string) {
+	what := "the internet was down"
+	if in.kind.Plugin != "" {
+		what, _ = in.kind.Words(in.first, english)
+	}
+	return a.title(what), fmt.Sprintf("From %s to %s (%s).", clockTime(in.start), clockTime(in.end), duration(in.end.Sub(in.start)))
+}
+
+func (a *Alerter) recoveredWords(in *incident, k events.Kind, e history.Event) (title, body string) {
+	lasted := duration(e.Time.Sub(in.start))
+	if in.kind.Plugin == "" {
+		return a.title("the internet is back"), fmt.Sprintf("After %s, down since %s.", lasted, clockTime(in.start))
+	}
+	what, _ := k.Words(e, english)
+	return a.title(what), fmt.Sprintf("After %s, since %s.", lasted, clockTime(in.start))
+}
+
+// english is the translator of an alert: none, since alerts are said in
+// English (ADR-020).
+func english(s string) string { return s }
+
+// priority is ntfy's priority for an alert in tone.
+func priority(tone string) string {
+	if tone == "danger" || tone == "warning" {
+		return "high"
+	}
+	return "default"
 }
 
 func (a *Alerter) title(what string) string { return a.host + ": " + what }
