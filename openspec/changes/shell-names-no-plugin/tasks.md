@@ -87,7 +87,7 @@ Every task ends with `make lint` passing, and `make test` passing except the fiv
 
 ## 5. Places in the rail
 
-- [ ] 5.1 Test first in `internal/plugin/manifest_test.go`:
+- [x] 5.1 Test first in `internal/plugin/manifest_test.go`:
   - a nav entry's `order` decodes as present or absent;
   - `"40"` and `4.5` are logged and read as absent, while the manifest loads;
   - a manifest with no `order` loads as before.

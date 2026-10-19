@@ -90,6 +90,11 @@ type NavEntry struct {
 	Path    string   `json:"path"`
 	Icon    string   `json:"icon,omitempty"`
 	Pages   NavPages `json:"pages"`
+	// Order is the entry's place among its siblings, the rail's rows or a
+	// collapsed section's pages; nil is no place, after every entry with one.
+	// It is read entry by entry (readNavOrders), so a malformed one is no
+	// place rather than a manifest that does not load.
+	Order *int `json:"-"`
 }
 
 // NavPages is a nav entry's "pages": a list of {label, path}, each path

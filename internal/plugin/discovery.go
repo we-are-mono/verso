@@ -47,6 +47,7 @@ func Discover(fsys fs.FS, glob string) (manifests []Manifest, problems []error) 
 			continue
 		}
 		problems = append(problems, wrapAll(path, m.readContributes(data))...)
+		problems = append(problems, wrapAll(path, m.readNavOrders(data))...)
 		if err := m.validate(); err != nil {
 			problems = append(problems, fmt.Errorf("plugin: %s: %w", path, err))
 			continue
