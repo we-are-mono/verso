@@ -205,9 +205,18 @@
      (verso-page.js). The sentence is read aloud through the page's announcer
      as it arrives, since this layer is hidden until then. */}}
 {{if .Arrival}}<template data-verso-arrival>{{.Arrival}}</template>{{else if .Flash.Message}}<template data-verso-arrival>{{template "verso-flash" .Flash}}</template>{{end}}
-<div id="verso-outcome" hidden class="verso-outcome">
-  <div data-verso-outcome-slot class="verso-outcome__slot"></div>
-  <button type="button" data-verso-outcome-close aria-label="{{ t "Close" }}" class="verso-outcome__close">{{icon "x" "size-4"}}</button>
+{{/* The events said to the session (ADR-028) stack under the act's outcome,
+     each a notification of its own, from the browser's one stream
+     (data-verso-events). */}}
+<div data-verso-outcomes data-verso-events="/events/stream" class="verso-outcome">
+  <div id="verso-outcome" hidden class="verso-outcome__notice">
+    <div data-verso-outcome-slot class="verso-outcome__slot"></div>
+    <button type="button" data-verso-outcome-close aria-label="{{ t "Close" }}" class="verso-outcome__close">{{icon "x" "size-4"}}</button>
+  </div>
+  <template data-verso-event-box><div data-verso-event class="verso-outcome__notice">
+    <div data-verso-outcome-slot class="verso-outcome__slot"></div>
+    <button type="button" data-verso-outcome-close aria-label="{{ t "Close" }}" class="verso-outcome__close">{{icon "x" "size-4"}}</button>
+  </div></template>
 </div>
 {{/* What the layer says when an act's request was never answered: the router
      is down or restarting, or its certificate changed under the browser,

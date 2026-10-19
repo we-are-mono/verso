@@ -93,7 +93,7 @@
   - ends when the session ends, without touching its idle clock.
 
   Then implement `serveSSEOn` and the route. Verify with `make test`.
-- [ ] 5.3 Test first in a new `scripts/outcome-stream.test.cjs`, with fake Web Locks, BroadcastChannel, `localStorage` and visibility:
+- [x] 5.3 Test first in a new `scripts/outcome-stream.test.cjs`, with fake Web Locks, BroadcastChannel, `localStorage` and visibility:
   - of three tabs, only the lock holder opens `/events/stream`, and another takes it when that tab closes;
   - an event is shown by one visible tab and recorded as shown;
   - a hidden tab shows it when it becomes visible within its minute, and not after;

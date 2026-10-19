@@ -2,17 +2,20 @@
 /* SPDX-FileCopyrightText: 2026 Mono Technologies Inc. */
 
 /*
- * outcome — the notification at the top right of the window that says how
- * an act went (verso-page.js): one flash at a time, lifted over the page,
- * sliding in from the edge and back out, the close control in its corner.
- * Where the reader asked for less motion it fades instead.
+ * outcome — the notifications at the top right of the window
+ * (verso-page.js): the act's outcome in its place at the top, and under it
+ * the events said to the session (ADR-028), each a notification of its own,
+ * newest nearest the top. Each is lifted over the page, slides in from the
+ * edge and back out, and carries the close control in its corner. Where the
+ * reader asked for less motion they fade instead. The column itself takes no
+ * pointer, so the page under its empty part answers as ever.
  *
- * Variants: data-verso-shown  in place; without it the layer waits off the
- *                             edge
- * Elements: __slot   where the flash stands: no air under it, room for the
- *                    close control at its end, and the lift of a floating
- *                    layer
- *           __close  the close control
+ * Elements: __notice  one notification; data-verso-shown in place, without
+ *                     it waiting off the edge
+ *           __slot    where the flash stands: no air under it, room for the
+ *                     close control at its end, and the lift of a floating
+ *                     layer
+ *           __close   the close control
  */
 
 .verso-outcome {
@@ -21,9 +24,10 @@
   right: calc(var(--spacing) * 4);
   left: calc(var(--spacing) * 4);
   z-index: 40;
-  opacity: 0;
-  transform: translateX(calc(100% + 1.5rem));
-  transition: transform 0.3s ease-out, opacity 0.3s ease-out;
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--spacing) * 2);
+  pointer-events: none;
 }
 @media (width >= 40rem) {
   .verso-outcome {
@@ -33,12 +37,20 @@
     max-width: var(--container-md);
   }
 }
-.verso-outcome[data-verso-shown] {
+
+.verso-outcome__notice {
+  position: relative;
+  pointer-events: auto;
+  opacity: 0;
+  transform: translateX(calc(100% + 1.5rem));
+  transition: transform 0.3s ease-out, opacity 0.3s ease-out;
+}
+.verso-outcome__notice[data-verso-shown] {
   opacity: 1;
   transform: none;
 }
 @media (prefers-reduced-motion: reduce) {
-  .verso-outcome {
+  .verso-outcome__notice {
     transform: none;
     transition: opacity 0.2s ease-out;
   }

@@ -243,29 +243,44 @@
 // The outcome layer: the one place any act says how it went, at the right of
 // the viewport under the bar, never in the content. An act taken on this page
 // says so as its answer arrives; a page, or a panel's answer, arrived at after
-// one brings its outcome in a template and the layer says it as it lands. One
-// at a time: a newer outcome replaces the one showing. It stays long enough to read, holds while the pointer is on it,
-// and leaves on its own or on the cross. It publishes window.versoOutcome,
-// which the acts that answer in place call from inside their handlers.
+// one brings its outcome in a template and the layer says it as it lands. The
+// act's outcome has one place, a newer one replacing the one showing. Under
+// it stand the events said to the session (ADR-028), each a notification of
+// its own, newest nearest the act's place, at most three. Each stays long
+// enough to read, holds while the pointer is on it, and leaves on its own or
+// on its cross. It publishes window.versoOutcome, whose show the acts that
+// answer in place call from inside their handlers, and whose event the
+// events stream calls.
 (function () {
   var layer = document.getElementById("verso-outcome");
   if (!layer) return;
   var slot = layer.querySelector("[data-verso-outcome-slot]");
   var close = layer.querySelector("[data-verso-outcome-close]");
+  var column = layer.parentNode;
+  var boxTemplate = document.querySelector("template[data-verso-event-box]");
   // An open drawer is a modal dialog: the browser draws it above the page and
-  // leaves nothing outside it to point at. While one is open the layer stands
-  // inside it, at the drawer's own top right, and comes home once it leaves.
-  var home = layer.parentNode;
+  // leaves nothing outside it to point at. While one is open the notifications
+  // stand inside it, at the drawer's own top right, and come home once
+  // nothing shows.
+  var home = column.parentNode;
   function place() {
     var host = home;
     document.querySelectorAll("dialog[open]").forEach(function (dialog) {
       if (dialog.matches(":modal")) host = dialog;
     });
-    if (layer.parentNode !== host) host.appendChild(layer);
+    if (column.parentNode !== host) host.appendChild(column);
   }
   // Six seconds: long enough to read two short sentences twice.
   var STAY = 6000;
+  // The events that stand at once: a fourth pushes out the oldest, which
+  // System → Events still lists.
+  var MOST_EVENTS = 3;
   var timer = null;
+  var standing = []; // the events showing, newest first
+
+  function settleHome() {
+    if (layer.hidden && standing.length === 0 && column.parentNode !== home) home.appendChild(column);
+  }
 
   function leave() {
     clearTimeout(timer);
@@ -277,8 +292,56 @@
       if (layer.hasAttribute("data-verso-shown")) return;
       slot.replaceChildren();
       layer.hidden = true;
-      if (layer.parentNode !== home) home.appendChild(layer);
+      settleHome();
     }, 300);
+  }
+
+  // A refusal or a warning stays until it is closed, an event's as an act's.
+  function lastingOf(outcome) {
+    var variant = outcome.getAttribute && outcome.getAttribute("data-verso-flash-variant");
+    return variant === "danger" || variant === "warning";
+  }
+
+  function leaveEvent(box) {
+    var at = standing.indexOf(box);
+    if (at < 0) return;
+    standing.splice(at, 1);
+    clearTimeout(box.versoTimer);
+    box.removeAttribute("data-verso-shown");
+    setTimeout(function () {
+      box.remove();
+      settleHome();
+    }, 300);
+  }
+
+  // event says one event as a notification of its own under the act's place.
+  function event(outcome) {
+    if (!boxTemplate) return;
+    place();
+    var box = document.importNode(boxTemplate.content.firstElementChild, true);
+    box.querySelector("[data-verso-outcome-slot]").replaceChildren(outcome);
+    column.insertBefore(box, layer.nextSibling);
+    standing.unshift(box);
+    while (standing.length > MOST_EVENTS) leaveEvent(standing[standing.length - 1]);
+    var lastingEvent = lastingOf(outcome);
+    function stayEvent() {
+      clearTimeout(box.versoTimer);
+      box.versoTimer = setTimeout(function () { leaveEvent(box); }, STAY);
+    }
+    function resumeEvent() {
+      if (!lastingEvent && !box.contains(document.activeElement)) stayEvent();
+    }
+    box.addEventListener("pointerenter", function () { clearTimeout(box.versoTimer); });
+    box.addEventListener("pointerleave", resumeEvent);
+    box.addEventListener("focusin", function () { clearTimeout(box.versoTimer); });
+    box.addEventListener("focusout", function () { setTimeout(resumeEvent, 0); });
+    var cross = box.querySelector("[data-verso-outcome-close]");
+    if (cross) cross.addEventListener("click", function () { leaveEvent(box); });
+    versoAnnounce(outcome.textContent.trim());
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () { box.setAttribute("data-verso-shown", ""); });
+    });
+    if (!lastingEvent) stayEvent();
   }
 
   function stay() {
@@ -295,8 +358,7 @@
     place();
     slot.replaceChildren(outcome);
     layer.hidden = false;
-    var variant = outcome.getAttribute && outcome.getAttribute("data-verso-flash-variant");
-    lasting = variant === "danger" || variant === "warning";
+    lasting = lastingOf(outcome);
     // The layer was hidden a moment ago, and a live region that appears with
     // its words already in it is often not read, so the sentence is also said
     // through the page's announcer.
@@ -330,7 +392,7 @@
     var outcome = carried.content.firstElementChild;
     if (outcome) show(document.importNode(outcome, true));
   }
-  window.versoOutcome = { show: show };
+  window.versoOutcome = { show: show, event: event };
   arrive(document);
   document.addEventListener("htmx:afterSwap", function (event) { arrive(event.target); });
 
@@ -345,6 +407,100 @@
     if (!trigger || !trigger.isTrusted || !template) return;
     show(document.importNode(template.content.firstElementChild, true));
   });
+})();
+
+// The events said to the session (ADR-028) reach the browser on one stream:
+// the tab holding the lock opens it and hands each event to the others, and
+// when that tab closes the lock passes to another. A tab says an event only
+// while someone is looking at it, a hidden one keeping it for its minute, and
+// the browser says each once, whichever tab is first to claim it.
+(function () {
+  var column = document.querySelector("[data-verso-outcomes]");
+  var url = column && column.getAttribute("data-verso-events");
+  if (!url || !window.versoOutcome || typeof EventSource === "undefined") return;
+  var SHOWN = "verso-events-shown";
+  var REMEMBERED = 32; // ids remembered as said
+  var FRESH = 60000; // an event unsaid after a minute is System → Events' alone
+  var waiting = []; // events that came while this tab was hidden
+
+  function said() {
+    try {
+      return JSON.parse(localStorage.getItem(SHOWN) || "[]");
+    } catch (e) {
+      return [];
+    }
+  }
+  function markSaid(id) {
+    try {
+      var ids = said().filter(function (x) { return x !== id; });
+      ids.push(id);
+      localStorage.setItem(SHOWN, JSON.stringify(ids.slice(-REMEMBERED)));
+    } catch (e) {
+      // Without storage each tab says what it is first to see.
+    }
+  }
+  function say(item) {
+    var template = document.createElement("template");
+    template.innerHTML = item.html;
+    var outcome = template.content.firstElementChild;
+    if (outcome) window.versoOutcome.event(outcome);
+  }
+  // claim says item unless another tab has, holding the event's own lock
+  // while it looks and marks it, so two tabs in view cannot both say it.
+  function claim(item) {
+    if (said().indexOf(item.id) >= 0) return;
+    if (!navigator.locks) {
+      markSaid(item.id);
+      say(item);
+      return;
+    }
+    navigator.locks.request("verso-event-" + item.id, { ifAvailable: true }, function (lock) {
+      if (!lock || said().indexOf(item.id) >= 0) return;
+      markSaid(item.id);
+      say(item);
+    });
+  }
+  function arrived(id, html) {
+    var item = { id: id, html: html, until: Date.now() + FRESH };
+    if (document.visibilityState === "visible") claim(item);
+    else waiting.push(item);
+  }
+  document.addEventListener("visibilitychange", function () {
+    if (document.visibilityState !== "visible") return;
+    var now = Date.now();
+    var due = waiting;
+    waiting = [];
+    due.forEach(function (item) { if (item.until > now) claim(item); });
+  });
+
+  var channel = typeof BroadcastChannel === "undefined" ? null : new BroadcastChannel("verso-events");
+  if (channel) {
+    channel.onmessage = function (message) {
+      if (message.data && message.data.id) arrived(message.data.id, message.data.html);
+    };
+  }
+  function listen() {
+    var source = new EventSource(url);
+    source.addEventListener("said", function (e) {
+      var data;
+      try {
+        data = JSON.parse(e.data);
+      } catch (err) {
+        return;
+      }
+      if (channel) channel.postMessage({ id: e.lastEventId, html: data.html });
+      arrived(e.lastEventId, data.html);
+    });
+  }
+  if (navigator.locks && channel) {
+    // Held for as long as this page lives: the promise never settles.
+    navigator.locks.request("verso-events", function () {
+      listen();
+      return new Promise(function () {});
+    });
+  } else {
+    listen();
+  }
 })();
 
 // versoRoll rolls a value from what it was to what it is: the old number
