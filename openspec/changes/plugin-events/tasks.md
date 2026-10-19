@@ -55,7 +55,7 @@
   - a symlink planted at its name is replaced by a directory;
   - after `docker restart`, acme's catch-up announcement made at START=93 is recorded once the shell starts.
 - [x] 3.4 Test first in the SDK: `root::announce(plugin, event, subject, args)` runs the verso binary with exactly the arguments 3.2 takes, bounded to 10 s, and turns a non-zero exit into an error carrying stderr. The binary's path is injectable, and the test uses a fake executable in a temp dir. Then implement it. Verify with `cargo test` in the SDK.
-- [ ] 3.5 Write ADR-028, "Events", from design decisions 1, 2, 4, 7 and 9. Complete `docs/plugins.md`'s "Events" with "Announcing" and "Reacting":
+- [x] 3.5 Write ADR-028, "Events", from design decisions 1, 2, 4, 7 and 9. Complete `docs/plugins.md`'s "Events" with "Announcing" and "Reacting":
   - `procd_add_raw_trigger`, with the event's data choosing only which trigger fires;
   - a reaction is a command that runs any number of times, reads the router's state itself and logs through `logger`;
   - a plugin's page process is told nothing.

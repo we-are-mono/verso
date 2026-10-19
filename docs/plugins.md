@@ -1056,6 +1056,54 @@ and keeps your others. The name is the event's contract: you may reword the
 sentence, but a changed meaning, or a change in its arguments' count or order,
 is a new name.
 
+### Announcing
+
+Announce from your root half as the outcome happens:
+
+```rust
+verso_plugin::root::announce("acme", "renewed", None, &["router.example.com"])?;
+```
+
+It runs `verso announce acme.renewed -- router.example.com`, which a shell script
+of yours may run directly, as root. The third argument names the network device
+the event is on, where it is on one (`Some("tun0")`); the shell shows it in the
+Interface column. The arguments fill your sentence's `%s` in order, as written,
+never translated: at most eight, each at most 256 bytes with no control
+character.
+
+The announcement is refused, with the reason on stderr and as the error, when
+you are not root, your registry does not declare the event, the arguments do not
+fill its sentence, or 256 announcements already wait for a shell that is not
+running. A refused announcement changes nothing else: record your outcome where
+your pages read it, as before, and announce beside it.
+
+An announcement waits for the shell across a restart of it, and the shell
+records it once. It is said only to a session rpcd grants your declared read,
+and alerts only where the operator chose your plugin under Alerts.
+
+### Reacting
+
+Every announcement is also sent to procd as the service event
+`verso.<owner>.<event>`: yours, another plugin's, and the router's own
+`verso.certificate.replaced`. React to one in your init script, as you react to
+a config change:
+
+```sh
+service_triggers() {
+	procd_add_raw_trigger "verso.certificate.replaced" 1000 /usr/bin/verso-plugin-x root reload-tls
+}
+```
+
+procd runs the command as root after the delay, in milliseconds, and runs it
+once for several events within it. It hands the command none of the event's
+data and discards its output, so write a reaction as a command that may run any
+number of times, reads the router's state itself, and logs through `logger`.
+The event's data, `{"subject", "args"}`, can only choose which trigger fires,
+through a trigger rule's conditions.
+
+Your page process is told nothing of any event: it reads the router as it is on
+every request, so it has nothing to catch up on.
+
 ## The widget vocabulary
 
 You compose a **closed set** of widgets with **semantic** props — `label`,
