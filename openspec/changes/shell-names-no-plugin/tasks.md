@@ -129,7 +129,7 @@ Every task ends with `make lint` passing, and `make test` passing except the fiv
 ## 7. The guard
 
 - [x] 7.1 Rename every core parameter that takes a plugin id to `pluginID`: `pluginHref`, `manifestByID`, the translator `pluginTranslators` returns, and the rest the search finds. Verify with `make lint` and `make test`.
-- [ ] 7.2 Test first in `internal/boundary/boundary_test.go`, against fixtures in `internal/boundary/testdata`.
+- [x] 7.2 Test first in `internal/boundary/boundary_test.go`, against fixtures in `internal/boundary/testdata`.
   - **Reported** at its file and line, one fixture each:
     - a `/plugins/<id>` constant;
     - a `Manifest.ID` compared with `"vpn"`;
