@@ -72,6 +72,20 @@ own and points at the decision that governs it; the rationale lives there, not h
 - **A history move on the DK.** Choose another `verso.history.directory`,
   restart the shell, and read that the history arrived and the old copy
   went; the move has run only in tests. Governed by ADR-019.
+- **Services: whether a service starts at boot.** ADR-009 gives the shell
+  enable and disable; the Services page offers start, stop and restart only
+  (`rcActions`), its Enabled switch column gone since 7919a49. A service
+  disabled in its own config but still linked in `/etc/rc.d` (banIP with
+  `ban_enabled=0`) exits 1 at boot, reads Failed, and heads the Overview, and
+  nothing in Verso clears it. The answer is a column holding the control
+  vocabulary's switch: off = stop + disable, on = enable + start; firewall
+  and the keep-list stay locked. Off also clears a dead instance: banIP's
+  init script exits before procd's stop when nothing runs, so its Failed
+  instance stays listed until `ubus call service delete`. Governed by
+  ADR-009 and ADR-011.
+- **Failed leads to an empty log.** A Failed state links to the log filtered
+  by the service's name; once logd's ring has turned over, the line saying why
+  is gone and the link shows nothing. Governed by ADR-011.
 
 ## Validation (ADR-008)
 
