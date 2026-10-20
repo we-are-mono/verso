@@ -4,7 +4,7 @@ A modern web interface for your OpenWrt router, in place of LuCI.
 
 > **Verso is experimental.** Back up your router's configuration before you install it.
 
-<img src="docs/images/overview.png" alt="Verso's Overview: the router's internet connection, ports, tunnels, traffic, resources, hardware and firmware, each in a card">
+<img src="docs/images/overview.png" alt="Verso's Overview in three themes, Sand in front of Tokyo Night Storm and Catppuccin Mocha: the router's internet connection, ports, tunnels, traffic, resources, system, certificate and hardware, each in a card">
 
 ## Requirements
 
