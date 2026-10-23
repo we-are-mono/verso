@@ -975,6 +975,11 @@ func TestRenderDisclosure(t *testing.T) {
 	declares(t, "disclosure", ".verso-disclosure__body", "border-top-width: 1px;")
 	declares(t, "disclosure", `.verso-disclosure__body:where(.verso-disclosure[data-verso-style="condition"] *)`,
 		"padding: calc(var(--spacing) * 6);")
+	// A card's fold that opens on a block, not a row (a rule's warning over
+	// its less common actions), stands it 24px under the summary's hairline,
+	// as a card's body does, rather than on it.
+	declares(t, "disclosure", `.verso-disclosure__body:where(.verso-card__body > :not(:only-child) > *) > :nth-child(1 of :not(input[type="hidden"], [hidden], template)):not(.verso-field, .verso-form-grid, .verso-conditional, .verso-field-set, [data-verso-change-field], [data-verso-rows]:has(> .verso-field:first-child))`,
+		"--verso-edge-lead: calc(var(--spacing-inset) - 1px);")
 	if strings.Contains(got, "<details open") {
 		t.Errorf("a disclosure not asked to open must start folded: %s", got)
 	}
