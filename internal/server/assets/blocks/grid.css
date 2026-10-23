@@ -29,10 +29,12 @@
  *                             narrow, the figure stands under it, 24px
  *                             down, a picture taking its line whole
  *                             · cards: cards of one kind side by side on
- *                             the Overview's column measure: each column its
+ *                             the Overview's column measure: the first its
  *                             share rounded down to 8px and a pixel more, the
- *                             next 24px on less that pixel, so both borders
- *                             of every card are lines; narrow, they stack
+ *                             next 24px on less that pixel and taking the
+ *                             row's rest, so both borders of every card are
+ *                             lines and the last meets the right border of
+ *                             a card the full row wide; narrow, they stack
  *                             23px apart, as cards do
  *           data-verso-columns  the tiles' target count
  * Elements: __track  the columns
@@ -145,6 +147,6 @@
 }
 @container cards (width >= 40rem) {
   .verso-grid__track:where(.verso-grid[data-verso-style="cards"] > *) {
-    grid-template-columns: repeat(2, calc(round(down, calc((100% - var(--spacing-inset) - 1px) / 2), 8px) + 1px));
+    grid-template-columns: calc(round(down, calc((100% - var(--spacing-inset) - 1px) / 2), 8px) + 1px) minmax(0, 1fr);
   }
 }

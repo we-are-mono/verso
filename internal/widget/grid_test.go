@@ -71,8 +71,10 @@ func TestGridCardsStandInCells(t *testing.T) {
 	declares(t, "grid", `.verso-grid[data-verso-style="cards"]`, "container: cards / inline-size;")
 	cards := `.verso-grid__track:where(.verso-grid[data-verso-style="cards"] > *)`
 	declares(t, "grid", cards, "grid-template-columns: calc(round(down, 100% - 1px, 8px) + 1px);")
-	if rule := cssRuleWithin(css, "@container cards (width >= 40rem)", cards); !strings.Contains(rule, "grid-template-columns: repeat(2,") {
-		t.Errorf("grid.css should lay the cards side by side where there is room:\n%s", rule)
+	// The second card takes the row's rest, so its right border meets the
+	// right border of a card the full row wide above it.
+	if rule := cssRuleWithin(css, "@container cards (width >= 40rem)", cards); !strings.Contains(rule, "grid-template-columns: calc(round(down, calc((100% - var(--spacing-inset) - 1px) / 2), 8px) + 1px) minmax(0, 1fr);") {
+		t.Errorf("grid.css should lay the cards side by side where there is room, the second to the row's end:\n%s", rule)
 	}
 }
 
