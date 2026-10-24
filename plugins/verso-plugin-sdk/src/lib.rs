@@ -48,6 +48,7 @@ mod args;
 pub use args::{ArgKind, MAX_TEXT};
 pub mod netlink;
 pub mod root;
+pub mod units;
 pub mod registry;
 pub use registry::{
     ArgSpec, Command, CommandKind, EventDeclaration, EventTone, Family, FamilyDir, FamilyWords, FileNames, Registry,
