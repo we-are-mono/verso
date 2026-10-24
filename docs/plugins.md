@@ -2272,7 +2272,7 @@ holds none of its own.
   "dir": { "path": "/etc/nftables.d", "suffixes": [".nft"], "names": "plain" },
   "mode": "0644",
   "words": {
-    "too_large": "Rule files must be at most 32 KiB.",
+    "too_large": "Rule files must be at most 32 KiB.",
     "invalid": "Invalid rule file.",
     "over_limit": "Rule files exceed the editor size limit."
   },

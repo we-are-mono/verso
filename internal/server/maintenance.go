@@ -182,7 +182,7 @@ func (s *Server) restoreModal(state restoreState) *widget.Modal {
 	children = append(children, &widget.Form{
 		Action: "/system/maintenance/restore", Multipart: true, AutoSubmit: true, NoSubmit: true,
 		Fields: []widget.Widget{&widget.Field{Name: "backup", Kind: "file", Accept: ".tar.gz,.tgz,.gz,application/gzip,application/x-gzip,application/x-compressed-tar", Prompt: "Drop an OpenWrt backup here", Required: true,
-			Help: "A backup made by OpenWrt · .tar.gz, up to 32 MiB"}},
+			Help: "A backup made by OpenWrt · .tar.gz, up to 32\U0000202fMiB"}},
 	})
 	m.Children = children
 	return m
@@ -282,7 +282,7 @@ func (s *Server) handleRestoreInspect(w http.ResponseWriter, r *http.Request) {
 	tempPath, header, step := receiveUpload(r, "backup", s.maintenanceDir, "verso-restore-*.tar.gz", maxRestoreSize)
 	switch step {
 	case uploadParse:
-		s.renderMaintenance(w, r, http.StatusUnprocessableEntity, restoreState{open: true, errorMessage: "The file is too large or could not be uploaded. Choose an OpenWrt backup up to 32 MiB."})
+		s.renderMaintenance(w, r, http.StatusUnprocessableEntity, restoreState{open: true, errorMessage: "The file is too large or could not be uploaded. Choose an OpenWrt backup up to 32\U0000202fMiB."})
 		return
 	case uploadMissing:
 		s.renderMaintenance(w, r, http.StatusUnprocessableEntity, restoreState{open: true, errorMessage: "Choose an OpenWrt backup archive first."})

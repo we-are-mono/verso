@@ -487,7 +487,7 @@ mod tests {
 
     fn words() -> FamilyWords {
         FamilyWords {
-            too_large: "Rule files must be at most 32 KiB.".into(),
+            too_large: "Rule files must be at most 32\u{202f}KiB.".into(),
             invalid: "Invalid rule file.".into(),
             over_limit: "Rule files exceed the editor size limit.".into(),
         }

@@ -239,7 +239,7 @@ func validateLogSettings(values map[string]any) error {
 	}
 	size, err := strconv.Atoi(uciString(values["log_buffer_size"]))
 	if err != nil || size < 1 || size > 65536 {
-		return fmt.Errorf("Enter a log buffer size from 1 to 65536 KiB.")
+		return fmt.Errorf("Enter a log buffer size from 1 to 65536\U0000202fKiB.")
 	}
 	if proto := uciString(values["log_proto"]); proto != "tcp" && proto != "udp" {
 		return fmt.Errorf("Choose TCP or UDP.")

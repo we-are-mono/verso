@@ -30,7 +30,7 @@
   </label>
   <textarea name="{{.Name}}" hidden data-verso-file-text>{{.Value}}</textarea>
   <input type="hidden" name="{{.Name}}_name" value="{{.Chosen}}" data-verso-file-name>
-  <p hidden data-verso-file-refused class="verso-refusal">{{ t "That file is larger than 32 KiB, so it isn’t a profile this router can use." }}</p>
+  <p hidden data-verso-file-refused class="verso-refusal">{{ t "That file is larger than 32\U0000202fKiB, so it isn’t a profile this router can use." }}</p>
   {{if .Help}}<p id="{{.Name}}-help" class="verso-drop__help">{{.Help}}</p>{{end}}
   {{if .Error}}<p id="{{.Name}}-error" data-verso-error class="verso-refusal">{{template "verso-error-words" .Error}}</p>{{end}}
 </div>

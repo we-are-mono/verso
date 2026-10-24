@@ -933,7 +933,7 @@ fn write_commands_fixture() {
             }),
             mode: "0600".into(),
             words: FamilyWords {
-                too_large: "Example files must be at most 32 KiB.".into(),
+                too_large: "Example files must be at most 32\u{202f}KiB.".into(),
                 invalid: "Invalid example file.".into(),
                 over_limit: "Example files exceed the editor size limit.".into(),
             },

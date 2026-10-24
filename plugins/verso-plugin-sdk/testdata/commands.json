@@ -84,7 +84,7 @@
       },
       "mode": "0600",
       "words": {
-        "too_large": "Example files must be at most 32 KiB.",
+        "too_large": "Example files must be at most 32 KiB.",
         "invalid": "Invalid example file.",
         "over_limit": "Example files exceed the editor size limit."
       },

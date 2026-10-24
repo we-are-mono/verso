@@ -290,7 +290,7 @@ fn ubus_with(program: &Path, object: &str, method: &str, args: &Value) -> Result
     if answer.len() as u64 > MAX_UBUS_ANSWER {
         let _ = child.kill();
         let _ = child.wait();
-        return Err(format!("{call}: the answer is over 1 MiB"));
+        return Err(format!("{call}: the answer is over 1\u{202f}MiB"));
     }
     let status = child.wait().map_err(|e| format!("{call}: {e}"))?;
     if !status.success() {
@@ -571,7 +571,7 @@ mod tests {
     fn ubus_stops_reading_an_answer_over_its_bound() {
         let ubus = fake_ubus("huge", r#"printf '{"x":"'; head -c 2000000 /dev/zero | tr '\0' 'a'; printf '"}'"#);
         let err = call_fake(&ubus,"o", "m", &json!({})).unwrap_err();
-        assert!(err.contains("over 1 MiB"), "{err}");
+        assert!(err.contains("over 1\u{202f}MiB"), "{err}");
     }
 
     #[test]

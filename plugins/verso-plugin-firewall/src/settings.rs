@@ -60,7 +60,7 @@ pub const RULE_FILES: FileSet = FileSet {
     main: None,
     line: ("line", "lines"),
     empty: "No rule files",
-    too_large: "Rule files must be at most 32 KiB of text.",
+    too_large: "Rule files must be at most 32\u{202f}KiB of text.",
     placeholder: "10-custom",
 };
 
