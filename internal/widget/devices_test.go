@@ -172,6 +172,22 @@ func TestRenderDevicesUsage(t *testing.T) {
 	if !strings.Contains(cell("usage-now"), "data-verso-ink") || strings.Contains(cell("usage-month"), "data-verso-ink") {
 		t.Errorf("Now's figures are 500 and the month's are not:\n%s\n%s", cell("usage-now"), cell("usage-month"))
 	}
+	// Figures read from their column's end, and so do their heads and the
+	// dash that stands in for them: the month's total ends where "This month"
+	// does.
+	for _, key := range []string{"usage-now", "usage-month"} {
+		if !strings.Contains(cell(key), "verso-table__cell text-right") {
+			t.Errorf("%s's figures should stand at the column's end:\n%s", key, cell(key))
+		}
+	}
+	for _, head := range []string{"Now", "This month"} {
+		if !strings.Contains(got, `<th scope="col" class="verso-table__head text-right">`+head+`</th>`) {
+			t.Errorf("the %q head should end where its figures do", head)
+		}
+	}
+	if !strings.Contains(got, `<span class="absolute top-0 right-0 text-inert" data-verso-figures-none`) {
+		t.Error("a figures cell's dash should end where its figures would")
+	}
 	if ink := cssRule(blockCSS(t, "table"), ".verso-table__cell[data-verso-ink]"); !strings.Contains(ink, "font-weight: 500") && !strings.Contains(ink, "@apply type-value") {
 		t.Errorf("the inked cell's figures are not written at 500:\n%s", ink)
 	}

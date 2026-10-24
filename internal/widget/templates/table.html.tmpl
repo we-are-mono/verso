@@ -360,9 +360,11 @@
              has nothing to say, unseen but keeping its width, so a live listing fills it in place and
              the cell is as wide busy as idle: a table squeezed below its columns' widths shares the
              shortfall by content, and a cell whose width swung would move its column with every
-             reading. The dash stands over the slots, not beside them, for a cell with no figure. */}}
-        <td class="verso-table__cell whitespace-nowrap{{if not .Ink}}{{if .Muted}} text-meta{{else}} text-ink{{end}}{{end}}"{{if .Key}} data-verso-cell="{{.Key}}"{{end}}{{if .Ink}} data-verso-ink="{{.Variant}}"{{end}}>
-          <span class="relative inline-block align-top"><span class="absolute top-0 left-0 text-inert" data-verso-figures-none{{if .FiguresShown}} hidden{{end}}>{{template "verso-none"}}</span>
+             reading. The dash stands over the slots, not beside them, for a cell with no figure.
+             Figures read from the column's end, as their head does, and the dash ends where
+             the last figure would. */}}
+        <td class="verso-table__cell text-right whitespace-nowrap{{if not .Ink}}{{if .Muted}} text-meta{{else}} text-ink{{end}}{{end}}"{{if .Key}} data-verso-cell="{{.Key}}"{{end}}{{if .Ink}} data-verso-ink="{{.Variant}}"{{end}}>
+          <span class="relative inline-block align-top"><span class="absolute top-0 right-0 text-inert" data-verso-figures-none{{if .FiguresShown}} hidden{{end}}>{{template "verso-none"}}</span>
           {{range .Figures}}<span data-verso-figures class="verso-table__slot{{if not .Text}} invisible{{end}}" data-verso-figure="{{.Label}}">
             <span data-verso-figure-text>{{.Text}}</span>{{if .Icon}}<span aria-hidden="true" class="text-glyph">{{icon .Icon "size-3.5"}}</span>{{end}}{{if .Label}}<span class="sr-only">{{ t .Label }}</span>{{end}}
           </span>{{end}}</span>
@@ -418,7 +420,7 @@
         {{/* In the listing geometry an endpoint's head starts where the
              chip's glyph does — one hairline and the chip's own inset in — so
              the word sits over the column's ink rather than its border. */}}
-        <th scope="col" class="verso-table__head{{if eq .Kind "reorder"}} verso-table__grip{{else if eq .Kind "rate"}} w-24 min-w-24 max-w-24{{else if or (eq .Kind "num") (eq .Kind "actions")}} text-right{{end}}{{if and $.Dense (eq .Kind "endpoint")}} pl-[0.4375rem]{{end}}">{{.Label}}</th>
+        <th scope="col" class="verso-table__head{{if eq .Kind "reorder"}} verso-table__grip{{else if eq .Kind "rate"}} w-24 min-w-24 max-w-24{{else if or (eq .Kind "num") (eq .Kind "actions") (eq .Kind "figures")}} text-right{{end}}{{if and $.Dense (eq .Kind "endpoint")}} pl-[0.4375rem]{{end}}">{{.Label}}</th>
         {{end}}
         {{if .HasDetail}}<th scope="col" class="verso-table__head"></th>{{end}}
       </tr>
