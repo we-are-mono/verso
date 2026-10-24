@@ -162,6 +162,33 @@ func TestSystemInfoError(t *testing.T) {
 	}
 }
 
+// TestServiceForget: forgetting a service is procd's `service delete` on its
+// name, under the session's grant; a service procd holds no entry for is
+// already forgotten, while a refusal, a denied session or procd off the bus
+// is the failure it is.
+func TestServiceForget(t *testing.T) {
+	ubusd := newFakeUbus(t, map[string]ubusObject{"service": replyWith(map[string]any{})})
+	if err := ubusd.backend().ServiceForget(context.Background(), "sid", "banip"); err != nil {
+		t.Fatalf("ServiceForget: %v", err)
+	}
+	if call := ubusd.only(t, "service"); call.Method != "delete" || call.Args["name"] != "banip" {
+		t.Errorf("call = %+v, want service delete {name: banip}", call)
+	}
+	gone := newFakeUbus(t, map[string]ubusObject{"service": failWith(ubus.StatusNotFound)})
+	if err := gone.backend().ServiceForget(context.Background(), "sid", "banip"); err != nil {
+		t.Errorf("a service procd holds nothing of is forgotten already: %v", err)
+	}
+	for name, b := range map[string]*NativeBackend{
+		"refused":     newFakeUbus(t, map[string]ubusObject{"service": failWith(ubusUnknownError)}).backend(),
+		"denied":      newFakeUbus(t, map[string]ubusObject{"session": denyAll, "service": replyWith(map[string]any{})}).backend(),
+		"unreachable": unreachableUbus(t),
+	} {
+		if err := b.ServiceForget(context.Background(), "sid", "banip"); err == nil {
+			t.Errorf("%s: ServiceForget: want error, got nil", name)
+		}
+	}
+}
+
 // Identity must agree with the sign-in page without requiring rpcd or UCI.
 func TestHostnameReadsRunningName(t *testing.T) {
 	want, err := os.Hostname()

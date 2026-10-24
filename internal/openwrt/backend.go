@@ -174,6 +174,12 @@ type Backend interface {
 	// session's ubus/rc/init access. Callers constrain the name to services
 	// they own; the backend adds no policy of its own beyond the session gate.
 	RCInit(ctx context.Context, sid, name, action string) error
+	// ServiceForget drops procd's entry for a service (`service delete`),
+	// gated on the session's ubus/service/delete access: the instance an init
+	// script left behind when it exited before procd's stop (banIP with
+	// nothing running) stays listed, and reads failed, until it goes. A service
+	// procd holds no entry for is already forgotten.
+	ServiceForget(ctx context.Context, sid, name string) error
 	// The package verbs (ADR-011 §4) ride the persistent privileged helper's Unix
 	// socket. It self-gates on the sid and validates names and queries again on
 	// its side. PkgStatus reports when the feed indexes were
@@ -1765,6 +1771,18 @@ func parseProcAge(stat []byte, systemUptime float64) int64 {
 // caller's (the shell restricts both); rpcd's session gate is the backstop.
 func (b *NativeBackend) RCInit(_ context.Context, sid, name, action string) error {
 	_, err := callChecked(b.ubusSocket, sid, "rc", "init", map[string]any{"name": name, "action": action})
+	return err
+}
+
+// ServiceForget drops procd's entry for name. procd answers a name it holds
+// nothing of with UBUS_STATUS_NOT_FOUND from the invoke, which is the end this
+// asks for; the same status from the lookup is procd off the bus.
+func (b *NativeBackend) ServiceForget(_ context.Context, sid, name string) error {
+	_, err := callChecked(b.ubusSocket, sid, "service", "delete", map[string]any{"name": name})
+	var status *ubus.StatusError
+	if errors.As(err, &status) && status.Code == ubus.StatusNotFound && status.Phase == ubus.PhaseInvoke {
+		return nil
+	}
 	return err
 }
 

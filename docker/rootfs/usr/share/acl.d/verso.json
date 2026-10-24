@@ -42,7 +42,8 @@
     },
     "service": {
       "methods": [
-        "list"
+        "list",
+        "delete"
       ]
     },
     "network.interface": {

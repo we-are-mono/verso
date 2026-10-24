@@ -404,6 +404,15 @@ func (f fakeBackend) RCInit(_ context.Context, _ string, name, action string) er
 	return f.rcErr
 }
 
+// ServiceForget joins the rc log as "<service> forget", so a test reads the
+// whole sequence a lifecycle act ran in order.
+func (f fakeBackend) ServiceForget(_ context.Context, _ string, name string) error {
+	if f.rcInits != nil {
+		*f.rcInits = append(*f.rcInits, name+" forget")
+	}
+	return f.rcErr
+}
+
 func (f fakeBackend) PkgStatus(context.Context, string) (int64, error) {
 	return f.pkgCheckedAt, f.pkgErr
 }

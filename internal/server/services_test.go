@@ -40,12 +40,63 @@ func TestServiceActionReadsOnlyRuntimeAndReturnsAffectedCells(t *testing.T) {
 	if res.Code != 200 || b.inventoryReads != 0 || b.runtimeReads != 1 || len(calls) != 1 {
 		t.Fatalf("status %d, reads %d/%d, calls %v", res.Code, b.inventoryReads, b.runtimeReads, calls)
 	}
-	if strings.Contains(res.Body.String(), "<main") || !strings.Contains(res.Body.String(), `data-verso-row-patch="3,4,5,6"`) {
+	// The patch carries the name too, since the power turns the row's
+	// switched-off state, which its name wears.
+	if strings.Contains(res.Body.String(), "<main") || !strings.Contains(res.Body.String(), `data-verso-row-patch="1,3,4,5,6"`) {
 		t.Fatalf("not a runtime patch: %s", res.Body.String())
 	}
-	res = postPluginAs(t, s, "/system/services", url.Values{"_service_action": {"stop:firewall"}}, "act")
+	res = postPluginAs(t, s, "/system/services", url.Values{"_service_action": {"disable:firewall"}}, "act")
 	if res.Code != http.StatusConflict || len(calls) != 1 || b.inventoryReads != 0 || b.runtimeReads != 1 {
 		t.Fatalf("refused act fetched or mutated: %d %v", res.Code, calls)
+	}
+}
+
+// TestServicesPowerTurnsBootAndRunTogether: a service's power is whether it is
+// in force, both halves at once. Off stops it, keeps it from starting at boot
+// and has procd forget it, so an instance its init script left behind (banIP
+// exiting before procd's stop) no longer reads failed; on lets it start at
+// boot and starts it now.
+func TestServicesPowerTurnsBootAndRunTogether(t *testing.T) {
+	var calls []string
+	b := &serviceRuntimeBackend{fakeBackend: fakeBackend{access: true, rcInits: &calls,
+		rcStates: map[string]openwrt.RCState{"banip": {Kind: openwrt.ServiceDaemon, Enabled: true, Failed: true}}}}
+	s := newServer(t, b)
+	for verb, want := range map[string][]string{
+		"disable": {"banip stop", "banip disable", "banip forget"},
+		"enable":  {"banip enable", "banip start"},
+	} {
+		calls = nil
+		res := postPluginAs(t, s, "/system/services", url.Values{"_service_action": {verb + ":banip"}}, "act")
+		if res.Code != http.StatusOK || strings.Join(calls, ", ") != strings.Join(want, ", ") {
+			t.Errorf("%s: status %d, calls %v, want %v", verb, res.Code, calls, want)
+		}
+	}
+	// A service the answer reads as not starting at boot comes back marked
+	// off, its name's state with it, and its type chip in the reader's
+	// language as the page draws it.
+	calls = nil
+	b.rcStates["adblock"] = openwrt.RCState{Kind: openwrt.ServiceDaemon}
+	res := postPluginAs(t, s, "/system/services", url.Values{"_service_action": {"disable:adblock"}}, "act")
+	body := res.Body.String()
+	if !regexp.MustCompile(`<tr[^>]*data-verso-row-id="adblock"[^>]*data-verso-off`).MatchString(body) || !regexp.MustCompile(`class="verso-table__name"[^>]*data-verso-off`).MatchString(body) {
+		t.Errorf("the patch should carry the row's off state and its name's: %d\n%s", res.Code, body)
+	}
+	// The page form, with no script, says it in the notification.
+	calls = nil
+	if res := postPlugin(t, s, "/system/services", url.Values{"_service_action": {"disable:banip"}}); res.Code != http.StatusSeeOther {
+		t.Errorf("disable from the form: %d, want the redirect back", res.Code)
+	}
+}
+
+// A failure part way stops there, says which half failed, and runs nothing
+// after it.
+func TestServicesPowerStopsAtTheFirstRefusal(t *testing.T) {
+	var calls []string
+	s := newServer(t, fakeBackend{access: true, rcInits: &calls, rcErr: openwrt.ErrAccessDenied,
+		rcStates: map[string]openwrt.RCState{"banip": {Kind: openwrt.ServiceDaemon, Enabled: true}}})
+	res := postPluginAs(t, s, "/system/services", url.Values{"_service_action": {"disable:banip"}}, "act")
+	if res.Code != http.StatusBadGateway || len(calls) != 1 || !strings.Contains(res.Body.String(), "stop banip") {
+		t.Errorf("status %d, calls %v, body %q", res.Code, calls, res.Body.String())
 	}
 }
 
@@ -72,12 +123,12 @@ func TestServicesTable(t *testing.T) {
 
 	body := get(t, s, "/system/services").Body.String()
 	for _, want := range []string{
-		`value="stop:dnsmasq"`,           // live stop leaves boot policy alone
-		">dnsmasq</span>",                // …and its providing package in the Package column
-		`value="stop:verso-plugin-demo"`, // the plugin's live action
-		"6\U0000202fh 14\U0000202fmin",   // process age belongs with live state
-		">PID</th>",                      // process facts share one compact column
-		"2.3\U0000202fMiB",               // runtime keeps process identity and aggregate RSS
+		`value="disable:dnsmasq"`,           // the power turns boot and run off together
+		">dnsmasq</span>",                   // …and its providing package in the Package column
+		`value="disable:verso-plugin-demo"`, // the plugin's power
+		"6\U0000202fh 14\U0000202fmin",      // process age belongs with live state
+		">PID</th>",                         // process facts share one compact column
+		"2.3\U0000202fMiB",                  // runtime keeps process identity and aggregate RSS
 		`<td data-verso-figures class="verso-table__cell whitespace-nowrap text-meta">`, // runtime matches the landing-page RX/TX ink, in figures
 		">Memory</th>",                 // immediate restart sits before the switch
 		`aria-label="Restart dnsmasq"`, // the icon-only action names the service it restarts
@@ -246,6 +297,54 @@ func TestServicesBootStatesWearTheRing(t *testing.T) {
 	}
 }
 
+// TestServicesPowerMarksWhatIsNotInForce: a daemon's acts are starting it (or
+// restarting it once it runs) and its power, which says what pressing it
+// does, as a firewall rule's does. One that does not start at boot is a
+// switched-off row, marked over, whether or not it happens to run now; tasks
+// and subsystems have no power and are never marked; the keep-list keeps its
+// lock.
+func TestServicesPowerMarksWhatIsNotInForce(t *testing.T) {
+	daemon := openwrt.ServiceDaemon
+	for _, tc := range []struct {
+		name  string
+		st    openwrt.RCState
+		acts  []string // icon:value of each act, in order
+		muted bool
+	}{
+		{"dnsmasq", openwrt.RCState{Kind: daemon, Enabled: true, Running: true}, []string{"refresh-cw:restart:dnsmasq", "power:disable:dnsmasq"}, false},
+		{"banip", openwrt.RCState{Kind: daemon, Enabled: true, Failed: true}, []string{"play:start:banip", "power:disable:banip"}, false},
+		{"adblock", openwrt.RCState{Kind: daemon}, []string{"play:start:adblock", "power-off:enable:adblock"}, true},
+		{"tinc", openwrt.RCState{Kind: daemon, Running: true}, []string{"refresh-cw:restart:tinc", "power-off:enable:tinc"}, true},
+		{"verso", openwrt.RCState{Kind: daemon, Enabled: true, Running: true}, []string{"lock:"}, false},
+		{"umount", openwrt.RCState{Kind: openwrt.ServiceTask}, nil, false},
+		{"gpio_switch", openwrt.RCState{Kind: openwrt.ServiceSubsystem}, nil, false},
+	} {
+		row := serviceRow(tc.name, tc.st, nil)
+		var acts []string
+		for _, a := range row.Cells[6].Actions {
+			acts = append(acts, a.Icon+":"+a.Value)
+		}
+		if strings.Join(acts, " ") != strings.Join(tc.acts, " ") || row.Muted != tc.muted {
+			t.Errorf("%s: acts %v muted %v, want %v muted %v", tc.name, acts, row.Muted, tc.acts, tc.muted)
+		}
+	}
+	titles := map[string]string{}
+	for _, a := range serviceRow("adblock", openwrt.RCState{Kind: daemon}, nil).Cells[6].Actions {
+		titles[a.Icon] = a.Title
+	}
+	if titles["play"] != "Start" || titles["power-off"] != "Enable" {
+		t.Errorf("titles %v, want Start and Enable", titles)
+	}
+	if a := serviceRow("dnsmasq", openwrt.RCState{Kind: daemon, Enabled: true, Running: true}, nil).Cells[6].Actions; a[1].Title != "Disable" {
+		t.Errorf("an enabled daemon's power should read Disable: %+v", a)
+	}
+	// A plugin's service is a daemon like any other.
+	plugin := pluginServiceRow(pluginState{Service: "verso-plugin-demo", Known: true, Kind: daemon}, nil)
+	if !plugin.Muted || plugin.Cells[6].Actions[1].Value != "enable:verso-plugin-demo" {
+		t.Errorf("a plugin that does not start at boot: muted %v acts %+v", plugin.Muted, plugin.Cells[6].Actions)
+	}
+}
+
 // A daemon procd stopped restarting reads failed, in danger, never the calm
 // "Stopped" an operator's stop leaves; its row still offers Start.
 func TestServicesFailedDaemonReadsFailed(t *testing.T) {
@@ -262,8 +361,8 @@ func TestServicesFailedDaemonReadsFailed(t *testing.T) {
 		if state := row.Cells[5]; state.Href != "/system/logs?q="+row.ID {
 			t.Errorf("%s state leads to %q, want its log", row.ID, state.Href)
 		}
-		if acts := row.Cells[6].Actions; len(acts) == 0 || acts[len(acts)-1].Title != "Start" {
-			t.Errorf("%s acts = %+v, want Start last", row.ID, acts)
+		if acts := row.Cells[6].Actions; len(acts) == 0 || acts[0].Title != "Start" {
+			t.Errorf("%s acts = %+v, want Start first", row.ID, acts)
 		}
 	}
 }
@@ -277,13 +376,15 @@ func TestServicesRefusals(t *testing.T) {
 	if rec := postPlugin(t, s, "/system/services", url.Values{"_service_action": {"restart:verso"}}); rec.Code != http.StatusOK {
 		t.Errorf("keep-list restart should re-render the refusal, got %d", rec.Code)
 	}
-	if rec := postPlugin(t, s, "/system/services", url.Values{"_service_action": {"stop:verso-rpcd"}}); rec.Code != http.StatusOK {
-		t.Errorf("verso-rpcd stop should be refused, got %d", rec.Code)
+	if rec := postPlugin(t, s, "/system/services", url.Values{"_service_action": {"disable:verso-rpcd"}}); rec.Code != http.StatusOK {
+		t.Errorf("verso-rpcd disable should be refused, got %d", rec.Code)
 	}
-	if rec := postPlugin(t, s, "/system/services", url.Values{"_service_action": {"stop:firewall"}}); rec.Code != http.StatusOK {
-		t.Errorf("firewall stop should be refused, got %d", rec.Code)
+	if rec := postPlugin(t, s, "/system/services", url.Values{"_service_action": {"disable:firewall"}}); rec.Code != http.StatusOK {
+		t.Errorf("firewall disable should be refused, got %d", rec.Code)
 	}
-	for _, verb := range []string{"reboot-the-moon", "enable", "disable"} {
+	// A bare stop is no act this page offers: turning a service off is its
+	// power, both halves at once.
+	for _, verb := range []string{"reboot-the-moon", "stop"} {
 		if rec := postPlugin(t, s, "/system/services", url.Values{"_service_action": {verb + ":dnsmasq"}}); rec.Code != http.StatusBadRequest {
 			t.Errorf("unknown verb %q: got %d, want 400", verb, rec.Code)
 		}

@@ -51,6 +51,49 @@ func shippedACLs(t *testing.T) []map[string]json.RawMessage {
 	return out
 }
 
+// TestUbusdLetsTheShellCallWhatRpcdGrantsIt: the shell calls ubus as the
+// verso user, so a method needs two yeses. rpcd's group grants it to the
+// session, and ubusd's own list for the user lets the call through. A method
+// the shell's group grants that ubusd's list leaves out passes the session
+// probe and is then refused with UBUS_STATUS_PERMISSION_DENIED, which is how
+// the Services power's `service delete` first failed on the router.
+func TestUbusdLetsTheShellCallWhatRpcdGrantsIt(t *testing.T) {
+	raw, err := os.ReadFile("../../docker/rootfs/usr/share/acl.d/verso.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var ubusd struct {
+		User   string `json:"user"`
+		Access map[string]struct {
+			Methods []string `json:"methods"`
+		} `json:"access"`
+	}
+	if err := json.Unmarshal(raw, &ubusd); err != nil || ubusd.User != "verso" {
+		t.Fatalf("ubusd's list for verso: user %q, %v", ubusd.User, err)
+	}
+	raw, err = os.ReadFile("../../docker/rootfs/usr/share/rpcd/acl.d/verso-shell.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var shell map[string]struct {
+		Read  struct{ Ubus map[string][]string } `json:"read"`
+		Write struct{ Ubus map[string][]string } `json:"write"`
+	}
+	if err := json.Unmarshal(raw, &shell); err != nil || len(shell["verso-shell"].Write.Ubus) == 0 {
+		t.Fatalf("the shell's rpcd group: %v", err)
+	}
+	group := shell["verso-shell"]
+	for _, granted := range []map[string][]string{group.Read.Ubus, group.Write.Ubus} {
+		for object, methods := range granted {
+			for _, method := range methods {
+				if !slices.Contains(ubusd.Access[object].Methods, method) {
+					t.Errorf("rpcd grants the shell %s %s, but ubusd's list for verso does not let it call it", object, method)
+				}
+			}
+		}
+	}
+}
+
 // aclGrant is one grant a login gives a session, from the group it came from.
 type aclGrant struct {
 	group string

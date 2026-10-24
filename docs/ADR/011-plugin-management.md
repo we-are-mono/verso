@@ -84,9 +84,16 @@ rediscovery so the shell never restarts itself.**
    the process list it corresponds to: every service as one row of columns —
    name with an icon-bearing lifecycle chip (daemon, subsystem, or startup
    task), providing package, live state (running includes oldest-process
-   uptime), compact runtime (PID/process count and aggregate RSS), immediate icon-only restart
-   and start/stop actions. These change runtime without changing boot policy;
-   enabled-but-crashed daemons and PID-less subsystems remain representable.
+   uptime), compact runtime (PID/process count and aggregate RSS), and two
+   immediate icon-only acts on a daemon. The first runs it now: start when it
+   is down, restart when it runs, boot policy untouched. The second is its
+   power, whether the service is in force: off stops it, disables it at boot
+   and has procd forget its instances (`service delete`), so an instance an
+   init script left behind by exiting before procd's stop (banIP with its
+   own config off) no longer reads failed; on enables it and starts it. A
+   daemon that does not start at boot is a switched-off row, marked over as
+   a disabled firewall rule is, whether or not it runs now.
+   Enabled-but-crashed daemons and PID-less subsystems remain representable.
    An action reads procd once and returns only the affected runtime cells;
    it does not rebuild the page or re-read package ownership. A lost response
    never causes an automatic second POST. Runtime comes from
@@ -99,8 +106,8 @@ rediscovery so the shell never restarts itself.**
    every fact and immediate action is a column. A service keep-list
    (verso, verso-rpcd, rpcd, ubus)
    refuses lifecycle acts from the UI — severing them severs the surface;
-   firewall remains restartable but has a locked stop action and rejects stop
-   or disable, because firewall4's stop action flushes the kernel firewall, NAT,
+   firewall remains reloadable but has no power and rejects turning it off,
+   because firewall4's stop action flushes the kernel firewall, NAT,
    and forwarding rules rather than stopping a harmless resident process;
    the rest, network included, stays the operator's call. Verso plugin
    services sharpen the state with the socket probe (running / not

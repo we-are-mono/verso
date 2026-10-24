@@ -21,8 +21,9 @@ import (
 // The Services page: the processes this router runs — procd's service table,
 // the userspace half of `ps`. A service is a running (or stoppable) thing; a
 // package is files on disk — two natures, two pages (the Packages page owns
-// the other). Rows expose immediate start, stop and restart actions; boot policy stays
-// unchanged. Verso plugins add a liveness probe from their socket.
+// the other). Rows expose immediate acts: start or restart, and the power that
+// says whether the service is in force, starting at boot and running now, or
+// neither. Verso plugins add a liveness probe from their socket.
 // Nothing here stages (ADR-010 boundary); a keep-list refuses severing the
 // surface itself.
 
@@ -30,9 +31,20 @@ import (
 // package verso-plugin-<id> installs /etc/init.d/verso-plugin-<id>.
 const pluginServicePrefix = "verso-plugin-"
 
-// rcActions is the closed set of lifecycle verbs the surface forwards to
-// procd; anything else in a POST is rejected before touching the bus.
-var rcActions = map[string]bool{"start": true, "stop": true, "restart": true, "reload": true}
+// rcActions is the closed set of lifecycle verbs the surface accepts, each the
+// steps it runs on procd in order; anything else in a POST is rejected before
+// touching the bus. The power is both halves of being in force at once: on
+// lets the service start at boot and starts it, off stops it, keeps it from
+// starting at boot and has procd forget it ("forget", ServiceForget), so an
+// instance its init script left behind when it exited before procd's stop
+// (banIP with nothing running) no longer reads failed.
+var rcActions = map[string][]string{
+	"start":   {"start"},
+	"restart": {"restart"},
+	"reload":  {"reload"},
+	"enable":  {"enable", "start"},
+	"disable": {"stop", "disable", "forget"},
+}
 
 // svcReapply names the subsystems (init scripts that apply configuration and
 // exit, leaving nothing running) whose live state can drift from their config
@@ -51,8 +63,8 @@ var svcKeep = map[string]bool{"verso": true, "verso-rpcd": true, "rpcd": true, "
 
 // svcMustStayEnabled covers kernel-state loaders whose stop action is unsafe as
 // an everyday service control. firewall4 has no resident daemon: stopping it
-// flushes the router's nftables, NAT and forwarding rules. It may be restarted,
-// but the Services page never offers or accepts stop.
+// flushes the router's nftables, NAT and forwarding rules. It may be reloaded,
+// but the Services page never offers or accepts turning it off.
 var svcMustStayEnabled = map[string]bool{"firewall": true}
 
 // pluginState is one installed plugin's assembled truth: the manifest identity
@@ -131,7 +143,7 @@ func (s *Server) handleServicesAction(w http.ResponseWriter, r *http.Request) {
 		s.renderServices(w, r, msg)
 		return
 	}
-	if svcMustStayEnabled[svc] && verb == "stop" {
+	if svcMustStayEnabled[svc] && verb == "disable" {
 		msg := fmt.Sprintf(tr("%s must remain enabled; stopping it would remove the router's firewall and forwarding rules."), svc)
 		if rowRequest {
 			http.Error(w, msg, http.StatusConflict)
@@ -142,16 +154,29 @@ func (s *Server) handleServicesAction(w http.ResponseWriter, r *http.Request) {
 	}
 	// A reload is offered only where putting the state back means something
 	// (svcReapply), so it is accepted only there.
-	if !rcActions[verb] || (verb == "reload" && svcReapply[svc] == "") {
+	steps, ok := rcActions[verb]
+	if !ok || (verb == "reload" && svcReapply[svc] == "") {
 		http.Error(w, "unknown action", http.StatusBadRequest)
 		return
 	}
-	if err := s.backend.RCInit(r.Context(), s.sessionSID(r), svc, verb); err != nil {
+	// The steps run in order and stop at the first the device refuses, which
+	// is the one the message names.
+	for _, step := range steps {
+		var err error
+		if step == "forget" {
+			err = s.backend.ServiceForget(r.Context(), s.sessionSID(r), svc)
+		} else {
+			err = s.backend.RCInit(r.Context(), s.sessionSID(r), svc, step)
+		}
+		if err == nil {
+			continue
+		}
+		msg := fmt.Sprintf(tr("Could not %s %s: the device refused (%v)."), step, svc, err)
 		if rowRequest {
-			http.Error(w, fmt.Sprintf(tr("Could not %s %s: the device refused (%v)."), verb, svc, err), http.StatusBadGateway)
+			http.Error(w, msg, http.StatusBadGateway)
 			return
 		}
-		s.renderServices(w, r, fmt.Sprintf(tr("Could not %s %s: the device refused (%v)."), verb, svc, err))
+		s.renderServices(w, r, msg)
 		return
 	}
 	if rowRequest {
@@ -187,13 +212,28 @@ func (s *Server) renderServiceRuntime(w http.ResponseWriter, r *http.Request, na
 		}
 	}
 	table := servicesTable(plugins, snapshot, nil)
+	localizeServiceKinds(table, tr)
 	var body strings.Builder
 	if err := s.widgets.RenderWithToken(&body, table, s.sessionCSRF(r), lang, t); err != nil {
 		http.Error(w, "render error", http.StatusInternalServerError)
 		return
 	}
+	// The name rides with the runtime cells: the power turns whether the
+	// service is in force, which its name wears as the switched-off mark.
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	_, _ = fmt.Fprintf(w, `<div data-verso-row-patch="3,4,5,6">%s</div>`, body.String())
+	_, _ = fmt.Fprintf(w, `<div data-verso-row-patch="1,3,4,5,6">%s</div>`, body.String())
+}
+
+// localizeServiceKinds words each row's lifecycle chip in the reader's
+// language. The service identity stays verbatim; its lifecycle classification
+// is a label, even though generic table chips normally hold data.
+func localizeServiceKinds(table *widget.Table, tr func(string) string) {
+	for i := range table.Rows {
+		row := &table.Rows[i]
+		for j := range row.Cells[1].Chips {
+			row.Cells[1].Chips[j].Label = tr(row.Cells[1].Chips[j].Label)
+		}
+	}
 }
 
 // serviceActionOf extracts (service, rc verb) from the POSTed form: a row act
@@ -210,8 +250,10 @@ func lifecycleWord(verb string) string {
 		return "restarted"
 	case "start":
 		return "started"
-	case "stop":
-		return "stopped"
+	case "enable":
+		return "turned on"
+	case "disable":
+		return "turned off"
 	default:
 		return verb + "ed"
 	}
@@ -263,14 +305,7 @@ func (s *Server) renderServices(w http.ResponseWriter, r *http.Request, errMsg s
 			Body: fmt.Sprintf(tr("procd could not be read (%v)."), rcErr)})
 	} else {
 		table := servicesTable(s.pluginStates(rc), rc, owners)
-		for i := range table.Rows {
-			row := &table.Rows[i]
-			// The service identity stays verbatim; its lifecycle classification
-			// is a label, even though generic table chips normally hold data.
-			for j := range row.Cells[1].Chips {
-				row.Cells[1].Chips[j].Label = tr(row.Cells[1].Chips[j].Label)
-			}
-		}
+		localizeServiceKinds(table, tr)
 		// A still listing is scrolled and found in with the browser's own
 		// find, so it stands under the heading with no control band.
 		children = append(children, table)
@@ -463,6 +498,10 @@ func serviceListingRow(name string, st openwrt.RCState, state widget.TableCell, 
 	}
 	kind := serviceKind(st.Kind)
 	acts := []widget.TableRowAct{}
+	// A daemon not set to start at boot is not in force, whether or not it
+	// happens to run now: the row is switched off, marked over as a disabled
+	// rule is, and its power offers to turn it back on.
+	off := false
 	if managed && kind == openwrt.ServiceSubsystem {
 		// Nothing runs, so nothing starts or stops: only a subsystem whose
 		// state can drift is offered putting it back.
@@ -470,17 +509,23 @@ func serviceListingRow(name string, st openwrt.RCState, state widget.TableCell, 
 			acts = append(acts, widget.TableRowAct{Icon: "refresh-cw", Title: label, Name: "_service_action", Value: "reload:" + name})
 		}
 	} else if managed && kind != openwrt.ServiceTask {
-		if !svcKeep[name] {
-			acts = append(acts, widget.TableRowAct{Icon: "refresh-cw", Title: "Restart", Name: "_service_action", Value: "restart:" + name})
-		}
 		if svcKeep[name] || svcMustStayEnabled[name] {
 			acts = append(acts, widget.TableRowAct{Icon: "lock", Title: "Cannot be stopped from here"})
 		} else {
-			verb, label := "start", "Start"
+			// The first act runs it now: starting a daemon that is down,
+			// restarting one that runs.
 			if st.Running {
-				verb, label = "stop", "Stop"
+				acts = append(acts, widget.TableRowAct{Icon: "refresh-cw", Title: "Restart", Name: "_service_action", Value: "restart:" + name})
+			} else {
+				acts = append(acts, widget.TableRowAct{Icon: "play", Title: "Start", Name: "_service_action", Value: "start:" + name})
 			}
-			acts = append(acts, widget.TableRowAct{Icon: "power", Title: label, Name: "_service_action", Value: verb + ":" + name})
+			// The power carries the state it would move to, as a rule's does.
+			off = !st.Enabled
+			power := widget.TableRowAct{Icon: "power", Title: "Disable", Name: "_service_action", Value: "disable:" + name}
+			if off {
+				power = widget.TableRowAct{Icon: "power-off", Title: "Enable", Name: "_service_action", Value: "enable:" + name}
+			}
+			acts = append(acts, power)
 		}
 	}
 	if state.Text == "stopped" {
@@ -490,7 +535,7 @@ func serviceListingRow(name string, st openwrt.RCState, state widget.TableCell, 
 	if state.Text == "" {
 		state.Text = "—"
 	}
-	return widget.TableRow{ID: name, Cells: []widget.TableCell{
+	return widget.TableRow{ID: name, Muted: off, Cells: []widget.TableCell{
 		{Text: order}, serviceNameCell(name, kind), {Text: packageOf(name, owners)},
 		{Text: pid}, {Text: memory}, state, {Actions: acts},
 	}}

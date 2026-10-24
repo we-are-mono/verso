@@ -173,22 +173,24 @@ func TestLogSettingsValidateBeforeStaging(t *testing.T) {
 	}
 }
 
-func TestServiceIconsChangeRuntimeOnly(t *testing.T) {
+// Start and restart change what runs now and nothing else: one rc step each,
+// boot policy untouched (the power is the act that changes it).
+func TestServiceStartAndRestartChangeRuntimeOnly(t *testing.T) {
 	var actions []string
 	s := newServer(t, fakeBackend{access: true, rcInits: &actions})
-	for _, verb := range []string{"start", "stop", "restart"} {
+	for _, verb := range []string{"start", "restart"} {
 		res := postPlugin(t, s, "/system/services", url.Values{"_service_action": {verb + ":dnsmasq"}})
 		if res.Code != http.StatusSeeOther {
 			t.Fatalf("%s: status=%d", verb, res.Code)
 		}
 	}
-	if !reflect.DeepEqual(actions, []string{"dnsmasq start", "dnsmasq stop", "dnsmasq restart"}) {
+	if !reflect.DeepEqual(actions, []string{"dnsmasq start", "dnsmasq restart"}) {
 		t.Fatalf("actions=%v", actions)
 	}
-	for _, value := range []string{"stop:firewall", "restart:verso", "reload:dnsmasq", "stop:../network"} {
+	for _, value := range []string{"disable:firewall", "restart:verso", "reload:dnsmasq", "stop:dnsmasq", "stop:../network"} {
 		postPlugin(t, s, "/system/services", url.Values{"_service_action": {value}})
 	}
-	if len(actions) != 3 {
+	if len(actions) != 2 {
 		t.Fatalf("a refused service action reached rc: %v", actions)
 	}
 	// The firewall's rules reload, the one place a reload is offered.
