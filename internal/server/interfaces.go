@@ -42,9 +42,7 @@ func interfaceNets(cfg map[string]any) []ifaceNet {
 		}
 		name, _ := s[".name"].(string)
 		device, _ := s["device"].(string)
-		ipaddr, _ := s["ipaddr"].(string)
-		netmask, _ := s["netmask"].(string)
-		if c := subnetOf(ipaddr, netmask); c != nil {
+		for _, c := range staticSubnets(s) {
 			out = append(out, ifaceNet{cidr: c, name: name, device: device})
 		}
 	}
@@ -116,11 +114,9 @@ func interfaceMeanings(cfg, fwCfg map[string]any) map[string][]interfaceMeaning 
 		if device == "" {
 			continue
 		}
-		ipaddr, _ := section["ipaddr"].(string)
-		netmask, _ := section["netmask"].(string)
 		subnet := ""
-		if cidr := subnetOf(ipaddr, netmask); cidr != nil {
-			subnet = cidr.String()
+		if subnets := staticSubnets(section); len(subnets) > 0 {
+			subnet = subnets[0].String()
 		}
 		out[device] = append(out[device], interfaceMeaning{
 			name: name, proto: proto, subnet: subnet,

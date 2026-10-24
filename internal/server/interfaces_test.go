@@ -5,6 +5,7 @@ package server
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/we-are-mono/verso/internal/openwrt"
@@ -25,6 +26,43 @@ func TestDeviceVLAN(t *testing.T) {
 		if b != c.bridge || id != c.id {
 			t.Errorf("deviceVLAN(%q) = (%q, %q), want (%q, %q)", c.device, b, id, c.bridge, c.id)
 		}
+	}
+}
+
+// A static address is a subnet however netifd lets it be written: a dotted
+// netmask beside it, a prefix on it, or a list of either.
+func TestStaticSubnetsReadEveryAddressForm(t *testing.T) {
+	cases := []struct {
+		name    string
+		section map[string]any
+		want    []string
+	}{
+		{"netmask", map[string]any{"ipaddr": "10.0.10.1", "netmask": "255.255.255.0"}, []string{"10.0.10.0/24"}},
+		{"prefix", map[string]any{"ipaddr": "10.0.0.1/24"}, []string{"10.0.0.0/24"}},
+		{"prefix over netmask", map[string]any{"ipaddr": "10.0.0.1/16", "netmask": "255.255.255.0"}, []string{"10.0.0.0/16"}},
+		{"list", map[string]any{"ipaddr": []any{"10.0.0.1/24", "10.0.1.1", "fd00::1/64"}, "netmask": "255.255.255.0"}, []string{"10.0.0.0/24", "10.0.1.0/24"}},
+		{"no mask", map[string]any{"ipaddr": "10.0.0.1"}, nil},
+		{"none", map[string]any{"proto": "dhcp"}, nil},
+	}
+	for _, c := range cases {
+		var got []string
+		for _, n := range staticSubnets(c.section) {
+			got = append(got, n.String())
+		}
+		if strings.Join(got, " ") != strings.Join(c.want, " ") {
+			t.Errorf("%s: staticSubnets(%v) = %v, want %v", c.name, c.section, got, c.want)
+		}
+	}
+}
+
+// A device on a network whose address carries its prefix is on that network,
+// not elsewhere: the roster bands it under the network's name.
+func TestInterfaceNetsCoverAPrefixedAddress(t *testing.T) {
+	nets := interfaceNets(map[string]any{
+		"lan": map[string]any{".type": "interface", ".name": "lan", "device": "br-lan.1", "ipaddr": "10.0.0.1/24"},
+	})
+	if n, ok := netForAddr(nets, "10.0.0.213"); !ok || n.name != "lan" || n.cidr.String() != "10.0.0.0/24" {
+		t.Errorf("netForAddr(10.0.0.213) = %+v, %v; want lan on 10.0.0.0/24", n, ok)
 	}
 }
 

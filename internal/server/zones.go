@@ -5,6 +5,7 @@ package server
 
 import (
 	"net"
+	"strings"
 )
 
 // Zones: which firewall zone a device lives behind. The firewall config
@@ -33,9 +34,32 @@ func zonesByDevice(netCfg, fwCfg map[string]any) map[string]string {
 	return out
 }
 
-// subnetOf turns a uci static address + dotted netmask into its subnet.
+// staticSubnets are the IPv4 subnets an interface section's static addresses
+// stand on, in the order written. netifd takes ipaddr as one address or a list,
+// each with its prefix ("10.0.0.1/24") or under the section's dotted netmask;
+// a prefix wins over the netmask, and an address with neither has no subnet.
+func staticSubnets(section map[string]any) []*net.IPNet {
+	netmask, _ := section["netmask"].(string)
+	var out []*net.IPNet
+	for _, addr := range uciList(section["ipaddr"]) {
+		if n := subnetOf(addr, netmask); n != nil {
+			out = append(out, n)
+		}
+	}
+	return out
+}
+
+// subnetOf turns one uci static IPv4 address, prefixed or under a dotted
+// netmask, into its subnet.
 func subnetOf(ipaddr, netmask string) *net.IPNet {
-	ip := net.ParseIP(ipaddr)
+	if strings.Contains(ipaddr, "/") {
+		ip, n, err := net.ParseCIDR(ipaddr)
+		if err != nil || ip.To4() == nil {
+			return nil
+		}
+		return n
+	}
+	ip := net.ParseIP(ipaddr).To4()
 	maskIP := net.ParseIP(netmask)
 	if ip == nil || maskIP == nil {
 		return nil
