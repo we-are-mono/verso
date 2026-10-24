@@ -41,9 +41,8 @@ own and points at the decision that governs it; the rationale lives there, not h
 - **An image without uhttpd.** The Mono image still ships `uhttpd`,
   `uhttpd-mod-ubus` and `px5g-mbedtls`; drop them from the build (Gateway repo)
   so Verso holds the router's ports from first boot.
-- **Check on the DK.** That `/etc/verso` survives an A/B flash (keep.d); and a
-  port move from Access in Firefox, which asks about a self-signed certificate
-  again on each port.
+- **Check on the DK.** A port move from Access in Firefox, which asks about a
+  self-signed certificate again on each port.
 
 ## Hardening
 
