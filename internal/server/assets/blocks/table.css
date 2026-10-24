@@ -78,9 +78,8 @@
  *           __toggle    the box that unfolds an inventory row
  *           __state     a state's packet and word; data-verso-tone
  *           __held      a reserved address's line (data-verso-reserved on
- *                       its cell), which its pin hangs off
- *           __pin       the reservation's pin, in the margin before the
- *                       address, taking none of the column's measure
+ *                       its cell): its pin, then the address
+ *           __pin       the reservation's pin on its green tile
  *           __detail    the quiet line under a cell's value
  *           __slot      a figure's slot of one width, so a column lines up
  *           __lane      a lane's row: a run of rows under its band
@@ -433,21 +432,28 @@
   color: var(--color-crimson-deep);
 }
 
-/* A reserved address is pinned, as an operator pins a card beside the entry
-   it holds: the 14px pin hangs in the cell's margin 4px before the address,
-   centred on its 24px line, so every address in the column keeps its place
-   and the name beside it keeps its room. Green, the reservation's hue, in
-   the Deep step a coloured glyph takes. */
+/* A reserved address is led by its pin on a green tile: a row act's hovered
+   face (the 28px square, its 2px corners, the 16px glyph on a filled
+   ground) without its border, in the reservation's hue, Deep Green on Green
+   Wash. It stands 4px before the address and rides the 24px line as the
+   copy control after the address does, so the row keeps its 40px. The name
+   keeps the room a chip after it took, and the row still carries one green
+   thing to find. It is a mark, not an act: nothing happens under the
+   pointer. */
 .verso-table__held {
-  position: relative;
   display: flex;
   align-items: center;
+  gap: var(--spacing);
 }
 .verso-table__pin {
-  position: absolute;
-  right: calc(100% + var(--spacing));
-  top: calc(var(--spacing) * 1.25);
-  display: flex;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: calc(var(--spacing) * 7);
+  height: calc(var(--spacing) * 7);
+  margin-block: calc((1lh - var(--spacing) * 7) / 2);
+  border-radius: var(--radius-xs);
+  background-color: var(--color-green-soft);
   color: var(--color-green-deep);
 }
 

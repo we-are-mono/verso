@@ -316,10 +316,10 @@
              without colour: the value it was recedes to Meta, and what it
              becomes stands in Ink, led by an arrow turning down into it in the
              cell's tone (the action colour for info). */}}
-        {{/* A reserved address wears the pin, hung off its line in the margin
-             before it, so the column keeps its alignment and the row's name
-             keeps its room. */}}
-        <td data-verso-verbatim{{if .Reserved}} data-verso-reserved{{end}} class="verso-table__cell whitespace-nowrap {{if or .Muted .Sub}}text-meta{{else}}text-ink{{end}}"><span class="{{if .Reserved}}verso-table__held{{else}}flex items-center{{end}}">{{if .Reserved}}<span class="verso-table__pin" role="img" aria-label="{{t "Reserved address"}}" title="{{t "Reserved address"}}">{{icon "pin" "size-3.5"}}</span>{{end}}<span>{{.Text}}</span>{{if and .Dot (not .Sub)}}<span role="img" aria-label="{{t "Available version"}}" class="verso-mark ml-2" data-verso-tone="{{template "verso-dot-tone" .Variant}}"{{if eq .Variant "success"}} data-verso-live{{end}} title="{{t "Available version"}}"></span>{{end}}{{if and .Copy .Text}}{{template "verso-copy-inline" .Text}}{{end}}</span>{{if .Sub}}<span class="flex items-center gap-1.5 text-ink"><span role="img" aria-label="{{t "Available version"}}" title="{{t "Available version"}}" class="flex shrink-0 {{if eq .Variant "info"}}text-denim{{else}}text-glyph{{end}}">{{icon "corner-down-right" "size-4"}}</span><span>{{.Sub}}</span></span>{{end}}</td>
+        {{/* A reserved address is led by the pin on a green tile, so the
+             row's name keeps its room and the address carries the one green
+             thing to find. */}}
+        <td data-verso-verbatim{{if .Reserved}} data-verso-reserved{{end}} class="verso-table__cell whitespace-nowrap {{if or .Muted .Sub}}text-meta{{else}}text-ink{{end}}"><span class="{{if .Reserved}}verso-table__held{{else}}flex items-center{{end}}">{{if .Reserved}}<span class="verso-table__pin" role="img" aria-label="{{t "Reserved address"}}" title="{{t "Reserved address"}}">{{icon "pin" "size-4"}}</span>{{end}}<span>{{.Text}}</span>{{if and .Dot (not .Sub)}}<span role="img" aria-label="{{t "Available version"}}" class="verso-mark ml-2" data-verso-tone="{{template "verso-dot-tone" .Variant}}"{{if eq .Variant "success"}} data-verso-live{{end}} title="{{t "Available version"}}"></span>{{end}}{{if and .Copy .Text}}{{template "verso-copy-inline" .Text}}{{end}}</span>{{if .Sub}}<span class="flex items-center gap-1.5 text-ink"><span role="img" aria-label="{{t "Available version"}}" title="{{t "Available version"}}" class="flex shrink-0 {{if eq .Variant "info"}}text-denim{{else}}text-glyph{{end}}">{{icon "corner-down-right" "size-4"}}</span><span>{{.Sub}}</span></span>{{end}}</td>
         {{else if eq .Kind "keyword"}}
         <td data-verso-verbatim class="verso-table__cell whitespace-nowrap text-body">{{.Text}}</td>
         {{else if eq .Kind "runtime"}}

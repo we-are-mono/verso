@@ -147,10 +147,10 @@ func TestRenderEmphasisedMonoCell(t *testing.T) {
 	}
 }
 
-// A reserved address wears the pin, hung in the cell's leading margin as a
-// pin stuck beside an entry, so the address keeps its place in the column and
-// the row's name keeps its room. A screen reader hears "Reserved address"
-// before the address it names.
+// A reserved address is led by the pin on a green tile, a row act's hovered
+// face in the reservation's hue without its border, so the row's name keeps
+// its room and the address still carries one green thing to find. A screen
+// reader hears "Reserved address" before the address it names.
 func TestRenderReservedMonoCell(t *testing.T) {
 	r := newRenderer(t)
 	got := render(t, r, &Table{
@@ -162,7 +162,7 @@ func TestRenderReservedMonoCell(t *testing.T) {
 	})
 	for _, want := range []string{
 		`<td data-verso-verbatim data-verso-reserved class="verso-table__cell whitespace-nowrap text-ink"><span class="verso-table__held">`,
-		`<span class="verso-table__pin" role="img" aria-label="Reserved address" title="Reserved address">` + string(Icon("pin", "size-3.5")) + `</span>`,
+		`<span class="verso-table__pin" role="img" aria-label="Reserved address" title="Reserved address">` + string(Icon("pin", "size-4")) + `</span><span>10.0.0.196</span>`,
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("reserved mono cell missing %q:\n%s", want, got)
@@ -171,13 +171,21 @@ func TestRenderReservedMonoCell(t *testing.T) {
 	if n := strings.Count(got, `class="verso-table__pin"`); n != 1 {
 		t.Errorf("%d pins, want only the reserved address's:\n%s", n, got)
 	}
-	// The pin hangs off the value's line, 4px before it whatever the cell's
-	// padding, centred on the 24px line, in the reservation's green.
-	declares(t, "table", ".verso-table__held", "position: relative;")
+	if strings.Contains(got, "verso-table__pinned") {
+		t.Errorf("a reserved address carries no marker:\n%s", got)
+	}
+	// The tile is an icon act's 28px square with its 2px corners and 16px
+	// glyph, on Green Wash in Deep Green, 4px before the address, riding the
+	// 24px line as the copy control does rather than making the row taller.
+	declares(t, "table", ".verso-table__held", "display: flex;", "align-items: center;", "gap: var(--spacing);")
 	declares(t, "table", ".verso-table__pin",
-		"position: absolute;",
-		"right: calc(100% + var(--spacing));",
-		"top: calc(var(--spacing) * 1.25);",
+		"display: grid;",
+		"place-items: center;",
+		"width: calc(var(--spacing) * 7);",
+		"height: calc(var(--spacing) * 7);",
+		"margin-block: calc((1lh - var(--spacing) * 7) / 2);",
+		"border-radius: var(--radius-xs);",
+		"background-color: var(--color-green-soft);",
 		"color: var(--color-green-deep);")
 }
 
