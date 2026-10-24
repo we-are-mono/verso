@@ -133,13 +133,18 @@ func TestSDKDurationReachesTheShell(t *testing.T) {
 		t.Fatalf("SDK table fixture does not decode: %v", err)
 	}
 	found = false
+	reserved := false
 	for _, row := range w.(*Table).Rows {
 		for _, cell := range row.Cells {
 			found = found || (cell.Duration != nil && *cell.Duration == 8040)
+			reserved = reserved || (cell.Reserved && cell.Text == "10.0.0.1/24")
 		}
 	}
 	if !found {
 		t.Errorf("SDK duration lost crossing the wire on a cell")
+	}
+	if !reserved {
+		t.Errorf("SDK reserved address lost its pin crossing the wire")
 	}
 }
 

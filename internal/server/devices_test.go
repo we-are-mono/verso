@@ -309,8 +309,8 @@ func TestDevicesMarksAReservedDevice(t *testing.T) {
 	}
 
 	body := get(t, rosterServer(t), "/devices").Body.String()
-	if n := strings.Count(body, ">reserved</span>"); n != 1 {
-		t.Errorf("exactly the reserved device should wear the chip, got %d", n)
+	if n := strings.Count(body, `aria-label="Reserved address"`); n != 1 {
+		t.Errorf("exactly the reserved device's address should wear the pin, got %d", n)
 	}
 }
 
@@ -339,8 +339,8 @@ func TestDevicesReservationActionsFollowConfiguredState(t *testing.T) {
 				row := body[strings.LastIndex(body[:at], "<tr "):]
 				row, _, _ = strings.Cut(row, "</tr>")
 				reserved := mac == "06:11:22:33:44:55"
-				if got := strings.Contains(row, ">reserved</span>"); got != reserved {
-					t.Errorf("device %s: reserved chip = %v, want %v", mac, got, reserved)
+				if got := strings.Contains(row, `aria-label="Reserved address"`); got != reserved {
+					t.Errorf("device %s: reserved pin = %v, want %v", mac, got, reserved)
 				}
 				if got := strings.Contains(row, "Remove reservation"); got != reserved {
 					t.Errorf("device %s: remove action = %v, want %v", mac, got, reserved)
@@ -355,8 +355,8 @@ func TestDevicesReservationActionsFollowConfiguredState(t *testing.T) {
 
 			delete(backend.uci["dhcp"], "printer")
 			body = get(t, s, "/devices").Body.String()
-			if strings.Contains(body, ">reserved</span>") || strings.Contains(body, "Remove reservation") {
-				t.Error("after removing the reservation, its chip and remove action must disappear")
+			if strings.Contains(body, `aria-label="Reserved address"`) || strings.Contains(body, "Remove reservation") {
+				t.Error("after removing the reservation, its pin and remove action must disappear")
 			}
 			if n := strings.Count(body, `data-verso-entity-tab="reserve"`); n != 3 {
 				t.Errorf("after removing the reservation, all three devices should offer Reserve, got %d", n)

@@ -166,7 +166,7 @@ func DevicesTable(devices []Device, acts func(d Device) []TableRowAct, usage boo
 		cells := []TableCell{
 			{Text: d.Name, Opens: true, Sub: d.Maker, Chips: deviceChips(d), Muted: away},
 			{Text: d.Port, Muted: away},
-			{Text: d.V4, Copy: true, Emphasis: true, Muted: away},
+			{Text: d.V4, Copy: true, Emphasis: true, Muted: away, Reserved: d.Reserved && d.V4 != ""},
 		}
 		if usage {
 			u := DeviceUsage{}
@@ -273,8 +273,9 @@ func reservableDevice(devices []Device) string {
 	return fallback
 }
 
-// deviceChips are the qualifiers that ride after a device's name: that its
-// address is pinned, and that this is the browser you are reading on.
+// deviceChips are the qualifiers that ride after a device's name: that it has
+// limits, and that this is the browser you are reading on. A reservation is
+// not one of them: it pins the address it holds, in the address's own cell.
 func deviceChips(d Device) []TableChip {
 	var chips []TableChip
 	if d.Limit != "" {
@@ -283,9 +284,6 @@ func deviceChips(d Device) []TableChip {
 			detail = d.Limit
 		}
 		chips = append(chips, TableChip{Icon: "sliders-horizontal", Label: "limits", Title: detail, Tone: "warning", LocalizeLabel: true, LimitTip: d.LimitTip})
-	}
-	if d.Reserved {
-		chips = append(chips, TableChip{Icon: "pin", Label: "reserved", Tone: "success", LocalizeLabel: true})
 	}
 	if d.ThisBrowser {
 		chips = append(chips, TableChip{Label: "this browser"})

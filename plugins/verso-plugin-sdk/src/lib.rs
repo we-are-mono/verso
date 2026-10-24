@@ -2562,6 +2562,10 @@ pub struct TableCell {
     pub copy: bool,
     #[serde(skip_serializing_if = "is_false")]
     pub emphasis: bool,
+    /// A mono cell's address that a reservation holds for this row: the shell
+    /// hangs the reservation's pin in the margin before it.
+    #[serde(skip_serializing_if = "is_false")]
+    pub reserved: bool,
     #[serde(skip_serializing_if = "String::is_empty")]
     pub chip: String,
     #[serde(skip_serializing_if = "String::is_empty")]

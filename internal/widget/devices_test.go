@@ -65,8 +65,8 @@ func TestRenderDevicesTable(t *testing.T) {
 		"guest", "192.168.20.0/24", // the guest band
 		"a4:83:e7:2b:19:0c", "192.168.1.104",
 		"lan1", "lan3", // the port a device attaches through
-		"Intel",                    // the maker, beside the name it qualifies
-		"reserved", "this browser", // the chips that qualify a name
+		"Intel",        // the maker, beside the name it qualifies
+		"this browser", // the chip that qualifies a name
 		"Online", "Offline",
 		"Reserve address", // the act that leads somewhere
 		"Edit limits",     // one that is drawn and inert
@@ -79,6 +79,20 @@ func TestRenderDevicesTable(t *testing.T) {
 	}
 	if strings.Contains(got, " online · ") {
 		t.Errorf("a network's band counts its devices:\n%s", got)
+	}
+	// A reservation pins the address it holds, so the name carries no chip
+	// for it: nas's address wears the pin, and no other address does.
+	if strings.Contains(got, ">reserved</span>") {
+		t.Errorf("a reservation is the address's pin, not a chip after the name:\n%s", got)
+	}
+	at := strings.Index(got, `data-verso-entity-url="/entity/device/de:ad:be:ef:00:11"`)
+	nas := got[strings.LastIndex(got[:at], "<tr "):]
+	nas, _, _ = strings.Cut(nas, "</tr>")
+	if !strings.Contains(nas, `data-verso-reserved`) || !strings.Contains(nas, `aria-label="Reserved address"`) {
+		t.Errorf("nas's reserved address should wear the pin:\n%s", nas)
+	}
+	if n := strings.Count(got, `class="verso-table__pin"`); n != 1 {
+		t.Errorf("%d pins, want only nas's", n)
 	}
 	// A device that is not here reads at the secondary step, all of it.
 	if !strings.Contains(got, "text-meta") {

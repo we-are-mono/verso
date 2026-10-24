@@ -485,6 +485,7 @@ type TableCell struct {
 	Icon         string `json:"icon,omitempty"`          // pill cells: a leading Lucide icon on the badge (e.g. a firewall verdict's check/ban)
 	Copy         bool   `json:"copy,omitempty"`          // mono cells: offer the inline copy button beside the value
 	Emphasis     bool   `json:"emphasis,omitempty"`      // mono cells: promote an important value one size and weight step
+	Reserved     bool   `json:"reserved,omitempty"`      // mono cells: an address a reservation holds for this row, the pin hung in the margin before it
 	Chip         string `json:"chip,omitempty"`          // name cells: a small category chip inline after the name (e.g. its zone)
 	LeadIcon     string `json:"lead_icon,omitempty"`     // name cells: a device-type Lucide glyph before the name, plain slate ink (not a badge)
 	Key          string `json:"key,omitempty"`           // optional stable live-update hook; not displayed

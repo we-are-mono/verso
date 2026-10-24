@@ -147,6 +147,40 @@ func TestRenderEmphasisedMonoCell(t *testing.T) {
 	}
 }
 
+// A reserved address wears the pin, hung in the cell's leading margin as a
+// pin stuck beside an entry, so the address keeps its place in the column and
+// the row's name keeps its room. A screen reader hears "Reserved address"
+// before the address it names.
+func TestRenderReservedMonoCell(t *testing.T) {
+	r := newRenderer(t)
+	got := render(t, r, &Table{
+		Columns: []TableColumn{{Label: "Address", Kind: "mono"}},
+		Rows: []TableRow{
+			{Cells: []TableCell{{Text: "10.0.0.196", Reserved: true, Copy: true}}},
+			{Cells: []TableCell{{Text: "10.0.0.213"}}},
+		},
+	})
+	for _, want := range []string{
+		`<td data-verso-verbatim data-verso-reserved class="verso-table__cell whitespace-nowrap text-ink"><span class="verso-table__held">`,
+		`<span class="verso-table__pin" role="img" aria-label="Reserved address" title="Reserved address">` + string(Icon("pin", "size-3.5")) + `</span>`,
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("reserved mono cell missing %q:\n%s", want, got)
+		}
+	}
+	if n := strings.Count(got, `class="verso-table__pin"`); n != 1 {
+		t.Errorf("%d pins, want only the reserved address's:\n%s", n, got)
+	}
+	// The pin hangs off the value's line, 4px before it whatever the cell's
+	// padding, centred on the 24px line, in the reservation's green.
+	declares(t, "table", ".verso-table__held", "position: relative;")
+	declares(t, "table", ".verso-table__pin",
+		"position: absolute;",
+		"right: calc(100% + var(--spacing));",
+		"top: calc(var(--spacing) * 1.25);",
+		"color: var(--color-green-deep);")
+}
+
 // TestRenderTableEndpoints: endpoints render as a type icon + label with one
 // treatment per kind — zone sans, device mono, router accented. No pills: the
 // grid contains the cells, so a badge would be redundant chrome.

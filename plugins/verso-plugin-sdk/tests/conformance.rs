@@ -586,6 +586,7 @@ fn listing() -> Widget {
                         sub: "fd00:0:0:1::1/64".into(),
                         copy: true,
                         emphasis: true,
+                        reserved: true,
                         ..TableCell::default()
                     },
                     TableCell::zone("lan"),
