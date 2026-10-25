@@ -230,6 +230,10 @@ func TestPortsAndTunnelsCardBodies(t *testing.T) {
 	if up := row(t, ports, "interface:eth0"); !strings.Contains(up, "wan") || !strings.Contains(up, "18\U0000202fMb/s") || !strings.Contains(up, "2.1\U0000202fMb/s") || !strings.Contains(up, `data-verso-tone="success"`) || !strings.Contains(up, ">Up<") {
 		t.Errorf("an up port = %s", up)
 	}
+	// The column's head names the kind, so the network is its bare name.
+	if up := row(t, ports, "interface:eth0"); strings.Contains(up, "verso-chip") {
+		t.Errorf("a port's network is no chip = %s", up)
+	}
 	if lost := row(t, ports, "interface:eth2"); !strings.Contains(lost, ">Down<") || !strings.Contains(lost, "lan") {
 		t.Errorf("a lost-link port = %s", lost)
 	}

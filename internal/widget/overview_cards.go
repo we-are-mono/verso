@@ -208,7 +208,7 @@ var overviewRates = []int{2, 3}
 // the panel's left-to-right order, so the card has one order.
 func (o *Overview) portsBody(r *Renderer, csrf string) (template.HTML, error) {
 	t := &Table{Style: "list", Columns: []TableColumn{
-		{Label: "Port", Kind: "mono"}, {Label: "Network", Kind: "entity"},
+		{Label: "Port", Kind: "mono"}, {Label: "Network", Kind: "mono"},
 		{Label: "Receive", Kind: "rate"}, {Label: "Transmit", Kind: "rate"}, {Label: "Status", Kind: "status"},
 	}, Secondary: overviewRates, EmptyText: "No physical ports were found."}
 	for _, n := range o.portsInPanelOrder() {
@@ -216,20 +216,17 @@ func (o *Overview) portsBody(r *Renderer, csrf string) (template.HTML, error) {
 		// rate; its link stays live like any port's.
 		if !n.inUse() {
 			t.Rows = append(t.Rows, TableRow{ID: n.Name, Key: "interface:" + n.Name, Muted: true, Cells: []TableCell{
-				{Text: n.Name, Verbatim: true}, {}, {}, {}, stateCell(n),
+				{Text: n.Name, Verbatim: true}, {Text: "—", Muted: true}, {}, {}, stateCell(n),
 			}})
 			continue
 		}
-		chips := make([]TableChip, 0, len(n.Networks))
-		for _, network := range n.Networks {
-			chips = append(chips, EntityChip("network", network))
-		}
-		for _, rel := range n.Relations {
-			if len(n.Networks) == 0 {
-				chips = append(chips, EntityChip("network", rel.Name))
+		networks := n.Networks
+		if len(networks) == 0 {
+			for _, rel := range n.Relations {
+				networks = append(networks, rel.Name)
 			}
 		}
-		t.Rows = append(t.Rows, interfaceRow(r.numbers(), n, TableCell{Chips: chips}))
+		t.Rows = append(t.Rows, interfaceRow(r.numbers(), n, TableCell{Text: strings.Join(networks, ", "), Verbatim: true}))
 	}
 	table, err := o.renderWidget(r, t, csrf)
 	if err != nil || o.Panel == nil {

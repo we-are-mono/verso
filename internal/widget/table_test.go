@@ -2097,9 +2097,6 @@ func TestAnEntityChipIsDrawnByItsKind(t *testing.T) {
 			t.Errorf("%s drew icon %q tone %q, want %q %q", tc.json, chip.Icon, chip.Tone, tc.icon, tc.tone)
 		}
 	}
-	if chip := EntityChip("zone", "lan"); chip.Icon != "zone" || chip.Tone != "accent" || chip.Label != "lan" {
-		t.Errorf("EntityChip = %+v", chip)
-	}
 }
 
 // A state that has somewhere to be read about — a failed service's log —

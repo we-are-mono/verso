@@ -629,13 +629,6 @@ var entityChipLooks = map[string]struct{ icon, tone string }{
 	"port":    {"ethernet-port", ""},
 }
 
-// EntityChip is the chip citing one zone, network or port by its name.
-func EntityChip(kind, label string) TableChip {
-	chip := TableChip{Kind: kind, Label: label}
-	chip.drawnByKind()
-	return chip
-}
-
 // drawnByKind gives a chip that names its kind that kind's look.
 func (c *TableChip) drawnByKind() {
 	if look, ok := entityChipLooks[c.Kind]; ok {
