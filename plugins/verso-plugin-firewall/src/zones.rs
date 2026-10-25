@@ -21,8 +21,8 @@
 
 use verso_plugin::{
     commit, commit_delete, commit_new, pill_cell, text_cell, ColumnWidth, Envelope, Form,
-    HeadingAct, RowDrawer, Snapshot, Table, TableCell, TableChip, TableColumn, TableRow, Tone,
-    Widget, REMOVE_FIELD,
+    HeadingAct, RowDrawer, Snapshot, Table, TableCell, TableColumn, TableRow, Tone, Widget,
+    REMOVE_FIELD,
 };
 
 use crate::crossings::Crossings;
@@ -245,8 +245,8 @@ fn act(blank: Option<RowDrawer>) -> HeadingAct {
 fn columns() -> Vec<TableColumn> {
     [
         ("Zone", "name", ColumnWidth::Name),
-        ("Networks", "entity", ColumnWidth::Name),
-        ("Reaches", "entity", ColumnWidth::Grow),
+        ("Networks", "mono", ColumnWidth::Name),
+        ("Reaches", "mono", ColumnWidth::Grow),
         ("Input", "pill", ColumnWidth::Short),
         ("Output", "pill", ColumnWidth::Short),
         ("Forward", "pill", ColumnWidth::Short),
@@ -287,11 +287,7 @@ fn row(model: &Firewall, zone: &Zone, open: Option<&Open>) -> TableRow {
         true => text_cell("on"),
         false => TableCell::default(),
     };
-    let reaches = model
-        .forwards_from(&zone.name)
-        .iter()
-        .map(|to| TableChip::entity("zone", to))
-        .collect();
+    let reaches = text_cell(&model.forwards_from(&zone.name).join(", "));
     let door = zone_drawer::href(&zone.section, zone_drawer::TRAFFIC);
     let drawer = open
         .filter(|open| open.section == zone.section)
@@ -315,8 +311,8 @@ fn row(model: &Firewall, zone: &Zone, open: Option<&Open>) -> TableRow {
         tags: Vec::new(),
         cells: vec![
             page::name_cell(&zone.name, door.clone()),
-            page::chips_cell(membership(zone)),
-            page::chips_cell(reaches),
+            membership(zone),
+            reaches,
             pill_cell(&zone.input, format::target_tone(&zone.input)),
             pill_cell(&zone.output, format::target_tone(&zone.output)),
             pill_cell(&zone.forward, format::target_tone(&zone.forward)),
@@ -342,21 +338,16 @@ fn row(model: &Firewall, zone: &Zone, open: Option<&Open>) -> TableRow {
     }
 }
 
-/// membership is what the zone claims: the logical networks it covers, and any
-/// kernel device it claims directly — a plain chip saying so, because a raw
-/// device is not a network the rest of the config knows by name.
-fn membership(zone: &Zone) -> Vec<TableChip> {
-    let mut chips: Vec<TableChip> = zone
+/// membership is what the zone claims: the logical networks it covers, then
+/// any kernel device it claims directly, which its panel files under Devices.
+fn membership(zone: &Zone) -> TableCell {
+    let names: Vec<&str> = zone
         .networks
         .iter()
-        .map(|network| TableChip::entity("network", network))
+        .chain(&zone.devices)
+        .map(String::as_str)
         .collect();
-    chips.extend(zone.devices.iter().map(|device| TableChip {
-        label: device.clone(),
-        title: "A kernel device, claimed directly rather than through a network.".into(),
-        ..TableChip::default()
-    }));
-    chips
+    text_cell(&names.join(", "))
 }
 
 #[cfg(test)]
@@ -418,39 +409,20 @@ mod tests {
             .collect()
     }
 
-    /// A zone's row cites the networks it covers and the zones it reaches as
-    /// the shell's entity chips, each naming its kind — a network and a zone
-    /// sharing the name "lan" never blur — rather than as a line of names.
+    /// A zone's row names the networks it covers and the zones it reaches by
+    /// their bare names: each column's head says the kind.
     #[test]
-    fn a_zones_row_cites_its_networks_and_the_zones_it_reaches_as_chips() {
+    fn a_zones_row_names_its_networks_and_the_zones_it_reaches() {
         let body = body();
         let columns = fixture::listing(&body)["columns"].clone();
-        assert_eq!(columns[1]["kind"], "entity");
-        assert_eq!(columns[2]["kind"], "entity");
+        assert_eq!(columns[1]["kind"], "mono");
+        assert_eq!(columns[2]["kind"], "mono");
         let lan = rows(&body)
             .into_iter()
             .find(|row| row["cells"][0]["text"] == "lan")
             .expect("the lan zone");
-        let kinds = |cell: &Value| -> Vec<(String, String)> {
-            cell["chips"]
-                .as_array()
-                .expect("chips")
-                .iter()
-                .map(|c| {
-                    (
-                        c["kind"].as_str().unwrap_or_default().to_string(),
-                        c["label"].as_str().unwrap_or_default().to_string(),
-                    )
-                })
-                .collect()
-        };
-        let networks = kinds(&cells(&lan)[1]);
-        assert!(!networks.is_empty() && networks.iter().all(|(kind, _)| kind == "network"));
-        assert_eq!(networks[0].1, "lan");
-        assert_eq!(
-            kinds(&cells(&lan)[2]),
-            [("zone".to_string(), "wan".to_string())]
-        );
+        assert_eq!(cells(&lan)[1], serde_json::json!({"text": "lan, lan2"}));
+        assert_eq!(cells(&lan)[2], serde_json::json!({"text": "wan"}));
     }
 
     /// The Traffic reading opens on the zone itself — whether it is in force,
@@ -625,11 +597,8 @@ mod tests {
             cells(&rows[0]),
             serde_json::json!([
                 {"text": "lan", "href": "/plugins/firewall/zones?open=cfg02dc81"},
-                {"chips": [
-                    {"kind": "network", "icon": "", "label": "lan"},
-                    {"kind": "network", "icon": "", "label": "lan2"}
-                ]},
-                {"chips": [{"kind": "zone", "icon": "", "label": "wan"}]},
+                {"text": "lan, lan2"},
+                {"text": "wan"},
                 // The three policies firewall4 evaluates separately, in the
                 // order it evaluates them.
                 {"text": "accept", "variant": "success", "dot": true},
@@ -680,16 +649,13 @@ mod tests {
     #[test]
     fn an_uplink_states_its_policies_and_shows_its_nat() {
         let wan = &rows(&body())[1];
-        let networks: Vec<&str> = wan["cells"][1]["chips"]
-            .as_array()
-            .expect("chips")
-            .iter()
-            .map(|c| c["label"].as_str().unwrap_or_default())
-            .collect();
-        assert_eq!(networks, ["wan", "wan6"]);
-        // Nothing crosses out of the uplink by a forwarding of its own: no
-        // chips, which the shell draws as the quiet dash.
-        assert_eq!(wan["cells"][2], serde_json::json!({}));
+        assert_eq!(wan["cells"][1]["text"], "wan, wan6");
+        // Nothing crosses out of the uplink by a forwarding of its own: the
+        // quiet dash.
+        assert_eq!(
+            wan["cells"][2],
+            serde_json::json!({"text": "—", "muted": true})
+        );
         assert_eq!(
             wan["cells"][3],
             serde_json::json!({"text": "reject", "variant": "danger", "dot": true})
@@ -705,18 +671,12 @@ mod tests {
         assert_eq!(guest["cells"][5]["text"], "reject");
     }
 
+    /// A kernel device the zone claims directly stands after its networks;
+    /// the zone's panel files it under Devices.
     #[test]
-    fn a_zone_claiming_a_raw_device_says_so() {
+    fn a_zone_claiming_a_raw_device_names_it_with_its_networks() {
         let tailscale = &rows(&body())[3];
-        let device = &tailscale["cells"][1]["chips"][0];
-        assert_eq!(device["label"], "tailscale0");
-        assert!(
-            device.get("kind").is_none(),
-            "a raw device is not a network"
-        );
-        assert!(device["title"]
-            .as_str()
-            .is_some_and(|t| t.contains("kernel device")));
+        assert_eq!(tailscale["cells"][1]["text"], "tailscale0");
     }
 
     /// Only the row the address names carries a rendered panel. Every other row
