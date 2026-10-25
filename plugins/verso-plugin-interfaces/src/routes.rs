@@ -18,7 +18,7 @@ use verso_plugin::{
     commit, commit_delete, commit_new, group_changes, muted_cell, select_field, text_cell,
     text_field, uci_text, Change, ColumnWidth, CommitOp, Description, Envelope, Errors, Form,
     HeadingAct, RowDrawer, SelectOption, Snapshot, SubjectKind, Table, TableCell, TableChip,
-    TableColumn, TableGroup, TableRow, TableRowAct, Tone, Widget, EM_DASH, REMOVE_FIELD,
+    TableColumn, TableGroup, TableRow, TableRowAct, Tone, Widget, REMOVE_FIELD,
 };
 
 const NEW: &str = "new";
@@ -219,7 +219,7 @@ fn listing(m: &Model, open: &str, drawer: Option<RowDrawer>) -> Envelope {
         columns: [
             ("Target", "reference", ColumnWidth::Address),
             ("Gateway", "mono", ColumnWidth::Address),
-            ("Interface", "entity", ColumnWidth::Short),
+            ("Interface", "mono", ColumnWidth::Short),
             ("Metric", "num", ColumnWidth::Count),
             ("Origin", "entity", ColumnWidth::Word),
             ("", "actions", ColumnWidth::Short),
@@ -381,16 +381,6 @@ fn gateway_cell(gateway: &str, kind: &str) -> TableCell {
         },
     }
 }
-fn interface_cell(name: &str) -> TableCell {
-    if name.is_empty() {
-        return muted_cell(EM_DASH);
-    }
-    TableCell {
-        chips: vec![TableChip::entity("network", name)],
-        ..Default::default()
-    }
-}
-
 /// row draws one line. A custom route's target is the door to its drawer, and
 /// only a route that is not in effect says anything about its state.
 fn row(line: &Line, drawer: Option<RowDrawer>) -> TableRow {
@@ -447,7 +437,7 @@ fn row(line: &Line, drawer: Option<RowDrawer>) -> TableRow {
         cells: vec![
             target,
             gateway_cell(&line.gateway, &line.kind),
-            interface_cell(&line.interface),
+            text_cell(&line.interface),
             text_cell(&line.metric),
             TableCell {
                 chips: vec![TableChip {
@@ -865,7 +855,9 @@ mod tests {
         let cells = &custom["cells"];
         assert_eq!(cells[0]["href"], custom["panel"]);
         assert_eq!(cells[1]["text"], "192.168.1.2");
-        assert_eq!(cells[2]["chips"][0]["label"], "lan");
+        // The column's head names the kind, so the interface is its bare name.
+        assert_eq!(cells[2]["text"], "lan");
+        assert!(cells[2].get("chips").is_none());
         assert_eq!(cells[3]["text"], "10");
         assert_eq!(cells[4]["chips"][0]["label"], "config");
         assert_eq!(cells[4]["chips"][0]["tone"], "accent");
@@ -888,13 +880,13 @@ mod tests {
         let default = &rows[4];
         assert!(default.get("panel").is_none() && default.get("id").is_none());
         assert_eq!(default["cells"][1]["text"], "192.0.2.1");
-        assert_eq!(default["cells"][2]["chips"][0]["label"], "wan");
+        assert_eq!(default["cells"][2]["text"], "wan");
         assert_eq!(default["cells"][4]["chips"][0]["label"], "static");
         assert!(default["cells"][4]["chips"][0].get("tone").is_none());
         assert!(default["cells"][5].get("actions").is_none());
         assert_eq!(rows[0]["cells"][1]["text"], "On-link");
         // A device no interface owns is cited by its own name.
-        assert_eq!(rows[2]["cells"][2]["chips"][0]["label"], "docker0");
+        assert_eq!(rows[2]["cells"][2]["text"], "docker0");
     }
 
     #[test]
