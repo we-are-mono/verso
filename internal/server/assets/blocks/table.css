@@ -13,9 +13,10 @@
  * Words are the body role; a value written as the device wrote it is its
  * verbatim form, a count its figures. A row's name is the value role, the one
  * step heavier than the rest of the row: it names the row, the rest are
- * facts about it. A machine cell (an address, a MAC, a version) is the value
- * role's verbatim form: Inconsolata at 400 reads a step lighter than the
- * Hanken beside it, and at 500 it stands level with the row's words.
+ * facts about it. A machine string in a row (a name, an address, a MAC, a
+ * version, a path, a value in a phrase) is the value role's verbatim form:
+ * Inconsolata at 400 reads a step lighter than the Hanken beside it, and at
+ * 500 it stands level with the row's words.
  *
  * Every row is inset from the table's edges, and this is where that is said,
  * once for the heads, the lanes and the cells alike: a row's hover tint and a
@@ -299,9 +300,6 @@
   white-space: nowrap;
   color: var(--color-ink);
   @apply type-value;
-}
-.verso-table__name[data-verso-verbatim] {
-  @apply type-body;
 }
 .verso-table__name[data-verso-muted] {
   color: var(--color-meta);

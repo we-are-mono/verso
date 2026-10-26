@@ -111,8 +111,8 @@ func TestRenderTableKinds(t *testing.T) {
 	got := render(t, r, redirectsTable())
 	for _, want := range []string{
 		">Protocol<", ">Hits<", // headers render
-		`<th scope="col" class="verso-table__head">Protocol</th>`, // header treatment is the kicker, not a fill
-		`<td data-verso-verbatim class="verso-table__cell`,        // the port column is a machine string
+		`<th scope="col" class="verso-table__head">Protocol</th>`,             // header treatment is the kicker, not a fill
+		`<td data-verso-verbatim data-verso-machine class="verso-table__cell`, // the port column is a machine string
 		"8443 → 443", // port rewrite verbatim
 		`<td data-verso-figures class="verso-table__cell text-right`, // counters align
 		"Force-DNS-to-AdGuard-guest",                                 // comments carry the optional UCI name
@@ -555,13 +555,13 @@ func TestRenderTableReferenceWithZoneChip(t *testing.T) {
 			{Text: "br-lan.10", Chips: []TableChip{{Icon: "zone", Label: "family"}}},
 		}}},
 	})
-	// The reference is the body role's verbatim form, as a mono column's
+	// The reference is the value role's verbatim form, as a mono column's
 	// value is, so it reads at the MAC column's size and weight.
 	if !strings.Contains(got, `<span class="verso-table__name" data-verso-verbatim>br-lan.10</span>`) {
 		t.Errorf("referenced interface should render mono at the MAC column's size and weight:\n%s", got)
 	}
-	declares(t, "table", ".verso-table__name[data-verso-verbatim]", "@apply type-body")
-	declares(t, "table", ".verso-table__cell", "@apply type-body")
+	declares(t, "table", ".verso-table__name", "@apply type-value")
+	declares(t, "table", ".verso-table__cell[data-verso-machine]", "@apply type-value")
 	if !strings.Contains(got, ">family</span>") || !strings.Contains(got, lucideIcons["zone"]) {
 		t.Errorf("referenced interface should carry the shared zone chip:\n%s", got)
 	}
@@ -2015,9 +2015,9 @@ func TestRenderTablePhrase(t *testing.T) {
 	got := render(t, r, phraseTable(false))
 	chip := strings.Index(got, ">Allow-Ping</span>")
 	key := strings.Index(got, ">target</span>")
-	before := strings.Index(got, `<span class="verso-table__part type-body" data-verso-part="value" data-verso-verbatim>ACCEPT</span>`)
+	before := strings.Index(got, `<span class="verso-table__part type-value" data-verso-part="value" data-verso-verbatim>ACCEPT</span>`)
 	arrow := strings.Index(got, `>→</span>`)
-	after := strings.Index(got, `<span class="verso-table__part type-body" data-verso-part="value" data-verso-verbatim>DROP</span>`)
+	after := strings.Index(got, `<span class="verso-table__part type-value" data-verso-part="value" data-verso-verbatim>DROP</span>`)
 	if chip < 0 || !(chip < key && key < before && before < arrow && arrow < after) {
 		t.Fatalf("parts out of place (%d %d %d %d %d):\n%s", chip, key, before, arrow, after, got)
 	}
