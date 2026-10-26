@@ -801,7 +801,8 @@ func TestASwitchShowsTheWordForItsState(t *testing.T) {
 
 // TestAChipVariesOnlyInItsColour: a chip is one box wherever it stands, so a
 // reader never reads two sizes as two kinds of thing. A variant chooses the
-// chip's colour (its tone's edge, ground, words and glyph); its face comes
+// chip's colour (its tone's edge, ground, words and glyph) and its edge's
+// stroke (the off tone's dashes), through the chip's own tokens; its face comes
 // from the type role's verbatim form and its glyph from the glyph element.
 // No variant writes the box: no margin, padding, height or border width.
 func TestAChipVariesOnlyInItsColour(t *testing.T) {

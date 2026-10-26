@@ -72,14 +72,14 @@ func TestServicesPowerTurnsBootAndRunTogether(t *testing.T) {
 		}
 	}
 	// A service the answer reads as not starting at boot comes back marked
-	// off, its name's state with it, and its type chip in the reader's
-	// language as the page draws it.
+	// off, its state cell saying so in the disabled chip, and its type chip in
+	// the reader's language as the page draws it.
 	calls = nil
 	b.rcStates["adblock"] = openwrt.RCState{Kind: openwrt.ServiceDaemon}
 	res := postPluginAs(t, s, "/system/services", url.Values{"_service_action": {"disable:adblock"}}, "act")
 	body := res.Body.String()
-	if !regexp.MustCompile(`<tr[^>]*data-verso-row-id="adblock"[^>]*data-verso-off`).MatchString(body) || !regexp.MustCompile(`class="verso-table__name"[^>]*data-verso-off`).MatchString(body) {
-		t.Errorf("the patch should carry the row's off state and its name's: %d\n%s", res.Code, body)
+	if !regexp.MustCompile(`<tr[^>]*data-verso-row-id="adblock"[^>]*data-verso-off`).MatchString(body) || !strings.Contains(body, `data-verso-tone="off"`) {
+		t.Errorf("the patch should carry the row's off state and its disabled chip: %d\n%s", res.Code, body)
 	}
 	// The page form, with no script, says it in the notification.
 	calls = nil
@@ -269,7 +269,9 @@ func TestServicesStatePills(t *testing.T) {
 		want  string
 	}{
 		{"dead socket", map[string]openwrt.RCState{"verso-plugin-demo": {Enabled: true, Running: true}}, false, "not responding"},
-		{"stopped", map[string]openwrt.RCState{"verso-plugin-demo": {Enabled: false, Running: false}}, true, "Stopped"},
+		{"stopped", map[string]openwrt.RCState{"verso-plugin-demo": {Enabled: true, Running: false}}, true, "Stopped"},
+		// switched off at boot and at rest: its state is the disabled chip
+		{"disabled", map[string]openwrt.RCState{"verso-plugin-demo": {Enabled: false, Running: false}}, true, `data-verso-tone="off"`},
 		{"unmanaged", map[string]openwrt.RCState{}, true, "not managed"},
 	}
 	for _, tc := range cases {

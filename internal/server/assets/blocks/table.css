@@ -161,56 +161,58 @@
   @apply type-subheading;
 }
 
-/* A switched-off row states a subject that is not in force, so it carries
-   no verdict: inside it the three status families fall to their sand
-   neutrals, and inside its chips denim falls with them. Colour in a table
-   then means "in force". Its acts and its focus ring keep denim, since they
-   are the way back to turning it on. Every step keeps its job's contrast: a
-   deep step's words become Meta on Quiet Sand (4.8 : 1), a mark becomes a
-   Glyph mark (3.5 : 1). */
+/* A switched-off row states a subject that is not in force, and it sticks
+   out: a setting nobody wants is deleted, so one kept off is rare and worth
+   finding. It sinks into Sunk Sand from edge to edge, its acts' cell too, and
+   keeps every word as a row in force writes it. It carries no verdict: inside
+   it the three status families fall to their sand neutrals, and inside its
+   chips denim falls with them, so colour in a table means "in force". Their
+   washes open onto the sunk ground and their hairlines take the strong step,
+   so a chip keeps its box. Its acts and its focus ring keep denim, since they
+   are the way back to turning it on. What it says, it says in a dashed chip
+   (chip.css, tone off) in its status cell, or after its name. Every step
+   keeps its job's contrast on Sunk Sand: a deep step's words become Meta, and
+   so does a mark, which keeps 3 : 1 there where Glyph stops a hair short. A
+   turn sinks the row or lifts it where it stands. */
 .verso-table__row[data-verso-off] {
-  --color-green: var(--color-glyph);
+  --color-green: var(--color-meta);
   --color-green-deep: var(--color-meta);
-  --color-green-line: var(--color-rule);
-  --color-green-soft: var(--color-quiet);
-  --color-marigold: var(--color-glyph);
+  --color-green-line: var(--color-rule-strong);
+  --color-green-soft: transparent;
+  --color-marigold: var(--color-meta);
   --color-marigold-deep: var(--color-meta);
-  --color-marigold-line: var(--color-rule);
-  --color-marigold-soft: var(--color-quiet);
-  --color-crimson: var(--color-glyph);
+  --color-marigold-line: var(--color-rule-strong);
+  --color-marigold-soft: transparent;
+  --color-crimson: var(--color-meta);
   --color-crimson-deep: var(--color-meta);
-  --color-crimson-line: var(--color-rule);
-  --color-crimson-soft: var(--color-quiet);
+  --color-crimson-line: var(--color-rule-strong);
+  --color-crimson-soft: transparent;
+}
+.verso-table__row[data-verso-off] > * {
+  --color-mid: var(--color-rule);
+  background-color: var(--color-sunk);
 }
 .verso-table__row[data-verso-off] .verso-chip {
   --color-denim: var(--color-glyph);
   --color-denim-deep: var(--color-meta);
-  --color-denim-line: var(--color-rule);
-  --color-denim-soft: var(--color-quiet);
-}
-/* It reads as off from across the room by losing its mass, not its words:
-   every weight in it falls to the body role's regular, its glyphs to Faint,
-   and its words stop at Meta, the lightest ink that keeps 4.5 : 1 on Paper and
-   on the hover wash. Its chips keep their box, neutral, so the row's layout
-   holds. Its acts stand outside its cells and keep their inks. A turn fades
-   the row's new look in where it stands. */
-.verso-table__row[data-verso-off] > .verso-table__cell {
-  --color-ink: var(--color-meta);
-  --color-body: var(--color-meta);
-  --color-glyph: var(--color-faint);
-  color: var(--color-meta);
-}
-.verso-table__row[data-verso-off] > :is(.verso-table__cell[data-verso-machine], .verso-table__cell[data-verso-ink]) {
-  @apply type-body;
+  --color-denim-line: var(--color-rule-strong);
+  --color-denim-soft: transparent;
+  --color-rule: var(--color-rule-strong);
+  --color-quiet: transparent;
 }
 @media (prefers-reduced-motion: no-preference) {
-  .verso-table__row[data-verso-turning] > .verso-table__cell {
-    animation: verso-row-turn 420ms cubic-bezier(.16, 1, .3, 1);
+  .verso-table__row[data-verso-turning="off"] > * {
+    animation: verso-row-sink 300ms cubic-bezier(.16, 1, .3, 1);
+  }
+  .verso-table__row[data-verso-turning="on"] > * {
+    animation: verso-row-lift 300ms cubic-bezier(.16, 1, .3, 1);
   }
 }
-@keyframes verso-row-turn {
-  from { opacity: .4; }
-  to { opacity: 1; }
+@keyframes verso-row-sink {
+  from { background-color: transparent; }
+}
+@keyframes verso-row-lift {
+  from { background-color: var(--color-sunk); }
 }
 
 .verso-table__row {
@@ -327,15 +329,6 @@
 .verso-table__name[data-verso-muted] {
   color: var(--color-meta);
 }
-/* A name not in force gives up its weight and steps back to Meta, as the
-   rest of its row does; a name its row cites gives up its weight with it. */
-.verso-table__name[data-verso-off] {
-  color: var(--color-meta);
-  @apply type-body;
-}
-.verso-table__name:where(.verso-table__row[data-verso-off] *) {
-  @apply type-body;
-}
 
 .verso-table__phrase {
   display: flex;
@@ -347,9 +340,6 @@
 }
 .verso-table__phrase[data-verso-muted] {
   color: var(--color-meta);
-}
-.verso-table__phrase[data-verso-off] {
-  color: var(--color-body);
 }
 
 /* A phrase's words and links keep whole; a value is what gives, clipped
@@ -364,9 +354,6 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   @apply type-value;
-}
-.verso-table__phrase[data-verso-off] > .verso-table__part[data-verso-part="value"] {
-  @apply type-body;
 }
 
 /* A phrase whose column wraps runs onto the listing's 24px lines, between

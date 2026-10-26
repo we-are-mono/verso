@@ -10,7 +10,8 @@
  * caps), and the hairline over and under it; 3px inside the top of the 24px
  * line it rides on and 2px inside its foot, so the line keeps its 24px and a
  * chip in running text hangs from the line's top rather than pushing it
- * taller. A chip varies only in its colour, its face and its glyph.
+ * taller. A chip varies only in its colour, its edge's stroke, its face and
+ * its glyph.
  * Its words take the chip role (type.css): sans for words, the verbatim form
  * (mono, a step heavier) for a string the machine wrote.
  *
@@ -21,8 +22,10 @@
  * Variants: data-verso-tone      colour: accent, info · success · warning ·
  *                               danger · ink (no frame, its words Ink: an end
  *                               of a traffic path out on the network, read as
- *                               the row's own value); none: the neutral chip,
- *                               Hairline on Quiet Sand
+ *                               the row's own value) · off (a dashed Meta
+ *                               edge on an open ground, its words Body: a
+ *                               frame left open, for what is switched off);
+ *                               none: the neutral chip, Hairline on Quiet Sand
  *           data-verso-verbatim  face: its words are a machine string
  *                               (type.css)
  */
@@ -34,7 +37,7 @@
   gap: calc(var(--spacing) * 1.5);
   margin-block: calc(var(--spacing) * 0.75) calc(var(--spacing) * 0.5);
   padding: 0 calc(var(--spacing) * 1.5) 1px;
-  border: 1px solid var(--verso-chip-edge, var(--color-rule));
+  border: 1px var(--verso-chip-edge-style, solid) var(--verso-chip-edge, var(--color-rule));
   border-radius: var(--radius-xs);
   background-color: var(--verso-chip-ground, var(--color-quiet));
   color: var(--verso-chip-ink, var(--color-meta));
@@ -53,6 +56,13 @@
   --verso-chip-ground: var(--color-denim-soft);
   --verso-chip-ink: var(--color-denim-deep);
   --verso-chip-glyph: var(--color-denim);
+}
+.verso-chip[data-verso-tone="off"] {
+  --verso-chip-edge: var(--color-meta);
+  --verso-chip-ground: transparent;
+  --verso-chip-ink: var(--color-body);
+  --verso-chip-glyph: var(--color-meta);
+  --verso-chip-edge-style: dashed;
 }
 .verso-chip[data-verso-tone="success"] {
   --verso-chip-edge: var(--color-green-line);

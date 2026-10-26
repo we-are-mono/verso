@@ -15,12 +15,16 @@
      overhangs the line by a pixel either side rather than making it taller. */}}
 {{define "table.tag"}}<span class="verso-chip"{{with .TagVariant}} data-verso-tone="{{.}}"{{end}}>{{if .TagIcon}}<span class="verso-chip__glyph">{{icon .TagIcon "size-3.5"}}</span>{{else if .TagDot}}{{template "verso-chip-packet" .TagVariant}}{{end}}{{.Tag}}</span>{{end}}
 {{/* table.name-words: a row's name, its words in a span of their own so a
-     switched-off row's marker can lie under them alone. Only the row's name
-     carries it; a later identity column is a citation and stays bare.
-     table.name-state: the name's state — switched off (Body, the one step
-     that holds 4.5 : 1 over the marker) or quiet. */}}
+     phone can wrap them whole. Only the row's name carries it; a later
+     identity column is a citation and stays bare.
+     table.name-state: the name's state — the one a switched-off row speaks
+     from, or quiet.
+     table.disabled: what a switched-off row says, in its status cell or after
+     its name: the dashed chip, led by the pause glyph, which a screen reader
+     reads as it is written. */}}
 {{define "table.name-words"}}{{if .Identity}}<span class="verso-table__words">{{.Text}}</span>{{else}}{{.Text}}{{end}}{{end}}
 {{define "table.name-state"}}{{if .Off}} data-verso-off{{else if .Muted}} data-verso-muted{{end}}{{end}}
+{{define "table.disabled"}}<span class="verso-chip" data-verso-tone="off"><span class="verso-chip__glyph">{{icon "pause" "size-3.5"}}</span>{{t "disabled"}}</span>{{end}}
 {{/* table.laneadd-attrs / -body: a lane's add, given its TableGroup — the
      button block (blocks/button.css), a row's own icon act and a band's add
      being the same control. With words it is the quiet labelled act, and its
@@ -185,8 +189,7 @@
                  the listing's 14px wherever its column stands. */}}
             {{if .Expandable}}<button type="button" data-verso-expand-row aria-expanded="false" class="verso-table__expand {{if eq .Indent "pl-6"}}pl-6{{else if eq .Indent "pl-12"}}pl-12{{else if eq .Indent "pl-18"}}pl-18{{end}}" data-verso-verbatim>{{icon "chevron-right" "size-3.5 shrink-0"}}{{if .LeadIcon}}<span class="text-faint">{{icon .LeadIcon "size-3.5"}}</span>{{end}}{{.Text}}</button>
             {{else}}<span class="verso-table__name"{{if eq .Kind "reference"}} data-verso-verbatim{{end}}{{template "table.name-state" .}}>{{template "table.name-words" .}}</span>{{end}}
-            {{/* a mark over words is not read aloud, so the row says it */}}
-            {{if .Off}}<span class="sr-only">{{t "off"}}</span>{{end}}
+            {{if .Off}}{{template "table.disabled" .}}{{end}}
             {{if .Sub}}<span class="-mx-1.5 shrink-0 text-faint">·</span><span class="shrink-0 whitespace-nowrap text-meta">{{.Sub}}</span>{{end}}
             {{if .Chip}}<span class="verso-chip" data-verso-verbatim>{{.Chip}}</span>{{end}}
             {{range .Chips}}{{template "verso-chip" .}}{{end}}
@@ -208,7 +211,7 @@
               {{template "table.phrase-parts" .Phrase}}
             </span>
             {{if .Expandable}}</button>{{end}}
-            {{if .Off}}<span class="sr-only">{{t "off"}}</span>{{end}}
+            {{if .Off}}{{template "table.disabled" .}}{{end}}
           </span>
           {{if .Detail}}{{template "table.detail" .}}{{end}}
         </td>
@@ -218,6 +221,7 @@
              every other state wears the same ring, empty, and the word beside it
              drops to the secondary step. */}}
         <td class="verso-table__cell whitespace-nowrap"{{if .Key}} data-verso-cell="{{.Key}}"{{end}}>
+          {{if .Off}}{{template "table.disabled" .}}{{else}}
           <span class="flex items-center gap-2">
             <span class="verso-mark" data-verso-tone="{{.Variant}}"{{if .Key}} data-verso-dot{{end}}></span>
             {{/* a state with somewhere to read about it (a failed service's
@@ -226,6 +230,7 @@
             {{if .Href}}<a href="{{.Href}}" class="verso-link {{if .Variant}}text-ink{{else}}text-meta{{end}}" data-verso-door{{if .Key}} data-verso-value{{end}}>{{.Text}}</a>{{else}}<span class="{{if .Verbatim}}type-body {{end}}{{if .Variant}}text-ink{{else}}text-meta{{end}}"{{if .Verbatim}} data-verso-verbatim{{end}}{{if .Key}} data-verso-value{{end}}>{{.Text}}</span>{{end}}{{if .Sub}}<span class="text-meta">{{.Sub}}</span>{{end}}
             {{if .Tag}}{{template "table.tag" .}}{{end}}
           </span>
+          {{end}}
         </td>
         {{else if eq .Kind "path"}}
         <td data-verso-verbatim data-verso-machine class="verso-table__cell break-all"><span class="text-meta">{{.Sub}}</span><span class="text-ink">{{.Text}}</span></td>

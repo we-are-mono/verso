@@ -1839,14 +1839,14 @@ func TestAMonoCellCanStateWhatComesNext(t *testing.T) {
 	}
 }
 
-// TestRenderTableOffRow: a row whose subject is switched off reads as off from
-// across the room and stays readable up close. The row carries data-verso-off,
-// by which the stylesheet fades everything but its words: every hue falls to
-// sand, glyphs to Faint, every weight to the body role's regular, and its words
-// stop at Meta, the lightest ink that keeps 4.5 : 1. Chips keep their box,
-// neutral, so the row's layout holds. Every name's words sit in their own span,
-// inside whatever door the name is, and a screen reader hears "off" after the
-// name.
+// TestRenderTableOffRow: a row whose subject is switched off sticks out, since
+// a setting nobody wants is deleted, not kept off. The row carries
+// data-verso-off, by which the stylesheet sinks it into Sunk Sand from edge to
+// edge and lets its hues fall to sand, chips on an open ground; its words keep
+// every ink and weight a row in force has. After the name a dashed chip, led
+// by the pause glyph, says "disabled", to the eye and to a screen reader
+// alike. Every name's words sit in their own span, inside whatever door the
+// name is.
 func TestRenderTableOffRow(t *testing.T) {
 	r := newRenderer(t)
 	got := render(t, r, &Table{
@@ -1873,29 +1873,75 @@ func TestRenderTableOffRow(t *testing.T) {
 			t.Errorf("switched-off %s should be marked off:\n%s", name, got)
 		}
 	}
-	declares(t, "table", ".verso-table__name[data-verso-off]", "color: var(--color-meta)", "@apply type-body")
-	declares(t, "table", ".verso-table__row[data-verso-off] > .verso-table__cell",
-		"--color-ink: var(--color-meta)", "--color-body: var(--color-meta)", "--color-glyph: var(--color-faint)", "color: var(--color-meta)")
-	declares(t, "table", ".verso-table__name:where(.verso-table__row[data-verso-off] *)", "@apply type-body")
-	declares(t, "table", ".verso-table__row[data-verso-off] > :is(.verso-table__cell[data-verso-machine], .verso-table__cell[data-verso-ink])", "@apply type-body")
-	declares(t, "table", `.verso-table__phrase[data-verso-off] > .verso-table__part[data-verso-part="value"]`, "@apply type-body")
-	declares(t, "table", ".verso-table__row[data-verso-off] .verso-chip", "--color-denim: var(--color-glyph)", "--color-denim-soft: var(--color-quiet)")
-	if css := blockCSS(t, "table"); strings.Contains(css, "verso-marker") {
-		t.Error("a switched-off row is faded, never marked over")
+	disabled := `<span class="verso-chip" data-verso-tone="off"><span class="verso-chip__glyph">` + string(Icon("pause", "size-3.5")) + `</span>disabled</span>`
+	if n := strings.Count(got, disabled); n != 2 {
+		t.Errorf("the disabled chip on %d rows, want after each switched-off name:\n%s", n, got)
+	}
+	if strings.Contains(got, `class="sr-only">off<`) {
+		t.Errorf("the chip is what a screen reader hears; no hidden word repeats it:\n%s", got)
+	}
+	declares(t, "table", ".verso-table__row[data-verso-off] > *", "background-color: var(--color-sunk)")
+	declares(t, "table", ".verso-table__row[data-verso-off] .verso-chip", "--color-denim: var(--color-glyph)", "--color-denim-soft: transparent", "--color-quiet: transparent")
+	declares(t, "chip", `.verso-chip[data-verso-tone="off"]`,
+		"--verso-chip-edge: var(--color-meta)", "--verso-chip-ground: transparent", "--verso-chip-ink: var(--color-body)", "--verso-chip-glyph: var(--color-meta)", "--verso-chip-edge-style: dashed")
+	declares(t, "table", ".verso-table__row[data-verso-off]", "--color-green: var(--color-meta)", "--color-green-soft: transparent")
+	css := blockCSS(t, "table")
+	for _, gone := range []string{"verso-marker", ".verso-table__name[data-verso-off]", ".verso-table__phrase[data-verso-off]", "--color-ink: var(--color-meta)"} {
+		if strings.Contains(css, gone) {
+			t.Errorf("a switched-off row keeps its words as they are; the stylesheet still has %q", gone)
+		}
 	}
 	if !strings.Contains(got, `<span class="verso-table__name"><span class="verso-table__words">Allow-Ping`) {
 		t.Errorf("a name in force keeps Ink:\n%s", got)
 	}
 	declares(t, "table", ".verso-table__name", "color: var(--color-ink)")
-	if n := strings.Count(got, `<span class="sr-only">off</span>`); n != 2 {
-		t.Errorf("a screen reader should hear off after each switched-off name; got %d:\n%s", n, got)
+	if strings.Contains(got, `text-meta"><span class="flex items-center"><span>udp`) {
+		t.Errorf("a switched-off row's values keep their ink:\n%s", got)
 	}
 }
 
-// TestRenderTableOffRowMarksOnlyItsName: a switched-off row says off on its
+// TestRenderTableOffRowSaysSoInItsStatus: where a table has a status column,
+// that is where a row's state is read, so a switched-off row's disabled chip
+// stands there in place of the plugin's word, and nothing follows its name.
+func TestRenderTableOffRowSaysSoInItsStatus(t *testing.T) {
+	r := newRenderer(t)
+	got := render(t, r, &Table{
+		Columns: []TableColumn{{Kind: "name"}, {Kind: "mono"}, {Label: "State", Kind: "status"}},
+		Rows: []TableRow{
+			{ID: "home", Cells: []TableCell{{Text: "Home"}, {Text: "radio1"}, {Text: "up", Variant: "success"}}},
+			{ID: "guest", Muted: true, Cells: []TableCell{{Text: "Guest"}, {Text: "radio0"}, {Text: "disabled"}}},
+		},
+	})
+	disabled := `<span class="verso-chip" data-verso-tone="off"><span class="verso-chip__glyph">` + string(Icon("pause", "size-3.5")) + `</span>disabled</span>`
+	if n := strings.Count(got, disabled); n != 1 {
+		t.Fatalf("the disabled chip %d times, want once:\n%s", n, got)
+	}
+	status := got[strings.LastIndex(got, `<td class="verso-table__cell whitespace-nowrap"`):]
+	if !strings.Contains(status, disabled) || strings.Contains(status, "verso-mark") {
+		t.Errorf("the chip should stand in the status cell in place of the mark and word:\n%s", status)
+	}
+	if strings.Contains(got, `<span class="verso-table__name" data-verso-off>`) {
+		t.Errorf("with a status column the name says nothing of its own:\n%s", got)
+	}
+	if !strings.Contains(got, "verso-mark") {
+		t.Errorf("a row in force keeps its mark and word:\n%s", got)
+	}
+
+	// A state asserted now (a disabled service still running) is a fact the
+	// chip must not hide: it stays, and the chip follows the name.
+	running := render(t, r, &Table{
+		Columns: []TableColumn{{Kind: "name"}, {Label: "State", Kind: "status"}},
+		Rows:    []TableRow{{ID: "adblock", Muted: true, Cells: []TableCell{{Text: "adblock"}, {Text: "Running", Variant: "success"}}}},
+	})
+	if !strings.Contains(running, ">Running<") || !strings.Contains(running, `<span class="verso-table__name" data-verso-off>`) || strings.Count(running, disabled) != 1 {
+		t.Errorf("a running state should stay, the chip after the name:\n%s", running)
+	}
+}
+
+// TestRenderTableOffRowMarksOnlyItsName: a switched-off row says so after its
 // name alone. Another identity-shaped column in the row (the radio a Wi-Fi
 // network runs on, an interface cited as the subject) is a citation, not the
-// row's name: it fades with the rest of the row and says nothing of its own.
+// row's name: it keeps its own look and says nothing of its own.
 func TestRenderTableOffRowMarksOnlyItsName(t *testing.T) {
 	r := newRenderer(t)
 	got := render(t, r, &Table{
@@ -1910,13 +1956,12 @@ func TestRenderTableOffRowMarksOnlyItsName(t *testing.T) {
 	if !strings.Contains(got, `<span class="verso-table__words">Guest</span>`) {
 		t.Errorf("the name should carry its words' span:\n%s", got)
 	}
-	if n := strings.Count(got, `<span class="sr-only">off</span>`); n != 1 {
-		t.Errorf("off said %d times, want once, after the name:\n%s", n, got)
+	if n := strings.Count(got, `data-verso-tone="off"`); n != 1 {
+		t.Errorf("disabled said %d times, want once, after the name:\n%s", n, got)
 	}
-	if !strings.Contains(got, `data-verso-verbatim data-verso-muted>radio0</span>`) {
-		t.Errorf("the radio should read at Meta like the rest of the row:\n%s", got)
+	if !strings.Contains(got, `<span class="verso-table__name" data-verso-verbatim>radio0</span>`) {
+		t.Errorf("the radio should keep its own look:\n%s", got)
 	}
-	declares(t, "table", ".verso-table__name[data-verso-muted]", "color: var(--color-meta)")
 }
 
 // TestRenderTableNameIsNeverADoor: a row's name is words, never a control. A

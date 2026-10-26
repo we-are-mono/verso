@@ -339,10 +339,11 @@ type TableRow struct {
 	Key   string      `json:"key,omitempty"`   // optional stable live-update hook; not displayed
 	Group *TableGroup `json:"group,omitempty"` // optional evaluation-lane header before this row
 	// Muted marks a row whose subject is switched off (a rule, a Wi-Fi network,
-	// a route): its name is marked over with a sand marker, its words read at Meta and
-	// its hues fall to sand, and a screen reader hears "off" after the name. It
-	// is a statement about the subject, not about the row's importance: the
-	// values are still exact, still readable at 4.5 : 1, and still copyable.
+	// a route): the row sinks into Sunk Sand and its hues fall to sand, and a
+	// dashed "disabled" chip stands in its status cell, or after its name where
+	// the table has no status column. It is a statement about the subject, not
+	// about the row's importance: its words keep their inks, still exact and
+	// still copyable.
 	Muted bool `json:"muted,omitempty"`
 	// Tags are what an ActionBar narrows this row by, and they exist only
 	// because narrowing a listing you are already looking at should not be a
@@ -791,7 +792,7 @@ type tableRowView struct {
 	Dense       bool // the listing's geometry: cells carry no inset of their own, only the edges do
 	Seam        bool // this row belongs to the collapsible continuation block
 	Open        bool // the row's drawer renders already open
-	Off         bool // the row's subject is switched off (TableRow.Muted): its name marked over
+	Off         bool // the row's subject is switched off (TableRow.Muted): the row sinks
 	DrawerLabel string
 	DrawerIcon  string
 	Panel       drawerPanelView // the row's slide-in detail panel (shared with the drawer widget)
@@ -842,7 +843,7 @@ type tableCellView struct {
 	Kind      string
 	Wrap      bool // a phrase that runs onto more lines (TableColumn.Wrap)
 	Identity  bool // the row's name: its first identity column, the one a switched-off row marks
-	Off       bool // the row's subject is switched off and this is its name: marked over, set in Body, and said to a screen reader
+	Off       bool // the row's subject is switched off and this cell says so: its status cell, or its name where there is none
 	Draggable bool // reorder cells: the table persists an order, so draw the handle
 	RowID     string
 	CSRFToken string
@@ -1033,6 +1034,17 @@ func (t *Table) rowOpensItself(row TableRow) bool {
 // isName reports whether a column holds a row's identity: its name, an
 // interface cited as the subject, or the phrase that names it.
 func isName(kind string) bool { return kind == "name" || kind == "reference" || kind == "phrase" }
+
+// offCell is the cell a switched-off row says so in: its status cell, where
+// the table reads a row's state, unless that cell asserts a state now (a
+// service still running), which then stays; there, and where the table has
+// no status column, after its name.
+func offCell(row TableRow, status, identity int) int {
+	if status >= 0 && status < len(row.Cells) && row.Cells[status].Variant == "" {
+		return status
+	}
+	return identity
+}
 
 // actionsColumn is the index of the column holding the rows' acts, or -1.
 func (t *Table) actionsColumn() int {
@@ -1339,6 +1351,7 @@ func (t *Table) rowViews(r *Renderer, csrf string, rows []TableRow, hasDetail bo
 	// The row's name is its first identity column; a later one (the radio a
 	// network runs on) is a citation.
 	identity := slices.IndexFunc(t.Columns, func(c TableColumn) bool { return isName(c.Kind) })
+	status := slices.IndexFunc(t.Columns, func(c TableColumn) bool { return c.Kind == "status" })
 	reorderable := t.reorderable()
 	reorderGroup := ""
 	columnSpan := len(t.Columns)
@@ -1498,12 +1511,8 @@ func (t *Table) rowViews(r *Renderer, csrf string, rows []TableRow, hasDetail bo
 					cv.Chips = append(cv.Chips, chipView(chip))
 				}
 				cv.Phrase = partViews(cv.TableCell.Parts, chipView)
-				// A muted row mutes every cell in it: the secondary step is a
-				// statement about the row's subject, so no cell in that row can
-				// disagree with the rest.
-				cv.Muted = cv.Muted || row.Muted
 				cv.Identity = i == identity
-				cv.Off = row.Muted && cv.Identity
+				cv.Off = row.Muted && i == offCell(row, status, identity)
 				if len(cv.TableCell.Actions) > 0 {
 					acts := make([]tableRowActView, len(cv.TableCell.Actions))
 					for j, a := range cv.TableCell.Actions {
