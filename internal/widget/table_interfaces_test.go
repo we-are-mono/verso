@@ -100,6 +100,26 @@ func TestInterfaceRowOpensItsEditorInPlace(t *testing.T) {
 	}
 }
 
+// An interface's address and MAC are machine cells, the value role's mono
+// form, as every listing's addresses are; its type is a keyword and keeps the
+// body role's.
+func TestInterfaceAddressAndMACAreMachineCells(t *testing.T) {
+	table := &Table{Style: "interfaces", Columns: []TableColumn{{Label: "Device · network"}, {Label: "Type"}, {Label: "Address"}, {Label: "MAC address"}, {Label: "State"}, {Kind: "actions"}}, Rows: []TableRow{
+		{ID: "br-lan", Cells: []TableCell{{Text: "br-lan"}, {Text: "bridge"}, {Text: "192.0.2.1/24"}, {Text: "aa:bb:cc:dd:ee:ff"}, {Text: "Up", Variant: "success"}, {}}},
+	}}
+	got := render(t, newRenderer(t), table)
+	for _, want := range []string{
+		`<td data-verso-verbatim class="verso-table__cell text-body"><span class="flex min-w-0 items-center"><span class="min-w-0 break-words">bridge</span>`,
+		`<td data-verso-verbatim data-verso-machine class="verso-table__cell text-ink"><span class="flex min-w-0 items-center"><span class="min-w-0 break-words">192.0.2.1/24</span>`,
+		`<td data-verso-verbatim data-verso-machine class="verso-table__cell text-ink"><span class="flex min-w-0 items-center"><span class="min-w-0 break-words">aa:bb:cc:dd:ee:ff</span>`,
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("want %s in:\n%s", want, got)
+		}
+	}
+	declares(t, "table", ".verso-table__cell[data-verso-machine]", "@apply type-value")
+}
+
 // On a phone the inventory keeps what says which interface and whether it is
 // up: the tree, the name with its networks, the state, the acts. The type,
 // the address and the MAC are the interface's panel's to tell; the state,

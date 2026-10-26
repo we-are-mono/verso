@@ -139,8 +139,8 @@ func TestServicesTable(t *testing.T) {
 		"runs at boot", // one-shot tasks are not misreported as stopped
 		`<span class="verso-chip" data-verso-verbatim>`, // type reuses the mono chip
 		">verso</span>", // APK ownership joins verso-rpcd to the verso package
-		// package ownership is verbatim: the cell's role in its fixed 16px mono form
-		`<td data-verso-verbatim class="verso-table__cell whitespace-nowrap text-ink"><span class="flex items-center"><span>verso</span>`,
+		// package ownership is a machine cell: the value role's 16px mono form
+		`<td data-verso-verbatim data-verso-machine class="verso-table__cell whitespace-nowrap text-ink"><span class="flex items-center"><span>verso</span>`,
 		`class="verso-page__main" data-verso-width="wide"`, // runtime fits without forcing a horizontal scroller
 	} {
 		if !strings.Contains(body, want) {

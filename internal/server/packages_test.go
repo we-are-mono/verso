@@ -61,8 +61,8 @@ func TestPackagesInventory(t *testing.T) {
 		// the listing card's top strip
 		`<div data-verso-actionbar class="verso-actionbar">`,
 		"htop", "3.5.1-r1", "packages", // the row
-		// package versions are verbatim: the cell's role in its fixed 16px mono form
-		`<td data-verso-verbatim class="verso-table__cell whitespace-nowrap text-ink"><span class="flex items-center"><span>3.5.1-r1</span>`,
+		// package versions are machine cells: the value role's 16px mono form
+		`<td data-verso-verbatim data-verso-machine class="verso-table__cell whitespace-nowrap text-ink"><span class="flex items-center"><span>3.5.1-r1</span>`,
 		"Process viewer",   // what it is, in its column
 		">Remove</button>", // removal is the row's act, asked on the row
 		`class="verso-page__main" data-verso-width="wide"`,          // package management uses the wide content width
@@ -423,8 +423,8 @@ func TestDiscoverSearchRenders(t *testing.T) {
 	}
 	for _, want := range []string{
 		"htop", "Process viewer", "3.5.1-r1", "packages",
-		// Available versions match Installed: verbatim, the fixed 16px mono form
-		`<td data-verso-verbatim class="verso-table__cell whitespace-nowrap text-ink"><span class="flex items-center"><span>3.5.1-r1</span>`,
+		// Available versions match Installed: machine cells, the 16px mono form
+		`<td data-verso-verbatim data-verso-machine class="verso-table__cell whitespace-nowrap text-ink"><span class="flex items-center"><span>3.5.1-r1</span>`,
 		"installed",               // the already-present package carries its state
 		"htop-lang",               // package identities label their drawers
 		"Index refreshed",         // freshness honesty

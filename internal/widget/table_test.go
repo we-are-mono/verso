@@ -134,14 +134,15 @@ func TestRenderEmphasisedMonoCell(t *testing.T) {
 		Columns: []TableColumn{{Label: "Address", Kind: "mono"}},
 		Rows:    []TableRow{{Cells: []TableCell{{Text: "10.0.0.232", Emphasis: true}}}},
 	})
-	// Emphasis is size alone: a mono value is the body role's verbatim form at
-	// every size, never a heavier weight.
-	for _, want := range []string{`<td data-verso-verbatim class="verso-table__cell whitespace-nowrap text-ink">`, "10.0.0.232"} {
+	// A mono value is a machine cell, the value role's verbatim form:
+	// Inconsolata at the body's 400 reads a step lighter than the Hanken
+	// beside it. Emphasis never thickens it further.
+	for _, want := range []string{`<td data-verso-verbatim data-verso-machine class="verso-table__cell whitespace-nowrap text-ink">`, "10.0.0.232"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("emphasised mono cell missing %q:\n%s", want, got)
 		}
 	}
-	declares(t, "table", ".verso-table__cell", "@apply type-body")
+	declares(t, "table", ".verso-table__cell[data-verso-machine]", "@apply type-value")
 	if strings.Contains(got, "font-semibold") || strings.Contains(got, "font-bold") {
 		t.Errorf("emphasis must not thicken a mono value:\n%s", got)
 	}
@@ -161,7 +162,7 @@ func TestRenderReservedMonoCell(t *testing.T) {
 		},
 	})
 	for _, want := range []string{
-		`<td data-verso-verbatim data-verso-reserved class="verso-table__cell whitespace-nowrap text-ink"><span class="verso-table__held">`,
+		`<td data-verso-verbatim data-verso-machine data-verso-reserved class="verso-table__cell whitespace-nowrap text-ink"><span class="verso-table__held">`,
 		`<span class="verso-table__pin" role="img" aria-label="Reserved address" title="Reserved address">` + string(Icon("pin", "size-4")) + `</span><span>10.0.0.196</span>`,
 	} {
 		if !strings.Contains(got, want) {
