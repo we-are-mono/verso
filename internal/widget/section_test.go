@@ -348,15 +348,16 @@ func TestRenderSectionAnchor(t *testing.T) {
 	}
 }
 
-// A kicker names the list under it. It is set at the meta size in caps, because a
-// second display heading beside a rail's list of headings reads as one of them.
+// A kicker names the list under it. It is set in the column head's role in Meta,
+// because a second display heading beside a rail's list of headings reads as
+// one of them.
 func TestRenderSectionKicker(t *testing.T) {
 	r := newRenderer(t)
 	got := render(t, r, &Section{Title: "On this page", Kicker: true})
 	if !strings.Contains(got, `<h2 class="verso-heading__kicker">On this page</h2>`) {
 		t.Errorf("kicker is not set as one:\n%s", got)
 	}
-	declares(t, "heading", ".verso-heading__kicker", "@apply type-label;")
+	declares(t, "heading", ".verso-heading__kicker", "@apply type-column-head;")
 	if strings.Contains(got, "verso-heading__title") || strings.Contains(got, "data-verso-section-band") {
 		t.Errorf("a kicker is not a heading:\n%s", got)
 	}

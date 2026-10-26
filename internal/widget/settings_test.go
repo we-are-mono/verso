@@ -174,10 +174,10 @@ func TestRenderSettingsValueAndSeam(t *testing.T) {
 		}
 	}
 	// The read-out is the value role in its verbatim form, mono (type.css);
-	// the group label is the label role, in caps, and in the card's frame it
-	// draws no hairline of its own.
+	// the group label is the column head's role, in sentence case, and in the
+	// card's frame it draws no hairline of its own.
 	declares(t, "settings", ".verso-settings__value", "@apply type-value;")
-	declares(t, "settings", ".verso-settings__head", "color: var(--color-meta);", "@apply type-label;")
+	declares(t, "settings", ".verso-settings__head", "color: var(--color-meta);", "@apply type-column-head;")
 	declares(t, "settings", ".verso-settings__head:where(.verso-settings[data-verso-framed] > *)", "border-bottom-width: 0;")
 	if strings.Count(got, "rounded-xs border border-rule bg-ground") != 0 {
 		t.Errorf("settings must not be wrapped in artifact cards:\n%s", got)

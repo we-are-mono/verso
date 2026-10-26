@@ -122,9 +122,10 @@ func TestRenderTableKinds(t *testing.T) {
 			t.Errorf("table missing %q:\n%s", want, got)
 		}
 	}
-	// The head is the kicker role in Meta; the cells are the body role, whose
-	// verbatim form is mono and whose figures are tabular.
-	declares(t, "table", ".verso-table__head", "@apply type-label", "color: var(--color-meta)")
+	// The head is the column head's role in Meta, in sentence case; the cells
+	// are the body role, whose verbatim form is mono and whose figures are
+	// tabular.
+	declares(t, "table", ".verso-table__head", "@apply type-column-head", "color: var(--color-meta)")
 	declares(t, "table", ".verso-table__cell", "@apply type-body")
 }
 
@@ -989,14 +990,14 @@ func TestRenderTableFlatLabels(t *testing.T) {
 	if strings.Contains(got, "odd:bg-slate-50") {
 		t.Errorf("flat table must not stripe:\n%s", got)
 	}
-	// The column heads are 24px: the 12px caps on a 16px line, 4px over and
+	// The column heads are 24px: the column head's 16px line, 4px over and
 	// 3px under, the hairline the row's last pixel.
 	if strings.Count(got, `<th scope="col" class="verso-table__head">`) != 2 {
 		t.Errorf("column heads are not 24px on the grid:\n%s", got)
 	}
 	declares(t, "table", ".verso-table__head",
 		"padding: var(--spacing) calc(var(--spacing) * 3.5) calc(var(--spacing) * 0.75)",
-		"border-bottom-width: 1px", "var(--color-rule-strong)", "@apply type-label")
+		"border-bottom-width: 1px", "var(--color-rule-strong)", "@apply type-column-head")
 }
 
 // TestRenderTableNote: a listing's note is its caption, the one line under its

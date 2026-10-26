@@ -46,7 +46,7 @@
   background: var(--color-quiet);
   color: var(--color-meta);
   transform: translate(-50%, -50%);
-  @apply type-label;
+  @apply type-column-head;
 }
 
 .verso-condition__name {

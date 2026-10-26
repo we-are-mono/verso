@@ -118,17 +118,6 @@
   font-variant-numeric: normal;
 }
 
-@utility type-label {
-  font-family: var(--font-sans);
-  font-size: 0.75rem;
-  line-height: 1rem;
-  font-weight: 500;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  font-variant-numeric: normal;
-  &[data-verso-figures] { font-variant-numeric: tabular-nums; }
-}
-
 @utility type-column-head {
   font-family: var(--font-sans);
   font-size: 0.875rem;

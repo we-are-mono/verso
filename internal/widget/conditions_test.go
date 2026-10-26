@@ -83,7 +83,7 @@ func TestDecodeAndRenderConditions(t *testing.T) {
 	declares(t, "conditions", ".verso-conditions__line", "height: 1px;", "background-color: var(--color-rule-strong);")
 	declares(t, "conditions", ".verso-conditions__lede", "flex: 1 0 100%;")
 	declares(t, "conditions", ".verso-conditions__lede:is(.verso-prose)", "color: var(--color-body);", "@apply type-lede;")
-	declares(t, "conditions", ".verso-conditions__group-head", "color: var(--color-meta);", "@apply type-label;")
+	declares(t, "conditions", ".verso-conditions__group-head", "color: var(--color-meta);", "@apply type-column-head;")
 	declares(t, "conditions", ".verso-conditions__menu",
 		"position: absolute;", "top: 100%;", "left: 0;", "z-index: 30;", "width: 36rem;", "margin-top: calc(var(--spacing) * 2);")
 	declares(t, "condition", ".verso-condition__name",

@@ -19,7 +19,7 @@
  *           __glyph       what the section is, in Glyph
  *           __title       the title, in the section title's role
  *           __kicker      a kicker's words: naming the group under it and
- *                         nothing more, in the label role, its 16px line
+ *                         nothing more, in the column head's role, its 16px line
  *                         centred in a 24px band
  *           __sep         the dot between the title and an inline fact
  *           __meta        a fact on the line: its __meta-label in Meta, its
@@ -63,7 +63,7 @@
 .verso-heading__kicker {
   padding-block: var(--spacing);
   color: var(--color-meta);
-  @apply type-label;
+  @apply type-column-head;
 }
 
 .verso-heading__sep {

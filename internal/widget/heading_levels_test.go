@@ -37,10 +37,10 @@ func TestHeadingsFollowThePage(t *testing.T) {
 	}
 	// A page's section is a card, titled in the card title's role in Ink;
 	// a section on no card is titled in the section title's role; a
-	// kicker's words are the label role in Meta.
+	// kicker's words are the column head's role in Meta, in sentence case.
 	declares(t, "card", ".verso-card__title", "color: var(--color-ink);", "@apply type-card-title;")
 	declares(t, "heading", ".verso-heading__title", "color: var(--color-ink);", "@apply type-section-title;")
-	declares(t, "heading", ".verso-heading__kicker", "color: var(--color-meta);", "@apply type-label;")
+	declares(t, "heading", ".verso-heading__kicker", "color: var(--color-meta);", "@apply type-column-head;")
 	// A table's band title is the listing block's: the title role in Body.
 	declares(t, "listing", ".verso-listing__title", "@apply type-title", "color: var(--color-body)")
 	// A dialog's title is the title role in Ink, as a drawer's is.

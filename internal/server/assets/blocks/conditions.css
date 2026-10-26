@@ -142,7 +142,7 @@
   border-bottom-width: 1px;
   background-color: var(--color-quiet);
   color: var(--color-meta);
-  @apply type-label;
+  @apply type-column-head;
 }
 .verso-conditions__group-head:where(.verso-conditions__group + .verso-conditions__group > *) {
   border-top-width: 1px;

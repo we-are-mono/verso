@@ -56,7 +56,7 @@
  *                                 cut narrows: its branches are left out
  * Row state: data-verso-expanded  (set in the browser) a tree's row that
  *                                 stands unfolded, on Quiet Sand
- * Elements: __head      a column's head, the kicker: medium, spaced, quiet
+ * Elements: __head      a column's head, in sentence case, quiet
  *           __row       a row; data-verso-off marks a switched-off one
  *           __cell      a value's cell
  *           __grip      the reorder column, head and cell: the grip on a
@@ -127,7 +127,7 @@
   vertical-align: top;
 }
 
-/* The heads are 24px: the 12px caps on a 16px line, 4px over and 3px under,
+/* The heads are 24px: the column head's 16px line, 4px over and 3px under,
    the hairline the row's last pixel, so the rows under them start on a line. */
 .verso-table__head {
   padding: var(--spacing) calc(var(--spacing) * 3.5) calc(var(--spacing) * 0.75);
@@ -136,7 +136,7 @@
   color: var(--color-meta);
   text-align: left;
   white-space: nowrap;
-  @apply type-label;
+  @apply type-column-head;
 }
 .verso-table__head:where(.verso-table[data-verso-dense] *) {
   padding-inline: 0;

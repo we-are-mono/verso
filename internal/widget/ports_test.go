@@ -21,7 +21,7 @@ func TestRenderPorts(t *testing.T) {
 		`data-verso-port="eth0" class="port" data-verso-activity="0" data-verso-linked style=`,
 		`data-verso-port="eth4" class="port" data-verso-activity="0" data-verso-wan style=`,
 		`<div class="verso-ports__tip" data-verso-port-tip="eth0"`, "192.168.1.1", "PPPoE", // hover detail
-		`<b class="verso-ports__tip-name">Internet</b>`, `<span class="verso-ports__tip-role">wan</span>`,
+		`<b class="verso-ports__tip-name">Internet</b>`, `<span class="verso-ports__tip-role">WAN</span>`,
 		`<div class="verso-ports__tip-row" data-verso-verbatim><span class="verso-ports__tip-key">iface</span>eth0</div>`,
 	} {
 		if !strings.Contains(got, want) {
@@ -30,7 +30,7 @@ func TestRenderPorts(t *testing.T) {
 	}
 	// The device's accent tints its name.
 	declares(t, "ports", `.verso-ports[data-verso-accent="emerald"] .verso-ports__name`, "color: var(--color-green-line);")
-	declares(t, "ports", ".verso-ports__name", "@apply type-label;")
+	declares(t, "ports", ".verso-ports__name", "@apply type-column-head;")
 }
 
 // TestPortsLegend: the legend renders only when asked, and lists only the connector

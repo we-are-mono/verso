@@ -179,8 +179,8 @@ func TestControlBandIsTheListingCardsTopStrip(t *testing.T) {
 		"margin-inline: calc(var(--spacing) * -10)", "background-color: var(--color-quiet)", "box-shadow: var(--shadow-edge)")
 }
 
-// TestColumnHeadsAreARow: the heads are one row of the grid — the 12px caps
-// on a 16px line, 4px over it and 3px under it plus the 1px hairline: 24px —
+// TestColumnHeadsAreARow: the heads are one row of the grid — the column
+// head's 16px line, 4px over it and 3px under it plus the 1px hairline: 24px —
 // whatever introduces the table. The table block draws the head; the markup
 // only names it.
 func TestColumnHeadsAreARow(t *testing.T) {
@@ -195,7 +195,7 @@ func TestColumnHeadsAreARow(t *testing.T) {
 	}
 	declares(t, "table", ".verso-table__head",
 		"padding: var(--spacing) calc(var(--spacing) * 3.5) calc(var(--spacing) * 0.75)",
-		"border-bottom-width: 1px", "@apply type-label")
+		"border-bottom-width: 1px", "@apply type-column-head")
 }
 
 // TestAQuietHeadingActOpensItsPanelInTheSecondaryDress: an act that opens a

@@ -1523,7 +1523,7 @@ func TestRenderRawMarkdown(t *testing.T) {
 	}
 	declares(t, "prose", ".verso-prose :not(pre) > code", "@apply type-body")
 	declares(t, "raw", ".verso-raw", "border: 1px dashed var(--color-rule-strong)")
-	declares(t, "raw", ".verso-raw__kicker", "@apply type-label")
+	declares(t, "raw", ".verso-raw__kicker", "@apply type-column-head")
 }
 
 // TestRenderRawSanitizes is the bridge's safety net: source HTML is neutralised

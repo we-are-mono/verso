@@ -50,7 +50,7 @@
      (verso.js). The stream fills the address and link slots in place. */}}
 {{define "verso-port-tips"}}{{range .}}{{if .Iface}}
 <div class="verso-ports__tip" data-verso-port-tip="{{.Iface}}" role="tooltip" hidden>
-  <b class="verso-ports__tip-name">{{.Label}}</b>{{if .Role}} · <span class="verso-ports__tip-role">{{.Role}}</span>{{end}}
+  <b class="verso-ports__tip-name">{{.Label}}</b>{{if eq .Role "wan"}} · <span class="verso-ports__tip-role">{{t "WAN"}}</span>{{else if eq .Role "lan"}} · <span class="verso-ports__tip-role">{{t "LAN"}}</span>{{end}}
   <div class="verso-ports__tip-row" data-verso-verbatim><span class="verso-ports__tip-key">iface</span>{{.Iface}}</div>
   {{if .Note}}<div class="verso-ports__tip-row" data-verso-verbatim><span class="verso-ports__tip-key">type</span>{{.Note}}</div>{{end}}
   <div class="verso-ports__tip-row" data-verso-verbatim><span class="verso-ports__tip-key">addr</span><span data-verso-port-addr>{{.Addr}}</span></div>

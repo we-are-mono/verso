@@ -1018,8 +1018,9 @@ func TestACardUnderACardDrawsNoSecondDivider(t *testing.T) {
 // declared across the weights its file actually carries (both are variable),
 // so a weight the design asks for (the top bar's light maker line) is drawn
 // rather than clamped to the nearest declared one. A kicker is the canvas's
-// one kicker wherever it stands (a section's, a takeover's): the label role,
-// 12px, 500, uppercase, .08em, in the meta ink.
+// one kicker wherever it stands (a section's, a takeover's): the column
+// head's role, 14px, 600, in sentence case, in the meta ink. Nothing on the
+// canvas is set in caps.
 func TestStylesheetTypeSystem(t *testing.T) {
 	raw, err := os.ReadFile("assets/verso.css")
 	if err != nil {
@@ -1043,14 +1044,17 @@ func TestStylesheetTypeSystem(t *testing.T) {
 			continue
 		}
 		kicker := css[kickerAt : kickerAt+strings.Index(css[kickerAt:], "}")]
-		for _, want := range []string{"font-size:.75rem", "font-weight:500", "letter-spacing:.08em", "text-transform:uppercase", "color:var(--color-meta)"} {
+		for _, want := range []string{"font-size:.875rem", "font-weight:600", "letter-spacing:normal", "text-transform:none", "color:var(--color-meta)"} {
 			if !strings.Contains(kicker, want) {
 				t.Errorf("kicker is missing %q: %s", want, kicker)
 			}
 		}
 	}
 	if strings.Contains(css, ".verso-kicker{") {
-		t.Error("a kicker of its own stands beside the label role's")
+		t.Error("a kicker of its own stands beside the column head's role")
+	}
+	if strings.Contains(css, "uppercase") || strings.Contains(css, "small-caps") {
+		t.Error("the stylesheet sets text in caps")
 	}
 	// A rule that names the system's monospace first skips Inconsolata.
 	if strings.Contains(css, "font-family:ui-monospace") {

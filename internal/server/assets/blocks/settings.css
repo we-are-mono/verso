@@ -45,7 +45,7 @@
   border: 0 solid var(--color-rule-strong);
   border-bottom-width: 1px;
   color: var(--color-meta);
-  @apply type-label;
+  @apply type-column-head;
 }
 .verso-settings__head:where(.verso-settings[data-verso-framed] > *) {
   border-bottom-width: 0;
