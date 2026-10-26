@@ -94,14 +94,14 @@ func TestPackagesInventory(t *testing.T) {
 			t.Errorf("drawer missing %q", want)
 		}
 	}
-	// A verbatim cell is the body role's mono form: 16px mono.
-	if !strings.Contains(cssBlock(t, blockSheet(t, "table"), ".verso-table__cell {"), "@apply type-body;") {
-		t.Error("blocks/table.css does not set a cell in the body role")
+	// A version is a machine cell, the value role's mono form: 16px mono.
+	if !strings.Contains(cssBlock(t, blockSheet(t, "table"), "\n.verso-table__cell[data-verso-machine] {"), "@apply type-value;") {
+		t.Error("blocks/table.css does not set a machine cell in the value role")
 	}
 	if typ, err := os.ReadFile("assets/type.css"); err != nil {
 		t.Fatal(err)
-	} else if body := cssBlock(t, string(typ), "@utility type-body {"); !strings.Contains(body, "&[data-verso-verbatim] { font-family: var(--font-mono); font-size: 1rem;") {
-		t.Error("the body role's verbatim form is not 16px mono")
+	} else if body := cssBlock(t, string(typ), "@utility type-value {"); !strings.Contains(body, "&[data-verso-verbatim] { font-family: var(--font-mono); font-size: 1rem;") {
+		t.Error("the value role's verbatim form is not 16px mono")
 	}
 	// Prose is set in the body role (blocks/prose.css).
 	if prose, err := os.ReadFile("assets/blocks/prose.css"); err != nil {

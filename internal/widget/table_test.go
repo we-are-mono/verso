@@ -1839,13 +1839,14 @@ func TestAMonoCellCanStateWhatComesNext(t *testing.T) {
 	}
 }
 
-// TestRenderTableOffRow: a row whose subject is switched off has its name
-// marked over with a sand marker rather than faded past reading. The row
-// carries data-verso-off, which the stylesheet draws the marker and drains the
-// row's hues by; every name's words sit in their own span, the marker's hook,
-// inside whatever door the name is; a switched-off name is set in Body, which
-// holds 4.5 : 1 over the marker where Meta would not; and a screen reader hears
-// "off" after the name, since a mark over words is not read aloud.
+// TestRenderTableOffRow: a row whose subject is switched off reads as off from
+// across the room and stays readable up close. The row carries data-verso-off,
+// by which the stylesheet fades everything but its words: every hue falls to
+// sand, glyphs to Faint, every weight to the body role's regular, and its words
+// stop at Meta, the lightest ink that keeps 4.5 : 1. Chips keep their box,
+// neutral, so the row's layout holds. Every name's words sit in their own span,
+// inside whatever door the name is, and a screen reader hears "off" after the
+// name.
 func TestRenderTableOffRow(t *testing.T) {
 	r := newRenderer(t)
 	got := render(t, r, &Table{
@@ -1864,15 +1865,24 @@ func TestRenderTableOffRow(t *testing.T) {
 	}
 	for _, name := range []string{"Allow-Ping", "Allow-DHCP-Renew", "Allow-IGMP"} {
 		if !strings.Contains(got, `<span class="verso-table__words">`+name+`</span>`) {
-			t.Errorf("%s's words should sit in the marker's own span:\n%s", name, got)
+			t.Errorf("%s's words should sit in their own span:\n%s", name, got)
 		}
 	}
 	for _, name := range []string{"Allow-DHCP-Renew", "Allow-IGMP"} {
 		if !strings.Contains(got, `<span class="verso-table__name" data-verso-off><span class="verso-table__words">`+name) {
-			t.Errorf("switched-off %s should be set in Body:\n%s", name, got)
+			t.Errorf("switched-off %s should be marked off:\n%s", name, got)
 		}
 	}
-	declares(t, "table", ".verso-table__name[data-verso-off]", "color: var(--color-body)")
+	declares(t, "table", ".verso-table__name[data-verso-off]", "color: var(--color-meta)", "@apply type-body")
+	declares(t, "table", ".verso-table__row[data-verso-off] > .verso-table__cell",
+		"--color-ink: var(--color-meta)", "--color-body: var(--color-meta)", "--color-glyph: var(--color-faint)", "color: var(--color-meta)")
+	declares(t, "table", ".verso-table__name:where(.verso-table__row[data-verso-off] *)", "@apply type-body")
+	declares(t, "table", ".verso-table__row[data-verso-off] > :is(.verso-table__cell[data-verso-machine], .verso-table__cell[data-verso-ink])", "@apply type-body")
+	declares(t, "table", `.verso-table__phrase[data-verso-off] > .verso-table__part[data-verso-part="value"]`, "@apply type-body")
+	declares(t, "table", ".verso-table__row[data-verso-off] .verso-chip", "--color-denim: var(--color-glyph)", "--color-denim-soft: var(--color-quiet)")
+	if css := blockCSS(t, "table"); strings.Contains(css, "verso-marker") {
+		t.Error("a switched-off row is faded, never marked over")
+	}
 	if !strings.Contains(got, `<span class="verso-table__name"><span class="verso-table__words">Allow-Ping`) {
 		t.Errorf("a name in force keeps Ink:\n%s", got)
 	}
@@ -1882,10 +1892,10 @@ func TestRenderTableOffRow(t *testing.T) {
 	}
 }
 
-// TestRenderTableOffRowMarksOnlyItsName: a switched-off row is marked over on
-// its name alone. Another identity-shaped column in the row (the radio a Wi-Fi
+// TestRenderTableOffRowMarksOnlyItsName: a switched-off row says off on its
+// name alone. Another identity-shaped column in the row (the radio a Wi-Fi
 // network runs on, an interface cited as the subject) is a citation, not the
-// row's name, and stays as it is.
+// row's name: it fades with the rest of the row and says nothing of its own.
 func TestRenderTableOffRowMarksOnlyItsName(t *testing.T) {
 	r := newRenderer(t)
 	got := render(t, r, &Table{
@@ -1898,7 +1908,7 @@ func TestRenderTableOffRowMarksOnlyItsName(t *testing.T) {
 		t.Errorf("verso-table__words on %d cells, want the name only:\n%s", n, got)
 	}
 	if !strings.Contains(got, `<span class="verso-table__words">Guest</span>`) {
-		t.Errorf("the name should carry the marker's span:\n%s", got)
+		t.Errorf("the name should carry its words' span:\n%s", got)
 	}
 	if n := strings.Count(got, `<span class="sr-only">off</span>`); n != 1 {
 		t.Errorf("off said %d times, want once, after the name:\n%s", n, got)
@@ -2016,9 +2026,10 @@ func TestRenderTablePhrase(t *testing.T) {
 	got := render(t, r, phraseTable(false))
 	chip := strings.Index(got, ">Allow-Ping</span>")
 	key := strings.Index(got, ">target</span>")
-	before := strings.Index(got, `<span class="verso-table__part type-value" data-verso-part="value" data-verso-verbatim>ACCEPT</span>`)
+	before := strings.Index(got, `<span class="verso-table__part" data-verso-part="value" data-verso-verbatim>ACCEPT</span>`)
 	arrow := strings.Index(got, `>→</span>`)
-	after := strings.Index(got, `<span class="verso-table__part type-value" data-verso-part="value" data-verso-verbatim>DROP</span>`)
+	after := strings.Index(got, `<span class="verso-table__part" data-verso-part="value" data-verso-verbatim>DROP</span>`)
+	declares(t, "table", `.verso-table__part[data-verso-part="value"]`, "@apply type-value")
 	if chip < 0 || !(chip < key && key < before && before < arrow && arrow < after) {
 		t.Fatalf("parts out of place (%d %d %d %d %d):\n%s", chip, key, before, arrow, after, got)
 	}

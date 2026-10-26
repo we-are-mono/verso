@@ -681,9 +681,9 @@
     return [].filter.call(row.children, function (child) { return child.tagName === "TD"; });
   }
 
-  // A row turned off or back on is marked over or lifted where it stands. The
+  // A row turned off or back on fades its new look in where it stands. The
   // switched-off mark is the row's own, so it is carried over like the cells,
-  // and the turn plays once on the name the fresh cells brought (input.css).
+  // and the turn plays once on the cells the fresh row brought (table.css).
   function turn(row, fresh) {
     var off = fresh.hasAttribute("data-verso-off");
     if (off === row.hasAttribute("data-verso-off")) return;

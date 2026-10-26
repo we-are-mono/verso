@@ -67,8 +67,7 @@
  *           __title     the name's line: the name and what qualifies it
  *           __name      the identity column's name; data-verso-muted, and
  *                       data-verso-off on a switched-off row's name
- *           __words     the name's words, which a switched-off row's marker
- *                       lies under
+ *           __words     the name's words, which a phone wraps whole
  *           __phrase    a name written as one line of parts, marked as a
  *                       name is; data-verso-wrap where its column lets it
  *                       run onto more lines (TableColumn.Wrap)
@@ -189,6 +188,30 @@
   --color-denim-line: var(--color-rule);
   --color-denim-soft: var(--color-quiet);
 }
+/* It reads as off from across the room by losing its mass, not its words:
+   every weight in it falls to the body role's regular, its glyphs to Faint,
+   and its words stop at Meta, the lightest ink that keeps 4.5 : 1 on Paper and
+   on the hover wash. Its chips keep their box, neutral, so the row's layout
+   holds. Its acts stand outside its cells and keep their inks. A turn fades
+   the row's new look in where it stands. */
+.verso-table__row[data-verso-off] > .verso-table__cell {
+  --color-ink: var(--color-meta);
+  --color-body: var(--color-meta);
+  --color-glyph: var(--color-faint);
+  color: var(--color-meta);
+}
+.verso-table__row[data-verso-off] > :is(.verso-table__cell[data-verso-machine], .verso-table__cell[data-verso-ink]) {
+  @apply type-body;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .verso-table__row[data-verso-turning] > .verso-table__cell {
+    animation: verso-row-turn 420ms cubic-bezier(.16, 1, .3, 1);
+  }
+}
+@keyframes verso-row-turn {
+  from { opacity: .4; }
+  to { opacity: 1; }
+}
 
 .verso-table__row {
   transition-property: background-color;
@@ -304,10 +327,13 @@
 .verso-table__name[data-verso-muted] {
   color: var(--color-meta);
 }
-/* A name not in force gives up its weight and steps back to Body, the one
-   step that holds 4.5 : 1 over the marker under it. */
+/* A name not in force gives up its weight and steps back to Meta, as the
+   rest of its row does; a name its row cites gives up its weight with it. */
 .verso-table__name[data-verso-off] {
-  color: var(--color-body);
+  color: var(--color-meta);
+  @apply type-body;
+}
+.verso-table__name:where(.verso-table__row[data-verso-off] *) {
   @apply type-body;
 }
 
@@ -337,6 +363,10 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  @apply type-value;
+}
+.verso-table__phrase[data-verso-off] > .verso-table__part[data-verso-part="value"] {
+  @apply type-body;
 }
 
 /* A phrase whose column wraps runs onto the listing's 24px lines, between
@@ -775,78 +805,6 @@
   .verso-table__actions {
     width: auto;
   }
-}
-
-/* A switched-off row's name is marked over with a sand marker, the way an
-   operator runs a highlighter through an entry in the notebook that no
-   longer holds: Strong Hairline ink, laid under the words, its edges frayed
-   and streaked along the stroke, its chisel ends pooled a little darker
-   where the tip landed and lifted. The ink never passes 80%, so the name's
-   Body words keep 4.9 : 1 over it (4.87 on a hovered row); the rest of the
-   row's hues fall to sand (palette.css). The mask is the stroke's shape and
-   texture only; its colour is the palette's. When the row's power act turns
-   it off in place the marker is drawn left to right, and when it turns it
-   back on the marker lifts, once each (verso-forms.js marks the turn).
-   The stroke overshoots the words by 10px each side, as a hand does. It is
-   absolute, sized to the words; the box the name truncates in clips what
-   overflows it (that is its ellipsis), and only a containing block outside
-   that box would escape it, which could not then size to the words. So in
-   a marked row the box is given 12px of room each side, taken back by an
-   equal negative margin so nothing moves: a cell's 14px inset holds it, and
-   in a dense table the index column's slack does, to two digits. */
-.verso-table__words {
-  --verso-marker-inset: 0.25rem -0.625rem 0.1875rem;
-  --verso-marker: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 20' preserveAspectRatio='none'%3E%3Cfilter id='f' x='-5%25' y='-30%25' width='110%25' height='160%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.015 .45' numOctaves='3' seed='7'/%3E%3CfeDisplacementMap in='SourceGraphic' scale='3.5'/%3E%3C/filter%3E%3ClinearGradient id='g'%3E%3Cstop offset='0' stop-opacity='.8'/%3E%3Cstop offset='.12' stop-opacity='.66'/%3E%3Cstop offset='.55' stop-opacity='.72'/%3E%3Cstop offset='.9' stop-opacity='.62'/%3E%3Cstop offset='1' stop-opacity='.78'/%3E%3C/linearGradient%3E%3Cpath d='M4 4.5 120 2.5 116.5 17 0 18.5Z' fill='url(%23g)' filter='url(%23f)'/%3E%3C/svg%3E");
-}
-.verso-table__words:is(.verso-table__row[data-verso-off] *) {
-  position: relative;
-  isolation: isolate;
-}
-.verso-table__cell :has(> .verso-table__words):is(.verso-table__row[data-verso-off] *) {
-  padding-inline: 0.75rem;
-  margin-inline: -0.75rem;
-}
-.verso-table__words:is(.verso-table__row[data-verso-off] *)::after {
-  content: "";
-  position: absolute;
-  z-index: -1;
-  inset: var(--verso-marker-inset);
-  background-color: var(--color-rule-strong);
-  -webkit-mask: var(--verso-marker) no-repeat 0 0 / 100% 100%;
-  mask: var(--verso-marker) no-repeat 0 0 / 100% 100%;
-}
-@media (prefers-reduced-motion: no-preference) {
-  .verso-table__words:is(.verso-table__row[data-verso-turning="off"] *)::after {
-    animation: verso-marker-draw 520ms cubic-bezier(.3, .7, .2, 1) 40ms both;
-  }
-  /* A row turned back on has no marker of its own; the turn holds one up
-     just long enough to lift it. */
-  .verso-table__words:is(.verso-table__row[data-verso-turning="on"] *) {
-    position: relative;
-    isolation: isolate;
-  }
-  .verso-table__cell :has(> .verso-table__words):is(.verso-table__row[data-verso-turning="on"] *) {
-    padding-inline: 0.75rem;
-    margin-inline: -0.75rem;
-  }
-  .verso-table__words:is(.verso-table__row[data-verso-turning="on"] *)::after {
-    content: "";
-    position: absolute;
-    z-index: -1;
-    inset: var(--verso-marker-inset);
-    background-color: var(--color-rule-strong);
-    -webkit-mask: var(--verso-marker) no-repeat 0 0 / 100% 100%;
-    mask: var(--verso-marker) no-repeat 0 0 / 100% 100%;
-    animation: verso-marker-lift 280ms ease-out both;
-  }
-}
-@keyframes verso-marker-draw {
-  from { clip-path: inset(0 100% 0 0); }
-  to { clip-path: inset(0 0 0 0); }
-}
-@keyframes verso-marker-lift {
-  from { opacity: 1; }
-  to { opacity: 0; }
 }
 
 /* A phone leaves out a listing's secondary columns (Table.secondary, by
