@@ -29,6 +29,11 @@ var pairs = []pair{
 	// Meta on Mid Sand is the one pairing Sand light keeps a hair under 4.5,
 	// at 4.4 : 1 (palette.css); a theme is held to the same.
 	{"meta", "mid", 4.35},
+	// A switched-off row keeps its words on Sunk Sand, Mid's step in Sand
+	// light, so the same floors hold there; its marks and the dashed edge of
+	// what it says are Meta there, which keeps 3 : 1 where Glyph stops a hair
+	// short of it.
+	{"ink", "sunk", 4.5}, {"body", "sunk", 4.5}, {"meta", "sunk", 4.35},
 	{"on-fill", "denim", 4.5}, {"on-fill", "denim-deep", 4.5},
 	{"on-fill", "crimson", 4.5}, {"on-fill", "marigold-deep", 4.5},
 	{"denim-deep", "denim-soft", 4.5}, {"green-deep", "green-soft", 4.5},
