@@ -213,10 +213,11 @@ func (o *Overview) portsBody(r *Renderer, csrf string) (template.HTML, error) {
 	}, Secondary: overviewRates, EmptyText: "No physical ports were found."}
 	for _, n := range o.portsInPanelOrder() {
 		// A spare port carries no network and moves nothing, so it shows no
-		// rate; its link stays live like any port's.
+		// rate and its name reads quiet; its link stays live like any port's.
+		// It is spare, not switched off, so it is no disabled row.
 		if !n.inUse() {
-			t.Rows = append(t.Rows, TableRow{ID: n.Name, Key: "interface:" + n.Name, Muted: true, Cells: []TableCell{
-				{Text: n.Name, Verbatim: true}, {Text: "—", Muted: true}, {}, {}, stateCell(n),
+			t.Rows = append(t.Rows, TableRow{ID: n.Name, Key: "interface:" + n.Name, Cells: []TableCell{
+				{Text: n.Name, Verbatim: true, Muted: true}, {Text: "—", Muted: true}, {}, {}, stateCell(n),
 			}})
 			continue
 		}

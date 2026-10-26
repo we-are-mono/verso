@@ -371,15 +371,19 @@ func changeRow(c history.Change, when map[int64]time.Time, now time.Time, viewer
 		notes = append(notes, c.Note)
 	}
 	word, variant := changeStatus(c.Status)
+	// A change no longer in force reads quiet. It is not switched off, so it
+	// is not drawn as a disabled row: its status says what became of it.
+	quiet := c.Status != history.ChangeApplied
+	by := changeBy(c, viewer, tr)
+	by.Muted = by.Muted || quiet
 	return widget.TableRow{
 		ID:    strconv.FormatInt(c.ID, 10),
-		Muted: c.Status != history.ChangeApplied,
 		Panel: fmt.Sprintf("%s/%d", changesPath, c.ID),
 		Cells: []widget.TableCell{
-			{Text: clock.Local(c.Time).Format("15:04"), Verbatim: true},
-			{Text: plain, Parts: parts, Verbatim: true},
-			{Text: strings.Join(notes, " · ")},
-			changeBy(c, viewer, tr),
+			{Text: clock.Local(c.Time).Format("15:04"), Verbatim: true, Muted: quiet},
+			{Text: plain, Parts: parts, Verbatim: true, Muted: quiet},
+			{Text: strings.Join(notes, " · "), Muted: quiet},
+			by,
 			{Text: word, Variant: variant},
 			{Actions: []widget.TableRowAct{{Icon: "info", Title: "Details", Opens: true}}},
 		},

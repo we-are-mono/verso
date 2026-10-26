@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"path/filepath"
 	"reflect"
-	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -183,7 +182,9 @@ func record(t *testing.T, store *history.Store, c history.Change) int64 {
 }
 
 // TestChangesPageListsChangesByDayNewestFirst: lanes by day, each row named
-// from what it touched, and one no longer in force marked over.
+// from what it touched, and one no longer in force reading quiet: it is not
+// switched off, so it is no disabled row, and its status says what became of
+// it.
 func TestChangesPageListsChangesByDayNewestFirst(t *testing.T) {
 	s, store := changesServer(t)
 	now := time.Now()
@@ -209,8 +210,11 @@ func TestChangesPageListsChangesByDayNewestFirst(t *testing.T) {
 			t.Errorf("page missing %q", want)
 		}
 	}
-	if n := len(regexp.MustCompile(`data-verso-row-id="\d+" data-verso-off`).FindAllString(body, -1)); n != 1 {
-		t.Errorf("%d rows marked over, want the rolled-back one", n)
+	if strings.Contains(body, "data-verso-off") || strings.Contains(body, `data-verso-tone="off"`) {
+		t.Error("a rolled-back change is no disabled row")
+	}
+	if n := strings.Count(body, `class="verso-table__phrase" data-verso-muted`); n != 1 {
+		t.Errorf("%d changes read quiet, want the rolled-back one", n)
 	}
 }
 
