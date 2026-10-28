@@ -1043,6 +1043,41 @@ func (t *Table) actionsColumn() int {
 	return slices.IndexFunc(t.Columns, func(c TableColumn) bool { return c.Kind == "actions" })
 }
 
+// heldSlots says, for each act slot, whether some row of the table, its seam
+// included, fills it. A held slot keeps an act's column down the rows; one no
+// row fills holds nothing for anyone and is not drawn.
+func (t *Table) heldSlots() []bool {
+	at := t.actionsColumn()
+	var held []bool
+	rows := t.Rows
+	if t.Seam != nil {
+		rows = slices.Concat(t.Rows, t.Seam.Rows)
+	}
+	for _, row := range rows {
+		if at < 0 || at >= len(row.Cells) {
+			continue
+		}
+		for j, act := range row.Cells[at].Actions {
+			for len(held) <= j {
+				held = append(held, false)
+			}
+			held[j] = held[j] || act.Icon != ""
+		}
+	}
+	return held
+}
+
+// unheld drops from a row's acts the slots no row of its table fills.
+func unheld(acts []TableRowAct, held []bool) []TableRowAct {
+	var out []TableRowAct
+	for j, act := range acts {
+		if act.Icon != "" || j < len(held) && held[j] {
+			out = append(out, act)
+		}
+	}
+	return out
+}
+
 // doorAct is the act a row needs because its name may not be a door. A name
 // is words, never a control: a reader cannot tell what pressing it would do,
 // while an act says it with its glyph (DESIGN.md, Tables). A plugin that
@@ -1391,6 +1426,7 @@ func (t *Table) rowViews(r *Renderer, csrf string, rows []TableRow, hasDetail bo
 	var band *TableGroup
 	lanes := 0
 	suffixed := t.suffixColumns(rows)
+	held, acts := t.heldSlots(), t.actionsColumn()
 	chipView := func(chip TableChip) tableChipView {
 		view := tableChipView{TableChip: chip}
 		if chip.Title != "" {
@@ -1399,6 +1435,12 @@ func (t *Table) rowViews(r *Renderer, csrf string, rows []TableRow, hasDetail bo
 		return view
 	}
 	for rowIndex, row := range rows {
+		// The row's cells are the plugin's; its acts are trimmed on a copy.
+		if acts >= 0 && acts < len(row.Cells) && len(row.Cells[acts].Actions) > 0 {
+			cells := slices.Clone(row.Cells)
+			cells[acts].Actions = unheld(cells[acts].Actions, held)
+			row.Cells = cells
+		}
 		if row.Group != nil {
 			lane := *row.Group
 			lane.AddHref = SafeHref(lane.AddHref)

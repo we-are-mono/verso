@@ -3,6 +3,7 @@
 package widget
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -54,12 +55,35 @@ func TestTheRetiredInterfacesStyleIsTheFlatTable(t *testing.T) {
 func TestAnActSlotWithNoActHoldsItsPlace(t *testing.T) {
 	got := render(t, newRenderer(t), &Table{Columns: []TableColumn{{Label: "Device", Kind: "mono"}, {Kind: "actions"}}, Rows: []TableRow{
 		{ID: "eth0", Cells: []TableCell{{Text: "eth0"}, {Actions: []TableRowAct{{Icon: "square-pen", Title: "Edit", Href: "/edit"}, {}}}}},
+		{ID: "eth1.20", Cells: []TableCell{{Text: "eth1.20"}, {Actions: []TableRowAct{{Icon: "square-pen", Title: "Edit", Href: "/edit"}, {Icon: "trash-2", Title: "Delete", Href: "/delete"}}}}},
 	}})
 	if !strings.Contains(got, `<span class="size-7 shrink-0" aria-hidden="true"></span>`) {
 		t.Errorf("the empty slot holds its place:\n%s", got)
 	}
 	if strings.Count(got, `aria-disabled="true"`) != 0 {
 		t.Errorf("the empty slot draws no inert act:\n%s", got)
+	}
+}
+
+// TestAnActSlotNoRowFillsIsNotDrawn: a slot is held so an act keeps its column
+// down the rows; a slot no row of the table fills holds nothing for anyone, so
+// it is not drawn, and the acts stand at the table's trailing edge.
+func TestAnActSlotNoRowFillsIsNotDrawn(t *testing.T) {
+	edit := TableRowAct{Icon: "square-pen", Title: "Edit", Href: "/edit"}
+	del := TableRowAct{Icon: "trash-2", Title: "Delete", Href: "/delete"}
+	table := func(rows ...[]TableRowAct) *Table {
+		tb := &Table{Columns: []TableColumn{{Label: "Device", Kind: "mono"}, {Kind: "actions"}}}
+		for i, acts := range rows {
+			tb.Rows = append(tb.Rows, TableRow{ID: fmt.Sprint(i), Cells: []TableCell{{Text: "eth0"}, {Actions: acts}}})
+		}
+		return tb
+	}
+	const hole = `<span class="size-7 shrink-0" aria-hidden="true"></span>`
+	if got := render(t, newRenderer(t), table([]TableRowAct{edit, {}}, []TableRowAct{edit, {}})); strings.Contains(got, hole) {
+		t.Errorf("a slot no row fills is drawn:\n%s", got)
+	}
+	if got := render(t, newRenderer(t), table([]TableRowAct{edit, del}, []TableRowAct{edit, {}})); strings.Count(got, hole) != 1 {
+		t.Errorf("a slot one row fills holds its place in the other:\n%s", got)
 	}
 }
 
