@@ -522,9 +522,10 @@ envelope** back — `Content-Type: application/json`:
 - `width` — use `form` for a 640px settings page, `narrow` for 896px,
   `normal` for 1024px, or `wide` for 1152px. Layout uses the available width
   on smaller screens.
-- `commands` — optional array containing one act, run at once (see
-  [Acts](#acts)): one of the shell's own, or a plugin's registered act
-  `<plugin>.<name>`. An act requires its exact declared write scope, a valid
+- `commands` — optional array of acts, run at once in the order given (see
+  [Acts](#acts)): each one of the shell's own, or a plugin's registered act
+  `<plugin>.<name>`. The first act refused stops the rest, and its refusal is
+  the answer's. An act requires its exact declared write scope, a valid
   CSRF-protected POST, and a valid widget schema, and cannot be combined with
   `commit`; `config-file-stage` is the one command that may. Invalid credentials
   return a form error; private keys never appear in reads or previews.

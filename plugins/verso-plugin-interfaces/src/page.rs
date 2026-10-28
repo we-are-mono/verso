@@ -358,9 +358,10 @@ fn network_row(m: &Model, net: &str) -> TableRow {
 fn used_by(
     m: &Model,
     name: &str,
-    nets: &[String],
+    owners: &BTreeMap<String, Vec<String>>,
     parents: &BTreeMap<String, String>,
 ) -> Vec<TableChip> {
+    let nets = owners.get(name).cloned().unwrap_or_default();
     let mut chips: Vec<TableChip> = nets
         .iter()
         .filter(|n| m.companion_of(n).is_none())
@@ -377,11 +378,13 @@ fn used_by(
             });
         }
     }
+    // A device made on this one is cited where it has a row of its own: the
+    // config names it or a network rests on it. One the kernel kept after its
+    // section went is no one's business here.
     let ports = m.bridge_ports(name);
-    for (child, _) in parents
-        .iter()
-        .filter(|(c, p)| *p == name && !ports.contains(c))
-    {
+    for (child, _) in parents.iter().filter(|(c, p)| {
+        *p == name && !ports.contains(c) && (m.device(c).is_some() || owners.contains_key(*c))
+    }) {
         let runtime = m.live.get("devices").and_then(|v| v.get(child));
         chips.push(TableChip {
             label: child.clone(),
@@ -508,7 +511,7 @@ fn inventory(m: &Model, drawer: Option<RowDrawer>) -> Envelope {
             .iter()
             .filter_map(|name| {
                 let nets = owners.get(name).cloned().unwrap_or_default();
-                let chips = used_by(m, name, &nets, &parents);
+                let chips = used_by(m, name, &owners, &parents);
                 listed(m, name, &nets, &chips).then(|| device_row(m, name, chips, &nets))
             })
             .collect(),

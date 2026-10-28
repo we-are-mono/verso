@@ -566,6 +566,12 @@ fn kernel_made_devices_without_a_use_have_no_row() {
     let mut m = lab();
     m.live["devices"]["eth2"] = json!({"up":false,"physical":true,"kind":"port"});
     assert_eq!(texts(&device_row(&m, "eth2"))[3], "unused");
+    // A VLAN the kernel kept after its section went is no row, and its port
+    // does not cite it.
+    m.live["devices"]["lan0.30"] =
+        json!({"up":true,"physical":false,"kind":"vlan","parent":"lan0"});
+    assert!(!ids(&card(&m, "Devices")).contains(&"lan0.30".to_string()));
+    assert_eq!(texts(&device_row(&m, "lan0"))[2], "[br-lan]");
     // A tunnel base put to use is listed.
     m.networks.push(model::Record {
         id: "six".into(),
