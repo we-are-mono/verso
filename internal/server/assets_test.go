@@ -1525,7 +1525,7 @@ func TestTheScriptDrawsRowsAsTheTableDoes(t *testing.T) {
 	}
 	js := string(raw)
 	for _, want := range []string{
-		`doc.querySelectorAll("[data-verso-inventory], [data-verso-live-table]")`,
+		`doc.querySelectorAll("[data-verso-live-table]")`,
 		`table.className = "verso-table table-fixed"`,
 		`table.setAttribute("data-verso-lifted", "")`,
 		`["data-verso-dense", "data-verso-in-form"]`,

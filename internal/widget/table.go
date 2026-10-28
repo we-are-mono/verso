@@ -1201,9 +1201,6 @@ func (t *Table) reorderable() bool {
 // live. The shape is a log's: a table asking for it without a stream behind it
 // would render an empty terminal that never fills, so it stays a grid.
 func (t *Table) consoleStyle() string {
-	if t.Style == "interfaces" {
-		return "interfaces"
-	}
 	if t.Style == "console" && t.streaming() {
 		return "console"
 	}

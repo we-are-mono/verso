@@ -245,9 +245,12 @@
           {{$csrf := .CSRFToken}}{{$panel := .Panel}}{{$row := .RowName}}
           <span class="flex items-center justify-end">
             {{range .Actions}}
-            {{/* an act that ends something asks first, in the alert the
+            {{/* an act with no glyph is a slot the row has no act for: it
+                 holds its place, so each act keeps its column down the rows.
+                 An act that ends something asks first, in the alert the
                  labelled row act uses, and posts only from its answer */}}
-            {{if .Dialog}}<span x-data="modal" class="inline-flex">
+            {{if not .Icon}}<span class="size-7 shrink-0" aria-hidden="true"></span>
+            {{else if .Dialog}}<span x-data="modal" class="inline-flex">
               <button type="button" @click="show" aria-label="{{.Title}}{{if $row}} {{$row}}{{end}}" class="verso-button group/act relative" data-verso-size="icon">
                 {{icon .Icon "size-4"}}
                 {{template "verso-act-tip" .Title}}
@@ -437,9 +440,7 @@
      short: where the window cannot hold a line whole, an address wraps at
      its separators and a rule's name at its words, as the system log's
      message does. */}}
-{{if eq .Style "interfaces"}}
-{{template "table.interfaces" .}}
-{{else if eq .Style "console"}}
+{{if eq .Style "console"}}
 <div class="verso-console" data-verso-kind="events"
   data-verso-stream="{{.StreamSource}}" data-verso-stream-ring="{{.StreamRing}}" data-verso-stream-style="console">
   <div data-verso-console-rows data-verso-scroll="sand" class="verso-console__rows verso-drawer-scrollbar">

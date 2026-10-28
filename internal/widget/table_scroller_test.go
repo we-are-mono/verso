@@ -40,8 +40,8 @@ func TestTableScrollerSaysThereIsMore(t *testing.T) {
 func TestAListingHoldsItsScrollerInAFrameOfItsOwn(t *testing.T) {
 	r := newRenderer(t)
 	for name, w := range map[string]Widget{
-		"table":      &Table{Columns: []TableColumn{{Label: "Source"}}, Rows: []TableRow{{ID: "a", Cells: []TableCell{{Text: "wan"}}}}},
-		"interfaces": &Table{Style: "interfaces", Columns: []TableColumn{{Label: "Device"}}},
+		"table": &Table{Columns: []TableColumn{{Label: "Source"}}, Rows: []TableRow{{ID: "a", Cells: []TableCell{{Text: "wan"}}}}},
+		"live":  &Table{Style: "live", Columns: []TableColumn{{Label: "Device"}}, Rows: []TableRow{{ID: "a", Cells: []TableCell{{Text: "br-lan"}}}}},
 	} {
 		got := render(t, r, w)
 		const frame = `<div class="verso-listing" data-verso-listing data-verso-place="card">`

@@ -526,7 +526,7 @@ document.addEventListener(
 // drift into separate client-side implementations. Keep the user's search,
 // scroll position and focus; no polling while a dialog is in use.
 (function () {
-  var inventories = document.querySelectorAll("[data-verso-inventory], [data-verso-live-table]");
+  var inventories = document.querySelectorAll("[data-verso-live-table]");
   inventories.forEach(function (inventory, index) {
     var busy = false;
     var interval = setInterval(async function () {
@@ -542,7 +542,7 @@ document.addEventListener(
         var response = await fetch(location.pathname + location.search, { credentials: "same-origin", cache: "no-store", headers: { "X-Verso-Refresh": "1" }, signal: controller.signal });
         if (!response.ok) throw new Error("inventory unavailable");
         var doc = versoParse(await response.text());
-        var source = doc.querySelectorAll("[data-verso-inventory], [data-verso-live-table]")[index];
+        var source = doc.querySelectorAll("[data-verso-live-table]")[index];
         var fresh = source && source.querySelector("tbody");
         if (!fresh || !inventory.isConnected) throw new Error("inventory unavailable");
         var current = inventory.querySelector("tbody");

@@ -48,9 +48,6 @@
  *                                 the head, every cell under it and its width
  *           data-verso-lifted     the copy of a row a drag lifts off the
  *                                 listing (blocks/reorder.css): no hairline
- *           data-verso-tree       the interface inventory: its columns'
- *                                 widths held; on a
- *                                 phone the name, the state and the acts
  * Elements: __head      a column's head, in sentence case, quiet
  *           __row       a row; data-verso-off marks a switched-off one
  *           __cell      a value's cell
@@ -68,8 +65,6 @@
  *                       run onto more lines (TableColumn.Wrap)
  *           __part      one of a phrase's parts: words, a link, or a value
  *                       (data-verso-part="value") as the device wrote it
- *           __identity  an inventory row's name and its networks
- *           __state     a state's packet and word; data-verso-tone
  *           __held      a reserved address's line (data-verso-reserved on
  *                       its cell): its pin, then the address
  *           __pin       the reservation's pin on its green tile
@@ -84,8 +79,6 @@
  *           __add       that add, the whole line
  *           __seam      the cell of the fold that holds a listing's stock rows
  *           __summary   the fold's words
- *           __actions   an inventory row's acts, one run of slots, so each
- *                       act stands in its own column down the rows
  */
 
 .verso-table {
@@ -353,33 +346,6 @@
   overflow-wrap: anywhere;
 }
 
-/* An inventory row's identity: its name and its networks, the whole width of
-   its cell. It is words, not a control; the row opens from its acts. */
-.verso-table__identity {
-  display: flex;
-  align-items: flex-start;
-  width: 100%;
-}
-
-/* A state as its column writes it: the packet, then the word in the
-   state's ink: the deep step of a warning or a fault, Ink for a link that
-   is up, Meta for the rest. */
-.verso-table__state {
-  display: flex;
-  align-items: center;
-  gap: calc(var(--spacing) * 2);
-  color: var(--color-meta);
-}
-.verso-table__state[data-verso-tone="success"] {
-  color: var(--color-ink);
-}
-.verso-table__state[data-verso-tone="warning"] {
-  color: var(--color-marigold-deep);
-}
-.verso-table__state[data-verso-tone="danger"] {
-  color: var(--color-crimson-deep);
-}
-
 /* A reserved address is led by its pin on a green tile: a row act's hovered
    face (the 28px square, its 2px corners, the 16px glyph on a filled
    ground) without its border, in the reservation's hue, Deep Green on Green
@@ -548,71 +514,6 @@
 }
 .verso-table__summary::-webkit-details-marker {
   display: none;
-}
-
-/* The interface inventory. Its columns hold their widths, so the names and
-   the acts stand in one place down every row, and the
-   whole is never narrower than 53.5rem: a window narrower scrolls it. The
-   name's column takes the rest. */
-.verso-table[data-verso-tree] {
-  min-width: 53.5rem;
-  table-layout: fixed;
-  text-align: left;
-}
-.verso-table[data-verso-tree] > colgroup > col:nth-child(2) {
-  width: calc(var(--spacing) * 30);
-}
-.verso-table[data-verso-tree] > colgroup > col:nth-child(3) {
-  width: calc(var(--spacing) * 44);
-}
-.verso-table[data-verso-tree] > colgroup > col:nth-child(4) {
-  width: calc(var(--spacing) * 32);
-}
-.verso-table[data-verso-tree] > colgroup > col:nth-child(5) {
-  width: calc(var(--spacing) * 39);
-}
-/* A fact's cell keeps 8px after it, and the acts their slots' own
-   lead-in. */
-.verso-table[data-verso-tree] .verso-table__cell {
-  padding-inline-end: calc(var(--spacing) * 2);
-}
-.verso-table[data-verso-tree] .verso-table__acts {
-  padding-inline-start: 0;
-}
-
-/* The name's line wraps its networks' chips under the name, 4px apart, on
-   the cell's own air around its 24px lines. */
-.verso-table__title:where(.verso-table[data-verso-tree] *) {
-  flex-wrap: wrap;
-  column-gap: var(--spacing);
-  min-width: 0;
-}
-.verso-table__actions {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  width: calc(var(--spacing) * 35);
-  margin-left: auto;
-}
-/* On a phone the state rides on the name's line; elsewhere it has its own
-   column. */
-@media (width >= 40rem) {
-  .verso-table__state:is(.verso-table__title *) {
-    display: none;
-  }
-}
-@media (width < 40rem) {
-  .verso-table[data-verso-tree] {
-    min-width: auto;
-    table-layout: auto;
-  }
-  .verso-table[data-verso-tree] > :is(thead, tbody) > tr > :nth-child(n+2):nth-child(-n+4),
-  .verso-table[data-verso-tree] > colgroup > col:nth-child(n+2):nth-child(-n+4) {
-    display: none;
-  }
-  .verso-table__actions {
-    width: auto;
-  }
 }
 
 /* A phone leaves out a listing's secondary columns (Table.secondary, by
