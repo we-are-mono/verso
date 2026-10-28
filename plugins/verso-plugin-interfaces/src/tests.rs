@@ -187,7 +187,9 @@ fn the_type(drawer: &serde_json::Value) -> serde_json::Value {
 fn adding_an_interface_opens_a_new_network_with_its_type_to_change() {
     let listing = serde_json::to_value(get(&request("/", ""))).unwrap();
     let act = &listing["act"];
-    assert_eq!(act["label"], "Add interface");
+    // It adds what the Networks card lists, as Add device adds what Devices
+    // lists.
+    assert_eq!(act["label"], "Add network");
     assert_eq!(act["href"], format!("{ROOT}new"));
     // The listing carries no drawer for it: the shell fetches the drawer from
     // the act's address, so the drawer's form posts to the address that makes
@@ -539,22 +541,19 @@ fn devices_columns_read_device_type_used_by_state() {
     );
     assert_eq!(
         texts(&device_row(&m, "br-lan"))[..4],
-        ["br-lan", "bridge", "[lan]", "up"]
+        ["br-lan", "bridge", "lan", "up"]
     );
+    // What rests on a device is named as the config names it, in words: no
+    // chips, so the column reads as every other machine column does.
     let lan0 = device_row(&m, "lan0");
-    assert_eq!(
-        texts(&lan0)[..4],
-        ["lan0", "port", "[br-lan] [lan0.20]", "up"]
-    );
+    assert_eq!(texts(&lan0)[..4], ["lan0", "port", "br-lan, lan0.20", "up"]);
     assert_eq!(lan0["cells"][1]["rate"], 1e9);
-    assert_eq!(lan0["cells"][2]["chips"][0]["icon"], "git-merge");
-    assert_eq!(lan0["cells"][2]["chips"][1]["icon"], "tag");
+    assert!(lan0["cells"][2].get("chips").is_none(), "{lan0}");
     // The internet line's device names the line, not its DHCPv6 half.
-    assert_eq!(texts(&device_row(&m, "wan0"))[2], "[wan]");
-    assert_eq!(
-        device_row(&m, "wan0")["cells"][2]["chips"][0]["kind"],
-        "network"
-    );
+    assert_eq!(texts(&device_row(&m, "wan0"))[2], "wan");
+    // Nothing rests on it: a dash, as every empty cell is.
+    m.live["devices"]["eth2"] = json!({"up":false,"physical":true,"kind":"port"});
+    assert_eq!(texts(&device_row(&m, "eth2"))[2], "—");
 }
 #[test]
 fn kernel_made_devices_without_a_use_have_no_row() {
@@ -571,7 +570,7 @@ fn kernel_made_devices_without_a_use_have_no_row() {
     m.live["devices"]["lan0.30"] =
         json!({"up":true,"physical":false,"kind":"vlan","parent":"lan0"});
     assert!(!ids(&card(&m, "Devices")).contains(&"lan0.30".to_string()));
-    assert_eq!(texts(&device_row(&m, "lan0"))[2], "[br-lan]");
+    assert_eq!(texts(&device_row(&m, "lan0"))[2], "br-lan");
     // A tunnel base put to use is listed.
     m.networks.push(model::Record {
         id: "six".into(),
@@ -626,9 +625,18 @@ fn rows_open_their_drawer_from_the_pencil() {
 }
 #[test]
 fn a_networks_row_reads_and_acts_on_its_companion() {
+    // A line whose provider hands out no IPv6 is still the line that carries
+    // the internet: it reads its own state, and its DHCPv6 half waiting is
+    // said in its Status card, not over the row.
     let mut m = lab();
     m.live["interfaces"][3]["up"] = json!(false);
-    assert_eq!(texts(&network_row(&m, "wan"))[5], "partial");
+    m.live["interfaces"][3]["pending"] = json!(true);
+    assert_eq!(texts(&network_row(&m, "wan"))[5], "up");
+    assert_eq!(texts(&device_row(&m, "wan0"))[3], "up");
+    let status = cards(&drawer_of(&m, "wan", ""))[0].clone();
+    assert_eq!(fact(&status, "State")["value"], "up");
+    assert_eq!(fact(&status, "IPv6 state")["value"], "pending");
+    assert!(!labels(&cards(&drawer_of(&m, "lan", ""))[0]).contains(&"IPv6 state".to_string()));
     // Restarting the line restarts both halves.
     let line = |path: &str, query: &str| {
         let mut r = request(path, query);
@@ -814,7 +822,7 @@ fn physical_bridge_ports_are_roots_and_vlan_and_ppp_follow_their_transport() {
     assert_eq!(parents["eth0.20"], "eth0");
     assert_eq!(parents["pppoe-wan"], "eth1");
     assert!(follows(&m, "eth0.20", "eth0"));
-    assert_eq!(texts(&device_row(&m, "pppoe-wan"))[2], "[uplink]");
+    assert_eq!(texts(&device_row(&m, "pppoe-wan"))[2], "uplink");
 }
 
 #[test]

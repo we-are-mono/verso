@@ -275,10 +275,10 @@ fn columns(spec: &[(&str, &str)]) -> Vec<TableColumn> {
 fn network_row(m: &Model, net: &str) -> TableRow {
     let live = m.live_network(net);
     let configured = m.network(net).is_some();
-    let mut nets = vec![net.to_string()];
-    nets.extend(m.companion(net).map(|c| c.id.clone()));
+    // The line's own state: its IPv6 companion waiting on a provider that
+    // hands out no IPv6 is said in the Status card, not over the line.
     let runtime = m.live.get("devices").and_then(|v| v.get(l3(m, net)));
-    let (state, tone) = state(m, &nets, runtime, true);
+    let (state, tone) = state(m, &[net.to_string()], runtime, true);
     // Only observed addresses belong in this column: a configured one is
     // the drawer's until Apply makes it real.
     let ipv4 = addresses(live, "ipv4-address");
@@ -360,51 +360,54 @@ fn used_by(
     name: &str,
     owners: &BTreeMap<String, Vec<String>>,
     parents: &BTreeMap<String, String>,
-) -> Vec<TableChip> {
-    let nets = owners.get(name).cloned().unwrap_or_default();
-    let mut chips: Vec<TableChip> = nets
-        .iter()
+) -> Vec<String> {
+    let mut users: Vec<String> = owners
+        .get(name)
+        .into_iter()
+        .flatten()
         .filter(|n| m.companion_of(n).is_none())
-        .map(|n| TableChip::entity("network", n))
+        .cloned()
         .collect();
     let mut names: BTreeSet<String> = m.names();
     names.extend(m.devices.iter().map(|d| d.get("name")));
     for bridge in &names {
         if bridge != name && m.bridge_ports(bridge).contains(&name.to_string()) {
-            chips.push(TableChip {
-                label: bridge.clone(),
-                icon: "git-merge".into(),
-                ..Default::default()
-            });
+            users.push(bridge.clone());
         }
     }
-    // A device made on this one is cited where it has a row of its own: the
+    // A device made on this one is named where it has a row of its own: the
     // config names it or a network rests on it. One the kernel kept after its
     // section went is no one's business here.
     let ports = m.bridge_ports(name);
-    for (child, _) in parents.iter().filter(|(c, p)| {
-        *p == name && !ports.contains(c) && (m.device(c).is_some() || owners.contains_key(*c))
-    }) {
-        let runtime = m.live.get("devices").and_then(|v| v.get(child));
-        chips.push(TableChip {
-            label: child.clone(),
-            icon: glyph(&kind(m, child, runtime)).into(),
-            ..Default::default()
-        });
-    }
-    chips
+    users.extend(
+        parents
+            .iter()
+            .filter(|(c, p)| {
+                *p == name
+                    && !ports.contains(c)
+                    && (m.device(c).is_some() || owners.contains_key(*c))
+            })
+            .map(|(c, _)| c.clone()),
+    );
+    users
 }
 // device_row is one device: its name, its kind (a port's link speed after
-// it), what rests on it and its state.
-fn device_row(m: &Model, name: &str, chips: Vec<TableChip>, nets: &[String]) -> TableRow {
+// it), what rests on it, as the config names each, and its state, which an
+// IPv6 companion's waiting does not change.
+fn device_row(m: &Model, name: &str, users: &[String], nets: &[String]) -> TableRow {
     let runtime = m.live.get("devices").and_then(|v| v.get(name));
     let configured = m.device(name).is_some();
     let kind = kind(m, name, runtime);
-    let used = !chips.is_empty()
+    let used = !users.is_empty()
         || m.devices
             .iter()
             .any(|d| d.list("ports").iter().any(|p| p == name));
-    let (state, tone) = state(m, nets, runtime, used);
+    let lines: Vec<String> = nets
+        .iter()
+        .filter(|n| m.companion_of(n).is_none())
+        .cloned()
+        .collect();
+    let (state, tone) = state(m, &lines, runtime, used);
     let mut actions = vec![TableRowAct::default(), TableRowAct::default()];
     if runtime.is_some() || configured {
         actions[0] = act_at("square-pen", "Edit", url("", name, "edit"));
@@ -421,7 +424,11 @@ fn device_row(m: &Model, name: &str, chips: Vec<TableChip>, nets: &[String]) -> 
                 rate: if kind == "port" { speed(runtime) } else { None },
                 ..cell(kind)
             },
-            TableCell { chips, ..cell("") },
+            cell(if users.is_empty() {
+                EM_DASH.to_string()
+            } else {
+                users.join(", ")
+            }),
             pill_cell(state, tone),
             TableCell {
                 actions,
@@ -435,11 +442,11 @@ fn device_row(m: &Model, name: &str, chips: Vec<TableChip>, nets: &[String]) -> 
 // it, something else uses it, or it is one of the router's own ports. A
 // software device the kernel made on its own and nothing uses (sit0,
 // ip6tnl0) has none.
-fn listed(m: &Model, name: &str, nets: &[String], chips: &[TableChip]) -> bool {
+fn listed(m: &Model, name: &str, nets: &[String], users: &[String]) -> bool {
     let runtime = &m.live["devices"][name];
     m.device(name).is_some()
         || !nets.is_empty()
-        || !chips.is_empty()
+        || !users.is_empty()
         || m.networks
             .iter()
             .any(|n| m.resolve_device(&n.get("device")) == name)
@@ -503,7 +510,7 @@ fn inventory(m: &Model, drawer: Option<RowDrawer>) -> Envelope {
         columns: columns(&[
             ("Device", "mono"),
             ("Type", "keyword"),
-            ("Used by", "reference"),
+            ("Used by", "mono"),
             ("State", "status"),
             ("", "actions"),
         ]),
@@ -511,8 +518,8 @@ fn inventory(m: &Model, drawer: Option<RowDrawer>) -> Envelope {
             .iter()
             .filter_map(|name| {
                 let nets = owners.get(name).cloned().unwrap_or_default();
-                let chips = used_by(m, name, &owners, &parents);
-                listed(m, name, &nets, &chips).then(|| device_row(m, name, chips, &nets))
+                let users = used_by(m, name, &owners, &parents);
+                listed(m, name, &nets, &users).then(|| device_row(m, name, &users, &nets))
             })
             .collect(),
         empty_text: "The router reports no devices.".into(),
@@ -523,7 +530,7 @@ fn inventory(m: &Model, drawer: Option<RowDrawer>) -> Envelope {
     // naming either arrives with it in front of the operator; with none open,
     // the drawer is fetched from the act's own address.
     let act = HeadingAct {
-        label: "Add interface".into(),
+        label: "Add network".into(),
         href: format!("{ROOT}new"),
         icon: "plus".into(),
         opens_panel: true,

@@ -169,13 +169,24 @@ pub fn network(m: &Model, net: &str) -> Widget {
         });
     let global: Vec<_> = ip6.iter().filter(|a| !ula(a)).cloned().collect();
     let local: Vec<_> = ip6.iter().filter(|a| ula(a)).cloned().collect();
-    let facts = vec![
-        prose("State", state(m, &nets, runtime, true).0),
+    // The line's state is its own; its IPv6 companion's stands beside it, so a
+    // provider that hands out no IPv6 reads as that and not as a line down.
+    let mut facts = vec![prose(
+        "State",
+        state(m, std::slice::from_ref(&nets[0]), runtime, true).0,
+    )];
+    if let Some(half) = &companion {
+        facts.push(prose(
+            "IPv6 state",
+            state(m, std::slice::from_ref(half), runtime, true).0,
+        ));
+    }
+    facts.extend([
         copied("IPv4", addresses(live, "ipv4-address").join(", ")),
         copied("IPv6", global.join(", ")),
         copied("ULA", local.join(", ")),
         uptime(live),
-    ];
+    ]);
     let mut children = vec![Widget::properties(facts)];
     if let Some(errors) = live
         .and_then(|v| v.get("errors"))

@@ -40,7 +40,7 @@ The Networks table SHALL show the columns Network, Protocol, Address, Device, Zo
 - **THEN** `lan`'s row reads `lan` with its DHCP chip, `static`, `192.168.77.1/24`, `br-lan`, `lan` and `up`
 
 ### Requirement: The Devices card's columns
-The Devices table SHALL show the columns Device, Type, Used by, State and the acts, in that order. Used by SHALL name the networks the device carries, or the bridge it is a port of, or the device a VLAN runs on it as; a port SHALL carry its link speed after its type.
+The Devices table SHALL show the columns Device, Type, Used by, State and the acts, in that order. Used by SHALL name, in words as the config writes them, the networks the device carries, the bridge it is a port of, and the devices made on it, or a dash where nothing rests on it; a port SHALL carry its link speed after its type.
 
 #### Scenario: A bridge and its port
 - **WHEN** the operator reads `br-lan` and `lan0`
@@ -77,15 +77,15 @@ A network whose protocol is DHCPv6 and whose device is `@<network>` or the same 
 - **THEN** both keep their own rows and `wan`'s drawer has no companion
 
 ### Requirement: A network's row acts on its companion too
-A network's state SHALL read `up` only when it and its companion are both up, and `partial` when one is. Bring down, Bring up and Restart SHALL act on the network and its companion together, and Delete SHALL remove both, its confirmation saying so.
+A network's row, and its device's, SHALL read the network's own state; its companion's state SHALL stand in the network's Status card. Bring down, Bring up and Restart SHALL act on the network and its companion together, and Delete SHALL remove both, its confirmation saying so.
 
 #### Scenario: Restarting the internet line
 - **WHEN** the operator presses Restart on `wan`'s row
 - **THEN** netifd is asked to restart both `wan` and `wan6`
 
-#### Scenario: Half up
-- **WHEN** `wan` is up and `wan6` is down
-- **THEN** `wan`'s row reads `partial`
+#### Scenario: A provider with no IPv6
+- **WHEN** `wan` is up and `wan6` waits pending because the provider hands out no IPv6
+- **THEN** `wan`'s row and `wan0`'s read `up`, and `wan`'s Status card reads its IPv6 state `pending`
 
 #### Scenario: Deleting the line
 - **WHEN** the operator deletes `wan`
@@ -144,7 +144,7 @@ Saving a network's drawer SHALL stage its own section and its companion's in one
 - **THEN** `wan6`'s device is staged as `@isp`
 
 ### Requirement: The Status card states what the router reports
-The Status card SHALL state live facts only, none of which the drawer's form sets, and SHALL be absent from a new object's drawer. A network's card SHALL state its state, IPv4, IPv6 and ULA addresses (its companion's among them), uptime, and netifd's errors when it has any; its header SHALL carry Restart and Bring down or Bring up. A device's card SHALL state its state, MAC address, link speed or a bridge's live ports, driver, and error counts.
+The Status card SHALL state live facts only, none of which the drawer's form sets, and SHALL be absent from a new object's drawer. A network's card SHALL state its state, its companion's state where it has one, IPv4, IPv6 and ULA addresses (its companion's among them), uptime, and netifd's errors when it has any; its header SHALL carry Restart and Bring down or Bring up. A device's card SHALL state its state, MAC address, link speed or a bridge's live ports, driver, and error counts.
 
 #### Scenario: The LAN's status
 - **WHEN** the operator opens `lan`'s drawer
@@ -155,7 +155,7 @@ The Status card SHALL state live facts only, none of which the drawer's form set
 - **THEN** that address stands in `wan`'s Status card
 
 #### Scenario: A new network
-- **WHEN** the operator presses Add interface
+- **WHEN** the operator presses Add network
 - **THEN** the drawer has no Status card
 
 ### Requirement: A Status act returns to the listing
@@ -177,14 +177,14 @@ A device's drawer SHALL hold a Status card, then its kind's settings card (a bri
 - **THEN** it holds its Status card and Advanced, and no kind's settings card
 
 ### Requirement: Each card adds its own kind
-The page's heading act Add interface SHALL open a new network's drawer whose Type offers Network, Internet connection and Tunnel. The Devices card's header SHALL carry Add device, which SHALL open a new device's drawer whose Type offers Bridge and VLAN.
+The page's heading act Add network SHALL open a new network's drawer whose Type offers Network, Internet connection and Tunnel. The Devices card's header SHALL carry Add device, which SHALL open a new device's drawer whose Type offers Bridge and VLAN.
 
 #### Scenario: Adding a VLAN
 - **WHEN** the operator presses Add device and keeps VLAN
 - **THEN** the drawer asks for the parent device, VLAN ID and tag protocol, and its save stages a `device` section
 
 #### Scenario: The network chooser
-- **WHEN** the operator presses Add interface
+- **WHEN** the operator presses Add network
 - **THEN** Type offers Network, Internet connection and Tunnel, and neither Bridge nor VLAN
 
 ### Requirement: A network's DHCP server stays on the DHCP page
