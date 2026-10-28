@@ -19,12 +19,12 @@ func choiceOptions(count int) []Option {
 
 func TestSingleChoiceCutoff(t *testing.T) {
 	r := newRenderer(t)
-	for _, count := range []int{0, 1, RadioOptionLimit, RadioOptionLimit + 1} {
+	for _, count := range []int{0, 2, RadioOptionLimit, RadioOptionLimit + 1} {
 		for _, style := range []string{"", "segmented"} {
 			t.Run(strconv.Itoa(count)+"/"+style, func(t *testing.T) {
 				got := render(t, r, &Field{Name: "policy", Label: "Policy", Kind: "select", Style: style,
 					Value: "0", Options: choiceOptions(count)})
-				radios := count > 0 && count <= RadioOptionLimit
+				radios := count > 1 && count <= RadioOptionLimit
 				if strings.Contains(got, `role="radiogroup"`) != radios || strings.Contains(got, "<select") == radios {
 					t.Fatalf("wrong control for %d choices (limit %d):\n%s", count, RadioOptionLimit, got)
 				}
@@ -39,6 +39,41 @@ func TestSingleChoiceCutoff(t *testing.T) {
 					t.Errorf("dropdown must retain its full option set and intrinsic width:\n%s", got)
 				}
 			})
+		}
+	}
+}
+
+// TestASingleChoiceStatesItsValue: a choice of one option is no choice, so
+// the answer states that option, on a choice's 32px line, in the face its
+// options would wear (mono for a machine-string datatype), and the form still
+// posts it under the field's name. Neither a radio nor a dropdown is drawn,
+// whatever the style hint.
+func TestASingleChoiceStatesItsValue(t *testing.T) {
+	r := newRenderer(t)
+	for _, style := range []string{"", "segmented"} {
+		got := render(t, r, &Field{Name: "network", Label: "Network", Kind: "select", Style: style, Datatype: "hostname",
+			Value: "mgmt", Options: []Option{{Value: "mgmt", Label: "mgmt"}}})
+		for _, absent := range []string{`role="radiogroup"`, `type="radio"`, "<select"} {
+			if strings.Contains(got, absent) {
+				t.Errorf("a single choice must not draw %q:\n%s", absent, got)
+			}
+		}
+		for _, want := range []string{
+			`<output id="network" class="verso-choice__option" data-verso-verbatim>mgmt</output>`,
+			`<input type="hidden" name="network" value="mgmt">`,
+			`class="verso-choice__group" data-verso-kind="radios"`,
+		} {
+			if !strings.Contains(got, want) {
+				t.Errorf("a single choice lacks %q:\n%s", want, got)
+			}
+		}
+	}
+	// A choice of words states its option in words, and it posts its one
+	// option even when the value it was given is another.
+	got := render(t, r, &Field{Name: "policy", Kind: "select", Value: "drop", Options: []Option{{Value: "accept", Label: "Accept"}}})
+	for _, want := range []string{`<output id="policy" class="verso-choice__option">Accept</output>`, `<input type="hidden" name="policy" value="accept">`} {
+		if !strings.Contains(got, want) {
+			t.Errorf("a single choice of words lacks %q:\n%s", want, got)
 		}
 	}
 }

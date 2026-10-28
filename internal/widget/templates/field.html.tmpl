@@ -65,6 +65,15 @@
        control is a quiet box with a padlock and the reason on it, and nothing
        posts. An output is labelable, so the row's label still names it. */}}
   <output id="{{.Name}}"{{if .Help}} title="{{.Help}}"{{end}} class="verso-input">{{.Value}}<span class="verso-input__lock">{{icon "lock" "size-3.5"}}</span></output>
+  {{else if .OneChoice}}
+  {{/* A choice of one option is no choice: the answer states it on a choice's
+       32px line, verbatim as an option reads, and posts it under the field's
+       name. An output is labelable, so the row's label still names it. */}}
+  {{$only := index .Options 0}}
+  <div class="verso-choice__group" data-verso-kind="radios">
+    <output id="{{.Name}}"{{template "verso-field-aria" .}} class="verso-choice__option"{{if not .Words}} data-verso-verbatim{{end}}>{{$only.Label}}</output>
+    <input type="hidden" name="{{.Name}}" value="{{$only.Value}}">
+  </div>
   {{else if .UseRadios}}
   {{/* Small single-choice sets stay visible. Native radios retain arrow-key
        navigation, mutual exclusion and the same submitted name/value. The

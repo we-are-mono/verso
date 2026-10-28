@@ -135,7 +135,13 @@ func (f *Field) Suggests() bool {
 }
 
 func (f *Field) UseRadios() bool {
-	return f.Kind == "select" && len(f.Options) > 0 && len(f.Options) <= RadioOptionLimit
+	return f.Kind == "select" && len(f.Options) > 1 && len(f.Options) <= RadioOptionLimit
+}
+
+// OneChoice reports a single-choice set of one option, which is no choice:
+// the answer states that option and the form posts it as it stands.
+func (f *Field) OneChoice() bool {
+	return f.Kind == "select" && len(f.Options) == 1
 }
 
 // SelectedIndex preserves native single-select behavior: use the current value

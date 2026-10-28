@@ -265,7 +265,7 @@ func TestSelectIsAChoiceUnlessItHoldsAMachineString(t *testing.T) {
 	zone := render(t, newRenderer(t), &Field{Name: "zonename", Label: "Timezone", Kind: "select",
 		Options: []Option{{Value: "UTC", Label: "UTC"}, {Value: "Europe/Ljubljana", Label: "Europe/Ljubljana"}}})
 	host := render(t, newRenderer(t), &Field{Name: "server", Label: "Server", Kind: "select", Datatype: "hostname",
-		Options: []Option{{Value: "0.pool.ntp.org", Label: "0.pool.ntp.org"}}})
+		Options: []Option{{Value: "0.pool.ntp.org", Label: "0.pool.ntp.org"}, {Value: "1.pool.ntp.org", Label: "1.pool.ntp.org"}}})
 	for name, got := range map[string]string{"policy": policy, "timezone": zone} {
 		if !strings.Contains(got, `<label class="verso-choice__option">`) || strings.Contains(got, "data-verso-verbatim") {
 			t.Errorf("%s: an enumerated choice is words:\n%s", name, got)
