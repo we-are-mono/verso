@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: GPL-2.0-only
 // SPDX-FileCopyrightText: 2026 Mono Technologies Inc.
 use crate::editor::url;
+use crate::status::{addresses, speed};
 use crate::{Model, ROOT};
 use serde_json::Value;
 use std::collections::{BTreeMap, BTreeSet};
-use std::net::Ipv6Addr;
 use verso_plugin::{
-    pill_cell, uci_text, Envelope, HeadingAct, Property, RowDrawer, SectionWidget, Table,
-    TableCell, TableChip, TableColumn, TableRow, TableRowAct, Tone, Widget, EM_DASH,
+    pill_cell, Envelope, HeadingAct, RowDrawer, SectionWidget, Table, TableCell, TableChip,
+    TableColumn, TableRow, TableRowAct, Tone, Widget, EM_DASH,
 };
 
 fn text(v: Option<&Value>) -> String {
@@ -22,59 +22,10 @@ fn cell(s: impl Into<String>) -> TableCell {
         ..Default::default()
     }
 }
-fn fact(label: &str, value: impl Into<String>) -> Property {
-    let value = value.into();
-    Property {
-        label: label.into(),
-        value: if value.is_empty() {
-            EM_DASH.into()
-        } else {
-            value
-        },
-        mono: true,
-        ..Default::default()
-    }
-}
-fn prose(label: &str, value: &str) -> Property {
-    Property {
-        mono: false,
-        ..fact(label, value)
-    }
-}
-// facts sets what a uci section says, in plain words, as the one fact list
-// every card reads. The section as the config spells it is not repeated here:
-// the editor shows what it writes.
-fn facts(facts: Vec<Property>) -> Widget {
-    Widget::properties(facts)
-}
-// part is one uci section behind a row, as a card of its drawer: the glyph
-// of its kind, the kind of section, its name as the config names it, and the
-// act that edits it on its header.
-fn part(
-    glyph: &str,
-    title: &str,
-    name: &str,
-    children: Vec<Widget>,
-    edit: Option<Widget>,
-) -> Widget {
-    let mut section = Widget::section(title, "", children);
-    if let Widget::Section(SectionWidget {
-        icon,
-        meta,
-        control,
-        ..
-    }) = &mut section
-    {
-        *icon = glyph.into();
-        *meta = name.into();
-        *control = edit.map(Box::new);
-    }
-    section
-}
 // glyph is the mark of a device's kind, the same one the chooser makes it
 // with: a bridge, a VLAN, a tunnel or a physical port, else a device defined
 // in software.
-fn glyph(kind: &str) -> &'static str {
+pub(crate) fn glyph(kind: &str) -> &'static str {
     match kind {
         "bridge" => "git-merge",
         k if k.starts_with("vlan") => "tag",
@@ -85,90 +36,8 @@ fn glyph(kind: &str) -> &'static str {
         _ => "cpu",
     }
 }
-// network_glyph is a network's mark: the globe for a line to the internet
-// (brought up by DHCP or PPPoE, or in the wan zone), the network mark for
-// one of the router's own.
-fn network_glyph(m: &Model, net: &str, protocol: &str) -> &'static str {
-    let wan_zone = m
-        .zones
-        .iter()
-        .any(|z| z.get("name") == "wan" && z.list("network").iter().any(|n| n == net));
-    if wan_zone || matches!(protocol, "dhcp" | "dhcpv6" | "pppoe" | "pppoa") {
-        "globe"
-    } else {
-        "network"
-    }
-}
-// act is the act on a card's header that edits its part: a link to the
-// part's editor, whose address opens it over the listing.
-fn act(label: &str, glyph: &str, href: &str) -> Widget {
-    let mut link = Widget::link(label, href, "act");
-    if let Widget::Link { icon, .. } = &mut link {
-        *icon = glyph.into();
-    }
-    link
-}
-/// config_text is one section as the file will hold it, its secrets left out.
-pub(crate) fn config_text(typ: &str, id: &str, values: &serde_json::Map<String, Value>) -> String {
-    let mut shown = values.clone();
-    shown.retain(|k, _| k != "password" && k != "private_key");
-    uci_text(typ, id, &shown)
-}
-fn addresses(live: Option<&Value>, family: &str) -> Vec<String> {
-    let Some(live) = live else { return vec![] };
-    let mut entries = live
-        .get(family)
-        .and_then(Value::as_array)
-        .cloned()
-        .unwrap_or_default();
-    if family == "ipv6-address" {
-        if let Some(prefixes) = live.get("ipv6-prefix-assignment").and_then(Value::as_array) {
-            entries.extend(
-                prefixes
-                    .iter()
-                    .filter_map(|p| p.get("local-address").cloned()),
-            );
-        }
-    }
-    let mut out = vec![];
-    for entry in entries {
-        let address = text(entry.get("address"));
-        if address.is_empty() {
-            continue;
-        }
-        let value = match entry.get("mask").and_then(Value::as_u64) {
-            Some(mask) => format!("{address}/{mask}"),
-            None => address,
-        };
-        if !out.contains(&value) {
-            out.push(value);
-        }
-    }
-    out
-}
-fn ula(address: &str) -> bool {
-    address
-        .split('/')
-        .next()
-        .and_then(|a| a.parse::<Ipv6Addr>().ok())
-        .is_some_and(|a| a.segments()[0] & 0xfe00 == 0xfc00)
-}
-// uptime is how long netifd says the network has been up, in seconds for the
-// shell to write as every duration is written.
-pub(crate) fn uptime(live: Option<&Value>) -> Property {
-    match live.and_then(|l| l.get("uptime")).and_then(Value::as_u64) {
-        Some(seconds) => Property::duration("Uptime", seconds),
-        None => fact("Uptime", ""),
-    }
-}
-// speed is a port's negotiated link speed in bits per second, from netifd's
-// "1000F"; the shell writes it in the reader's language.
-fn speed(runtime: Option<&Value>) -> Option<f64> {
-    let raw = text(runtime.and_then(|v| v.get("speed")));
-    let mbps = raw.trim_end_matches(['F', 'H']).parse::<u32>().ok()?;
-    Some(f64::from(mbps) * 1e6)
-}
-fn kind(m: &Model, name: &str, runtime: Option<&Value>) -> String {
+// kind is what a device is, as the config makes it or the kernel reports it.
+pub(crate) fn kind(m: &Model, name: &str, runtime: Option<&Value>) -> String {
     if let Some(d) = m.device(name) {
         let typ = d.get("type");
         if matches!(typ.as_str(), "8021q" | "8021ad") {
@@ -203,7 +72,7 @@ fn kind(m: &Model, name: &str, runtime: Option<&Value>) -> String {
     }
     EM_DASH.into()
 }
-fn state(
+pub(crate) fn state(
     m: &Model,
     nets: &[String],
     runtime: Option<&Value>,
@@ -251,163 +120,6 @@ fn state(
         _ => ("not reported", "neutral"),
     }
 }
-// cards are a row's drawer: a card for each network the device carries, then
-// the device's own. Each card carries the act that edits its part, since the
-// row's own way in is this drawer. A network's DHCP server is the DHCP page's,
-// read and changed there alone.
-fn cards(
-    m: &Model,
-    name: &str,
-    nets: &[String],
-    runtime: Option<&Value>,
-    kind: &str,
-) -> Vec<Widget> {
-    let mut out = vec![];
-    for net in nets {
-        let live = m.live_network(net);
-        let ip4 = addresses(live, "ipv4-address");
-        let ip6 = addresses(live, "ipv6-address");
-        let protocol = text(live.and_then(|v| v.get("proto")));
-        let mark = network_glyph(m, net, &protocol);
-        let mut read = vec![
-            fact("IPv4", ip4.join(", ")),
-            fact(
-                "IPv6",
-                ip6.iter()
-                    .filter(|a| !ula(a))
-                    .cloned()
-                    .collect::<Vec<_>>()
-                    .join(", "),
-            ),
-            fact(
-                "ULA",
-                ip6.iter()
-                    .filter(|a| ula(a))
-                    .cloned()
-                    .collect::<Vec<_>>()
-                    .join(", "),
-            ),
-            fact("Protocol", protocol),
-            uptime(live),
-        ];
-        // A device carrying more than one network says which state is whose.
-        let several = nets.len() > 1;
-        if several {
-            read.insert(
-                0,
-                prose(
-                    "State",
-                    state(m, std::slice::from_ref(net), runtime, true).0,
-                ),
-            );
-        }
-        for p in read.iter_mut() {
-            p.copy = matches!(p.label.as_str(), "IPv4" | "IPv6" | "ULA") && p.value != EM_DASH;
-        }
-        let zones: Vec<_> = m
-            .zones
-            .iter()
-            .filter(|z| z.list("network").contains(net))
-            .collect();
-        if !zones.is_empty() {
-            read.push(fact(
-                "Firewall zone",
-                zones
-                    .iter()
-                    .map(|z| z.get("name"))
-                    .collect::<Vec<_>>()
-                    .join(", "),
-            ));
-        }
-        let mut body = vec![facts(read)];
-        if let Some(errors) = live
-            .and_then(|v| v.get("errors"))
-            .and_then(Value::as_array)
-            .filter(|e| !e.is_empty())
-        {
-            body.push(Widget::code(
-                "netifd",
-                &serde_json::to_string_pretty(errors).unwrap_or_default(),
-            ));
-        }
-        let edit = m
-            .network(net)
-            .is_some()
-            .then(|| act("Edit network", "square-pen", &url(net, "", "edit")));
-        out.push(part(mark, "Network", net, body, edit));
-    }
-    // The device is always a card of its own: its MAC address is read here.
-    let mac = text(runtime.and_then(|v| v.get("macaddr")));
-    let mut read = vec![Property {
-        copy: !mac.is_empty(),
-        ..fact("MAC address", mac)
-    }];
-    read.extend(device_facts(m, name, runtime, kind));
-    if nets.is_empty() {
-        let ip4 = addresses(runtime, "ipv4-address");
-        let ip6 = addresses(runtime, "ipv6-address");
-        if !ip4.is_empty() {
-            read.push(fact("IPv4", ip4.join(", ")));
-        }
-        if !ip6.is_empty() {
-            read.push(fact("IPv6", ip6.join(", ")));
-        }
-    }
-    let edit = (runtime.is_some() || m.device(name).is_some())
-        .then(|| act("Edit device", "square-pen", &url("", name, "edit")));
-    out.push(part(glyph(kind), "Device", name, vec![facts(read)], edit));
-    out
-}
-// device_facts is what the kernel says about the device itself: a bridge's
-// ports and spanning tree, a port's link and driver, and for either its MTU
-// and error counts.
-fn device_facts(m: &Model, name: &str, runtime: Option<&Value>, kind: &str) -> Vec<Property> {
-    let mtu = runtime
-        .and_then(|v| v.get("mtu"))
-        .and_then(Value::as_u64)
-        .map(|n| n.to_string())
-        .unwrap_or_default();
-    let stats = runtime.and_then(|v| v.get("statistics"));
-    let errors = match (
-        stats
-            .and_then(|v| v.get("rx_errors"))
-            .and_then(Value::as_u64),
-        stats
-            .and_then(|v| v.get("tx_errors"))
-            .and_then(Value::as_u64),
-    ) {
-        (Some(rx), Some(tx)) => format!("RX {rx} · TX {tx}"),
-        _ => String::new(),
-    };
-    let (what, how) = if kind == "bridge" {
-        let stp = flag(
-            runtime
-                .and_then(|v| v.get("bridge-attributes"))
-                .and_then(|v| v.get("stp")),
-        );
-        (
-            fact("Ports", m.bridge_ports(name).join(", ")),
-            prose(
-                "STP",
-                match stp {
-                    Some(true) => "On",
-                    Some(false) => "Off",
-                    _ => "Not reported",
-                },
-            ),
-        )
-    } else {
-        (
-            match speed(runtime) {
-                Some(bps) => Property::rate("Link", bps),
-                None => fact("Link", ""),
-            },
-            fact("Driver", text(runtime.and_then(|v| v.get("driver")))),
-        )
-    };
-    vec![what, fact("MTU", mtu), how, fact("Errors", errors)]
-}
-
 // listing is the inventory alone. Its act names a new interface's address, and
 // the shell fetches the drawer from there, so the drawer's form posts back to
 // the address that makes one.
@@ -436,30 +148,6 @@ struct Rows {
     ordered: Vec<String>,
     owners: BTreeMap<String, Vec<String>>,
     parents: BTreeMap<String, String>,
-}
-
-// details is a row's drawer at its own address, over the listing: the cards
-// of the parts behind the row. A device the listing no longer holds says so.
-pub fn details(m: &Model, device: &str) -> Envelope {
-    let Rows {
-        ordered, owners, ..
-    } = rows(m);
-    if !ordered.iter().any(|name| name == device) {
-        return crate::missing();
-    }
-    let runtime = m.live.get("devices").and_then(|v| v.get(device));
-    let nets = owners.get(device).cloned().unwrap_or_default();
-    let kind = kind(m, device, runtime);
-    with_drawer(
-        m,
-        RowDrawer {
-            title: device.into(),
-            closed: ROOT.into(),
-            open: true,
-            children: cards(m, device, &nets, runtime, &kind),
-            ..Default::default()
-        },
-    )
 }
 
 fn rows(m: &Model) -> Rows {
@@ -559,7 +247,7 @@ fn runs_on(m: &Model, net: &str) -> String {
     }
 }
 // l3 is the device netifd brings a network up on.
-fn l3(m: &Model, net: &str) -> String {
+pub(crate) fn l3(m: &Model, net: &str) -> String {
     let live = m.live_network(net);
     [
         text(live.and_then(|v| v.get("l3_device"))),

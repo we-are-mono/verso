@@ -226,7 +226,12 @@ fn adding_an_interface_opens_a_new_network_with_its_type_to_change() {
         &lan,
         &open_drawer(&get(&request("/edit", "network=&device=br-lan"))),
     ] {
-        let opening = &d["children"][0]["fields"][0];
+        // The Status card, where there is one, comes first; the opening
+        // fields after it.
+        let opening = &cards(d)
+            .into_iter()
+            .find(|c| c["title"] != "Status")
+            .unwrap();
         let said = |k: &str| {
             opening
                 .get(k)
@@ -747,8 +752,8 @@ fn addresses_are_observed_and_ipv6_assignments_stay_in_details() {
     m.live["devices"]["br-lan"]["type"] = json!("bridge");
     assert_eq!(texts(&device_row(&m, "br-lan"))[1], "bridge");
     assert_eq!(texts(&network_row(&m, "lan"))[2], "192.168.1.1/24");
-    assert!(serde_json::to_string(&cards(&m, "br-lan"))
-        .unwrap()
+    assert!(cards(&drawer_of(&m, "lan", ""))[0]
+        .to_string()
         .contains("fd42:7ea:aa00::1/60"));
     m.live["interfaces"][0]["ipv4-address"] = json!([]);
     assert_eq!(texts(&network_row(&m, "lan"))[2], "—");
@@ -862,20 +867,11 @@ fn the_interface_leaves_its_dhcp_server_to_the_dhcp_page() {
     r.snapshot = Snapshot::from_value(snapshot);
     let m = Model::read(&r);
     for (what, body) in [
-        // The listing behind keeps the row's DHCP chip; the editor itself
+        // The listing behind keeps the row's DHCP chip; the drawer itself
         // says nothing of the server.
-        (
-            "editor",
-            open_drawer(&get(&request("/edit", "network=lan"))).to_string(),
-        ),
-        (
-            "lan's drawer",
-            serde_json::to_string(&cards(&m, "br-lan")).unwrap(),
-        ),
-        (
-            "guest's drawer",
-            serde_json::to_string(&cards(&m, "eth2")).unwrap(),
-        ),
+        ("lan's drawer", drawer_of(&m, "lan", "").to_string()),
+        ("guest's drawer", drawer_of(&m, "guest", "").to_string()),
+        ("br-lan's drawer", drawer_of(&m, "", "br-lan").to_string()),
     ] {
         for gone in [
             "DHCP server",
@@ -889,11 +885,214 @@ fn the_interface_leaves_its_dhcp_server_to_the_dhcp_page() {
         }
     }
 }
-// cards are a row's drawer: one card per part behind the row, each a
-// top-level section the shell draws as a card.
-fn cards(m: &Model, device: &str) -> Vec<serde_json::Value> {
-    let drawer = open_drawer(&page::details(m, device));
-    drawer["children"].as_array().unwrap().clone()
+// drawer_of is the drawer of a network or a device, as its pencil opens it.
+fn drawer_of(m: &Model, network: &str, device: &str) -> serde_json::Value {
+    open_drawer(&editor::edit(m, network, device))
+}
+// cards are a drawer's cards in order: the editor form's sections, the
+// preview at its foot left out.
+fn cards(drawer: &serde_json::Value) -> Vec<serde_json::Value> {
+    drawer["children"][0]["fields"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|f| f["type"] == "section")
+        .cloned()
+        .collect()
+}
+fn titles(drawer: &serde_json::Value) -> Vec<String> {
+    cards(drawer)
+        .iter()
+        .map(|c| c["title"].as_str().unwrap_or_default().to_string())
+        .collect()
+}
+// fact is the value a card states under label.
+fn fact(card: &serde_json::Value, label: &str) -> serde_json::Value {
+    card["children"][0]["items"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|p| p["label"] == label)
+        .cloned()
+        .unwrap_or_else(|| panic!("no {label} in {card}"))
+}
+// names are the controls a card holds, by name, in order.
+fn names(card: &serde_json::Value) -> Vec<String> {
+    fn walk(v: &serde_json::Value, out: &mut Vec<String>) {
+        if let Some(n) = v.get("name").and_then(|n| n.as_str()) {
+            if v.get("type").is_some() && v.get("kind").is_none_or(|k| k != "hidden") {
+                out.push(n.into());
+            }
+        }
+        match v {
+            serde_json::Value::Object(o) => o.values().for_each(|x| walk(x, out)),
+            serde_json::Value::Array(a) => a.iter().for_each(|x| walk(x, out)),
+            _ => {}
+        }
+    }
+    let mut out = vec![];
+    walk(&card["children"], &mut out);
+    out.dedup();
+    out
+}
+#[test]
+fn status_card_states_live_facts_only() {
+    let mut m = lab();
+    m.live["devices"]["br-lan"]["macaddr"] = json!("52:54:00:12:34:56");
+    m.live["devices"]["br-lan"]["statistics"] = json!({"rx_errors":0,"tx_errors":2});
+    m.live["interfaces"][1]["uptime"] = json!(3600);
+    m.live["interfaces"][3]["ipv6-address"] = json!([{"address":"2001:db8::5","mask":128}]);
+    let lan = cards(&drawer_of(&m, "lan", ""))[0].clone();
+    assert_eq!(lan["title"], "Status");
+    assert_eq!(lan["icon"], "network");
+    assert_eq!(
+        labels(&lan),
+        ["State", "IPv4", "IPv6", "ULA", "Uptime"],
+        "nothing the form sets"
+    );
+    assert_eq!(fact(&lan, "State")["value"], "up");
+    assert_eq!(fact(&lan, "IPv4")["value"], "192.168.77.1/24");
+    assert_eq!(fact(&lan, "IPv4")["copy"], true);
+    assert_eq!(fact(&lan, "Uptime")["duration"], 3600);
+    // The line's DHCPv6 half's address is the line's.
+    let wan = cards(&drawer_of(&m, "wan", ""))[0].clone();
+    assert_eq!(wan["icon"], "globe");
+    assert_eq!(fact(&wan, "IPv6")["value"], "2001:db8::5/128");
+    // A device reads as itself: its MAC address, a bridge's live ports, its
+    // error counts; a port its link and driver.
+    let bridge = cards(&drawer_of(&m, "", "br-lan"))[0].clone();
+    assert_eq!(bridge["title"], "Status");
+    assert_eq!(bridge["icon"], "git-merge");
+    assert_eq!(labels(&bridge), ["State", "MAC address", "Ports", "Errors"]);
+    assert_eq!(fact(&bridge, "MAC address")["value"], "52:54:00:12:34:56");
+    assert_eq!(fact(&bridge, "MAC address")["copy"], true);
+    assert_eq!(fact(&bridge, "Ports")["value"], "lan0");
+    assert_eq!(fact(&bridge, "Errors")["value"], "RX 0 · TX 2");
+    let port = cards(&drawer_of(&m, "", "lan0"))[0].clone();
+    assert_eq!(
+        labels(&port),
+        ["State", "MAC address", "Link", "Driver", "Errors"]
+    );
+    assert_eq!(fact(&port, "Link")["rate"], 1e9);
+    // netifd's own refusal stands in the card, as it says it.
+    m.live["interfaces"][1]["errors"] = json!([{"code":"NO_DEVICE"}]);
+    let refused = cards(&drawer_of(&m, "lan", ""))[0].to_string();
+    assert!(refused.contains("NO_DEVICE"), "{refused}");
+}
+#[test]
+fn a_network_drawer_reads_status_general_ipv4_ipv6_advanced() {
+    let m = lab();
+    let lan = drawer_of(&m, "lan", "");
+    assert_eq!(lan["title"], "lan");
+    assert_eq!(titles(&lan), ["Status", "", "IPv4", "IPv6", "Advanced"]);
+    let general = &cards(&lan)[1];
+    assert_eq!(names(general), ["auto", "name", "device", "zone"]);
+    assert_eq!(names(&cards(&lan)[2])[0], "proto");
+    assert_eq!(names(&cards(&lan)[4]), ["mtu", "metric", "macaddr"]);
+    // A new one has nothing to report yet.
+    let fresh = open_drawer(&editor::new(&m, "network"));
+    assert_eq!(titles(&fresh), ["", "IPv4", "IPv6", "Advanced"]);
+}
+#[test]
+fn a_device_drawer_reads_status_kind_advanced() {
+    let m = lab();
+    let bridge = drawer_of(&m, "", "br-lan");
+    assert_eq!(titles(&bridge), ["Status", "", "Advanced"]);
+    assert_eq!(names(&cards(&bridge)[1]), ["ports", "stp", "igmp_snooping"]);
+    assert_eq!(names(&cards(&bridge)[2]), ["mtu", "macaddr"]);
+    // A device keeps its name: the drawer's title says it, and it is posted
+    // back as it is.
+    assert!(bridge.to_string().contains("\"kind\":\"hidden\""), "{bridge}");
+    // A plain port has no settings of its kind.
+    let port = drawer_of(&m, "", "eth0");
+    assert_eq!(titles(&port), ["Status", "Advanced"]);
+    // A new bridge is named as it is made.
+    let fresh = open_drawer(&editor::new(&m, "bridge"));
+    assert!(names(&cards(&fresh)[0]).contains(&"name".to_string()));
+}
+#[test]
+fn status_acts_run_and_return_to_the_listing() {
+    let line = |query: &str| {
+        let mut r = request("/edit", query);
+        r.snapshot = Snapshot::from_value(json!({
+            "network":{
+                "lan":{".name":"lan",".type":"interface","device":"br-lan","proto":"static","ipaddr":"192.168.1.1","netmask":"255.255.255.0"},
+                "wan":{".name":"wan",".type":"interface","device":"wan0","proto":"dhcp"},
+                "wan6":{".name":"wan6",".type":"interface","device":"wan0","proto":"dhcpv6"}}
+        }));
+        r.ubus = Ubus::from_value(json!({"networkState":{"devices":{},"interfaces":[
+            {"interface":"lan","l3_device":"br-lan","up":true},
+            {"interface":"wan","l3_device":"wan0","up":true},
+            {"interface":"wan6","l3_device":"wan0","up":true}]}}));
+        r
+    };
+    // The card's header carries the acts, each posting the editor's form.
+    let lan = open_drawer(&get(&line("network=lan")));
+    let acts: Vec<_> = cards(&lan)[0]["control"]["children"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|b| (b["label"].clone(), b["name"].clone(), b["value"].clone()))
+        .collect();
+    assert_eq!(
+        acts,
+        [
+            (json!("Restart"), json!("restart"), json!("lan")),
+            (json!("Bring down"), json!("down"), json!("lan")),
+        ]
+    );
+    assert_eq!(cards(&lan)[0]["control"]["inline"], true);
+    // Pressing one runs it, stages nothing of what was typed, and returns to
+    // the live listing, where the state it changes is read.
+    let e = post(
+        &line("network=lan"),
+        &Form::parse("restart=lan&name=lan&device=br-lan&proto=static&ipaddr=192.168.1.1&netmask=255.255.255.0&mtu=1400"),
+    );
+    assert!(e.commit.is_empty());
+    let run: Vec<_> = e
+        .commands
+        .iter()
+        .map(|c| (c.name.as_str(), c.args["interface"].as_str()))
+        .collect();
+    assert_eq!(run, [("interface-restart", "lan")]);
+    assert_eq!(e.back.as_ref().unwrap().href, ROOT);
+    assert!(e.notice.is_some());
+    // The line restarts with its DHCPv6 half.
+    let e = post(&line("network=wan"), &Form::parse("restart=wan&name=wan"));
+    let run: Vec<_> = e.commands.iter().map(|c| c.args["interface"].as_str()).collect();
+    assert_eq!(run, ["wan", "wan6"]);
+}
+#[test]
+fn drawer_addresses() {
+    let m = lab();
+    let at = |path: &str, query: &str| {
+        let mut r = request(path, query);
+        r.snapshot = Snapshot::from_value(json!({"network":{
+            "br":{".name":"br",".type":"device","name":"br-lan","type":"bridge","ports":["lan0"]},
+            "lan":{".name":"lan",".type":"interface","device":"br-lan","proto":"static"},
+            "wan":{".name":"wan",".type":"interface","device":"wan0","proto":"dhcp"},
+            "wan6":{".name":"wan6",".type":"interface","device":"wan0","proto":"dhcpv6"}}}));
+        r.ubus = Ubus::from_value(json!({"networkState": m.live.clone()}));
+        get(&r)
+    };
+    let lan = at("/edit", "network=lan");
+    assert_eq!(open_drawer(&lan)["title"], "lan");
+    assert!(serde_json::to_string(&lan).unwrap().contains("\"id\":\"wan\""), "the listing stands behind it");
+    assert_eq!(open_drawer(&lan)["closed"], ROOT);
+    // An old details address opens the device's drawer.
+    let bridge = open_drawer(&at("/details", "device=br-lan"));
+    assert_eq!(bridge["title"], "br-lan");
+    assert!(bridge.to_string().contains("\"name\":\"ports\""), "{bridge}");
+    // A companion's address is its line's.
+    assert_eq!(open_drawer(&at("/edit", "network=wan6"))["title"], "wan");
+    // A name the router no longer has says so and leads back.
+    for (path, query) in [("/edit", "network=nosuch"), ("/details", "device=nosuch")] {
+        let gone = serde_json::to_value(at(path, query)).unwrap();
+        assert_eq!(
+            gone["notice"]["text"],
+            "This interface no longer exists. Return to Interfaces and try again."
+        );
+    }
 }
 // labels are a card's facts in reading order.
 fn labels(card: &serde_json::Value) -> Vec<String> {
@@ -903,111 +1102,6 @@ fn labels(card: &serde_json::Value) -> Vec<String> {
         .iter()
         .map(|p| p["label"].as_str().unwrap().to_string())
         .collect()
-}
-#[test]
-fn a_rows_drawer_has_an_address_of_its_own() {
-    // The address opens the listing with the drawer in front of it.
-    let e = get(&request("/details", "device=br-lan"));
-    let drawer = open_drawer(&e);
-    assert_eq!(drawer["title"], "br-lan");
-    assert_eq!(drawer["closed"], ROOT);
-    let j = serde_json::to_string(&e).unwrap();
-    assert!(
-        j.contains("\"id\":\"br-lan\""),
-        "the listing stands behind it: {j}"
-    );
-    // A device the router no longer has says so and leads back.
-    let gone = serde_json::to_value(get(&request("/details", "device=nosuch"))).unwrap();
-    assert_eq!(
-        gone["notice"]["text"],
-        "This interface no longer exists. Return to Interfaces and try again."
-    );
-}
-#[test]
-fn a_rows_drawer_holds_a_card_per_part() {
-    // A bridge carrying one network: the network, then the device, each named
-    // as the config names it.
-    let mut m = Model::read(&request("/", ""));
-    m.live["devices"]["br-lan"]["macaddr"] = json!("52:54:00:12:34:56");
-    let parts = cards(&m, "br-lan");
-    // Each card's header leads with the glyph of its kind, so parts of
-    // different kinds are told apart at a glance.
-    let heads: Vec<_> = parts
-        .iter()
-        .map(|g| {
-            (
-                g["icon"].as_str().unwrap(),
-                g["title"].as_str().unwrap(),
-                g["meta"].as_str().unwrap(),
-            )
-        })
-        .collect();
-    assert_eq!(
-        heads,
-        [
-            ("network", "Network", "lan"),
-            ("git-merge", "Device", "br-lan")
-        ]
-    );
-    // Each card reads as its facts alone, one list: the config text is the
-    // editor's.
-    for part in &parts {
-        assert_eq!(part["children"][0]["type"], "properties", "{part}");
-    }
-    // Addresses first, then how the network is brought up and where it sits.
-    assert_eq!(
-        labels(&parts[0]),
-        ["IPv4", "IPv6", "ULA", "Protocol", "Uptime", "Firewall zone"]
-    );
-    assert_eq!(
-        parts[0]["children"][0]["items"][0]["value"],
-        "192.168.1.1/24"
-    );
-    // The device reads as itself, its MAC address first and copyable, then a
-    // bridge's ports.
-    let device = &parts[1]["children"][0]["items"];
-    assert_eq!(labels(&parts[1])[..2], ["MAC address", "Ports"]);
-    assert_eq!(device[0]["value"], "52:54:00:12:34:56");
-    assert_eq!(device[0]["copy"], true);
-    assert_eq!(device[1]["value"], "eth0");
-    assert!(labels(&parts[1]).contains(&"MTU".to_string()));
-    // Nothing stands loose between the cards.
-    assert!(parts.iter().all(|g| g["type"] == "section"));
-    // A line to the internet wears the globe.
-    let uplink = cards(&m, "eth1");
-    let titles: Vec<_> = uplink.iter().map(|g| g["title"].clone()).collect();
-    assert_eq!(titles, [json!("Network"), json!("Device")], "{uplink:?}");
-    assert_eq!(uplink[0]["icon"], "globe");
-    // A port on its own is its device alone.
-    let port = cards(&m, "eth2");
-    assert_eq!(port.len(), 1, "{port:?}");
-    assert_eq!(port[0]["title"], "Device");
-    assert_eq!(port[0]["meta"], "eth2");
-    assert_eq!(labels(&port[0])[0], "MAC address");
-}
-#[test]
-fn a_card_carries_the_act_that_edits_its_part() {
-    let m = Model::read(&request("/", ""));
-    let parts = cards(&m, "br-lan");
-    // Each act leads to the address that edits its part; from inside the
-    // drawer it is a link, which opens that editor over the listing.
-    for (part, label, href) in [
-        (
-            &parts[0],
-            "Edit network",
-            "/plugins/interfaces/edit?network=lan",
-        ),
-        (
-            &parts[1],
-            "Edit device",
-            "/plugins/interfaces/edit?device=br-lan",
-        ),
-    ] {
-        assert_eq!(part["control"]["label"], label, "{part}");
-        assert_eq!(part["control"]["style"], "act");
-        assert_eq!(part["control"]["href"], href);
-        assert!(part["control"].get("panel").is_none(), "{part}");
-    }
 }
 #[test]
 fn a_dhcp_read_at_an_unknown_version_still_draws_the_row() {
@@ -1120,58 +1214,6 @@ fn the_editors_switches_read_as_netifd_reads_them() {
     assert_eq!(switch(&bridge, "stp"), Some(false));
     assert_eq!(switch(&bridge, "igmp_snooping"), Some(true));
 }
-#[test]
-fn every_way_into_the_editor_is_a_card_in_the_rows_drawer() {
-    let m = Model::read(&request("/", ""));
-    // The editors the row's pencil used to open are each card's act, and
-    // each still answers its address with the listing behind it.
-    for (id, href) in [
-        ("br-lan", "/plugins/interfaces/edit?network=lan"),
-        ("eth1", "/plugins/interfaces/edit?network=uplink"),
-    ] {
-        let network = cards(&m, id)
-            .into_iter()
-            .find(|g| g["title"] == "Network")
-            .unwrap();
-        assert_eq!(network["control"]["href"], href, "{network}");
-    }
-    let editor = get(&request("/edit", "network=lan"));
-    assert_eq!(open_drawer(&editor)["title"], "lan");
-}
-#[test]
-fn each_network_a_device_carries_is_its_own_part_with_its_edit() {
-    let mut r = request("/", "");
-    r.snapshot = Snapshot::from_value(json!({
-        "network":{
-         "uplink":{".name":"uplink",".type":"interface","device":"eth1","proto":"dhcp"},
-         "uplink6":{".name":"uplink6",".type":"interface","device":"eth1","proto":"dhcpv6"}}
-    }));
-    let m = Model::read(&r);
-    let parts = cards(&m, "eth1");
-    let networks: Vec<_> = parts.iter().filter(|g| g["title"] == "Network").collect();
-    assert_eq!(networks.len(), 2, "{parts:?}");
-    for (part, name) in networks.iter().zip(["uplink", "uplink6"]) {
-        assert_eq!(part["meta"], name);
-        assert_eq!(labels(part)[0], "State");
-        assert_eq!(part["control"]["label"], "Edit network");
-        assert_eq!(
-            part["control"]["href"],
-            format!("/plugins/interfaces/edit?network={name}")
-        );
-    }
-}
-#[test]
-fn a_device_with_no_network_reads_as_its_device() {
-    let m = Model::read(&request("/", ""));
-    let parts = cards(&m, "eth0");
-    assert_eq!(parts.len(), 1, "{parts:?}");
-    assert_eq!(parts[0]["title"], "Device");
-    assert_eq!(parts[0]["meta"], "eth0");
-    assert_eq!(
-        parts[0]["control"]["href"],
-        "/plugins/interfaces/edit?device=eth0"
-    );
-}
 // A device OpenVPN makes when it connects is the VPN's, not the network
 // config's: its drawer says whose it is and leads there, rather than offering
 // a name, an MTU and a MAC the tunnel would overwrite.
@@ -1261,10 +1303,10 @@ fn a_ports_link_speed_is_a_rate_the_shell_writes() {
 // every duration is written; a network netifd reports no uptime for says so.
 #[test]
 fn a_networks_uptime_is_seconds_for_the_shell_to_write() {
-    let up = page::uptime(Some(&json!({"uptime": 4_523_580})));
+    let up = status::uptime(Some(&json!({"uptime": 4_523_580})));
     assert_eq!(up.label, "Uptime");
     assert_eq!(up.duration, Some(4_523_580));
-    let unknown = page::uptime(None);
+    let unknown = status::uptime(None);
     assert_eq!((unknown.duration, unknown.value.as_str()), (None, "—"));
 }
 

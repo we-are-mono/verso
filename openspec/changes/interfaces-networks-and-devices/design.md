@@ -56,24 +56,28 @@ shell-side listing reuse the same answer if the listing moves.
 *Alternative:* match on the name `wan6`. Rejected: names are the operator's;
 `@wan` and same-device pairs are what netifd actually binds.
 
-### The editor drawer is the row's drawer; Status is its first child
-`editor::drawer` returns `RowDrawer { children: [status, form] }` for an
-existing object and `[form]` for a new one. The Status card is built by a new
+### The editor drawer is the row's drawer; Status is its first card
+`editor::drawer` puts the Status card first among the editor form's cards
+for an existing object, and leaves it out of a new one. The Status card is
+built by a new
 `status.rs` module that takes over the fact helpers from `page.rs`
 (`addresses`, `uptime`, `speed`, `device_facts`) and drops the facts the form
 already shows (protocol, firewall zone, MTU). `page.rs` keeps only the
 listing; `editor.rs` keeps only the form. Each module has one reason to change.
 
-### Status acts post to the drawer's own address
-The Status section holds a field-less `Form` whose target is the drawer's
-address, and its header `control` is a stack of two `act` Buttons named
-`restart` and `down`/`up` with the network as value. The shell already posts
-a named header Button with its section's one form (`Section::postsWithForm`).
-`main.rs`'s `/edit` POST checks for a command first and hands it to
-`editor::action`, which answers with the same drawer open, the notice, and
-the `interface-*` commands for the network and its companion.
-*Alternative:* post to the listing (`target: ROOT`). Rejected: it closes the
-drawer the operator is reading the result in.
+### Status acts post with the editor's form
+The Status card's header `control` is an inline stack of two `act` Buttons
+named `restart` and `down`/`up` with the network as value. The card stands
+inside the editor's form, so each button submits that form to the drawer's
+own address. `editor::save` checks for a command first and answers as the
+row's act does: the `interface-*` commands for the network and its
+companion, the notice, and Back to the listing; nothing is staged. The shell
+returns a panel that ran a command to its Back, so the drawer closes on the
+live listing, whose State column reads the change as it happens; a drawer
+left open would show the state from before the act, since it does not
+refresh.
+*Alternative:* a field-less form of the card's own. Rejected: a plugin form
+always draws a Save button.
 
 ### One save, several sections
 `editor::operations` already returns a list of `CommitOp`s and the preview

@@ -2257,10 +2257,16 @@ keeping the name, device, MTU and MAC override. The page has no control band.
 the matching `network.interface` write grant and are checked against the
 operator's concrete netifd object permissions. They affect runtime only; UCI
 `auto` stays in the staged editor. The shell refreshes the inventory without
-resetting its filter or the session's inactivity deadline. A row opens its
-drawer from its info act at `/plugins/interfaces/details?device=<name>`, one
-card per network and one for the device, each with the act that edits it. A
-network's DHCP server is the DHCP page's alone; Interfaces shows only its chip.
+resetting its filter or the session's inactivity deadline. A row's pencil
+opens its object's one drawer at `/plugins/interfaces/edit?network=<name>` or
+`?device=<name>` (`/details?device=<name>` opens the device's): the editor,
+whose first card, Status, states what the router reports and carries Restart
+and Bring down or up on its header as `act` buttons named `restart`, `down`
+or `up`. They post with the editor's form, run as the row's acts do and
+return to the listing; nothing is staged. A network's drawer reads Status,
+an untitled General card (Bring up at boot first), IPv4, IPv6 and Advanced;
+a companion's address opens its network's. A network's DHCP server is the
+DHCP page's alone; Interfaces shows only its chip.
 
 ### Hand-edited files
 

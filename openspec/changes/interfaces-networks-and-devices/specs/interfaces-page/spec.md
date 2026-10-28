@@ -88,7 +88,7 @@ A network's state SHALL read `up` only when it and its companion are both up, an
 - **THEN** the confirmation names `wan6` as removed with it, and both sections are staged for removal
 
 ### Requirement: A network's drawer
-A network's drawer SHALL hold, in order, a Status card, then cards General, IPv4, IPv6 and Advanced, then the `/etc/config/network` preview and Save. General SHALL hold Bring up at boot first, then Name, Runs on and Firewall zone. IPv4 SHALL hold the protocol and that protocol's fields.
+A network's drawer SHALL hold, in order, a Status card, then cards General, IPv4, IPv6 and Advanced, then the `/etc/config/network` preview and Save. General SHALL stand untitled, as the drawer's title names the object, and hold Bring up at boot first, then Name, Runs on and Firewall zone. IPv4 SHALL hold the protocol and that protocol's fields.
 
 #### Scenario: Opening the LAN
 - **WHEN** the operator presses Edit on `lan`'s row
@@ -121,7 +121,7 @@ Saving a network's drawer SHALL stage its own section and its companion's in one
 - **THEN** `wan6`'s device is staged as `@isp`
 
 ### Requirement: The Status card states what the router reports
-The Status card SHALL state live facts only, none of which the drawer's form sets, and SHALL be absent from a new object's drawer. A network's card SHALL state its state, IPv4, IPv6 and ULA addresses (its companion's among them), uptime, and netifd's errors when it has any; its header SHALL carry Restart and Bring down or Bring up. A device's card SHALL state its MAC address, link speed or a bridge's live ports, driver, and error counts.
+The Status card SHALL state live facts only, none of which the drawer's form sets, and SHALL be absent from a new object's drawer. A network's card SHALL state its state, IPv4, IPv6 and ULA addresses (its companion's among them), uptime, and netifd's errors when it has any; its header SHALL carry Restart and Bring down or Bring up. A device's card SHALL state its state, MAC address, link speed or a bridge's live ports, driver, and error counts.
 
 #### Scenario: The LAN's status
 - **WHEN** the operator opens `lan`'s drawer
@@ -134,6 +134,13 @@ The Status card SHALL state live facts only, none of which the drawer's form set
 #### Scenario: A new network
 - **WHEN** the operator presses Add interface
 - **THEN** the drawer has no Status card
+
+### Requirement: A Status act returns to the listing
+An act on a Status card SHALL run as the row's act does, SHALL stage nothing the form holds, and SHALL return to the listing, whose state column reads the change.
+
+#### Scenario: Restarting from the drawer
+- **WHEN** the operator has typed an MTU in `lan`'s drawer and presses Restart on its Status card
+- **THEN** netifd is asked to restart `lan`, the MTU is not staged, and the listing stands with the notice
 
 ### Requirement: A device's drawer
 A device's drawer SHALL hold a Status card, then its kind's settings card (a bridge's ports, spanning tree and IGMP snooping; a VLAN's parent device, VLAN ID and tag protocol), then Advanced (MTU and MAC override), the preview and Save. A device OpenVPN made SHALL keep its hand-off to that tunnel's panel in place of a form.

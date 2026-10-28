@@ -5,11 +5,17 @@ use serde_json::Value;
 use std::collections::{BTreeMap, BTreeSet};
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 use verso_plugin::{
-    commit, commit_delete, commit_new, json, CommitOp, Envelope, Field, Form, List, RowDrawer,
-    SectionWidget, SelectOption, Tone, Widget,
+    commit, commit_delete, commit_new, json, uci_text, CommitOp, Envelope, Field, Form, List,
+    RowDrawer, SectionWidget, SelectOption, Tone, Widget,
 };
 
 type Errors = BTreeMap<String, String>;
+/// config_text is one section as the file will hold it, its secrets left out.
+fn config_text(typ: &str, id: &str, values: &serde_json::Map<String, Value>) -> String {
+    let mut shown = values.clone();
+    shown.retain(|k, _| k != "password" && k != "private_key");
+    uci_text(typ, id, &shown)
+}
 #[derive(Default)]
 struct Values {
     scalar: BTreeMap<String, String>,
@@ -232,7 +238,13 @@ fn reshaped(m: &Model, kind: &str, f: &Form) -> Envelope {
     }
     page(m, kind, "", "", &v, &Errors::new(), "")
 }
+// line is the network a drawer is for: an IPv6 companion's address is its
+// network's, whose drawer holds it as its IPv6 card.
+fn line<'a>(m: &'a Model, network: &'a str) -> &'a str {
+    m.companion_of(network).unwrap_or(network)
+}
 pub fn edit(m: &Model, network: &str, device: &str) -> Envelope {
+    let network = line(m, network);
     if let (true, Some(instance)) = (network.is_empty(), m.openvpn.get(device)) {
         return handoff(m, device, instance);
     }
@@ -369,12 +381,9 @@ fn drawer(
             _ => "New network",
         }
     };
-    let name = field(v, e, "name", "Name", "")
-        .writes(if is_device { "name" } else { "interface" })
-        .explained(
-            "Use a unique name without spaces. Other settings refer to this name.",
-            "network",
-        );
+    // A device keeps its name: the drawer's title says it, and it is posted
+    // back as it is. A network is renamed here, and a new object named.
+    let keeps_name = is_device && !creating;
     let mut identity = vec![];
     // A new interface opens as a network, and its Type is the one choice that
     // decides which fields the rest of the drawer has, so changing it draws
@@ -390,7 +399,21 @@ fn drawer(
             "A VPN tunnel is set up on [its own page]({ROOT}vpn)."
         )));
     }
-    identity.push(name);
+    // Whether a network comes up at all is its first question, as OPNsense
+    // asks it first.
+    if !is_device {
+        identity.push(check(v, "auto", "Bring up at boot"));
+    }
+    if !keeps_name {
+        identity.push(
+            field(v, e, "name", "Name", "")
+                .writes(if is_device { "name" } else { "interface" })
+                .explained(
+                    "Use a unique name without spaces. Other settings refer to this name.",
+                    "network",
+                ),
+        );
+    }
     let devices: Vec<SelectOption> = std::iter::once(SelectOption::new("", "Choose a device"))
         .chain(
             m.names()
@@ -448,7 +471,20 @@ fn drawer(
     // it with no heading of their own. It is ruled like every other subject:
     // the first draws no rule above itself, and it keeps its air before the
     // next one's.
-    let mut sections = vec![section("", "", "identity", identity)];
+    // An existing object's drawer opens on what the router reports of it; a
+    // new one has nothing to report yet.
+    let mut sections = vec![];
+    if !creating {
+        sections.push(if is_device {
+            crate::status::device(m, device)
+        } else {
+            crate::status::network(m, network)
+        });
+    }
+    // A plain port has nothing of its kind to set, and no card for it.
+    if !identity.is_empty() {
+        sections.push(section("", "", "identity", identity));
+    }
     if kind == "tunnel" {
         let protocols = opts(&[
             ("gre", "GRE over IPv4"),
@@ -551,7 +587,7 @@ fn drawer(
                 field(v, e, "keepalive", "Keepalive", ""),
             ],
         ));
-        sections.push(section("Addressing", "", "addressing", addressing));
+        sections.push(section("IPv4", "", "ipv4", addressing));
         sections.push(section(
             "IPv6",
             "",
@@ -573,8 +609,8 @@ fn drawer(
         // DHCP page alone.
     }
     let mut advanced = vec![];
-    if !is_device {
-        advanced.push(check(v, "auto", "Bring up at boot"));
+    if keeps_name {
+        advanced.push(Widget::hidden("name", &v.get("name")));
     }
     advanced.push(field(v, e, "mtu", "MTU", ""));
     if !is_device {
@@ -604,7 +640,7 @@ fn drawer(
             .find(|record| record.id == op.section)
             .map(|record| record.config_id())
             .unwrap_or(&op.section);
-        blocks.push(crate::page::config_text(typ, config_id, &values));
+        blocks.push(config_text(typ, config_id, &values));
     }
     // The form's own footnote: the lines it will write, kept current as it is
     // edited, at the foot of the form behind a hairline.
@@ -1054,6 +1090,7 @@ fn renamed(m: &Model, old: &str, name: &str, ops: &mut Vec<CommitOp>) {
     }
 }
 pub fn save(m: &Model, kind: &str, network: &str, device: &str, f: &Form) -> Envelope {
+    let network = line(m, network);
     let creating = network.is_empty() && device.is_empty();
     let kind = if creating {
         if !creatable(kind) {
@@ -1070,6 +1107,12 @@ pub fn save(m: &Model, kind: &str, network: &str, device: &str, f: &Form) -> Env
         k
     };
     let v = Values::posted(f);
+    // An act on the Status card posts the form it stands in: it runs as the
+    // row's act does, stages nothing, and returns to the live listing, where
+    // the state it changes is read as it changes.
+    if run(m, f).is_some() {
+        return action(m, f);
+    }
     let errors = validate(m, &kind, network, device, &v);
     if !errors.is_empty() {
         return page(m, &kind, network, device, &v, &errors, "");
@@ -1289,36 +1332,53 @@ pub fn delete(m: &Model, network: &str, device: &str, f: &Form) -> Envelope {
         .with_commit(ops)
         .with_notice(Tone::Success, "Interface removed.")
 }
-pub fn action(m: &Model, f: &Form) -> Envelope {
-    for (action, notice) in [
+/// Run is a runtime act a form asks for: what it says once asked, and the
+/// commands that do it, or none where netifd runs no such network.
+struct Run {
+    notice: &'static str,
+    commands: Vec<verso_plugin::ApplyAction>,
+}
+// run is the act a form asks for — restart, bring up, bring down — if it asks
+// for one. The line and its IPv6 companion are brought up, down and restarted
+// together.
+fn run(m: &Model, f: &Form) -> Option<Run> {
+    let (action, notice, id) = [
         ("restart", "Interface restart requested."),
         ("up", "Interface start requested."),
         ("down", "Interface stop requested."),
-    ] {
-        let id = f.get(action);
-        if id.is_empty() {
-            continue;
-        }
-        if m.network(&id).is_none() || id == "loopback" || m.live_network(&id).is_none() {
-            return crate::missing();
-        }
-        let mut page = crate::page::listing(m)
-            .with_back("Interfaces", ROOT)
-            .with_notice(Tone::Success, notice);
-        // The line and its IPv6 companion are brought up, down and restarted
-        // together.
-        let companion = m
-            .companion(&id)
-            .filter(|c| m.live_network(&c.id).is_some())
-            .map(|c| c.id.clone());
-        page.commands = std::iter::once(id)
-            .chain(companion)
-            .map(|net| verso_plugin::ApplyAction {
-                name: format!("interface-{action}"),
-                args: BTreeMap::from([("interface".into(), net)]),
-            })
-            .collect();
-        return page;
+    ]
+    .into_iter()
+    .map(|(action, notice)| (action, notice, f.get(action)))
+    .find(|(_, _, id)| !id.is_empty())?;
+    if m.network(&id).is_none() || id == "loopback" || m.live_network(&id).is_none() {
+        return Some(Run {
+            notice,
+            commands: vec![],
+        });
     }
-    crate::missing()
+    let companion = m
+        .companion(&id)
+        .filter(|c| m.live_network(&c.id).is_some())
+        .map(|c| c.id.clone());
+    let commands = std::iter::once(id)
+        .chain(companion)
+        .map(|net| verso_plugin::ApplyAction {
+            name: format!("interface-{action}"),
+            args: BTreeMap::from([("interface".into(), net)]),
+        })
+        .collect();
+    Some(Run { notice, commands })
+}
+// action is a row's act, answered with the listing.
+pub fn action(m: &Model, f: &Form) -> Envelope {
+    match run(m, f) {
+        Some(Run { notice, commands }) if !commands.is_empty() => {
+            let mut page = crate::page::listing(m)
+                .with_back("Interfaces", ROOT)
+                .with_notice(Tone::Success, notice);
+            page.commands = commands;
+            page
+        }
+        _ => crate::missing(),
+    }
 }
