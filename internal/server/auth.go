@@ -52,6 +52,10 @@ func (s *Server) requireAuth(next http.Handler) http.Handler {
 			http.Error(w, "invalid CSRF token", http.StatusForbidden)
 			return
 		}
+		// The first signed-in request a shell process serves reads what is still
+		// upgradable again, so the record never outlives an upgrade that
+		// restarted the shell.
+		s.rereadPackageLane(sess.sid)
 		// A page can read the uplink's live state in several sections; a
 		// per-request memo shares one backend read so they cannot disagree.
 		next.ServeHTTP(w, withWANMemo(r))

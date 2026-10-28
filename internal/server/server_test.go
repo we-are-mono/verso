@@ -730,6 +730,10 @@ func newServerFull(t *testing.T, backend openwrt.Backend, tr plugin.Transport, m
 	s.bridgePorts = func() (map[string]string, error) { return nil, errors.New("no fdb in tests") }
 	s.portKinds = fakeKinds{}
 	s.boardJSON = func() []byte { return nil }
+	// Tests record their own update truth and read it back: the start-up
+	// re-read of the package lane would rewrite it under them, so it is done
+	// unless a test asks for it.
+	s.packageLane.done = true
 	// Nor a board profile: no Hardware card unless a test gives the board sensors.
 	s.layouts, s.boardSensors = cookieLayout{}, nil
 	s.maintenanceDir = t.TempDir()

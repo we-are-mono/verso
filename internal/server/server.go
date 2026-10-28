@@ -119,6 +119,9 @@ type Server struct {
 	telemetryAt   time.Time
 	telemetrySnap telemetry.Snapshot
 	telemetryErr  error
+	// packageLane is this process's re-read of the recorded check's package
+	// lane after it started (rereadPackageLane).
+	packageLane packageLaneReread
 	// historyStop ends the history collector, writing what it holds; the store
 	// is what the graphs' past windows read (ADR-019). Nil without a history.
 	historyStop  func()

@@ -250,6 +250,42 @@ func TestAnUpdateAlreadyInstalledIsNoOffer(t *testing.T) {
 	}
 }
 
+// TestAShellReadsThePackageLaneAgainWhenItStarts: a shell that starts — after
+// Verso upgraded itself, say — reads what is still upgradable again on its
+// first signed-in request, locally, so Maintenance and the Overview stop
+// counting what the upgrade installed. A router that never checked gets no
+// record from it: the surfaces that nudge stay away.
+func TestAShellReadsThePackageLaneAgainWhenItStarts(t *testing.T) {
+	idleUpdates(t)
+	s := pluginsServer(t, fakeBackend{access: true, pkgUpgradable: []openwrt.PackageUpgrade{
+		{Name: "dnsmasq", Installed: "2.91-r3", Available: "2.93-r1"},
+	}}, true)
+	s.packageLane.done = false
+	knownUpdates(t, s, updatecheck.Truth{CheckedAt: time.Now(), Packages: []openwrt.PackageUpgrade{
+		{Name: "dnsmasq", Installed: "2.91-r3", Available: "2.93-r1"},
+		{Name: "verso", Installed: "0.10.0-r23", Available: "0.11.0-r0"},
+	}})
+	get(t, s, "/")
+	deadline := time.Now().Add(2 * time.Second)
+	for {
+		truth, _ := s.updateTruth()
+		if len(truth.Packages) == 1 && truth.Packages[0].Name == "dnsmasq" {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("the record still lists %+v", truth.Packages)
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	never := pluginsServer(t, fakeBackend{access: true}, true)
+	never.packageLane.done = false
+	get(t, never, "/")
+	time.Sleep(100 * time.Millisecond)
+	if _, ok := never.updateTruth(); ok {
+		t.Error("a router that never checked was given a record")
+	}
+}
+
 // TestAPackageIsRemovedFromItsRow: removal is never a drawer's act. A package
 // that can go is removed from its row's trash act, which asks first and then
 // posts the one pair; the drawer holds no remove at all.

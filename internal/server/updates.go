@@ -9,7 +9,9 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/we-are-mono/verso/internal/openwrt"
 	"github.com/we-are-mono/verso/internal/updatecheck"
@@ -97,6 +99,50 @@ func (s *Server) startPackageUpgrade(sid string) bool {
 		s.startUpdateCheck(sid)
 		return nil
 	})
+}
+
+// packageLaneReread is a shell process's one re-read of the recorded check's
+// package lane: done once it succeeded, and tried no oftener than
+// packageLaneRetry while it fails.
+type packageLaneReread struct {
+	mu    sync.Mutex
+	done  bool
+	tried time.Time
+}
+
+const packageLaneRetry = 30 * time.Second
+
+// rereadPackageLane reads what is still upgradable again, once per shell
+// process, under the first signed-in session to arrive. The record can predate
+// the router: Verso upgrading itself restarts this process before the run that
+// started it reads the record again, and an upgrade over SSH never touches it.
+// The read is local (refreshPackageTruth asks apk, never the feeds), runs off
+// the request, and leaves a router that never checked without a record.
+func (s *Server) rereadPackageLane(sid string) {
+	l := &s.packageLane
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if l.done || time.Since(l.tried) < packageLaneRetry {
+		return
+	}
+	if _, ok := s.updateTruth(); !ok {
+		l.done = true
+		return
+	}
+	// A run under way here reads the record again itself when it ends.
+	if packageUpgrade.running() || feedRefresh.running() {
+		return
+	}
+	l.tried = time.Now()
+	go func() {
+		err := s.refreshPackageTruth(context.Background(), sid)
+		l.mu.Lock()
+		l.done = err == nil
+		l.mu.Unlock()
+		if err != nil {
+			log.Printf("verso: re-reading the upgradable packages: %v", err)
+		}
+	}()
 }
 
 // startFirmwareUpgrade has the helper build, download and verify a new image for
