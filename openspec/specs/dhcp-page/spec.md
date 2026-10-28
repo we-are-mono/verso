@@ -31,7 +31,7 @@ The blank server drawer SHALL open with a Network choice as its first field, off
 ### Requirement: An address naming a network without a server opens its blank server
 An address that names a network with a static address and no DHCP server (`?open=<network>`) SHALL open the blank server drawer with that network chosen, so a link to a network's DHCP server always lands on a drawer for it.
 
-#### Scenario: Interfaces links to a network with no server
+#### Scenario: A link to a network with no server
 - **WHEN** the operator follows `/plugins/dnsdhcp/?open=guest` and `guest` has no server
 - **THEN** the "New DHCP server" drawer opens with `guest` chosen
 

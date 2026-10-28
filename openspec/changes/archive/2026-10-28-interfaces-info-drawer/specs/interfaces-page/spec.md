@@ -2,7 +2,7 @@
 
 ## Purpose
 
-The Interfaces page lists the router's devices with the networks they carry, and is where a row is read, brought up or down, restarted, deleted, and opened into the parts behind it: its networks, their DHCP servers and its device.
+The Interfaces page lists the router's devices with the networks they carry, and is where a row is read, brought up or down, restarted, deleted, and opened into the parts behind it: its networks and its device.
 
 ## ADDED Requirements
 
