@@ -18,9 +18,10 @@
 {{else if eq .Style "act"}}
 {{/* act: an act on a part of a section, in the subsection act's one dress. One
      that makes or replaces the thing it stands under opens its form in a drawer
-     over the page, which keeps its address. */}}
+     over the page, which keeps its address — unless the drawer is a place of
+     this page (Place), whose address it then takes. */}}
 {{if .Panel}}<span x-data="modal" class="contents">
-<a href="{{.Href}}" @click.prevent="showPanel" data-verso-panel-chrome class="verso-button group/act relative" data-verso-size="act"{{if .Icon}} data-verso-glyph{{end}}>{{template "verso-link-face" .}}</a>
+<a href="{{.Href}}" @click.prevent="showPanel"{{if not .Place}} data-verso-panel-chrome{{end}} class="verso-button group/act relative" data-verso-size="act"{{if .Icon}} data-verso-glyph{{end}}>{{template "verso-link-face" .}}</a>
 {{template "verso-drawer-fetched" ""}}</span>
 {{else}}
 <a href="{{.Href}}" class="verso-button group/act relative" data-verso-size="act"{{if .Icon}} data-verso-glyph{{end}}>{{template "verso-link-face" .}}</a>

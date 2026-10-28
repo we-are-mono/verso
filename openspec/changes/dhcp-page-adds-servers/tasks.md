@@ -3,7 +3,7 @@
 ## 1. Shell: a drawer-only row
 
 - [x] 1.1 Write a shell test in `internal/widget/table_test.go`: a listing with two rows plus one cell-less row carrying an open `RowDrawer` renders two `<tr>` rows and the drawer, with no empty row and no lane band. Make it pass (in `internal/widget/table.go` / `table.html.tmpl` if the shell lacks the rule), keep the SDK Files editor's drawer-only answer test green, and verify with `make lint` and `make test`
-- [ ] 1.2 Write a shell render test showing that a page card's section `control` holding a `Link` with `panel: true` stands on the card header and opens its panel. Make it pass, document the drawer-only row and the header add in DESIGN.md's table and card entries, and verify with `make lint` and `make test`
+- [x] 1.2 Write a shell render test showing that a page card's section `control` holding a `Link` with `panel: true` and `place: true` stands on the card header and opens its panel as a place of the page. Make it pass, document the drawer-only row and the header add in DESIGN.md's table and card entries, and verify with `make lint` and `make test`
 
 ## 2. DHCP page: which servers are listed
 

@@ -862,6 +862,12 @@ pub enum Widget {
         /// certificate to replace. The act and secondary styles honour it.
         #[serde(skip_serializing_if = "is_false")]
         panel: bool,
+        /// The panel is a place of this page rather than a thing of its own:
+        /// one of the things the page lists, not made yet (a card's "Add
+        /// reservation"). The address follows the panel, as a row's drawer's
+        /// does, so a reload or a copied link opens it again.
+        #[serde(skip_serializing_if = "is_false")]
+        place: bool,
     },
     /// A field-set gated by a toggle: `fields` show while it is on, `otherwise`
     /// while it is off. The shell realizes the show/hide (ADR-005 §7); the
@@ -1799,6 +1805,7 @@ impl Widget {
             href: href.into(),
             style: style.into(),
             panel: false,
+            place: false,
         }
     }
 

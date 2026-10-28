@@ -195,6 +195,7 @@ fn write_widget_fixtures() {
                 href: "/plugins/firewall/rules/new".into(),
                 style: "button".into(),
                 panel: false,
+                place: false,
             },
         ),
         (

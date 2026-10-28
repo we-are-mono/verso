@@ -28,6 +28,11 @@ type Link struct {
 	// install, a certificate to replace) — the page's address stays the page's.
 	// The act and secondary styles honour it.
 	Panel bool `json:"panel,omitempty"`
+	// Place says the panel is a place of this page rather than a thing of
+	// its own: one of the things the page lists, not made yet (a card's "Add
+	// reservation"). The address follows the panel, as a row's drawer's and
+	// the heading act's do, so a reload or a copied link opens it again.
+	Place bool `json:"place,omitempty"`
 	// withdrawn is the shell's: the link leads nowhere (into a plugin that is
 	// not installed), so it is drawn nowhere.
 	withdrawn bool
@@ -52,6 +57,7 @@ type linkView struct {
 	Style  string
 	NewTab bool
 	Panel  bool
+	Place  bool
 	// Door marks a link that closes a run of words (a notice's): it takes the
 	// words' own ink and weight, told apart only by its underline (ADR-025).
 	Door bool
@@ -79,7 +85,7 @@ func (l *Link) draw(r *Renderer, out io.Writer, door bool) error {
 		href = href[:at+1] + SectionID(href[at+1:])
 	}
 	return r.execute(out, "link.html.tmpl", linkView{
-		Label: l.Label, Icon: l.Icon, Href: template.URL(SafeHref(href)), Style: l.Style, NewTab: l.NewTab, Panel: l.Panel, Door: door,
+		Label: l.Label, Icon: l.Icon, Href: template.URL(SafeHref(href)), Style: l.Style, NewTab: l.NewTab, Panel: l.Panel, Place: l.Place, Door: door,
 	})
 }
 
