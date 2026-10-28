@@ -31,7 +31,9 @@
  *                      checks (read down, one option a line) · segments (a
  *                      strip of chips filling its answer, sharing its width)
  *           __option   one radio or checkbox and its words, in the input role
- *                      (verbatim for a machine string)
+ *                      (verbatim for a machine string); data-verso-stated:
+ *                      the one option of a set of one, stated rather than
+ *                      offered, read with the reading cursor
  *           __native   a native radio or checkbox, in the choice colour
  *           __segment  one segment: its words (__words) and their semibold
  *                      twin (__twin) laid over each other in a __stack, the
@@ -181,6 +183,9 @@
 }
 .verso-choice__option:where(.verso-choice__group[data-verso-kind="radios"] *) {
   padding-block: var(--spacing);
+}
+.verso-choice__option[data-verso-stated] {
+  cursor: auto;
 }
 .verso-choice__option > :last-child {
   min-width: 0;

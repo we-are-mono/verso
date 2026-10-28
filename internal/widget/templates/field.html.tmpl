@@ -71,7 +71,7 @@
        name. An output is labelable, so the row's label still names it. */}}
   {{$only := index .Options 0}}
   <div class="verso-choice__group" data-verso-kind="radios">
-    <output id="{{.Name}}"{{template "verso-field-aria" .}} class="verso-choice__option"{{if and (not .Words) $only.Value}} data-verso-verbatim{{end}}>{{$only.Label}}</output>
+    <output id="{{.Name}}"{{template "verso-field-aria" .}} class="verso-choice__option" data-verso-stated{{if and (not .Words) $only.Value}} data-verso-verbatim{{end}}>{{$only.Label}}</output>
     <input type="hidden" name="{{.Name}}" value="{{$only.Value}}">
   </div>
   {{else if .UseRadios}}

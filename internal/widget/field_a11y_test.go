@@ -301,7 +301,7 @@ func TestAMachineChoiceSaysItsEmptyOptionInWords(t *testing.T) {
 		}
 	}
 	one := render(t, newRenderer(t), &Field{Name: "interface", Kind: "select", Datatype: "uciname", Options: networks(0)})
-	if !strings.Contains(one, `<output id="interface" class="verso-choice__option">Choose an interface</output>`) {
+	if !strings.Contains(one, `<output id="interface" class="verso-choice__option" data-verso-stated>Choose an interface</output>`) {
 		t.Errorf("a stated empty option is words:\n%s", one)
 	}
 	dropdown := render(t, newRenderer(t), &Field{Name: "interface", Kind: "select", Datatype: "uciname", Options: networks(4)})

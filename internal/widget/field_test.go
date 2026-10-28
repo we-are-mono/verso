@@ -59,7 +59,7 @@ func TestASingleChoiceStatesItsValue(t *testing.T) {
 			}
 		}
 		for _, want := range []string{
-			`<output id="network" class="verso-choice__option" data-verso-verbatim>mgmt</output>`,
+			`<output id="network" class="verso-choice__option" data-verso-stated data-verso-verbatim>mgmt</output>`,
 			`<input type="hidden" name="network" value="mgmt">`,
 			`class="verso-choice__group" data-verso-kind="radios"`,
 		} {
@@ -71,11 +71,14 @@ func TestASingleChoiceStatesItsValue(t *testing.T) {
 	// A choice of words states its option in words, and it posts its one
 	// option even when the value it was given is another.
 	got := render(t, r, &Field{Name: "policy", Kind: "select", Value: "drop", Options: []Option{{Value: "accept", Label: "Accept"}}})
-	for _, want := range []string{`<output id="policy" class="verso-choice__option">Accept</output>`, `<input type="hidden" name="policy" value="accept">`} {
+	for _, want := range []string{`<output id="policy" class="verso-choice__option" data-verso-stated>Accept</output>`, `<input type="hidden" name="policy" value="accept">`} {
 		if !strings.Contains(got, want) {
 			t.Errorf("a single choice of words lacks %q:\n%s", want, got)
 		}
 	}
+	// A stated option is words to read, not a control to press, so it keeps
+	// the reading cursor a radio's label gives up.
+	declares(t, "choice", ".verso-choice__option[data-verso-stated]", "cursor: auto;")
 }
 
 // TestRadiosStandAControlTall: each choice is 32px, its 24px line and 4px
