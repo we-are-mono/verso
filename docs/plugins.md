@@ -2256,7 +2256,9 @@ block.
 the matching `network.interface` write grant and are checked against the
 operator's concrete netifd object permissions. They affect runtime only; UCI
 `auto` stays in the staged editor. The shell refreshes the inventory without
-resetting its filter, expanded row, or the session's inactivity deadline.
+resetting its filter or the session's inactivity deadline. A row opens its
+drawer from its info act at `/plugins/interfaces/details?device=<name>`, one
+card per network, DHCP server and device, each with the act that edits it.
 
 ### Hand-edited files
 

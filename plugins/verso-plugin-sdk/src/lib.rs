@@ -1073,9 +1073,10 @@ pub enum Widget {
 pub struct SectionWidget {
     pub title: String,
     /// The glyph of what the section is, by Lucide name, leading its
-    /// title on a part's ledger line (an expanded row's network, its DHCP
-    /// server, the bridge under them), so parts of one kind are told
-    /// apart from parts of another at a glance. Identity, never state.
+    /// title in a card's header (an interface's network, its DHCP server,
+    /// the bridge under them) or on a part's ledger line, so parts of one
+    /// kind are told apart from parts of another at a glance. Identity,
+    /// never state.
     #[serde(skip_serializing_if = "String::is_empty")]
     pub icon: String,
     /// The name this section is addressed by, so a link elsewhere on the page
