@@ -132,6 +132,18 @@ own and points at the decision that governs it; the rationale lives there, not h
 - **An empty page listing.** VPN and Dynamic DNS with nothing in them stand
   their empty slot loose on the sand rather than in a card.
 
+## DHCP and Interfaces (ADR-005 §8, dhcp-page-adds-servers)
+
+- **Add, switch off and remove a DHCP server on the DK.** Stage each from the
+  DHCP page and apply it: a new server on a fresh network hands out addresses,
+  a removed one stops, and Interfaces' link to a network's server still lands
+  on its drawer.
+- **Interfaces rows open an info drawer.** The Interfaces listing is the one
+  whose rows expand; each row gets an info act whose drawer holds the network,
+  its DHCP server and its device as cards, each with its own edit act. A
+  network with no server offers Add DHCP server with it chosen
+  (`/plugins/dnsdhcp/?open=<network>`).
+
 ## Forms as ledgers (forms-ledger)
 
 - **Help written for a tooltip.** The plugins in their own repos (ddns,

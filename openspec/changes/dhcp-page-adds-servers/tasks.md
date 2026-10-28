@@ -7,28 +7,28 @@
 
 ## 2. DHCP page: which servers are listed
 
-- [ ] 2.1 Write tests in `plugins/verso-plugin-dnsdhcp/src/dhcp.rs`: a static network with no section is not listed; the stock `wan` section (`proto dhcp`, `ignore 1`) is not listed; `lan` with `ignore 1` is listed with `muted: true`. Make them pass by filtering the page's list (not `verso_plugin::dhcp::servers`), and verify with `make test` in the plugin repo
-- [ ] 2.2 Update the empty text of the Servers table for a router with no servers, pointing to "Add DHCP server" or to Interfaces when no network can take one. Cover it with a test, and verify with `make lint` and `make test` in the plugin repo
+- [x] 2.1 Write tests in `plugins/verso-plugin-dnsdhcp/src/dhcp.rs`: a static network with no section is not listed; the stock `wan` section (`proto dhcp`, `ignore 1`) is not listed; `lan` with `ignore 1` is listed with `muted: true`. Make them pass by filtering the page's list (not `verso_plugin::dhcp::servers`), and verify with `make test` in the plugin repo
+- [x] 2.2 Update the empty text of the Servers table for a router with no servers, pointing to "Add DHCP server" or to Interfaces when no network can take one. Cover it with a test, and verify with `make lint` and `make test` in the plugin repo
 
 ## 3. DHCP page: adding a server
 
-- [ ] 3.1 Write tests: the page's act is "Add DHCP server" opening `?open=new-server` while a free static network exists, and there is no act when none exists. Make them pass with a `new_server` heading act and a `NEW_SERVER` key in `page.rs`, and verify with `make test` in the plugin repo
-- [ ] 3.2 Write tests: `?open=new-server` opens "New DHCP server" with a `network` select listing only the free static networks; `?open=guest` for a free network opens it with `guest` chosen; `?open=nosuch` opens nothing. Make them pass by giving `server_drawer` an optional network, and verify with `make test` in the plugin repo
-- [ ] 3.3 Write tests: saving the blank drawer with `guest` stages `config dhcp 'guest'` with `option interface 'guest'` and the default pool, and a submission naming `lan` (already served) stays in the drawer with a refusal on `network`. Make them pass through `save_drawer`, reusing `validate()` and `write()`, and verify with `make test` in the plugin repo
+- [x] 3.1 Write tests: the page's act is "Add DHCP server" opening `?open=new-server` while a free static network exists, and there is no act when none exists. Make them pass with a `new_server` heading act and a `NEW_SERVER` key in `page.rs`, and verify with `make test` in the plugin repo
+- [x] 3.2 Write tests: `?open=new-server` opens "New DHCP server" with a `network` select listing only the free static networks; `?open=guest` for a free network opens it with `guest` chosen; `?open=nosuch` opens nothing. Make them pass by giving `server_drawer` an optional network, and verify with `make test` in the plugin repo
+- [x] 3.3 Write tests: saving the blank drawer with `guest` stages `config dhcp 'guest'` with `option interface 'guest'` and the default pool, and a submission naming `lan` (already served) stays in the drawer with a refusal on `network`. Make them pass through `save_drawer`, reusing `validate()` and `write()`, and verify with `make test` in the plugin repo
 
 ## 4. DHCP page: removing a server
 
-- [ ] 4.1 Write tests: each server row carries "Remove DHCP server" under `_remove_server` with the confirm words from design.md; posting it stages `commit_delete(dhcp, <section>)`; posting a section that is gone answers with the "isn't in the config" notice. Make them pass, and verify with `make test` in the plugin repo
+- [x] 4.1 Write tests: each server row carries "Remove DHCP server" under `_remove_server` with the confirm words from design.md; posting it stages `commit_delete(dhcp, <section>)`; posting a section that is gone answers with the "isn't in the config" notice. Make them pass, and verify with `make test` in the plugin repo
 
 ## 5. DHCP page: adding a reservation from its card
 
-- [ ] 5.1 Write tests: the Reservations section's `control` is a `Link` "Add reservation" with the plus glyph, `?open=new` and `panel: true`; the page's act is no longer "Add reservation". Update `new_reservation_is_the_pages_act_and_carries_the_blank_one` to match. Make them pass, and verify with `make test` in the plugin repo
-- [ ] 5.2 Write tests: `?open=new` (and `?open=new&reserve=<mac>`) puts the blank reservation drawer on a drawer-only row of the Reservations table, including when the page has no heading act; saving it still stages the reservation. Make them pass, and verify with `make test` in the plugin repo
+- [x] 5.1 Write tests: the Reservations section's `control` is a `Link` "Add reservation" with the plus glyph, `?open=new` and `panel: true`; the page's act is no longer "Add reservation". Update `new_reservation_is_the_pages_act_and_carries_the_blank_one` to match. Make them pass, and verify with `make test` in the plugin repo
+- [x] 5.2 Write tests: `?open=new` (and `?open=new&reserve=<mac>`) puts the blank reservation drawer on a drawer-only row of the Reservations table, including when the page has no heading act; saving it still stages the reservation. Make them pass, and verify with `make test` in the plugin repo
 
 ## 6. Words, docs and packaging
 
-- [ ] 6.1 Add every new string ("Add DHCP server", "New DHCP server", "Network", "Remove DHCP server", the confirm, "Keep DHCP server", the empty text) to `i18n/sl.json`, drop the strings no longer used, and verify with the plugin's catalog test and `make lint`
-- [ ] 6.2 Update `docs/plugins.md` (the DHCP page's `?open=` keys, `new-server`, and how a server is added and removed) and `docs/BACKLOG.md`, and verify that the documented addresses match the tests in 3.2 and 5.2
+- [x] 6.1 Add every new string ("Add DHCP server", "New DHCP server", "Network", "Remove DHCP server", the confirm, "Keep DHCP server", the empty text) to `i18n/sl.json`, drop the strings no longer used, and verify with the plugin's catalog test and `make lint`
+- [x] 6.2 Update `docs/plugins.md` (the DHCP page's `?open=` keys, `new-server`, and how a server is added and removed) and `docs/BACKLOG.md`, and verify that the documented addresses match the tests in 3.2 and 5.2
 - [ ] 6.3 If task 1.1 changed the shell, raise the plugin's apk dependency on verso to that release and the `PLUGIN_FLOORS` entry in the shell's Makefile. Verify with `make test` in both repos and an apk build of the plugin
 
 ## 7. Integration

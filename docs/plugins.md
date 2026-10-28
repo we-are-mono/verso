@@ -2334,13 +2334,21 @@ family's files alone.
 
 The DNS/DHCP plugin serves two pages under Network, both over `/etc/config/dhcp`.
 **DHCP** (`/plugins/dnsdhcp/`, also where any other sub-path lands) lists the
-servers (one per network's `config dhcp`, each edited in its drawer: pool, lease
-time, what devices are told, IPv6 announcement), the reservations (`config host`,
-each in its drawer; New opens it blank, a lease's Reserve opens it filled from
-the lease, and the device panel's Reserved address tab is the same form), the
-live leases, and the `config dnsmasq` options about DHCP, edited on the page.
-`?open=` names the open drawer: a network, a reservation's section or its
-device's MAC, or `new` (with `reserve=<mac>` to fill it from a lease). **DNS**
+servers (each network's `config dhcp` that serves or could: one on a network
+with an address of its own, or one set to hand out addresses; a switched-off one
+is a sunk row, and the stock uplink section is not listed), each edited in its
+drawer (pool, lease time, what devices are told, IPv6 announcement) and removed
+from its row, which stages the section's deletion. The page's act, Add DHCP
+server, stands while a network with an address of its own has no section, and
+opens a blank server whose first field is that network; its save writes
+`config dhcp '<network>'` with `option interface`. Then come the reservations
+(`config host`, each in its drawer; the card's Add reservation opens it blank, a
+lease's Reserve opens it filled from the lease, and the device panel's Reserved
+address tab is the same form), the live leases, and the `config dnsmasq` options
+about DHCP, edited on the page. `?open=` names the open drawer: a server's
+network (a network that could take one and has none opens the blank server with
+it chosen), `new-server`, a reservation's section or its device's MAC, or `new`
+(with `reserve=<mac>` to fill it from a lease). **DNS**
 (`/plugins/dnsdhcp/dns`) is the resolver's settings form; its record and
 upstream editors live under `dns/records/` and `dns/servers/`, its custom option
 files under `dns/files/`. The Interfaces plugin creates a default server with a
