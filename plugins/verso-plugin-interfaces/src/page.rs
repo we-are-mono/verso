@@ -634,7 +634,6 @@ fn inventory(m: &Model, drawer: Option<RowDrawer>) -> Envelope {
         let runtime = m.live.get("devices").and_then(|v| v.get(&name));
         let nets = owners.get(&name).cloned().unwrap_or_default();
         let configured = m.device(&name);
-        let physical = flag(runtime.and_then(|v| v.get("physical"))) == Some(true);
         let kind = kind(m, &name, runtime);
         let used = !nets.is_empty()
             || parents.values().any(|p| p == &name)
@@ -709,7 +708,6 @@ fn inventory(m: &Model, drawer: Option<RowDrawer>) -> Envelope {
             panel: actions[INFO].href.clone(),
             cells: vec![
                 TableCell {
-                    lead_icon: if physical { "physical" } else { "software" }.into(),
                     chips: nets
                         .iter()
                         .flat_map(|n| {

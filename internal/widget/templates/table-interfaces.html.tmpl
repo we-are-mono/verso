@@ -31,17 +31,11 @@
       <tr{{if .Drawer}} x-data="modal"{{end}} data-verso-row-id="{{.ID}}" data-verso-tags="{{.Tags}}" class="verso-table__row">
       {{range $i, $cell := .Cells}}
         {{if eq $i 0}}
-        {{/* A row that wraps hangs from its first line, as every listing's
-             does: the node and its branch hold the first 40px, and only the
-             trunks that run on to later rows stretch down the rest. The
-             identity is words, not a control: the row opens from its acts. */}}
-        <td class="verso-table__cell verso-table__tree">
-          <svg width="66" height="40" viewBox="0 0 66 40" aria-hidden="true" class="verso-table__branch"><path d="{{$row.TreePath}}" fill="none" stroke="currentColor" vector-effect="non-scaling-stroke"/></svg>
-          {{if $row.TreeContinuation}}<svg width="66" viewBox="0 0 66 1" preserveAspectRatio="none" aria-hidden="true" class="verso-table__trunk"><path d="{{$row.TreeContinuation}}" fill="none" stroke="currentColor" vector-effect="non-scaling-stroke"/></svg>{{end}}
-          <div class="verso-table__identity">
-            <svg width="66" height="40" viewBox="0 0 66 40" class="verso-table__node" aria-hidden="true">
-              <g class="verso-table__knot">{{if $row.TreeRoot}}{{if eq .LeadIcon "physical"}}<rect x="{{$row.TreeNodeX}}" y="16" width="9" height="9" rx="1" stroke="currentColor" stroke-width="1.5"/>{{else}}<circle cx="{{$row.TreeNodeCenter}}" cy="20" r="4" stroke="currentColor" stroke-width="1.5"/>{{end}}{{end}}</g>
-            </svg>
+        {{/* The identity is words, not a control: the row opens from its
+             acts. A row the plugin nests stands indented under the row that
+             carries it, with no lines drawn between them. */}}
+        <td class="verso-table__cell">
+          <div class="verso-table__identity" data-verso-depth="{{$row.Depth}}">
             <span class="verso-table__title"><span class="break-words type-value text-ink" data-verso-verbatim>{{.Text}}</span>{{range .Chips}}{{template "verso-chip" .}}{{end}}{{range $row.Cells}}{{if eq .Kind "status"}}{{template "table.interfaces-state" .}}{{end}}{{end}}</span>
           </div>
         </td>

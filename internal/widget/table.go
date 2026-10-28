@@ -749,11 +749,7 @@ type tableView struct {
 }
 
 type tableRowView struct {
-	TreeNodeX        int
-	TreeNodeCenter   int
-	TreePath         string
-	TreeContinuation string
-	TreeRoot         bool
+	Depth int // how far the row stands under what carries it (the inventory)
 
 	ID    string
 	Key   string
@@ -1443,43 +1439,9 @@ func (t *Table) rowViews(r *Renderer, csrf string, rows []TableRow, hasDetail bo
 			}
 		}
 		rv := tableRowView{ID: row.ID, Key: row.Key, Off: row.Muted, ColumnSpan: columnSpan, Reorder: reorderable, ReorderGroup: reorderGroup, HasDetail: hasDetail, Inline: t.rowOpensItself(row), Dense: t.Dense, DrawerLabel: drawerLabel, DrawerIcon: t.DrawerIcon, Cells: make([]tableCellView, 0, len(t.Columns))}
-		if t.Style == "interfaces" {
-			depth := max(0, min(row.Depth, 2))
-			rv.TreeRoot = depth == 0
-			rv.TreeNodeCenter = depth*24 + 8
-			rv.TreeNodeX = rv.TreeNodeCenter - 4
-			// The tree is drawn on the row's two cells of the notebook's grid:
-			// 40px tall, its branches on the 20px middle.
-			rv.TreePath = fmt.Sprintf("M%d 20H66", rv.TreeNodeCenter)
-			// Each level continues until its last descendant. The plugin
-			// supplies the topology as row depths.
-			for level := 0; level < depth; level++ {
-				x := level*24 + 8
-				continues := false
-				for _, next := range rows[rowIndex+1:] {
-					if next.Depth <= level {
-						break
-					}
-					if next.Depth == level+1 {
-						continues = true
-						break
-					}
-				}
-				if continues {
-					rv.TreePath += fmt.Sprintf("M%d 0V40", x)
-					rv.TreeContinuation += fmt.Sprintf("M%d 0V1", x)
-				} else if level == depth-1 {
-					rv.TreePath += fmt.Sprintf("M%d 0V20", x)
-				}
-				if level == depth-1 {
-					rv.TreePath += fmt.Sprintf("M%d 20h24", x)
-				}
-			}
-			if rowIndex+1 < len(rows) && rows[rowIndex+1].Depth > row.Depth {
-				rv.TreePath += fmt.Sprintf("M%d 20V40", rv.TreeNodeCenter)
-				rv.TreeContinuation += fmt.Sprintf("M%d 0V1", rv.TreeNodeCenter)
-			}
-		}
+		// A row the plugin nests stands under the row that carries it, two
+		// levels at most; the order and the indent say what belongs to what.
+		rv.Depth = max(0, min(row.Depth, 2))
 		if row.Group != nil {
 			rv.Group = band
 			rv.LaneGap = lanes > 0 && !t.pageBlock

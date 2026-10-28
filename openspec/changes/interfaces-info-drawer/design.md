@@ -29,7 +29,7 @@ The shell supports unfolding rows only for this listing: `TableRow.expanded` (SD
 
 **The SDK's DHCP vocabulary owns the rule.** `dhcp::Server` gains what the rule needs: whether the network has a section, whether it has an address of its own (proto `static` with an `ipaddr`), and whether its section hands out addresses. Two methods state it: `exists()` and `can_be_added()`. The DHCP page's `has_server` and `free` read them, and so do the Interfaces chip and card. Alternative: copy the rule into Interfaces. Rejected because two copies drift, and the dhcp module exists so "a server has the same meaning on either page".
 
-**The expanded-row capability is removed, not left unused.** Nothing else unfolds, and a closed widget set keeps only what pages use. The SDK field goes. The shell drops its decoding, rendering, script and CSS. The `interfaces` style keeps its tree (depth, lead glyphs, chips). A plugin built against an older SDK still serialises `expanded`; the shell's decoder ignores unknown fields, so it renders the row without the unfold.
+**The expanded-row capability is removed, not left unused.** Nothing else unfolds, and a closed widget set keeps only what pages use. The SDK field goes. The shell drops its decoding, rendering, script and CSS. The `interfaces` style keeps its nesting by depth and its chips; its tree lines and node marks went too, after the owner tried the page, because the order and a 24px indent a level say what carries what. A plugin built against an older SDK still serialises `expanded`; the shell's decoder ignores unknown fields, so it renders the row without the unfold.
 
 ## Risks / Trade-offs
 

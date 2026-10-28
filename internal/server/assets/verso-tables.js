@@ -460,7 +460,6 @@ document.addEventListener(
   function apply() {
     var tag = cut ? cut.value : "";
     var needle = field ? (field.value || "").trim().toLowerCase() : "";
-    if (table.closest("[data-verso-inventory]")) table.dataset.versoFiltered = String(!!(needle || tag));
 
     var band = null;
     var bandKept = 0;
