@@ -29,11 +29,11 @@
 
 - [x] 6.1 Add every new string ("Add DHCP server", "New DHCP server", "Network", "Remove DHCP server", the confirm, "Keep DHCP server", the empty text) to `i18n/sl.json`, drop the strings no longer used, and verify with the plugin's catalog test and `make lint`
 - [x] 6.2 Update `docs/plugins.md` (the DHCP page's `?open=` keys, `new-server`, and how a server is added and removed) and `docs/BACKLOG.md`, and verify that the documented addresses match the tests in 3.2 and 5.2
-- [ ] 6.3 If task 1.1 changed the shell, raise the plugin's apk dependency on verso to that release and the `PLUGIN_FLOORS` entry in the shell's Makefile. Verify with `make test` in both repos and an apk build of the plugin
+- [x] 6.3 If task 1.1 changed the shell, raise the plugin's apk dependency on verso to that release (`verso>=0.10.0-r3`). The shell's `PLUGIN_FLOORS` stays: an older dnsdhcp still renders on this shell, its heading act unchanged. Verify with `make test` in both repos and an apk build of the plugin
 
 ## 7. Integration
 
-- [ ] 7.1 With `make dev` running, add a server on a fresh static network, switch it off, remove it, add a reservation from the card and one from a lease, and check that each stages as specified and that `/plugins/dnsdhcp/?open=lan` from the Interfaces page still opens lan's drawer. Save screenshots to ~/Share/screenshots
+- [x] 7.1 With `make dev` running, add a server on a fresh static network, switch it off, remove it, add a reservation from the card and one from a lease, and check that each stages as specified and that `/plugins/dnsdhcp/?open=lan` from the Interfaces page still opens lan's drawer. Save screenshots to ~/Share/screenshots
 
 ## Workflow follow-up
 
