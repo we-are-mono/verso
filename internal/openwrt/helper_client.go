@@ -8,7 +8,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net"
+	"syscall"
 	"time"
 
 	"github.com/we-are-mono/verso/internal/peercred"
@@ -28,6 +30,25 @@ const (
 	firmwareUpgradeTimeout = 30 * time.Minute
 	helperPermissionDenied = 6
 )
+
+// helperRestartWindow is how long a call waits out a helper restart: upgrading
+// Verso restarts verso-rpcd, and the gap between the old helper going down and
+// the new one listening is a second or two. helperRetryPause spaces the tries.
+var (
+	helperRestartWindow = 5 * time.Second
+	helperRetryPause    = 250 * time.Millisecond
+)
+
+// helperReads are the verbs that only read: asked again after the helper hung
+// up on them, they change nothing.
+var helperReads = map[string]bool{
+	"pkgInstalled": true, "pkgStatus": true, "pkgBrowse": true, "pkgSearch": true,
+	"pkgInfo": true, "pkgFiles": true, "pkgUpgradable": true, "usageLive": true,
+	"usageDays": true, "uciCommitted": true, "rootHasPassword": true,
+}
+
+// errHelperAway marks a call that reached no helper: nothing was sent.
+var errHelperAway = errors.New("the helper is not listening")
 
 // helperOwnerUID is the account the kernel must report listening behind the
 // helper socket: root, which verso-rpcd runs as. Tests aim it at a fake.
@@ -98,15 +119,36 @@ func callHelperWithin(ctx context.Context, socket, method, sid string, args map[
 }
 
 // callHelperWith sends request, whole, as one helper request: pluginCommand's
-// arguments are not one flat map of text.
+// arguments are not one flat map of text. A helper restart is waited out: a
+// call that reached no helper is sent again once it listens, and a read the
+// helper hung up on is asked again. A change it hung up on may have been made,
+// so it is never sent twice.
 func callHelperWith(ctx context.Context, socket, method string, request any, result any, timeout time.Duration) error {
+	until := time.Now().Add(helperRestartWindow)
+	for {
+		err := callHelperOnce(ctx, socket, method, request, result, timeout)
+		again := errors.Is(err, errHelperAway) ||
+			helperReads[method] && (errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) || errors.Is(err, syscall.ECONNRESET))
+		if err == nil || !again || time.Now().Add(helperRetryPause).After(until) {
+			return err
+		}
+		select {
+		case <-ctx.Done():
+			return err
+		case <-time.After(helperRetryPause):
+		}
+	}
+}
+
+// callHelperOnce is one connection carrying one request and its answer.
+func callHelperOnce(ctx context.Context, socket, method string, request any, result any, timeout time.Duration) error {
 	if socket == "" {
 		socket = defaultHelperSocket
 	}
 	dialer := net.Dialer{Timeout: 5 * time.Second}
 	conn, err := dialer.DialContext(ctx, "unix", socket)
 	if err != nil {
-		return fmt.Errorf("verso-rpcd: dial %s: %w", socket, err)
+		return fmt.Errorf("verso-rpcd: dial %s: %w: %w", socket, errHelperAway, err)
 	}
 	defer conn.Close()
 	if err := requireHelperOwner(conn); err != nil {
