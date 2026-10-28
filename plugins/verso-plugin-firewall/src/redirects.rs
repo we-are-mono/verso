@@ -255,7 +255,6 @@ fn row(
         .map(|open| redirect_drawer::drawer(model, Some(redirect), &open.form, &open.errors));
     TableRow {
         depth: 0,
-        expanded: Vec::new(),
         id: redirect.section.clone(),
         key: String::new(),
         group: None,

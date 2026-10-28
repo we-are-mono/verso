@@ -557,7 +557,6 @@ fn listing() -> Widget {
         rows: vec![
             TableRow {
                 depth: 0,
-                expanded: Vec::new(),
                 id: "cfg02zone".into(),
                 key: "zone:lan".into(),
                 group: Some(TableGroup {
@@ -669,7 +668,6 @@ fn listing() -> Widget {
             },
             TableRow {
                 depth: 0,
-                expanded: Vec::new(),
                 id: "cfg03zone".into(),
                 cells: vec![
                     TableCell::default(),

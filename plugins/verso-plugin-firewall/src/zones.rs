@@ -303,7 +303,6 @@ fn row(model: &Firewall, zone: &Zone, open: Option<&Open>) -> TableRow {
         });
     TableRow {
         depth: 0,
-        expanded: Vec::new(),
         id: zone.section.clone(),
         key: String::new(),
         group: None,
