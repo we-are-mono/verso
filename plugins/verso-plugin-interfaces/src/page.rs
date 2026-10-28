@@ -519,10 +519,10 @@ pub fn details_url(device: &str) -> String {
     format!("{ROOT}details?device={}", verso_plugin::url_encode(device))
 }
 
-// Rows is what the listing is drawn from: each row's device in tree order with
-// its depth, the networks each device carries, and each device's parent.
+// Rows is what the listing is drawn from: each row's device, each followed by
+// what it carries, the networks each device carries, and each device's parent.
 struct Rows {
-    ordered: Vec<(String, u32)>,
+    ordered: Vec<String>,
     owners: BTreeMap<String, Vec<String>>,
     parents: BTreeMap<String, String>,
 }
@@ -533,7 +533,7 @@ pub fn details(m: &Model, device: &str) -> Envelope {
     let Rows {
         ordered, owners, ..
     } = rows(m);
-    if !ordered.iter().any(|(name, _)| name == device) {
+    if !ordered.iter().any(|name| name == device) {
         return crate::missing();
     }
     let runtime = m.live.get("devices").and_then(|v| v.get(device));
@@ -592,29 +592,28 @@ fn rows(m: &Model) -> Rows {
     let mut seen = BTreeSet::new();
     fn visit(
         name: &str,
-        depth: u32,
         names: &BTreeSet<String>,
         parents: &BTreeMap<String, String>,
         seen: &mut BTreeSet<String>,
-        out: &mut Vec<(String, u32)>,
+        out: &mut Vec<String>,
     ) {
         if !seen.insert(name.into()) {
             return;
         }
-        out.push((name.into(), depth));
+        out.push(name.into());
         for child in names {
             if parents.get(child).is_some_and(|p| p == name) {
-                visit(child, depth + 1, names, parents, seen, out);
+                visit(child, names, parents, seen, out);
             }
         }
     }
     for name in &names {
         if parents.get(name).is_none_or(|p| !names.contains(p)) {
-            visit(name, 0, &names, &parents, &mut seen, &mut ordered);
+            visit(name, &names, &parents, &mut seen, &mut ordered);
         }
     }
     for name in &names {
-        visit(name, 0, &names, &parents, &mut seen, &mut ordered);
+        visit(name, &names, &parents, &mut seen, &mut ordered);
     }
     Rows {
         ordered,
@@ -630,7 +629,7 @@ fn inventory(m: &Model, drawer: Option<RowDrawer>) -> Envelope {
         parents,
     } = rows(m);
     let mut rows = vec![];
-    for (name, depth) in ordered {
+    for name in ordered {
         let runtime = m.live.get("devices").and_then(|v| v.get(&name));
         let nets = owners.get(&name).cloned().unwrap_or_default();
         let configured = m.device(&name);
@@ -702,7 +701,6 @@ fn inventory(m: &Model, drawer: Option<RowDrawer>) -> Envelope {
         };
         rows.push(TableRow {
             id: name.clone(),
-            depth,
             // The row's drawer is its panel: the info act, whose address this
             // is, opens it in place rather than leaving the listing.
             panel: actions[INFO].href.clone(),

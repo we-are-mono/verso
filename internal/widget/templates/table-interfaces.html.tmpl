@@ -32,10 +32,10 @@
       {{range $i, $cell := .Cells}}
         {{if eq $i 0}}
         {{/* The identity is words, not a control: the row opens from its
-             acts. A row the plugin nests stands indented under the row that
-             carries it, with no lines drawn between them. */}}
+             acts. Every name starts flush; the listing's order says what
+             follows what, and the drawer what carries what. */}}
         <td class="verso-table__cell">
-          <div class="verso-table__identity" data-verso-depth="{{$row.Depth}}">
+          <div class="verso-table__identity">
             <span class="verso-table__title"><span class="break-words type-value text-ink" data-verso-verbatim>{{.Text}}</span>{{range .Chips}}{{template "verso-chip" .}}{{end}}{{range $row.Cells}}{{if eq .Kind "status"}}{{template "table.interfaces-state" .}}{{end}}{{end}}</span>
           </div>
         </td>

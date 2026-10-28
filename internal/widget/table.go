@@ -332,8 +332,6 @@ func (m *ColumnMeasure) UnmarshalJSON(data []byte) error {
 // clicking it slides in the drawer (the row gets a trailing chevron and the
 // pointer; controls inside the row keep their own meaning).
 type TableRow struct {
-	Depth int `json:"depth,omitempty"`
-
 	ID    string      `json:"id,omitempty"`
 	Key   string      `json:"key,omitempty"`   // optional stable live-update hook; not displayed
 	Group *TableGroup `json:"group,omitempty"` // optional evaluation-lane header before this row
@@ -749,8 +747,6 @@ type tableView struct {
 }
 
 type tableRowView struct {
-	Depth int // how far the row stands under what carries it (the inventory)
-
 	ID    string
 	Key   string
 	Group *TableGroup
@@ -1439,9 +1435,6 @@ func (t *Table) rowViews(r *Renderer, csrf string, rows []TableRow, hasDetail bo
 			}
 		}
 		rv := tableRowView{ID: row.ID, Key: row.Key, Off: row.Muted, ColumnSpan: columnSpan, Reorder: reorderable, ReorderGroup: reorderGroup, HasDetail: hasDetail, Inline: t.rowOpensItself(row), Dense: t.Dense, DrawerLabel: drawerLabel, DrawerIcon: t.DrawerIcon, Cells: make([]tableCellView, 0, len(t.Columns))}
-		// A row the plugin nests stands under the row that carries it, two
-		// levels at most; the order and the indent say what belongs to what.
-		rv.Depth = max(0, min(row.Depth, 2))
 		if row.Group != nil {
 			rv.Group = band
 			rv.LaneGap = lanes > 0 && !t.pageBlock

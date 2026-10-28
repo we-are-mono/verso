@@ -254,7 +254,6 @@ fn row(
         .filter(|open| open.section == redirect.section)
         .map(|open| redirect_drawer::drawer(model, Some(redirect), &open.form, &open.errors));
     TableRow {
-        depth: 0,
         id: redirect.section.clone(),
         key: String::new(),
         group: None,

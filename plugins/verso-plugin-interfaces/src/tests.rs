@@ -546,7 +546,7 @@ fn physical_bridge_ports_are_roots_and_vlan_and_ppp_follow_their_transport() {
     assert!(!parents.contains_key("eth0"));
     assert_eq!(parents["eth0.20"], "eth0");
     assert_eq!(parents["pppoe-wan"], "eth1");
-    assert_eq!(inventory_row(&m, "eth0.20")["depth"], 1);
+    assert!(follows(&m, "eth0.20", "eth0"));
     assert_eq!(
         inventory_row(&m, "pppoe-wan")["cells"][0]["chips"][0]["label"],
         "uplink"
@@ -588,14 +588,24 @@ fn home_router_tree_matches_the_reference_relationships() {
             ("br-lan.40".into(), "br-lan".into()),
         ])
     );
-    assert_eq!(inventory_row(&m, "pppoe-wan")["depth"], 2);
-    assert_eq!(inventory_row(&m, "eth4.3999")["depth"], 1);
-    for name in ["eth0", "wlan0", "br-lan", "br-iptv"] {
-        assert!(
-            inventory_row(&m, name).get("depth").is_none(),
-            "{name} must be a root"
-        );
-    }
+    // What a device carries follows it down the listing.
+    assert!(follows(&m, "pppoe-wan", "eth4.3900"));
+    assert!(follows(&m, "eth4.3900", "eth4"));
+    assert!(follows(&m, "eth4.3999", "br-iptv"));
+    assert!(follows(&m, "br-lan.10", "br-lan"));
+}
+// follows says the listing reads `child` after `parent`, as everything a
+// device carries comes after it.
+fn follows(m: &Model, child: &str, parent: &str) -> bool {
+    let listing = serde_json::to_value(page::listing(m)).unwrap();
+    let ids: Vec<&str> = listing["widget"]["rows"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|row| row["id"].as_str())
+        .collect();
+    let at = |id: &str| ids.iter().position(|x| *x == id);
+    matches!((at(parent), at(child)), (Some(p), Some(c)) if c > p)
 }
 
 #[test]
@@ -611,7 +621,7 @@ fn docker_bridge_connects_only_its_observed_virtual_member() {
         m.parents(),
         std::collections::BTreeMap::from([("lan0".into(), "br-lan".into())])
     );
-    assert_eq!(inventory_row(&m, "lan0")["depth"], 1);
+    assert!(follows(&m, "lan0", "br-lan"));
     // An observed empty bridge overrides ports still in the UCI snapshot.
     m.live["devices"]["br-lan"]["bridge-members"] = json!([]);
     assert!(m.parents().is_empty());

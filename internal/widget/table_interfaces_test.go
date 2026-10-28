@@ -18,38 +18,30 @@ func inventoryColumns() []TableColumn {
 	}
 }
 
-// TestAnInterfaceRowStandsUnderWhatCarriesIt: a row the plugin nests (a
-// bridge's port, a VLAN on its port) is indented 24px a level under the row
-// that carries it, two levels at most, with no lines drawn between them: the
-// order and the indent say what belongs to what. The names start where every
-// listing's first content does, under the first column's head.
-func TestAnInterfaceRowStandsUnderWhatCarriesIt(t *testing.T) {
-	table := &Table{Style: "interfaces", Columns: inventoryColumns(), Rows: []TableRow{
-		{ID: "eth4", Cells: []TableCell{{Text: "eth4", LeadIcon: "physical"}}},
-		{ID: "eth4.3900", Depth: 1, Cells: []TableCell{{Text: "eth4.3900"}}},
-		{ID: "pppoe-wan", Depth: 2, Cells: []TableCell{{Text: "pppoe-wan"}}},
-		{ID: "deeper", Depth: 5, Cells: []TableCell{{Text: "deeper"}}},
-		{ID: "wan0", Cells: []TableCell{{Text: "wan0"}}},
-	}}
-	got := render(t, newRenderer(t), table)
-	for id, depth := range map[string]string{"eth4": "0", "eth4.3900": "1", "pppoe-wan": "2", "deeper": "2", "wan0": "0"} {
-		want := `data-verso-row-id="` + id + `"`
-		at := strings.Index(got, want)
-		if at < 0 {
-			t.Fatalf("no row %s:\n%s", id, got)
-		}
-		if cell := got[at:]; !strings.Contains(cell[:strings.Index(cell, "</td>")], `data-verso-depth="`+depth+`"`) {
-			t.Errorf("%s does not stand at depth %s:\n%s", id, depth, cell[:strings.Index(cell, "</td>")])
-		}
+// TestAnInterfaceListingIsFlat: every row's name starts where every listing's
+// first content does, under the first column's head, a bridge's port and a
+// VLAN on its port alike: the listing's order says what follows what, and
+// the drawer says what carries what. Nothing is drawn or indented between
+// rows, and an older plugin's `depth` changes nothing.
+func TestAnInterfaceListingIsFlat(t *testing.T) {
+	w, err := Decode([]byte(`{"type":"table","style":"interfaces","columns":[{"label":"Device","kind":"reference"},{"label":"State","kind":"status"},{"kind":"actions"}],
+		"rows":[{"id":"br-lan","cells":[{"text":"br-lan"},{"text":"up"},{}]},{"id":"lan0","depth":1,"cells":[{"text":"lan0"},{"text":"up"},{}]}]}`))
+	if err != nil {
+		t.Fatal(err)
 	}
-	for _, absent := range []string{"verso-table__branch", "verso-table__trunk", "verso-table__node", "verso-table__knot", "verso-table__tree", "<svg width=\"66\""} {
+	got := render(t, newRenderer(t), w)
+	if n := strings.Count(got, `<div class="verso-table__identity">`); n != 2 {
+		t.Errorf("both rows stand flush, got %d plain identities:\n%s", n, got)
+	}
+	for _, absent := range []string{"data-verso-depth", "verso-table__branch", "verso-table__trunk", "verso-table__node", "verso-table__knot", "verso-table__tree", "<svg width=\"66\""} {
 		if strings.Contains(got, absent) {
-			t.Errorf("the inventory draws no tree, found %q:\n%s", absent, got)
+			t.Errorf("the inventory nests nothing, found %q:\n%s", absent, got)
 		}
 	}
-	declares(t, "table", `.verso-table__identity[data-verso-depth="1"]`, "padding-inline-start: calc(var(--spacing) * 6)")
-	declares(t, "table", `.verso-table__identity[data-verso-depth="2"]`, "padding-inline-start: calc(var(--spacing) * 12)")
 	css := blockCSS(t, "table")
+	if strings.Contains(css, "data-verso-depth") {
+		t.Error("blocks/table.css still indents a nested row")
+	}
 	for _, sel := range []string{".verso-table__branch", ".verso-table__trunk", ".verso-table__node", ".verso-table__knot > *",
 		".verso-table[data-verso-tree] .verso-table__tree", ".verso-table[data-verso-tree] .verso-table__head:first-of-type"} {
 		if cssRule(css, sel) != "" {

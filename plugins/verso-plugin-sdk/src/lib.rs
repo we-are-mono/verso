@@ -2411,8 +2411,6 @@ pub const STREAM_FIREWALL_LOG: &str = "firewall-log";
 /// opens.
 #[derive(Serialize, Debug, Default)]
 pub struct TableRow {
-    #[serde(skip_serializing_if = "is_zero")]
-    pub depth: u32,
     #[serde(skip_serializing_if = "String::is_empty")]
     pub id: String,
     #[serde(skip_serializing_if = "String::is_empty")]

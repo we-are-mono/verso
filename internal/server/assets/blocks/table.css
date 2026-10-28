@@ -48,8 +48,8 @@
  *                                 the head, every cell under it and its width
  *           data-verso-lifted     the copy of a row a drag lifts off the
  *                                 listing (blocks/reorder.css): no hairline
- *           data-verso-tree       the interface inventory: its rows nested
- *                                 by indent, its columns' widths held; on a
+ *           data-verso-tree       the interface inventory: its columns'
+ *                                 widths held; on a
  *                                 phone the name, the state and the acts
  * Elements: __head      a column's head, in sentence case, quiet
  *           __row       a row; data-verso-off marks a switched-off one
@@ -68,8 +68,7 @@
  *                       run onto more lines (TableColumn.Wrap)
  *           __part      one of a phrase's parts: words, a link, or a value
  *                       (data-verso-part="value") as the device wrote it
- *           __identity  an inventory row's name; data-verso-depth 1–2 stands
- *                       it 24px a level under the row that carries it
+ *           __identity  an inventory row's name and its networks
  *           __state     a state's packet and word; data-verso-tone
  *           __held      a reserved address's line (data-verso-reserved on
  *                       its cell): its pin, then the address
@@ -581,14 +580,6 @@
   padding-inline-start: 0;
 }
 
-/* A row the plugin nests stands 24px a level under the row that carries
-   it, with no lines drawn between them. */
-.verso-table__identity[data-verso-depth="1"] {
-  padding-inline-start: calc(var(--spacing) * 6);
-}
-.verso-table__identity[data-verso-depth="2"] {
-  padding-inline-start: calc(var(--spacing) * 12);
-}
 /* The name's line wraps its networks' chips under the name, 4px apart, on
    the cell's own air around its 24px lines. */
 .verso-table__title:where(.verso-table[data-verso-tree] *) {

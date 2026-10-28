@@ -342,7 +342,6 @@ fn row(
         .filter(|open| open.section == rule.section)
         .map(|open| rule_drawer::drawer(model, rule, &open.form, &open.errors, &open.tab));
     TableRow {
-        depth: 0,
         id: rule.section.clone(),
         key: String::new(),
         group: None,
