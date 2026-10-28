@@ -136,8 +136,7 @@ own and points at the decision that governs it; the rationale lives there, not h
 
 - **Add, switch off and remove a DHCP server on the DK.** Stage each from the
   DHCP page and apply it: a new server on a fresh network hands out addresses,
-  a removed one stops, and Interfaces' link to a network's server still lands
-  on its drawer.
+  a removed one stops, and the network's DHCP chip on Interfaces follows.
 
 ## Forms as ledgers (forms-ledger)
 
