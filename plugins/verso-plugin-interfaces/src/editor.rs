@@ -32,7 +32,7 @@ impl Values {
         self.scalar.insert(k.into(), v.into());
     }
     fn posted(f: &Form) -> Self {
-        let keys="name device zone proto ipaddr netmask gateway hostname peerdns defaultroute username password ac service keepalive ip6assign auto mtu metric macaddr vid vlan_protocol stp igmp_snooping peeraddr ip6addr ip6prefix ttl port tunlink";
+        let keys="name device zone proto ipaddr netmask gateway hostname peerdns defaultroute username password ac service keepalive ip6assign auto mtu metric macaddr vid vlan_protocol stp igmp_snooping peeraddr ip6addr ip6prefix ttl port tunlink ip6_reqaddress ip6_reqprefix ip6_peerdns";
         let mut v = Self::default();
         for k in keys.split_whitespace() {
             v.set(
@@ -129,6 +129,18 @@ fn defaults(m: &Model, kind: &str, network: &str, device: &str) -> Values {
                 v.set("peeraddr", r.get("peer6addr"));
             }
             v.set("zone", m.zone(network));
+            // The IPv6 card speaks for the line's DHCPv6 half, at netifd's
+            // own defaults where the half sets none.
+            if let Some(c) = m.companion(network) {
+                let or =
+                    |k: &str, d: &str| Some(c.get(k)).filter(|s| !s.is_empty()).unwrap_or(d.into());
+                v.set("ip6_reqaddress", or("reqaddress", "try"));
+                v.set("ip6_reqprefix", or("reqprefix", "auto"));
+                v.set(
+                    "ip6_peerdns",
+                    if c.flag("peerdns", true) { "1" } else { "0" },
+                );
+            }
         } else {
             v.set("device", r.get("ifname"));
             v.set("vlan_protocol", r.get("type"));
@@ -331,6 +343,65 @@ fn section(title: &str, sub: &str, anchor: &str, children: Vec<Widget>) -> Widge
         *a = anchor.into();
     }
     w
+}
+// IPV6_HALF are the line's DHCPv6 half's options the IPv6 card sets, each
+// posted under its own name so a refusal lands on its own control.
+const IPV6_HALF: [(&str, &str); 3] = [
+    ("ip6_reqaddress", "reqaddress"),
+    ("ip6_reqprefix", "reqprefix"),
+    ("ip6_peerdns", "peerdns"),
+];
+const REQADDRESS: [(&str, &str); 3] = [
+    ("try", "If the provider offers one"),
+    ("force", "Always"),
+    ("none", "Never"),
+];
+const REQPREFIX: [(&str, &str); 6] = [
+    ("auto", "Whatever size the provider offers"),
+    ("48", "48-bit"),
+    ("56", "56-bit"),
+    ("60", "60-bit"),
+    ("64", "64-bit"),
+    ("no", "None"),
+];
+// ipv6_half is the IPv6 card of a line with a DHCPv6 half: it names the half
+// as the config writes it, and sets what the half asks the provider for.
+fn ipv6_half(v: &Values, e: &Errors, half: &str) -> Widget {
+    let ask = |key: &str, writes: &str, label: &str, choices: &[(&str, &str)]| {
+        Widget::select(
+            key,
+            label,
+            &v.get(key),
+            opts(choices),
+            e.get(key).map(String::as_str).unwrap_or(""),
+        )
+        .writes(writes)
+    };
+    let mut card = section(
+        "IPv6",
+        "",
+        "ipv6",
+        vec![
+            ask(
+                "ip6_reqaddress",
+                "reqaddress",
+                "Request an address",
+                &REQADDRESS,
+            ),
+            ask("ip6_reqprefix", "reqprefix", "Request a prefix", &REQPREFIX),
+            Widget::switch_keyed(
+                "ip6_peerdns",
+                "Use DNS from peer",
+                "peerdns",
+                "",
+                v.get("ip6_peerdns") == "1",
+            ),
+        ],
+    );
+    if let Widget::Section(SectionWidget { meta, .. }) = &mut card {
+        *meta = half.into();
+    }
+    card
 }
 fn when(v: &Values, proto: &str, children: Vec<Widget>) -> Widget {
     Widget::When {
@@ -588,23 +659,26 @@ fn drawer(
             ],
         ));
         sections.push(section("IPv4", "", "ipv4", addressing));
-        sections.push(section(
-            "IPv6",
-            "",
-            "ipv6",
-            vec![select(
-                v,
-                e,
-                "ip6assign",
-                "Delegated prefix",
-                opts(&[
-                    ("", "No prefix"),
-                    ("60", "60-bit"),
-                    ("62", "62-bit"),
-                    ("64", "64-bit"),
-                ]),
-            )],
-        ));
+        sections.push(match m.companion(network).filter(|_| !creating) {
+            Some(half) => ipv6_half(v, e, &half.id),
+            None => section(
+                "IPv6",
+                "",
+                "ipv6",
+                vec![select(
+                    v,
+                    e,
+                    "ip6assign",
+                    "Delegated prefix",
+                    opts(&[
+                        ("", "No prefix"),
+                        ("60", "60-bit"),
+                        ("62", "62-bit"),
+                        ("64", "64-bit"),
+                    ]),
+                )],
+            ),
+        });
         // The network's DHCP server is its own object, read and edited on the
         // DHCP page alone.
     }
@@ -1012,6 +1086,21 @@ fn validate(m: &Model, kind: &str, network: &str, device: &str, v: &Values) -> E
     if !matches!(v.get("ip6assign").as_str(), "" | "60" | "62" | "64") {
         err(&mut e, "ip6assign", "Choose a delegated prefix length.");
     }
+    if m.companion(network).is_some() {
+        if !REQADDRESS
+            .iter()
+            .any(|(k, _)| *k == v.get("ip6_reqaddress"))
+        {
+            err(
+                &mut e,
+                "ip6_reqaddress",
+                "Choose when to request an address.",
+            );
+        }
+        if !REQPREFIX.iter().any(|(k, _)| *k == v.get("ip6_reqprefix")) {
+            err(&mut e, "ip6_reqprefix", "Choose a prefix size to request.");
+        }
+    }
     e
 }
 fn nullable(s: String) -> Value {
@@ -1248,7 +1337,30 @@ fn operations(m: &Model, kind: &str, network: &str, device: &str, v: &Values) ->
         } else {
             ops.push(commit("network", network, json!(values)));
         }
-        relationships(m, &[(network, &name)], &v.get("zone"), &mut ops);
+        // The line's DHCPv6 half saves with it: what the IPv6 card asks of
+        // the provider, and the line's new name where it rides it by name.
+        let half = m.companion(network).filter(|_| !creating);
+        if let Some(half) = half {
+            let mut values = half.values.clone();
+            for (posted, option) in IPV6_HALF {
+                values.insert(option.into(), json!(v.get(posted)));
+            }
+            values.insert(
+                "peerdns".into(),
+                json!(if v.get("ip6_peerdns") == "1" {
+                    "1"
+                } else {
+                    "0"
+                }),
+            );
+            if half.get("device") == format!("@{network}") {
+                values.insert("device".into(), json!(format!("@{name}")));
+            }
+            ops.push(commit("network", &half.id, json!(values)));
+        }
+        let mut moves = vec![(network, name.as_str())];
+        moves.extend(half.map(|h| (h.id.as_str(), h.id.as_str())));
+        relationships(m, &moves, &v.get("zone"), &mut ops);
         // A new network starts with a DHCP server of the daemon's defaults,
         // named after it as OpenWrt names its own; one renamed keeps its
         // server, which follows the new name. Editing the server is the DHCP
@@ -1302,7 +1414,29 @@ pub fn delete_page(m: &Model, network: &str, device: &str) -> Envelope {
     let message = format!(
         "{companion}Its DHCP settings and network references will also be removed. The change takes effect when you apply."
     );
-    Envelope::page("Delete interface",Widget::Form{style:"page".into(),submit:String::new(),error:String::new(),note:String::new(),target:String::new(),fields:vec![Widget::hidden("delete","1"),Widget::code("Name",if network.is_empty(){device}else{network}),Widget::Confirm{trigger:"Delete interface".into(),title:"Delete interface?".into(),message,confirm:"Delete interface".into(),cancel:"Cancel".into()}]}).with_back("Interfaces",ROOT).with_width("narrow")
+    Envelope::page(
+        "Delete interface",
+        Widget::Form {
+            style: "page".into(),
+            submit: String::new(),
+            error: String::new(),
+            note: String::new(),
+            target: String::new(),
+            fields: vec![
+                Widget::hidden("delete", "1"),
+                Widget::code("Name", if network.is_empty() { device } else { network }),
+                Widget::Confirm {
+                    trigger: "Delete interface".into(),
+                    title: "Delete interface?".into(),
+                    message,
+                    confirm: "Delete interface".into(),
+                    cancel: "Cancel".into(),
+                },
+            ],
+        },
+    )
+    .with_back("Interfaces", ROOT)
+    .with_width("narrow")
 }
 pub fn delete(m: &Model, network: &str, device: &str, f: &Form) -> Envelope {
     if f.get("delete") != "1" || delete_blocked(m, network, device) {

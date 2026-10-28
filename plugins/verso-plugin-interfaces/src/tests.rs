@@ -330,7 +330,11 @@ fn a_new_interface_saves_as_the_type_chosen() {
 // lab is the router in the dev container: the LAN on a bridge over one port,
 // a management port, and an internet line with its DHCPv6 half.
 fn lab() -> Model {
-    let mut r = request("/", "");
+    Model::read(&lab_at("/", ""))
+}
+// lab_at is a request to the lab router at path.
+fn lab_at(path: &str, query: &str) -> Request {
+    let mut r = request(path, query);
     let mut snapshot = fixture();
     snapshot["network"] = json!({
         "loopback":{".name":"loopback",".type":"interface",".index":0,"device":"lo","proto":"static"},
@@ -338,26 +342,27 @@ fn lab() -> Model {
         "br":{".name":"br",".type":"device",".index":2,"name":"br-lan","type":"bridge","ports":["lan0"]},
         "lan":{".name":"lan",".type":"interface",".index":3,"device":"br-lan","proto":"static","ipaddr":"192.168.77.1","netmask":"255.255.255.0"},
         "wan":{".name":"wan",".type":"interface",".index":4,"device":"wan0","proto":"dhcp"},
-        "wan6":{".name":"wan6",".type":"interface",".index":5,"device":"wan0","proto":"dhcpv6"}
+        "wan6":{".name":"wan6",".type":"interface",".index":5,"device":"wan0","proto":"dhcpv6","reqaddress":"try","reqprefix":"56"}
     });
     snapshot["firewall"]["wan"]["network"] = json!(["wan", "wan6"]);
+    snapshot["firewall"]["wan2"] = json!({".name":"wan2",".type":"zone","name":"wan2"});
     r.snapshot = Snapshot::from_value(snapshot);
     r.ubus = Ubus::from_value(json!({"networkState":{
-        "devices":{
-            "br-lan":{"up":true,"carrier":true,"type":"bridge","bridge-members":["lan0"]},
-            "eth0":{"up":true,"carrier":true,"physical":false,"kind":"virtual"},
-            "lan0":{"up":true,"carrier":true,"physical":true,"kind":"port","speed":"1000F"},
-            "wan0":{"up":true,"carrier":true,"physical":false,"kind":"virtual"},
-            "sit0":{"up":false,"physical":false,"kind":"tunnel"},
-            "ip6tnl0":{"up":false,"physical":false,"kind":"tunnel"}
-        },
-        "interfaces":[
-            {"interface":"mgmt","l3_device":"eth0","up":true,"proto":"static","ipv4-address":[{"address":"172.20.0.10","mask":16}]},
-            {"interface":"lan","l3_device":"br-lan","up":true,"proto":"static","ipv4-address":[{"address":"192.168.77.1","mask":24}]},
-            {"interface":"wan","l3_device":"wan0","up":true,"proto":"dhcp","ipv4-address":[{"address":"172.30.1.171","mask":24}]},
-            {"interface":"wan6","l3_device":"wan0","up":true,"proto":"dhcpv6"}
-        ]}}));
-    Model::read(&r)
+    "devices":{
+        "br-lan":{"up":true,"carrier":true,"type":"bridge","bridge-members":["lan0"]},
+        "eth0":{"up":true,"carrier":true,"physical":false,"kind":"virtual"},
+        "lan0":{"up":true,"carrier":true,"physical":true,"kind":"port","speed":"1000F"},
+        "wan0":{"up":true,"carrier":true,"physical":false,"kind":"virtual"},
+        "sit0":{"up":false,"physical":false,"kind":"tunnel"},
+        "ip6tnl0":{"up":false,"physical":false,"kind":"tunnel"}
+    },
+    "interfaces":[
+        {"interface":"mgmt","l3_device":"eth0","up":true,"proto":"static","ipv4-address":[{"address":"172.20.0.10","mask":16}]},
+        {"interface":"lan","l3_device":"br-lan","up":true,"proto":"static","ipv4-address":[{"address":"192.168.77.1","mask":24}]},
+        {"interface":"wan","l3_device":"wan0","up":true,"proto":"dhcp","ipv4-address":[{"address":"172.30.1.171","mask":24}]},
+        {"interface":"wan6","l3_device":"wan0","up":true,"proto":"dhcpv6"}
+    ]}}));
+    r
 }
 // card is the listing's card titled title: its table's rows and columns.
 fn card(m: &Model, title: &str) -> serde_json::Value {
@@ -421,11 +426,7 @@ fn texts(row: &serde_json::Value) -> Vec<String> {
 }
 // acts are a row's acts as (title, glyph), the slots it has none for left out.
 fn acts(row: &serde_json::Value) -> Vec<(String, String)> {
-    row["cells"]
-        .as_array()
-        .unwrap()
-        .last()
-        .unwrap()["actions"]
+    row["cells"].as_array().unwrap().last().unwrap()["actions"]
         .as_array()
         .unwrap()
         .iter()
@@ -482,7 +483,14 @@ fn networks_columns_read_name_protocol_address_device_zone_state() {
     );
     assert_eq!(
         texts(&network_row(&m, "lan"))[..6],
-        ["lan [DHCP]", "static", "192.168.77.1/24", "br-lan", "lan", "up"]
+        [
+            "lan [DHCP]",
+            "static",
+            "192.168.77.1/24",
+            "br-lan",
+            "lan",
+            "up"
+        ]
     );
     assert_eq!(network_row(&m, "lan")["cells"][2]["copy"], true);
     assert_eq!(
@@ -524,13 +532,19 @@ fn devices_columns_read_device_type_used_by_state() {
         ["br-lan", "bridge", "[lan]", "up"]
     );
     let lan0 = device_row(&m, "lan0");
-    assert_eq!(texts(&lan0)[..4], ["lan0", "port", "[br-lan] [lan0.20]", "up"]);
+    assert_eq!(
+        texts(&lan0)[..4],
+        ["lan0", "port", "[br-lan] [lan0.20]", "up"]
+    );
     assert_eq!(lan0["cells"][1]["rate"], 1e9);
     assert_eq!(lan0["cells"][2]["chips"][0]["icon"], "git-merge");
     assert_eq!(lan0["cells"][2]["chips"][1]["icon"], "tag");
     // The internet line's device names the line, not its DHCPv6 half.
     assert_eq!(texts(&device_row(&m, "wan0"))[2], "[wan]");
-    assert_eq!(device_row(&m, "wan0")["cells"][2]["chips"][0]["kind"], "network");
+    assert_eq!(
+        device_row(&m, "wan0")["cells"][2]["chips"][0]["kind"],
+        "network"
+    );
 }
 #[test]
 fn kernel_made_devices_without_a_use_have_no_row() {
@@ -545,7 +559,10 @@ fn kernel_made_devices_without_a_use_have_no_row() {
     // A tunnel base put to use is listed.
     m.networks.push(model::Record {
         id: "six".into(),
-        values: json!({"device":"sit0","proto":"6in4"}).as_object().unwrap().clone(),
+        values: json!({"device":"sit0","proto":"6in4"})
+            .as_object()
+            .unwrap()
+            .clone(),
         ..Default::default()
     });
     assert!(ids(&card(&m, "Devices")).contains(&"sit0".to_string()));
@@ -1002,7 +1019,10 @@ fn a_device_drawer_reads_status_kind_advanced() {
     assert_eq!(names(&cards(&bridge)[2]), ["mtu", "macaddr"]);
     // A device keeps its name: the drawer's title says it, and it is posted
     // back as it is.
-    assert!(bridge.to_string().contains("\"kind\":\"hidden\""), "{bridge}");
+    assert!(
+        bridge.to_string().contains("\"kind\":\"hidden\""),
+        "{bridge}"
+    );
     // A plain port has no settings of its kind.
     let port = drawer_of(&m, "", "eth0");
     assert_eq!(titles(&port), ["Status", "Advanced"]);
@@ -1059,7 +1079,11 @@ fn status_acts_run_and_return_to_the_listing() {
     assert!(e.notice.is_some());
     // The line restarts with its DHCPv6 half.
     let e = post(&line("network=wan"), &Form::parse("restart=wan&name=wan"));
-    let run: Vec<_> = e.commands.iter().map(|c| c.args["interface"].as_str()).collect();
+    let run: Vec<_> = e
+        .commands
+        .iter()
+        .map(|c| c.args["interface"].as_str())
+        .collect();
     assert_eq!(run, ["wan", "wan6"]);
 }
 #[test]
@@ -1077,12 +1101,20 @@ fn drawer_addresses() {
     };
     let lan = at("/edit", "network=lan");
     assert_eq!(open_drawer(&lan)["title"], "lan");
-    assert!(serde_json::to_string(&lan).unwrap().contains("\"id\":\"wan\""), "the listing stands behind it");
+    assert!(
+        serde_json::to_string(&lan)
+            .unwrap()
+            .contains("\"id\":\"wan\""),
+        "the listing stands behind it"
+    );
     assert_eq!(open_drawer(&lan)["closed"], ROOT);
     // An old details address opens the device's drawer.
     let bridge = open_drawer(&at("/details", "device=br-lan"));
     assert_eq!(bridge["title"], "br-lan");
-    assert!(bridge.to_string().contains("\"name\":\"ports\""), "{bridge}");
+    assert!(
+        bridge.to_string().contains("\"name\":\"ports\""),
+        "{bridge}"
+    );
     // A companion's address is its line's.
     assert_eq!(open_drawer(&at("/edit", "network=wan6"))["title"], "wan");
     // A name the router no longer has says so and leads back.
@@ -1093,6 +1125,103 @@ fn drawer_addresses() {
             "This interface no longer exists. Return to Interfaces and try again."
         );
     }
+}
+// wan_form is wan's drawer posted as it stands, extra overriding it (a form
+// reads a field's first value).
+fn wan_form(extra: &str) -> Form {
+    Form::parse(&format!(
+        "{extra}&name=wan&device=wan0&proto=dhcp&zone=wan&auto=1&peerdns=1&defaultroute=1\
+         &ip6_reqaddress=try&ip6_reqprefix=56&ip6_peerdns=1"
+    ))
+}
+#[test]
+fn wans_ipv6_card_edits_wan6() {
+    let m = lab();
+    let wan = drawer_of(&m, "wan", "");
+    let ipv6 = cards(&wan)
+        .into_iter()
+        .find(|c| c["title"] == "IPv6")
+        .unwrap();
+    // The card names the section it writes.
+    assert_eq!(ipv6["meta"], "wan6");
+    assert_eq!(
+        names(&ipv6),
+        ["ip6_reqaddress", "ip6_reqprefix", "ip6_peerdns"]
+    );
+    assert_eq!(value_of(&ipv6, "ip6_reqaddress"), "try");
+    assert_eq!(value_of(&ipv6, "ip6_reqprefix"), "56");
+    // Each control's key chip is the option it writes in wan6.
+    assert!(ipv6.to_string().contains("\"key\":\"reqprefix\""), "{ipv6}");
+    // The LAN hands out a prefix of its own.
+    let lan = drawer_of(&m, "lan", "");
+    let ipv6 = cards(&lan)
+        .into_iter()
+        .find(|c| c["title"] == "IPv6")
+        .unwrap();
+    assert_eq!(names(&ipv6), ["ip6assign"]);
+}
+#[test]
+fn one_save_stages_the_network_and_its_companion() {
+    let e = post(
+        &lab_at("/edit", "network=wan"),
+        &wan_form("ip6_reqprefix=60"),
+    );
+    let ops: Vec<_> = e
+        .commit
+        .iter()
+        .filter(|o| o.config == "network")
+        .map(|o| (o.section.clone(), o.values.clone()))
+        .collect();
+    let sections: Vec<_> = ops.iter().map(|(s, _)| s.as_str()).collect();
+    assert_eq!(sections, ["wan", "wan6"], "{e:?}");
+    assert_eq!(ops[1].1["reqprefix"], "60");
+    assert_eq!(ops[1].1["reqaddress"], "try");
+    assert_eq!(ops[1].1["peerdns"], "1");
+    // The preview shows both sections.
+    let drawer = open_drawer(&e).to_string();
+    assert!(drawer.contains("config interface 'wan6'"), "{drawer}");
+    // A refusal lands on the companion's own field.
+    let refused = post(
+        &lab_at("/edit", "network=wan"),
+        &wan_form("ip6_reqprefix=33"),
+    );
+    assert!(refused.commit.is_empty());
+    let ipv6 = cards(&open_drawer(&refused))
+        .into_iter()
+        .find(|c| c["title"] == "IPv6")
+        .unwrap()
+        .to_string();
+    assert!(ipv6.contains("\"error\":\"Choose"), "{ipv6}");
+}
+#[test]
+fn zone_and_rename_carry_the_companion() {
+    let e = post(&lab_at("/edit", "network=wan"), &wan_form("zone=wan2"));
+    let zone = |name: &str| {
+        e.commit
+            .iter()
+            .find(|o| o.config == "firewall" && o.section == name)
+            .map(|o| o.values["network"].clone())
+    };
+    assert_eq!(zone("wan"), Some(serde_json::Value::Null));
+    assert_eq!(zone("wan2"), Some(json!(["wan", "wan6"])));
+    // Under PPPoE the half rides the line by name, and follows it.
+    let mut r = lab_at("/edit", "network=wan");
+    let mut snapshot = fixture();
+    snapshot["network"] = json!({
+        "wan":{".name":"wan",".type":"interface","device":"wan0","proto":"pppoe","username":"u","password":"p"},
+        "wan6":{".name":"wan6",".type":"interface","device":"@wan","proto":"dhcpv6"}
+    });
+    r.snapshot = Snapshot::from_value(snapshot);
+    let e = post(
+        &r,
+        &Form::parse("name=isp&device=wan0&proto=pppoe&username=u&zone=wan&auto=1&ip6_reqaddress=try&ip6_reqprefix=auto&ip6_peerdns=1"),
+    );
+    let half = e
+        .commit
+        .iter()
+        .find(|o| o.config == "network" && o.section == "wan6")
+        .unwrap_or_else(|| panic!("{e:?}"));
+    assert_eq!(half.values["device"], "@isp");
 }
 // labels are a card's facts in reading order.
 fn labels(card: &serde_json::Value) -> Vec<String> {

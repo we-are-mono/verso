@@ -31,9 +31,9 @@ Every task ends green under `make lint` and `make test`.
 
 ## 4. The IPv6 card and the companion's save
 
-- [ ] 4.1 Test `wans_ipv6_card_edits_wan6` (header meta `wan6`; Request address, Request prefix, Use DNS from peer filled from `wan6`; lan's IPv6 card holds Delegated prefix), then build the IPv6 card from the companion; verify the test passes
-- [ ] 4.2 Test `one_save_stages_the_network_and_its_companion` (saving `wan` stages `wan` and `wan6`; the preview shows both blocks; a refused `wan6` field lands on its own field), then extend `Values::posted`, `validate` and `operations`; verify the test passes
-- [ ] 4.3 Test `zone_and_rename_carry_the_companion` (zone `wan2` stages both into it and out of `wan`; renaming `wan` to `isp` stages `wan6`'s device `@isp`), then extend `relationships`; verify the test passes
+- [x] 4.1 Test `wans_ipv6_card_edits_wan6` (header meta `wan6`; Request address, Request prefix, Use DNS from peer filled from `wan6`; lan's IPv6 card holds Delegated prefix), then build the IPv6 card from the companion; verify the test passes
+- [x] 4.2 Test `one_save_stages_the_network_and_its_companion` (saving `wan` stages `wan` and `wan6`; the preview shows both blocks; a refused `wan6` field lands on its own field), then extend `Values::posted`, `validate` and `operations`; verify the test passes
+- [x] 4.3 Test `zone_and_rename_carry_the_companion` (zone `wan2` stages both into it and out of `wan`; renaming `wan` to `isp` stages `wan6`'s device `@isp`), then extend `relationships`; verify the test passes
 
 ## 5. Add acts by kind
 

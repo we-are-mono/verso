@@ -335,10 +335,7 @@ fn network_row(m: &Model, net: &str) -> TableRow {
         // opens it in place rather than leaving the listing.
         panel: actions[EDIT].href.clone(),
         cells: vec![
-            TableCell {
-                chips,
-                ..cell(net)
-            },
+            TableCell { chips, ..cell(net) },
             cell(or_dash(protocol)),
             TableCell {
                 copy: !ipv4.is_empty(),
@@ -358,7 +355,12 @@ fn network_row(m: &Model, net: &str) -> TableRow {
 // used_by is what rests on a device: the networks it carries (a companion
 // read as its network), the bridges it is a port of, and the devices made on
 // it — a VLAN, a PPPoE session.
-fn used_by(m: &Model, name: &str, nets: &[String], parents: &BTreeMap<String, String>) -> Vec<TableChip> {
+fn used_by(
+    m: &Model,
+    name: &str,
+    nets: &[String],
+    parents: &BTreeMap<String, String>,
+) -> Vec<TableChip> {
     let mut chips: Vec<TableChip> = nets
         .iter()
         .filter(|n| m.companion_of(n).is_none())
@@ -376,7 +378,10 @@ fn used_by(m: &Model, name: &str, nets: &[String], parents: &BTreeMap<String, St
         }
     }
     let ports = m.bridge_ports(name);
-    for (child, _) in parents.iter().filter(|(c, p)| *p == name && !ports.contains(c)) {
+    for (child, _) in parents
+        .iter()
+        .filter(|(c, p)| *p == name && !ports.contains(c))
+    {
         let runtime = m.live.get("devices").and_then(|v| v.get(child));
         chips.push(TableChip {
             label: child.clone(),
@@ -393,7 +398,9 @@ fn device_row(m: &Model, name: &str, chips: Vec<TableChip>, nets: &[String]) -> 
     let configured = m.device(name).is_some();
     let kind = kind(m, name, runtime);
     let used = !chips.is_empty()
-        || m.devices.iter().any(|d| d.list("ports").iter().any(|p| p == name));
+        || m.devices
+            .iter()
+            .any(|d| d.list("ports").iter().any(|p| p == name));
     let (state, tone) = state(m, nets, runtime, used);
     let mut actions = vec![TableRowAct::default(), TableRowAct::default()];
     if runtime.is_some() || configured {
@@ -411,10 +418,7 @@ fn device_row(m: &Model, name: &str, chips: Vec<TableChip>, nets: &[String]) -> 
                 rate: if kind == "port" { speed(runtime) } else { None },
                 ..cell(kind)
             },
-            TableCell {
-                chips,
-                ..cell("")
-            },
+            TableCell { chips, ..cell("") },
             pill_cell(state, tone),
             TableCell {
                 actions,
