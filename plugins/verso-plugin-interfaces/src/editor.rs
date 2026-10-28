@@ -568,7 +568,7 @@ fn drawer(
         ));
         // The network's DHCP server is its own object, edited on the DHCP
         // page; here it is stated as it stands, with the way there.
-        if let Some(server) = crate::page::dhcp_part(m, network, false) {
+        if let Some(server) = crate::page::dhcp_part(m, network) {
             sections.push(section("", "", "dhcp-server", vec![server]));
         }
     }

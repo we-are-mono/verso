@@ -6,7 +6,7 @@ use serde_json::Value;
 use std::collections::{BTreeMap, BTreeSet};
 use std::net::Ipv6Addr;
 use verso_plugin::{
-    pill_cell, uci_text, Envelope, Grid, HeadingAct, Property, RowDrawer, SectionWidget, Table,
+    pill_cell, uci_text, Envelope, HeadingAct, Property, RowDrawer, SectionWidget, Table,
     TableCell, TableChip, TableColumn, TableRow, TableRowAct, Tone, Widget, EM_DASH,
 };
 
@@ -41,23 +41,15 @@ fn prose(label: &str, value: &str) -> Property {
         ..fact(label, value)
     }
 }
-// facts sets what a uci section says, in plain words, as two columns of an
-// expanded row: the first half in reading order on the left (a network's
-// addresses), the rest on the right (how it is brought up, since when, where
-// it sits). The section as the config spells it is not repeated here: the
-// drawer that edits it shows what it writes.
-fn facts(mut facts: Vec<Property>) -> Widget {
-    let right = facts.split_off(facts.len().div_ceil(2));
-    Widget::Grid(Grid {
-        columns: 2,
-        style: "facts".into(),
-        children: vec![Widget::properties(facts), Widget::properties(right)],
-        ..Default::default()
-    })
+// facts sets what a uci section says, in plain words, as the one fact list
+// every card reads. The section as the config spells it is not repeated here:
+// the editor shows what it writes.
+fn facts(facts: Vec<Property>) -> Widget {
+    Widget::properties(facts)
 }
-// part is one uci section an expanded row reads, on its own ledger line: the
-// glyph of its kind, the kind of section, its name as the config names it,
-// and the act that edits it where it has one the row's own pencil is not.
+// part is one uci section behind a row, as a card of its drawer: the glyph
+// of its kind, the kind of section, its name as the config names it, and the
+// act that edits it on its header.
 fn part(
     glyph: &str,
     title: &str,
@@ -107,13 +99,12 @@ fn network_glyph(m: &Model, net: &str, protocol: &str) -> &'static str {
         "network"
     }
 }
-// act is the act that edits one part of an expanded row: it opens the
-// object's editor in a drawer over the listing, which keeps its address.
-fn act(label: &str, href: &str) -> Widget {
+// act is the act on a card's header that edits its part: a link to the
+// part's editor, whose address opens it over the listing.
+fn act(label: &str, glyph: &str, href: &str) -> Widget {
     let mut link = Widget::link(label, href, "act");
-    if let Widget::Link { icon, panel, .. } = &mut link {
-        *icon = "square-pen".into();
-        *panel = true;
+    if let Widget::Link { icon, .. } = &mut link {
+        *icon = glyph.into();
     }
     link
 }
@@ -260,7 +251,10 @@ fn state(
         _ => ("not reported", "neutral"),
     }
 }
-fn details(
+// cards are a row's drawer: a card for each network the device carries, each
+// followed by its DHCP server's, then the device's own. Each card carries the
+// act that edits its part, since the row's own way in is this drawer.
+fn cards(
     m: &Model,
     name: &str,
     nets: &[String],
@@ -268,18 +262,6 @@ fn details(
     kind: &str,
 ) -> Vec<Widget> {
     let mut out = vec![];
-    if nets.is_empty() {
-        let mut read = device_facts(m, name, runtime, kind);
-        let ip4 = addresses(runtime, "ipv4-address");
-        let ip6 = addresses(runtime, "ipv6-address");
-        if !ip4.is_empty() {
-            read.push(fact("IPv4", ip4.join(", ")));
-        }
-        if !ip6.is_empty() {
-            read.push(fact("IPv6", ip6.join(", ")));
-        }
-        out.push(part(glyph(kind), "Device", name, vec![facts(read)], None));
-    }
     for net in nets {
         let live = m.live_network(net);
         let ip4 = addresses(live, "ipv4-address");
@@ -347,28 +329,36 @@ fn details(
                 &serde_json::to_string_pretty(errors).unwrap_or_default(),
             ));
         }
-        let edit = (several && m.network(net).is_some())
-            .then(|| act("Edit network", &url(net, "", "edit")));
+        let edit = m
+            .network(net)
+            .is_some()
+            .then(|| act("Edit network", "square-pen", &url(net, "", "edit")));
         out.push(part(mark, "Network", net, body, edit));
-        if let Some(server) = dhcp_part(m, net, true) {
+        if let Some(server) = dhcp_part(m, net) {
             out.push(server);
         }
     }
-    if !nets.is_empty() && m.device(name).is_some() {
-        out.push(part(
-            glyph(kind),
-            "Device",
-            name,
-            vec![facts(device_facts(m, name, runtime, kind))],
-            Some(act("Edit device", &url("", name, "edit"))),
-        ));
+    // The device is always a card of its own: its MAC address is read here.
+    let mac = text(runtime.and_then(|v| v.get("macaddr")));
+    let mut read = vec![Property {
+        copy: !mac.is_empty(),
+        ..fact("MAC address", mac)
+    }];
+    read.extend(device_facts(m, name, runtime, kind));
+    if nets.is_empty() {
+        let ip4 = addresses(runtime, "ipv4-address");
+        let ip6 = addresses(runtime, "ipv6-address");
+        if !ip4.is_empty() {
+            read.push(fact("IPv4", ip4.join(", ")));
+        }
+        if !ip6.is_empty() {
+            read.push(fact("IPv6", ip6.join(", ")));
+        }
     }
-    // One frame holds the parts, so each stands on its own ledger line.
-    let mut frame = Widget::section("", "", out);
-    if let Widget::Section(SectionWidget { flush, .. }) = &mut frame {
-        *flush = true;
-    }
-    vec![frame]
+    let edit = (runtime.is_some() || m.device(name).is_some())
+        .then(|| act("Edit device", "square-pen", &url("", name, "edit")));
+    out.push(part(glyph(kind), "Device", name, vec![facts(read)], edit));
+    out
 }
 // device_facts is what the kernel says about the device itself: a bridge's
 // ports and spanning tree, a port's link and driver, and for either its MTU
@@ -419,53 +409,56 @@ fn device_facts(m: &Model, name: &str, runtime: Option<&Value>, kind: &str) -> V
     };
     vec![what, fact("MTU", mtu), how, fact("Errors", errors)]
 }
-// dhcp_part is a network's DHCP server: how it stands and, while it serves,
-// what it hands out. A disabled server says so once; configuring it is still
-// where it is turned on — the server's drawer on the DHCP page, opened over the
-// listing (`over`) or reached by its address from inside another drawer.
-pub fn dhcp_part(m: &Model, net: &str, over: bool) -> Option<Widget> {
-    let server = m.dhcp_servers.iter().find(|s| s.network == net);
-    if server.is_none() && m.dhcp(net).is_none() {
+// dhcp_part is a network's DHCP server, by the SDK's one meaning of it: how it
+// stands and, while it serves, what it hands out, with the way to its drawer on
+// the DHCP page. A disabled server says so once; configuring it is still where
+// it is turned on. A network that could take a server and has none says so,
+// and is offered one; any other network has no DHCP part.
+pub fn dhcp_part(m: &Model, net: &str) -> Option<Widget> {
+    let server = m.dhcp_servers.iter().find(|s| s.network == net)?;
+    if server.can_be_added() {
+        return Some(part(
+            "server",
+            "DHCP server",
+            net,
+            vec![Widget::text(
+                "No DHCP server hands out addresses on this network.",
+            )],
+            Some(act("Add DHCP server", "plus", &server.href())),
+        ));
+    }
+    if !server.exists() {
         return None;
     }
-    let mut read = vec![];
-    if let Some(server) = server {
-        // The server's state is the part's own, said once with its mark.
-        let mut standing = prose("Server", server.label());
-        standing.dot = server.tone().into();
-        read.push(standing);
-        if server.state != "disabled" {
-            if !server.pool.is_empty() {
-                read.push(if server.pool == "reservations" {
-                    prose("Pool", server.pool_label())
-                } else {
-                    pool(m, net, server)
-                });
-            }
-            if !server.lease_time.is_empty() {
-                read.push(fact("Lease time", &server.lease_time));
-            }
-            read.push(prose(
-                "Active leases",
-                &server
-                    .leases
-                    .map(|n| n.to_string())
-                    .unwrap_or_else(|| EM_DASH.into()),
-            ));
+    // The server's state is the part's own, said once with its mark.
+    let mut standing = prose("Server", server.label());
+    standing.dot = server.tone().into();
+    let mut read = vec![standing];
+    if server.state != "disabled" {
+        if !server.pool.is_empty() {
+            read.push(if server.pool == "reservations" {
+                prose("Pool", server.pool_label())
+            } else {
+                pool(m, net, server)
+            });
         }
+        if !server.lease_time.is_empty() {
+            read.push(fact("Lease time", &server.lease_time));
+        }
+        read.push(prose(
+            "Active leases",
+            &server
+                .leases
+                .map(|n| n.to_string())
+                .unwrap_or_else(|| EM_DASH.into()),
+        ));
     }
     Some(part(
         "server",
         "DHCP server",
         net,
         vec![facts(read)],
-        server.map(|s| {
-            let mut link = act("Configure DHCP", &s.href());
-            if let Widget::Link { panel, .. } = &mut link {
-                *panel = over;
-            }
-            link
-        }),
+        Some(act("Configure DHCP", "square-pen", &server.href())),
     ))
 }
 // pool is the addresses a server hands out, as the stretch from its first to
@@ -517,10 +510,48 @@ pub fn with_drawer(m: &Model, drawer: RowDrawer) -> Envelope {
 /// a row has no act for holds its place.
 const POWER: usize = 0;
 const RESTART: usize = 1;
-const EDIT: usize = 2;
+const INFO: usize = 2;
 const DELETE: usize = 3;
 
-fn inventory(m: &Model, drawer: Option<RowDrawer>) -> Envelope {
+/// details_url is a row's drawer, named by the row's device: a row is a
+/// device with the networks it carries.
+pub fn details_url(device: &str) -> String {
+    format!("{ROOT}details?device={}", verso_plugin::url_encode(device))
+}
+
+// Rows is what the listing is drawn from: each row's device in tree order with
+// its depth, the networks each device carries, and each device's parent.
+struct Rows {
+    ordered: Vec<(String, u32)>,
+    owners: BTreeMap<String, Vec<String>>,
+    parents: BTreeMap<String, String>,
+}
+
+// details is a row's drawer at its own address, over the listing: the cards
+// of the parts behind the row. A device the listing no longer holds says so.
+pub fn details(m: &Model, device: &str) -> Envelope {
+    let Rows {
+        ordered, owners, ..
+    } = rows(m);
+    if !ordered.iter().any(|(name, _)| name == device) {
+        return crate::missing();
+    }
+    let runtime = m.live.get("devices").and_then(|v| v.get(device));
+    let nets = owners.get(device).cloned().unwrap_or_default();
+    let kind = kind(m, device, runtime);
+    with_drawer(
+        m,
+        RowDrawer {
+            title: device.into(),
+            closed: ROOT.into(),
+            open: true,
+            children: cards(m, device, &nets, runtime, &kind),
+            ..Default::default()
+        },
+    )
+}
+
+fn rows(m: &Model) -> Rows {
     let parents = m.parents();
     let mut names = m.names();
     names.extend(parents.keys().cloned());
@@ -585,6 +616,19 @@ fn inventory(m: &Model, drawer: Option<RowDrawer>) -> Envelope {
     for name in &names {
         visit(name, 0, &names, &parents, &mut seen, &mut ordered);
     }
+    Rows {
+        ordered,
+        owners,
+        parents,
+    }
+}
+
+fn inventory(m: &Model, drawer: Option<RowDrawer>) -> Envelope {
+    let Rows {
+        ordered,
+        owners,
+        parents,
+    } = rows(m);
     let mut rows = vec![];
     for (name, depth) in ordered {
         let runtime = m.live.get("devices").and_then(|v| v.get(&name));
@@ -612,7 +656,6 @@ fn inventory(m: &Model, drawer: Option<RowDrawer>) -> Envelope {
         }
         // Only observed addresses belong in this column. Configured overrides
         // remain visible in the UCI block until Apply makes them real.
-        let mac = text(runtime.and_then(|v| v.get("macaddr")));
         // The acts stand in the order every listing's do: the state first, then
         // what acts on it, then the way in, and the removal last.
         let mut actions = (0..4).map(|_| TableRowAct::default()).collect::<Vec<_>>();
@@ -634,12 +677,6 @@ fn inventory(m: &Model, drawer: Option<RowDrawer>) -> Envelope {
                     ..Default::default()
                 };
             }
-            actions[EDIT] = TableRowAct {
-                icon: "square-pen".into(),
-                title: "Edit".into(),
-                href: url(net, "", "edit"),
-                ..Default::default()
-            };
             actions[DELETE] = TableRowAct {
                 icon: "trash-2".into(),
                 title: "Delete".into(),
@@ -647,14 +684,6 @@ fn inventory(m: &Model, drawer: Option<RowDrawer>) -> Envelope {
                 ..Default::default()
             };
         } else {
-            if runtime.is_some() || configured.is_some() {
-                actions[EDIT] = TableRowAct {
-                    icon: "square-pen".into(),
-                    title: "Edit".into(),
-                    href: url("", &name, "edit"),
-                    ..Default::default()
-                };
-            }
             if configured.is_some() && !used {
                 actions[DELETE] = TableRowAct {
                     icon: "trash-2".into(),
@@ -664,13 +693,20 @@ fn inventory(m: &Model, drawer: Option<RowDrawer>) -> Envelope {
                 };
             }
         }
+        // Every row is read first: its drawer holds the parts behind it, each
+        // with the act that edits it.
+        actions[INFO] = TableRowAct {
+            icon: "info".into(),
+            title: "Details".into(),
+            href: details_url(&name),
+            ..Default::default()
+        };
         rows.push(TableRow {
             id: name.clone(),
             depth,
-            // The row's editor is its panel: the pencil, whose address this
+            // The row's drawer is its panel: the info act, whose address this
             // is, opens it in place rather than leaving the listing.
-            panel: actions[EDIT].href.clone(),
-            expanded: details(m, &name, &nets, runtime, &kind),
+            panel: actions[INFO].href.clone(),
             cells: vec![
                 TableCell {
                     lead_icon: if physical { "physical" } else { "software" }.into(),
@@ -681,7 +717,7 @@ fn inventory(m: &Model, drawer: Option<RowDrawer>) -> Envelope {
                             if let Some(server) = m
                                 .dhcp_servers
                                 .iter()
-                                .find(|s| &s.network == n && s.configured)
+                                .find(|s| &s.network == n && s.exists())
                             {
                                 chips.push(TableChip {
                                     label: "DHCP".into(),
@@ -703,10 +739,6 @@ fn inventory(m: &Model, drawer: Option<RowDrawer>) -> Envelope {
                 TableCell {
                     copy: !ipv4.is_empty(),
                     ..cell(ipv4.first().cloned().unwrap_or_else(|| EM_DASH.into()))
-                },
-                TableCell {
-                    copy: !mac.is_empty(),
-                    ..cell(if mac.is_empty() { EM_DASH.into() } else { mac })
                 },
                 pill_cell(state, tone),
                 TableCell {
@@ -733,7 +765,6 @@ fn inventory(m: &Model, drawer: Option<RowDrawer>) -> Envelope {
         ("Device · network", "reference"),
         ("Type", "keyword"),
         ("Address", "mono"),
-        ("MAC address", "mono"),
         ("State", "status"),
         ("", "actions"),
     ]

@@ -18,6 +18,7 @@ fn get(r: &Request) -> Envelope {
     match r.path.trim_end_matches('/') {
         "" => page::listing(&m),
         "/new" => editor::new(&m, &r.query.get("kind")),
+        "/details" => page::details(&m, &r.query.get("device")),
         "/edit" => editor::edit(&m, &r.query.get("network"), &r.query.get("device")),
         "/delete" => editor::delete_page(&m, &r.query.get("network"), &r.query.get("device")),
         "/routes" => routes::page(&m, &r.query.get("open"), &r.query.get("family")),
