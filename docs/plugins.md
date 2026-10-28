@@ -2258,7 +2258,8 @@ operator's concrete netifd object permissions. They affect runtime only; UCI
 `auto` stays in the staged editor. The shell refreshes the inventory without
 resetting its filter or the session's inactivity deadline. A row opens its
 drawer from its info act at `/plugins/interfaces/details?device=<name>`, one
-card per network, DHCP server and device, each with the act that edits it.
+card per network and one for the device, each with the act that edits it. A
+network's DHCP server is the DHCP page's alone; Interfaces shows only its chip.
 
 ### Hand-edited files
 
@@ -2388,13 +2389,14 @@ DHCP service visibility is shared by the Interfaces and DNS/DHCP plugins via
 `verso_plugin::dhcp`, which reads `dnsdhcp.dhcp-state` at the version the SDK
 names (a plugin declares the grant `verso-plugin dnsdhcp dhcp-state`). The SDK
 merges applied observations with each plugin's staged snapshot, labels pending enable/disable changes explicitly, and links each
-server to its drawer on the DHCP page (`/plugins/dnsdhcp/?open=<network>`),
-which the interface listing opens over itself. The interface identity
-carries one DHCP chip per configured network: success, warning or danger, with a
-neutral disabled state. The read follows dnsmasq's includes as root, so
-handwritten exclusions are part of its service assessment. Chip `title` is localized independently of its verbatim
-identity label. Expanded network facts show the observed pool, lease duration and
-active lease count. Physical bridge members do not inherit their bridge's chip.
+server to its drawer on the DHCP page (`/plugins/dnsdhcp/?open=<network>`).
+It also states which networks have a server and which could take one
+(`Server::exists`, `Server::can_be_added`), so both plugins mean the same by
+it. The interface identity carries one DHCP chip per network that has a
+server: success, warning or danger, with a neutral disabled state. The read
+follows dnsmasq's includes as root, so handwritten exclusions are part of its
+service assessment. Chip `title` is localized independently of its verbatim
+identity label. Physical bridge members do not inherit their bridge's chip.
 
 Table style `live` uses the shell's existing ten-second inventory refresh to
 replace only its rows. It preserves the surrounding settings form, skips hidden

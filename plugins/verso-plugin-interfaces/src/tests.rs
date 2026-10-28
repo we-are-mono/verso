@@ -630,34 +630,43 @@ fn docker_bridge_connects_only_its_observed_virtual_member() {
     assert!(m.names().contains("tap-only"));
 }
 
-// The interface's drawer states its DHCP server as it stands and links to its
-// drawer on the DHCP page; it carries none of the server's own controls.
+// A network's DHCP server is the DHCP page's: the interface's editor and its
+// drawer say nothing of it, so a server is read and changed in one place.
 #[test]
-fn the_interface_drawer_states_its_dhcp_server_and_leads_to_it() {
-    let e = get(&request("/edit", "network=lan"));
-    let body = serde_json::to_string(&e).unwrap();
-    for gone in [
-        "\"name\":\"start\"",
-        "\"name\":\"leasetime\"",
-        "\"name\":\"ra\"",
-        "\"name\":\"dhcpv6\"",
+fn the_interface_leaves_its_dhcp_server_to_the_dhcp_page() {
+    let mut r = request("/", "");
+    let mut snapshot = fixture();
+    snapshot["network"]["guest"] = json!({".name":"guest",".type":"interface","device":"eth2",
+        "proto":"static","ipaddr":"192.168.20.1","netmask":"255.255.255.0"});
+    r.snapshot = Snapshot::from_value(snapshot);
+    let m = Model::read(&r);
+    for (what, body) in [
+        // The listing behind keeps the row's DHCP chip; the editor itself
+        // says nothing of the server.
+        (
+            "editor",
+            open_drawer(&get(&request("/edit", "network=lan"))).to_string(),
+        ),
+        (
+            "lan's drawer",
+            serde_json::to_string(&cards(&m, "br-lan")).unwrap(),
+        ),
+        (
+            "guest's drawer",
+            serde_json::to_string(&cards(&m, "eth2")).unwrap(),
+        ),
     ] {
-        assert!(!body.contains(gone), "{gone}");
-    }
-    let j = serde_json::to_value(&e).unwrap();
-    fn find(v: &serde_json::Value, title: &str) -> Option<serde_json::Value> {
-        if v["title"] == title && v["type"] == "section" {
-            return Some(v.clone());
-        }
-        match v {
-            serde_json::Value::Object(m) => m.values().find_map(|c| find(c, title)),
-            serde_json::Value::Array(a) => a.iter().find_map(|c| find(c, title)),
-            _ => None,
+        for gone in [
+            "DHCP server",
+            "Configure DHCP",
+            "Add DHCP server",
+            "/plugins/dnsdhcp/",
+            "\"name\":\"leasetime\"",
+            "\"name\":\"dhcpv6\"",
+        ] {
+            assert!(!body.contains(gone), "the {what} carries {gone}: {body}");
         }
     }
-    let server = find(&j, "DHCP server").expect("the DHCP server part");
-    assert_eq!(server["control"]["href"], "/plugins/dnsdhcp/?open=lan");
-    assert!(server["control"].get("panel").is_none(), "{server}");
 }
 // cards are a row's drawer: one card per part behind the row, each a
 // top-level section the shell draws as a card.
@@ -695,8 +704,8 @@ fn a_rows_drawer_has_an_address_of_its_own() {
 }
 #[test]
 fn a_rows_drawer_holds_a_card_per_part() {
-    // A bridge carrying one network with a DHCP server: its network, its
-    // server and its device, each named as the config names it, in that order.
+    // A bridge carrying one network: the network, then the device, each named
+    // as the config names it.
     let mut m = Model::read(&request("/", ""));
     m.live["devices"]["br-lan"]["macaddr"] = json!("52:54:00:12:34:56");
     let parts = cards(&m, "br-lan");
@@ -716,7 +725,6 @@ fn a_rows_drawer_holds_a_card_per_part() {
         heads,
         [
             ("network", "Network", "lan"),
-            ("server", "DHCP server", "lan"),
             ("git-merge", "Device", "br-lan")
         ]
     );
@@ -736,16 +744,15 @@ fn a_rows_drawer_holds_a_card_per_part() {
     );
     // The device reads as itself, its MAC address first and copyable, then a
     // bridge's ports.
-    let device = &parts[2]["children"][0]["items"];
-    assert_eq!(labels(&parts[2])[..2], ["MAC address", "Ports"]);
+    let device = &parts[1]["children"][0]["items"];
+    assert_eq!(labels(&parts[1])[..2], ["MAC address", "Ports"]);
     assert_eq!(device[0]["value"], "52:54:00:12:34:56");
     assert_eq!(device[0]["copy"], true);
     assert_eq!(device[1]["value"], "eth0");
-    assert!(labels(&parts[2]).contains(&"MTU".to_string()));
+    assert!(labels(&parts[1]).contains(&"MTU".to_string()));
     // Nothing stands loose between the cards.
     assert!(parts.iter().all(|g| g["type"] == "section"));
-    // A line to the internet wears the globe, and an uplink that serves no
-    // DHCP has no DHCP card.
+    // A line to the internet wears the globe.
     let uplink = cards(&m, "eth1");
     let titles: Vec<_> = uplink.iter().map(|g| g["title"].clone()).collect();
     assert_eq!(titles, [json!("Network"), json!("Device")], "{uplink:?}");
@@ -769,9 +776,8 @@ fn a_card_carries_the_act_that_edits_its_part() {
             "Edit network",
             "/plugins/interfaces/edit?network=lan&device=",
         ),
-        (&parts[1], "Configure DHCP", "/plugins/dnsdhcp/?open=lan"),
         (
-            &parts[2],
+            &parts[1],
             "Edit device",
             "/plugins/interfaces/edit?network=&device=br-lan",
         ),
@@ -781,68 +787,27 @@ fn a_card_carries_the_act_that_edits_its_part() {
         assert_eq!(part["control"]["href"], href);
         assert!(part["control"].get("panel").is_none(), "{part}");
     }
-    // A network with an address of its own and no server is offered one.
-    let mut r = request("/", "");
-    let mut snapshot = fixture();
-    snapshot["network"]["guest"] = json!({".name":"guest",".type":"interface","device":"eth2",
-        "proto":"static","ipaddr":"192.168.20.1","netmask":"255.255.255.0"});
-    r.snapshot = Snapshot::from_value(snapshot);
-    let guest = cards(&Model::read(&r), "eth2");
-    let server = guest
-        .iter()
-        .find(|g| g["title"] == "DHCP server")
-        .expect("guest's DHCP card");
-    assert_eq!(server["meta"], "guest");
-    assert!(server.to_string().contains("No DHCP server"), "{server}");
-    assert_eq!(server["control"]["label"], "Add DHCP server");
-    assert_eq!(server["control"]["icon"], "plus");
-    assert_eq!(server["control"]["href"], "/plugins/dnsdhcp/?open=guest");
 }
 #[test]
-fn a_dhcp_server_reads_as_its_state_and_how_full_its_pool_is() {
-    let mut r = request("/", "");
-    r.ubus = Ubus::from_value(json!({
-        "networkState":{"devices":{"eth0":{"up":true},"br-lan":{"up":true,"bridge":true}},"interfaces":[{"interface":"lan","l3_device":"br-lan","up":true,"ipv4-address":[{"address":"192.168.1.1","mask":24}]}]},
-        "dnsdhcp.dhcp-state":{"version":1,"result":{"networks":{"lan":{"state":"running","enabled":true,"pool":"192.168.1.100–192.168.1.249","lease_time":"12h","leases":30}}}}
-    }));
-    let m = Model::read(&r);
-    let parts = cards(&m, "br-lan");
-    let items = parts[1]["children"][0]["items"].clone();
-    // The server's state is said once, with its mark.
-    assert_eq!(items[0]["label"], "Server");
-    assert_eq!(items[0]["value"], "Serving");
-    assert_eq!(items[0]["dot"], "success");
-    // The pool is the stretch from its first address to its last, filled by
-    // the share of its 150 addresses that are leased.
-    let pool = items[1].clone();
-    assert_eq!(pool["label"], "Pool");
-    assert_eq!(pool["span"]["from"], "192.168.1.100");
-    assert_eq!(pool["span"]["to"], "192.168.1.249");
-    assert_eq!(pool["span"]["at"], 20);
-    assert_eq!(pool["span"]["tone"], "success");
-    // Without a lease count there is no fill to draw: the range as words.
-    r.ubus = Ubus::from_value(json!({
-        "dnsdhcp.dhcp-state":{"version":1,"result":{"networks":{"lan":{"state":"running","enabled":true,"pool":"192.168.1.100–192.168.1.249"}}}}
-    }));
-    let parts = cards(&Model::read(&r), "br-lan");
-    let pool = parts[1]["children"][0]["items"][1].clone();
-    assert_eq!(pool["value"], "192.168.1.100–192.168.1.249");
-    assert!(pool.get("span").is_none(), "{pool}");
+fn a_dhcp_read_at_an_unknown_version_still_draws_the_row() {
     // The DNS and DHCP plugin's read at a version this plugin does not know,
-    // or none at all, still draws the row and its drawer, with no state taken
-    // from it.
+    // or none at all, still draws the row, its DHCP chip taking no state from
+    // it.
+    let mut r = request("/", "");
     for ubus in [
         json!({"dnsdhcp.dhcp-state":{"version":2,"result":{"networks":{"lan":{"state":"running","enabled":true,"pool":"192.168.1.100–192.168.1.249"}}}}}),
         json!({}),
     ] {
         r.ubus = Ubus::from_value(ubus);
-        let m = Model::read(&r);
-        let text =
-            serde_json::to_string(&(inventory_row(&m, "br-lan"), cards(&m, "br-lan"))).unwrap();
-        assert!(
-            !text.contains("Serving") && !text.contains("192.168.1.100"),
-            "{text}"
-        );
+        let row = inventory_row(&Model::read(&r), "br-lan");
+        let chip = row["cells"][0]["chips"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|c| c["label"] == "DHCP")
+            .cloned()
+            .expect("lan still has its server");
+        assert_ne!(chip["tone"], "success", "{chip}");
     }
 }
 // open_drawer is the one panel the page's act says is open.
@@ -951,20 +916,6 @@ fn every_way_into_the_editor_is_a_card_in_the_rows_drawer() {
     }
     let editor = get(&request("/edit", "network=lan"));
     assert_eq!(open_drawer(&editor)["title"], "lan");
-}
-#[test]
-fn a_disabled_dhcp_server_says_so_once() {
-    let mut r = request("/", "");
-    let mut snapshot = fixture();
-    snapshot["dhcp"]["lan"]["ignore"] = json!("1");
-    r.snapshot = Snapshot::from_value(snapshot);
-    let m = Model::read(&r);
-    let parts = cards(&m, "br-lan");
-    let server = parts.iter().find(|g| g["title"] == "DHCP server").unwrap();
-    assert_eq!(labels(server), ["Server"]);
-    assert_eq!(server["children"][0]["items"][0]["value"], "Off");
-    // Disabled is still where it is turned on.
-    assert_eq!(server["control"]["label"], "Configure DHCP");
 }
 #[test]
 fn each_network_a_device_carries_is_its_own_part_with_its_edit() {

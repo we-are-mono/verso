@@ -251,9 +251,10 @@ fn state(
         _ => ("not reported", "neutral"),
     }
 }
-// cards are a row's drawer: a card for each network the device carries, each
-// followed by its DHCP server's, then the device's own. Each card carries the
-// act that edits its part, since the row's own way in is this drawer.
+// cards are a row's drawer: a card for each network the device carries, then
+// the device's own. Each card carries the act that edits its part, since the
+// row's own way in is this drawer. A network's DHCP server is the DHCP page's,
+// read and changed there alone.
 fn cards(
     m: &Model,
     name: &str,
@@ -334,9 +335,6 @@ fn cards(
             .is_some()
             .then(|| act("Edit network", "square-pen", &url(net, "", "edit")));
         out.push(part(mark, "Network", net, body, edit));
-        if let Some(server) = dhcp_part(m, net) {
-            out.push(server);
-        }
     }
     // The device is always a card of its own: its MAC address is read here.
     let mac = text(runtime.and_then(|v| v.get("macaddr")));
@@ -408,87 +406,6 @@ fn device_facts(m: &Model, name: &str, runtime: Option<&Value>, kind: &str) -> V
         )
     };
     vec![what, fact("MTU", mtu), how, fact("Errors", errors)]
-}
-// dhcp_part is a network's DHCP server, by the SDK's one meaning of it: how it
-// stands and, while it serves, what it hands out, with the way to its drawer on
-// the DHCP page. A disabled server says so once; configuring it is still where
-// it is turned on. A network that could take a server and has none says so,
-// and is offered one; any other network has no DHCP part.
-pub fn dhcp_part(m: &Model, net: &str) -> Option<Widget> {
-    let server = m.dhcp_servers.iter().find(|s| s.network == net)?;
-    if server.can_be_added() {
-        return Some(part(
-            "server",
-            "DHCP server",
-            net,
-            vec![Widget::text(
-                "No DHCP server hands out addresses on this network.",
-            )],
-            Some(act("Add DHCP server", "plus", &server.href())),
-        ));
-    }
-    if !server.exists() {
-        return None;
-    }
-    // The server's state is the part's own, said once with its mark.
-    let mut standing = prose("Server", server.label());
-    standing.dot = server.tone().into();
-    let mut read = vec![standing];
-    if server.state != "disabled" {
-        if !server.pool.is_empty() {
-            read.push(if server.pool == "reservations" {
-                prose("Pool", server.pool_label())
-            } else {
-                pool(m, net, server)
-            });
-        }
-        if !server.lease_time.is_empty() {
-            read.push(fact("Lease time", &server.lease_time));
-        }
-        read.push(prose(
-            "Active leases",
-            &server
-                .leases
-                .map(|n| n.to_string())
-                .unwrap_or_else(|| EM_DASH.into()),
-        ));
-    }
-    Some(part(
-        "server",
-        "DHCP server",
-        net,
-        vec![facts(read)],
-        Some(act("Configure DHCP", "square-pen", &server.href())),
-    ))
-}
-// pool is the addresses a server hands out, as the stretch from its first to
-// its last, filled by how much of it is leased when both the leases and the
-// pool's size are known; else the range as words.
-fn pool(m: &Model, net: &str, server: &verso_plugin::dhcp::Server) -> Property {
-    let range = fact("Pool", server.pool_label());
-    let limit = m
-        .dhcp(net)
-        .map(|d| d.get("limit"))
-        .and_then(|l| l.parse::<u64>().ok())
-        .filter(|l| *l > 0);
-    let ends = server
-        .pool
-        .split_once('–')
-        .or_else(|| server.pool.split_once('-'));
-    match (server.leases, limit, ends) {
-        (Some(leases), Some(limit), Some((first, last))) => range.spanning(
-            first.trim(),
-            last.trim(),
-            (leases.saturating_mul(100) / limit).min(100) as u8,
-            match server.tone() {
-                "success" => Tone::Success,
-                "warning" => Tone::Warning,
-                "danger" => Tone::Danger,
-                _ => Tone::Neutral,
-            },
-        ),
-        _ => range,
-    }
 }
 
 // listing is the inventory alone. Its act names a new interface's address, and
