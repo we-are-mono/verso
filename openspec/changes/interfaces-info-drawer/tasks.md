@@ -26,7 +26,7 @@
 
 ## 5. Integration
 
-- [ ] 5.1 With `make dev` running, open Interfaces, check that no row unfolds, open `br-lan`'s drawer by its info act and by address, follow each card's act (Edit network, Edit device, Configure DHCP, and Add DHCP server on a network without one), and save screenshots to ~/Share/screenshots
+- [x] 5.1 With `make dev` running, open Interfaces, check that no row unfolds, open `br-lan`'s drawer by its info act and by address, follow each card's act (Edit network, Edit device, Configure DHCP, and Add DHCP server on a network without one), and save screenshots to ~/Share/screenshots
 
 ## Workflow follow-up
 
