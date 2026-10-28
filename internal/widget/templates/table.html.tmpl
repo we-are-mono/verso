@@ -459,7 +459,10 @@
      either density; density is horizontal, and a shorter row is a rhythm no
      design asks for. How far a listing stands from what sits above it is the
      page's rhythm, not the listing's own. */}}
-{{if and .Empty (not .Stream) (not .Title) (not .Live)}}
+{{if .Carrier}}
+{{/* A table with no columns and nothing but a panel lists nothing: it only
+     carries the panel, drawn below. */}}
+{{else if and .Empty (not .Stream) (not .Title) (not .Live)}}
 {{/* Nothing to list: the listing says so as every set does, with the empty
      slot where its first row would stand (the slot block), outside
      the scroller so its frame keeps its pixel out on the lines. */}}
@@ -536,6 +539,10 @@
      bottom edge, the help about the card rather than a part of it. */}}
 {{if .PageBlock}}{{template "table.caption" .}}{{end}}
 {{end}}
+{{/* A blank object's panel rides the listing it will land in, after it and
+     in a modal scope of its own, so an address asking for a new one arrives
+     with it open over the listing; the panel teleports to <body>. */}}
+{{range .Loose}}<span x-data="modal"{{if .Open}} data-open="true"{{end}}{{if .Panel.Closed}} data-closed-href="{{.Panel.Closed}}"{{end}} class="contents">{{template "verso-drawer-panel" .Panel}}</span>{{end}}
 {{end}}
 {{if .Reorderable}}
 {{/* The dragged sequence is a staged change like any edited field: the rows'

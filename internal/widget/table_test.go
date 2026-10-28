@@ -816,6 +816,59 @@ func TestRenderTableRowDrawerOpen(t *testing.T) {
 	}
 }
 
+// TestRenderTableDrawerOnlyRow: a row with no cells, no lane and a drawer is a
+// blank object's panel riding the listing it will land in, not a row of it. The
+// listing draws its rows as it would without it — no empty row, no Details
+// column — and the panel stands after the listing in a modal scope of its own,
+// open when the plugin sent it open.
+func TestRenderTableDrawerOnlyRow(t *testing.T) {
+	r := newRenderer(t)
+	plain := render(t, r, redirectsTable())
+	tbl := redirectsTable()
+	tbl.Rows = append(tbl.Rows, TableRow{Drawer: &RowDrawer{Title: "New redirect", Closed: "/redirects/", Open: true}})
+	got := render(t, r, tbl)
+	if want, n := strings.Count(plain, "<tr"), strings.Count(got, "<tr"); n != want {
+		t.Errorf("a drawer-only row drew %d rows, want the listing's own %d:\n%s", n, want, got)
+	}
+	for _, absent := range []string{">Details<", "<col>"} {
+		if strings.Contains(got, absent) {
+			t.Errorf("a drawer-only row must not give the listing %q:\n%s", absent, got)
+		}
+	}
+	listing := strings.LastIndex(got, "</table>")
+	scope := strings.Index(got, `<span x-data="modal" data-open="true" data-closed-href="/redirects/" class="contents">`)
+	if scope < 0 || scope < listing {
+		t.Fatalf("the panel's open scope does not stand after the listing:\n%s", got)
+	}
+	if !strings.Contains(got[scope:], "New redirect") {
+		t.Errorf("the panel is missing:\n%s", got)
+	}
+
+	// A listing with nothing else in it still says it is empty; the panel
+	// stands beside that sentence, so the blank object opens over it.
+	empty := &Table{Columns: redirectsTable().Columns, EmptyText: "No redirects yet.", Rows: []TableRow{{Drawer: &RowDrawer{Title: "New redirect", Open: true}}}}
+	got = render(t, r, empty)
+	for _, want := range []string{"No redirects yet.", `<span x-data="modal" data-open="true" class="contents">`, "New redirect"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("an empty listing with a drawer-only row lacks %q:\n%s", want, got)
+		}
+	}
+
+	// A table with no columns and nothing but a panel lists nothing: it only
+	// carries the panel (an editor answering its own address), so nothing but
+	// the panel is drawn.
+	carrier := &Table{Rows: []TableRow{{Drawer: &RowDrawer{Title: "New file", Open: true}}}}
+	got = render(t, r, carrier)
+	if !strings.Contains(got, "New file") {
+		t.Errorf("the carried panel is missing:\n%s", got)
+	}
+	for _, absent := range []string{"verso-listing", "verso-slot", "Nothing here yet"} {
+		if strings.Contains(got, absent) {
+			t.Errorf("a panel's carrier must draw no listing, found %q:\n%s", absent, got)
+		}
+	}
+}
+
 func TestRenderTableCustomDrawerAction(t *testing.T) {
 	r := newRenderer(t)
 	tbl := redirectsTable()

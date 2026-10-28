@@ -719,6 +719,12 @@ type tableView struct {
 	EmptyUnderBand bool
 	EmptyText      string
 	Note           string
+	// Loose is the blank objects' panels riding the listing they will land in
+	// (see withoutLoosePanels), drawn after it in modal scopes of their own.
+	// Carrier is a table with no columns and nothing but such panels: it
+	// lists nothing, so only the panels are drawn.
+	Loose   []loosePanelView
+	Carrier bool
 	// Stream marks the live listing: the table carries the source and ring the
 	// client reads, and an empty one keeps its column heads and marks its quiet
 	// sentence row so the first arriving event can replace it.
@@ -1231,7 +1237,40 @@ func tablePlace(t *Table, r *Renderer) string {
 	return ""
 }
 
+// loosePanelView is one blank object's panel riding a listing: whether it
+// arrives open, and the panel itself.
+type loosePanelView struct {
+	Open  bool
+	Panel drawerPanelView
+}
+
+// withoutLoosePanels is the listing without the rows that are only a panel: a
+// row with no cells, no lane and a drawer is a blank object's panel riding the
+// listing it will land in (a reservation not made yet), never a row of it, so
+// nothing about the listing counts it — its emptiness, its Details column, its
+// last row. The panels come back apart, to stand after the listing.
+func (t *Table) withoutLoosePanels() (*Table, []TableRow) {
+	loose := func(row TableRow) bool {
+		return len(row.Cells) == 0 && row.Group == nil && row.Entity == nil && row.Drawer != nil
+	}
+	if !slices.ContainsFunc(t.Rows, loose) {
+		return t, nil
+	}
+	listing := *t
+	listing.Rows = nil
+	var panels []TableRow
+	for _, row := range t.Rows {
+		if loose(row) {
+			panels = append(panels, row)
+		} else {
+			listing.Rows = append(listing.Rows, row)
+		}
+	}
+	return &listing, panels
+}
+
 func (t *Table) view(r *Renderer, csrf string) (tableView, error) {
+	t, loose := t.withoutLoosePanels()
 	empty := t.empty()
 	stream := t.streaming()
 	v := tableView{
@@ -1284,6 +1323,14 @@ func (t *Table) view(r *Renderer, csrf string) (tableView, error) {
 	if v.Rows, err = t.rowViews(r, csrf, t.Rows, v.HasDetail); err != nil {
 		return v, err
 	}
+	for _, row := range loose {
+		panel, err := r.renderPanel(row.Drawer, csrf, Flash{})
+		if err != nil {
+			return v, err
+		}
+		v.Loose = append(v.Loose, loosePanelView{Open: row.Drawer.Open, Panel: panel})
+	}
+	v.Carrier = len(v.Loose) > 0 && empty && len(t.Columns) == 0 && t.Title == ""
 	// Bands with nothing under them: the listing is empty all the same, so
 	// its heads go and its sentence is said, under the bands.
 	if !empty && t.bandsOnly() {
