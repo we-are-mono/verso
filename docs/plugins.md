@@ -2249,8 +2249,11 @@ nothing. Its envelope `act` is the add act at `new`: on the listing it carries n
 so the shell fetches a new network's drawer from that address and its form posts
 back there; at `new` or an object's editor address it carries that panel open.
 The new drawer opens on a `Type` select marked `reshapes` (Network, Internet
-connection, Bridge, VLAN, Tunnel); changing it draws the drawer for that kind,
-keeping the name, device, MTU and MAC override. The page has no control band.
+connection, Tunnel); the Devices card's header carries Add device, a panel
+link to `new?kind=bridge`, whose `Type` offers Bridge and VLAN. Changing it
+draws the drawer for that kind, keeping the name, device, MTU and MAC
+override; neither choice offers the other card's kinds. The page has no
+control band.
 
 `verso.networkState` brokers normalized netifd booleans and kernel device facts.
 `interface-up`, `interface-down`, and `interface-restart` commands each require

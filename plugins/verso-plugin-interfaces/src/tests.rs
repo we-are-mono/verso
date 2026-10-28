@@ -209,7 +209,17 @@ fn adding_an_interface_opens_a_new_network_with_its_type_to_change() {
         .iter()
         .map(|o| o["value"].as_str().unwrap())
         .collect();
-    assert_eq!(values, ["network", "wan", "bridge", "vlan", "tunnel"]);
+    // A network, a line or a tunnel; a bridge or a VLAN is a device, added
+    // from the Devices card, whose chooser offers those alone.
+    assert_eq!(values, ["network", "wan", "tunnel"]);
+    let device = the_type(&open_drawer(&get(&request("/new", "kind=bridge"))));
+    let kinds: Vec<&str> = device["options"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|o| o["value"].as_str().unwrap())
+        .collect();
+    assert_eq!(kinds, ["bridge", "vlan"]);
     // A VPN is made on the tunnels' own page, and the drawer says where.
     assert!(
         drawer.to_string().contains(&format!("{ROOT}vpn")),
@@ -1125,6 +1135,24 @@ fn drawer_addresses() {
             "This interface no longer exists. Return to Interfaces and try again."
         );
     }
+}
+#[test]
+fn the_devices_card_carries_add_device() {
+    let control = card(&lab(), "Devices")["control"].clone();
+    assert_eq!(control["label"], "Add device");
+    assert_eq!(control["icon"], "plus");
+    assert_eq!(control["href"], format!("{ROOT}new?kind=bridge"));
+    assert_eq!(control["panel"], true);
+    // Its drawer opens as a new bridge, and a VLAN saves as a device.
+    assert_eq!(
+        open_drawer(&get(&request("/new", "kind=bridge")))["title"],
+        "New bridge"
+    );
+    let e = post(
+        &request("/new", "kind=vlan"),
+        &Form::parse("kind=vlan&name=eth2.20&device=eth2&vid=20&vlan_protocol=8021q"),
+    );
+    assert_eq!(e.commit[0].section_type, "device", "{e:?}");
 }
 // wan_form is wan's drawer posted as it stands, extra overriding it (a form
 // reads a field's first value).

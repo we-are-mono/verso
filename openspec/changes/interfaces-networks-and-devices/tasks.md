@@ -37,9 +37,9 @@ Every task ends green under `make lint` and `make test`.
 
 ## 5. Add acts by kind
 
-- [ ] 5.1 Test `add_interface_offers_network_internet_and_tunnel` (Type options; `/new?kind=bridge` offers Bridge and VLAN; reshaping never crosses from one list to the other), then split `KINDS` into network and device kinds; update `adding_an_interface_opens_a_new_network_with_its_type_to_change`; verify the test passes
-- [ ] 5.2 Test `the_devices_card_carries_add_device` (the Devices section's control is a panel link to `/new?kind=bridge`; saving a new VLAN stages a `device` section), then add the control; verify the test passes
-- [ ] 5.3 Update `docs/plugins.md`'s new-drawer sentence (two choosers) and `DESIGN.md`; verify they list the same kinds as the code
+- [x] 5.1 Extend `adding_an_interface_opens_a_new_network_with_its_type_to_change` (Type offers Network, Internet connection, Tunnel; `/new?kind=bridge` offers Bridge and VLAN, so reshaping never crosses from one list to the other), then split `KINDS` into network and device kinds; verify the test passes
+- [x] 5.2 Test `the_devices_card_carries_add_device` (the Devices section's control is a panel link to `/new?kind=bridge`; saving a new VLAN stages a `device` section), then add the control; verify the test passes
+- [x] 5.3 Update `docs/plugins.md`'s new-drawer sentence (two choosers) and `DESIGN.md`; verify they list the same kinds as the code
 
 ## 6. Integration
 

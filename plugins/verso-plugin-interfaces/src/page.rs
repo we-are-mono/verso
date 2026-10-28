@@ -448,16 +448,30 @@ fn listed(m: &Model, name: &str, nets: &[String], chips: &[TableChip]) -> bool {
 }
 // card is one inventory on the page: a titled section holding its table,
 // live, so the shell refreshes its rows as the router changes.
-fn card(title: &str, table: Table) -> Widget {
+fn card(title: &str, table: Table, add: Option<Widget>) -> Widget {
     Widget::Section(SectionWidget {
         title: title.into(),
         hairline: true,
+        control: add.map(Box::new),
         children: vec![Widget::Table(Table {
             style: "live".into(),
             ..table
         })],
         ..Default::default()
     })
+}
+// add_device is the Devices card's own add, on its header: a new bridge or
+// VLAN, whose drawer opens over the listing. The page's heading act adds a
+// network.
+fn add_device() -> Widget {
+    Widget::Link {
+        label: "Add device".into(),
+        icon: "plus".into(),
+        href: format!("{ROOT}new?kind=bridge"),
+        style: "act".into(),
+        panel: true,
+        place: true,
+    }
 }
 fn inventory(m: &Model, drawer: Option<RowDrawer>) -> Envelope {
     let Rows {
@@ -515,7 +529,10 @@ fn inventory(m: &Model, drawer: Option<RowDrawer>) -> Envelope {
     };
     let page = Envelope::page(
         "Interfaces",
-        Widget::stack(vec![card("Networks", networks), card("Devices", devices)]),
+        Widget::stack(vec![
+            card("Networks", networks, None),
+            card("Devices", devices, Some(add_device())),
+        ]),
     )
     .with_act(act)
     .with_width("wide");

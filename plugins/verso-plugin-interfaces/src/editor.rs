@@ -184,18 +184,27 @@ fn kind_of(m: &Model, network: &str, device: &str) -> Option<String> {
         .into(),
     )
 }
-// KINDS are what a new interface can be, in the order the Type choice offers
-// them; a network first, because a new network is what Add interface most
-// often makes.
-const KINDS: [(&str, &str); 5] = [
+// NETWORK_KINDS are what Add interface makes, in the order its Type choice
+// offers them; a network first, because a new network is what it most often
+// makes. A tunnel is a network: its config section is an interface.
+const NETWORK_KINDS: [(&str, &str); 3] = [
     ("network", "Network"),
     ("wan", "Internet connection"),
-    ("bridge", "Bridge"),
-    ("vlan", "VLAN"),
     ("tunnel", "Tunnel"),
 ];
+// DEVICE_KINDS are what the Devices card's Add device makes.
+const DEVICE_KINDS: [(&str, &str); 2] = [("bridge", "Bridge"), ("vlan", "VLAN")];
+// kinds are the Type choice a new object's drawer offers: the kinds of its
+// own card, so a reshape never turns a network into a device.
+fn kinds(kind: &str) -> &'static [(&'static str, &'static str)] {
+    if DEVICE_KINDS.iter().any(|(k, _)| *k == kind) {
+        &DEVICE_KINDS
+    } else {
+        &NETWORK_KINDS
+    }
+}
 fn creatable(kind: &str) -> bool {
-    KINDS.iter().any(|(k, _)| *k == kind)
+    kinds(kind).iter().any(|(k, _)| *k == kind)
 }
 // about is what the kind chosen is for, raised from the Type choice's label.
 fn about(kind: &str) -> &'static str {
@@ -462,13 +471,15 @@ fn drawer(
     // not one of them: WireGuard and OpenVPN have their own page.
     if creating {
         identity.push(
-            Widget::select("kind", "Type", kind, opts(&KINDS), "")
+            Widget::select("kind", "Type", kind, opts(kinds(kind)), "")
                 .reshapes()
                 .explained(about(kind), ""),
         );
-        identity.push(Widget::text(&format!(
-            "A VPN tunnel is set up on [its own page]({ROOT}vpn)."
-        )));
+        if !is_device {
+            identity.push(Widget::text(&format!(
+                "A VPN tunnel is set up on [its own page]({ROOT}vpn)."
+            )));
+        }
     }
     // Whether a network comes up at all is its first question, as OPNsense
     // asks it first.
