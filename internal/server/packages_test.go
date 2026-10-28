@@ -226,6 +226,30 @@ func TestPackagesIsWhereUpdatesAre(t *testing.T) {
 	}
 }
 
+// TestAnUpdateAlreadyInstalledIsNoOffer: the recorded check can predate the
+// router: Verso upgrading itself restarts the shell before the record is read
+// again, and an upgrade over SSH never touches it. A package installed at a
+// version the record does not know is no longer the record's offer, and the
+// count and the act that updates them all leave it out.
+func TestAnUpdateAlreadyInstalledIsNoOffer(t *testing.T) {
+	idleUpdates(t)
+	s := pluginsServer(t, fakeBackend{access: true, pkgInstalledList: []openwrt.Package{
+		{Name: "dnsmasq", Version: "2.91-r3", Installed: true},
+		{Name: "verso", Version: "0.11.0-r0", Installed: true},
+	}}, true)
+	knownUpdates(t, s, updatecheck.Truth{CheckedAt: time.Now(), Packages: []openwrt.PackageUpgrade{
+		{Name: "dnsmasq", Installed: "2.91-r3", Available: "2.93-r1"},
+		{Name: "verso", Installed: "0.10.0-r23", Available: "0.11.0-r0"},
+	}})
+	body := get(t, s, "/system/packages?tab=upgradable").Body.String()
+	if !strings.Contains(body, "Update 1 package") || strings.Contains(body, "Update 2 packages") {
+		t.Errorf("the act counts only what is still behind:\n%s", body)
+	}
+	if strings.Count(body, `data-verso-tags="upgradable"`) != 1 {
+		t.Errorf("only dnsmasq is upgradable:\n%s", body)
+	}
+}
+
 // TestAPackageIsRemovedFromItsRow: removal is never a drawer's act. A package
 // that can go is removed from its row's trash act, which asks first and then
 // posts the one pair; the drawer holds no remove at all.

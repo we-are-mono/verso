@@ -68,6 +68,7 @@ func (s *Server) renderPackages(w http.ResponseWriter, r *http.Request, errMsg s
 		children = append(children, &widget.Callout{Variant: "danger", Compact: true, Body: fmt.Sprintf(tr("Package update failed: %v"), err)})
 	}
 	truth, _ := s.updateTruth()
+	offers := truth.Packages
 	if feedRefresh.running() {
 		children = append(children, refreshingInstead(
 			"The list returns as soon as the refresh finishes — reload the page in a moment."))
@@ -88,9 +89,14 @@ func (s *Server) renderPackages(w http.ResponseWriter, r *http.Request, errMsg s
 		}
 		if !all {
 			pkgs = installedOnly(pkgs)
+			// The whole installed set is read here, so the router, not the
+			// record, says what is still behind.
+			if pkgErr == nil {
+				offers = standingOffers(offers, pkgs)
+			}
 		}
 		table := packageListingTable(pkgs)
-		upgrades := upgradesByName(truth.Packages)
+		upgrades := upgradesByName(offers)
 		for i := range table.Rows {
 			row := &table.Rows[i]
 			if version := upgrades[row.ID]; version != "" && (!all || pkgs[i].Installed) {
@@ -111,7 +117,7 @@ func (s *Server) renderPackages(w http.ResponseWriter, r *http.Request, errMsg s
 	if all {
 		children = append(children, packagesPager(q, offset, total, tr))
 	}
-	listing := &widget.Stack{Children: []widget.Widget{packagesBar(all, q, installed, len(truth.Packages), count), &widget.Stack{Children: children}}}
+	listing := &widget.Stack{Children: []widget.Widget{packagesBar(all, q, installed, len(offers), count), &widget.Stack{Children: children}}}
 	var page strings.Builder
 	if err := s.widgets.RenderWithToken(&page, listing, s.sessionCSRF(r), lang, t); err != nil {
 		http.Error(w, "render error", http.StatusInternalServerError)
@@ -142,7 +148,7 @@ func (s *Server) renderPackages(w http.ResponseWriter, r *http.Request, errMsg s
 	// stands beside it: this is where the upgradable list is. Refresh index
 	// leads the line, the index's age before it.
 	acts := []widget.Widget{packagesRefreshAct(busy)}
-	if n := len(truth.Packages); n > 0 || packageUpgrade.running() {
+	if n := len(offers); n > 0 || packageUpgrade.running() {
 		acts = append(acts, packagesUpdateAct(n))
 	}
 	acts = append(acts, &widget.ActionBar{Heading: true, OpensPanel: true, Action: &widget.TableAction{Label: "Install", Href: "/system/packages/discover"}})
@@ -214,6 +220,24 @@ func installedOnly(pkgs []openwrt.Package) []openwrt.Package {
 }
 
 // upgradesByName is each upgradable package's available version, by name.
+// standingOffers is the recorded check's offers the router still stands
+// behind: a package installed at the version the record found. One upgraded
+// since — by Verso restarting itself mid-upgrade, or over SSH — or removed is
+// no offer any more.
+func standingOffers(offers []openwrt.PackageUpgrade, installed []openwrt.Package) []openwrt.PackageUpgrade {
+	versions := make(map[string]string, len(installed))
+	for _, p := range installed {
+		versions[p.Name] = p.Version
+	}
+	var out []openwrt.PackageUpgrade
+	for _, o := range offers {
+		if versions[o.Name] == o.Installed {
+			out = append(out, o)
+		}
+	}
+	return out
+}
+
 func upgradesByName(upgrades []openwrt.PackageUpgrade) map[string]string {
 	out := make(map[string]string, len(upgrades))
 	for _, u := range upgrades {
