@@ -137,6 +137,14 @@ own and points at the decision that governs it; the rationale lives there, not h
 - **Add, switch off and remove a DHCP server on the DK.** Stage each from the
   DHCP page and apply it: a new server on a fresh network hands out addresses,
   a removed one stops, and the network's DHCP chip on Interfaces follows.
+- **The Interfaces cards on the DK** (interfaces-networks-and-devices). A
+  PPPoE `wan` with `wan6` on `@wan` reads as one Networks row and one drawer
+  whose IPv6 card names `wan6`; Restart on its Status card restarts both and
+  the listing follows; a real port reads its link speed in Devices; the
+  kernel's own tunnel bases (`sit0`, `ip6tnl0`, `gre0`, `teql0`) stay out.
+- **A bridge's Ports offer the kernel's tunnel bases.** The Devices card
+  leaves `sit0` and `ip6tnl0` out, but a bridge's Ports checkboxes still list
+  them; offer the devices the card lists.
 
 ## Forms as ledgers (forms-ledger)
 

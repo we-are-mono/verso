@@ -43,9 +43,9 @@ Every task ends green under `make lint` and `make test`.
 
 ## 6. Integration
 
-- [ ] 6.1 Walk the lab router in the dev container: open each row, restart `wan` from its Status card, change `lan`'s zone and Apply, add and delete a VLAN; verify each outcome reaches the top-right notification and the listing follows, with screenshots in `~/Share/screenshots`
-- [ ] 6.2 Update `docs/BACKLOG.md`: the DK check of the Interfaces page (a PPPoE `wan` with `wan6` on `@wan`, restart from the Status card, a real port's link speed); keep the owner's uncommitted edits in that file intact; verify `git diff docs/BACKLOG.md` shows only the added entry beside them
-- [ ] 6.3 Run `graphify update .`, `make lint` and `make test`; verify all green
+- [x] 6.1 Walk the lab router in the dev container: open each row, restart `wan` from its Status card, add a VLAN and Apply, delete it and Apply; verify each outcome reaches the top-right notification and the listing follows, with screenshots in `~/Share/screenshots`. A zone change is covered by `zone_and_rename_carry_the_companion` and left unapplied, as moving the lab's LAN between zones can cut the container off
+- [x] 6.2 Update `docs/BACKLOG.md`: the DK check of the Interfaces page (a PPPoE `wan` with `wan6` on `@wan`, restart from the Status card, a real port's link speed); keep the owner's uncommitted edits in that file intact; verify `git diff docs/BACKLOG.md` shows only the added entry beside them
+- [x] 6.3 Run `graphify update .`, `make lint` and `make test`; verify all green
 
 ## Workflow follow-up
 
