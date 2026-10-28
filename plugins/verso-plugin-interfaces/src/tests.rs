@@ -541,12 +541,12 @@ fn devices_columns_read_device_type_used_by_state() {
     );
     assert_eq!(
         texts(&device_row(&m, "br-lan"))[..4],
-        ["br-lan", "bridge", "lan", "up"]
+        ["br-lan", "Bridge", "lan", "up"]
     );
     // What rests on a device is named as the config names it, in words: no
     // chips, so the column reads as every other machine column does.
     let lan0 = device_row(&m, "lan0");
-    assert_eq!(texts(&lan0)[..4], ["lan0", "port", "br-lan, lan0.20", "up"]);
+    assert_eq!(texts(&lan0)[..4], ["lan0", "Port", "br-lan, lan0.20", "up"]);
     assert_eq!(lan0["cells"][1]["rate"], 1e9);
     assert!(lan0["cells"][2].get("chips").is_none(), "{lan0}");
     // The internet line's device names the line, not its DHCPv6 half.
@@ -554,6 +554,86 @@ fn devices_columns_read_device_type_used_by_state() {
     // Nothing rests on it: a dash, as every empty cell is.
     m.live["devices"]["eth2"] = json!({"up":false,"physical":true,"kind":"port"});
     assert_eq!(texts(&device_row(&m, "eth2"))[2], "—");
+}
+// A device's type is Verso's word for what it is, from one closed list, read
+// in words: the config's `type` and the kernel's kind are the drawer's to
+// show. Whatever the list does not know is Virtual, never a raw string.
+#[test]
+fn device_types_read_one_vocabulary() {
+    let mut m = lab();
+    m.devices.extend(
+        [
+            (
+                "v20",
+                json!({"name":"lan0.20","type":"8021q","ifname":"lan0","vid":"20"}),
+            ),
+            (
+                "q30",
+                json!({"name":"lan0.30","type":"8021ad","ifname":"lan0","vid":"30"}),
+            ),
+            ("mv", json!({"name":"mv0","type":"macvlan","ifname":"lan0"})),
+        ]
+        .map(|(id, values)| model::Record {
+            id: id.into(),
+            values: values.as_object().unwrap().clone(),
+            ..Default::default()
+        }),
+    );
+    m.live["devices"]["pppoe-wan"] = json!({"up":true,"kind":"pppoe","physical":false});
+    m.live["devices"]["wlan0"] = json!({"up":true,"kind":"wifi","physical":false});
+    m.live["devices"]["gre4-remote"] = json!({"up":true,"kind":"tunnel","physical":false});
+    m.live["devices"]["eth9.7"] = json!({"up":true,"kind":"vlan","physical":false});
+    m.live["devices"]["tap0"] = json!({"up":true,"kind":"something-new","physical":false});
+    for name in ["pppoe-wan", "wlan0", "gre4-remote", "eth9.7", "tap0"] {
+        m.networks.push(model::Record {
+            id: format!("n_{}", name.replace(['-', '.'], "_")),
+            values: json!({"device": name, "proto": "static"})
+                .as_object()
+                .unwrap()
+                .clone(),
+            ..Default::default()
+        });
+    }
+    let types: Vec<(String, String)> = [
+        "lan0",
+        "br-lan",
+        "lan0.20",
+        "lan0.30",
+        "pppoe-wan",
+        "wlan0",
+        "gre4-remote",
+        "eth9.7",
+        "wan0",
+        "mv0",
+        "tap0",
+    ]
+    .iter()
+    .map(|n| (n.to_string(), texts(&device_row(&m, n))[1].clone()))
+    .collect();
+    let want = [
+        ("lan0", "Port"),
+        ("br-lan", "Bridge"),
+        ("lan0.20", "VLAN 20"),
+        ("lan0.30", "VLAN 30 · 802.1ad"),
+        ("pppoe-wan", "PPPoE"),
+        ("wlan0", "Wi-Fi"),
+        ("gre4-remote", "Tunnel"),
+        ("eth9.7", "VLAN 7"),
+        ("wan0", "Virtual"),
+        ("mv0", "Virtual"),
+        ("tap0", "Virtual"),
+    ]
+    .map(|(n, t)| (n.to_string(), t.to_string()));
+    assert_eq!(types, want);
+    // Words, so the column is sans and the shell looks them up.
+    let column = &card(&m, "Devices")["children"][0]["columns"][1];
+    assert_eq!(column["kind"], "text");
+    // The drawer's mark is the same list's.
+    assert_eq!(cards(&drawer_of(&m, "", "lan0.20"))[0]["icon"], "tag");
+    assert_eq!(
+        cards(&drawer_of(&m, "", "lan0"))[0]["icon"],
+        "ethernet-port"
+    );
 }
 #[test]
 fn kernel_made_devices_without_a_use_have_no_row() {
@@ -791,7 +871,7 @@ fn addresses_are_observed_and_ipv6_assignments_stay_in_details() {
     m.live["interfaces"][0]["ipv6-prefix-assignment"] =
         json!([{"local-address":{"address":"fd42:7ea:aa00::1","mask":60}}]);
     m.live["devices"]["br-lan"]["type"] = json!("bridge");
-    assert_eq!(texts(&device_row(&m, "br-lan"))[1], "bridge");
+    assert_eq!(texts(&device_row(&m, "br-lan"))[1], "Bridge");
     assert_eq!(texts(&network_row(&m, "lan"))[2], "192.168.1.1/24");
     assert!(cards(&drawer_of(&m, "lan", ""))[0]
         .to_string()
@@ -1465,7 +1545,7 @@ fn a_ports_link_speed_is_a_rate_the_shell_writes() {
     m.live["devices"]["eth2"] = json!({"physical":true,"kind":"port","speed":"2500F"});
     m.live["devices"]["eth1"] = json!({"physical":true,"kind":"port","up":true});
     let row = device_row(&m, "eth2");
-    assert_eq!(row["cells"][1]["text"], "port");
+    assert_eq!(row["cells"][1]["text"], "Port");
     assert_eq!(row["cells"][1]["rate"], 2.5e9);
     assert!(device_row(&m, "eth1")["cells"][1].get("rate").is_none());
 }

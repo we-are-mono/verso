@@ -2243,7 +2243,8 @@ Device, Zone, State, acts); a DHCPv6 network on another network's device, or
 riding it by name (`@wan`), is that network's IPv6 companion and has no row of
 its own; a row's state is its network's own, the companion's standing in the
 Status card as "IPv6 state". **Devices** has one row per device (Device, Type
-with a port's link speed as `rate`, Used by as mono names, State, acts); a
+in words from one closed list with a port's link speed as `rate`, Used by as
+mono names, State, acts); a
 software device the kernel made that nothing names or uses has none. A network
 row's acts are power, restart, edit and delete; a device row's edit and
 delete. An act with no `icon` is a slot the row has no act for: it holds its

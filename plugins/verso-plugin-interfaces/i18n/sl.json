@@ -310,5 +310,8 @@
   "Choose when to request an address.": "Izberite, kdaj zahtevati naslov.",
   "Choose a prefix size to request.": "Izberite velikost predpone, ki jo želite zahtevati.",
   "The router reports no devices.": "Usmerjevalnik ne poroča o nobeni napravi.",
-  "No networks are configured or reported by the router.": "Usmerjevalnik nima nastavljenih ali sporočenih omrežij."
+  "No networks are configured or reported by the router.": "Usmerjevalnik nima nastavljenih ali sporočenih omrežij.",
+  "Port": "Vrata",
+  "Virtual": "Navidezna",
+  "Wi-Fi": "Wi-Fi"
 }

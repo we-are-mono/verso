@@ -5,6 +5,7 @@ use verso_plugin::{
     Widget,
 };
 mod editor;
+mod kind;
 mod model;
 mod page;
 mod routes;

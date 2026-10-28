@@ -3,7 +3,8 @@
 //! The Status card that leads an existing object's drawer: what the router
 //! reports about a network or a device, none of it anything the drawer's form
 //! sets.
-use crate::page::{glyph, kind, l3, state};
+use crate::kind::DeviceKind;
+use crate::page::{l3, state};
 use crate::Model;
 use serde_json::Value;
 use std::net::Ipv6Addr;
@@ -216,7 +217,7 @@ pub fn network(m: &Model, net: &str) -> Widget {
 /// that carries no network says its own addresses.
 pub fn device(m: &Model, name: &str) -> Widget {
     let runtime = m.live.get("devices").and_then(|v| v.get(name));
-    let kind = kind(m, name, runtime);
+    let kind = DeviceKind::of(m, name, runtime);
     let carries: Vec<String> = m
         .networks
         .iter()
@@ -236,7 +237,7 @@ pub fn device(m: &Model, name: &str) -> Widget {
         prose("State", state(m, &carries, runtime, used).0),
         copied("MAC address", text(runtime.and_then(|v| v.get("macaddr")))),
     ];
-    if kind == "bridge" {
+    if kind == DeviceKind::Bridge {
         facts.push(fact("Ports", m.bridge_ports(name).join(", ")));
     } else {
         facts.push(match speed(runtime) {
@@ -262,5 +263,5 @@ pub fn device(m: &Model, name: &str) -> Widget {
             }
         }
     }
-    card(glyph(&kind), vec![Widget::properties(facts)], vec![])
+    card(kind.glyph(), vec![Widget::properties(facts)], vec![])
 }

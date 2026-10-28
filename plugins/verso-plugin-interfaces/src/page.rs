@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 // SPDX-FileCopyrightText: 2026 Mono Technologies Inc.
 use crate::editor::url;
+use crate::kind::DeviceKind;
 use crate::status::{addresses, speed};
 use crate::{Model, ROOT};
 use serde_json::Value;
@@ -21,56 +22,6 @@ fn cell(s: impl Into<String>) -> TableCell {
         text: s.into(),
         ..Default::default()
     }
-}
-// glyph is the mark of a device's kind, the same one the chooser makes it
-// with: a bridge, a VLAN, a tunnel or a physical port, else a device defined
-// in software.
-pub(crate) fn glyph(kind: &str) -> &'static str {
-    match kind {
-        "bridge" => "git-merge",
-        k if k.starts_with("vlan") => "tag",
-        k if k.starts_with("port") => "ethernet-port",
-        "pppoe" | "tunnel" | "sit" | "ip6tnl" | "gre" | "gretap" | "vxlan" | "wireguard" => {
-            "git-branch"
-        }
-        _ => "cpu",
-    }
-}
-// kind is what a device is, as the config makes it or the kernel reports it.
-pub(crate) fn kind(m: &Model, name: &str, runtime: Option<&Value>) -> String {
-    if let Some(d) = m.device(name) {
-        let typ = d.get("type");
-        if matches!(typ.as_str(), "8021q" | "8021ad") {
-            return format!("vlan {}", d.get("vid"));
-        }
-        if !typ.is_empty() {
-            return typ;
-        }
-    }
-    let runtime_kind = text(runtime.and_then(|v| v.get("kind")));
-    let devtype = text(runtime.and_then(|v| v.get("devtype")));
-    let typ = text(runtime.and_then(|v| v.get("type")));
-    if typ == "bridge" || devtype == "bridge" || runtime_kind == "bridge" {
-        return "bridge".into();
-    }
-    if name.starts_with("pppoe-") {
-        return "pppoe".into();
-    }
-    if let Some((_, vid)) = name.rsplit_once('.') {
-        if vid.parse::<u16>().is_ok() {
-            return format!("vlan {vid}");
-        }
-    }
-    if !runtime_kind.is_empty() {
-        return runtime_kind;
-    }
-    if !devtype.is_empty() {
-        return devtype;
-    }
-    if !typ.is_empty() && typ != "Network device" {
-        return typ.to_lowercase();
-    }
-    EM_DASH.into()
 }
 pub(crate) fn state(
     m: &Model,
@@ -397,7 +348,7 @@ fn used_by(
 fn device_row(m: &Model, name: &str, users: &[String], nets: &[String]) -> TableRow {
     let runtime = m.live.get("devices").and_then(|v| v.get(name));
     let configured = m.device(name).is_some();
-    let kind = kind(m, name, runtime);
+    let kind = DeviceKind::of(m, name, runtime);
     let used = !users.is_empty()
         || m.devices
             .iter()
@@ -421,8 +372,12 @@ fn device_row(m: &Model, name: &str, users: &[String], nets: &[String]) -> Table
         cells: vec![
             cell(name),
             TableCell {
-                rate: if kind == "port" { speed(runtime) } else { None },
-                ..cell(kind)
+                rate: if kind == DeviceKind::Port {
+                    speed(runtime)
+                } else {
+                    None
+                },
+                ..cell(kind.label())
             },
             cell(if users.is_empty() {
                 EM_DASH.to_string()
@@ -509,7 +464,7 @@ fn inventory(m: &Model, drawer: Option<RowDrawer>) -> Envelope {
     let devices = Table {
         columns: columns(&[
             ("Device", "mono"),
-            ("Type", "keyword"),
+            ("Type", "text"),
             ("Used by", "mono"),
             ("State", "status"),
             ("", "actions"),

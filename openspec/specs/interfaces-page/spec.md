@@ -44,7 +44,11 @@ The Devices table SHALL show the columns Device, Type, Used by, State and the ac
 
 #### Scenario: A bridge and its port
 - **WHEN** the operator reads `br-lan` and `lan0`
-- **THEN** `br-lan` reads `bridge`, used by `lan`, and `lan0` reads `port` with its speed, used by `br-lan`
+- **THEN** `br-lan` reads Bridge, used by `lan`, and `lan0` reads Port with its speed, used by `br-lan`
+
+#### Scenario: One list of types
+- **WHEN** the Devices card lists a port, a bridge, an 802.1Q and an 802.1ad VLAN, a PPPoE session, a Wi-Fi interface, a tunnel and a veth
+- **THEN** their types read Port, Bridge, VLAN 20, VLAN 30 · 802.1ad, PPPoE, Wi-Fi, Tunnel and Virtual, in words, and a kind outside the list reads Virtual
 
 ### Requirement: A row is one line that opens its drawer from its pencil
 Each row SHALL stand on one line and SHALL NOT unfold. Its acts SHALL stand in the order power, restart, edit, delete, each where the row has it. The edit act (the pencil) SHALL open the row's drawer over the listing; no row carries an info act.
