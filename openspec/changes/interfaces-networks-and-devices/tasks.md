@@ -5,19 +5,19 @@ Every task ends green under `make lint` and `make test`.
 
 ## 1. Companion resolution in the model
 
-- [ ] 1.1 Test `a_dhcpv6_network_on_the_same_device_is_its_networks_companion` (same-device `wan`/`wan6`, `@wan` under PPPoE), then add `Model::companion` and `Model::companion_of` in `model.rs`; verify the test passes
-- [ ] 1.2 Test `contended_dhcpv6_networks_stay_their_own` (two DHCPv6 on one device; one DHCPv6 beside two candidates), then cover contention in the resolver; verify the test passes
+- [x] 1.1 Test `a_dhcpv6_network_on_the_same_device_is_its_networks_companion` (same-device `wan`/`wan6`, `@wan` under PPPoE), then add `Model::companion` and `Model::companion_of` in `model.rs`; verify the test passes
+- [x] 1.2 Test `contended_dhcpv6_networks_stay_their_own` (two DHCPv6 on one device; one DHCPv6 beside two candidates), then cover contention in the resolver; verify the test passes
 
 ## 2. Networks and Devices cards
 
-- [ ] 2.1 Test `the_page_holds_networks_then_devices` (lab fixture: Networks `lan`, `mgmt`, `wan`; Devices `br-lan`, `eth0`, `lan0`, `wan0`; no `wan6`, no loopback), then split `page.rs`'s inventory into a networks table and a devices table in a stack of two sections; verify the test passes
-- [ ] 2.2 Test `networks_columns_read_name_protocol_address_device_zone_state` (lan with DHCP chip, `static`, `192.168.77.1/24`, `br-lan`, `lan`, `up`), then build the network rows; replace `the_listing_reads_device_type_address_and_state`; verify the test passes
-- [ ] 2.3 Test `devices_columns_read_device_type_used_by_state` (`br-lan` used by `lan`, `lan0` a port with speed used by `br-lan`, a VLAN used by its network), then build the device rows; verify the test passes
-- [ ] 2.4 Test `kernel_made_devices_without_a_use_have_no_row` (`sit0`, `ip6tnl0` hidden; unused physical `eth2` listed `unused`; `sit0` listed once a network names it), then filter the device rows; verify the test passes
-- [ ] 2.5 Test `rows_open_their_drawer_from_the_pencil` (network acts power, restart, edit, delete; `lan0` only edit; unused configured VLAN edit and delete; no info act anywhere), then set the acts and each row's `panel` to its `/edit` address; replace `a_row_is_one_line_that_opens_its_drawer_from_the_info_act`; verify the test passes
-- [ ] 2.6 Test `a_networks_row_reads_and_acts_on_its_companion` (`partial` when `wan6` is down; restart posts commands for `wan` and `wan6`; delete stages both and its confirmation names `wan6`), then extend `state`, `editor::action` and `editor::delete`; verify the test passes
-- [ ] 2.7 Retire the shell's `interfaces` table style: test in `internal/widget` that a table with style `interfaces` renders as the default flat table, then remove the branch in `table.go`, the `table.interfaces` template and `table_interfaces_test.go`; verify `go test ./internal/widget/...`
-- [ ] 2.8 Update `docs/plugins.md`'s Interfaces inventory section (two cards, columns, row acts, no `interfaces` style) and `DESIGN.md`'s "An interface's drawer" paragraph for the rows; verify both read as what the code does
+- [x] 2.1 Test `the_page_holds_networks_then_devices` (lab fixture: Networks `lan`, `mgmt`, `wan`; Devices `br-lan`, `eth0`, `lan0`, `wan0`; no `wan6`, no loopback), then split `page.rs`'s inventory into a networks table and a devices table in a stack of two sections; verify the test passes
+- [x] 2.2 Test `networks_columns_read_name_protocol_address_device_zone_state` (lan with DHCP chip, `static`, `192.168.77.1/24`, `br-lan`, `lan`, `up`), then build the network rows; replace `the_listing_reads_device_type_address_and_state`; verify the test passes
+- [x] 2.3 Test `devices_columns_read_device_type_used_by_state` (`br-lan` used by `lan`, `lan0` a port with speed used by `br-lan`, a VLAN used by its network), then build the device rows; verify the test passes
+- [x] 2.4 Test `kernel_made_devices_without_a_use_have_no_row` (`sit0`, `ip6tnl0` hidden; unused physical `eth2` listed `unused`; `sit0` listed once a network names it), then filter the device rows; verify the test passes
+- [x] 2.5 Test `rows_open_their_drawer_from_the_pencil` (network acts power, restart, edit, delete; `lan0` only edit; unused configured VLAN edit and delete; no info act anywhere), then set the acts and each row's `panel` to its `/edit` address; replace `a_row_is_one_line_that_opens_its_drawer_from_the_info_act`; verify the test passes
+- [x] 2.6 Test `a_networks_row_reads_and_acts_on_its_companion` (`partial` when `wan6` is down; restart posts commands for `wan` and `wan6`; delete stages both and its confirmation names `wan6`), then extend `state`, `editor::action` and `editor::delete`; verify the test passes
+- [x] 2.7 Retire the shell's `interfaces` table style: test in `internal/widget` that a table with style `interfaces` renders as the default flat table, then remove the branch in `table.go`, the `table.interfaces` template and `table_interfaces_test.go`; verify `go test ./internal/widget/...`
+- [x] 2.8 Update `docs/plugins.md`'s Interfaces inventory section (two cards, columns, row acts, no `interfaces` style) and `DESIGN.md`'s "An interface's drawer" paragraph for the rows; verify both read as what the code does
 
 ## 3. One drawer per object, Status on top
 

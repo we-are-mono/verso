@@ -52,12 +52,15 @@ impl Values {
         v
     }
 }
+/// url is the address of a route about a network or a device, naming only
+/// the one it is about.
 pub fn url(network: &str, device: &str, route: &str) -> String {
-    format!(
-        "{ROOT}{route}?network={}&device={}",
-        verso_plugin::url_encode(network),
-        verso_plugin::url_encode(device)
-    )
+    let named: Vec<String> = [("network", network), ("device", device)]
+        .into_iter()
+        .filter(|(_, v)| !v.is_empty())
+        .map(|(k, v)| format!("{k}={}", verso_plugin::url_encode(v)))
+        .collect();
+    format!("{ROOT}{route}?{}", named.join("&"))
 }
 fn defaults(m: &Model, kind: &str, network: &str, device: &str) -> Values {
     let mut v = Values::default();
@@ -987,16 +990,25 @@ fn named(config: &str, typ: &str, name: &str, values: Value) -> CommitOp {
     op.section = name.into();
     op
 }
-fn relationships(m: &Model, old: &str, name: &str, zone: &str, ops: &mut Vec<CommitOp>) {
+// relationships stages what names networks elsewhere: the firewall zone
+// they stand in, the Wi-Fi networks and the routes on them. `moves` pairs
+// each network's old name with its new one, empty when it goes; every new
+// name stands in `zone`.
+fn relationships(m: &Model, moves: &[(&str, &str)], zone: &str, ops: &mut Vec<CommitOp>) {
     for z in &m.zones {
         let before = z.list("network");
         let mut after: Vec<String> = before
             .iter()
-            .filter(|n| *n != old && *n != name)
+            .filter(|n| !moves.iter().any(|(old, name)| n == old || n == name))
             .cloned()
             .collect();
-        if z.get("name") == zone && !name.is_empty() {
-            after.push(name.into());
+        if z.get("name") == zone {
+            after.extend(
+                moves
+                    .iter()
+                    .filter(|(_, name)| !name.is_empty())
+                    .map(|(_, name)| name.to_string()),
+            );
         }
         if after != before {
             ops.push(commit(
@@ -1006,6 +1018,13 @@ fn relationships(m: &Model, old: &str, name: &str, zone: &str, ops: &mut Vec<Com
             ));
         }
     }
+    for (old, name) in moves {
+        renamed(m, old, name, ops);
+    }
+}
+// renamed carries a network's new name to the Wi-Fi networks and routes that
+// name it, or lets them go with it.
+fn renamed(m: &Model, old: &str, name: &str, ops: &mut Vec<CommitOp>) {
     if old != name && !old.is_empty() {
         for w in &m.wireless {
             let before = w.list("network");
@@ -1186,7 +1205,7 @@ fn operations(m: &Model, kind: &str, network: &str, device: &str, v: &Values) ->
         } else {
             ops.push(commit("network", network, json!(values)));
         }
-        relationships(m, network, &name, &v.get("zone"), &mut ops);
+        relationships(m, &[(network, &name)], &v.get("zone"), &mut ops);
         // A new network starts with a DHCP server of the daemon's defaults,
         // named after it as OpenWrt names its own; one renamed keeps its
         // server, which follows the new name. Editing the server is the DHCP
@@ -1233,7 +1252,14 @@ pub fn delete_page(m: &Model, network: &str, device: &str) -> Envelope {
         )
         .with_back("Interfaces", ROOT);
     }
-    Envelope::page("Delete interface",Widget::Form{style:"page".into(),submit:String::new(),error:String::new(),note:String::new(),target:String::new(),fields:vec![Widget::hidden("delete","1"),Widget::code("Name",if network.is_empty(){device}else{network}),Widget::Confirm{trigger:"Delete interface".into(),title:"Delete interface?".into(),message:"Its DHCP settings and network references will also be removed. The change takes effect when you apply.".into(),confirm:"Delete interface".into(),cancel:"Cancel".into()}]}).with_back("Interfaces",ROOT).with_width("narrow")
+    let companion = match m.companion(network) {
+        Some(c) => format!("Its IPv6 half, {}, is deleted with it. ", c.id),
+        None => String::new(),
+    };
+    let message = format!(
+        "{companion}Its DHCP settings and network references will also be removed. The change takes effect when you apply."
+    );
+    Envelope::page("Delete interface",Widget::Form{style:"page".into(),submit:String::new(),error:String::new(),note:String::new(),target:String::new(),fields:vec![Widget::hidden("delete","1"),Widget::code("Name",if network.is_empty(){device}else{network}),Widget::Confirm{trigger:"Delete interface".into(),title:"Delete interface?".into(),message,confirm:"Delete interface".into(),cancel:"Cancel".into()}]}).with_back("Interfaces",ROOT).with_width("narrow")
 }
 pub fn delete(m: &Model, network: &str, device: &str, f: &Form) -> Envelope {
     if f.get("delete") != "1" || delete_blocked(m, network, device) {
@@ -1241,13 +1267,20 @@ pub fn delete(m: &Model, network: &str, device: &str, f: &Form) -> Envelope {
     }
     let mut ops = vec![];
     if !network.is_empty() {
-        relationships(m, network, "", "", &mut ops);
+        // A network goes with its IPv6 companion: they are one line.
+        let gone: Vec<&str> = std::iter::once(network)
+            .chain(m.companion(network).map(|c| c.id.as_str()))
+            .collect();
+        let moves: Vec<(&str, &str)> = gone.iter().map(|n| (*n, "")).collect();
+        relationships(m, &moves, "", &mut ops);
         for d in &m.dhcp {
-            if d.get("interface") == network {
+            if gone.contains(&d.get("interface").as_str()) {
                 ops.push(commit_delete("dhcp", &d.id));
             }
         }
-        ops.push(commit_delete("network", network));
+        for n in gone {
+            ops.push(commit_delete("network", n));
+        }
     } else if let Some(d) = m.device(device) {
         ops.push(commit_delete("network", &d.id));
     }
@@ -1272,10 +1305,19 @@ pub fn action(m: &Model, f: &Form) -> Envelope {
         let mut page = crate::page::listing(m)
             .with_back("Interfaces", ROOT)
             .with_notice(Tone::Success, notice);
-        page.commands = vec![verso_plugin::ApplyAction {
-            name: format!("interface-{action}"),
-            args: BTreeMap::from([("interface".into(), id)]),
-        }];
+        // The line and its IPv6 companion are brought up, down and restarted
+        // together.
+        let companion = m
+            .companion(&id)
+            .filter(|c| m.live_network(&c.id).is_some())
+            .map(|c| c.id.clone());
+        page.commands = std::iter::once(id)
+            .chain(companion)
+            .map(|net| verso_plugin::ApplyAction {
+                name: format!("interface-{action}"),
+                args: BTreeMap::from([("interface".into(), net)]),
+            })
+            .collect();
         return page;
     }
     crate::missing()

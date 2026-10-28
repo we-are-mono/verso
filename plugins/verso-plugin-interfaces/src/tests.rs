@@ -9,7 +9,7 @@ fn request(path: &str, query: &str) -> Request {
         snapshot: Snapshot::from_value(fixture()),
         plugins: Default::default(),
         ubus: Ubus::from_value(
-            json!({"networkState":{"devices":{"eth0":{"up":true},"eth1":{"up":true},"eth2":{"up":false},"br-lan":{"up":true,"bridge":true}},"interfaces":[{"interface":"lan","l3_device":"br-lan","up":true,"ipv4-address":[{"address":"192.168.1.1","mask":24}]}]}}),
+            json!({"networkState":{"devices":{"eth0":{"up":true,"physical":true},"eth1":{"up":true,"physical":true},"eth2":{"up":false,"physical":true},"br-lan":{"up":true,"bridge":true}},"interfaces":[{"interface":"lan","l3_device":"br-lan","up":true,"ipv4-address":[{"address":"192.168.1.1","mask":24}]}]}}),
         ),
     }
 }
@@ -322,72 +322,173 @@ fn a_new_interface_saves_as_the_type_chosen() {
         .commit
         .is_empty());
 }
-#[test]
-fn a_row_is_one_line_that_opens_its_drawer_from_the_info_act() {
-    let m = Model::read(&request("/", ""));
-    let acts = |id: &str| -> Vec<(String, String)> {
-        inventory_row(&m, id)["cells"][4]["actions"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .filter(|a| a["icon"].as_str().is_some_and(|i| !i.is_empty()))
-            .map(|a| {
-                (
-                    a["title"].as_str().unwrap().to_string(),
-                    a["icon"].as_str().unwrap().to_string(),
-                )
-            })
-            .collect()
-    };
-    // The state first, what acts on it, the way in, the removal last.
-    assert_eq!(
-        acts("br-lan"),
-        [
-            ("Bring down".into(), "power".into()),
-            ("Restart".into(), "refresh-cw".into()),
-            ("Details".into(), "info".into()),
-            ("Delete".into(), "trash-2".into()),
-        ]
-    );
-    // An unused port is read, and nothing else.
-    assert_eq!(acts("eth2"), [("Details".into(), "info".into())]);
-    // The info act is the row's way in: its panel, at the drawer's address.
-    let row = inventory_row(&m, "br-lan");
-    let details = "/plugins/interfaces/details?device=br-lan";
-    assert_eq!(row["panel"], details);
-    assert_eq!(row["cells"][4]["actions"][2]["href"], details);
-    // No row unfolds, and none carries the pencil.
-    let listing = serde_json::to_string(&page::listing(&m)).unwrap();
-    assert!(!listing.contains("\"expanded\""), "{listing}");
-    assert!(!listing.contains("square-pen"), "{listing}");
-    assert!(listing.contains("192.168.1.1/24"));
+// lab is the router in the dev container: the LAN on a bridge over one port,
+// a management port, and an internet line with its DHCPv6 half.
+fn lab() -> Model {
+    let mut r = request("/", "");
+    let mut snapshot = fixture();
+    snapshot["network"] = json!({
+        "loopback":{".name":"loopback",".type":"interface",".index":0,"device":"lo","proto":"static"},
+        "mgmt":{".name":"mgmt",".type":"interface",".index":1,"device":"eth0","proto":"static","ipaddr":"172.20.0.10","netmask":"255.255.0.0"},
+        "br":{".name":"br",".type":"device",".index":2,"name":"br-lan","type":"bridge","ports":["lan0"]},
+        "lan":{".name":"lan",".type":"interface",".index":3,"device":"br-lan","proto":"static","ipaddr":"192.168.77.1","netmask":"255.255.255.0"},
+        "wan":{".name":"wan",".type":"interface",".index":4,"device":"wan0","proto":"dhcp"},
+        "wan6":{".name":"wan6",".type":"interface",".index":5,"device":"wan0","proto":"dhcpv6"}
+    });
+    snapshot["firewall"]["wan"]["network"] = json!(["wan", "wan6"]);
+    r.snapshot = Snapshot::from_value(snapshot);
+    r.ubus = Ubus::from_value(json!({"networkState":{
+        "devices":{
+            "br-lan":{"up":true,"carrier":true,"type":"bridge","bridge-members":["lan0"]},
+            "eth0":{"up":true,"carrier":true,"physical":false,"kind":"virtual"},
+            "lan0":{"up":true,"carrier":true,"physical":true,"kind":"port","speed":"1000F"},
+            "wan0":{"up":true,"carrier":true,"physical":false,"kind":"virtual"},
+            "sit0":{"up":false,"physical":false,"kind":"tunnel"},
+            "ip6tnl0":{"up":false,"physical":false,"kind":"tunnel"}
+        },
+        "interfaces":[
+            {"interface":"mgmt","l3_device":"eth0","up":true,"proto":"static","ipv4-address":[{"address":"172.20.0.10","mask":16}]},
+            {"interface":"lan","l3_device":"br-lan","up":true,"proto":"static","ipv4-address":[{"address":"192.168.77.1","mask":24}]},
+            {"interface":"wan","l3_device":"wan0","up":true,"proto":"dhcp","ipv4-address":[{"address":"172.30.1.171","mask":24}]},
+            {"interface":"wan6","l3_device":"wan0","up":true,"proto":"dhcpv6"}
+        ]}}));
+    Model::read(&r)
 }
-#[test]
-fn the_listing_reads_device_type_address_and_state() {
-    let listing = serde_json::to_value(page::listing(&Model::read(&request("/", "")))).unwrap();
-    let columns: Vec<_> = listing["widget"]["columns"]
+// card is the listing's card titled title: its table's rows and columns.
+fn card(m: &Model, title: &str) -> serde_json::Value {
+    fn find(v: &serde_json::Value, title: &str) -> Option<serde_json::Value> {
+        if v.get("type") == Some(&json!("section")) && v["title"] == title {
+            return Some(v.clone());
+        }
+        match v {
+            serde_json::Value::Object(o) => o.values().find_map(|v| find(v, title)),
+            serde_json::Value::Array(a) => a.iter().find_map(|v| find(v, title)),
+            _ => None,
+        }
+    }
+    find(&serde_json::to_value(page::listing(m)).unwrap(), title).expect(title)
+}
+fn ids(card: &serde_json::Value) -> Vec<String> {
+    card["children"][0]["rows"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|r| r["id"].as_str().unwrap().to_string())
+        .collect()
+}
+fn columns(card: &serde_json::Value) -> Vec<String> {
+    card["children"][0]["columns"]
         .as_array()
         .unwrap()
         .iter()
         .map(|c| c["label"].as_str().unwrap_or_default().to_string())
+        .collect()
+}
+fn network_row(m: &Model, id: &str) -> serde_json::Value {
+    row_in(&card(m, "Networks"), id)
+}
+fn device_row(m: &Model, id: &str) -> serde_json::Value {
+    row_in(&card(m, "Devices"), id)
+}
+fn row_in(card: &serde_json::Value, id: &str) -> serde_json::Value {
+    card["children"][0]["rows"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|r| r["id"] == id)
+        .cloned()
+        .unwrap_or_else(|| panic!("no row {id} in {card}"))
+}
+// texts are a row's cells as read, a chip cell by its chips' labels.
+fn texts(row: &serde_json::Value) -> Vec<String> {
+    row["cells"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|c| {
+            let mut said = c["text"].as_str().unwrap_or_default().to_string();
+            for chip in c["chips"].as_array().into_iter().flatten() {
+                said.push_str(&format!(" [{}]", chip["label"].as_str().unwrap()));
+            }
+            said.trim().to_string()
+        })
+        .collect()
+}
+// acts are a row's acts as (title, glyph), the slots it has none for left out.
+fn acts(row: &serde_json::Value) -> Vec<(String, String)> {
+    row["cells"]
+        .as_array()
+        .unwrap()
+        .last()
+        .unwrap()["actions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|a| a["icon"].as_str().is_some_and(|i| !i.is_empty()))
+        .map(|a| {
+            (
+                a["title"].as_str().unwrap().to_string(),
+                a["icon"].as_str().unwrap().to_string(),
+            )
+        })
+        .collect()
+}
+#[test]
+fn the_page_holds_networks_then_devices() {
+    let m = lab();
+    let listing = serde_json::to_value(page::listing(&m)).unwrap();
+    let titles: Vec<_> = listing["widget"]["children"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|s| s["title"].as_str().unwrap().to_string())
         .collect();
+    assert_eq!(titles, ["Networks", "Devices"], "{listing}");
+    // Both are live: the shell refreshes their rows as the router changes.
+    for title in ["Networks", "Devices"] {
+        assert_eq!(card(&m, title)["children"][0]["style"], "live");
+    }
+    // The networks in the order the config holds them, loopback and the
+    // internet line's DHCPv6 half left out.
+    assert_eq!(ids(&card(&m, "Networks")), ["mgmt", "lan", "wan"]);
+    let devices = ids(&card(&m, "Devices"));
+    for name in ["br-lan", "eth0", "lan0", "wan0"] {
+        assert!(devices.contains(&name.to_string()), "{devices:?}");
+    }
+    assert!(!devices.contains(&"lo".to_string()), "{devices:?}");
+    // A network netifd reports not active is still listed.
+    let mut m = lab();
+    m.networks.push(model::Record {
+        id: "guest".into(),
+        values: json!({"device":"eth2","proto":"static"})
+            .as_object()
+            .unwrap()
+            .clone(),
+        ..Default::default()
+    });
+    assert_eq!(texts(&network_row(&m, "guest"))[5], "not active");
+}
+#[test]
+fn networks_columns_read_name_protocol_address_device_zone_state() {
+    let m = lab();
     assert_eq!(
-        columns,
-        ["Device · network", "Type", "Address", "State", ""]
+        columns(&card(&m, "Networks")),
+        ["Network", "Protocol", "Address", "Device", "Zone", "State", ""]
+    );
+    assert_eq!(
+        texts(&network_row(&m, "lan"))[..6],
+        ["lan [DHCP]", "static", "192.168.77.1/24", "br-lan", "lan", "up"]
+    );
+    assert_eq!(network_row(&m, "lan")["cells"][2]["copy"], true);
+    assert_eq!(
+        texts(&network_row(&m, "wan"))[..6],
+        ["wan", "dhcp", "172.30.1.171/24", "wan0", "wan", "up"]
     );
 }
 #[test]
 fn a_rows_dhcp_chip_stands_only_for_a_network_with_a_server() {
     let m = Model::read(&request("/", ""));
-    let chips = |id: &str| -> Vec<String> {
-        inventory_row(&m, id)["cells"][0]["chips"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .map(|c| c["label"].as_str().unwrap_or_default().to_string())
-            .collect()
-    };
-    assert!(chips("br-lan").contains(&"DHCP".to_string()));
+    assert!(texts(&network_row(&m, "lan"))[0].contains("[DHCP]"));
     // The uplink's section says not to serve there: no server, no chip.
     let mut r = request("/", "");
     r.snapshot = Snapshot::from_value(json!({
@@ -395,8 +496,144 @@ fn a_rows_dhcp_chip_stands_only_for_a_network_with_a_server() {
         "dhcp":{"wan":{".name":"wan",".type":"dhcp","interface":"uplink","ignore":"1"}}
     }));
     let m = Model::read(&r);
-    let uplink = serde_json::to_string(&inventory_row(&m, "eth1")).unwrap();
+    let uplink = serde_json::to_string(&network_row(&m, "uplink")).unwrap();
     assert!(!uplink.contains("\"DHCP\""), "{uplink}");
+}
+#[test]
+fn devices_columns_read_device_type_used_by_state() {
+    let mut m = lab();
+    m.devices.push(model::Record {
+        id: "vlan20".into(),
+        values: json!({"name":"lan0.20","type":"8021q","ifname":"lan0","vid":"20"})
+            .as_object()
+            .unwrap()
+            .clone(),
+        ..Default::default()
+    });
+    assert_eq!(
+        columns(&card(&m, "Devices")),
+        ["Device", "Type", "Used by", "State", ""]
+    );
+    assert_eq!(
+        texts(&device_row(&m, "br-lan"))[..4],
+        ["br-lan", "bridge", "[lan]", "up"]
+    );
+    let lan0 = device_row(&m, "lan0");
+    assert_eq!(texts(&lan0)[..4], ["lan0", "port", "[br-lan] [lan0.20]", "up"]);
+    assert_eq!(lan0["cells"][1]["rate"], 1e9);
+    assert_eq!(lan0["cells"][2]["chips"][0]["icon"], "git-merge");
+    assert_eq!(lan0["cells"][2]["chips"][1]["icon"], "tag");
+    // The internet line's device names the line, not its DHCPv6 half.
+    assert_eq!(texts(&device_row(&m, "wan0"))[2], "[wan]");
+    assert_eq!(device_row(&m, "wan0")["cells"][2]["chips"][0]["kind"], "network");
+}
+#[test]
+fn kernel_made_devices_without_a_use_have_no_row() {
+    let m = lab();
+    let devices = ids(&card(&m, "Devices"));
+    assert!(!devices.contains(&"sit0".to_string()), "{devices:?}");
+    assert!(!devices.contains(&"ip6tnl0".to_string()), "{devices:?}");
+    // An unused port is still the router's, and listed.
+    let mut m = lab();
+    m.live["devices"]["eth2"] = json!({"up":false,"physical":true,"kind":"port"});
+    assert_eq!(texts(&device_row(&m, "eth2"))[3], "unused");
+    // A tunnel base put to use is listed.
+    m.networks.push(model::Record {
+        id: "six".into(),
+        values: json!({"device":"sit0","proto":"6in4"}).as_object().unwrap().clone(),
+        ..Default::default()
+    });
+    assert!(ids(&card(&m, "Devices")).contains(&"sit0".to_string()));
+}
+#[test]
+fn rows_open_their_drawer_from_the_pencil() {
+    let mut m = lab();
+    m.devices.push(model::Record {
+        id: "vlan20".into(),
+        values: json!({"name":"eth1.20","type":"8021q","ifname":"eth1","vid":"20"})
+            .as_object()
+            .unwrap()
+            .clone(),
+        ..Default::default()
+    });
+    let pair = |t: &str, i: &str| (t.to_string(), i.to_string());
+    // The state first, what acts on it, the way in, the removal last.
+    assert_eq!(
+        acts(&network_row(&m, "lan")),
+        [
+            pair("Bring down", "power"),
+            pair("Restart", "refresh-cw"),
+            pair("Edit", "square-pen"),
+            pair("Delete", "trash-2"),
+        ]
+    );
+    // A device in use is edited, never deleted; one nothing uses can go.
+    assert_eq!(acts(&device_row(&m, "lan0")), [pair("Edit", "square-pen")]);
+    assert_eq!(
+        acts(&device_row(&m, "eth1.20")),
+        [pair("Edit", "square-pen"), pair("Delete", "trash-2")]
+    );
+    // The pencil is the row's way in: its panel, at the drawer's address.
+    let lan = network_row(&m, "lan");
+    assert_eq!(lan["panel"], "/plugins/interfaces/edit?network=lan");
+    assert_eq!(lan["cells"][6]["actions"][2]["href"], lan["panel"]);
+    assert_eq!(
+        device_row(&m, "br-lan")["panel"],
+        "/plugins/interfaces/edit?device=br-lan"
+    );
+    // No row unfolds, and none carries an info act.
+    let listing = serde_json::to_string(&page::listing(&m)).unwrap();
+    assert!(!listing.contains("\"expanded\""), "{listing}");
+    assert!(!listing.contains("\"info\""), "{listing}");
+}
+#[test]
+fn a_networks_row_reads_and_acts_on_its_companion() {
+    let mut m = lab();
+    m.live["interfaces"][3]["up"] = json!(false);
+    assert_eq!(texts(&network_row(&m, "wan"))[5], "partial");
+    // Restarting the line restarts both halves.
+    let line = |path: &str, query: &str| {
+        let mut r = request(path, query);
+        r.snapshot = Snapshot::from_value(json!({
+            "network":{
+                "wan":{".name":"wan",".type":"interface","device":"wan0","proto":"dhcp"},
+                "wan6":{".name":"wan6",".type":"interface","device":"wan0","proto":"dhcpv6"}},
+            "firewall":{"wan":{".name":"wan",".type":"zone","name":"wan","network":["wan","wan6"]}}
+        }));
+        r.ubus = Ubus::from_value(json!({"networkState":{"devices":{},"interfaces":[
+            {"interface":"wan","l3_device":"wan0","up":true},
+            {"interface":"wan6","l3_device":"wan0","up":true}]}}));
+        r
+    };
+    for action in ["restart", "down"] {
+        let e = post(&line("/", ""), &Form::parse(&format!("{action}=wan")));
+        let named: Vec<_> = e
+            .commands
+            .iter()
+            .map(|c| (c.name.clone(), c.args["interface"].clone()))
+            .collect();
+        assert_eq!(
+            named,
+            [
+                (format!("interface-{action}"), "wan".to_string()),
+                (format!("interface-{action}"), "wan6".to_string()),
+            ]
+        );
+    }
+    // Deleting the line names its half and removes both.
+    let d = line("/delete", "network=wan");
+    let confirm = serde_json::to_string(&get(&d)).unwrap();
+    assert!(confirm.contains("wan6"), "{confirm}");
+    let e = post(&d, &Form::parse("delete=1"));
+    let removed: Vec<_> = e
+        .commit
+        .iter()
+        .filter(|o| o.delete && o.config == "network")
+        .map(|o| o.section.clone())
+        .collect();
+    assert_eq!(removed, ["wan", "wan6"]);
+    let zone = e.commit.iter().find(|o| o.config == "firewall").unwrap();
+    assert_eq!(zone.values["network"], serde_json::Value::Null);
 }
 #[test]
 fn tunnel_writes_real_protocol_options() {
@@ -470,19 +707,6 @@ fn a_new_network_cannot_have_an_empty_name() {
         .contains("starting with a letter"));
 }
 
-fn inventory_row(m: &Model, id: &str) -> serde_json::Value {
-    fn find(v: &serde_json::Value, id: &str) -> Option<serde_json::Value> {
-        if v.get("id").and_then(serde_json::Value::as_str) == Some(id) && v.get("cells").is_some() {
-            return Some(v.clone());
-        }
-        match v {
-            serde_json::Value::Object(o) => o.values().find_map(|v| find(v, id)),
-            serde_json::Value::Array(a) => a.iter().find_map(|v| find(v, id)),
-            _ => None,
-        }
-    }
-    find(&serde_json::to_value(page::listing(m)).unwrap(), id).unwrap()
-}
 #[test]
 fn runtime_flags_win_over_staged_autostart_and_device_state() {
     let mut m = Model::read(&request("/", ""));
@@ -495,24 +719,25 @@ fn runtime_flags_win_over_staged_autostart_and_device_state() {
     m.live["interfaces"][0]["up"] = json!(true);
     m.live["devices"]["br-lan"]["up"] = json!(true);
     m.live["devices"]["br-lan"]["carrier"] = json!(true);
-    let row = inventory_row(&m, "br-lan");
-    assert_eq!(row["cells"][3]["text"], "up");
+    let state = |m: &Model| texts(&network_row(m, "lan"))[5].clone();
+    let row = network_row(&m, "lan");
+    assert_eq!(state(&m), "up");
     // The state's act leads the row's acts, as a rule's power glyph does.
-    assert_eq!(row["cells"][4]["actions"][0]["name"], "down");
-    let icons: Vec<&str> = row["cells"][4]["actions"]
+    assert_eq!(row["cells"][6]["actions"][0]["name"], "down");
+    let icons: Vec<&str> = row["cells"][6]["actions"]
         .as_array()
         .expect("acts")
         .iter()
         .map(|a| a["icon"].as_str().unwrap_or_default())
         .collect();
-    assert_eq!(icons, ["power", "refresh-cw", "info", "trash-2"]);
+    assert_eq!(icons, ["power", "refresh-cw", "square-pen", "trash-2"]);
     m.live["interfaces"][0]["up"] = json!(false);
-    assert_eq!(inventory_row(&m, "br-lan")["cells"][3]["text"], "down");
+    assert_eq!(state(&m), "down");
     m.live["interfaces"][0]["pending"] = json!(true);
-    assert_eq!(inventory_row(&m, "br-lan")["cells"][3]["text"], "pending");
+    assert_eq!(state(&m), "pending");
     m.live["interfaces"][0]["pending"] = json!(false);
     m.live["devices"]["br-lan"]["carrier"] = json!(false);
-    assert_eq!(inventory_row(&m, "br-lan")["cells"][3]["text"], "no link");
+    assert_eq!(state(&m), "no link");
 }
 #[test]
 fn addresses_are_observed_and_ipv6_assignments_stay_in_details() {
@@ -520,19 +745,15 @@ fn addresses_are_observed_and_ipv6_assignments_stay_in_details() {
     m.live["interfaces"][0]["ipv6-prefix-assignment"] =
         json!([{"local-address":{"address":"fd42:7ea:aa00::1","mask":60}}]);
     m.live["devices"]["br-lan"]["type"] = json!("bridge");
-    let row = inventory_row(&m, "br-lan");
-    assert_eq!(row["cells"][1]["text"], "bridge");
-    assert_eq!(row["cells"][2]["text"], "192.168.1.1/24");
+    assert_eq!(texts(&device_row(&m, "br-lan"))[1], "bridge");
+    assert_eq!(texts(&network_row(&m, "lan"))[2], "192.168.1.1/24");
     assert!(serde_json::to_string(&cards(&m, "br-lan"))
         .unwrap()
         .contains("fd42:7ea:aa00::1/60"));
     m.live["interfaces"][0]["ipv4-address"] = json!([]);
-    assert_eq!(inventory_row(&m, "br-lan")["cells"][2]["text"], "—");
+    assert_eq!(texts(&network_row(&m, "lan"))[2], "—");
     m.live = serde_json::Value::Null;
-    assert_eq!(
-        inventory_row(&m, "br-lan")["cells"][3]["text"],
-        "not reported"
-    );
+    assert_eq!(texts(&network_row(&m, "lan"))[5], "not reported");
 }
 #[test]
 fn physical_bridge_ports_are_roots_and_vlan_and_ppp_follow_their_transport() {
@@ -542,15 +763,20 @@ fn physical_bridge_ports_are_roots_and_vlan_and_ppp_follow_their_transport() {
         .as_array_mut()
         .unwrap()
         .push(json!({"interface":"uplink","l3_device":"pppoe-wan","up":true}));
+    m.networks.push(model::Record {
+        id: "iot".into(),
+        values: json!({"device":"eth0.20","proto":"static"})
+            .as_object()
+            .unwrap()
+            .clone(),
+        ..Default::default()
+    });
     let parents = m.parents();
     assert!(!parents.contains_key("eth0"));
     assert_eq!(parents["eth0.20"], "eth0");
     assert_eq!(parents["pppoe-wan"], "eth1");
     assert!(follows(&m, "eth0.20", "eth0"));
-    assert_eq!(
-        inventory_row(&m, "pppoe-wan")["cells"][0]["chips"][0]["label"],
-        "uplink"
-    );
+    assert_eq!(texts(&device_row(&m, "pppoe-wan"))[2], "[uplink]");
 }
 
 #[test]
@@ -559,7 +785,8 @@ fn home_router_tree_matches_the_reference_relationships() {
     r.snapshot = Snapshot::from_value(json!({"network":{
         "lan_bridge":{".name":"lan_bridge",".type":"device","name":"br-lan","type":"bridge","ports":["eth0","wlan0"]},
         "iptv_bridge":{".name":"iptv_bridge",".type":"device","name":"br-iptv","type":"bridge","ports":["eth4.3999","br-lan.3999"]},
-        "wan":{".name":"wan",".type":"interface","device":"eth4.3900","proto":"pppoe"}
+        "wan":{".name":"wan",".type":"interface","device":"eth4.3900","proto":"pppoe"},
+        "iot":{".name":"iot",".type":"interface","device":"br-lan.10","proto":"static"}
     }}));
     r.ubus = Ubus::from_value(json!({"networkState":{
         "devices":{
@@ -594,17 +821,11 @@ fn home_router_tree_matches_the_reference_relationships() {
     assert!(follows(&m, "eth4.3999", "br-iptv"));
     assert!(follows(&m, "br-lan.10", "br-lan"));
 }
-// follows says the listing reads `child` after `parent`, as everything a
-// device carries comes after it.
+// follows says the Devices card reads `child` after `parent`, as everything
+// a device carries comes after it.
 fn follows(m: &Model, child: &str, parent: &str) -> bool {
-    let listing = serde_json::to_value(page::listing(m)).unwrap();
-    let ids: Vec<&str> = listing["widget"]["rows"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .filter_map(|row| row["id"].as_str())
-        .collect();
-    let at = |id: &str| ids.iter().position(|x| *x == id);
+    let ids = ids(&card(m, "Devices"));
+    let at = |id: &str| ids.iter().position(|x| x == id);
     matches!((at(parent), at(child)), (Some(p), Some(c)) if c > p)
 }
 
@@ -774,12 +995,12 @@ fn a_card_carries_the_act_that_edits_its_part() {
         (
             &parts[0],
             "Edit network",
-            "/plugins/interfaces/edit?network=lan&device=",
+            "/plugins/interfaces/edit?network=lan",
         ),
         (
             &parts[1],
             "Edit device",
-            "/plugins/interfaces/edit?network=&device=br-lan",
+            "/plugins/interfaces/edit?device=br-lan",
         ),
     ] {
         assert_eq!(part["control"]["label"], label, "{part}");
@@ -799,7 +1020,7 @@ fn a_dhcp_read_at_an_unknown_version_still_draws_the_row() {
         json!({}),
     ] {
         r.ubus = Ubus::from_value(ubus);
-        let row = inventory_row(&Model::read(&r), "br-lan");
+        let row = network_row(&Model::read(&r), "lan");
         let chip = row["cells"][0]["chips"]
             .as_array()
             .unwrap()
@@ -905,8 +1126,8 @@ fn every_way_into_the_editor_is_a_card_in_the_rows_drawer() {
     // The editors the row's pencil used to open are each card's act, and
     // each still answers its address with the listing behind it.
     for (id, href) in [
-        ("br-lan", "/plugins/interfaces/edit?network=lan&device="),
-        ("eth1", "/plugins/interfaces/edit?network=uplink&device="),
+        ("br-lan", "/plugins/interfaces/edit?network=lan"),
+        ("eth1", "/plugins/interfaces/edit?network=uplink"),
     ] {
         let network = cards(&m, id)
             .into_iter()
@@ -935,7 +1156,7 @@ fn each_network_a_device_carries_is_its_own_part_with_its_edit() {
         assert_eq!(part["control"]["label"], "Edit network");
         assert_eq!(
             part["control"]["href"],
-            format!("/plugins/interfaces/edit?network={name}&device=")
+            format!("/plugins/interfaces/edit?network={name}")
         );
     }
 }
@@ -948,7 +1169,7 @@ fn a_device_with_no_network_reads_as_its_device() {
     assert_eq!(parts[0]["meta"], "eth0");
     assert_eq!(
         parts[0]["control"]["href"],
-        "/plugins/interfaces/edit?network=&device=eth0"
+        "/plugins/interfaces/edit?device=eth0"
     );
 }
 // A device OpenVPN makes when it connects is the VPN's, not the network
@@ -1030,10 +1251,10 @@ fn a_ports_link_speed_is_a_rate_the_shell_writes() {
     let mut m = Model::read(&request("/", ""));
     m.live["devices"]["eth2"] = json!({"physical":true,"kind":"port","speed":"2500F"});
     m.live["devices"]["eth1"] = json!({"physical":true,"kind":"port","up":true});
-    let row = inventory_row(&m, "eth2");
+    let row = device_row(&m, "eth2");
     assert_eq!(row["cells"][1]["text"], "port");
     assert_eq!(row["cells"][1]["rate"], 2.5e9);
-    assert!(inventory_row(&m, "eth1")["cells"][1].get("rate").is_none());
+    assert!(device_row(&m, "eth1")["cells"][1].get("rate").is_none());
 }
 
 // A network's uptime is handed over in seconds, which the shell writes as
@@ -1045,4 +1266,55 @@ fn a_networks_uptime_is_seconds_for_the_shell_to_write() {
     assert_eq!(up.duration, Some(4_523_580));
     let unknown = page::uptime(None);
     assert_eq!((unknown.duration, unknown.value.as_str()), (None, "—"));
+}
+
+// with_networks is the base request with its network config replaced.
+fn with_networks(network: serde_json::Value) -> Model {
+    let mut r = request("/", "");
+    let mut snapshot = fixture();
+    snapshot["network"] = network;
+    r.snapshot = Snapshot::from_value(snapshot);
+    Model::read(&r)
+}
+// An internet line's DHCPv6 half is its companion: on the same device, or
+// riding the line by name as it does under PPPoE.
+#[test]
+fn a_dhcpv6_network_on_the_same_device_is_its_networks_companion() {
+    let m = with_networks(json!({
+        "wan":{".name":"wan",".type":"interface","device":"wan0","proto":"dhcp"},
+        "wan6":{".name":"wan6",".type":"interface","device":"wan0","proto":"dhcpv6"},
+        "lan":{".name":"lan",".type":"interface","device":"br-lan","proto":"static"}
+    }));
+    assert_eq!(m.companion("wan").map(|r| r.id.as_str()), Some("wan6"));
+    assert_eq!(m.companion_of("wan6"), Some("wan"));
+    assert!(m.companion("lan").is_none());
+    assert!(m.companion_of("wan").is_none());
+    let pppoe = with_networks(json!({
+        "wan":{".name":"wan",".type":"interface","device":"eth1","proto":"pppoe"},
+        "wan6":{".name":"wan6",".type":"interface","device":"@wan","proto":"dhcpv6"}
+    }));
+    assert_eq!(pppoe.companion("wan").map(|r| r.id.as_str()), Some("wan6"));
+    assert_eq!(pppoe.companion_of("wan6"), Some("wan"));
+}
+// Where it is not plain whose half a DHCPv6 network is, it is no one's.
+#[test]
+fn contended_dhcpv6_networks_stay_their_own() {
+    let two_halves = with_networks(json!({
+        "wan":{".name":"wan",".type":"interface","device":"wan0","proto":"dhcp"},
+        "wan6":{".name":"wan6",".type":"interface","device":"wan0","proto":"dhcpv6"},
+        "wan6b":{".name":"wan6b",".type":"interface","device":"@wan","proto":"dhcpv6"}
+    }));
+    assert!(two_halves.companion("wan").is_none());
+    assert!(two_halves.companion_of("wan6").is_none());
+    assert!(two_halves.companion_of("wan6b").is_none());
+    let two_lines = with_networks(json!({
+        "wan":{".name":"wan",".type":"interface","device":"wan0","proto":"dhcp"},
+        "wanb":{".name":"wanb",".type":"interface","device":"wan0","proto":"static"},
+        "wan6":{".name":"wan6",".type":"interface","device":"wan0","proto":"dhcpv6"}
+    }));
+    assert!(two_lines.companion_of("wan6").is_none());
+    let alone = with_networks(json!({
+        "wan6":{".name":"wan6",".type":"interface","device":"wan0","proto":"dhcpv6"}
+    }));
+    assert!(alone.companion_of("wan6").is_none());
 }

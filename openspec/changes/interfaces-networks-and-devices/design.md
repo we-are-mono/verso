@@ -37,8 +37,11 @@ holding a table whose rows open drawers, and a card-header add act
 ### Two tables in two sections, the flat table for both
 The page body becomes `Widget::stack([section("Networks", networks_table),
 section("Devices", devices_table)])`, the Devices section's `control` holding
-Add device. Both tables use the default flat table; the `interfaces` style,
-its template and its tests retire.
+Add device. Both tables use the flat table's `live` style, which refreshes
+their rows every ten seconds as the old inventory did; the `interfaces`
+style, its template and its tests retire. The shared table learns the one
+thing only the inventory drew: an act with no glyph holds its slot empty, so
+each act keeps its column down the rows.
 *Alternative:* one table with two row groups (`TableGroup`, as Routes' lanes).
 Rejected: the two kinds have different columns, and a group header reads as a
 filter rather than as a second inventory.

@@ -191,6 +191,49 @@ impl Model {
     pub fn dhcp(&self, net: &str) -> Option<&Record> {
         self.dhcp.iter().find(|d| d.get("interface") == net)
     }
+    /// companions maps each IPv6 companion to the network it belongs to: a
+    /// DHCPv6 network riding another by name (`@wan`), or on the same device
+    /// as exactly one network of another protocol. Where two DHCPv6 networks
+    /// would belong to one network, neither does: each keeps its own row.
+    fn companions(&self) -> BTreeMap<String, String> {
+        let dhcpv6 = |n: &Record| n.get("proto") == "dhcpv6";
+        let mut pairs = BTreeMap::new();
+        for n in self.networks.iter().filter(|n| dhcpv6(n)) {
+            let device = n.get("device");
+            let owners: Vec<&Record> = match device.strip_prefix('@') {
+                Some(owner) => self.network(owner).into_iter().collect(),
+                None if !device.is_empty() => self
+                    .networks
+                    .iter()
+                    .filter(|o| o.id != n.id && o.get("device") == device)
+                    .collect(),
+                None => vec![],
+            };
+            if let [owner] = owners.as_slice() {
+                if !dhcpv6(owner) && owner.id != "loopback" {
+                    pairs.insert(n.id.clone(), owner.id.clone());
+                }
+            }
+        }
+        let contended: BTreeSet<String> = pairs
+            .values()
+            .filter(|owner| pairs.values().filter(|o| o == owner).count() > 1)
+            .cloned()
+            .collect();
+        pairs.retain(|_, owner| !contended.contains(owner));
+        pairs
+    }
+    /// companion is the network's IPv6 companion, if it has one.
+    pub fn companion(&self, net: &str) -> Option<&Record> {
+        let pairs = self.companions();
+        let id = pairs.iter().find(|(_, owner)| *owner == net)?.0;
+        self.network(id)
+    }
+    /// companion_of is the network a companion belongs to.
+    pub fn companion_of(&self, net: &str) -> Option<&str> {
+        let owner = self.companions().remove(net)?;
+        self.network(&owner).map(|r| r.id.as_str())
+    }
     pub fn live_network(&self, net: &str) -> Option<&Value> {
         self.live
             .get("interfaces")?

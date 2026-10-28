@@ -2236,20 +2236,21 @@ configuration preview, collapsing to one column when space is limited. Reuse
 `link` style `rail` and a live `code` preview in that column. Form sections
 remain unboxed.
 
-The Interfaces inventory uses `table` style `interfaces`: its six columns are
-identity, device type, IPv4 address, MAC, operational state, and actions. Identity
-cells use `lead_icon:"physical"` or `"software"` for the topology mark and `chips`
-for logical network references. State remains plain text with a square mark.
-`depth` describes a transport dependency (VLAN or PPP), not bridge membership.
-Its envelope `act` is the add act at `new`: on the listing it carries no panel,
+The Interfaces page is two cards, each a `table` of style `live`. **Networks**
+has one row per network (Network with its DHCP chip, Protocol, Address,
+Device, Zone, State, acts); a DHCPv6 network on another network's device, or
+riding it by name (`@wan`), is that network's IPv6 companion and has no row of
+its own. **Devices** has one row per device (Device, Type with a port's link
+speed as `rate`, Used by as chips, State, acts); a software device the kernel
+made that nothing names or uses has none. A network row's acts are power,
+restart, edit and delete; a device row's edit and delete. An act with no
+`icon` is a slot the row has no act for: it holds its place and draws
+nothing. Its envelope `act` is the add act at `new`: on the listing it carries no panel,
 so the shell fetches a new network's drawer from that address and its form posts
 back there; at `new` or an object's editor address it carries that panel open.
 The new drawer opens on a `Type` select marked `reshapes` (Network, Internet
 connection, Bridge, VLAN, Tunnel); changing it draws the drawer for that kind,
 keeping the name, device, MTU and MAC override. The page has no control band.
-Expanded details use `grid` styles
-`facts` and `configurations`; an editor rail may hold an unlabeled live code
-block.
 
 `verso.networkState` brokers normalized netifd booleans and kernel device facts.
 `interface-up`, `interface-down`, and `interface-restart` commands each require
@@ -2402,4 +2403,5 @@ Table style `live` uses the shell's existing ten-second inventory refresh to
 replace only its rows. It preserves the surrounding settings form, skips hidden
 pages and open dialogs, and shows a stale-data notice when a read fails. The DNS
 network summary uses this style; configuration still belongs to the interface
-editor and follows the normal Save/Apply flow.
+editor and follows the normal Save/Apply flow. The Interfaces cards use it too:
+a page's live tables are matched in the order they stand.
