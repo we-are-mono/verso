@@ -166,9 +166,12 @@ over a local socket**, exchanging *data*, not markup.
    announces it as an event (ADR-028), which the same notification says to the
    operators looking, stacked under the act's own outcome. Every
    field is optional: a plugin that sends only `schema_version`, `title`,
-   and `widget` gets a plain page. A successful POST may instead carry one act in
-   `commands`: a non-UCI operation the shell runs at once, before it answers, and
-   only when the plugin declared its exact rpcd scope. A name without a dot is one
+   and `widget` gets a plain page. A successful POST may instead carry acts in
+   `commands`: non-UCI operations the shell runs at once, in order, before it
+   answers, each only when the plugin declared its exact rpcd scope; the first
+   refused stops the rest. Several stand together where one thing an operator
+   means is two to the router: an internet line restarted with its DHCPv6
+   half. A name without a dot is one
    of the shell's own acts; `<plugin>.<name>` is a plugin's registered root
    command (ADR-027). An act never shares a save with a `commit`; staging a
    hand-edited file, which joins the stage, is the one command that may.

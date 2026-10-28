@@ -24,12 +24,25 @@ func writableConfigs(m plugin.Manifest) []string {
 }
 
 // Commands have a closed vocabulary and structured arguments. They run only
-// after validation on a CSRF-protected POST, with the operator's own session.
+// after validation on a CSRF-protected POST, with the operator's own session,
+// in the order the plugin gives them (an internet line restarted with its
+// DHCPv6 half); the first one refused stops the rest, and its refusal is the
+// answer's.
 func (s *Server) runPluginCommands(ctx context.Context, m plugin.Manifest, sid string, commands []plugin.ApplyAction) error {
-	if len(commands) != 1 {
-		return fmt.Errorf("expected one command")
+	if len(commands) == 0 {
+		return fmt.Errorf("expected a command")
 	}
-	cmd := commands[0]
+	for _, cmd := range commands {
+		if err := s.runPluginCommand(ctx, m, sid, cmd); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// runPluginCommand runs one command: a plugin's registered act or one of the
+// shell's own.
+func (s *Server) runPluginCommand(ctx context.Context, m plugin.Manifest, sid string, cmd plugin.ApplyAction) error {
 	var err error // a helper refusal whose message the operator reads
 	if owner, name, registered := strings.Cut(cmd.Name, "."); registered {
 		err = s.registeredAct(ctx, m, sid, owner, name, cmd.Args)

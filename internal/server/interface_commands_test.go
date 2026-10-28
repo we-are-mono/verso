@@ -74,6 +74,35 @@ func TestInterfacePowerCommandsRequireTheirOwnGrant(t *testing.T) {
 	}
 }
 
+// TestPluginCommandsRunInOrderAndStopAtTheFirstRefusal: an answer may carry
+// several commands (an internet line restarted with its DHCPv6 half); they
+// run in the order given, and the first one refused stops the rest.
+func TestPluginCommandsRunInOrderAndStopAtTheFirstRefusal(t *testing.T) {
+	b := &interfaceControlBackend{}
+	s := newServerWith(t, b, nil, nil)
+	m := plugin.Manifest{ID: "interfaces", ACL: plugin.ACL{Write: []plugin.ACLScope{{Scope: "ubus", Object: "network.interface", Function: "down"}}}}
+	down := func(name string) plugin.ApplyAction {
+		return plugin.ApplyAction{Name: "interface-down", Args: map[string]string{"interface": name}}
+	}
+	if err := s.runPluginCommands(context.Background(), m, "operator", []plugin.ApplyAction{down("wan"), down("wan6")}); err != nil {
+		t.Fatal(err)
+	}
+	if fmt.Sprint(b.calls) != "[operator wan false operator wan6 false]" {
+		t.Fatalf("the commands ran out of order: %v", b.calls)
+	}
+	b.calls = nil
+	up := plugin.ApplyAction{Name: "interface-up", Args: map[string]string{"interface": "wan6"}}
+	if err := s.runPluginCommands(context.Background(), m, "operator", []plugin.ApplyAction{down("wan"), up, down("lan")}); err == nil {
+		t.Fatal("a refused command passed")
+	}
+	if fmt.Sprint(b.calls) != "[operator wan false]" {
+		t.Fatalf("the commands after the refusal ran: %v", b.calls)
+	}
+	if err := s.runPluginCommands(context.Background(), m, "operator", nil); err == nil {
+		t.Fatal("an answer with no command ran")
+	}
+}
+
 func TestInventoryRefreshPreservesIdleTimeoutAndFlash(t *testing.T) {
 	clock := &fakeClock{t: time.Unix(1_000_000, 0)}
 	s := &Server{sessions: newSessionsClock(clock.now)}
