@@ -21,8 +21,27 @@ pub struct Server {
     pub lease_time: String,
     pub leases: Option<u64>,
     pub configured: bool,
+    /// The network has a `config dhcp` section of its own.
+    pub section: bool,
+    /// The network has an address of its own to hand out from: static, with
+    /// an address set.
+    pub addressed: bool,
+    /// The network's section hands out addresses (no `ignore 1`).
+    pub serves: bool,
 }
 impl Server {
+    /// exists says the network has a DHCP server: a section on a network with
+    /// an address of its own, switched off or not, or one set to hand out
+    /// addresses. The stock uplink section, which says not to serve on a
+    /// network that learns its address, is no server.
+    pub fn exists(&self) -> bool {
+        self.section && (self.addressed || self.serves)
+    }
+    /// can_be_added says the network could take a server and has none: an
+    /// address of its own and no section.
+    pub fn can_be_added(&self) -> bool {
+        self.addressed && !self.section
+    }
     /// href is where this server is edited: its row on the DHCP page, with its
     /// drawer open.
     pub fn href(&self) -> String {
@@ -95,6 +114,15 @@ fn text(value: Option<&Value>, key: &str) -> String {
 }
 pub fn servers(snapshot: &Snapshot, ubus: &Ubus) -> Vec<Server> {
     let configs = snapshot.sections_of_type("dhcp", "dhcp");
+    let interfaces = snapshot.sections_of_type("network", "interface");
+    // An address may be written as one option or as a list of them.
+    let addressed = |network: &str| {
+        interfaces.iter().any(|n| {
+            n.name() == network
+                && n.scalar("proto") == "static"
+                && (!n.scalar("ipaddr").is_empty() || !n.list("ipaddr").is_empty())
+        })
+    };
     let live = ubus.read(DHCP_STATE, &[DHCP_STATE_VERSION]).and_then(|v| v.get("networks"));
     let mut networks: BTreeSet<String> = snapshot
         .sections_of_type("network", "interface")
@@ -140,6 +168,7 @@ pub fn servers(snapshot: &Snapshot, ubus: &Ubus) -> Vec<Server> {
                     .into();
                 }
             }
+            let addressed = addressed(&network);
             Server {
                 network,
                 state,
@@ -150,6 +179,9 @@ pub fn servers(snapshot: &Snapshot, ubus: &Ubus) -> Vec<Server> {
                     .and_then(|v| v.get("leases"))
                     .and_then(Value::as_u64),
                 configured: config.is_some() || observed.is_some(),
+                section: config.is_some(),
+                addressed,
+                serves: config.is_some_and(|s| s.scalar("ignore") != "1"),
             }
         })
         .collect()
@@ -201,5 +233,38 @@ mod tests {
         assert_eq!(running[0].label(), "Serving");
         assert_eq!(running[0].href(), "/plugins/dnsdhcp/?open=lan");
         assert_eq!(servers(&snapshot("1"), &live)[0].label(), "Pending disable");
+    }
+    #[test]
+    fn a_server_exists_where_a_section_serves_or_could() {
+        let routed = |dhcp: crate::Value| {
+            Snapshot::from_value(json!({"network":{
+                "lan":{".type":"interface",".name":"lan","proto":"static","ipaddr":"10.0.0.1","netmask":"255.255.255.0"},
+                "guest":{".type":"interface",".name":"guest","proto":"static","ipaddr":["10.0.20.1/24"]},
+                "wan":{".type":"interface",".name":"wan","proto":"dhcp"}},
+                "dhcp":dhcp}))
+        };
+        let read = |dhcp: crate::Value| {
+            servers(&routed(dhcp), &Ubus::from_value(json!({})))
+                .into_iter()
+                .map(|s| (s.network.clone(), s.exists(), s.can_be_added()))
+                .collect::<Vec<_>>()
+        };
+        // An addressed network with a section has a server, switched off or
+        // not; one with an address and no section could take one; the stock
+        // uplink section, which says not to serve, is neither.
+        assert_eq!(
+            read(json!({
+                "lan":{".type":"dhcp",".name":"lan","interface":"lan","ignore":"1"},
+                "wan":{".type":"dhcp",".name":"wan","interface":"wan","ignore":"1"}})),
+            vec![
+                ("guest".into(), false, true),
+                ("lan".into(), true, false),
+                ("wan".into(), false, false),
+            ]
+        );
+        // A section set to hand out addresses is a server even where the
+        // network has no address to hand out from.
+        let misplaced = read(json!({"wan":{".type":"dhcp",".name":"wan","interface":"wan"}}));
+        assert!(misplaced.contains(&("wan".into(), true, false)), "{misplaced:?}");
     }
 }

@@ -2,8 +2,8 @@
 
 ## 1. SDK: one meaning of a DHCP server
 
-- [ ] 1.1 Write tests in `plugins/verso-plugin-sdk/src/dhcp.rs`: a static network with an address and a section `exists()`; one with an address and no section `can_be_added()`; the stock uplink section (`proto dhcp`, `ignore 1`) neither; a section set to serve on a network with no address `exists()`. Make them pass by giving `Server` the section, address and serving facts and the two methods, and verify with `cargo test` for the SDK and `make lint`
-- [ ] 1.2 Write a test in `plugins/verso-plugin-dnsdhcp/src/dhcp.rs` that the Servers card and Add DHCP server agree with `Server::exists` and `Server::can_be_added` on the fixture plus a free network. Make `State::has_server` and `State::free` read the SDK rule, keep every existing DHCP page test green, and verify with `make test` and `make lint` in the plugin repo
+- [x] 1.1 Write tests in `plugins/verso-plugin-sdk/src/dhcp.rs`: a static network with an address and a section `exists()`; one with an address and no section `can_be_added()`; the stock uplink section (`proto dhcp`, `ignore 1`) neither; a section set to serve on a network with no address `exists()`. Make them pass by giving `Server` the section, address and serving facts and the two methods, and verify with `cargo test` for the SDK and `make lint`
+- [x] 1.2 Write a test in `plugins/verso-plugin-dnsdhcp/src/dhcp.rs` that the Servers card and Add DHCP server agree with `Server::exists` and `Server::can_be_added` on the fixture plus a free network. Make `State::has_server` and `State::free` read the SDK rule, keep every existing DHCP page test green, and verify with `make test` and `make lint` in the plugin repo
 
 ## 2. Interfaces: the row
 
