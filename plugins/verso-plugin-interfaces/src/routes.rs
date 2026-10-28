@@ -505,7 +505,7 @@ fn drawer(m: &Model, existing: Option<&Record>, route: &Route, e: &Errors) -> Ro
     .collect();
     let mut fields = vec![
         family,
-        select(route, e, "interface", "Interface", interfaces),
+        select(route, e, "interface", "Interface", interfaces).typed("uciname"),
         field(route, e, "target", "Target", "The network this route reaches, such as 10.20.0.0/16."),
         field(
             route,
@@ -1009,6 +1009,8 @@ mod tests {
         assert_eq!(control(&open, "target")["value"], "10.20.0.0/16");
         assert_eq!(control(&open, "gateway")["value"], "192.168.1.2");
         assert_eq!(control(&open, "interface")["value"], "lan");
+        // A network's name is a machine string, read in mono.
+        assert_eq!(control(&open, "interface")["datatype"], "uciname");
         assert_eq!(control(&open, "enabled")["on"], true);
         // The family is the section's type, fixed once it exists.
         assert_eq!(control(&open, "family")["style"], "locked");
