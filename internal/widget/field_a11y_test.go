@@ -278,6 +278,49 @@ func TestSelectIsAChoiceUnlessItHoldsAMachineString(t *testing.T) {
 	declares(t, "choice", ".verso-choice__option", "@apply type-input")
 }
 
+// TestAMachineChoiceSaysItsEmptyOptionInWords: in a choice of machine
+// strings (networks, by the uciname datatype), the option that names none
+// ("Choose an interface", "any interface") is words, so it reads in the sans
+// while every name it stands among reads verbatim, as radios, as the one
+// option stated, and as a dropdown's chosen value.
+func TestAMachineChoiceSaysItsEmptyOptionInWords(t *testing.T) {
+	networks := func(n int) []Option {
+		options := []Option{{Value: "", Label: "Choose an interface"}}
+		for _, name := range []string{"lan", "wan", "guest", "iot"}[:n] {
+			options = append(options, Option{Value: name, Label: name})
+		}
+		return options
+	}
+	radios := render(t, newRenderer(t), &Field{Name: "interface", Label: "Interface", Kind: "select", Datatype: "uciname", Options: networks(2)})
+	for _, want := range []string{
+		`<label class="verso-choice__option"><input id="interface" type="radio" name="interface" value="" checked`,
+		`<label class="verso-choice__option" data-verso-verbatim><input id="interface-option-1" type="radio" name="interface" value="lan"`,
+	} {
+		if !strings.Contains(radios, want) {
+			t.Errorf("radios lack %q:\n%s", want, radios)
+		}
+	}
+	one := render(t, newRenderer(t), &Field{Name: "interface", Kind: "select", Datatype: "uciname", Options: networks(0)})
+	if !strings.Contains(one, `<output id="interface" class="verso-choice__option">Choose an interface</output>`) {
+		t.Errorf("a stated empty option is words:\n%s", one)
+	}
+	dropdown := render(t, newRenderer(t), &Field{Name: "interface", Kind: "select", Datatype: "uciname", Options: networks(4)})
+	if !strings.Contains(dropdown, `class="verso-input" data-verso-verbatim data-verso-trail>`) {
+		t.Errorf("a dropdown of names is verbatim:\n%s", dropdown)
+	}
+	// The dropdown's face follows what is chosen, live: the input role reads
+	// a chosen empty option in its words form.
+	css, err := os.ReadFile(filepath.Join("..", "server", "assets", "type.css"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	input := string(css)[strings.Index(string(css), "@utility type-input {"):]
+	input = input[:strings.Index(input, "\n}\n")]
+	if !strings.Contains(input, `&[data-verso-verbatim]:has(> option[value=""]:checked) { font-family: var(--font-sans); font-size: 0.875rem; }`) {
+		t.Errorf("the input role does not read a chosen empty option as words:\n%s", input)
+	}
+}
+
 // TestCoarseCutsAreOneCountedDropdown: a control surface cuts by a dropdown,
 // never a switch — each option priced with what taking it would leave, set in
 // the sans like the label it prices, and carrying its bare label so a live

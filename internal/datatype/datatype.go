@@ -33,6 +33,18 @@ var registry = map[string]Validator{
 	"port":         port,
 	"timehhmmss":   timehhmmss,
 	"dateyyyymmdd": dateyyyymmdd,
+	"uciname":      uciname,
+}
+
+// uciname accepts a uci section's name, as a network or a zone is named:
+// letters, digits and underscores, the only characters uci takes in one.
+func uciname(v string) error {
+	if v == "" || strings.IndexFunc(v, func(r rune) bool {
+		return !(r == '_' || r >= '0' && r <= '9' || r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z')
+	}) >= 0 {
+		return fmt.Errorf("must be a uci name: letters, digits and underscores")
+	}
+	return nil
 }
 
 // Validate checks value against the named datatype. An unknown name is an error

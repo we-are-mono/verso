@@ -194,6 +194,9 @@
   text-transform: none;
   font-variant-numeric: normal;
   &[data-verso-verbatim] { font-family: var(--font-mono); font-size: 1rem; }
+  /* A dropdown of names whose chosen option names none ("any interface")
+     reads that option as the words it is. */
+  &[data-verso-verbatim]:has(> option[value=""]:checked) { font-family: var(--font-sans); font-size: 0.875rem; }
   &[data-verso-figures] { font-variant-numeric: tabular-nums; }
 }
 

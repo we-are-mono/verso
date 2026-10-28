@@ -71,7 +71,7 @@
        name. An output is labelable, so the row's label still names it. */}}
   {{$only := index .Options 0}}
   <div class="verso-choice__group" data-verso-kind="radios">
-    <output id="{{.Name}}"{{template "verso-field-aria" .}} class="verso-choice__option"{{if not .Words}} data-verso-verbatim{{end}}>{{$only.Label}}</output>
+    <output id="{{.Name}}"{{template "verso-field-aria" .}} class="verso-choice__option"{{if and (not .Words) $only.Value}} data-verso-verbatim{{end}}>{{$only.Label}}</output>
     <input type="hidden" name="{{.Name}}" value="{{$only.Value}}">
   </div>
   {{else if .UseRadios}}
@@ -84,7 +84,8 @@
   {{$selected := .SelectedIndex}}
   <div role="radiogroup"{{if .Reshapes}} data-verso-reshape{{end}}{{if .Label}} aria-labelledby="{{.Name}}-label"{{end}}{{template "verso-field-aria" .}} class="verso-choice__group" data-verso-kind="radios">
     {{range $index, $option := .Options}}
-    <label class="verso-choice__option"{{if not $.Words}} data-verso-verbatim{{end}}>
+    {{/* An option that names none ("any interface") is words among the names. */}}
+    <label class="verso-choice__option"{{if and (not $.Words) .Value}} data-verso-verbatim{{end}}>
       <input id="{{$.Name}}{{if $index}}-option-{{$index}}{{end}}" type="radio" name="{{$.Name}}" value="{{.Value}}"{{if eq $index $selected}} checked{{end}}{{with $.DescribedBy}} aria-describedby="{{.}}"{{end}}{{if $.Error}} aria-invalid="true"{{end}} class="verso-choice__native">
       <span>{{.Label}}</span>
     </label>

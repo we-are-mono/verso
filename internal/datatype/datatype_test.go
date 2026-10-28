@@ -36,6 +36,15 @@ func TestValidate(t *testing.T) {
 		{"dateyyyymmdd", "1969-01-01", false},
 		{"dateyyyymmdd", "26-01-01", false},
 		{"dateyyyymmdd", "", false},
+		// uciname — a uci section's name, as a network or a zone is named:
+		// letters, digits and underscores
+		{"uciname", "lan", true},
+		{"uciname", "wan_6", true},
+		{"uciname", "IoT2", true},
+		{"uciname", "guest-net", false},
+		{"uciname", "lan wan", false},
+		{"uciname", "lan.1", false},
+		{"uciname", "", false},
 		// hostname
 		{"hostname", "router", true},
 		{"hostname", "my-router", true},
