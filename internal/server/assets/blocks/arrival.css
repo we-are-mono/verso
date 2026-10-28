@@ -15,37 +15,13 @@
  *                                          success green, the wash reaching
  *                                          12px past its words either side
  *                                          without moving them
- *                                          · rise  a part of an unfolding row
- *                                          (data-verso-unfolding) rising the
- *                                          height of a hairline's air into
- *                                          place · draw  a ledger's line
- *                                          drawing itself from its name outward
- * Knobs:    --verso-stagger  how long a rising part waits its turn, so the
- *           parts arrive in reading order (verso-tables.js hands each its own)
  */
-
-@property --verso-stagger {
-  syntax: "<time>";
-  inherits: false;
-  initial-value: 0ms;
-}
 
 .verso-arrival[data-verso-arrival="saved"] {
   animation: verso-arrival-saved 1.4s ease-out;
 }
 .verso-arrival[data-verso-arrival="installed"] {
   animation: verso-arrival-installed 2s ease-out;
-}
-/* The rise starts from nothing, so a part whose turn has not come is not
-   already there. */
-.verso-arrival[data-verso-arrival="rise"]:where([data-verso-unfolding] *) {
-  animation: verso-arrival-rise 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
-  animation-delay: var(--verso-stagger);
-}
-.verso-arrival[data-verso-arrival="draw"]:where([data-verso-unfolding] *) {
-  transform-origin: left;
-  animation: verso-arrival-draw 0.48s cubic-bezier(0.22, 1, 0.36, 1) both;
-  animation-delay: var(--verso-stagger);
 }
 @media (prefers-reduced-motion: reduce) {
   .verso-arrival[data-verso-arrival] {
@@ -60,10 +36,4 @@
 @keyframes verso-arrival-installed {
   from, 50% { background-color: var(--color-green-soft); box-shadow: -0.75rem 0 0 var(--color-green-soft), 0.75rem 0 0 var(--color-green-soft); }
   to { background-color: transparent; box-shadow: -0.75rem 0 0 transparent, 0.75rem 0 0 transparent; }
-}
-@keyframes verso-arrival-rise {
-  from { opacity: 0; transform: translateY(0.375rem); }
-}
-@keyframes verso-arrival-draw {
-  from { transform: scaleX(0); }
 }

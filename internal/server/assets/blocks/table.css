@@ -49,13 +49,11 @@
  *           data-verso-lifted     the copy of a row a drag lifts off the
  *                                 listing (blocks/reorder.css): no hairline
  *           data-verso-tree       the interface inventory: a tree down its
- *                                 first column, its columns' widths held,
- *                                 its rows unfolding in place; on a phone
- *                                 the tree, the name, the state and the acts
+ *                                 first column, its columns' widths held;
+ *                                 on a phone the tree, the name, the state
+ *                                 and the acts
  *           data-verso-filtered   (set in the browser) a tree a search or a
  *                                 cut narrows: its branches are left out
- * Row state: data-verso-expanded  (set in the browser) a tree's row that
- *                                 stands unfolded, on Quiet Sand
  * Elements: __head      a column's head, in sentence case, quiet
  *           __row       a row; data-verso-off marks a switched-off one
  *           __cell      a value's cell
@@ -73,11 +71,7 @@
  *                       run onto more lines (TableColumn.Wrap)
  *           __part      one of a phrase's parts: words, a link, or a value
  *                       (data-verso-part="value") as the device wrote it
- *           __expand    the name of a row that unfolds, the control that
- *                       unfolds it
- *           __identity  an inventory row's node, unfold box and name, one
- *                       control
- *           __toggle    the box that unfolds an inventory row
+ *           __identity  an inventory row's node and name
  *           __state     a state's packet and word; data-verso-tone
  *           __held      a reserved address's line (data-verso-reserved on
  *                       its cell): its pin, then the address
@@ -93,18 +87,12 @@
  *           __add       that add, the whole line
  *           __seam      the cell of the fold that holds a listing's stock rows
  *           __summary   the fold's words
- *           __sheet     what an unfolded row shows, under it
- *           __unfold    the track an inventory row unfolds in
  *           __tree      a tree's first cell: the tree, then the identity
  *           __branch    a row's piece of the tree in its first 40px
- *           __trunk     the trunks that run on past a row's first 40px, and
- *                       down the sheet it unfolds
+ *           __trunk     the trunks that run on past a row's first 40px
  *           __node      the identity's node on the tree, and its __knot
- *           __hinge     the line the unfold box stands on, a row's 40px
  *           __actions   a tree row's acts, one run of slots, so each act
  *                       stands in its own column down the rows
- *           __parts     the sections an unfolded tree row shows, as wide as
- *                       their own container
  */
 
 .verso-table {
@@ -226,12 +214,11 @@
 .verso-table__cell,
 .verso-table__grip:not(th),
 .verso-table__acts,
-.verso-table__tail,
-.verso-table__sheet {
+.verso-table__tail {
   border: 0 solid var(--color-rule);
   border-bottom-width: 1px;
 }
-:is(.verso-table__cell, .verso-table__grip, .verso-table__acts, .verso-table__tail, .verso-table__sheet):where(.verso-table > tbody > tr:not([hidden]):not(:has(~ tr:not([hidden]))) > *) {
+:is(.verso-table__cell, .verso-table__grip, .verso-table__acts, .verso-table__tail):where(.verso-table > tbody > tr:not([hidden]):not(:has(~ tr:not([hidden]))) > *) {
   border-bottom-width: var(--verso-last-rule-width, 1px);
   border-bottom-color: var(--verso-last-rule-color, var(--color-rule));
 }
@@ -256,11 +243,11 @@
 
 /* The edges. A set among a form's fields insets its cells only; its heads
    keep their own. */
-:is(.verso-table__cell, .verso-table__seam, .verso-table__sheet):first-of-type,
+:is(.verso-table__cell, .verso-table__seam):first-of-type,
 :is(.verso-table__head, .verso-table__band):not(.verso-table__grip):where(.verso-table:not([data-verso-in-form]) *):first-of-type {
   padding-inline-start: var(--verso-table-start);
 }
-:is(.verso-table__cell, .verso-table__seam, .verso-table__sheet):last-of-type,
+:is(.verso-table__cell, .verso-table__seam):last-of-type,
 .verso-table__head:where(.verso-table:not([data-verso-in-form]) *):last-of-type {
   padding-inline-end: var(--verso-table-end);
 }
@@ -373,64 +360,13 @@
   overflow-wrap: anywhere;
 }
 
-.verso-table__expand {
-  display: inline-flex;
-  align-items: center;
-  gap: calc(var(--spacing) * 2);
-  cursor: pointer;
-  text-align: left;
-}
-.verso-table__expand:hover {
-  color: var(--color-denim);
-}
-.verso-table__expand:focus-visible {
-  outline-color: var(--color-denim);
-}
-.verso-table__expand[data-verso-verbatim] {
-  color: var(--color-ink);
-  @apply type-value;
-}
-
-/* An inventory row's identity — its node on the tree, the box that unfolds
-   it and its name — is one control, the whole width of its cell. The box
-   fills with the action colour while its row is open. */
+/* An inventory row's identity: its node on the tree and its name, the whole
+   width of its cell. It is words, not a control; the row opens from its
+   acts. */
 .verso-table__identity {
   display: flex;
   align-items: flex-start;
   width: 100%;
-  cursor: pointer;
-  text-align: left;
-}
-.verso-table__identity:focus-visible {
-  outline: 2px solid var(--color-denim);
-  outline-offset: -2px;
-}
-.verso-table__toggle {
-  display: grid;
-  place-items: center;
-  flex-shrink: 0;
-  width: calc(var(--spacing) * 7);
-  height: calc(var(--spacing) * 7);
-  border: 1px solid var(--color-rule-strong);
-  border-radius: var(--radius-xs);
-  color: var(--color-glyph);
-}
-.verso-table__toggle:is([aria-expanded="true"] *) {
-  border-color: var(--color-denim);
-  background-color: var(--color-denim);
-  color: var(--color-on-fill);
-}
-/* Its chevron turns down as the row opens. */
-.verso-table__toggle > svg {
-  transition: rotate 200ms ease-out;
-}
-.verso-table__toggle:is([aria-expanded="true"] *) > svg {
-  rotate: 90deg;
-}
-@media (prefers-reduced-motion: reduce) {
-  .verso-table__toggle > svg {
-    transition: none;
-  }
 }
 
 /* A state as its column writes it: the packet, then the word in the
@@ -622,48 +558,12 @@
   display: none;
 }
 
-.verso-table__sheet {
-  padding-block: calc(var(--spacing) * 6);
-  background-color: var(--color-quiet);
-}
-
-/* An inventory row unfolds into the sections behind it (verso-tables.js).
-   The fold is a grid track that grows from nothing to whatever the sheet
-   holds, so the row opens at the height of its own content without anyone
-   measuring it, and the sheet is clipped to the track while it grows; once
-   it has settled the clip is lifted, so a tooltip inside it can hang past
-   its edge. A re-expand after a refresh, or a reader who asked for less
-   motion, gets the row open, not opening. */
-.verso-table__unfold {
-  display: grid;
-  grid-template-rows: 0fr;
-  transition: grid-template-rows 0.36s cubic-bezier(0.22, 1, 0.36, 1);
-}
-.verso-table__unfold > * {
-  min-height: 0;
-  overflow: hidden;
-}
-.verso-table__unfold:is([data-verso-expanded-row][data-verso-open] *) {
-  grid-template-rows: 1fr;
-}
-.verso-table__unfold:is([data-verso-expanded-row][data-verso-still] *) {
-  transition: none;
-}
-.verso-table__unfold:is([data-verso-expanded-row][data-verso-settled] *) > * {
-  overflow: visible;
-}
-@media (prefers-reduced-motion: reduce) {
-  .verso-table__unfold {
-    transition: none;
-  }
-}
-
 /* A tree: the interface inventory. Its columns hold their widths, so the
    tree, the names and the acts stand in one place down every row, and the
-   whole is never narrower than 66rem: a window narrower scrolls it. The
+   whole is never narrower than 53.5rem: a window narrower scrolls it. The
    name's column takes the rest. */
 .verso-table[data-verso-tree] {
-  min-width: 66rem;
+  min-width: 53.5rem;
   table-layout: fixed;
   text-align: left;
 }
@@ -674,28 +574,22 @@
   width: calc(var(--spacing) * 44);
 }
 .verso-table[data-verso-tree] > colgroup > col:nth-child(4) {
-  width: calc(var(--spacing) * 50);
-}
-.verso-table[data-verso-tree] > colgroup > col:nth-child(5) {
   width: calc(var(--spacing) * 32);
 }
-.verso-table[data-verso-tree] > colgroup > col:nth-child(6) {
+.verso-table[data-verso-tree] > colgroup > col:nth-child(5) {
   width: calc(var(--spacing) * 39);
 }
-/* The first head stands over the names, after the tree's 66px, the unfold
-   box's 28px and the name's 12px lead-in. A fact's cell keeps 8px after
+/* The first head stands over the names, after the table's 11px edge, the
+   tree's 66px and the name's 12px lead-in. A fact's cell keeps 8px after
    it, and the acts their slots' own lead-in. */
 .verso-table[data-verso-tree] .verso-table__head:first-of-type {
-  padding-inline-start: calc(var(--spacing) * 29.25);
+  padding-inline-start: calc(var(--spacing) * 22.25);
 }
 .verso-table[data-verso-tree] .verso-table__cell {
   padding-inline-end: calc(var(--spacing) * 2);
 }
 .verso-table[data-verso-tree] .verso-table__acts {
   padding-inline-start: 0;
-}
-.verso-table__row[data-verso-expanded="true"] {
-  background-color: var(--color-quiet);
 }
 
 /* The tree's cell holds the tree from the table's 11px edge, and the
@@ -720,10 +614,6 @@
   color: var(--color-faint);
   pointer-events: none;
 }
-.verso-table__trunk:is(.verso-table__sheet *) {
-  top: 0;
-  height: 100%;
-}
 /* A narrowed tree is a list of matches, not a tree: its branches and its
    nodes are left out, the names standing where they stood. */
 :is(.verso-table__branch, .verso-table__trunk, .verso-table__knot):is(.verso-table[data-verso-filtered="true"] *) {
@@ -738,14 +628,6 @@
 }
 .verso-table__knot > * {
   fill: var(--color-ground);
-}
-/* The unfold box centred on the row's 40px: its 28px, 6px over and under. */
-.verso-table__hinge {
-  display: flex;
-  flex-shrink: 0;
-  align-items: center;
-  margin-bottom: -1px;
-  padding-block: calc(var(--spacing) * 1.5);
 }
 /* The name's line in a tree wraps its networks' chips under the name, 4px
    apart, on the row's own air around its 24px lines. */
@@ -762,17 +644,6 @@
   width: calc(var(--spacing) * 35);
   margin-left: auto;
 }
-/* An unfolded tree row's sheet: Paper, the trunk running down its left, its
-   parts lined up under the names. */
-.verso-table[data-verso-tree] .verso-table__sheet {
-  position: relative;
-  padding: calc(var(--spacing) * 6) calc(var(--spacing) * 4) calc(var(--spacing) * 8) calc(var(--spacing) * 26.25);
-  background-color: var(--color-ground);
-}
-.verso-table__parts {
-  container-type: inline-size;
-  min-width: 0;
-}
 /* On a phone the state rides on the name's line; elsewhere it has its own
    column. */
 @media (width >= 40rem) {
@@ -785,8 +656,8 @@
     min-width: auto;
     table-layout: auto;
   }
-  .verso-table[data-verso-tree] > :is(thead, tbody) > tr > :nth-child(n+2):nth-child(-n+5),
-  .verso-table[data-verso-tree] > colgroup > col:nth-child(n+2):nth-child(-n+5) {
+  .verso-table[data-verso-tree] > :is(thead, tbody) > tr > :nth-child(n+2):nth-child(-n+4),
+  .verso-table[data-verso-tree] > colgroup > col:nth-child(n+2):nth-child(-n+4) {
     display: none;
   }
   .verso-table__actions {

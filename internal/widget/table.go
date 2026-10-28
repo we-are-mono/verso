@@ -332,8 +332,7 @@ func (m *ColumnMeasure) UnmarshalJSON(data []byte) error {
 // clicking it slides in the drawer (the row gets a trailing chevron and the
 // pointer; controls inside the row keep their own meaning).
 type TableRow struct {
-	Expanded Widgets `json:"expanded,omitempty"`
-	Depth    int     `json:"depth,omitempty"`
+	Depth int `json:"depth,omitempty"`
 
 	ID    string      `json:"id,omitempty"`
 	Key   string      `json:"key,omitempty"`   // optional stable live-update hook; not displayed
@@ -661,7 +660,6 @@ func (t *Table) children() []Widget {
 	var out []Widget
 	collect := func(rows []TableRow) {
 		for i := range rows {
-			out = append(out, rows[i].Expanded...)
 			if rows[i].Drawer != nil {
 				out = append(out, rows[i].Drawer.Children...)
 			}
@@ -751,7 +749,6 @@ type tableView struct {
 }
 
 type tableRowView struct {
-	Expanded         []template.HTML
 	TreeNodeX        int
 	TreeNodeCenter   int
 	TreePath         string
@@ -843,9 +840,6 @@ func confirmDialog(r *Renderer, v confirmDialogView) (*confirmDialogView, error)
 }
 
 type tableCellView struct {
-	Expandable bool
-	Indent     string
-
 	Kind      string
 	Wrap      bool // a phrase that runs onto more lines (TableColumn.Wrap)
 	Identity  bool // the row's name: its first identity column, the one a switched-off row marks
@@ -1391,10 +1385,6 @@ func (t *Table) rowViews(r *Renderer, csrf string, rows []TableRow, hasDetail bo
 	if drawerLabel == "" {
 		drawerLabel = r.tr("Details")
 	}
-	primary := 0
-	if len(t.Columns) > 0 && t.Columns[0].Kind == "reorder" {
-		primary = 1
-	}
 	// The row's name is its first identity column; a later one (the radio a
 	// network runs on) is a citation.
 	identity := slices.IndexFunc(t.Columns, func(c TableColumn) bool { return isName(c.Kind) })
@@ -1461,8 +1451,8 @@ func (t *Table) rowViews(r *Renderer, csrf string, rows []TableRow, hasDetail bo
 			// The tree is drawn on the row's two cells of the notebook's grid:
 			// 40px tall, its branches on the 20px middle.
 			rv.TreePath = fmt.Sprintf("M%d 20H66", rv.TreeNodeCenter)
-			// Each level continues until its last descendant, including through
-			// an expanded row. The plugin supplies the topology as row depths.
+			// Each level continues until its last descendant. The plugin
+			// supplies the topology as row depths.
 			for level := 0; level < depth; level++ {
 				x := level*24 + 8
 				continues := false
@@ -1495,11 +1485,6 @@ func (t *Table) rowViews(r *Renderer, csrf string, rows []TableRow, hasDetail bo
 			rv.LaneGap = lanes > 0 && !t.pageBlock
 			rv.BandOnly = len(row.Cells) == 0
 			lanes++
-		}
-		var expandErr error
-		rv.Expanded, expandErr = r.renderChildren(row.Expanded, csrf)
-		if expandErr != nil {
-			return nil, expandErr
 		}
 		rv.Tags = strings.Join(row.Tags, " ")
 		// The lane's last row carries the lane's last word.
@@ -1535,17 +1520,6 @@ func (t *Table) rowViews(r *Renderer, csrf string, rows []TableRow, hasDetail bo
 				kind = "text"
 			}
 			cv := tableCellView{Kind: kind, Wrap: t.Columns[i].Wrap, Draggable: reorderable, RowID: row.ID, RowName: rowName, CSRFToken: csrf, Drawer: row.Drawer != nil || row.Entity != nil, Panel: rv.PanelURL, Dense: t.Dense}
-			cv.Expandable = i == primary && len(row.Expanded) > 0
-			if i == primary {
-				switch {
-				case row.Depth >= 3:
-					cv.Indent = "pl-18"
-				case row.Depth == 2:
-					cv.Indent = "pl-12"
-				case row.Depth == 1:
-					cv.Indent = "pl-6"
-				}
-			}
 			if i < len(row.Cells) {
 				cv.TableCell = row.Cells[i]
 				if rate := cv.TableCell.Rate; rate != nil {

@@ -60,13 +60,13 @@ func declares(t *testing.T, block, sel string, decls ...string) {
 // The table block's edges: the first and last cells of every row, and the
 // heads and lanes outside a form, take the table's own insets.
 const (
-	tableStartEdge = ":is(.verso-table__cell, .verso-table__seam, .verso-table__sheet):first-of-type,\n" +
+	tableStartEdge = ":is(.verso-table__cell, .verso-table__seam):first-of-type,\n" +
 		":is(.verso-table__head, .verso-table__band):not(.verso-table__grip):where(.verso-table:not([data-verso-in-form]) *):first-of-type"
-	tableEndEdge = ":is(.verso-table__cell, .verso-table__seam, .verso-table__sheet):last-of-type,\n" +
+	tableEndEdge = ":is(.verso-table__cell, .verso-table__seam):last-of-type,\n" +
 		".verso-table__head:where(.verso-table:not([data-verso-in-form]) *):last-of-type"
 	// tableHairline is the rule that gives every kind of body cell its
 	// hairline, the row's last pixel.
-	tableHairline = ".verso-table__cell,\n.verso-table__grip:not(th),\n.verso-table__acts,\n.verso-table__tail,\n.verso-table__sheet"
+	tableHairline = ".verso-table__cell,\n.verso-table__grip:not(th),\n.verso-table__acts,\n.verso-table__tail"
 )
 
 // redirectsTable is the firewall's Redirects listing in miniature: one

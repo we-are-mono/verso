@@ -469,12 +469,6 @@ document.addEventListener(
     for (var r = 0; r < list.length; r++) {
       var row = list[r];
       if (row.hasAttribute("data-verso-stream-empty")) continue;
-      if (row.hasAttribute("data-verso-expanded-row")) {
-        var parent = row.previousElementSibling;
-        var trigger = parent && parent.querySelector("[data-verso-expand-row]");
-        row.hidden = !parent || parent.hidden || !trigger || trigger.getAttribute("aria-expanded") !== "true";
-        continue;
-      }
       if (row.classList.contains("verso-table__lane")) {
         if (band) band.hidden = bandKept === 0;
         band = row;
@@ -529,137 +523,9 @@ document.addEventListener(
  });
 })();
 
-// Only the identity opens a row. Keep one open in the inventory, as in the
-// reference; the remaining cells stay available for selection and copying.
-//
-// A row unfolds: the fold under it (a grid track, blocks/table.css) grows from
-// nothing to its content and its parts arrive in reading order, then the
-// clip is lifted so nothing inside is cut. Closing folds it back and hides
-// it once the track has gone. With `animate` false — a refresh putting the
-// open row back, a reader who asked for less motion — the row is simply
-// open or hidden, and a fold still in flight is dropped.
-function versoExpandRow(button, open, animate) {
-  var row = button.closest("tr");
-  var detail = row && row.nextElementSibling;
-  if (!detail || !detail.hasAttribute("data-verso-expanded-row")) return;
-  row.dataset.versoExpanded = String(open);
-  button.setAttribute("aria-expanded", String(open));
-  var chevron = button.querySelector("[data-verso-expand-chevron] svg") || button.querySelector("svg");
-  if (chevron && !row.closest("[data-verso-inventory]")) chevron.classList.toggle("rotate-90", open);
-  var fold = detail.querySelector(".verso-table__unfold");
-  var still = animate === false || !fold || window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  if (detail.versoFolding) detail.versoFolding();
-  delete detail.dataset.versoSettled;
-  if (open) {
-    detail.hidden = false;
-    if (still) {
-      delete detail.dataset.versoUnfolding;
-      detail.dataset.versoStill = "";
-      detail.dataset.versoOpen = "";
-      detail.dataset.versoSettled = "";
-      requestAnimationFrame(function () { delete detail.dataset.versoStill; });
-      return;
-    }
-    versoStagger(detail);
-    detail.dataset.versoUnfolding = "";
-    void fold.offsetHeight; // the track starts from nothing, not from wherever it was
-    detail.dataset.versoOpen = "";
-    versoAfterFold(detail, fold, function () { detail.dataset.versoSettled = ""; });
-  } else {
-    delete detail.dataset.versoUnfolding;
-    delete detail.dataset.versoOpen;
-    if (still) { detail.hidden = true; return; }
-    versoAfterFold(detail, fold, function () { detail.hidden = true; });
-  }
-}
-// versoAfterFold runs `then` once the fold's track has finished growing or
-// shrinking — or after its own duration and a margin, should the transition
-// never report (a track that did not change, a browser that cannot animate
-// it). A fold that is turned around midway drops what it was going to do.
-function versoAfterFold(detail, fold, then) {
-  var timer = setTimeout(done, 500);
-  function done() {
-    clearTimeout(timer);
-    fold.removeEventListener("transitionend", onEnd);
-    detail.versoFolding = null;
-    then();
-  }
-  function onEnd(e) { if (e.target === fold) done(); }
-  fold.addEventListener("transitionend", onEnd);
-  detail.versoFolding = function () {
-    clearTimeout(timer);
-    fold.removeEventListener("transitionend", onEnd);
-    detail.versoFolding = null;
-  };
-}
-// versoStagger hands each part of an unfolding row its moment: parts one
-// after another, and inside a part the ledger's name and act with the line,
-// then the facts under it one by one, then whatever stands beside them. Each
-// is an arrival (blocks/arrival.css) whose delay the stylesheet's animation
-// reads.
-function versoStagger(detail) {
-  var arrive = function (el, how, ms) {
-    el.classList.add("verso-arrival");
-    el.setAttribute("data-verso-arrival", how);
-    el.style.setProperty("--verso-stagger", ms + "ms");
-  };
-  var rise = function (el, ms) { arrive(el, "rise", ms); };
-  var parts = [].filter.call(detail.querySelectorAll("section"), function (part) {
-    return part.querySelector(":scope > [data-verso-ledger]");
-  });
-  parts.forEach(function (part, i) {
-    var base = 40 + i * 90;
-    [].forEach.call(part.querySelector(":scope > [data-verso-ledger]").children, function (child) {
-      if (child.hasAttribute("aria-hidden")) arrive(child, "draw", base);
-      else rise(child, base);
-    });
-    part.querySelectorAll("dl > div").forEach(function (fact, j) { rise(fact, base + 60 + j * 30); });
-    part.querySelectorAll("[data-verso-facts] > :not(dl), .verso-rhythm > :not(section):not([data-verso-facts])").forEach(function (block) {
-      rise(block, base + 90);
-    });
-  });
-}
-// versoFactValues is what an open row's facts say, by their place and
-// label, so that after a refresh each fact can be held against what it said.
-function versoFactValues(detail) {
-  var map = {};
-  if (!detail) return map;
-  detail.querySelectorAll("[data-verso-facts] dl > div").forEach(function (row, i) {
-    var dt = row.querySelector("dt");
-    var value = row.querySelector("dd > span");
-    if (dt && value) map[i + ":" + dt.textContent.trim()] = value.textContent.trim();
-  });
-  return map;
-}
-// versoRollFacts rolls every fact whose value changed under the refresh —
-// an uptime a minute on, a lease taken, an error counted — where it stands,
-// with its label warming to ink for a moment so the eye finds it. A fact
-// that reads the same, or one the row did not have before, stays still.
-function versoRollFacts(detail, was) {
-  if (!detail || typeof window.versoRoll !== "function") return;
-  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-  detail.querySelectorAll("[data-verso-facts] dl > div").forEach(function (row, i) {
-    var dt = row.querySelector("dt");
-    var value = row.querySelector("dd > span");
-    if (!dt || !value || typeof value.animate !== "function") return;
-    var key = i + ":" + dt.textContent.trim();
-    var now = value.textContent.trim();
-    if (!(key in was) || was[key] === now) return;
-    window.versoRoll(value, was[key], now, null, dt);
-  });
-}
-document.addEventListener("click", function (event) {
-  var button = event.target.closest("[data-verso-expand-row]");
-  if (!button) return;
-  var open = button.getAttribute("aria-expanded") !== "true";
-  var inventory = button.closest("[data-verso-inventory]");
-  if (inventory) inventory.querySelectorAll('[data-verso-expand-row][aria-expanded="true"]').forEach(function (other) { if (other !== button) versoExpandRow(other, false); });
-  versoExpandRow(button, open);
-});
-
 // Refresh shell-rendered live tables so topology and service state cannot
-// drift into separate client-side implementations. Keep the user's open row,
-// search, scroll position and focus; no polling while a dialog is in use.
+// drift into separate client-side implementations. Keep the user's search,
+// scroll position and focus; no polling while a dialog is in use.
 (function () {
   var inventories = document.querySelectorAll("[data-verso-inventory], [data-verso-live-table]");
   inventories.forEach(function (inventory, index) {
@@ -681,9 +547,6 @@ document.addEventListener("click", function (event) {
         var fresh = source && source.querySelector("tbody");
         if (!fresh || !inventory.isConnected) throw new Error("inventory unavailable");
         var current = inventory.querySelector("tbody");
-        var trigger = current.querySelector('[data-verso-expand-row][aria-expanded="true"]');
-        var openID = trigger && trigger.closest("tr").getAttribute("data-verso-row-id");
-        var said = versoFactValues(trigger && trigger.closest("tr").nextElementSibling);
         var focused = document.activeElement;
         var focusedRow = inventory.contains(focused) && focused.closest("[data-verso-row-id]");
         var focusedID = focusedRow && focusedRow.getAttribute("data-verso-row-id");
@@ -692,13 +555,6 @@ document.addEventListener("click", function (event) {
         if (focusedID && focusedLabel) {
           var replacement = current.querySelector('[data-verso-row-id="' + CSS.escape(focusedID) + '"] [aria-label="' + CSS.escape(focusedLabel) + '"]');
           if (replacement) replacement.focus({ preventScroll: true });
-        }
-        if (openID) {
-          var next = current.querySelector('[data-verso-row-id="' + CSS.escape(openID) + '"] [data-verso-expand-row]');
-          if (next) {
-            versoExpandRow(next, true, false);
-            versoRollFacts(next.closest("tr").nextElementSibling, said);
-          }
         }
         var bar = document.querySelector("[data-verso-actionbar]");
         if (bar && bar.versoApplyFilters) bar.versoApplyFilters();

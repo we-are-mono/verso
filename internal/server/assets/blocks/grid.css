@@ -10,10 +10,6 @@
  * Variants: data-verso-style  (none): tiles, two-up on a phone and widening
  *                             on a larger screen (data-verso-columns 1–4),
  *                             32px apart
- *                             · facts: an expanded row's facts in two columns
- *                             48px apart from the same top line; narrow, the
- *                             right column continues the left as one list
- *                             (blocks/facts.css draws the seam)
  *                             · settings, editor, rail: a form at the form's
  *                             measure with a rail beside it once there is
  *                             room for both (@form-split), the rail staying
@@ -79,18 +75,6 @@
 }
 .verso-grid__cell {
   min-width: 0;
-}
-
-/* facts */
-.verso-grid__track:where(.verso-grid[data-verso-style="facts"] > *) {
-  grid-template-columns: minmax(0, 1fr);
-  gap: 0 calc(var(--spacing) * 12);
-}
-@container (width >= 42rem) {
-  .verso-grid__track:where(.verso-grid[data-verso-style="facts"] > *) {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    row-gap: var(--spacing-inset);
-  }
 }
 
 /* settings, editor, rail */

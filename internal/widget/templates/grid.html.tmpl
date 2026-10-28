@@ -4,16 +4,12 @@
      The plugin declared only a style and a target column count (ADR-005);
      turning the count into columns is the shell's job, stated in the block.
      Each child stands in a cell of its own; a split's first cell is the
-     form's column. A facts grid's lists stand straight in its columns (the
-     unfold reads them there, data-verso-facts), set left (Grid.renderInto),
-     and the seam between them is the facts block's. Cards of one kind side
-     by side stand in the page's flow as one card does. */}}
+     form's column. Cards of one kind side by side stand in the page's flow
+     as one card does. */}}
 {{if eq .Style "form"}}
 {{/* Related fields share a row only when their own container has room. The
      group owns the outer field padding, so stacking keeps the same rhythm. */}}
 <div class="verso-form-grid"><div class="verso-form-grid__fields" data-verso-columns="{{if le .Columns 1}}1{{else if eq .Columns 2}}2{{else}}3{{end}}">{{range .Children}}{{.}}{{end}}</div></div>
-{{else if eq .Style "facts"}}
-<div class="verso-grid" data-verso-style="facts"><div data-verso-facts class="verso-grid__track">{{range .Children}}{{.}}{{end}}</div></div>
 {{else}}
 {{$split := or (eq .Style "settings") (eq .Style "editor") (eq .Style "rail")}}
 <div class="verso-grid"{{if or $split (eq .Style "figure") (eq .Style "cards")}} data-verso-style="{{.Style}}"{{end}} data-verso-columns="{{if le .Columns 1}}1{{else if eq .Columns 2}}2{{else if eq .Columns 3}}3{{else}}4{{end}}">

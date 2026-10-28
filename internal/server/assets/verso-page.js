@@ -503,56 +503,6 @@
   }
 })();
 
-// versoRoll rolls a value from what it was to what it is: the old number
-// rolls out and the new one rolls in — upward for more, downward for fewer,
-// upward for a change that is not a number — inside a frame the size of the
-// value, and the words in `warm` (the value itself, or the label beside it)
-// go to ink for a moment and settle back. A frame the caller already keeps
-// is used as it is; any other value is framed for the
-// roll and unframed after it. A fact that changes under a live refresh rolls
-// the same way (verso-tables.js).
-window.versoRoll = function (value, from, to, frame, warm) {
-  var EASE = "cubic-bezier(0.22, 1, 0.36, 1)";
-  var a = Number(from), b = Number(to);
-  var more = isNaN(a) || isNaN(b) || b >= a;
-  var framed = !frame;
-  if (framed) {
-    frame = document.createElement("span");
-    frame.className = "inline-grid overflow-hidden";
-    value.parentNode.insertBefore(frame, value);
-    frame.appendChild(value);
-    value.style.gridArea = "1 / 1";
-  }
-  var gone = value.cloneNode(false);
-  [].slice.call(gone.attributes).forEach(function (attr) {
-    if (attr.name.indexOf("data-verso") === 0) gone.removeAttribute(attr.name);
-  });
-  gone.setAttribute("aria-hidden", "true");
-  gone.textContent = from;
-  if (framed) gone.style.gridArea = "1 / 1";
-  frame.insertBefore(gone, value);
-  var out = more ? "-100%" : "100%";
-  var inn = more ? "100%" : "-100%";
-  function settle() {
-    gone.remove();
-    if (!framed) return;
-    frame.parentNode.insertBefore(value, frame);
-    frame.remove();
-    value.style.gridArea = "";
-  }
-  gone.animate(
-    [{ transform: "translateY(0)", opacity: 1 }, { transform: "translateY(" + out + ")", opacity: 0 }],
-    { duration: 420, easing: EASE, fill: "forwards" }
-  ).finished.then(settle, settle);
-  value.animate(
-    [{ transform: "translateY(" + inn + ")", opacity: 0 }, { transform: "translateY(0)", opacity: 1 }],
-    { duration: 420, easing: EASE }
-  );
-  warm = warm || frame;
-  var ink = getComputedStyle(warm).getPropertyValue("--color-ink").trim();
-  if (ink) warm.animate([{ color: ink }, { color: ink, offset: 0.35 }, {}], { duration: 1600, easing: "ease-out" });
-};
-
 // Help (form-fields): every setting's help stays folded until a reader asks
 // for it. The act on a page's heading line and in every drawer's header, or
 // the ? key, shows all of it and hides it again; the root carries the state,

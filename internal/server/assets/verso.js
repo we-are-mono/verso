@@ -670,9 +670,9 @@ document.addEventListener("alpine:init", function () {
           this.setAddress(url);
         }
         if (!window.htmx) return;
-        // An address that names a part of the panel (an expanded row's
-        // "Configure DHCP", into the editor's DHCP section) opens the panel
-        // scrolled to that part, fetched or already here.
+        // An address that names a part of the panel (into an editor's DHCP
+        // section) opens the panel scrolled to that part, fetched or already
+        // here.
         var hash = url.indexOf("#") === -1 ? "" : url.slice(url.indexOf("#") + 1);
         function reveal() {
           if (!hash) return;

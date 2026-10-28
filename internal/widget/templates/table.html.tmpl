@@ -181,14 +181,12 @@
              separator, so the name still reads as one word at a glance. */}}
         <td class="verso-table__cell relative">
           <span class="verso-table__title">
-            {{if and .LeadIcon (not .Expandable)}}<span class="shrink-0 text-faint">{{icon .LeadIcon "size-3.5"}}</span>{{end}}
+            {{if .LeadIcon}}<span class="shrink-0 text-faint">{{icon .LeadIcon "size-3.5"}}</span>{{end}}
             {{/* the name is words, never a door: a reader cannot tell what
                  pressing it would do. Where a plugin pointed it, the row's acts
-                 lead instead (doorAct). Only an expandable row's name is a
-                 control, and its chevron says what it does. A name reads at
-                 the listing's 14px wherever its column stands. */}}
-            {{if .Expandable}}<button type="button" data-verso-expand-row aria-expanded="false" class="verso-table__expand {{if eq .Indent "pl-6"}}pl-6{{else if eq .Indent "pl-12"}}pl-12{{else if eq .Indent "pl-18"}}pl-18{{end}}" data-verso-verbatim>{{icon "chevron-right" "size-3.5 shrink-0"}}{{if .LeadIcon}}<span class="text-faint">{{icon .LeadIcon "size-3.5"}}</span>{{end}}{{.Text}}</button>
-            {{else}}<span class="verso-table__name"{{if eq .Kind "reference"}} data-verso-verbatim{{end}}{{template "table.name-state" .}}>{{template "table.name-words" .}}</span>{{end}}
+                 lead instead (doorAct). A name reads at the listing's 14px
+                 wherever its column stands. */}}
+            <span class="verso-table__name"{{if eq .Kind "reference"}} data-verso-verbatim{{end}}{{template "table.name-state" .}}>{{template "table.name-words" .}}</span>
             {{if .Off}}{{template "table.disabled" .}}{{end}}
             {{if .Sub}}<span class="-mx-1.5 shrink-0 text-faint">·</span><span class="shrink-0 whitespace-nowrap text-meta">{{.Sub}}</span>{{end}}
             {{if .Chip}}<span class="verso-chip" data-verso-verbatim>{{.Chip}}</span>{{end}}
@@ -204,13 +202,9 @@
              over; its detail sits beneath, as a name's does. */}}
         <td class="verso-table__cell relative">
           <span class="flex min-w-0 items-center">
-            {{/* an expandable row's phrase is its control, led by the
-                 chevron that says so, as an expandable name is. */}}
-            {{if .Expandable}}<button type="button" data-verso-expand-row aria-expanded="false" class="verso-table__expand flex min-w-0">{{icon "chevron-right" "size-3.5 shrink-0"}}{{end}}
             <span class="verso-table__phrase{{if .Identity}} verso-table__words{{end}}"{{if .Wrap}} data-verso-wrap{{end}}{{template "table.name-state" .}}>
               {{template "table.phrase-parts" .Phrase}}
             </span>
-            {{if .Expandable}}</button>{{end}}
             {{if .Off}}{{template "table.disabled" .}}{{end}}
           </span>
           {{if .Detail}}{{template "table.detail" .}}{{end}}
@@ -400,7 +394,6 @@
         {{end}}
         {{if .Entity}}{{template "verso-entity-drawer" .}}{{else if .PanelURL}}{{template "verso-drawer-fetched" .PanelURL}}{{else if .Drawer}}{{template "verso-drawer-panel" .Panel}}{{end}}
       </tr>
-      {{if .Expanded}}<tr data-verso-expanded-row hidden><td colspan="{{.ColumnSpan}}" class="verso-table__sheet">{{range .Expanded}}{{.}}{{end}}</td></tr>{{end}}
       {{end}}
       {{/* The lane's last word, after its last row: what happens to what none
            of its rows caught. A line across the listing in the meta step, at a

@@ -77,8 +77,8 @@ func (l *Link) draw(r *Renderer, out io.Writer, door bool) error {
 		return nil
 	}
 	href := l.Href
-	// A link to a place on a page — this one, or one it opens (an expanded
-	// row's act into the editor's DHCP section) — is a link to a section,
+	// A link to a place on a page — this one, or one it opens (into an
+	// editor's DHCP section) — is a link to a section,
 	// whose id the shell namespaces (SectionID); the plugin names it by its
 	// anchor. A link to another site keeps the anchor that site wrote.
 	if at := strings.IndexByte(href, '#'); at != -1 && at < len(href)-1 && !strings.Contains(href[:at], "://") {

@@ -53,14 +53,6 @@
 .verso-code[data-verso-place="card"]:last-child:where(.verso-page__body > *, .verso-page__body > .verso-stack > *, .verso-page__body > .verso-stack > .verso-stack:last-child > *, .verso-page__body [data-verso-form-column] > .verso-stack:last-child > *) {
   margin-bottom: -1px;
 }
-/* A code box among a row's facts columns (what the daemon reported) is not
-   a form's footnote: its caption stands on the first fact's line. */
-.verso-code:is(.verso-grid[data-verso-style="facts"] .verso-grid__track > *) {
-  --verso-step: 0px;
-  min-width: 0;
-  margin-top: 0;
-  padding-top: calc(var(--spacing) * 2);
-}
 .verso-code[data-verso-preview] {
   transition: opacity 0.4s ease 0.15s;
 }
