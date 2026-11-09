@@ -49,6 +49,10 @@ apk add verso-plugin-ddns      # Dynamic DNS
 apk add verso-i18n-base-sl     # Slovenian
 ```
 
+## Configure
+
+Every Verso setting, its default, and the `uci` option behind it: [Configuration](docs/configuration.md).
+
 ## Update
 
 Updates Verso and its add-ons, and nothing else on the router:
